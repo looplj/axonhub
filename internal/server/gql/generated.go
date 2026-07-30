@@ -1340,7 +1340,7 @@ type ComplexityRoot struct {
 		ChannelProbeData                func(childComplexity int, input biz.GetChannelProbeDataInput) int
 		ChannelSuccessRates             func(childComplexity int, timeWindow *string, limit *int) int
 		Channels                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
-		CheckForUpdate                  func(childComplexity int) int
+		CheckForUpdate                  func(childComplexity int, includeBeta bool) int
 		CostStatsByAPIKey               func(childComplexity int, timeWindow *string) int
 		CostStatsByChannel              func(childComplexity int, timeWindow *string) int
 		CostStatsByModel                func(childComplexity int, timeWindow *string) int
@@ -2365,7 +2365,7 @@ type QueryResolver interface {
 	DefaultDataStorageID(ctx context.Context) (*objects.GUID, error)
 	OnboardingInfo(ctx context.Context) (*OnboardingInfo, error)
 	SystemVersion(ctx context.Context) (*build.Info, error)
-	CheckForUpdate(ctx context.Context) (*VersionCheck, error)
+	CheckForUpdate(ctx context.Context, includeBeta bool) (*VersionCheck, error)
 	SystemChannelSettings(ctx context.Context) (*biz.SystemChannelSettings, error)
 	SystemGeneralSettings(ctx context.Context) (*biz.SystemGeneralSettings, error)
 	VideoStorageSettings(ctx context.Context) (*biz.VideoStorageSettings, error)
@@ -8056,7 +8056,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.CheckForUpdate(childComplexity), true
+		args, err := ec.field_Query_checkForUpdate_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CheckForUpdate(childComplexity, args["includeBeta"].(bool)), true
 	case "Query.costStatsByAPIKey":
 		if e.complexity.Query.CostStatsByAPIKey == nil {
 			break
@@ -13935,6 +13940,17 @@ func (ec *executionContext) field_Query_channels_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["where"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_checkForUpdate_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "includeBeta", ec.unmarshalNBoolean2bool)
+	if err != nil {
+		return nil, err
+	}
+	args["includeBeta"] = arg0
 	return args, nil
 }
 
@@ -45227,7 +45243,8 @@ func (ec *executionContext) _Query_checkForUpdate(ctx context.Context, field gra
 		field,
 		ec.fieldContext_Query_checkForUpdate,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().CheckForUpdate(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().CheckForUpdate(ctx, fc.Args["includeBeta"].(bool))
 		},
 		nil,
 		ec.marshalNVersionCheck2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐVersionCheck,
@@ -45236,7 +45253,7 @@ func (ec *executionContext) _Query_checkForUpdate(ctx context.Context, field gra
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_checkForUpdate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_checkForUpdate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -45255,6 +45272,17 @@ func (ec *executionContext) fieldContext_Query_checkForUpdate(_ context.Context,
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VersionCheck", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_checkForUpdate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }

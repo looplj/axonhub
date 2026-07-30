@@ -43,10 +43,10 @@ type VersionCheckResult struct {
 }
 
 // CheckForUpdate checks if there is a newer version available on GitHub.
-func (s *SystemService) CheckForUpdate(ctx context.Context) (*VersionCheckResult, error) {
+func (s *SystemService) CheckForUpdate(ctx context.Context, includeBeta bool) (*VersionCheckResult, error) {
 	currentVersion := build.Version
 
-	latestVersion, err := s.fetchLatestGitHubRelease(ctx)
+	latestVersion, err := s.fetchLatestGitHubRelease(ctx, includeBeta)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch latest release: %w", err)
 	}
@@ -62,10 +62,9 @@ func (s *SystemService) CheckForUpdate(ctx context.Context) (*VersionCheckResult
 	}, nil
 }
 
-// fetchLatestGitHubRelease fetches the latest stable release tag from GitHub.
-// It skips beta and rc versions.
-func (s *SystemService) fetchLatestGitHubRelease(ctx context.Context) (string, error) {
-	return FetchLatestGitHubRelease(ctx)
+// fetchLatestGitHubRelease fetches the latest eligible release tag from GitHub.
+func (s *SystemService) fetchLatestGitHubRelease(ctx context.Context, includeBeta bool) (string, error) {
+	return FetchLatestGitHubRelease(ctx, includeBeta)
 }
 
 // isNewerVersion compares two semantic versions and returns true if latest is newer than current.
@@ -85,10 +84,11 @@ type GitHubRelease struct {
 // This accounts for build and upload time.
 const releaseCooldownDuration = 30 * time.Minute
 
-// FetchLatestGitHubRelease fetches the latest stable release tag from GitHub for the axonhub service.
-// It skips beta, rc, and prerelease versions, and waits for a cooldown period after release.
+// FetchLatestGitHubRelease fetches the latest eligible release tag from GitHub for the axonhub service.
+// Beta versions are included when includeBeta is true; other prereleases are always skipped.
+// It waits for a cooldown period after release.
 // In monorepo mode, it only considers tags matching "vX.Y.Z" (no service prefix).
-func FetchLatestGitHubRelease(ctx context.Context) (string, error) {
+func FetchLatestGitHubRelease(ctx context.Context, includeBeta bool) (string, error) {
 	baseURL := "https://api.github.com/repos/looplj/axonhub/releases"
 
 	u, err := url.Parse(baseURL)
@@ -97,7 +97,7 @@ func FetchLatestGitHubRelease(ctx context.Context) (string, error) {
 	}
 
 	q := u.Query()
-	q.Set("per_page", "10")
+	q.Set("per_page", "100")
 	q.Set("page", "1")
 	u.RawQuery = q.Encode()
 	apiURL := u.String()
@@ -130,11 +130,16 @@ func FetchLatestGitHubRelease(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("failed to decode releases: %w", err)
 	}
 
-	now := time.Now().UTC()
+	return selectLatestGitHubRelease(releases, includeBeta, time.Now().UTC())
+}
 
-	// Find the latest stable release (not prerelease, not draft, not beta/rc, and past cooldown)
+// selectLatestGitHubRelease returns the highest semantic version among eligible releases.
+func selectLatestGitHubRelease(releases []GitHubRelease, includeBeta bool, now time.Time) (string, error) {
+	var latestVersion *semver.Version
+	latestTag := ""
+
 	for _, release := range releases {
-		if release.Draft || release.Prerelease {
+		if release.Draft {
 			continue
 		}
 
@@ -143,8 +148,10 @@ func FetchLatestGitHubRelease(ctx context.Context) (string, error) {
 			continue
 		}
 
-		if isPreReleaseTag(release.TagName) {
-			continue
+		if release.Prerelease || isPreReleaseTag(release.TagName) {
+			if !includeBeta || !isBetaReleaseTag(release.TagName) {
+				continue
+			}
 		}
 
 		// Check if the release has passed the cooldown period
@@ -152,10 +159,22 @@ func FetchLatestGitHubRelease(ctx context.Context) (string, error) {
 			continue
 		}
 
-		return release.TagName, nil
+		version, err := semver.NewVersion(release.TagName)
+		if err != nil {
+			continue
+		}
+
+		if latestVersion == nil || version.GreaterThan(latestVersion) {
+			latestVersion = version
+			latestTag = release.TagName
+		}
 	}
 
-	return "", fmt.Errorf("no stable release found")
+	if latestTag != "" {
+		return latestTag, nil
+	}
+
+	return "", fmt.Errorf("no eligible release found")
 }
 
 // isAxonHubTag returns true if the tag is an axonhub version tag (vX.Y.Z format).
@@ -177,6 +196,11 @@ func isPreReleaseTag(tag string) bool {
 	}
 
 	return false
+}
+
+// isBetaReleaseTag reports whether tag identifies a beta prerelease.
+func isBetaReleaseTag(tag string) bool {
+	return strings.Contains(strings.ToLower(tag), "-beta")
 }
 
 // IsNewerVersion compares two semantic versions and returns true if latest is newer than current.

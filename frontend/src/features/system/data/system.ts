@@ -23,8 +23,8 @@ const SYSTEM_VERSION_QUERY = `
 `;
 
 export const CHECK_FOR_UPDATE_QUERY = `
-  query CheckForUpdate {
-    checkForUpdate {
+  query CheckForUpdate($includeBeta: Boolean! = false) {
+    checkForUpdate(includeBeta: $includeBeta) {
       currentVersion
       latestVersion
       hasUpdate
@@ -742,11 +742,11 @@ export function useSystemVersion() {
   });
 }
 
-export function useCheckForUpdate() {
+export function useCheckForUpdate(includeBeta = false) {
   return useQuery({
-    queryKey: ['checkForUpdate'],
+    queryKey: ['checkForUpdate', includeBeta],
     queryFn: async () => {
-      const data = await graphqlRequest<{ checkForUpdate: VersionCheck }>(CHECK_FOR_UPDATE_QUERY);
+      const data = await graphqlRequest<{ checkForUpdate: VersionCheck }>(CHECK_FOR_UPDATE_QUERY, { includeBeta });
       return data.checkForUpdate;
     },
     retry: false,

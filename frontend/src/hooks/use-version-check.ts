@@ -31,7 +31,7 @@ export function useVersionCheck() {
   const { data: updateCheck } = useQuery({
     queryKey: ['versionCheck'],
     queryFn: async () => {
-      const data = await graphqlRequest<{ checkForUpdate: VersionCheck }>(CHECK_FOR_UPDATE_QUERY);
+      const data = await graphqlRequest<{ checkForUpdate: VersionCheck }>(CHECK_FOR_UPDATE_QUERY, { includeBeta: false });
       return data.checkForUpdate;
     },
     //@ts-ignore

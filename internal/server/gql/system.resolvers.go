@@ -507,8 +507,8 @@ func (r *queryResolver) SystemVersion(ctx context.Context) (*build.Info, error) 
 }
 
 // CheckForUpdate is the resolver for the checkForUpdate field.
-func (r *queryResolver) CheckForUpdate(ctx context.Context) (*VersionCheck, error) {
-	result, err := r.systemService.CheckForUpdate(ctx)
+func (r *queryResolver) CheckForUpdate(ctx context.Context, includeBeta bool) (*VersionCheck, error) {
+	result, err := r.systemService.CheckForUpdate(ctx, includeBeta)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check for update: %w", err)
 	}
