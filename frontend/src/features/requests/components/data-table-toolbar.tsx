@@ -178,186 +178,177 @@ export function DataTableToolbar<TData>({
   ];
 
   return (
-    <div className='flex flex-wrap items-center justify-between gap-2'>
-      <div className='flex min-w-0 flex-1 flex-wrap items-center gap-2'>
-        <Input
-          placeholder={t('requests.filters.filterModelId')}
-          value={(table.getColumn('modelID')?.getFilterValue() as string) ?? ''}
-          onChange={(event) => table.getColumn('modelID')?.setFilterValue(event.target.value)}
-          className='h-8 min-w-0 flex-1 sm:w-[150px] lg:w-[250px]'
-        />
+    <div className='flex flex-wrap items-center gap-2'>
+      <Input
+        placeholder={t('requests.filters.filterModelId')}
+        value={(table.getColumn('modelID')?.getFilterValue() as string) ?? ''}
+        onChange={(event) => table.getColumn('modelID')?.setFilterValue(event.target.value)}
+        className='h-8 min-w-0 flex-1 sm:w-[150px] lg:w-[250px]'
+      />
 
-        {/* Mobile: Filters button opens bottom sheet */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button variant='outline' size='sm' className='h-8 gap-1 sm:hidden'>
-              <Filter className='h-4 w-4' />
-              {t('common.filters.title')}
-              {activeFilterCount > 0 && (
-                <Badge variant='secondary' className='ml-1 min-w-[1.25rem] rounded-full px-1.5 py-0'>
-                  {activeFilterCount}
-                </Badge>
-              )}
-            </Button>
-          </SheetTrigger>
-          <SheetContent side='bottom' className='h-auto max-h-[85vh] overflow-hidden'>
-            <SheetHeader>
-              <SheetTitle>{t('common.filters.title')}</SheetTitle>
-            </SheetHeader>
-            <div className='flex flex-col gap-4 overflow-y-auto py-4'>
-              {table.getColumn('status') && (
-                <DataTableFacetedFilter column={table.getColumn('status')} title={t('requests.filters.status')} options={requestStatuses} />
-              )}
-              {table.getColumn('source') && (
-                <DataTableFacetedFilter column={table.getColumn('source')} title={t('requests.filters.source')} options={requestSources} />
-              )}
-              {canViewChannels && table.getColumn('channel') && (channelOptions.length > 0 || isFetchingChannels) && (
-                <DataTableFacetedFilter
-                  column={table.getColumn('channel')}
-                  title={t('requests.filters.channel')}
-                  options={channelOptions}
-                  footer={
-                    <div
-                      className='flex items-center space-x-2 px-2 py-1.5'
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox
-                        id='show-archived-channels-mobile'
-                        checked={showArchivedChannels}
-                        onCheckedChange={(checked) => handleToggleShowArchivedChannels(checked === true)}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <label
-                        htmlFor='show-archived-channels-mobile'
-                        className='cursor-pointer text-sm'
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {t('common.showArchived')}
-                      </label>
-                    </div>
-                  }
-                />
-              )}
-              {canViewApiKeys && table.getColumn('apiKey') && (apiKeyOptions.length > 0 || isFetchingApiKeys) && (
-                <DataTableFacetedFilter
-                  column={table.getColumn('apiKey')}
-                  title={t('requests.filters.apiKey')}
-                  options={apiKeyOptions}
-                  footer={
-                    <div
-                      className='flex items-center space-x-2 px-2 py-1.5'
-                      onPointerDown={(e) => e.stopPropagation()}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Checkbox
-                        id='show-archived-api-keys-mobile'
-                        checked={showArchivedApiKeys}
-                        onCheckedChange={(checked) => handleToggleShowArchivedApiKeys(checked === true)}
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      <label
-                        htmlFor='show-archived-api-keys-mobile'
-                        className='cursor-pointer text-sm'
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {t('common.showArchived')}
-                      </label>
-                    </div>
-                  }
-                />
-              )}
-              <DateRangePicker value={dateRange} onChange={onDateRangeChange} className='w-full' />
-              {hasDateRange && (
-                <Button variant='ghost' onClick={() => onDateRangeChange?.(undefined)} className='h-8 px-2' size='sm'>
-                  <X className='h-4 w-4' />
-                </Button>
-              )}
-              {isFiltered && (
-                <Button variant='ghost' onClick={onResetFilters} className='h-8 px-2 lg:px-3'>
-                  {t('common.filters.reset')}
-                  <Cross2Icon className='ml-2 h-4 w-4' />
-                </Button>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        {/* Desktop: inline filter controls */}
-        <div className='hidden flex-wrap items-center gap-2 sm:flex'>
-          {table.getColumn('status') && (
-            <DataTableFacetedFilter column={table.getColumn('status')} title={t('requests.filters.status')} options={requestStatuses} />
-          )}
-          {table.getColumn('source') && (
-            <DataTableFacetedFilter column={table.getColumn('source')} title={t('requests.filters.source')} options={requestSources} />
-          )}
-          {canViewChannels && table.getColumn('channel') && (channelOptions.length > 0 || isFetchingChannels) && (
-            <DataTableFacetedFilter
-              column={table.getColumn('channel')}
-              title={t('requests.filters.channel')}
-              options={channelOptions}
-              footer={
-                <div
-                  className='flex items-center space-x-2 px-2 py-1.5'
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Checkbox
-                    id='show-archived-channels'
-                    checked={showArchivedChannels}
-                    onCheckedChange={(checked) => handleToggleShowArchivedChannels(checked === true)}
+      {/* Mobile: Filters button opens bottom sheet */}
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant='outline' size='sm' className='h-8 gap-1 sm:hidden'>
+            <Filter className='h-4 w-4' />
+            {t('common.filters.title')}
+            {activeFilterCount > 0 && (
+              <Badge variant='secondary' className='ml-1 min-w-[1.25rem] rounded-full px-1.5 py-0'>
+                {activeFilterCount}
+              </Badge>
+            )}
+          </Button>
+        </SheetTrigger>
+        <SheetContent side='bottom' className='h-auto max-h-[85vh] overflow-hidden'>
+          <SheetHeader>
+            <SheetTitle>{t('common.filters.title')}</SheetTitle>
+          </SheetHeader>
+          <div className='flex flex-col gap-4 overflow-y-auto py-4'>
+            {table.getColumn('status') && (
+              <DataTableFacetedFilter column={table.getColumn('status')} title={t('requests.filters.status')} options={requestStatuses} />
+            )}
+            {table.getColumn('source') && (
+              <DataTableFacetedFilter column={table.getColumn('source')} title={t('requests.filters.source')} options={requestSources} />
+            )}
+            {canViewChannels && table.getColumn('channel') && (channelOptions.length > 0 || isFetchingChannels) && (
+              <DataTableFacetedFilter
+                column={table.getColumn('channel')}
+                title={t('requests.filters.channel')}
+                options={channelOptions}
+                footer={
+                  <div
+                    className='flex items-center space-x-2 px-2 py-1.5'
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
-                  />
-                  <label htmlFor='show-archived-channels' className='cursor-pointer text-sm' onClick={(e) => e.stopPropagation()}>
-                    {t('common.showArchived')}
-                  </label>
-                </div>
-              }
-            />
-          )}
-          {canViewApiKeys && table.getColumn('apiKey') && (apiKeyOptions.length > 0 || isFetchingApiKeys) && (
-            <DataTableFacetedFilter
-              column={table.getColumn('apiKey')}
-              title={t('requests.filters.apiKey')}
-              options={apiKeyOptions}
-              footer={
-                <div
-                  className='flex items-center space-x-2 px-2 py-1.5'
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Checkbox
-                    id='show-archived-api-keys'
-                    checked={showArchivedApiKeys}
-                    onCheckedChange={(checked) => handleToggleShowArchivedApiKeys(checked === true)}
+                  >
+                    <Checkbox
+                      id='show-archived-channels-mobile'
+                      checked={showArchivedChannels}
+                      onCheckedChange={(checked) => handleToggleShowArchivedChannels(checked === true)}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <label htmlFor='show-archived-channels-mobile' className='cursor-pointer text-sm' onClick={(e) => e.stopPropagation()}>
+                      {t('common.showArchived')}
+                    </label>
+                  </div>
+                }
+              />
+            )}
+            {canViewApiKeys && table.getColumn('apiKey') && (apiKeyOptions.length > 0 || isFetchingApiKeys) && (
+              <DataTableFacetedFilter
+                column={table.getColumn('apiKey')}
+                title={t('requests.filters.apiKey')}
+                options={apiKeyOptions}
+                footer={
+                  <div
+                    className='flex items-center space-x-2 px-2 py-1.5'
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => e.stopPropagation()}
-                  />
-                  <label htmlFor='show-archived-api-keys' className='cursor-pointer text-sm' onClick={(e) => e.stopPropagation()}>
-                    {t('common.showArchived')}
-                  </label>
-                </div>
-              }
-            />
-          )}
-          <DateRangePicker value={dateRange} onChange={onDateRangeChange} className='max-w-[150px] min-w-0 sm:max-w-none' />
-          {hasDateRange && (
-            <Button variant='ghost' onClick={() => onDateRangeChange?.(undefined)} className='h-8 px-2' size='sm'>
-              <X className='h-4 w-4' />
-            </Button>
-          )}
-          {isFiltered && (
-            <Button variant='ghost' onClick={onResetFilters} className='h-8 px-2 lg:px-3'>
-              {t('common.filters.reset')}
-              <Cross2Icon className='ml-2 h-4 w-4' />
-            </Button>
-          )}
-        </div>
+                  >
+                    <Checkbox
+                      id='show-archived-api-keys-mobile'
+                      checked={showArchivedApiKeys}
+                      onCheckedChange={(checked) => handleToggleShowArchivedApiKeys(checked === true)}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <label htmlFor='show-archived-api-keys-mobile' className='cursor-pointer text-sm' onClick={(e) => e.stopPropagation()}>
+                      {t('common.showArchived')}
+                    </label>
+                  </div>
+                }
+              />
+            )}
+            <DateRangePicker value={dateRange} onChange={onDateRangeChange} className='w-full' />
+            {hasDateRange && (
+              <Button variant='ghost' onClick={() => onDateRangeChange?.(undefined)} className='h-8 px-2' size='sm'>
+                <X className='h-4 w-4' />
+              </Button>
+            )}
+            {isFiltered && (
+              <Button variant='ghost' onClick={onResetFilters} className='h-8 px-2 lg:px-3'>
+                {t('common.filters.reset')}
+                <Cross2Icon className='ml-2 h-4 w-4' />
+              </Button>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop: inline filter controls */}
+      <div className='hidden flex-wrap items-center gap-2 sm:flex'>
+        {table.getColumn('status') && (
+          <DataTableFacetedFilter column={table.getColumn('status')} title={t('requests.filters.status')} options={requestStatuses} />
+        )}
+        {table.getColumn('source') && (
+          <DataTableFacetedFilter column={table.getColumn('source')} title={t('requests.filters.source')} options={requestSources} />
+        )}
+        {canViewChannels && table.getColumn('channel') && (channelOptions.length > 0 || isFetchingChannels) && (
+          <DataTableFacetedFilter
+            column={table.getColumn('channel')}
+            title={t('requests.filters.channel')}
+            options={channelOptions}
+            footer={
+              <div
+                className='flex items-center space-x-2 px-2 py-1.5'
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  id='show-archived-channels'
+                  checked={showArchivedChannels}
+                  onCheckedChange={(checked) => handleToggleShowArchivedChannels(checked === true)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <label htmlFor='show-archived-channels' className='cursor-pointer text-sm' onClick={(e) => e.stopPropagation()}>
+                  {t('common.showArchived')}
+                </label>
+              </div>
+            }
+          />
+        )}
+        {canViewApiKeys && table.getColumn('apiKey') && (apiKeyOptions.length > 0 || isFetchingApiKeys) && (
+          <DataTableFacetedFilter
+            column={table.getColumn('apiKey')}
+            title={t('requests.filters.apiKey')}
+            options={apiKeyOptions}
+            footer={
+              <div
+                className='flex items-center space-x-2 px-2 py-1.5'
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  id='show-archived-api-keys'
+                  checked={showArchivedApiKeys}
+                  onCheckedChange={(checked) => handleToggleShowArchivedApiKeys(checked === true)}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <label htmlFor='show-archived-api-keys' className='cursor-pointer text-sm' onClick={(e) => e.stopPropagation()}>
+                  {t('common.showArchived')}
+                </label>
+              </div>
+            }
+          />
+        )}
+        <DateRangePicker value={dateRange} onChange={onDateRangeChange} className='max-w-[150px] min-w-0 sm:max-w-none' />
+        {hasDateRange && (
+          <Button variant='ghost' onClick={() => onDateRangeChange?.(undefined)} className='h-8 px-2' size='sm'>
+            <X className='h-4 w-4' />
+          </Button>
+        )}
+        {isFiltered && (
+          <Button variant='ghost' onClick={onResetFilters} className='h-8 px-2 lg:px-3'>
+            {t('common.filters.reset')}
+            <Cross2Icon className='ml-2 h-4 w-4' />
+          </Button>
+        )}
       </div>
-      <div className='flex shrink-0 flex-wrap items-center justify-start gap-2 sm:justify-end'>
+      <div className='hidden flex-1 sm:block' />
+      <div className='flex shrink-0 flex-wrap items-center gap-2'>
         {showRefresh && onAutoRefreshChange && (
           <div className='flex shrink-0 items-center gap-2'>
             <Switch
