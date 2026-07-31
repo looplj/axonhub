@@ -208,6 +208,7 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 		return false, false
 	}
 
+	rulePrefix := perf.APIKey + ":rule:"
 	for ruleIndex, rule := range ch.Policies.APIKeyAutoDisableRules {
 		if !matchesAPIKeyRule(rule, perf) {
 			continue
@@ -221,6 +222,11 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 		svc.apiKeyErrorCountsLock.Lock()
 		if svc.apiKeyErrorCounts[perf.ChannelID] == nil {
 			svc.apiKeyErrorCounts[perf.ChannelID] = make(map[string]map[int]int)
+		}
+		for key := range svc.apiKeyErrorCounts[perf.ChannelID] {
+			if strings.HasPrefix(key, rulePrefix) && key != ruleKey {
+				delete(svc.apiKeyErrorCounts[perf.ChannelID], key)
+			}
 		}
 		if svc.apiKeyErrorCounts[perf.ChannelID][ruleKey] == nil {
 			svc.apiKeyErrorCounts[perf.ChannelID][ruleKey] = make(map[int]int)
@@ -241,6 +247,14 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 
 		return true, false
 	}
+
+	svc.apiKeyErrorCountsLock.Lock()
+	for key := range svc.apiKeyErrorCounts[perf.ChannelID] {
+		if strings.HasPrefix(key, rulePrefix) {
+			delete(svc.apiKeyErrorCounts[perf.ChannelID], key)
+		}
+	}
+	svc.apiKeyErrorCountsLock.Unlock()
 
 	return false, false
 }

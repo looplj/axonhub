@@ -824,3 +824,89 @@ func TestChannelService_ChannelAPIKeyRuleCountsAlternatingStatusesTogether(t *te
 	require.Len(t, updated.DisabledAPIKeys, 1)
 	require.Equal(t, "key1", updated.DisabledAPIKeys[0].Key)
 }
+
+func TestChannelService_ChannelAPIKeyRuleResetsStreakAfterNonMatchingFailure(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	duration := 30
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "reset-non-match", []string{"key1", "key2"})
+	ch, err := client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{
+			{
+				StatusCodes:            []int{401},
+				Times:                  2,
+				Action:                 objects.APIKeyAutoDisableActionTemporary,
+				DisableDurationMinutes: &duration,
+			},
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
+
+	matched, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 401,
+	})
+	require.True(t, matched)
+	require.False(t, acted)
+
+	matched, acted = svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 500,
+	})
+	require.False(t, matched)
+	require.False(t, acted)
+
+	matched, acted = svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 401,
+	})
+	require.True(t, matched)
+	require.False(t, acted)
+}
+
+func TestChannelService_ChannelAPIKeyRuleResetsStreakWhenEarlierRuleOwnsFailure(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	duration := 30
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "reset-owned-failure", []string{"key1", "key2"})
+	ch, err := client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{
+			{
+				StatusCodes:            []int{401},
+				Times:                  2,
+				Action:                 objects.APIKeyAutoDisableActionTemporary,
+				DisableDurationMinutes: &duration,
+			},
+			{
+				StatusCodes:            []int{401, 403},
+				Times:                  2,
+				Action:                 objects.APIKeyAutoDisableActionTemporary,
+				DisableDurationMinutes: &duration,
+			},
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
+
+	matched, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 403,
+	})
+	require.True(t, matched)
+	require.False(t, acted)
+
+	matched, acted = svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 401,
+	})
+	require.True(t, matched)
+	require.False(t, acted)
+
+	matched, acted = svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 403,
+	})
+	require.True(t, matched)
+	require.False(t, acted)
+}
