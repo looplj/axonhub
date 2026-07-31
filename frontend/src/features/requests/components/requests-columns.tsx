@@ -43,6 +43,8 @@ export const DEFAULT_MOBILE_HIDDEN_COLUMN_IDS = [
   'details',
 ];
 
+export const MODEL_ID_COLUMN = 'modelID' as const;
+
 export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;

@@ -15,6 +15,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import type { DateTimeRangeValue } from '@/utils/date-range';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
@@ -116,22 +117,27 @@ export function RequestsTable({
 
   const requestsColumns = useRequestsColumns({ onBodyClick: handleBodyClick, onViewDetail });
   const [sorting, setSorting] = useState<SortingState>([]);
+  const isMobile = useIsMobile();
 
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
+    // Read viewport synchronously here (useState initializer runs once,
+    // and useIsMobile returns false during SSR/hydration).
+    const isMobileInit = typeof window !== 'undefined' && window.innerWidth < 768;
+    const mobileDefaults: VisibilityState = isMobileInit
+      ? Object.fromEntries(DEFAULT_MOBILE_HIDDEN_COLUMN_IDS.map((id) => [id, false]))
+      : {};
+
+    // Merge stored overrides on top of viewport-appropriate defaults
     const stored = localStorage.getItem('requests-table-column-visibility');
     if (stored) {
       try {
-        return JSON.parse(stored);
+        return { ...mobileDefaults, ...JSON.parse(stored) };
       } catch {
-        return {};
+        return mobileDefaults;
       }
     }
 
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      return Object.fromEntries(DEFAULT_MOBILE_HIDDEN_COLUMN_IDS.map((id) => [id, false]));
-    }
-
-    return {};
+    return mobileDefaults;
   });
 
   const [rowSelection, setRowSelection] = useState({});
@@ -139,6 +145,23 @@ export function RequestsTable({
   useEffect(() => {
     localStorage.setItem('requests-table-column-visibility', JSON.stringify(columnVisibility));
   }, [columnVisibility]);
+
+  // Adjust column visibility reactively when the viewport crosses the mobile threshold
+  useEffect(() => {
+    setColumnVisibility((prev) => {
+      const hidden = DEFAULT_MOBILE_HIDDEN_COLUMN_IDS;
+      if (isMobile) {
+        // Hide mobile-only columns
+        const next = { ...prev };
+        hidden.forEach((id) => {
+          if (next[id] === undefined) next[id] = false;
+        });
+        return next;
+      }
+      // Show mobile-only columns on desktop
+      return Object.fromEntries(Object.entries(prev).filter(([id]) => !hidden.includes(id)));
+    });
+  }, [isMobile]);
 
   const displayedData = useAnimatedList(data, autoRefresh, pageSize);
 
