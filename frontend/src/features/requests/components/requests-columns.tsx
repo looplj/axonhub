@@ -10,12 +10,12 @@ import { toast } from 'sonner';
 import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } from '@/features/system/data/system';
-import { usePermissions } from '@/hooks/usePermissions';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
@@ -25,6 +25,25 @@ interface UseRequestsColumnsOptions {
   onBodyClick?: (requestId: string, index: number) => void;
   onViewDetail?: (requestId: string) => void;
 }
+
+export const DEFAULT_MOBILE_HIDDEN_COLUMN_IDS = [
+  'apiFormat',
+  'passThrough',
+  'reasoningEffort',
+  'stream',
+  'source',
+  'clientIP',
+  'channel',
+  'apiKey',
+  'tokens',
+  'readCache',
+  'writeCache',
+  'cost',
+  'latency',
+  'details',
+];
+
+export const MODEL_ID_COLUMN = 'modelID' as const;
 
 export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
@@ -41,14 +60,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
   const blockedIPs = securitySettings?.blockedIPs ?? [];
   const showIPBanIcon = securitySettings?.showRequestLogIPBanIcon === true;
 
-  const normalizeBlockedIPs = (ips: string[]) =>
-    Array.from(
-      new Set(
-        ips
-          .map((ip) => ip.trim())
-          .filter((ip) => ip.length > 0)
-      )
-    );
+  const normalizeBlockedIPs = (ips: string[]) => Array.from(new Set(ips.map((ip) => ip.trim()).filter((ip) => ip.length > 0)));
 
   const handleBlockIP = async (clientIP: string) => {
     const normalizedIP = clientIP.trim();
@@ -497,7 +509,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         return (
           <div className='text-xs'>
             <div className='text-sm font-medium'>{cachedTokens.toLocaleString()}</div>
-            <div className={isLowHitRate ? 'text-red-600 font-medium dark:text-red-400' : 'text-muted-foreground'}>
+            <div className={isLowHitRate ? 'font-medium text-red-600 dark:text-red-400' : 'text-muted-foreground'}>
               {t('requests.columns.cacheHitRate', {
                 rate: hitRate.toFixed(1),
               })}

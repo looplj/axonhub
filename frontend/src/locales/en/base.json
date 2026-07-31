@@ -136,6 +136,8 @@
   "common.columns.updatedAt": "Updated At",
   "common.columns.selectAll": "Select all",
   "common.columns.selectRow": "Select row",
+  "common.filters.title": "Filters",
+  "common.filters.activeCount": "{{count}} active filters",
   "common.filters.reset": "Reset",
   "common.filters.dateRange": "Pick date range",
   "common.filters.startTime": "Start Time",

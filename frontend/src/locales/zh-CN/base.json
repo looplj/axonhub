@@ -201,6 +201,8 @@
   "common.columns.updatedAt": "更新时间",
   "common.columns.selectAll": "全选",
   "common.columns.selectRow": "选择行",
+  "common.filters.title": "筛选",
+  "common.filters.activeCount": "{{count}} 个筛选条件",
   "common.filters.reset": "重置",
   "common.filters.dateRange": "选择日期范围",
   "common.filters.startTime": "开始时间",
