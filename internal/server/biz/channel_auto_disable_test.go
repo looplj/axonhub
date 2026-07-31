@@ -910,3 +910,82 @@ func TestChannelService_ChannelAPIKeyRuleResetsStreakWhenEarlierRuleOwnsFailure(
 	require.True(t, matched)
 	require.False(t, acted)
 }
+
+func TestChannelService_ChannelAPIKeyRuleEditStartsNewStreak(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	duration := 30
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "edited-rule", []string{"key1", "key2"})
+	ch, err := client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{
+			{
+				StatusCodes:            []int{429},
+				Times:                  2,
+				Action:                 objects.APIKeyAutoDisableActionTemporary,
+				DisableDurationMinutes: &duration,
+			},
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
+
+	perf := &PerformanceRecord{ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 429}
+	matched, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
+	require.True(t, matched)
+	require.False(t, acted)
+
+	editedDuration := 60
+	ch, err = client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{
+			{
+				StatusCodes:            []int{429},
+				Times:                  2,
+				Action:                 objects.APIKeyAutoDisableActionTemporary,
+				DisableDurationMinutes: &editedDuration,
+			},
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
+
+	matched, acted = svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
+	require.True(t, matched)
+	require.False(t, acted)
+}
+
+func TestChannelService_ChannelAPIKeyRuleKeepsStreakWhenActionFails(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	duration := 30
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "failed-action", []string{"key1", "key2"})
+	ch, err := client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{
+			{
+				StatusCodes:            []int{429},
+				Times:                  1,
+				Action:                 objects.APIKeyAutoDisableActionTemporary,
+				DisableDurationMinutes: &duration,
+			},
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
+	require.NoError(t, client.Close())
+
+	matched, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 429,
+	})
+	require.True(t, matched)
+	require.False(t, acted)
+
+	svc.apiKeyErrorCountsLock.Lock()
+	defer svc.apiKeyErrorCountsLock.Unlock()
+	require.Len(t, svc.apiKeyErrorCounts[ch.ID], 1)
+	for _, countsByStatus := range svc.apiKeyErrorCounts[ch.ID] {
+		require.Equal(t, 1, countsByStatus[0])
+	}
+}

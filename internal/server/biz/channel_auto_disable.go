@@ -214,7 +214,20 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 			continue
 		}
 
-		ruleKey := fmt.Sprintf("%s:rule:%d:%v:%v", perf.APIKey, ruleIndex, rule.StatusCodes, rule.KeywordPatterns)
+		disableDurationMinutes := 0
+		if rule.DisableDurationMinutes != nil {
+			disableDurationMinutes = *rule.DisableDurationMinutes
+		}
+		ruleKey := fmt.Sprintf(
+			"%s:rule:%d:%v:%v:%d:%s:%d",
+			perf.APIKey,
+			ruleIndex,
+			rule.StatusCodes,
+			rule.KeywordPatterns,
+			rule.Times,
+			rule.Action,
+			disableDurationMinutes,
+		)
 		// Every failure accepted by one rule contributes to that rule's single
 		// consecutive counter, including alternating configured status codes.
 		const countKey = 0
@@ -235,14 +248,16 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 		count := svc.apiKeyErrorCounts[perf.ChannelID][ruleKey][countKey]
 		threshold := max(rule.Times, 1)
 		shouldAct := count >= threshold
-		if shouldAct {
-			delete(svc.apiKeyErrorCounts[perf.ChannelID], ruleKey)
-		}
 		svc.apiKeyErrorCountsLock.Unlock()
 
 		if shouldAct {
-			svc.executeAPIKeyRuleAction(ctx, perf, rule, count)
-			return true, true
+			actionSucceeded := svc.executeAPIKeyRuleAction(ctx, perf, rule, count)
+			if actionSucceeded {
+				svc.apiKeyErrorCountsLock.Lock()
+				delete(svc.apiKeyErrorCounts[perf.ChannelID], ruleKey)
+				svc.apiKeyErrorCountsLock.Unlock()
+			}
+			return true, actionSucceeded
 		}
 
 		return true, false
@@ -309,7 +324,7 @@ func (svc *ChannelService) executeAPIKeyRuleAction(
 	perf *PerformanceRecord,
 	rule objects.APIKeyAutoDisableRule,
 	count int,
-) {
+) bool {
 	reason := fmt.Sprintf("Disabled by channel API key rule after %d consecutive errors", count)
 	if rule.Action == objects.APIKeyAutoDisableActionPermanent {
 		if err := svc.DisableAPIKey(ctx, perf.ChannelID, perf.APIKey, perf.ResponseStatusCode, reason); err != nil {
@@ -317,7 +332,7 @@ func (svc *ChannelService) executeAPIKeyRuleAction(
 				log.Int("channel_id", perf.ChannelID),
 				log.Cause(err),
 			)
-			return
+			return false
 		}
 		result, err := svc.DeleteDisabledAPIKeys(ctx, perf.ChannelID, []string{perf.APIKey})
 		if err != nil {
@@ -325,7 +340,7 @@ func (svc *ChannelService) executeAPIKeyRuleAction(
 				log.Int("channel_id", perf.ChannelID),
 				log.Cause(err),
 			)
-			return
+			return false
 		}
 
 		// Channels must retain at least one credential. Keep that last key
@@ -337,9 +352,10 @@ func (svc *ChannelService) executeAPIKeyRuleAction(
 					log.Int("channel_id", perf.ChannelID),
 					log.Cause(err),
 				)
+				return false
 			}
 		}
-		return
+		return true
 	}
 
 	var expiresAt *time.Time
@@ -354,5 +370,8 @@ func (svc *ChannelService) executeAPIKeyRuleAction(
 			log.Int("channel_id", perf.ChannelID),
 			log.Cause(err),
 		)
+		return false
 	}
+
+	return true
 }

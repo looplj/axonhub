@@ -19,8 +19,8 @@ func TestExtractErrorMessageForMatchingCapsResponseBody(t *testing.T) {
 	err := &httpclient.Error{StatusCode: 500, Body: body}
 
 	message := extractErrorMessageForMatching(err)
-	require.LessOrEqual(t, len(message), errorMatchBodyLimit+len(ExtractErrorMessage(err))+1)
-	require.NotContains(t, message, strings.Repeat("x", errorMatchBodyLimit+1))
+	expected := ExtractErrorMessage(err) + "\n" + string(body[:errorMatchBodyLimit])
+	require.Equal(t, expected, message)
 }
 
 // mockChannelService is a mock implementation of ChannelService for testing
