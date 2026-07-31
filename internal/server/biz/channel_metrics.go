@@ -329,8 +329,11 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 			svc.apiKeyErrorCountsLock.Unlock()
 		}
 	} else if !perf.Canceled {
-		handled := perf.APIKey != "" && svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
-		if !handled {
+		matched := false
+		if perf.APIKey != "" {
+			matched, _ = svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
+		}
+		if !matched {
 			policy := svc.SystemService.RetryPolicyOrDefault(ctx)
 			if policy.AutoDisableChannel.Enabled {
 				if perf.APIKey != "" {

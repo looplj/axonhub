@@ -702,7 +702,10 @@ func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
 
 		switch rule.Action {
 		case objects.APIKeyAutoDisableActionTemporary:
-			if rule.DisableDurationMinutes != nil && *rule.DisableDurationMinutes < 1 {
+			if rule.DisableDurationMinutes == nil {
+				return fmt.Errorf("API key rule %d requires a disable duration for temporary disable", i+1)
+			}
+			if *rule.DisableDurationMinutes < 1 {
 				return fmt.Errorf("API key rule %d disable duration must be at least 1 minute", i+1)
 			}
 		case objects.APIKeyAutoDisableActionPermanent:

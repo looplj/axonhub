@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
+import { z } from 'zod';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { z } from 'zod';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { useUpdateChannel } from '../data/channels';
 import { apiKeyAutoDisableRuleFormSchema, Channel } from '../data/schema';
 
@@ -41,7 +42,7 @@ export function ChannelsAPIKeyRulesDialog({ open, onOpenChange, currentRow }: Pr
         keywordPatterns: rule.keywordPatterns ?? [],
         times: rule.times,
         action: rule.action,
-        disableDurationMinutes: rule.disableDurationMinutes ?? null,
+        disableDurationMinutes: rule.action === 'temporary_disable' ? (rule.disableDurationMinutes ?? 30) : null,
       })) ?? [],
     [currentPolicies?.apiKeyAutoDisableRules]
   );
@@ -120,9 +121,8 @@ export function ChannelsAPIKeyRulesDialog({ open, onOpenChange, currentRow }: Pr
 
             {fields.map((field, index) => {
               const duration = form.watch(`rules.${index}.disableDurationMinutes`);
-              const customDuration =
-                !!customDurationModes[field.id] || (duration != null && !PRESET_DISABLE_DURATIONS.includes(duration));
-              const durationValue = customDuration ? 'custom' : duration == null ? '0' : String(duration);
+              const customDuration = !!customDurationModes[field.id] || (duration != null && !PRESET_DISABLE_DURATIONS.includes(duration));
+              const durationValue = customDuration ? 'custom' : String(duration ?? 30);
 
               return (
                 <div key={field.id} className='space-y-3 rounded-md border p-4'>
@@ -178,8 +178,11 @@ export function ChannelsAPIKeyRulesDialog({ open, onOpenChange, currentRow }: Pr
                             <Input
                               type='number'
                               min={1}
-                              value={input.value}
-                              onChange={(event) => input.onChange(Number.parseInt(event.target.value, 10) || 1)}
+                              value={input.value ?? ''}
+                              onChange={(event) => {
+                                const raw = event.target.value;
+                                input.onChange(raw === '' ? undefined : Number.parseInt(raw, 10));
+                              }}
                             />
                           </FormControl>
                           <FormMessage />
@@ -195,14 +198,15 @@ export function ChannelsAPIKeyRulesDialog({ open, onOpenChange, currentRow }: Pr
                       <FormItem>
                         <FormLabel>{t('channels.dialogs.apiKeyRules.fields.keywordPatterns')}</FormLabel>
                         <FormControl>
-                          <Input
+                          <Textarea
                             key={`patterns-${field.id}`}
-                            defaultValue={input.value?.join(', ') ?? ''}
+                            className='min-h-24 font-mono text-sm'
+                            defaultValue={input.value?.join('\n') ?? ''}
                             placeholder={t('channels.dialogs.apiKeyRules.fields.keywordPatternsPlaceholder')}
                             onBlur={(event) =>
                               input.onChange(
                                 event.target.value
-                                  .split(',')
+                                  .split(/\r?\n/)
                                   .map((value) => value.trim())
                                   .filter(Boolean)
                               )
@@ -234,7 +238,9 @@ export function ChannelsAPIKeyRulesDialog({ open, onOpenChange, currentRow }: Pr
                             }}
                           >
                             <FormControl>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               <SelectItem value='temporary_disable'>
@@ -260,10 +266,7 @@ export function ChannelsAPIKeyRulesDialog({ open, onOpenChange, currentRow }: Pr
                               <Select
                                 value={durationValue}
                                 onValueChange={(value) => {
-                                  if (value === '0') {
-                                    setCustomDurationMode(field.id, false);
-                                    input.onChange(null);
-                                  } else if (value === 'custom') {
+                                  if (value === 'custom') {
                                     setCustomDurationMode(field.id, true);
                                     if (!input.value) input.onChange(30);
                                   } else {
@@ -272,9 +275,10 @@ export function ChannelsAPIKeyRulesDialog({ open, onOpenChange, currentRow }: Pr
                                   }
                                 }}
                               >
-                                <SelectTrigger className={customDuration ? 'w-1/2' : undefined}><SelectValue /></SelectTrigger>
+                                <SelectTrigger className={customDuration ? 'w-1/2' : undefined}>
+                                  <SelectValue />
+                                </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value='0'>{t('channels.dialogs.apiKeyRules.fields.disableDurationIndefinite')}</SelectItem>
                                   {PRESET_DISABLE_DURATIONS.map((minutes) => (
                                     <SelectItem key={minutes} value={String(minutes)}>
                                       {t(`channels.dialogs.apiKeyRules.durations.${minutes}`)}

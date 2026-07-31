@@ -15,6 +15,12 @@ const (
 	containerContextKey ContextKey = "context_container"
 )
 
+// EnsureContainer installs the mutable request-scoped value container when a
+// caller may need to update it through an interface that cannot return context.
+func EnsureContainer(ctx context.Context) context.Context {
+	return withContainer(ctx, getContainer(ctx))
+}
+
 // WithAPIKey stores the API key entity in the context.
 func WithAPIKey(ctx context.Context, apiKey *ent.APIKey) context.Context {
 	container := getContainer(ctx)

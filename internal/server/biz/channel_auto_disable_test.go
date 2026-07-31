@@ -659,6 +659,12 @@ func TestMatchesAPIKeyRule(t *testing.T) {
 			want: true,
 		},
 		{
+			name: "invalid regular expression falls back to literal keyword",
+			rule: objects.APIKeyAutoDisableRule{KeywordPatterns: []string{"quota["}},
+			perf: &PerformanceRecord{ResponseStatusCode: 429, ErrorMessage: "Provider QUOTA[ exceeded"},
+			want: true,
+		},
+		{
 			name: "status and keyword must both match",
 			rule: objects.APIKeyAutoDisableRule{StatusCodes: []int{401}, KeywordPatterns: []string{"invalid key"}},
 			perf: &PerformanceRecord{ResponseStatusCode: 403, ErrorMessage: "invalid key"},
@@ -698,6 +704,7 @@ func TestNormalizeAPIKeyAutoDisableRules(t *testing.T) {
 	invalidDuration := 0
 	tests := []objects.APIKeyAutoDisableRule{
 		{Times: 0, Action: objects.APIKeyAutoDisableActionTemporary},
+		{Times: 1, Action: objects.APIKeyAutoDisableActionTemporary},
 		{StatusCodes: []int{99}, Times: 1, Action: objects.APIKeyAutoDisableActionTemporary},
 		{Times: 1, Action: "unsupported"},
 		{Times: 1, Action: objects.APIKeyAutoDisableActionTemporary, DisableDurationMinutes: &invalidDuration},
@@ -731,8 +738,12 @@ func TestChannelService_ChannelAPIKeyRuleTemporaryDisableAfterThreshold(t *testi
 	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
 
 	perf := &PerformanceRecord{ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 429}
-	require.False(t, svc.checkAndHandleChannelAPIKeyRules(ctx, perf))
-	require.True(t, svc.checkAndHandleChannelAPIKeyRules(ctx, perf))
+	matched, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
+	require.True(t, matched)
+	require.False(t, acted)
+	matched, acted = svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
+	require.True(t, matched)
+	require.True(t, acted)
 
 	updated, err := client.Channel.Get(ctx, ch.ID)
 	require.NoError(t, err)
@@ -761,9 +772,11 @@ func TestChannelService_ChannelAPIKeyRulePermanentActionKeepsLastKeyDisabled(t *
 	require.NoError(t, err)
 	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
 
-	require.True(t, svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+	matched, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
 		ChannelID: ch.ID, APIKey: "only-key", ResponseStatusCode: 401,
-	}))
+	})
+	require.True(t, matched)
+	require.True(t, acted)
 
 	updated, err := client.Channel.Get(ctx, ch.ID)
 	require.NoError(t, err)
@@ -771,4 +784,43 @@ func TestChannelService_ChannelAPIKeyRulePermanentActionKeepsLastKeyDisabled(t *
 	require.Equal(t, []string{"only-key"}, updated.Credentials.APIKeys)
 	require.Len(t, updated.DisabledAPIKeys, 1)
 	require.Nil(t, updated.DisabledAPIKeys[0].ExpiresAt)
+}
+
+func TestChannelService_ChannelAPIKeyRuleCountsAlternatingStatusesTogether(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	duration := 30
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "multi-status-rule", []string{"key1", "key2"})
+	ch, err := client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{
+			{
+				StatusCodes:            []int{401, 403},
+				Times:                  2,
+				Action:                 objects.APIKeyAutoDisableActionTemporary,
+				DisableDurationMinutes: &duration,
+			},
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
+
+	matched, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 401,
+	})
+	require.True(t, matched)
+	require.False(t, acted)
+
+	matched, acted = svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 403,
+	})
+	require.True(t, matched)
+	require.True(t, acted)
+
+	updated, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Len(t, updated.DisabledAPIKeys, 1)
+	require.Equal(t, "key1", updated.DisabledAPIKeys[0].Key)
 }

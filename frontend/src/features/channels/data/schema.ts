@@ -138,15 +138,15 @@ export const apiKeyAutoDisableRuleSchema = z.object({
 });
 export type APIKeyAutoDisableRule = z.infer<typeof apiKeyAutoDisableRuleSchema>;
 
-export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema.refine(
-  (rule) =>
-    (rule.statusCodes?.length ?? 0) > 0 ||
-    (rule.keywordPatterns?.some((pattern) => pattern.trim() !== '') ?? false),
-  {
+export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
+  .refine((rule) => (rule.statusCodes?.length ?? 0) > 0 || (rule.keywordPatterns?.some((pattern) => pattern.trim() !== '') ?? false), {
     message: 'At least one status code or keyword pattern is required',
     path: ['statusCodes'],
-  }
-);
+  })
+  .refine((rule) => rule.action !== 'temporary_disable' || (rule.disableDurationMinutes ?? 0) > 0, {
+    message: 'Temporary disable requires a duration',
+    path: ['disableDurationMinutes'],
+  });
 
 export const channelPoliciesSchema = z.object({
   stream: capabilityPolicySchema.optional(),

@@ -190,21 +190,22 @@ func (svc *ChannelService) EvaluateAPIKeyRulesForFailure(
 		return false
 	}
 
-	return svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+	_, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
 		ChannelID:          channelID,
 		APIKey:             apiKey,
 		ResponseStatusCode: responseStatusCode,
 		ErrorMessage:       errorMessage,
 	})
+	return acted
 }
 
 // checkAndHandleChannelAPIKeyRules evaluates rules in declaration order. The
 // first matching rule owns the failure so one request cannot increment several
 // overlapping counters or execute multiple actions.
-func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context, perf *PerformanceRecord) bool {
+func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context, perf *PerformanceRecord) (matched, acted bool) {
 	ch := svc.GetEnabledChannel(perf.ChannelID)
 	if ch == nil || len(ch.Policies.APIKeyAutoDisableRules) == 0 {
-		return false
+		return false, false
 	}
 
 	for ruleIndex, rule := range ch.Policies.APIKeyAutoDisableRules {
@@ -213,10 +214,9 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 		}
 
 		ruleKey := fmt.Sprintf("%s:rule:%d:%v:%v", perf.APIKey, ruleIndex, rule.StatusCodes, rule.KeywordPatterns)
-		countKey := perf.ResponseStatusCode
-		if len(rule.StatusCodes) == 0 {
-			countKey = 0
-		}
+		// Every failure accepted by one rule contributes to that rule's single
+		// consecutive counter, including alternating configured status codes.
+		const countKey = 0
 
 		svc.apiKeyErrorCountsLock.Lock()
 		if svc.apiKeyErrorCounts[perf.ChannelID] == nil {
@@ -236,13 +236,13 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 
 		if shouldAct {
 			svc.executeAPIKeyRuleAction(ctx, perf, rule, count)
-			return true
+			return true, true
 		}
 
-		return false
+		return true, false
 	}
 
-	return false
+	return false, false
 }
 
 func matchesAPIKeyRule(rule objects.APIKeyAutoDisableRule, perf *PerformanceRecord) bool {
@@ -264,6 +264,8 @@ func matchesAPIKeyRule(rule objects.APIKeyAutoDisableRule, perf *PerformanceReco
 			}
 			continue
 		}
+		// Patterns may be plain keywords or regular expressions. Treat syntax
+		// that is not a valid expression as a case-insensitive literal keyword.
 		if strings.Contains(lowerMessage, strings.ToLower(pattern)) {
 			return true
 		}

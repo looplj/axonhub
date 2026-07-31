@@ -772,7 +772,7 @@ func TestChannelService_DeleteDisabledAPIKeys_NoDisabledKeys(t *testing.T) {
 
 func TestChannelAPIKeyContextProviderSetsSelectedKey(t *testing.T) {
 	provider := NewChannelAPIKeyContextProvider(auth.NewStaticKeyProvider("selected-key"))
-	ctx := contexts.WithTraceID(context.Background(), "trace-id")
+	ctx := contexts.EnsureContainer(context.Background())
 
 	require.Equal(t, "selected-key", provider.Get(ctx))
 	stored, ok := contexts.GetChannelAPIKey(ctx)

@@ -14,6 +14,8 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+const errorMatchBodyLimit = 8 * 1024
+
 // withPerformanceRecording creates a unified middleware that handles all performance tracking.
 // It initializes metrics, tracks first token in streams, and records final metrics.
 func withPerformanceRecording(outbound *PersistentOutboundTransformer) pipeline.Middleware {
@@ -215,7 +217,12 @@ func extractErrorMessageForMatching(err error) string {
 		return message
 	}
 
-	return message + "\n" + string(httpErr.Body)
+	body := httpErr.Body
+	if len(body) > errorMatchBodyLimit {
+		body = body[:errorMatchBodyLimit]
+	}
+
+	return message + "\n" + string(body)
 }
 
 type NoopPerformanceRecording struct {
