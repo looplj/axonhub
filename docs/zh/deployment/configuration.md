@@ -297,7 +297,7 @@ log:
 metrics:
   enabled: false                 # 启用指标收集
   exporter:
-    type: "oltphttp"            # prometheus, console
+    type: "otlphttp"            # prometheus, console
     endpoint: "localhost:8080"  # 指标导出器端点
     insecure: true              # 启用不安全连接
 ```
