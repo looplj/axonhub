@@ -163,7 +163,18 @@ type dimStats struct {
 }
 
 func (r *queryResolver) queryChannelStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) ([]dimStats, error) {
-	var results []dimStats
+	type channelStatsRaw struct {
+		ChannelID    int     `json:"channel_id"`
+		Name         string  `json:"name"`
+		RequestCount int     `json:"request_count"`
+		InputTokens  int64   `json:"input_tokens"`
+		CachedTokens int64   `json:"cached_tokens"`
+		OutputTokens int64   `json:"output_tokens"`
+		TotalTokens  int64   `json:"total_tokens"`
+		Cost         float64 `json:"cost"`
+	}
+
+	var rawResults []channelStatsRaw
 
 	err := r.client.UsageLog.Query().
 		Modify(func(s *sql.Selector) {
@@ -177,7 +188,7 @@ func (r *queryResolver) queryChannelStats(ctx context.Context, filter *Analytics
 			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
 
 			s.Select(
-				sql.As(fmt.Sprintf("CAST(%s AS TEXT)", s.C(usagelog.FieldChannelID)), "id"),
+				sql.As(s.C(usagelog.FieldChannelID), "channel_id"),
 				sql.As(channelTable.C(channel.FieldName), "name"),
 				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
@@ -189,9 +200,24 @@ func (r *queryResolver) queryChannelStats(ctx context.Context, filter *Analytics
 				GroupBy(s.C(usagelog.FieldChannelID), channelTable.C(channel.FieldName)).
 				OrderBy(sql.Desc("total_tokens"))
 		}).
-		Scan(ctx, &results)
+		Scan(ctx, &rawResults)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get analytics stats by channel: %w", err)
+	}
+
+	results := make([]dimStats, 0, len(rawResults))
+
+	for _, raw := range rawResults {
+		results = append(results, dimStats{
+			ID:           fmt.Sprintf("%d", raw.ChannelID),
+			Name:         raw.Name,
+			RequestCount: raw.RequestCount,
+			InputTokens:  raw.InputTokens,
+			CachedTokens: raw.CachedTokens,
+			OutputTokens: raw.OutputTokens,
+			TotalTokens:  raw.TotalTokens,
+			Cost:         raw.Cost,
+		})
 	}
 
 	return results, nil
