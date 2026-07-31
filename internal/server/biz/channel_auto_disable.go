@@ -203,12 +203,13 @@ func (svc *ChannelService) EvaluateAPIKeyRulesForFailure(
 // first matching rule owns the failure so one request cannot increment several
 // overlapping counters or execute multiple actions.
 func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context, perf *PerformanceRecord) (matched, acted bool) {
+	rulePrefix := perf.APIKey + ":rule:"
 	ch := svc.GetEnabledChannel(perf.ChannelID)
 	if ch == nil || len(ch.Policies.APIKeyAutoDisableRules) == 0 {
+		svc.clearAPIKeyRuleCounts(perf.ChannelID, rulePrefix)
 		return false, false
 	}
 
-	rulePrefix := perf.APIKey + ":rule:"
 	for ruleIndex, rule := range ch.Policies.APIKeyAutoDisableRules {
 		if !matchesAPIKeyRule(rule, perf) {
 			continue
@@ -263,15 +264,20 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 		return true, false
 	}
 
-	svc.apiKeyErrorCountsLock.Lock()
-	for key := range svc.apiKeyErrorCounts[perf.ChannelID] {
-		if strings.HasPrefix(key, rulePrefix) {
-			delete(svc.apiKeyErrorCounts[perf.ChannelID], key)
-		}
-	}
-	svc.apiKeyErrorCountsLock.Unlock()
+	svc.clearAPIKeyRuleCounts(perf.ChannelID, rulePrefix)
 
 	return false, false
+}
+
+func (svc *ChannelService) clearAPIKeyRuleCounts(channelID int, rulePrefix string) {
+	svc.apiKeyErrorCountsLock.Lock()
+	defer svc.apiKeyErrorCountsLock.Unlock()
+
+	for key := range svc.apiKeyErrorCounts[channelID] {
+		if strings.HasPrefix(key, rulePrefix) {
+			delete(svc.apiKeyErrorCounts[channelID], key)
+		}
+	}
 }
 
 func matchesAPIKeyRule(rule objects.APIKeyAutoDisableRule, perf *PerformanceRecord) bool {
