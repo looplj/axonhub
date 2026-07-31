@@ -245,6 +245,11 @@ func TestInboundTransformer_TransformStream_UsesStableItemIDsForParallelToolCall
 			require.NoError(t, stream.Err())
 			require.Len(t, addedItemIDs, 3)
 			require.Len(t, deltaEvents, 3)
+			deltaCounts := make(map[int]int, len(deltaEvents))
+			for _, event := range deltaEvents {
+				deltaCounts[event.OutputIndex]++
+			}
+			require.Equal(t, map[int]int{0: 1, 1: 1, 2: 1}, deltaCounts)
 			for _, event := range deltaEvents {
 				require.NotNil(t, event.ItemID)
 				require.Equal(t, addedItemIDs[event.OutputIndex], *event.ItemID, "output index %d item ID", event.OutputIndex)

@@ -67,8 +67,12 @@ func storedResponseBodySizeExpression(dialectName, column string) string {
 	case dialect.SQLite:
 		return fmt.Sprintf("COALESCE(LENGTH(CAST(%s AS BLOB)), 0)", column)
 	case dialect.Postgres:
+		// Budget the JSON text returned by the driver. The jsonb physical size
+		// differs from the bytes materialized by Scan.
 		return fmt.Sprintf("COALESCE(OCTET_LENGTH((%s)::text), 0)", column)
 	case dialect.MySQL:
+		// Budget the JSON text returned by the driver. JSON_STORAGE_SIZE reports
+		// the binary representation instead of the bytes materialized by Scan.
 		return fmt.Sprintf("COALESCE(OCTET_LENGTH(CAST(%s AS CHAR)), 0)", column)
 	default:
 		return fmt.Sprintf("COALESCE(OCTET_LENGTH(CAST(%s AS CHAR)), 0)", column)

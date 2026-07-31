@@ -398,15 +398,26 @@ func TestRequestService_LoadCompletedResponseExchange_ScopesByProjectAndAPIKey(t
 	require.JSONEq(t, `{"model":"gpt-5.5","input":"project-1-key-10"}`, string(exchange.RequestBody))
 }
 
-func TestRequestService_LoadCompletedResponseExchange_RejectsDatabaseBodiesBeforeBudgetedLoad(t *testing.T) {
+func TestRequestService_LoadCompletedResponseExchange_EnforcesPersistedJSONByteBudget(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:responses_history_body_limit?mode=memory&_fk=0")
 	ctx := ent.NewContext(authz.WithTestBypass(t.Context()), client)
 	seedPrimaryDatabaseStorage(t, ctx, client)
 	requestService := createTestRequestService(t, client)
 
-	requestBody := objects.JSONRawMessage(`{"model":"gpt-5.5","input":"你好"}`)
-	responseBody := objects.JSONRawMessage(`{"id":"resp_limited","model":"gpt-5.5","output":[]}`)
-	_, err := client.Request.Create().
+	requestBody := objects.JSONRawMessage(`{
+		"z": "\u4f60",
+		"model": "gpt-5.5",
+		"input": "你好",
+		"slash": "\/",
+		"html": "<>&",
+		"a": "你"
+	}`)
+	responseBody := objects.JSONRawMessage(`{
+		"output": [],
+		"model": "gpt-5.5",
+		"id": "resp_limited"
+	}`)
+	created, err := client.Request.Create().
 		SetProjectID(1).
 		SetModelID("gpt-5.5").
 		SetFormat(llm.APIFormatOpenAIResponse.String()).
@@ -419,11 +430,18 @@ func TestRequestService_LoadCompletedResponseExchange_RejectsDatabaseBodiesBefor
 		Save(ctx)
 	require.NoError(t, err)
 
-	exactBudget := int64(len(requestBody) + len(responseBody))
+	persisted, err := client.Request.Get(ctx, created.ID)
+	require.NoError(t, err)
+	require.NotEqual(t, requestBody, persisted.RequestBody)
+	require.NotEqual(t, responseBody, persisted.ResponseBody)
+	require.JSONEq(t, string(requestBody), string(persisted.RequestBody))
+	require.JSONEq(t, string(responseBody), string(persisted.ResponseBody))
+
+	exactBudget := int64(len(persisted.RequestBody) + len(persisted.ResponseBody))
 	exchange, err := requestService.LoadCompletedResponseExchange(ctx, "resp_limited", 1, nil, exactBudget)
 	require.NoError(t, err)
-	require.Equal(t, requestBody, exchange.RequestBody)
-	require.Equal(t, responseBody, exchange.ResponseBody)
+	require.Equal(t, persisted.RequestBody, exchange.RequestBody)
+	require.Equal(t, persisted.ResponseBody, exchange.ResponseBody)
 
 	exchange, err = requestService.LoadCompletedResponseExchange(ctx, "resp_limited", 1, nil, exactBudget-1)
 	require.Nil(t, exchange)
