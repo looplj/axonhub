@@ -35,7 +35,7 @@ func newTestChannelService(client *ent.Client) *ChannelService {
 		channelPerfMetrics:        make(map[int]*channelMetrics),
 		channelErrorCounts:        make(map[int]map[int]int),
 		apiKeyErrorCounts:         make(map[int]map[string]map[int]int),
-		apiKeyRuleActionsInFlight: make(map[int]map[string]struct{}),
+		apiKeyRuleActionsInFlight: make(map[int]map[string]bool),
 		perfWindowSeconds:         600,
 	}
 
@@ -1051,7 +1051,7 @@ func TestChannelService_ChannelAPIKeyRuleDoesNotStartConcurrentAction(t *testing
 	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
 
 	ruleKey := apiKeyRuleCounterKey("key1", 0, rule)
-	svc.apiKeyRuleActionsInFlight[ch.ID] = map[string]struct{}{ruleKey: {}}
+	svc.apiKeyRuleActionsInFlight[ch.ID] = map[string]bool{ruleKey: false}
 
 	matched, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
 		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 429,
@@ -1060,8 +1060,22 @@ func TestChannelService_ChannelAPIKeyRuleDoesNotStartConcurrentAction(t *testing
 	require.False(t, acted)
 
 	svc.apiKeyErrorCountsLock.Lock()
-	defer svc.apiKeyErrorCountsLock.Unlock()
 	require.Equal(t, 1, svc.apiKeyErrorCounts[ch.ID][ruleKey][0])
-	_, stillInFlight := svc.apiKeyRuleActionsInFlight[ch.ID][ruleKey]
+	streakReset, stillInFlight := svc.apiKeyRuleActionsInFlight[ch.ID][ruleKey]
 	require.True(t, stillInFlight)
+	require.False(t, streakReset)
+	svc.apiKeyErrorCountsLock.Unlock()
+
+	now := time.Now()
+	svc.RecordPerformance(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", StartTime: now, EndTime: now,
+		Success: true, RequestCompleted: true,
+	})
+
+	svc.apiKeyErrorCountsLock.Lock()
+	defer svc.apiKeyErrorCountsLock.Unlock()
+	require.NotContains(t, svc.apiKeyErrorCounts[ch.ID], ruleKey)
+	streakReset, stillInFlight = svc.apiKeyRuleActionsInFlight[ch.ID][ruleKey]
+	require.True(t, stillInFlight)
+	require.True(t, streakReset)
 }

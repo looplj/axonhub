@@ -225,10 +225,10 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 			svc.apiKeyErrorCounts[perf.ChannelID] = make(map[string]map[int]int)
 		}
 		if svc.apiKeyRuleActionsInFlight == nil {
-			svc.apiKeyRuleActionsInFlight = make(map[int]map[string]struct{})
+			svc.apiKeyRuleActionsInFlight = make(map[int]map[string]bool)
 		}
 		if svc.apiKeyRuleActionsInFlight[perf.ChannelID] == nil {
-			svc.apiKeyRuleActionsInFlight[perf.ChannelID] = make(map[string]struct{})
+			svc.apiKeyRuleActionsInFlight[perf.ChannelID] = make(map[string]bool)
 		}
 		for key := range svc.apiKeyErrorCounts[perf.ChannelID] {
 			if strings.HasPrefix(key, rulePrefix) && key != ruleKey {
@@ -250,16 +250,22 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 		shouldAct := count >= threshold && !actionInFlight
 		if shouldAct {
 			svc.apiKeyErrorCounts[perf.ChannelID][ruleKey][countKey] -= threshold
-			svc.apiKeyRuleActionsInFlight[perf.ChannelID][ruleKey] = struct{}{}
+			svc.apiKeyRuleActionsInFlight[perf.ChannelID][ruleKey] = false
 		}
 		svc.apiKeyErrorCountsLock.Unlock()
 
 		if shouldAct {
 			actionSucceeded := svc.executeAPIKeyRuleAction(ctx, perf, rule, count)
 			svc.apiKeyErrorCountsLock.Lock()
-			if _, stillClaimed := svc.apiKeyRuleActionsInFlight[perf.ChannelID][ruleKey]; stillClaimed {
+			if streakReset, stillClaimed := svc.apiKeyRuleActionsInFlight[perf.ChannelID][ruleKey]; stillClaimed {
 				delete(svc.apiKeyRuleActionsInFlight[perf.ChannelID], ruleKey)
-				if !actionSucceeded {
+				if !actionSucceeded && !streakReset {
+					if svc.apiKeyErrorCounts[perf.ChannelID] == nil {
+						svc.apiKeyErrorCounts[perf.ChannelID] = make(map[string]map[int]int)
+					}
+					if svc.apiKeyErrorCounts[perf.ChannelID][ruleKey] == nil {
+						svc.apiKeyErrorCounts[perf.ChannelID][ruleKey] = make(map[int]int)
+					}
 					svc.apiKeyErrorCounts[perf.ChannelID][ruleKey][countKey] += threshold
 				}
 				if svc.apiKeyErrorCounts[perf.ChannelID][ruleKey][countKey] == 0 {

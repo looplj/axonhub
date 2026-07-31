@@ -327,7 +327,7 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 			}
 			for key := range svc.apiKeyRuleActionsInFlight[perf.ChannelID] {
 				if strings.HasPrefix(key, rulePrefix) {
-					delete(svc.apiKeyRuleActionsInFlight[perf.ChannelID], key)
+					svc.apiKeyRuleActionsInFlight[perf.ChannelID][key] = true
 				}
 			}
 

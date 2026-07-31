@@ -103,7 +103,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		channelPerfMetrics:        make(map[int]*channelMetrics),
 		channelErrorCounts:        make(map[int]map[int]int),
 		apiKeyErrorCounts:         make(map[int]map[string]map[int]int),
-		apiKeyRuleActionsInFlight: make(map[int]map[string]struct{}),
+		apiKeyRuleActionsInFlight: make(map[int]map[string]bool),
 		perfCh:                    make(chan *PerformanceRecord, 1024),
 	}
 	watcherMode := params.CacheConfig.Mode
@@ -185,7 +185,7 @@ type ChannelService struct {
 	// apiKeyErrorCounts stores the error counts for each API key and status code
 	// channelID -> apiKey -> statusCode -> count
 	apiKeyErrorCounts         map[int]map[string]map[int]int
-	apiKeyRuleActionsInFlight map[int]map[string]struct{}
+	apiKeyRuleActionsInFlight map[int]map[string]bool
 	apiKeyErrorCountsLock     sync.Mutex
 	apiKeyOpsLock             sync.Mutex
 
