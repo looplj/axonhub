@@ -97,13 +97,14 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		SystemService:      params.SystemService,
-		WebhookNotifier:    params.WebhookNotifier,
-		httpClient:         params.HttpClient,
-		channelPerfMetrics: make(map[int]*channelMetrics),
-		channelErrorCounts: make(map[int]map[int]int),
-		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
-		perfCh:             make(chan *PerformanceRecord, 1024),
+		SystemService:             params.SystemService,
+		WebhookNotifier:           params.WebhookNotifier,
+		httpClient:                params.HttpClient,
+		channelPerfMetrics:        make(map[int]*channelMetrics),
+		channelErrorCounts:        make(map[int]map[int]int),
+		apiKeyErrorCounts:         make(map[int]map[string]map[int]int),
+		apiKeyRuleActionsInFlight: make(map[int]map[string]struct{}),
+		perfCh:                    make(chan *PerformanceRecord, 1024),
 	}
 	watcherMode := params.CacheConfig.Mode
 	if watcherMode == "" {
@@ -183,9 +184,10 @@ type ChannelService struct {
 
 	// apiKeyErrorCounts stores the error counts for each API key and status code
 	// channelID -> apiKey -> statusCode -> count
-	apiKeyErrorCounts     map[int]map[string]map[int]int
-	apiKeyErrorCountsLock sync.Mutex
-	apiKeyOpsLock         sync.Mutex
+	apiKeyErrorCounts         map[int]map[string]map[int]int
+	apiKeyRuleActionsInFlight map[int]map[string]struct{}
+	apiKeyErrorCountsLock     sync.Mutex
+	apiKeyOpsLock             sync.Mutex
 
 	modelSyncMu sync.Mutex
 

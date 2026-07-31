@@ -316,13 +316,18 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 		if perf.APIKey != "" {
 			svc.apiKeyErrorCountsLock.Lock()
 
+			rulePrefix := perf.APIKey + ":rule:"
 			if svc.apiKeyErrorCounts[perf.ChannelID] != nil {
 				delete(svc.apiKeyErrorCounts[perf.ChannelID], perf.APIKey)
-				rulePrefix := perf.APIKey + ":rule:"
 				for key := range svc.apiKeyErrorCounts[perf.ChannelID] {
 					if strings.HasPrefix(key, rulePrefix) {
 						delete(svc.apiKeyErrorCounts[perf.ChannelID], key)
 					}
+				}
+			}
+			for key := range svc.apiKeyRuleActionsInFlight[perf.ChannelID] {
+				if strings.HasPrefix(key, rulePrefix) {
+					delete(svc.apiKeyRuleActionsInFlight[perf.ChannelID], key)
 				}
 			}
 

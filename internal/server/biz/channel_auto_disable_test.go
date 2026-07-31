@@ -30,12 +30,13 @@ func newTestChannelService(client *ent.Client) *ChannelService {
 		AbstractService: &AbstractService{
 			db: client,
 		},
-		SystemService:      mockSysSvc,
-		WebhookNotifier:    NewWebhookNotifier(mockSysSvc, httpclient.NewHttpClient()),
-		channelPerfMetrics: make(map[int]*channelMetrics),
-		channelErrorCounts: make(map[int]map[int]int),
-		apiKeyErrorCounts:  make(map[int]map[string]map[int]int),
-		perfWindowSeconds:  600,
+		SystemService:             mockSysSvc,
+		WebhookNotifier:           NewWebhookNotifier(mockSysSvc, httpclient.NewHttpClient()),
+		channelPerfMetrics:        make(map[int]*channelMetrics),
+		channelErrorCounts:        make(map[int]map[int]int),
+		apiKeyErrorCounts:         make(map[int]map[string]map[int]int),
+		apiKeyRuleActionsInFlight: make(map[int]map[string]struct{}),
+		perfWindowSeconds:         600,
 	}
 
 	svc.enabledChannelsCache = live.NewCache(live.Options[[]*Channel]{
@@ -1027,4 +1028,40 @@ func TestChannelService_RemovedAPIKeyRuleDoesNotRestoreOldStreak(t *testing.T) {
 	matched, acted = svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
 	require.True(t, matched)
 	require.False(t, acted)
+}
+
+func TestChannelService_ChannelAPIKeyRuleDoesNotStartConcurrentAction(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	duration := 30
+	rule := objects.APIKeyAutoDisableRule{
+		StatusCodes:            []int{429},
+		Times:                  1,
+		Action:                 objects.APIKeyAutoDisableActionTemporary,
+		DisableDurationMinutes: &duration,
+	}
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "concurrent-action", []string{"key1", "key2"})
+	ch, err := client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{rule}}).
+		Save(ctx)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
+
+	ruleKey := apiKeyRuleCounterKey("key1", 0, rule)
+	svc.apiKeyRuleActionsInFlight[ch.ID] = map[string]struct{}{ruleKey: {}}
+
+	matched, acted := svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 429,
+	})
+	require.True(t, matched)
+	require.False(t, acted)
+
+	svc.apiKeyErrorCountsLock.Lock()
+	defer svc.apiKeyErrorCountsLock.Unlock()
+	require.Equal(t, 1, svc.apiKeyErrorCounts[ch.ID][ruleKey][0])
+	_, stillInFlight := svc.apiKeyRuleActionsInFlight[ch.ID][ruleKey]
+	require.True(t, stillInFlight)
 }

@@ -215,20 +215,7 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 			continue
 		}
 
-		disableDurationMinutes := 0
-		if rule.DisableDurationMinutes != nil {
-			disableDurationMinutes = *rule.DisableDurationMinutes
-		}
-		ruleKey := fmt.Sprintf(
-			"%s:rule:%d:%v:%v:%d:%s:%d",
-			perf.APIKey,
-			ruleIndex,
-			rule.StatusCodes,
-			rule.KeywordPatterns,
-			rule.Times,
-			rule.Action,
-			disableDurationMinutes,
-		)
+		ruleKey := apiKeyRuleCounterKey(perf.APIKey, ruleIndex, rule)
 		// Every failure accepted by one rule contributes to that rule's single
 		// consecutive counter, including alternating configured status codes.
 		const countKey = 0
@@ -237,9 +224,20 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 		if svc.apiKeyErrorCounts[perf.ChannelID] == nil {
 			svc.apiKeyErrorCounts[perf.ChannelID] = make(map[string]map[int]int)
 		}
+		if svc.apiKeyRuleActionsInFlight == nil {
+			svc.apiKeyRuleActionsInFlight = make(map[int]map[string]struct{})
+		}
+		if svc.apiKeyRuleActionsInFlight[perf.ChannelID] == nil {
+			svc.apiKeyRuleActionsInFlight[perf.ChannelID] = make(map[string]struct{})
+		}
 		for key := range svc.apiKeyErrorCounts[perf.ChannelID] {
 			if strings.HasPrefix(key, rulePrefix) && key != ruleKey {
 				delete(svc.apiKeyErrorCounts[perf.ChannelID], key)
+			}
+		}
+		for key := range svc.apiKeyRuleActionsInFlight[perf.ChannelID] {
+			if strings.HasPrefix(key, rulePrefix) && key != ruleKey {
+				delete(svc.apiKeyRuleActionsInFlight[perf.ChannelID], key)
 			}
 		}
 		if svc.apiKeyErrorCounts[perf.ChannelID][ruleKey] == nil {
@@ -248,16 +246,27 @@ func (svc *ChannelService) checkAndHandleChannelAPIKeyRules(ctx context.Context,
 		svc.apiKeyErrorCounts[perf.ChannelID][ruleKey][countKey]++
 		count := svc.apiKeyErrorCounts[perf.ChannelID][ruleKey][countKey]
 		threshold := max(rule.Times, 1)
-		shouldAct := count >= threshold
+		_, actionInFlight := svc.apiKeyRuleActionsInFlight[perf.ChannelID][ruleKey]
+		shouldAct := count >= threshold && !actionInFlight
+		if shouldAct {
+			svc.apiKeyErrorCounts[perf.ChannelID][ruleKey][countKey] -= threshold
+			svc.apiKeyRuleActionsInFlight[perf.ChannelID][ruleKey] = struct{}{}
+		}
 		svc.apiKeyErrorCountsLock.Unlock()
 
 		if shouldAct {
 			actionSucceeded := svc.executeAPIKeyRuleAction(ctx, perf, rule, count)
-			if actionSucceeded {
-				svc.apiKeyErrorCountsLock.Lock()
-				delete(svc.apiKeyErrorCounts[perf.ChannelID], ruleKey)
-				svc.apiKeyErrorCountsLock.Unlock()
+			svc.apiKeyErrorCountsLock.Lock()
+			if _, stillClaimed := svc.apiKeyRuleActionsInFlight[perf.ChannelID][ruleKey]; stillClaimed {
+				delete(svc.apiKeyRuleActionsInFlight[perf.ChannelID], ruleKey)
+				if !actionSucceeded {
+					svc.apiKeyErrorCounts[perf.ChannelID][ruleKey][countKey] += threshold
+				}
+				if svc.apiKeyErrorCounts[perf.ChannelID][ruleKey][countKey] == 0 {
+					delete(svc.apiKeyErrorCounts[perf.ChannelID], ruleKey)
+				}
 			}
+			svc.apiKeyErrorCountsLock.Unlock()
 			return true, actionSucceeded
 		}
 
@@ -278,6 +287,29 @@ func (svc *ChannelService) clearAPIKeyRuleCounts(channelID int, rulePrefix strin
 			delete(svc.apiKeyErrorCounts[channelID], key)
 		}
 	}
+	for key := range svc.apiKeyRuleActionsInFlight[channelID] {
+		if strings.HasPrefix(key, rulePrefix) {
+			delete(svc.apiKeyRuleActionsInFlight[channelID], key)
+		}
+	}
+}
+
+func apiKeyRuleCounterKey(apiKey string, ruleIndex int, rule objects.APIKeyAutoDisableRule) string {
+	disableDurationMinutes := 0
+	if rule.DisableDurationMinutes != nil {
+		disableDurationMinutes = *rule.DisableDurationMinutes
+	}
+
+	return fmt.Sprintf(
+		"%s:rule:%d:%v:%v:%d:%s:%d",
+		apiKey,
+		ruleIndex,
+		rule.StatusCodes,
+		rule.KeywordPatterns,
+		rule.Times,
+		rule.Action,
+		disableDurationMinutes,
+	)
 }
 
 func matchesAPIKeyRule(rule objects.APIKeyAutoDisableRule, perf *PerformanceRecord) bool {
