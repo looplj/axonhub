@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -19,7 +20,7 @@ const (
 )
 
 type previousResponseExchangeLoader interface {
-	LoadCompletedResponseExchange(context.Context, string, int, *int) (*biz.StoredResponseExchange, error)
+	LoadCompletedResponseExchange(context.Context, string, int, *int, int64) (*biz.StoredResponseExchange, error)
 }
 
 type storedResponseRequestState struct {
@@ -78,6 +79,8 @@ func hydratePreviousResponsesForChat(
 	return &hydrated, nil
 }
 
+// loadPreviousResponsesHistory walks a bounded previous_response_id chain and
+// converts each retained Responses exchange into chronological Chat messages.
 func loadPreviousResponsesHistory(
 	ctx context.Context,
 	loader previousResponseExchangeLoader,
@@ -104,8 +107,12 @@ func loadPreviousResponsesHistory(
 		}
 		visited[currentID] = struct{}{}
 
-		exchange, err := loader.LoadCompletedResponseExchange(ctx, currentID, projectID, apiKeyID)
+		remainingBytes := maxPreviousResponseHistoryBytes - historyBytes
+		exchange, err := loader.LoadCompletedResponseExchange(ctx, currentID, projectID, apiKeyID, remainingBytes)
 		if err != nil {
+			if errors.Is(err, biz.ErrStoredResponseExchangeTooLarge) {
+				return nil, fmt.Errorf("%w: previous_response_id history exceeds %d bytes", transformer.ErrInvalidRequest, maxPreviousResponseHistoryBytes)
+			}
 			return nil, fmt.Errorf("failed to load previous response %q: %w", currentID, err)
 		}
 		if exchange == nil {

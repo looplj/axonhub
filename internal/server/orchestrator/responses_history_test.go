@@ -36,6 +36,7 @@ func (l *mapPreviousResponseLoader) LoadCompletedResponseExchange(
 	responseID string,
 	projectID int,
 	apiKeyID *int,
+	maxBytes int64,
 ) (*biz.StoredResponseExchange, error) {
 	l.calls = append(l.calls, previousResponseLoadCall{
 		responseID: responseID,
@@ -45,7 +46,11 @@ func (l *mapPreviousResponseLoader) LoadCompletedResponseExchange(
 	if l.err != nil {
 		return nil, l.err
 	}
-	return l.exchanges[responseID], nil
+	exchange := l.exchanges[responseID]
+	if exchange != nil && int64(len(exchange.RequestBody)+len(exchange.ResponseBody)) > maxBytes {
+		return nil, biz.ErrStoredResponseExchangeTooLarge
+	}
+	return exchange, nil
 }
 
 func storedResponseExchange(requestBody, responseBody string) *biz.StoredResponseExchange {
@@ -375,20 +380,52 @@ func TestRequestService_LoadCompletedResponseExchange_ScopesByProjectAndAPIKey(t
 	seed(2, &key10, "project-2-key-10")
 	seed(1, nil, "project-1-admin")
 
-	exchange, err := requestService.LoadCompletedResponseExchange(ctx, "shared_response_id", 1, &key20)
+	exchange, err := requestService.LoadCompletedResponseExchange(ctx, "shared_response_id", 1, &key20, maxPreviousResponseHistoryBytes)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"model":"gpt-5.5","input":"project-1-key-20"}`, string(exchange.RequestBody))
 
-	exchange, err = requestService.LoadCompletedResponseExchange(ctx, "shared_response_id", 1, nil)
+	exchange, err = requestService.LoadCompletedResponseExchange(ctx, "shared_response_id", 1, nil, maxPreviousResponseHistoryBytes)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"model":"gpt-5.5","input":"project-1-admin"}`, string(exchange.RequestBody))
 
 	missingKey := 99
-	exchange, err = requestService.LoadCompletedResponseExchange(ctx, "shared_response_id", 1, &missingKey)
+	exchange, err = requestService.LoadCompletedResponseExchange(ctx, "shared_response_id", 1, &missingKey, maxPreviousResponseHistoryBytes)
 	require.NoError(t, err)
 	require.Nil(t, exchange)
 
-	exchange, err = requestService.LoadCompletedResponseExchange(ctx, "shared_response_id", 1, &key10)
+	exchange, err = requestService.LoadCompletedResponseExchange(ctx, "shared_response_id", 1, &key10, maxPreviousResponseHistoryBytes)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"model":"gpt-5.5","input":"project-1-key-10"}`, string(exchange.RequestBody))
+}
+
+func TestRequestService_LoadCompletedResponseExchange_RejectsDatabaseBodiesBeforeBudgetedLoad(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:responses_history_body_limit?mode=memory&_fk=0")
+	ctx := ent.NewContext(authz.WithTestBypass(t.Context()), client)
+	seedPrimaryDatabaseStorage(t, ctx, client)
+	requestService := createTestRequestService(t, client)
+
+	requestBody := objects.JSONRawMessage(`{"model":"gpt-5.5","input":"你好"}`)
+	responseBody := objects.JSONRawMessage(`{"id":"resp_limited","model":"gpt-5.5","output":[]}`)
+	_, err := client.Request.Create().
+		SetProjectID(1).
+		SetModelID("gpt-5.5").
+		SetFormat(llm.APIFormatOpenAIResponse.String()).
+		SetSource(request.SourceAPI).
+		SetStatus(request.StatusCompleted).
+		SetStream(false).
+		SetRequestBody(requestBody).
+		SetResponseBody(responseBody).
+		SetExternalID("resp_limited").
+		Save(ctx)
+	require.NoError(t, err)
+
+	exactBudget := int64(len(requestBody) + len(responseBody))
+	exchange, err := requestService.LoadCompletedResponseExchange(ctx, "resp_limited", 1, nil, exactBudget)
+	require.NoError(t, err)
+	require.Equal(t, requestBody, exchange.RequestBody)
+	require.Equal(t, responseBody, exchange.ResponseBody)
+
+	exchange, err = requestService.LoadCompletedResponseExchange(ctx, "resp_limited", 1, nil, exactBudget-1)
+	require.Nil(t, exchange)
+	require.ErrorIs(t, err, biz.ErrStoredResponseExchangeTooLarge)
 }

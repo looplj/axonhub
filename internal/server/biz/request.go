@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/eko/gocache/lib/v4/store"
 	"github.com/tidwall/gjson"
 
@@ -46,6 +48,39 @@ type StoredResponseExchange struct {
 	ResponseBody objects.JSONRawMessage
 }
 
+// ErrStoredResponseExchangeTooLarge reports that retained response data cannot
+// be loaded within the caller's remaining byte budget.
+var ErrStoredResponseExchangeTooLarge = errors.New("stored response exchange exceeds byte limit")
+
+type storedResponseExchangeMetadata struct {
+	ID                int   `json:"id"`
+	ProjectID         int   `json:"project_id"`
+	DataStorageID     *int  `json:"data_storage_id"`
+	RequestBodyBytes  int64 `json:"request_body_bytes"`
+	ResponseBodyBytes int64 `json:"response_body_bytes"`
+}
+
+// storedResponseBodySizeExpression returns a dialect-specific byte-length
+// expression without selecting the JSON body into application memory.
+func storedResponseBodySizeExpression(dialectName, column string) string {
+	switch dialectName {
+	case dialect.SQLite:
+		return fmt.Sprintf("COALESCE(LENGTH(CAST(%s AS BLOB)), 0)", column)
+	case dialect.Postgres:
+		return fmt.Sprintf("COALESCE(OCTET_LENGTH((%s)::text), 0)", column)
+	case dialect.MySQL:
+		return fmt.Sprintf("COALESCE(OCTET_LENGTH(CAST(%s AS CHAR)), 0)", column)
+	default:
+		return fmt.Sprintf("COALESCE(OCTET_LENGTH(CAST(%s AS CHAR)), 0)", column)
+	}
+}
+
+// storedResponseExchangeFitsBudget checks a combined size without overflowing.
+func storedResponseExchangeFitsBudget(requestBytes, responseBytes, maxBytes int64) bool {
+	return maxBytes >= 0 && requestBytes >= 0 && responseBytes >= 0 &&
+		requestBytes <= maxBytes && responseBytes <= maxBytes-requestBytes
+}
+
 // loadStoredResponseExchangeBody loads one JSON body without hiding external
 // storage failures. A missing object represents unavailable retained content;
 // other storage errors remain server errors so callers can retry them.
@@ -55,6 +90,7 @@ func (s *RequestService) loadStoredResponseExchangeBody(
 	databaseBody objects.JSONRawMessage,
 	externalKey string,
 	bodyName string,
+	maxBytes int64,
 ) (objects.JSONRawMessage, error) {
 	dataStorage, err := s.getDataStorage(ctx, stored.DataStorageID)
 	if err != nil {
@@ -64,11 +100,17 @@ func (s *RequestService) loadStoredResponseExchangeBody(
 		if databaseBody == nil {
 			return xjson.EmptyJSONRawMessage, nil
 		}
+		if int64(len(databaseBody)) > maxBytes {
+			return nil, ErrStoredResponseExchangeTooLarge
+		}
 		return databaseBody, nil
 	}
 
-	data, err := s.DataStorageService.LoadData(ctx, dataStorage, externalKey)
+	data, err := s.DataStorageService.LoadDataLimited(ctx, dataStorage, externalKey, maxBytes)
 	if err != nil {
+		if errors.Is(err, errDataExceedsLimit) {
+			return nil, ErrStoredResponseExchangeTooLarge
+		}
 		if errors.Is(err, os.ErrNotExist) {
 			return xjson.EmptyJSONRawMessage, nil
 		}
@@ -1293,9 +1335,13 @@ func (s *RequestService) LoadCompletedResponseExchange(
 	externalID string,
 	projectID int,
 	apiKeyID *int,
+	maxBytes int64,
 ) (*StoredResponseExchange, error) {
 	if strings.TrimSpace(externalID) == "" {
 		return nil, nil
+	}
+	if maxBytes < 0 {
+		return nil, ErrStoredResponseExchangeTooLarge
 	}
 
 	predicates := []predicate.Request{
@@ -1310,16 +1356,83 @@ func (s *RequestService) LoadCompletedResponseExchange(
 		predicates = append(predicates, request.APIKeyIDIsNil())
 	}
 
-	stored, err := s.entFromContext(ctx).Request.Query().
+	client := s.entFromContext(ctx)
+	dialectName := client.Driver().Dialect()
+	var metadataRows []storedResponseExchangeMetadata
+	err := client.Request.Query().
 		Where(predicates...).
 		Order(ent.Desc(request.FieldCreatedAt)).
-		First(ctx)
+		Limit(1).
+		Select(request.FieldID, request.FieldProjectID, request.FieldDataStorageID).
+		Modify(func(selector *entsql.Selector) {
+			selector.AppendSelectExprAs(
+				entsql.Expr(storedResponseBodySizeExpression(dialectName, selector.C(request.FieldRequestBody))),
+				"request_body_bytes",
+			)
+			selector.AppendSelectExprAs(
+				entsql.Expr(storedResponseBodySizeExpression(dialectName, selector.C(request.FieldResponseBody))),
+				"response_body_bytes",
+			)
+		}).
+		Scan(ctx, &metadataRows)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, nil
+		return nil, fmt.Errorf("failed to find previous response %q: %w", externalID, err)
+	}
+	if len(metadataRows) == 0 {
+		return nil, nil
+	}
+	metadata := metadataRows[0]
+	dataStorageID := 0
+	if metadata.DataStorageID != nil {
+		dataStorageID = *metadata.DataStorageID
+	}
+	stored := &ent.Request{
+		ID:            metadata.ID,
+		ProjectID:     metadata.ProjectID,
+		DataStorageID: dataStorageID,
+	}
+
+	dataStorage, err := s.getDataStorage(ctx, stored.DataStorageID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve previous response storage: %w", err)
+	}
+	if !s.shouldUseExternalStorage(ctx, dataStorage) {
+		if !storedResponseExchangeFitsBudget(metadata.RequestBodyBytes, metadata.ResponseBodyBytes, maxBytes) {
+			return nil, ErrStoredResponseExchangeTooLarge
 		}
 
-		return nil, fmt.Errorf("failed to find previous response %q: %w", externalID, err)
+		requestSizeExpression := ""
+		responseSizeExpression := ""
+		var bodyRows []struct {
+			RequestBody  objects.JSONRawMessage `json:"request_body"`
+			ResponseBody objects.JSONRawMessage `json:"response_body"`
+		}
+		err = client.Request.Query().
+			Where(request.IDEQ(metadata.ID)).
+			Limit(1).
+			Select(request.FieldRequestBody, request.FieldResponseBody).
+			Modify(func(selector *entsql.Selector) {
+				requestSizeExpression = storedResponseBodySizeExpression(dialectName, selector.C(request.FieldRequestBody))
+				responseSizeExpression = storedResponseBodySizeExpression(dialectName, selector.C(request.FieldResponseBody))
+				selector.Where(entsql.P(func(builder *entsql.Builder) {
+					builder.WriteString("(").
+						WriteString(requestSizeExpression).
+						WriteOp(entsql.OpAdd).
+						WriteString(responseSizeExpression).
+						WriteString(")").
+						WriteOp(entsql.OpLTE).
+						Arg(maxBytes)
+				}))
+			}).
+			Scan(ctx, &bodyRows)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load previous response %q database bodies: %w", externalID, err)
+		}
+		if len(bodyRows) == 0 {
+			return nil, ErrStoredResponseExchangeTooLarge
+		}
+		stored.RequestBody = bodyRows[0].RequestBody
+		stored.ResponseBody = bodyRows[0].ResponseBody
 	}
 
 	requestBody, err := s.loadStoredResponseExchangeBody(
@@ -1328,6 +1441,7 @@ func (s *RequestService) LoadCompletedResponseExchange(
 		stored.RequestBody,
 		GenerateRequestBodyKey(stored.ProjectID, stored.ID),
 		"previous response request body",
+		maxBytes,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load previous response request %q: %w", externalID, err)
@@ -1338,6 +1452,7 @@ func (s *RequestService) LoadCompletedResponseExchange(
 		stored.ResponseBody,
 		GenerateResponseBodyKey(stored.ProjectID, stored.ID),
 		"previous response body",
+		maxBytes-int64(len(requestBody)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load previous response body %q: %w", externalID, err)

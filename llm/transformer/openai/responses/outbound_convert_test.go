@@ -1276,6 +1276,25 @@ func TestConvertOutputToMessage(t *testing.T) {
 			},
 		},
 		{
+			name: "tool search call output",
+			output: []Item{{
+				Type:      "tool_search_call",
+				CallID:    "call_search_1",
+				Execution: "client",
+				Arguments: `{"query":"agents"}`,
+			}},
+			validate: func(t *testing.T, msg llm.Message) {
+				require.Len(t, msg.ToolCalls, 1)
+				tc := msg.ToolCalls[0]
+				require.Equal(t, "call_search_1", tc.ID)
+				require.Equal(t, llm.ToolTypeResponsesToolSearch, tc.Type)
+				require.NotNil(t, tc.ResponseToolSearchCall)
+				require.Equal(t, "call_search_1", tc.ResponseToolSearchCall.CallID)
+				require.Equal(t, "client", tc.ResponseToolSearchCall.Execution)
+				require.Equal(t, `{"query":"agents"}`, tc.ResponseToolSearchCall.Arguments)
+			},
+		},
+		{
 			name: "reasoning output with encrypted content",
 			output: []Item{
 				{

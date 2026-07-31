@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"sort"
 	"strings"
 
 	"github.com/samber/lo"
@@ -921,10 +922,7 @@ func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error 
 	}
 
 	if argumentsToEmit != "" {
-		itemID := storedToolCall.ID
-		if itemID == "" {
-			itemID = s.currentItemID
-		}
+		itemID := s.toolCallItemID[toolCallIndex]
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:         StreamEventTypeFunctionCallArgumentsDelta,
@@ -956,10 +954,7 @@ func (s *responsesInboundStream) handleCustomToolCallDelta(tc llm.ToolCall) erro
 	}
 
 	if tc.ResponseCustomToolCall.Input != "" {
-		itemID := s.toolCalls[toolCallIndex].ID
-		if itemID == "" {
-			itemID = s.currentItemID
-		}
+		itemID := s.toolCallItemID[toolCallIndex]
 
 		err := s.enqueueEvent(&StreamEvent{
 			Type:        StreamEventTypeCustomToolCallInputDelta,
@@ -983,10 +978,7 @@ func (s *responsesInboundStream) handleToolSearchCallDelta(tc llm.ToolCall) erro
 	if tc.ResponseToolSearchCall.Arguments == "" {
 		return nil
 	}
-	itemID := s.toolCalls[toolCallIndex].ID
-	if itemID == "" {
-		itemID = s.currentItemID
-	}
+	itemID := s.toolCallItemID[toolCallIndex]
 	if err := s.enqueueEvent(&StreamEvent{
 		Type: StreamEventTypeFunctionCallArgumentsDelta, ItemID: &itemID,
 		OutputIndex: s.toolCallOutputIndex[toolCallIndex], ContentIndex: lo.ToPtr(0),
@@ -1187,7 +1179,10 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 	}
 
 	// Close any open tool call items
-	for idx, tc := range s.toolCalls {
+	toolCallIndexes := lo.Keys(s.toolCalls)
+	sort.Ints(toolCallIndexes)
+	for _, idx := range toolCallIndexes {
+		tc := s.toolCalls[idx]
 		if !s.toolCallItemStarted[idx] {
 			continue
 		}

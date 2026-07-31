@@ -741,6 +741,16 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 					Input:  inputStr,
 				},
 			})
+		case "tool_search_call":
+			toolCalls = append(toolCalls, llm.ToolCall{
+				ID:   outputItem.CallID,
+				Type: llm.ToolTypeResponsesToolSearch,
+				ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+					CallID:    outputItem.CallID,
+					Execution: outputItem.Execution,
+					Arguments: outputItem.Arguments,
+				},
+			})
 		case "reasoning":
 			var itemReasoning strings.Builder
 			for _, summary := range outputItem.Summary {

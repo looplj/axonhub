@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"testing"
 
@@ -199,6 +200,82 @@ func assertParallelFunctionCallLifecycle(t *testing.T, events []StreamEvent) {
 		require.Greater(t, call.argumentsIndex, call.lastDeltaIndex, "output index %d arguments.done ordering", outputIndex)
 		require.Greater(t, call.outputIndex, call.argumentsIndex, "output index %d output_item.done ordering", outputIndex)
 	}
+}
+
+func TestInboundTransformer_TransformStream_UsesStableItemIDsForParallelToolCallDeltas(t *testing.T) {
+	tests := []struct {
+		name    string
+		deltaID func(int) string
+	}{
+		{name: "missing IDs", deltaID: func(int) string { return "" }},
+		{name: "delayed IDs", deltaID: func(index int) string { return fmt.Sprintf("late_call_%d", index) }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := streams.SliceStream([]*llm.Response{
+				{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{
+					{Index: 0, Function: llm.FunctionCall{Name: "lookup"}},
+					{Index: 1, ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "custom_call", Name: "apply_patch"}},
+					{Index: 2, ResponseToolSearchCall: &llm.ResponseToolSearchCall{CallID: "search_call", Execution: "client"}},
+				}}}}},
+				{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{
+					{ID: tt.deltaID(0), Index: 0, Function: llm.FunctionCall{Arguments: `{"query":"docs"}`}},
+					{ID: tt.deltaID(1), Index: 1, ResponseCustomToolCall: &llm.ResponseCustomToolCall{Input: "patch"}},
+					{ID: tt.deltaID(2), Index: 2, ResponseToolSearchCall: &llm.ResponseToolSearchCall{Arguments: `{"query":"agents"}`}},
+				}}}}},
+				{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{}, FinishReason: lo.ToPtr("tool_calls")}}},
+				llm.DoneResponse,
+			})
+
+			stream, err := NewInboundTransformer().TransformStream(t.Context(), source)
+			require.NoError(t, err)
+			addedItemIDs := make(map[int]string)
+			var deltaEvents []StreamEvent
+			for stream.Next() {
+				var event StreamEvent
+				require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+				if event.Type == StreamEventTypeOutputItemAdded && event.Item != nil {
+					addedItemIDs[event.OutputIndex] = event.Item.ID
+				}
+				if event.Type == StreamEventTypeFunctionCallArgumentsDelta || event.Type == StreamEventTypeCustomToolCallInputDelta {
+					deltaEvents = append(deltaEvents, event)
+				}
+			}
+			require.NoError(t, stream.Err())
+			require.Len(t, addedItemIDs, 3)
+			require.Len(t, deltaEvents, 3)
+			for _, event := range deltaEvents {
+				require.NotNil(t, event.ItemID)
+				require.Equal(t, addedItemIDs[event.OutputIndex], *event.ItemID, "output index %d item ID", event.OutputIndex)
+			}
+		})
+	}
+}
+
+func TestInboundTransformer_TransformStream_ClosesParallelToolCallsInIndexOrder(t *testing.T) {
+	source := streams.SliceStream([]*llm.Response{
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{
+			{ID: "call_2", Index: 2, Function: llm.FunctionCall{Name: "third"}},
+			{ID: "call_0", Index: 0, Function: llm.FunctionCall{Name: "first"}},
+			{ID: "call_1", Index: 1, Function: llm.FunctionCall{Name: "second"}},
+		}}}}},
+		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{}, FinishReason: lo.ToPtr("tool_calls")}}},
+		llm.DoneResponse,
+	})
+
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), source)
+	require.NoError(t, err)
+	var doneCallIDs []string
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		if event.Type == StreamEventTypeOutputItemDone && event.Item != nil && event.Item.Type == "function_call" {
+			doneCallIDs = append(doneCallIDs, event.Item.CallID)
+		}
+	}
+	require.NoError(t, stream.Err())
+	require.Equal(t, []string{"call_0", "call_1", "call_2"}, doneCallIDs)
 }
 
 func TestInboundTransformer_TransformStream_KeepsResponsesReasoningItemsSeparate(t *testing.T) {
@@ -727,10 +804,10 @@ func (s *errorResponseStream) Close() error {
 // reported as a successful completion downstream.
 func TestInboundTransformer_TransformStream_MapsFinishReasonToCompletedStatus(t *testing.T) {
 	tests := []struct {
-		name                 string
-		finishReason         string
-		expectedStatus       string
-		expectedIncomplete   *ResponseIncompleteDetails
+		name               string
+		finishReason       string
+		expectedStatus     string
+		expectedIncomplete *ResponseIncompleteDetails
 	}{
 		{name: "length maps to incomplete", finishReason: "length", expectedStatus: "incomplete", expectedIncomplete: &ResponseIncompleteDetails{Reason: "max_output_tokens"}},
 		{name: "content_filter maps to incomplete", finishReason: "content_filter", expectedStatus: "incomplete", expectedIncomplete: &ResponseIncompleteDetails{Reason: "content_filter"}},

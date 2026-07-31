@@ -301,6 +301,40 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				},
 			}
 
+		case "tool_search_call":
+			toolCallIdx := len(s.state.toolCalls)
+			s.state.toolCalls[item.CallID] = &llm.ToolCall{
+				ID:   item.CallID,
+				Type: llm.ToolTypeResponsesToolSearch,
+				ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+					CallID:    item.CallID,
+					Execution: item.Execution,
+					Arguments: item.Arguments,
+				},
+			}
+			s.state.itemToCallID[item.ID] = item.CallID
+			s.state.toolCallIndex[item.CallID] = toolCallIdx
+
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{
+							{
+								ID:    item.CallID,
+								Type:  llm.ToolTypeResponsesToolSearch,
+								Index: toolCallIdx,
+								ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+									CallID:    item.CallID,
+									Execution: item.Execution,
+									Arguments: item.Arguments,
+								},
+							},
+						},
+					},
+				},
+			}
+
 		default:
 			// For other item types (e.g., message), skip - no meaningful content to emit
 			return nil // Intentionally skip this event
@@ -317,8 +351,31 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			}
 
 			if tc, ok := s.state.toolCalls[callID]; ok {
-				tc.Function.Arguments += streamEvent.Delta
 				toolCallIdx := s.state.toolCallIndex[callID]
+				if tc.ResponseToolSearchCall != nil {
+					tc.ResponseToolSearchCall.Arguments += streamEvent.Delta
+					resp.Choices = []llm.Choice{
+						{
+							Index: 0,
+							Delta: &llm.Message{
+								ToolCalls: []llm.ToolCall{
+									{
+										Index: toolCallIdx,
+										Type:  llm.ToolTypeResponsesToolSearch,
+										ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+											CallID:    callID,
+											Execution: tc.ResponseToolSearchCall.Execution,
+											Arguments: streamEvent.Delta,
+										},
+									},
+								},
+							},
+						},
+					}
+					break
+				}
+
+				tc.Function.Arguments += streamEvent.Delta
 
 				resp.Choices = []llm.Choice{
 					{
@@ -351,6 +408,13 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		tc, ok := s.state.toolCalls[callID]
 		if !ok {
 			return nil // Intentionally skip an unknown tool call.
+		}
+
+		if tc.ResponseToolSearchCall != nil {
+			if streamEvent.Arguments != "" {
+				tc.ResponseToolSearchCall.Arguments = streamEvent.Arguments
+			}
+			return nil
 		}
 
 		identityChanged := false
@@ -515,6 +579,17 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	case StreamEventTypeOutputItemDone:
 		if streamEvent.Item == nil {
 			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type == "tool_search_call" {
+			if tc, ok := s.state.toolCalls[streamEvent.Item.CallID]; ok && tc.ResponseToolSearchCall != nil {
+				if streamEvent.Item.Execution != "" {
+					tc.ResponseToolSearchCall.Execution = streamEvent.Item.Execution
+				}
+				if streamEvent.Item.Arguments != "" {
+					tc.ResponseToolSearchCall.Arguments = streamEvent.Item.Arguments
+				}
+			}
+			return nil // Tool call was emitted by item.added and argument deltas.
 		}
 		if streamEvent.Item.Type == "compaction" || streamEvent.Item.Type == "compaction_summary" {
 			resp.Choices = []llm.Choice{{

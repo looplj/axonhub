@@ -1294,6 +1294,40 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			},
 		},
 		{
+			name: "response with tool search call",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"id":"resp_tool_search",
+					"object":"response",
+					"created_at":1759161016,
+					"status":"completed",
+					"model":"gpt-5",
+					"output":[{
+						"id":"ts_123",
+						"type":"tool_search_call",
+						"status":"completed",
+						"call_id":"call_search_123",
+						"execution":"client",
+						"arguments":{"query":"agents"}
+					}]
+				}`),
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				require.Len(t, result.Choices, 1)
+				require.Equal(t, "tool_calls", lo.FromPtr(result.Choices[0].FinishReason))
+				require.NotNil(t, result.Choices[0].Message)
+				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
+				tc := result.Choices[0].Message.ToolCalls[0]
+				require.Equal(t, "call_search_123", tc.ID)
+				require.Equal(t, llm.ToolTypeResponsesToolSearch, tc.Type)
+				require.NotNil(t, tc.ResponseToolSearchCall)
+				require.Equal(t, "call_search_123", tc.ResponseToolSearchCall.CallID)
+				require.Equal(t, "client", tc.ResponseToolSearchCall.Execution)
+				require.JSONEq(t, `{"query":"agents"}`, tc.ResponseToolSearchCall.Arguments)
+			},
+		},
+		{
 			name: "response with image generation result",
 			httpResp: &httpclient.Response{
 				StatusCode: http.StatusOK,
