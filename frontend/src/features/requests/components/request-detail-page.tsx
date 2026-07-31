@@ -77,7 +77,7 @@ async function readPreviewStream(
   const flushBuffer = async (final = false) => {
     const normalizedBuffer = buffer.replace(/\r\n/g, '\n');
     const separator = '\n\n';
-    let separatorIndex = normalizedBuffer.indexOf(separator);
+    const separatorIndex = normalizedBuffer.indexOf(separator);
 
     while (separatorIndex !== -1) {
       const rawEvent = normalizedBuffer.slice(0, separatorIndex);

@@ -21,9 +21,6 @@ import { RequestStatus } from '../data/schema';
 import { DataTableViewOptions } from './data-table-view-options';
 import { MODEL_ID_COLUMN } from './requests-columns';
 
-// Max width for DateRangePicker in toolbar
-const DATE_RANGE_MAX_WIDTH = '150px';
-
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
   dateRange?: DateTimeRangeValue;
@@ -145,8 +142,11 @@ function RequestFilterControls({
       )}
       <DateRangePicker
         value={dateRange}
-        onChange={onDateRangeChange}
-        className={isMobile ? 'w-full' : `max-w-[${DATE_RANGE_MAX_WIDTH}] min-w-0 sm:max-w-none`}
+        onChange={(range) => {
+          onDateRangeChange?.(range);
+          onCloseAfterAction?.();
+        }}
+        className={isMobile ? 'w-full' : 'max-w-[150px] min-w-0 sm:max-w-none'}
       />
       {hasDateRange && (
         <Button
@@ -196,14 +196,15 @@ export function DataTableToolbar<TData>({
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
 
   // Active filter count for mobile badge (excludes model ID filter)
+  const columnFilters = table.getState().columnFilters;
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    for (const filter of table.getState().columnFilters) {
+    for (const filter of columnFilters) {
       if (filter.id !== MODEL_ID_COLUMN && filter.value) count++;
     }
     if (hasDateRange) count++;
     return count;
-  }, [table.getState().columnFilters, hasDateRange]);
+  }, [columnFilters, hasDateRange]);
 
   // Handler to toggle show archived API keys and prune hidden IDs from filters
   const handleToggleShowArchivedApiKeys = (checked: boolean) => {
@@ -344,7 +345,7 @@ export function DataTableToolbar<TData>({
               <Badge
                 variant='secondary'
                 className='ml-1 min-w-[1.25rem] rounded-full px-1.5 py-0'
-                aria-label={`${activeFilterCount} active filters`}
+                aria-label={t('common.filters.activeCount', { count: activeFilterCount })}
               >
                 {activeFilterCount}
               </Badge>
