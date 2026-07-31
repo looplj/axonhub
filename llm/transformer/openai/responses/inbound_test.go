@@ -1763,120 +1763,107 @@ func TestConvertItemToMessage_Reasoning(t *testing.T) {
 	require.Nil(t, result, "reasoning items should return nil from convertItemToMessage")
 }
 
-func TestConvertInputToMessages_GroupsConsecutiveToolCalls(t *testing.T) {
+func TestConvertInputToMessages_GroupsConsecutiveMixedToolCalls(t *testing.T) {
 	input := &Input{Items: []Item{
-		{Role: "user", Content: &Input{Text: lo.ToPtr("Run both tools.")}},
-		{Type: "function_call", CallID: "call_a", Name: "first_tool", Arguments: `{}`},
-		{Type: "function_call", CallID: "call_b", Name: "second_tool", Arguments: `{"value":2}`},
-		{Type: "function_call_output", CallID: "call_a", Output: &Input{Text: lo.ToPtr("first result")}},
-		{Type: "function_call_output", CallID: "call_b", Output: &Input{Text: lo.ToPtr("second result")}},
-		{Role: "user", Content: &Input{Text: lo.ToPtr("Continue.")}},
-	}}
-
-	messages, err := convertInputToMessages(input)
-	require.NoError(t, err)
-	require.Len(t, messages, 5)
-
-	require.Equal(t, "user", messages[0].Role)
-	require.Equal(t, "Run both tools.", lo.FromPtr(messages[0].Content.Content))
-
-	require.Equal(t, "assistant", messages[1].Role)
-	require.Len(t, messages[1].ToolCalls, 2)
-	require.Equal(t, "call_a", messages[1].ToolCalls[0].ID)
-	require.Equal(t, "first_tool", messages[1].ToolCalls[0].Function.Name)
-	require.Equal(t, `{}`, messages[1].ToolCalls[0].Function.Arguments)
-	require.Equal(t, "call_b", messages[1].ToolCalls[1].ID)
-	require.Equal(t, "second_tool", messages[1].ToolCalls[1].Function.Name)
-	require.Equal(t, `{"value":2}`, messages[1].ToolCalls[1].Function.Arguments)
-
-	require.Equal(t, "tool", messages[2].Role)
-	require.Equal(t, "call_a", lo.FromPtr(messages[2].ToolCallID))
-	require.Equal(t, "first result", lo.FromPtr(messages[2].Content.Content))
-	require.Equal(t, "tool", messages[3].Role)
-	require.Equal(t, "call_b", lo.FromPtr(messages[3].ToolCallID))
-	require.Equal(t, "second result", lo.FromPtr(messages[3].Content.Content))
-
-	require.Equal(t, "user", messages[4].Role)
-	require.Equal(t, "Continue.", lo.FromPtr(messages[4].Content.Content))
-}
-
-func TestConvertInputToMessages_GroupsMixedToolCallTypes(t *testing.T) {
-	input := &Input{Items: []Item{
-		{
-			Type:      "function_call",
-			CallID:    "call_function",
-			Name:      "function_tool",
-			Namespace: "namespace",
-			Arguments: `{"query":"value"}`,
-		},
-		{
-			Type:   "custom_tool_call",
-			CallID: "call_custom",
-			Name:   "custom_tool",
-			Input:  lo.ToPtr("freeform input"),
-		},
+		{Type: "function_call", CallID: "function:1", Name: "lookup", Arguments: `{"id":"42"}`},
+		{Type: "custom_tool_call", CallID: "custom:2", Name: "apply_patch", Input: lo.ToPtr("patch")},
+		{Type: "tool_search_call", CallID: "search:3", Execution: "client", Arguments: `{"query":"agents"}`},
 	}}
 
 	messages, err := convertInputToMessages(input)
 	require.NoError(t, err)
 	require.Len(t, messages, 1)
 	require.Equal(t, "assistant", messages[0].Role)
-	require.Len(t, messages[0].ToolCalls, 2)
-
-	functionCall := messages[0].ToolCalls[0]
-	require.Equal(t, "call_function", functionCall.ID)
-	require.Equal(t, "function", functionCall.Type)
-	require.Equal(t, "function_tool", functionCall.Function.Name)
-	require.Equal(t, "namespace", functionCall.Function.Namespace)
-	require.Equal(t, `{"query":"value"}`, functionCall.Function.Arguments)
-
-	customCall := messages[0].ToolCalls[1]
-	require.Equal(t, "call_custom", customCall.ID)
-	require.Equal(t, llm.ToolTypeResponsesCustomTool, customCall.Type)
-	require.NotNil(t, customCall.ResponseCustomToolCall)
-	require.Equal(t, "call_custom", customCall.ResponseCustomToolCall.CallID)
-	require.Equal(t, "custom_tool", customCall.ResponseCustomToolCall.Name)
-	require.Equal(t, "freeform input", customCall.ResponseCustomToolCall.Input)
+	require.Len(t, messages[0].ToolCalls, 3)
+	require.Equal(t, []string{"function:1", "custom:2", "search:3"}, []string{
+		messages[0].ToolCalls[0].ID,
+		messages[0].ToolCalls[1].ID,
+		messages[0].ToolCalls[2].ID,
+	})
+	require.Equal(t, "lookup", messages[0].ToolCalls[0].Function.Name)
+	require.NotNil(t, messages[0].ToolCalls[1].ResponseCustomToolCall)
+	require.Equal(t, "apply_patch", messages[0].ToolCalls[1].ResponseCustomToolCall.Name)
+	require.NotNil(t, messages[0].ToolCalls[2].ResponseToolSearchCall)
+	require.Equal(t, "client", messages[0].ToolCalls[2].ResponseToolSearchCall.Execution)
 }
 
-func TestConvertInputToMessages_DoesNotGroupToolCallsAcrossBoundaries(t *testing.T) {
-	t.Run("tool output", func(t *testing.T) {
-		input := &Input{Items: []Item{
-			{Type: "function_call", CallID: "call_a", Name: "first_tool", Arguments: `{}`},
-			{Type: "function_call_output", CallID: "call_a", Output: &Input{Text: lo.ToPtr("result")}},
-			{Type: "function_call", CallID: "call_b", Name: "second_tool", Arguments: `{}`},
-		}}
+func TestConvertInputToMessages_StopsToolCallGroupsAtBoundaries(t *testing.T) {
+	functionCall := func(callID string) Item {
+		return Item{Type: "function_call", CallID: callID, Name: "lookup", Arguments: `{}`}
+	}
+	customCall := func(callID string) Item {
+		return Item{Type: "custom_tool_call", CallID: callID, Name: "apply_patch", Input: lo.ToPtr("patch")}
+	}
+	toolSearchCall := func(callID string) Item {
+		return Item{Type: "tool_search_call", CallID: callID, Execution: "client", Arguments: `{}`}
+	}
 
-		messages, err := convertInputToMessages(input)
-		require.NoError(t, err)
-		require.Len(t, messages, 3)
-		require.Equal(t, []string{"assistant", "tool", "assistant"}, []string{
-			messages[0].Role,
-			messages[1].Role,
-			messages[2].Role,
+	tests := []struct {
+		name      string
+		items     []Item
+		wantRoles []string
+	}{
+		{
+			name: "function output",
+			items: []Item{
+				functionCall("call:1"),
+				{Type: "function_call_output", CallID: "call:1", Output: &Input{Text: lo.ToPtr("result")}},
+				functionCall("call:2"),
+			},
+			wantRoles: []string{"assistant", "tool", "assistant"},
+		},
+		{
+			name: "custom output",
+			items: []Item{
+				customCall("call:1"),
+				{Type: "custom_tool_call_output", CallID: "call:1", Output: &Input{Text: lo.ToPtr("result")}},
+				functionCall("call:2"),
+			},
+			wantRoles: []string{"assistant", "tool", "assistant"},
+		},
+		{
+			name: "tool search output",
+			items: []Item{
+				toolSearchCall("call:1"),
+				{Type: "tool_search_output", CallID: "call:1", Tools: []Tool{}},
+				functionCall("call:2"),
+			},
+			wantRoles: []string{"assistant", "tool", "assistant"},
+		},
+		{
+			name: "user message",
+			items: []Item{
+				functionCall("call:1"),
+				{Type: "message", Role: "user", Content: &Input{Text: lo.ToPtr("next turn")}},
+				customCall("call:2"),
+			},
+			wantRoles: []string{"assistant", "user", "assistant"},
+		},
+		{
+			name: "reasoning",
+			items: []Item{
+				functionCall("call:1"),
+				{Type: "reasoning", Summary: []ReasoningSummary{{Type: "summary_text", Text: "next turn"}}},
+				customCall("call:2"),
+			},
+			wantRoles: []string{"assistant", "assistant"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			messages, err := convertInputToMessages(&Input{Items: tt.items})
+			require.NoError(t, err)
+			require.Len(t, messages, len(tt.wantRoles))
+			roles := make([]string, len(messages))
+			for i := range messages {
+				roles[i] = messages[i].Role
+			}
+			require.Equal(t, tt.wantRoles, roles)
+			require.Equal(t, "call:1", messages[0].ToolCalls[0].ID)
+			require.Equal(t, "call:2", messages[len(messages)-1].ToolCalls[0].ID)
 		})
-		require.Equal(t, "call_a", messages[0].ToolCalls[0].ID)
-		require.Equal(t, "call_b", messages[2].ToolCalls[0].ID)
-	})
-
-	t.Run("user message", func(t *testing.T) {
-		input := &Input{Items: []Item{
-			{Type: "function_call", CallID: "call_a", Name: "first_tool", Arguments: `{}`},
-			{Role: "user", Content: &Input{Text: lo.ToPtr("New turn.")}},
-			{Type: "function_call", CallID: "call_b", Name: "second_tool", Arguments: `{}`},
-		}}
-
-		messages, err := convertInputToMessages(input)
-		require.NoError(t, err)
-		require.Len(t, messages, 3)
-		require.Equal(t, []string{"assistant", "user", "assistant"}, []string{
-			messages[0].Role,
-			messages[1].Role,
-			messages[2].Role,
-		})
-		require.Equal(t, "call_a", messages[0].ToolCalls[0].ID)
-		require.Equal(t, "call_b", messages[2].ToolCalls[0].ID)
-	})
+	}
 }
 
 func TestConvertReasoningWithFollowing(t *testing.T) {

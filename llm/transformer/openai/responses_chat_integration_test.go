@@ -82,6 +82,48 @@ func TestResponsesToChatTools_NonStreamingRoundTrip(t *testing.T) {
 	require.Equal(t, "collaboration", result.Output[3].Namespace)
 }
 
+func TestResponsesToChatHistory_MergesConsecutiveNamespaceCallsBeforeOutputs(t *testing.T) {
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":[
+			{"type":"additional_tools","role":"developer","tools":[
+				{"type":"namespace","name":"multi_agent_v1","tools":[
+					{"type":"function","name":"spawn_agent","parameters":{"type":"object","properties":{}}},
+					{"type":"function","name":"send_message","parameters":{"type":"object","properties":{}}}
+				]}
+			]},
+			{"type":"function_call","call_id":"multi_agent_v1__spawn_agent:6","name":"spawn_agent","namespace":"multi_agent_v1","arguments":{}},
+			{"type":"function_call","call_id":"multi_agent_v1__send_message:7","name":"send_message","namespace":"multi_agent_v1","arguments":{}},
+			{"type":"function_call_output","call_id":"multi_agent_v1__spawn_agent:6","output":"spawned"},
+			{"type":"function_call_output","call_id":"multi_agent_v1__send_message:7","output":"sent"},
+			{"role":"user","type":"message","content":[{"type":"input_text","text":"continue"}]}
+		]
+	}`)})
+	require.NoError(t, err)
+
+	chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	var converted Request
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+	require.Len(t, converted.Messages, 4)
+	require.Equal(t, "assistant", converted.Messages[0].Role)
+	require.Len(t, converted.Messages[0].ToolCalls, 2)
+	require.Equal(t, "multi_agent_v1__spawn_agent:6", converted.Messages[0].ToolCalls[0].ID)
+	require.Equal(t, "multi_agent_v1__spawn_agent", converted.Messages[0].ToolCalls[0].Function.Name)
+	require.Equal(t, "multi_agent_v1__send_message:7", converted.Messages[0].ToolCalls[1].ID)
+	require.Equal(t, "multi_agent_v1__send_message", converted.Messages[0].ToolCalls[1].Function.Name)
+	require.Equal(t, "tool", converted.Messages[1].Role)
+	require.Equal(t, "multi_agent_v1__spawn_agent:6", *converted.Messages[1].ToolCallID)
+	require.Equal(t, "tool", converted.Messages[2].Role)
+	require.Equal(t, "multi_agent_v1__send_message:7", *converted.Messages[2].ToolCallID)
+	require.Equal(t, "user", converted.Messages[3].Role)
+}
+
 func TestResponsesToChatCustomTool_ParateraNonStreamingSimulation(t *testing.T) {
 	ctx := context.Background()
 	responsesInbound := responsesapi.NewInboundTransformer()

@@ -343,7 +343,8 @@ func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 }
 
 // convertInputToMessages converts Responses API input to llm.Message slice.
-// It handles merging consecutive tool calls that belong to the same assistant turn.
+// It merges reasoning with its following output and consecutive tool calls
+// that belong to the same assistant turn.
 func convertInputToMessages(input *Input) ([]llm.Message, error) {
 	if input == nil {
 		return nil, nil
@@ -384,27 +385,24 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 			continue
 		}
 
-		if item.Type == "function_call" || item.Type == "custom_tool_call" {
+		// Responses represents each tool call in an assistant turn as a separate output item,
+		// while Chat Completions requires one assistant message containing all
+		// calls before their tool result messages.
+		if isToolCallItemType(item.Type) {
 			msg := llm.Message{Role: "assistant"}
-
-			for i < len(input.Items) {
-				callItem := &input.Items[i]
-				if callItem.Type != "function_call" && callItem.Type != "custom_tool_call" {
-					break
-				}
-
-				callMsg, err := convertItemToMessage(callItem)
+			for i < len(input.Items) && isToolCallItemType(input.Items[i].Type) {
+				callMessage, err := convertItemToMessage(&input.Items[i])
 				if err != nil {
 					return nil, err
 				}
-				if callMsg != nil {
-					msg.ToolCalls = append(msg.ToolCalls, callMsg.ToolCalls...)
+				if callMessage != nil {
+					msg.ToolCalls = append(msg.ToolCalls, callMessage.ToolCalls...)
 				}
 				i++
 			}
-
-			messages = append(messages, msg)
-
+			if len(msg.ToolCalls) > 0 {
+				messages = append(messages, msg)
+			}
 			continue
 		}
 
@@ -422,6 +420,15 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 	}
 
 	return messages, nil
+}
+
+func isToolCallItemType(itemType string) bool {
+	switch itemType {
+	case "function_call", "custom_tool_call", "tool_search_call":
+		return true
+	default:
+		return false
+	}
 }
 
 // convertReasoningWithFollowing converts a reasoning item and merges it with subsequent

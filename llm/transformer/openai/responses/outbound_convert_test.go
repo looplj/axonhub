@@ -462,6 +462,8 @@ func TestConvertToolMessageCustomOutputImageCarriesDetail(t *testing.T) {
 	require.Equal(t, "input_image", decoded.Output[0].Type)
 	require.Equal(t, "https://example.com/shot.png", lo.FromPtr(decoded.Output[0].ImageURL))
 	require.Equal(t, "auto", lo.FromPtr(decoded.Output[0].Detail))
+}
+
 func TestConvertToolSearchOutputMalformedContentDegradesWithWarning(t *testing.T) {
 	var logs bytes.Buffer
 	previousLogger := slog.Default()
