@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
+import { enUS, zhCN } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
 import { IconRefresh, IconRefreshOff, IconKey, IconAlertTriangle, IconTrash } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
@@ -29,8 +30,15 @@ interface ChannelsDisabledAPIKeysDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function formatDuration(expiresAt: Date, language: string): string {
+  return formatDistanceToNow(expiresAt, {
+    addSuffix: false,
+    locale: language.startsWith('zh') ? zhCN : enUS,
+  });
+}
+
 export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDisabledAPIKeysDialogProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { currentRow, setOpen } = useChannels();
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [confirmPopoverKey, setConfirmPopoverKey] = useState<string | null>(null);
@@ -294,6 +302,13 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
                               </>
                             )}
                           </div>
+                          {dk.expiresAt && new Date(dk.expiresAt) > new Date() && (
+                            <div className='text-xs text-blue-500'>
+                              {t('channels.dialogs.disabledAPIKeys.expiresIn', {
+                                time: formatDuration(new Date(dk.expiresAt), i18n.language),
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
 

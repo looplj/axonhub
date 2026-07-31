@@ -127,7 +127,7 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 		perf.MarkCanceled()
 	} else {
 		errorCode := ExtractErrorCode(err)
-		perf.MarkFailed(errorCode)
+		perf.MarkFailedWithMessage(errorCode, extractErrorMessageForMatching(err))
 	}
 
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
@@ -206,6 +206,16 @@ func ExtractErrorCode(err error) int {
 
 	// Default to 500
 	return 500
+}
+
+func extractErrorMessageForMatching(err error) string {
+	message := ExtractErrorMessage(err)
+	httpErr := &httpclient.Error{}
+	if !errors.As(err, &httpErr) || len(httpErr.Body) == 0 {
+		return message
+	}
+
+	return message + "\n" + string(httpErr.Body)
 }
 
 type NoopPerformanceRecording struct {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -317,22 +318,25 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 
 			if svc.apiKeyErrorCounts[perf.ChannelID] != nil {
 				delete(svc.apiKeyErrorCounts[perf.ChannelID], perf.APIKey)
+				rulePrefix := perf.APIKey + ":rule:"
+				for key := range svc.apiKeyErrorCounts[perf.ChannelID] {
+					if strings.HasPrefix(key, rulePrefix) {
+						delete(svc.apiKeyErrorCounts[perf.ChannelID], key)
+					}
+				}
 			}
 
 			svc.apiKeyErrorCountsLock.Unlock()
 		}
 	} else if !perf.Canceled {
-		policy := svc.SystemService.RetryPolicyOrDefault(ctx)
-
-		if policy.AutoDisableChannel.Enabled {
-			// Check API key error first if available.
-			if perf.APIKey != "" {
-				if svc.checkAndHandleAPIKeyError(ctx, perf, policy) {
-					return
-				}
-			} else {
-				if svc.checkAndHandleChannelError(ctx, perf, policy) {
-					return
+		handled := perf.APIKey != "" && svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
+		if !handled {
+			policy := svc.SystemService.RetryPolicyOrDefault(ctx)
+			if policy.AutoDisableChannel.Enabled {
+				if perf.APIKey != "" {
+					svc.checkAndHandleAPIKeyError(ctx, perf, policy)
+				} else {
+					svc.checkAndHandleChannelError(ctx, perf, policy)
 				}
 			}
 		}
@@ -491,20 +495,21 @@ func deriveErrorMessage(errorCode int) string {
 
 // PerformanceRecord contains performance metrics collected during request processing.
 type PerformanceRecord struct {
-	ChannelID        int
-	APIKey           string // API key used for the request (sensitive, do not log full value)
-	StartTime           time.Time
-	FirstTokenTime      *time.Time
-	ReasoningStartTime  *time.Time
-	ReasoningEndTime    *time.Time
-	EndTime             time.Time
-	Stream              bool
-	Success          bool
-	Canceled         bool
-	RequestCompleted bool
+	ChannelID          int
+	APIKey             string // API key used for the request (sensitive, do not log full value)
+	StartTime          time.Time
+	FirstTokenTime     *time.Time
+	ReasoningStartTime *time.Time
+	ReasoningEndTime   *time.Time
+	EndTime            time.Time
+	Stream             bool
+	Success            bool
+	Canceled           bool
+	RequestCompleted   bool
 
 	// If response status code is 0, it means the request is successful.
 	ResponseStatusCode int
+	ErrorMessage       string
 	CompletionTokens   int64
 }
 
@@ -583,6 +588,12 @@ func (m *PerformanceRecord) MarkFailed(errorCode int) {
 	m.ResponseStatusCode = errorCode
 	m.RequestCompleted = true
 	m.EndTime = time.Now()
+}
+
+// MarkFailedWithMessage records the provider error text used by keyword rules.
+func (m *PerformanceRecord) MarkFailedWithMessage(errorCode int, errorMessage string) {
+	m.MarkFailed(errorCode)
+	m.ErrorMessage = errorMessage
 }
 
 // MarkCanceled marks the request as canceled by context.

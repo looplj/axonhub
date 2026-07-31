@@ -110,7 +110,9 @@ func GetRequestID(ctx context.Context) (string, bool) {
 // WithChannelAPIKey stores the channel API key in the context.
 func WithChannelAPIKey(ctx context.Context, apiKey string) context.Context {
 	container := getContainer(ctx)
+	container.mu.Lock()
 	container.ChannelAPIKey = &apiKey
+	container.mu.Unlock()
 
 	return withContainer(ctx, container)
 }
@@ -118,6 +120,9 @@ func WithChannelAPIKey(ctx context.Context, apiKey string) context.Context {
 // GetChannelAPIKey retrieves the channel API key from the context.
 func GetChannelAPIKey(ctx context.Context) (string, bool) {
 	container := getContainer(ctx)
+	container.mu.RLock()
+	defer container.mu.RUnlock()
+
 	if container.ChannelAPIKey != nil {
 		return *container.ChannelAPIKey, true
 	}

@@ -1,6 +1,7 @@
 import { useChannels } from '../context/channels-context';
 import { ChannelsActionDialog } from './channels-action-dialog';
 import { ChannelsArchiveDialog } from './channels-archive-dialog';
+import { ChannelsAPIKeyRulesDialog } from './channels-apikey-rules-dialog';
 import { ChannelsBulkApplyTemplateDialog } from './channels-bulk-apply-template-dialog';
 import { ChannelsBulkClearTemplateDialog } from './channels-bulk-clear-template-dialog';
 import { ChannelsBulkArchiveDialog } from './channels-bulk-archive-dialog';
@@ -309,6 +310,20 @@ export function ChannelsDialogs() {
                 }, 500);
               }
             }}
+          />
+
+          <ChannelsAPIKeyRulesDialog
+            key={`channel-api-key-rules-${currentRow.id}`}
+            open={open === 'apiKeyRules'}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setOpen(null);
+                setTimeout(() => {
+                  setCurrentRow(null);
+                }, 500);
+              }
+            }}
+            currentRow={currentRow}
           />
 
           <ChannelsTestAPIKeysDialog

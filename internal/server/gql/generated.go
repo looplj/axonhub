@@ -121,6 +121,14 @@ type ComplexityRoot struct {
 		UserID     func(childComplexity int) int
 	}
 
+	APIKeyAutoDisableRule struct {
+		Action                 func(childComplexity int) int
+		DisableDurationMinutes func(childComplexity int) int
+		KeywordPatterns        func(childComplexity int) int
+		StatusCodes            func(childComplexity int) int
+		Times                  func(childComplexity int) int
+	}
+
 	APIKeyConnection struct {
 		Edges      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
@@ -492,7 +500,8 @@ type ComplexityRoot struct {
 	}
 
 	ChannelPolicies struct {
-		Stream func(childComplexity int) int
+		APIKeyAutoDisableRules func(childComplexity int) int
+		Stream                 func(childComplexity int) int
 	}
 
 	ChannelProbe struct {
@@ -697,6 +706,7 @@ type ComplexityRoot struct {
 	DisabledAPIKey struct {
 		DisabledAt func(childComplexity int) int
 		ErrorCode  func(childComplexity int) int
+		ExpiresAt  func(childComplexity int) int
 		Key        func(childComplexity int) int
 		Reason     func(childComplexity int) int
 	}
@@ -2597,6 +2607,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.APIKey.UserID(childComplexity), true
 
+	case "APIKeyAutoDisableRule.action":
+		if e.complexity.APIKeyAutoDisableRule.Action == nil {
+			break
+		}
+
+		return e.complexity.APIKeyAutoDisableRule.Action(childComplexity), true
+	case "APIKeyAutoDisableRule.disableDurationMinutes":
+		if e.complexity.APIKeyAutoDisableRule.DisableDurationMinutes == nil {
+			break
+		}
+
+		return e.complexity.APIKeyAutoDisableRule.DisableDurationMinutes(childComplexity), true
+	case "APIKeyAutoDisableRule.keywordPatterns":
+		if e.complexity.APIKeyAutoDisableRule.KeywordPatterns == nil {
+			break
+		}
+
+		return e.complexity.APIKeyAutoDisableRule.KeywordPatterns(childComplexity), true
+	case "APIKeyAutoDisableRule.statusCodes":
+		if e.complexity.APIKeyAutoDisableRule.StatusCodes == nil {
+			break
+		}
+
+		return e.complexity.APIKeyAutoDisableRule.StatusCodes(childComplexity), true
+	case "APIKeyAutoDisableRule.times":
+		if e.complexity.APIKeyAutoDisableRule.Times == nil {
+			break
+		}
+
+		return e.complexity.APIKeyAutoDisableRule.Times(childComplexity), true
+
 	case "APIKeyConnection.edges":
 		if e.complexity.APIKeyConnection.Edges == nil {
 			break
@@ -3999,6 +4040,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelPerformanceStat.TtftMs(childComplexity), true
 
+	case "ChannelPolicies.apiKeyAutoDisableRules":
+		if e.complexity.ChannelPolicies.APIKeyAutoDisableRules == nil {
+			break
+		}
+
+		return e.complexity.ChannelPolicies.APIKeyAutoDisableRules(childComplexity), true
 	case "ChannelPolicies.stream":
 		if e.complexity.ChannelPolicies.Stream == nil {
 			break
@@ -4729,6 +4776,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DisabledAPIKey.ErrorCode(childComplexity), true
+	case "DisabledAPIKey.expiresAt":
+		if e.complexity.DisabledAPIKey.ExpiresAt == nil {
+			break
+		}
+
+		return e.complexity.DisabledAPIKey.ExpiresAt(childComplexity), true
 	case "DisabledAPIKey.key":
 		if e.complexity.DisabledAPIKey.Key == nil {
 			break
@@ -11329,6 +11382,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAPIKeyAutoDisableRuleInput,
 		ec.unmarshalInputAPIKeyOrder,
 		ec.unmarshalInputAPIKeyProfileInput,
 		ec.unmarshalInputAPIKeyProfileTemplateOrder,
@@ -15600,6 +15654,151 @@ func (ec *executionContext) fieldContext_APIKey_requests(ctx context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _APIKeyAutoDisableRule_statusCodes(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyAutoDisableRule) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyAutoDisableRule_statusCodes,
+		func(ctx context.Context) (any, error) {
+			return obj.StatusCodes, nil
+		},
+		nil,
+		ec.marshalOInt2ᚕintᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyAutoDisableRule_statusCodes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyAutoDisableRule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyAutoDisableRule_keywordPatterns(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyAutoDisableRule) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyAutoDisableRule_keywordPatterns,
+		func(ctx context.Context) (any, error) {
+			return obj.KeywordPatterns, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyAutoDisableRule_keywordPatterns(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyAutoDisableRule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyAutoDisableRule_times(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyAutoDisableRule) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyAutoDisableRule_times,
+		func(ctx context.Context) (any, error) {
+			return obj.Times, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyAutoDisableRule_times(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyAutoDisableRule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyAutoDisableRule_action(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyAutoDisableRule) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyAutoDisableRule_action,
+		func(ctx context.Context) (any, error) {
+			return obj.Action, nil
+		},
+		nil,
+		ec.marshalNAPIKeyAutoDisableAction2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableAction,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyAutoDisableRule_action(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyAutoDisableRule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type APIKeyAutoDisableAction does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyAutoDisableRule_disableDurationMinutes(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyAutoDisableRule) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyAutoDisableRule_disableDurationMinutes,
+		func(ctx context.Context) (any, error) {
+			return obj.DisableDurationMinutes, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyAutoDisableRule_disableDurationMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyAutoDisableRule",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _APIKeyConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.APIKeyConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19818,6 +20017,8 @@ func (ec *executionContext) fieldContext_Channel_policies(_ context.Context, fie
 			switch field.Name {
 			case "stream":
 				return ec.fieldContext_ChannelPolicies_stream(ctx, field)
+			case "apiKeyAutoDisableRules":
+				return ec.fieldContext_ChannelPolicies_apiKeyAutoDisableRules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelPolicies", field.Name)
 		},
@@ -20457,6 +20658,8 @@ func (ec *executionContext) fieldContext_Channel_disabledAPIKeys(_ context.Conte
 				return ec.fieldContext_DisabledAPIKey_errorCode(ctx, field)
 			case "reason":
 				return ec.fieldContext_DisabledAPIKey_reason(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_DisabledAPIKey_expiresAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DisabledAPIKey", field.Name)
 		},
@@ -23153,6 +23356,47 @@ func (ec *executionContext) fieldContext_ChannelPolicies_stream(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type CapabilityPolicy does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelPolicies_apiKeyAutoDisableRules(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelPolicies) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelPolicies_apiKeyAutoDisableRules,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyAutoDisableRules, nil
+		},
+		nil,
+		ec.marshalOAPIKeyAutoDisableRule2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRuleᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelPolicies_apiKeyAutoDisableRules(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelPolicies",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "statusCodes":
+				return ec.fieldContext_APIKeyAutoDisableRule_statusCodes(ctx, field)
+			case "keywordPatterns":
+				return ec.fieldContext_APIKeyAutoDisableRule_keywordPatterns(ctx, field)
+			case "times":
+				return ec.fieldContext_APIKeyAutoDisableRule_times(ctx, field)
+			case "action":
+				return ec.fieldContext_APIKeyAutoDisableRule_action(ctx, field)
+			case "disableDurationMinutes":
+				return ec.fieldContext_APIKeyAutoDisableRule_disableDurationMinutes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type APIKeyAutoDisableRule", field.Name)
 		},
 	}
 	return fc, nil
@@ -26907,6 +27151,35 @@ func (ec *executionContext) fieldContext_DisabledAPIKey_reason(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DisabledAPIKey_expiresAt(ctx context.Context, field graphql.CollectedField, obj *objects.DisabledAPIKey) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DisabledAPIKey_expiresAt,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_DisabledAPIKey_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DisabledAPIKey",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -62111,6 +62384,61 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAPIKeyAutoDisableRuleInput(ctx context.Context, obj any) (objects.APIKeyAutoDisableRule, error) {
+	var it objects.APIKeyAutoDisableRule
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"statusCodes", "keywordPatterns", "times", "action", "disableDurationMinutes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "statusCodes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("statusCodes"))
+			data, err := ec.unmarshalOInt2ᚕintᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.StatusCodes = data
+		case "keywordPatterns":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keywordPatterns"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeywordPatterns = data
+		case "times":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("times"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Times = data
+		case "action":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+			data, err := ec.unmarshalNAPIKeyAutoDisableAction2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableAction(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Action = data
+		case "disableDurationMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("disableDurationMinutes"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisableDurationMinutes = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputAPIKeyOrder(ctx context.Context, obj any) (ent.APIKeyOrder, error) {
 	var it ent.APIKeyOrder
 	asMap := map[string]any{}
@@ -66206,7 +66534,7 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"stream"}
+	fieldsInOrder := [...]string{"stream", "apiKeyAutoDisableRules"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -66220,6 +66548,13 @@ func (ec *executionContext) unmarshalInputChannelPoliciesInput(ctx context.Conte
 				return it, err
 			}
 			it.Stream = data
+		case "apiKeyAutoDisableRules":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyAutoDisableRules"))
+			data, err := ec.unmarshalOAPIKeyAutoDisableRuleInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRuleᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyAutoDisableRules = data
 		}
 	}
 
@@ -88635,6 +88970,56 @@ func (ec *executionContext) _APIKey(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var aPIKeyAutoDisableRuleImplementors = []string{"APIKeyAutoDisableRule"}
+
+func (ec *executionContext) _APIKeyAutoDisableRule(ctx context.Context, sel ast.SelectionSet, obj *objects.APIKeyAutoDisableRule) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aPIKeyAutoDisableRuleImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("APIKeyAutoDisableRule")
+		case "statusCodes":
+			out.Values[i] = ec._APIKeyAutoDisableRule_statusCodes(ctx, field, obj)
+		case "keywordPatterns":
+			out.Values[i] = ec._APIKeyAutoDisableRule_keywordPatterns(ctx, field, obj)
+		case "times":
+			out.Values[i] = ec._APIKeyAutoDisableRule_times(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "action":
+			out.Values[i] = ec._APIKeyAutoDisableRule_action(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "disableDurationMinutes":
+			out.Values[i] = ec._APIKeyAutoDisableRule_disableDurationMinutes(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var aPIKeyConnectionImplementors = []string{"APIKeyConnection"}
 
 func (ec *executionContext) _APIKeyConnection(ctx context.Context, sel ast.SelectionSet, obj *ent.APIKeyConnection) graphql.Marshaler {
@@ -92090,6 +92475,8 @@ func (ec *executionContext) _ChannelPolicies(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ChannelPolicies")
 		case "stream":
 			out.Values[i] = ec._ChannelPolicies_stream(ctx, field, obj)
+		case "apiKeyAutoDisableRules":
+			out.Values[i] = ec._ChannelPolicies_apiKeyAutoDisableRules(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -93864,6 +94251,8 @@ func (ec *executionContext) _DisabledAPIKey(ctx context.Context, sel ast.Selecti
 			}
 		case "reason":
 			out.Values[i] = ec._DisabledAPIKey_reason(ctx, field, obj)
+		case "expiresAt":
+			out.Values[i] = ec._DisabledAPIKey_expiresAt(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -108319,6 +108708,32 @@ func (ec *executionContext) marshalNAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋ
 	return ec._APIKey(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNAPIKeyAutoDisableAction2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableAction(ctx context.Context, v any) (objects.APIKeyAutoDisableAction, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := objects.APIKeyAutoDisableAction(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAPIKeyAutoDisableAction2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableAction(ctx context.Context, sel ast.SelectionSet, v objects.APIKeyAutoDisableAction) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) marshalNAPIKeyAutoDisableRule2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRule(ctx context.Context, sel ast.SelectionSet, v objects.APIKeyAutoDisableRule) graphql.Marshaler {
+	return ec._APIKeyAutoDisableRule(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNAPIKeyAutoDisableRuleInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRule(ctx context.Context, v any) (objects.APIKeyAutoDisableRule, error) {
+	res, err := ec.unmarshalInputAPIKeyAutoDisableRuleInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNAPIKeyConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyConnection(ctx context.Context, sel ast.SelectionSet, v ent.APIKeyConnection) graphql.Marshaler {
 	return ec._APIKeyConnection(ctx, sel, &v)
 }
@@ -114811,6 +115226,71 @@ func (ec *executionContext) marshalOAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋ
 		return graphql.Null
 	}
 	return ec._APIKey(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOAPIKeyAutoDisableRule2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.APIKeyAutoDisableRule) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAPIKeyAutoDisableRule2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRule(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOAPIKeyAutoDisableRuleInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRuleᚄ(ctx context.Context, v any) ([]objects.APIKeyAutoDisableRule, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.APIKeyAutoDisableRule, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNAPIKeyAutoDisableRuleInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRule(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOAPIKeyEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐAPIKeyEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.APIKeyEdge) graphql.Marshaler {

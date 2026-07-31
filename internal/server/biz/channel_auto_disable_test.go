@@ -632,3 +632,143 @@ func TestChannelService_DisableAPIKeyEmptyKey(t *testing.T) {
 	err := svc.DisableAPIKey(ctx, ch.ID, "", 401, "Reason")
 	require.Error(t, err)
 }
+
+func TestMatchesAPIKeyRule(t *testing.T) {
+	tests := []struct {
+		name string
+		rule objects.APIKeyAutoDisableRule
+		perf *PerformanceRecord
+		want bool
+	}{
+		{
+			name: "status code only",
+			rule: objects.APIKeyAutoDisableRule{StatusCodes: []int{401}},
+			perf: &PerformanceRecord{ResponseStatusCode: 401},
+			want: true,
+		},
+		{
+			name: "keyword only is case insensitive",
+			rule: objects.APIKeyAutoDisableRule{KeywordPatterns: []string{"quota exceeded"}},
+			perf: &PerformanceRecord{ResponseStatusCode: 503, ErrorMessage: "QUOTA EXCEEDED for this account"},
+			want: true,
+		},
+		{
+			name: "regular expression",
+			rule: objects.APIKeyAutoDisableRule{KeywordPatterns: []string{`account (was )?disabled`}},
+			perf: &PerformanceRecord{ResponseStatusCode: 400, ErrorMessage: "Account was disabled"},
+			want: true,
+		},
+		{
+			name: "status and keyword must both match",
+			rule: objects.APIKeyAutoDisableRule{StatusCodes: []int{401}, KeywordPatterns: []string{"invalid key"}},
+			perf: &PerformanceRecord{ResponseStatusCode: 403, ErrorMessage: "invalid key"},
+			want: false,
+		},
+		{
+			name: "missing message does not match keyword",
+			rule: objects.APIKeyAutoDisableRule{KeywordPatterns: []string{"quota"}},
+			perf: &PerformanceRecord{ResponseStatusCode: 429},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, matchesAPIKeyRule(tt.rule, tt.perf))
+		})
+	}
+}
+
+func TestNormalizeAPIKeyAutoDisableRules(t *testing.T) {
+	duration := 30
+	policies := &objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{
+		{
+			StatusCodes:            []int{429, 401, 429},
+			KeywordPatterns:        []string{" quota ", "quota", ""},
+			Times:                  2,
+			Action:                 objects.APIKeyAutoDisableActionTemporary,
+			DisableDurationMinutes: &duration,
+		},
+	}}
+
+	require.NoError(t, NormalizeAPIKeyAutoDisableRules(policies))
+	require.Equal(t, []int{401, 429}, policies.APIKeyAutoDisableRules[0].StatusCodes)
+	require.Equal(t, []string{"quota"}, policies.APIKeyAutoDisableRules[0].KeywordPatterns)
+
+	invalidDuration := 0
+	tests := []objects.APIKeyAutoDisableRule{
+		{Times: 0, Action: objects.APIKeyAutoDisableActionTemporary},
+		{StatusCodes: []int{99}, Times: 1, Action: objects.APIKeyAutoDisableActionTemporary},
+		{Times: 1, Action: "unsupported"},
+		{Times: 1, Action: objects.APIKeyAutoDisableActionTemporary, DisableDurationMinutes: &invalidDuration},
+	}
+	for _, rule := range tests {
+		require.Error(t, NormalizeAPIKeyAutoDisableRules(&objects.ChannelPolicies{
+			APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{rule},
+		}))
+	}
+}
+
+func TestChannelService_ChannelAPIKeyRuleTemporaryDisableAfterThreshold(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	duration := 30
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "temporary-rule", []string{"key1", "key2"})
+	ch, err := client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{
+			{
+				StatusCodes:            []int{429},
+				Times:                  2,
+				Action:                 objects.APIKeyAutoDisableActionTemporary,
+				DisableDurationMinutes: &duration,
+			},
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
+
+	perf := &PerformanceRecord{ChannelID: ch.ID, APIKey: "key1", ResponseStatusCode: 429}
+	require.False(t, svc.checkAndHandleChannelAPIKeyRules(ctx, perf))
+	require.True(t, svc.checkAndHandleChannelAPIKeyRules(ctx, perf))
+
+	updated, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Len(t, updated.DisabledAPIKeys, 1)
+	require.Equal(t, "key1", updated.DisabledAPIKeys[0].Key)
+	require.NotNil(t, updated.DisabledAPIKeys[0].ExpiresAt)
+	require.WithinDuration(t, time.Now().Add(30*time.Minute), *updated.DisabledAPIKeys[0].ExpiresAt, 5*time.Second)
+}
+
+func TestChannelService_ChannelAPIKeyRulePermanentActionKeepsLastKeyDisabled(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := newTestChannelService(client)
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "permanent-rule", []string{"only-key"})
+	ch, err := client.Channel.UpdateOneID(ch.ID).
+		SetPolicies(objects.ChannelPolicies{APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{
+			{
+				StatusCodes: []int{401},
+				Times:       1,
+				Action:      objects.APIKeyAutoDisableActionPermanent,
+			},
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+	svc.SetEnabledChannelsForTest([]*Channel{buildChannel(ch, nil)})
+
+	require.True(t, svc.checkAndHandleChannelAPIKeyRules(ctx, &PerformanceRecord{
+		ChannelID: ch.ID, APIKey: "only-key", ResponseStatusCode: 401,
+	}))
+
+	updated, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusDisabled, updated.Status)
+	require.Equal(t, []string{"only-key"}, updated.Credentials.APIKeys)
+	require.Len(t, updated.DisabledAPIKeys, 1)
+	require.Nil(t, updated.DisabledAPIKeys[0].ExpiresAt)
+}
