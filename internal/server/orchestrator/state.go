@@ -37,6 +37,11 @@ type PersistenceState struct {
 	// candidate-specific forcing to provider-side streaming happens.
 	OriginalRequestStream *bool
 
+	// PromptProtectionMaskRules records the mask rules that changed this request.
+	// Request-body pass-through uses it to patch the original JSON without dropping
+	// provider-specific fields that are not represented by the unified request.
+	PromptProtectionMaskRules []*ent.PromptProtectionRule
+
 	// Persistence state
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution
