@@ -277,6 +277,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	if lo.FromPtr(payload.PromptCacheKey) == "" {
 		if sessionID, ok := shared.GetSessionID(ctx); ok {
+			// A session may multiplex several concurrent conversations
+			// (e.g. Claude Code subagents); scope the cache key to the
+			// conversation so they do not evict each other upstream.
+			if anchor := conversationAnchor(llmReq.Messages); anchor != "" {
+				sessionID = sessionID + "-" + anchor
+			}
+
 			payload.PromptCacheKey = lo.ToPtr(sessionID)
 		}
 	}
