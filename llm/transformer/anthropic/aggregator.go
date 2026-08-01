@@ -151,7 +151,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 					if event.Usage.CachedTokens > 0 {
 						usage.CachedTokens = event.Usage.CachedTokens
-						usage.InputTokens -= event.Usage.CacheReadInputTokens
+						usage.InputTokens = max(0, usage.InputTokens-event.Usage.CacheReadInputTokens)
 					}
 
 					if event.Usage.CacheCreationInputTokens > 0 {

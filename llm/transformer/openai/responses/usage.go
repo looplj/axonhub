@@ -20,6 +20,9 @@ type Usage struct {
 }
 
 func (u *Usage) ToUsage() *llm.Usage {
+	if u == nil {
+		return nil
+	}
 	return &llm.Usage{
 		PromptTokens:     u.InputTokens,
 		CompletionTokens: u.OutputTokens,
