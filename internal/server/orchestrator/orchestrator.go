@@ -168,6 +168,10 @@ type ChatCompletionResult struct {
 }
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
+	// API key providers cannot return a derived context, so install the shared
+	// request container before provider selection mutates it.
+	ctx = contexts.EnsureContainer(ctx)
+
 	// The context is system bypassed to allow the orchestrator to access the system settings.
 	ctx = authz.WithSystemBypass(ctx, "process-chat-completion")
 
@@ -321,6 +325,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			); updateErr != nil {
 				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(updateErr))
 			}
+			maybeEvaluateChannelAPIKeyRulesOnFailure(persistCtx, outbound, err)
 		}
 
 		// Update the main request status based on error
@@ -349,4 +354,38 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		ChatCompletion:       result.Response,
 		ChatCompletionStream: nil,
 	}, nil
+}
+
+func maybeEvaluateChannelAPIKeyRulesOnFailure(
+	ctx context.Context,
+	outbound *PersistentOutboundTransformer,
+	rawErr error,
+) {
+	if outbound == nil || outbound.state == nil || outbound.state.ChannelService == nil {
+		return
+	}
+	if outbound.state.Perf != nil && outbound.state.Perf.RequestCompleted {
+		return
+	}
+
+	channel := outbound.GetCurrentChannel()
+	if channel == nil {
+		return
+	}
+
+	apiKey, ok := contexts.GetChannelAPIKey(ctx)
+	if !ok && outbound.state.Perf != nil {
+		apiKey = outbound.state.Perf.APIKey
+	}
+	if apiKey == "" {
+		return
+	}
+
+	outbound.state.ChannelService.EvaluateAPIKeyRulesForFailure(
+		ctx,
+		channel.ID,
+		apiKey,
+		ExtractErrorCode(rawErr),
+		extractErrorMessageForMatching(rawErr),
+	)
 }

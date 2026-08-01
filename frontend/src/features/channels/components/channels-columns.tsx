@@ -23,6 +23,7 @@ import {
   IconGauge,
   IconHistory,
   IconPlugConnected,
+  IconShieldLock,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -224,6 +225,17 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             >
               <IconPlayerPlay size={16} className='mr-2' />
               {t('channels.actions.testAPIKeys', { count: apiKeysCount })}
+            </DropdownMenuItem>
+          )}
+          {channelPermissions.canWrite && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('apiKeyRules');
+              }}
+            >
+              <IconShieldLock size={16} className='mr-2' />
+              {t('channels.dialogs.apiKeyRules.action')}
             </DropdownMenuItem>
           )}
           {hasDisabledAPIKeys && (

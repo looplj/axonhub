@@ -133,6 +133,15 @@ models:
   ChannelPoliciesInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelPolicies
+  APIKeyAutoDisableRule:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableRule
+  APIKeyAutoDisableRuleInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableRule
+  APIKeyAutoDisableAction:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableAction
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings
