@@ -31,6 +31,13 @@ func New(config Config) *Server {
 	}
 
 	engine := gin.New()
+
+	// Set max multipart memory for file uploads (e.g., backup restore).
+	// Default 32 MB may be insufficient for large backup files.
+	if config.MaxMultipartMemory > 0 {
+		engine.MaxMultipartMemory = int64(config.MaxMultipartMemory)
+	}
+
 	engine.Use(middleware.Recovery())
 
 	return &Server{
