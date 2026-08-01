@@ -120,6 +120,13 @@ type TransformOptions struct {
 	// Consumed by the OpenAI-shared outbound transformer. Other transformers ignore it
 	// for now. Strong-typed to mirror ModelMapping; see llm.ReasoningEffortMapping.
 	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoningEffortMapping,omitempty"`
+
+	// DowngradeMidConversationSystem downgrades mid-conversation system messages (e.g. Claude Code
+	// reminders) to user before sending to OpenAI-compatible upstreams. OpenAI-compatible upstreams
+	// hoist all system messages to the front of the prompt, so a newly injected reminder rewrites
+	// the whole system prefix and defeats prompt caching. Downgrading them to user keeps the prefix
+	// stable across turns. true = enabled, nil/false = disabled (default).
+	DowngradeMidConversationSystem *bool `json:"downgradeMidConversationSystem,omitempty"`
 }
 
 type ChannelSettings struct {

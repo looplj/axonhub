@@ -191,6 +191,7 @@ export const transformOptionsSchema = z.object({
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
   reasoningEffortMapping: z.array(reasoningEffortMappingSchema).nullish(),
+  downgradeMidConversationSystem: z.boolean().optional(),
 });
 export type TransformOptions = z.infer<typeof transformOptionsSchema>;
 
