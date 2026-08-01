@@ -2,6 +2,8 @@ package datamigrate
 
 import (
 	"context"
+	"slices"
+	"sync"
 
 	"github.com/Masterminds/semver/v3"
 
@@ -23,6 +25,8 @@ type Migrator struct {
 	client        *ent.Client
 	systemService *biz.SystemService
 	migrations    []DataMigrator
+	completed     []string
+	mu            sync.Mutex
 }
 
 // NewMigrator creates a new Migrator instance with all registered migrations.
@@ -111,6 +115,8 @@ func (m *Migrator) shouldRunMigration(ctx context.Context, migrationVersion stri
 // Run executes all registered migrations in order, checking versions before each migration.
 func (m *Migrator) Run(ctx context.Context) error {
 	ctx = ent.NewContext(ctx, m.client)
+
+	m.completed = nil
 	ctx = authz.WithSystemBypass(ctx, "database-migrate")
 
 	inited, err := m.systemService.IsInitialized(ctx)
@@ -134,10 +140,14 @@ func (m *Migrator) Run(ctx context.Context) error {
 
 		if err := migration.Migrate(ctx, m.client); err != nil {
 			log.Error(ctx, "migration failed", log.String("version", version), log.Cause(err))
+			m.Rollback(ctx)
 			return err
 		}
 
 		log.Info(ctx, "completed migration", log.String("version", version))
+		m.mu.Lock()
+		m.completed = append(m.completed, version)
+		m.mu.Unlock()
 	}
 
 	// Set system version if newer or unset.
@@ -182,4 +192,23 @@ func (m *Migrator) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// Rollback logs completed migrations in reverse order for diagnostics.
+// Currently diagnostic only — does not perform actual data rollback.
+func (m *Migrator) Rollback(ctx context.Context) {
+	m.mu.Lock()
+	completed := slices.Clone(m.completed)
+	m.mu.Unlock()
+
+	if len(completed) == 0 {
+		return
+	}
+
+	log.Warn(ctx, "rollback: reviewing completed migrations (reverse order)",
+		log.Int("count", len(completed)))
+	for i := len(completed) - 1; i >= 0; i-- {
+		log.Warn(ctx, "rollback: completed migration (to be rolled back)",
+			log.String("version", completed[i]))
+	}
 }
