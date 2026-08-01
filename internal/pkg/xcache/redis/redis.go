@@ -19,6 +19,7 @@ type RedisClientInterface interface {
 	Set(ctx context.Context, key string, values any, expiration time.Duration) *redis.StatusCmd
 	Del(ctx context.Context, keys ...string) *redis.IntCmd
 	FlushAll(ctx context.Context) *redis.StatusCmd
+	Scan(ctx context.Context, cursor uint64, match string, count int64) *redis.ScanCmd
 	SAdd(ctx context.Context, key string, members ...any) *redis.IntCmd
 	SMembers(ctx context.Context, key string) *redis.StringSliceCmd
 }
@@ -28,6 +29,8 @@ const (
 	RedisType = "redis"
 	// RedisTagPattern represents the tag pattern to be used as a key in specified storage.
 	RedisTagPattern = "gocache_tag_%s"
+	// RedisKeyPrefix is the gocache key prefix used for SCAN-based deletion.
+	RedisKeyPrefix = "gocache_"
 )
 
 // RedisStore wraps the RedisStore to provide type-safe operations.
@@ -48,8 +51,12 @@ func NewRedisStore[T any](client RedisClientInterface, options ...lib_store.Opti
 func (gs *RedisStore[T]) Get(ctx context.Context, key any) (any, error) {
 	var result T
 
-	//nolint:forcetypeassert // Expected type is string.
-	object, err := gs.client.Get(ctx, key.(string)).Result()
+	k, ok := key.(string)
+	if !ok {
+		return result, lib_store.NotFoundWithCause(fmt.Errorf("expected string key, got %T", key))
+	}
+
+	object, err := gs.client.Get(ctx, k).Result()
 	if errors.Is(err, redis.Nil) {
 		return result, lib_store.NotFoundWithCause(err)
 	}
@@ -113,40 +120,47 @@ func (s *RedisStore[T]) Set(ctx context.Context, key any, value any, options ...
 
 	encodedValue := string(raw)
 
-	//nolint:forcetypeassert // Expected type is string.
-	err = s.client.Set(ctx, key.(string), encodedValue, opts.Expiration).Err()
+	k, ok := key.(string)
+	if !ok {
+		return fmt.Errorf("expected string key, got %T", key)
+	}
+
+	err = s.client.Set(ctx, k, encodedValue, opts.Expiration).Err()
 	if err != nil {
 		return err
 	}
 
 	if tags := opts.Tags; len(tags) > 0 {
 		if ttl := opts.TagsTTL; ttl == 0 {
-			s.setTags(ctx, key, tags)
+			s.setTags(ctx, k, tags)
 		} else {
-			s.setTagsWithTTL(ctx, key, tags, ttl)
+			s.setTagsWithTTL(ctx, k, tags, ttl)
 		}
 	}
 
 	return nil
 }
 
-func (s *RedisStore[T]) setTagsWithTTL(ctx context.Context, key any, tags []string, ttl time.Duration) {
+func (s *RedisStore[T]) setTagsWithTTL(ctx context.Context, key string, tags []string, ttl time.Duration) {
 	for _, tag := range tags {
 		tagKey := fmt.Sprintf(RedisTagPattern, tag)
-		//nolint:forcetypeassert // Expected type is string.
-		s.client.SAdd(ctx, tagKey, key.(string))
+		s.client.SAdd(ctx, tagKey, key)
 		s.client.Expire(ctx, tagKey, ttl)
 	}
 }
 
-func (s *RedisStore[T]) setTags(ctx context.Context, key any, tags []string) {
+func (s *RedisStore[T]) setTags(ctx context.Context, key string, tags []string) {
 	s.setTagsWithTTL(ctx, key, tags, 720*time.Hour)
 }
 
 // Delete removes data from Redis for given key identifier.
 func (gs *RedisStore[T]) Delete(ctx context.Context, key any) error {
-	//nolint:forcetypeassert // Expected type is string.
-	return gs.client.Del(ctx, key.(string)).Err()
+	k, ok := key.(string)
+	if !ok {
+		return fmt.Errorf("expected string key, got %T", key)
+	}
+
+	return gs.client.Del(ctx, k).Err()
 }
 
 // GetType returns the store type.
@@ -154,12 +168,44 @@ func (gs *RedisStore[T]) GetType() string {
 	return RedisType
 }
 
-// Clear resets all data in the store.
-func (gs *RedisStore[T]) Clear(ctx context.Context) error {
-	return gs.client.FlushAll(ctx).Err()
+// deleteByPrefix scans and deletes keys matching the given pattern.
+func (gs *RedisStore[T]) deleteByPrefix(ctx context.Context, match string) error {
+	var cursor uint64
+	for {
+		keys, next, err := gs.client.Scan(ctx, cursor, match, 100).Result()
+		if err != nil {
+			return err
+		}
+
+		if len(keys) > 0 {
+			if err := gs.client.Del(ctx, keys...).Err(); err != nil {
+				return err
+			}
+		}
+
+		cursor = next
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return nil
 }
 
-// Invalidate invalidates some cache data in Redis for given options.
+// Clear resets all gocache-related data in the store.
+func (gs *RedisStore[T]) Clear(ctx context.Context) error {
+	if err := gs.deleteByPrefix(ctx, RedisKeyPrefix+"*"); err != nil {
+		return err
+	}
+
+	return gs.deleteByPrefix(ctx, fmt.Sprintf(RedisTagPattern, "*"))
+}
+
+// Invalidate invalidates gocache-related data in Redis for given options.
 func (gs *RedisStore[T]) Invalidate(ctx context.Context, options ...lib_store.InvalidateOption) error {
-	return gs.client.FlushAll(ctx).Err()
+	if err := gs.deleteByPrefix(ctx, RedisKeyPrefix+"*"); err != nil {
+		return err
+	}
+
+	return gs.deleteByPrefix(ctx, fmt.Sprintf(RedisTagPattern, "*"))
 }

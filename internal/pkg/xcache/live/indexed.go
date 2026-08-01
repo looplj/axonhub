@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"sync"
 	"time"
 
@@ -195,7 +196,8 @@ func (c *IndexedCache[K, V]) calcExpireAt() time.Time {
 		return time.Time{}
 	}
 
-	return time.Now().Add(c.opts.TTL)
+	jitter := time.Duration(float64(c.opts.TTL) * (rand.Float64()*0.4 - 0.2))
+	return time.Now().Add(c.opts.TTL + jitter)
 }
 
 func (c *IndexedCache[K, V]) calcNegativeExpireAt() time.Time {
