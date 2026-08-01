@@ -23,7 +23,16 @@ import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
 import { useCreateModel, useUpdateModel } from '../data/models';
 import { useDevelopersData } from '../data/providers';
 import { type Provider, type ProviderModel, resolveVision } from '../data/providers.schema';
-import { CreateModelInput, createModelInputSchema, UpdateModelInput, ModelCard, ModelType, modelTypeSchema, updateModelInputSchema } from '../data/schema';
+import {
+  CreateModelInput,
+  createModelInputSchema,
+  UpdateModelInput,
+  ModelCard,
+  ModelType,
+  modelTypeSchema,
+  normalizeModelRoutingPolicyValue,
+  updateModelInputSchema,
+} from '../data/schema';
 
 function isDeveloper(provider: string) {
   return DEVELOPER_IDS.includes(provider);
@@ -102,7 +111,7 @@ export function ModelsActionDialog() {
       icon: '',
       group: '',
       modelCard: {},
-      settings: { associations: [] },
+      settings: { associations: [], loadBalancerStrategy: 'default', traceStickyMode: 'default' },
       remark: '',
     },
   });
@@ -117,7 +126,12 @@ export function ModelsActionDialog() {
         icon: currentRow.icon,
         group: currentRow.group,
         modelCard: currentRow.modelCard,
-        settings: currentRow.settings,
+        settings: {
+          ...currentRow.settings,
+          associations: currentRow.settings?.associations ?? [],
+          loadBalancerStrategy: normalizeModelRoutingPolicyValue(currentRow.settings?.loadBalancerStrategy),
+          traceStickyMode: normalizeModelRoutingPolicyValue(currentRow.settings?.traceStickyMode),
+        },
         remark: currentRow.remark || '',
       });
       setSelectedProvider(currentRow.developer);
@@ -134,7 +148,7 @@ export function ModelsActionDialog() {
         icon: '',
         group: '',
         modelCard: {},
-        settings: { associations: [] },
+        settings: { associations: [], loadBalancerStrategy: 'default', traceStickyMode: 'default' },
         remark: '',
       });
       setSelectedProvider('');

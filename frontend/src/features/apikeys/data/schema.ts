@@ -21,6 +21,25 @@ const channelTagsMatchModeFieldSchema = z.preprocess((value) => {
   return value;
 }, channelTagsMatchModeSchema);
 
+/** Normalize legacy/empty routing policy values to the canonical "default". */
+export function normalizeRoutingPolicyValue(value?: string | null): string {
+  if (!value || value === 'system_default') {
+    return 'default';
+  }
+
+  return value;
+}
+
+export function normalizeApiKeyProfileRoutingPolicy<T extends { loadBalanceStrategy?: string | null; traceStickyMode?: string | null }>(
+  profile: T
+): T {
+  return {
+    ...profile,
+    loadBalanceStrategy: normalizeRoutingPolicyValue(profile.loadBalanceStrategy),
+    traceStickyMode: normalizeRoutingPolicyValue(profile.traceStickyMode),
+  };
+}
+
 // API Key schema based on GraphQL schema
 export const apiKeySchema = z.object({
   id: z.string(),
@@ -52,6 +71,7 @@ export const apiKeySchema = z.object({
             channelTagsMatchMode: channelTagsMatchModeFieldSchema,
             modelIDs: z.array(z.string()).optional().nullable(),
             loadBalanceStrategy: z.string().optional().nullable(),
+            traceStickyMode: z.string().optional().nullable(),
             quota: z
               .object({
                 requests: z.number().optional().nullable(),
@@ -150,6 +170,7 @@ export const apiKeyProfileSchema = z.object({
   channelTagsMatchMode: channelTagsMatchModeFieldSchema,
   modelIDs: z.array(z.string()).optional().nullable(),
   loadBalanceStrategy: z.string().optional().nullable(),
+  traceStickyMode: z.string().optional().nullable(),
   quota: z
     .object({
       requests: z.number().optional().nullable(),
@@ -233,6 +254,7 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
             channelTagsMatchMode: channelTagsMatchModeFieldSchema,
             modelIDs: z.array(z.string()).optional().nullable(),
             loadBalanceStrategy: z.string().optional().nullable(),
+            traceStickyMode: z.string().optional().nullable(),
             quota: z
               .object({
                 requests: z.number().int().positive().optional().nullable(),
@@ -333,6 +355,7 @@ export const updateApiKeyProfilesInputSchema = z.object({
       channelTagsMatchMode: channelTagsMatchModeFieldSchema,
       modelIDs: z.array(z.string()).optional().nullable(),
       loadBalanceStrategy: z.string().optional().nullable(),
+      traceStickyMode: z.string().optional().nullable(),
       quota: z
         .object({
           requests: z.number().int().positive().optional().nullable(),
