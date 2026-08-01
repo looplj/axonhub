@@ -609,6 +609,9 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 	if err := validateProfileFilters(profiles.Profiles); err != nil {
 		return nil, err
 	}
+	if err := validateProfileRoutingPolicies(profiles.Profiles); err != nil {
+		return nil, err
+	}
 
 	// Validate quota configuration (if present)
 	if err := validateProfileQuota(profiles.Profiles); err != nil {
@@ -664,6 +667,44 @@ func validateProfileFilters(profiles []objects.APIKeyProfile) error {
 		if !profile.ChannelTagsMatchMode.IsValid() {
 			return fmt.Errorf("profile '%s' channelTagsMatchMode is invalid", profile.Name)
 		}
+	}
+
+	return nil
+}
+
+func validateProfileRoutingPolicies(profiles []objects.APIKeyProfile) error {
+	for i := range profiles {
+		if err := normalizeAndValidateProfileRoutingPolicy(&profiles[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func normalizeAndValidateProfileRoutingPolicy(profile *objects.APIKeyProfile) error {
+	if profile == nil {
+		return nil
+	}
+
+	if profile.LoadBalanceStrategy == nil {
+		profile.LoadBalanceStrategy = lo.ToPtr(objects.RoutingPolicyDefault)
+	} else {
+		normalized := objects.NormalizeRoutingPolicyValue(*profile.LoadBalanceStrategy)
+		profile.LoadBalanceStrategy = &normalized
+	}
+	if !objects.IsValidLoadBalancerStrategy(*profile.LoadBalanceStrategy) {
+		return fmt.Errorf("profile '%s' loadBalanceStrategy is invalid", profile.Name)
+	}
+
+	if profile.TraceStickyMode == nil {
+		profile.TraceStickyMode = lo.ToPtr(objects.RoutingPolicyDefault)
+	} else {
+		normalized := objects.NormalizeRoutingPolicyValue(*profile.TraceStickyMode)
+		profile.TraceStickyMode = &normalized
+	}
+	if !objects.IsValidTraceStickyMode(*profile.TraceStickyMode) {
+		return fmt.Errorf("profile '%s' traceStickyMode is invalid", profile.Name)
 	}
 
 	return nil

@@ -16,6 +16,7 @@ type APIKeyProfile struct {
 	ModelMappings       []ModelMapping `json:"modelMappings"`
 	Quota               *APIKeyQuota   `json:"quota,omitempty"`
 	LoadBalanceStrategy *string        `json:"loadBalanceStrategy,omitempty"`
+	TraceStickyMode     *string        `json:"traceStickyMode,omitempty"`
 
 	ChannelIDs           []int                `json:"channelIDs,omitempty"`
 	ChannelTags          []string             `json:"channelTags,omitempty"`
@@ -128,6 +129,10 @@ func (p *APIKeyProfile) Clone() *APIKeyProfile {
 	if p.LoadBalanceStrategy != nil {
 		s := *p.LoadBalanceStrategy
 		cp.LoadBalanceStrategy = &s
+	}
+	if p.TraceStickyMode != nil {
+		s := *p.TraceStickyMode
+		cp.TraceStickyMode = &s
 	}
 	return &cp
 }

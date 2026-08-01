@@ -24,6 +24,7 @@ type APIKeyProfile {
   modelIDs: [String!]
   quota: APIKeyQuota
   loadBalanceStrategy: String
+  traceStickyMode: String
 }
 
 type APIKeyQuota {
@@ -90,6 +91,7 @@ input APIKeyProfileInput {
   modelIDs: [String!]
   quota: APIKeyQuotaInput
   loadBalanceStrategy: String
+  traceStickyMode: String
 }
 
 input APIKeyQuotaInput {
