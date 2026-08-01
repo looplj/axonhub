@@ -83,8 +83,8 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 		return nil, fmt.Errorf("failed to create project: %w", err)
 	}
 
-	// Create three default project-level roles
-	// Admin role - full permissions
+	// Create project-level role presets. System infrastructure remains system-scoped.
+	// Project Admin role - full project management permissions.
 	adminScopes := []string{
 		string(scopes.ScopeReadUsers),
 		string(scopes.ScopeWriteUsers),
@@ -94,6 +94,8 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 		string(scopes.ScopeWriteAPIKeys),
 		string(scopes.ScopeReadRequests),
 		string(scopes.ScopeWriteRequests),
+		string(scopes.ScopeReadPrompts),
+		string(scopes.ScopeWritePrompts),
 	}
 
 	_, err = client.Role.Create().
@@ -106,12 +108,12 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 		return nil, fmt.Errorf("failed to create admin role: %w", err)
 	}
 
-	// Developer role - read/write channels, read users, read requests
+	// Developer role - use the project without gaining global Channel access.
 	developerScopes := []string{
-		string(scopes.ScopeReadUsers),
 		string(scopes.ScopeReadAPIKeys),
 		string(scopes.ScopeWriteAPIKeys),
 		string(scopes.ScopeReadRequests),
+		string(scopes.ScopeWriteRequests),
 	}
 
 	_, err = client.Role.Create().
@@ -124,9 +126,9 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 		return nil, fmt.Errorf("failed to create developer role: %w", err)
 	}
 
-	// Viewer role - read-only permissions
+	// Viewer role - inspect project content without changing it.
 	viewerScopes := []string{
-		string(scopes.ScopeReadUsers),
+		string(scopes.ScopeReadPrompts),
 		string(scopes.ScopeReadRequests),
 	}
 

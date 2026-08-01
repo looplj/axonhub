@@ -9,29 +9,25 @@ import { Role, RoleConnection, CreateRoleInput, UpdateRoleInput, roleConnectionS
 
 // GraphQL queries and mutations
 const PROJECT_ROLES_QUERY = `
-  query GetProjectRoles($projectId: ID!, $first: Int, $after: Cursor, $orderBy: RoleOrder, $where: RoleWhereInput) {
-    node(id: $projectId) {
-      ... on Project {
-        roles(first: $first, after: $after, orderBy: $orderBy, where: $where) {
-          edges {
-            node {
-              id
-              createdAt
-              updatedAt
-              name
-              scopes
-            }
-            cursor
-          }
-          pageInfo {
-            hasNextPage
-            hasPreviousPage
-            startCursor
-            endCursor
-          }
-          totalCount
+  query GetProjectRoles($first: Int, $after: Cursor, $orderBy: RoleOrder, $where: RoleWhereInput) {
+    roles(first: $first, after: $after, orderBy: $orderBy, where: $where) {
+      edges {
+        node {
+          id
+          createdAt
+          updatedAt
+          name
+          scopes
         }
+        cursor
       }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+        startCursor
+        endCursor
+      }
+      totalCount
     }
   }
 `;
@@ -80,6 +76,7 @@ export function useRoles(
   const selectedProjectId = useSelectedProjectId();
 
   const queryVariables = {
+    first: 20,
     ...variables,
     orderBy: variables.orderBy || { field: 'CREATED_AT', direction: 'DESC' },
   };
@@ -91,11 +88,16 @@ export function useRoles(
         if (!selectedProjectId) {
           throw new Error('Project ID is required');
         }
-        const data = await graphqlRequest<{ node: { roles: RoleConnection } }>(PROJECT_ROLES_QUERY, {
-          projectId: selectedProjectId,
-          ...queryVariables,
-        });
-        return roleConnectionSchema.parse(data?.node?.roles);
+        const data = await graphqlRequest<{ roles: RoleConnection }>(
+          PROJECT_ROLES_QUERY,
+          {
+            projectId: selectedProjectId,
+            ...queryVariables,
+            where: { and: [{ projectID: selectedProjectId }, ...(variables.where ? [variables.where] : [])] },
+          },
+          { 'X-Project-ID': selectedProjectId }
+        );
+        return roleConnectionSchema.parse(data.roles);
       } catch (error) {
         handleError(error, t('common.errors.internalServerError'));
         throw error;
@@ -117,11 +119,12 @@ export function useRole(id: string) {
         if (!selectedProjectId) {
           throw new Error('Project ID is required');
         }
-        const data = await graphqlRequest<{ node: { roles: RoleConnection } }>(PROJECT_ROLES_QUERY, {
-          projectId: selectedProjectId,
-          where: { id },
-        });
-        const role = data.node?.roles?.edges[0]?.node;
+        const data = await graphqlRequest<{ roles: RoleConnection }>(
+          PROJECT_ROLES_QUERY,
+          { projectId: selectedProjectId, where: { and: [{ projectID: selectedProjectId }, { id }] } },
+          { 'X-Project-ID': selectedProjectId }
+        );
+        const role = data.roles?.edges[0]?.node;
         if (!role) {
           throw new Error('Role not found');
         }
@@ -151,7 +154,8 @@ export function useCreateRole() {
           level: 'project',
           projectID: input.projectID || selectedProjectId,
         };
-        const data = await graphqlRequest<{ createRole: Role }>(CREATE_ROLE_MUTATION, { input: inputWithProjectId });
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ createRole: Role }>(CREATE_ROLE_MUTATION, { input: inputWithProjectId }, headers);
         return roleSchema.parse(data.createRole);
       } catch (error) {
         handleError(error, { context: t('roles.dialogs.create.title') });
@@ -169,11 +173,13 @@ export function useUpdateRole() {
   const queryClient = useQueryClient();
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
+  const selectedProjectId = useSelectedProjectId();
 
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: UpdateRoleInput }) => {
       try {
-        const data = await graphqlRequest<{ updateRole: Role }>(UPDATE_ROLE_MUTATION, { id, input });
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ updateRole: Role }>(UPDATE_ROLE_MUTATION, { id, input }, headers);
         return roleSchema.parse(data.updateRole);
       } catch (error) {
         handleError(error, { context: t('roles.dialogs.edit.title') });
@@ -191,11 +197,13 @@ export function useUpdateRole() {
 export function useDeleteRole() {
   const queryClient = useQueryClient();
   const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
 
   return useMutation({
     mutationFn: async (id: string) => {
       try {
-        await graphqlRequest(DELETE_ROLE_MUTATION, { id });
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        await graphqlRequest(DELETE_ROLE_MUTATION, { id }, headers);
       } catch (error) {
         handleError(error, i18n.t('common.errors.internalServerError'));
         throw error;

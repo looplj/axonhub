@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 )
 
+// InvitationHandlersParams contains dependencies for invitation HTTP handlers.
 type InvitationHandlersParams struct {
 	fx.In
 
@@ -20,11 +21,13 @@ type InvitationHandlersParams struct {
 	AuthService       *biz.AuthService
 }
 
+// InvitationHandlers serves invitation creation, lookup, and registration endpoints.
 type InvitationHandlers struct {
 	InvitationService *biz.InvitationService
 	AuthService       *biz.AuthService
 }
 
+// NewInvitationHandlers creates invitation HTTP handlers.
 func NewInvitationHandlers(params InvitationHandlersParams) *InvitationHandlers {
 	return &InvitationHandlers{
 		InvitationService: params.InvitationService,
@@ -32,11 +35,14 @@ func NewInvitationHandlers(params InvitationHandlersParams) *InvitationHandlers 
 	}
 }
 
+// CreateInvitationRequest contains the parameters for creating an invitation.
 type CreateInvitationRequest struct {
 	ExpiresInHours *int `json:"expiresInHours"`
 	MaxUses        int  `json:"maxUses"`
+	RoleID         int  `json:"roleID" binding:"required"`
 }
 
+// InvitationResponse contains invitation metadata returned by the API.
 type InvitationResponse struct {
 	Token         string     `json:"token,omitempty"`
 	ProjectName   string     `json:"projectName"`
@@ -46,6 +52,7 @@ type InvitationResponse struct {
 	RemainingUses int        `json:"remainingUses"`
 }
 
+// RegisterInvitationRequest contains the credentials and profile data for registration.
 type RegisterInvitationRequest struct {
 	Email     string `json:"email" binding:"required,email"`
 	Password  string `json:"password" binding:"required,min=7"`
@@ -53,11 +60,13 @@ type RegisterInvitationRequest struct {
 	LastName  string `json:"lastName"`
 }
 
+// RegisterInvitationResponse contains the registered user and session token.
 type RegisterInvitationResponse struct {
 	User  *objects.UserInfo `json:"user"`
 	Token string            `json:"token"`
 }
 
+// Create handles invitation creation for a project.
 func (h *InvitationHandlers) Create(c *gin.Context) {
 	projectID, ok := contexts.GetProjectID(c.Request.Context())
 	if !ok {
@@ -71,7 +80,7 @@ func (h *InvitationHandlers) Create(c *gin.Context) {
 		return
 	}
 
-	created, err := h.InvitationService.CreateInvitation(c.Request.Context(), projectID, req.ExpiresInHours, req.MaxUses)
+	created, err := h.InvitationService.CreateInvitation(c.Request.Context(), projectID, req.RoleID, req.ExpiresInHours, req.MaxUses)
 	if err != nil {
 		JSONError(c, http.StatusForbidden, err)
 		return
@@ -80,6 +89,7 @@ func (h *InvitationHandlers) Create(c *gin.Context) {
 	c.JSON(http.StatusOK, invitationResponse(created.Token, created.Info))
 }
 
+// Get handles public invitation metadata lookup.
 func (h *InvitationHandlers) Get(c *gin.Context) {
 	info, err := h.InvitationService.GetInvitation(c.Request.Context(), c.Param("token"))
 	if err != nil {
@@ -90,6 +100,7 @@ func (h *InvitationHandlers) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, invitationResponse("", *info))
 }
 
+// Register handles account registration through an invitation.
 func (h *InvitationHandlers) Register(c *gin.Context) {
 	var req RegisterInvitationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

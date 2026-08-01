@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +6,9 @@ import { IconCheck, IconCopy, IconMailPlus } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api-client';
+import { extractNumberIDAsNumber } from '@/lib/utils';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { useRoles } from '@/features/project-roles/data/roles';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -17,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 const formSchema = z.object({
   expiresInHours: z.enum(['1', '6', '24', '168', '0']),
   maxUses: z.enum(['1', '0']),
+  roleID: z.string().min(1),
 });
 
 type InviteForm = z.infer<typeof formSchema>;
@@ -31,10 +34,20 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
   const selectedProjectId = useSelectedProjectId();
   const [inviteLink, setInviteLink] = useState('');
   const [isCopied, setIsCopied] = useState(false);
+  const { data: rolesData, isLoading: isLoadingRoles } = useRoles();
   const form = useForm<InviteForm>({
     resolver: zodResolver(formSchema),
-    defaultValues: { expiresInHours: '168', maxUses: '1' },
+    defaultValues: { expiresInHours: '168', maxUses: '1', roleID: '' },
   });
+
+  const roles = rolesData?.edges.map((edge) => edge.node) || [];
+
+  useEffect(() => {
+    if (form.getValues('roleID') || roles.length === 0) {
+      return;
+    }
+    form.setValue('roleID', roles.find((role) => role.name === 'Developer')?.id || roles[0].id);
+  }, [form, roles]);
 
   const closeDialog = (nextOpen: boolean) => {
     if (!nextOpen) {
@@ -58,6 +71,7 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
         body: {
           expiresInHours: Number(values.expiresInHours),
           maxUses: Number(values.maxUses),
+          roleID: extractNumberIDAsNumber(values.roleID),
         },
       });
       const url = new URL('/sign-up', window.location.origin);
@@ -103,6 +117,28 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
         ) : (
           <Form {...form}>
             <form id='project-user-invite-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
+              <FormField
+                control={form.control}
+                name='roleID'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('users.form.projectRoles')}</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange} disabled={isLoadingRoles || roles.length === 0}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={isLoadingRoles ? t('users.form.loadingRoles') : t('users.form.noProjectRoles')} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {roles.map((role) => (
+                          <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name='expiresInHours'
@@ -159,7 +195,7 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
               <DialogClose asChild>
                 <Button variant='outline'>{t('common.buttons.cancel')}</Button>
               </DialogClose>
-              <Button type='submit' form='project-user-invite-form' disabled={form.formState.isSubmitting}>
+              <Button type='submit' form='project-user-invite-form' disabled={form.formState.isSubmitting || isLoadingRoles || roles.length === 0}>
                 {t('users.buttons.createInvitation')}
               </Button>
             </>

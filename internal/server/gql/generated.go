@@ -2045,10 +2045,11 @@ type ComplexityRoot struct {
 	}
 
 	UserProjectInfo struct {
-		IsOwner   func(childComplexity int) int
-		ProjectID func(childComplexity int) int
-		Roles     func(childComplexity int) int
-		Scopes    func(childComplexity int) int
+		EffectiveScopes func(childComplexity int) int
+		IsOwner         func(childComplexity int) int
+		ProjectID       func(childComplexity int) int
+		Roles           func(childComplexity int) int
+		Scopes          func(childComplexity int) int
 	}
 
 	UserRole struct {
@@ -11156,6 +11157,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UserProject.UserID(childComplexity), true
 
+	case "UserProjectInfo.effectiveScopes":
+		if e.complexity.UserProjectInfo.EffectiveScopes == nil {
+			break
+		}
+
+		return e.complexity.UserProjectInfo.EffectiveScopes(childComplexity), true
 	case "UserProjectInfo.isOwner":
 		if e.complexity.UserProjectInfo.IsOwner == nil {
 			break
@@ -59405,6 +59412,8 @@ func (ec *executionContext) fieldContext_UserInfo_projects(_ context.Context, fi
 				return ec.fieldContext_UserProjectInfo_isOwner(ctx, field)
 			case "scopes":
 				return ec.fieldContext_UserProjectInfo_scopes(ctx, field)
+			case "effectiveScopes":
+				return ec.fieldContext_UserProjectInfo_effectiveScopes(ctx, field)
 			case "roles":
 				return ec.fieldContext_UserProjectInfo_roles(ctx, field)
 			}
@@ -59894,6 +59903,35 @@ func (ec *executionContext) _UserProjectInfo_scopes(ctx context.Context, field g
 }
 
 func (ec *executionContext) fieldContext_UserProjectInfo_scopes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UserProjectInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _UserProjectInfo_effectiveScopes(ctx context.Context, field graphql.CollectedField, obj *objects.UserProjectInfo) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UserProjectInfo_effectiveScopes,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveScopes, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UserProjectInfo_effectiveScopes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UserProjectInfo",
 		Field:      field,
@@ -107801,6 +107839,11 @@ func (ec *executionContext) _UserProjectInfo(ctx context.Context, sel ast.Select
 			}
 		case "scopes":
 			out.Values[i] = ec._UserProjectInfo_scopes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveScopes":
+			out.Values[i] = ec._UserProjectInfo_effectiveScopes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

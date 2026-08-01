@@ -32,6 +32,7 @@ func (Invitation) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("token_hash").Sensitive(),
 		field.Int("project_id"),
+		field.Int("role_id").Optional().Nillable(),
 		field.Time("expires_at").Optional().Nillable(),
 		field.Int("max_uses").Default(1),
 		field.Int("used_count").Default(0),
