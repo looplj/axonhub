@@ -29,6 +29,11 @@ type Config struct {
 	CORS             CORS            `conf:"cors" yaml:"cors" json:"cors"`
 	API              API             `conf:"api" yaml:"api" json:"api"`
 	IPAccessControl  IPAccessControl `conf:"ip_access_control" yaml:"ip_access_control" json:"ip_access_control"`
+
+	// MaxMultipartMemory sets the maximum memory for parsing multipart forms (in bytes).
+	// This is important for backup restore which uploads large backup files.
+	// Default: 32 MB. Increase this if you have large backup files.
+	MaxMultipartMemory int64 `conf:"max_multipart_memory" yaml:"max_multipart_memory" json:"max_multipart_memory"`
 }
 
 // Dashboard holds configuration for the dashboard cache settings.
