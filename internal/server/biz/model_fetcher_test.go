@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
@@ -667,30 +670,168 @@ func TestProviderConfFetcher_Caching(t *testing.T) {
 	}
 }
 
-func TestModelFetcher_ClineReturnsDefaultModels(t *testing.T) {
-	fetcher := NewModelFetcher(nil, nil)
+func TestFetchModelsClineRecommendedModels(t *testing.T) {
+	var callCount atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "application/json", r.Header.Get("Accept"))
+		assert.Empty(t, r.Header.Get("Authorization"))
+		assert.Empty(t, r.Header.Get("X-Api-Key"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"recommended": [
+				{"id": "payg-1"},
+				{"id": " shared "},
+				{"id": " "}
+			],
+			"free": [
+				{"id": "shared"},
+				{"id": "free-1"}
+			],
+			"clinePass": [
+				{"id": "pass-1"},
+				{"id": "free-1"}
+			],
+			"futureField": true
+		}`))
+	}))
+	defer server.Close()
 
-	models := fetcher.getDefaultModelsByType(context.Background(), channel.TypeCline)
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+	fetcher.clineRecommendedModelsURL = server.URL
+	apiKey := "must-not-be-sent"
 
-	if len(models) == 0 {
-		t.Fatal("expected Cline default models, got none")
+	for range 2 {
+		result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{
+			ChannelType: channel.TypeCline.String(),
+			BaseURL:     "https://changed.example.invalid",
+			APIKey:      &apiKey,
+		})
+		require.NoError(t, err)
+		require.Nil(t, result.Error)
+		assert.Equal(t, []ModelIdentify{
+			{ID: "payg-1"},
+			{ID: "shared"},
+			{ID: "free-1"},
+			{ID: "pass-1"},
+		}, result.Models)
 	}
 
-	modelIDs := make(map[string]struct{}, len(models))
-	for _, m := range models {
-		modelIDs[m.ID] = struct{}{}
+	assert.Equal(t, int32(2), callCount.Load(), "Cline model discovery should fetch on demand without caching")
+}
+
+func TestFetchModelsClineDuplicatePassDoesNotAppendStaticFallback(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"recommended": [{"id": "shared"}],
+			"clinePass": [{"id": " shared "}]
+		}`))
+	}))
+	defer server.Close()
+
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+	fetcher.clineRecommendedModelsURL = server.URL
+
+	result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{ChannelType: channel.TypeCline.String()})
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	assert.Equal(t, []ModelIdentify{{ID: "shared"}}, result.Models)
+}
+
+func TestFetchModelsClineMissingPassAppendsStaticFallback(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"recommended": [{"id": "payg-1"}, {"id": "cline-pass/deepseek-v4-flash"}],
+			"free": [{"id": "free-1"}],
+			"clinePass": [{"id": " "}]
+		}`))
+	}))
+	defer server.Close()
+
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+	fetcher.clineRecommendedModelsURL = server.URL
+
+	result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{ChannelType: channel.TypeCline.String()})
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+
+	assert.Equal(t, []ModelIdentify{
+		{ID: "payg-1"},
+		{ID: "cline-pass/deepseek-v4-flash"},
+		{ID: "free-1"},
+		{ID: "cline-pass/deepseek-v4-pro"},
+		{ID: "cline-pass/qwen3.7-plus"},
+		{ID: "cline-pass/qwen3.7-max"},
+		{ID: "cline-pass/kimi-k3"},
+		{ID: "cline-pass/kimi-k2.7-code"},
+		{ID: "cline-pass/kimi-k2.6"},
+		{ID: "cline-pass/glm-5.2"},
+		{ID: "cline-pass/mimo-v2.5"},
+		{ID: "cline-pass/mimo-v2.5-pro"},
+		{ID: "cline-pass/minimax-m3"},
+	}, result.Models)
+}
+
+func TestFetchModelsClineFailuresReturnStaticFallback(t *testing.T) {
+	fallback := []ModelIdentify{
+		{ID: "cline-pass/deepseek-v4-flash"},
+		{ID: "cline-pass/deepseek-v4-pro"},
+		{ID: "cline-pass/qwen3.7-plus"},
+		{ID: "cline-pass/qwen3.7-max"},
+		{ID: "cline-pass/kimi-k3"},
+		{ID: "cline-pass/kimi-k2.7-code"},
+		{ID: "cline-pass/kimi-k2.6"},
+		{ID: "cline-pass/glm-5.2"},
+		{ID: "cline-pass/mimo-v2.5"},
+		{ID: "cline-pass/mimo-v2.5-pro"},
+		{ID: "cline-pass/minimax-m3"},
 	}
 
-	for _, expected := range []string{
-		"cline-pass/deepseek-v4-flash",
-		"cline-pass/deepseek-v4-pro",
-		"cline-pass/qwen3.7-plus",
-		"cline-pass/kimi-k2.7-code",
+	for _, tt := range []struct {
+		name       string
+		statusCode int
+		body       string
+	}{
+		{name: "non-OK status", statusCode: http.StatusBadGateway, body: `{"error":"upstream unavailable"}`},
+		{name: "invalid JSON", statusCode: http.StatusOK, body: `{`},
+		{name: "empty groups", statusCode: http.StatusOK, body: `{"recommended":[],"free":[],"clinePass":[]}`},
 	} {
-		if _, ok := modelIDs[expected]; !ok {
-			t.Fatalf("expected model %s not found in %#v", expected, models)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			var callCount atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				callCount.Add(1)
+				w.WriteHeader(tt.statusCode)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer server.Close()
+
+			fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+			fetcher.clineRecommendedModelsURL = server.URL
+
+			result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{ChannelType: channel.TypeCline.String()})
+			require.NoError(t, err)
+			require.Nil(t, result.Error)
+			assert.Equal(t, fallback, result.Models)
+			assert.Equal(t, int32(1), callCount.Load())
+		})
 	}
+
+	t.Run("request failure", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		client := server.Client()
+		server.Close()
+
+		fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(client), nil)
+		fetcher.clineRecommendedModelsURL = server.URL
+
+		result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{ChannelType: channel.TypeCline.String()})
+		require.NoError(t, err)
+		require.Nil(t, result.Error)
+		assert.Equal(t, fallback, result.Models)
+	})
 }
 
 func TestFetchModelsGeminiVertex(t *testing.T) {

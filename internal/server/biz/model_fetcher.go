@@ -30,10 +30,11 @@ const providerConfCacheDuration = 1 * time.Hour
 
 // ModelFetcher handles fetching models from provider APIs.
 type ModelFetcher struct {
-	httpClient          *httpclient.HttpClient
-	channelService      *ChannelService
-	copilotFetcher      *providerConfFetcher
-	geminiVertexFetcher *providerConfFetcher
+	httpClient                *httpclient.HttpClient
+	channelService            *ChannelService
+	clineRecommendedModelsURL string
+	copilotFetcher            *providerConfFetcher
+	geminiVertexFetcher       *providerConfFetcher
 }
 
 // providerConfFetcher handles fetching models from PublicProviderConf with caching.
@@ -141,8 +142,9 @@ func (f *providerConfFetcher) fetchFromSource(ctx context.Context, httpClient *h
 // NewModelFetcher creates a new ModelFetcher instance.
 func NewModelFetcher(httpClient *httpclient.HttpClient, channelService *ChannelService) *ModelFetcher {
 	return &ModelFetcher{
-		httpClient:     httpClient,
-		channelService: channelService,
+		httpClient:                httpClient,
+		channelService:            channelService,
+		clineRecommendedModelsURL: cline.RecommendedModelsURL,
 		copilotFetcher: &providerConfFetcher{
 			cacheDuration: providerConfCacheDuration,
 			providerURL:   copilot.ProviderConfURL,
@@ -178,8 +180,6 @@ func (f *ModelFetcher) getDefaultModelsByType(ctx context.Context, typ channel.T
 		return lo.Map(antigravity.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeCodex:
 		return lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
-	case channel.TypeCline:
-		return lo.Map(cline.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeClaudecode:
 		return lo.Map(claudecode.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeGithubCopilot:
@@ -206,6 +206,91 @@ func (f *ModelFetcher) fetchCopilotModels(ctx context.Context) []ModelIdentify {
 // fetchGeminiVertexModels fetches Gemini Vertex models from PublicProviderConf with caching.
 func (f *ModelFetcher) fetchGeminiVertexModels(ctx context.Context) []ModelIdentify {
 	return f.geminiVertexFetcher.fetch(ctx, f.httpClient)
+}
+
+type clineRecommendedModel struct {
+	ID string `json:"id"`
+}
+
+type clineRecommendedModelsResponse struct {
+	Recommended []clineRecommendedModel `json:"recommended"`
+	Free        []clineRecommendedModel `json:"free"`
+	ClinePass   []clineRecommendedModel `json:"clinePass"`
+}
+
+func clineFallbackModels() []ModelIdentify {
+	return lo.Map(cline.DefaultModels(), func(id string, _ int) ModelIdentify {
+		return ModelIdentify{ID: id}
+	})
+}
+
+func appendUniqueClineModels(models []ModelIdentify, seen map[string]struct{}, entries []clineRecommendedModel) []ModelIdentify {
+	for _, entry := range entries {
+		id := strings.TrimSpace(entry.ID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+
+		seen[id] = struct{}{}
+		models = append(models, ModelIdentify{ID: id})
+	}
+
+	return models
+}
+
+func hasUsableClineModel(entries []clineRecommendedModel) bool {
+	return lo.SomeBy(entries, func(entry clineRecommendedModel) bool {
+		return strings.TrimSpace(entry.ID) != ""
+	})
+}
+
+func (f *ModelFetcher) fetchClineRecommendedModels(ctx context.Context) []ModelIdentify {
+	fallback := clineFallbackModels()
+	req := &httpclient.Request{
+		Method: http.MethodGet,
+		URL:    f.clineRecommendedModelsURL,
+		Headers: http.Header{
+			"Accept": []string{"application/json"},
+		},
+	}
+
+	resp, err := f.httpClient.Do(ctx, req)
+	if err != nil {
+		slog.Warn("failed to fetch Cline recommended models", "error", err)
+		return fallback
+	}
+	if resp.StatusCode != http.StatusOK {
+		slog.Warn("failed to fetch Cline recommended models", "statusCode", resp.StatusCode)
+		return fallback
+	}
+
+	var response clineRecommendedModelsResponse
+	if err := json.Unmarshal(resp.Body, &response); err != nil {
+		slog.Warn("failed to parse Cline recommended models", "error", err)
+		return fallback
+	}
+
+	models := make([]ModelIdentify, 0, len(response.Recommended)+len(response.Free)+len(response.ClinePass))
+	seen := make(map[string]struct{}, cap(models))
+	models = appendUniqueClineModels(models, seen, response.Recommended)
+	models = appendUniqueClineModels(models, seen, response.Free)
+
+	models = appendUniqueClineModels(models, seen, response.ClinePass)
+	if !hasUsableClineModel(response.ClinePass) {
+		fallbackEntries := lo.Map(fallback, func(model ModelIdentify, _ int) clineRecommendedModel {
+			return clineRecommendedModel{ID: model.ID}
+		})
+		models = appendUniqueClineModels(models, seen, fallbackEntries)
+	}
+
+	if len(models) == 0 {
+		return fallback
+	}
+
+	return models
 }
 
 func (f *ModelFetcher) tryReturnDefaultModels(ctx context.Context, channelType string) (*FetchModelsResult, bool) {
@@ -239,6 +324,10 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},
 		}, nil
+	}
+
+	if input.ChannelType == channel.TypeCline.String() {
+		return &FetchModelsResult{Models: f.fetchClineRecommendedModels(ctx)}, nil
 	}
 
 	if result, ok := f.tryReturnDefaultModels(ctx, input.ChannelType); ok {
