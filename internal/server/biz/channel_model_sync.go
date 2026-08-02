@@ -83,6 +83,9 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	if result.Error != nil {
 		return nil, false, fmt.Errorf("model fetch returned error: %s", *result.Error)
 	}
+	if result.Fallback {
+		return nil, false, fmt.Errorf("model fetch returned fallback models")
+	}
 
 	// Extract model IDs from fetched models
 	fetchedModelIDs := lo.Map(result.Models, func(m ModelIdentify, _ int) string {

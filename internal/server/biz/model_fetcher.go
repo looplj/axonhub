@@ -167,8 +167,9 @@ type FetchModelsInput struct {
 
 // FetchModelsResult represents the result of fetching models.
 type FetchModelsResult struct {
-	Models []ModelIdentify
-	Error  *string
+	Models   []ModelIdentify
+	Error    *string
+	Fallback bool
 }
 
 var qiniuFallbackModels = []ModelIdentify{{ID: "deepseek-v3"}}
@@ -247,7 +248,7 @@ func hasUsableClineModel(entries []clineRecommendedModel) bool {
 	})
 }
 
-func (f *ModelFetcher) fetchClineRecommendedModels(ctx context.Context) []ModelIdentify {
+func (f *ModelFetcher) fetchClineRecommendedModels(ctx context.Context, httpClient *httpclient.HttpClient) ([]ModelIdentify, bool) {
 	fallback := clineFallbackModels()
 	req := &httpclient.Request{
 		Method: http.MethodGet,
@@ -257,20 +258,20 @@ func (f *ModelFetcher) fetchClineRecommendedModels(ctx context.Context) []ModelI
 		},
 	}
 
-	resp, err := f.httpClient.Do(ctx, req)
+	resp, err := httpClient.Do(ctx, req)
 	if err != nil {
 		slog.Warn("failed to fetch Cline recommended models", "error", err)
-		return fallback
+		return fallback, true
 	}
 	if resp.StatusCode != http.StatusOK {
 		slog.Warn("failed to fetch Cline recommended models", "statusCode", resp.StatusCode)
-		return fallback
+		return fallback, true
 	}
 
 	var response clineRecommendedModelsResponse
 	if err := json.Unmarshal(resp.Body, &response); err != nil {
 		slog.Warn("failed to parse Cline recommended models", "error", err)
-		return fallback
+		return fallback, true
 	}
 
 	models := make([]ModelIdentify, 0, len(response.Recommended)+len(response.Free)+len(response.ClinePass))
@@ -279,7 +280,8 @@ func (f *ModelFetcher) fetchClineRecommendedModels(ctx context.Context) []ModelI
 	models = appendUniqueClineModels(models, seen, response.Free)
 
 	models = appendUniqueClineModels(models, seen, response.ClinePass)
-	if !hasUsableClineModel(response.ClinePass) {
+	usedFallback := !hasUsableClineModel(response.ClinePass)
+	if usedFallback {
 		fallbackEntries := lo.Map(fallback, func(model ModelIdentify, _ int) clineRecommendedModel {
 			return clineRecommendedModel{ID: model.ID}
 		})
@@ -287,10 +289,10 @@ func (f *ModelFetcher) fetchClineRecommendedModels(ctx context.Context) []ModelI
 	}
 
 	if len(models) == 0 {
-		return fallback
+		return fallback, true
 	}
 
-	return models
+	return models, usedFallback
 }
 
 func (f *ModelFetcher) tryReturnDefaultModels(ctx context.Context, channelType string) (*FetchModelsResult, bool) {
@@ -327,7 +329,22 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	if input.ChannelType == channel.TypeCline.String() {
-		return &FetchModelsResult{Models: f.fetchClineRecommendedModels(ctx)}, nil
+		httpClient := f.httpClient
+		if input.ChannelID != nil {
+			ch, err := f.channelService.entFromContext(ctx).Channel.Get(ctx, *input.ChannelID)
+			if err != nil {
+				return &FetchModelsResult{
+					Models: []ModelIdentify{},
+					Error:  lo.ToPtr(fmt.Sprintf("failed to get channel: %v", err)),
+				}, nil
+			}
+			if ch.Settings != nil && ch.Settings.Proxy != nil {
+				httpClient = f.httpClient.WithProxy(ch.Settings.Proxy)
+			}
+		}
+
+		models, fallback := f.fetchClineRecommendedModels(ctx, httpClient)
+		return &FetchModelsResult{Models: models, Fallback: fallback}, nil
 	}
 
 	if result, ok := f.tryReturnDefaultModels(ctx, input.ChannelType); ok {

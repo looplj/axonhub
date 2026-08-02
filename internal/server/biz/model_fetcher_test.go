@@ -563,6 +563,65 @@ func TestFetchModelsWithChannelIDUsesStoredCredentialsOnlyForStoredEndpoint(t *t
 	}
 }
 
+func TestFetchModelsClineWithChannelIDUsesStoredProxyWithoutCredentials(t *testing.T) {
+	const catalogURL = "http://127.0.0.1:1/api/v1/ai/cline/recommended-models"
+
+	var proxyCalls atomic.Int32
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyCalls.Add(1)
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, catalogURL, r.URL.String())
+		assert.Empty(t, r.Header.Get("Authorization"))
+		assert.Empty(t, r.Header.Get("X-Api-Key"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"recommended": [{"id":"proxied-model"}],
+			"clinePass": [{"id":"cline-pass/proxied-model"}]
+		}`))
+	}))
+	defer proxy.Close()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:fetch_models_cline_proxy?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithSystemBypass(context.Background(), "test")
+	ch, err := client.Channel.Create().
+		SetName("cline-proxy").
+		SetType(channel.TypeCline).
+		SetBaseURL("https://api.cline.bot/api/v1").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"stored-secret"}}).
+		SetSupportedModels([]string{"cline-pass/deepseek-v4-flash"}).
+		SetDefaultTestModel("cline-pass/deepseek-v4-flash").
+		SetSettings(&objects.ChannelSettings{Proxy: &httpclient.ProxyConfig{
+			Type: httpclient.ProxyTypeURL,
+			URL:  proxy.URL,
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	fetcher := NewModelFetcher(
+		httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled}),
+		&ChannelService{AbstractService: &AbstractService{db: client}},
+	)
+	fetcher.clineRecommendedModelsURL = catalogURL
+	inputKey := "input-secret"
+
+	result, err := fetcher.FetchModels(ctx, FetchModelsInput{
+		ChannelType: channel.TypeCline.String(),
+		BaseURL:     ch.BaseURL + "/",
+		APIKey:      &inputKey,
+		ChannelID:   &ch.ID,
+	})
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	assert.False(t, result.Fallback)
+	assert.Equal(t, []ModelIdentify{
+		{ID: "proxied-model"},
+		{ID: "cline-pass/proxied-model"},
+	}, result.Models)
+	assert.Equal(t, int32(1), proxyCalls.Load())
+}
+
 func TestFetchModelsWithChannelIDRejectsStoredCredentialForChangedEndpoint(t *testing.T) {
 	var attackerCalls atomic.Int32
 	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -710,6 +769,7 @@ func TestFetchModelsClineRecommendedModels(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.Nil(t, result.Error)
+		assert.False(t, result.Fallback)
 		assert.Equal(t, []ModelIdentify{
 			{ID: "payg-1"},
 			{ID: "shared"},
@@ -737,6 +797,7 @@ func TestFetchModelsClineDuplicatePassDoesNotAppendStaticFallback(t *testing.T) 
 	result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{ChannelType: channel.TypeCline.String()})
 	require.NoError(t, err)
 	require.Nil(t, result.Error)
+	assert.False(t, result.Fallback)
 	assert.Equal(t, []ModelIdentify{{ID: "shared"}}, result.Models)
 }
 
@@ -757,6 +818,7 @@ func TestFetchModelsClineMissingPassAppendsStaticFallback(t *testing.T) {
 	result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{ChannelType: channel.TypeCline.String()})
 	require.NoError(t, err)
 	require.Nil(t, result.Error)
+	assert.True(t, result.Fallback)
 
 	assert.Equal(t, []ModelIdentify{
 		{ID: "payg-1"},
@@ -814,6 +876,7 @@ func TestFetchModelsClineFailuresReturnStaticFallback(t *testing.T) {
 			result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{ChannelType: channel.TypeCline.String()})
 			require.NoError(t, err)
 			require.Nil(t, result.Error)
+			assert.True(t, result.Fallback)
 			assert.Equal(t, fallback, result.Models)
 			assert.Equal(t, int32(1), callCount.Load())
 		})
@@ -830,6 +893,7 @@ func TestFetchModelsClineFailuresReturnStaticFallback(t *testing.T) {
 		result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{ChannelType: channel.TypeCline.String()})
 		require.NoError(t, err)
 		require.Nil(t, result.Error)
+		assert.True(t, result.Fallback)
 		assert.Equal(t, fallback, result.Models)
 	})
 }
