@@ -320,6 +320,18 @@ type ProviderClinePassQuotaData = ProviderQuotaDataCommon & {
   usage_fetch: ClineUsageFetch;
 };
 
+type ProviderClineUnavailablePassQuotaData = ProviderQuotaDataCommon & {
+  model_scope: 'cline_pass_only' | 'mixed' | 'unknown';
+  status_basis: 'cline_pass_unavailable' | 'cline_pass_unavailable_mixed_pool';
+  pool: 'cline_pass';
+  pool_note?: string;
+  pass_state: 'unavailable';
+  balance: ClineBalance;
+  cost_scale?: never;
+  windows?: never;
+  usage_fetch?: never;
+};
+
 type ProviderClineDirectQuotaData = ProviderQuotaDataCommon & {
   model_scope: 'direct_only';
   status_basis: string;
@@ -341,10 +353,18 @@ type ProviderClineErrorQuotaData = ProviderQuotaDataCommon & {
   usage_fetch?: never;
 };
 
-export type ProviderClineQuotaData = ProviderClinePassQuotaData | ProviderClineDirectQuotaData | ProviderClineErrorQuotaData;
+export type ProviderClineQuotaData =
+  | ProviderClinePassQuotaData
+  | ProviderClineUnavailablePassQuotaData
+  | ProviderClineDirectQuotaData
+  | ProviderClineErrorQuotaData;
 
-export function isClinePassPoolQuotaData(qd: ProviderClineQuotaData): qd is ProviderClinePassQuotaData {
-  return qd.pool === 'cline_pass';
+export function isClineActivePassQuotaData(qd: ProviderClineQuotaData): qd is ProviderClinePassQuotaData {
+  return qd.pool === 'cline_pass' && qd.windows != null;
+}
+
+export function isClineUnavailablePassQuotaData(qd: ProviderClineQuotaData): qd is ProviderClineUnavailablePassQuotaData {
+  return 'pass_state' in qd && qd.pass_state === 'unavailable';
 }
 
 export type ProviderQuotaChannel = {

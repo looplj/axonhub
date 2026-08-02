@@ -466,6 +466,130 @@ func TestCline_CheckQuota_HappyPathPassOnly(t *testing.T) {
 	require.Equal(t, 6, usageLimitsFetch["usable_fields"])
 }
 
+func TestCline_CheckQuota_UsageLimitsNotFoundMarksPassUnavailable(t *testing.T) {
+	for _, tt := range []struct {
+		name                string
+		models              []string
+		expectedStatus      string
+		expectedReady       bool
+		expectedStatusBasis string
+	}{
+		{
+			name:                "pass only",
+			models:              []string{"cline-pass/deepseek-v4-flash"},
+			expectedStatus:      "exhausted",
+			expectedReady:       false,
+			expectedStatusBasis: "cline_pass_unavailable",
+		},
+		{
+			name:                "mixed pass and direct",
+			models:              []string{"cline-pass/deepseek-v4-flash", "zai/glm-5.2"},
+			expectedStatus:      "warning",
+			expectedReady:       true,
+			expectedStatusBasis: "cline_pass_unavailable_mixed_pool",
+		},
+		{
+			name:                "unknown model scope",
+			expectedStatus:      "warning",
+			expectedReady:       true,
+			expectedStatusBasis: "cline_pass_unavailable",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			requestCount := 0
+			httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+				Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+					requestCount++
+					switch requestCount {
+					case 1:
+						require.Equal(t, "/api/v1/users/me", req.URL.Path)
+						return jsonResponse(http.StatusOK, `{"data":{"id":"user_test"}}`), nil
+					case 2:
+						require.Equal(t, "/api/v1/plans", req.URL.Path)
+						return jsonResponse(http.StatusOK, `{"data":[{"type":"individual","interval":"Monthly","isActive":true,"entitlements":{"cline_pass":{"enabled":true,"inferenceCapThreshold":{"last5HoursUsageCostUSDPerUser":100,"last7daysUsageCostUSDPerUser":200,"last30daysUsageCostUSDPerUser":400}}}}]}`), nil
+					case 3:
+						require.Equal(t, "/api/v1/users/user_test/balance", req.URL.Path)
+						return jsonResponse(http.StatusOK, `{"data":{"balance":497582}}`), nil
+					case 4:
+						require.Equal(t, clineUsageLimitsPath, req.URL.Path)
+						return jsonResponse(http.StatusNotFound, `{"error":"not found"}`), nil
+					default:
+						t.Fatalf("Cline Pass unavailable result made unexpected request %d to %s", requestCount, req.URL.Path)
+						return nil, nil
+					}
+				}),
+			})
+
+			checker := NewClineQuotaChecker(httpClient)
+			quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+				Type:            channel.TypeCline,
+				BaseURL:         "https://api.cline.bot/v1",
+				SupportedModels: tt.models,
+				Credentials:     objects.ChannelCredentials{APIKey: "test-api-key"},
+			})
+
+			require.NoError(t, err)
+			require.Equal(t, 4, requestCount)
+			require.Equal(t, tt.expectedStatus, quota.Status)
+			require.Equal(t, tt.expectedReady, quota.Ready)
+			require.Nil(t, quota.NextResetAt)
+			require.Empty(t, quota.Limits)
+			require.Equal(t, tt.expectedStatusBasis, quota.RawData["status_basis"])
+			require.Equal(t, "unavailable", quota.RawData["pass_state"])
+			require.NotContains(t, quota.RawData, "windows")
+			require.NotContains(t, quota.RawData, "usage_fetch")
+
+			balance := quota.RawData["balance"].(map[string]any)
+			require.Equal(t, int64(497582), balance["raw_balance"])
+			usageLimitsFetch := quota.RawData["usage_limits_fetch"].(map[string]any)
+			require.Equal(t, "cline_pass_unavailable", usageLimitsFetch["status"])
+		})
+	}
+}
+
+func TestCline_CheckQuota_UserIdentityNotFoundRemainsFailure(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		require.Equal(t, "/api/v1/users/me", req.URL.Path)
+		return jsonResponse(http.StatusNotFound, `{"error":"not found"}`), nil
+	})})
+	checker := NewClineQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Type:            channel.TypeCline,
+		BaseURL:         "https://api.cline.bot/v1",
+		SupportedModels: []string{"cline-pass/deepseek-v4-flash"},
+		Credentials:     objects.ChannelCredentials{APIKey: "test-api-key"},
+	})
+
+	require.Error(t, err)
+	require.Empty(t, quota.RawData)
+	require.Contains(t, err.Error(), "failed to read Cline user identity")
+	require.Contains(t, err.Error(), "HTTP 404 Not Found")
+}
+
+func TestCline_CheckQuota_UsageLimitsNonNotFoundErrorsRemainFailures(t *testing.T) {
+	for _, statusCode := range []int{
+		http.StatusUnauthorized,
+		http.StatusForbidden,
+		http.StatusTooManyRequests,
+		http.StatusInternalServerError,
+	} {
+		t.Run(http.StatusText(statusCode), func(t *testing.T) {
+			httpClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return jsonResponse(statusCode, `{"error":"upstream failure"}`), nil
+			})})
+			checker := NewClineQuotaChecker(httpClient)
+
+			limits, meta, err := checker.fetchUsageLimits(context.Background(), httpClient, "https://api.cline.bot/v1", "test-api-key")
+
+			require.Error(t, err)
+			require.Nil(t, limits)
+			require.Equal(t, clineUsageLimitsFetchStatusUnavailable, meta.Status)
+			require.Contains(t, err.Error(), fmt.Sprintf("HTTP %d", statusCode))
+		})
+	}
+}
+
 func TestCline_CheckQuota_UsageLimitsFailureReturnsSafeError(t *testing.T) {
 	now := time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC)
 	requestCount := 0

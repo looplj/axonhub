@@ -187,6 +187,84 @@ func TestProviderQuotaService_SaveQuotaError_ResetsChangedProviderIdentity(t *te
 	require.Empty(t, reloaded.Limits)
 }
 
+func TestProviderQuotaService_SaveQuotaStatus_ReplacesStaleClinePassDataWhenUnavailable(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	channelEntity, err := client.Channel.Create().
+		SetName("Cline").
+		SetType(channel.TypeCline).
+		SetStatus(channel.StatusEnabled).
+		SetBaseURL("https://api.cline.bot/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"cline-pass/deepseek-v4-flash"}).
+		SetDefaultTestModel("cline-pass/deepseek-v4-flash").
+		Save(ctx)
+	require.NoError(t, err)
+
+	oldResetAt := time.Now().Add(time.Hour)
+	_, err = client.ProviderQuotaStatus.Create().
+		SetChannelID(channelEntity.ID).
+		SetProviderType(providerquotastatus.ProviderTypeCline).
+		SetStatus(providerquotastatus.StatusWarning).
+		SetReady(true).
+		SetNextResetAt(oldResetAt).
+		SetQuotaData(map[string]any{
+			"error":       "old quota failure",
+			"error_count": 3,
+			"windows":     map[string]any{"last5h": map[string]any{"usage_ratio": 0.9}},
+			"_limits": []provider_quota.QuotaLimitStatus{{
+				Type:        provider_quota.QuotaLimitTypeToken,
+				Status:      string(providerquotastatus.StatusWarning),
+				UsageRatio:  0.9,
+				Ready:       true,
+				NextResetAt: &oldResetAt,
+			}},
+		}).
+		SetNextCheckAt(time.Now().Add(-time.Minute)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	service := &ProviderQuotaService{
+		AbstractService: &AbstractService{db: client},
+		checkInterval:   5 * time.Minute,
+	}
+	service.saveQuotaStatus(ctx, channelEntity.ID, "cline", provider_quota.QuotaData{
+		ProviderType: "cline",
+		Status:       string(providerquotastatus.StatusExhausted),
+		Ready:        false,
+		RawData: map[string]any{
+			"model_scope":  "cline_pass_only",
+			"status_basis": "cline_pass_unavailable",
+			"pool":         "cline_pass",
+			"pass_state":   "unavailable",
+			"balance":      map[string]any{"raw_balance": int64(497582)},
+		},
+	}, time.Now())
+
+	persisted, err := client.ProviderQuotaStatus.Query().
+		Where(providerquotastatus.ChannelIDEQ(channelEntity.ID)).
+		Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, providerquotastatus.StatusExhausted, persisted.Status)
+	require.False(t, persisted.Ready)
+	require.Nil(t, persisted.NextResetAt)
+	require.Equal(t, "unavailable", persisted.QuotaData["pass_state"])
+	require.NotContains(t, persisted.QuotaData, "error")
+	require.NotContains(t, persisted.QuotaData, "error_count")
+	require.NotContains(t, persisted.QuotaData, "windows")
+	require.NotContains(t, persisted.QuotaData, "_limits")
+
+	cachedValue, ok := service.quotaCache.Load(channelEntity.ID)
+	require.True(t, ok)
+	cached, ok := cachedValue.(*QuotaChannelStatus)
+	require.True(t, ok)
+	require.Equal(t, providerquotastatus.StatusExhausted, cached.Status)
+	require.False(t, cached.Ready)
+	require.Empty(t, cached.Limits)
+}
+
 func TestProviderQuotaService_SaveQuotaStatus_UpdatesChangedProviderIdentity(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

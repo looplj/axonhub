@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -30,10 +31,11 @@ const (
 	clineUsageLimitTypeWeekly   = "weekly"
 	clineUsageLimitTypeMonthly  = "monthly"
 
-	clineUsageLimitsFetchStatusComplete    = "complete"
-	clineUsageLimitsFetchStatusPartial     = "partial"
-	clineUsageLimitsFetchStatusUnusable    = "unusable"
-	clineUsageLimitsFetchStatusUnavailable = "unavailable"
+	clineUsageLimitsFetchStatusComplete        = "complete"
+	clineUsageLimitsFetchStatusPartial         = "partial"
+	clineUsageLimitsFetchStatusUnusable        = "unusable"
+	clineUsageLimitsFetchStatusUnavailable     = "unavailable"
+	clineUsageLimitsFetchStatusPassUnavailable = "cline_pass_unavailable"
 
 	clineWindowSourceOfficialUsageLimits    = "official_usage_limits"
 	clineWindowSourceOfficialWindowLedger   = "cline_pass_ledger_official_window"
@@ -273,6 +275,9 @@ func (c *ClineQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 	if err != nil {
 		return QuotaData{}, err
 	}
+	if officialMeta.Status == clineUsageLimitsFetchStatusPassUnavailable {
+		return buildClinePassUnavailableQuota(scope, planSummaries, balance.Data.Balance, officialMeta), nil
+	}
 
 	items, fetchMeta, err := c.fetchUsageItems(ctx, hc, ch.BaseURL, me.Data.ID, apiKey)
 	if err != nil {
@@ -334,11 +339,19 @@ func clineNativeHTTPClient(hc *httpclient.HttpClient) *http.Client {
 	return hc.GetNativeClient()
 }
 
-func clineHTTPStatusError(statusCode int) error {
-	if statusText := http.StatusText(statusCode); statusText != "" {
-		return fmt.Errorf("HTTP %d %s", statusCode, statusText)
+type clineHTTPError struct {
+	StatusCode int
+}
+
+func (e *clineHTTPError) Error() string {
+	if statusText := http.StatusText(e.StatusCode); statusText != "" {
+		return fmt.Sprintf("HTTP %d %s", e.StatusCode, statusText)
 	}
-	return fmt.Errorf("HTTP %d", statusCode)
+	return fmt.Sprintf("HTTP %d", e.StatusCode)
+}
+
+func clineHTTPStatusError(statusCode int) error {
+	return &clineHTTPError{StatusCode: statusCode}
 }
 
 func clineAPIKey(ch *ent.Channel) string {
@@ -454,6 +467,10 @@ func (c *ClineQuotaChecker) fetchUsageLimits(
 ) (map[string]clineOfficialWindowLimit, clineUsageLimitsFetchMeta, error) {
 	var response clineEnvelope[clineUsageLimitsData]
 	if err := c.getJSON(ctx, hc, baseURL, clineUsageLimitsPath, nil, apiKey, &response); err != nil {
+		var httpErr *clineHTTPError
+		if errors.As(err, &httpErr) && httpErr.StatusCode == http.StatusNotFound {
+			return nil, clineUsageLimitsFetchMeta{Status: clineUsageLimitsFetchStatusPassUnavailable}, nil
+		}
 		return nil, clineUsageLimitsFetchMeta{Status: clineUsageLimitsFetchStatusUnavailable}, fmt.Errorf("failed to read Cline usage limits: %w", err)
 	}
 	limits, meta := parseClineUsageLimits(response.Data.Limits)
@@ -681,6 +698,38 @@ func buildClineQuotaData(
 				"truncated":               usageFetchMeta.Truncated,
 			},
 			"usage_limits_fetch": clineUsageLimitsFetchRawData(officialMeta),
+		},
+	}
+}
+
+func buildClinePassUnavailableQuota(
+	scope clineModelScope,
+	plans []map[string]any,
+	balance *int64,
+	usageLimitsMeta clineUsageLimitsFetchMeta,
+) QuotaData {
+	status := "warning"
+	statusBasis := "cline_pass_unavailable"
+	switch scope {
+	case clineModelScopePassOnly:
+		status = "exhausted"
+	case clineModelScopeMixed:
+		statusBasis = "cline_pass_unavailable_mixed_pool"
+	}
+
+	return QuotaData{
+		Status:       status,
+		ProviderType: clineProviderType,
+		Ready:        IsReadyStatus(status),
+		RawData: map[string]any{
+			"model_scope":        string(scope),
+			"status_basis":       statusBasis,
+			"pool":               "cline_pass",
+			"pool_note":          "ClinePass is a separate provider; this quota applies to cline-pass/* models only.",
+			"pass_state":         "unavailable",
+			"balance":            clineBalanceRawData(balance),
+			"plans":              plans,
+			"usage_limits_fetch": clineUsageLimitsFetchRawData(usageLimitsMeta),
 		},
 	}
 }
