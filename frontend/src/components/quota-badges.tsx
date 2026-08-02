@@ -800,7 +800,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                 const durationPct = getClineDurationPercent(key, window);
                 const used = formatClineCost(window.used_cost_units, qd.cost_scale);
                 const limit = formatClineCost(window.limit_cost_units, qd.cost_scale);
-                const resetText = window.next_reset_at ? formatTimeToReset(window.next_reset_at, usedPct) : '';
+                const resetText = window.next_reset_at ? formatTimeToReset(window.next_reset_at) : '';
 
                 items.push(
                   <div key={key} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
