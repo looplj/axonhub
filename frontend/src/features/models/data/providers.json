@@ -484,7 +484,7 @@
           "type": "chat"
         },
         {
-          "id": "nvidia/riva-translate-4b-instruct-v1_1",
+          "id": "nvidia/riva-translate-4b-instruct-v1.1",
           "name": "riva-translate-4b-instruct-v1_1",
           "description": "Translation model for multilingual conversion, localization, and cross-language workflows",
           "attachment": false,
@@ -513,6 +513,42 @@
             "output": 0
           },
           "display_name": "riva-translate-4b-instruct-v1_1",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/cosmos-reason2-8b",
+          "name": "Cosmos Reason2 8B",
+          "description": "Vision language model for physical-world understanding with structured reasoning on video and images",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-12-01",
+          "last_updated": "2025-12-01",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Cosmos Reason2 8B",
           "type": "chat"
         },
         {
@@ -548,7 +584,49 @@
           "type": "chat"
         },
         {
-          "id": "nvidia/llama-3_1-nemotron-safety-guard-8b-v3",
+          "id": "nvidia/nemotron-nano-12b-v2-vl",
+          "name": "Nemotron Nano 12B v2 VL",
+          "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
+          "family": "nemotron",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-10-28",
+          "last_updated": "2025-10-28",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 128000,
+            "output": 128000
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Nemotron Nano 12B v2 VL",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
+        },
+        {
+          "id": "nvidia/llama-3.1-nemotron-safety-guard-8b-v3",
           "name": "llama-3.1-nemotron-safety-guard-8b-v3",
           "description": "Safety model for policy screening, moderation, and risk-aware routing workflows",
           "family": "nemotron",
@@ -618,6 +696,45 @@
             "output": 0
           },
           "display_name": "nvidia-nemotron-nano-9b-v2",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.3-nemotron-super-49b-v1.5",
+          "name": "Llama 3.3 Nemotron Super 49B v1.5",
+          "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
+          "family": "nemotron",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-07-25",
+          "last_updated": "2025-07-25",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Llama 3.3 Nemotron Super 49B v1.5",
           "type": "chat"
         },
         {
@@ -720,6 +837,153 @@
           "type": "chat"
         },
         {
+          "id": "nvidia/llama-3.1-nemotron-70b-instruct",
+          "name": "Llama 3.1 Nemotron 70B Instruct",
+          "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
+          "family": "nemotron",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-04-15",
+          "last_updated": "2025-04-15",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 128000,
+            "output": 8192
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Llama 3.1 Nemotron 70B Instruct",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.1-nemotron-nano-vl-8b-v1",
+          "name": "Llama 3.1 Nemotron Nano VL 8B v1",
+          "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
+          "family": "nemotron",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-04-10",
+          "last_updated": "2025-04-10",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 32768,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Llama 3.1 Nemotron Nano VL 8B v1",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+          "name": "Llama 3.3 Nemotron Super 49B v1",
+          "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
+          "family": "nemotron",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-04-07",
+          "last_updated": "2025-04-07",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 65536
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Llama 3.3 Nemotron Super 49B v1",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.1-nemotron-ultra-253b-v1",
+          "name": "Llama 3.1 Nemotron Ultra 253B",
+          "description": "Flagship Nemotron model for high-throughput reasoning and complex agents",
+          "family": "nemotron",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-04-07",
+          "last_updated": "2025-04-07",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 128000,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Llama 3.1 Nemotron Ultra 253B",
+          "type": "chat"
+        },
+        {
           "id": "nvidia/sparsedrive",
           "name": "sparsedrive",
           "description": "Nemotron multimodal model for visual reasoning and agentic AI workflows",
@@ -781,6 +1045,45 @@
             "output": 0
           },
           "display_name": "bevformer",
+          "type": "chat"
+        },
+        {
+          "id": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+          "name": "Llama 3.1 Nemotron Nano 8B v1",
+          "description": "Nemotron model for efficient reasoning, coding, and specialized AI agents",
+          "family": "nemotron",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-03-18",
+          "last_updated": "2025-03-18",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Llama 3.1 Nemotron Nano 8B v1",
           "type": "chat"
         },
         {
@@ -4501,7 +4804,7 @@
               {
                 "input": 4,
                 "output": 12,
-                "cache_read": 1,
+                "cache_read": 0.6,
                 "tier": {
                   "type": "context",
                   "size": 200000
@@ -4511,7 +4814,7 @@
             "context_over_200k": {
               "input": 4,
               "output": 12,
-              "cache_read": 1
+              "cache_read": 0.6
             }
           },
           "display_name": "Grok 4.5",
@@ -4537,7 +4840,9 @@
           "last_updated": "2026-05-30",
           "modalities": {
             "input": [
+              "text",
               "image",
+              "audio",
               "pdf"
             ],
             "output": [
@@ -6701,7 +7006,9 @@
           },
           "cost": {
             "input": 0.3,
-            "output": 1.2
+            "output": 1.2,
+            "cache_read": 0.03,
+            "cache_write": 0.375
           },
           "display_name": "MiniMax-M2.1",
           "type": "chat",
@@ -6807,6 +7114,7 @@
           "cost": {
             "input": 0.14,
             "output": 0.28,
+            "reasoning": 0.28,
             "cache_read": 0.0028
           },
           "display_name": "DeepSeek V4 Flash",
@@ -6870,6 +7178,7 @@
           "cost": {
             "input": 0.435,
             "output": 0.87,
+            "reasoning": 0.87,
             "cache_read": 0.003625
           },
           "display_name": "DeepSeek V4 Pro",
@@ -6956,6 +7265,7 @@
           "cost": {
             "input": 0.14,
             "output": 0.28,
+            "reasoning": 0.28,
             "cache_read": 0.0028
           },
           "display_name": "DeepSeek Reasoner",
@@ -12415,10 +12725,10 @@
             "modes": {
               "fast": {
                 "cost": {
-                  "input": 2,
-                  "output": 12,
-                  "cache_read": 0.2,
-                  "cache_write": 2.5
+                  "input": 0.4,
+                  "output": 2.4,
+                  "cache_read": 0.04,
+                  "cache_write": 0.5
                 },
                 "provider": {
                   "body": {
@@ -12438,16 +12748,16 @@
             }
           },
           "cost": {
-            "input": 1,
-            "output": 6,
-            "cache_read": 0.1,
-            "cache_write": 1.25,
+            "input": 0.2,
+            "output": 1.2,
+            "cache_read": 0.02,
+            "cache_write": 0.25,
             "tiers": [
               {
-                "input": 2,
-                "output": 9,
-                "cache_read": 0.2,
-                "cache_write": 2.5,
+                "input": 0.4,
+                "output": 1.8,
+                "cache_read": 0.04,
+                "cache_write": 0.5,
                 "tier": {
                   "type": "context",
                   "size": 272000
@@ -12455,10 +12765,10 @@
               }
             ],
             "context_over_200k": {
-              "input": 2,
-              "output": 9,
-              "cache_read": 0.2,
-              "cache_write": 2.5
+              "input": 0.4,
+              "output": 1.8,
+              "cache_read": 0.04,
+              "cache_write": 0.5
             }
           },
           "display_name": "GPT-5.6 Luna",
@@ -12657,10 +12967,10 @@
             "modes": {
               "fast": {
                 "cost": {
-                  "input": 5,
-                  "output": 30,
-                  "cache_read": 0.5,
-                  "cache_write": 6.25
+                  "input": 4,
+                  "output": 24,
+                  "cache_read": 0.4,
+                  "cache_write": 5
                 },
                 "provider": {
                   "body": {
@@ -12680,16 +12990,16 @@
             }
           },
           "cost": {
-            "input": 2.5,
-            "output": 15,
-            "cache_read": 0.25,
-            "cache_write": 3.125,
+            "input": 2,
+            "output": 12,
+            "cache_read": 0.2,
+            "cache_write": 2.5,
             "tiers": [
               {
-                "input": 5,
-                "output": 22.5,
-                "cache_read": 0.5,
-                "cache_write": 6.25,
+                "input": 4,
+                "output": 18,
+                "cache_read": 0.4,
+                "cache_write": 5,
                 "tier": {
                   "type": "context",
                   "size": 272000
@@ -12697,10 +13007,10 @@
               }
             ],
             "context_over_200k": {
-              "input": 5,
-              "output": 22.5,
-              "cache_read": 0.5,
-              "cache_write": 6.25
+              "input": 4,
+              "output": 18,
+              "cache_read": 0.4,
+              "cache_write": 5
             }
           },
           "display_name": "GPT-5.6 Terra",
@@ -19263,7 +19573,8 @@
           "last_updated": "2026-07-10",
           "modalities": {
             "input": [
-              "text"
+              "text",
+              "image"
             ],
             "output": [
               "text"
@@ -19303,7 +19614,8 @@
           "last_updated": "2026-07-10",
           "modalities": {
             "input": [
-              "text"
+              "text",
+              "image"
             ],
             "output": [
               "text"
