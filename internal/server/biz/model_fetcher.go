@@ -209,22 +209,26 @@ func (f *ModelFetcher) fetchGeminiVertexModels(ctx context.Context) []ModelIdent
 	return f.geminiVertexFetcher.fetch(ctx, f.httpClient)
 }
 
+// clineRecommendedModel identifies a model returned by Cline's recommended-models endpoint.
 type clineRecommendedModel struct {
 	ID string `json:"id"`
 }
 
+// clineRecommendedModelsResponse groups Cline models by recommendation and billing category.
 type clineRecommendedModelsResponse struct {
 	Recommended []clineRecommendedModel `json:"recommended"`
 	Free        []clineRecommendedModel `json:"free"`
 	ClinePass   []clineRecommendedModel `json:"clinePass"`
 }
 
+// clineFallbackModels returns the static Cline Pass models used when discovery is degraded.
 func clineFallbackModels() []ModelIdentify {
 	return lo.Map(cline.DefaultModels(), func(id string, _ int) ModelIdentify {
 		return ModelIdentify{ID: id}
 	})
 }
 
+// appendUniqueClineModels appends non-empty model IDs while preserving their first-seen order.
 func appendUniqueClineModels(models []ModelIdentify, seen map[string]struct{}, entries []clineRecommendedModel) []ModelIdentify {
 	for _, entry := range entries {
 		id := strings.TrimSpace(entry.ID)
@@ -242,12 +246,14 @@ func appendUniqueClineModels(models []ModelIdentify, seen map[string]struct{}, e
 	return models
 }
 
+// hasUsableClineModel reports whether a model group contains at least one non-empty ID.
 func hasUsableClineModel(entries []clineRecommendedModel) bool {
 	return lo.SomeBy(entries, func(entry clineRecommendedModel) bool {
 		return strings.TrimSpace(entry.ID) != ""
 	})
 }
 
+// fetchClineRecommendedModels fetches the public Cline catalog and reports whether static fallback data was used.
 func (f *ModelFetcher) fetchClineRecommendedModels(ctx context.Context, httpClient *httpclient.HttpClient) ([]ModelIdentify, bool) {
 	fallback := clineFallbackModels()
 	req := &httpclient.Request{
@@ -283,7 +289,7 @@ func (f *ModelFetcher) fetchClineRecommendedModels(ctx context.Context, httpClie
 	usedFallback := !hasUsableClineModel(response.ClinePass)
 	if usedFallback {
 		fallbackEntries := lo.Map(fallback, func(model ModelIdentify, _ int) clineRecommendedModel {
-			return clineRecommendedModel{ID: model.ID}
+			return clineRecommendedModel(model)
 		})
 		models = appendUniqueClineModels(models, seen, fallbackEntries)
 	}

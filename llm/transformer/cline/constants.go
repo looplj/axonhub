@@ -1,5 +1,6 @@
 package cline
 
+// RecommendedModelsURL is Cline's public model discovery endpoint.
 const RecommendedModelsURL = "https://api.cline.bot/api/v1/ai/cline/recommended-models"
 
 // DefaultModels returns known Cline Pass models used when dynamic discovery is unavailable.
