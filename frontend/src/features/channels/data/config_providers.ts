@@ -31,6 +31,7 @@ import {
   Fireworks,
   Ollama,
   OpenCode,
+  Groq,
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
@@ -272,6 +273,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Cline,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     channelTypes: ['cline'],
+  },
+  groq: {
+    provider: 'groq',
+    icon: Groq,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    channelTypes: ['groq'],
   },
 };
 

@@ -31,6 +31,7 @@ import {
   Ollama,
   AiHubMix,
   OpenCode,
+  Groq,
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
@@ -744,6 +745,19 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: Cline,
   },
+  groq: {
+    channelType: 'groq',
+    baseURL: 'https://api.groq.com/openai/v1',
+    defaultModels: [
+      'openai/gpt-oss-120b',
+      'openai/gpt-oss-20b',
+      'whisper-large-v3',
+      'whisper-large-v3-turbo',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Groq,
+  },
 };
 
 /**
@@ -800,7 +814,8 @@ export type Provider =
   | 'fireworks'
   | 'opencode_go'
   | 'ollama'
-  | 'evolink';
+  | 'evolink'
+  | 'groq';
 
 /**
  * Map channel type to provider
@@ -865,6 +880,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   ollama: 'ollama',
   evolink: 'evolink',
   evolink_anthropic: 'evolink',
+  groq: 'groq',
 };
 
 /**
