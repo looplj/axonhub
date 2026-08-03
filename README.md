@@ -1,7 +1,7 @@
 <div align="center">
 
-# AxonHub - All-in-one AI Development Platform
-### Use any SDK. Access any model. Zero code changes.
+# AxonHub - All-in-one AI 开发平台
+### 任意 SDK、任意模型、零代码改动
 
 <a href="https://trendshift.io/repositories/16225" target="_blank"><img src="https://trendshift.io/api/badge/repositories/16225" alt="looplj%2Faxonhub | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
@@ -9,18 +9,18 @@
 
 <div align="center">
 
-[![Test Status](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
-[![Lint Status](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
+[![测试状态](https://github.com/looplj/axonhub/actions/workflows/test.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/test.yml)
+[![Lint 状态](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
+[![Go 版本](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
 [![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
 
-[English](README.md) | [中文](README.zh-CN.md) | [日本語](README.ja-JP.md)
+[English](README.en-US.md) | [中文](README.md) | [日本語](README.ja-JP.md)
 
 </div>
 
 ---
 
-## ❤️ Sponsor
+## ❤️ 赞助商
 
 <div align="center">
 
@@ -37,10 +37,10 @@
         <strong>Atlas Cloud</strong>
       </a>
       <p align="left">
-        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
+        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
       </p>
       <p align="left">
-        Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new coding plan promotion</a> for more budget-friendly API access.
+        查看 Atlas Cloud 的 <a href="https://lj.s.gy/jknt2V" target="_blank">全新 Coding plan 促销</a>，获取更经济实惠的 API 访问方案。
       </p>
     </td>
     <td width="50%" align="center" valign="top">
@@ -50,10 +50,10 @@
         <strong>Krill AI</strong>
       </a>
       <p align="left">
-        Thank you to Krill AI for sponsoring this project. Krill provides official, stable, high-speed API relay services for GPT, Claude, Gemini, and a wide range of Chinese models, with enterprise customization, invoicing support, and dedicated technical support 16 hours a day, 7 days a week. Its optimized WebSocket connection can deliver a faster time to first token.
+        感谢 Krill AI 赞助本项目。Krill 提供 GPT、Claude、Gemini 及多款国产模型的官方稳定极速 API 中转服务，支持企业级定制、报销开票和 7x16 小时专属技术支持。其独家适配的 WebSocket 连接方式可带来更快的首字速度。
       </p>
       <p align="left">
-        Register through <a href="https://lj.s.gy/jKk8uU" target="_blank">this link</a> and enter the <code>AxonHub</code> coupon code when topping up to receive 23% off your first Codex plan purchase.
+        使用 <a href="https://lj.s.gy/jKk8uU" target="_blank">此链接</a> 注册，并在充值时填写 <code>AxonHub</code> 优惠码，首次购买 Codex 套餐可享 77 折优惠。
       </p>
     </td>
   </tr>
@@ -66,8 +66,8 @@
 <table border="1" cellspacing="0" cellpadding="16">
   <thead>
     <tr>
-      <th align="center" width="220">Sponsor</th>
-      <th align="left">Description</th>
+      <th align="center" width="220">赞助商</th>
+      <th align="left">详情</th>
     </tr>
   </thead>
   <tbody>
@@ -80,9 +80,9 @@
         </a>
       </td>
       <td valign="middle">
-        Try AxonHub with zero local setup on Bloome:
-        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">Quick start</a>,
-        one click from your browser or phone, easy to share with your team.
+        想试用 AxonHub，但不想在本地配置环境？可以在 Bloome 上运行：
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">快速使用</a>，
+        通过浏览器或手机一键启动，也可以轻松分享给你的团队。
       </td>
     </tr>
   </tbody>
@@ -92,19 +92,19 @@
 
 ---
 
-## 📖 Project Introduction
+## 📖 项目介绍
 
-### All-in-one AI Development Platform
+### All-in-one AI 开发平台
 
-**AxonHub is the AI gateway that lets you switch between model providers without changing a single line of code.**
+**AxonHub 是 AI 网关，让你无需改动一行代码即可切换模型供应商。**
 
-Whether you're using OpenAI SDK, Anthropic SDK, or any AI SDK, AxonHub transparently translates your requests to work with any supported model provider. No refactoring, no SDK swaps—just change a configuration and you're done.
+无论你使用的是 OpenAI SDK、Anthropic SDK 还是任何 AI SDK，AxonHub 都会透明地将你的请求转换为与任何支持的模型供应商兼容的格式。无需重构，无需更换 SDK——只需更改配置即可。
 
-**What it solves:**
-- 🔒 **Vendor lock-in** - Switch from GPT-4 to Claude or Gemini instantly
-- 🔧 **Integration complexity** - One API format for 10+ providers
-- 📊 **Observability gap** - Complete request tracing out of the box
-- 💸 **Cost control** - Real-time usage tracking and budget management
+**它解决了什么问题：**
+- 🔒 **供应商锁定** - 从 GPT-4 瞬间切换到 Claude 或 Gemini
+- 🔧 **集成复杂性** - 一个 API 格式对接 10+ 供应商
+- 📊 **可观测性缺口** - 开箱即用的完整请求追踪
+- 💸 **成本控制** - 实时用量追踪和预算管理
 
 <div align="center">
   <img src="docs/axonhub-architecture-light.svg" alt="AxonHub Architecture" width="700"/>
@@ -112,246 +112,235 @@ Whether you're using OpenAI SDK, Anthropic SDK, or any AI SDK, AxonHub transpare
 
 ---
 
-### Core Features
+### 核心特性 Core Features
 
-| Feature | What You Get |
-|---------|-------------|
-| 🔄 [**Any SDK → Any Model**](docs/en/api-reference/openai-api.md) | Use OpenAI SDK to call Claude, or Anthropic SDK to call GPT. Zero code changes. |
-| 🔍 [**Full Request Tracing**](docs/en/guides/tracing.md) | Complete request timelines with thread-aware observability. Debug faster. |
-| 🔐 [**Enterprise RBAC**](docs/en/guides/permissions.md) | Fine-grained access control, usage quotas, and data isolation. |
-| ⚡ [**Smart Load Balancing**](docs/en/guides/load-balance.md) | Auto failover in <100ms. Always route to the healthiest channel. |
-| 💰 [**Real-time Cost Tracking**](docs/en/guides/cost-tracking.md) | Per-request cost breakdown. Input, output, cache tokens—all tracked. |
+| 特性 | 你能获得什么 |
+|------|-------------|
+| 🔄 [**任意 SDK → 任意模型**](docs/zh/api-reference/openai-api.md) | 用 OpenAI SDK 调用 Claude，或用 Anthropic SDK 调用 GPT。零代码改动。 |
+| 🔍 [**完整请求追踪**](docs/zh/guides/tracing.md) | 线程级可观测性的完整请求时间线。更快定位问题。 |
+| 🔐 [**企业级 RBAC**](docs/zh/guides/permissions.md) | 细粒度访问控制、用量配额和数据隔离。 |
+| ⚡ [**智能负载均衡**](docs/zh/guides/load-balance.md) | <100ms 自动故障转移。始终路由到最健康的渠道。 |
+| 💰 [**实时成本追踪**](docs/zh/guides/cost-tracking.md) | 每次请求的成本明细。输入、输出、缓存 Token——全部追踪。 |
 
 ---
 
-## 📚 Documentation
+## 📚 文档 | Documentation
 
-For detailed technical documentation, API references, architecture design, and more:
+### 文档索引 | Documentation Index
 
-- 📑 **[Documentation Index](docs/en/index.md)** - Complete documentation navigation
+- 📑 **[完整文档索引](docs/zh/index.md)** - 所有文档导航和快速查找
+
+### DeepWiki
+详细的技术文档、API 参考、架构设计等内容，可以访问
 - [![DeepWiki](https://img.shields.io/badge/DeepWiki-looplj%2Faxonhub-blue.svg?logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAyCAYAAAAnWDnqAAAAAXNSR0IArs4c6QAAA05JREFUaEPtmUtyEzEQhtWTQyQLHNak2AB7ZnyXZMEjXMGeK/AIi+QuHrMnbChYY7MIh8g01fJoopFb0uhhEqqcbWTp06/uv1saEDv4O3n3dV60RfP947Mm9/SQc0ICFQgzfc4CYZoTPAswgSJCCUJUnAAoRHOAUOcATwbmVLWdGoH//PB8mnKqScAhsD0kYP3j/Yt5LPQe2KvcXmGvRHcDnpxfL2zOYJ1mFwrryWTz0advv1Ut4CJgf5uhDuDj5eUcAUoahrdY/56ebRWeraTjMt/00Sh3UDtjgHtQNHwcRGOC98BJEAEymycmYcWwOprTgcB6VZ5JK5TAJ+fXGLBm3FDAmn6oPPjR4rKCAoJCal2eAiQp2x0vxTPB3ALO2CRkwmDy5WohzBDwSEFKRwPbknEggCPB/imwrycgxX2NzoMCHhPkDwqYMr9tRcP5qNrMZHkVnOjRMWwLCcr8ohBVb1OMjxLwGCvjTikrsBOiA6fNyCrm8V1rP93iVPpwaE+gO0SsWmPiXB+jikdf6SizrT5qKasx5j8ABbHpFTx+vFXp9EnYQmLx02h1QTTrl6eDqxLnGjporxl3NL3agEvXdT0WmEost648sQOYAeJS9Q7bfUVoMGnjo4AZdUMQku50McDcMWcBPvr0SzbTAFDfvJqwLzgxwATnCgnp4wDl6Aa+Ax283gghmj+vj7feE2KBBRMW3FzOpLOADl0Isb5587h/U4gGvkt5v60Z1VLG8BhYjbzRwyQZemwAd6cCR5/XFWLYZRIMpX39AR0tjaGGiGzLVyhse5C9RKC6ai42ppWPKiBagOvaYk8lO7DajerabOZP46Lby5wKjw1HCRx7p9sVMOWGzb/vA1hwiWc6jm3MvQDTogQkiqIhJV0nBQBTU+3okKCFDy9WwferkHjtxib7t3xIUQtHxnIwtx4mpg26/HfwVNVDb4oI9RHmx5WGelRVlrtiw43zboCLaxv46AZeB3IlTkwouebTr1y2NjSpHz68WNFjHvupy3q8TFn3Hos2IAk4Ju5dCo8B3wP7VPr/FGaKiG+T+v+TQqIrOqMTL1VdWV1DdmcbO8KXBz6esmYWYKPwDL5b5FA1a0hwapHiom0r/cKaoqr+27/XcrS5UwSMbQAAAABJRU5ErkJggg==)](https://deepwiki.com/looplj/axonhub)
 - [![zread](https://img.shields.io/badge/Ask_Zread-_.svg?style=flat&color=00b0aa&labelColor=000000&logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQuOTYxNTYgMS42MDAxSDIuMjQxNTZDMS44ODgxIDEuNjAwMSAxLjYwMTU2IDEuODg2NjQgMS42MDE1NiAyLjI0MDFWNC45NjAxQzEuNjAxNTYgNS4zMTM1NiAxLjg4ODEgNS42MDAxIDIuMjQxNTYgNS42MDAxSDQuOTYxNTZDNS4zMTUwMiA1LjYwMDEgNS42MDE1NiA1LjMxMzU2IDUuNjAxNTYgNC45NjAxVjIuMjQwMUM1LjYwMTU2IDEuODg2NjQgNS4zMTUwMiAxLjYwMDEgNC45NjE1NiAxLjYwMDFaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00Ljk2MTU2IDEwLjM5OTlIMi4yNDE1NkMxLjg4ODEgMTAuMzk5OSAxLjYwMTU2IDEwLjY4NjQgMS42MDE1NiAxMS4wMzk5VjEzLjc1OTlDMS42MDE1NiAxNC4xMTM0IDEuODg4MSAxNC4zOTk5IDIuMjQxNTYgMTQuMzk5OUg0Ljk2MTU2QzUuMzE1MDIgMTQuMzk5OSA1LjYwMTU2IDE0LjExMzQgNS42MDE1NiAxMy43NTk5VjExLjAzOTlDNS42MDE1NiAxMC42ODY0IDUuMzE1MDIgMTAuMzk5OSA0Ljk2MTU2IDEwLjM5OTlaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik0xMy43NTg0IDEuNjAwMUgxMS4wMzg0QzEwLjY4NSAxLjYwMDEgMTAuMzk4NCAxLjg4NjY0IDEwLjM5ODQgMi4yNDAxVjQuOTYwMUMxMC4zOTg0IDUuMzEzNTYgMTAuNjg1IDUuNjAwMSAxMS4wMzg0IDUuNjAwMUgxMy43NTg0QzE0LjExMTkgNS42MDAxIDE0LjM5ODQgNS4zMTM1NiAxNC4zOTg0IDQuOTYwMVYyLjI0MDFDMTQuMzk4NCAxLjg4NjY0IDE0LjExMTkgMS42MDAxIDEzLjc1ODQgMS42MDAxWiIgZmlsbD0iI2ZmZiIvPgo8cGF0aCBkPSJNNCAxMkwxMiA0TDQgMTJaIiBmaWxsPSIjZmZmIi8%2BCjxwYXRoIGQ9Ik00IDEyTDEyIDQiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgo8L3N2Zz4K&logoColor=ffffff)](https://zread.ai/looplj/axonhub)
 
----
-
-## 🎯 Demo
-
-Try AxonHub live at our [demo instance](https://axonhub.onrender.com)!
-
-**Note**：The demo instance currently configures Zhipu and OpenRouter free models.
-
-### Demo Account
-
-- **Email**: demo@example.com
-- **Password**: 12345678
 
 ---
 
-## ⭐ Features
+## 🎯 演示 | Demo
 
-### 📸 Screenshots
+在我们的 [演示实例](https://axonhub.onrender.com) 上体验 AxonHub！
 
-Here are some screenshots of AxonHub in action:
+**注意**：演示网站目前配置了 Zhipu 和 OpenRouter 的免费模型。
+
+### 演示账号 | Demo Account
+- **邮箱 Email**: demo@example.com
+- **密码 Password**: 12345678
+
+---
+
+## ⭐ 特性 | Features
+
+### 📸 截图 | Screenshots
+
+以下是 AxonHub 的实际运行截图：
 
 <table>
   <tr>
     <td align="center">
       <a href="docs/screenshots/axonhub-dashboard.png">
-        <img src="docs/screenshots/axonhub-dashboard.png" alt="System Dashboard" width="250"/>
+        <img src="docs/screenshots/axonhub-dashboard.png" alt="系统仪表板" width="250"/>
       </a>
       <br/>
-      System Dashboard
+      系统仪表板
     </td>
     <td align="center">
       <a href="docs/screenshots/axonhub-channels.png">
-        <img src="docs/screenshots/axonhub-channels.png" alt="Channel Management" width="250"/>
+        <img src="docs/screenshots/axonhub-channels.png" alt="渠道管理" width="250"/>
       </a>
       <br/>
-      Channel Management
+      渠道管理
     </td>
     <td align="center">
       <a href="docs/screenshots/axonhub-model-price.png">
-        <img src="docs/screenshots/axonhub-model-price.png" alt="Model Price" width="250"/>
+        <img src="docs/screenshots/axonhub-model-price.png" alt="模型价格" width="250"/>
       </a>
       <br/>
-      Model Price
+      模型价格
     </td>
   </tr>
   <tr>
-  <td align="center">
+   <td align="center">
       <a href="docs/screenshots/axonhub-models.png">
-        <img src="docs/screenshots/axonhub-models.png" alt="Models" width="250"/>
+        <img src="docs/screenshots/axonhub-models.png" alt="模型" width="250"/>
       </a>
       <br/>
-      Models
+      模型
     </td>
     <td align="center">
       <a href="docs/screenshots/axonhub-trace.png">
-        <img src="docs/screenshots/axonhub-trace.png" alt="Trace Viewer" width="250"/>
+        <img src="docs/screenshots/axonhub-trace.png" alt="追踪查看" width="250"/>
       </a>
       <br/>
-      Trace Viewer
+      追踪查看
     </td>
     <td align="center">
       <a href="docs/screenshots/axonhub-requests.png">
-        <img src="docs/screenshots/axonhub-requests.png" alt="Request Monitoring" width="250"/>
+        <img src="docs/screenshots/axonhub-requests.png" alt="请求监控" width="250"/>
       </a>
       <br/>
-      Request Monitoring
+      请求监控
     </td>
+
   </tr>
 </table>
 
 ---
 
-### 🚀 API Types
+### 🚀 API 类型 | API Types
 
-| API Type             | Status     | Description                    | Document                                     |
-| -------------------- | ---------- | ------------------------------ | -------------------------------------------- |
-| **Text Generation**  | ✅ Done    | Conversational interface       | [OpenAI API](docs/en/api-reference/openai-api.md), [Anthropic API](docs/en/api-reference/anthropic-api.md), [Gemini API](docs/en/api-reference/gemini-api.md) |
-| **Image Generation** | ✅ Done | Image generation               | [Image Generation](docs/en/api-reference/image-generation.md) |
-| **Rerank**           | ✅ Done    | Results ranking                | [Rerank API](docs/en/api-reference/rerank-api.md) |
-| **Embedding**        | ✅ Done    | Vector embedding generation    | [Embedding API](docs/en/api-reference/embedding-api.md) |
-| **Realtime**         | 📝 Todo    | Live conversation capabilities | -                                            |
+| API 类型 | 状态 | 描述 | 文档 |
+|---------|--------|-------------|--------|
+| **文本生成（Text Generation）** | ✅ Done | 对话交互接口 | [OpenAI API](docs/zh/api-reference/openai-api.md)、[Anthropic API](docs/zh/api-reference/anthropic-api.md)、[Gemini API](docs/zh/api-reference/gemini-api.md) |
+| **图片生成（Image Generation）** | ✅ Done | 图片生成 | [Image Generation](docs/zh/api-reference/image-generation.md) |
+| **重排序（Rerank）** | ✅ Done | 结果排序 | [Rerank API](docs/zh/api-reference/rerank-api.md) |
+| **嵌入（Embedding）** | ✅ Done | 向量嵌入生成 | [Embedding API](docs/zh/api-reference/embedding-api.md) |
+| **实时对话（Realtime）** | 📝 Todo | 实时对话功能 | - |
 
 ---
 
-### 🤖 Supported Providers
+### 🤖 支持的提供商 | Supported Providers
 
-| Provider               | Status     | Supported Models             | Compatible APIs |
+| 提供商 Provider        | 状态 Status | 支持模型 Models              | 兼容 API |
 | ---------------------- | ---------- | ---------------------------- | --------------- |
-| **OpenAI**             | ✅ Done    | GPT-4, GPT-4o, GPT-5, etc.   | OpenAI, Anthropic, Gemini, Embedding, Image Generation |
-| **Anthropic**          | ✅ Done    | Claude 3.5, Claude 3.0, etc. | OpenAI, Anthropic, Gemini |
-| **Zhipu AI**           | ✅ Done    | GLM-4.5, GLM-4.5-air, etc.   | OpenAI, Anthropic, Gemini |
-| **Moonshot AI (Kimi)** | ✅ Done    | kimi-k2, etc.                | OpenAI, Anthropic, Gemini |
-| **DeepSeek**           | ✅ Done    | DeepSeek-V3.1, etc.          | OpenAI, Anthropic, Gemini |
-| **ByteDance Doubao**   | ✅ Done    | doubao-1.6, etc.             | OpenAI, Anthropic, Gemini, Image Generation |
-| **Gemini**             | ✅ Done    | Gemini 2.5, etc.             | OpenAI, Anthropic, Gemini, Image Generation |
-| **Fireworks**          | ✅ Done    | MiniMax-M2.5, GLM-5, Kimi K2.5, etc. | OpenAI |
-| **Jina AI**            | ✅ Done    | Embeddings, Reranker, etc.   | Jina Embedding, Jina Rerank |
-| **OpenRouter**         | ✅ Done    | Various models               | OpenAI, Anthropic, Gemini, Image Generation |
-| **ZAI**                | ✅ Done    | -                            | Image Generation |
-| **AWS Bedrock**        | 🔄 Testing | Claude on AWS                | OpenAI, Anthropic, Gemini |
-| **Google Cloud**       | 🔄 Testing | Claude on GCP                | OpenAI, Anthropic, Gemini |
-| **NanoGPT**            | ✅ Done    | Various models, Image Gen    | OpenAI, Anthropic, Gemini, Image Generation |
+| **OpenAI**             | ✅ 已完成   | GPT-4, GPT-4o, GPT-5 等      | OpenAI, Anthropic, Gemini, Embedding, Image Generation |
+| **Anthropic**          | ✅ 已完成   | Claude 3.5, Claude 3.0 等    | OpenAI, Anthropic, Gemini |
+| **智谱 AI (Zhipu)**    | ✅ 已完成   | GLM-4.5, GLM-4.5-air 等      | OpenAI, Anthropic, Gemini |
+| **月之暗面 (Moonshot)** | ✅ 已完成   | kimi-k2 等                   | OpenAI, Anthropic, Gemini |
+| **DeepSeek**           | ✅ 已完成   | DeepSeek-V3.1 等             | OpenAI, Anthropic, Gemini |
+| **字节跳动豆包**        | ✅ 已完成   | doubao-1.6 等                | OpenAI, Anthropic, Gemini, Image Generation |
+| **Gemini**             | ✅ 已完成   | Gemini 2.5 等                | OpenAI, Anthropic, Gemini, Image Generation |
+| **Jina AI**            | ✅ 已完成   | Embeddings, Reranker 等      | Jina Embedding, Jina Rerank |
+| **OpenRouter**         | ✅ 已完成   | 多种模型                     | OpenAI, Anthropic, Gemini, Image Generation |
+| **ZAI**                | ✅ 已完成   | -                            | Image Generation |
+| **AWS Bedrock**        | 🔄 测试中  | Claude on AWS                | OpenAI, Anthropic, Gemini |
+| **Google Cloud**       | 🔄 测试中  | Claude on GCP                | OpenAI, Anthropic, Gemini |
+| **NanoGPT**            | ✅ 已完成  | 多种模型、图像生成             | OpenAI, Anthropic, Gemini, Image Generation |
 
 ---
 
-## 🚀 Quick Start
 
-### 30-Second Local Start
+## 🚀 快速开始 | Quick Start
+
+### 30 秒本地启动 | 30-Second Local Start
 
 ```bash
-# Download and extract (macOS ARM64 example)
+# 下载并解压（以 macOS ARM64 为例）
 curl -sSL https://github.com/looplj/axonhub/releases/latest/download/axonhub_darwin_arm64.tar.gz | tar xz
 cd axonhub_*
 
-# Run with SQLite (default)
+# 使用 SQLite 运行（默认）
 ./axonhub
 
-# Open http://localhost:8090
-# First run: Follow the setup wizard to initialize the system (create admin account, password must be at least 6 characters)
+# 打开 http://localhost:8090
+# 首次运行：按照初始化向导设置系统（创建管理员账号，密码至少需要 6 位）
 ```
 
-That's it! Now configure your first AI channel and start calling models through AxonHub.
+就这样！现在配置你的第一个 AI 渠道，开始通过 AxonHub 调用模型。
 
-### Zero-Code Migration Example
+### 零代码迁移示例 | Zero-Code Migration Example
 
-**Your existing code works without any changes.** Just point your SDK to AxonHub:
+**你的现有代码无需任何改动。** 只需将 SDK 指向 AxonHub：
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="http://localhost:8090/v1",  # Point to AxonHub
-    api_key="your-axonhub-api-key"        # Use AxonHub API key
+    base_url="http://localhost:8090/v1",  # 指向 AxonHub
+    api_key="your-axonhub-api-key"        # 使用 AxonHub API 密钥
 )
 
-# Call Claude using OpenAI SDK!
+# 用 OpenAI SDK 调用 Claude！
 response = client.chat.completions.create(
-    model="claude-3-5-sonnet",  # Or gpt-4, gemini-pro, deepseek-chat...
+    model="claude-3-5-sonnet",  # 或 gpt-4、gemini-pro、deepseek-chat...
     messages=[{"role": "user", "content": "Hello!"}]
 )
 ```
 
-Switch models by changing one line: `model="gpt-4"` → `model="claude-3-5-sonnet"`. No SDK changes needed.
-
-### 1-click Deploy to Render
-
-Deploy AxonHub with 1-click on [Render](https://render.com) for free.
-
-<div>
-
-<a href="https://render.com/deploy?repo=https://github.com/looplj/axonhub">
-  <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render">
-</a>
-
-</div>
+切换模型只需改一行：`model="gpt-4"` → `model="claude-3-5-sonnet"`。无需改动 SDK。
 
 ---
 
-## 🚀 Deployment Guide
+## 🚀 部署指南 | Deployment Guide
 
-### 💻 Personal Computer Deployment
+### 💻 个人电脑部署 | Personal Computer Deployment
 
-Perfect for individual developers and small teams. No complex configuration required.
+适合个人开发者和小团队使用，无需复杂配置。
 
-#### Quick Download & Run
+#### 快速下载运行 | Quick Download & Run
 
-1. **Download the latest release** from [GitHub Releases](https://github.com/looplj/axonhub/releases)
+1. **下载最新版本** 从 [GitHub Releases](https://github.com/looplj/axonhub/releases)
+   - 选择适合您操作系统的版本：
 
-   - Choose the appropriate version for your operating system:
-
-2. **Extract and run**
-
+2. **解压并运行**
    ```bash
-   # Extract the downloaded file
+   # 解压下载的文件
    unzip axonhub_*.zip
    cd axonhub_*
 
-   # Add execution permissions (only for Linux/macOS)
+   # 添加执行权限 (仅限 Linux/macOS)
    chmod +x axonhub
 
-   # Run directly - default SQLite database
+   # 直接运行 - 默认使用 SQLite 数据库
+   # 安装 AxonHub 到系统
+   ./install.sh
 
-   # Install AxonHub to system
-   sudo ./install.sh
-
-   # Start AxonHub service
+   # 启动 AxonHub 服务
    ./start.sh
 
-   # Stop AxonHub service
+   # 停止 AxonHub 服务
    ./stop.sh
    ```
 
-3. **Access the application**
+3. **访问应用**
    ```
    http://localhost:8090
    ```
 
 ---
 
-### 🖥️ Server Deployment
+### 🖥️ 服务器部署 | Server Deployment
 
-For production environments, high availability, and enterprise deployments.
+适用于生产环境、高可用性和企业级部署。
 
-#### Database Support
+#### 数据库支持 | Database Support
 
-AxonHub supports multiple databases to meet different scale deployment needs:
+AxonHub 支持多种数据库，满足不同规模的部署需求：
 
-| Database       | Supported Versions | Recommended Scenario                             | Auto Migration | Links                                                       |
-| -------------- | ------------------ | ------------------------------------------------ | -------------- | ----------------------------------------------------------- |
-| **TiDB Cloud** | Starter            | Serverless, Free tier, Auto Scale                | ✅ Supported   | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-starter/)   |
-| **TiDB Cloud** | Dedicated          | Distributed deployment, large scale              | ✅ Supported   | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-dedicated/) |
-| **TiDB**       | V8.0+              | Distributed deployment, large scale              | ✅ Supported   | [TiDB](https://tidb.io/)                                    |
-| **Neon DB**    | -                  | Serverless, Free tier, Auto Scale                | ✅ Supported   | [Neon DB](https://neon.com/)                                |
-| **PostgreSQL** | 15+                | Production environment, medium-large deployments | ✅ Supported   | [PostgreSQL](https://www.postgresql.org/)                   |
-| **MySQL**      | 8.0+               | Production environment, medium-large deployments | ✅ Supported   | [MySQL](https://www.mysql.com/)                             |
-| **SQLite**     | 3.0+               | Development environment, small deployments       | ✅ Supported   | [SQLite](https://www.sqlite.org/index.html)                 |
+| 数据库 | 支持版本 | 推荐场景 | 自动迁移 | 链接 |
+|--------|----------|----------|----------|------|
+| **SQLite** | 3.0+ | 开发环境、小型部署 | ✅ 支持 | [SQLite](https://www.sqlite.org/index.html) |
+| **TiDB Cloud** | Starter | Serverless, Free tier, Auto Scale | ✅ 支持 | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-starter/) |
+| **TiDB Cloud** | Dedicated | 分布式部署、大规模 | ✅ 支持 | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-dedicated/) |
+| **TiDB** | V8.0+ | 分布式部署、大规模 | ✅ 支持 | [TiDB](https://tidb.io/) |
+| **Neon DB** | - | Serverless, Free tier, Auto Scale | ✅ 支持 | [Neon DB](https://neon.com/) |
+| **PostgreSQL** | 15+ | 生产环境、中大型部署 | ✅ 支持 | [PostgreSQL](https://www.postgresql.org/) |
+| **MySQL** | 8.0+ | 生产环境、中大型部署 | ✅ 支持 | [MySQL](https://www.mysql.com/) |
 
-#### Configuration
+#### 配置文件 | Configuration
 
-AxonHub uses YAML configuration files with environment variable override support:
+AxonHub 使用 YAML 配置文件，支持环境变量覆盖：
 
 ```yaml
 # config.yml
@@ -369,8 +358,7 @@ log:
   encoding: "json"
 ```
 
-Environment variables:
-
+环境变量：
 ```bash
 AXONHUB_SERVER_PORT=8090
 AXONHUB_DB_DIALECT="tidb"
@@ -378,29 +366,29 @@ AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbclou
 AXONHUB_LOG_LEVEL=info
 ```
 
-For detailed configuration instructions, please refer to [configuration documentation](docs/en/deployment/configuration.md).
+详细配置说明请参考 [配置文档](config.example.yml)。
 
-#### Docker Compose Deployment
+#### Docker Compose 部署
 
 ```bash
-# Clone project
+# 克隆项目
 git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
-# Set environment variables
+# 设置环境变量
 export AXONHUB_DB_DIALECT="tidb"
 export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
 
-# Start services
+# 启动服务
 docker-compose up -d
 
-# Check status
+# 查看状态
 docker-compose ps
 ```
 
-#### Helm Kubernetes Deployment
+#### Helm Kubernetes 部署 | Helm Kubernetes Deployment
 
-Deploy AxonHub on Kubernetes using the official Helm chart:
+使用官方 Helm Chart 在 Kubernetes 上部署 AxonHub：
 
 ```bash
 # Quick installation
@@ -416,149 +404,139 @@ kubectl port-forward svc/axonhub 8090:8090
 # Visit http://localhost:8090
 ```
 
-**Key Configuration Options:**
+**关键配置选项：**
 
-| Parameter | Description | Default |
+| 参数 | 描述 | 默认 |
 |-----------|-------------|---------|
-| `axonhub.replicaCount` | Replicas | `1` |
-| `axonhub.dbPassword` | DB password | `axonhub_password` |
-| `postgresql.enabled` | Embedded PostgreSQL | `true` |
-| `ingress.enabled` | Enable ingress | `false` |
-| `persistence.enabled` | Data persistence | `false` |
+| `axonhub.replicaCount` | 副本数 | `1` |
+| `axonhub.dbPassword` | 数据库密码 | `axonhub_password` |
+| `postgresql.enabled` | 是否启用内嵌 PostgreSQL | `true` |
+| `ingress.enabled` | 是否启用 Ingress | `false` |
+| `persistence.enabled` | 是否启用持久化存储 | `false` |
 
-For detailed configuration and troubleshooting, see [Helm Chart Documentation](deploy/helm/README.md).
+有关详细配置和故障排查，请参阅 [Helm Chart 文档](deploy/helm/README.md)。
 
-#### Virtual Machine Deployment
+#### 虚拟机部署 | Virtual Machine Deployment
 
-Download the latest release from [GitHub Releases](https://github.com/looplj/axonhub/releases)
+下载最新版本从 [GitHub Releases](https://github.com/looplj/axonhub/releases)
 
 ```bash
-# Extract and run
-unzip axonhub_*.zip
-cd axonhub_*
+# 克隆项目
+git clone https://github.com/looplj/axonhub.git
+cd axonhub
 
-# Set environment variables
+# 设置环境变量
 export AXONHUB_DB_DIALECT="tidb"
 export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
 
+# 安装
 sudo ./install.sh
 
-# Configuration file check
+# 配置文件检查
 axonhub config check
 
-# Start service
-#  For simplicity, we recommend managing AxonHub with the helper scripts:
+# 使用管理脚本管理 AxonHub
 
-# Start
+# 启动
 ./start.sh
 
-# Stop
+# 停止
 ./stop.sh
 ```
 
 ---
 
-## 📖 Usage Guide
+## 📖 使用指南 | Usage Guide
 
-### Unified API Overview
+### 1. 初始化设置 | Initial Setup
 
-AxonHub provides a unified API gateway that supports both OpenAI Chat Completions and Anthropic Messages APIs. This means you can:
-
-- **Use OpenAI API to call Anthropic models** - Keep using your OpenAI SDK while accessing Claude models
-- **Use Anthropic API to call OpenAI models** - Use Anthropic's native API format with GPT models
-- **Use Gemini API to call OpenAI models** - Use Gemini's native API format with GPT models
-- **Automatic API translation** - AxonHub handles format conversion automatically
-- **Zero code changes** - Your existing OpenAI or Anthropic client code continues to work
-
-### 1. Initial Setup
-
-1. **Access Management Interface**
-
+1. **访问管理界面**
    ```
    http://localhost:8090
    ```
 
-2. **Configure AI Providers**
+2. **配置 AI 提供商**
+   - 在管理界面中添加 API 密钥
+   - 测试连接确保配置正确
 
-   - Add API keys in the management interface
-   - Test connections to ensure correct configuration
+3. **创建用户和角色**
+   - 设置权限管理
+   - 分配适当的访问权限
 
-3. **Create Users and Roles**
-   - Set up permission management
-   - Assign appropriate access permissions
+### 2. Channel 配置 | Channel Configuration
 
-### 2. Channel Configuration
+在管理界面中配置 AI 提供商渠道。关于渠道配置的详细信息，包括模型映射、参数覆盖和故障排除，请参阅 [渠道配置指南](docs/zh/guides/channel-management.md)。
 
-Configure AI provider channels in the management interface. For detailed information on channel configuration, including model mappings, parameter overrides, and troubleshooting, see the [Channel Configuration Guide](docs/en/guides/channel-management.md).
+### 3. 模型管理 | Model Management
 
-### 3. Model Management
+AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模型映射到特定渠道和模型实现。这使您能够：
 
-AxonHub provides a flexible model management system that supports mapping abstract models to specific channels and model implementations through Model Associations. This enables:
+- **统一模型接口** - 使用抽象模型 ID（如 `gpt-4`、`claude-3-opus`）替代渠道特定的名称
+- **智能渠道选择** - 基于关联规则和负载均衡自动将请求路由到最优渠道
+- **灵活的映射策略** - 支持精确的渠道-模型匹配、正则表达式模式和基于标签的选择
+- **基于优先级的回退** - 配置多个具有优先级的关联以实现自动故障转移
 
-- **Unified Model Interface** - Use abstract model IDs (e.g., `gpt-4`, `claude-3-opus`) instead of channel-specific names
-- **Intelligent Channel Selection** - Automatically route requests to optimal channels based on association rules and load balancing
-- **Flexible Mapping Strategies** - Support for precise channel-model matching, regex patterns, and tag-based selection
-- **Priority-based Fallback** - Configure multiple associations with priorities for automatic failover
+关于模型管理的全面信息，包括关联类型、配置示例和最佳实践，请参阅 [模型管理指南](docs/zh/guides/model-management.md)。
 
-For comprehensive information on model management, including association types, configuration examples, and best practices, see the [Model Management Guide](docs/en/guides/model-management.md).
+### 4. 创建 API Key | Create API Keys
 
-### 4. Create API Keys
+创建 API 密钥以验证您的应用程序与 AxonHub 的连接。每个 API 密钥可以配置多个配置文件（Profile），用于定义：
 
-Create API keys to authenticate your applications with AxonHub. Each API key can be configured with multiple profiles that define:
+- **模型映射** - 使用精确匹配或正则表达式模式将用户请求的模型转换为实际可用的模型
+- **渠道限制** - 通过渠道 ID 或标签限制 API 密钥可以使用的渠道
+- **模型访问控制** - 控制特定配置文件可以访问的模型
+- **配置文件切换** - 通过激活不同的配置文件即时更改行为
 
-- **Model Mappings** - Transform user-requested models to actual available models using exact match or regex patterns
-- **Channel Restrictions** - Limit which channels an API key can use by channel IDs or tags
-- **Model Access Control** - Control which models are accessible through a specific profile
-- **Profile Switching** - Change behavior on-the-fly by activating different profiles
+关于 API 密钥配置文件的详细信息，包括配置示例、验证规则和最佳实践，请参阅 [API 密钥配置文件指南](docs/zh/guides/api-key-profiles.md)。
 
-For detailed information on API key profiles, including configuration examples, validation rules, and best practices, see the [API Key Profile Guide](docs/en/guides/api-key-profiles.md).
+### 5. AI 编程工具集成 | AI Coding Tools Integration
 
-### 5. AI Coding Tools Integration
+关于如何在 OpenCode、Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的集成指南：
+- [OpenCode 集成指南](docs/zh/guides/opencode-integration.md)
+- [Claude Code 集成指南](docs/zh/guides/claude-code-integration.md)
+- [Codex 集成指南](docs/zh/guides/codex-integration.md)
 
-See the dedicated guides for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles:
-- [OpenCode Integration Guide](docs/en/guides/opencode-integration.md)
-- [Claude Code Integration Guide](docs/en/guides/claude-code-integration.md)
-- [Codex Integration Guide](docs/en/guides/codex-integration.md)
-
----
-
-### 6. SDK Usage
-
-For detailed SDK usage examples and code samples, please refer to the API documentation:
-- [OpenAI API](docs/en/api-reference/openai-api.md)
-- [Anthropic API](docs/en/api-reference/anthropic-api.md)
-- [Gemini API](docs/en/api-reference/gemini-api.md)
-
-## 🛠️ Development Guide
-
-For detailed development instructions, architecture design, and contribution guidelines, please see [docs/en/development/development.md](docs/en/development/development.md).
+这些文档提供了环境变量示例、Codex 配置模板、模型配置文件说明以及工作流示例，帮助您快速完成接入。
 
 ---
 
-## 🤝 Acknowledgments
+### 6. 使用 SDK | SDK Usage
 
-- 🙏 [musistudio/llms](https://github.com/musistudio/llms) - LLM transformation framework, source of inspiration
-- 🎨 [satnaing/shadcn-admin](https://github.com/satnaing/shadcn-admin) - Admin interface template
-- 🔧 [99designs/gqlgen](https://github.com/99designs/gqlgen) - GraphQL code generation
-- 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP framework
-- 🗄️ [ent/ent](https://github.com/ent/ent) - ORM framework
-- 🔧 [air-verse/air](https://github.com/air-verse/air) - Auto reload Go service
-- ☁️ [Render](https://render.com) - Free cloud deployment platform for hosting our demo
-- 🗃️ [TiDB Cloud](https://www.pingcap.com/tidb-cloud/) - Serverless database platform for demo deployment
+详细的 SDK 使用示例和代码示例，请参阅 API 文档：
+- [OpenAI API](docs/zh/api-reference/openai-api.md)
+- [Anthropic API](docs/zh/api-reference/anthropic-api.md)
+- [Gemini API](docs/zh/api-reference/gemini-api.md)
+
+
+## 🛠️ 开发指南
+
+详细的开发说明、架构设计和贡献指南，请查看 [docs/zh/development/development.md](docs/zh/development/development.md)。
 
 ---
 
-## 📄 License
+## 🤝 致谢 | Acknowledgments
 
-This project is licensed under multiple licenses (Apache-2.0 and LGPL-3.0). See [LICENSE](LICENSE) file for the detailed licensing overview and terms.
+- 🙏 [musistudio/llms](https://github.com/musistudio/llms) - LLM 转换框架，灵感来源
+- 🎨 [satnaing/shadcn-admin](https://github.com/satnaing/shadcn-admin) - 管理界面模板
+- 🔧 [99designs/gqlgen](https://github.com/99designs/gqlgen) - GraphQL 代码生成
+- 🌐 [gin-gonic/gin](https://github.com/gin-gonic/gin) - HTTP 框架
+- 🗄️ [ent/ent](https://github.com/ent/ent) - ORM 框架
+- 🔧 [air-verse/air](https://github.com/air-verse/air) - 自动重载 Go 服务
+- ☁️ [render](https://render.com) - 免费云部署平台，用于部署 demo
+- 🗄️ [tidbcloud](https://www.pingcap.com/tidb-cloud/) - Serverless 数据库平台，用于部署 demo
 
+---
+
+## 📄 许可证 | License
+
+本项目采用多种许可证授权（Apache-2.0 和 LGPL-3.0）。详见 [LICENSE](LICENSE) 文件了解详细的项目授权说明与条款。
 ---
 
 <div align="center">
 
-**AxonHub** - All-in-one AI Development Platform, making AI development simpler
+**AxonHub** - All-in-one AI 开发平台，让 AI 开发更简单
 
-[🏠 Homepage](https://github.com/looplj/axonhub) • [📚 Documentation](https://deepwiki.com/looplj/axonhub) • [🐛 Issue Feedback](https://github.com/looplj/axonhub/issues)
+[🏠 官网](https://github.com/looplj/axonhub) • [📚 文档](https://deepwiki.com/looplj/axonhub) • [🐛 问题反馈](https://github.com/looplj/axonhub/issues)
 
 Built with ❤️ by the AxonHub team
 

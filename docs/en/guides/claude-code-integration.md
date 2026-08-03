@@ -194,4 +194,4 @@ You can manually trigger a quota refresh by clicking the refresh icon in the quo
 - [OpenAI API](../api-reference/openai-api.md)
 - [Codex Integration Guide](codex-integration.md)
 - [Channel Management Guide](channel-management.md)
-- README sections on [Usage Guide](../../../README.md#usage-guide)
+- README sections on [Usage Guide](../../../README.en-US.md#usage-guide)

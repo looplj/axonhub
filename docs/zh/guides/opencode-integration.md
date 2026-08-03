@@ -362,4 +362,4 @@ OpenCode 也可以使用 AxonHub 的 OpenAI 兼容端点：
 - [模型管理指南](model-management.md)
 - [渠道管理指南](channel-management.md)
 - [Anthropic API 参考](../api-reference/anthropic-api.md)
-- README 中的 [使用指南](../../../README.md#usage-guide)
+- README 中的 [使用指南](../../../README.md#使用指南--usage-guide)
