@@ -150,6 +150,40 @@ func TestResponsesChatToolAdapter_ConvertsHistoryAndRestoresCalls(t *testing.T) 
 	require.Equal(t, "spawn_agent", calls[2].Function.Name)
 }
 
+func TestResponsesChatToolAdapter_DropsEmptyAssistantHistoryMessages(t *testing.T) {
+	request := &llm.Request{Messages: []llm.Message{
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("before")}},
+		{
+			Role:               "assistant",
+			ReasoningItems:     []llm.ReasoningItem{{ID: "rs_empty", Signature: "opaque"}},
+			ReasoningSignature: lo.ToPtr("opaque"),
+		},
+		{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(" \n ")}},
+		{
+			Role: "assistant",
+			Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+				Type: "compaction", Compact: &llm.CompactContent{ID: "cmp_1", EncryptedContent: "opaque"},
+			}}},
+		},
+		{Role: "assistant", ReasoningContent: lo.ToPtr("kept reasoning")},
+		{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "call_1", Type: "function", Function: llm.FunctionCall{Name: "lookup", Arguments: `{}`}}}},
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("after")}},
+	}}
+
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldContent)
+	require.NoError(t, err)
+	require.Len(t, chatRequest.Messages, 4)
+	require.Equal(t, []string{"user", "assistant", "assistant", "user"}, []string{
+		chatRequest.Messages[0].Role,
+		chatRequest.Messages[1].Role,
+		chatRequest.Messages[2].Role,
+		chatRequest.Messages[3].Role,
+	})
+	require.Equal(t, "kept reasoning", lo.FromPtr(chatRequest.Messages[1].ReasoningContent))
+	require.Len(t, chatRequest.Messages[2].ToolCalls, 1)
+	require.Contains(t, adapter.warnings, "empty_assistant_message: dropped 3 history message(s) with no Chat-compatible payload")
+}
+
 func TestResponsesChatToolStreamRestorer_UsesToolCallIndexForLaterChunks(t *testing.T) {
 	mappings := map[string]responsesChatToolMapping{
 		"apply_patch": {Kind: responsesChatToolCustom, ChatName: "apply_patch", Name: "apply_patch"},

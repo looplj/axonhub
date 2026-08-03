@@ -90,10 +90,25 @@ func requestFromLLMWithResponsesToolAdapter(r *llm.Request, reasoningField Reaso
 	// resolve through the same stable names as the current tool declarations.
 	req.Tools = toolAdapter.convertTools(r.Tools)
 
-	// Convert messages
-	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
-		return toolAdapter.convertMessage(m, reasoningField)
+	// Convert messages. Responses can retain assistant-only metadata such as
+	// encrypted reasoning or compaction items that Chat Completions cannot
+	// represent. Once those fields are stripped, omit the empty assistant
+	// message instead of sending an invalid history entry to the provider.
+	droppedEmptyAssistants := 0
+	req.Messages = lo.FilterMap(r.Messages, func(m llm.Message, _ int) (Message, bool) {
+		converted := toolAdapter.convertMessage(m, reasoningField)
+		if !hasChatAssistantPayload(converted) {
+			droppedEmptyAssistants++
+			return Message{}, false
+		}
+		return converted, true
 	})
+	if droppedEmptyAssistants > 0 {
+		toolAdapter.addWarning(
+			"empty_assistant_message: dropped %d history message(s) with no Chat-compatible payload",
+			droppedEmptyAssistants,
+		)
+	}
 
 	// Convert ToolChoice
 	req.ToolChoice = toolAdapter.convertToolChoice(r.ToolChoice)

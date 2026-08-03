@@ -248,7 +248,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 	if len(toolAdapter.warnings) > 0 {
 		transformerMetadata[responsesChatToolWarningsMetadataKey] = append([]string(nil), toolAdapter.warnings...)
-		slog.WarnContext(ctx, "Responses tools degraded during Chat Completions conversion",
+		slog.WarnContext(ctx, "Responses request degraded during Chat Completions conversion",
 			slog.String("model", llmReq.Model),
 			slog.Any("warnings", toolAdapter.warnings))
 	}

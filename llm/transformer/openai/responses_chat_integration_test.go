@@ -124,6 +124,35 @@ func TestResponsesToChatHistory_MergesConsecutiveNamespaceCallsBeforeOutputs(t *
 	require.Equal(t, "user", converted.Messages[3].Role)
 }
 
+func TestResponsesToChatHistory_DropsResponsesOnlyEmptyAssistants(t *testing.T) {
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":[
+			{"role":"user","type":"message","content":[{"type":"input_text","text":"before"}]},
+			{"id":"rs_empty","type":"reasoning","summary":[],"encrypted_content":"opaque"},
+			{"id":"msg_empty","role":"assistant","type":"message","content":[]},
+			{"role":"user","type":"message","content":[{"type":"input_text","text":"after"}]}
+		]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, llmRequest.Messages, 3)
+
+	chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	var converted Request
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+	require.Len(t, converted.Messages, 2)
+	require.Equal(t, []string{"user", "user"}, []string{converted.Messages[0].Role, converted.Messages[1].Role})
+	warnings, ok := chatRequest.TransformerMetadata[responsesChatToolWarningsMetadataKey].([]string)
+	require.True(t, ok)
+	require.Contains(t, warnings, "empty_assistant_message: dropped 1 history message(s) with no Chat-compatible payload")
+}
+
 func TestResponsesToChatCustomTool_ParateraNonStreamingSimulation(t *testing.T) {
 	ctx := context.Background()
 	responsesInbound := responsesapi.NewInboundTransformer()
@@ -974,7 +1003,7 @@ func TestResponsesToChatTools_DropsUnsupportedServerToolWithWarning(t *testing.T
 	require.True(t, ok)
 	require.Len(t, warnings, 1)
 	require.Contains(t, warnings[0], "unsupported_tool_type")
-	require.Contains(t, logs.String(), "Responses tools degraded during Chat Completions conversion")
+	require.Contains(t, logs.String(), "Responses request degraded during Chat Completions conversion")
 	require.Contains(t, logs.String(), `"model":"gpt-5.5"`)
 	require.Contains(t, logs.String(), "unsupported_tool_type")
 }
@@ -1031,5 +1060,5 @@ func TestChatTools_FiltersEstablishedNonChatToolsWithoutCompatibilityWarning(t *
 	require.Empty(t, converted.Tools)
 	_, warned := chatRequest.TransformerMetadata[responsesChatToolWarningsMetadataKey]
 	require.False(t, warned)
-	require.NotContains(t, logs.String(), "Responses tools degraded during Chat Completions conversion")
+	require.NotContains(t, logs.String(), "Responses request degraded during Chat Completions conversion")
 }

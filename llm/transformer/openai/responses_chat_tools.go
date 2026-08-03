@@ -290,6 +290,31 @@ func (a *responsesChatToolAdapter) convertMessage(message llm.Message, reasoning
 	return converted
 }
 
+// hasChatAssistantPayload reports whether a converted message contains data
+// accepted as assistant history by Chat Completions providers. Non-assistant
+// roles use different validation rules and pass through unchanged.
+func hasChatAssistantPayload(message Message) bool {
+	if message.Role != "assistant" {
+		return true
+	}
+	if len(message.ToolCalls) > 0 ||
+		(message.ReasoningContent != nil && strings.TrimSpace(*message.ReasoningContent) != "") ||
+		(message.Reasoning != nil && strings.TrimSpace(*message.Reasoning) != "") ||
+		strings.TrimSpace(message.Refusal) != "" || message.Audio != nil {
+		return true
+	}
+	if message.Content.Content != nil && strings.TrimSpace(*message.Content.Content) != "" {
+		return true
+	}
+	for _, part := range message.Content.MultipleContent {
+		if (part.Text != nil && strings.TrimSpace(*part.Text) != "") ||
+			part.ImageURL != nil || part.VideoURL != nil || part.InputAudio != nil {
+			return true
+		}
+	}
+	return false
+}
+
 // chatFunctionCall builds a Chat function call while preserving common call metadata.
 func chatFunctionCall(call llm.ToolCall, callID, name, arguments string) ToolCall {
 	return ToolCall{
