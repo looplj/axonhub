@@ -15,7 +15,14 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 	}
 	req := requestFromLLMBase(r)
 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
-		return MessageFromLLMWithConfig(m, reasoningField)
+		message := MessageFromLLMWithConfig(m, reasoningField)
+		// Tool call indexes identify positions within one assistant request
+		// message. Normalize history here without rewriting response deltas,
+		// whose indexes must remain stable across streaming chunks.
+		for index := range message.ToolCalls {
+			message.ToolCalls[index].Index = index
+		}
+		return message
 	})
 	req.Tools = lo.FilterMap(r.Tools, func(tool llm.Tool, _ int) (Tool, bool) {
 		return ToolFromLLM(tool), tool.Type == llm.ToolTypeFunction

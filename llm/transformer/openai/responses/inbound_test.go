@@ -1780,6 +1780,11 @@ func TestConvertInputToMessages_GroupsConsecutiveMixedToolCalls(t *testing.T) {
 		messages[0].ToolCalls[1].ID,
 		messages[0].ToolCalls[2].ID,
 	})
+	require.Equal(t, []int{0, 1, 2}, []int{
+		messages[0].ToolCalls[0].Index,
+		messages[0].ToolCalls[1].Index,
+		messages[0].ToolCalls[2].Index,
+	})
 	require.Equal(t, "lookup", messages[0].ToolCalls[0].Function.Name)
 	require.NotNil(t, messages[0].ToolCalls[1].ResponseCustomToolCall)
 	require.Equal(t, "apply_patch", messages[0].ToolCalls[1].ResponseCustomToolCall.Name)
@@ -2002,6 +2007,31 @@ func TestConvertReasoningWithFollowing(t *testing.T) {
 				require.Equal(t, "gAAAA_SECOND_BLOB", lo.FromPtr(result.ReasoningSignature))
 				require.Len(t, result.ToolCalls, 1)
 				require.Equal(t, "call_123", result.ToolCalls[0].ID)
+			},
+		},
+		{
+			name: "reasoning merged with parallel mixed tool calls",
+			items: []Item{
+				{
+					ID:      "reasoning_parallel",
+					Type:    "reasoning",
+					Summary: []ReasoningSummary{{Type: "summary_text", Text: "use parallel tools"}},
+				},
+				{Type: "function_call", CallID: "call_function", Name: "lookup", Arguments: `{}`},
+				{Type: "custom_tool_call", CallID: "call_custom", Name: "apply_patch", Input: lo.ToPtr("patch")},
+				{Type: "tool_search_call", CallID: "call_search", Execution: "client", Arguments: `{}`},
+			},
+			startIdx: 0,
+			validate: func(t *testing.T, result *llm.Message, consumed int, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, 4, consumed)
+				require.Len(t, result.ToolCalls, 3)
+				require.Equal(t, []int{0, 1, 2}, []int{
+					result.ToolCalls[0].Index,
+					result.ToolCalls[1].Index,
+					result.ToolCalls[2].Index,
+				})
 			},
 		},
 		{

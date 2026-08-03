@@ -396,7 +396,10 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 					return nil, err
 				}
 				if callMessage != nil {
-					msg.ToolCalls = append(msg.ToolCalls, callMessage.ToolCalls...)
+					for _, call := range callMessage.ToolCalls {
+						call.Index = len(msg.ToolCalls)
+						msg.ToolCalls = append(msg.ToolCalls, call)
+					}
 				}
 				i++
 			}
@@ -481,8 +484,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		case "function_call":
 			// Merge function_call into the same assistant message
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: "function",
+				ID:    nextItem.CallID,
+				Type:  "function",
+				Index: len(msg.ToolCalls),
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
 					Namespace: nextItem.Namespace,
@@ -499,8 +503,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			}
 
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:    nextItem.CallID,
+				Type:  llm.ToolTypeResponsesCustomTool,
+				Index: len(msg.ToolCalls),
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
 					CallID: nextItem.CallID,
 					Name:   nextItem.Name,
@@ -511,8 +516,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 
 		case "tool_search_call":
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: llm.ToolTypeResponsesToolSearch,
+				ID:    nextItem.CallID,
+				Type:  llm.ToolTypeResponsesToolSearch,
+				Index: len(msg.ToolCalls),
 				ResponseToolSearchCall: &llm.ResponseToolSearchCall{
 					CallID:    nextItem.CallID,
 					Execution: nextItem.Execution,

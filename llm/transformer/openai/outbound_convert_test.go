@@ -112,6 +112,24 @@ func TestRequestFromLLM_FiltersResponsesOnlyToolsWithoutLifecycleMetadata(t *tes
 	require.Equal(t, "get_weather", req.Tools[0].Function.Name)
 }
 
+func TestRequestFromLLM_ReindexesAssistantToolCallsByArrayPosition(t *testing.T) {
+	req := RequestFromLLM(&llm.Request{Messages: []llm.Message{{
+		Role: "assistant",
+		ToolCalls: []llm.ToolCall{
+			{Index: 0, ID: "call_a", Type: "function", Function: llm.FunctionCall{Name: "first", Arguments: `{}`}},
+			{Index: 0, ID: "call_b", Type: "function", Function: llm.FunctionCall{Name: "second", Arguments: `{}`}},
+		},
+	}}}, ReasoningFieldNone)
+
+	require.NotNil(t, req)
+	require.Len(t, req.Messages, 1)
+	require.Len(t, req.Messages[0].ToolCalls, 2)
+	require.Equal(t, []int{0, 1}, []int{
+		req.Messages[0].ToolCalls[0].Index,
+		req.Messages[0].ToolCalls[1].Index,
+	})
+}
+
 func TestResponsesChatToolAdapter_ConvertsHistoryAndRestoresCalls(t *testing.T) {
 	request := &llm.Request{
 		Tools: []llm.Tool{
@@ -136,6 +154,11 @@ func TestResponsesChatToolAdapter_ConvertsHistoryAndRestoresCalls(t *testing.T) 
 	require.JSONEq(t, `{"input":"*** Begin Patch"}`, chatRequest.Messages[0].ToolCalls[0].Function.Arguments)
 	require.Equal(t, "tool_search", chatRequest.Messages[0].ToolCalls[1].Function.Name)
 	require.Equal(t, "collaboration__spawn_agent", chatRequest.Messages[0].ToolCalls[2].Function.Name)
+	require.Equal(t, []int{0, 1, 2}, []int{
+		chatRequest.Messages[0].ToolCalls[0].Index,
+		chatRequest.Messages[0].ToolCalls[1].Index,
+		chatRequest.Messages[0].ToolCalls[2].Index,
+	})
 
 	response := &llm.Response{Choices: []llm.Choice{{Message: &llm.Message{ToolCalls: []llm.ToolCall{
 		{ID: "call_custom", Function: llm.FunctionCall{Name: "apply_patch", Arguments: `{"input":"*** Begin Patch"}`}},

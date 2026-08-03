@@ -151,6 +151,10 @@ func TestResponsesToChatHistory_MergesConsecutiveNamespaceCallsBeforeOutputs(t *
 	require.Equal(t, "multi_agent_v1__spawn_agent", converted.Messages[0].ToolCalls[0].Function.Name)
 	require.Equal(t, "multi_agent_v1__send_message:7", converted.Messages[0].ToolCalls[1].ID)
 	require.Equal(t, "multi_agent_v1__send_message", converted.Messages[0].ToolCalls[1].Function.Name)
+	require.Equal(t, []int{0, 1}, []int{
+		converted.Messages[0].ToolCalls[0].Index,
+		converted.Messages[0].ToolCalls[1].Index,
+	})
 	require.Equal(t, "tool", converted.Messages[1].Role)
 	require.Equal(t, "multi_agent_v1__spawn_agent:6", *converted.Messages[1].ToolCallID)
 	require.Equal(t, "tool", converted.Messages[2].Role)

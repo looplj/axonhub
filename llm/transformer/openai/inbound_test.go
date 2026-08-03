@@ -470,6 +470,45 @@ func TestInboundTransformer_TransformStreamChunk(t *testing.T) {
 			},
 		},
 		{
+			name: "streaming tool call chunk preserves non-zero index",
+			response: &llm.Response{
+				ID:      "chatcmpl-123",
+				Object:  "chat.completion.chunk",
+				Created: 1677652288,
+				Model:   "gpt-4",
+				Choices: []llm.Choice{
+					{
+						Index: 0,
+						Delta: &llm.Message{
+							Role: "assistant",
+							ToolCalls: []llm.ToolCall{
+								{
+									Index: 1,
+									ID:    "call_456",
+									Type:  "function",
+									Function: llm.FunctionCall{
+										Name:      "get_weather",
+										Arguments: `{"city":"Paris"}`,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(event *httpclient.StreamEvent) bool {
+				var chatResp llm.Response
+				if err := json.Unmarshal(event.Data, &chatResp); err != nil {
+					return false
+				}
+				return len(chatResp.Choices) == 1 &&
+					chatResp.Choices[0].Delta != nil &&
+					len(chatResp.Choices[0].Delta.ToolCalls) == 1 &&
+					chatResp.Choices[0].Delta.ToolCalls[0].Index == 1
+			},
+		},
+		{
 			name: "empty choices",
 			response: &llm.Response{
 				ID:      "chatcmpl-123",

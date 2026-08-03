@@ -255,7 +255,11 @@ func (a *responsesChatToolAdapter) convertMessage(message llm.Message, reasoning
 	}
 
 	converted.ToolCalls = make([]ToolCall, 0, len(message.ToolCalls))
-	for _, call := range message.ToolCalls {
+	for index, call := range message.ToolCalls {
+		// Responses calls are independent output items and commonly all carry
+		// index zero. Once grouped into one Chat assistant message, indexes must
+		// be unique and follow their array positions.
+		call.Index = index
 		switch {
 		case call.ResponseCustomToolCall != nil:
 			mapping, ok := a.findMapping(responsesChatToolCustom, call.ResponseCustomToolCall.Name, "")
