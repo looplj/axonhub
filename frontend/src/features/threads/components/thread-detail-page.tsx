@@ -269,7 +269,7 @@ export default function ThreadDetailPage() {
                 <p className='text-base sm:text-lg font-semibold'>
                   {t('currencies.format', {
                     val: thread.usageMetadata.totalCost,
-                    currency: settings?.currencyCode,
+                    currency: settings?.currencyCode ?? 'USD',
                     locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
                     minimumFractionDigits: 6,
                   })}
