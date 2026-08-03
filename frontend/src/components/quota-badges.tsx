@@ -1643,7 +1643,14 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
           <QuotaBadgeTrigger channels={groupedChannels} isLoading={isLoading} isError={isError} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className={!isLoading && !isError && groupedChannels.length > 4 ? 'w-full sm:w-[640px]' : 'w-full sm:w-80'} align='end'>
+      <PopoverContent
+        className={
+          !isLoading && !isError && groupedChannels.length > 4
+            ? 'w-[640px] max-w-[calc(100vw-2rem)]'
+            : 'w-80 max-w-[calc(100vw-2rem)]'
+        }
+        align='end'
+      >
         <div className='space-y-1'>
           <div className='mb-2 flex items-center justify-between'>
             <div className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>{t('system.providerQuota.title')}</div>
