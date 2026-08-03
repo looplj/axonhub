@@ -35,6 +35,7 @@ import {
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
+import { OrcaRouterIcon } from '../components/orcarouter-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
 
@@ -206,6 +207,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: OpenRouter,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['openrouter'],
+  },
+  orcarouter: {
+    provider: 'orcarouter',
+    icon: OrcaRouterIcon,
+    color: 'bg-[#0160E6] text-white border-[#0160E6]',
+    channelTypes: ['orcarouter'],
   },
   xiaomi: {
     provider: 'xiaomi',

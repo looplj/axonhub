@@ -1287,6 +1287,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   anthropic_fake
   openai_fake
   openrouter
+  orcarouter
   xiaomi
   xiaomi_anthropic
   xai

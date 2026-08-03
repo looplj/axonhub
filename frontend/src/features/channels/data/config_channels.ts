@@ -35,6 +35,7 @@ import {
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
+import { OrcaRouterIcon } from '../components/orcarouter-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
 
@@ -297,6 +298,25 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     icon: OpenRouter,
+  },
+  orcarouter: {
+    channelType: 'orcarouter',
+    baseURL: 'https://api.orcarouter.ai/v1',
+    defaultModels: [
+      // Anthropic (namespaced ids — OrcaRouter rejects bare model names)
+      'anthropic/claude-opus-5',
+      'anthropic/claude-sonnet-5',
+      'anthropic/claude-haiku-4.5',
+
+      // OpenAI
+      'openai/gpt-5.5',
+
+      // Smart auto-routing
+      'orcarouter/auto',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-[#0160E6] text-white border-[#0160E6]',
+    icon: OrcaRouterIcon,
   },
   xiaomi: {
     channelType: 'xiaomi',
@@ -838,6 +858,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   xiaomi_anthropic: 'xiaomi',
   xai: 'xai',
   openrouter: 'openrouter',
+  orcarouter: 'orcarouter',
   vercel: 'vercel',
   ppio: 'ppio',
   siliconflow: 'siliconflow',

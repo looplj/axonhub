@@ -64,6 +64,7 @@ func (Channel) Fields() []ent.Field {
 				"anthropic_fake",
 				"openai_fake",
 				"openrouter",
+				"orcarouter",
 				"xiaomi",
 				"xiaomi_anthropic",
 				"xai",
