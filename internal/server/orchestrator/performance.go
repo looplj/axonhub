@@ -14,6 +14,8 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+const errorMatchBodyLimit = 8 * 1024
+
 // withPerformanceRecording creates a unified middleware that handles all performance tracking.
 // It initializes metrics, tracks first token in streams, and records final metrics.
 func withPerformanceRecording(outbound *PersistentOutboundTransformer) pipeline.Middleware {
@@ -127,7 +129,7 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 		perf.MarkCanceled()
 	} else {
 		errorCode := ExtractErrorCode(err)
-		perf.MarkFailed(errorCode)
+		perf.MarkFailedWithMessage(errorCode, extractErrorMessageForMatching(err))
 	}
 
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)
@@ -206,6 +208,21 @@ func ExtractErrorCode(err error) int {
 
 	// Default to 500
 	return 500
+}
+
+func extractErrorMessageForMatching(err error) string {
+	message := ExtractErrorMessage(err)
+	httpErr := &httpclient.Error{}
+	if !errors.As(err, &httpErr) || len(httpErr.Body) == 0 {
+		return message
+	}
+
+	body := httpErr.Body
+	if len(body) > errorMatchBodyLimit {
+		body = body[:errorMatchBodyLimit]
+	}
+
+	return message + "\n" + string(body)
 }
 
 type NoopPerformanceRecording struct {

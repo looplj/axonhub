@@ -18,6 +18,7 @@ type APIKeyProfileInput struct {
 	ModelIDs             []string              `json:"modelIDs"`
 	Quota                *APIKeyQuotaInput     `json:"quota,omitempty"`
 	LoadBalanceStrategy  *string               `json:"loadBalanceStrategy,omitempty"`
+	TraceStickyMode      *string               `json:"traceStickyMode,omitempty"`
 }
 
 // GetName returns APIKeyProfileInput.Name, and is useful for accessing the field via an interface.
@@ -45,6 +46,9 @@ func (v *APIKeyProfileInput) GetQuota() *APIKeyQuotaInput { return v.Quota }
 
 // GetLoadBalanceStrategy returns APIKeyProfileInput.LoadBalanceStrategy, and is useful for accessing the field via an interface.
 func (v *APIKeyProfileInput) GetLoadBalanceStrategy() *string { return v.LoadBalanceStrategy }
+
+// GetTraceStickyMode returns APIKeyProfileInput.TraceStickyMode, and is useful for accessing the field via an interface.
+func (v *APIKeyProfileInput) GetTraceStickyMode() *string { return v.TraceStickyMode }
 
 type APIKeyQuotaCalendarDurationInput struct {
 	Unit APIKeyQuotaCalendarDurationUnit `json:"unit"`
@@ -307,6 +311,7 @@ type GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile struct {
 	ChannelTagsMatchMode *ChannelTagsMatchMode                                                          `json:"channelTagsMatchMode"`
 	ModelIDs             []string                                                                       `json:"modelIDs"`
 	LoadBalanceStrategy  *string                                                                        `json:"loadBalanceStrategy"`
+	TraceStickyMode      *string                                                                        `json:"traceStickyMode"`
 }
 
 // GetName returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.Name, and is useful for accessing the field via an interface.
@@ -340,6 +345,11 @@ func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetModelIDs() []str
 // GetLoadBalanceStrategy returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.LoadBalanceStrategy, and is useful for accessing the field via an interface.
 func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetLoadBalanceStrategy() *string {
 	return v.LoadBalanceStrategy
+}
+
+// GetTraceStickyMode returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.TraceStickyMode, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetTraceStickyMode() *string {
+	return v.TraceStickyMode
 }
 
 // GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping includes the requested fields of the GraphQL type ModelMapping.
@@ -445,6 +455,7 @@ type LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPI
 	ChannelTagsMatchMode *ChannelTagsMatchMode                                                                                             `json:"channelTagsMatchMode"`
 	ModelIDs             []string                                                                                                          `json:"modelIDs"`
 	LoadBalanceStrategy  *string                                                                                                           `json:"loadBalanceStrategy"`
+	TraceStickyMode      *string                                                                                                           `json:"traceStickyMode"`
 }
 
 // GetName returns LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile.Name, and is useful for accessing the field via an interface.
@@ -480,6 +491,11 @@ func (v *LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfile
 // GetLoadBalanceStrategy returns LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile.LoadBalanceStrategy, and is useful for accessing the field via an interface.
 func (v *LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile) GetLoadBalanceStrategy() *string {
 	return v.LoadBalanceStrategy
+}
+
+// GetTraceStickyMode returns LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile.TraceStickyMode, and is useful for accessing the field via an interface.
+func (v *LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile) GetTraceStickyMode() *string {
+	return v.TraceStickyMode
 }
 
 // LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping includes the requested fields of the GraphQL type ModelMapping.
@@ -593,6 +609,7 @@ type UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile
 	ChannelTagsMatchMode *ChannelTagsMatchMode                                                                                   `json:"channelTagsMatchMode"`
 	ModelIDs             []string                                                                                                `json:"modelIDs"`
 	LoadBalanceStrategy  *string                                                                                                 `json:"loadBalanceStrategy"`
+	TraceStickyMode      *string                                                                                                 `json:"traceStickyMode"`
 }
 
 // GetName returns UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile.Name, and is useful for accessing the field via an interface.
@@ -628,6 +645,11 @@ func (v *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyPro
 // GetLoadBalanceStrategy returns UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile.LoadBalanceStrategy, and is useful for accessing the field via an interface.
 func (v *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile) GetLoadBalanceStrategy() *string {
 	return v.LoadBalanceStrategy
+}
+
+// GetTraceStickyMode returns UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile.TraceStickyMode, and is useful for accessing the field via an interface.
+func (v *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile) GetTraceStickyMode() *string {
+	return v.TraceStickyMode
 }
 
 // UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping includes the requested fields of the GraphQL type ModelMapping.
@@ -817,6 +839,7 @@ query GetAPIKey ($id: ID, $key: String, $name: String) {
 				channelTagsMatchMode
 				modelIDs
 				loadBalanceStrategy
+				traceStickyMode
 			}
 		}
 	}
@@ -877,6 +900,7 @@ mutation LoadApiKeyProfileTemplate ($input: LoadApiKeyProfileTemplateInput!) {
 				channelTagsMatchMode
 				modelIDs
 				loadBalanceStrategy
+				traceStickyMode
 			}
 		}
 	}
@@ -932,6 +956,7 @@ mutation UpdateAPIKeyProfiles ($id: ID, $name: String, $input: UpdateAPIKeyProfi
 				channelTagsMatchMode
 				modelIDs
 				loadBalanceStrategy
+				traceStickyMode
 			}
 		}
 	}

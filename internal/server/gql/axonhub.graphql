@@ -177,12 +177,35 @@ enum CapabilityPolicy {
   forbid
 }
 
+enum APIKeyAutoDisableAction {
+  temporary_disable
+  permanent_disable_delete
+}
+
+type APIKeyAutoDisableRule {
+  statusCodes: [Int!]
+  keywordPatterns: [String!]
+  times: Int!
+  action: APIKeyAutoDisableAction!
+  disableDurationMinutes: Int
+}
+
+input APIKeyAutoDisableRuleInput {
+  statusCodes: [Int!]
+  keywordPatterns: [String!]
+  times: Int!
+  action: APIKeyAutoDisableAction!
+  disableDurationMinutes: Int
+}
+
 type ChannelPolicies {
   stream: CapabilityPolicy
+  apiKeyAutoDisableRules: [APIKeyAutoDisableRule!]
 }
 
 input ChannelPoliciesInput {
   stream: CapabilityPolicy
+  apiKeyAutoDisableRules: [APIKeyAutoDisableRuleInput!]
 }
 
 input ModelMappingInput {
@@ -237,6 +260,7 @@ type DisabledAPIKey {
   disabledAt: Time!
   errorCode: Int!
   reason: String
+  expiresAt: Time
 }
 
 type OAuthCredentials {
@@ -380,6 +404,7 @@ input APIKeyProfileInput {
   modelIDs: [String!]
   quota: APIKeyQuotaInput
   loadBalanceStrategy: String
+  traceStickyMode: String
 }
 
 input UpdateProjectProfilesInput {
@@ -424,6 +449,7 @@ type APIKeyProfile {
   modelIDs: [String!]
   quota: APIKeyQuota
   loadBalanceStrategy: String
+  traceStickyMode: String
 }
 
 enum ChannelTagsMatchMode {

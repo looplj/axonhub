@@ -19,7 +19,7 @@ import { AutoComplete } from '@/components/auto-complete';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useUpdateApiKeyProfileTemplate } from '../data/apikeys';
 import { formSchemaFactory, type FormValues } from '../data/template-form-schema';
-import type { ApiKeyProfileTemplate } from '../data/schema';
+import { normalizeRoutingPolicyValue, type ApiKeyProfileTemplate } from '../data/schema';
 
 interface ApiKeyEditTemplateDialogProps {
   open: boolean;
@@ -63,7 +63,8 @@ export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKe
         channelTags: profile?.channelTags ?? null,
         channelTagsMatchMode: profile?.channelTagsMatchMode ?? 'any',
         modelIDs: profile?.modelIDs ?? null,
-        loadBalanceStrategy: profile?.loadBalanceStrategy ?? null,
+        loadBalanceStrategy: normalizeRoutingPolicyValue(profile?.loadBalanceStrategy),
+        traceStickyMode: normalizeRoutingPolicyValue(profile?.traceStickyMode),
         quota: profile?.quota
           ? {
               requests: profile.quota.requests ?? null,
@@ -218,20 +219,50 @@ export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKe
                         </div>
                         <FormControl>
                           <Select
-                            onValueChange={(val) => field.onChange(val === 'system_default' ? null : val)}
-                            value={field.value || 'system_default'}
+                            onValueChange={field.onChange}
+                            value={field.value || 'default'}
                           >
                             <SelectTrigger className='w-[140px]'>
                               <SelectValue placeholder={t('apikeys.profiles.loadBalancerStrategyPlaceholder')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value='system_default'>{t('apikeys.profiles.loadBalancerStrategyPlaceholder')}</SelectItem>
+                              <SelectItem value='default'>{t('apikeys.profiles.loadBalancerStrategyPlaceholder')}</SelectItem>
                               <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
                               <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
                               <SelectItem value='circuit-breaker'>
                                 {t('system.retry.loadBalancerStrategy.options.circuitBreaker')}
                               </SelectItem>
                               <SelectItem value='round-robin'>{t('system.retry.loadBalancerStrategy.options.roundRobin')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </FormControl>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className='border-t pt-6'>
+                <FormField
+                  control={form.control}
+                  name='profile.traceStickyMode'
+                  render={({ field }) => (
+                    <FormItem className='space-y-4'>
+                      <div className='flex items-center justify-between gap-3'>
+                        <div>
+                          <h4 className='text-sm font-medium'>{t('apikeys.profiles.traceStickyMode')}</h4>
+                          <FormDescription className='mt-1 text-xs'>{t('apikeys.profiles.traceStickyModeDescription')}</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Select onValueChange={field.onChange} value={field.value || 'default'}>
+                            <SelectTrigger className='w-[180px]'>
+                              <SelectValue placeholder={t('apikeys.profiles.traceStickyModePlaceholder')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='default'>{t('apikeys.profiles.traceStickyModePlaceholder')}</SelectItem>
+                              <SelectItem value='prefer_previous_channel'>{t('system.retry.traceStickyMode.options.preferPreviousChannel')}</SelectItem>
+                              <SelectItem value='disabled'>{t('system.retry.traceStickyMode.options.disabled')}</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormControl>

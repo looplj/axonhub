@@ -28,6 +28,8 @@ type Invitation struct {
 	TokenHash string `json:"-"`
 	// ProjectID holds the value of the "project_id" field.
 	ProjectID int `json:"project_id,omitempty"`
+	// RoleID holds the value of the "role_id" field.
+	RoleID *int `json:"role_id,omitempty"`
 	// ExpiresAt holds the value of the "expires_at" field.
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 	// MaxUses holds the value of the "max_uses" field.
@@ -67,7 +69,7 @@ func (*Invitation) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case invitation.FieldID, invitation.FieldDeletedAt, invitation.FieldProjectID, invitation.FieldMaxUses, invitation.FieldUsedCount:
+		case invitation.FieldID, invitation.FieldDeletedAt, invitation.FieldProjectID, invitation.FieldRoleID, invitation.FieldMaxUses, invitation.FieldUsedCount:
 			values[i] = new(sql.NullInt64)
 		case invitation.FieldTokenHash:
 			values[i] = new(sql.NullString)
@@ -123,6 +125,13 @@ func (_m *Invitation) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field project_id", values[i])
 			} else if value.Valid {
 				_m.ProjectID = int(value.Int64)
+			}
+		case invitation.FieldRoleID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field role_id", values[i])
+			} else if value.Valid {
+				_m.RoleID = new(int)
+				*_m.RoleID = int(value.Int64)
 			}
 		case invitation.FieldExpiresAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -197,6 +206,11 @@ func (_m *Invitation) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("project_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
+	builder.WriteString(", ")
+	if v := _m.RoleID; v != nil {
+		builder.WriteString("role_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	if v := _m.ExpiresAt; v != nil {
 		builder.WriteString("expires_at=")

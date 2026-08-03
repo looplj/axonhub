@@ -237,6 +237,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.debug", false)
 	v.SetDefault("server.disable_ssl_verify", false)
 
+	// Max multipart memory for file uploads (backup restore, etc.)
+	// Default: 32M (matching Gin's default). Supports K/M/G suffixes, e.g. "512M", "1G".
+	v.SetDefault("server.max_multipart_memory", "32M")
+
 	// CORS defaults
 	v.SetDefault("server.cors.enabled", false)
 	v.SetDefault("server.cors.debug", false)

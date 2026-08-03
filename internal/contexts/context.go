@@ -15,6 +15,12 @@ const (
 	containerContextKey ContextKey = "context_container"
 )
 
+// EnsureContainer installs the mutable request-scoped value container when a
+// caller may need to update it through an interface that cannot return context.
+func EnsureContainer(ctx context.Context) context.Context {
+	return withContainer(ctx, getContainer(ctx))
+}
+
 // WithAPIKey stores the API key entity in the context.
 func WithAPIKey(ctx context.Context, apiKey *ent.APIKey) context.Context {
 	container := getContainer(ctx)
@@ -110,7 +116,9 @@ func GetRequestID(ctx context.Context) (string, bool) {
 // WithChannelAPIKey stores the channel API key in the context.
 func WithChannelAPIKey(ctx context.Context, apiKey string) context.Context {
 	container := getContainer(ctx)
+	container.mu.Lock()
 	container.ChannelAPIKey = &apiKey
+	container.mu.Unlock()
 
 	return withContainer(ctx, container)
 }
@@ -118,6 +126,9 @@ func WithChannelAPIKey(ctx context.Context, apiKey string) context.Context {
 // GetChannelAPIKey retrieves the channel API key from the context.
 func GetChannelAPIKey(ctx context.Context) (string, bool) {
 	container := getContainer(ctx)
+	container.mu.RLock()
+	defer container.mu.RUnlock()
+
 	if container.ChannelAPIKey != nil {
 		return *container.ChannelAPIKey, true
 	}

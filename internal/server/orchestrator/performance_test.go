@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,15 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+func TestExtractErrorMessageForMatchingCapsResponseBody(t *testing.T) {
+	body := []byte(strings.Repeat("x", errorMatchBodyLimit+1024))
+	err := &httpclient.Error{StatusCode: 500, Body: body}
+
+	message := extractErrorMessageForMatching(err)
+	expected := ExtractErrorMessage(err) + "\n" + string(body[:errorMatchBodyLimit])
+	require.Equal(t, expected, message)
+}
 
 // mockChannelService is a mock implementation of ChannelService for testing
 type mockChannelService struct{}

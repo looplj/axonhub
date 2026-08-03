@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { FilterBuilder, type FilterBuilderCondition, type FilterBuilderField, type FilterBuilderGroupListValue } from '@/components/filter-builder';
@@ -24,7 +25,7 @@ import { useModelSettings, useUpdateModelSettings } from '@/features/system/data
 import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
-import { ModelAssociation } from '../data/schema';
+import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/schema';
 import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
 
@@ -355,6 +356,8 @@ function validateWhenGroupList(value: FilterBuilderGroupListValue, ctx: z.Refine
 
 const associationFormSchema = z.object({
   disableDeveloperSettingsInheritance: z.boolean().default(false),
+  loadBalancerStrategy: z.enum(['default', 'adaptive', 'failover', 'circuit-breaker', 'round-robin']).default('default'),
+  traceStickyMode: z.enum(['default', 'disabled', 'prefer_previous_channel']).default('default'),
   associations: z
     .array(
       z.object({
@@ -752,6 +755,8 @@ export function ModelsAssociationDialog() {
     resolver: zodResolver(associationFormSchema) as Resolver<AssociationFormData>,
     defaultValues: {
       disableDeveloperSettingsInheritance: false,
+      loadBalancerStrategy: 'default',
+      traceStickyMode: 'default',
       associations: [],
     },
   });
@@ -829,6 +834,12 @@ export function ModelsAssociationDialog() {
       const associations = isDeveloperMode ? developerAssociations : currentRow?.settings?.associations || [];
       form.reset({
         disableDeveloperSettingsInheritance: isDeveloperMode ? false : currentRow?.settings?.disableDeveloperSettingsInheritance ?? false,
+        loadBalancerStrategy: isDeveloperMode
+          ? 'default'
+          : normalizeModelRoutingPolicyValue(currentRow?.settings?.loadBalancerStrategy),
+        traceStickyMode: isDeveloperMode
+          ? 'default'
+          : normalizeModelRoutingPolicyValue(currentRow?.settings?.traceStickyMode),
         associations: associations
           .filter((assoc) => !isDeveloperMode || assoc.type === 'channel_model' || assoc.type === 'channel_tags_model')
           .map((assoc) => modelAssociationToFormRow(assoc, isDeveloperMode)),
@@ -869,6 +880,8 @@ export function ModelsAssociationDialog() {
           settings: {
             disableDeveloperSettingsInheritance: data.disableDeveloperSettingsInheritance ?? false,
             associations,
+            loadBalancerStrategy: data.loadBalancerStrategy,
+            traceStickyMode: data.traceStickyMode,
           },
         },
       });
@@ -967,6 +980,98 @@ export function ModelsAssociationDialog() {
             <div className='flex-1 overflow-y-auto py-4'>
               <Form {...form}>
                 <form id='association-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-3'>
+                  {!isDeveloperMode && (
+                    <div className='mb-4 grid gap-4 rounded-lg border p-4 sm:grid-cols-2'>
+                      <FormField
+                        control={form.control}
+                        name='loadBalancerStrategy'
+                        render={({ field }) => {
+                          const description =
+                            field.value === 'default'
+                              ? t('models.fields.routingInheritanceDescription')
+                              : t(`system.retry.loadBalancerStrategy.documentation.${field.value}`);
+
+                          return (
+                            <FormItem className='space-y-0'>
+                              <div className='flex items-center justify-between gap-3'>
+                                <div className='flex items-center gap-1.5'>
+                                  <FormLabel className='text-sm font-medium'>{t('models.fields.loadBalancerStrategy')}</FormLabel>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button type='button' className='text-muted-foreground hover:text-foreground inline-flex'>
+                                        <IconInfoCircle className='h-3.5 w-3.5' />
+                                        <span className='sr-only'>{description}</span>
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className='max-w-xs text-xs'>{description}</TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                <FormControl>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger className='w-[140px] shrink-0'>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value='default'>{t('models.fields.routingSystemDefault')}</SelectItem>
+                                      <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
+                                      <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
+                                      <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
+                                      <SelectItem value='round-robin'>{t('system.retry.loadBalancerStrategy.options.roundRobin')}</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='traceStickyMode'
+                        render={({ field }) => {
+                          const description =
+                            field.value === 'default'
+                              ? t('models.fields.routingInheritanceDescription')
+                              : t('system.retry.traceStickyMode.description');
+
+                          return (
+                            <FormItem className='space-y-0'>
+                              <div className='flex items-center justify-between gap-3'>
+                                <div className='flex items-center gap-1.5'>
+                                  <FormLabel className='text-sm font-medium'>{t('models.fields.traceStickyMode')}</FormLabel>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button type='button' className='text-muted-foreground hover:text-foreground inline-flex'>
+                                        <IconInfoCircle className='h-3.5 w-3.5' />
+                                        <span className='sr-only'>{description}</span>
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className='max-w-xs text-xs'>{description}</TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                <FormControl>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger className='w-[160px] shrink-0'>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value='default'>{t('models.fields.routingSystemDefault')}</SelectItem>
+                                      <SelectItem value='prefer_previous_channel'>{t('system.retry.traceStickyMode.options.preferPreviousChannel')}</SelectItem>
+                                      <SelectItem value='disabled'>{t('system.retry.traceStickyMode.options.disabled')}</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
+
                   {fields.length === 0 && <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>}
 
                   {fields.length > 0 && (

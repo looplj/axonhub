@@ -144,7 +144,7 @@ log:
 metrics:
   enabled: false                 # Enable metrics collection (env: AXONHUB_METRICS_ENABLED)
   exporter: 
-    type: "oltphttp"          # Metrics exporter type: prometheus, console (env: AXONHUB_METRICS_EXPORTER_TYPE)
+    type: "otlphttp"          # Metrics exporter type: prometheus, console (env: AXONHUB_METRICS_EXPORTER_TYPE)
     endpoint: "localhost:8080" # Metrics exporter endpoint (env: AXONHUB_METRICS_EXPORTER_ENDPOINT)
     insecure: true             # Enable insecure connection (env: AXONHUB_METRICS_EXPORTER_INSECURE)
     

@@ -38,6 +38,8 @@ type ModelCardLimit {
 type ModelSettings {
   disableDeveloperSettingsInheritance: Boolean!
   associations: [ModelAssociation!]!
+  loadBalancerStrategy: String!
+  traceStickyMode: String!
 }
 
 type ModelAssociation {
@@ -133,6 +135,8 @@ input ModelCardLimitInput {
 input ModelSettingsInput {
   disableDeveloperSettingsInheritance: Boolean
   associations: [ModelAssociationInput!]!
+  loadBalancerStrategy: String
+  traceStickyMode: String
 }
 
 input ModelAssociationInput {

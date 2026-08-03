@@ -140,7 +140,7 @@
   "system.retry.loadBalancerStrategy.documentation.failover": "按权重排序，故障时自动切换至下一个可用渠道。",
   "system.retry.loadBalancerStrategy.documentation.circuit-breaker": "模型熔断模式。独立跟踪渠道-模型的健康状态，自动隔离故障。健康时参考权重。",
   "system.retry.loadBalancerStrategy.documentation.round-robin": "按历史请求数轮询渠道，优先选择使用较少的渠道。连续 3 次近期错误的渠道会被跳过，排在健康的轮询候选之后。",
-  "system.retry.traceStickyMode.label": "Trace / Thread 粘性路由",
+  "system.retry.traceStickyMode.label": "会话粘性",
   "system.retry.traceStickyMode.description": "优先使用 trace 最近选中的渠道，其次使用所在 thread 最近选中的渠道；粘性渠道失败后按正常渠道顺序回退。",
   "system.retry.traceStickyMode.placeholder": "选择模式",
   "system.retry.traceStickyMode.options.preferPreviousChannel": "优先最近选中渠道",

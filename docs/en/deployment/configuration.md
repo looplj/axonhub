@@ -296,7 +296,7 @@ log:
 metrics:
   enabled: false                 # Enable metrics collection
   exporter:
-    type: "oltphttp"            # prometheus, console
+    type: "otlphttp"            # prometheus, console
     endpoint: "localhost:8080"  # Metrics exporter endpoint
     insecure: true              # Enable insecure connection
 ```

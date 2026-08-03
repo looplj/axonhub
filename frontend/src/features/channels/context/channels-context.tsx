@@ -30,6 +30,7 @@ type ChannelsDialogType =
   | 'price'
   | 'transformOptions'
   | 'rateLimit'
+  | 'apiKeyRules'
   | 'testAPIKeys'
   | 'disabledAPIKeys'
   | 'endpoints';

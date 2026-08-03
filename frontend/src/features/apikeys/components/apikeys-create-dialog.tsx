@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
@@ -12,11 +12,14 @@ import { useApiKeysContext } from '../context/apikeys-context';
 import { useCreateApiKey } from '../data/apikeys';
 import { CreateApiKeyInput, createApiKeyInputSchema } from '../data/schema';
 import { ScopesSelect } from '@/components/scopes-select';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export function ApiKeysCreateDialog() {
   const { t } = useTranslation();
   const { isDialogOpen, closeDialog, openDialog, setSelectedApiKey } = useApiKeysContext();
   const createApiKey = useCreateApiKey();
+  const { hasProjectScope } = usePermissions();
+  const canCreateProjectApiKey = hasProjectScope('write_users') && hasProjectScope('write_roles');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ipRestrictionEnabled, setIPRestrictionEnabled] = useState(false);
   const [ipInput, setIpInput] = useState('');
@@ -27,13 +30,19 @@ export function ApiKeysCreateDialog() {
     resolver: zodResolver(createApiKeyInputSchema),
     defaultValues: {
       name: '',
-      type: 'user',
+      type: 'personal',
       scopes: undefined,
       allowedIps: [],
     },
   });
 
   const apiKeyType = form.watch('type');
+
+  useEffect(() => {
+    if (!canCreateProjectApiKey && form.getValues('type') === 'user') {
+      form.setValue('type', 'personal');
+    }
+  }, [canCreateProjectApiKey, form]);
 
   const onSubmit = async (data: CreateApiKeyInput) => {
     setIsSubmitting(true);
@@ -100,12 +109,14 @@ export function ApiKeysCreateDialog() {
                   <FormLabel>{t('apikeys.dialogs.fields.type.label')}</FormLabel>
                   <FormControl>
                     <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className='flex flex-col space-y-1'>
-                      <FormItem className='flex items-center space-y-0 space-x-3'>
-                        <FormControl>
-                          <RadioGroupItem value='user' />
-                        </FormControl>
-                        <FormLabel className='font-normal'>{t('apikeys.dialogs.fields.type.user')}</FormLabel>
-                      </FormItem>
+                      {canCreateProjectApiKey && (
+                        <FormItem className='flex items-center space-y-0 space-x-3'>
+                          <FormControl>
+                            <RadioGroupItem value='user' />
+                          </FormControl>
+                          <FormLabel className='font-normal'>{t('apikeys.dialogs.fields.type.user')}</FormLabel>
+                        </FormItem>
+                      )}
                       <FormItem className='flex items-center space-y-0 space-x-3'>
                         <FormControl>
                           <RadioGroupItem value='personal' />

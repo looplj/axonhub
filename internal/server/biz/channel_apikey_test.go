@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm/auth"
 )
 
 func TestTraceStickyKeyProvider_MultipleKeys_NoTrace(t *testing.T) {
@@ -767,4 +768,72 @@ func TestChannelService_DeleteDisabledAPIKeys_NoDisabledKeys(t *testing.T) {
 	require.Len(t, updatedCh.Credentials.APIKeys, 1)
 	require.Contains(t, updatedCh.Credentials.APIKeys, "key2")
 	require.NotContains(t, updatedCh.Credentials.APIKeys, "key1")
+}
+
+func TestChannelAPIKeyContextProviderSetsSelectedKey(t *testing.T) {
+	provider := NewChannelAPIKeyContextProvider(auth.NewStaticKeyProvider("selected-key"))
+	ctx := contexts.EnsureContainer(context.Background())
+
+	require.Equal(t, "selected-key", provider.Get(ctx))
+	stored, ok := contexts.GetChannelAPIKey(ctx)
+	require.True(t, ok)
+	require.Equal(t, "selected-key", stored)
+}
+
+func TestCleanupExpiredDisabledAPIKeysReenablesAutoDisabledChannel(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	expiredAt := time.Now().Add(-time.Hour)
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("expired-temporary-disable").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"only-key"}}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetStatus(channel.StatusDisabled).
+		SetErrorMessage(fmt.Sprintf("%s (last error: 429)", allKeysDisabledErrorPrefix)).
+		SetDisabledAPIKeys([]objects.DisabledAPIKey{
+			{Key: "only-key", ErrorCode: 429, ExpiresAt: &expiredAt},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc.cleanupExpiredDisabledAPIKeys(ctx)
+
+	updated, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusEnabled, updated.Status)
+	require.Nil(t, updated.ErrorMessage)
+	require.Empty(t, updated.DisabledAPIKeys)
+}
+
+func TestCleanupExpiredDisabledAPIKeysKeepsManualDisable(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	expiredAt := time.Now().Add(-time.Hour)
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("manual-disable").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"only-key"}}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetStatus(channel.StatusDisabled).
+		SetDisabledAPIKeys([]objects.DisabledAPIKey{
+			{Key: "only-key", ErrorCode: 429, ExpiresAt: &expiredAt},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc.cleanupExpiredDisabledAPIKeys(ctx)
+
+	updated, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, channel.StatusDisabled, updated.Status)
+	require.Empty(t, updated.DisabledAPIKeys)
 }

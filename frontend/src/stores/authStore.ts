@@ -12,6 +12,7 @@ interface Project {
   projectID: string;
   isOwner: boolean;
   scopes: string[];
+  effectiveScopes?: string[];
   roles: Role[];
 }
 

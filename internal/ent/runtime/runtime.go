@@ -395,11 +395,11 @@ func init() {
 	// invitation.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	invitation.DefaultDeletedAt = invitationDescDeletedAt.Default.(int)
 	// invitationDescMaxUses is the schema descriptor for max_uses field.
-	invitationDescMaxUses := invitationFields[3].Descriptor()
+	invitationDescMaxUses := invitationFields[4].Descriptor()
 	// invitation.DefaultMaxUses holds the default value on creation for the max_uses field.
 	invitation.DefaultMaxUses = invitationDescMaxUses.Default.(int)
 	// invitationDescUsedCount is the schema descriptor for used_count field.
-	invitationDescUsedCount := invitationFields[4].Descriptor()
+	invitationDescUsedCount := invitationFields[5].Descriptor()
 	// invitation.DefaultUsedCount holds the default value on creation for the used_count field.
 	invitation.DefaultUsedCount = invitationDescUsedCount.Default.(int)
 	modelMixin := schema.Model{}.Mixin()

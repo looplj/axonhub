@@ -55,7 +55,19 @@ func (svc *ModelService) validateModelSettings(settings *objects.ModelSettings) 
 }
 
 func validateModelSettings(settings *objects.ModelSettings) error {
-	if settings == nil || len(settings.Associations) == 0 {
+	if settings == nil {
+		return nil
+	}
+
+	settings.NormalizeRoutingPolicy()
+	if !objects.IsValidLoadBalancerStrategy(settings.LoadBalancerStrategy) {
+		return fmt.Errorf("invalid load balancer strategy %q", settings.LoadBalancerStrategy)
+	}
+	if !objects.IsValidTraceStickyMode(settings.TraceStickyMode) {
+		return fmt.Errorf("invalid trace sticky mode %q", settings.TraceStickyMode)
+	}
+
+	if len(settings.Associations) == 0 {
 		return nil
 	}
 
@@ -381,6 +393,12 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 	inputMap := make(map[string]bool)
 
 	for _, input := range inputs {
+		if input.Settings != nil {
+			if err := svc.validateModelSettings(input.Settings); err != nil {
+				return nil, err
+			}
+		}
+
 		key := fmt.Sprintf("%s:%s", input.Developer, input.ModelID)
 		if inputMap[key] {
 			return nil, fmt.Errorf("duplicate model in input: developer '%s' and modelId '%s'", input.Developer, input.ModelID)

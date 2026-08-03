@@ -1,10 +1,62 @@
 package server
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/internal/tracing"
 )
+
+// MemorySize represents a memory size that can be parsed from human-readable
+// strings like "512M", "1.5G", "64K". Supports K, M, G suffixes (case-insensitive,
+// optional 'B' suffix e.g. "512MB").
+type MemorySize int64
+
+// UnmarshalText implements encoding.TextUnmarshaler for human-readable config values.
+func (m *MemorySize) UnmarshalText(text []byte) error {
+	s := strings.TrimSpace(string(text))
+	if s == "" {
+		*m = 0
+		return nil
+	}
+
+	// Try plain int64 first (e.g. "536870912")
+	if v, err := strconv.ParseInt(s, 10, 64); err == nil {
+		*m = MemorySize(v)
+		return nil
+	}
+
+	// Parse human-readable: "512M", "1.5G", "64K", "512MB"
+	s = strings.ToUpper(strings.TrimSuffix(s, "B"))
+	if len(s) < 2 {
+		return fmt.Errorf("invalid memory size: %q", string(text))
+	}
+
+	suffix := s[len(s)-1]
+	numStr := s[:len(s)-1]
+
+	val, err := strconv.ParseFloat(numStr, 64)
+	if err != nil {
+		return fmt.Errorf("invalid memory size number: %q", string(text))
+	}
+
+	var multiplier int64
+	switch suffix {
+	case 'K':
+		multiplier = 1 << 10
+	case 'M':
+		multiplier = 1 << 20
+	case 'G':
+		multiplier = 1 << 30
+	default:
+		return fmt.Errorf("unknown memory size suffix: %q (use K, M, or G)", string(text))
+	}
+
+	*m = MemorySize(int64(val * float64(multiplier)))
+	return nil
+}
 
 type Config struct {
 	Host        string        `conf:"host" yaml:"host" json:"host"`
@@ -29,6 +81,11 @@ type Config struct {
 	CORS             CORS            `conf:"cors" yaml:"cors" json:"cors"`
 	API              API             `conf:"api" yaml:"api" json:"api"`
 	IPAccessControl  IPAccessControl `conf:"ip_access_control" yaml:"ip_access_control" json:"ip_access_control"`
+
+	// MaxMultipartMemory sets the maximum memory for parsing multipart forms (in bytes).
+	// This is important for backup restore which uploads large backup files.
+	// Default: 32 MB. Increase this if you have large backup files.
+	MaxMultipartMemory MemorySize `conf:"max_multipart_memory" yaml:"max_multipart_memory" json:"max_multipart_memory"`
 }
 
 // Dashboard holds configuration for the dashboard cache settings.
