@@ -581,7 +581,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
           <div className='font-mono text-xs font-medium'>
             {t('currencies.format', {
               val: cost,
-              currency: settings?.currencyCode,
+              currency: settings?.currencyCode ?? 'USD',
               locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
               minimumFractionDigits: 6,
             })}
