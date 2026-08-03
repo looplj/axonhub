@@ -2,9 +2,11 @@ package responses
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -130,6 +132,143 @@ func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 	_, err = streams.All(transformedStream)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Something went wrong")
+}
+
+func TestOutboundTransformer_TransformStream_UsesFinalEncryptedContentPerReasoningItem(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_reasoning_multi","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"rs_1","type":"reasoning","summary":[],"encrypted_content":"gAAAA_added_1"}}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"rs_1","type":"reasoning","summary":[],"encrypted_content":"gAAAA_done_1"}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":1,"item":{"id":"rs_2","type":"reasoning","summary":[],"encrypted_content":"gAAAA_added_2"}}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":1,"item":{"id":"rs_2","type":"reasoning","summary":[],"encrypted_content":"gAAAA_done_2"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_reasoning_multi","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var signatures []string
+	var sourceIDs []string
+	for _, resp := range responses {
+		if resp == llm.DoneResponse || len(resp.Choices) == 0 || resp.Choices[0].Delta == nil {
+			continue
+		}
+		if resp.Choices[0].Delta.ReasoningSignature == nil {
+			continue
+		}
+
+		signatures = append(signatures, *resp.Choices[0].Delta.ReasoningSignature)
+		metadata, ok := getResponsesReasoningItemMetadata(resp.TransformerMetadata)
+		require.True(t, ok)
+		require.True(t, metadata.Done)
+		sourceIDs = append(sourceIDs, metadata.ID)
+	}
+
+	require.Equal(t, []string{"gAAAA_done_1", "gAAAA_done_2"}, signatures)
+	require.Equal(t, []string{"rs_1", "rs_2"}, sourceIDs)
+}
+
+func TestOutboundTransformer_TransformStream_AssociatesReasoningSummaryWithItem(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_reasoning_summary","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"rs_first","type":"reasoning","summary":[]}}`)},
+		{Type: "response.reasoning_summary_text.delta", Data: []byte(`{"type":"response.reasoning_summary_text.delta","item_id":"rs_first","output_index":0,"summary_index":0,"delta":"first"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"rs_first","type":"reasoning","summary":[],"encrypted_content":"gAAAA_FIRST_BLOB"}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":1,"item":{"id":"rs_second","type":"reasoning","summary":[]}}`)},
+		{Type: "response.reasoning_summary_text.delta", Data: []byte(`{"type":"response.reasoning_summary_text.delta","item_id":"rs_second","output_index":1,"summary_index":0,"delta":"second"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":1,"item":{"id":"rs_second","type":"reasoning","summary":[],"encrypted_content":"gAAAA_SECOND_BLOB"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_reasoning_summary","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var summaries []string
+	var summaryItemIDs []string
+	for _, response := range responses {
+		if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil || response.Choices[0].Delta.ReasoningContent == nil {
+			continue
+		}
+		summaries = append(summaries, *response.Choices[0].Delta.ReasoningContent)
+		metadata, ok := getResponsesReasoningItemMetadata(response.TransformerMetadata)
+		require.True(t, ok)
+		summaryItemIDs = append(summaryItemIDs, metadata.ID)
+	}
+
+	require.Equal(t, []string{"first", "second"}, summaries)
+	require.Equal(t, []string{"rs_first", "rs_second"}, summaryItemIDs)
+}
+
+func TestResponsesTransformer_StreamRoundTrip_PreservesCompactionSummary(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_compact_1","object":"response.compaction","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"msg_1","type":"message","status":"completed","content":[{"type":"input_text","text":"Preserve this fact."}],"role":"user"}}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":1,"item":{"id":"cmp_1","type":"compaction_summary","encrypted_content":"encrypted-summary"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_compact_1","object":"response.compaction","created_at":1700000000,"model":"gpt-5","status":"completed","output":[{"id":"msg_1","type":"message","status":"completed","content":[{"type":"input_text","text":"Preserve this fact."}],"role":"user"},{"id":"cmp_1","type":"compaction_summary","encrypted_content":"encrypted-summary"}],"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}}`)},
+	}
+
+	llmStream, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(upstreamEvents))
+	require.NoError(t, err)
+
+	llmResponses, err := streams.All(llmStream)
+	require.NoError(t, err)
+
+	var compactPart *llm.MessageContentPart
+	for _, resp := range llmResponses {
+		if resp == llm.DoneResponse || len(resp.Choices) == 0 || resp.Choices[0].Delta == nil {
+			continue
+		}
+		for i := range resp.Choices[0].Delta.Content.MultipleContent {
+			part := &resp.Choices[0].Delta.Content.MultipleContent[i]
+			if part.Type == "compaction_summary" {
+				compactPart = part
+			}
+		}
+	}
+	require.NotNil(t, compactPart)
+	require.NotNil(t, compactPart.Compact)
+	require.Equal(t, "cmp_1", compactPart.Compact.ID)
+	require.Equal(t, "encrypted-summary", compactPart.Compact.EncryptedContent)
+
+	inboundStream, err := NewInboundTransformer().TransformStream(t.Context(), streams.SliceStream(llmResponses))
+	require.NoError(t, err)
+
+	var compactDone *Item
+	var completed *Response
+	for inboundStream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(inboundStream.Current().Data, &event))
+		if event.Type == StreamEventTypeOutputItemDone && event.Item != nil && event.Item.Type == "compaction_summary" {
+			compactDone = event.Item
+		}
+		if event.Type == StreamEventTypeResponseCompleted {
+			completed = event.Response
+		}
+	}
+	require.NoError(t, inboundStream.Err())
+	require.NotNil(t, compactDone)
+	require.Equal(t, "cmp_1", compactDone.ID)
+	require.Equal(t, "encrypted-summary", lo.FromPtr(compactDone.EncryptedContent))
+	require.NotNil(t, completed)
+	require.Equal(t, "resp_compact_1", completed.ID)
+	require.Len(t, completed.Output, 1)
+	require.Equal(t, "compaction_summary", completed.Output[0].Type)
+	require.Equal(t, "encrypted-summary", lo.FromPtr(completed.Output[0].EncryptedContent))
 }
 
 func TestOutboundTransformer_TransformStream_ResponseCancelledCompletes(t *testing.T) {

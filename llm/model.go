@@ -246,6 +246,18 @@ type Request struct {
 	// Completion is the completion request, will be set if the request is completion request.
 	Completion *CompletionRequest `json:"completion,omitempty"`
 
+	// Speech is the text-to-speech (TTS) request, will be set if the request is a speech request.
+	Speech *SpeechRequest `json:"speech,omitempty"`
+
+	// Transcription is the speech-to-text (STT) transcription request, will be set if the request is a transcription request.
+	Transcription *TranscriptionRequest `json:"transcription,omitempty"`
+
+	// Translation is the speech-to-text (STT) translation request, will be set if the request is a translation request.
+	Translation *TranslationRequest `json:"translation,omitempty"`
+
+	// Moderation is the standalone /v1/moderations request payload.
+	Moderation *ModerationRequest `json:"moderation_request,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
@@ -372,6 +384,10 @@ type Message struct {
 	// 3. OpenAI Responses encrypted content： https://platform.openai.com/docs/api-reference/responses/object#responses-object-output-reasoning-encrypted_content
 	ReasoningSignature *string `json:"reasoning_signature,omitempty"`
 
+	// ReasoningItems preserves item-scoped reasoning data when an upstream
+	// protocol exposes multiple reasoning items in one message.
+	ReasoningItems []ReasoningItem `json:"reasoning_items,omitempty"`
+
 	// Help field, will not be sent to the llm service, to adapt the anthropic think signature.
 	// https://platform.claude.com/docs/en/build-with-claude/extended-thinking
 	// This field will be ignore when convert anthropic to other API format.
@@ -398,6 +414,14 @@ type Message struct {
 	// should emit them in place; others (OpenAI Chat Completions, plain text
 	// UIs) can safely drop the field.
 	InlineToolResults []InlineToolResult `json:"inline_tool_results,omitempty"`
+}
+
+// ReasoningItem is an ordered, provider-neutral reasoning item.
+// Signature is opaque provider data and must not be concatenated or modified.
+type ReasoningItem struct {
+	ID        string `json:"id,omitempty"`
+	Content   string `json:"content,omitempty"`
+	Signature string `json:"signature,omitempty"`
 }
 
 // InlineToolResult represents a tool result that is emitted inline within the
@@ -530,6 +554,9 @@ type MessageContentPart struct {
 type ImageURL struct {
 	// URL is the URL of the image.
 	URL string `json:"url"`
+
+	// MIMEType is the MIME type of the image when provided by the source protocol.
+	MIMEType string `json:"mime_type,omitempty"`
 
 	// Specifies the detail level of the image. Learn more in the
 	// [Vision guide](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).
@@ -671,6 +698,25 @@ type Response struct {
 	// Completion is the completion response, will present if the request is completion request.
 	Completion *CompletionResponse `json:"completion,omitempty"`
 
+	// Speech is the text-to-speech (TTS) response, will present if the request is a speech request.
+	Speech *SpeechResponse `json:"speech,omitempty"`
+
+	// Transcription is the speech-to-text (STT) response, will present if the request is a transcription or translation request.
+	Transcription *TranscriptionResponse `json:"transcription,omitempty"`
+
+	// SpeechStreamEvent carries one SSE event of a streaming TTS response (stream_format="sse").
+	SpeechStreamEvent *SpeechStreamEvent `json:"speech_stream_event,omitempty"`
+
+	// SpeechAudioChunk carries one raw binary chunk of a streaming TTS response
+	// when the provider returns chunked audio instead of SSE.
+	SpeechAudioChunk *SpeechAudioChunk `json:"-"`
+
+	// TranscriptionStreamEvent carries one SSE event of a streaming STT response (stream=true).
+	TranscriptionStreamEvent *TranscriptionStreamEvent `json:"transcription_stream_event,omitempty"`
+
+	// Moderation is the standalone /v1/moderations response payload.
+	Moderation *ModerationResponse `json:"moderation,omitempty"`
+
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.
 	// if it is embedding request, it will be embedding.
@@ -730,8 +776,9 @@ type TopLogprob struct {
 }
 
 type ResponseMeta struct {
-	ID    string `json:"id"`
-	Usage *Usage `json:"usage"`
+	ID        string `json:"id"`
+	Usage     *Usage `json:"usage"`
+	Completed bool   `json:"completed,omitempty"`
 }
 
 // Usage Represents the total token usage per request to OpenAI.

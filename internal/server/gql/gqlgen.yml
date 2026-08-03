@@ -16,6 +16,7 @@ schema:
   - prompt_protection_rule.graphql
   - price.graphql
   - cost.graphql
+  - analytics.graphql
 
 omit_gqlgen_version_in_file_notice: true
 
@@ -102,6 +103,12 @@ models:
   ModelMappingInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelMapping
+  ReasoningEffortMapping:
+    model:
+      - github.com/looplj/axonhub/llm.ReasoningEffortMapping
+  ReasoningEffortMappingInput:
+    model:
+      - github.com/looplj/axonhub/llm.ReasoningEffortMapping
   ProxyType:
     model:
       - github.com/looplj/axonhub/internal/objects.ProxyType
@@ -126,12 +133,39 @@ models:
   ChannelPoliciesInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelPolicies
+  APIKeyAutoDisableRule:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableRule
+  APIKeyAutoDisableRuleInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableRule
+  APIKeyAutoDisableAction:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableAction
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings
   ChannelSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings
+  RetryableErrorPattern:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RetryableErrorPattern
+  RetryableErrorPatternInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.RetryableErrorPattern
+  OpenCodeGoQuotaSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OpenCodeGoQuotaSettings
+  OpenCodeGoQuotaSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OpenCodeGoQuotaSettings
+  ChannelProviderQuotaSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelProviderQuotaSettings
+  ChannelProviderQuotaSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelProviderQuotaSettings
   ChannelRateLimit:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelRateLimit
@@ -414,6 +448,36 @@ models:
   PromptWriteCacheVariantInput:
     model:
       - github.com/looplj/axonhub/internal/objects.PromptWriteCacheVariant
+  PriceSchedule:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceSchedule
+  PriceScheduleInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceSchedule
+  PriceOverride:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceOverride
+  PriceOverrideInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.PriceOverride
+  OverrideWhen:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OverrideWhen
+  OverrideWhenInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OverrideWhen
+  DailyTimeRange:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DailyTimeRange
+  DailyTimeRangeInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DailyTimeRange
+  DateRange:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DateRange
+  DateRangeInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.DateRange
   PricingMode:
     model:
       - github.com/looplj/axonhub/internal/objects.PricingMode
@@ -543,6 +607,12 @@ models:
   OverrideOperationInput:
     model:
       - github.com/looplj/axonhub/internal/objects.OverrideOperation
+  OverrideMatch:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OverrideMatch
+  OverrideMatchInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OverrideMatch
   TierCost:
     model:
       - github.com/looplj/axonhub/internal/objects.TierCost
@@ -581,7 +651,7 @@ models:
       - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
   UpdateSystemChannelSettingsInput:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.SystemChannelSettings
+      - github.com/looplj/axonhub/internal/server/biz.UpdateSystemChannelSettings
   SystemGeneralSettings:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SystemGeneralSettings
@@ -630,6 +700,9 @@ models:
   QuotaEnforcementMode:
     model:
       - github.com/looplj/axonhub/internal/server/biz.QuotaEnforcementMode
+  TraceStickyMode:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.TraceStickyMode
   TriggerGcCleanupInput:
     model:
       - github.com/looplj/axonhub/internal/server/gc.TriggerGcCleanupInput

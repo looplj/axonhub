@@ -37,6 +37,14 @@ export function extractOperationName(query: string): string | undefined {
 
 export const GRAPHQL_ENDPOINT = '/admin/graphql';
 
+function isForbiddenGraphQLError(error: any): boolean {
+  return error?.extensions?.code === 'FORBIDDEN' || error?.message?.toLowerCase().includes('permission denied');
+}
+
+export function isUnauthorizedGraphQLError(error: any): boolean {
+  return error?.extensions?.code === 'UNAUTHENTICATED';
+}
+
 // GraphQL client function with token support
 export async function graphqlRequest<T>(
   query: string,
@@ -75,17 +83,22 @@ export async function graphqlRequest<T>(
         operationName, // Add operation name for tracing
       }),
     });
-  } catch (error) {
+  } catch (_error) {
     throw new GraphQLRequestError('Network error', { status: undefined, isAuthError: false });
   }
 
-  // Handle explicit auth failures
-  if (response.status === 401 || response.status === 403) {
+  // Handle explicit auth failures (401 only — 403 is a permission denial, not a session issue)
+  if (response.status === 401) {
     // Clear token and redirect to login
     removeTokenFromStorage();
     toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
     window.location.href = '/sign-in';
     throw new GraphQLRequestError('Unauthorized', { status: response.status, isAuthError: true });
+  }
+
+  // Handle permission denial — do NOT clear token or redirect
+  if (response.status === 403) {
+    throw new GraphQLRequestError('Forbidden', { status: 403, isAuthError: false });
   }
 
   // Check content type before parsing JSON
@@ -99,7 +112,7 @@ export async function graphqlRequest<T>(
   let result;
   try {
     result = await response.json();
-  } catch (error) {
+  } catch (_error) {
     throw new GraphQLRequestError('Failed to parse server response as JSON', {
       status: response.status,
     });
@@ -115,12 +128,7 @@ export async function graphqlRequest<T>(
     const firstError = result.errors[0];
 
     // Check for authentication errors
-    const authError = result.errors.find(
-      (error: any) =>
-        error.message?.includes('unauthorized') ||
-        error.message?.includes('unauthenticated') ||
-        error.extensions?.code === 'UNAUTHENTICATED'
-    );
+    const authError = result.errors.find(isUnauthorizedGraphQLError);
 
     if (authError) {
       // Clear token and redirect to login
@@ -131,6 +139,7 @@ export async function graphqlRequest<T>(
     }
 
     throw new GraphQLRequestError(firstError?.message || 'GraphQL Error', {
+      status: isForbiddenGraphQLError(firstError) ? 403 : undefined,
       extensions: firstError?.extensions,
     });
   }

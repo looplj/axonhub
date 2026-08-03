@@ -3,16 +3,21 @@ package biz
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 type SaveChannelModelPriceInput struct {
@@ -34,6 +39,278 @@ type PriceChangeAction struct {
 	ModelID       string
 	Price         objects.ModelPrice
 	ExistingPrice *ent.ChannelModelPrice // nil if create
+}
+
+const channelModelPriceQueryBatchSize = 500
+
+type channelModelPriceTemplate struct {
+	ModelID string
+	Price   objects.ModelPrice
+}
+
+func uniqueNonEmptyModelIDs(modelIDs []string) []string {
+	return lo.Uniq(lo.Filter(modelIDs, func(modelID string, _ int) bool {
+		return modelID != ""
+	}))
+}
+
+func modelCardToChannelModelPrice(card *objects.ModelCard) (objects.ModelPrice, bool) {
+	if card == nil {
+		return objects.ModelPrice{}, false
+	}
+
+	items := make([]objects.ModelPriceItem, 0, 4)
+	addItem := func(code objects.PriceItemCode, cost float64) {
+		if cost <= 0 || math.IsNaN(cost) || math.IsInf(cost, 0) {
+			return
+		}
+
+		items = append(items, objects.ModelPriceItem{
+			ItemCode: code,
+			Pricing: objects.Pricing{
+				Mode:         objects.PricingModeUsagePerUnit,
+				UsagePerUnit: lo.ToPtr(decimal.NewFromFloat(cost)),
+			},
+		})
+	}
+
+	addItem(objects.PriceItemCodeUsage, card.Cost.Input)
+	addItem(objects.PriceItemCodeCompletion, card.Cost.Output)
+	addItem(objects.PriceItemCodePromptCachedToken, card.Cost.CacheRead)
+	addItem(objects.PriceItemCodeWriteCachedTokens, card.Cost.CacheWrite)
+
+	if len(items) == 0 {
+		return objects.ModelPrice{}, false
+	}
+
+	return objects.ModelPrice{Items: items}, true
+}
+
+// createChannelModelPriceIfMissing atomically creates a current price when the
+// live (channel, model) pair is absent. The candidate reference ID identifies
+// whether this transaction won the upsert race, so only the winner creates the
+// initial version.
+func (svc *ChannelService) createChannelModelPriceIfMissing(
+	ctx context.Context,
+	channelID int,
+	template channelModelPriceTemplate,
+	now time.Time,
+) (bool, error) {
+	candidateReferenceID := generateReferenceID()
+	db := svc.entFromContext(ctx)
+
+	err := db.ChannelModelPrice.Create().
+		SetChannelID(channelID).
+		SetModelID(template.ModelID).
+		SetPrice(template.Price).
+		SetReferenceID(candidateReferenceID).
+		OnConflictColumns(
+			channelmodelprice.FieldChannelID,
+			channelmodelprice.FieldModelID,
+			channelmodelprice.FieldDeletedAt,
+		).
+		Ignore().
+		Exec(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to create channel model price: %w", err)
+	}
+
+	entity, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.ChannelModelPrice, error) {
+		return db.ChannelModelPrice.Query().
+			Where(
+				channelmodelprice.ChannelID(channelID),
+				channelmodelprice.ModelID(template.ModelID),
+			).
+			Only(queryCtx)
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to load channel model price after upsert: %w", err)
+	}
+
+	if entity.ReferenceID != candidateReferenceID {
+		return false, nil
+	}
+
+	if err := svc.createChannelModelPriceVersion(ctx, entity, now); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (svc *ChannelService) resolveChannelModelPriceTemplates(
+	ctx context.Context,
+	modelIDs []string,
+) ([]channelModelPriceTemplate, error) {
+	modelIDs = uniqueNonEmptyModelIDs(modelIDs)
+	if len(modelIDs) == 0 {
+		return nil, nil
+	}
+
+	db := svc.entFromContext(ctx)
+	modelsByID := make(map[string]*ent.Model, len(modelIDs))
+	for start := 0; start < len(modelIDs); start += channelModelPriceQueryBatchSize {
+		end := min(start+channelModelPriceQueryBatchSize, len(modelIDs))
+		catalogModels, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) ([]*ent.Model, error) {
+			return db.Model.Query().
+				Where(
+					model.ModelIDIn(modelIDs[start:end]...),
+					model.StatusIn(model.StatusEnabled, model.StatusDisabled),
+				).
+				All(queryCtx)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to query model prices from model library: %w", err)
+		}
+
+		for _, catalogModel := range catalogModels {
+			modelsByID[catalogModel.ModelID] = catalogModel
+		}
+	}
+
+	templates := make([]channelModelPriceTemplate, 0, len(modelsByID))
+	for _, modelID := range modelIDs {
+		catalogModel, exists := modelsByID[modelID]
+		if !exists {
+			continue
+		}
+
+		price, ok := modelCardToChannelModelPrice(catalogModel.ModelCard)
+		if !ok {
+			continue
+		}
+
+		templates = append(templates, channelModelPriceTemplate{
+			ModelID: modelID,
+			Price:   price,
+		})
+	}
+
+	return templates, nil
+}
+
+// applyChannelModelPriceTemplates must run inside the logical channel mutation
+// transaction so each current price and initial version commit together.
+func (svc *ChannelService) applyChannelModelPriceTemplates(
+	ctx context.Context,
+	channelID int,
+	templates []channelModelPriceTemplate,
+) (bool, error) {
+	changed := false
+	now := time.Now()
+	for _, template := range templates {
+		created, err := svc.createChannelModelPriceIfMissing(ctx, channelID, template, now)
+		if err != nil {
+			return false, fmt.Errorf("failed to auto-configure channel model price: model_id=%s: %w", template.ModelID, err)
+		}
+
+		changed = changed || created
+	}
+
+	return changed, nil
+}
+
+func (svc *ChannelService) createChannelModelPriceVersion(
+	ctx context.Context,
+	entity *ent.ChannelModelPrice,
+	now time.Time,
+) error {
+	_, err := svc.entFromContext(ctx).ChannelModelPriceVersion.Create().
+		SetChannelID(entity.ChannelID).
+		SetModelID(entity.ModelID).
+		SetChannelModelPriceID(entity.ID).
+		SetPrice(entity.Price).
+		SetStatus(channelmodelpriceversion.StatusActive).
+		SetEffectiveStartAt(now).
+		SetReferenceID(entity.ReferenceID).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to create channel model price version: %w", err)
+	}
+
+	return nil
+}
+
+// createChannelModelPrice creates the current price and its initial active
+// version. The caller must run it inside the logical channel mutation
+// transaction so the two records cannot be committed independently.
+func (svc *ChannelService) createChannelModelPrice(
+	ctx context.Context,
+	channelID int,
+	modelID string,
+	price objects.ModelPrice,
+	now time.Time,
+) (*ent.ChannelModelPrice, error) {
+	entity, err := svc.entFromContext(ctx).ChannelModelPrice.Create().
+		SetChannelID(channelID).
+		SetModelID(modelID).
+		SetPrice(price).
+		SetReferenceID(generateReferenceID()).
+		Save(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create channel model price: %w", err)
+	}
+
+	if err := svc.createChannelModelPriceVersion(ctx, entity, now); err != nil {
+		return nil, err
+	}
+
+	return entity, nil
+}
+
+// ensureChannelModelPrices fills prices only for the supplied model IDs that
+// do not already have a current channel price. Repeated calls preserve all
+// existing prices and version history.
+func (svc *ChannelService) ensureChannelModelPrices(ctx context.Context, channelID int, modelIDs []string) (bool, error) {
+	modelIDs = uniqueNonEmptyModelIDs(modelIDs)
+	if len(modelIDs) == 0 {
+		return false, nil
+	}
+
+	changed := false
+	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
+		db := svc.entFromContext(ctx)
+		existingModelIDs := make(map[string]struct{}, len(modelIDs))
+		for start := 0; start < len(modelIDs); start += channelModelPriceQueryBatchSize {
+			end := min(start+channelModelPriceQueryBatchSize, len(modelIDs))
+			existingPrices, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) ([]*ent.ChannelModelPrice, error) {
+				return db.ChannelModelPrice.Query().
+					Where(
+						channelmodelprice.ChannelID(channelID),
+						channelmodelprice.ModelIDIn(modelIDs[start:end]...),
+					).
+					Select(channelmodelprice.FieldModelID).
+					All(queryCtx)
+			})
+			if err != nil {
+				return fmt.Errorf("failed to query existing channel model prices: %w", err)
+			}
+
+			for _, existingPrice := range existingPrices {
+				existingModelIDs[existingPrice.ModelID] = struct{}{}
+			}
+		}
+
+		missingModelIDs := lo.Filter(modelIDs, func(modelID string, _ int) bool {
+			_, exists := existingModelIDs[modelID]
+
+			return !exists
+		})
+		if len(missingModelIDs) == 0 {
+			return nil
+		}
+
+		templates, err := svc.resolveChannelModelPriceTemplates(ctx, missingModelIDs)
+		if err != nil {
+			return err
+		}
+
+		changed, err = svc.applyChannelModelPriceTemplates(ctx, channelID, templates)
+
+		return err
+	})
+
+	return changed, err
 }
 
 func calculatePriceChanges(prices []*ent.ChannelModelPrice, inputs []SaveChannelModelPriceInput) []PriceChangeAction {
@@ -164,17 +441,13 @@ func (svc *ChannelService) SaveChannelModelPrices(
 				continue
 
 			case ActionTypeCreate:
-				refID = generateReferenceID()
-
-				entity, err = db.ChannelModelPrice.Create().
-					SetChannelID(channelID).
-					SetModelID(action.ModelID).
-					SetPrice(action.Price).
-					SetReferenceID(refID).
-					Save(ctx)
+				entity, err = svc.createChannelModelPrice(ctx, channelID, action.ModelID, action.Price, now)
 				if err != nil {
-					return fmt.Errorf("failed to create channel model price: %w", err)
+					return err
 				}
+
+				results = append(results, entity)
+				continue
 
 			case ActionTypeUpdate:
 				entity = action.ExistingPrice
@@ -202,18 +475,8 @@ func (svc *ChannelService) SaveChannelModelPrices(
 				}
 			}
 
-			// 3. Create new version
-			_, err = db.ChannelModelPriceVersion.Create().
-				SetChannelID(channelID).
-				SetModelID(action.ModelID).
-				SetChannelModelPriceID(entity.ID).
-				SetPrice(action.Price).
-				SetStatus(channelmodelpriceversion.StatusActive).
-				SetEffectiveStartAt(now).
-				SetReferenceID(refID).
-				Save(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to create channel model price version: %w", err)
+			if err = svc.createChannelModelPriceVersion(ctx, entity, now); err != nil {
+				return err
 			}
 
 			results = append(results, entity)

@@ -1,17 +1,13 @@
 package biz
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"sync"
 	"time"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/chunkbuffer"
-	"github.com/looplj/axonhub/internal/pkg/xjson"
-	"github.com/looplj/axonhub/llm"
 )
 
 // LiveStreamRegistry provides read access to in-flight stream chunks
@@ -96,20 +92,11 @@ func marshalPreviewChunks(buffer *chunkbuffer.Buffer) []objects.JSONRawMessage {
 
 	var result []objects.JSONRawMessage
 	for _, chunk := range chunks {
-		// Skip terminal DONE events
-		if bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data) {
+		if shouldSkipStoredStreamChunk(chunk) {
 			continue
 		}
 
-		b, err := xjson.Marshal(struct {
-			LastEventID string          `json:"last_event_id,omitempty"`
-			Type        string          `json:"event"`
-			Data        json.RawMessage `json:"data"`
-		}{
-			LastEventID: chunk.LastEventID,
-			Type:        chunk.Type,
-			Data:        chunk.Data,
-		})
+		b, err := marshalStreamEventForStorage(chunk)
 		if err != nil {
 			continue
 		}

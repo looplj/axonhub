@@ -26,6 +26,8 @@ type Thread struct {
 	ProjectID int `json:"project_id,omitempty"`
 	// Unique thread identifier for this thread
 	ThreadID string `json:"thread_id,omitempty"`
+	// Record status: active (default), archived (hidden), retained (protected from GC)
+	Status thread.Status `json:"status,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ThreadQuery when eager-loading is set.
 	Edges        ThreadEdges `json:"edges"`
@@ -74,7 +76,7 @@ func (*Thread) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case thread.FieldID, thread.FieldProjectID:
 			values[i] = new(sql.NullInt64)
-		case thread.FieldThreadID:
+		case thread.FieldThreadID, thread.FieldStatus:
 			values[i] = new(sql.NullString)
 		case thread.FieldCreatedAt, thread.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -122,6 +124,12 @@ func (_m *Thread) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field thread_id", values[i])
 			} else if value.Valid {
 				_m.ThreadID = value.String
+			}
+		case thread.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				_m.Status = thread.Status(value.String)
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -180,6 +188,9 @@ func (_m *Thread) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("thread_id=")
 	builder.WriteString(_m.ThreadID)
+	builder.WriteString(", ")
+	builder.WriteString("status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteByte(')')
 	return builder.String()
 }

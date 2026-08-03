@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { FilterBuilder, type FilterBuilderCondition, type FilterBuilderField, type FilterBuilderGroupListValue } from '@/components/filter-builder';
@@ -24,7 +25,7 @@ import { useModelSettings, useUpdateModelSettings } from '@/features/system/data
 import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
-import { ModelAssociation } from '../data/schema';
+import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/schema';
 import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
 
@@ -40,6 +41,10 @@ const requestFormatConditionOptions = [
   'openai/image_variation',
   'openai/embeddings',
   'openai/video',
+  'openai/moderations',
+  'openai/audio_speech',
+  'openai/audio_transcriptions',
+  'openai/audio_translations',
   'anthropic/messages',
   'gemini/contents',
   'gemini/embeddings',
@@ -49,6 +54,13 @@ const requestFormatConditionOptions = [
   'jina/embeddings',
   'ollama/chat',
   'seedance/video',
+] as const;
+
+const contentFeatureConditionFields = [
+  { value: 'has_image', label: 'Has image' },
+  { value: 'has_video', label: 'Has video' },
+  { value: 'has_document', label: 'Has document' },
+  { value: 'has_audio', label: 'Has audio' },
 ] as const;
 
 const whenFilterFields: FilterBuilderField[] = [
@@ -73,6 +85,15 @@ const whenFilterFields: FilterBuilderField[] = [
       { value: 'ne', label: '!= Not equal' },
     ],
   },
+  ...contentFeatureConditionFields.map((field) => ({
+    value: field.value,
+    label: field.label,
+    type: 'boolean' as const,
+    operators: [
+      { value: 'eq', label: '= Equals' },
+      { value: 'ne', label: '!= Not equal' },
+    ],
+  })),
   {
     value: 'request_format',
     label: 'Request format',
@@ -97,7 +118,40 @@ const whenFilterFields: FilterBuilderField[] = [
       { value: 'not_within', label: 'Not within' },
     ],
   },
+  {
+    value: 'request_header',
+    label: 'Request header',
+    type: 'string',
+    placeholder: 'Header value',
+    operators: [
+      { value: 'eq', label: '= Equals' },
+      { value: 'ne', label: '!= Not equal' },
+      { value: 'contains', label: 'Contains' },
+      { value: 'not_contains', label: 'Does not contain' },
+      { value: 'start_with', label: 'Starts with' },
+      { value: 'end_with', label: 'Ends with' },
+    ],
+    subField: {
+      label: 'Header name',
+      placeholder: 'e.g. X-Model',
+      separator: '.',
+      allowCustom: true,
+      suggestions: [
+        { value: 'User-Agent', label: 'User-Agent' },
+        { value: 'X-Model', label: 'X-Model' },
+        { value: 'X-Request-Id', label: 'X-Request-Id' },
+        { value: 'X-Trace-Id', label: 'X-Trace-Id' },
+        { value: 'Accept', label: 'Accept' },
+        { value: 'Accept-Language', label: 'Accept-Language' },
+        { value: 'Content-Type', label: 'Content-Type' },
+        { value: 'Origin', label: 'Origin' },
+        { value: 'Referer', label: 'Referer' },
+      ],
+    },
+  },
 ];
+
+const REQUEST_HEADER_FIELD_PREFIX = 'request_header.';
 
 const dailyTimeRangePattern = /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -107,9 +161,26 @@ function dailyTimeRangeHasDifferentEndpoints(value: string): boolean {
 }
 
 function isValidConditionOperator(field: string, operator: string): boolean {
-  const fieldConfig = whenFilterFields.find((f) => f.value === field);
+  const fieldConfig = resolveWhenFilterField(field);
   if (!fieldConfig) return false;
   return Boolean(fieldConfig.operators?.some((op) => op.value === operator));
+}
+
+function resolveWhenFilterField(field?: string) {
+  if (!field) {
+    return undefined;
+  }
+
+  const exact = whenFilterFields.find((f) => f.value === field);
+  if (exact) {
+    return exact;
+  }
+
+  return whenFilterFields.find((f) => f.subField && field.startsWith(f.value + f.subField.separator));
+}
+
+function isBooleanConditionField(field?: string): boolean {
+  return field === 'stream' || contentFeatureConditionFields.some((item) => item.value === field);
 }
 
 const DEFAULT_WHEN_CONDITION: FilterBuilderGroupListValue = {
@@ -213,7 +284,7 @@ function validateWhenConditionNode(
       path: [...path, 'value'],
     });
   }
-  if (condition.field === 'stream' && typeof condition.value !== 'boolean') {
+  if (isBooleanConditionField(condition.field) && typeof condition.value !== 'boolean') {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Value must be a boolean',
@@ -240,6 +311,23 @@ function validateWhenConditionNode(
       message: 'Start and end time must be different',
       path: [...path, 'value'],
     });
+  }
+  if (condition.field?.startsWith(REQUEST_HEADER_FIELD_PREFIX)) {
+    const headerName = condition.field.slice(REQUEST_HEADER_FIELD_PREFIX.length);
+    if (!headerName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Header name is required',
+        path: [...path, 'field'],
+      });
+    }
+    if (typeof condition.value !== 'string' || condition.value === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Value must be text',
+        path: [...path, 'value'],
+      });
+    }
   }
 }
 
@@ -268,6 +356,8 @@ function validateWhenGroupList(value: FilterBuilderGroupListValue, ctx: z.Refine
 
 const associationFormSchema = z.object({
   disableDeveloperSettingsInheritance: z.boolean().default(false),
+  loadBalancerStrategy: z.enum(['default', 'adaptive', 'failover', 'circuit-breaker', 'round-robin']).default('default'),
+  traceStickyMode: z.enum(['default', 'disabled', 'prefer_previous_channel']).default('default'),
   associations: z
     .array(
       z.object({
@@ -665,6 +755,8 @@ export function ModelsAssociationDialog() {
     resolver: zodResolver(associationFormSchema) as Resolver<AssociationFormData>,
     defaultValues: {
       disableDeveloperSettingsInheritance: false,
+      loadBalancerStrategy: 'default',
+      traceStickyMode: 'default',
       associations: [],
     },
   });
@@ -742,6 +834,12 @@ export function ModelsAssociationDialog() {
       const associations = isDeveloperMode ? developerAssociations : currentRow?.settings?.associations || [];
       form.reset({
         disableDeveloperSettingsInheritance: isDeveloperMode ? false : currentRow?.settings?.disableDeveloperSettingsInheritance ?? false,
+        loadBalancerStrategy: isDeveloperMode
+          ? 'default'
+          : normalizeModelRoutingPolicyValue(currentRow?.settings?.loadBalancerStrategy),
+        traceStickyMode: isDeveloperMode
+          ? 'default'
+          : normalizeModelRoutingPolicyValue(currentRow?.settings?.traceStickyMode),
         associations: associations
           .filter((assoc) => !isDeveloperMode || assoc.type === 'channel_model' || assoc.type === 'channel_tags_model')
           .map((assoc) => modelAssociationToFormRow(assoc, isDeveloperMode)),
@@ -782,6 +880,8 @@ export function ModelsAssociationDialog() {
           settings: {
             disableDeveloperSettingsInheritance: data.disableDeveloperSettingsInheritance ?? false,
             associations,
+            loadBalancerStrategy: data.loadBalancerStrategy,
+            traceStickyMode: data.traceStickyMode,
           },
         },
       });
@@ -880,6 +980,98 @@ export function ModelsAssociationDialog() {
             <div className='flex-1 overflow-y-auto py-4'>
               <Form {...form}>
                 <form id='association-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-3'>
+                  {!isDeveloperMode && (
+                    <div className='mb-4 grid gap-4 rounded-lg border p-4 sm:grid-cols-2'>
+                      <FormField
+                        control={form.control}
+                        name='loadBalancerStrategy'
+                        render={({ field }) => {
+                          const description =
+                            field.value === 'default'
+                              ? t('models.fields.routingInheritanceDescription')
+                              : t(`system.retry.loadBalancerStrategy.documentation.${field.value}`);
+
+                          return (
+                            <FormItem className='space-y-0'>
+                              <div className='flex items-center justify-between gap-3'>
+                                <div className='flex items-center gap-1.5'>
+                                  <FormLabel className='text-sm font-medium'>{t('models.fields.loadBalancerStrategy')}</FormLabel>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button type='button' className='text-muted-foreground hover:text-foreground inline-flex'>
+                                        <IconInfoCircle className='h-3.5 w-3.5' />
+                                        <span className='sr-only'>{description}</span>
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className='max-w-xs text-xs'>{description}</TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                <FormControl>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger className='w-[140px] shrink-0'>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value='default'>{t('models.fields.routingSystemDefault')}</SelectItem>
+                                      <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
+                                      <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
+                                      <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
+                                      <SelectItem value='round-robin'>{t('system.retry.loadBalancerStrategy.options.roundRobin')}</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='traceStickyMode'
+                        render={({ field }) => {
+                          const description =
+                            field.value === 'default'
+                              ? t('models.fields.routingInheritanceDescription')
+                              : t('system.retry.traceStickyMode.description');
+
+                          return (
+                            <FormItem className='space-y-0'>
+                              <div className='flex items-center justify-between gap-3'>
+                                <div className='flex items-center gap-1.5'>
+                                  <FormLabel className='text-sm font-medium'>{t('models.fields.traceStickyMode')}</FormLabel>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <button type='button' className='text-muted-foreground hover:text-foreground inline-flex'>
+                                        <IconInfoCircle className='h-3.5 w-3.5' />
+                                        <span className='sr-only'>{description}</span>
+                                      </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className='max-w-xs text-xs'>{description}</TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                <FormControl>
+                                  <Select value={field.value} onValueChange={field.onChange}>
+                                    <SelectTrigger className='w-[160px] shrink-0'>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value='default'>{t('models.fields.routingSystemDefault')}</SelectItem>
+                                      <SelectItem value='prefer_previous_channel'>{t('system.retry.traceStickyMode.options.preferPreviousChannel')}</SelectItem>
+                                      <SelectItem value='disabled'>{t('system.retry.traceStickyMode.options.disabled')}</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    </div>
+                  )}
+
                   {fields.length === 0 && <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>}
 
                   {fields.length > 0 && (
@@ -1053,6 +1245,10 @@ function sanitizeWhenCondition(condition?: FilterBuilderCondition): FilterBuilde
   }
 
   if (!condition.field || !condition.operator || condition.value === '') {
+    return null;
+  }
+
+  if (condition.field.startsWith(REQUEST_HEADER_FIELD_PREFIX) && condition.field.slice(REQUEST_HEADER_FIELD_PREFIX.length) === '') {
     return null;
   }
 
@@ -1496,6 +1692,13 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                           ...option,
                           label: t(`models.dialogs.association.conditions.formatOptions.${option.value}`, { defaultValue: option.label }),
                         })),
+                        subField: item.subField
+                          ? {
+                              ...item.subField,
+                              label: t(`models.dialogs.association.conditions.subFields.${item.value}.label`, { defaultValue: item.subField.label }),
+                              placeholder: t(`models.dialogs.association.conditions.subFields.${item.value}.placeholder`, { defaultValue: item.subField.placeholder }),
+                            }
+                          : undefined,
                       }))}
                       fieldLabel={t('models.dialogs.association.conditions.fieldLabel')}
                       operatorLabel={t('models.dialogs.association.conditions.operatorLabel')}

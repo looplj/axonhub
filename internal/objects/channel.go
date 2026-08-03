@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 )
@@ -46,13 +47,23 @@ type HeaderEntry struct {
 // Override operation types.
 const (
 	OverrideOpSet          = "set"
+	OverrideOpSetIfAbsent  = "set_if_absent"
 	OverrideOpDelete       = "delete"
 	OverrideOpRename       = "rename"
 	OverrideOpCopy         = "copy"
 	OverrideOpArrayAppend  = "array_append"
 	OverrideOpArrayPrepend = "array_prepend"
 	OverrideOpArrayInsert  = "array_insert"
+	OverrideOpArrayRemove  = "array_remove"
 )
+
+// OverrideMatch defines a simple equality matcher for array_remove operations.
+type OverrideMatch struct {
+	// Path is resolved relative to each array item.
+	Path string `json:"path"`
+	// Eq is the value that removes the item when it matches.
+	Eq string `json:"eq"`
+}
 
 // OverrideOperation defines a structured override operation for request body/header manipulation.
 type OverrideOperation struct {
@@ -62,6 +73,8 @@ type OverrideOperation struct {
 	To        string `json:"to,omitempty"`
 	Value     string `json:"value,omitempty"`
 	Condition string `json:"condition,omitempty"`
+	// Match identifies array items removed by array_remove.
+	Match *OverrideMatch `json:"match,omitempty"`
 	// Index is the target position for array_insert. Only used by array_insert.
 	// Negative values count from the end (-1 = before last). Out-of-range values are clamped to [0, len].
 	Index *int `json:"index,omitempty"`
@@ -98,6 +111,15 @@ type TransformOptions struct {
 
 	// ReplaceDeveloperRoleWithSystem replaces developer role with system in messages for Bailian compatibility.
 	ReplaceDeveloperRoleWithSystem bool `json:"replaceDeveloperRoleWithSystem"`
+
+	// ReasoningEffortMapping maps inbound reasoning_effort values to outbound ones for
+	// non-standard OpenAI-compatible providers. The first entry whose From matches the
+	// effort value wins; values not in the list pass through unchanged.
+	// e.g. [{"from":"xhigh","to":"max"}] converts Anthropic's internal "xhigh" (mapped
+	// from "max") back to "max" for providers that only recognize "max".
+	// Consumed by the OpenAI-shared outbound transformer. Other transformers ignore it
+	// for now. Strong-typed to mirror ModelMapping; see llm.ReasoningEffortMapping.
+	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoningEffortMapping,omitempty"`
 }
 
 type ChannelSettings struct {
@@ -176,6 +198,34 @@ type ChannelSettings struct {
 	// RateLimit configures the upstream rate limit for the channel.
 	// When configured, the load balancer will skip channels that have exceeded their rate limits.
 	RateLimit *ChannelRateLimit `json:"rateLimit,omitempty"`
+
+	// RetryableStatusCodes configures additional HTTP status codes that should
+	// trigger retry for this channel. Default retryable codes (429 and 5xx) are
+	// always handled by the retry policy even when this list is empty.
+	RetryableStatusCodes []int `json:"retryableStatusCodes,omitempty"`
+
+	// RetryableErrorPatterns configures additional error text patterns that should
+	// trigger retry for this channel. When Regex is false, Pattern is matched as a
+	// case-sensitive substring of the error text.
+	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
+
+	// ProviderQuota stores provider-specific credentials used only for quota
+	// polling. Keep upstream request credentials in ChannelCredentials.
+	ProviderQuota *ChannelProviderQuotaSettings `json:"providerQuota,omitempty"`
+}
+
+type RetryableErrorPattern struct {
+	Pattern string `json:"pattern"`
+	Regex   bool   `json:"regex,omitempty"`
+}
+
+type ChannelProviderQuotaSettings struct {
+	OpencodeGo *OpenCodeGoQuotaSettings `json:"opencodeGo,omitempty"`
+}
+
+type OpenCodeGoQuotaSettings struct {
+	WorkspaceID string `json:"workspaceId,omitempty"`
+	AuthCookie  string `json:"authCookie,omitempty"`
 }
 
 type ChannelRateLimit struct {
@@ -199,10 +249,16 @@ type ChannelRateLimit struct {
 // DisabledAPIKey 记录被禁用的 API key 信息（敏感，按 credentials 同级保护）
 // 注意：禁用判断以 Key 明文为主键。
 type DisabledAPIKey struct {
-	Key        string    `json:"key"`
-	DisabledAt time.Time `json:"disabledAt"`
-	ErrorCode  int       `json:"errorCode"`
-	Reason     string    `json:"reason,omitempty"`
+	Key        string     `json:"key"`
+	DisabledAt time.Time  `json:"disabledAt"`
+	ErrorCode  int        `json:"errorCode"`
+	Reason     string     `json:"reason,omitempty"`
+	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
+}
+
+// IsExpired reports whether a temporary API key disable has elapsed.
+func (dk DisabledAPIKey) IsExpired() bool {
+	return dk.ExpiresAt != nil && time.Now().After(*dk.ExpiresAt)
 }
 
 type ChannelCredentials struct {
@@ -253,7 +309,7 @@ func (c *ChannelCredentials) GetEnabledAPIKeys(disabledKeys []DisabledAPIKey) []
 
 	disabledSet := make(map[string]struct{}, len(disabledKeys))
 	for _, dk := range disabledKeys {
-		if dk.Key == "" {
+		if dk.Key == "" || dk.IsExpired() {
 			continue
 		}
 
@@ -330,7 +386,25 @@ const (
 )
 
 type ChannelPolicies struct {
-	Stream CapabilityPolicy `json:"stream,omitempty"`
+	Stream                 CapabilityPolicy        `json:"stream,omitempty"`
+	APIKeyAutoDisableRules []APIKeyAutoDisableRule `json:"apiKeyAutoDisableRules,omitempty"`
+}
+
+type APIKeyAutoDisableAction string
+
+const (
+	APIKeyAutoDisableActionTemporary APIKeyAutoDisableAction = "temporary_disable"
+	APIKeyAutoDisableActionPermanent APIKeyAutoDisableAction = "permanent_disable_delete"
+)
+
+// APIKeyAutoDisableRule applies to one channel and matches status codes and/or
+// error-message patterns. Empty conditions match any upstream error.
+type APIKeyAutoDisableRule struct {
+	StatusCodes            []int                   `json:"statusCodes,omitempty"`
+	KeywordPatterns        []string                `json:"keywordPatterns,omitempty"`
+	Times                  int                     `json:"times"`
+	Action                 APIKeyAutoDisableAction `json:"action"`
+	DisableDurationMinutes *int                    `json:"disableDurationMinutes,omitempty"`
 }
 
 // ParseOverrideOperations parses the override parameters string.

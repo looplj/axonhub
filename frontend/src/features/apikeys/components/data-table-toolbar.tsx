@@ -1,14 +1,12 @@
-import { useMemo } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DateRangePicker } from '@/components/date-range-picker';
 import type { DateTimeRangeValue } from '@/utils/date-range';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
-import { useMe } from '@/features/auth/data/auth';
 import { useUsers } from '@/features/users/data/users';
 import { ApiKeyStatus } from '../data/schema';
 
@@ -17,20 +15,19 @@ interface DataTableToolbarProps<TData> {
   dateRange?: DateTimeRangeValue;
   onDateRangeChange?: (range: DateTimeRangeValue | undefined) => void;
   onResetFilters?: () => void;
+  canViewCreators?: boolean;
 }
 
-export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, onResetFilters }: DataTableToolbarProps<TData>) {
+export function DataTableToolbar<TData>({
+  table,
+  dateRange,
+  onDateRangeChange,
+  onResetFilters,
+  canViewCreators = false,
+}: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
-
-  const { user: authUser } = useAuthStore((state) => state.auth);
-  const { data: meData } = useMe();
-  const user = meData || authUser;
-  const userScopes = user?.scopes || [];
-  const isOwner = user?.isOwner || false;
-
-  const canViewUsers = isOwner || userScopes.includes('*') || (userScopes.includes('read_users') && userScopes.includes('read_apikeys'));
 
   const { data: usersData } = useUsers(
     {
@@ -38,18 +35,18 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
       orderBy: { field: 'CREATED_AT', direction: 'DESC' },
     },
     {
-      disableAutoFetch: !canViewUsers,
+      disableAutoFetch: !canViewCreators,
     }
   );
 
   const userOptions = useMemo(() => {
-    if (!canViewUsers || !usersData?.edges) return [];
+    if (!canViewCreators || !usersData?.edges) return [];
 
     return usersData.edges.map((edge) => ({
       value: edge.node.id,
       label: `${edge.node.firstName} ${edge.node.lastName} (${edge.node.email})`,
     }));
-  }, [canViewUsers, usersData]);
+  }, [canViewCreators, usersData]);
 
   const statusOptions = [
     {
@@ -78,7 +75,7 @@ export function DataTableToolbar<TData>({ table, dateRange, onDateRangeChange, o
         {table.getColumn('status') && (
           <DataTableFacetedFilter column={table.getColumn('status')} title={t('apikeys.filters.status')} options={statusOptions} />
         )}
-        {canViewUsers && table.getColumn('creator') && userOptions.length > 0 && usersData?.edges && (
+        {canViewCreators && table.getColumn('creator') && userOptions.length > 0 && usersData?.edges && (
           <DataTableFacetedFilter column={table.getColumn('creator')} title={t('apikeys.filters.creator')} options={userOptions} />
         )}
         <DateRangePicker value={dateRange} onChange={onDateRangeChange} />

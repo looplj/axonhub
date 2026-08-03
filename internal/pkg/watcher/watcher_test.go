@@ -38,7 +38,7 @@ func TestRedisWatcher_BroadcastAcrossInstances(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()
 
-	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	client := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{mr.Addr()}})
 
 	w1, err := NewRedisWatcher[struct{}](client, RedisWatcherOptions{Channel: "xcache:test", Buffer: 1})
 	require.NoError(t, err)

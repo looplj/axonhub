@@ -18,17 +18,77 @@
 
 </div>
 
+---
+
 ## ❤️ Sponsor
 
 <div align="center">
 
-<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
-
-**[Atlas Cloud](https://lj.s.gy/oZl7Vd)** is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
-
-Check out Atlas Cloud's [new coding plan promotion](https://lj.s.gy/jknt2V) for more budget-friendly API access.
+<table width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/oZl7Vd" target="_blank">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/atlas-cloud-logomark-white.svg"/>
+          <source media="(prefers-color-scheme: light)" srcset="docs/sponsors/atlas-cloud-logomark-black.svg"/>
+          <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="50"/>
+        </picture>
+        <br/>
+        <strong>Atlas Cloud</strong>
+      </a>
+      <p align="left">
+        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
+      </p>
+      <p align="left">
+        Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new coding plan promotion</a> for more budget-friendly API access.
+      </p>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/jKk8uU" target="_blank">
+        <img src="https://raw.githubusercontent.com/Krill-ai-org/krill-ai-static/refs/heads/main/krill-logo/Eng/250x150.png" alt="Krill AI" height="50"/>
+        <br/>
+        <strong>Krill AI</strong>
+      </a>
+      <p align="left">
+        Thank you to Krill AI for sponsoring this project. Krill provides official, stable, high-speed API relay services for GPT, Claude, Gemini, and a wide range of Chinese models, with enterprise customization, invoicing support, and dedicated technical support 16 hours a day, 7 days a week. Its optimized WebSocket connection can deliver a faster time to first token.
+      </p>
+      <p align="left">
+        Register through <a href="https://lj.s.gy/jKk8uU" target="_blank">this link</a> and enter the <code>AxonHub</code> coupon code when topping up to receive 23% off your first Codex plan purchase.
+      </p>
+    </td>
+  </tr>
+</table>
 
 </div>
+
+<br/>
+
+<table border="1" cellspacing="0" cellpadding="16">
+  <thead>
+    <tr>
+      <th align="center" width="220">Sponsor</th>
+      <th align="left">Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">
+          <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
+          <br/>
+          <strong>Bloome</strong>
+        </a>
+      </td>
+      <td valign="middle">
+        Try AxonHub with zero local setup on Bloome:
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">Quick start</a>,
+        one click from your browser or phone, easy to share with your team.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+---
 
 ---
 

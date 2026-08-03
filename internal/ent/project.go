@@ -43,6 +43,8 @@ type Project struct {
 type ProjectEdges struct {
 	// Users holds the value of the users edge.
 	Users []*User `json:"users,omitempty"`
+	// Invitations holds the value of the invitations edge.
+	Invitations []*Invitation `json:"invitations,omitempty"`
 	// Roles holds the value of the roles edge.
 	Roles []*Role `json:"roles,omitempty"`
 	// APIKeys holds the value of the api_keys edge.
@@ -63,11 +65,12 @@ type ProjectEdges struct {
 	ProjectUsers []*UserProject `json:"project_users,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [10]bool
+	loadedTypes [11]bool
 	// totalCount holds the count of the edges above.
 	totalCount [10]map[string]int
 
 	namedUsers                  map[string][]*User
+	namedInvitations            map[string][]*Invitation
 	namedRoles                  map[string][]*Role
 	namedAPIKeys                map[string][]*APIKey
 	namedRequests               map[string][]*Request
@@ -88,10 +91,19 @@ func (e ProjectEdges) UsersOrErr() ([]*User, error) {
 	return nil, &NotLoadedError{edge: "users"}
 }
 
+// InvitationsOrErr returns the Invitations value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) InvitationsOrErr() ([]*Invitation, error) {
+	if e.loadedTypes[1] {
+		return e.Invitations, nil
+	}
+	return nil, &NotLoadedError{edge: "invitations"}
+}
+
 // RolesOrErr returns the Roles value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) RolesOrErr() ([]*Role, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.Roles, nil
 	}
 	return nil, &NotLoadedError{edge: "roles"}
@@ -100,7 +112,7 @@ func (e ProjectEdges) RolesOrErr() ([]*Role, error) {
 // APIKeysOrErr returns the APIKeys value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) APIKeysOrErr() ([]*APIKey, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.APIKeys, nil
 	}
 	return nil, &NotLoadedError{edge: "api_keys"}
@@ -109,7 +121,7 @@ func (e ProjectEdges) APIKeysOrErr() ([]*APIKey, error) {
 // RequestsOrErr returns the Requests value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) RequestsOrErr() ([]*Request, error) {
-	if e.loadedTypes[3] {
+	if e.loadedTypes[4] {
 		return e.Requests, nil
 	}
 	return nil, &NotLoadedError{edge: "requests"}
@@ -118,7 +130,7 @@ func (e ProjectEdges) RequestsOrErr() ([]*Request, error) {
 // UsageLogsOrErr returns the UsageLogs value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) UsageLogsOrErr() ([]*UsageLog, error) {
-	if e.loadedTypes[4] {
+	if e.loadedTypes[5] {
 		return e.UsageLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "usage_logs"}
@@ -127,7 +139,7 @@ func (e ProjectEdges) UsageLogsOrErr() ([]*UsageLog, error) {
 // ThreadsOrErr returns the Threads value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) ThreadsOrErr() ([]*Thread, error) {
-	if e.loadedTypes[5] {
+	if e.loadedTypes[6] {
 		return e.Threads, nil
 	}
 	return nil, &NotLoadedError{edge: "threads"}
@@ -136,7 +148,7 @@ func (e ProjectEdges) ThreadsOrErr() ([]*Thread, error) {
 // TracesOrErr returns the Traces value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) TracesOrErr() ([]*Trace, error) {
-	if e.loadedTypes[6] {
+	if e.loadedTypes[7] {
 		return e.Traces, nil
 	}
 	return nil, &NotLoadedError{edge: "traces"}
@@ -145,7 +157,7 @@ func (e ProjectEdges) TracesOrErr() ([]*Trace, error) {
 // PromptsOrErr returns the Prompts value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) PromptsOrErr() ([]*Prompt, error) {
-	if e.loadedTypes[7] {
+	if e.loadedTypes[8] {
 		return e.Prompts, nil
 	}
 	return nil, &NotLoadedError{edge: "prompts"}
@@ -154,7 +166,7 @@ func (e ProjectEdges) PromptsOrErr() ([]*Prompt, error) {
 // APIKeyProfileTemplatesOrErr returns the APIKeyProfileTemplates value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) APIKeyProfileTemplatesOrErr() ([]*APIKeyProfileTemplate, error) {
-	if e.loadedTypes[8] {
+	if e.loadedTypes[9] {
 		return e.APIKeyProfileTemplates, nil
 	}
 	return nil, &NotLoadedError{edge: "api_key_profile_templates"}
@@ -163,7 +175,7 @@ func (e ProjectEdges) APIKeyProfileTemplatesOrErr() ([]*APIKeyProfileTemplate, e
 // ProjectUsersOrErr returns the ProjectUsers value or an error if the edge
 // was not loaded in eager-loading.
 func (e ProjectEdges) ProjectUsersOrErr() ([]*UserProject, error) {
-	if e.loadedTypes[9] {
+	if e.loadedTypes[10] {
 		return e.ProjectUsers, nil
 	}
 	return nil, &NotLoadedError{edge: "project_users"}
@@ -263,6 +275,11 @@ func (_m *Project) Value(name string) (ent.Value, error) {
 // QueryUsers queries the "users" edge of the Project entity.
 func (_m *Project) QueryUsers() *UserQuery {
 	return NewProjectClient(_m.config).QueryUsers(_m)
+}
+
+// QueryInvitations queries the "invitations" edge of the Project entity.
+func (_m *Project) QueryInvitations() *InvitationQuery {
+	return NewProjectClient(_m.config).QueryInvitations(_m)
 }
 
 // QueryRoles queries the "roles" edge of the Project entity.
@@ -378,6 +395,30 @@ func (_m *Project) appendNamedUsers(name string, edges ...*User) {
 		_m.Edges.namedUsers[name] = []*User{}
 	} else {
 		_m.Edges.namedUsers[name] = append(_m.Edges.namedUsers[name], edges...)
+	}
+}
+
+// NamedInvitations returns the Invitations named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *Project) NamedInvitations(name string) ([]*Invitation, error) {
+	if _m.Edges.namedInvitations == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedInvitations[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *Project) appendNamedInvitations(name string, edges ...*Invitation) {
+	if _m.Edges.namedInvitations == nil {
+		_m.Edges.namedInvitations = make(map[string][]*Invitation)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedInvitations[name] = []*Invitation{}
+	} else {
+		_m.Edges.namedInvitations[name] = append(_m.Edges.namedInvitations[name], edges...)
 	}
 }
 

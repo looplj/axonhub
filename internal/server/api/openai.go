@@ -14,11 +14,13 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/model"
+	entprivacy "github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
@@ -53,16 +55,26 @@ type OpenAIHandlers struct {
 	ResponseCompletionHandlers *ChatCompletionHandlers
 	CompactHandlers            *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
+	ModerationHandlers         *ChatCompletionHandlers
 	ImageGenerationHandlers    *ChatCompletionHandlers
 	ImageEditHandlers          *ChatCompletionHandlers
 	ImageVariationHandlers     *ChatCompletionHandlers
 	VideoHandlers              *ChatCompletionHandlers
 	VideoInboundTransformer    *openai.VideoInboundTransformer
+	SpeechHandlers             *ChatCompletionHandlers
+	TranscriptionHandlers      *ChatCompletionHandlers
+	TranslationHandlers        *ChatCompletionHandlers
+	SpeechInboundTransformer   *openai.AudioInboundTransformer
 	EntClient                  *ent.Client
+}
+
+type speechRouteRequestBody struct {
+	StreamFormat string `json:"stream_format"`
 }
 
 func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 	videoInbound := openai.NewVideoInboundTransformer()
+	speechInbound := openai.NewSpeechInboundTransformer()
 
 	return &OpenAIHandlers{
 		ChatCompletionHandlers: &ChatCompletionHandlers{
@@ -150,6 +162,23 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.ProviderQuotaStatusProvider,
 			),
 		},
+		ModerationHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewModerationInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
 		ImageGenerationHandlers: &ChatCompletionHandlers{
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
@@ -224,6 +253,58 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 		ChannelService:          params.ChannelService,
 		ModelService:            params.ModelService,
 		SystemService:           params.SystemService,
+		SpeechHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				speechInbound,
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		SpeechInboundTransformer: speechInbound,
+		TranscriptionHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewTranscriptionInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		TranslationHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewTranslationInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
 	}
 }
 
@@ -245,6 +326,71 @@ func (handlers *OpenAIHandlers) CompactResponse(c *gin.Context) {
 
 func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 	handlers.EmbeddingHandlers.ChatCompletion(c)
+}
+
+// CreateModeration handles POST /v1/moderations.
+func (handlers *OpenAIHandlers) CreateModeration(c *gin.Context) {
+	handlers.ModerationHandlers.ChatCompletion(c)
+}
+
+// CreateSpeech handles POST /v1/audio/speech (text-to-speech). The response is binary audio.
+func (handlers *OpenAIHandlers) CreateSpeech(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	genericReq, err := httpclient.ReadHTTPRequest(c.Request)
+	if err != nil {
+		httpErr := handlers.SpeechHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+		return
+	}
+
+	useBinaryStream, err := shouldUseBinarySpeechStream(genericReq)
+	if err != nil {
+		httpErr := handlers.SpeechHandlers.ChatCompletionOrchestrator.Inbound.TransformError(ctx, err)
+		c.JSON(httpErr.StatusCode, json.RawMessage(httpErr.Body))
+		return
+	}
+
+	if !useBinaryStream {
+		handlers.SpeechHandlers.ChatCompletionWithRequest(c, genericReq)
+		return
+	}
+
+	handlers.SpeechHandlers.WithStreamWriter(WriteBinaryStream).ChatCompletionWithRequest(c, genericReq)
+}
+
+func shouldUseBinarySpeechStream(genericReq *httpclient.Request) (bool, error) {
+	if genericReq == nil {
+		return false, fmt.Errorf("%w: http request is nil", transformer.ErrInvalidRequest)
+	}
+
+	if len(genericReq.Body) == 0 {
+		return false, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
+	}
+
+	contentType := strings.ToLower(genericReq.Headers.Get("Content-Type"))
+	if contentType != "" && !strings.Contains(contentType, "application/json") {
+		return false, nil
+	}
+
+	var body speechRouteRequestBody
+	if err := json.Unmarshal(genericReq.Body, &body); err != nil {
+		return false, fmt.Errorf("%w: failed to decode speech request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	streamFormat := strings.ToLower(strings.TrimSpace(body.StreamFormat))
+
+	return streamFormat != "" && streamFormat != "sse", nil
+}
+
+// CreateTranscription handles POST /v1/audio/transcriptions (speech-to-text).
+func (handlers *OpenAIHandlers) CreateTranscription(c *gin.Context) {
+	handlers.TranscriptionHandlers.ChatCompletion(c)
+}
+
+// CreateTranslation handles POST /v1/audio/translations (speech-to-text translation).
+func (handlers *OpenAIHandlers) CreateTranslation(c *gin.Context) {
+	handlers.TranslationHandlers.ChatCompletion(c)
 }
 
 func (handlers *OpenAIHandlers) CreateImage(c *gin.Context) {
@@ -345,6 +491,11 @@ func (handlers *OpenAIHandlers) DeleteVideo(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+type Modalities struct {
+	Input  []string `json:"input"`
+	Output []string `json:"output"`
+}
+
 type Capabilities struct {
 	Vision    bool `json:"vision"`
 	ToolCall  bool `json:"tool_call"`
@@ -369,6 +520,7 @@ type OpenAIModel struct {
 	Description     string        `json:"description,omitempty"`
 	ContextLength   int           `json:"context_length,omitempty"`
 	MaxOutputTokens int           `json:"max_output_tokens,omitempty"`
+	Modalities      *Modalities   `json:"modalities,omitempty"`
 	Capabilities    *Capabilities `json:"capabilities,omitempty"`
 	Pricing         *Pricing      `json:"pricing,omitempty"`
 	Icon            string        `json:"icon,omitempty"`
@@ -407,7 +559,7 @@ func parseOpenAIModelInclude(includeParam string, defaultIncludeAll bool) (map[s
 		}
 	}
 
-	extendedFields := []string{"name", "description", "context_length", "max_output_tokens", "capabilities", "pricing", "icon", "type"}
+	extendedFields := []string{"name", "description", "context_length", "max_output_tokens", "modalities", "capabilities", "pricing", "icon", "type"}
 	for _, field := range extendedFields {
 		if include[field] {
 			needFullData = true
@@ -430,7 +582,7 @@ func convertModelFacadeToOpenAIModel(m biz.ModelFacade) OpenAIModel {
 // convertModelToOpenAIExtended transforms an ent.Model to OpenAIModel with extended metadata fields.
 // It safely handles nil ModelCard, Cost, and Limit fields.
 // The include set specifies which optional fields to populate. If nil or empty, all fields are populated.
-// Supported field names: name, description, context_length, max_output_tokens, capabilities, pricing, icon, type
+// Supported field names: name, description, context_length, max_output_tokens, modalities, capabilities, pricing, icon, type.
 func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIModel {
 	result := OpenAIModel{
 		ID:      m.ModelID,
@@ -466,7 +618,21 @@ func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIM
 	}
 
 	if m.ModelCard != nil {
-		// Capabilities, ContextLength, MaxOutputTokens, Pricing come from ModelCard
+		// Modalities, Capabilities, ContextLength, MaxOutputTokens, Pricing come from ModelCard
+		if shouldInclude("modalities") {
+			input := m.ModelCard.Modalities.Input
+			if input == nil {
+				input = []string{}
+			}
+			output := m.ModelCard.Modalities.Output
+			if output == nil {
+				output = []string{}
+			}
+			result.Modalities = &Modalities{
+				Input:  input,
+				Output: output,
+			}
+		}
 		if shouldInclude("capabilities") {
 			caps := Capabilities{
 				Vision:    m.ModelCard.Vision,
@@ -497,12 +663,28 @@ func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIM
 }
 
 func (handlers *OpenAIHandlers) writeOpenAIInternalError(c *gin.Context, requestID string, err error) {
+	_ = c.Error(err)
+
 	c.JSON(http.StatusInternalServerError, openai.OpenAIError{
 		StatusCode: http.StatusInternalServerError,
 		Detail: llm.ErrorDetail{
 			Code:      openAIErrorCodeInternalServer,
 			Message:   err.Error(),
 			Type:      openAIErrorTypeServer,
+			RequestID: requestID,
+		},
+	})
+}
+
+func (handlers *OpenAIHandlers) writeOpenAIPermissionDeniedError(c *gin.Context, requestID string, err error) {
+	_ = c.Error(err)
+
+	c.JSON(http.StatusForbidden, openai.OpenAIError{
+		StatusCode: http.StatusForbidden,
+		Detail: llm.ErrorDetail{
+			Code:      "permission_denied",
+			Message:   "insufficient permissions to access this resource",
+			Type:      "authentication_error",
 			RequestID: requestID,
 		},
 	})
@@ -542,7 +724,11 @@ func (handlers *OpenAIHandlers) RetrieveModel(c *gin.Context) {
 
 	models, err := handlers.ModelService.ListEnabledModels(ctx)
 	if err != nil {
-		handlers.writeOpenAIInternalError(c, requestID, err)
+		if errors.Is(err, entprivacy.Deny) {
+			handlers.writeOpenAIPermissionDeniedError(c, requestID, err)
+		} else {
+			handlers.writeOpenAIInternalError(c, requestID, err)
+		}
 		return
 	}
 
@@ -592,7 +778,11 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 
 	visibleModels, err := handlers.ModelService.ListEnabledModels(ctx)
 	if err != nil {
-		handlers.writeOpenAIInternalError(c, requestID, err)
+		if errors.Is(err, entprivacy.Deny) {
+			handlers.writeOpenAIPermissionDeniedError(c, requestID, err)
+		} else {
+			handlers.writeOpenAIInternalError(c, requestID, err)
+		}
 		return
 	}
 

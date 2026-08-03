@@ -334,24 +334,29 @@ func TestV0_3_0_VerifyRoleScopes(t *testing.T) {
 	assert.Contains(t, adminRole.Scopes, "write_api_keys")
 	assert.Contains(t, adminRole.Scopes, "read_requests")
 	assert.Contains(t, adminRole.Scopes, "write_requests")
+	assert.Contains(t, adminRole.Scopes, "read_prompts")
+	assert.Contains(t, adminRole.Scopes, "write_prompts")
 
 	// Verify developer role has correct scopes
 	developerRole, err := client.Role.Query().Where(role.NameEQ("Developer")).Only(ctx)
 	require.NoError(t, err)
-	assert.Contains(t, developerRole.Scopes, "read_users")
 	assert.Contains(t, developerRole.Scopes, "read_api_keys")
 	assert.Contains(t, developerRole.Scopes, "write_api_keys")
 	assert.Contains(t, developerRole.Scopes, "read_requests")
+	assert.Contains(t, developerRole.Scopes, "write_requests")
+	assert.NotContains(t, developerRole.Scopes, "read_prompts")
+	assert.NotContains(t, developerRole.Scopes, "write_prompts")
 	assert.NotContains(t, developerRole.Scopes, "write_users")
 	assert.NotContains(t, developerRole.Scopes, "write_roles")
 
 	// Verify viewer role has correct scopes
 	viewerRole, err := client.Role.Query().Where(role.NameEQ("Viewer")).Only(ctx)
 	require.NoError(t, err)
-	assert.Contains(t, viewerRole.Scopes, "read_users")
+	assert.Contains(t, viewerRole.Scopes, "read_prompts")
 	assert.Contains(t, viewerRole.Scopes, "read_requests")
 	assert.NotContains(t, viewerRole.Scopes, "write_users")
 	assert.NotContains(t, viewerRole.Scopes, "write_api_keys")
+	assert.NotContains(t, viewerRole.Scopes, "write_prompts")
 }
 
 func TestV0_3_0_AssignUsersToDefaultProject(t *testing.T) {

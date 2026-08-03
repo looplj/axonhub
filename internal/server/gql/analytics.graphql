@@ -1,0 +1,82 @@
+# Analytics page - multi-dimensional data analysis
+
+"""
+Filter input for analytics queries. All fields are optional and support multi-select.
+When multiple dimensions are specified, they are combined with AND logic.
+"""
+input AnalyticsFilter {
+  "Start date (inclusive, YYYY-MM-DD, parsed in system timezone)"
+  startTime: String
+  "End date (inclusive, YYYY-MM-DD, parsed in system timezone)"
+  endTime: String
+  "Filter by project IDs"
+  projectIDs: [ID!]
+  "Filter by channel IDs"
+  channelIDs: [ID!]
+  "Filter by model IDs (model identifier strings)"
+  modelIDs: [String!]
+  "Filter by API key IDs"
+  apiKeyIDs: [ID!]
+  "Filter by user IDs (will match through api_keys.user_id)"
+  userIDs: [ID!]
+}
+
+"""
+Metadata for the analytics page (independent of filters)
+"""
+type AnalyticsMetadata {
+  "Earliest usage log date (YYYY-MM-DD), null if no data"
+  earliestDate: String
+}
+
+"""
+Overview statistics for the analytics page
+"""
+type AnalyticsOverview {
+  totalTokens: Int!
+  totalInputTokens: Int!
+  totalCachedInputTokens: Int!
+  totalUncachedInputTokens: Int!
+  totalOutputTokens: Int!
+  totalRequests: Int!
+  totalCost: Float!
+}
+
+"""
+Daily aggregated statistics for the combined trend chart
+"""
+type AnalyticsDailyStat {
+  date: String!
+  inputTokens: Int!
+  cachedInputTokens: Int!
+  uncachedInputTokens: Int!
+  outputTokens: Int!
+  totalTokens: Int!
+  requestCount: Int!
+  cost: Float!
+}
+
+"""
+Statistics for a single item in a dimension breakdown (channel/model/apiKey/user)
+"""
+type AnalyticsDimensionStat {
+  id: String!
+  name: String!
+  requestCount: Int!
+  inputTokens: Int!
+  cachedInputTokens: Int!
+  outputTokens: Int!
+  totalTokens: Int!
+  cost: Float!
+}
+
+extend type Query {
+  "Get metadata for the analytics page (date range, etc.)"
+  analyticsMetadata: AnalyticsMetadata!
+  "Get overview statistics for the analytics page"
+  analyticsOverview(filter: AnalyticsFilter): AnalyticsOverview!
+  "Get daily aggregated statistics for the trend chart"
+  analyticsDailyStats(filter: AnalyticsFilter): [AnalyticsDailyStat!]!
+  "Get dimension breakdown statistics for pie charts and detail tables. dimension: channel | model | apiKey | user"
+  analyticsDimensionStats(filter: AnalyticsFilter, dimension: String!): [AnalyticsDimensionStat!]!
+}

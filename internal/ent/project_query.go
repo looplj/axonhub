@@ -15,6 +15,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
+	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -35,6 +36,7 @@ type ProjectQuery struct {
 	inters                          []Interceptor
 	predicates                      []predicate.Project
 	withUsers                       *UserQuery
+	withInvitations                 *InvitationQuery
 	withRoles                       *RoleQuery
 	withAPIKeys                     *APIKeyQuery
 	withRequests                    *RequestQuery
@@ -47,6 +49,7 @@ type ProjectQuery struct {
 	loadTotal                       []func(context.Context, []*Project) error
 	modifiers                       []func(*sql.Selector)
 	withNamedUsers                  map[string]*UserQuery
+	withNamedInvitations            map[string]*InvitationQuery
 	withNamedRoles                  map[string]*RoleQuery
 	withNamedAPIKeys                map[string]*APIKeyQuery
 	withNamedRequests               map[string]*RequestQuery
@@ -107,6 +110,28 @@ func (_q *ProjectQuery) QueryUsers() *UserQuery {
 			sqlgraph.From(project.Table, project.FieldID, selector),
 			sqlgraph.To(user.Table, user.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, project.UsersTable, project.UsersPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryInvitations chains the current query on the "invitations" edge.
+func (_q *ProjectQuery) QueryInvitations() *InvitationQuery {
+	query := (&InvitationClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(invitation.Table, invitation.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.InvitationsTable, project.InvitationsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -260,7 +285,7 @@ func (_q *ProjectQuery) QueryPrompts() *PromptQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(project.Table, project.FieldID, selector),
 			sqlgraph.To(prompt.Table, prompt.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, project.PromptsTable, project.PromptsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.PromptsTable, project.PromptsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -505,6 +530,7 @@ func (_q *ProjectQuery) Clone() *ProjectQuery {
 		inters:                     append([]Interceptor{}, _q.inters...),
 		predicates:                 append([]predicate.Project{}, _q.predicates...),
 		withUsers:                  _q.withUsers.Clone(),
+		withInvitations:            _q.withInvitations.Clone(),
 		withRoles:                  _q.withRoles.Clone(),
 		withAPIKeys:                _q.withAPIKeys.Clone(),
 		withRequests:               _q.withRequests.Clone(),
@@ -529,6 +555,17 @@ func (_q *ProjectQuery) WithUsers(opts ...func(*UserQuery)) *ProjectQuery {
 		opt(query)
 	}
 	_q.withUsers = query
+	return _q
+}
+
+// WithInvitations tells the query-builder to eager-load the nodes that are connected to
+// the "invitations" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithInvitations(opts ...func(*InvitationQuery)) *ProjectQuery {
+	query := (&InvitationClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withInvitations = query
 	return _q
 }
 
@@ -715,8 +752,9 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	var (
 		nodes       = []*Project{}
 		_spec       = _q.querySpec()
-		loadedTypes = [10]bool{
+		loadedTypes = [11]bool{
 			_q.withUsers != nil,
+			_q.withInvitations != nil,
 			_q.withRoles != nil,
 			_q.withAPIKeys != nil,
 			_q.withRequests != nil,
@@ -753,6 +791,13 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 		if err := _q.loadUsers(ctx, query, nodes,
 			func(n *Project) { n.Edges.Users = []*User{} },
 			func(n *Project, e *User) { n.Edges.Users = append(n.Edges.Users, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withInvitations; query != nil {
+		if err := _q.loadInvitations(ctx, query, nodes,
+			func(n *Project) { n.Edges.Invitations = []*Invitation{} },
+			func(n *Project, e *Invitation) { n.Edges.Invitations = append(n.Edges.Invitations, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -825,6 +870,13 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 		if err := _q.loadUsers(ctx, query, nodes,
 			func(n *Project) { n.appendNamedUsers(name) },
 			func(n *Project, e *User) { n.appendNamedUsers(name, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedInvitations {
+		if err := _q.loadInvitations(ctx, query, nodes,
+			func(n *Project) { n.appendNamedInvitations(name) },
+			func(n *Project, e *Invitation) { n.appendNamedInvitations(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -957,6 +1009,36 @@ func (_q *ProjectQuery) loadUsers(ctx context.Context, query *UserQuery, nodes [
 		for kn := range nodes {
 			assign(kn, n)
 		}
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadInvitations(ctx context.Context, query *InvitationQuery, nodes []*Project, init func(*Project), assign func(*Project, *Invitation)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(invitation.FieldProjectID)
+	}
+	query.Where(predicate.Invitation(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.InvitationsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }
@@ -1144,63 +1226,32 @@ func (_q *ProjectQuery) loadTraces(ctx context.Context, query *TraceQuery, nodes
 	return nil
 }
 func (_q *ProjectQuery) loadPrompts(ctx context.Context, query *PromptQuery, nodes []*Project, init func(*Project), assign func(*Project, *Prompt)) error {
-	edgeIDs := make([]driver.Value, len(nodes))
-	byID := make(map[int]*Project)
-	nids := make(map[int]map[*Project]struct{})
-	for i, node := range nodes {
-		edgeIDs[i] = node.ID
-		byID[node.ID] = node
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
 		if init != nil {
-			init(node)
+			init(nodes[i])
 		}
 	}
-	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(project.PromptsTable)
-		s.Join(joinT).On(s.C(prompt.FieldID), joinT.C(project.PromptsPrimaryKey[1]))
-		s.Where(sql.InValues(joinT.C(project.PromptsPrimaryKey[0]), edgeIDs...))
-		columns := s.SelectedColumns()
-		s.Select(joinT.C(project.PromptsPrimaryKey[0]))
-		s.AppendSelect(columns...)
-		s.SetDistinct(false)
-	})
-	if err := query.prepareQuery(ctx); err != nil {
-		return err
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(prompt.FieldProjectID)
 	}
-	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
-		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
-			assign := spec.Assign
-			values := spec.ScanValues
-			spec.ScanValues = func(columns []string) ([]any, error) {
-				values, err := values(columns[1:])
-				if err != nil {
-					return nil, err
-				}
-				return append([]any{new(sql.NullInt64)}, values...), nil
-			}
-			spec.Assign = func(columns []string, values []any) error {
-				outValue := int(values[0].(*sql.NullInt64).Int64)
-				inValue := int(values[1].(*sql.NullInt64).Int64)
-				if nids[inValue] == nil {
-					nids[inValue] = map[*Project]struct{}{byID[outValue]: {}}
-					return assign(columns[1:], values[1:])
-				}
-				nids[inValue][byID[outValue]] = struct{}{}
-				return nil
-			}
-		})
-	})
-	neighbors, err := withInterceptors[[]*Prompt](ctx, query, qr, query.inters)
+	query.Where(predicate.Prompt(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.PromptsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nids[n.ID]
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected "prompts" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
 		}
-		for kn := range nodes {
-			assign(kn, n)
-		}
+		assign(node, n)
 	}
 	return nil
 }
@@ -1369,6 +1420,20 @@ func (_q *ProjectQuery) WithNamedUsers(name string, opts ...func(*UserQuery)) *P
 		_q.withNamedUsers = make(map[string]*UserQuery)
 	}
 	_q.withNamedUsers[name] = query
+	return _q
+}
+
+// WithNamedInvitations tells the query-builder to eager-load the nodes that are connected to the "invitations"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithNamedInvitations(name string, opts ...func(*InvitationQuery)) *ProjectQuery {
+	query := (&InvitationClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedInvitations == nil {
+		_q.withNamedInvitations = make(map[string]*InvitationQuery)
+	}
+	_q.withNamedInvitations[name] = query
 	return _q
 }
 

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   ColumnFiltersState,
   RowData,
   SortingState,
   VisibilityState,
+  Updater,
   flexRender,
   getCoreRowModel,
   getFacetedRowModel,
@@ -15,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import type { DateTimeRangeValue } from '@/utils/date-range';
+import { useIsMobile, MOBILE_BREAKPOINT } from '@/hooks/use-mobile';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
@@ -22,7 +24,10 @@ import { ServerSidePagination } from '@/components/server-side-pagination';
 import { Request, RequestConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
 import { RequestBodyDrawer } from './request-body-drawer';
-import { useRequestsColumns } from './requests-columns';
+import { DEFAULT_MOBILE_HIDDEN_COLUMN_IDS, useRequestsColumns } from './requests-columns';
+
+const COLUMN_VISIBILITY_STORAGE_KEY = 'requests-table-column-visibility';
+const COLUMN_VISIBILITY_STORAGE_VERSION = 2;
 
 const MotionTableRow = motion.create(TableRow);
 
@@ -116,24 +121,98 @@ export function RequestsTable({
 
   const requestsColumns = useRequestsColumns({ onBodyClick: handleBodyClick, onViewDetail });
   const [sorting, setSorting] = useState<SortingState>([]);
+  const isMobile = useIsMobile();
 
-  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() => {
-    const stored = localStorage.getItem('requests-table-column-visibility');
-    if (stored) {
-      try {
-        return JSON.parse(stored);
-      } catch {
-        return {};
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const userOverridesRef = useRef<VisibilityState>({});
+  const columnVisibilityRef = useRef<VisibilityState>({});
+  const [visibilityReady, setVisibilityReady] = useState(false);
+
+  // Hydrate column visibility from localStorage once viewport is known
+  useEffect(() => {
+    const isMobileInit = window.innerWidth < MOBILE_BREAKPOINT;
+    const mobileDefaults: VisibilityState = isMobileInit
+      ? Object.fromEntries(DEFAULT_MOBILE_HIDDEN_COLUMN_IDS.map((id) => [id, false]))
+      : {};
+
+    let overrides: VisibilityState = {};
+    try {
+      const raw = localStorage.getItem(COLUMN_VISIBILITY_STORAGE_KEY);
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          if ((parsed as { v?: number }).v === COLUMN_VISIBILITY_STORAGE_VERSION) {
+            const stored = (parsed as { overrides?: VisibilityState }).overrides;
+            if (stored && typeof stored === 'object') overrides = stored;
+          } else {
+            // Legacy unversioned payload: plain visibility map that may include
+            // responsive defaults from the old mobile persistence. Drop
+            // false-valued entries for mobile-hidden columns (they were injected
+            // defaults, not user intent); keep true entries (explicit user shows)
+            // and any entry for non-mobile-hidden columns.
+            const legacy = parsed as VisibilityState;
+            Object.entries(legacy).forEach(([id, visible]) => {
+              if (visible === true || !DEFAULT_MOBILE_HIDDEN_COLUMN_IDS.includes(id)) {
+                overrides[id] = visible;
+              }
+            });
+          }
+        }
       }
+    } catch {
+      // localStorage unavailable or corrupt — use defaults
     }
-    return {};
-  });
+
+    userOverridesRef.current = overrides;
+    setColumnVisibility({ ...mobileDefaults, ...overrides });
+    setVisibilityReady(true);
+  }, []); // Run once on mount
+
+  // Mirror columnVisibility into a ref so the visibility-change handler can read prev without a closure
+  useEffect(() => {
+    columnVisibilityRef.current = columnVisibility;
+  }, [columnVisibility]);
 
   const [rowSelection, setRowSelection] = useState({});
 
+  // Persist only user-driven overrides (never responsive defaults)
   useEffect(() => {
-    localStorage.setItem('requests-table-column-visibility', JSON.stringify(columnVisibility));
-  }, [columnVisibility]);
+    if (!visibilityReady) return;
+    try {
+      localStorage.setItem(
+        COLUMN_VISIBILITY_STORAGE_KEY,
+        JSON.stringify({ v: COLUMN_VISIBILITY_STORAGE_VERSION, overrides: userOverridesRef.current })
+      );
+    } catch {
+      // localStorage unavailable or quota exceeded — skip persistence
+    }
+  }, [columnVisibility, visibilityReady]);
+
+  useEffect(() => {
+    if (!visibilityReady) return;
+    setColumnVisibility((prev) => {
+      const hidden = DEFAULT_MOBILE_HIDDEN_COLUMN_IDS;
+      const overrides = userOverridesRef.current;
+      const next = { ...prev };
+
+      if (isMobile) {
+        // Hide responsive defaults, preserve user overrides
+        hidden.forEach((id) => {
+          if (next[id] === undefined && overrides[id] === undefined) {
+            next[id] = false;
+          }
+        });
+      } else {
+        // On desktop, remove responsive defaults but keep user overrides
+        hidden.forEach((id) => {
+          if (overrides[id] === undefined) {
+            delete next[id];
+          }
+        });
+      }
+      return next;
+    });
+  }, [isMobile, visibilityReady]);
 
   const displayedData = useAnimatedList(data, autoRefresh, pageSize);
 
@@ -172,6 +251,18 @@ export function RequestsTable({
     [columnFilters, onFiltersChange]
   );
 
+  const handleColumnVisibilityChange = useCallback((updater: Updater<VisibilityState>) => {
+    const prev = columnVisibilityRef.current;
+    const next = typeof updater === 'function' ? updater(prev) : updater;
+    // Record only user-driven changes as explicit overrides
+    Object.entries(next).forEach(([id, visible]) => {
+      if (prev[id] !== visible) {
+        userOverridesRef.current = { ...userOverridesRef.current, [id]: visible };
+      }
+    });
+    setColumnVisibility(next);
+  }, []);
+
   const table = useReactTable({
     data: displayedData,
     getRowId: (row) => row.id,
@@ -186,7 +277,7 @@ export function RequestsTable({
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: handleColumnFiltersChange,
-    onColumnVisibilityChange: setColumnVisibility,
+    onColumnVisibilityChange: handleColumnVisibilityChange,
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -209,7 +300,7 @@ export function RequestsTable({
         autoRefresh={autoRefresh}
         onAutoRefreshChange={onAutoRefreshChange}
       />
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-2 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)] sm:mt-4'>
         <div className='min-w-max'>
           <Table data-testid='requests-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
             <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
@@ -273,7 +364,7 @@ export function RequestsTable({
           </Table>
         </div>
       </div>
-      <div className='mt-4 flex-shrink-0'>
+      <div className='mt-2 flex-shrink-0 sm:mt-4'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}

@@ -17,6 +17,7 @@ function ThreadsContent() {
   });
   const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
   const [threadIdFilter, setThreadIdFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const debouncedThreadIdFilter = useDebounce(threadIdFilter, 300);
 
@@ -29,7 +30,14 @@ function ThreadsContent() {
       where.threadIDContains = debouncedThreadIdFilter.trim();
     }
 
-    return Object.keys(where).length > 0 ? where : undefined;
+    // Status filter: if specific statuses selected, use statusIn; otherwise default to non-archived
+    if (statusFilter.length > 0) {
+      where.statusIn = statusFilter;
+    } else {
+      where.statusNEQ = 'archived';
+    }
+
+    return where;
   })();
 
   const { data, isLoading, refetch } = useThreads({
@@ -87,6 +95,15 @@ function ThreadsContent() {
     []
   );
 
+  const handleStatusFilterChange = useCallback(
+    (statuses: string[]) => {
+      setStatusFilter(statuses);
+      resetCursor();
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <ThreadsTable
@@ -97,11 +114,13 @@ function ThreadsContent() {
         totalCount={data?.totalCount}
         dateRange={dateRange}
         threadIdFilter={threadIdFilter}
+        statusFilter={statusFilter}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
         onDateRangeChange={handleDateRangeChange}
         onThreadIdFilterChange={handleThreadIdFilterChange}
+        onStatusFilterChange={handleStatusFilterChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
         autoRefresh={autoRefresh}

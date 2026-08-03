@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
+	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/prompt"
@@ -134,6 +135,21 @@ func (_u *ProjectUpdate) AddUsers(v ...*User) *ProjectUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddUserIDs(ids...)
+}
+
+// AddInvitationIDs adds the "invitations" edge to the Invitation entity by IDs.
+func (_u *ProjectUpdate) AddInvitationIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.AddInvitationIDs(ids...)
+	return _u
+}
+
+// AddInvitations adds the "invitations" edges to the Invitation entity.
+func (_u *ProjectUpdate) AddInvitations(v ...*Invitation) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInvitationIDs(ids...)
 }
 
 // AddRoleIDs adds the "roles" edge to the Role entity by IDs.
@@ -295,6 +311,27 @@ func (_u *ProjectUpdate) RemoveUsers(v ...*User) *ProjectUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUserIDs(ids...)
+}
+
+// ClearInvitations clears all "invitations" edges to the Invitation entity.
+func (_u *ProjectUpdate) ClearInvitations() *ProjectUpdate {
+	_u.mutation.ClearInvitations()
+	return _u
+}
+
+// RemoveInvitationIDs removes the "invitations" edge to Invitation entities by IDs.
+func (_u *ProjectUpdate) RemoveInvitationIDs(ids ...int) *ProjectUpdate {
+	_u.mutation.RemoveInvitationIDs(ids...)
+	return _u
+}
+
+// RemoveInvitations removes "invitations" edges to Invitation entities.
+func (_u *ProjectUpdate) RemoveInvitations(v ...*Invitation) *ProjectUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInvitationIDs(ids...)
 }
 
 // ClearRoles clears all "roles" edges to the Role entity.
@@ -637,6 +674,51 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.InvitationsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.InvitationsTable,
+			Columns: []string{project.InvitationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInvitationsIDs(); len(nodes) > 0 && !_u.mutation.InvitationsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.InvitationsTable,
+			Columns: []string{project.InvitationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InvitationsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.InvitationsTable,
+			Columns: []string{project.InvitationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -909,10 +991,10 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.PromptsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   project.PromptsTable,
-			Columns: project.PromptsPrimaryKey,
+			Columns: []string{project.PromptsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),
@@ -922,10 +1004,10 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if nodes := _u.mutation.RemovedPromptsIDs(); len(nodes) > 0 && !_u.mutation.PromptsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   project.PromptsTable,
-			Columns: project.PromptsPrimaryKey,
+			Columns: []string{project.PromptsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),
@@ -938,10 +1020,10 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if nodes := _u.mutation.PromptsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   project.PromptsTable,
-			Columns: project.PromptsPrimaryKey,
+			Columns: []string{project.PromptsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),
@@ -1160,6 +1242,21 @@ func (_u *ProjectUpdateOne) AddUsers(v ...*User) *ProjectUpdateOne {
 	return _u.AddUserIDs(ids...)
 }
 
+// AddInvitationIDs adds the "invitations" edge to the Invitation entity by IDs.
+func (_u *ProjectUpdateOne) AddInvitationIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.AddInvitationIDs(ids...)
+	return _u
+}
+
+// AddInvitations adds the "invitations" edges to the Invitation entity.
+func (_u *ProjectUpdateOne) AddInvitations(v ...*Invitation) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInvitationIDs(ids...)
+}
+
 // AddRoleIDs adds the "roles" edge to the Role entity by IDs.
 func (_u *ProjectUpdateOne) AddRoleIDs(ids ...int) *ProjectUpdateOne {
 	_u.mutation.AddRoleIDs(ids...)
@@ -1319,6 +1416,27 @@ func (_u *ProjectUpdateOne) RemoveUsers(v ...*User) *ProjectUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveUserIDs(ids...)
+}
+
+// ClearInvitations clears all "invitations" edges to the Invitation entity.
+func (_u *ProjectUpdateOne) ClearInvitations() *ProjectUpdateOne {
+	_u.mutation.ClearInvitations()
+	return _u
+}
+
+// RemoveInvitationIDs removes the "invitations" edge to Invitation entities by IDs.
+func (_u *ProjectUpdateOne) RemoveInvitationIDs(ids ...int) *ProjectUpdateOne {
+	_u.mutation.RemoveInvitationIDs(ids...)
+	return _u
+}
+
+// RemoveInvitations removes "invitations" edges to Invitation entities.
+func (_u *ProjectUpdateOne) RemoveInvitations(v ...*Invitation) *ProjectUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInvitationIDs(ids...)
 }
 
 // ClearRoles clears all "roles" edges to the Role entity.
@@ -1691,6 +1809,51 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 		edge.Target.Fields = specE.Fields
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.InvitationsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.InvitationsTable,
+			Columns: []string{project.InvitationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitation.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInvitationsIDs(); len(nodes) > 0 && !_u.mutation.InvitationsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.InvitationsTable,
+			Columns: []string{project.InvitationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InvitationsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.InvitationsTable,
+			Columns: []string{project.InvitationsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invitation.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.RolesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -1963,10 +2126,10 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 	}
 	if _u.mutation.PromptsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   project.PromptsTable,
-			Columns: project.PromptsPrimaryKey,
+			Columns: []string{project.PromptsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),
@@ -1976,10 +2139,10 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 	}
 	if nodes := _u.mutation.RemovedPromptsIDs(); len(nodes) > 0 && !_u.mutation.PromptsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   project.PromptsTable,
-			Columns: project.PromptsPrimaryKey,
+			Columns: []string{project.PromptsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),
@@ -1992,10 +2155,10 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 	}
 	if nodes := _u.mutation.PromptsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   project.PromptsTable,
-			Columns: project.PromptsPrimaryKey,
+			Columns: []string{project.PromptsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(prompt.FieldID, field.TypeInt),

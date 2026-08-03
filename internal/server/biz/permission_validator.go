@@ -222,6 +222,9 @@ func (v *PermissionValidator) CanEditRole(ctx context.Context, roleID int, proje
 	if err != nil {
 		return fmt.Errorf("failed to get role: %w", err)
 	}
+	if projectID == nil && !role.IsSystemRole() {
+		projectID = role.ProjectID
+	}
 
 	return v.CanGrantRole(ctx, role.Scopes, projectID)
 }

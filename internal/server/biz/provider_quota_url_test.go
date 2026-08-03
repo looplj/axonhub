@@ -114,8 +114,8 @@ func TestHasCredentialsForProvider_WaferAPIKey(t *testing.T) {
 
 func TestHasCredentialsForProvider_WaferNoKey(t *testing.T) {
 	ch := &ent.Channel{
-		Type:    channel.TypeOpenai,
-		BaseURL: "https://wafer.ai",
+		Type:        channel.TypeOpenai,
+		BaseURL:     "https://wafer.ai",
 		Credentials: objects.ChannelCredentials{},
 	}
 	require.False(t, hasCredentialsForProvider(ch))
@@ -271,4 +271,32 @@ func TestGetProviderType_OpenaiWithFalsePositiveURL(t *testing.T) {
 	}
 	result := svc.getProviderType(ch)
 	require.Equal(t, "", result)
+}
+
+func TestGetProviderType_Cline(t *testing.T) {
+	svc := &ProviderQuotaService{checkers: make(map[string]provider_quota.QuotaChecker)}
+
+	result := svc.getProviderType(&ent.Channel{Type: channel.TypeCline})
+	require.Equal(t, "cline", result)
+}
+
+func TestHasCredentialsForProvider_ClineAPIKey(t *testing.T) {
+	ch := &ent.Channel{
+		Type:        channel.TypeCline,
+		Credentials: objects.ChannelCredentials{APIKey: "cline-key"},
+	}
+	require.True(t, hasCredentialsForProvider(ch))
+}
+
+func TestHasCredentialsForProvider_ClineAPIKeys(t *testing.T) {
+	ch := &ent.Channel{
+		Type:        channel.TypeCline,
+		Credentials: objects.ChannelCredentials{APIKeys: []string{"cline-key"}},
+	}
+	require.True(t, hasCredentialsForProvider(ch))
+}
+
+func TestHasCredentialsForProvider_ClineNoKey(t *testing.T) {
+	ch := &ent.Channel{Type: channel.TypeCline, Credentials: objects.ChannelCredentials{}}
+	require.False(t, hasCredentialsForProvider(ch))
 }

@@ -28,6 +28,7 @@ type Handlers struct {
 	Playground     *api.PlaygroundHandlers
 	System         *api.SystemHandlers
 	Auth           *api.AuthHandlers
+	Invitation     *api.InvitationHandlers
 	Jina           *api.JinaHandlers
 	Codex          *api.CodexHandlers
 	ClaudeCode     *api.ClaudeCodeHandlers
@@ -47,7 +48,10 @@ type Services struct {
 	SystemService *biz.SystemService
 }
 
-func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services Services) {
+func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services Services, ipAccessControl *middleware.IPAccessControlConfig) {
+	// IP 访问控制 - 全局最优先，拦截所有请求包括静态文件
+	server.Use(middleware.WithIPAccessControl(ipAccessControl))
+
 	// Serve static frontend files
 	server.NoRoute(static.Handler())
 
@@ -77,6 +81,8 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		publicGroup.GET("/favicon", handlers.System.GetFavicon)
 		// Health check endpoint - no authentication required
 		publicGroup.GET("/health", handlers.System.Health)
+		publicGroup.GET("/auth/invitations/:token", handlers.Invitation.Get)
+		publicGroup.POST("/auth/invitations/:token/register", handlers.Invitation.Register)
 	}
 
 	unSecureAdminGroup := server.Group("/admin", middleware.WithTimeout(server.Config.RequestTimeout))
@@ -102,6 +108,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		adminGroup.POST("/graphql", middleware.WithTimeout(server.Config.RequestTimeout), func(c *gin.Context) {
 			handlers.Graphql.Graphql.ServeHTTP(c.Writer, c.Request)
 		})
+		adminGroup.POST("/invitations", handlers.Invitation.Create)
 
 		adminGroup.POST("/codex/oauth/start", handlers.Codex.StartOAuth)
 		adminGroup.POST("/codex/oauth/exchange", handlers.Codex.Exchange)
@@ -174,11 +181,15 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		openaiGroup.GET("/models", handlers.OpenAI.ListModels)
 		openaiGroup.GET("/models/*model", handlers.OpenAI.RetrieveModel)
 		openaiGroup.POST("/embeddings", handlers.OpenAI.CreateEmbedding)
+		openaiGroup.POST("/moderations", handlers.OpenAI.CreateModeration)
 		openaiGroup.POST("/images/generations", handlers.OpenAI.CreateImage)
 		openaiGroup.POST("/images/edits", handlers.OpenAI.CreateImageEdit)
 		openaiGroup.POST("/videos", handlers.OpenAI.CreateVideo)
 		openaiGroup.GET("/videos/:id", handlers.OpenAI.GetVideo)
 		openaiGroup.DELETE("/videos/:id", handlers.OpenAI.DeleteVideo)
+		openaiGroup.POST("/audio/speech", handlers.OpenAI.CreateSpeech)
+		openaiGroup.POST("/audio/transcriptions", handlers.OpenAI.CreateTranscription)
+		openaiGroup.POST("/audio/translations", handlers.OpenAI.CreateTranslation)
 		// DO NOT SUPPORT IMAGE VARIATION
 		// openaiGroup.POST("/images/variations", handlers.OpenAI.CreateImageVariation)
 

@@ -69,7 +69,7 @@ export const ChannelLimiterCell = memo(({ stats }: ChannelLimiterCellProps) => {
             </div>
           ) : (
             <div className='text-muted-foreground'>
-              {t('channels.columns.limiterTooltip.softMode')}
+              {t('channels.columns.limiterTooltip.noQueue')}
             </div>
           )}
         </div>

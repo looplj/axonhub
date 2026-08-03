@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/entql"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 )
 
@@ -73,6 +74,21 @@ func APIKeyProjectScopeReadRule(requiredScope ScopeSlug) privacy.QueryRule {
 
 		if pf, ok := q.(ProjectOwnedFilter); ok {
 			pf.WhereProjectID(entql.IntEQ(apiKey.ProjectID))
+
+			// Service-account API key principals must never see personal keys.
+			// Personal-key principals can see only their own personal keys.
+			if _, isAPIKey := q.(*ent.APIKeyFilter); isAPIKey {
+				if ppf, ok := q.(PersonalKeyProjectFilter); ok {
+					if apiKey.Type != apikey.TypePersonal {
+						ppf.Where(entql.FieldNEQ("type", "personal"))
+					} else {
+						ppf.Where(entql.Or(
+							entql.FieldNEQ("type", "personal"),
+							entql.FieldEQ("user_id", apiKey.UserID),
+						))
+					}
+				}
+			}
 
 			return privacy.Allowf("API key %d can query project %d with scope %s", apiKey.ID, apiKey.ProjectID, requiredScope)
 		}

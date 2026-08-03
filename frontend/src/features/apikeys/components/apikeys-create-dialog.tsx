@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslation } from 'react-i18next';
@@ -7,16 +7,22 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useCreateApiKey } from '../data/apikeys';
 import { CreateApiKeyInput, createApiKeyInputSchema } from '../data/schema';
 import { ScopesSelect } from '@/components/scopes-select';
+import { usePermissions } from '@/hooks/usePermissions';
 
 export function ApiKeysCreateDialog() {
   const { t } = useTranslation();
   const { isDialogOpen, closeDialog, openDialog, setSelectedApiKey } = useApiKeysContext();
   const createApiKey = useCreateApiKey();
+  const { hasProjectScope } = usePermissions();
+  const canCreateProjectApiKey = hasProjectScope('write_users') && hasProjectScope('write_roles');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ipRestrictionEnabled, setIPRestrictionEnabled] = useState(false);
+  const [ipInput, setIpInput] = useState('');
 
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
@@ -24,26 +30,42 @@ export function ApiKeysCreateDialog() {
     resolver: zodResolver(createApiKeyInputSchema),
     defaultValues: {
       name: '',
-      type: 'user',
-      scopes: undefined, // Don't set scopes for user type
+      type: 'personal',
+      scopes: undefined,
+      allowedIps: [],
     },
   });
 
   const apiKeyType = form.watch('type');
 
+  useEffect(() => {
+    if (!canCreateProjectApiKey && form.getValues('type') === 'user') {
+      form.setValue('type', 'personal');
+    }
+  }, [canCreateProjectApiKey, form]);
+
   const onSubmit = async (data: CreateApiKeyInput) => {
     setIsSubmitting(true);
     try {
-      // Remove scopes if type is user (use backend default)
-      const submitData = data.type === 'user' ? { ...data, scopes: undefined } : data;
+      const allowedIps = ipRestrictionEnabled
+        ? ipInput
+            .split(',')
+            .map((s) => s.trim())
+            .filter((s) => s !== '')
+        : [];
+      const submitData = {
+        ...data,
+        scopes: data.type === 'user' || data.type === 'personal' ? undefined : data.scopes,
+        allowedIps,
+      };
       const result = await createApiKey.mutateAsync(submitData);
       form.reset();
+      setIPRestrictionEnabled(false);
+      setIpInput('');
       closeDialog('create');
-      // Open view dialog with the created API key
       setSelectedApiKey(result.createAPIKey);
       openDialog('view', result.createAPIKey);
     } catch (error) {
-      // Error is handled by the mutation
     } finally {
       setIsSubmitting(false);
     }
@@ -51,6 +73,8 @@ export function ApiKeysCreateDialog() {
 
   const handleClose = () => {
     form.reset();
+    setIPRestrictionEnabled(false);
+    setIpInput('');
     closeDialog('create');
   };
 
@@ -85,11 +109,19 @@ export function ApiKeysCreateDialog() {
                   <FormLabel>{t('apikeys.dialogs.fields.type.label')}</FormLabel>
                   <FormControl>
                     <RadioGroup onValueChange={field.onChange} defaultValue={field.value} className='flex flex-col space-y-1'>
+                      {canCreateProjectApiKey && (
+                        <FormItem className='flex items-center space-y-0 space-x-3'>
+                          <FormControl>
+                            <RadioGroupItem value='user' />
+                          </FormControl>
+                          <FormLabel className='font-normal'>{t('apikeys.dialogs.fields.type.user')}</FormLabel>
+                        </FormItem>
+                      )}
                       <FormItem className='flex items-center space-y-0 space-x-3'>
                         <FormControl>
-                          <RadioGroupItem value='user' />
+                          <RadioGroupItem value='personal' />
                         </FormControl>
-                        <FormLabel className='font-normal'>{t('apikeys.dialogs.fields.type.user')}</FormLabel>
+                        <FormLabel className='font-normal'>{t('apikeys.dialogs.fields.type.personal')}</FormLabel>
                       </FormItem>
                       <FormItem className='flex items-center space-y-0 space-x-3'>
                         <FormControl>
@@ -100,9 +132,9 @@ export function ApiKeysCreateDialog() {
                     </RadioGroup>
                   </FormControl>
                   <FormDescription>
-                    {apiKeyType === 'user'
-                      ? t('apikeys.dialogs.fields.type.userDescription')
-                      : t('apikeys.dialogs.fields.type.serviceAccountDescription')}
+                    {apiKeyType === 'user' && t('apikeys.dialogs.fields.type.userDescription')}
+                    {apiKeyType === 'personal' && t('apikeys.dialogs.fields.type.personalDescription')}
+                    {apiKeyType === 'service_account' && t('apikeys.dialogs.fields.type.serviceAccountDescription')}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -125,6 +157,30 @@ export function ApiKeysCreateDialog() {
                 )}
               />
             )}
+
+            <div className='space-y-3 rounded-lg border p-4'>
+              <div className='flex items-center justify-between'>
+                <div className='space-y-0.5'>
+                  <FormLabel>{t('apikeys.dialogs.fields.ipRestriction.label')}</FormLabel>
+                  <FormDescription>{t('apikeys.dialogs.fields.ipRestriction.description')}</FormDescription>
+                </div>
+                <Switch checked={ipRestrictionEnabled} onCheckedChange={setIPRestrictionEnabled} />
+              </div>
+              {ipRestrictionEnabled && (
+                <FormItem>
+                  <FormLabel>{t('apikeys.dialogs.fields.ipRestriction.cidrsLabel')}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder={t('apikeys.dialogs.fields.ipRestriction.cidrsPlaceholder')}
+                      value={ipInput}
+                      onChange={(e) => setIpInput(e.target.value)}
+                    />
+                  </FormControl>
+                  <FormDescription>{t('apikeys.dialogs.fields.ipRestriction.cidrsDescription')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            </div>
 
             <DialogFooter className='flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end'>
               <div className='flex w-full gap-2 sm:w-auto'>

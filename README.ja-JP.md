@@ -18,17 +18,85 @@
 
 </div>
 
+---
+
 ## ❤️ スポンサー
 
 <div align="center">
 
-<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
-
-**[Atlas Cloud](https://lj.s.gy/oZl7Vd)** は、開発者に動画生成、画像生成、LLM API へアクセスできる単一の AI API を提供するフルモーダル AI 推論プラットフォームです。複数のベンダー統合を管理する代わりに、一度接続するだけで全モーダルにわたる 300 以上の厳選されたモデルへ統一アクセスできます。
-
-Atlas Cloud の[新しいコーディングプラン特典](https://lj.s.gy/jknt2V)で、よりお得な API アクセスをご利用ください。
+<table width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/oZl7Vd" target="_blank">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/atlas-cloud-logomark-white.svg"/>
+          <source media="(prefers-color-scheme: light)" srcset="docs/sponsors/atlas-cloud-logomark-black.svg"/>
+          <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="50"/>
+        </picture>
+        <br/>
+        <strong>Atlas Cloud</strong>
+      </a>
+      <p align="left">
+        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> は、開発者に動画生成、画像生成、LLM API へアクセスできる単一の AI API を提供するフルモーダル AI 推論プラットフォームです。複数のベンダー統合を管理する代わりに、一度接続するだけで全モーダルにわたる 300 以上の厳選されたモデルへ統一アクセスできます。
+      </p>
+      <p align="left">
+        Atlas Cloud の <a href="https://lj.s.gy/jknt2V" target="_blank">新しいコーディングプラン特典</a> で、よりお得な API アクセスをご利用ください。
+      </p>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/jKk8uU" target="_blank">
+        <img src="https://raw.githubusercontent.com/Krill-ai-org/krill-ai-static/refs/heads/main/krill-logo/Eng/250x150.png" alt="Krill AI" height="50"/>
+        <br/>
+        <strong>Krill AI</strong>
+      </a>
+      <p align="left">
+        本プロジェクトを支援いただいている Krill AI に感謝します。Krill は GPT、Claude、Gemini および多数の中国国内モデル向けに、公式かつ安定した高速 API 中継サービスを提供しています。エンタープライズ向けカスタマイズ、請求書発行、1日16時間・週7日の専用技術サポートに対応しています。独自に最適化された WebSocket 接続により、最初のトークンをより速く受け取れます。
+      </p>
+      <p align="left">
+        <a href="https://lj.s.gy/jKk8uU" target="_blank">このリンク</a> から登録し、チャージ時に <code>AxonHub</code> クーポンコードを入力すると、初回の Codex プラン購入が 23% オフになります。
+      </p>
+    </td>
+  </tr>
+</table>
 
 </div>
+
+<br/>
+
+<table border="1" cellspacing="0" cellpadding="16">
+  <thead>
+    <tr>
+      <th align="center" width="220">スポンサー</th>
+      <th align="left">説明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">
+          <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
+          <br/>
+          <strong>Bloome</strong>
+        </a>
+      </td>
+      <td valign="middle">
+        AxonHub をローカルセットアップなしで試すなら、Bloome で：
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">Quick start</a>、
+        ブラウザやスマートフォンからワンクリックで起動でき、チームにも簡単に共有できます。
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+---
+
+## 💖 サポート
+
+| プロバイダー | プラン | 説明 | リンク |
+|-------------|--------|------|--------|
+| Zhipu AI | GLM CODING PLAN | GLM Coding Plan にご招待いただけます！Claude Code、Clineなど10以上のトップコーディングツールを完全サポート — 月$3から。今すぐサブスクリプションで期間限定特典をゲット！ | [English](https://z.ai/subscribe?ic=OKAF5UFZOM) / [中文](https://www.bigmodel.cn/glm-coding?ic=WIDLV0OOTJ) |
+| Volcengine | CODING PLAN | Ark Coding Plan はDoubao、GLM、DeepSeek、Kimiなどのモデルをサポート。無制限のツールと互換性あり。今すぐサブスクリプションで追加10%オフ — 月$1.2から。購入が多いほどお得に！ | [リンク](https://volcengine.com/L/1Q-HZr5Uvk8/) / コード：LXKDZK3W |
+| Cursor | PRO PLAN | 初月のCursor Pro、Pro+、Ultraを50%オフでお申し込み。 | [招待リンク](https://cursor.com/referral?code=GV0YKBQ692X1) |
 
 ---
 

@@ -9,9 +9,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/samber/lo"
 )
@@ -101,6 +104,10 @@ func (r *mutationResolver) BulkDeleteModels(ctx context.Context, ids []*objects.
 
 // FetchModels is the resolver for the fetchModels field.
 func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeWriteChannels); err != nil {
+		return nil, err
+	}
+
 	// Call the model fetcher service
 	result, err := r.modelFetcher.FetchModels(ctx, input)
 	if err != nil {
@@ -125,6 +132,18 @@ func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsIn
 func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error) {
 	// Check the QueryAllChannelModels setting
 	settings := r.systemService.ModelSettingsOrDefault(ctx)
+	listModels := func(list func(context.Context) ([]*biz.ModelIdentityWithStatus, error)) ([]*biz.ModelIdentityWithStatus, error) {
+		if authz.HasScope(ctx, scopes.ScopeReadChannels) {
+			return list(ctx)
+		}
+
+		if _, ok := contexts.GetProjectID(ctx); !ok ||
+			(!authz.HasScope(ctx, scopes.ScopeWriteAPIKeys) && !authz.HasScope(ctx, scopes.ScopeWriteRequests)) {
+			return nil, authz.RequireScope(ctx, scopes.ScopeReadChannels)
+		}
+
+		return authz.RunWithSystemBypass(ctx, "project-model-metadata", list)
+	}
 
 	if settings.QueryAllChannelModels || lo.FromPtrOr(input.IncludeAllChannelModels, false) {
 		// Convert GraphQL input to biz layer input
@@ -136,7 +155,9 @@ func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput)
 		}
 
 		// Return all models from channels
-		models, err := r.channelService.ListModels(ctx, bizInput)
+		models, err := listModels(func(ctx context.Context) ([]*biz.ModelIdentityWithStatus, error) {
+			return r.channelService.ListModels(ctx, bizInput)
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +175,9 @@ func (r *queryResolver) QueryModels(ctx context.Context, input QueryModelsInput)
 		}
 	}
 
-	models, err := r.modelService.ListModels(ctx, modelStatusIn)
+	models, err := listModels(func(ctx context.Context) ([]*biz.ModelIdentityWithStatus, error) {
+		return r.modelService.ListModels(ctx, modelStatusIn)
+	})
 	if err != nil {
 		return nil, err
 	}

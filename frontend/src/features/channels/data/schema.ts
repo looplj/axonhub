@@ -8,6 +8,11 @@ export const apiFormatSchema = z.enum([
   'openai/image_edit',
   'openai/image_variation',
   'openai/embeddings',
+  'openai/video',
+  'openai/moderations',
+  'openai/audio_speech',
+  'openai/audio_transcriptions',
+  'openai/audio_translations',
   'anthropic/messages',
   'gemini/contents',
   'gemini/embeddings',
@@ -27,6 +32,10 @@ export const configurableChannelEndpointApiFormats = [
   'openai/image_edit',
   'openai/image_variation',
   'openai/embeddings',
+  'openai/moderations',
+  'openai/audio_speech',
+  'openai/audio_transcriptions',
+  'openai/audio_translations',
   'anthropic/messages',
   'gemini/contents',
   'gemini/embeddings',
@@ -50,6 +59,7 @@ export const channelTypeSchema = z.enum([
   'openai',
   'openai_responses',
   'atlascloud',
+  'cline',
   'codex',
   'anthropic',
   'anthropic_aws',
@@ -101,7 +111,11 @@ export const channelTypeSchema = z.enum([
   'nanogpt_responses',
   'fireworks',
   'opencode_go',
+  'opencode_go_anthropic',
   'ollama',
+  'ollama_anthropic',
+  'evolink',
+  'evolink_anthropic',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 
@@ -112,8 +126,31 @@ export type ChannelStatus = z.infer<typeof channelStatusSchema>;
 export const capabilityPolicySchema = z.enum(['unlimited', 'require', 'forbid']);
 export type CapabilityPolicy = z.infer<typeof capabilityPolicySchema>;
 
+export const apiKeyAutoDisableActionSchema = z.enum(['temporary_disable', 'permanent_disable_delete']);
+export type APIKeyAutoDisableAction = z.infer<typeof apiKeyAutoDisableActionSchema>;
+
+export const apiKeyAutoDisableRuleSchema = z.object({
+  statusCodes: z.array(z.number().int().min(100).max(599)).optional().nullable(),
+  keywordPatterns: z.array(z.string()).optional().nullable(),
+  times: z.number().int().min(1),
+  action: apiKeyAutoDisableActionSchema,
+  disableDurationMinutes: z.number().int().positive().optional().nullable(),
+});
+export type APIKeyAutoDisableRule = z.infer<typeof apiKeyAutoDisableRuleSchema>;
+
+export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
+  .refine((rule) => (rule.statusCodes?.length ?? 0) > 0 || (rule.keywordPatterns?.some((pattern) => pattern.trim() !== '') ?? false), {
+    message: 'At least one status code or keyword pattern is required',
+    path: ['statusCodes'],
+  })
+  .refine((rule) => rule.action !== 'temporary_disable' || (rule.disableDurationMinutes ?? 0) > 0, {
+    message: 'Temporary disable requires a duration',
+    path: ['disableDurationMinutes'],
+  });
+
 export const channelPoliciesSchema = z.object({
   stream: capabilityPolicySchema.optional(),
+  apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
 });
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
 
@@ -132,13 +169,20 @@ export const headerEntrySchema = z.object({
 export type HeaderEntry = z.infer<typeof headerEntrySchema>;
 
 // Override Operation
+export const overrideMatchSchema = z.object({
+  path: z.string().trim().min(1),
+  eq: z.string().trim().min(1),
+});
+export type OverrideMatch = z.infer<typeof overrideMatchSchema>;
+
 export const overrideOperationSchema = z.object({
-  op: z.enum(['set', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert']),
+  op: z.enum(['set', 'set_if_absent', 'delete', 'rename', 'copy', 'array_append', 'array_prepend', 'array_insert', 'array_remove']),
   path: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
   value: z.any().optional(),
   condition: z.string().optional(),
+  match: overrideMatchSchema.nullish(),
   index: z.number().int().nullish(),
   splat: z.boolean().nullish(),
 });
@@ -154,14 +198,22 @@ export const proxyConfigSchema = z.object({
   url: z.string().optional(),
   username: z.string().optional(),
   password: z.string().optional(),
+  disableConnectionReuse: z.boolean().optional(),
 });
 export type ProxyConfig = z.infer<typeof proxyConfigSchema>;
 
 // Transform Options
+export const reasoningEffortMappingSchema = z.object({
+  from: z.string().min(1),
+  to: z.string().min(1),
+});
+export type ReasoningEffortMapping = z.infer<typeof reasoningEffortMappingSchema>;
+
 export const transformOptionsSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
+  reasoningEffortMapping: z.array(reasoningEffortMappingSchema).nullish(),
 });
 export type TransformOptions = z.infer<typeof transformOptionsSchema>;
 
@@ -201,10 +253,27 @@ export const channelLimiterStatsSchema = z.object({
 });
 export type ChannelLimiterStats = z.infer<typeof channelLimiterStatsSchema>;
 
+export const retryableErrorPatternSchema = z.object({
+  pattern: z.string().min(1),
+  regex: z.boolean().optional().nullable(),
+});
+export type RetryableErrorPattern = z.infer<typeof retryableErrorPatternSchema>;
+
+export const openCodeGoQuotaSettingsSchema = z.object({
+  workspaceId: z.string().optional().nullable(),
+  authCookie: z.string().optional().nullable(),
+});
+export type OpenCodeGoQuotaSettings = z.infer<typeof openCodeGoQuotaSettingsSchema>;
+
+export const channelProviderQuotaSettingsSchema = z.object({
+  opencodeGo: openCodeGoQuotaSettingsSchema.optional().nullable(),
+});
+export type ChannelProviderQuotaSettings = z.infer<typeof channelProviderQuotaSettingsSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
-  modelMappings: z.array(modelMappingSchema).nullable(),
+  modelMappings: z.array(modelMappingSchema).optional().nullable(),
   autoTrimedModelPrefixes: z.array(z.string()).optional().nullable(),
   hideOriginalModels: z.boolean().optional(),
   hideMappedModels: z.boolean().optional(),
@@ -216,6 +285,9 @@ export const channelSettingsSchema = z.object({
   passThroughUserAgent: z.boolean().optional().nullable(),
   passThroughBody: z.boolean().optional().nullable(),
   rateLimit: channelRateLimitSchema.optional().nullable(),
+  retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
+  retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
+  providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
 });
 
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
@@ -261,6 +333,7 @@ export const disabledAPIKeySchema = z.object({
   disabledAt: z.string(),
   errorCode: z.number(),
   reason: z.string().optional().nullable(),
+  expiresAt: z.string().optional().nullable(),
 });
 export type DisabledAPIKey = z.infer<typeof disabledAPIKeySchema>;
 
@@ -360,8 +433,44 @@ export const modelPriceItemSchema = z.object({
 });
 export type ModelPriceItem = z.infer<typeof modelPriceItemSchema>;
 
+// Time-based price schedule schemas
+// DailyTimeRange uses "HH:mm" format strings (e.g. "03:00", "18:30")
+export const dailyTimeRangeSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+});
+export type DailyTimeRange = z.infer<typeof dailyTimeRangeSchema>;
+
+export const dateRangeSchema = z.object({
+  start: z.string(),
+  end: z.string(),
+});
+export type DateRange = z.infer<typeof dateRangeSchema>;
+
+export const overrideWhenSchema = z.object({
+  dailyTime: dailyTimeRangeSchema.optional().nullable(),
+  weekdays: z.array(z.number().int().min(1).max(7)).optional().nullable(),
+  dateRange: dateRangeSchema.optional().nullable(),
+});
+export type OverrideWhen = z.infer<typeof overrideWhenSchema>;
+
+export const priceOverrideSchema = z.object({
+  name: z.string(),
+  priority: z.number().int(),
+  when: overrideWhenSchema,
+  items: z.array(modelPriceItemSchema),
+});
+export type PriceOverride = z.infer<typeof priceOverrideSchema>;
+
+export const priceScheduleSchema = z.object({
+  timezone: z.string(),
+  overrides: z.array(priceOverrideSchema),
+});
+export type PriceSchedule = z.infer<typeof priceScheduleSchema>;
+
 export const modelPriceSchema = z.object({
   items: z.array(modelPriceItemSchema),
+  schedule: priceScheduleSchema.optional().nullable(),
 });
 export type ModelPrice = z.infer<typeof modelPriceSchema>;
 

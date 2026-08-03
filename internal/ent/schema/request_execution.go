@@ -82,6 +82,14 @@ func (RequestExecution) Fields() []ent.Field {
 		field.JSON("request_headers", objects.JSONRawMessage{}).
 			Optional().
 			Comment("Request headers"),
+		// The actual upstream request URL sent to the provider.
+		field.String("request_url").
+			Optional().
+			Comment("Actual upstream request URL sent to the provider"),
+		// Whether the inbound request body was substituted during pass-through.
+		field.Bool("pass_through_applied").
+			Default(false).
+			Comment("Whether pass-through was active for this execution attempt"),
 	}
 }
 

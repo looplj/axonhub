@@ -198,6 +198,45 @@ test.describe('Admin Channels Management', () => {
     // The test verifies archive was successful (switch disabled) above.
   })
 
+  test('preserves a third-party Codex base URL when creating a channel', async ({ page }) => {
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const name = `pw-test-CodexChannel-${uniqueSuffix}`
+    const baseURL = `https://codex-${uniqueSuffix}.example.com/v1`
+
+    await page.getByTestId('add-channel-button').click()
+
+    const createDialog = page.getByRole('dialog')
+    await createDialog.getByTestId('provider-codex').click()
+    await createDialog.getByRole('tab', { name: /Third Party|第三方/i }).click()
+    await createDialog.getByTestId('channel-name-input').fill(name)
+    await createDialog.getByTestId('channel-base-url-input').fill(baseURL)
+    await createDialog.getByTestId('channel-api-key-input').fill(`sk-test-key-${uniqueSuffix}`)
+
+    const modelBadge = createDialog.getByTestId('quick-model-gpt-5.2')
+    await expect(modelBadge).toBeVisible({ timeout: 5000 })
+    await modelBadge.click()
+    await createDialog.getByTestId('add-selected-models-button').click()
+
+    const defaultTestModelSelect = createDialog.getByTestId('default-test-model-select')
+    await expect(defaultTestModelSelect).toBeVisible({ timeout: 5000 })
+    await defaultTestModelSelect.click()
+    await page.getByRole('option', { name: 'gpt-5.2' }).click()
+
+    const createRequest = page.waitForRequest((request) => {
+      if (!request.url().includes('/admin/graphql') || request.method() !== 'POST') return false
+      return request.postDataJSON()?.operationName === 'CreateChannel'
+    })
+
+    await Promise.all([
+      createRequest,
+      waitForGraphQLOperation(page, 'CreateChannel'),
+      createDialog.getByTestId('channel-submit-button').click(),
+    ])
+
+    const payload = (await createRequest).postDataJSON() as { variables: { input: { baseURL: string } } }
+    expect(payload.variables.input.baseURL).toBe(baseURL)
+  })
+
   test('can test a channel', async ({ page }) => {
     // Wait for table to load
     await page.waitForTimeout(1000)

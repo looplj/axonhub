@@ -79,7 +79,9 @@ func (ts *OutboundPersistentStream) Next() bool {
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		ts.responseChunks = append(ts.responseChunks, event)
+		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
+		// summary to avoid buffering the full audio payload in memory.
+		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 		// Check if this is a terminal event, which indicates the stream completed successfully.
 		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
 		// response.completed; for Anthropic Messages API this is message_stop.
@@ -303,7 +305,8 @@ func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Contex
 }
 
 func isCompletedAggregated(meta llm.ResponseMeta) bool {
-	return meta.Usage != nil && meta.Usage.CompletionTokens > 0
+	return meta.Completed ||
+		(meta.Usage != nil && meta.Usage.CompletionTokens > 0)
 }
 
 var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit breaker")
@@ -534,6 +537,7 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 
 	// Reset request execution for the new candidate
 	p.state.RequestExec = nil
+	p.state.PassThroughApplied = false
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
@@ -560,13 +564,20 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 
+	// Trace/thread sticky candidates are intentionally one-shot. A failed
+	// sticky attempt must proceed to the normal fallback candidates instead of
+	// retrying the same channel or another mapped model on that channel.
+	if p.state.CurrentCandidate.TraceSticky {
+		return false
+	}
+
 	if errors.Is(err, errSkipCandidateByCircuitBreaker) {
 		return false
 	}
 
-	// Local queue rejection: same channel is full or timed out — bounce immediately
-	// to the next channel rather than retrying.
-	if isChannelQueueError(err) {
+	// Local admission rejection: the same channel cannot make progress until the
+	// local queue/RPM state changes, so bounce immediately to the next channel.
+	if isChannelQueueError(err) || isLocalRPMExhaustedError(err) {
 		return false
 	}
 
@@ -582,24 +593,19 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return true
 	}
 
-	// 429 Too Many Requests: check if Retry-After header is present
-	if httpclient.HasRetryAfterHeader(err) {
-		// If Retry-After header is present, skip same-channel retry
-		// (the channel is explicitly rate-limited by upstream)
-		log.Debug(context.Background(), "429 with Retry-After, skipping same-channel retry",
+	// 429 Too Many Requests: always skip same-channel retry.
+	// The upstream is explicitly rate-limiting this channel, so retrying the same
+	// channel would just burn a retry attempt without any chance of success.
+	// Instead, force a channel switch so the next candidate (e.g. a backup channel)
+	// is tried immediately. The load balancer (e.g. ErrorAware strategy) will
+	// deprioritize this channel for subsequent requests and it will naturally
+	// recover as the rate-limit window resets.
+	if httpclient.IsRateLimitErr(err) {
+		log.Debug(context.Background(), "429 rate limit, skipping same-channel retry to switch to next channel",
 			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
 		)
 
 		return false
-	}
-
-	// 429 without Retry-After header, allow same-channel retry (might be transient rate limit)
-	if httpclient.IsRateLimitErr(err) {
-		log.Debug(context.Background(), "429 without Retry-After, allowing same-channel retry",
-			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
-		)
-
-		return true
 	}
 
 	// if there are more models available in the current candidate, try the next model.
@@ -607,8 +613,8 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return true
 	}
 
-	// otherwise check if the error is retryable.
-	return isRetryableError(err)
+	// otherwise check if the error is retryable for the current channel.
+	return isRetryableErrorForChannel(err, p.state.CurrentCandidate.Channel)
 }
 
 // PrepareForRetry implements the pipeline.ChannelRetryable interface.
@@ -619,6 +625,7 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 
 	// Reset request execution for the same channel.
 	p.state.RequestExec = nil
+	p.state.PassThroughApplied = false
 
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.

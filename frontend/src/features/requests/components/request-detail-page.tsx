@@ -77,7 +77,7 @@ async function readPreviewStream(
   const flushBuffer = async (final = false) => {
     const normalizedBuffer = buffer.replace(/\r\n/g, '\n');
     const separator = '\n\n';
-    let separatorIndex = normalizedBuffer.indexOf(separator);
+    const separatorIndex = normalizedBuffer.indexOf(separator);
 
     while (separatorIndex !== -1) {
       const rawEvent = normalizedBuffer.slice(0, separatorIndex);
@@ -347,7 +347,7 @@ export default function RequestDetailPage() {
   };
 
   return (
-    <div className='flex h-screen flex-col'>
+    <div className='flex h-full flex-col'>
       <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 border-b backdrop-blur'>
         <div className='flex items-center space-x-4'>
           <Button variant='ghost' size='sm' onClick={handleBack} className='hover:bg-accent'>

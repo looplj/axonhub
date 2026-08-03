@@ -3,7 +3,10 @@
 package openapi
 
 import (
+	"time"
+
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/shopspring/decimal"
 )
 
 type APIKey struct {
@@ -14,9 +17,33 @@ type APIKey struct {
 	Profiles *objects.APIKeyProfiles `json:"profiles,omitempty"`
 }
 
+type APIKeyProfileQuotaUsage struct {
+	ProfileName string               `json:"profileName"`
+	Quota       *objects.APIKeyQuota `json:"quota"`
+	Window      *APIKeyQuotaWindow   `json:"window"`
+	Usage       *APIKeyQuotaUsage    `json:"usage"`
+}
+
+type APIKeyQuotaUsage struct {
+	RequestCount int             `json:"requestCount"`
+	TotalTokens  int             `json:"totalTokens"`
+	TotalCost    decimal.Decimal `json:"totalCost"`
+}
+
+type APIKeyQuotaWindow struct {
+	Start *time.Time `json:"start,omitempty"`
+	End   *time.Time `json:"end,omitempty"`
+}
+
 type LoadAPIKeyProfileTemplateInput struct {
-	TemplateID objects.GUID `json:"templateID"`
-	APIKeyID   objects.GUID `json:"apiKeyID"`
+	// Template to load. Provide exactly one of templateID or templateName;
+	// templateName resolves within the caller's own project.
+	TemplateID   *objects.GUID `json:"templateID,omitempty"`
+	TemplateName *string       `json:"templateName,omitempty"`
+	// Target API key. Provide exactly one of apiKeyID or apiKeyName;
+	// apiKeyName resolves within the caller's own project.
+	APIKeyID   *objects.GUID `json:"apiKeyID,omitempty"`
+	APIKeyName *string       `json:"apiKeyName,omitempty"`
 }
 
 type Mutation struct {

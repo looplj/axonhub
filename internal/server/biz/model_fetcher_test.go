@@ -4,12 +4,16 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -273,6 +277,18 @@ func TestPrepareModelsEndpoint(t *testing.T) {
 			expectedURL: "https://api.moonshot.cn/v1/models",
 		},
 		{
+			name:        "OpencodeGoAnthropic with /v1 suffix",
+			channelType: channel.TypeOpencodeGoAnthropic,
+			baseURL:     "https://opencode.ai/zen/go/v1",
+			expectedURL: "https://opencode.ai/zen/go/v1/models",
+		},
+		{
+			name:        "OpencodeGoAnthropic without /v1 suffix",
+			channelType: channel.TypeOpencodeGoAnthropic,
+			baseURL:     "https://opencode.ai/zen/go",
+			expectedURL: "https://opencode.ai/zen/go/v1/models",
+		},
+		{
 			name:        "Gemini with /v1 suffix",
 			channelType: channel.TypeGemini,
 			baseURL:     "https://generativelanguage.googleapis.com/v1",
@@ -495,6 +511,101 @@ func TestFetchModelsGeminiPagination(t *testing.T) {
 	}
 }
 
+func TestFetchModelsWithChannelIDUsesStoredCredentialsOnlyForStoredEndpoint(t *testing.T) {
+	var gotAuth string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"stored-model"}]}`))
+	}))
+	defer server.Close()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:fetch_models_stored_endpoint?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithSystemBypass(context.Background(), "test")
+	ch, err := client.Channel.Create().
+		SetName("stored-endpoint").
+		SetType(channel.TypeOpenai).
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "stored-secret"}).
+		SetSupportedModels([]string{"stored-model"}).
+		SetDefaultTestModel("stored-model").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed to create channel: %v", err)
+	}
+
+	fetcher := NewModelFetcher(
+		httpclient.NewHttpClientWithClient(server.Client()),
+		&ChannelService{AbstractService: &AbstractService{db: client}},
+	)
+
+	result, err := fetcher.FetchModels(ctx, FetchModelsInput{
+		ChannelType: channel.TypeOpenai.String(),
+		BaseURL:     server.URL + "/",
+		ChannelID:   &ch.ID,
+	})
+	if err != nil {
+		t.Fatalf("FetchModels() unexpected error: %v", err)
+	}
+	if result.Error != nil {
+		t.Fatalf("FetchModels() expected nil result.Error, got: %v", *result.Error)
+	}
+	if gotAuth != "Bearer stored-secret" {
+		t.Fatalf("Authorization header = %q, want stored credential", gotAuth)
+	}
+	if len(result.Models) != 1 || result.Models[0].ID != "stored-model" {
+		t.Fatalf("unexpected models: %#v", result.Models)
+	}
+}
+
+func TestFetchModelsWithChannelIDRejectsStoredCredentialForChangedEndpoint(t *testing.T) {
+	var attackerCalls atomic.Int32
+	attacker := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attackerCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"exfiltrated"}]}`))
+	}))
+	defer attacker.Close()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:fetch_models_changed_endpoint?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithSystemBypass(context.Background(), "test")
+	ch, err := client.Channel.Create().
+		SetName("stored-endpoint").
+		SetType(channel.TypeOpenai).
+		SetBaseURL("https://api.openai.example").
+		SetCredentials(objects.ChannelCredentials{APIKey: "stored-secret"}).
+		SetSupportedModels([]string{"stored-model"}).
+		SetDefaultTestModel("stored-model").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed to create channel: %v", err)
+	}
+
+	fetcher := NewModelFetcher(
+		httpclient.NewHttpClientWithClient(attacker.Client()),
+		&ChannelService{AbstractService: &AbstractService{db: client}},
+	)
+
+	result, err := fetcher.FetchModels(ctx, FetchModelsInput{
+		ChannelType: channel.TypeOpenai.String(),
+		BaseURL:     attacker.URL,
+		ChannelID:   &ch.ID,
+	})
+	if err != nil {
+		t.Fatalf("FetchModels() unexpected error: %v", err)
+	}
+	if result.Error == nil || !strings.Contains(*result.Error, "API key is required") {
+		t.Fatalf("FetchModels() expected API key required error, got: %#v", result.Error)
+	}
+	if got := attackerCalls.Load(); got != 0 {
+		t.Fatalf("attacker endpoint was called %d times", got)
+	}
+}
+
 func TestProviderConfFetcher_Caching(t *testing.T) {
 	var callCount atomic.Int32
 
@@ -553,6 +664,32 @@ func TestProviderConfFetcher_Caching(t *testing.T) {
 	thirdCallCount := int(callCount.Load())
 	if thirdCallCount != 2 {
 		t.Fatalf("expected 2 server calls after cache expiry, got %d", thirdCallCount)
+	}
+}
+
+func TestModelFetcher_ClineReturnsDefaultModels(t *testing.T) {
+	fetcher := NewModelFetcher(nil, nil)
+
+	models := fetcher.getDefaultModelsByType(context.Background(), channel.TypeCline)
+
+	if len(models) == 0 {
+		t.Fatal("expected Cline default models, got none")
+	}
+
+	modelIDs := make(map[string]struct{}, len(models))
+	for _, m := range models {
+		modelIDs[m.ID] = struct{}{}
+	}
+
+	for _, expected := range []string{
+		"cline-pass/deepseek-v4-flash",
+		"cline-pass/deepseek-v4-pro",
+		"cline-pass/qwen3.7-plus",
+		"cline-pass/kimi-k2.7-code",
+	} {
+		if _, ok := modelIDs[expected]; !ok {
+			t.Fatalf("expected model %s not found in %#v", expected, models)
+		}
 	}
 }
 

@@ -23,6 +23,8 @@ import (
 	_ "github.com/looplj/axonhub/internal/pkg/sqlite"
 )
 
+const defaultSQLiteBusyTimeoutMs = 5000
+
 // NewEntClient creates an Ent client. When read_replica.read_dsn is configured,
 // SELECT/WITH queries are automatically routed to the replica; all writes go to master.
 // Transactions always run on master. If read_dsn is empty, all queries go to master.
@@ -32,7 +34,7 @@ func NewEntClient(cfg Config) *ent.Client {
 		opts = append(opts, ent.Debug())
 	}
 
-	masterDSN := ensureSQLiteWAL(cfg.Dialect, cfg.DSN, cfg.DisableSQLiteAutoWAL)
+	masterDSN := ensureSQLiteDSN(cfg.Dialect, cfg.DSN, cfg.DisableSQLiteAutoWAL)
 	dbDialect, masterDB, err := openDB(cfg.Dialect, masterDSN,
 		cfg.MaxOpenConns, cfg.MaxIdleConns, cfg.ConnMaxLifetime, cfg.ConnMaxIdleTime)
 	if err != nil {
@@ -41,7 +43,7 @@ func NewEntClient(cfg Config) *ent.Client {
 
 	var drv dialect.Driver
 	if cfg.ReadReplica.DSN != "" {
-		replicaDSN := ensureSQLiteWAL(cfg.Dialect, cfg.ReadReplica.DSN, cfg.DisableSQLiteAutoWAL)
+		replicaDSN := ensureSQLiteDSN(cfg.Dialect, cfg.ReadReplica.DSN, cfg.DisableSQLiteAutoWAL)
 		readDialect, replicaDB, err := openDB(cfg.Dialect, replicaDSN,
 			cfg.ReadReplica.MaxOpenConns, cfg.ReadReplica.MaxIdleConns,
 			cfg.ConnMaxLifetime, cfg.ConnMaxIdleTime)
@@ -83,23 +85,27 @@ func NewEntClient(cfg Config) *ent.Client {
 	return client
 }
 
-// ensureSQLiteWAL appends _pragma=journal_mode(WAL) to the DSN for SQLite dialects
-// unless WAL is explicitly disabled or the DSN already specifies a journal_mode pragma.
-func ensureSQLiteWAL(dialectName, dsn string, disable bool) string {
-	if disable {
-		return dsn
-	}
+// ensureSQLiteDSN appends SQLite PRAGMA DSN parameters for modernc.org/sqlite when absent.
+// Users can override any pragma by setting it explicitly in the DSN.
+func ensureSQLiteDSN(dialectName, dsn string, disableWAL bool) string {
 	switch dialectName {
 	case "sqlite3", "sqlite":
-		if !strings.Contains(dsn, "journal_mode") {
-			if strings.Contains(dsn, "?") {
-				dsn += "&_pragma=journal_mode(WAL)"
-			} else {
-				dsn += "?_pragma=journal_mode(WAL)"
-			}
+		if !disableWAL && !strings.Contains(dsn, "journal_mode") {
+			dsn = appendSQLiteDSNParam(dsn, "_pragma=journal_mode(WAL)")
+		}
+		if !strings.Contains(dsn, "busy_timeout") {
+			dsn = appendSQLiteDSNParam(dsn, fmt.Sprintf("_pragma=busy_timeout(%d)", defaultSQLiteBusyTimeoutMs))
 		}
 	}
 	return dsn
+}
+
+func appendSQLiteDSNParam(dsn, param string) string {
+	if strings.Contains(dsn, "?") {
+		return dsn + "&" + param
+	}
+
+	return dsn + "?" + param
 }
 
 // openDB opens a sql.DB for the given dialect and DSN, applies pool settings,

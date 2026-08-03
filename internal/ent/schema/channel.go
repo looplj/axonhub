@@ -39,6 +39,7 @@ func (Channel) Fields() []ent.Field {
 				"openai",
 				"openai_responses",
 				"atlascloud",
+				"cline",
 				"codex",
 				"vercel",
 				"anthropic",
@@ -90,7 +91,11 @@ func (Channel) Fields() []ent.Field {
 				"nanogpt",
 				"nanogpt_responses",
 				"opencode_go",
+				"opencode_go_anthropic",
 				"ollama",
+				"ollama_anthropic",
+				"evolink",
+				"evolink_anthropic",
 			).
 			Annotations(
 				entgql.OrderField("TYPE"),

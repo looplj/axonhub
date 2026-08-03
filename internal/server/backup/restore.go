@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/contexts"
@@ -18,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
@@ -38,7 +40,7 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 		return err
 	}
 
-	if !lo.Contains([]string{BackupVersion, BackupVersionV2, BackupVersionV1}, backupData.Version) {
+	if !lo.Contains([]string{BackupVersion, BackupVersionV4, BackupVersionV3, BackupVersionV2, BackupVersionV1}, backupData.Version) {
 		log.Warn(ctx, "backup version mismatch",
 			log.String("expected", BackupVersion),
 			log.String("got", backupData.Version))
@@ -71,10 +73,20 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 
 	committed = true
 
+	if opts.IncludeSystemConfigs {
+		svc.systemService.InvalidateSystemValueCaches(ctx, systemConfigBackupKeys...)
+	}
+
 	return nil
 }
 
 func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupData BackupData, opts RestoreOptions) error {
+	if opts.IncludeSystemConfigs {
+		if err := svc.restoreSystemConfigs(ctx, db, backupData.SystemConfigs); err != nil {
+			return err
+		}
+	}
+
 	if opts.IncludeChannels {
 		if err := svc.restoreChannels(ctx, db, backupData.Channels, opts); err != nil {
 			return err
@@ -118,9 +130,28 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 		}
 	}
 
-	if opts.IncludeUsageStats {
-		if err := svc.restoreUsageStats(ctx, db, backupData.UsageRequests, backupData.UsageLogs); err != nil {
+	if opts.IncludeUsageStats || opts.IncludeRequestLogs {
+		if err := svc.restoreUsageData(ctx, db, backupData.UsageRequests, backupData.UsageLogs, opts); err != nil {
 			return err
+		}
+	}
+
+	return nil
+}
+
+func (svc *BackupService) restoreSystemConfigs(ctx context.Context, db *ent.Client, configs []*BackupSystemConfig) error {
+	for _, config := range configs {
+		if config == nil || !lo.Contains(systemConfigBackupKeys, config.Key) {
+			continue
+		}
+
+		if err := db.System.Create().
+			SetKey(config.Key).
+			SetValue(config.Value).
+			OnConflict(sql.ConflictColumns(system.FieldKey)).
+			UpdateNewValues().
+			Exec(ctx); err != nil {
+			return fmt.Errorf("failed to restore system configuration %q: %w", config.Key, err)
 		}
 	}
 
@@ -829,23 +860,31 @@ func (svc *BackupService) restoreAPIKeys(ctx context.Context, db *ent.Client, ap
 	return nil
 }
 
-func (svc *BackupService) restoreUsageStats(
+func (svc *BackupService) restoreUsageData(
 	ctx context.Context,
 	db *ent.Client,
 	requestsData []*BackupUsageRequest,
 	usageLogs []*BackupUsageLog,
+	opts RestoreOptions,
 ) error {
 	resolver, err := newUsageRestoreResolver(ctx, db)
 	if err != nil {
 		return err
 	}
 
-	requestIDMap, err := svc.restoreUsageRequests(ctx, db, requestsData, resolver)
-	if err != nil {
-		return err
+	requestIDMap := map[int]int{}
+	if opts.IncludeRequestLogs {
+		requestIDMap, err = svc.restoreUsageRequests(ctx, db, requestsData, resolver)
+		if err != nil {
+			return err
+		}
 	}
 
-	return svc.restoreUsageLogs(ctx, db, usageLogs, requestIDMap, resolver)
+	if opts.IncludeUsageStats {
+		return svc.restoreUsageLogs(ctx, db, usageLogs, requestIDMap, resolver)
+	}
+
+	return nil
 }
 
 func (svc *BackupService) restoreUsageRequests(
@@ -985,8 +1024,8 @@ func existingUsageRequests(
 		byID:          map[int]*ent.Request{},
 		byFingerprint: map[string]*ent.Request{},
 	}
-	for start := 0; start < len(ids); start += usageBackupBatchSize {
-		end := min(start+usageBackupBatchSize, len(ids))
+	for start := 0; start < len(ids); start += backupBatchSize {
+		end := min(start+backupBatchSize, len(ids))
 		requests, err := db.Request.Query().
 			Where(request.IDIn(ids[start:end]...)).
 			WithProject().
@@ -1002,8 +1041,8 @@ func existingUsageRequests(
 		}
 	}
 
-	for start := 0; start < len(createdAt); start += usageBackupBatchSize {
-		end := min(start+usageBackupBatchSize, len(createdAt))
+	for start := 0; start < len(createdAt); start += backupBatchSize {
+		end := min(start+backupBatchSize, len(createdAt))
 		requests, err := db.Request.Query().
 			Where(request.CreatedAtIn(createdAt[start:end]...)).
 			WithProject().
@@ -1137,14 +1176,18 @@ func (svc *BackupService) restoreUsageLogs(
 		return nil
 	}
 
+	if err := svc.ensureUsageLogRequests(ctx, db, usageLogs, requestIDMap, resolver); err != nil {
+		return err
+	}
+
 	requestIDs := make([]int, 0, len(requestIDMap))
 	for _, requestID := range requestIDMap {
 		requestIDs = append(requestIDs, requestID)
 	}
 
 	existingLogRequestIDs := map[int]struct{}{}
-	for start := 0; start < len(requestIDs); start += usageBackupBatchSize {
-		end := min(start+usageBackupBatchSize, len(requestIDs))
+	for start := 0; start < len(requestIDs); start += backupBatchSize {
+		end := min(start+backupBatchSize, len(requestIDs))
 		logs, err := db.UsageLog.Query().
 			Where(usagelog.RequestIDIn(requestIDs[start:end]...)).
 			Select(usagelog.FieldRequestID).
@@ -1159,7 +1202,7 @@ func (svc *BackupService) restoreUsageLogs(
 	}
 
 	restoredLogRequestIDs := map[int]struct{}{}
-	builders := make([]*ent.UsageLogCreate, 0, min(len(usageLogs), usageBackupBatchSize))
+	builders := make([]*ent.UsageLogCreate, 0, min(len(usageLogs), backupBatchSize))
 	flush := func() error {
 		if len(builders) == 0 {
 			return nil
@@ -1256,7 +1299,7 @@ func (svc *BackupService) restoreUsageLogs(
 			SetNillableCostPriceReferenceID(nilIfEmpty(usageData.CostPriceReferenceID)))
 		restoredLogRequestIDs[requestID] = struct{}{}
 
-		if len(builders) >= usageBackupBatchSize {
+		if len(builders) >= backupBatchSize {
 			if err := flush(); err != nil {
 				return err
 			}
@@ -1264,6 +1307,136 @@ func (svc *BackupService) restoreUsageLogs(
 	}
 
 	return flush()
+}
+
+func (svc *BackupService) ensureUsageLogRequests(
+	ctx context.Context,
+	db *ent.Client,
+	usageLogs []*BackupUsageLog,
+	requestIDMap map[int]int,
+	resolver *usageRestoreResolver,
+) error {
+	shellRequests := usageLogRequestShells(usageLogs, requestIDMap)
+	existingRequests, err := existingUsageRequests(ctx, db, shellRequests)
+	if err != nil {
+		return err
+	}
+
+	for _, usageData := range usageLogs {
+		if usageData == nil || usageData.RequestID == 0 {
+			continue
+		}
+
+		if _, ok := requestIDMap[usageData.RequestID]; ok {
+			continue
+		}
+
+		projectID, ok := resolver.resolveProjectID(usageData.ProjectID, usageData.ProjectName)
+		if !ok {
+			continue
+		}
+
+		channelID, ok := resolver.resolveChannelID(usageData.ChannelID, usageData.ChannelName)
+		if !ok && hasBackupChannelRef(usageData.ChannelID, usageData.ChannelName) {
+			log.Warn(ctx, "channel not found for restoring usage log request shell, restoring with null channel",
+				log.Int("usage_log_id", usageData.ID),
+				log.Int("channel_id", usageData.ChannelID),
+				log.String("channel", usageData.ChannelName),
+			)
+		}
+
+		apiKeyID, ok := resolver.resolveAPIKeyID(usageData.APIKeyKey)
+		if !ok && usageData.APIKeyKey != "" {
+			log.Warn(ctx, "API key not found for restoring usage log request shell, restoring with null API key",
+				log.Int("usage_log_id", usageData.ID),
+			)
+		}
+
+		shellData := usageLogRequestShell(usageData)
+		if existing, ok := existingRequests.byID[usageData.RequestID]; ok {
+			if sameUsageRequest(existing, shellData, projectID, channelID, apiKeyID) {
+				requestIDMap[usageData.RequestID] = existing.ID
+				continue
+			}
+		}
+		if existing, ok := existingRequests.byFingerprint[usageRequestBackupFingerprint(shellData)]; ok {
+			requestIDMap[usageData.RequestID] = existing.ID
+			continue
+		}
+		if apiKeyID == 0 {
+			shellData.APIKeyKey = ""
+			if existing, ok := existingRequests.byFingerprint[usageRequestBackupFingerprint(shellData)]; ok {
+				requestIDMap[usageData.RequestID] = existing.ID
+				continue
+			}
+		}
+
+		created, err := db.Request.Create().
+			SetCreatedAt(usageData.CreatedAt).
+			SetUpdatedAt(usageData.UpdatedAt).
+			SetProjectID(projectID).
+			SetSource(request.Source(usageData.Source)).
+			SetModelID(usageData.ModelID).
+			SetFormat(usageData.Format).
+			SetRequestBody(objects.JSONRawMessage("{}")).
+			SetStatus(request.StatusCompleted).
+			SetStream(false).
+			SetClientIP("").
+			SetNillableAPIKeyID(nilIfZero(apiKeyID)).
+			SetNillableChannelID(nilIfZero(channelID)).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to create usage log request shell %d: %w", usageData.RequestID, err)
+		}
+
+		requestIDMap[usageData.RequestID] = created.ID
+	}
+
+	return nil
+}
+
+func usageLogRequestShells(
+	usageLogs []*BackupUsageLog,
+	requestIDMap map[int]int,
+) []*BackupUsageRequest {
+	shells := make([]*BackupUsageRequest, 0, len(usageLogs))
+	seen := map[int]struct{}{}
+	for _, usageData := range usageLogs {
+		if usageData == nil || usageData.RequestID == 0 {
+			continue
+		}
+		if _, ok := requestIDMap[usageData.RequestID]; ok {
+			continue
+		}
+		if _, ok := seen[usageData.RequestID]; ok {
+			continue
+		}
+
+		seen[usageData.RequestID] = struct{}{}
+		shells = append(shells, usageLogRequestShell(usageData))
+	}
+
+	return shells
+}
+
+func usageLogRequestShell(usageData *BackupUsageLog) *BackupUsageRequest {
+	return &BackupUsageRequest{
+		Request: ent.Request{
+			ID:          usageData.RequestID,
+			CreatedAt:   usageData.CreatedAt,
+			UpdatedAt:   usageData.UpdatedAt,
+			Source:      request.Source(usageData.Source),
+			ModelID:     usageData.ModelID,
+			Format:      usageData.Format,
+			RequestBody: objects.JSONRawMessage("{}"),
+			Status:      request.StatusCompleted,
+			Stream:      false,
+			ClientIP:    "",
+		},
+		ProjectName: usageData.ProjectName,
+		ChannelName: usageData.ChannelName,
+		APIKeyKey:   usageData.APIKeyKey,
+	}
 }
 
 func nilIfZero(v int) *int {

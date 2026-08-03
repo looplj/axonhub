@@ -9,15 +9,18 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -444,8 +447,28 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 		apiKeyIDs = append(apiKeyIDs, guid.ID)
 	}
 
+	// Query API keys through the privacy-enforced client to validate read_api_keys
+	// scope (both system-level and project-level) and filter to only API keys
+	// the caller can access in their project. Cross-project key IDs are dropped.
+	accessibleIDs, err := r.client.APIKey.Query().
+		Where(apikey.IDIn(apiKeyIDs...)).
+		IDs(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate API key access: %w", err)
+	}
+
+	if len(accessibleIDs) == 0 {
+		return []*APIKeyTokenUsageStats{}, nil
+	}
+
+	// Use a scope-gated decision context for the UsageLog aggregation query.
+	// Access has already been validated through the APIKey privacy policy
+	// (read_api_keys + project filter), so we bypass UsageLog's read_requests
+	// privacy rule for this internal stats query.
+	statsCtx := authz.WithScopeDecision(ctx, scopes.ScopeReadAPIKeys)
+
 	query := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDIn(apiKeyIDs...))
+		Where(usagelog.APIKeyIDIn(accessibleIDs...))
 
 	if input.CreatedAtGTE != nil {
 		query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
@@ -464,7 +487,7 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 
 	var results []usageStats
 
-	err := query.Modify(func(s *sql.Selector) {
+	err = query.Modify(func(s *sql.Selector) {
 		s.Select(
 			s.C(usagelog.FieldAPIKeyID),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
@@ -472,13 +495,13 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
 		).GroupBy(s.C(usagelog.FieldAPIKeyID))
-	}).Scan(ctx, &results)
+	}).Scan(statsCtx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API key token usage stats: %w", err)
 	}
 
 	// Get top 3 models for all API keys in a single query
-	topModelsMap := r.getTopModelsForAPIKeys(ctx, apiKeyIDs, input)
+	topModelsMap := r.getTopModelsForAPIKeys(statsCtx, accessibleIDs, input)
 
 	return lo.Map(results, func(item usageStats, _ int) *APIKeyTokenUsageStats {
 		return &APIKeyTokenUsageStats{
@@ -1735,4 +1758,136 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 	}
 
 	return response, nil
+}
+
+// UsageStatsByUser is the resolver for the usageStatsByUser field.
+func (r *queryResolver) UsageStatsByUser(ctx context.Context, timeWindow *string) ([]*UsageStatsByUser, error) {
+	currentUser, ok := contexts.GetUser(ctx)
+	if !ok || currentUser == nil {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return nil, fmt.Errorf("project ID not found in context")
+	}
+
+	// Only allow project owners or system owners to view usage stats by user
+	isProjectOwner := false
+	if currentUser.IsOwner {
+		isProjectOwner = true
+	} else {
+		for _, up := range currentUser.Edges.ProjectUsers {
+			if up.ProjectID == projectID && up.IsOwner {
+				isProjectOwner = true
+				break
+			}
+		}
+	}
+
+	if !isProjectOwner {
+		return nil, fmt.Errorf("permission denied: only project owners can view usage statistics")
+	}
+
+	// For owners/system owners, we allow querying all logs within the project
+	ctx = privacy.DecisionContext(ctx, privacy.Allow)
+
+	var since time.Time
+	var until time.Time
+	applyGTE := false
+	applyLTE := false
+
+	if timeWindow != nil && *timeWindow != "" {
+		if val, cut := strings.CutPrefix(*timeWindow, "custom:"); cut {
+			parts := strings.Split(val, ",")
+			if len(parts) == 2 {
+				if t1, err := time.Parse(time.RFC3339, parts[0]); err == nil {
+					since = t1
+					applyGTE = true
+				}
+				if t2, err := time.Parse(time.RFC3339, parts[1]); err == nil {
+					until = t2
+					applyLTE = true
+				}
+			}
+		} else {
+			var applyFilter bool
+			since, applyFilter = r.parseTimeWindow(ctx, timeWindow)
+			applyGTE = applyFilter
+		}
+	}
+
+	type userUsageStats struct {
+		UserID      int     `json:"user_id"`
+		FirstName   string  `json:"first_name"`
+		LastName    string  `json:"last_name"`
+		Email       string  `json:"email"`
+		Count       int     `json:"request_count"`
+		TotalTokens int64   `json:"total_tokens"`
+		TotalCost   float64 `json:"total_cost"`
+	}
+
+	var results []userUsageStats
+
+	query := r.client.UsageLog.Query().
+		Where(usagelog.APIKeyIDNotNil()).
+		Where(usagelog.ProjectIDEQ(projectID))
+
+	if applyGTE {
+		query = query.Where(usagelog.CreatedAtGTE(since))
+	}
+	if applyLTE {
+		query = query.Where(usagelog.CreatedAtLTE(until))
+	}
+
+	err := query.Modify(func(s *sql.Selector) {
+		apiKeyTable := sql.Table(apikey.Table)
+		userTable := sql.Table("users")
+
+		s.Join(apiKeyTable).On(
+			s.C(usagelog.FieldAPIKeyID),
+			apiKeyTable.C(apikey.FieldID),
+		)
+		s.Join(userTable).On(
+			apiKeyTable.C(apikey.FieldUserID),
+			userTable.C("id"),
+		)
+
+		s.Where(sql.EQ(apiKeyTable.C(apikey.FieldDeletedAt), 0))
+
+		s.Select(
+			sql.As(userTable.C("id"), "user_id"),
+			sql.As(userTable.C("first_name"), "first_name"),
+			sql.As(userTable.C("last_name"), "last_name"),
+			sql.As(userTable.C("email"), "email"),
+			sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+		).
+			GroupBy(
+				userTable.C("id"),
+				userTable.C("first_name"),
+				userTable.C("last_name"),
+				userTable.C("email"),
+			).
+			OrderBy(sql.Desc("request_count"))
+	}).Scan(ctx, &results)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get usage stats by user: %w", err)
+	}
+
+	return lo.Map(results, func(item userUsageStats, _ int) *UsageStatsByUser {
+		userName := fmt.Sprintf("%s %s", item.FirstName, item.LastName)
+		userName = strings.TrimSpace(userName)
+		if userName == "" {
+			userName = item.Email
+		}
+		return &UsageStatsByUser{
+			UserID:       objects.GUID{Type: ent.TypeUser, ID: item.UserID},
+			UserName:     userName,
+			RequestCount: item.Count,
+			TotalTokens:  int(item.TotalTokens),
+			TotalCost:    item.TotalCost,
+		}
+	}), nil
 }

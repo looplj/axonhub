@@ -450,6 +450,16 @@ func ProfilesNotNil() predicate.APIKey {
 	return predicate.APIKey(sql.FieldNotNull(FieldProfiles))
 }
 
+// AllowedIpsIsNil applies the IsNil predicate on the "allowed_ips" field.
+func AllowedIpsIsNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldIsNull(FieldAllowedIps))
+}
+
+// AllowedIpsNotNil applies the NotNil predicate on the "allowed_ips" field.
+func AllowedIpsNotNil() predicate.APIKey {
+	return predicate.APIKey(sql.FieldNotNull(FieldAllowedIps))
+}
+
 // HasUser applies the HasEdge predicate on the "user" edge.
 func HasUser() predicate.APIKey {
 	return predicate.APIKey(func(s *sql.Selector) {

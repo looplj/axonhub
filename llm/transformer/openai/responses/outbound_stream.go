@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
@@ -65,8 +66,7 @@ type outboundStreamState struct {
 	toolCallIndex map[string]int           // callID -> index in the output
 
 	// Reasoning signature tracking
-	encryptedContentEmitted map[string]bool
-	hasEncryptedReasoning   bool
+	pendingReasoningEncryptedContent map[string]*string
 
 	// Transformer metadata tracking
 	transformerMetadata        map[string]any
@@ -77,11 +77,11 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 	return &responsesOutboundStream{
 		stream: stream,
 		state: &outboundStreamState{
-			toolCalls:               make(map[string]*llm.ToolCall),
-			itemToCallID:            make(map[string]string),
-			toolCallIndex:           make(map[string]int),
-			encryptedContentEmitted: make(map[string]bool),
-			transformerMetadata:     make(map[string]any),
+			toolCalls:                        make(map[string]*llm.ToolCall),
+			itemToCallID:                     make(map[string]string),
+			toolCallIndex:                    make(map[string]int),
+			pendingReasoningEncryptedContent: make(map[string]*string),
+			transformerMetadata:              make(map[string]any),
 		},
 	}
 }
@@ -215,22 +215,15 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		item := streamEvent.Item
 		switch item.Type {
 		case "reasoning":
-			if item.EncryptedContent == nil || *item.EncryptedContent == "" {
+			if item.ID == "" || item.EncryptedContent == nil || *item.EncryptedContent == "" {
 				return nil // Intentionally skip this event
 			}
 
-			if !s.state.encryptedContentEmitted[item.ID] {
-				s.state.encryptedContentEmitted[item.ID] = true
-				s.state.hasEncryptedReasoning = true
-				resp.Choices = []llm.Choice{
-					{
-						Index: 0,
-						Delta: &llm.Message{
-							ReasoningSignature: shared.EncodeOpenAIEncryptedContent(item.EncryptedContent),
-						},
-					},
-				}
-			}
+			// Responses streams may send a provisional encrypted_content on item.added
+			// and the final blob on item.done. Hold the value until item.done so the
+			// final blob replaces the provisional one instead of being concatenated.
+			s.state.pendingReasoningEncryptedContent[item.ID] = shared.EncodeOpenAIEncryptedContent(item.EncryptedContent)
+			return nil
 
 		case "function_call":
 			// Initialize tool call tracking
@@ -240,6 +233,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				Type: "function",
 				Function: llm.FunctionCall{
 					Name:      item.Name,
+					Namespace: item.Namespace,
 					Arguments: "",
 				},
 			}
@@ -257,7 +251,8 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 								Type:  "function",
 								Index: toolCallIdx,
 								Function: llm.FunctionCall{
-									Name: item.Name,
+									Name:      item.Name,
+									Namespace: item.Namespace,
 								},
 							},
 						},
@@ -340,7 +335,12 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		// Function call completed - update state but don't emit an event
 		if streamEvent.CallID != "" {
 			if tc, ok := s.state.toolCalls[streamEvent.CallID]; ok {
-				tc.Function.Name = streamEvent.Name
+				if streamEvent.Name != "" {
+					tc.Function.Name = streamEvent.Name
+				}
+				if streamEvent.Namespace != "" {
+					tc.Function.Namespace = streamEvent.Namespace
+				}
 				tc.Function.Arguments = streamEvent.Arguments
 			}
 		}
@@ -417,11 +417,21 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	case StreamEventTypeReasoningSummaryTextDelta:
 		// Reasoning content delta
 		s.state.reasoningContent.WriteString(streamEvent.Delta)
+		itemID := lo.FromPtr(streamEvent.ItemID)
+		if itemID == "" {
+			return nil // Intentionally skip an unassociated reasoning delta
+		}
+		resp.TransformerMetadata = map[string]any{
+			responsesReasoningItemTransformerMetadataKey: map[string]any{
+				"id": itemID,
+			},
+		}
 
 		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
 				Delta: &llm.Message{
+					ID:               itemID,
 					ReasoningContent: &streamEvent.Delta,
 				},
 			},
@@ -439,9 +449,46 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if streamEvent.Item == nil {
 			return nil // Intentionally skip this event
 		}
+		if streamEvent.Item.Type == "compaction" || streamEvent.Item.Type == "compaction_summary" {
+			resp.Choices = []llm.Choice{{
+				Index: 0,
+				Delta: lo.ToPtr(convertOutputToMessage([]Item{*streamEvent.Item}, s.state.transformerMetadata)),
+			}}
+			break
+		}
 		if streamEvent.Item.Type == "web_search_call" {
 			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *streamEvent.Item)
 			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type == "reasoning" {
+			if streamEvent.Item.ID == "" {
+				return nil // Intentionally skip this event
+			}
+
+			encryptedContent := shared.EncodeOpenAIEncryptedContent(streamEvent.Item.EncryptedContent)
+			if encryptedContent == nil || *encryptedContent == "" {
+				encryptedContent = s.state.pendingReasoningEncryptedContent[streamEvent.Item.ID]
+			}
+			delete(s.state.pendingReasoningEncryptedContent, streamEvent.Item.ID)
+			if encryptedContent == nil || *encryptedContent == "" {
+				return nil // Intentionally skip this event
+			}
+
+			resp.TransformerMetadata = map[string]any{
+				responsesReasoningItemTransformerMetadataKey: map[string]any{
+					"id":   streamEvent.Item.ID,
+					"done": true,
+				},
+			}
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ReasoningSignature: encryptedContent,
+					},
+				},
+			}
+			break
 		}
 		if streamEvent.Item.Type != "message" {
 			return nil // Intentionally skip this event
@@ -563,7 +610,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		StreamEventTypeImageGenerationCompleted:
 		// Handle image generation events
 		if streamEvent.PartialImageB64 != "" {
-			imageURL := "data:image/png;base64," + streamEvent.PartialImageB64
+			imageURL := xurl.BuildDataURL("image/png", streamEvent.PartialImageB64, true)
 			resp.Choices = []llm.Choice{
 				{
 					Index: 0,

@@ -51,6 +51,14 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 			return
 		}
 
+		if len(apiKey.AllowedIps) > 0 {
+			clientIPs := clientIPCandidates(c)
+			if !isAnyAllowedIP(clientIPs, apiKey.AllowedIps) {
+				AbortWithError(c, http.StatusForbidden, errors.New("IP address is not allowed for this API key"))
+				return
+			}
+		}
+
 		ctx := contexts.WithAPIKey(c.Request.Context(), apiKey)
 
 		if apiKey.Edges.Project != nil {
@@ -114,7 +122,10 @@ var apiKeyAuthConfig = &APIKeyConfig{
 	RequireBearer: true,
 }
 
-// WithOpenAPIAuth allows API key auth for createLLMAPIKey only.
+// WithOpenAPIAuth gates the OpenAPI GraphQL surface (/openapi/v1/graphql).
+// It accepts only service_account API keys and injects the API key principal,
+// project, and session scope so the ent privacy layer can enforce per-project,
+// scope-gated access for every query and mutation.
 func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key, err := ExtractAPIKeyFromRequest(c.Request, apiKeyAuthConfig)
@@ -137,6 +148,14 @@ func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 		if apiKey.Type != apikey.TypeServiceAccount {
 			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid API key"))
 			return
+		}
+
+		if len(apiKey.AllowedIps) > 0 {
+			clientIPs := clientIPCandidates(c)
+			if !isAnyAllowedIP(clientIPs, apiKey.AllowedIps) {
+				AbortWithError(c, http.StatusForbidden, errors.New("IP address is not allowed for this API key"))
+				return
+			}
 		}
 
 		ctx := contexts.WithAPIKey(c.Request.Context(), apiKey)
@@ -181,6 +200,14 @@ func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 			}
 
 			return
+		}
+
+		if len(apiKey.AllowedIps) > 0 {
+			clientIPs := clientIPCandidates(c)
+			if !isAnyAllowedIP(clientIPs, apiKey.AllowedIps) {
+				AbortWithError(c, http.StatusForbidden, errors.New("IP address is not allowed for this API key"))
+				return
+			}
 		}
 
 		// 将 API key entity 保存到 context 中

@@ -42,6 +42,28 @@ func TestConvertToChatCompletionResponse(t *testing.T) {
 	require.Equal(t, int64(30), result.Usage.TotalTokens)
 }
 
+func TestConvertToLlmResponse_PreservesMultipleThinkingItems(t *testing.T) {
+	result := convertToLlmResponse(&Message{
+		ID:   "msg_reasoning_items",
+		Role: "assistant",
+		Content: []MessageContentBlock{
+			{Type: "thinking", Thinking: lo.ToPtr("first"), Signature: lo.ToPtr("gAAAA_FIRST_BLOB")},
+			{Type: "thinking", Thinking: lo.ToPtr("second"), Signature: lo.ToPtr("gAAAA_SECOND_BLOB")},
+			{Type: "tool_use", ID: "call_tool", Name: lo.ToPtr("lookup"), Input: json.RawMessage(`{}`)},
+		},
+	}, PlatformDirect)
+
+	require.Len(t, result.Choices, 1)
+	message := result.Choices[0].Message
+	require.Equal(t, []llm.ReasoningItem{
+		{Content: "first", Signature: "Z0FBQUFfRklSU1RfQkxPQg=="},
+		{Content: "second", Signature: "Z0FBQUFfU0VDT05EX0JMT0I="},
+	}, message.ReasoningItems)
+	require.Equal(t, "firstsecond", lo.FromPtr(message.ReasoningContent))
+	require.Equal(t, "Z0FBQUFfU0VDT05EX0JMT0I=", lo.FromPtr(message.ReasoningSignature))
+	require.Len(t, message.ToolCalls, 1)
+}
+
 func TestConvertToolChoiceToAnthropic(t *testing.T) {
 	tests := []struct {
 		name     string

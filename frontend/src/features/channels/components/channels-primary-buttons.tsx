@@ -3,16 +3,18 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { PermissionGuard } from '@/components/permission-guard';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { useChannels } from '../context/channels-context';
 
 export function ChannelsPrimaryButtons() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { setOpen } = useChannels();
+  const scrollRef = useHorizontalScroll<HTMLDivElement>();
 
   return (
-    <div className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
-      <PermissionGuard requiredScope='read_system'>
+    <div ref={scrollRef} className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
+      <PermissionGuard requiredSystemScope='read_settings'>
         {/* Load Balancing Strategy - navigate to system retry configuration */}
         <Button
           variant='outline'
@@ -23,13 +25,14 @@ export function ChannelsPrimaryButtons() {
         </Button>
       </PermissionGuard>
 
+      <PermissionGuard requiredSystemScope='read_settings'>
+        <Button variant='outline' className='shrink-0 space-x-1' onClick={() => setOpen('channelSettings')}>
+          <span>{t('channels.actions.settings')}</span> <IconSettings size={18} />
+        </Button>
+      </PermissionGuard>
+
       <PermissionGuard requiredScope='write_channels'>
         <>
-          {/* Settings - requires write_channels permission */}
-          <Button variant='outline' className='shrink-0 space-x-1' onClick={() => setOpen('channelSettings')}>
-            <span>{t('channels.actions.settings')}</span> <IconSettings size={18} />
-          </Button>
-
           {/* Bulk Import - requires write_channels permission */}
           <Button variant='outline' className='shrink-0 space-x-1' onClick={() => setOpen('bulkImport')}>
             <span>{t('channels.importChannels', '批量导入')}</span> <IconUpload size={18} />

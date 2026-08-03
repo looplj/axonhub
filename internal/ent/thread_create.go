@@ -64,6 +64,20 @@ func (_c *ThreadCreate) SetThreadID(v string) *ThreadCreate {
 	return _c
 }
 
+// SetStatus sets the "status" field.
+func (_c *ThreadCreate) SetStatus(v thread.Status) *ThreadCreate {
+	_c.mutation.SetStatus(v)
+	return _c
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_c *ThreadCreate) SetNillableStatus(v *thread.Status) *ThreadCreate {
+	if v != nil {
+		_c.SetStatus(*v)
+	}
+	return _c
+}
+
 // SetProject sets the "project" edge to the Project entity.
 func (_c *ThreadCreate) SetProject(v *Project) *ThreadCreate {
 	return _c.SetProjectID(v.ID)
@@ -135,6 +149,10 @@ func (_c *ThreadCreate) defaults() error {
 		v := thread.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.Status(); !ok {
+		v := thread.DefaultStatus
+		_c.mutation.SetStatus(v)
+	}
 	return nil
 }
 
@@ -145,6 +163,14 @@ func (_c *ThreadCreate) check() error {
 	}
 	if _, ok := _c.mutation.ThreadID(); !ok {
 		return &ValidationError{Name: "thread_id", err: errors.New(`ent: missing required field "Thread.thread_id"`)}
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Thread.status"`)}
+	}
+	if v, ok := _c.mutation.Status(); ok {
+		if err := thread.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Thread.status": %w`, err)}
+		}
 	}
 	if len(_c.mutation.ProjectIDs()) == 0 {
 		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Thread.project"`)}
@@ -187,6 +213,10 @@ func (_c *ThreadCreate) createSpec() (*Thread, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ThreadID(); ok {
 		_spec.SetField(thread.FieldThreadID, field.TypeString, value)
 		_node.ThreadID = value
+	}
+	if value, ok := _c.mutation.Status(); ok {
+		_spec.SetField(thread.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
 	}
 	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -297,6 +327,18 @@ func (u *ThreadUpsert) UpdateThreadID() *ThreadUpsert {
 	return u
 }
 
+// SetStatus sets the "status" field.
+func (u *ThreadUpsert) SetStatus(v thread.Status) *ThreadUpsert {
+	u.Set(thread.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ThreadUpsert) UpdateStatus() *ThreadUpsert {
+	u.SetExcluded(thread.FieldStatus)
+	return u
+}
+
 // UpdateNewValues updates the mutable fields using the new values that were set on create.
 // Using this option is equivalent to using:
 //
@@ -370,6 +412,20 @@ func (u *ThreadUpsertOne) SetThreadID(v string) *ThreadUpsertOne {
 func (u *ThreadUpsertOne) UpdateThreadID() *ThreadUpsertOne {
 	return u.Update(func(s *ThreadUpsert) {
 		s.UpdateThreadID()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *ThreadUpsertOne) SetStatus(v thread.Status) *ThreadUpsertOne {
+	return u.Update(func(s *ThreadUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ThreadUpsertOne) UpdateStatus() *ThreadUpsertOne {
+	return u.Update(func(s *ThreadUpsert) {
+		s.UpdateStatus()
 	})
 }
 
@@ -612,6 +668,20 @@ func (u *ThreadUpsertBulk) SetThreadID(v string) *ThreadUpsertBulk {
 func (u *ThreadUpsertBulk) UpdateThreadID() *ThreadUpsertBulk {
 	return u.Update(func(s *ThreadUpsert) {
 		s.UpdateThreadID()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *ThreadUpsertBulk) SetStatus(v thread.Status) *ThreadUpsertBulk {
+	return u.Update(func(s *ThreadUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *ThreadUpsertBulk) UpdateStatus() *ThreadUpsertBulk {
+	return u.Update(func(s *ThreadUpsert) {
+		s.UpdateStatus()
 	})
 }
 

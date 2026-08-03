@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zhenzou/executors"
 	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -93,10 +92,8 @@ type DeviceFlowProvider struct {
 	onRefreshed func(ctx context.Context, refreshed *OAuthCredentials) error
 
 	// Auto-refresh state
-	autoMu         sync.Mutex
-	autoCancel     context.CancelFunc
-	autoExecutor   executors.ScheduledExecutor
-	autoTaskCancel executors.CancelFunc
+	autoMu     sync.Mutex
+	autoCancel context.CancelFunc
 }
 
 // DeviceFlowProviderParams contains the parameters for creating a new DeviceFlowProvider.
@@ -436,11 +433,9 @@ func (p *DeviceFlowProvider) StartAutoRefresh(ctx context.Context, opts AutoRefr
 
 	autoCtx, cancel := context.WithCancel(ctx)
 	p.autoCancel = cancel
-	p.autoExecutor = executors.NewPoolScheduleExecutor(executors.WithMaxConcurrent(1))
-	exec := p.autoExecutor
 	p.autoMu.Unlock()
 
-	p.scheduleNextAutoRefresh(autoCtx, exec, refreshBefore, fallbackInterval, true)
+	go p.runAutoRefresh(autoCtx, refreshBefore, fallbackInterval)
 }
 
 // StopAutoRefresh stops automatic token refresh.
@@ -449,162 +444,67 @@ func (p *DeviceFlowProvider) StopAutoRefresh() {
 
 	p.autoMu.Lock()
 	cancel := p.autoCancel
-	exec := p.autoExecutor
-	taskCancel := p.autoTaskCancel
 	p.autoCancel = nil
-	p.autoExecutor = nil
-	p.autoTaskCancel = nil
 	p.autoMu.Unlock()
 
 	if cancel != nil {
 		cancel()
 	}
-
-	if taskCancel != nil {
-		taskCancel()
-	}
-
-	if exec != nil {
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer shutdownCancel()
-
-		if err := exec.Shutdown(shutdownCtx); err != nil {
-			slog.WarnContext(context.Background(), "failed to shutdown device flow auto refresh executor", slog.Any("error", err))
-		} else {
-			slog.DebugContext(context.Background(), "device flow auto refresh executor shutdown completed")
-		}
-	}
 }
 
-// scheduleNextAutoRefresh schedules the next auto-refresh check.
-func (p *DeviceFlowProvider) scheduleNextAutoRefresh(
+func (p *DeviceFlowProvider) runAutoRefresh(
 	autoCtx context.Context,
-	exec executors.ScheduledExecutor,
 	refreshBefore time.Duration,
 	fallbackInterval time.Duration,
-	runImmediately bool,
 ) {
-	if autoCtx.Err() != nil {
-		return
-	}
+	defer func() {
+		if r := recover(); r != nil {
+			slog.ErrorContext(autoCtx, "auto refresh device flow provider goroutine panicked", slog.Any("cause", r))
+		}
+	}()
 
 	delay := time.Duration(0)
-	if !runImmediately {
-		delay = p.nextAutoRefreshDelay(refreshBefore, fallbackInterval)
-	}
-
-	p.autoMu.Lock()
-
-	if p.autoCancel == nil || p.autoExecutor == nil || exec != p.autoExecutor {
-		p.autoMu.Unlock()
-		return
-	}
-
-	prevCancel := p.autoTaskCancel
-	p.autoTaskCancel = nil
-	p.autoMu.Unlock()
-
-	if prevCancel != nil {
-		prevCancel()
-	}
-
-	cancelFunc, err := exec.ScheduleFunc(func(_ context.Context) {
-		defer func() {
-			if r := recover(); r != nil {
-				slog.ErrorContext(autoCtx, "auto refresh device flow provider panicked", slog.Any("cause", r))
-			}
-		}()
-
-		if autoCtx.Err() != nil {
+	for {
+		if !sleepForAutoRefresh(autoCtx, delay) {
 			return
 		}
 
-		// Ensure credentials are fresh
-		refreshFailed := false
-
-		if _, err := p.GetToken(autoCtx); err != nil {
-			slog.WarnContext(autoCtx, "failed to auto refresh device flow token", slog.Any("error", err))
-
-			refreshFailed = true
-		}
-
-		if autoCtx.Err() != nil {
+		refreshFailed, ok := p.runAutoRefreshOnce(autoCtx)
+		if !ok {
 			return
 		}
 
 		if refreshFailed {
-			p.scheduleNextAutoRefreshWithDelay(autoCtx, exec, refreshBefore, fallbackInterval, fallbackInterval)
+			delay = fallbackInterval
 		} else {
-			p.scheduleNextAutoRefresh(autoCtx, exec, refreshBefore, fallbackInterval, false)
+			delay = p.nextAutoRefreshDelay(refreshBefore, fallbackInterval)
 		}
-	}, delay)
-	if err != nil {
-		p.StopAutoRefresh()
-		return
 	}
-
-	p.autoMu.Lock()
-
-	if p.autoCancel == nil || p.autoExecutor == nil || exec != p.autoExecutor {
-		p.autoMu.Unlock()
-		cancelFunc()
-
-		return
-	}
-
-	p.autoTaskCancel = cancelFunc
-	p.autoMu.Unlock()
 }
 
-func (p *DeviceFlowProvider) scheduleNextAutoRefreshWithDelay(
-	autoCtx context.Context,
-	exec executors.ScheduledExecutor,
-	refreshBefore time.Duration,
-	fallbackInterval time.Duration,
-	delay time.Duration,
-) {
-	if autoCtx.Err() != nil {
-		return
-	}
-
-	p.autoMu.Lock()
-
-	if p.autoCancel == nil || p.autoExecutor == nil || exec != p.autoExecutor {
-		p.autoMu.Unlock()
-		return
-	}
-
-	prevCancel := p.autoTaskCancel
-	p.autoTaskCancel = nil
-	p.autoMu.Unlock()
-
-	if prevCancel != nil {
-		prevCancel()
-	}
-
-	cancelFunc, err := exec.ScheduleFunc(func(_ context.Context) {
-		if autoCtx.Err() != nil {
-			return
+func (p *DeviceFlowProvider) runAutoRefreshOnce(autoCtx context.Context) (refreshFailed bool, ok bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			slog.ErrorContext(autoCtx, "auto refresh device flow provider panicked", slog.Any("cause", r))
+			refreshFailed = false
+			ok = false
 		}
+	}()
 
-		p.scheduleNextAutoRefresh(autoCtx, exec, refreshBefore, fallbackInterval, true)
-	}, delay)
-	if err != nil {
-		p.StopAutoRefresh()
-		return
+	if autoCtx.Err() != nil {
+		return false, false
 	}
 
-	p.autoMu.Lock()
-
-	if p.autoCancel == nil || p.autoExecutor == nil || exec != p.autoExecutor {
-		p.autoMu.Unlock()
-		cancelFunc()
-
-		return
+	if _, err := p.GetToken(autoCtx); err != nil {
+		slog.WarnContext(autoCtx, "failed to auto refresh device flow token", slog.Any("error", err))
+		refreshFailed = true
 	}
 
-	p.autoTaskCancel = cancelFunc
-	p.autoMu.Unlock()
+	if autoCtx.Err() != nil {
+		return refreshFailed, false
+	}
+
+	return refreshFailed, true
 }
 
 // nextAutoRefreshDelay calculates the delay until the next refresh.

@@ -1,17 +1,21 @@
 'use client';
 
+import { useState } from 'react';
 import { ExternalLink, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import { useSystemVersion, useCheckForUpdate } from '../data/system';
 
 export function AboutSettings() {
   const { t } = useTranslation();
+  const [includeBeta, setIncludeBeta] = useState(false);
   const { data: version, isLoading: versionLoading } = useSystemVersion();
-  const { data: updateCheck, isFetching: isCheckingForUpdate, refetch: checkUpdate } = useCheckForUpdate();
+  const { data: updateCheck, isFetching: isCheckingForUpdate, refetch: checkUpdate } = useCheckForUpdate(includeBeta);
 
   if (versionLoading) {
     return (
@@ -80,10 +84,16 @@ export function AboutSettings() {
 
           {/* Update Check */}
           <div className='border-t pt-6'>
-            <div className='flex items-center justify-between'>
-              <div className='space-y-1'>
+            <div className='flex items-center justify-between gap-4'>
+              <div className='space-y-2'>
                 <h4 className='text-sm font-medium'>{t('system.about.updateCheck.title')}</h4>
                 <p className='text-muted-foreground text-sm'>{t('system.about.updateCheck.description')}</p>
+                <div className='flex items-center gap-2'>
+                  <Switch id='include-beta-releases' checked={includeBeta} onCheckedChange={setIncludeBeta} />
+                  <Label htmlFor='include-beta-releases' className='text-muted-foreground text-sm font-normal'>
+                    {t('system.about.updateCheck.includeBeta')}
+                  </Label>
+                </div>
               </div>
               <Button variant='outline' size='sm' onClick={() => checkUpdate()} disabled={isCheckingForUpdate}>
                 <RefreshCw className={`mr-2 h-4 w-4 ${isCheckingForUpdate ? 'animate-spin' : ''}`} />

@@ -8,13 +8,21 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime"
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+// MaxErrorBodySize is the maximum number of bytes read from an upstream error
+// response body. Error bodies beyond this size are truncated to prevent OOM
+// from pathological upstream responses that echo large request payloads in
+// validation error messages, producing response bodies of 1+ GB.
+const MaxErrorBodySize = 1 << 20 // 1 MB
 
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
@@ -43,14 +51,18 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 	for _, opt := range opts {
 		opt(&options)
 	}
+	disableConnectionReuse := proxyConfig != nil &&
+		proxyConfig.Type == ProxyTypeURL &&
+		proxyConfig.DisableConnectionReuse
 
 	transport := &http.Transport{
-		Proxy: getProxyFunc(proxyConfig),
+		Proxy:             getProxyFunc(proxyConfig),
+		DisableKeepAlives: disableConnectionReuse,
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).DialContext,
-		ForceAttemptHTTP2:     true,
+		ForceAttemptHTTP2:     !disableConnectionReuse,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
@@ -81,6 +93,11 @@ func (hc *HttpClient) WithProxy(proxyConfig *ProxyConfig) *HttpClient {
 // GetNativeClient returns the underlying *http.Client for advanced use cases.
 func (hc *HttpClient) GetNativeClient() *http.Client {
 	return hc.client
+}
+
+// CloseIdleConnections closes idle connections held by the underlying HTTP transport.
+func (hc *HttpClient) CloseIdleConnections() {
+	hc.client.CloseIdleConnections()
 }
 
 func (hc *HttpClient) ProxyFunc() func(*http.Request) (*url.URL, error) {
@@ -199,7 +216,11 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
 
-	rawReq.Header.Set("Accept", "application/json")
+	// Only set the default Accept when the transformer did not specify one
+	// (e.g. TTS sets Accept: */* to receive binary audio).
+	if rawReq.Header.Get("Accept") == "" {
+		rawReq.Header.Set("Accept", "application/json")
+	}
 
 	rawResp, err := hc.client.Do(rawReq)
 	if err != nil {
@@ -213,12 +234,17 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 		}
 	}()
 
-	body, err := io.ReadAll(rawResp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
+	var body []byte
+	// Cap error response bodies at 1 MB to prevent OOM from pathological
+	// upstream error bodies (e.g., vLLM echoing multi-MB input in validation
+	// errors). Successful responses are read in full because they are
+	// typically small JSON payloads.
 	if rawResp.StatusCode >= 400 {
+		body, err = io.ReadAll(io.LimitReader(rawResp.Body, MaxErrorBodySize))
+		if err != nil {
+			return nil, fmt.Errorf("failed to read error response body: %w", err)
+		}
+
 		if slog.Default().Enabled(ctx, slog.LevelDebug) {
 			slog.DebugContext(ctx, "HTTP request failed",
 				slog.String("method", rawReq.Method),
@@ -235,6 +261,11 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 			Body:       body,
 			Headers:    rawResp.Header,
 		}
+	}
+
+	body, err = io.ReadAll(rawResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
@@ -268,8 +299,14 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		return nil, fmt.Errorf("failed to build HTTP request: %w", err)
 	}
 
-	// Add streaming headers
-	rawReq.Header.Set("Accept", "text/event-stream")
+	// Add streaming headers. Force SSE Accept unless the outbound transformer
+	// explicitly opted into a non-JSON Accept (e.g. "*/*" for binary TTS chunks),
+	// so chat-style outbounds whose default Accept is application/json still
+	// negotiate SSE for streaming requests.
+	accept := rawReq.Header.Get("Accept")
+	if accept == "" || strings.EqualFold(accept, "application/json") {
+		rawReq.Header.Set("Accept", "text/event-stream")
+	}
 	rawReq.Header.Set("Cache-Control", "no-cache")
 	rawReq.Header.Set("Connection", "keep-alive")
 
@@ -289,7 +326,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		}()
 
 		// Read error body for streaming requests
-		body, err := io.ReadAll(rawResp.Body)
+		body, err := io.ReadAll(io.LimitReader(rawResp.Body, MaxErrorBodySize))
 		if err != nil {
 			return nil, err
 		}
@@ -320,6 +357,11 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 
 	// Try to get a registered decoder for the content type
 	decoderFactory, exists := GetDecoder(contentType)
+	if !exists {
+		if mediaType, _, err := mime.ParseMediaType(contentType); err == nil {
+			decoderFactory, exists = GetDecoder(mediaType)
+		}
+	}
 	if !exists {
 		// Fallback to default SSE decoder
 		slog.DebugContext(ctx, "no decoder found for content type, using default SSE", slog.String("content_type", contentType))

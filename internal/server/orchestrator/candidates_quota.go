@@ -54,7 +54,7 @@ func (s *ProviderQuotaSelector) Select(ctx context.Context, req *llm.Request) ([
 	limitType := provider_quota.RequestModality(req.Image != nil)
 
 	filtered := lo.Filter(candidates, func(c *ChannelModelsCandidate, _ int) bool {
-		quotaStatus := s.provider.GetQuotaStatus(c.Channel.ID)
+		quotaStatus := s.provider.GetQuotaStatus(ctx, c.Channel.ID)
 
 		if quotaStatus == nil {
 			return true

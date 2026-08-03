@@ -8,6 +8,8 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
@@ -160,6 +162,50 @@ func (s *UserService) UpdateUser(ctx context.Context, id int, input ent.UpdateUs
 	return user, nil
 }
 
+// UpdateOwnProfile updates fields users are allowed to change for their own account.
+func (s *UserService) UpdateOwnProfile(ctx context.Context, input ent.UpdateUserInput) (*ent.User, error) {
+	currentUser, ok := contexts.GetUser(ctx)
+	if !ok || currentUser == nil {
+		return nil, fmt.Errorf("user not found in context")
+	}
+
+	id := currentUser.ID
+
+	return authz.RunWithSystemBypass(ctx, "update-own-profile", func(ctx context.Context) (*ent.User, error) {
+		client := s.entFromContext(ctx)
+
+		mut := client.User.UpdateOneID(id).
+			SetNillableFirstName(input.FirstName).
+			SetNillableLastName(input.LastName).
+			SetNillablePreferLanguage(input.PreferLanguage)
+
+		if input.ClearAvatar {
+			mut.ClearAvatar()
+		} else {
+			mut.SetNillableAvatar(input.Avatar)
+		}
+
+		if input.Password != nil {
+			hashedPassword, err := HashPassword(*input.Password)
+			if err != nil {
+				return nil, err
+			}
+
+			mut.SetPassword(hashedPassword)
+		}
+
+		user, err := mut.Save(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update user profile: %w", err)
+		}
+
+		// Invalidate cache
+		s.invalidateUserCache(ctx, id)
+
+		return user, nil
+	})
+}
+
 // UpdateUserStatus updates the status of a user.
 func (s *UserService) UpdateUserStatus(ctx context.Context, id int, status user.Status) (*ent.User, error) {
 	client := s.entFromContext(ctx)
@@ -273,19 +319,27 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 	for _, up := range u.Edges.ProjectUsers {
 		// Convert project roles to objects.RoleInfo
 		roles := projectRoles[up.ProjectID]
+		effectiveScopeSet := make(map[string]bool, len(up.Scopes))
+		for _, scope := range up.Scopes {
+			effectiveScopeSet[scope] = true
+		}
 
 		projectRoleInfos := make([]objects.RoleInfo, 0, len(roles))
 		for _, r := range roles {
 			projectRoleInfos = append(projectRoleInfos, objects.RoleInfo{
 				Name: r.Name,
 			})
+			for _, scope := range r.Scopes {
+				effectiveScopeSet[scope] = true
+			}
 		}
 
 		userProjects = append(userProjects, objects.UserProjectInfo{
-			ProjectID: objects.GUID{Type: ent.TypeProject, ID: up.ProjectID},
-			IsOwner:   up.IsOwner,
-			Scopes:    up.Scopes,
-			Roles:     projectRoleInfos,
+			ProjectID:       objects.GUID{Type: ent.TypeProject, ID: up.ProjectID},
+			IsOwner:         up.IsOwner,
+			Scopes:          up.Scopes,
+			EffectiveScopes: lo.Keys(effectiveScopeSet),
+			Roles:           projectRoleInfos,
 		})
 	}
 
@@ -319,37 +373,65 @@ func ConvertUserToUserInfo(ctx context.Context, u *ent.User) *objects.UserInfo {
 
 // AddUserToProject adds a user to a project with optional owner status, scopes, and roles.
 func (s *UserService) AddUserToProject(ctx context.Context, userID, projectID int, isOwner *bool, scopes []string, roleIDs []int) (*ent.UserProject, error) {
-	client := s.entFromContext(ctx)
-
-	// Create the project user relationship
-	mut := client.UserProject.Create().
-		SetUserID(userID).
-		SetProjectID(projectID)
-
-	if isOwner != nil {
-		mut.SetIsOwner(*isOwner)
+	principal, hasPrincipal := authz.GetPrincipal(ctx)
+	if !hasPrincipal || !principal.IsTest() {
+		if scopes != nil {
+			if err := s.permissionValidator.CanGrantScopes(ctx, scopes, &projectID); err != nil {
+				return nil, fmt.Errorf("permission denied: %w", err)
+			}
+		}
+		for _, roleID := range roleIDs {
+			projectRole, err := authz.RunWithSystemBypass(ctx, "project-role-assignment", func(ctx context.Context) (*ent.Role, error) {
+				return s.entFromContext(ctx).Role.Query().Where(role.IDEQ(roleID), role.ProjectIDEQ(projectID)).Only(ctx)
+			})
+			if err != nil {
+				if ent.IsNotFound(err) {
+					return nil, fmt.Errorf("project role %d not found", roleID)
+				}
+				return nil, fmt.Errorf("failed to load project role %d: %w", roleID, err)
+			}
+			if err := s.permissionValidator.CanGrantRole(ctx, projectRole.Scopes, &projectID); err != nil {
+				return nil, fmt.Errorf("permission denied: %w", err)
+			}
+		}
 	}
 
-	if scopes != nil {
-		mut.SetScopes(scopes)
-	}
+	var userProject *ent.UserProject
+	err := s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
+		mut := client.UserProject.Create().
+			SetUserID(userID).
+			SetProjectID(projectID)
 
-	userProject, err := mut.Save(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add user to project: %w", err)
-	}
+		if isOwner != nil {
+			mut.SetIsOwner(*isOwner)
+		}
 
-	// Add roles if provided
-	if len(roleIDs) > 0 {
+		if scopes != nil {
+			mut.SetScopes(scopes)
+		}
+
+		created, err := mut.Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to add user to project: %w", err)
+		}
+		userProject = created
+
+		if len(roleIDs) == 0 {
+			return nil
+		}
 		user, err := client.User.Get(ctx, userID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get user: %w", err)
+			return fmt.Errorf("failed to get user: %w", err)
+		}
+		if err := user.Update().AddRoleIDs(roleIDs...).Exec(ctx); err != nil {
+			return fmt.Errorf("failed to add roles to user: %w", err)
 		}
 
-		err = user.Update().AddRoleIDs(roleIDs...).Exec(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add roles to user: %w", err)
-		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	// Invalidate user cache

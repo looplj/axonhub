@@ -8,13 +8,12 @@ AxonHub uses a sophisticated multi-strategy load balancing system to distribute 
 
 ### Load Balancing Strategies
 
-1. **TraceAwareStrategy** (Priority 1)
-   - Score: 0 or 1000 points
-   - Gives massive boost (1000 points) to the last successful channel in a trace
-   - Ensures trace consistency - all requests in the same trace use the same channel
-   - Overrides all other strategies when active
+1. **Trace Sticky Selection**
+   - Reads the cached previous channel for the trace, then its thread
+   - Places that eligible channel before score-based sorting
+   - Cache expiry falls back to normal load balancing without querying request history
 
-2. **ErrorAwareStrategy** (Priority 2)
+2. **ErrorAwareStrategy** (Priority 1)
    - Score: 0-200 points
    - Monitors channel health and error rates
    - Penalties:
@@ -24,20 +23,20 @@ AxonHub uses a sophisticated multi-strategy load balancing system to distribute 
      - Recent errors (last 5 min): -20 points each
    - Healthy channels get full 200 points
 
-3. **WeightRoundRobinStrategy** (Priority 3)
+3. **WeightRoundRobinStrategy** (Priority 2)
    - Score: 10-150 points
    - Distributes load proportionally based on channel weight
    - Formula: `normalizedCount = effectiveCount / (weight / 100.0)`
    - Higher weight channels can handle more requests before score drops
    - Includes inactivity decay to prevent permanent penalization
 
-4. **LatencyAwareStrategy** (Priority 4)
+4. **LatencyAwareStrategy** (Priority 3)
    - Score: 0-80 points
    - Streaming requests prefer lower EWMA first-token latency and higher EWMA output throughput
    - Non-streaming requests prefer lower EWMA end-to-end latency
    - Helps shift traffic away from channels with worse user-perceived latency
 
-5. **RateLimitAwareStrategy** (Priority 5)
+5. **RateLimitAwareStrategy** (Priority 4)
    - Score: -10000 to 100 points
    - Respects RPM/TPM/concurrency limits and 429 cooldown
    - Falls back to default connection tracker capacity when `MaxConcurrent` is not configured
@@ -47,12 +46,10 @@ AxonHub uses a sophisticated multi-strategy load balancing system to distribute 
 The final channel score is the sum of all strategy scores:
 
 ```
-Total Score = TraceAware + ErrorAware + WeightRoundRobin + LatencyAware + RateLimitAware
-            = (0-1000) + (0-200) + (10-150) + (0-80) + (-10000-100)
-            = -9790 to 1530 points
+Total Score = ErrorAware + WeightRoundRobin + LatencyAware + RateLimitAware
 ```
 
-When TraceAwareStrategy is active (1000 points), it dominates all other strategies, ensuring trace consistency.
+Trace sticky selection happens before this score calculation and only when the cached channel remains eligible.
 
 ## Test Files
 
@@ -65,7 +62,7 @@ Core load balancing tests covering the main strategies:
 - **TestWeightBasedLoadBalancing**: Verifies weight-based distribution across channels
 - **TestWeightRoundRobinLoadBalancing**: Tests weighted round-robin with concurrent requests
 - **TestLoadBalancingWithRetry**: Verifies retry mechanism with load balancing
-- **TestTraceAwareStrategyPriority**: Confirms TraceAwareStrategy dominates other strategies
+- **TestTraceStickyRouting**: Confirms cached trace affinity precedes score-based sorting
 - **TestLoadBalancingDebugMode**: Tests debug logging for load balancing decisions
 - **TestLoadBalancingStrategyComposition**: Verifies all strategies work together correctly
 
@@ -163,7 +160,7 @@ Debug mode logs include:
 **Expected Behavior**:
 1. First request establishes channel preference
 2. Subsequent requests in same trace use the same channel
-3. TraceAwareStrategy gives 1000 point boost to the last successful channel
+3. The cached previous channel is selected first while it remains eligible
 
 **Verification**:
 - Check server logs for consistent channel IDs within a trace
@@ -270,7 +267,7 @@ channels:
 ### Common Issues
 
 ❌ **Trace inconsistency**: Different channels used in same trace
-- Check TraceAwareStrategy is enabled
+- Check trace sticky mode is enabled in the retry policy
 - Verify trace IDs are being passed correctly
 - Ensure request service is tracking successful channels
 
@@ -327,7 +324,6 @@ weightedLoadBalancer := NewLoadBalancer(systemService, NewWeightStrategy())
 
 // Adaptive strategy (default)
 adaptiveLoadBalancer := NewLoadBalancer(systemService,
-    NewTraceAwareStrategy(requestService),
     NewErrorAwareStrategy(channelService),
     NewWeightRoundRobinStrategy(channelService),
     NewLatencyAwareStrategy(channelService),

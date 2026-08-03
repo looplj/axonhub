@@ -10,12 +10,12 @@ import { toast } from 'sonner';
 import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } from '@/features/system/data/system';
-import { usePermissions } from '@/hooks/usePermissions';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
@@ -26,28 +26,41 @@ interface UseRequestsColumnsOptions {
   onViewDetail?: (requestId: string) => void;
 }
 
+export const DEFAULT_MOBILE_HIDDEN_COLUMN_IDS = [
+  'apiFormat',
+  'passThrough',
+  'reasoningEffort',
+  'stream',
+  'source',
+  'clientIP',
+  'channel',
+  'apiKey',
+  'tokens',
+  'readCache',
+  'writeCache',
+  'cost',
+  'latency',
+  'details',
+];
+
+export const MODEL_ID_COLUMN = 'modelID' as const;
+
 export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
   const permissions = useRequestPermissions();
-  const { hasScope } = usePermissions();
+  const { hasSystemScope } = usePermissions();
   const { data: settings } = useGeneralSettings();
   const { data: securitySettings } = useSecuritySettings();
   const updateSecuritySettings = useUpdateSecuritySettings();
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
   const [displayMode, setDisplayMode] = useDisplayMode();
-  const canManageSecuritySettings = hasScope('write_settings');
+  const canManageSecuritySettings = hasSystemScope('write_settings');
 
   const blockedIPs = securitySettings?.blockedIPs ?? [];
+  const showIPBanIcon = securitySettings?.showRequestLogIPBanIcon === true;
 
-  const normalizeBlockedIPs = (ips: string[]) =>
-    Array.from(
-      new Set(
-        ips
-          .map((ip) => ip.trim())
-          .filter((ip) => ip.length > 0)
-      )
-    );
+  const normalizeBlockedIPs = (ips: string[]) => Array.from(new Set(ips.map((ip) => ip.trim()).filter((ip) => ip.length > 0)));
 
   const handleBlockIP = async (clientIP: string) => {
     const normalizedIP = clientIP.trim();
@@ -149,6 +162,28 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         );
       },
     },
+
+    {
+      id: 'passThrough',
+      accessorFn: (row) => row.executions?.edges?.some((edge) => edge.node?.passThroughApplied) ?? false,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.passThrough')} />,
+      enableSorting: false,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const executions = row.original.executions?.edges?.map((edge) => edge.node).filter(Boolean) || [];
+        const appliedExecution = executions.find((execution) => execution?.passThroughApplied);
+
+        if (!appliedExecution) {
+          return <div className='text-muted-foreground text-xs'>-</div>;
+        }
+
+        return (
+          <Badge className='border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'>
+            {t('requests.passThrough.applied')}
+          </Badge>
+        );
+      },
+    },
     {
       accessorKey: 'reasoningEffort',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.reasoningEffort')} />,
@@ -203,7 +238,6 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const sourceColors: Record<string, string> = {
           api: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
           playground: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
-          test: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800',
         };
         return (
           <Badge
@@ -238,8 +272,9 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         return (
           <div className='flex items-center gap-2'>
             <span className='font-mono text-xs'>{normalizedIP}</span>
-            {canManageSecuritySettings && (
-              isBlocked ? (
+            {canManageSecuritySettings &&
+              showIPBanIcon &&
+              (isBlocked ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -279,8 +314,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                   </TooltipTrigger>
                   <TooltipContent>{t('requests.actions.blockIP')}</TooltipContent>
                 </Tooltip>
-              )
-            )}
+              ))}
           </div>
         );
       },
@@ -417,6 +451,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
 
         const promptTokens = usageLog.promptTokens || 0;
         const completionTokens = usageLog.completionTokens || 0;
+        const reasoningTokens = usageLog.completionReasoningTokens || 0;
         const totalTokens = promptTokens + completionTokens;
 
         return (
@@ -429,6 +464,11 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
               {t('requests.columns.input')}: {promptTokens.toLocaleString()} | {t('requests.columns.output')}:{' '}
               {completionTokens.toLocaleString()}
             </div>
+            {reasoningTokens > 0 && (
+              <div className='text-muted-foreground'>
+                {t('requests.columns.reasoning')}: {reasoningTokens.toLocaleString()}
+              </div>
+            )}
           </div>
         );
       },
@@ -463,12 +503,15 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
           return <div className='text-muted-foreground text-xs'>-</div>;
         }
 
+        const hitRate = promptTokens > 0 ? (cachedTokens / promptTokens) * 100 : 0;
+        const isLowHitRate = hitRate < 80 && promptTokens >= 40000;
+
         return (
           <div className='text-xs'>
             <div className='text-sm font-medium'>{cachedTokens.toLocaleString()}</div>
-            <div className='text-muted-foreground'>
+            <div className={isLowHitRate ? 'font-medium text-red-600 dark:text-red-400' : 'text-muted-foreground'}>
               {t('requests.columns.cacheHitRate', {
-                rate: promptTokens > 0 ? ((cachedTokens / promptTokens) * 100).toFixed(1) : '0.0',
+                rate: hitRate.toFixed(1),
               })}
             </div>
           </div>

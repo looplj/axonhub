@@ -21,22 +21,38 @@ export function useRoutePermissions() {
       return [];
     }
     const project = user.projects.find((p) => p.projectID === selectedProjectId);
-    return project?.scopes || [];
+    return project?.effectiveScopes || project?.scopes || [];
   }, [selectedProjectId, user?.projects]);
+
+  const isProjectOwner = useMemo(() => {
+    if (isOwner) {
+      return true;
+    }
+    if (!selectedProjectId || !user?.projects) {
+      return false;
+    }
+    const project = user.projects.find((p) => p.projectID === selectedProjectId);
+    return project?.isOwner || false;
+  }, [isOwner, selectedProjectId, user?.projects]);
 
   // 检查路由权限（根据 scopeLevel 决定检查哪个级别的权限）
   const hasRouteAccess = (routeConfig: RouteConfig, groupScopeLevel?: ScopeLevel): boolean => {
-    if (!routeConfig.requiredScopes || routeConfig.requiredScopes.length === 0) {
-      return true;
+    // 检查项目所有者权限限制
+    if (routeConfig.requireProjectOwner && !isProjectOwner) {
+      return false;
     }
 
-    // Owner 拥有所有权限
-    if (isOwner) {
+    if (!routeConfig.requiredScopes || routeConfig.requiredScopes.length === 0) {
       return true;
     }
 
     // 确定要检查的权限级别（路由配置优先，否则使用组配置，默认为 'any'）
     const scopeLevel = routeConfig.scopeLevel || groupScopeLevel || 'any';
+
+    // Owner 拥有所有权限
+    if (isProjectOwner && scopeLevel !== 'system') {
+      return true;
+    }
 
     // 根据 scopeLevel 决定检查哪些 scopes
     let scopesToCheck: string[] = [];
@@ -80,14 +96,14 @@ export function useRoutePermissions() {
         mode: routeConfig.mode,
       };
     };
-  }, [systemScopes, projectScopes, isOwner]);
+  }, [systemScopes, projectScopes, isOwner, isProjectOwner]);
 
   // 检查路由组权限
   const checkGroupAccess = useMemo(() => {
     return (group: RouteGroup): boolean => {
       return hasGroupAccess(group);
     };
-  }, [systemScopes, projectScopes, isOwner]);
+  }, [systemScopes, projectScopes, isOwner, isProjectOwner]);
 
   // 过滤导航项
   const filterNavItems = useMemo(() => {
@@ -143,7 +159,10 @@ export function useRoutePermissions() {
 
   return {
     userScopes: [...systemScopes, ...projectScopes],
+    systemScopes,
+    projectScopes,
     isOwner,
+    isProjectOwner,
     checkRouteAccess,
     checkGroupAccess,
     filterNavItems,

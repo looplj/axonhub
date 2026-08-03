@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/eko/gocache/lib/v4/store"
@@ -28,29 +30,31 @@ import (
 type RequestService struct {
 	*AbstractService
 
-	SystemService      *SystemService
-	UsageLogService    *UsageLogService
-	DataStorageService *DataStorageService
-	LiveStreamRegistry *LiveStreamRegistry
-	channelCache       xcache.Cache[int]
+	SystemService        *SystemService
+	UsageLogService      *UsageLogService
+	DataStorageService   *DataStorageService
+	LiveStreamRegistry   *LiveStreamRegistry
+	previousChannelCache xcache.Cache[int]
 }
 
 // NewRequestService creates a new RequestService.
-func NewRequestService(ent *ent.Client, systemService *SystemService, usageLogService *UsageLogService, dataStorageService *DataStorageService, liveStreamRegistry *LiveStreamRegistry) *RequestService {
+func NewRequestService(
+	ent *ent.Client,
+	cacheConfig xcache.Config,
+	systemService *SystemService,
+	usageLogService *UsageLogService,
+	dataStorageService *DataStorageService,
+	liveStreamRegistry *LiveStreamRegistry,
+) *RequestService {
 	return &RequestService{
 		AbstractService: &AbstractService{
 			db: ent,
 		},
-		SystemService:      systemService,
-		UsageLogService:    usageLogService,
-		DataStorageService: dataStorageService,
-		LiveStreamRegistry: liveStreamRegistry,
-		channelCache: xcache.NewFromConfig[int](xcache.Config{
-			Mode: xcache.ModeMemory,
-			Memory: xcache.MemoryConfig{
-				Expiration: 30 * time.Minute,
-			},
-		}),
+		SystemService:        systemService,
+		UsageLogService:      usageLogService,
+		DataStorageService:   dataStorageService,
+		LiveStreamRegistry:   liveStreamRegistry,
+		previousChannelCache: xcache.NewFromConfig[int](cacheConfig),
 	}
 }
 
@@ -75,6 +79,18 @@ func GenerateRequestBodyKey(projectID, requestID int) string {
 // GenerateResponseBodyKey generates the storage key for response body.
 func GenerateResponseBodyKey(projectID, requestID int) string {
 	return fmt.Sprintf("/%d/requests/%d/response_body.json", projectID, requestID)
+}
+
+// GenerateAudioKey generates the storage key for a generated audio file (TTS).
+func GenerateAudioKey(projectID, requestID int, filename string) string {
+	name := strings.TrimSpace(filename)
+	if name == "" {
+		name = "audio.mp3"
+	}
+
+	name = filepath.Base(name)
+
+	return fmt.Sprintf("/%d/requests/%d/audio/%s", projectID, requestID, name)
 }
 
 // GenerateResponseChunksKey generates the storage key for response chunks.
@@ -247,6 +263,7 @@ func (s *RequestService) CreateRequestExecution(
 	request *ent.Request,
 	channelRequest httpclient.Request,
 	format llm.APIFormat,
+	passThroughApplied bool,
 ) (*ent.RequestExecution, error) {
 	// Decide whether to store the channel request body
 	storeRequestBody := true
@@ -314,7 +331,12 @@ func (s *RequestService) CreateRequestExecution(
 		SetRequestBody(requestBodyForDB).
 		SetStatus(requestexecution.StatusProcessing).
 		SetStream(request.Stream).
-		SetRequestHeaders(requestHeadersBytes)
+		SetRequestHeaders(requestHeadersBytes).
+		SetPassThroughApplied(passThroughApplied)
+
+	if channelRequest.URL != "" {
+		mut = mut.SetRequestURL(channelRequest.URL)
+	}
 
 	// Use the same data storage as the request
 	if request.DataStorageID != 0 {
@@ -438,6 +460,104 @@ func (s *RequestService) UpdateRequestCompleted(
 	_, err = upd.Save(ctx)
 	if err != nil {
 		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
+		return err
+	}
+
+	return nil
+}
+
+// UpdateRequestCompletedWithAudio marks a request completed and persists a binary audio
+// payload (TTS) to external storage when configured.
+//
+// The audio bytes are never stored in the database column: responseBody carries a compact
+// metadata placeholder, and the raw audio is saved to the request's external DataStorage
+// (when one is configured and non-primary), tracked via the content_storage_* fields,
+// mirroring how video artifacts are stored.
+func (s *RequestService) UpdateRequestCompletedWithAudio(
+	ctx context.Context,
+	requestID int,
+	externalId string,
+	responseBody any,
+	audio []byte,
+	filename string,
+	metrics *LatencyMetrics,
+) error {
+	// Decide whether to store the final response body metadata.
+	storeResponseBody := true
+	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
+		storeResponseBody = policy.StoreResponseBody
+	} else {
+		log.Warn(ctx, "Failed to get storage policy, defaulting to store response body", log.Cause(err))
+	}
+
+	client := s.entFromContext(ctx)
+
+	req, err := client.Request.Get(ctx, requestID)
+	if err != nil {
+		log.Error(ctx, "Failed to get request", log.Cause(err))
+		return err
+	}
+
+	var dataStorage *ent.DataStorage
+	if req.DataStorageID != 0 {
+		dataStorage, err = s.DataStorageService.GetDataStorageByID(ctx, req.DataStorageID)
+		if err != nil {
+			log.Warn(ctx, "Failed to get data storage", log.Cause(err))
+		}
+	}
+
+	upd := client.Request.UpdateOneID(requestID).
+		SetStatus(request.StatusCompleted).
+		SetExternalID(externalId)
+
+	if metrics != nil {
+		if metrics.LatencyMs != nil {
+			upd = upd.SetMetricsLatencyMs(*metrics.LatencyMs)
+		}
+
+		if metrics.FirstTokenLatencyMs != nil {
+			upd = upd.SetMetricsFirstTokenLatencyMs(*metrics.FirstTokenLatencyMs)
+		}
+
+		if metrics.ReasoningDurationMs != nil {
+			upd = upd.SetMetricsReasoningDurationMs(*metrics.ReasoningDurationMs)
+		}
+	}
+
+	if storeResponseBody {
+		responseBodyBytes, err := xjson.Marshal(responseBody)
+		if err != nil {
+			log.Error(ctx, "Failed to serialize response body", log.Cause(err))
+			return err
+		}
+
+		if s.shouldUseExternalStorage(ctx, dataStorage) {
+			key := GenerateResponseBodyKey(req.ProjectID, requestID)
+			if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
+				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
+			}
+		} else {
+			upd = upd.SetResponseBody(responseBodyBytes)
+		}
+	}
+
+	// Persist the binary audio to external storage when one is configured.
+	if len(audio) > 0 && s.shouldUseExternalStorage(ctx, dataStorage) {
+		key := GenerateAudioKey(req.ProjectID, requestID, filename)
+		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, audio); err != nil {
+			log.Error(ctx, "Failed to save audio to external storage", log.Cause(err))
+		} else {
+			upd = upd.
+				SetContentSaved(true).
+				SetContentStorageID(dataStorage.ID).
+				SetContentStorageKey(key).
+				SetContentSavedAt(time.Now().UTC())
+		}
+	}
+
+	_, err = upd.Save(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to update audio request status to completed", log.Cause(err))
 		return err
 	}
 
@@ -683,6 +803,56 @@ type jsonStreamEvent struct {
 	Data        json.RawMessage `json:"data"`
 }
 
+type binaryStreamChunkSummary struct {
+	Object      string `json:"object"`
+	ContentType string `json:"content_type"`
+	Bytes       int    `json:"bytes"`
+}
+
+func isBinaryStreamChunk(chunk *httpclient.StreamEvent) bool {
+	if chunk == nil {
+		return false
+	}
+
+	eventType := strings.ToLower(strings.TrimSpace(chunk.Type))
+
+	return strings.HasPrefix(eventType, "audio/") || eventType == "application/octet-stream"
+}
+
+func shouldSkipStoredStreamChunk(chunk *httpclient.StreamEvent) bool {
+	return chunk == nil ||
+		(!isBinaryStreamChunk(chunk) && bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data)) ||
+		chunk.Type == httpclient.BinaryStreamDoneEventType
+}
+
+func marshalStreamEventForStorage(chunk *httpclient.StreamEvent) (objects.JSONRawMessage, error) {
+	data := json.RawMessage(chunk.Data)
+	if isBinaryStreamChunk(chunk) {
+		// Prefer chunk.Size, which is set when the persistence layer summarized the
+		// raw audio chunk to avoid buffering audio bytes in memory.
+		byteCount := len(chunk.Data)
+		if byteCount == 0 {
+			byteCount = chunk.Size
+		}
+
+		var err error
+		data, err = json.Marshal(binaryStreamChunkSummary{
+			Object:      "binary.stream_chunk",
+			ContentType: strings.TrimSpace(chunk.Type),
+			Bytes:       byteCount,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return xjson.Marshal(jsonStreamEvent{
+		LastEventID: chunk.LastEventID,
+		Type:        chunk.Type,
+		Data:        data,
+	})
+}
+
 // SaveRequestExecutionChunks saves all response chunks to request execution at once.
 // Only stores chunks if the system StoreChunks setting is enabled.
 func (s *RequestService) SaveRequestExecutionChunks(
@@ -711,15 +881,11 @@ func (s *RequestService) SaveRequestExecutionChunks(
 	var chunkBytes []objects.JSONRawMessage
 
 	for _, chunk := range chunks {
-		if bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data) {
+		if shouldSkipStoredStreamChunk(chunk) {
 			continue
 		}
 
-		b, err := xjson.Marshal(jsonStreamEvent{
-			LastEventID: chunk.LastEventID,
-			Type:        chunk.Type,
-			Data:        chunk.Data,
-		})
+		b, err := marshalStreamEventForStorage(chunk)
 		if err != nil {
 			log.Warn(ctx, "Failed to marshal chunk, skipping", log.Cause(err))
 
@@ -803,15 +969,11 @@ func (s *RequestService) SaveRequestChunks(
 	var chunkBytes []objects.JSONRawMessage
 
 	for _, chunk := range chunks {
-		if bytes.Equal(chunk.Data, llm.DoneStreamEvent.Data) {
+		if shouldSkipStoredStreamChunk(chunk) {
 			continue
 		}
 
-		b, err := xjson.Marshal(jsonStreamEvent{
-			LastEventID: chunk.LastEventID,
-			Type:        chunk.Type,
-			Data:        chunk.Data,
-		})
+		b, err := marshalStreamEventForStorage(chunk)
 		if err != nil {
 			log.Warn(ctx, "Failed to marshal chunk, skipping", log.Cause(err))
 
@@ -965,17 +1127,14 @@ func (s *RequestService) ClearStaleProcessingOnStartup(ctx context.Context) erro
 func (s *RequestService) UpdateRequestChannelID(ctx context.Context, requestID int, channelID int) error {
 	client := s.entFromContext(ctx)
 
-	request, err := client.Request.UpdateOneID(requestID).
+	req, err := client.Request.UpdateOneID(requestID).
 		SetChannelID(channelID).
 		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update request channel ID: %w", err)
 	}
 
-	// Reset channel cache for this trace when request completes
-	if request.TraceID != 0 {
-		s.setLastSuccessfulChannelID(ctx, request.TraceID, channelID)
-	}
+	s.cachePreviousChannelForRequest(ctx, req)
 
 	return nil
 }
@@ -1269,46 +1428,72 @@ func (s *RequestService) GetTraceFirstSegment(ctx context.Context, traceID int) 
 	return requestToSegment(ctx, request)
 }
 
-// GetLastSuccessfulChannelID retrieves the last successful channel ID from a trace.
-// Returns 0 if no successful channel is found.
-func (s *RequestService) GetLastSuccessfulChannelID(ctx context.Context, traceID int) (int, error) {
-	// Try cache first
-	cacheKey := buildLastChannelCacheKey(traceID)
-	if channelID, err := s.channelCache.Get(ctx, cacheKey); err == nil {
+// GetPreviousChannelID retrieves the most recently selected channel ID from a trace.
+// The cache is the source of truth; when it expires, trace affinity is reset.
+// Returns 0 if no selected channel is cached.
+func (s *RequestService) GetPreviousChannelID(ctx context.Context, traceID int) (int, error) {
+	cacheKey := buildPreviousTraceChannelCacheKey(traceID)
+	if channelID, err := s.previousChannelCache.Get(ctx, cacheKey); err == nil {
 		return channelID, nil
 	}
 
-	req, err := s.entFromContext(ctx).Request.Query().
-		Where(
-			request.TraceIDEQ(traceID),
-			// Only successful requests
-			request.StatusEQ(request.StatusCompleted),
-			// Must have a channel
-			request.ChannelIDNotNil(),
-		).
-		Order(ent.Desc(request.FieldCreatedAt)).
-		First(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			// Cache the zero result
-			_ = s.channelCache.Set(ctx, cacheKey, 0, store.WithExpiration(5*time.Second))
-			return 0, nil
-		}
+	return 0, nil
+}
 
-		return 0, fmt.Errorf("failed to query last successful request: %w", err)
+// GetPreviousChannelIDByThread retrieves the most recently selected channel
+// from all traces associated with a thread. The cache is the source of truth;
+// when it expires, thread affinity is reset. Returns 0 if none is cached.
+func (s *RequestService) GetPreviousChannelIDByThread(ctx context.Context, threadID int) (int, error) {
+	cacheKey := buildPreviousThreadChannelCacheKey(threadID)
+	if channelID, err := s.previousChannelCache.Get(ctx, cacheKey); err == nil {
+		return channelID, nil
 	}
 
-	// Cache the result
-	s.setLastSuccessfulChannelID(ctx, traceID, req.ChannelID)
-
-	return req.ChannelID, nil
+	return 0, nil
 }
 
-func (s *RequestService) setLastSuccessfulChannelID(ctx context.Context, traceID, channelID int) {
-	cacheKey := buildLastChannelCacheKey(traceID)
-	_ = s.channelCache.Set(ctx, cacheKey, channelID, store.WithExpiration(1*time.Minute))
+func (s *RequestService) cachePreviousChannelForRequest(ctx context.Context, req *ent.Request) {
+	if req == nil || req.ChannelID == 0 || req.TraceID == 0 {
+		return
+	}
+
+	s.setPreviousTraceChannelID(ctx, req.TraceID, req.ChannelID)
+
+	threadID := 0
+	if currentTrace, ok := contexts.GetTrace(ctx); ok && currentTrace.ID == req.TraceID {
+		threadID = currentTrace.ThreadID
+	}
+
+	if threadID == 0 {
+		currentTrace, err := s.entFromContext(ctx).Trace.Get(ctx, req.TraceID)
+		if err != nil {
+			log.Warn(ctx, "failed to get trace for previous channel cache", log.Cause(err), log.Int("trace_id", req.TraceID))
+			return
+		}
+		threadID = currentTrace.ThreadID
+	}
+
+	if threadID != 0 {
+		s.setPreviousThreadChannelID(ctx, threadID, req.ChannelID)
+	}
 }
 
-func buildLastChannelCacheKey(traceID int) string {
-	return fmt.Sprintf("last_channel:%d", traceID)
+func (s *RequestService) setPreviousTraceChannelID(ctx context.Context, traceID, channelID int) {
+	s.setPreviousChannelCache(ctx, buildPreviousTraceChannelCacheKey(traceID), channelID, 30*time.Minute)
+}
+
+func (s *RequestService) setPreviousThreadChannelID(ctx context.Context, threadID, channelID int) {
+	s.setPreviousChannelCache(ctx, buildPreviousThreadChannelCacheKey(threadID), channelID, 30*time.Minute)
+}
+
+func (s *RequestService) setPreviousChannelCache(ctx context.Context, cacheKey string, channelID int, expiration time.Duration) {
+	_ = s.previousChannelCache.Set(ctx, cacheKey, channelID, store.WithExpiration(expiration))
+}
+
+func buildPreviousTraceChannelCacheKey(traceID int) string {
+	return fmt.Sprintf("axonhub:routing:previous-channel:v1:trace:%d", traceID)
+}
+
+func buildPreviousThreadChannelCacheKey(threadID int) string {
+	return fmt.Sprintf("axonhub:routing:previous-channel:v1:thread:%d", threadID)
 }

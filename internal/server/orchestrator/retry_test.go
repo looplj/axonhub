@@ -2,6 +2,8 @@ package orchestrator
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"testing"
 
@@ -14,6 +16,28 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
+
+// testNetError implements net.Error so the retry predicates can be exercised
+// against Timeout()/Temporary() transport failures in unit tests. The
+// Temporary method is retained to mirror the net.Error interface the
+// production predicate examines.
+type testNetError struct {
+	timeout   bool
+	temporary bool
+	message   string
+}
+
+func (e *testNetError) Error() string {
+	return e.message
+}
+
+func (e *testNetError) Timeout() bool {
+	return e.timeout
+}
+
+func (e *testNetError) Temporary() bool {
+	return e.temporary
+}
 
 func TestDeriveLoadBalancerStrategy(t *testing.T) {
 	defaultStrategy := "adaptive"
@@ -119,6 +143,21 @@ func TestDeriveLoadBalancerStrategy(t *testing.T) {
 			},
 			expected: "failover",
 		},
+		{
+			name: "load balance strategy is round-robin in active profile",
+			apiKey: &ent.APIKey{
+				Profiles: &objects.APIKeyProfiles{
+					ActiveProfile: "default",
+					Profiles: []objects.APIKeyProfile{
+						{
+							Name:                "default",
+							LoadBalanceStrategy: lo.ToPtr(biz.LoadBalancerStrategyRoundRobin),
+						},
+					},
+				},
+			},
+			expected: biz.LoadBalancerStrategyRoundRobin,
+		},
 	}
 
 	for _, tt := range tests {
@@ -127,6 +166,53 @@ func TestDeriveLoadBalancerStrategy(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestDeriveRoutingPolicyPriority(t *testing.T) {
+	retryPolicy := &biz.RetryPolicy{
+		LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive,
+		TraceStickyMode:      biz.TraceStickyPreferPreviousChannel,
+	}
+	modelPolicy := &ModelRoutingPolicy{
+		LoadBalancerStrategy: biz.LoadBalancerStrategyFailover,
+		TraceStickyMode:      string(biz.TraceStickyDisabled),
+	}
+
+	t.Run("model overrides system", func(t *testing.T) {
+		policy := deriveRoutingPolicy(retryPolicy, nil, modelPolicy)
+		assert.Equal(t, biz.LoadBalancerStrategyFailover, policy.LoadBalancerStrategy)
+		assert.Equal(t, biz.TraceStickyDisabled, policy.TraceStickyMode)
+	})
+
+	t.Run("profile default inherits model", func(t *testing.T) {
+		apiKey := &ent.APIKey{Profiles: &objects.APIKeyProfiles{
+			ActiveProfile: "default",
+			Profiles: []objects.APIKeyProfile{{
+				Name:                "default",
+				LoadBalanceStrategy: lo.ToPtr(objects.RoutingPolicyDefault),
+				TraceStickyMode:     lo.ToPtr(objects.RoutingPolicyDefault),
+			}},
+		}}
+
+		policy := deriveRoutingPolicy(retryPolicy, apiKey, modelPolicy)
+		assert.Equal(t, biz.LoadBalancerStrategyFailover, policy.LoadBalancerStrategy)
+		assert.Equal(t, biz.TraceStickyDisabled, policy.TraceStickyMode)
+	})
+
+	t.Run("profile overrides model and system", func(t *testing.T) {
+		apiKey := &ent.APIKey{Profiles: &objects.APIKeyProfiles{
+			ActiveProfile: "default",
+			Profiles: []objects.APIKeyProfile{{
+				Name:                "default",
+				LoadBalanceStrategy: lo.ToPtr(biz.LoadBalancerStrategyRoundRobin),
+				TraceStickyMode:     lo.ToPtr(string(biz.TraceStickyPreferPreviousChannel)),
+			}},
+		}}
+
+		policy := deriveRoutingPolicy(retryPolicy, apiKey, modelPolicy)
+		assert.Equal(t, biz.LoadBalancerStrategyRoundRobin, policy.LoadBalancerStrategy)
+		assert.Equal(t, biz.TraceStickyPreferPreviousChannel, policy.TraceStickyMode)
+	})
 }
 
 func TestExtractStatusCodeFromError(t *testing.T) {
@@ -216,11 +302,145 @@ func TestIsRetryableError(t *testing.T) {
 			err:      errors.New("generic error"),
 			expected: false,
 		},
+		{
+			name:     "wrapped upstream EOF is retryable",
+			err:      fmt.Errorf("HTTP stream request failed: %w", io.EOF),
+			expected: true,
+		},
+		{
+			name:     "unexpected EOF is retryable",
+			err:      io.ErrUnexpectedEOF,
+			expected: true,
+		},
+		{
+			name:     "net.Error with Timeout is retryable",
+			err:      &testNetError{timeout: true, message: "i/o timeout"},
+			expected: true,
+		},
+		{
+			name:     "net.Error with Temporary is retryable",
+			err:      &testNetError{temporary: true, message: "connection temporarily refused"},
+			expected: true,
+		},
+		{
+			name:     "net.Error without Timeout or Temporary is not retryable",
+			err:      &testNetError{message: "non-timeout net error"},
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := isRetryableError(tt.err)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestIsRetryableErrorForChannel(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			Settings: &objects.ChannelSettings{
+				RetryableStatusCodes: []int{400, 403},
+				RetryableErrorPatterns: []objects.RetryableErrorPattern{
+					{Pattern: "Console API returned 403"},
+					{Pattern: `Console API returned \d+`, Regex: true},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		err      error
+		channel  *biz.Channel
+		expected bool
+	}{
+		{
+			name:     "error is nil",
+			err:      nil,
+			channel:  channel,
+			expected: false,
+		},
+		{
+			name: "default retryable status remains retryable",
+			err: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+			},
+			channel:  nil,
+			expected: true,
+		},
+		{
+			name:     "wrapped upstream EOF is retryable without channel settings",
+			err:      fmt.Errorf("failed to stream request: %w", io.EOF),
+			channel:  nil,
+			expected: true,
+		},
+		{
+			name:     "net.Error with Timeout is retryable without channel settings",
+			err:      &testNetError{timeout: true, message: "i/o timeout"},
+			channel:  nil,
+			expected: true,
+		},
+		{
+			name:     "net.Error with Temporary is retryable without channel settings",
+			err:      &testNetError{temporary: true, message: "connection temporarily refused"},
+			channel:  nil,
+			expected: true,
+		},
+		{
+			name:     "net.Error without Timeout or Temporary is not retryable without channel settings",
+			err:      &testNetError{message: "non-timeout net error"},
+			channel:  nil,
+			expected: false,
+		},
+		{
+			name: "configured 400 status is retryable",
+			err: &httpclient.Error{
+				StatusCode: http.StatusBadRequest,
+			},
+			channel:  channel,
+			expected: true,
+		},
+		{
+			name: "unconfigured 401 status is not retryable",
+			err: &httpclient.Error{
+				StatusCode: http.StatusUnauthorized,
+			},
+			channel:  channel,
+			expected: false,
+		},
+		{
+			name:     "configured error text is retryable",
+			err:      errors.New("failed to stream request: error: Console API returned 403, code: upstream_error, type: upstream_error"),
+			channel:  channel,
+			expected: true,
+		},
+		{
+			name:     "configured error regex is retryable",
+			err:      errors.New("failed to stream request: error: Console API returned 502, code: upstream_error, type: upstream_error"),
+			channel:  channel,
+			expected: true,
+		},
+		{
+			name:     "unmatched error text is not retryable",
+			err:      errors.New("failed to stream request: error: credentials rejected"),
+			channel:  channel,
+			expected: false,
+		},
+		{
+			name: "configured status is not retryable without channel settings",
+			err: &httpclient.Error{
+				StatusCode: http.StatusBadRequest,
+			},
+			channel:  &biz.Channel{Channel: &ent.Channel{}},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isRetryableErrorForChannel(tt.err, tt.channel)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

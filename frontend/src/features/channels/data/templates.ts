@@ -106,6 +106,10 @@ const TEMPLATE_FRAGMENT = `
       to
       value
       condition
+      match {
+        path
+        eq
+      }
       index
       splat
     }
@@ -116,6 +120,10 @@ const TEMPLATE_FRAGMENT = `
       to
       value
       condition
+      match {
+        path
+        eq
+      }
       index
       splat
     }

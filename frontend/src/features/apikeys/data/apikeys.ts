@@ -46,6 +46,7 @@ function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
             type
             status
             scopes
+            allowedIps
           }
           cursor
         }
@@ -83,6 +84,7 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
         type
         status
         scopes
+        allowedIps
         profiles {
           activeProfile
           profiles {
@@ -93,6 +95,7 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
             channelTagsMatchMode
             modelIDs
             loadBalanceStrategy
+            traceStickyMode
             quota {
               requests
               totalTokens
@@ -132,6 +135,7 @@ function buildCreateApiKeyMutation(permissions: { canViewUsers: boolean }) {
         type
         status
         scopes
+        allowedIps
       }
     }
   `;
@@ -158,6 +162,7 @@ function buildUpdateApiKeyMutation(permissions: { canViewUsers: boolean }) {
         type
         status
         scopes
+        allowedIps
       }
     }
   `;
@@ -191,6 +196,7 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
           channelTagsMatchMode
           modelIDs
           loadBalanceStrategy
+          traceStickyMode
           quota {
             requests
             totalTokens
@@ -298,6 +304,7 @@ const APIKEY_PROFILE_TEMPLATES_QUERY = `
             channelTagsMatchMode
             modelIDs
             loadBalanceStrategy
+            traceStickyMode
             quota {
               requests
               totalTokens
@@ -309,7 +316,6 @@ const APIKEY_PROFILE_TEMPLATES_QUERY = `
               }
             }
           }
-          project { id name }
         }
       }
       totalCount
@@ -372,6 +378,7 @@ const LOAD_APIKEY_PROFILE_TEMPLATE_MUTATION = `
           channelTagsMatchMode
           modelIDs
           loadBalanceStrategy
+          traceStickyMode
           quota {
             requests
             totalTokens
@@ -393,7 +400,7 @@ export function useApiKeys(
   variables?: {
     first?: number;
     after?: string;
-    orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
+    orderBy?: { field: 'NAME' | 'CREATED_AT' | 'UPDATED_AT'; direction: 'ASC' | 'DESC' };
     where?: {
       nameContainsFold?: string;
       status?: string;

@@ -13,6 +13,17 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+func TestHasResponseContent_ReasoningSignature(t *testing.T) {
+	signature := "gAAAA_reasoning"
+
+	require.True(t, hasResponseContent(&llm.Response{
+		Object: "chat.completion.chunk",
+		Choices: []llm.Choice{{
+			Delta: &llm.Message{ReasoningSignature: &signature},
+		}},
+	}))
+}
+
 func TestHasResponseContent(t *testing.T) {
 	t.Run("empty response", func(t *testing.T) {
 		require.False(t, hasResponseContent(&llm.Response{}))
@@ -48,6 +59,36 @@ func TestHasResponseContent(t *testing.T) {
 		}))
 	})
 
+	t.Run("speech response audio", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Speech: &llm.SpeechResponse{Audio: []byte{0x01, 0x02}},
+		}))
+	})
+
+	t.Run("empty speech response", func(t *testing.T) {
+		require.False(t, hasResponseContent(&llm.Response{
+			Speech: &llm.SpeechResponse{},
+		}))
+	})
+
+	t.Run("transcription response text", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Transcription: &llm.TranscriptionResponse{Text: "hello"},
+		}))
+	})
+
+	t.Run("transcription response raw", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Transcription: &llm.TranscriptionResponse{Raw: []byte("1\n00:00:00,000 --> 00:00:01,000\nhi\n")},
+		}))
+	})
+
+	t.Run("empty transcription response", func(t *testing.T) {
+		require.False(t, hasResponseContent(&llm.Response{
+			Transcription: &llm.TranscriptionResponse{},
+		}))
+	})
+
 	t.Run("embedding response data", func(t *testing.T) {
 		require.True(t, hasResponseContent(&llm.Response{
 			Embedding: &llm.EmbeddingResponse{
@@ -60,6 +101,28 @@ func TestHasResponseContent(t *testing.T) {
 					Index: 0,
 				}},
 			},
+		}))
+	})
+
+	t.Run("moderation response with results", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Moderation: &llm.ModerationResponse{
+				Results: []llm.ModerationClassification{{
+					Flagged: false,
+					Categories: map[string]bool{
+						"hate": false,
+					},
+					CategoryScores: map[string]float64{
+						"hate": 0.01,
+					},
+				}},
+			},
+		}))
+	})
+
+	t.Run("empty moderation response", func(t *testing.T) {
+		require.False(t, hasResponseContent(&llm.Response{
+			Moderation: &llm.ModerationResponse{},
 		}))
 	})
 }
@@ -122,6 +185,137 @@ func TestPipeline_Process_StreamEmptyResponseDetection(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.True(t, res.Stream)
+		require.Equal(t, 2, streamCalls)
+		require.Equal(t, 1, prepareCalls)
+	})
+
+	t.Run("retries on empty binary speech stream", func(t *testing.T) {
+		// TTS binary streams emit a terminal *llm.Response{Object:"[DONE]"} that is
+		// not the shared llm.DoneResponse sentinel. Empty-response detection must
+		// still recognize it so providers returning 200 + zero audio chunks trigger
+		// a retry instead of being recorded as completed.
+		streamCalls := 0
+		executor := &mockExecutor{
+			doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+				streamCalls++
+				return streams.SliceStream([]*httpclient.StreamEvent{{}}), nil
+			},
+		}
+
+		prepareCalls := 0
+		outbound := &mockOutbound{
+			transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+				if streamCalls == 1 {
+					// Empty binary speech stream: only the [DONE] terminator, no SpeechAudioChunk.
+					return streams.SliceStream([]*llm.Response{
+						{Object: "[DONE]", RequestType: llm.RequestTypeSpeech, APIFormat: llm.APIFormatOpenAISpeech},
+					}), nil
+				}
+
+				return streams.SliceStream([]*llm.Response{
+					{
+						RequestType: llm.RequestTypeSpeech,
+						APIFormat:   llm.APIFormatOpenAISpeech,
+						SpeechAudioChunk: &llm.SpeechAudioChunk{
+							Audio:       []byte{0x01, 0x02},
+							ContentType: "audio/mpeg",
+						},
+					},
+					{Object: "[DONE]", RequestType: llm.RequestTypeSpeech, APIFormat: llm.APIFormatOpenAISpeech},
+				}), nil
+			},
+			canRetry: func(err error) bool { return errors.Is(err, ErrEmptyResponse) },
+			prepareForRetry: func(ctx context.Context) error {
+				prepareCalls++
+				return nil
+			},
+		}
+
+		streamFlag := true
+		streamInbound := &mockInbound{
+			transformRequest: func(ctx context.Context, req *httpclient.Request) (*llm.Request, error) {
+				return &llm.Request{Stream: &streamFlag}, nil
+			},
+		}
+
+		p := &pipeline{
+			Executor:               executor,
+			Inbound:                streamInbound,
+			Outbound:               outbound,
+			maxSameChannelRetries:  1,
+			emptyResponseDetection: true,
+		}
+
+		res, err := p.Process(ctx, &httpclient.Request{})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, 2, streamCalls)
+		require.Equal(t, 1, prepareCalls)
+	})
+
+	t.Run("retries on empty TTS SSE stream with only done event", func(t *testing.T) {
+		// TTS stream_format=sse providers that emit only "speech.audio.done" (no
+		// speech.audio.delta) must still be treated as empty so empty-response
+		// detection retries instead of completing a request with audio_bytes=0.
+		streamCalls := 0
+		executor := &mockExecutor{
+			doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+				streamCalls++
+				return streams.SliceStream([]*httpclient.StreamEvent{{}}), nil
+			},
+		}
+
+		prepareCalls := 0
+		outbound := &mockOutbound{
+			transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+				if streamCalls == 1 {
+					return streams.SliceStream([]*llm.Response{
+						{
+							RequestType:       llm.RequestTypeSpeech,
+							APIFormat:         llm.APIFormatOpenAISpeech,
+							SpeechStreamEvent: &llm.SpeechStreamEvent{Type: "speech.audio.done"},
+						},
+						llm.DoneResponse,
+					}), nil
+				}
+
+				return streams.SliceStream([]*llm.Response{
+					{
+						RequestType: llm.RequestTypeSpeech,
+						APIFormat:   llm.APIFormatOpenAISpeech,
+						SpeechStreamEvent: &llm.SpeechStreamEvent{
+							Type:        "speech.audio.delta",
+							AudioBase64: "YWJjZA==",
+						},
+					},
+					llm.DoneResponse,
+				}), nil
+			},
+			canRetry: func(err error) bool { return errors.Is(err, ErrEmptyResponse) },
+			prepareForRetry: func(ctx context.Context) error {
+				prepareCalls++
+				return nil
+			},
+		}
+
+		streamFlag := true
+		streamInbound := &mockInbound{
+			transformRequest: func(ctx context.Context, req *httpclient.Request) (*llm.Request, error) {
+				return &llm.Request{Stream: &streamFlag}, nil
+			},
+		}
+
+		p := &pipeline{
+			Executor:               executor,
+			Inbound:                streamInbound,
+			Outbound:               outbound,
+			maxSameChannelRetries:  1,
+			emptyResponseDetection: true,
+		}
+
+		res, err := p.Process(ctx, &httpclient.Request{})
+		require.NoError(t, err)
+		require.NotNil(t, res)
 		require.Equal(t, 2, streamCalls)
 		require.Equal(t, 1, prepareCalls)
 	})
@@ -273,6 +467,48 @@ func TestPipeline_Process_NonStreamEmptyResponseDetection(t *testing.T) {
 								Embedding: []float64{0.1, 0.2, 0.3},
 							},
 							Index: 0,
+						}},
+					},
+				}, nil
+			},
+		}
+
+		p := &pipeline{
+			Executor:               executor,
+			Inbound:                &mockInbound{},
+			Outbound:               outbound,
+			emptyResponseDetection: true,
+		}
+
+		res, err := p.Process(context.Background(), &httpclient.Request{})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, 1, execCalls)
+	})
+
+	t.Run("accepts non-stream moderation response", func(t *testing.T) {
+		execCalls := 0
+		executor := &mockExecutor{
+			do: func(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+				execCalls++
+				return &httpclient.Response{}, nil
+			},
+		}
+
+		outbound := &mockOutbound{
+			transformResponse: func(ctx context.Context, resp *httpclient.Response) (*llm.Response, error) {
+				return &llm.Response{
+					RequestType: llm.RequestTypeModeration,
+					APIFormat:   llm.APIFormatOpenAIModeration,
+					Moderation: &llm.ModerationResponse{
+						Results: []llm.ModerationClassification{{
+							Flagged: false,
+							Categories: map[string]bool{
+								"hate": false,
+							},
+							CategoryScores: map[string]float64{
+								"hate": 0.01,
+							},
 						}},
 					},
 				}, nil

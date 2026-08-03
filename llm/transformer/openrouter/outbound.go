@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
@@ -89,7 +90,10 @@ func (t *OutboundTransformer) TransformRequest(
 		// continue
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationRequest(llmReq)
-	case llm.RequestTypeEmbedding:
+	case llm.RequestTypeEmbedding,
+		llm.RequestTypeSpeech,
+		llm.RequestTypeTranscription,
+		llm.RequestTypeTranslation:
 		return t.Outbound.TransformRequest(ctx, llmReq)
 	case llm.RequestTypeCompact:
 		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
@@ -229,7 +233,9 @@ func encodeImageToBase64(data []byte) string {
 	format := detectImageFormat(data)
 	base64Data := base64.StdEncoding.EncodeToString(data)
 
-	return fmt.Sprintf("data:image/%s;base64,%s", format, base64Data)
+	// Use xurl.BuildDataURL (single exact-size concat) instead of fmt.Sprintf to
+	// avoid the printer's doubling-growth buffer churn on large base64 data.
+	return xurl.BuildDataURL("image/"+format, base64Data, true)
 }
 
 // detectImageFormat detects image format from magic bytes.
@@ -274,6 +280,17 @@ func (t *OutboundTransformer) TransformResponse(
 	// Check if this is an image generation request
 	if httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeImage.String() {
 		return t.transformImageGenerationResponse(httpResp)
+	}
+
+	// Audio (speech/transcription/translation) responses are handled by the underlying
+	// OpenAI transformer, which routes on APIFormat (binary audio for speech, JSON for STT).
+	if httpResp.Request != nil {
+		switch httpResp.Request.RequestType {
+		case llm.RequestTypeSpeech.String(),
+			llm.RequestTypeTranscription.String(),
+			llm.RequestTypeTranslation.String():
+			return t.Outbound.TransformResponse(ctx, httpResp)
+		}
 	}
 
 	// Check for HTTP error status codes
@@ -393,11 +410,31 @@ func extractBase64FromDataURL(dataURL string) string {
 	return after
 }
 
-func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, _ *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
+	// Audio streaming uses dedicated event schemas; delegate to the embedded OpenAI transformer.
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech),
+			string(llm.APIFormatOpenAITranscription),
+			string(llm.APIFormatOpenAITranslation):
+			return t.Outbound.AggregateStreamChunks(ctx, req, chunks)
+		}
+	}
+
 	return AggregateStreamChunks(ctx, chunks)
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+	// Audio streaming uses dedicated event schemas; delegate to the embedded OpenAI transformer.
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech),
+			string(llm.APIFormatOpenAITranscription),
+			string(llm.APIFormatOpenAITranslation):
+			return t.Outbound.TransformStream(ctx, req, stream)
+		}
+	}
+
 	// Filter out upstream DONE events
 	filteredStream := streams.Filter(stream, func(event *httpclient.StreamEvent) bool {
 		return !bytes.HasPrefix(event.Data, []byte("[DONE]"))

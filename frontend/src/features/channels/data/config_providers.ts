@@ -2,6 +2,7 @@ import type { ComponentType } from 'react';
 import {
   OpenAI,
   Anthropic,
+  Cline,
   Google,
   DeepSeek,
   Doubao,
@@ -32,6 +33,7 @@ import {
   OpenCode,
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
+import { EvolinkIcon } from '../components/evolink-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
@@ -251,13 +253,25 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'opencode_go',
     icon: OpenCode,
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
-    channelTypes: ['opencode_go'],
+    channelTypes: ['opencode_go', 'opencode_go_anthropic'],
   },
   ollama: {
     provider: 'ollama',
     icon: Ollama,
     color: 'bg-slate-100 text-slate-800 border-slate-200',
-    channelTypes: ['ollama'],
+    channelTypes: ['ollama', 'ollama_anthropic'],
+  },
+  evolink: {
+    provider: 'evolink',
+    icon: EvolinkIcon,
+    color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    channelTypes: ['evolink', 'evolink_anthropic'],
+  },
+  cline: {
+    provider: 'cline',
+    icon: Cline,
+    color: 'bg-purple-100 text-purple-800 border-purple-200',
+    channelTypes: ['cline'],
   },
 };
 

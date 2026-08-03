@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -14,14 +15,24 @@ func TestNewChannelRequestTracker(t *testing.T) {
 	assert.NotNil(t, tracker.counters)
 }
 
-func TestChannelRequestTracker_IncrementRequest(t *testing.T) {
+func TestChannelRequestTracker_TryAcquireRequestIncrementsCount(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 
-	tracker.IncrementRequest(1)
-	tracker.IncrementRequest(1)
-	tracker.IncrementRequest(1)
+	assert.True(t, tracker.TryAcquireRequest(1, 10))
+	assert.True(t, tracker.TryAcquireRequest(1, 10))
+	assert.True(t, tracker.TryAcquireRequest(1, 10))
 
 	assert.Equal(t, int64(3), tracker.GetRequestCount(1))
+}
+
+func TestChannelRequestTracker_TryAcquireRequestRejectsWhenLimitReached(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	assert.True(t, tracker.TryAcquireRequest(1, 2))
+	assert.True(t, tracker.TryAcquireRequest(1, 2))
+	assert.False(t, tracker.TryAcquireRequest(1, 2))
+
+	assert.Equal(t, int64(2), tracker.GetRequestCount(1))
 }
 
 func TestChannelRequestTracker_AddTokens(t *testing.T) {
@@ -55,9 +66,9 @@ func TestChannelRequestTracker_GetTokenCount_UnknownChannel(t *testing.T) {
 func TestChannelRequestTracker_MultipleChannels(t *testing.T) {
 	tracker := NewChannelRequestTracker()
 
-	tracker.IncrementRequest(1)
-	tracker.IncrementRequest(1)
-	tracker.IncrementRequest(2)
+	assert.True(t, tracker.TryAcquireRequest(1, 10))
+	assert.True(t, tracker.TryAcquireRequest(1, 10))
+	assert.True(t, tracker.TryAcquireRequest(2, 10))
 	tracker.AddTokens(1, 100)
 	tracker.AddTokens(2, 500)
 
@@ -84,7 +95,7 @@ func TestChannelRequestTracker_WindowReset(t *testing.T) {
 	assert.Equal(t, int64(0), tracker.GetTokenCount(1))
 
 	// Writes should create a new window
-	tracker.IncrementRequest(1)
+	assert.True(t, tracker.TryAcquireRequest(1, 10))
 	assert.Equal(t, int64(1), tracker.GetRequestCount(1))
 	assert.Equal(t, int64(0), tracker.GetTokenCount(1))
 }
@@ -118,13 +129,13 @@ func TestChannelRequestTracker_Concurrent(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(goroutines * 2)
 
-	// Concurrent IncrementRequest
+	// Concurrent TryAcquireRequest
 	for range goroutines {
 		go func() {
 			defer wg.Done()
 
 			for range opsPerGoroutine {
-				tracker.IncrementRequest(1)
+				tracker.TryAcquireRequest(1, int64(goroutines*opsPerGoroutine))
 			}
 		}()
 	}
@@ -157,7 +168,7 @@ func TestChannelRequestTracker_ConcurrentReadWrite(t *testing.T) {
 		defer wg.Done()
 
 		for range 1000 {
-			tracker.IncrementRequest(1)
+			tracker.TryAcquireRequest(1, 1000)
 		}
 	}()
 
@@ -182,6 +193,54 @@ func TestChannelRequestTracker_ConcurrentReadWrite(t *testing.T) {
 	wg.Wait()
 
 	assert.Equal(t, int64(1000), tracker.GetRequestCount(1))
+}
+
+func TestChannelRequestTracker_TryAcquireRequestStrictlyCapsConcurrentBurst(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	const (
+		channelID  = 42
+		limit      = int64(2)
+		goroutines = 50
+	)
+
+	start := make(chan struct{})
+	var successes atomic.Int64
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+
+	for range goroutines {
+		go func() {
+			defer wg.Done()
+			<-start
+
+			if tracker.TryAcquireRequest(channelID, limit) {
+				successes.Add(1)
+			}
+		}()
+	}
+
+	close(start)
+	wg.Wait()
+
+	assert.Equal(t, limit, successes.Load())
+	assert.Equal(t, limit, tracker.GetRequestCount(channelID))
+}
+
+func TestChannelRequestTracker_TryAcquireRequestResetsExpiredWindow(t *testing.T) {
+	tracker := NewChannelRequestTracker()
+
+	tracker.mu.Lock()
+	tracker.counters[1] = &rateLimitWindow{
+		requests:    10,
+		tokens:      500,
+		windowStart: time.Now().Truncate(time.Minute).Add(-time.Minute),
+	}
+	tracker.mu.Unlock()
+
+	assert.True(t, tracker.TryAcquireRequest(1, 1))
+	assert.Equal(t, int64(1), tracker.GetRequestCount(1))
+	assert.Equal(t, int64(0), tracker.GetTokenCount(1))
 }
 
 // ========== Cooldown Tests ==========

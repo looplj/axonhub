@@ -240,26 +240,6 @@ func ProjectIDNotIn(vs ...int) predicate.Prompt {
 	return predicate.Prompt(sql.FieldNotIn(FieldProjectID, vs...))
 }
 
-// ProjectIDGT applies the GT predicate on the "project_id" field.
-func ProjectIDGT(v int) predicate.Prompt {
-	return predicate.Prompt(sql.FieldGT(FieldProjectID, v))
-}
-
-// ProjectIDGTE applies the GTE predicate on the "project_id" field.
-func ProjectIDGTE(v int) predicate.Prompt {
-	return predicate.Prompt(sql.FieldGTE(FieldProjectID, v))
-}
-
-// ProjectIDLT applies the LT predicate on the "project_id" field.
-func ProjectIDLT(v int) predicate.Prompt {
-	return predicate.Prompt(sql.FieldLT(FieldProjectID, v))
-}
-
-// ProjectIDLTE applies the LTE predicate on the "project_id" field.
-func ProjectIDLTE(v int) predicate.Prompt {
-	return predicate.Prompt(sql.FieldLTE(FieldProjectID, v))
-}
-
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.Prompt {
 	return predicate.Prompt(sql.FieldEQ(FieldName, v))
@@ -580,21 +560,21 @@ func OrderLTE(v int) predicate.Prompt {
 	return predicate.Prompt(sql.FieldLTE(FieldOrder, v))
 }
 
-// HasProjects applies the HasEdge predicate on the "projects" edge.
-func HasProjects() predicate.Prompt {
+// HasProject applies the HasEdge predicate on the "project" edge.
+func HasProject() predicate.Prompt {
 	return predicate.Prompt(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, ProjectsTable, ProjectsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, ProjectTable, ProjectColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasProjectsWith applies the HasEdge predicate on the "projects" edge with a given conditions (other predicates).
-func HasProjectsWith(preds ...predicate.Project) predicate.Prompt {
+// HasProjectWith applies the HasEdge predicate on the "project" edge with a given conditions (other predicates).
+func HasProjectWith(preds ...predicate.Project) predicate.Prompt {
 	return predicate.Prompt(func(s *sql.Selector) {
-		step := newProjectsStep()
+		step := newProjectStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

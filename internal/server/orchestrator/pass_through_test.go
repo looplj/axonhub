@@ -880,6 +880,49 @@ func TestApplyPassThroughStream_DrainsInner(t *testing.T) {
 	}
 }
 
+func TestPassThroughChannelStream_DrainsBufferedEventsAfterCancel(t *testing.T) {
+	// Reproduce the production race: client disconnect cancels the request context
+	// while the terminal event is already buffered for the pipeline drain path.
+	// Next() must prefer draining the buffer so InboundPersistentStream can see [DONE]
+	// and mark the request completed instead of canceled.
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan *httpclient.StreamEvent, 2)
+	ch <- &httpclient.StreamEvent{Data: json.RawMessage(`{"id":"chunk"}`)}
+	ch <- &httpclient.StreamEvent{Data: []byte("[DONE]")}
+	close(ch)
+	cancel()
+
+	stream := &passThroughChannelStream{ctx: ctx, ch: ch}
+
+	var events []*httpclient.StreamEvent
+	for stream.Next() {
+		events = append(events, stream.Current())
+	}
+
+	require.Len(t, events, 2)
+	assert.Equal(t, []byte("[DONE]"), events[1].Data)
+	assert.True(t, isTerminalStreamEvent(events[1]))
+}
+
+func TestPassThroughChannelStream_StopsAtEmptyBufferAfterCancel(t *testing.T) {
+	// After cancellation Next() must never block waiting for the producer: it drains
+	// buffered events, then ends the stream (canceling upstream via Close) at the
+	// first empty-buffer moment even though the channel is still open.
+	ctx, cancel := context.WithCancel(context.Background())
+	ch := make(chan *httpclient.StreamEvent, 2)
+	ch <- &httpclient.StreamEvent{Data: json.RawMessage(`{"id":"chunk"}`)}
+	cancel()
+
+	upstreamCanceled := false
+	stream := &passThroughChannelStream{ctx: ctx, ch: ch, cancel: func() { upstreamCanceled = true }}
+
+	require.True(t, stream.Next())
+	assert.Equal(t, []byte(`{"id":"chunk"}`), stream.Current().Data)
+
+	require.False(t, stream.Next())
+	assert.True(t, upstreamCanceled)
+}
+
 type doneStream struct {
 	stream streams.Stream[*httpclient.StreamEvent]
 	done   chan struct{}
@@ -1181,6 +1224,7 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 
 	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
 	require.NoError(t, err)
+	require.True(t, outbound.state.PassThroughApplied)
 	require.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, 0.4, gjson.GetBytes(processed.Body, "temperature").Float())
 	require.Equal(t, "my-alias", gjson.GetBytes(outbound.state.LlmRequest.RawRequest.Body, "model").String())
@@ -1357,6 +1401,15 @@ func TestMergePassThroughBodySkipsFormatsWithoutTopLevelModel(t *testing.T) {
 	require.Equal(t, string(rawBody), string(merged))
 }
 
+func TestMergePassThroughBodyPatchesModerationModel(t *testing.T) {
+	rawBody := []byte(`{"model":"omni-moderation-latest","input":"hello"}`)
+
+	merged, err := mergePassThroughRequestBody(rawBody, llm.APIFormatOpenAIModeration, "provider-moderation-v1")
+	require.NoError(t, err)
+	require.Equal(t, "provider-moderation-v1", gjson.GetBytes(merged, "model").String())
+	require.Equal(t, "hello", gjson.GetBytes(merged, "input").String())
+}
+
 // TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
 func TestApplyUserAgentPassThrough(t *testing.T) {
 	tests := []struct {
@@ -1497,4 +1550,100 @@ func TestApplyUserAgentPassThrough_NoChannel(t *testing.T) {
 	processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
 	require.NoError(t, err)
 	require.NotNil(t, processedRequest)
+}
+
+func TestApplyPassThroughBodySkipsMultipartFormats(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name      string
+		apiFormat llm.APIFormat
+	}{
+		{name: "audio transcription", apiFormat: llm.APIFormatOpenAITranscription},
+		{name: "audio translation", apiFormat: llm.APIFormatOpenAITranslation},
+		{name: "image edit", apiFormat: llm.APIFormatOpenAIImageEdit},
+		{name: "image variation", apiFormat: llm.APIFormatOpenAIImageVariation},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:   1,
+					Name: "pass-through-multipart",
+					Settings: &objects.ChannelSettings{
+						PassThroughBody: lo.ToPtr(true),
+					},
+				},
+			}
+
+			// The inbound multipart body uses the client boundary; the outbound transformer
+			// rebuilds the multipart body with a new boundary, so the inbound bytes must not
+			// replace the outbound body.
+			inboundBody := []byte("--client-boundary\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\noriginal-model\r\n--client-boundary--\r\n")
+			outboundBody := []byte("--new-boundary\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nmapped-model\r\n--new-boundary--\r\n")
+
+			outbound := &PersistentOutboundTransformer{
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					LlmRequest: &llm.Request{
+						Model:     "mapped-model",
+						APIFormat: tt.apiFormat,
+						RawRequest: &httpclient.Request{
+							APIFormat: string(tt.apiFormat),
+							Body:      inboundBody,
+						},
+					},
+				},
+			}
+
+			request := &httpclient.Request{
+				APIFormat: string(tt.apiFormat),
+				Body:      outboundBody,
+			}
+
+			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+			require.NoError(t, err)
+			require.Equal(t, outboundBody, processed.Body)
+			require.False(t, outbound.state.PassThroughApplied)
+		})
+	}
+}
+
+func TestApplyPassThroughBodyAppliesSpeechModelPatch(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-speech",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest: &llm.Request{
+				Model:     "tts-1-hd",
+				APIFormat: llm.APIFormatOpenAISpeech,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAISpeech),
+					Body:      []byte(`{"model":"my-tts-alias","input":"hello","voice":"alloy"}`),
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAISpeech),
+		Body:      []byte(`{"model":"tts-1-hd","input":"hello","voice":"alloy"}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, "tts-1-hd", gjson.GetBytes(processed.Body, "model").String())
+	require.Equal(t, "alloy", gjson.GetBytes(processed.Body, "voice").String())
 }

@@ -127,3 +127,22 @@ func TestDetectProviderFromURL_FalsePositives(t *testing.T) {
 		})
 	}
 }
+
+func TestDetectProviderFromURL_Apertis(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+	}{
+		{"exact domain", "https://api.apertis.ai"},
+		{"with path", "https://api.apertis.ai/v1/chat"},
+		{"http scheme", "http://api.apertis.ai"},
+		{"subdomain", "https://us.api.apertis.ai"},
+		{"with port", "https://api.apertis.ai:443"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectProviderFromURL(tt.baseURL)
+			require.Equal(t, "apertis", result)
+		})
+	}
+}

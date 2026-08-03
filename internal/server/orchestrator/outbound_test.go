@@ -491,6 +491,24 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 		require.False(t, outbound.CanRetry(errSkipCandidateByCircuitBreaker))
 	})
 
+	t.Run("sticky candidate should not trigger same-channel retry", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel:     channel,
+					TraceSticky: true,
+					Models: []biz.ChannelModelEntry{
+						{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+						{RequestModel: "gpt-4", ActualModel: "gpt-4-alternative"},
+					},
+				},
+			},
+		}
+
+		require.False(t, outbound.CanRetry(retryableErr))
+	})
+
 	t.Run("auto-aggregate empty errors are retryable", func(t *testing.T) {
 		for _, retryErr := range []error{
 			fmt.Errorf("failed to auto-aggregate streaming response: %w", pipeline.ErrEmptyResponse),
@@ -572,6 +590,14 @@ func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
 
 	t.Run("response id without usage is not completed", func(t *testing.T) {
 		require.False(t, isCompletedAggregated(llm.ResponseMeta{ID: "resp_123"}))
+	})
+
+	t.Run("explicit completed flag is completed", func(t *testing.T) {
+		require.True(t, isCompletedAggregated(llm.ResponseMeta{ID: llm.SpeechStreamResponseID, Completed: true}))
+	})
+
+	t.Run("speech stream aggregate id alone is not completed", func(t *testing.T) {
+		require.False(t, isCompletedAggregated(llm.ResponseMeta{ID: llm.SpeechStreamResponseID}))
 	})
 
 	t.Run("missing usage and id is not completed", func(t *testing.T) {
@@ -796,6 +822,66 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 		require.Equal(t, "resp_codex_like", dbExec.ExternalID)
 		require.True(t, state.StreamCompleted)
 	})
+
+	t.Run("canceled client after finish reason is still completed without done or usage", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		baseCtx := ent.NewContext(ctx, client)
+		project := createTestProject(t, baseCtx, client)
+		ch := createTestChannel(t, baseCtx, client)
+		_, requestService, _, usageLogService := setupTestServices(t, client)
+
+		req, err := client.Request.Create().
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetStatus(request.StatusPending).
+			SetRequestBody([]byte(`{"stream":true}`)).
+			Save(baseCtx)
+		require.NoError(t, err)
+
+		exec, err := client.RequestExecution.Create().
+			SetRequestID(req.ID).
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetRequestBody([]byte(`{"stream":true}`)).
+			SetFormat("openai/chat_completions").
+			SetStatus(requestexecution.StatusPending).
+			SetStream(true).
+			Save(baseCtx)
+		require.NoError(t, err)
+
+		finalChunk := &httpclient.StreamEvent{
+			Data: []byte(`{"id":"chatcmpl_complete","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`),
+		}
+		stream := &sliceEventStream{events: []*httpclient.StreamEvent{finalChunk}}
+		aggregated := []byte(`{"id":"chatcmpl_complete","choices":[{"index":0,"message":{"role":"assistant","content":"done"},"finish_reason":"stop"}]}`)
+		transformer := &mockTransformer{
+			apiFormat:          llm.APIFormatOpenAIChatCompletion,
+			aggregatedResponse: aggregated,
+			aggregatedMeta:     llm.ResponseMeta{ID: "chatcmpl_complete"},
+		}
+		state := &PersistenceState{}
+
+		requestCtx, cancel := context.WithCancel(baseCtx)
+		persistentStream := NewOutboundPersistentStream(requestCtx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
+		require.True(t, persistentStream.Next())
+		require.Equal(t, finalChunk, persistentStream.Current())
+		require.True(t, state.StreamCompleted)
+
+		// Simulate the agent closing its SSE request immediately after consuming
+		// the final semantic response, before a trailing [DONE] can be consumed.
+		cancel()
+		require.NoError(t, persistentStream.Close())
+
+		dbExec, err := client.RequestExecution.Get(baseCtx, exec.ID)
+		require.NoError(t, err)
+		require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
+		require.Empty(t, dbExec.ErrorMessage)
+		require.JSONEq(t, string(aggregated), string(dbExec.ResponseBody))
+	})
 }
 
 func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t *testing.T) {
@@ -984,7 +1070,7 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithoutRetryAfter(t *testing
 		Outbound: &mockTransformer{},
 	}
 
-	t.Run("429 without Retry-After (nil headers) should allow retry", func(t *testing.T) {
+	t.Run("429 without Retry-After (nil headers) should skip same-channel retry", func(t *testing.T) {
 		outbound := &PersistentOutboundTransformer{
 			wrapped: &mockTransformer{},
 			state: &PersistenceState{
@@ -1002,10 +1088,10 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithoutRetryAfter(t *testing
 			Headers:    nil,
 		}
 
-		require.True(t, outbound.CanRetry(httpErr))
+		require.False(t, outbound.CanRetry(httpErr))
 	})
 
-	t.Run("429 without Retry-After (empty headers) should allow retry", func(t *testing.T) {
+	t.Run("429 without Retry-After (empty headers) should skip same-channel retry", func(t *testing.T) {
 		outbound := &PersistentOutboundTransformer{
 			wrapped: &mockTransformer{},
 			state: &PersistenceState{
@@ -1023,10 +1109,10 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithoutRetryAfter(t *testing
 			Headers:    http.Header{},
 		}
 
-		require.True(t, outbound.CanRetry(httpErr))
+		require.False(t, outbound.CanRetry(httpErr))
 	})
 
-	t.Run("429 without Retry-After (headers but no Retry-After key) should allow retry", func(t *testing.T) {
+	t.Run("429 without Retry-After (headers but no Retry-After key) should skip same-channel retry", func(t *testing.T) {
 		outbound := &PersistentOutboundTransformer{
 			wrapped: &mockTransformer{},
 			state: &PersistenceState{
@@ -1046,8 +1132,36 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithoutRetryAfter(t *testing
 			},
 		}
 
-		require.True(t, outbound.CanRetry(httpErr))
+		require.False(t, outbound.CanRetry(httpErr))
 	})
+}
+
+func TestPersistentOutboundTransformer_CanRetry_ChannelRetryableStatusCodes(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+			Settings: &objects.ChannelSettings{
+				RetryableStatusCodes: []int{http.StatusBadRequest, http.StatusForbidden},
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{
+				Channel: channel,
+				Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+			},
+			CurrentModelIndex: 0,
+		},
+	}
+
+	require.True(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusBadRequest}))
+	require.True(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusForbidden}))
+	require.False(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusUnauthorized}))
 }
 
 func TestPersistentOutboundTransformer_CanRetry_429_WithMultipleModels(t *testing.T) {

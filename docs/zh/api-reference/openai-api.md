@@ -186,6 +186,49 @@ fmt.Println(responseText)
 // AxonHub 自动转换 OpenAI 格式 → Gemini 格式
 ```
 
+## Moderations API
+
+AxonHub 通过独立端点提供 OpenAI 兼容的内容审核（Moderations）能力。
+
+**端点：**
+- `POST /v1/moderations` - 对文本和/或图片输入进行分类，支持 `omni-moderation-latest` 等模型
+
+**请求参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `input` | string \| string[] \| 多模态对象数组 | ✅ | 待分类内容。多模态项为 `{ "type": "text", "text": "..." }` 或 `{ "type": "image_url", "image_url": { "url": "..." } }`。 |
+| `model` | string | ❌ | 审核模型。省略时 AxonHub 默认使用 `omni-moderation-latest`。该模型需配置在具备 `openai/moderations` 端点的渠道上。 |
+
+**独立请求示例：**
+
+```json
+{
+  "model": "omni-moderation-latest",
+  "input": "...text to classify goes here..."
+}
+```
+
+也支持多模态输入（文本 + 图片）：
+
+```json
+{
+  "model": "omni-moderation-latest",
+  "input": [
+    { "type": "text", "text": "...text to classify goes here..." },
+    {
+      "type": "image_url",
+      "image_url": { "url": "https://example.com/image.png" }
+    }
+  ]
+}
+```
+
+**说明：**
+- Chat Completions / Responses 不建模可选的内联 `moderation` 请求字段，请改用本独立端点。
+- OpenAI 及部分 OpenAI 兼容渠道类型默认包含 `openai/moderations` 端点。若上游不支持 `/moderations`，可能返回上游错误；可按需移除或覆盖该端点。
+- 开启请求体透传且入站/出站 format 一致时，moderations 请求仍会修补顶层 `model` 字段以支持模型映射。
+
 ## 嵌入 API
 
 AxonHub 通过 OpenAI 兼容 API 提供全面的文本和多模态嵌入生成支持。
@@ -332,6 +375,7 @@ AxonHub 提供增强的 `/v1/models` 端点，可列出可用模型并选择性�
 | `description` | 字符串 | 模型描述 |
 | `context_length` | 整数 | 最大上下文长度（以令牌计） |
 | `max_output_tokens` | 整数 | 最大输出令牌数 |
+| `modalities` | 对象 | 模型支持的输入输出类型（input, output） |
 | `capabilities` | 对象 | 模型能力（vision, tool_call, reasoning） |
 | `pricing` | 对象 | 定价信息（input, output, cache_read, cache_write） |
 | `icon` | 字符串 | 模型图标 URL |
@@ -378,6 +422,10 @@ AxonHub 提供增强的 `/v1/models` 端点，可列出可用模型并选择性�
       "description": "GPT-4 model with advanced reasoning capabilities",
       "context_length": 8192,
       "max_output_tokens": 4096,
+      "modalities": {
+        "input": ["text", "image"],
+        "output": ["text"]
+      },
       "capabilities": {
         "vision": false,
         "tool_call": true,
@@ -403,6 +451,9 @@ AxonHub 提供增强的 `/v1/models` 端点，可列出可用模型并选择性�
 - `description` - 详细的模型描述
 - `context_length` - 上下文窗口的最大令牌数
 - `max_output_tokens` - 响应中的最大令牌数
+- `modalities` - 模型支持的输入输出模态类型：
+  - `input` - 支持的输入类型数组（如 `text`、`image`、`audio`、`video`、`pdf`）
+  - `output` - 支持的输出类型数组（如 `text`）
 - `capabilities` - 包含布尔标志的对象：
   - `vision` - 支持图像输入
   - `tool_call` - 支持函数调用

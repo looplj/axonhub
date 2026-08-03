@@ -14,7 +14,13 @@ function Write-Err([string]$m){ Write-Host "[ERROR] $m" -ForegroundColor Red }
 $ServiceName = 'axonhub'
 $BaseDir = Join-Path $env:LOCALAPPDATA 'AxonHub'
 $ConfigFile = Join-Path $BaseDir 'config.yml'
-$BinaryPath = Join-Path $BaseDir 'axonhub.exe'
+$InstalledBinaryPath = Join-Path $BaseDir 'axonhub.exe'
+$BundledBinaryPath = Join-Path $PSScriptRoot 'axonhub.exe'
+$BinaryPath = $InstalledBinaryPath
+# Prefer the installed binary so upgrades take effect, but allow release archives to run in place.
+if(-not (Test-Path -LiteralPath $InstalledBinaryPath -PathType Leaf) -and (Test-Path -LiteralPath $BundledBinaryPath -PathType Leaf)){
+  $BinaryPath = $BundledBinaryPath
+}
 $PidFile = Join-Path $BaseDir 'axonhub.pid'
 $LogFile = Join-Path $BaseDir 'axonhub.log'
 $DefaultPort = 8090
@@ -40,12 +46,17 @@ function Ensure-Dirs([string]$path){ if(-not (Test-Path $path)){ New-Item -ItemT
 
 function Get-ConfiguredPort {
   $port = $DefaultPort
-  if(Test-Path $BinaryPath){
+  if(Test-Path -LiteralPath $BinaryPath -PathType Leaf){
     try {
-      $configPort = $null
-      $configPort = & $BinaryPath config get server.port 2>$null
-      if($configPort -match '^[0-9]+$'){
-        $port = [int]$configPort
+      Push-Location -LiteralPath $BaseDir
+      try {
+        $configPort = $null
+        $configPort = & $BinaryPath config get server.port 2>$null
+        if($configPort -match '^[0-9]+$'){
+          $port = [int]$configPort
+        }
+      } finally {
+        Pop-Location
       }
     } catch {}
   }
@@ -70,8 +81,8 @@ $stderrTempFile = Join-Path $env:TEMP ("axonhub-" + [guid]::NewGuid().ToString()
 
 Write-Info 'Starting AxonHub...'
 
-if(-not (Test-Path $BinaryPath)){
-  Write-Err "AxonHub binary not found at $BinaryPath"
+if(-not (Test-Path -LiteralPath $BinaryPath -PathType Leaf)){
+  Write-Err "AxonHub binary not found at $InstalledBinaryPath or $BundledBinaryPath"
   Write-Info 'Please run the installer first: install.bat'
   exit 1
 }
@@ -103,7 +114,7 @@ if(-not (Check-Port $port)){
 
 $ConfigArgs = @()
 if(Test-Path $ConfigFile){ 
-  # Config exists, binary will auto-detect it from $HOME/.config/axonhub/
+  # The process working directory below makes this config discoverable.
   Write-Info "Configuration found at $ConfigFile, binary will auto-detect it" 
 } else { 
   Write-Warn "Configuration not found at $ConfigFile, starting with defaults" 
@@ -112,9 +123,9 @@ if(Test-Path $ConfigFile){
 Write-Info 'Starting AxonHub process...'
 try {
   if($ConfigArgs.Count -gt 0){
-    $p = Start-Process -FilePath $BinaryPath -ArgumentList $ConfigArgs -RedirectStandardOutput $stdoutTempFile -RedirectStandardError $stderrTempFile -PassThru -WindowStyle Hidden
+    $p = Start-Process -FilePath $BinaryPath -ArgumentList $ConfigArgs -WorkingDirectory $BaseDir -RedirectStandardOutput $stdoutTempFile -RedirectStandardError $stderrTempFile -PassThru -WindowStyle Hidden
   } else {
-    $p = Start-Process -FilePath $BinaryPath -RedirectStandardOutput $stdoutTempFile -RedirectStandardError $stderrTempFile -PassThru -WindowStyle Hidden
+    $p = Start-Process -FilePath $BinaryPath -WorkingDirectory $BaseDir -RedirectStandardOutput $stdoutTempFile -RedirectStandardError $stderrTempFile -PassThru -WindowStyle Hidden
   }
   Start-Sleep -Seconds 2
   if($p -and (Get-Process -Id $p.Id -ErrorAction SilentlyContinue)){

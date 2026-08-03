@@ -4,6 +4,9 @@
   "dashboard.sections.apiKeys": "API密钥分析",
   "dashboard.sections.models": "模型分析",
   "dashboard.sections.performance": "性能分析",
+  "dashboard.sections.users": "用户分析",
+  "dashboard.sections.analytics": "数据详情分析",
+  "dashboard.sections.analyticsDescription": "多维度数据分析，支持自定义筛选",
   "dashboard.cards.requestsByTime": "请求数统计",
   "dashboard.cards.successRate": "成功率",
   "dashboard.cards.tokenStats": "词元统计",
@@ -91,5 +94,12 @@
   "dashboard.channelSuccessRates.inputTokens": "输入",
   "dashboard.channelSuccessRates.outputTokens": "输出",
   "dashboard.channelSuccessRates.totalTokens": "总计",
-  "dashboard.viewAll": "查看全部"
+  "dashboard.viewAll": "查看全部",
+  "dashboard.charts.tokensByUser": "按用户统计Token",
+  "dashboard.charts.tokensByUserDescription": "各用户的Token使用分布。",
+  "dashboard.charts.noUserData": "暂无用户使用数据",
+  "dashboard.stats.user": "用户",
+  "dashboard.stats.requestCount": "请求数",
+  "dashboard.stats.tokenCount": "Token数",
+  "dashboard.stats.userCost": "费用"
 }

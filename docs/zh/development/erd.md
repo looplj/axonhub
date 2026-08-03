@@ -331,6 +331,7 @@ AxonHub 采用多层级的权限管理架构，支持 Global（全局）和 Proj
 - `name`: API Key 名称
 - `status`: 状态（enabled/disabled/archived）
 - `scopes`: API Key 特定权限范围（默认：read_channels, write_requests）
+- `allowed_ips`: 此 API Key 的 IP CIDR 白名单。如果非空，仅接受来自匹配源 IP 的请求。
 - `profiles`: API Key 配置文件（JSON）
 - `created_at`: 创建时间
 - `updated_at`: 更新时间

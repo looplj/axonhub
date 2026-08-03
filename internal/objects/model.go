@@ -39,7 +39,22 @@ type ModelCard struct {
 type ModelSettings struct {
 	DisableDeveloperSettingsInheritance bool                `json:"disableDeveloperSettingsInheritance"`
 	Associations                        []*ModelAssociation `json:"associations"`
+	LoadBalancerStrategy                string              `json:"loadBalancerStrategy"`
+	TraceStickyMode                     string              `json:"traceStickyMode"`
 }
+
+const (
+	ModelAssociationConditionFieldPromptTokens        = "prompt_tokens"
+	ModelAssociationConditionFieldStream              = "stream"
+	ModelAssociationConditionFieldRequestFormat       = "request_format"
+	ModelAssociationConditionFieldDailyTime           = "daily_time"
+	ModelAssociationConditionFieldHasImage            = "has_image"
+	ModelAssociationConditionFieldHasVideo            = "has_video"
+	ModelAssociationConditionFieldHasDocument         = "has_document"
+	ModelAssociationConditionFieldHasAudio            = "has_audio"
+	ModelAssociationConditionFieldRequestHeader       = "request_header"
+	ModelAssociationConditionFieldRequestHeaderPrefix = "request_header."
+)
 
 type ModelAssociation struct {
 	// channel_model: the specified model id in the specified channel

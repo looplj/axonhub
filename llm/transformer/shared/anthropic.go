@@ -12,15 +12,15 @@ func EncodeAnthropicSignature(signature *string) *string {
 }
 
 // DecodeAnthropicSignature checks whether a signature blob is safe to use as an Anthropic thinking signature.
-// Returns the raw value if the blob is likely Anthropic or its provider is unknown.
-// Returns nil if the blob is clearly from a different provider (OpenAI/Gemini).
+// Returns the raw value only if the blob is recognized as Anthropic.
+// Returns nil for signatures from other providers (OpenAI/Gemini) or unknown formats.
 func DecodeAnthropicSignature(signature *string) *string {
 	if signature == nil {
 		return nil
 	}
 
 	result := GuessSignatureProvider(*signature)
-	if result.Provider == ProviderOpenAI || result.Provider == ProviderGemini {
+	if result.Provider != ProviderAnthropic {
 		return nil
 	}
 

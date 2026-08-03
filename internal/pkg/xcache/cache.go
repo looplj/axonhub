@@ -31,7 +31,7 @@ import (
 //
 // Usage example:
 //   mem := xcache.NewMemory[string](gocache.New(5*time.Minute, 10*time.Minute))
-//   rdb := redis.NewClient(&redis.Options{Addr: "127.0.0.1:6379"})
+//   rdb := redis.NewUniversalClient(&redis.UniversalOptions{Addrs: []string{"127.0.0.1:6379"}})
 //   rds := xcache.NewRedis[string](rdb, store.WithExpiration(15*time.Second))
 //   l2 := xcache.NewTwoLevel[string](mem, rds)
 //
@@ -82,7 +82,7 @@ func NewFromConfig[T any](cfg Config) Cache[T] {
 	// Build redis setter cache if configured
 	var rds SetterCache[T]
 
-	if (cfg.Redis.Addr != "" || cfg.Redis.URL != "") && cfg.Mode != ModeMemory {
+	if (cfg.Redis.Addr != "" || len(cfg.Redis.Addrs) != 0 || cfg.Redis.URL != "") && cfg.Mode != ModeMemory {
 		client, err := xredis.NewClient(cfg.Redis)
 		if err != nil {
 			panic(fmt.Errorf("invalid redis config: %w", err))
@@ -129,14 +129,14 @@ func defaultIfZero(d, def time.Duration) time.Duration {
 
 // NewRedis creates a pure Redis cache using github.com/redis/go-redis/v9 as the client.
 // You can pass store options like store.WithExpiration, store.WithTags, etc.
-func NewRedis[T any](client *redis.Client, options ...Option) SetterCache[T] {
+func NewRedis[T any](client redis.UniversalClient, options ...Option) SetterCache[T] {
 	store := redis_store.NewRedisStore[T](client, options...)
 	return cachelib.New[T](store)
 }
 
-// NewRedisWithOptions builds a redis.Client for you and returns the cache.
-func NewRedisWithOptions[T any](opts *redis.Options, options ...Option) SetterCache[T] {
-	client := redis.NewClient(opts)
+// NewRedisWithOptions builds a redis.UniversalClient for you and returns the cache.
+func NewRedisWithOptions[T any](opts *redis.UniversalOptions, options ...Option) SetterCache[T] {
+	client := redis.NewUniversalClient(opts)
 	return NewRedis[T](client, options...)
 }
 
@@ -148,7 +148,7 @@ func NewTwoLevel[T any](memory SetterCache[T], redis SetterCache[T]) Cache[T] {
 }
 
 // NewTwoLevelWithClients is a convenience to create a 2-level cache from raw clients directly.
-func NewTwoLevelWithClients[T any](memClient *gocache.Cache, redisClient *redis.Client, memOptions []Option, redisOptions []Option) Cache[T] {
+func NewTwoLevelWithClients[T any](memClient *gocache.Cache, redisClient redis.UniversalClient, memOptions []Option, redisOptions []Option) Cache[T] {
 	mem := NewMemory[T](memClient, memOptions...)
 	rds := NewRedis[T](redisClient, redisOptions...)
 

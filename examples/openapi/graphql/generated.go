@@ -4,6 +4,7 @@ package graphql
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/Khan/genqlient/graphql"
 )
@@ -17,6 +18,7 @@ type APIKeyProfileInput struct {
 	ModelIDs             []string              `json:"modelIDs"`
 	Quota                *APIKeyQuotaInput     `json:"quota,omitempty"`
 	LoadBalanceStrategy  *string               `json:"loadBalanceStrategy,omitempty"`
+	TraceStickyMode      *string               `json:"traceStickyMode,omitempty"`
 }
 
 // GetName returns APIKeyProfileInput.Name, and is useful for accessing the field via an interface.
@@ -44,6 +46,9 @@ func (v *APIKeyProfileInput) GetQuota() *APIKeyQuotaInput { return v.Quota }
 
 // GetLoadBalanceStrategy returns APIKeyProfileInput.LoadBalanceStrategy, and is useful for accessing the field via an interface.
 func (v *APIKeyProfileInput) GetLoadBalanceStrategy() *string { return v.LoadBalanceStrategy }
+
+// GetTraceStickyMode returns APIKeyProfileInput.TraceStickyMode, and is useful for accessing the field via an interface.
+func (v *APIKeyProfileInput) GetTraceStickyMode() *string { return v.TraceStickyMode }
 
 type APIKeyQuotaCalendarDurationInput struct {
 	Unit APIKeyQuotaCalendarDurationUnit `json:"unit"`
@@ -141,6 +146,80 @@ var AllAPIKeyQuotaPeriodType = []APIKeyQuotaPeriodType{
 	APIKeyQuotaPeriodTypeCalendarDuration,
 }
 
+// APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage includes the requested fields of the GraphQL type APIKeyProfileQuotaUsage.
+type APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage struct {
+	ProfileName string                                                                            `json:"profileName"`
+	Window      *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow `json:"window"`
+	Usage       *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage   `json:"usage"`
+}
+
+// GetProfileName returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage.ProfileName, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage) GetProfileName() string {
+	return v.ProfileName
+}
+
+// GetWindow returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage.Window, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage) GetWindow() *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow {
+	return v.Window
+}
+
+// GetUsage returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage.Usage, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage) GetUsage() *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage {
+	return v.Usage
+}
+
+// APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage includes the requested fields of the GraphQL type APIKeyQuotaUsage.
+type APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage struct {
+	RequestCount int         `json:"requestCount"`
+	TotalTokens  int         `json:"totalTokens"`
+	TotalCost    json.Number `json:"totalCost"`
+}
+
+// GetRequestCount returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage.RequestCount, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage) GetRequestCount() int {
+	return v.RequestCount
+}
+
+// GetTotalTokens returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage.TotalTokens, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage) GetTotalTokens() int {
+	return v.TotalTokens
+}
+
+// GetTotalCost returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage.TotalCost, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageUsageAPIKeyQuotaUsage) GetTotalCost() json.Number {
+	return v.TotalCost
+}
+
+// APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow includes the requested fields of the GraphQL type APIKeyQuotaWindow.
+type APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow struct {
+	Start *string `json:"start"`
+	End   *string `json:"end"`
+}
+
+// GetStart returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow.Start, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow) GetStart() *string {
+	return v.Start
+}
+
+// GetEnd returns APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow.End, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsageWindowAPIKeyQuotaWindow) GetEnd() *string {
+	return v.End
+}
+
+// APIKeyQuotaUsagesResponse is returned by APIKeyQuotaUsages on success.
+type APIKeyQuotaUsagesResponse struct {
+	// Returns quota usage for the profiles that have quota enabled on an API key.
+	// Provide exactly one of apiKeyId, key, or name; all identify a key, and only
+	// keys inside the caller's own project are visible (requires the read_api_keys
+	// scope).
+	ApiKeyQuotaUsages []*APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage `json:"apiKeyQuotaUsages"`
+}
+
+// GetApiKeyQuotaUsages returns APIKeyQuotaUsagesResponse.ApiKeyQuotaUsages, and is useful for accessing the field via an interface.
+func (v *APIKeyQuotaUsagesResponse) GetApiKeyQuotaUsages() []*APIKeyQuotaUsagesApiKeyQuotaUsagesAPIKeyProfileQuotaUsage {
+	return v.ApiKeyQuotaUsages
+}
+
 type ChannelTagsMatchMode string
 
 const (
@@ -185,16 +264,143 @@ func (v *CreateAPIKeyResponse) GetCreateLLMAPIKey() *CreateAPIKeyCreateLLMAPIKey
 	return v.CreateLLMAPIKey
 }
 
+// GetAPIKeyApiKeyAPIKey includes the requested fields of the GraphQL type APIKey.
+type GetAPIKeyApiKeyAPIKey struct {
+	Id       string                         `json:"id"`
+	Key      string                         `json:"key"`
+	Name     string                         `json:"name"`
+	Scopes   []string                       `json:"scopes"`
+	Profiles *GetAPIKeyApiKeyAPIKeyProfiles `json:"profiles"`
+}
+
+// GetId returns GetAPIKeyApiKeyAPIKey.Id, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKey) GetId() string { return v.Id }
+
+// GetKey returns GetAPIKeyApiKeyAPIKey.Key, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKey) GetKey() string { return v.Key }
+
+// GetName returns GetAPIKeyApiKeyAPIKey.Name, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKey) GetName() string { return v.Name }
+
+// GetScopes returns GetAPIKeyApiKeyAPIKey.Scopes, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKey) GetScopes() []string { return v.Scopes }
+
+// GetProfiles returns GetAPIKeyApiKeyAPIKey.Profiles, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKey) GetProfiles() *GetAPIKeyApiKeyAPIKeyProfiles { return v.Profiles }
+
+// GetAPIKeyApiKeyAPIKeyProfiles includes the requested fields of the GraphQL type APIKeyProfiles.
+type GetAPIKeyApiKeyAPIKeyProfiles struct {
+	ActiveProfile string                                                `json:"activeProfile"`
+	Profiles      []*GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile `json:"profiles"`
+}
+
+// GetActiveProfile returns GetAPIKeyApiKeyAPIKeyProfiles.ActiveProfile, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfiles) GetActiveProfile() string { return v.ActiveProfile }
+
+// GetProfiles returns GetAPIKeyApiKeyAPIKeyProfiles.Profiles, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfiles) GetProfiles() []*GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile {
+	return v.Profiles
+}
+
+// GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile includes the requested fields of the GraphQL type APIKeyProfile.
+type GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile struct {
+	Name                 string                                                                         `json:"name"`
+	ModelMappings        []*GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping `json:"modelMappings"`
+	ChannelIDs           []int                                                                          `json:"channelIDs"`
+	ChannelTags          []string                                                                       `json:"channelTags"`
+	ChannelTagsMatchMode *ChannelTagsMatchMode                                                          `json:"channelTagsMatchMode"`
+	ModelIDs             []string                                                                       `json:"modelIDs"`
+	LoadBalanceStrategy  *string                                                                        `json:"loadBalanceStrategy"`
+	TraceStickyMode      *string                                                                        `json:"traceStickyMode"`
+}
+
+// GetName returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.Name, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetName() string { return v.Name }
+
+// GetModelMappings returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.ModelMappings, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetModelMappings() []*GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping {
+	return v.ModelMappings
+}
+
+// GetChannelIDs returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.ChannelIDs, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetChannelIDs() []int {
+	return v.ChannelIDs
+}
+
+// GetChannelTags returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.ChannelTags, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetChannelTags() []string {
+	return v.ChannelTags
+}
+
+// GetChannelTagsMatchMode returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.ChannelTagsMatchMode, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetChannelTagsMatchMode() *ChannelTagsMatchMode {
+	return v.ChannelTagsMatchMode
+}
+
+// GetModelIDs returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.ModelIDs, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetModelIDs() []string {
+	return v.ModelIDs
+}
+
+// GetLoadBalanceStrategy returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.LoadBalanceStrategy, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetLoadBalanceStrategy() *string {
+	return v.LoadBalanceStrategy
+}
+
+// GetTraceStickyMode returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile.TraceStickyMode, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfile) GetTraceStickyMode() *string {
+	return v.TraceStickyMode
+}
+
+// GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping includes the requested fields of the GraphQL type ModelMapping.
+type GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping struct {
+	From string `json:"from"`
+	To   string `json:"to"`
+}
+
+// GetFrom returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping.From, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping) GetFrom() string {
+	return v.From
+}
+
+// GetTo returns GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping.To, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyApiKeyAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping) GetTo() string {
+	return v.To
+}
+
+// GetAPIKeyResponse is returned by GetAPIKey on success.
+type GetAPIKeyResponse struct {
+	// Returns an API key's details (id, key, name, scopes, profiles).
+	// Provide exactly one of id, key, or name; all identify a key, and only keys
+	// inside the caller's own project are visible (requires the read_api_keys scope).
+	ApiKey *GetAPIKeyApiKeyAPIKey `json:"apiKey"`
+}
+
+// GetApiKey returns GetAPIKeyResponse.ApiKey, and is useful for accessing the field via an interface.
+func (v *GetAPIKeyResponse) GetApiKey() *GetAPIKeyApiKeyAPIKey { return v.ApiKey }
+
 type LoadApiKeyProfileTemplateInput struct {
-	TemplateID string `json:"templateID"`
-	ApiKeyID   string `json:"apiKeyID"`
+	// Template to load. Provide exactly one of templateID or templateName;
+	// templateName resolves within the caller's own project.
+	TemplateID   *string `json:"templateID,omitempty"`
+	TemplateName *string `json:"templateName,omitempty"`
+	// Target API key. Provide exactly one of apiKeyID or apiKeyName;
+	// apiKeyName resolves within the caller's own project.
+	ApiKeyID   *string `json:"apiKeyID,omitempty"`
+	ApiKeyName *string `json:"apiKeyName,omitempty"`
 }
 
 // GetTemplateID returns LoadApiKeyProfileTemplateInput.TemplateID, and is useful for accessing the field via an interface.
-func (v *LoadApiKeyProfileTemplateInput) GetTemplateID() string { return v.TemplateID }
+func (v *LoadApiKeyProfileTemplateInput) GetTemplateID() *string { return v.TemplateID }
+
+// GetTemplateName returns LoadApiKeyProfileTemplateInput.TemplateName, and is useful for accessing the field via an interface.
+func (v *LoadApiKeyProfileTemplateInput) GetTemplateName() *string { return v.TemplateName }
 
 // GetApiKeyID returns LoadApiKeyProfileTemplateInput.ApiKeyID, and is useful for accessing the field via an interface.
-func (v *LoadApiKeyProfileTemplateInput) GetApiKeyID() string { return v.ApiKeyID }
+func (v *LoadApiKeyProfileTemplateInput) GetApiKeyID() *string { return v.ApiKeyID }
+
+// GetApiKeyName returns LoadApiKeyProfileTemplateInput.ApiKeyName, and is useful for accessing the field via an interface.
+func (v *LoadApiKeyProfileTemplateInput) GetApiKeyName() *string { return v.ApiKeyName }
 
 // LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKey includes the requested fields of the GraphQL type APIKey.
 type LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKey struct {
@@ -249,6 +455,7 @@ type LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPI
 	ChannelTagsMatchMode *ChannelTagsMatchMode                                                                                             `json:"channelTagsMatchMode"`
 	ModelIDs             []string                                                                                                          `json:"modelIDs"`
 	LoadBalanceStrategy  *string                                                                                                           `json:"loadBalanceStrategy"`
+	TraceStickyMode      *string                                                                                                           `json:"traceStickyMode"`
 }
 
 // GetName returns LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile.Name, and is useful for accessing the field via an interface.
@@ -284,6 +491,11 @@ func (v *LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfile
 // GetLoadBalanceStrategy returns LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile.LoadBalanceStrategy, and is useful for accessing the field via an interface.
 func (v *LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile) GetLoadBalanceStrategy() *string {
 	return v.LoadBalanceStrategy
+}
+
+// GetTraceStickyMode returns LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile.TraceStickyMode, and is useful for accessing the field via an interface.
+func (v *LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfile) GetTraceStickyMode() *string {
+	return v.TraceStickyMode
 }
 
 // LoadApiKeyProfileTemplateLoadApiKeyProfileTemplateAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping includes the requested fields of the GraphQL type ModelMapping.
@@ -336,6 +548,8 @@ func (v *UpdateAPIKeyProfilesInput) GetProfiles() []*APIKeyProfileInput { return
 
 // UpdateAPIKeyProfilesResponse is returned by UpdateAPIKeyProfiles on success.
 type UpdateAPIKeyProfilesResponse struct {
+	// Updates the profiles of an API key. Provide exactly one of id or name;
+	// name resolves within the caller's own project, where API key names are unique.
 	UpdateAPIKeyProfiles *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKey `json:"updateAPIKeyProfiles"`
 }
 
@@ -395,6 +609,7 @@ type UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile
 	ChannelTagsMatchMode *ChannelTagsMatchMode                                                                                   `json:"channelTagsMatchMode"`
 	ModelIDs             []string                                                                                                `json:"modelIDs"`
 	LoadBalanceStrategy  *string                                                                                                 `json:"loadBalanceStrategy"`
+	TraceStickyMode      *string                                                                                                 `json:"traceStickyMode"`
 }
 
 // GetName returns UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile.Name, and is useful for accessing the field via an interface.
@@ -432,6 +647,11 @@ func (v *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyPro
 	return v.LoadBalanceStrategy
 }
 
+// GetTraceStickyMode returns UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile.TraceStickyMode, and is useful for accessing the field via an interface.
+func (v *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfile) GetTraceStickyMode() *string {
+	return v.TraceStickyMode
+}
+
 // UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping includes the requested fields of the GraphQL type ModelMapping.
 type UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyProfileModelMappingsModelMapping struct {
 	From string `json:"from"`
@@ -448,6 +668,22 @@ func (v *UpdateAPIKeyProfilesUpdateAPIKeyProfilesAPIKeyProfilesProfilesAPIKeyPro
 	return v.To
 }
 
+// __APIKeyQuotaUsagesInput is used internally by genqlient
+type __APIKeyQuotaUsagesInput struct {
+	ApiKeyId *string `json:"apiKeyId,omitempty"`
+	Key      *string `json:"key,omitempty"`
+	Name     *string `json:"name,omitempty"`
+}
+
+// GetApiKeyId returns __APIKeyQuotaUsagesInput.ApiKeyId, and is useful for accessing the field via an interface.
+func (v *__APIKeyQuotaUsagesInput) GetApiKeyId() *string { return v.ApiKeyId }
+
+// GetKey returns __APIKeyQuotaUsagesInput.Key, and is useful for accessing the field via an interface.
+func (v *__APIKeyQuotaUsagesInput) GetKey() *string { return v.Key }
+
+// GetName returns __APIKeyQuotaUsagesInput.Name, and is useful for accessing the field via an interface.
+func (v *__APIKeyQuotaUsagesInput) GetName() *string { return v.Name }
+
 // __CreateAPIKeyInput is used internally by genqlient
 type __CreateAPIKeyInput struct {
 	Name string `json:"name"`
@@ -455,6 +691,22 @@ type __CreateAPIKeyInput struct {
 
 // GetName returns __CreateAPIKeyInput.Name, and is useful for accessing the field via an interface.
 func (v *__CreateAPIKeyInput) GetName() string { return v.Name }
+
+// __GetAPIKeyInput is used internally by genqlient
+type __GetAPIKeyInput struct {
+	Id   *string `json:"id,omitempty"`
+	Key  *string `json:"key,omitempty"`
+	Name *string `json:"name,omitempty"`
+}
+
+// GetId returns __GetAPIKeyInput.Id, and is useful for accessing the field via an interface.
+func (v *__GetAPIKeyInput) GetId() *string { return v.Id }
+
+// GetKey returns __GetAPIKeyInput.Key, and is useful for accessing the field via an interface.
+func (v *__GetAPIKeyInput) GetKey() *string { return v.Key }
+
+// GetName returns __GetAPIKeyInput.Name, and is useful for accessing the field via an interface.
+func (v *__GetAPIKeyInput) GetName() *string { return v.Name }
 
 // __LoadApiKeyProfileTemplateInput is used internally by genqlient
 type __LoadApiKeyProfileTemplateInput struct {
@@ -466,15 +718,68 @@ func (v *__LoadApiKeyProfileTemplateInput) GetInput() *LoadApiKeyProfileTemplate
 
 // __UpdateAPIKeyProfilesInput is used internally by genqlient
 type __UpdateAPIKeyProfilesInput struct {
-	Id    string                     `json:"id"`
+	Id    *string                    `json:"id,omitempty"`
+	Name  *string                    `json:"name,omitempty"`
 	Input *UpdateAPIKeyProfilesInput `json:"input,omitempty"`
 }
 
 // GetId returns __UpdateAPIKeyProfilesInput.Id, and is useful for accessing the field via an interface.
-func (v *__UpdateAPIKeyProfilesInput) GetId() string { return v.Id }
+func (v *__UpdateAPIKeyProfilesInput) GetId() *string { return v.Id }
+
+// GetName returns __UpdateAPIKeyProfilesInput.Name, and is useful for accessing the field via an interface.
+func (v *__UpdateAPIKeyProfilesInput) GetName() *string { return v.Name }
 
 // GetInput returns __UpdateAPIKeyProfilesInput.Input, and is useful for accessing the field via an interface.
 func (v *__UpdateAPIKeyProfilesInput) GetInput() *UpdateAPIKeyProfilesInput { return v.Input }
+
+// The query executed by APIKeyQuotaUsages.
+const APIKeyQuotaUsages_Operation = `
+query APIKeyQuotaUsages ($apiKeyId: ID, $key: String, $name: String) {
+	apiKeyQuotaUsages(apiKeyId: $apiKeyId, key: $key, name: $name) {
+		profileName
+		window {
+			start
+			end
+		}
+		usage {
+			requestCount
+			totalTokens
+			totalCost
+		}
+	}
+}
+`
+
+// Provide exactly one of $apiKeyId, $key, or $name. Requires the read_api_keys
+// scope and only returns usage for keys inside the service account's own project.
+func APIKeyQuotaUsages(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	apiKeyId *string,
+	key *string,
+	name *string,
+) (data_ *APIKeyQuotaUsagesResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "APIKeyQuotaUsages",
+		Query:  APIKeyQuotaUsages_Operation,
+		Variables: &__APIKeyQuotaUsagesInput{
+			ApiKeyId: apiKeyId,
+			Key:      key,
+			Name:     name,
+		},
+	}
+
+	data_ = &APIKeyQuotaUsagesResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
 
 // The mutation executed by CreateAPIKey.
 const CreateAPIKey_Operation = `
@@ -513,6 +818,67 @@ func CreateAPIKey(
 	return data_, err_
 }
 
+// The query executed by GetAPIKey.
+const GetAPIKey_Operation = `
+query GetAPIKey ($id: ID, $key: String, $name: String) {
+	apiKey(id: $id, key: $key, name: $name) {
+		id
+		key
+		name
+		scopes
+		profiles {
+			activeProfile
+			profiles {
+				name
+				modelMappings {
+					from
+					to
+				}
+				channelIDs
+				channelTags
+				channelTagsMatchMode
+				modelIDs
+				loadBalanceStrategy
+				traceStickyMode
+			}
+		}
+	}
+}
+`
+
+// Look up an API key's details (id, key, name, scopes, profiles) by exactly one
+// of $id, $key, or $name. Requires the read_api_keys scope and only sees keys
+// inside the service account's own project. This is the way to resolve a key's
+// id/key from its name before calling id-based operations.
+func GetAPIKey(
+	ctx_ context.Context,
+	client_ graphql.Client,
+	id *string,
+	key *string,
+	name *string,
+) (data_ *GetAPIKeyResponse, err_ error) {
+	req_ := &graphql.Request{
+		OpName: "GetAPIKey",
+		Query:  GetAPIKey_Operation,
+		Variables: &__GetAPIKeyInput{
+			Id:   id,
+			Key:  key,
+			Name: name,
+		},
+	}
+
+	data_ = &GetAPIKeyResponse{}
+	resp_ := &graphql.Response{Data: data_}
+
+	err_ = client_.MakeRequest(
+		ctx_,
+		req_,
+		resp_,
+	)
+
+	return data_, err_
+}
+
 // The mutation executed by LoadApiKeyProfileTemplate.
 const LoadApiKeyProfileTemplate_Operation = `
 mutation LoadApiKeyProfileTemplate ($input: LoadApiKeyProfileTemplateInput!) {
@@ -534,12 +900,16 @@ mutation LoadApiKeyProfileTemplate ($input: LoadApiKeyProfileTemplateInput!) {
 				channelTagsMatchMode
 				modelIDs
 				loadBalanceStrategy
+				traceStickyMode
 			}
 		}
 	}
 }
 `
 
+// In the input, identify the template by exactly one of templateID/templateName
+// and the target key by exactly one of apiKeyID/apiKeyName; identifiers can be
+// mixed (e.g. templateName + apiKeyID). Names resolve within the caller's project.
 func LoadApiKeyProfileTemplate(
 	ctx_ context.Context,
 	client_ graphql.Client,
@@ -567,8 +937,8 @@ func LoadApiKeyProfileTemplate(
 
 // The mutation executed by UpdateAPIKeyProfiles.
 const UpdateAPIKeyProfiles_Operation = `
-mutation UpdateAPIKeyProfiles ($id: ID!, $input: UpdateAPIKeyProfilesInput!) {
-	updateAPIKeyProfiles(id: $id, input: $input) {
+mutation UpdateAPIKeyProfiles ($id: ID, $name: String, $input: UpdateAPIKeyProfilesInput!) {
+	updateAPIKeyProfiles(id: $id, name: $name, input: $input) {
 		id
 		key
 		name
@@ -586,16 +956,20 @@ mutation UpdateAPIKeyProfiles ($id: ID!, $input: UpdateAPIKeyProfilesInput!) {
 				channelTagsMatchMode
 				modelIDs
 				loadBalanceStrategy
+				traceStickyMode
 			}
 		}
 	}
 }
 `
 
+// Provide exactly one of $id or $name to identify the target key. $name resolves
+// within the service account's own project, where API key names are unique.
 func UpdateAPIKeyProfiles(
 	ctx_ context.Context,
 	client_ graphql.Client,
-	id string,
+	id *string,
+	name *string,
 	input *UpdateAPIKeyProfilesInput,
 ) (data_ *UpdateAPIKeyProfilesResponse, err_ error) {
 	req_ := &graphql.Request{
@@ -603,6 +977,7 @@ func UpdateAPIKeyProfiles(
 		Query:  UpdateAPIKeyProfiles_Operation,
 		Variables: &__UpdateAPIKeyProfilesInput{
 			Id:    id,
+			Name:  name,
 			Input: input,
 		},
 	}

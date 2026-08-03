@@ -1,5 +1,11 @@
 package biz
 
+const (
+	defaultChannelTestSystemPrompt = "You are a helpful assistant."
+	defaultChannelTestUserPrompt   = "Hello world, I'm AxonHub.\nPlease tell me who you are?"
+	maxChannelTestPromptRunes      = 4096
+)
+
 var defaultStoragePolicy = StoragePolicy{
 	StoreChunks:       false,
 	LivePreview:       false,
@@ -24,6 +30,7 @@ var defaultRetryPolicy = RetryPolicy{
 	MaxSingleChannelRetries: 2,
 	RetryDelayMs:            1000,
 	LoadBalancerStrategy:    "adaptive",
+	TraceStickyMode:         TraceStickyPreferPreviousChannel,
 	Enabled:                 true,
 	UpstreamErrorPolicy: UpstreamErrorPolicy{
 		Mode: UpstreamErrorModePassthrough,
@@ -47,6 +54,8 @@ var defaultChannelSetting = SystemChannelSettings{
 	AutoSync: ChannelModelAutoSyncSetting{
 		Frequency: AutoSyncFrequencyOneHour,
 	},
+	TestSystemPrompt: defaultChannelTestSystemPrompt,
+	TestUserPrompt:   defaultChannelTestUserPrompt,
 }
 
 var defaultGeneralSettings = SystemGeneralSettings{
@@ -55,14 +64,16 @@ var defaultGeneralSettings = SystemGeneralSettings{
 }
 
 var defaultAutoBackupSettings = AutoBackupSettings{
-	Enabled:            false,
-	Frequency:          BackupFrequencyDaily,
-	IncludeChannels:    true,
-	IncludeModels:      true,
-	IncludeAPIKeys:     false,
-	IncludeModelPrices: true,
-	IncludeUsageStats:  false,
-	RetentionDays:      30,
+	Enabled:              false,
+	Frequency:            BackupFrequencyDaily,
+	IncludeSystemConfigs: false,
+	IncludeChannels:      true,
+	IncludeModels:        true,
+	IncludeAPIKeys:       false,
+	IncludeModelPrices:   true,
+	IncludeUsageStats:    false,
+	IncludeRequestLogs:   false,
+	RetentionDays:        30,
 }
 
 var defaultVideoStorageSettings = VideoStorageSettings{
@@ -78,5 +89,6 @@ var defaultQuotaEnforcementSettings = QuotaEnforcementSettings{
 }
 
 var defaultSecuritySettings = SecuritySettings{
-	BlockedIPs: []string{},
+	BlockedIPs:              []string{},
+	ShowRequestLogIPBanIcon: true,
 }

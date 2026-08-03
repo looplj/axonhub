@@ -280,6 +280,54 @@ func TestOutboundTransformer_TransformRequest_ReplaysProviderRawToolsAndToolChoi
 	require.Len(t, toolChoice["tools"], 1)
 }
 
+func TestOutboundTransformer_TransformRequest_ReplaysNamespaceTool(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "List the projects.",
+			"tools": [
+				{
+					"type": "namespace",
+					"name": "mcp__codebase_memory_mcp",
+					"tools": [
+						{"type": "function", "name": "list_projects", "parameters": {"type": "object"}},
+						{"type": "function", "name": "get_project", "parameters": {"type": "object"}}
+					]
+				},
+				{"type": "function", "name": "get_weather", "parameters": {"type": "object"}}
+			]
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+	require.Len(t, llmReq.Tools, 3)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+
+	tools, ok := payload["tools"].([]any)
+	require.True(t, ok)
+	require.Len(t, tools, 2)
+	namespaceTool, ok := tools[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "namespace", namespaceTool["type"])
+	require.Equal(t, "mcp__codebase_memory_mcp", namespaceTool["name"])
+	require.Len(t, namespaceTool["tools"], 2)
+
+	functionTool, ok := tools[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "get_weather", functionTool["name"])
+}
+
 func TestOutboundTransformer_TransformRequest_ReplaysProviderRawInputItems(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{
@@ -1050,7 +1098,87 @@ func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKe
 	err = json.Unmarshal(httpReq.Body, &payload)
 	require.NoError(t, err)
 	require.NotNil(t, payload.PromptCacheKey)
-	require.Equal(t, "shared-session-123", *payload.PromptCacheKey)
+	require.Equal(t, "shared-session-123-"+conversationAnchor(req.Messages), *payload.PromptCacheKey)
+}
+
+func TestOutboundTransformer_TransformRequest_PromptCacheKeyScopedPerConversation(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	ctx := shared.WithSessionID(context.Background(), "shared-session-123")
+
+	newReq := func(firstUser string, extraTurns ...llm.Message) *llm.Request {
+		messages := []llm.Message{
+			{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("You are an agent.")}},
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(firstUser)}},
+		}
+		messages = append(messages, extraTurns...)
+
+		return &llm.Request{Model: "gpt-5.4", Messages: messages}
+	}
+
+	cacheKey := func(req *llm.Request) string {
+		httpReq, err := transformer.TransformRequest(ctx, req)
+		require.NoError(t, err)
+
+		var payload Request
+
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		require.NotNil(t, payload.PromptCacheKey)
+
+		return *payload.PromptCacheKey
+	}
+
+	// Later turns of the same conversation keep the same cache key.
+	turn1 := cacheKey(newReq("task A"))
+	turn2 := cacheKey(newReq("task A",
+		llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("working")}},
+		llm.Message{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("continue")}},
+	))
+	require.Equal(t, turn1, turn2)
+
+	// Sibling conversations in the same session get distinct cache keys.
+	require.NotEqual(t, turn1, cacheKey(newReq("task B")))
+
+	// Client-provided keys are preserved untouched.
+	explicit := newReq("task A")
+	explicit.PromptCacheKey = lo.ToPtr("client-key")
+	require.Equal(t, "client-key", cacheKey(explicit))
+
+	// A large shared instruction prefix must not starve the first user
+	// message out of the fingerprint: sibling conversations still get
+	// distinct keys.
+	largeSystem := strings.Repeat("shared instructions. ", 2048)
+	largeReq := func(firstUser string) *llm.Request {
+		return &llm.Request{
+			Model: "gpt-5.4",
+			Messages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr(largeSystem)}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(firstUser)}},
+			},
+		}
+	}
+	require.NotEqual(t, cacheKey(largeReq("task A")), cacheKey(largeReq("task B")))
+
+	// Non-text content contributes to the fingerprint: first user messages
+	// that differ only by an image part get distinct keys.
+	imageReq := func(imageURL string) *llm.Request {
+		return &llm.Request{
+			Model: "gpt-5.4",
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("describe this image")},
+						{Type: "image_url", ImageURL: &llm.ImageURL{URL: imageURL}},
+					},
+				}},
+			},
+		}
+	}
+	require.NotEqual(t,
+		cacheKey(imageReq("https://example.com/a.png")),
+		cacheKey(imageReq("https://example.com/b.png")),
+	)
 }
 
 func TestOutboundTransformer_TransformResponse(t *testing.T) {
@@ -1249,6 +1377,57 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformImageEditResponse(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model:       "gpt-image-1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageEdit,
+		Image: &llm.ImageRequest{
+			Prompt:       "edit this image",
+			Images:       [][]byte{[]byte("source-image")},
+			OutputFormat: "webp",
+			Quality:      "high",
+			Size:         "1024x1024",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, llm.RequestTypeImage.String(), httpReq.RequestType)
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), httpReq.APIFormat)
+
+	result, err := transformer.TransformResponse(t.Context(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Request:    httpReq,
+		Body: []byte(`{
+			"id": "resp_image_123",
+			"object": "response",
+			"created_at": 1759161016,
+			"status": "completed",
+			"model": "gpt-image-1",
+			"output": [
+				{
+					"id": "img_123",
+					"type": "image_generation_call",
+					"status": "completed",
+					"result": "data:image/webp;base64,aW1hZ2UtZGF0YQ=="
+				}
+			]
+		}`),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "image.generation", result.Object)
+	require.Equal(t, llm.RequestTypeImage, result.RequestType)
+	require.Equal(t, "gpt-image-1", result.Model)
+	require.NotNil(t, result.Image)
+	require.Equal(t, "webp", result.Image.OutputFormat)
+	require.Equal(t, "high", result.Image.Quality)
+	require.Equal(t, "1024x1024", result.Image.Size)
+	require.Len(t, result.Image.Data, 1)
+	require.Equal(t, "aW1hZ2UtZGF0YQ==", result.Image.Data[0].B64JSON)
 }
 
 func TestOutboundTransformer_TransformRequest_WithTestData(t *testing.T) {

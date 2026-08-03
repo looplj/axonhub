@@ -7,7 +7,7 @@
 ## 先决条件
 
 - Docker 和 Docker Compose（推荐）
-- 或者 Go 1.24+ 和 Node.js 18+ 用于开发环境设置
+- 或者 Go 1.26+ 和 Node.js 18+ 用于开发环境设置
 - 来自 AI 提供商的有效 API 密钥（OpenAI、Anthropic 等）
 
 ## 快速设置方法

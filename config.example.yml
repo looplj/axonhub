@@ -8,12 +8,14 @@ server:
   port: 8090                    # Server port (env: AXONHUB_SERVER_PORT)
   name: "AxonHub"               # Server name (env: AXONHUB_SERVER_NAME)
   base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)
+  # pid_file: "~/.config/axonhub/axonhub.pid"  # PID file for axonhub reload (env: AXONHUB_SERVER_PID_FILE)
   request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
   llm_request_timeout: "600s"   # LLM request timeout duration (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
   trace:
     thread_header: "AH-Thread-Id" # Thread ID header name (env: AXONHUB_SERVER_TRACE_THREAD_HEADER)
     trace_header: "AH-Trace-Id" # Trace ID header name (env: AXONHUB_SERVER_TRACE_TRACE_HEADER)
     extra_trace_headers: [] # Extra trace headers (env: AXONHUB_SERVER_TRACE_EXTRA_TRACE_HEADERS)
+    response_trace_headers: [] # Response headers for the resolved trace ID (env: AXONHUB_SERVER_TRACE_RESPONSE_TRACE_HEADERS)
     extra_trace_body_fields: [] # Extra trace body fields (env: AXONHUB_SERVER_TRACE_EXTRA_TRACE_BODY_FIELDS)
     claude_code_trace_enabled: false # Enable extracting trace IDs from Claude Code request metadata (env: AXONHUB_SERVER_TRACE_CLAUDE_CODE_TRACE_ENABLED)
     codex_trace_enabled: false # Enable extracting trace IDs from Codex Session_id header (env: AXONHUB_SERVER_TRACE_CODEX_TRACE_ENABLED)
@@ -52,6 +54,17 @@ server:
                                  # Default: "ah"
                                  # Examples: "sk" generates "sk-<64hex>", "myapp" generates "myapp-<64hex>"
 
+  # IP Access Control - Whitelist mode
+  # When enabled, only requests from allowed IPs/CIDRs can access the server.
+  # Non-allowed requests are redirected to the configured URL.
+  # Edit this section, then send SIGHUP to apply it without restarting.
+  ip_access_control:
+    enabled: false                    # Enable IP whitelist (env: AXONHUB_SERVER_IP_ACCESS_CONTROL_ENABLED)
+    allowed_ips:                      # Allowed IPs or CIDR ranges (env: AXONHUB_SERVER_IP_ACCESS_CONTROL_ALLOWED_IPS)
+      - "192.168.1.0/24"
+      - "10.0.0.1"
+    redirect_url: "https://example.com/unauthorized"  # Redirect target for non-allowed IPs (env: AXONHUB_SERVER_IP_ACCESS_CONTROL_REDIRECT_URL)
+
 # Database configuration
 db:
   dialect: "sqlite3"            # Database dialect: sqlite3, postgres, mysql (env: AXONHUB_DB_DIALECT)
@@ -81,7 +94,7 @@ cache:
   # Redis cache configuration
   redis:
     # Simple mode: Use addr for plain host:port
-    addr: ""                    # Redis address (host:port) (env: AXONHUB_CACHE_REDIS_ADDR)
+    addr: ""                    # Deprecated. Redis address (host:port) (env: AXONHUB_CACHE_REDIS_ADDR)
 
     # URL mode: Use url for full redis:// or rediss:// URLs (takes priority over addr)
     # Supported formats:
@@ -91,9 +104,17 @@ cache:
     url: ""                     # Redis URL (env: AXONHUB_CACHE_REDIS_URL)
 
     # Optional overrides (apply to both addr and url modes)
+    addrs: []                   # Overrides URL host (env: AXONHUB_CACHE_REDIS_ADDRS)
     username: ""                # Overrides URL username (env: AXONHUB_CACHE_REDIS_USERNAME)
     password: ""                # Overrides URL password (env: AXONHUB_CACHE_REDIS_PASSWORD)
     db: 0                       # Overrides URL /db (env: AXONHUB_CACHE_REDIS_DB)
+    
+    master_name: ""             # Redis Sentinel Mode master_name (env: AXONHUB_CACHE_REDIS_MASTER_NAME)
+    sentinel_username: ""       # Redis Sentinel Mode sentinel_username (env: AXONHUB_CACHE_REDIS_SENTINEL_USERNAME)
+    sentinel_password: ""       # Redis Sentinel Mode sentinel_password (env: AXONHUB_CACHE_REDIS_SENTINEL_PASSWORD)
+    route_by_latency: false     # Redis v8 feature, NewFailoverClusterClient by route_by_latency (env: AXONHUB_CACHE_REDIS_ROUTE_BY_LATENCY)
+    route_randomly: false       # Redis v8 feature, NewFailoverClusterClient by route_randomly (env: AXONHUB_CACHE_REDIS_ROUTE_RANDOMLY)
+    is_cluster_mode: false      # Enable Redis Cluster Mode (env: AXONHUB_CACHE_REDIS_IS_CLUSTER_MODE)
     tls: false                  # Enable TLS for addr mode (env: AXONHUB_CACHE_REDIS_TLS)
     tls_insecure_skip_verify: false # Skip TLS cert verification (env: AXONHUB_CACHE_REDIS_TLS_INSECURE_SKIP_VERIFY)
     expiration: "30m"           # Redis cache TTL (env: AXONHUB_CACHE_REDIS_EXPIRATION)
@@ -123,7 +144,7 @@ log:
 metrics:
   enabled: false                 # Enable metrics collection (env: AXONHUB_METRICS_ENABLED)
   exporter: 
-    type: "oltphttp"          # Metrics exporter type: prometheus, console (env: AXONHUB_METRICS_EXPORTER_TYPE)
+    type: "otlphttp"          # Metrics exporter type: prometheus, console (env: AXONHUB_METRICS_EXPORTER_TYPE)
     endpoint: "localhost:8080" # Metrics exporter endpoint (env: AXONHUB_METRICS_EXPORTER_ENDPOINT)
     insecure: true             # Enable insecure connection (env: AXONHUB_METRICS_EXPORTER_INSECURE)
     

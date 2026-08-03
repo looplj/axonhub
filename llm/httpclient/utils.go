@@ -171,7 +171,10 @@ var libManagedHeaders = map[string]bool{
 }
 
 var blockedHeaders = map[string]bool{
-	"Content-Type":       true,
+	"Content-Type": true,
+	// Accept is owned by the outbound transformer (e.g. TTS requires */* for binary
+	// audio); the inbound client value must not override it.
+	"Accept":             true,
 	"Connection":         true,
 	"Keep-Alive":         true,
 	"Proxy-Authenticate": true,

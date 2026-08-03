@@ -22,8 +22,10 @@ import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/component
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning';
 import { Response as UIResponse } from '@/components/ai-elements/response';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
-import { useQueryChannels } from '@/features/channels/data/channels';
+import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useQueryModels } from '@/features/models/data/models';
+import { usePermissions } from '@/hooks/usePermissions';
+import { cn } from '@/lib/utils';
 
 type PlaygroundModelSource = 'channel' | 'model_gateway';
 
@@ -71,15 +73,11 @@ export default function Playground() {
 
   const { accessToken } = useAuthStore((state) => state.auth);
   const selectedProjectId = useSelectedProjectId();
+  const { hasSystemScope } = usePermissions();
+  const canUseModelGateway = hasSystemScope('read_channels');
 
   // 获取 channels 数据
-  const { data: channelsData, isLoading: channelsLoading } = useQueryChannels({
-    first: 100,
-    orderBy: { field: 'ORDERING_WEIGHT', direction: 'DESC' },
-    where: {
-      statusIn: ['enabled', 'disabled'],
-    },
-  });
+  const { data: channelsData, isLoading: channelsLoading } = useAllChannelSummarys(selectedProjectId);
   const isModelGatewaySource = modelSource === 'model_gateway';
   const { data: modelsData, isLoading: modelsLoading } = useQueryModels(
     {
@@ -90,7 +88,7 @@ export default function Playground() {
         typeIn: ['chat'],
       },
     },
-    { enabled: isModelGatewaySource }
+    { enabled: isModelGatewaySource && canUseModelGateway }
   );
 
   const [input, setInput] = useState('');
@@ -232,7 +230,7 @@ export default function Playground() {
   const channelOptions = useMemo(() => {
     if (!channelsData?.edges) return [];
     return channelsData.edges
-      .filter((edge) => edge.node.supportedModels.length > 0)
+      .filter((edge) => edge.node.allModelEntries.length > 0)
       .map((edge) => ({
         value: edge.node.id,
         label: edge.node.name,
@@ -256,9 +254,9 @@ export default function Playground() {
     if (!channelsData?.edges || !selectedChannel) return [];
     const channelEdge = channelsData.edges.find((edge) => edge.node.id === selectedChannel);
     if (!channelEdge) return [];
-    return channelEdge.node.supportedModels.map((m) => ({
-      value: m,
-      label: m,
+    return channelEdge.node.allModelEntries.map((entry) => ({
+      value: entry.requestModel,
+      label: entry.requestModel,
     }));
   }, [channelsData, isModelGatewaySource, modelPageModelOptions, selectedChannel]);
 
@@ -269,7 +267,7 @@ export default function Playground() {
     (channelId: string) => {
       setSelectedChannel(channelId);
       const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === channelId);
-      const firstModel = channelEdge?.node.supportedModels[0] ?? '';
+      const firstModel = channelEdge?.node.allModelEntries[0]?.requestModel ?? '';
       setModel(firstModel);
     },
     [channelsData]
@@ -278,16 +276,25 @@ export default function Playground() {
   const handleModelSourceChange = useCallback(
     (source: string) => {
       const nextSource = source as PlaygroundModelSource;
+      if (nextSource === 'model_gateway' && !canUseModelGateway) {
+        return;
+      }
       setModelSource(nextSource);
       if (nextSource === 'model_gateway') {
         setModel(modelPageModelOptions[0]?.value ?? '');
         return;
       }
       const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === selectedChannel);
-      setModel(channelEdge?.node.supportedModels[0] ?? '');
+      setModel(channelEdge?.node.allModelEntries[0]?.requestModel ?? '');
     },
-    [channelsData, modelPageModelOptions, selectedChannel]
+    [canUseModelGateway, channelsData, modelPageModelOptions, selectedChannel]
   );
+
+  useEffect(() => {
+    if (!canUseModelGateway && modelSource === 'model_gateway') {
+      setModelSource('channel');
+    }
+  }, [canUseModelGateway, modelSource]);
 
   // 初始化：默认选第一个渠道和第一个模型
   useEffect(() => {
@@ -322,7 +329,7 @@ export default function Playground() {
       <div className='bg-background flex h-screen w-full flex-col md:flex-row'>
         {/* Settings Sidebar */}
 
-        <div className='bg-card shadow-soft border-border m-4 flex max-h-[40vh] w-auto flex-col rounded-2xl border border-r md:max-h-none md:w-[340px] md:min-w-[280px] md:max-w-[400px]'>
+        <div className='bg-card shadow-soft border-border m-4 flex max-h-[60vh] w-auto flex-col rounded-2xl border border-r md:max-h-none md:w-[340px] md:min-w-[280px] md:max-w-[400px]'>
           <div className='border-b p-4'>
             <h1 className='text-xl font-bold tracking-tight'>{t('playground.title')}</h1>
             <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>{t('playground.description')}</p>
@@ -333,9 +340,9 @@ export default function Playground() {
               <div className='space-y-3'>
                 <Label className='text-xs font-semibold'>{t('playground.settings.modelSource')}</Label>
                 <Tabs value={modelSource} onValueChange={handleModelSourceChange}>
-                  <TabsList className='grid w-full grid-cols-2'>
+                  <TabsList className={cn('grid w-full', canUseModelGateway ? 'grid-cols-2' : 'grid-cols-1')}>
                     <TabsTrigger value='channel'>{t('playground.settings.channel')}</TabsTrigger>
-                    <TabsTrigger value='model_gateway'>{t('playground.settings.modelGateway')}</TabsTrigger>
+                    {canUseModelGateway && <TabsTrigger value='model_gateway'>{t('playground.settings.modelGateway')}</TabsTrigger>}
                   </TabsList>
                 </Tabs>
               </div>
@@ -495,7 +502,7 @@ export default function Playground() {
                               }
                               if (part.type === 'reasoning') {
                                 return (
-                                  <Reasoning key={index} isStreaming={status === 'streaming'}>
+                                  <Reasoning key={index} isStreaming={isLastAssistant && status === 'streaming'}>
                                     <ReasoningTrigger />
                                     <ReasoningContent>{part.text}</ReasoningContent>
                                   </Reasoning>

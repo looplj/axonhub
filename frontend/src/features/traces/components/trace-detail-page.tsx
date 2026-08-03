@@ -2,19 +2,32 @@ import { useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { zhCN, enUS } from 'date-fns/locale';
-import { ArrowLeft, FileText, Activity, RefreshCw, List, GitBranch, Waypoints, Maximize2, X } from 'lucide-react';
+import { ArrowLeft, FileText, Activity, RefreshCw, List, GitBranch, Waypoints, Maximize2, X, Wrench, MessageSquare, ChevronDown } from 'lucide-react';
+import { IconArchive, IconPin, IconRotate } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn, extractNumberID } from '@/lib/utils';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { useGeneralSettings } from '@/features/system/data/system';
-import { useTraceWithSegments } from '../data';
+import { useTraceWithSegments, useArchiveTrace, useUnarchiveTrace, useRetainTrace, useUnretainTrace } from '../data';
 import { Segment, Span, parseRawRootSegment } from '../data/schema';
 import { SpanSection } from './span-section';
 import { TraceFlatTimeline } from './trace-flat-timeline';
@@ -32,7 +45,13 @@ export default function TraceDetailPage() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [viewMode, setViewMode] = useState<'flat' | 'flow' | 'tree'>('flat');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const { getSearchParams } = usePaginationSearch({ defaultPageSize: 20 });
+
+  const archiveMutation = useArchiveTrace();
+  const unarchiveMutation = useUnarchiveTrace();
+  const retainMutation = useRetainTrace();
+  const unretainMutation = useUnretainTrace();
 
   const { data: trace, isLoading, refetch } = useTraceWithSegments(traceId);
   const { data: settings } = useGeneralSettings();
@@ -43,6 +62,35 @@ export default function TraceDetailPage() {
     if (!trace?.rawRootSegment) return null;
     return parseRawRootSegment(trace.rawRootSegment);
   }, [trace]);
+
+  // Compute span statistics for overview cards
+  const spanStats = useMemo(() => {
+    if (!effectiveRootSegment) return { userQueryCount: 0, toolCallCount: 0, toolDetails: {} as Record<string, number> };
+
+    let userQueryCount = 0;
+    let toolCallCount = 0;
+    const toolDetails: Record<string, number> = {};
+
+    const traverse = (segment: Segment) => {
+      for (const span of [...(segment.requestSpans ?? []), ...(segment.responseSpans ?? [])]) {
+        if (span.type === 'user_query') {
+          userQueryCount++;
+        } else if (span.type === 'tool_use') {
+          toolCallCount++;
+          const toolName = span.value?.toolUse?.name;
+          if (toolName) {
+            toolDetails[toolName] = (toolDetails[toolName] ?? 0) + 1;
+          }
+        }
+      }
+      for (const child of segment.children ?? []) {
+        traverse(child);
+      }
+    };
+
+    traverse(effectiveRootSegment);
+    return { userQueryCount, toolCallCount, toolDetails };
+  }, [effectiveRootSegment]);
 
   // Auto-select first span when trace loads
   useEffect(() => {
@@ -79,7 +127,7 @@ export default function TraceDetailPage() {
 
   if (isLoading) {
     return (
-      <div className='flex h-screen flex-col'>
+      <div className='flex h-full flex-col'>
         <Header className='border-b'></Header>
         <Main className='flex-1'>
           <div className='flex h-full items-center justify-center'>
@@ -95,7 +143,7 @@ export default function TraceDetailPage() {
 
   if (!trace) {
     return (
-      <div className='flex h-screen flex-col'>
+      <div className='flex h-full flex-col'>
         <Header className='border-b'></Header>
         <Main className='flex-1'>
           <div className='flex h-full items-center justify-center'>
@@ -116,9 +164,10 @@ export default function TraceDetailPage() {
   }
 
   return (
-    <div className='flex h-screen flex-col'>
+    <div className='flex h-full flex-col'>
       {/* Normal Header - hidden in fullscreen */}
       {!isFullscreen && (
+        <>
         <Header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 w-full border-b backdrop-blur'>
           <div className='flex w-full items-center justify-between gap-2'>
             <div className='flex items-center gap-2 sm:gap-4 min-w-0 flex-1'>
@@ -146,7 +195,7 @@ export default function TraceDetailPage() {
             <div className='flex items-center gap-1 sm:gap-2 shrink-0'>
               <div className='hidden sm:flex items-center gap-2'>
                 <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} id='auto-refresh-switch' />
-                <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm'>
+                <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm whitespace-nowrap'>
                   {t('common.autoRefresh')}
                 </label>
               </div>
@@ -154,9 +203,58 @@ export default function TraceDetailPage() {
                 <RefreshCw className={`h-4 w-4 ${isLoading || autoRefresh ? 'animate-spin' : ''}`} />
                 <span className='hidden sm:inline ml-2'>{t('common.refresh')}</span>
               </Button>
+              {(() => {
+                const status = trace.status ?? 'active';
+                if (status === 'active') {
+                  return (
+                    <>
+                      <Button variant='outline' size='sm' onClick={() => setShowArchiveDialog(true)} className='px-2 sm:px-3'>
+                        <IconArchive className='h-4 w-4' />
+                        <span className='hidden sm:inline ml-2'>{t('common.actions.archive')}</span>
+                      </Button>
+                      <Button variant='outline' size='sm' onClick={() => retainMutation.mutate(trace.id, { onSuccess: () => refetch() })} className='px-2 sm:px-3'>
+                        <IconPin className='h-4 w-4' />
+                        <span className='hidden sm:inline ml-2'>{t('common.actions.retain')}</span>
+                      </Button>
+                    </>
+                  );
+                }
+                if (status === 'archived') {
+                  return (
+                    <Button variant='outline' size='sm' onClick={() => unarchiveMutation.mutate(trace.id, { onSuccess: () => refetch() })} className='px-2 sm:px-3'>
+                      <IconRotate className='h-4 w-4' />
+                      <span className='hidden sm:inline ml-2'>{t('common.actions.unarchive')}</span>
+                    </Button>
+                  );
+                }
+                if (status === 'retained') {
+                  return (
+                    <Button variant='outline' size='sm' onClick={() => unretainMutation.mutate(trace.id, { onSuccess: () => refetch() })} className='px-2 sm:px-3'>
+                      <IconRotate className='h-4 w-4' />
+                      <span className='hidden sm:inline ml-2'>{t('common.actions.unretain')}</span>
+                    </Button>
+                  );
+                }
+                return null;
+              })()}
             </div>
           </div>
         </Header>
+        <AlertDialog open={showArchiveDialog} onOpenChange={setShowArchiveDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t('traces.dialogs.archiveTitle')}</AlertDialogTitle>
+              <AlertDialogDescription>{t('traces.dialogs.archiveDescription')}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t('common.actions.cancel')}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { archiveMutation.mutate(trace.id, { onSuccess: () => refetch() }); setShowArchiveDialog(false); }}>
+                {t('common.actions.archive')}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        </>
       )}
 
       <Main className={cn('flex-1 overflow-hidden flex flex-col p-0', isFullscreen && 'fixed inset-0 z-50 bg-background')}>
@@ -201,6 +299,54 @@ export default function TraceDetailPage() {
                       <p className='text-muted-foreground text-base sm:text-lg font-semibold'>-</p>
                     )}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Top: Span Statistics */}
+            {!isFullscreen && (spanStats.userQueryCount > 0 || spanStats.toolCallCount > 0) && (
+              <div className='px-4 sm:px-6 py-3 border-b bg-background'>
+                <div className='grid grid-cols-2 gap-3 sm:gap-4'>
+                  {spanStats.userQueryCount > 0 && (
+                    <div className='bg-muted/30 rounded-lg px-3 py-2'>
+                      <div className='flex items-center gap-2'>
+                        <MessageSquare className='text-muted-foreground h-4 w-4' />
+                        <p className='text-muted-foreground text-xs sm:text-sm'>{t('traces.timeline.spanTypes.userQuery')}</p>
+                      </div>
+                      <p className='text-base sm:text-lg font-semibold mt-1'>{spanStats.userQueryCount}</p>
+                    </div>
+                  )}
+                  {spanStats.toolCallCount > 0 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <div className='bg-muted/30 rounded-lg px-3 py-2 cursor-pointer hover:bg-muted/50 transition-colors'>
+                          <div className='flex items-center gap-2'>
+                            <Wrench className='text-muted-foreground h-4 w-4' />
+                            <p className='text-muted-foreground text-xs sm:text-sm'>{t('traces.timeline.spanTypes.toolUse')}</p>
+                            {Object.keys(spanStats.toolDetails).length > 0 && (
+                              <ChevronDown className='text-muted-foreground h-3 w-3' />
+                            )}
+                          </div>
+                          <p className='text-base sm:text-lg font-semibold mt-1'>{spanStats.toolCallCount}</p>
+                        </div>
+                      </PopoverTrigger>
+                      {Object.keys(spanStats.toolDetails).length > 0 && (
+                        <PopoverContent className='w-64 p-3' align='start'>
+                          <p className='text-sm font-medium mb-2'>{t('traces.detail.spanStats.toolDetails')}</p>
+                          <div className='space-y-1.5'>
+                            {Object.entries(spanStats.toolDetails)
+                              .sort(([, a], [, b]) => b - a)
+                              .map(([name, count]) => (
+                                <div key={name} className='flex items-center justify-between'>
+                                  <span className='text-sm truncate mr-2'>{name}</span>
+                                  <Badge variant='secondary' className='text-xs tabular-nums shrink-0'>{count}</Badge>
+                                </div>
+                              ))}
+                          </div>
+                        </PopoverContent>
+                      )}
+                    </Popover>
+                  )}
                 </div>
               </div>
             )}

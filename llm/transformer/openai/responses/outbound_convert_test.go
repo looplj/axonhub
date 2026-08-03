@@ -108,7 +108,7 @@ func TestConvertToolMessage(t *testing.T) {
 			},
 		},
 		{
-			name: "tool message with multiple content - mixed types (only text extracted)",
+			name: "tool message with multiple content - text and image preserved in order",
 			msg: llm.Message{
 				Role:       "tool",
 				ToolCallID: lo.ToPtr("call_789"),
@@ -138,6 +138,11 @@ func TestConvertToolMessage(t *testing.T) {
 					{
 						Type: "input_text",
 						Text: lo.ToPtr("Text result"),
+					},
+					{
+						Type:     "input_image",
+						ImageURL: lo.ToPtr("https://example.com/image.jpg"),
+						Detail:   lo.ToPtr("auto"),
 					},
 					{
 						Type: "input_text",
@@ -176,7 +181,7 @@ func TestConvertToolMessage(t *testing.T) {
 			},
 		},
 		{
-			name: "tool message with multiple content but no text parts",
+			name: "tool message with image and unsupported parts keeps the image",
 			msg: llm.Message{
 				Role:       "tool",
 				ToolCallID: lo.ToPtr("call_no_text"),
@@ -202,6 +207,162 @@ func TestConvertToolMessage(t *testing.T) {
 				Type:   "function_call_output",
 				CallID: "call_no_text",
 				Output: &Input{
+					Items: []Item{
+						{
+							Type:     "input_image",
+							ImageURL: lo.ToPtr("https://example.com/image.jpg"),
+							Detail:   lo.ToPtr("auto"),
+						},
+					},
+				},
+			},
+		},
+		{
+			// Shape produced by Codex's view_image tool: the result is a single
+			// base64 image with no text at all. Dropping it made the model see an
+			// empty-but-successful tool result and silently hallucinate instead.
+			name: "image-only tool result is preserved as input_image",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_view_image"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "image_url",
+							ImageURL: &llm.ImageURL{
+								URL:    "data:image/png;base64,iVBORw0KGgo=",
+								Detail: lo.ToPtr("high"),
+							},
+						},
+					},
+				},
+			},
+			expected: Item{
+				Type:   "function_call_output",
+				CallID: "call_view_image",
+				Output: &Input{
+					Items: []Item{
+						{
+							Type:     "input_image",
+							ImageURL: lo.ToPtr("data:image/png;base64,iVBORw0KGgo="),
+							Detail:   lo.ToPtr("high"),
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "tool result with text and image keeps both in order",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_mixed"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "text",
+							Text: lo.ToPtr("screenshot attached"),
+						},
+						{
+							Type: "image_url",
+							ImageURL: &llm.ImageURL{
+								URL: "https://example.com/shot.png",
+							},
+						},
+					},
+				},
+			},
+			expected: Item{
+				Type:   "function_call_output",
+				CallID: "call_mixed",
+				Output: &Input{
+					Items: []Item{
+						{
+							Type: "input_text",
+							Text: lo.ToPtr("screenshot attached"),
+						},
+						{
+							Type:     "input_image",
+							ImageURL: lo.ToPtr("https://example.com/shot.png"),
+							Detail:   lo.ToPtr("auto"),
+						},
+					},
+				},
+			},
+		},
+		{
+			// custom_tool_call_output shares the FunctionAndCustomToolCallOutput
+			// content union with function_call_output, so images are allowed here too.
+			name: "custom tool output keeps images",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_custom_img"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "image_url",
+							ImageURL: &llm.ImageURL{
+								URL: "data:image/png;base64,iVBORw0KGgo=",
+							},
+						},
+					},
+				},
+			},
+			expected: Item{
+				Type:   "custom_tool_call_output",
+				CallID: "call_custom_img",
+				Output: &Input{
+					Items: []Item{
+						{
+							Type:     "input_image",
+							ImageURL: lo.ToPtr("data:image/png;base64,iVBORw0KGgo="),
+							Detail:   lo.ToPtr("auto"),
+						},
+					},
+				},
+			},
+		},
+		{
+			// Known gap, unchanged by this fix: part kinds the current AxonHub
+			// Responses Item model cannot express in a tool result are still dropped
+			// silently, and an all-dropped result is still indistinguishable from a
+			// genuinely empty one. Surfacing that needs structured logging (no logger
+			// reaches this pure converter), so it is left for a separate change rather
+			// than papered over with synthetic output text.
+			name: "tool message with only unsupported parts still degrades to empty string",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_audio_only"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type: "input_audio",
+							InputAudio: &llm.InputAudio{
+								Data:   "audio-data",
+								Format: "wav",
+							},
+						},
+					},
+				},
+			},
+			expected: Item{
+				Type:   "function_call_output",
+				CallID: "call_audio_only",
+				Output: &Input{
+					Text: lo.ToPtr(""),
+				},
+			},
+		},
+		{
+			name: "tool message with no content at all still uses the empty string",
+			msg: llm.Message{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("call_truly_empty"),
+				Content:    llm.MessageContent{MultipleContent: []llm.MessageContentPart{}},
+			},
+			expected: Item{
+				Type:   "function_call_output",
+				CallID: "call_truly_empty",
+				Output: &Input{
 					Text: lo.ToPtr(""),
 				},
 			},
@@ -219,6 +380,86 @@ func TestConvertToolMessage(t *testing.T) {
 			require.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+// The wire shape matters as much as the struct: a tool result carrying an image
+// has to serialise as an output array of content parts, not as a string.
+func TestConvertToolMessageImageSerializesAsOutputArray(t *testing.T) {
+	item := convertToolMessageWithType(llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_wire"),
+		Content: llm.MessageContent{
+			MultipleContent: []llm.MessageContentPart{
+				{Type: "text", Text: lo.ToPtr("look")},
+				{
+					Type: "image_url",
+					ImageURL: &llm.ImageURL{
+						URL:    "data:image/png;base64,iVBORw0KGgo=",
+						Detail: lo.ToPtr("high"),
+					},
+				},
+			},
+		},
+	}, "function_call_output")
+
+	raw, err := json.Marshal(item)
+	require.NoError(t, err)
+
+	var decoded struct {
+		Type   string `json:"type"`
+		CallID string `json:"call_id"`
+		Output []struct {
+			Type     string  `json:"type"`
+			Text     *string `json:"text"`
+			ImageURL *string `json:"image_url"`
+			Detail   *string `json:"detail"`
+		} `json:"output"`
+	}
+
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+	require.Equal(t, "function_call_output", decoded.Type)
+	require.Equal(t, "call_wire", decoded.CallID)
+	require.Len(t, decoded.Output, 2)
+	require.Equal(t, "input_text", decoded.Output[0].Type)
+	require.Equal(t, "look", lo.FromPtr(decoded.Output[0].Text))
+	require.Equal(t, "input_image", decoded.Output[1].Type)
+	require.Equal(t, "data:image/png;base64,iVBORw0KGgo=", lo.FromPtr(decoded.Output[1].ImageURL))
+	require.Equal(t, "high", lo.FromPtr(decoded.Output[1].Detail))
+}
+
+// custom_tool_call_output resolves to InputImageContent, which requires
+// `detail`; assert it reaches the wire even when the source part omits it.
+func TestConvertToolMessageCustomOutputImageCarriesDetail(t *testing.T) {
+	item := convertToolMessageWithType(llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_custom_wire"),
+		Content: llm.MessageContent{
+			MultipleContent: []llm.MessageContentPart{
+				{Type: "image_url", ImageURL: &llm.ImageURL{URL: "https://example.com/shot.png"}},
+			},
+		},
+	}, "custom_tool_call_output")
+
+	raw, err := json.Marshal(item)
+	require.NoError(t, err)
+
+	var decoded struct {
+		Type   string `json:"type"`
+		CallID string `json:"call_id"`
+		Output []struct {
+			Type     string  `json:"type"`
+			ImageURL *string `json:"image_url"`
+			Detail   *string `json:"detail"`
+		} `json:"output"`
+	}
+
+	require.NoError(t, json.Unmarshal(raw, &decoded))
+	require.Equal(t, "custom_tool_call_output", decoded.Type)
+	require.Equal(t, "call_custom_wire", decoded.CallID)
+	require.Len(t, decoded.Output, 1)
+	require.Equal(t, "input_image", decoded.Output[0].Type)
+	require.Equal(t, "https://example.com/shot.png", lo.FromPtr(decoded.Output[0].ImageURL))
+	require.Equal(t, "auto", lo.FromPtr(decoded.Output[0].Detail))
 }
 
 func TestConvertWebSearchToTool(t *testing.T) {
@@ -780,6 +1021,21 @@ func TestConvertReasoning(t *testing.T) {
 				Summary: "concise",
 			},
 		},
+		{
+			name: "with only responses reasoning context",
+			req: &llm.Request{
+				ProviderExtensions: &llm.ProviderExtensions{
+					OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+						Request: &llm.OpenAIResponsesRequestExtensions{
+							ReasoningContext: "all_turns",
+						},
+					},
+				},
+			},
+			expected: &Reasoning{
+				Context: "all_turns",
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -996,6 +1252,19 @@ func TestConvertOutputToMessage(t *testing.T) {
 				require.Equal(t, "Thinking step", *msg.ReasoningContent)
 				require.NotNil(t, msg.ReasoningSignature)
 				require.Equal(t, "encrypted_data", *msg.ReasoningSignature)
+			},
+		},
+		{
+			name: "multiple reasoning outputs preserve item summaries",
+			output: []Item{
+				{ID: "rs_first", Type: "reasoning", Summary: []ReasoningSummary{{Type: "summary_text", Text: "first"}}, EncryptedContent: lo.ToPtr("gAAAA_FIRST_BLOB")},
+				{ID: "rs_second", Type: "reasoning", Summary: []ReasoningSummary{{Type: "summary_text", Text: "second"}}, EncryptedContent: lo.ToPtr("gAAAA_SECOND_BLOB")},
+			},
+			validate: func(t *testing.T, msg llm.Message) {
+				require.Equal(t, []llm.ReasoningItem{
+					{ID: "rs_first", Content: "first", Signature: "gAAAA_FIRST_BLOB"},
+					{ID: "rs_second", Content: "second", Signature: "gAAAA_SECOND_BLOB"},
+				}, msg.ReasoningItems)
 			},
 		},
 		{
@@ -1407,4 +1676,31 @@ func TestConvertAssistantMessage_WithCompactContent(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestConvertAssistantMessage_PreservesMultipleReasoningSignaturesBeforeToolCall(t *testing.T) {
+	items := convertAssistantMessage(llm.Message{
+		Role: "assistant",
+		ReasoningItems: []llm.ReasoningItem{
+			{Content: "first", Signature: "gAAAA_FIRST_BLOB"},
+			{Content: "second", Signature: "gAAAA_SECOND_BLOB"},
+		},
+		ToolCalls: []llm.ToolCall{{
+			ID:   "call_task",
+			Type: "function",
+			Function: llm.FunctionCall{
+				Name:      "TaskOutput",
+				Arguments: `{"task_id":"task_1","block":true}`,
+			},
+		}},
+	})
+
+	require.Len(t, items, 3)
+	require.Equal(t, "reasoning", items[0].Type)
+	require.Equal(t, "gAAAA_FIRST_BLOB", *items[0].EncryptedContent)
+	require.Equal(t, []ReasoningSummary{{Type: "summary_text", Text: "first"}}, items[0].Summary)
+	require.Equal(t, "reasoning", items[1].Type)
+	require.Equal(t, "gAAAA_SECOND_BLOB", *items[1].EncryptedContent)
+	require.Equal(t, []ReasoningSummary{{Type: "summary_text", Text: "second"}}, items[1].Summary)
+	require.Equal(t, "function_call", items[2].Type)
 }

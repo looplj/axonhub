@@ -75,16 +75,56 @@ func userHasScope(ctx context.Context, requiredScope scopes.ScopeSlug) bool {
 		return true
 	}
 
+	// Check user's direct scopes
 	if slices.Contains(user.Scopes, string(requiredScope)) {
 		return true
 	}
 
+	// Check system-level role scopes
 	for _, role := range user.Edges.Roles {
 		if !role.IsSystemRole() {
 			continue
 		}
 
 		if slices.Contains(role.Scopes, string(requiredScope)) {
+			return true
+		}
+	}
+
+	// Check project-level scopes when a project ID is in context.
+	// This mirrors scopes.userHasProjectScope and ensures that users with
+	// project-level roles or project membership scopes are recognized.
+	projectID, hasProjectID := contexts.GetProjectID(ctx)
+	if !hasProjectID {
+		return false
+	}
+
+	// Check project membership scopes
+	hasProjectMembership := false
+	for _, up := range user.Edges.ProjectUsers {
+		if up.ProjectID != projectID {
+			continue
+		}
+
+		hasProjectMembership = true
+		if up.IsOwner || slices.Contains(up.Scopes, string(requiredScope)) {
+			return true
+		}
+
+		break
+	}
+
+	if !hasProjectMembership {
+		return false
+	}
+
+	// Check project-level role scopes
+	for _, role := range user.Edges.Roles {
+		if role.IsSystemRole() {
+			continue
+		}
+
+		if role.ProjectID != nil && *role.ProjectID == projectID && slices.Contains(role.Scopes, string(requiredScope)) {
 			return true
 		}
 	}

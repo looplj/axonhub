@@ -65,6 +65,14 @@ type Config struct {
 	// Use ReasoningFieldContent (default) for DeepSeek/Mimo/Gemini, ReasoningFieldReasoning for NanoGPT/OpenRouter,
 	// or ReasoningFieldNone to strip all reasoning fields.
 	ReasoningField ReasoningField `json:"reasoning_field,omitempty"`
+
+	// ReasoningEffortMapping maps inbound reasoning_effort values to outbound ones for
+	// non-standard OpenAI-compatible providers. The first entry whose From matches the
+	// effort value wins; values not in the list pass through unchanged.
+	// e.g. [{"from":"xhigh","to":"max"}] converts Anthropic's internal "xhigh" (mapped
+	// from "max") back to "max" for providers that only recognize "max". Consumed in
+	// TransformRequest.
+	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoning_effort_mapping,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for OpenAI format.
@@ -153,10 +161,18 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	switch llmReq.RequestType {
 	case llm.RequestTypeEmbedding:
 		return t.transformEmbeddingRequest(ctx, llmReq)
+	case llm.RequestTypeModeration:
+		return t.transformModerationRequest(ctx, llmReq)
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeVideo:
 		return t.buildVideoGenerationAPIRequest(ctx, llmReq)
+	case llm.RequestTypeSpeech:
+		return t.buildSpeechRequest(ctx, llmReq)
+	case llm.RequestTypeTranscription:
+		return t.buildTranscriptionRequest(ctx, llmReq)
+	case llm.RequestTypeTranslation:
+		return t.buildTranslationRequest(ctx, llmReq)
 	case llm.RequestTypeCompact:
 		return nil, fmt.Errorf("%w: compact is only supported by OpenAI Responses API", transformer.ErrInvalidRequest)
 	case llm.RequestTypeRerank:
@@ -181,6 +197,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Convert to OpenAI Request format (this strips helper fields)
 	oaiReq := RequestFromLLM(llmReq, reasoningField)
+	// Apply per-channel reasoning_effort mapping for non-standard OpenAI-compatible providers.
+	// Entries in the map replace the effort value; values not in the map pass through unchanged.
+	// e.g. ollama channel with {"xhigh": "max"} converts Anthropic's internal "xhigh" back to "max".
+	oaiReq.ReasoningEffort = applyReasoningEffortMapping(oaiReq.ReasoningEffort, t.config.ReasoningEffortMapping)
 	//nolint:exhaustive // Checked.
 	switch t.config.PlatformType {
 	case PlatformOpenAI:
@@ -250,8 +270,16 @@ func (t *OutboundTransformer) TransformResponse(
 			return transformImageGenerationResponse(httpResp)
 		case string(llm.APIFormatOpenAIEmbedding):
 			return t.transformEmbeddingResponse(ctx, httpResp)
+		case string(llm.APIFormatOpenAIModeration):
+			return t.transformModerationResponse(ctx, httpResp)
 		case string(llm.APIFormatOpenAIVideo):
 			return transformVideoResponse(httpResp)
+		case string(llm.APIFormatOpenAISpeech):
+			return transformSpeechResponse(httpResp)
+		case string(llm.APIFormatOpenAITranscription):
+			return transformTranscriptionResponse(httpResp, llm.APIFormatOpenAITranscription)
+		case string(llm.APIFormatOpenAITranslation):
+			return transformTranscriptionResponse(httpResp, llm.APIFormatOpenAITranslation)
 		}
 	}
 
@@ -268,9 +296,27 @@ func (t *OutboundTransformer) TransformResponse(
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
-	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	// Audio APIs use dedicated SSE event schemas; route them to the audio decoder so
+	// chat-completion parsing is not applied to transcript.text.delta / speech.audio.delta.
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech):
+			return streams.MapErr(stream, speechStreamChunkTransformFor(req)), nil
+		case string(llm.APIFormatOpenAITranscription):
+			return streams.MapErr(stream, transformTranscriptionStreamChunkFor(llm.APIFormatOpenAITranscription)), nil
+		case string(llm.APIFormatOpenAITranslation):
+			return streams.MapErr(stream, transformTranscriptionStreamChunkFor(llm.APIFormatOpenAITranslation)), nil
+		}
+	}
+
+	// Wrap with NoNil to filter out non-standard events (e.g. inference-cost, cost)
+	// that TransformStreamChunk skips by returning nil.
+	//
+	// Note: TransformStreamChunk only returns nil for events with explicit "choices":[]
+	// in the raw JSON. Events without a choices key (nil slice) are passed through.
+	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
-	}), nil
+	})), nil
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(
@@ -293,7 +339,35 @@ func (t *OutboundTransformer) TransformStreamChunk(
 		Body: event.Data,
 	}
 
-	return t.TransformResponse(ctx, httpResp)
+	resp, err := t.TransformResponse(ctx, httpResp)
+	if err != nil {
+		return nil, err
+	}
+
+	// Normalize empty finish_reason to nil. Some OpenAI-compatible providers
+	// (e.g. Sensenova) emit finish_reason:"" in every stream chunk. An empty
+	// string is semantically identical to "not finished" (null), so this
+	// normalization prevents downstream code from mistaking every chunk for
+	// a terminal event.
+	for i := range resp.Choices {
+		if resp.Choices[i].FinishReason != nil && *resp.Choices[i].FinishReason == "" {
+			resp.Choices[i].FinishReason = nil
+		}
+	}
+
+	// Skip non-standard events with explicit empty choices array and no usage
+	// (e.g. inference-cost, cost) that some providers emit alongside standard chat
+	// completion chunks. Keep the standard OpenAI include_usage terminal chunk,
+	// which is encoded as choices:[] with a non-null usage object.
+	// Returning nil causes NoNil to filter skipped events from the client stream.
+	if choicesVal := gjson.GetBytes(event.Data, "choices"); choicesVal.Exists() && choicesVal.IsArray() && len(choicesVal.Array()) == 0 {
+		usageVal := gjson.GetBytes(event.Data, "usage")
+		if !usageVal.Exists() || usageVal.Raw == "null" {
+			return nil, nil
+		}
+	}
+
+	return resp, nil
 }
 
 func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
@@ -424,9 +498,18 @@ func (t *OutboundTransformer) GetConfig() *Config {
 }
 
 func (t *OutboundTransformer) AggregateStreamChunks(
-	ctx context.Context, _ *httpclient.Request,
+	ctx context.Context, req *httpclient.Request,
 	chunks []*httpclient.StreamEvent,
 ) ([]byte, llm.ResponseMeta, error) {
+	if req != nil {
+		switch req.APIFormat {
+		case string(llm.APIFormatOpenAISpeech):
+			return aggregateSpeechStreamChunks(chunks)
+		case string(llm.APIFormatOpenAITranscription), string(llm.APIFormatOpenAITranslation):
+			return aggregateTranscriptionStreamChunks(chunks)
+		}
+	}
+
 	return AggregateStreamChunks(ctx, chunks, DefaultTransformChunk)
 }
 

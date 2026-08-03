@@ -162,7 +162,7 @@ func ValidateOverrideParameters(params string) error {
 	}
 
 	for _, op := range ops {
-		if op.Op == objects.OverrideOpSet && strings.EqualFold(op.Path, "stream") {
+		if (op.Op == objects.OverrideOpSet || op.Op == objects.OverrideOpSetIfAbsent) && strings.EqualFold(op.Path, "stream") {
 			return fmt.Errorf("override parameters cannot contain the field \"stream\"")
 		}
 	}
@@ -171,16 +171,22 @@ func ValidateOverrideParameters(params string) error {
 }
 
 // ValidateBodyOverrideOperations validates body override operations.
-// - set/delete/array_*: require non-empty Path
+// - set/set_if_absent/delete/array_*: require non-empty Path
+// - set_if_absent: requires a non-empty Value
 // - rename/copy: require non-empty From and To
 // - array_insert: requires Index
-// - set/array_*: cannot target the "stream" field.
+// - array_remove: requires Match.Path and Match.Eq
+// - set/set_if_absent/array_*: cannot target the "stream" field.
 func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 	for i, op := range ops {
 		switch op.Op {
-		case objects.OverrideOpSet:
+		case objects.OverrideOpSet, objects.OverrideOpSetIfAbsent:
 			if strings.TrimSpace(op.Path) == "" {
-				return fmt.Errorf("body operation at index %d (set) has an empty path", i)
+				return fmt.Errorf("body operation at index %d (%s) has an empty path", i, op.Op)
+			}
+
+			if op.Op == objects.OverrideOpSetIfAbsent && strings.TrimSpace(op.Value) == "" {
+				return fmt.Errorf("body operation at index %d (set_if_absent) has an empty value", i)
 			}
 
 			if strings.EqualFold(op.Path, "stream") {
@@ -194,7 +200,7 @@ func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 			if strings.TrimSpace(op.From) == "" || strings.TrimSpace(op.To) == "" {
 				return fmt.Errorf("body operation at index %d (%s) requires non-empty from and to", i, op.Op)
 			}
-		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert:
+		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert, objects.OverrideOpArrayRemove:
 			if strings.TrimSpace(op.Path) == "" {
 				return fmt.Errorf("body operation at index %d (%s) has an empty path", i, op.Op)
 			}
@@ -205,6 +211,20 @@ func ValidateBodyOverrideOperations(ops []objects.OverrideOperation) error {
 
 			if op.Op == objects.OverrideOpArrayInsert && op.Index == nil {
 				return fmt.Errorf("body operation at index %d (array_insert) requires an index", i)
+			}
+
+			if op.Op == objects.OverrideOpArrayRemove {
+				if op.Match == nil {
+					return fmt.Errorf("body operation at index %d (array_remove) requires a match", i)
+				}
+
+				if strings.TrimSpace(op.Match.Path) == "" {
+					return fmt.Errorf("body operation at index %d (array_remove) requires a match path", i)
+				}
+
+				if strings.TrimSpace(op.Match.Eq) == "" {
+					return fmt.Errorf("body operation at index %d (array_remove) requires a match eq value", i)
+				}
 			}
 		default:
 			return fmt.Errorf("body operation at index %d has unknown op %q", i, op.Op)
@@ -232,7 +252,9 @@ func ValidateOverrideHeaders(ops []objects.OverrideOperation) error {
 			if strings.TrimSpace(op.From) == "" || strings.TrimSpace(op.To) == "" {
 				return fmt.Errorf("header operation at index %d (%s) requires non-empty from and to", i, op.Op)
 			}
-		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert:
+		case objects.OverrideOpSetIfAbsent:
+			return fmt.Errorf("header operation at index %d (%s) is not supported on headers; it only applies to the body", i, op.Op)
+		case objects.OverrideOpArrayAppend, objects.OverrideOpArrayPrepend, objects.OverrideOpArrayInsert, objects.OverrideOpArrayRemove:
 			return fmt.Errorf("header operation at index %d (%s) is not supported on headers; array ops only apply to the body", i, op.Op)
 		default:
 			return fmt.Errorf("header operation at index %d has unknown op %q", i, op.Op)

@@ -29,6 +29,8 @@ func (Thread) Indexes() []ent.Index {
 		index.Fields("thread_id").
 			StorageKey("threads_by_thread_id").
 			Unique(),
+		index.Fields("project_id", "status").
+			StorageKey("threads_by_project_id_status"),
 	}
 }
 
@@ -41,6 +43,10 @@ func (Thread) Fields() []ent.Field {
 		field.String("thread_id").
 			Unique().
 			Comment("Unique thread identifier for this thread"),
+		field.Enum("status").
+			Values("active", "archived", "retained").
+			Default("active").
+			Comment("Record status: active (default), archived (hidden), retained (protected from GC)"),
 	}
 }
 

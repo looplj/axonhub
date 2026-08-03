@@ -41,6 +41,8 @@ const (
 	FieldScopes = "scopes"
 	// FieldProfiles holds the string denoting the profiles field in the database.
 	FieldProfiles = "profiles"
+	// FieldAllowedIps holds the string denoting the allowed_ips field in the database.
+	FieldAllowedIps = "allowed_ips"
 	// EdgeUser holds the string denoting the user edge name in mutations.
 	EdgeUser = "user"
 	// EdgeProject holds the string denoting the project edge name in mutations.
@@ -86,6 +88,7 @@ var Columns = []string{
 	FieldStatus,
 	FieldScopes,
 	FieldProfiles,
+	FieldAllowedIps,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -121,6 +124,8 @@ var (
 	DefaultScopes []string
 	// DefaultProfiles holds the default value on creation for the "profiles" field.
 	DefaultProfiles *objects.APIKeyProfiles
+	// DefaultAllowedIps holds the default value on creation for the "allowed_ips" field.
+	DefaultAllowedIps []string
 )
 
 // Type defines the type for the "type" enum field.
@@ -134,6 +139,7 @@ const (
 	TypeUser           Type = "user"
 	TypeServiceAccount Type = "service_account"
 	TypeNoauth         Type = "noauth"
+	TypePersonal       Type = "personal"
 )
 
 func (_type Type) String() string {
@@ -143,7 +149,7 @@ func (_type Type) String() string {
 // TypeValidator is a validator for the "type" field enum values. It is called by the builders before save.
 func TypeValidator(_type Type) error {
 	switch _type {
-	case TypeUser, TypeServiceAccount, TypeNoauth:
+	case TypeUser, TypeServiceAccount, TypeNoauth, TypePersonal:
 		return nil
 	default:
 		return fmt.Errorf("apikey: invalid enum value for type field: %q", _type)

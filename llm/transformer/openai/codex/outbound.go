@@ -2,7 +2,9 @@ package codex
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -111,6 +113,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if llmReq.RawRequest != nil && llmReq.RawRequest.Headers != nil {
 		rawHeaders = llmReq.RawRequest.Headers
 		rawSessionID = llmReq.RawRequest.Headers.Get(SessionHeader)
+		if rawSessionID == "" {
+			rawSessionID = llmReq.RawRequest.Headers.Get(SessionHeaderHyphen)
+		}
+		// Remove underscore variant to prevent it from leaking upstream via MergeInboundRequest.
+		llmReq.RawRequest.Headers.Del(SessionHeader)
 		rawOriginator = llmReq.RawRequest.Headers.Get("Originator")
 		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
 		rawTurnMetadata = llmReq.RawRequest.Headers.Get(TurnMetadataHeader)
@@ -126,6 +133,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Clone request so we do not mutate upstream pipeline state.
 	reqCopy := *llmReq
+	originalRequestType := reqCopy.RequestType
+	originalAPIFormat := reqCopy.APIFormat
+	isImageRequest := originalRequestType == llm.RequestTypeImage
 
 	// Codex expects Responses API payload with some strict rules.
 	// Always enable stream except for compact requests and disable store.
@@ -142,18 +152,25 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Codex recommends parallel tool calls.
 	reqCopy.ParallelToolCalls = lo.ToPtr(true)
 
-	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
 	if reqCopy.TransformerMetadata == nil {
 		reqCopy.TransformerMetadata = map[string]any{}
 	}
 
-	if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
-		reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
+	if isImageRequest {
+		reqCopy.Model = defaultImageMainModel
+		reqCopy.TransformerMetadata[responses.ImageGenerationToolModelMetadataKey] = llmReq.Model
 	}
 
-	if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
-		// Enable reasoning summary for Codex CLI requests.
-		reqCopy.ReasoningSummary = lo.ToPtr("auto")
+	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
+	if !isImageRequest {
+		if _, ok := reqCopy.TransformerMetadata["include"]; !ok {
+			reqCopy.TransformerMetadata["include"] = []string{"reasoning.encrypted_content"}
+		}
+
+		if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
+			// Enable reasoning summary for Codex CLI requests.
+			reqCopy.ReasoningSummary = lo.ToPtr("auto")
+		}
 	}
 
 	// Codex Responses rejects token limit fields, so strip them out.
@@ -167,6 +184,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
 	if err != nil {
 		return nil, err
+	}
+
+	if isImageRequest {
+		hreq.RequestType = originalRequestType.String()
+		hreq.APIFormat = originalAPIFormat.String()
 	}
 
 	// Overwrite auth.
@@ -197,14 +219,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	if rawSessionID != "" {
-		hreq.Headers.Set(SessionHeader, rawSessionID)
+		hreq.Headers.Set(SessionHeaderHyphen, rawSessionID)
 	} else if sessionID := ExtractSessionIDFromTurnMetadata(rawTurnMetadata); sessionID != "" {
-		hreq.Headers.Set(SessionHeader, sessionID)
-	} else if hreq.Headers.Get(SessionHeader) == "" {
+		hreq.Headers.Set(SessionHeaderHyphen, sessionID)
+	} else if hreq.Headers.Get(SessionHeaderHyphen) == "" {
 		if sessionID, ok := shared.GetSessionID(ctx); ok {
-			hreq.Headers.Set(SessionHeader, sessionID)
+			hreq.Headers.Set(SessionHeaderHyphen, sessionID)
 		} else {
-			hreq.Headers.Set(SessionHeader, uuid.NewString())
+			hreq.Headers.Set(SessionHeaderHyphen, uuid.NewString())
 		}
 	}
 
@@ -212,11 +234,38 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		hreq.Headers.Set("Chatgpt-Account-Id", accountID)
 	}
 
+	if hreq.Headers.Get("Conversation_id") == "" {
+		if sessionID := hreq.Headers.Get(SessionHeaderHyphen); sessionID != "" {
+			hreq.Headers.Set("Conversation_id", sessionID)
+		}
+	}
+
+	if hreq.Headers.Get("Version") == "" {
+		hreq.Headers.Set("Version", codexDefaultVersion)
+	}
+
 	return hreq, nil
 }
 
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
-	// Codex upstream returns Responses API response.
+	if httpResp != nil && httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeImage.String() {
+		if httpResp.StatusCode >= 400 {
+			return nil, fmt.Errorf("codex image HTTP error %d: %s", httpResp.StatusCode, httpResp.Body)
+		}
+
+		var upstream responses.Response
+		if err := json.Unmarshal(httpResp.Body, &upstream); err != nil {
+			return nil, err
+		}
+
+		metadata := map[string]any{}
+		if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+			metadata = httpResp.Request.TransformerMetadata
+		}
+
+		return responses.BuildImageResponse(&upstream, metadata)
+	}
+
 	return t.responsesOutbound.TransformResponse(ctx, httpResp)
 }
 

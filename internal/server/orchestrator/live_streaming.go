@@ -149,7 +149,10 @@ func (s *liveRequestExecutionStream) Next() bool {
 
 	s.current = s.stream.Current()
 	if s.current != nil {
-		s.buffer.Append(s.current)
+		// Summarize raw binary audio chunks before buffering so the live preview
+		// path does not retain full TTS audio bytes in memory. Downstream
+		// consumers still receive the unmodified event via Current().
+		s.buffer.Append(httpclient.SummarizeBinaryChunk(s.current))
 	}
 
 	return true
@@ -192,7 +195,10 @@ func (s *liveRequestStream) Next() bool {
 
 	s.current = s.stream.Current()
 	if s.current != nil {
-		s.buffer.Append(s.current)
+		// Summarize raw binary audio chunks before buffering so the live preview
+		// path does not retain full TTS audio bytes in memory. Downstream
+		// consumers still receive the unmodified event via Current().
+		s.buffer.Append(httpclient.SummarizeBinaryChunk(s.current))
 	}
 
 	return true

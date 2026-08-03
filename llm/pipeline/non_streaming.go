@@ -83,7 +83,7 @@ func (p *pipeline) autoAggregateStream(
 	executor Executor,
 	request *httpclient.Request,
 ) (*httpclient.Response, error) {
-	inboundStream, err := p.stream(ctx, executor, request)
+	inboundStream, err := p.stream(ctx, executor, request, 0)
 	if err != nil {
 		return nil, err
 	}

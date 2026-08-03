@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { SortingState } from '@tanstack/react-table';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
@@ -17,15 +18,49 @@ import { ApiKeyType } from './data/schema';
 
 type ApiKeyTabKey = ApiKeyType | 'all';
 
+const DEFAULT_SORTING: SortingState = [{ id: 'createdAt', desc: true }];
+const SORTABLE_COLUMN_IDS = new Set(['name', 'createdAt', 'updatedAt']);
+
+function loadSorting(): SortingState {
+  const fallback = () => DEFAULT_SORTING.map((item) => ({ ...item }));
+  try {
+    const stored = localStorage.getItem('apikeys-table-sorting');
+    if (!stored) return fallback();
+
+    const parsed: unknown = JSON.parse(stored);
+    if (!Array.isArray(parsed) || parsed.length !== 1) return fallback();
+
+    const [primary] = parsed;
+    if (
+      typeof primary !== 'object' ||
+      primary === null ||
+      !('id' in primary) ||
+      !('desc' in primary) ||
+      typeof primary.id !== 'string' ||
+      !SORTABLE_COLUMN_IDS.has(primary.id) ||
+      typeof primary.desc !== 'boolean'
+    ) {
+      return fallback();
+    }
+
+    return [{ id: primary.id, desc: primary.desc }];
+  } catch {
+    return fallback();
+  }
+}
+
 function ApiKeysContent() {
   const { t } = useTranslation();
-  const { apiKeyPermissions } = usePermissions();
-  const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
-    defaultPageSize: 20,
-    pageSizeStorageKey: 'apikeys-table-page-size',
-  });
+  const { apiKeyPermissions, hasSystemScope } = usePermissions();
+  const { startCursor, endCursor, cursorHistory, pageSize, setCursors, setPageSize, resetCursor, paginationArgs } =
+    usePaginationSearch({
+      defaultPageSize: 20,
+      pageSizeStorageKey: 'apikeys-table-page-size',
+    });
 
   const [activeTab, setActiveTab] = useState<ApiKeyTabKey>('all');
+  const [sorting, setSorting] = useState<SortingState>(loadSorting);
+  const [sortingCursorResetPending, setSortingCursorResetPending] = useState(false);
 
   // Filter states - following the same pattern as roles and users
   const [searchFilter, setSearchFilter] = useState<string>('');
@@ -34,6 +69,22 @@ function ApiKeysContent() {
   const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
 
   const debouncedSearchFilter = useDebounce(searchFilter, 300);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('apikeys-table-sorting', JSON.stringify(sorting));
+    } catch {
+      // Storage may be unavailable; sorting still works for the current session.
+    }
+  }, [sorting]);
+
+  const hasPaginationCursor = Boolean(startCursor || endCursor || cursorHistory.length > 0);
+
+  React.useEffect(() => {
+    if (sortingCursorResetPending && !hasPaginationCursor) {
+      setSortingCursorResetPending(false);
+    }
+  }, [hasPaginationCursor, sortingCursorResetPending]);
 
   // Build where clause for API filtering
   const whereClause = (() => {
@@ -75,10 +126,27 @@ function ApiKeysContent() {
     return Object.keys(where).length > 0 ? where : undefined;
   })();
 
+  const currentOrderBy = React.useMemo(() => {
+    if (sorting.length === 0) {
+      return { field: 'CREATED_AT', direction: 'DESC' } as const;
+    }
+
+    const [primary] = sorting;
+    switch (primary.id) {
+      case 'name':
+        return { field: 'NAME', direction: primary.desc ? 'DESC' : 'ASC' } as const;
+      case 'updatedAt':
+        return { field: 'UPDATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
+      case 'createdAt':
+      default:
+        return { field: 'CREATED_AT', direction: primary.desc ? 'DESC' : 'ASC' } as const;
+    }
+  }, [sorting]);
+
   const { data, isLoading } = useApiKeys({
-    ...paginationArgs,
+    ...(sortingCursorResetPending ? { first: pageSize } : paginationArgs),
     where: whereClause,
-    orderBy: { field: 'CREATED_AT', direction: 'DESC' },
+    orderBy: currentOrderBy,
   });
 
   const tableData = React.useMemo(
@@ -108,6 +176,14 @@ function ApiKeysContent() {
     setPageSize(newPageSize);
   };
 
+  const handleSortingChange = (updater: SortingState | ((previous: SortingState) => SortingState)) => {
+    if (hasPaginationCursor) {
+      setSortingCursorResetPending(true);
+    }
+    setSorting((previous) => (typeof updater === 'function' ? updater(previous) : updater));
+    resetCursor();
+  };
+
   const handleResetFilters = () => {
     setSearchFilter('');
     setStatusFilter([]);
@@ -116,24 +192,32 @@ function ApiKeysContent() {
     resetCursor();
   };
 
-  const columns = React.useMemo(() => createColumns(t, apiKeyPermissions.canWrite), [t, apiKeyPermissions.canWrite]);
+  const canViewCreators = hasSystemScope('read_users');
+
+  const columns = React.useMemo(
+    () => createColumns(t, apiKeyPermissions.canWrite, canViewCreators),
+    [t, apiKeyPermissions.canWrite, canViewCreators]
+  );
 
   return (
-    <div className='flex flex-1 flex-col'>
+    <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeyTabKey)} className='w-full'>
-        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-3 rounded-2xl border'>
+        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-4 rounded-2xl border'>
           <TabsTrigger value='all' data-value='all'>
             {t('apikeys.tabs.all')}
           </TabsTrigger>
           <TabsTrigger value='user' data-value='user'>
             {t('apikeys.type.user')}
           </TabsTrigger>
+          <TabsTrigger value='personal' data-value='personal'>
+            {t('apikeys.type.personal')}
+          </TabsTrigger>
           <TabsTrigger value='service_account' data-value='service_account'>
             {t('apikeys.type.service_account')}
           </TabsTrigger>
         </TabsList>
       </Tabs>
-      <div className='mt-6 flex-1'>
+      <div className='mt-6 flex min-h-0 flex-1 flex-col overflow-hidden'>
         <ApiKeysTable
           data={tableData}
           loading={isLoading}
@@ -145,6 +229,7 @@ function ApiKeysContent() {
           statusFilter={statusFilter}
           userFilter={userFilter}
           dateRange={dateRange}
+          sorting={sorting}
           onNextPage={handleNextPage}
           onPreviousPage={handlePreviousPage}
           onPageSizeChange={handlePageSizeChange}
@@ -152,8 +237,10 @@ function ApiKeysContent() {
           onStatusFilterChange={setStatusFilter}
           onUserFilterChange={setUserFilter}
           onDateRangeChange={setDateRange}
+          onSortingChange={handleSortingChange}
           onResetFilters={handleResetFilters}
           canWrite={apiKeyPermissions.canWrite}
+          canViewCreators={canViewCreators}
         />
       </div>
     </div>
@@ -175,7 +262,7 @@ export default function ApiKeysManagement() {
         </div>
       </Header>
 
-      <Main>
+      <Main fixed>
         <ApiKeysContent />
       </Main>
       <ApiKeysDialogs />

@@ -16,6 +16,9 @@ export const traceRequestsSummarySchema = z
   .nullable()
   .optional();
 
+export const traceStatusSchema = z.enum(['active', 'archived', 'retained']);
+export type TraceStatus = z.infer<typeof traceStatusSchema>;
+
 export const traceSchema = z.object({
   id: z.string(),
   traceID: z.string(),
@@ -25,6 +28,7 @@ export const traceSchema = z.object({
   requests: traceRequestsSummarySchema,
   firstUserQuery: z.string().nullable().optional(),
   firstText: z.string().nullable().optional(),
+  status: traceStatusSchema.optional().default('active'),
 });
 
 export type Trace = z.infer<typeof traceSchema>;
@@ -224,6 +228,7 @@ export const traceDetailSchema = z.object({
   requests: traceRequestsSummarySchema,
   rawRootSegment: z.any().nullable().optional(),
   usageMetadata: usageMetadataSchema,
+  status: traceStatusSchema.optional().default('active'),
 });
 
 export type TraceDetail = z.infer<typeof traceDetailSchema>;

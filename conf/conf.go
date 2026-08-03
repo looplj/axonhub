@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
@@ -45,35 +46,92 @@ type providerQuotaConfig struct {
 	WarningCheckIntervalRatio int           `conf:"warning_check_interval_ratio" yaml:"warning_check_interval_ratio" json:"warning_check_interval_ratio"`
 }
 
-// Load loads configuration from YAML file and environment variables.
-func Load() (Config, error) {
+// Loader remembers the config file selected during startup. Each load creates
+// a fresh Viper instance so transient overrides never leak across reloads.
+type Loader struct {
+	configFile string
+}
+
+// NewLoader reads the initial configuration and records the selected config
+// file for subsequent runtime reloads.
+func NewLoader() (Config, *Loader, error) {
+	cfg, configFile, err := loadConfig("")
+	if err != nil {
+		return Config{}, nil, err
+	}
+
+	if cfg.Cache.Redis.Addr != "" {
+		log.Warn(context.Background(), "Config `cache.redis.addr` Deprecated: Use `cache.redis.addrs` instead.")
+	}
+
+	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", cfg))
+
+	return cfg, &Loader{configFile: configFile}, nil
+}
+
+// ConfigFile returns the absolute path of the config file selected at startup.
+// It returns an empty string when the process is using defaults and
+// environment variables only.
+func (l *Loader) ConfigFile() string {
+	return l.configFile
+}
+
+// Reload re-reads the startup-selected config file using a new Viper instance.
+func (l *Loader) Reload() (Config, error) {
+	if l.configFile == "" {
+		return Config{}, errors.New("config reload is unavailable without a config file")
+	}
+
+	cfg, _, err := loadConfig(l.configFile)
+	return cfg, err
+}
+
+func loadConfig(configFile string) (Config, string, error) {
 	v := viper.New()
+	setDefaults(v)
 
-	// Set config file name and paths
-	v.SetConfigName("config")
-	v.SetConfigType("yml")
-	v.AddConfigPath(".")
-	v.AddConfigPath("/etc/axonhub/")
-	v.AddConfigPath("$HOME/.config/axonhub/")
-	v.AddConfigPath("./conf")
-
-	// Enable environment variable support
 	v.AutomaticEnv()
 	v.SetEnvPrefix("AXONHUB")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	// Set default values
-	setDefaults(v)
+	if configFile != "" {
+		v.SetConfigFile(configFile)
+	} else {
+		v.SetConfigName("config")
+		v.SetConfigType("yml")
+		v.AddConfigPath(".")
+		v.AddConfigPath("/etc/axonhub/")
+		v.AddConfigPath("$HOME/.config/axonhub/")
+		v.AddConfigPath("./conf")
+	}
 
-	// Read config file
 	if err := v.ReadInConfig(); err != nil {
 		var configFileNotFoundError viper.ConfigFileNotFoundError
-		if !errors.As(err, &configFileNotFoundError) {
-			return Config{}, fmt.Errorf("failed to read config file: %w", err)
+		if configFile != "" || !errors.As(err, &configFileNotFoundError) {
+			return Config{}, "", fmt.Errorf("failed to read config file: %w", err)
 		}
 		// Config file not found, use defaults and environment variables
 	}
 
+	cfg, err := unmarshal(v)
+	if err != nil {
+		return Config{}, "", err
+	}
+
+	configFile = v.ConfigFileUsed()
+	if configFile != "" {
+		configFile, err = filepath.Abs(configFile)
+		if err != nil {
+			return Config{}, "", fmt.Errorf("resolve config file path: %w", err)
+		}
+	}
+
+	return cfg, configFile, nil
+}
+
+// unmarshal parses a full Config from the given Viper instance using the
+// customized decode hook and "conf" tag.
+func unmarshal(v *viper.Viper) (Config, error) {
 	// Parse log level from string before unmarshaling
 	logLevelStr := v.GetString("log.level")
 
@@ -84,7 +142,6 @@ func Load() (Config, error) {
 	// Set the parsed log level back to viper for unmarshaling
 	v.Set("log.level", int(logLevel))
 
-	// Unmarshal config
 	var config Config
 	if err := v.Unmarshal(&config, func(dc *mapstructure.DecoderConfig) {
 		dc.DecodeHook = customizedDecodeHook
@@ -97,9 +154,16 @@ func Load() (Config, error) {
 	config.AllowNoAuth = config.APIServer.API.Auth.AllowNoAuth
 	config.APIKeyPrefix = config.APIServer.API.Auth.KeyPrefix
 
-	log.Debug(context.Background(), "Config loaded successfully", log.Any("config", config))
-
 	return config, nil
+}
+
+// Load loads configuration from YAML file and environment variables.
+// This is a convenience function for CLI subcommands that only need a
+// one-shot config load without the Loader. The fx application uses NewLoader
+// instead so it can reload config at runtime.
+func Load() (Config, error) {
+	cfg, _, err := NewLoader()
+	return cfg, err
 }
 
 var (
@@ -151,6 +215,7 @@ func setDefaults(v *viper.Viper) {
 	// Server defaults
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", 8090)
+	v.SetDefault("server.pid_file", "")
 	v.SetDefault("server.public_url", "")
 	v.SetDefault("server.name", "AxonHub")
 	v.SetDefault("server.base_path", "")
@@ -159,6 +224,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.trace.thread_header", "AH-Thread-Id")
 	v.SetDefault("server.trace.trace_header", "AH-Trace-Id")
 	v.SetDefault("server.trace.extra_trace_headers", []string{})
+	v.SetDefault("server.trace.response_trace_headers", []string{})
 	v.SetDefault("server.trace.extra_trace_body_fields", []string{})
 	v.SetDefault("server.trace.claude_code_trace_enabled", false)
 	v.SetDefault("server.trace.codex_trace_enabled", false)
@@ -170,6 +236,10 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("server.debug", false)
 	v.SetDefault("server.disable_ssl_verify", false)
+
+	// Max multipart memory for file uploads (backup restore, etc.)
+	// Default: 32M (matching Gin's default). Supports K/M/G suffixes, e.g. "512M", "1G".
+	v.SetDefault("server.max_multipart_memory", "32M")
 
 	// CORS defaults
 	v.SetDefault("server.cors.enabled", false)
@@ -234,9 +304,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("cache.default_expiration", "5m")
 	v.SetDefault("cache.cleanup_interval", "10m")
 	v.SetDefault("cache.redis.addr", "")
+	v.SetDefault("cache.redis.addrs", []string{})
 	v.SetDefault("cache.redis.url", "")
 	v.SetDefault("cache.redis.username", "")
 	v.SetDefault("cache.redis.password", "")
+	v.SetDefault("cache.redis.master_name", "")
+	v.SetDefault("cache.redis.sentinel_username", "")
+	v.SetDefault("cache.redis.sentinel_password", "")
 	// Note: cache.redis.db has no default value to allow explicit override to 0
 	v.SetDefault("cache.redis.tls", false)
 	v.SetDefault("cache.redis.tls_insecure_skip_verify", false)

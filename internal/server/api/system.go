@@ -77,6 +77,7 @@ type WebhookDebugResponse struct {
 func (h *SystemHandlers) GetSystemStatus(c *gin.Context) {
 	isInitialized, err := h.SystemService.IsInitialized(c.Request.Context())
 	if err != nil {
+		log.Error(c.Request.Context(), "Failed to check system status", log.Cause(err))
 		JSONError(c, http.StatusInternalServerError, errors.New("Failed to check system status"))
 		return
 	}
@@ -168,6 +169,7 @@ func (h *SystemHandlers) InitializeSystem(c *gin.Context) {
 		PreferLanguage: req.PreferLanguage,
 	})
 	if err != nil {
+		_ = c.Error(err)
 		c.JSON(http.StatusInternalServerError, InitializeSystemResponse{
 			Success: false,
 			Message: fmt.Sprintf("Failed to initialize system: %v", err),

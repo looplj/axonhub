@@ -22,12 +22,15 @@ import {
   bulkUpdateChannelOrderingResultSchema,
   channelSummaryConnectionSchema,
   ChannelSettings,
+  ProxyConfig,
   ChannelPolicies,
   ChannelModelPrice,
   SaveChannelModelPriceInput,
   channelModelPriceSchema,
   TestChannelAPIKeysPayload,
   testChannelAPIKeysPayloadSchema,
+  TestAPIKeyResult,
+  testAPIKeyResultSchema,
 } from './schema';
 
 const QUERY_CHANNEL_NAMES_QUERY = `
@@ -69,12 +72,12 @@ const CREATE_CHANNEL_MUTATION = `
       type
       createdAt
       updatedAt
-      type
       baseURL
       name
       status
       policies {
         stream
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
       }
       supportedModels
       autoSyncSupportedModels
@@ -82,30 +85,118 @@ const CREATE_CHANNEL_MUTATION = `
       manualModels
       tags
       defaultTestModel
-        settings {
-          extraModelPrefix
-          modelMappings {
-            from
-            to
-          }
-          autoTrimedModelPrefixes
-          hideOriginalModels
-          hideMappedModels
-          lowercaseModelId
-          proxy {
-            type
-            url
-            username
-            password
-          }
-          transformOptions {
-            forceArrayInstructions
-            forceArrayInputs
-            replaceDeveloperRoleWithSystem
-          }
-          passThroughUserAgent
-          passThroughBody
+      settings {
+        extraModelPrefix
+        modelMappings {
+          from
+          to
         }
+        autoTrimedModelPrefixes
+        hideOriginalModels
+        hideMappedModels
+        lowercaseModelId
+        proxy {
+          type
+          url
+          username
+          password
+          disableConnectionReuse
+        }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
+          replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
+        }
+        passThroughUserAgent
+        passThroughBody
+        retryableStatusCodes
+        retryableErrorPatterns {
+          pattern
+          regex
+        }
+        providerQuota {
+          opencodeGo {
+            workspaceId
+            authCookie
+          }
+        }
+      }
+      orderingWeight
+      remark
+      defaultEndpoints {
+        apiFormat
+        path
+        baseURL
+        transport
+      }
+      endpoints {
+        apiFormat
+        path
+        baseURL
+        transport
+      }
+    }
+  }
+`;
+
+const DUPLICATE_CHANNEL_MUTATION = `
+  mutation DuplicateChannel($sourceID: ID!, $input: CreateChannelInput!) {
+    duplicateChannel(sourceID: $sourceID, input: $input) {
+      id
+      type
+      createdAt
+      updatedAt
+      baseURL
+      name
+      status
+      policies {
+        stream
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
+      }
+      supportedModels
+      autoSyncSupportedModels
+      autoSyncModelPattern
+      manualModels
+      tags
+      defaultTestModel
+      settings {
+        extraModelPrefix
+        modelMappings {
+          from
+          to
+        }
+        autoTrimedModelPrefixes
+        hideOriginalModels
+        hideMappedModels
+        lowercaseModelId
+        proxy {
+          type
+          url
+          username
+          password
+          disableConnectionReuse
+        }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
+          replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
+        }
+        passThroughUserAgent
+        passThroughBody
+        retryableStatusCodes
+        retryableErrorPatterns {
+          pattern
+          regex
+        }
+        providerQuota {
+          opencodeGo {
+            workspaceId
+            authCookie
+          }
+        }
+      }
       orderingWeight
       remark
       defaultEndpoints {
@@ -136,6 +227,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       status
       policies {
         stream
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
       }
       supportedModels
       autoSyncSupportedModels
@@ -143,30 +235,43 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       manualModels
       tags
       defaultTestModel
-        settings {
-          extraModelPrefix
-          modelMappings {
-            from
-            to
-          }
-          autoTrimedModelPrefixes
-          hideOriginalModels
-          hideMappedModels
-          lowercaseModelId
-          proxy {
-            type
-            url
-            username
-            password
-          }
-          transformOptions {
-            forceArrayInstructions
-            forceArrayInputs
-            replaceDeveloperRoleWithSystem
-          }
-          passThroughUserAgent
-          passThroughBody
+      settings {
+        extraModelPrefix
+        modelMappings {
+          from
+          to
         }
+        autoTrimedModelPrefixes
+        hideOriginalModels
+        hideMappedModels
+        lowercaseModelId
+        proxy {
+          type
+          url
+          username
+          password
+          disableConnectionReuse
+        }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
+          replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
+        }
+        passThroughUserAgent
+        passThroughBody
+        retryableStatusCodes
+        retryableErrorPatterns {
+          pattern
+          regex
+        }
+        providerQuota {
+          opencodeGo {
+            workspaceId
+            authCookie
+          }
+        }
+      }
       orderingWeight
       remark
       defaultEndpoints {
@@ -197,6 +302,7 @@ const UPDATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
+        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
       }
       supportedModels
       autoSyncSupportedModels
@@ -204,30 +310,43 @@ const UPDATE_CHANNEL_MUTATION = `
       manualModels
       tags
       defaultTestModel
-        settings {
-          extraModelPrefix
-          modelMappings {
-            from
-            to
-          }
-          autoTrimedModelPrefixes
-          hideOriginalModels
-          hideMappedModels
-          lowercaseModelId
-          proxy {
-            type
-            url
-            username
-            password
-          }
-          transformOptions {
-            forceArrayInstructions
-            forceArrayInputs
-            replaceDeveloperRoleWithSystem
-          }
-          passThroughUserAgent
-          passThroughBody
+      settings {
+        extraModelPrefix
+        modelMappings {
+          from
+          to
         }
+        autoTrimedModelPrefixes
+        hideOriginalModels
+        hideMappedModels
+        lowercaseModelId
+        proxy {
+          type
+          url
+          username
+          password
+          disableConnectionReuse
+        }
+        transformOptions {
+          forceArrayInstructions
+          forceArrayInputs
+          replaceDeveloperRoleWithSystem
+          reasoningEffortMapping { from to }
+        }
+        passThroughUserAgent
+        passThroughBody
+        retryableStatusCodes
+        retryableErrorPatterns {
+          pattern
+          regex
+        }
+        providerQuota {
+          opencodeGo {
+            workspaceId
+            authCookie
+          }
+        }
+      }
       orderingWeight
       errorMessage
       remark
@@ -343,6 +462,18 @@ const TEST_CHANNEL_API_KEYS_MUTATION = `
   }
 `;
 
+const TEST_CHANNEL_API_KEY_MUTATION = `
+  mutation TestChannelAPIKey($channelID: ID!, $key: String!, $modelID: String) {
+    testChannelAPIKey(channelID: $channelID, key: $key, modelID: $modelID) {
+      keyPrefix
+      success
+      latency
+      error
+      disabled
+    }
+  }
+`;
+
 const BULK_IMPORT_CHANNELS_MUTATION = `
   mutation BulkImportChannels($input: BulkImportChannelsInput!) {
     bulkImportChannels(input: $input) {
@@ -390,9 +521,21 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             forceArrayInstructions
             forceArrayInputs
             replaceDeveloperRoleWithSystem
+            reasoningEffortMapping { from to }
           }
           passThroughUserAgent
           passThroughBody
+          retryableStatusCodes
+          retryableErrorPatterns {
+            pattern
+            regex
+          }
+          providerQuota {
+            opencodeGo {
+              workspaceId
+              authCookie
+            }
+          }
         }
       }
     }
@@ -443,6 +586,7 @@ const GET_CHANNEL_DISABLED_API_KEYS_QUERY = `
           disabledAt
           errorCode
           reason
+          expiresAt
         }
       }
     }
@@ -481,6 +625,38 @@ const GET_CHANNEL_MODEL_PRICES_QUERY = `
                   tiers {
                     upTo
                     pricePerUnit
+                  }
+                }
+              }
+            }
+          }
+          schedule {
+            timezone
+            overrides {
+              name
+              priority
+              when {
+                dailyTime {
+                  start
+                  end
+                }
+                weekdays
+                dateRange {
+                  start
+                  end
+                }
+              }
+              items {
+                itemCode
+                pricing {
+                  mode
+                  flatFee
+                  usagePerUnit
+                  usageTiered {
+                    tiers {
+                      upTo
+                      pricePerUnit
+                    }
                   }
                 }
               }
@@ -576,9 +752,21 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             forceArrayInstructions
             forceArrayInputs
             replaceDeveloperRoleWithSystem
+            reasoningEffortMapping { from to }
           }
           passThroughUserAgent
           passThroughBody
+          retryableStatusCodes
+          retryableErrorPatterns {
+            pattern
+            regex
+          }
+          providerQuota {
+            opencodeGo {
+              workspaceId
+              authCookie
+            }
+          }
         }
       }
     }
@@ -650,6 +838,7 @@ const QUERY_CHANNELS_QUERY = `
           status
           policies {
             stream
+            apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes }
           }
           credentials {
             apiKey
@@ -683,6 +872,10 @@ const QUERY_CHANNELS_QUERY = `
               to
               value
               condition
+              match {
+                path
+                eq
+              }
               index
               splat
             }
@@ -693,6 +886,10 @@ const QUERY_CHANNELS_QUERY = `
               to
               value
               condition
+              match {
+                path
+                eq
+              }
               index
               splat
             }
@@ -701,11 +898,13 @@ const QUERY_CHANNELS_QUERY = `
               url
               username
               password
+              disableConnectionReuse
             }
             transformOptions {
               forceArrayInstructions
               forceArrayInputs
               replaceDeveloperRoleWithSystem
+              reasoningEffortMapping { from to }
             }
             passThroughUserAgent
             passThroughBody
@@ -715,6 +914,17 @@ const QUERY_CHANNELS_QUERY = `
               maxConcurrent
               queueSize
               queueTimeoutMs
+            }
+            retryableStatusCodes
+            retryableErrorPatterns {
+              pattern
+              regex
+            }
+            providerQuota {
+              opencodeGo {
+                workspaceId
+                authCookie
+              }
             }
           }
           orderingWeight
@@ -737,6 +947,7 @@ const QUERY_CHANNELS_QUERY = `
             disabledAt
             errorCode
             reason
+            expiresAt
           }
           liveLimiterStats {
             inFlight
@@ -919,6 +1130,26 @@ export function useCreateChannel() {
     },
     onError: (error) => {
       handleError(error, { context: t('channels.dialogs.create.title') });
+    },
+  });
+}
+
+export function useDuplicateChannel() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: async ({ sourceID, input }: { sourceID: string; input: CreateChannelInput }) => {
+      const data = await graphqlRequest<{ duplicateChannel: Channel }>(DUPLICATE_CHANNEL_MUTATION, { sourceID, input });
+      return channelSchema.parse(data.duplicateChannel);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      toast.success(t('common.success.duplicated'));
+    },
+    onError: (error) => {
+      handleError(error, { context: t('common.actions.duplicate') });
     },
   });
 }
@@ -1214,7 +1445,7 @@ export function useTestChannel(options?: { silent?: boolean }) {
     }: {
       channelID: string;
       modelID?: string;
-      proxy?: { type: string; url?: string; username?: string; password?: string };
+      proxy?: ProxyConfig;
     }) => {
       try {
         const data = await graphqlRequest<{
@@ -1280,6 +1511,19 @@ export function useTestChannelAPIKeys(options?: { silent?: boolean }) {
       }
 
       toast.error(t('channels.dialogs.testAPIKeys.successSummary', { success: data.successCount, total: data.total }));
+    },
+  });
+}
+
+export function useTestChannelAPIKey() {
+  return useMutation({
+    mutationFn: async ({ channelID, key, modelID }: { channelID: string; key: string; modelID?: string }) => {
+      const data = await graphqlRequest<{ testChannelAPIKey: TestAPIKeyResult }>(TEST_CHANNEL_API_KEY_MUTATION, {
+        channelID,
+        key,
+        modelID,
+      });
+      return testAPIKeyResultSchema.parse(data.testChannelAPIKey);
     },
   });
 }
@@ -1579,6 +1823,7 @@ export function useChannelDisabledAPIKeys(channelId: string, options?: { enabled
               disabledAt: string;
               errorCode: number;
               reason?: string | null;
+              expiresAt?: string | null;
             }>;
           };
         }>(GET_CHANNEL_DISABLED_API_KEYS_QUERY, { id: channelId });

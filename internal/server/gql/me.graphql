@@ -30,6 +30,7 @@ type UserProjectInfo {
   projectID: ID!
   isOwner: Boolean!
   scopes: [String!]!
+  effectiveScopes: [String!]!
   roles: [RoleInfo!]!
 }
 

@@ -100,7 +100,7 @@ func createTestRequestService(t *testing.T, client *ent.Client) *biz.RequestServ
 	channelService := biz.NewChannelServiceForTest(client)
 	usageLogService := biz.NewUsageLogService(client, systemService, channelService)
 
-	return biz.NewRequestService(client, systemService, usageLogService, dataStorageService, liveStreamRegistry)
+	return biz.NewRequestService(client, systemService.CacheConfig, systemService, usageLogService, dataStorageService, liveStreamRegistry)
 }
 
 // newInboundPersistentStreamHelper creates a configured InboundPersistentStream for testing.
@@ -138,8 +138,8 @@ func newInboundPersistentStreamHelper(
 	return stream, client, ctx, state
 }
 
-// TestInboundPersistentStream_Close_WithCompleteResponse tests the NEW behavior:
-// complete response without terminal event (e.g., Codex executor that aggregates internally)
+// TestInboundPersistentStream_Close_WithCompleteResponse verifies that a complete
+// response carrying finish_reason is recognized before Close persists it.
 func TestInboundPersistentStream_Close_WithCompleteResponse(t *testing.T) {
 	completeResponseChunk := &httpclient.StreamEvent{
 		Type: "chunk",
@@ -170,7 +170,7 @@ func TestInboundPersistentStream_Close_WithCompleteResponse(t *testing.T) {
 	event := stream.Current()
 	require.NotNil(t, event, "Expected current event to not be nil")
 
-	assert.False(t, state.StreamCompleted, "StreamCompleted should be false before Close()")
+	assert.True(t, state.StreamCompleted, "StreamCompleted should be true after consuming finish_reason")
 
 	err := stream.Close()
 	require.NoError(t, err, "Close() should not return an error")
@@ -258,4 +258,61 @@ func TestInboundPersistentStream_Close_WithAggregationError(t *testing.T) {
 
 	assert.False(t, state.StreamCompleted, "StreamCompleted should remain false after Close() with aggregation error")
 	assert.True(t, mockStream.closed, "Stream should be closed")
+}
+
+func TestIsTerminalStreamEvent_AudioDoneEvents(t *testing.T) {
+	// OpenAI audio SSE streams have no [DONE] sentinel; terminal completion is
+	// signaled by typed *.done events surfaced via StreamEvent.Type.
+	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.done"}))
+	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.done"}))
+	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: httpclient.BinaryStreamDoneEventType}))
+
+	// Other events must not be treated as terminal.
+	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.delta"}))
+	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.delta"}))
+	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "audio/mpeg"}))
+}
+
+func TestIsTerminalStreamEvent_SemanticCompletionInData(t *testing.T) {
+	tests := []struct {
+		name  string
+		event *httpclient.StreamEvent
+		want  bool
+	}{
+		{
+			name:  "responses completion without SSE event field",
+			event: &httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"status":"completed"}}`)},
+			want:  true,
+		},
+		{
+			name:  "anthropic message stop without SSE event field",
+			event: &httpclient.StreamEvent{Data: []byte(`{"type":"message_stop"}`)},
+			want:  true,
+		},
+		{
+			name:  "chat completion finish reason",
+			event: &httpclient.StreamEvent{Data: []byte(`{"choices":[{"index":0,"finish_reason":"stop"}]}`)},
+			want:  true,
+		},
+		{
+			name:  "chat completion without finish reason",
+			event: &httpclient.StreamEvent{Data: []byte(`{"choices":[{"index":0,"finish_reason":null}]}`)},
+			want:  false,
+		},
+		{
+			name:  "non-terminal responses event",
+			event: &httpclient.StreamEvent{Data: []byte(`{"type":"response.output_text.delta","delta":"done"}`)},
+			want:  false,
+		},
+		{
+			name: "nil event",
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, isTerminalStreamEvent(tt.event))
+		})
+	}
 }

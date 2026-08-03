@@ -116,7 +116,7 @@ export const TagsAutocompleteInput = forwardRef<HTMLDivElement, TagsAutocomplete
         ref={containerRef}
         data-tags-input-container
         className={cn(
-          'border-input bg-background ring-offset-background focus-within:ring-ring flex min-h-10 w-full flex-wrap gap-1 rounded-md border px-3 py-2 text-sm focus-within:ring-2 focus-within:ring-offset-2',
+          'border-input bg-background has-[input:focus-visible]:border-ring has-[input:focus-visible]:outline-foreground flex min-h-10 w-full flex-wrap gap-1 rounded-md border px-3 py-2 text-sm has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-1',
           className
         )}
         onClick={handleContainerClick}
@@ -127,7 +127,7 @@ export const TagsAutocompleteInput = forwardRef<HTMLDivElement, TagsAutocomplete
             <button
               type='button'
               onClick={() => removeTag(tag)}
-              className='text-secondary-foreground/80 hover:text-secondary-foreground focus:outline-none'
+              className='text-secondary-foreground/80 hover:text-secondary-foreground focus-visible:outline-foreground rounded-sm focus-visible:outline-2 focus-visible:outline-offset-1'
               aria-label={`Remove ${tag} tag`}
             >
               <X className='h-3 w-3' />

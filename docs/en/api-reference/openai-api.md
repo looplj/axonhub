@@ -186,6 +186,49 @@ fmt.Println(responseText)
 // AxonHub automatically translates OpenAI format → Gemini format
 ```
 
+## Moderations API
+
+AxonHub supports OpenAI-compatible content moderation through a standalone endpoint.
+
+**Endpoints:**
+- `POST /v1/moderations` - Classify text and/or image inputs with models such as `omni-moderation-latest`
+
+**Request parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `input` | string \| string[] \| multimodal object[] | ✅ | Content to classify. Multimodal items use `{ "type": "text", "text": "..." }` or `{ "type": "image_url", "image_url": { "url": "..." } }`. |
+| `model` | string | ❌ | Moderation model. If omitted, AxonHub defaults to `omni-moderation-latest`. The model must be available on a channel that exposes the `openai/moderations` endpoint. |
+
+**Standalone request example:**
+
+```json
+{
+  "model": "omni-moderation-latest",
+  "input": "...text to classify goes here..."
+}
+```
+
+Multimodal input (text + image) is also supported:
+
+```json
+{
+  "model": "omni-moderation-latest",
+  "input": [
+    { "type": "text", "text": "...text to classify goes here..." },
+    {
+      "type": "image_url",
+      "image_url": { "url": "https://example.com/image.png" }
+    }
+  ]
+}
+```
+
+**Notes:**
+- Chat Completions / Responses do not model the optional inline `moderation` request field. Use this standalone endpoint instead.
+- OpenAI and several OpenAI-compatible channel types include `openai/moderations` in their default endpoint set. Channels that do not support upstream `/moderations` may return provider errors; remove or override the endpoint if needed.
+- When body pass-through is enabled and inbound/outbound formats match, model mapping still patches the top-level `model` field for moderations requests.
+
 ## Embedding API
 
 AxonHub provides comprehensive support for text and multimodal embedding generation through OpenAI-compatible API.
@@ -332,6 +375,7 @@ AxonHub provides an enhanced `/v1/models` endpoint that lists available models w
 | `description` | string | Model description |
 | `context_length` | integer | Maximum context length in tokens |
 | `max_output_tokens` | integer | Maximum output tokens |
+| `modalities` | object | Model supported input/output types (input, output) |
 | `capabilities` | object | Model capabilities (vision, tool_call, reasoning) |
 | `pricing` | object | Pricing information (input, output, cache_read, cache_write) |
 | `icon` | string | Model icon URL |
@@ -378,6 +422,10 @@ When using `?include=all` or selective fields, the response includes extended me
       "description": "GPT-4 model with advanced reasoning capabilities",
       "context_length": 8192,
       "max_output_tokens": 4096,
+      "modalities": {
+        "input": ["text", "image"],
+        "output": ["text"]
+      },
       "capabilities": {
         "vision": false,
         "tool_call": true,
@@ -403,6 +451,9 @@ When using `?include=all` or selective fields, the response includes extended me
 - `description` - Detailed model description
 - `context_length` - Maximum tokens in context window
 - `max_output_tokens` - Maximum tokens in response
+- `modalities` - Model supported input/output modality types:
+  - `input` - Array of supported input types (e.g. `text`, `image`, `audio`, `video`, `pdf`)
+  - `output` - Array of supported output types (e.g. `text`)
 - `capabilities` - Object with boolean flags:
   - `vision` - Supports image inputs
   - `tool_call` - Supports function calling

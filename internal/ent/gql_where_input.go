@@ -5206,10 +5206,6 @@ type PromptWhereInput struct {
 	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
 	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
 	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
-	ProjectIDGT    *int  `json:"projectIDGT,omitempty"`
-	ProjectIDGTE   *int  `json:"projectIDGTE,omitempty"`
-	ProjectIDLT    *int  `json:"projectIDLT,omitempty"`
-	ProjectIDLTE   *int  `json:"projectIDLTE,omitempty"`
 
 	// "name" field predicates.
 	Name             *string  `json:"name,omitempty"`
@@ -5287,9 +5283,9 @@ type PromptWhereInput struct {
 	OrderLT    *int  `json:"orderLT,omitempty"`
 	OrderLTE   *int  `json:"orderLTE,omitempty"`
 
-	// "projects" edge predicates.
-	HasProjects     *bool                `json:"hasProjects,omitempty"`
-	HasProjectsWith []*ProjectWhereInput `json:"hasProjectsWith,omitempty"`
+	// "project" edge predicates.
+	HasProject     *bool                `json:"hasProject,omitempty"`
+	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -5446,18 +5442,6 @@ func (i *PromptWhereInput) P() (predicate.Prompt, error) {
 	}
 	if len(i.ProjectIDNotIn) > 0 {
 		predicates = append(predicates, prompt.ProjectIDNotIn(i.ProjectIDNotIn...))
-	}
-	if i.ProjectIDGT != nil {
-		predicates = append(predicates, prompt.ProjectIDGT(*i.ProjectIDGT))
-	}
-	if i.ProjectIDGTE != nil {
-		predicates = append(predicates, prompt.ProjectIDGTE(*i.ProjectIDGTE))
-	}
-	if i.ProjectIDLT != nil {
-		predicates = append(predicates, prompt.ProjectIDLT(*i.ProjectIDLT))
-	}
-	if i.ProjectIDLTE != nil {
-		predicates = append(predicates, prompt.ProjectIDLTE(*i.ProjectIDLTE))
 	}
 	if i.Name != nil {
 		predicates = append(predicates, prompt.NameEQ(*i.Name))
@@ -5652,23 +5636,23 @@ func (i *PromptWhereInput) P() (predicate.Prompt, error) {
 		predicates = append(predicates, prompt.OrderLTE(*i.OrderLTE))
 	}
 
-	if i.HasProjects != nil {
-		p := prompt.HasProjects()
-		if !*i.HasProjects {
+	if i.HasProject != nil {
+		p := prompt.HasProject()
+		if !*i.HasProject {
 			p = prompt.Not(p)
 		}
 		predicates = append(predicates, p)
 	}
-	if len(i.HasProjectsWith) > 0 {
-		with := make([]predicate.Project, 0, len(i.HasProjectsWith))
-		for _, w := range i.HasProjectsWith {
+	if len(i.HasProjectWith) > 0 {
+		with := make([]predicate.Project, 0, len(i.HasProjectWith))
+		for _, w := range i.HasProjectWith {
 			p, err := w.P()
 			if err != nil {
-				return nil, fmt.Errorf("%w: field 'HasProjectsWith'", err)
+				return nil, fmt.Errorf("%w: field 'HasProjectWith'", err)
 			}
 			with = append(with, p)
 		}
-		predicates = append(predicates, prompt.HasProjectsWith(with...))
+		predicates = append(predicates, prompt.HasProjectWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -7679,6 +7663,27 @@ type RequestExecutionWhereInput struct {
 	MetricsReasoningDurationMsIsNil  bool    `json:"metricsReasoningDurationMsIsNil,omitempty"`
 	MetricsReasoningDurationMsNotNil bool    `json:"metricsReasoningDurationMsNotNil,omitempty"`
 
+	// "request_url" field predicates.
+	RequestURL             *string  `json:"requestURL,omitempty"`
+	RequestURLNEQ          *string  `json:"requestURLNEQ,omitempty"`
+	RequestURLIn           []string `json:"requestURLIn,omitempty"`
+	RequestURLNotIn        []string `json:"requestURLNotIn,omitempty"`
+	RequestURLGT           *string  `json:"requestURLGT,omitempty"`
+	RequestURLGTE          *string  `json:"requestURLGTE,omitempty"`
+	RequestURLLT           *string  `json:"requestURLLT,omitempty"`
+	RequestURLLTE          *string  `json:"requestURLLTE,omitempty"`
+	RequestURLContains     *string  `json:"requestURLContains,omitempty"`
+	RequestURLHasPrefix    *string  `json:"requestURLHasPrefix,omitempty"`
+	RequestURLHasSuffix    *string  `json:"requestURLHasSuffix,omitempty"`
+	RequestURLIsNil        bool     `json:"requestURLIsNil,omitempty"`
+	RequestURLNotNil       bool     `json:"requestURLNotNil,omitempty"`
+	RequestURLEqualFold    *string  `json:"requestURLEqualFold,omitempty"`
+	RequestURLContainsFold *string  `json:"requestURLContainsFold,omitempty"`
+
+	// "pass_through_applied" field predicates.
+	PassThroughApplied    *bool `json:"passThroughApplied,omitempty"`
+	PassThroughAppliedNEQ *bool `json:"passThroughAppliedNEQ,omitempty"`
+
 	// "request" edge predicates.
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
 	HasRequestWith []*RequestWhereInput `json:"hasRequestWith,omitempty"`
@@ -8212,6 +8217,57 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.MetricsReasoningDurationMsNotNil {
 		predicates = append(predicates, requestexecution.MetricsReasoningDurationMsNotNil())
+	}
+	if i.RequestURL != nil {
+		predicates = append(predicates, requestexecution.RequestURLEQ(*i.RequestURL))
+	}
+	if i.RequestURLNEQ != nil {
+		predicates = append(predicates, requestexecution.RequestURLNEQ(*i.RequestURLNEQ))
+	}
+	if len(i.RequestURLIn) > 0 {
+		predicates = append(predicates, requestexecution.RequestURLIn(i.RequestURLIn...))
+	}
+	if len(i.RequestURLNotIn) > 0 {
+		predicates = append(predicates, requestexecution.RequestURLNotIn(i.RequestURLNotIn...))
+	}
+	if i.RequestURLGT != nil {
+		predicates = append(predicates, requestexecution.RequestURLGT(*i.RequestURLGT))
+	}
+	if i.RequestURLGTE != nil {
+		predicates = append(predicates, requestexecution.RequestURLGTE(*i.RequestURLGTE))
+	}
+	if i.RequestURLLT != nil {
+		predicates = append(predicates, requestexecution.RequestURLLT(*i.RequestURLLT))
+	}
+	if i.RequestURLLTE != nil {
+		predicates = append(predicates, requestexecution.RequestURLLTE(*i.RequestURLLTE))
+	}
+	if i.RequestURLContains != nil {
+		predicates = append(predicates, requestexecution.RequestURLContains(*i.RequestURLContains))
+	}
+	if i.RequestURLHasPrefix != nil {
+		predicates = append(predicates, requestexecution.RequestURLHasPrefix(*i.RequestURLHasPrefix))
+	}
+	if i.RequestURLHasSuffix != nil {
+		predicates = append(predicates, requestexecution.RequestURLHasSuffix(*i.RequestURLHasSuffix))
+	}
+	if i.RequestURLIsNil {
+		predicates = append(predicates, requestexecution.RequestURLIsNil())
+	}
+	if i.RequestURLNotNil {
+		predicates = append(predicates, requestexecution.RequestURLNotNil())
+	}
+	if i.RequestURLEqualFold != nil {
+		predicates = append(predicates, requestexecution.RequestURLEqualFold(*i.RequestURLEqualFold))
+	}
+	if i.RequestURLContainsFold != nil {
+		predicates = append(predicates, requestexecution.RequestURLContainsFold(*i.RequestURLContainsFold))
+	}
+	if i.PassThroughApplied != nil {
+		predicates = append(predicates, requestexecution.PassThroughAppliedEQ(*i.PassThroughApplied))
+	}
+	if i.PassThroughAppliedNEQ != nil {
+		predicates = append(predicates, requestexecution.PassThroughAppliedNEQ(*i.PassThroughAppliedNEQ))
 	}
 
 	if i.HasRequest != nil {
@@ -8992,6 +9048,12 @@ type ThreadWhereInput struct {
 	ThreadIDEqualFold    *string  `json:"threadIDEqualFold,omitempty"`
 	ThreadIDContainsFold *string  `json:"threadIDContainsFold,omitempty"`
 
+	// "status" field predicates.
+	Status      *thread.Status  `json:"status,omitempty"`
+	StatusNEQ   *thread.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []thread.Status `json:"statusIn,omitempty"`
+	StatusNotIn []thread.Status `json:"statusNotIn,omitempty"`
+
 	// "project" edge predicates.
 	HasProject     *bool                `json:"hasProject,omitempty"`
 	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
@@ -9195,6 +9257,18 @@ func (i *ThreadWhereInput) P() (predicate.Thread, error) {
 	if i.ThreadIDContainsFold != nil {
 		predicates = append(predicates, thread.ThreadIDContainsFold(*i.ThreadIDContainsFold))
 	}
+	if i.Status != nil {
+		predicates = append(predicates, thread.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, thread.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, thread.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, thread.StatusNotIn(i.StatusNotIn...))
+	}
 
 	if i.HasProject != nil {
 		p := thread.HasProject()
@@ -9307,6 +9381,12 @@ type TraceWhereInput struct {
 	ThreadIDNotIn  []int `json:"threadIDNotIn,omitempty"`
 	ThreadIDIsNil  bool  `json:"threadIDIsNil,omitempty"`
 	ThreadIDNotNil bool  `json:"threadIDNotNil,omitempty"`
+
+	// "status" field predicates.
+	Status      *trace.Status  `json:"status,omitempty"`
+	StatusNEQ   *trace.Status  `json:"statusNEQ,omitempty"`
+	StatusIn    []trace.Status `json:"statusIn,omitempty"`
+	StatusNotIn []trace.Status `json:"statusNotIn,omitempty"`
 
 	// "project" edge predicates.
 	HasProject     *bool                `json:"hasProject,omitempty"`
@@ -9532,6 +9612,18 @@ func (i *TraceWhereInput) P() (predicate.Trace, error) {
 	}
 	if i.ThreadIDNotNil {
 		predicates = append(predicates, trace.ThreadIDNotNil())
+	}
+	if i.Status != nil {
+		predicates = append(predicates, trace.StatusEQ(*i.Status))
+	}
+	if i.StatusNEQ != nil {
+		predicates = append(predicates, trace.StatusNEQ(*i.StatusNEQ))
+	}
+	if len(i.StatusIn) > 0 {
+		predicates = append(predicates, trace.StatusIn(i.StatusIn...))
+	}
+	if len(i.StatusNotIn) > 0 {
+		predicates = append(predicates, trace.StatusNotIn(i.StatusNotIn...))
 	}
 
 	if i.HasProject != nil {

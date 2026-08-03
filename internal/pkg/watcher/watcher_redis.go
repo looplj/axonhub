@@ -18,7 +18,7 @@ type RedisWatcherOptions struct {
 }
 
 type redisWatcher[T any] struct {
-	client  *redis.Client
+	client  redis.UniversalClient
 	channel string
 	buffer  int
 
@@ -31,7 +31,7 @@ type redisWatcher[T any] struct {
 	cancel context.CancelFunc
 }
 
-func NewRedisWatcher[T any](client *redis.Client, opts RedisWatcherOptions) (Notifier[T], error) {
+func NewRedisWatcher[T any](client redis.UniversalClient, opts RedisWatcherOptions) (Notifier[T], error) {
 	if client == nil {
 		return nil, errors.New("watcher.RedisWatcher: redis client is required")
 	}

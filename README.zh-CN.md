@@ -18,17 +18,77 @@
 
 </div>
 
+---
+
 ## ❤️ 赞助商
 
 <div align="center">
 
-<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="40"/></a>&nbsp;&nbsp;<a href="https://lj.s.gy/oZl7Vd" target="_blank"><img src="docs/sponsors/atlas-cloud-logo-black.svg" alt="Atlas Cloud" height="40"/></a>
-
-**[Atlas Cloud](https://lj.s.gy/oZl7Vd)** 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
-
-查看 Atlas Cloud 的[全新 Coding plan 促销](https://lj.s.gy/jknt2V)，获取更经济实惠的 API 访问方案。
+<table width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/oZl7Vd" target="_blank">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/atlas-cloud-logomark-white.svg"/>
+          <source media="(prefers-color-scheme: light)" srcset="docs/sponsors/atlas-cloud-logomark-black.svg"/>
+          <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="50"/>
+        </picture>
+        <br/>
+        <strong>Atlas Cloud</strong>
+      </a>
+      <p align="left">
+        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
+      </p>
+      <p align="left">
+        查看 Atlas Cloud 的 <a href="https://lj.s.gy/jknt2V" target="_blank">全新 Coding plan 促销</a>，获取更经济实惠的 API 访问方案。
+      </p>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/jKk8uU" target="_blank">
+        <img src="https://raw.githubusercontent.com/Krill-ai-org/krill-ai-static/refs/heads/main/krill-logo/Eng/250x150.png" alt="Krill AI" height="50"/>
+        <br/>
+        <strong>Krill AI</strong>
+      </a>
+      <p align="left">
+        感谢 Krill AI 赞助本项目。Krill 提供 GPT、Claude、Gemini 及多款国产模型的官方稳定极速 API 中转服务，支持企业级定制、报销开票和 7x16 小时专属技术支持。其独家适配的 WebSocket 连接方式可带来更快的首字速度。
+      </p>
+      <p align="left">
+        使用 <a href="https://lj.s.gy/jKk8uU" target="_blank">此链接</a> 注册，并在充值时填写 <code>AxonHub</code> 优惠码，首次购买 Codex 套餐可享 77 折优惠。
+      </p>
+    </td>
+  </tr>
+</table>
 
 </div>
+
+<br/>
+
+<table border="1" cellspacing="0" cellpadding="16">
+  <thead>
+    <tr>
+      <th align="center" width="220">赞助商</th>
+      <th align="left">详情</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">
+          <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
+          <br/>
+          <strong>Bloome</strong>
+        </a>
+      </td>
+      <td valign="middle">
+        想试用 AxonHub，但不想在本地配置环境？可以在 Bloome 上运行：
+        <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">快速使用</a>，
+        通过浏览器或手机一键启动，也可以轻松分享给你的团队。
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+---
 
 ---
 

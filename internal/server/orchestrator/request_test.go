@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,9 +11,11 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	entrequest "github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -332,4 +335,136 @@ func TestPersistRequestMiddleware_UsageExtraction_EmbeddingWithNilUsage(t *testi
 	require.NoError(t, err)
 	require.NotNil(t, result)
 	require.Equal(t, llmResp.ID, result.ID)
+}
+
+// TestPersistRequestMiddleware_SpeechResponse_StoresMetadataPlaceholder verifies that for
+// TTS (speech) responses, the binary audio is NOT persisted verbatim; a compact metadata
+// placeholder is stored instead so the request log does not bloat with base64 audio.
+func TestPersistRequestMiddleware_SpeechResponse_StoresMetadataPlaceholder(t *testing.T) {
+	t.Parallel()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = authz.WithTestBypass(ctx)
+	ctx = ent.NewContext(ctx, client)
+
+	systemService := newTestSystemService(client)
+	requestService := newTestRequestServiceForChannels(client, systemService)
+
+	// Create a persisted request row to update.
+	reqRow, err := client.Request.Create().
+		SetModelID("tts-1").
+		SetFormat(string(llm.APIFormatOpenAISpeech)).
+		SetRequestBody([]byte(`{"model":"tts-1","input":"hello","voice":"alloy"}`)).
+		SetStatus(entrequest.StatusProcessing).
+		SetStream(false).
+		Save(ctx)
+	require.NoError(t, err)
+
+	state := &PersistenceState{
+		Request:        reqRow,
+		RequestService: requestService,
+		UsageLogService: biz.NewUsageLogService(
+			client, systemService, biz.NewChannelServiceForTest(client),
+		),
+	}
+
+	middleware := &persistRequestMiddleware{
+		inbound: &PersistentInboundTransformer{
+			state: state,
+		},
+	}
+
+	// Simulate the binary audio response handed back to the client.
+	audio := []byte{0x49, 0x44, 0x33, 0x04, 0x00, 0xDE, 0xAD, 0xBE, 0xEF}
+	httpResp := &httpclient.Response{
+		StatusCode: 200,
+		Body:       audio,
+		Headers:    map[string][]string{"Content-Type": {"audio/mpeg"}},
+	}
+
+	// Record the llm response so OnInboundRawResponse can read its RequestType.
+	middleware.llmResponse = &llm.Response{
+		ID:          "resp-speech",
+		RequestType: llm.RequestTypeSpeech,
+		Speech:      &llm.SpeechResponse{Audio: audio, ContentType: "audio/mpeg"},
+	}
+
+	result, err := middleware.OnInboundRawResponse(ctx, httpResp)
+	require.NoError(t, err)
+	// The client still receives the raw audio untouched.
+	require.Equal(t, audio, result.Body)
+
+	// But the persisted response body is a metadata placeholder, not the audio bytes.
+	updated, err := client.Request.Get(ctx, reqRow.ID)
+	require.NoError(t, err)
+	require.Equal(t, entrequest.StatusCompleted, updated.Status)
+	require.Contains(t, string(updated.ResponseBody), "audio.speech")
+	require.Contains(t, string(updated.ResponseBody), "audio/mpeg")
+	require.Contains(t, string(updated.ResponseBody), "\"bytes\":9")
+}
+
+func TestAudioSafeResponseBody(t *testing.T) {
+	t.Parallel()
+
+	t.Run("speech becomes metadata placeholder", func(t *testing.T) {
+		t.Parallel()
+
+		body := audioSafeResponseBody(llm.RequestTypeSpeech, "audio/mpeg", []byte{0xDE, 0xAD})
+		require.True(t, json.Valid(body))
+		require.Contains(t, string(body), "audio.speech")
+		require.Contains(t, string(body), `"bytes":2`)
+	})
+
+	t.Run("transcription json passes through", func(t *testing.T) {
+		t.Parallel()
+
+		raw := []byte(`{"text":"hello"}`)
+		body := audioSafeResponseBody(llm.RequestTypeTranscription, "application/json", raw)
+		require.Equal(t, raw, body)
+	})
+
+	t.Run("text content type wraps even if body is valid json", func(t *testing.T) {
+		t.Parallel()
+
+		// A plain-text transcript may coincidentally be valid JSON (e.g. "true");
+		// the declared Content-Type must win over sniffing.
+		body := audioSafeResponseBody(llm.RequestTypeTranscription, "text/plain", []byte("true"))
+		require.True(t, json.Valid(body))
+		require.Contains(t, string(body), "audio.transcription")
+	})
+
+	t.Run("missing content type sniffs valid json", func(t *testing.T) {
+		t.Parallel()
+
+		raw := []byte(`{"text":"hello"}`)
+		body := audioSafeResponseBody(llm.RequestTypeTranscription, "", raw)
+		require.Equal(t, raw, body)
+	})
+
+	t.Run("transcription text gets wrapped as json", func(t *testing.T) {
+		t.Parallel()
+
+		raw := []byte("1\n00:00:00,000 --> 00:00:01,000\nhi\n")
+		body := audioSafeResponseBody(llm.RequestTypeTranscription, "text/plain", raw)
+		require.True(t, json.Valid(body))
+		require.Contains(t, string(body), "audio.transcription")
+	})
+
+	t.Run("translation text gets wrapped as json", func(t *testing.T) {
+		t.Parallel()
+
+		body := audioSafeResponseBody(llm.RequestTypeTranslation, "text/plain", []byte("hello"))
+		require.True(t, json.Valid(body))
+	})
+
+	t.Run("other request types unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		raw := []byte(`{"choices":[]}`)
+		body := audioSafeResponseBody(llm.RequestTypeChat, "application/json", raw)
+		require.Equal(t, raw, body)
+	})
 }

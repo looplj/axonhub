@@ -67,8 +67,15 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		quotaSelector := WithProviderQuotaSelector(selector, quotaProvider, systemService)
 		selector = quotaSelector
 
-		if inbound.state.LoadBalancer != nil {
-			selector = WithLoadBalancedSelector(selector, inbound.state.LoadBalancer, inbound.state.RetryPolicyProvider)
+		if len(inbound.state.LoadBalancers) > 0 {
+			selector = WithRoutingPolicyLoadBalancedSelector(
+				selector,
+				inbound.state.LoadBalancers,
+				inbound.state.RetryPolicyProvider,
+				inbound.state.RequestService,
+				inbound.state.APIKey,
+				&inbound.state.RoutingPolicy,
+			)
 		}
 
 		candidates, err := selector.Select(ctx, llmRequest)
@@ -80,6 +87,8 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 			log.Debug(ctx, "selected candidates",
 				log.Int("candidate_count", len(candidates)),
 				log.String("model", llmRequest.Model),
+				log.String("load_balance_strategy", inbound.state.RoutingPolicy.LoadBalancerStrategy),
+				log.String("trace_sticky_mode", string(inbound.state.RoutingPolicy.TraceStickyMode)),
 				log.Any("candidates", lo.Map(candidates, func(candidate *ChannelModelsCandidate, _ int) map[string]any {
 					return map[string]any{
 						"channel_name": candidate.Channel.Name,
@@ -110,7 +119,7 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 			// In DePrioritize mode the quota selector doesn't filter candidates,
 			// so we must check quota status again here to determine if all
 			// remaining channels are exhausted.
-			if areAllChannelsExhausted(candidates, quotaProvider, llmRequest) {
+			if areAllChannelsExhausted(ctx, candidates, quotaProvider, llmRequest) {
 				return nil, NewQuotaExhaustedError(llmRequest.Model)
 			}
 		}
@@ -122,7 +131,7 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 	})
 }
 
-func areAllChannelsExhausted(candidates []*ChannelModelsCandidate, quotaProvider ProviderQuotaStatusProvider, llmRequest *llm.Request) bool {
+func areAllChannelsExhausted(ctx context.Context, candidates []*ChannelModelsCandidate, quotaProvider ProviderQuotaStatusProvider, llmRequest *llm.Request) bool {
 	if len(candidates) == 0 || quotaProvider == nil {
 		return false
 	}
@@ -130,7 +139,7 @@ func areAllChannelsExhausted(candidates []*ChannelModelsCandidate, quotaProvider
 	limitType := provider_quota.RequestModality(llmRequest.Image != nil)
 
 	for _, c := range candidates {
-		quotaStatus := quotaProvider.GetQuotaStatus(c.Channel.ID)
+		quotaStatus := quotaProvider.GetQuotaStatus(ctx, c.Channel.ID)
 		if quotaStatus == nil {
 			return false
 		}

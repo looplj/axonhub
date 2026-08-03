@@ -122,7 +122,10 @@ type RetryPolicy {
   maxChannelRetries: Int!
   maxSingleChannelRetries: Int!
   retryDelayMs: Int!
+  streamFirstEventTimeoutSeconds: Int!
+  nonStreamResponseTimeoutSeconds: Int!
   loadBalancerStrategy: String!
+  traceStickyMode: TraceStickyMode!
   enabled: Boolean!
   autoDisableChannel: AutoDisableChannel!
   emptyResponseDetection: Boolean!
@@ -153,11 +156,19 @@ input UpdateRetryPolicyInput {
   maxChannelRetries: Int
   maxSingleChannelRetries: Int
   retryDelayMs: Int
+  streamFirstEventTimeoutSeconds: Int
+  nonStreamResponseTimeoutSeconds: Int
   loadBalancerStrategy: String
+  traceStickyMode: TraceStickyMode
   enabled: Boolean
   autoDisableChannel: AutoDisableChannelInput
   emptyResponseDetection: Boolean
   upstreamErrorPolicy: UpstreamErrorPolicyInput
+}
+
+enum TraceStickyMode {
+  DISABLED
+  PREFER_PREVIOUS_CHANNEL
 }
 
 enum QuotaEnforcementMode {
@@ -175,12 +186,34 @@ input UpdateQuotaEnforcementSettingsInput {
   mode: QuotaEnforcementMode
 }
 
+type ProviderQuotaCollectionProvider {
+  provider: String!
+  enabled: Boolean!
+}
+
+type ProviderQuotaCollectionSettings {
+  enabled: Boolean!
+  providers: [ProviderQuotaCollectionProvider!]!
+}
+
+input ProviderQuotaCollectionProviderInput {
+  provider: String!
+  enabled: Boolean!
+}
+
+input UpdateProviderQuotaCollectionSettingsInput {
+  enabled: Boolean
+  providers: [ProviderQuotaCollectionProviderInput!]
+}
+
 type SecuritySettings {
   blockedIPs: [String!]!
+  showRequestLogIPBanIcon: Boolean!
 }
 
 input UpdateSecuritySettingsInput {
   blockedIPs: [String!]
+  showRequestLogIPBanIcon: Boolean
 }
 
 type SystemModelSettings {
@@ -269,6 +302,8 @@ type ChannelModelAutoSyncSetting {
 type SystemChannelSettings {
   probe: ChannelProbeSetting!
   autoSync: ChannelModelAutoSyncSetting!
+  testSystemPrompt: String!
+  testUserPrompt: String!
 }
 
 input UpdateChannelProbeSettingInput {
@@ -283,6 +318,8 @@ input UpdateChannelModelAutoSyncSettingInput {
 input UpdateSystemChannelSettingsInput {
   probe: UpdateChannelProbeSettingInput
   autoSync: UpdateChannelModelAutoSyncSettingInput
+  testSystemPrompt: String
+  testUserPrompt: String
 }
 
 type SystemGeneralSettings {
@@ -365,8 +402,10 @@ extend type Mutation {
   updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
   updateVideoStorageSettings(input: UpdateVideoStorageSettingsInput!): Boolean!
   updateQuotaEnforcementSettings(input: UpdateQuotaEnforcementSettingsInput!): Boolean!
+  updateProviderQuotaCollectionSettings(input: UpdateProviderQuotaCollectionSettingsInput!): Boolean!
   updateSecuritySettings(input: UpdateSecuritySettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
+  resetChannelQuotaNow(channelID: ID!): Boolean!
   triggerGcCleanup(input: TriggerGcCleanupInput!): Boolean!
   saveProxyPreset(input: SaveProxyPresetInput!): Boolean!
   deleteProxyPreset(url: String!): Boolean!
@@ -428,11 +467,12 @@ extend type Query {
   defaultDataStorageID: ID
   onboardingInfo: OnboardingInfo
   systemVersion: SystemVersion!
-  checkForUpdate: VersionCheck!
+  checkForUpdate(includeBeta: Boolean! = false): VersionCheck!
   systemChannelSettings: SystemChannelSettings!
   systemGeneralSettings: SystemGeneralSettings!
   videoStorageSettings: VideoStorageSettings!
   quotaEnforcementSettings: QuotaEnforcementSettings!
+  providerQuotaCollectionSettings: ProviderQuotaCollectionSettings!
   securitySettings: SecuritySettings!
   proxyPresets: [ProxyPreset!]!
   userAgentPassThroughSettings: UserAgentPassThroughSettings!

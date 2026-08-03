@@ -18,11 +18,22 @@ AxonHub 提供了一个专用的 GraphQL 端点 `/openapi/v1/graphql` 用于程�
 
 | Mutation | 作用 |
 |---|---|
-| `createLLMAPIKey(name)` | 程序化签发一把 user 类型的 LLM API Key（默认 scopes：`read_channels`、`write_requests`） |
-| `updateAPIKeyProfiles(id, input)` | 整体替换某把 API Key 的 profiles 列表（包含 `activeProfile`） |
-| `loadApiKeyProfileTemplate(input)` | 把项目下的某个 `APIKeyProfileTemplate` 追加到目标 API Key 的 profiles（自动重命名避冲突，不动 `activeProfile`） |
+| `createLLMAPIKey(name)` | 程序化签发一把 user 类型的 LLM API Key（默认 scopes：`read_channels`、`write_requests`）。名称在项目内必须唯一，重名会被拒绝 |
+| `updateAPIKeyProfiles(id, name, input)` | 整体替换某把 API Key 的 profiles 列表（包含 `activeProfile`）。`id` 与 `name` 二选一定位目标 Key |
+| `loadApiKeyProfileTemplate(input)` | 把项目下的某个 `APIKeyProfileTemplate` 追加到目标 API Key 的 profiles（自动重命名避冲突，不动 `activeProfile`）。模板用 `templateID`/`templateName` 二选一、目标 Key 用 `apiKeyID`/`apiKeyName` 二选一定位，可混用（如 `templateName` + `apiKeyID`） |
 
 > "应用模板并立即生效"的语义需要两步：先 `loadApiKeyProfileTemplate`，再 `updateAPIKeyProfiles` 把 `activeProfile` 切到新 profile。
+
+## 当前可用的 Queries
+
+| Query | 作用 |
+|---|---|
+| `apiKey(id, key, name)` | 查询某把 API Key 的详情（`id` / 明文 `key` / `name` / `scopes` / `allowedIps` / `profiles`）。三个参数三选一；手里只有名称时用它先解析出 id/key |
+| `apiKeyQuotaUsages(apiKeyId, key, name)` | 查询某把 API Key 中启用了额度（quota）的各 profile 的实时用量（`requestCount` / `totalTokens` / `totalCost` 及统计窗口）。`apiKeyId` / `key` / `name` 三选一 |
+
+> ⚠️ `apiKey` 与 `apiKeyQuotaUsages` 都需要 `read_api_keys` 权限，且只能查询调用方 service account **所属项目内**的 Key；跨项目或不存在的 Key 统一表现为查不到（不泄漏 Key 是否存在）。按 `name` 查询同理——名称只在本项目内解析。
+>
+> ⚠️ 服务端只接受 **POST**：`/openapi/v1/graphql` 已不再注册 GET transport（GET 请求返回 `400 transport not supported`）。这是为了确保明文 `key` 等参数不会经 URL 查询串（`?variables={"key":...}`）泄漏到反向代理 / 访问日志 / 浏览器历史。genqlient 客户端默认即用 POST，无需额外配置。
 
 ## 快速开始
 
@@ -49,8 +60,16 @@ go run github.com/Khan/genqlient
 
 ```bash
 export AXONHUB_API_KEY="your_service_account_api_key"
+
+# 可选: 设置其一即可让示例额外演示 apiKeyQuotaUsages 查询
+# export AXONHUB_QUERY_KEY_ID="gid://axonhub/APIKey/123"   # 按 GUID 查
+# export AXONHUB_QUERY_KEY="ah-xxxxxxxx"                    # 按明文 Key 查
+# export AXONHUB_QUERY_KEY_NAME="my-llm-key"                # 按名称查（项目内唯一）
+
 go run main.go
 ```
+
+示例程序会依次演示：创建一把 LLM Key → 按名称反查该 Key 的详情（`apiKey` 查询）→（可选）查询额度用量。
 
 ## 使用注意点
 
@@ -62,11 +81,15 @@ go run main.go
   - `createLLMAPIKey` — 需要 `write_api_keys`
   - `updateAPIKeyProfiles` — 需要 `read_api_keys` + `write_api_keys`
   - `loadApiKeyProfileTemplate` — 需要 `read_api_keys` + `write_api_keys`
+  - `apiKey` — 需要 `read_api_keys`（只读）
+  - `apiKeyQuotaUsages` — 需要 `read_api_keys`（只读）
 
 ### 接口行为
 
 - **默认 LLM Key 权限**: 通过 `createLLMAPIKey` 创建的新 Key 将默认拥有 `read_channels` 和 `write_requests` 权限，适用于常规的 LLM 调用。
-- **同项目约束**: 所有 mutation 仅能作用于调用方 service account 所属的项目；跨项目的 `apiKeyID` / `templateID` 会被拒绝。
+- **名称即标识符**: API Key 的 `name` 在项目内唯一（`createLLMAPIKey` 重名会被拒绝），模板的 `name` 同样在项目内唯一。因此凡是接受标识参数的接口，都支持 id 与 name 并存、按其一定位（`updateAPIKeyProfiles` 二选一、`apiKey` / `apiKeyQuotaUsages` 三选一、`loadApiKeyProfileTemplate` 的模板与目标 Key 各二选一）。同时提供多个或一个都不提供都会报错。
+- **同项目约束**: 所有 mutation 与 query 仅能作用于调用方 service account 所属的项目；跨项目的 `apiKeyID` / `key` / `name` / `templateID` / `templateName` 会被拒绝（查不到）。
+- **GUID 类型校验**: 所有 `ID` 参数必须是对应类型的 GUID（如 `gid://axonhub/APIKey/123`、`gid://axonhub/APIKeyProfileTemplate/45`）；类型不匹配会被直接拒绝。
 - **Profile 命名冲突**: `loadApiKeyProfileTemplate` 在追加时若发现同名 profile，会自动加 `(1)` / `(2)` 后缀，不会覆盖。
 - **整体替换语义**: `updateAPIKeyProfiles` 是**整体替换**——传入的 profiles 列表会完全覆盖原有的，且 `activeProfile` 必须存在于列表中。
 - **Schema 同步**: 如果 AxonHub 后端的 `openapi.graphql` 发生了变化，你需要同步更新 `graphql/openapi.graphql` 并重新生成代码。
@@ -76,4 +99,5 @@ go run main.go
 
 - **401 Unauthorized**: 请检查你的 API Key 是否为 `service_account` 类型，且请求头格式是否正确（`Bearer ` 前缀）。
 - **权限拒绝 (Deny)**: 请检查该 Key 是否关联了对应 mutation 所需的 scope（详见上文）。
-- **跨项目错误**: 检查 `apiKeyID` / `templateID` 是否与当前 service account key 同属一个项目。
+- **跨项目错误**: 检查 `apiKeyID` / `templateID`（或对应的 name）是否与当前 service account key 同属一个项目。
+- **按 name 查询报 "not singular"**: 历史版本的 `createLLMAPIKey` 不校验重名，项目里可能残留同名 Key。此时请改用 id 或明文 key 定位，并在管理后台把重名 Key 改名。

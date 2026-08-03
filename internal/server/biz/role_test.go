@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/invitation"
 	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -28,6 +29,7 @@ func setupTestRoleService(t *testing.T) (*RoleService, *UserService, *ent.Client
 	}
 
 	roleService := &RoleService{
+		AbstractService:     &AbstractService{db: client},
 		userService:         userService,
 		permissionValidator: NewPermissionValidator(),
 	}
@@ -279,6 +281,50 @@ func TestDeleteRole(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "role not found")
 	})
+
+	t.Run("fail to delete Developer role", func(t *testing.T) {
+		// Create a Developer role
+		developerRole, err := client.Role.Create().
+			SetName("Developer").
+			SetScopes([]string{"read", "write"}).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Try to delete the Developer role
+		err = roleService.DeleteRole(ctx, developerRole.ID)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot delete the default Developer role")
+
+		// Verify role still exists
+		exists, err := client.Role.Query().
+			Where(role.IDEQ(developerRole.ID)).
+			Exist(ctx)
+		require.NoError(t, err)
+		require.True(t, exists)
+	})
+
+	t.Run("revokes invitations bound to the deleted role", func(t *testing.T) {
+		project, err := client.Project.Create().SetName("invitation-role-project").Save(ctx)
+		require.NoError(t, err)
+		projectRole, err := client.Role.Create().
+			SetName("Invitation Role").
+			SetLevel(role.LevelProject).
+			SetProjectID(project.ID).
+			SetScopes([]string{"read_prompts"}).
+			Save(ctx)
+		require.NoError(t, err)
+		createdInvitation, err := client.Invitation.Create().
+			SetTokenHash("invitation-role-token").
+			SetProjectID(project.ID).
+			SetRoleID(projectRole.ID).
+			Save(ctx)
+		require.NoError(t, err)
+
+		require.NoError(t, roleService.DeleteRole(ctx, projectRole.ID))
+		exists, err := client.Invitation.Query().Where(invitation.IDEQ(createdInvitation.ID)).Exist(ctx)
+		require.NoError(t, err)
+		require.False(t, exists)
+	})
 }
 
 func TestBulkDeleteRoles(t *testing.T) {
@@ -429,6 +475,34 @@ func TestBulkDeleteRoles(t *testing.T) {
 	t.Run("bulk delete with empty list", func(t *testing.T) {
 		err := roleService.BulkDeleteRoles(ctx, []int{})
 		require.NoError(t, err)
+	})
+
+	t.Run("fail to bulk delete Developer role", func(t *testing.T) {
+		// Create a Developer role and a regular role
+		developerRole, err := client.Role.Create().
+			SetName("Developer").
+			SetScopes([]string{"read", "write"}).
+			Save(ctx)
+		require.NoError(t, err)
+
+		regularRole, err := client.Role.Create().
+			SetName("Regular Role").
+			SetScopes([]string{"read"}).
+			Save(ctx)
+		require.NoError(t, err)
+
+		// Try to bulk delete both roles
+		roleIDs := []int{developerRole.ID, regularRole.ID}
+		err = roleService.BulkDeleteRoles(ctx, roleIDs)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "cannot delete the default Developer role")
+
+		// Verify both roles still exist
+		exists, err := client.Role.Query().
+			Where(role.IDIn(roleIDs...)).
+			Exist(ctx)
+		require.NoError(t, err)
+		require.True(t, exists)
 	})
 }
 

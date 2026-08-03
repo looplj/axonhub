@@ -20,10 +20,15 @@ func DefaultModels() []string {
 		"gpt-5.4",
 		"gpt-5.4-mini",
 		"gpt-5.5",
+		"gpt-5.6-sol",
+		"gpt-5.6-terra",
+		"gpt-5.6-luna",
 	}
 }
 
 const (
+	defaultImageMainModel = "gpt-5.4-mini"
+
 	AxonHubOriginator = "axonhub"
 	AuthorizeURL      = "https://auth.openai.com/oauth/authorize"
 	//nolint:gosec // false alert.
@@ -31,4 +36,6 @@ const (
 	ClientID    = "app_EMoamEEZ73f0CkXaXp7hrann"
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
+
+	codexDefaultVersion = "0.144.1"
 )

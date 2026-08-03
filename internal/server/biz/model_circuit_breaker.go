@@ -149,7 +149,10 @@ func (m *ModelCircuitBreaker) GetPolicy(ctx context.Context) *ModelCircuitBreake
 }
 
 // RecordError records an error for the specified channel and model.
-func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, modelID string) {
+// wasProbe indicates whether the error occurred during an active probe request.
+// When the circuit is Open, exponential backoff is only applied for probe failures,
+// preventing regular (rejected) requests from pushing recovery further away.
+func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, modelID string, wasProbe bool) {
 	stats := m.getStats(channelID, modelID)
 
 	stats.Lock()
@@ -187,8 +190,11 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 				log.String("model_id", modelID),
 				log.Int("failures", stats.ConsecutiveFailures),
 			)
-		} else {
-			// If already Open, update probe time with exponential backoff
+		} else if wasProbe {
+			// Only apply exponential backoff when an actual probe failed.
+			// Non-probe errors (e.g. requests rejected by circuit breaker) must not
+			// push NextProbeAt further into the future, otherwise recovery is delayed
+			// indefinitely even after the upstream service recovers.
 			backoffMultiplier := math.Pow(2, float64(stats.probeAttempts))
 			if backoffMultiplier > 8 { // Max 8x
 				backoffMultiplier = 8
@@ -198,7 +204,7 @@ func (m *ModelCircuitBreaker) RecordError(ctx context.Context, channelID int, mo
 			stats.NextProbeAt = now.Add(nextInterval)
 			stats.probeAttempts++
 
-			log.Debug(ctx, "updated probe time for open model",
+			log.Debug(ctx, "updated probe time for open model after probe failure",
 				log.Int("channel_id", channelID),
 				log.String("model_id", modelID),
 				log.Time("next_probe_at", stats.NextProbeAt),
@@ -266,13 +272,42 @@ func (m *ModelCircuitBreaker) GetModelCircuitBreakerStats(ctx context.Context, c
 }
 
 // GetEffectiveWeight calculates the effective weight for a model based on its circuit breaker state.
+// When the failure stats have exceeded the TTL (no new failures for FailureStatsTTL duration),
+// the circuit breaker is lazily reset to allow recovery even if no background goroutine is running.
 func (m *ModelCircuitBreaker) GetEffectiveWeight(ctx context.Context, channelID int, modelID string, baseWeight float64) float64 {
 	stats := m.getStats(channelID, modelID)
 
 	stats.RLock()
-	defer stats.RUnlock()
-
 	policy := m.GetPolicy(ctx)
+
+	// Lazy TTL-based auto-recovery: if no failures occurred within the TTL window
+	// while the circuit is Open or HalfOpen, reset to Closed so the channel can
+	// recover without requiring a manual restart or background goroutine.
+	if stats.State != StateClosed && stats.ConsecutiveFailures > 0 &&
+		!stats.LastFailureAt.IsZero() && time.Since(stats.LastFailureAt) > policy.FailureStatsTTL {
+		stats.RUnlock()
+		stats.Lock()
+		// Double-check under write lock to avoid races with concurrent RecordError.
+		if stats.State != StateClosed && stats.ConsecutiveFailures > 0 &&
+			!stats.LastFailureAt.IsZero() && time.Since(stats.LastFailureAt) > policy.FailureStatsTTL {
+			log.Info(ctx, "Circuit breaker auto-recovered due to TTL expiry",
+				log.Int("channel_id", channelID),
+				log.String("model_id", modelID),
+				log.String("previous_state", string(stats.State)),
+				log.Int("previous_failures", stats.ConsecutiveFailures),
+				log.Duration("time_since_last_failure", time.Since(stats.LastFailureAt)),
+			)
+			stats.State = StateClosed
+			stats.ConsecutiveFailures = 0
+			stats.NextProbeAt = time.Time{}
+			stats.probeAttempts = 0
+			atomic.StoreInt32(&stats.probingInProgress, 0)
+		}
+		stats.Unlock()
+		stats.RLock()
+	}
+
+	defer stats.RUnlock()
 
 	switch stats.State {
 	case StateClosed:

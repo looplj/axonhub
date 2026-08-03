@@ -87,6 +87,7 @@ type StreamEvent struct {
 
 	// For function_call_arguments.done events
 	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 	CallID    string `json:"call_id,omitempty"`
 	Arguments string `json:"arguments,omitempty"`
 
@@ -111,7 +112,7 @@ type StreamEventContentPart struct {
 	// Any of "output_text", "reasoning", "refusal".
 	Type string `json:"type"`
 	// The text of the part, for output_text.
-	Text *string `json:"text,omitempty"`
+	Text string `json:"text"`
 	// The annotations of the output text part.
 	Annotations []Annotation `json:"annotations,omitzero"`
 	// The refusal reason, for refusal.

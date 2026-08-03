@@ -41,6 +41,7 @@ interface DataTableProps {
   statusFilter: string[];
   userFilter: string[];
   dateRange?: DateTimeRangeValue;
+  sorting: SortingState;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
@@ -48,8 +49,10 @@ interface DataTableProps {
   onStatusFilterChange: (value: string[]) => void;
   onUserFilterChange: (value: string[]) => void;
   onDateRangeChange: (value: DateTimeRangeValue | undefined) => void;
+  onSortingChange: (updater: SortingState | ((previous: SortingState) => SortingState)) => void;
   onResetFilters?: () => void;
   canWrite?: boolean;
+  canViewCreators?: boolean;
 }
 
 export function ApiKeysTable({
@@ -63,6 +66,7 @@ export function ApiKeysTable({
   statusFilter,
   userFilter,
   dateRange,
+  sorting,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
@@ -70,15 +74,16 @@ export function ApiKeysTable({
   onStatusFilterChange,
   onUserFilterChange,
   onDateRangeChange,
+  onSortingChange,
   onResetFilters,
   canWrite = true,
+  canViewCreators = false,
 }: DataTableProps) {
   const { t } = useTranslation();
   const { setResetRowSelection, setSelectedApiKeys, openDialog } = useApiKeysContext();
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
-  const [sorting, setSorting] = useState<SortingState>([]);
 
   useEffect(() => {
     const resetFn = () => {
@@ -138,12 +143,13 @@ export function ApiKeysTable({
     },
     enableRowSelection: true,
     onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
+    onSortingChange,
     onColumnFiltersChange: handleColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
     manualFiltering: true,
+    manualSorting: true,
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getRowId: (row) => row.id,
@@ -179,9 +185,15 @@ export function ApiKeysTable({
   }, [data, rowSelection]);
 
   return (
-    <div className='flex flex-1 flex-col'>
-      <DataTableToolbar table={table} dateRange={dateRange} onDateRangeChange={onDateRangeChange} onResetFilters={onResetFilters} />
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+    <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
+      <DataTableToolbar
+        table={table}
+        dateRange={dateRange}
+        onDateRangeChange={onDateRangeChange}
+        onResetFilters={onResetFilters}
+        canViewCreators={canViewCreators}
+      />
+      <div className='shadow-soft relative mt-4 min-h-0 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
         <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (

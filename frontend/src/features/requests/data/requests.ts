@@ -23,12 +23,20 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
           }`
     : '';
 
-  const channelFields = permissions.canViewChannels
+  const requestChannelFields = permissions.canViewChannels
     ? `
                 channel {
                   id
                   name
                 }`
+    : '';
+
+  const executionChannelFields = permissions.canViewChannels
+    ? `
+                  channel {
+                    id
+                    name
+                  }`
     : '';
 
   return `
@@ -45,7 +53,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
           node {
             id
             createdAt
-            updatedAt${apiKeyFields}${channelFields}
+            updatedAt${apiKeyFields}${requestChannelFields}
             source
             modelID
             format
@@ -61,10 +69,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                 node {
                   modelID
                   status
-                  channel {
-                    id
-                    name
-                  }
+                  passThroughApplied${executionChannelFields}
                 }
                 cursor
               }
@@ -82,6 +87,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                   id
                   promptTokens
                   completionTokens
+                  completionReasoningTokens
                   totalTokens
                   promptCachedTokens
                   promptWriteCachedTokens
@@ -149,6 +155,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
                   id
                   promptTokens
                   completionTokens
+                  completionReasoningTokens
                   totalTokens
                   promptCachedTokens
                   promptWriteCachedTokens
@@ -243,6 +250,8 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 status
                 format
                 stream
+                requestURL
+                passThroughApplied
                 metricsFirstTokenLatencyMs
                 metricsReasoningDurationMs
               }

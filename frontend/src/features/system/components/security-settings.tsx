@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { TagsInput } from '@/components/ui/tags-input';
 import { useSecuritySettings, useUpdateSecuritySettings } from '../data/system';
 
@@ -31,19 +32,25 @@ export function SecuritySettings() {
   const { data: settings, isLoading } = useSecuritySettings();
   const updateSettings = useUpdateSecuritySettings();
   const [blockedIPs, setBlockedIPs] = useState<string[]>([]);
+  const [showRequestLogIPBanIcon, setShowRequestLogIPBanIcon] = useState(true);
 
   useEffect(() => {
     if (settings) {
       setBlockedIPs(settings.blockedIPs ?? []);
+      setShowRequestLogIPBanIcon(settings.showRequestLogIPBanIcon ?? true);
     }
   }, [settings]);
 
   const normalizedBlockedIPs = useMemo(() => normalizeEntries(blockedIPs), [blockedIPs]);
-  const hasChanges = settings ? normalizedBlockedIPs.join('\n') !== normalizeEntries(settings.blockedIPs ?? []).join('\n') : false;
+  const hasChanges = settings
+    ? normalizedBlockedIPs.join('\n') !== normalizeEntries(settings.blockedIPs ?? []).join('\n') ||
+      showRequestLogIPBanIcon !== (settings.showRequestLogIPBanIcon ?? true)
+    : false;
 
   const handleSave = async () => {
     await updateSettings.mutateAsync({
       blockedIPs: normalizedBlockedIPs,
+      showRequestLogIPBanIcon,
     });
   };
 
@@ -73,6 +80,19 @@ export function SecuritySettings() {
             disabled={updateSettings.isPending}
           />
           <div className='text-muted-foreground text-sm'>{t('system.security.blockedIPs.description')}</div>
+        </div>
+
+        <div className='flex items-center justify-between gap-4 rounded-lg border p-4'>
+          <div className='space-y-1'>
+            <Label htmlFor='show-request-log-ip-ban-icon'>{t('system.security.showRequestLogIPBanIcon.label')}</Label>
+            <div className='text-muted-foreground text-sm'>{t('system.security.showRequestLogIPBanIcon.description')}</div>
+          </div>
+          <Switch
+            id='show-request-log-ip-ban-icon'
+            checked={showRequestLogIPBanIcon}
+            onCheckedChange={setShowRequestLogIPBanIcon}
+            disabled={updateSettings.isPending}
+          />
         </div>
 
         <div className='flex justify-end'>

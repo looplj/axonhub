@@ -388,6 +388,18 @@ func (u *ProviderQuotaStatusUpsert) AddDeletedAt(v int) *ProviderQuotaStatusUpse
 	return u
 }
 
+// SetProviderType sets the "provider_type" field.
+func (u *ProviderQuotaStatusUpsert) SetProviderType(v providerquotastatus.ProviderType) *ProviderQuotaStatusUpsert {
+	u.Set(providerquotastatus.FieldProviderType, v)
+	return u
+}
+
+// UpdateProviderType sets the "provider_type" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsert) UpdateProviderType() *ProviderQuotaStatusUpsert {
+	u.SetExcluded(providerquotastatus.FieldProviderType)
+	return u
+}
+
 // SetStatus sets the "status" field.
 func (u *ProviderQuotaStatusUpsert) SetStatus(v providerquotastatus.Status) *ProviderQuotaStatusUpsert {
 	u.Set(providerquotastatus.FieldStatus, v)
@@ -471,9 +483,6 @@ func (u *ProviderQuotaStatusUpsertOne) UpdateNewValues() *ProviderQuotaStatusUps
 		if _, exists := u.create.mutation.ChannelID(); exists {
 			s.SetIgnore(providerquotastatus.FieldChannelID)
 		}
-		if _, exists := u.create.mutation.ProviderType(); exists {
-			s.SetIgnore(providerquotastatus.FieldProviderType)
-		}
 	}))
 	return u
 }
@@ -537,6 +546,20 @@ func (u *ProviderQuotaStatusUpsertOne) AddDeletedAt(v int) *ProviderQuotaStatusU
 func (u *ProviderQuotaStatusUpsertOne) UpdateDeletedAt() *ProviderQuotaStatusUpsertOne {
 	return u.Update(func(s *ProviderQuotaStatusUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetProviderType sets the "provider_type" field.
+func (u *ProviderQuotaStatusUpsertOne) SetProviderType(v providerquotastatus.ProviderType) *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.SetProviderType(v)
+	})
+}
+
+// UpdateProviderType sets the "provider_type" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsertOne) UpdateProviderType() *ProviderQuotaStatusUpsertOne {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.UpdateProviderType()
 	})
 }
 
@@ -799,9 +822,6 @@ func (u *ProviderQuotaStatusUpsertBulk) UpdateNewValues() *ProviderQuotaStatusUp
 			if _, exists := b.mutation.ChannelID(); exists {
 				s.SetIgnore(providerquotastatus.FieldChannelID)
 			}
-			if _, exists := b.mutation.ProviderType(); exists {
-				s.SetIgnore(providerquotastatus.FieldProviderType)
-			}
 		}
 	}))
 	return u
@@ -866,6 +886,20 @@ func (u *ProviderQuotaStatusUpsertBulk) AddDeletedAt(v int) *ProviderQuotaStatus
 func (u *ProviderQuotaStatusUpsertBulk) UpdateDeletedAt() *ProviderQuotaStatusUpsertBulk {
 	return u.Update(func(s *ProviderQuotaStatusUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetProviderType sets the "provider_type" field.
+func (u *ProviderQuotaStatusUpsertBulk) SetProviderType(v providerquotastatus.ProviderType) *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.SetProviderType(v)
+	})
+}
+
+// UpdateProviderType sets the "provider_type" field to the value that was provided on create.
+func (u *ProviderQuotaStatusUpsertBulk) UpdateProviderType() *ProviderQuotaStatusUpsertBulk {
+	return u.Update(func(s *ProviderQuotaStatusUpsert) {
+		s.UpdateProviderType()
 	})
 }
 

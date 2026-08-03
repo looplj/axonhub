@@ -351,7 +351,8 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 				textParts = append(textParts, llm.MessageContentPart{
 					Type: "image_url",
 					ImageURL: &llm.ImageURL{
-						URL: dataURL,
+						URL:      dataURL,
+						MIMEType: part.InlineData.MIMEType,
 					},
 				})
 			}
@@ -387,7 +388,8 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 				textParts = append(textParts, llm.MessageContentPart{
 					Type: "image_url",
 					ImageURL: &llm.ImageURL{
-						URL: part.FileData.FileURI,
+						URL:      part.FileData.FileURI,
+						MIMEType: mimeType,
 					},
 				})
 			}
@@ -573,7 +575,7 @@ func convertLLMChoiceToGeminiCandidate(choice *llm.Choice, isStream bool) *Candi
 				case "image_url":
 					// Handle image_url type
 					if part.ImageURL != nil && part.ImageURL.URL != "" {
-						geminiPart := convertImageURLToGeminiPart(part.ImageURL.URL)
+						geminiPart := convertImageURLToGeminiPart(part.ImageURL)
 						if geminiPart != nil {
 							parts = append(parts, geminiPart)
 							lastPart = geminiPart

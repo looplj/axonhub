@@ -44,7 +44,7 @@ export function ServerSidePagination({
           ? t('pagination.selectedInfoWithTotal', { selectedRows, dataLength, totalCount })
           : t('pagination.selectedInfo', { selectedRows, dataLength })}
       </div>
-      <div className='flex items-center sm:space-x-6 lg:space-x-8'>
+      <div className='flex flex-wrap items-center gap-0 sm:gap-6 lg:gap-8'>
         <div className='flex items-center space-x-2'>
           <p className='hidden text-sm font-medium sm:block'>{t('pagination.rowsPerPage')}</p>
           <Select

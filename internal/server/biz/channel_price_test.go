@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -208,6 +209,77 @@ func TestChannelService_SaveChannelModelPrices(t *testing.T) {
 func loToDecimalPtr(s string) *decimal.Decimal {
 	d, _ := decimal.NewFromString(s)
 	return &d
+}
+
+func TestChannelService_DuplicateChannelCopiesModelPrices(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	source, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Source Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key1"}).
+		SetSupportedModels([]string{"gpt-4", "gpt-4o"}).
+		SetDefaultTestModel("gpt-4").
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	price := objects.ModelPrice{
+		Items: []objects.ModelPriceItem{
+			{
+				ItemCode: objects.PriceItemCodeUsage,
+				Pricing: objects.Pricing{
+					Mode:         objects.PricingModeUsagePerUnit,
+					UsagePerUnit: loToDecimalPtr("0.01"),
+				},
+			},
+		},
+	}
+
+	sourcePrices, err := svc.SaveChannelModelPrices(ctx, source.ID, []SaveChannelModelPriceInput{
+		{ModelID: "gpt-4", Price: price},
+	})
+	require.NoError(t, err)
+	require.Len(t, sourcePrices, 1)
+
+	duplicated, err := svc.DuplicateChannel(ctx, source.ID, ent.CreateChannelInput{
+		Type:             channel.TypeOpenai,
+		BaseURL:          lo.ToPtr("https://api.openai.com/v1"),
+		Name:             "Source Channel (1)",
+		Credentials:      objects.ChannelCredentials{APIKey: "key2"},
+		SupportedModels:  []string{"gpt-4", "gpt-4o"},
+		DefaultTestModel: "gpt-4",
+	})
+	require.NoError(t, err)
+
+	copiedPrices, err := client.ChannelModelPrice.Query().
+		Where(channelmodelprice.ChannelID(duplicated.ID)).
+		All(ctx)
+	require.NoError(t, err)
+	require.Len(t, copiedPrices, 1)
+
+	copiedPrice := copiedPrices[0]
+	require.Equal(t, "gpt-4", copiedPrice.ModelID)
+	require.Equal(t, price, copiedPrice.Price)
+	require.NotEqual(t, sourcePrices[0].ReferenceID, copiedPrice.ReferenceID)
+	require.Len(t, copiedPrice.ReferenceID, 8)
+
+	copiedVersion, err := client.ChannelModelPriceVersion.Query().
+		Where(channelmodelpriceversion.ChannelModelPriceID(copiedPrice.ID)).
+		Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, duplicated.ID, copiedVersion.ChannelID)
+	require.Equal(t, "gpt-4", copiedVersion.ModelID)
+	require.Equal(t, price, copiedVersion.Price)
+	require.Equal(t, channelmodelpriceversion.StatusActive, copiedVersion.Status)
+	require.Nil(t, copiedVersion.EffectiveEndAt)
+	require.Equal(t, copiedPrice.ReferenceID, copiedVersion.ReferenceID)
 }
 
 func TestCalculatePriceChanges(t *testing.T) {

@@ -33,17 +33,20 @@ var claudeCodeHeaders = [][]string{
 	{"X-Stainless-Helper-Method", "stream"},
 	{"X-Stainless-Retry-Count", "0"},
 	{"X-Stainless-Runtime-Version", "v24.3.0"},
-	{"X-Stainless-Package-Version", "0.81.0"},
+	{"X-Stainless-Package-Version", "0.94.0"},
 	{"X-Stainless-Runtime", "node"},
 	{"X-Stainless-Lang", "js"},
 	{"X-Stainless-Arch", "arm64"},
 	{"X-Stainless-Os", "MacOS"},
-	{"X-Stainless-Timeout", "60"},
+	{"X-Stainless-Timeout", "600"},
 }
 
 // PassthroughHeaders lists headers that should be forwarded from inbound
 // requests to the upstream Anthropic API. Inbound values override defaults.
-var PassthroughHeaders = lo.Map(claudeCodeHeaders, func(entry []string, _ int) string { return entry[0] })
+var PassthroughHeaders = append(
+	lo.Map(claudeCodeHeaders, func(entry []string, _ int) string { return entry[0] }),
+	"X-Claude-Code-Session-Id",
+)
 
 // Params contains parameters for creating a ClaudeCodeTransformer.
 type Params struct {

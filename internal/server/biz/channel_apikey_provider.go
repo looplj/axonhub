@@ -9,10 +9,27 @@ import (
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/llm/auth"
 )
 
 // traceStickyLRUSize is the default LRU cache size for trace-to-key mappings.
 const traceStickyLRUSize = 1024
+
+type channelAPIKeyContextProvider struct {
+	inner auth.APIKeyProvider
+}
+
+func NewChannelAPIKeyContextProvider(inner auth.APIKeyProvider) auth.APIKeyProvider {
+	return &channelAPIKeyContextProvider{inner: inner}
+}
+
+func (p *channelAPIKeyContextProvider) Get(ctx context.Context) string {
+	key := p.inner.Get(ctx)
+	if key != "" {
+		contexts.WithChannelAPIKey(ctx, key)
+	}
+	return key
+}
 
 // TraceStickyKeyProvider selects an API key deterministically per traceID (if present),
 // using cached enabled keys from the channel snapshot.

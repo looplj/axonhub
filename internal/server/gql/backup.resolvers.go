@@ -75,6 +75,10 @@ func (r *mutationResolver) UpdateAutoBackupSettings(ctx context.Context, input U
 		settings.DataStorageID = *input.DataStorageID
 	}
 
+	if input.IncludeSystemConfigs != nil {
+		settings.IncludeSystemConfigs = *input.IncludeSystemConfigs
+	}
+
 	if input.IncludeChannels != nil {
 		settings.IncludeChannels = *input.IncludeChannels
 	}
@@ -93,6 +97,10 @@ func (r *mutationResolver) UpdateAutoBackupSettings(ctx context.Context, input U
 
 	if input.IncludeUsageStats != nil {
 		settings.IncludeUsageStats = *input.IncludeUsageStats
+	}
+
+	if input.IncludeRequestLogs != nil {
+		settings.IncludeRequestLogs = *input.IncludeRequestLogs
 	}
 
 	if input.RetentionDays != nil {
