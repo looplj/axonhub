@@ -82,6 +82,40 @@ func TestResponsesToChatTools_NonStreamingRoundTrip(t *testing.T) {
 	require.Equal(t, "collaboration", result.Output[3].Namespace)
 }
 
+func TestResponsesToChatTools_NormalizesMissingObjectParameterTypes(t *testing.T) {
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":"run tools",
+		"tools":[
+			{"type":"function","name":"plain"},
+			{"type":"namespace","name":"agents","tools":[
+				{"type":"function","name":"spawn","parameters":{"properties":{"task":{"type":"string"}}}}
+			]},
+			{"type":"tool_search","execution":"client","parameters":{}}
+		]
+	}`)})
+	require.NoError(t, err)
+
+	chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	var converted Request
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+	require.Len(t, converted.Tools, 3)
+	for _, tool := range converted.Tools {
+		var schema map[string]any
+		require.NoError(t, json.Unmarshal(tool.Function.Parameters, &schema))
+		require.Equal(t, "object", schema["type"])
+	}
+	require.Equal(t, "plain", converted.Tools[0].Function.Name)
+	require.Equal(t, "agents__spawn", converted.Tools[1].Function.Name)
+	require.Equal(t, "tool_search", converted.Tools[2].Function.Name)
+}
+
 func TestResponsesToChatHistory_MergesConsecutiveNamespaceCallsBeforeOutputs(t *testing.T) {
 	ctx := context.Background()
 	responsesInbound := responsesapi.NewInboundTransformer()

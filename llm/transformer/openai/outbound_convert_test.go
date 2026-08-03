@@ -285,6 +285,55 @@ func TestResponsesChatToolAdapter_DropsInvalidFunctionSchemaWithWarning(t *testi
 	require.Contains(t, adapter.warnings[0], `invalid function tool "invalid" was dropped`)
 }
 
+func TestResponsesChatToolAdapter_NormalizesFunctionParameterRoots(t *testing.T) {
+	request := &llm.Request{Tools: []llm.Tool{
+		{Type: llm.ToolTypeFunction, Function: llm.Function{
+			Name: "plain", Parameters: []byte(`{"properties":{"query":{"type":"string"}}}`),
+		}},
+		{Type: llm.ToolTypeFunction, Function: llm.Function{
+			Name: "agents__spawn", Namespace: "agents",
+		}},
+		{Type: llm.ToolTypeResponsesToolSearch, ResponseToolSearch: &llm.ResponseToolSearch{
+			Execution: "client", Parameters: []byte(`null`),
+		}},
+		{Type: llm.ToolTypeFunction, Function: llm.Function{
+			Name: "invalid_array", Parameters: []byte(`{"type":"array","items":{"type":"string"}}`),
+		}},
+	}}
+
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.NoError(t, err)
+	require.Len(t, chatRequest.Tools, 3)
+	for _, tool := range chatRequest.Tools {
+		var schema map[string]any
+		require.NoError(t, json.Unmarshal(tool.Function.Parameters, &schema))
+		require.Equal(t, "object", schema["type"])
+	}
+	require.JSONEq(t, `{"type":"object","properties":{"query":{"type":"string"}}}`, string(chatRequest.Tools[0].Function.Parameters))
+	require.JSONEq(t, `{"type":"object","properties":{}}`, string(chatRequest.Tools[1].Function.Parameters))
+	require.JSONEq(t, `{"type":"object","properties":{}}`, string(chatRequest.Tools[2].Function.Parameters))
+	require.Contains(t, adapter.warnings, `invalid function tool "invalid_array" was dropped: parameters schema type is required and must be "object"`)
+}
+
+func TestResponsesChatToolAdapter_RejectsNamedInvalidToolSearchSchema(t *testing.T) {
+	request := &llm.Request{
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeResponsesToolSearch,
+			ResponseToolSearch: &llm.ResponseToolSearch{
+				Execution: "client", Parameters: []byte(`{"type":"array"}`),
+			},
+		}},
+		ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+			Type: llm.ToolTypeResponsesToolSearch, Function: llm.ToolFunction{Name: "tool_search"},
+		}},
+	}
+
+	chatRequest, adapter, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
+	require.Nil(t, chatRequest)
+	require.ErrorContains(t, err, `named tool "tool_search" is unavailable`)
+	require.Contains(t, adapter.warnings, `invalid tool_search definition was dropped: parameters schema type is required and must be "object"`)
+}
+
 func TestResponsesChatToolAdapter_RejectsUnsupportedNamedToolChoice(t *testing.T) {
 	request := &llm.Request{
 		Tools: []llm.Tool{{

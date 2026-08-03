@@ -89,6 +89,14 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 				}
 				continue
 			}
+			normalizedFunction, err := normalizeChatFunctionDefinition(tool.Function)
+			if err != nil {
+				if tool.Function.Namespace != "" {
+					a.addWarning("invalid namespace tool %q was dropped: %v", tool.Function.Name, err)
+				}
+				continue
+			}
+			tool.Function = normalizedFunction
 			signature, err := functionDefinitionSignature(tool.Function)
 			if err != nil {
 				if tool.Function.Namespace != "" {
@@ -161,8 +169,15 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 				a.addWarning("unsupported_execution_owner: dropped tool_search with execution %q", tool.ResponseToolSearch.Execution)
 				continue
 			}
+			parameters, err := normalizeChatFunctionParameters(tool.ResponseToolSearch.Parameters)
+			if err != nil {
+				a.addWarning("invalid tool_search definition was dropped: %v", err)
+				continue
+			}
+			normalizedToolSearch := *tool.ResponseToolSearch
+			normalizedToolSearch.Parameters = parameters
 			identity := mappingIdentity(responsesChatToolSearch, "tool_search", "")
-			signature, err := json.Marshal(tool.ResponseToolSearch)
+			signature, err := json.Marshal(&normalizedToolSearch)
 			if err != nil {
 				a.addWarning("invalid tool_search definition was dropped: %v", err)
 				continue
@@ -174,14 +189,10 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 			if duplicate {
 				continue
 			}
-			parameters := tool.ResponseToolSearch.Parameters
-			if len(parameters) == 0 || string(parameters) == "null" {
-				parameters = json.RawMessage(`{"type":"object","properties":{}}`)
-			}
 			result = append(result, Tool{
 				Type: llm.ToolTypeFunction,
 				Function: Function{
-					Name: chatName, Description: tool.ResponseToolSearch.Description, Parameters: parameters,
+					Name: chatName, Description: normalizedToolSearch.Description, Parameters: parameters,
 				},
 			})
 
@@ -493,8 +504,56 @@ func choiceMappingKind(toolType string) responsesChatToolKind {
 	}
 }
 
+// normalizeChatFunctionDefinition ensures the parameter root satisfies the
+// object-only contract required by Chat Completions function tools.
+func normalizeChatFunctionDefinition(function llm.Function) (llm.Function, error) {
+	parameters, err := normalizeChatFunctionParameters(function.Parameters)
+	if err != nil {
+		return llm.Function{}, err
+	}
+	function.Parameters = parameters
+	return function, nil
+}
+
+func normalizeChatFunctionParameters(parameters json.RawMessage) (json.RawMessage, error) {
+	const emptyObjectSchema = `{"type":"object","properties":{}}`
+
+	trimmed := strings.TrimSpace(string(parameters))
+	if trimmed == "" || trimmed == "null" {
+		return json.RawMessage(emptyObjectSchema), nil
+	}
+
+	var schema map[string]json.RawMessage
+	if err := json.Unmarshal(parameters, &schema); err != nil {
+		return nil, fmt.Errorf("parameters must be a JSON object: %w", err)
+	}
+	if schema == nil {
+		return json.RawMessage(emptyObjectSchema), nil
+	}
+
+	rawType, hasType := schema["type"]
+	if !hasType {
+		schema["type"] = json.RawMessage(`"object"`)
+		normalized, err := json.Marshal(schema)
+		if err != nil {
+			return nil, fmt.Errorf("failed to normalize parameters schema: %w", err)
+		}
+		return normalized, nil
+	}
+
+	var schemaType string
+	if err := json.Unmarshal(rawType, &schemaType); err != nil || schemaType != "object" {
+		return nil, fmt.Errorf("parameters schema type is required and must be %q", "object")
+	}
+	return parameters, nil
+}
+
 // functionDefinitionSignature normalizes a function definition for deduplication.
 func functionDefinitionSignature(function llm.Function) (string, error) {
+	function, err := normalizeChatFunctionDefinition(function)
+	if err != nil {
+		return "", err
+	}
 	var parameters any
 	if len(function.Parameters) > 0 {
 		if err := json.Unmarshal(function.Parameters, &parameters); err != nil {
