@@ -357,4 +357,4 @@ OpenCode can also use AxonHub's OpenAI-compatible endpoint:
 - [Model Management Guide](model-management.md)
 - [Channel Management Guide](channel-management.md)
 - [Anthropic API Reference](../api-reference/anthropic-api.md)
-- README sections on [Usage Guide](../../../README.md#usage-guide)
+- README sections on [Usage Guide](../../../README.en-US.md#usage-guide)

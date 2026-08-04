@@ -271,13 +271,22 @@ export type ProviderZhipuQuotaData = ProviderQuotaDataCommon & {
 };
 
 export type ClineQuotaWindow = {
-  items_count: number;
-  used_cost_units: number;
+  window_state?: 'active' | 'inactive' | 'unavailable' | 'invalid';
+  active_window?: boolean;
+  window_start_at?: string;
+  cost_start_at?: string;
+  items_count?: number;
+  used_cost_units?: number;
   limit_cost_units: number;
-  remaining_cost_units: number;
-  credits_used: number;
+  remaining_cost_units?: number;
+  credits_used?: number;
   usage_ratio?: number;
   usage_percent?: number;
+  cost_usage_ratio?: number;
+  cost_usage_percent?: number;
+  usage_source?: string;
+  reset_source?: string;
+  cost_source?: string;
   next_reset_at?: string | null;
 };
 
@@ -289,6 +298,10 @@ type ClineBalance = {
 type ClineUsageFetch = {
   pages: number;
   items_seen: number;
+  cline_pass_items_seen?: number;
+  direct_items_seen?: number;
+  unclassified_items_seen?: number;
+  invalid_timestamp_items?: number;
   truncated: boolean;
 };
 
@@ -305,6 +318,18 @@ type ProviderClinePassQuotaData = ProviderQuotaDataCommon & {
     last30d: ClineQuotaWindow;
   };
   usage_fetch: ClineUsageFetch;
+};
+
+type ProviderClineUnavailablePassQuotaData = ProviderQuotaDataCommon & {
+  model_scope: 'cline_pass_only' | 'mixed' | 'unknown';
+  status_basis: 'cline_pass_unavailable' | 'cline_pass_unavailable_mixed_pool';
+  pool: 'cline_pass';
+  pool_note?: string;
+  pass_state: 'unavailable';
+  balance: ClineBalance;
+  cost_scale?: never;
+  windows?: never;
+  usage_fetch?: never;
 };
 
 type ProviderClineDirectQuotaData = ProviderQuotaDataCommon & {
@@ -328,10 +353,18 @@ type ProviderClineErrorQuotaData = ProviderQuotaDataCommon & {
   usage_fetch?: never;
 };
 
-export type ProviderClineQuotaData = ProviderClinePassQuotaData | ProviderClineDirectQuotaData | ProviderClineErrorQuotaData;
+export type ProviderClineQuotaData =
+  | ProviderClinePassQuotaData
+  | ProviderClineUnavailablePassQuotaData
+  | ProviderClineDirectQuotaData
+  | ProviderClineErrorQuotaData;
 
-export function isClinePassPoolQuotaData(qd: ProviderClineQuotaData): qd is ProviderClinePassQuotaData {
-  return qd.pool === 'cline_pass';
+export function isClineActivePassQuotaData(qd: ProviderClineQuotaData): qd is ProviderClinePassQuotaData {
+  return qd.pool === 'cline_pass' && qd.windows != null;
+}
+
+export function isClineUnavailablePassQuotaData(qd: ProviderClineQuotaData): qd is ProviderClineUnavailablePassQuotaData {
+  return 'pass_state' in qd && qd.pass_state === 'unavailable';
 }
 
 export type ProviderQuotaChannel = {

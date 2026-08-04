@@ -52,6 +52,38 @@ func TestOutboundTransformer_TransformRequest_UsesConfiguredEndpointPath(t *test
 	assert.Equal(t, "https://api.cline.bot/api/v1/custom/chat/completions", req.URL)
 }
 
+func TestOutboundTransformer_TransformRequest_IdentifiesAsClineCLI(t *testing.T) {
+	transformer := newTestTransformer(t)
+	content := "hello"
+
+	for _, model := range []string{
+		"cline-pass/deepseek-v4-flash",
+		"cline-free/glm-5.2",
+		"zai/glm-5.2",
+	} {
+		t.Run(model, func(t *testing.T) {
+			req, err := transformer.TransformRequest(context.Background(), &llm.Request{
+				Model: model,
+				Messages: []llm.Message{{
+					Role:    "user",
+					Content: llm.MessageContent{Content: &content},
+				}},
+			})
+			require.NoError(t, err)
+
+			assert.Equal(t, http.MethodPost, req.Method)
+			assert.Equal(t, "cline-cli", req.Headers.Get("X-Client-Type"))
+			assert.Equal(t, string(llm.APIFormatOpenAIChatCompletion), req.APIFormat)
+
+			var body struct {
+				Model string `json:"model"`
+			}
+			require.NoError(t, json.Unmarshal(req.Body, &body))
+			assert.Equal(t, model, body.Model)
+		})
+	}
+}
+
 func TestOutboundTransformer_TransformResponse_UnwrapsClineData(t *testing.T) {
 	transformer := newTestTransformer(t)
 

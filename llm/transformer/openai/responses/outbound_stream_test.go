@@ -211,6 +211,45 @@ func TestOutboundTransformer_TransformStream_AssociatesReasoningSummaryWithItem(
 	require.Equal(t, []string{"rs_first", "rs_second"}, summaryItemIDs)
 }
 
+// TestOutboundTransformer_TransformStream_HandlesReasoningText verifies that
+// official reasoning_text events become unified reasoning deltas without duplication.
+func TestOutboundTransformer_TransformStream_HandlesReasoningText(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_reasoning_text","object":"response","created_at":1700000000,"model":"deepseek-v4-flash","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"rs_text","type":"reasoning","status":"in_progress","summary":[],"content":[]}}`)},
+		{Type: "response.reasoning_text.delta", Data: []byte(`{"type":"response.reasoning_text.delta","item_id":"rs_text","output_index":0,"content_index":0,"delta":"first"}`)},
+		{Type: "response.reasoning_text.delta", Data: []byte(`{"type":"response.reasoning_text.delta","item_id":"rs_text","output_index":0,"content_index":0,"delta":" second"}`)},
+		{Type: "response.reasoning_text.done", Data: []byte(`{"type":"response.reasoning_text.done","item_id":"rs_text","output_index":0,"content_index":0,"text":"first second"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"rs_text","type":"reasoning","status":"completed","summary":[],"content":[{"type":"reasoning_text","text":"first second"}]}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_reasoning_text","object":"response","created_at":1700000000,"model":"deepseek-v4-flash","status":"completed","output":[]}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var deltas []string
+	var itemIDs []string
+	for _, response := range responses {
+		if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil || response.Choices[0].Delta.ReasoningContent == nil {
+			continue
+		}
+
+		deltas = append(deltas, *response.Choices[0].Delta.ReasoningContent)
+		metadata, ok := getResponsesReasoningItemMetadata(response.TransformerMetadata)
+		require.True(t, ok)
+		itemIDs = append(itemIDs, metadata.ID)
+	}
+
+	require.Equal(t, []string{"first", " second"}, deltas)
+	require.Equal(t, []string{"rs_text", "rs_text"}, itemIDs)
+}
+
 func TestResponsesTransformer_StreamRoundTrip_PreservesCompactionSummary(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

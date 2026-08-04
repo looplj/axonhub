@@ -141,4 +141,4 @@ You can manually trigger a quota refresh by clicking the refresh icon in the quo
 ### Related Documentation
 - [Tracing Guide](tracing.md)
 - [OpenAI API](../api-reference/openai-api.md)
-- README sections on [Usage Guide](../../../README.md#usage-guide)
+- README sections on [Usage Guide](../../../README.en-US.md#usage-guide)

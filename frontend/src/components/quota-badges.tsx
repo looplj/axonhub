@@ -23,7 +23,8 @@ import {
   ProviderMinimaxQuotaData,
   ProviderZhipuQuotaData,
   ClineQuotaWindow,
-  isClinePassPoolQuotaData,
+  isClineActivePassQuotaData,
+  isClineUnavailablePassQuotaData,
   resetChannelQuotaNow,
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
@@ -106,7 +107,7 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     percentage = qd.rate_limit?.primary_window?.used_percent || 0;
   } else if (channel.type === 'cline') {
     const qd = channel.quotaStatus.quotaData;
-    percentage = isClinePassPoolQuotaData(qd)
+    percentage = isClineActivePassQuotaData(qd)
       ? Math.max(getClineUsagePercent(qd.windows.last5h), getClineUsagePercent(qd.windows.last7d), getClineUsagePercent(qd.windows.last30d))
       : 0;
   } else if (channel.type === 'github_copilot') {
@@ -275,7 +276,8 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
   const quota = channel.quotaStatus;
 
   const status = quota.status;
-  const statusLabel = t(STATUS_LABELS[status]);
+  const clinePassUnavailable = channel.type === 'cline' && isClineUnavailablePassQuotaData(channel.quotaStatus.quotaData);
+  const statusLabel = clinePassUnavailable ? t('quota.status.cline_pass_unavailable') : t(STATUS_LABELS[status]);
 
   const enforcementEffect =
     enforcementMode && (status === 'exhausted' || (status === 'warning' && enforcementMode === 'DE_PRIORITIZE'))
@@ -786,7 +788,15 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
             const qd = channel.quotaStatus.quotaData;
             const items: React.ReactNode[] = [];
 
-            if (isClinePassPoolQuotaData(qd)) {
+            if (isClineUnavailablePassQuotaData(qd)) {
+              items.push(
+                <div key='pass-unavailable' className='text-muted-foreground bg-muted/40 rounded p-2 text-[11px]'>
+                  {t('quota.label.cline_pass_unavailable')}
+                </div>
+              );
+            }
+
+            if (isClineActivePassQuotaData(qd)) {
               const entries: Array<['last5h' | 'last7d' | 'last30d', string]> = [
                 ['last5h', 'quota.window.5h'],
                 ['last7d', 'quota.window.7d'],
@@ -800,7 +810,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                 const durationPct = getClineDurationPercent(key, window);
                 const used = formatClineCost(window.used_cost_units, qd.cost_scale);
                 const limit = formatClineCost(window.limit_cost_units, qd.cost_scale);
-                const resetText = window.next_reset_at ? formatTimeToReset(window.next_reset_at, usedPct) : '';
+                const resetText = window.next_reset_at ? formatTimeToReset(window.next_reset_at) : '';
 
                 items.push(
                   <div key={key} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
@@ -1643,7 +1653,14 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
           <QuotaBadgeTrigger channels={groupedChannels} isLoading={isLoading} isError={isError} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className={!isLoading && !isError && groupedChannels.length > 4 ? 'w-full sm:w-[640px]' : 'w-full sm:w-80'} align='end'>
+      <PopoverContent
+        className={
+          !isLoading && !isError && groupedChannels.length > 4
+            ? 'w-[640px] max-w-[calc(100vw-2rem)]'
+            : 'w-80 max-w-[calc(100vw-2rem)]'
+        }
+        align='end'
+      >
         <div className='space-y-1'>
           <div className='mb-2 flex items-center justify-between'>
             <div className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>{t('system.providerQuota.title')}</div>

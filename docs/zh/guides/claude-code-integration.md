@@ -141,4 +141,4 @@ AxonHub 还可以将您的 Claude Code 订阅作为后端提供商，允许非 C
 - [OpenAI API 文档](../api-reference/openai-api.md)
 - [Codex 集成指南](codex-integration.md)
 - [渠道管理指南](channel-management.md)
-- README 中的 [使用指南](../../../README.zh-CN.md#使用指南--usage-guide)
+- README 中的 [使用指南](../../../README.md#使用指南--usage-guide)

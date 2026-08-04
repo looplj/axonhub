@@ -3,8 +3,10 @@ package biz
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -20,7 +22,14 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/cline"
 )
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 type channelSyncNotifierSpy struct {
 	notifyCount int
@@ -176,6 +185,45 @@ func TestChannelService_SyncChannelModelsAutoConfiguresMissingPrices(t *testing.
 	require.NoError(t, err)
 	require.Len(t, retriedVersions, 1)
 	require.Equal(t, retriedPrice.ReferenceID, retriedVersions[0].ReferenceID)
+}
+
+func TestChannelService_ClineModelSyncPreservesModelsOnDiscoveryFallback(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc.httpClient = httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		assert.Equal(t, cline.RecommendedModelsURL, req.URL.String())
+		return &http.Response{
+			StatusCode: http.StatusBadGateway,
+			Status:     "502 Bad Gateway",
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(`{"error":"temporary outage"}`)),
+			Request:    req,
+		}, nil
+	})})
+
+	existingModels := []string{
+		"zai/glm-5.2",
+		"cline-free/glm-5.2",
+		"cline-pass/deepseek-v4-flash",
+	}
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeCline).
+		SetName("Cline degraded sync").
+		SetBaseURL("https://api.cline.bot/api/v1").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key"}}).
+		SetSupportedModels(existingModels).
+		SetDefaultTestModel("cline-pass/deepseek-v4-flash").
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.ErrorContains(t, err, "fallback")
+
+	persisted, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	assert.Equal(t, existingModels, persisted.SupportedModels)
 }
 
 func TestChannelService_ModelSyncIgnoresProviderOnlyOrderChanges(t *testing.T) {

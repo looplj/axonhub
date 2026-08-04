@@ -51,8 +51,9 @@ i18n
           return new Intl.NumberFormat(options?.locale || lng, {
             style: 'currency',
             currency: options?.currency || 'USD',
-             currencyDisplay: 'narrowSymbol',
-            ...options,
+            currencyDisplay: 'narrowSymbol',
+            minimumFractionDigits: options?.minimumFractionDigits,
+            maximumFractionDigits: options?.maximumFractionDigits,
           }).format(value);
         }
         return value;

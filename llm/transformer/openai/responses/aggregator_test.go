@@ -803,6 +803,78 @@ func TestAggregateStreamChunks_ReasoningSummaryMultipleParts(t *testing.T) {
 	require.Equal(t, "", resp.Output[0].Summary[1].Text)
 }
 
+// TestAggregateStreamChunks_ReasoningText verifies that reasoning_text delta and
+// done events are reconstructed as the official reasoning item content array.
+func TestAggregateStreamChunks_ReasoningText(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_reasoning_text","object":"response","created_at":1700000000,"model":"deepseek-v4-flash","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"rs_text","type":"reasoning","status":"in_progress","summary":[],"content":[]}}`)},
+		{Type: "response.reasoning_text.delta", Data: []byte(`{"type":"response.reasoning_text.delta","sequence_number":2,"item_id":"rs_text","output_index":0,"content_index":0,"delta":"first"}`)},
+		{Type: "response.reasoning_text.delta", Data: []byte(`{"type":"response.reasoning_text.delta","sequence_number":3,"item_id":"rs_text","output_index":0,"content_index":0,"delta":" second"}`)},
+		{Type: "response.reasoning_text.done", Data: []byte(`{"type":"response.reasoning_text.done","sequence_number":4,"item_id":"rs_text","output_index":0,"content_index":0,"text":"first second"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"id":"rs_text","type":"reasoning","status":"completed","summary":[]}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","sequence_number":6,"response":{"id":"resp_reasoning_text","object":"response","created_at":1700000000,"model":"deepseek-v4-flash","status":"completed","output":[]}}`)},
+	}
+
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+
+	var response Response
+	require.NoError(t, json.Unmarshal(resultBytes, &response))
+	require.Len(t, response.Output, 1)
+	require.Equal(t, "reasoning", response.Output[0].Type)
+	require.NotNil(t, response.Output[0].Content)
+	require.Len(t, response.Output[0].Content.Items, 1)
+	require.Equal(t, "reasoning_text", response.Output[0].Content.Items[0].Type)
+	require.NotNil(t, response.Output[0].Content.Items[0].Text)
+	require.Equal(t, "first second", *response.Output[0].Content.Items[0].Text)
+}
+
+// TestAggregateStreamChunks_ReasoningTextRejectsInvalidContentIndex verifies that
+// provider-controlled indexes cannot panic or expand content storage without bounds.
+func TestAggregateStreamChunks_ReasoningTextRejectsInvalidContentIndex(t *testing.T) {
+	tests := []struct {
+		name  string
+		event *httpclient.StreamEvent
+	}{
+		{
+			name:  "negative delta index",
+			event: &httpclient.StreamEvent{Type: "response.reasoning_text.delta", Data: []byte(`{"type":"response.reasoning_text.delta","sequence_number":2,"item_id":"rs_text","output_index":0,"content_index":-1,"delta":"ignored"}`)},
+		},
+		{
+			name:  "negative done index",
+			event: &httpclient.StreamEvent{Type: "response.reasoning_text.done", Data: []byte(`{"type":"response.reasoning_text.done","sequence_number":2,"item_id":"rs_text","output_index":0,"content_index":-1,"text":"ignored"}`)},
+		},
+		{
+			name:  "oversized delta index",
+			event: &httpclient.StreamEvent{Type: "response.reasoning_text.delta", Data: []byte(`{"type":"response.reasoning_text.delta","sequence_number":2,"item_id":"rs_text","output_index":0,"content_index":1024,"delta":"ignored"}`)},
+		},
+		{
+			name:  "oversized done index",
+			event: &httpclient.StreamEvent{Type: "response.reasoning_text.done", Data: []byte(`{"type":"response.reasoning_text.done","sequence_number":2,"item_id":"rs_text","output_index":0,"content_index":1024,"text":"ignored"}`)},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chunks := []*httpclient.StreamEvent{
+				{Type: "response.created", Data: []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_reasoning_text","object":"response","created_at":1700000000,"model":"deepseek-v4-flash","status":"in_progress","output":[]}}`)},
+				{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"rs_text","type":"reasoning","status":"in_progress","summary":[],"content":[]}}`)},
+				tt.event,
+				{Type: "response.completed", Data: []byte(`{"type":"response.completed","sequence_number":3,"response":{"id":"resp_reasoning_text","object":"response","created_at":1700000000,"model":"deepseek-v4-flash","status":"completed","output":[]}}`)},
+			}
+
+			resultBytes, _, err := AggregateStreamChunks(t.Context(), chunks)
+			require.NoError(t, err)
+
+			var response Response
+			require.NoError(t, json.Unmarshal(resultBytes, &response))
+			require.Len(t, response.Output, 1)
+			require.Nil(t, response.Output[0].Content)
+		})
+	}
+}
+
 func TestAggregateStreamChunks_ImageGenerationCall(t *testing.T) {
 	chunks := []*httpclient.StreamEvent{
 		{

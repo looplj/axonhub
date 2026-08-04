@@ -21,7 +21,7 @@ export function AuthenticatedLayout({ children }: Props) {
   useVersionCheck();
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen} className='h-screen flex-col overflow-hidden'>
+    <SidebarProvider defaultOpen={defaultOpen} className='fixed inset-0 min-h-0 flex-col overflow-hidden'>
       <AppHeader />
       <div className='flex flex-1 overflow-hidden'>
         <SkipToMain />

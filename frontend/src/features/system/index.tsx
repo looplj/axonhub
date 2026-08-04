@@ -14,7 +14,7 @@ interface SystemContentProps {
 
 function SystemContent({ initialTab }: SystemContentProps) {
   return (
-    <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+    <div className='-mx-4 flex-1 px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
       <SystemSettingsTabs initialTab={initialTab} />
     </div>
   );

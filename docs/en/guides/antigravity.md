@@ -322,7 +322,7 @@ No background cleanup is performed; entries are removed when accessed after TTL 
 
 - [Claude Code Integration Guide](claude-code-integration.md)
 - [Channel Management Guide](channel-management.md)
-- [Model Profiles](../../../README.md#model-profiles)
+- [Model Profiles](../../../README.en-US.md#model-profiles)
 - [Tracing Guide](tracing.md)
 - [OpenAI API](../api-reference/openai-api.md)
 - [Anthropic API](../api-reference/anthropic-api.md)
