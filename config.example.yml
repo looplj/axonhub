@@ -21,6 +21,10 @@ server:
     codex_trace_enabled: false # Enable extracting trace IDs from Codex Session_id header (env: AXONHUB_SERVER_TRACE_CODEX_TRACE_ENABLED)
   debug: false                  # Enable debug mode (env: AXONHUB_SERVER_DEBUG)
   disable_ssl_verify: false     # Disable SSL certificate verification for self-signed certificates (env: AXONHUB_SERVER_DISABLE_SSL_VERIFY)
+  # Max multipart form memory for large uploads (e.g. backup restore).
+  # Accepts plain bytes or K/M/G suffixes: "32M", "512MB", "1G", "536870912".
+  # Default: "32M" (env: AXONHUB_SERVER_MAX_MULTIPART_MEMORY)
+  max_multipart_memory: "32M"
   cors:
     enabled: true               # Enable CORS middleware (env: AXONHUB_SERVER_CORS_ENABLED)
     debug: false                # Enable CORS debug logging (env: AXONHUB_SERVER_CORS_DEBUG)
