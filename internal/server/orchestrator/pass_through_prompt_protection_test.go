@@ -73,6 +73,27 @@ func TestPatchPassThroughPromptProtection(t *testing.T) {
 	}
 }
 
+// TestPatchPassThroughPromptProtectionMasksOpenAIResponsesCompact verifies that
+// compact Responses requests retain provider-specific fields after masking.
+func TestPatchPassThroughPromptProtectionMasksOpenAIResponsesCompact(t *testing.T) {
+	rules := []*ent.PromptProtectionRule{{
+		Name:    "mask-user-secret",
+		Pattern: "secret-[0-9]+",
+		Settings: &objects.PromptProtectionSettings{
+			Action:      objects.PromptProtectionActionMask,
+			Replacement: "[MASKED]",
+			Scopes:      []objects.PromptProtectionScope{objects.PromptProtectionScopeUser},
+		},
+	}}
+	body := []byte(`{"model":"gpt-5","instructions":"secret-001","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"secret-002"}]}],"provider_option":{"keep":true}}`)
+
+	patched, err := patchPassThroughPromptProtection(body, llm.APIFormatOpenAIResponseCompact, rules)
+	require.NoError(t, err)
+	assert.Equal(t, "[MASKED]", gjson.GetBytes(patched, "input.0.content.0.text").String())
+	assert.Equal(t, "secret-001", gjson.GetBytes(patched, "instructions").String())
+	assert.True(t, gjson.GetBytes(patched, "provider_option.keep").Bool())
+}
+
 // TestPatchPassThroughPromptProtectionRejectsUnsupportedFormat verifies the
 // fail-safe path: protected content is never replayed unmodified for unknown layouts.
 func TestPatchPassThroughPromptProtectionRejectsUnsupportedFormat(t *testing.T) {
@@ -108,7 +129,7 @@ func TestPatchPassThroughPromptProtectionMasksGeminiFunctionResponse(t *testing.
 	body := []byte(`{
 		"contents":[
 			{"role":"user","parts":[{"text":"secret-user"}]},
-			{"role":"user","parts":[{"functionResponse":{"name":"lookup","response":{"token":"secret-tool","provider_meta":{"keep":true}}}}]}
+			{"role":"user","parts":[{"functionResponse":{"name":"lookup","response":{"token":"secret-tool","secret-property":"provider-key","sequence":9007199254740993,"nested":{"token":"secret-nested"},"provider_meta":{"keep":true}}}}]}
 		]
 	}`)
 
@@ -116,5 +137,8 @@ func TestPatchPassThroughPromptProtectionMasksGeminiFunctionResponse(t *testing.
 	require.NoError(t, err)
 	assert.Equal(t, "[MASKED]", gjson.GetBytes(patched, "contents.0.parts.0.text").String())
 	assert.Equal(t, "[MASKED]", gjson.GetBytes(patched, "contents.1.parts.0.functionResponse.response.token").String())
+	assert.Equal(t, "[MASKED]", gjson.GetBytes(patched, "contents.1.parts.0.functionResponse.response.nested.token").String())
+	assert.Equal(t, "provider-key", gjson.GetBytes(patched, "contents.1.parts.0.functionResponse.response.secret-property").String())
+	assert.Equal(t, "9007199254740993", gjson.GetBytes(patched, "contents.1.parts.0.functionResponse.response.sequence").Raw)
 	assert.True(t, gjson.GetBytes(patched, "contents.1.parts.0.functionResponse.response.provider_meta.keep").Bool())
 }
