@@ -89,3 +89,32 @@ func TestPatchPassThroughPromptProtectionRejectsUnsupportedFormat(t *testing.T) 
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "does not support raw prompt protection patches")
 }
+
+// TestPatchPassThroughPromptProtectionMasksGeminiFunctionResponse verifies that
+// a successful patch in another field cannot allow a protected tool result through.
+func TestPatchPassThroughPromptProtectionMasksGeminiFunctionResponse(t *testing.T) {
+	rules := []*ent.PromptProtectionRule{{
+		Name:    "mask-secret",
+		Pattern: "secret-[a-z]+",
+		Settings: &objects.PromptProtectionSettings{
+			Action:      objects.PromptProtectionActionMask,
+			Replacement: "[MASKED]",
+			Scopes: []objects.PromptProtectionScope{
+				objects.PromptProtectionScopeUser,
+				objects.PromptProtectionScopeTool,
+			},
+		},
+	}}
+	body := []byte(`{
+		"contents":[
+			{"role":"user","parts":[{"text":"secret-user"}]},
+			{"role":"user","parts":[{"functionResponse":{"name":"lookup","response":{"token":"secret-tool","provider_meta":{"keep":true}}}}]}
+		]
+	}`)
+
+	patched, err := patchPassThroughPromptProtection(body, llm.APIFormatGeminiContents, rules)
+	require.NoError(t, err)
+	assert.Equal(t, "[MASKED]", gjson.GetBytes(patched, "contents.0.parts.0.text").String())
+	assert.Equal(t, "[MASKED]", gjson.GetBytes(patched, "contents.1.parts.0.functionResponse.response.token").String())
+	assert.True(t, gjson.GetBytes(patched, "contents.1.parts.0.functionResponse.response.provider_meta.keep").Bool())
+}
