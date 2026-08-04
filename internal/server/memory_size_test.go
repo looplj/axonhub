@@ -1,8 +1,6 @@
 package server
 
 import (
-	"math"
-	"strconv"
 	"testing"
 )
 
@@ -37,7 +35,6 @@ func TestMemorySizeUnmarshalText(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -62,8 +59,9 @@ func TestMemorySizeUnmarshalText(t *testing.T) {
 func TestMemorySizeRejectsScaledOverflow(t *testing.T) {
 	t.Parallel()
 
-	units := math.MaxInt64/(1<<30) + 1
-	input := strconv.FormatInt(units, 10) + "G"
+	// 2^33 G scales to exactly 2^63, the first value not representable in int64.
+	// float64(math.MaxInt64) rounds to 2^63, so the guard must use >= to reject it.
+	const input = "8589934592G"
 
 	var got MemorySize
 	if err := got.UnmarshalText([]byte(input)); err == nil {

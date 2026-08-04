@@ -66,7 +66,9 @@ func (m *MemorySize) UnmarshalText(text []byte) error {
 	}
 
 	scaled := val * multiplier
-	if scaled > float64(math.MaxInt64) {
+	// float64(math.MaxInt64) rounds to exactly 2^63, so reject >= to also
+	// catch sizes that scale to 2^63 (the first unrepresentable int64 value).
+	if scaled >= float64(math.MaxInt64) {
 		return fmt.Errorf("memory size overflows int64: %q", string(text))
 	}
 
