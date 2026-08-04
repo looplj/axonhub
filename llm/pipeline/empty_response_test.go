@@ -13,15 +13,30 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
-func TestHasResponseContent_ReasoningSignature(t *testing.T) {
+func TestHasResponseContent_ReasoningAloneIsNotContent(t *testing.T) {
 	signature := "gAAAA_reasoning"
 
-	require.True(t, hasResponseContent(&llm.Response{
+	require.False(t, hasResponseContent(&llm.Response{
 		Object: "chat.completion.chunk",
 		Choices: []llm.Choice{{
 			Delta: &llm.Message{ReasoningSignature: &signature},
 		}},
+	}), "reasoning-only output must stay empty so the retry flow can re-execute")
+
+	require.False(t, hasResponseContent(&llm.Response{
+		Choices: []llm.Choice{{
+			Delta: &llm.Message{ReasoningContent: lo.ToPtr("thinking")},
+		}},
 	}))
+
+	require.True(t, hasResponseContent(&llm.Response{
+		Choices: []llm.Choice{{
+			Delta: &llm.Message{
+				ReasoningContent: lo.ToPtr("thinking"),
+				Content:          llm.MessageContent{Content: lo.ToPtr("answer")},
+			},
+		}},
+	}), "reasoning followed by visible content must count as content")
 }
 
 func TestHasResponseContent(t *testing.T) {
@@ -49,8 +64,8 @@ func TestHasResponseContent(t *testing.T) {
 		}))
 	})
 
-	t.Run("reasoning content", func(t *testing.T) {
-		require.True(t, hasResponseContent(&llm.Response{
+	t.Run("reasoning content alone", func(t *testing.T) {
+		require.False(t, hasResponseContent(&llm.Response{
 			Choices: []llm.Choice{{
 				Message: &llm.Message{
 					ReasoningContent: lo.ToPtr("thinking"),
@@ -527,4 +542,57 @@ func TestPipeline_Process_NonStreamEmptyResponseDetection(t *testing.T) {
 		require.NotNil(t, res)
 		require.Equal(t, 1, execCalls)
 	})
+}
+
+func TestPipeline_Process_StreamReasoningOnlyResponseIsRetried(t *testing.T) {
+	ctx := context.Background()
+
+	streamCalls := 0
+	executor := &mockExecutor{
+		doStream: func(ctx context.Context, req *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			streamCalls++
+			return streams.SliceStream([]*httpclient.StreamEvent{{}}), nil
+		},
+	}
+
+	outbound := &mockOutbound{
+		transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			if streamCalls == 1 {
+				// Upstream burned completion tokens but delivered only a reasoning
+				// wisp and a stop finish, no visible content or tool call.
+				return streams.SliceStream([]*llm.Response{
+					{Choices: []llm.Choice{{Delta: &llm.Message{ReasoningContent: lo.ToPtr("…")}}}},
+					{Choices: []llm.Choice{{FinishReason: lo.ToPtr("stop"), Delta: &llm.Message{}}}},
+					llm.DoneResponse,
+				}), nil
+			}
+			return streams.SliceStream([]*llm.Response{
+				{Choices: []llm.Choice{{
+					Delta: &llm.Message{Content: llm.MessageContent{Content: lo.ToPtr("ok")}},
+				}}},
+				llm.DoneResponse,
+			}), nil
+		},
+		canRetry:        func(err error) bool { return errors.Is(err, ErrEmptyResponse) },
+		prepareForRetry: func(ctx context.Context) error { return nil },
+	}
+
+	streamFlag := true
+	p := &pipeline{
+		Executor: executor,
+		Inbound: &mockInbound{
+			transformRequest: func(ctx context.Context, req *httpclient.Request) (*llm.Request, error) {
+				return &llm.Request{Stream: &streamFlag}, nil
+			},
+		},
+		Outbound:               outbound,
+		maxSameChannelRetries:  1,
+		emptyResponseDetection: true,
+	}
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.True(t, res.Stream)
+	require.Equal(t, 2, streamCalls, "reasoning-only completion must be retried")
 }

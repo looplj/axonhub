@@ -39,17 +39,10 @@ func hasMessageContent(msg *llm.Message) bool {
 		return true
 	}
 
-	if msg.ReasoningContent != nil && *msg.ReasoningContent != "" {
-		return true
-	}
-
-	if msg.Reasoning != nil && *msg.Reasoning != "" {
-		return true
-	}
-
-	if msg.ReasoningSignature != nil && *msg.ReasoningSignature != "" {
-		return true
-	}
+	// Reasoning-only output is deliberately not counted: an upstream that burns
+	// completion tokens but delivers no visible content or tool call (e.g. a
+	// dropped malformed tool call) leaves the client with an unusable turn.
+	// Treating it as empty lets the retry flow re-execute the request.
 
 	if msg.Refusal != "" {
 		return true
