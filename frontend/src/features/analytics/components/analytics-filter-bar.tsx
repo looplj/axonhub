@@ -294,40 +294,35 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
         <DataTableFacetedFilter
           title={t('analytics.filter.project')}
           options={projectOptions}
-          selectedValues={filter.projectIDs || []}
-          onSelectedValuesChange={setProjectIDs}
+          controlledSelection={{ values: filter.projectIDs || [], onChange: setProjectIDs }}
           isLoading={isLoadingProjects}
         />
 
         <DataTableFacetedFilter
           title={t('analytics.filter.channel')}
           options={channelOptions}
-          selectedValues={filter.channelIDs || []}
-          onSelectedValuesChange={setChannelIDs}
+          controlledSelection={{ values: filter.channelIDs || [], onChange: setChannelIDs }}
           isLoading={isLoadingChannels}
         />
 
         <DataTableFacetedFilter
           title={t('analytics.filter.model')}
           options={modelOptions}
-          selectedValues={filter.modelIDs || []}
-          onSelectedValuesChange={setModelIDs}
+          controlledSelection={{ values: filter.modelIDs || [], onChange: setModelIDs }}
           isLoading={isLoadingChannels}
         />
 
         <DataTableFacetedFilter
           title={t('analytics.filter.apiKey')}
           options={apiKeyOptions}
-          selectedValues={filter.apiKeyIDs || []}
-          onSelectedValuesChange={setAPIKeyIDs}
+          controlledSelection={{ values: filter.apiKeyIDs || [], onChange: setAPIKeyIDs }}
           isLoading={isLoadingApiKeys}
         />
 
         <DataTableFacetedFilter
           title={t('analytics.filter.user')}
           options={userOptions}
-          selectedValues={filter.userIDs || []}
-          onSelectedValuesChange={setUserIDs}
+          controlledSelection={{ values: filter.userIDs || [], onChange: setUserIDs }}
           isLoading={isLoadingUsers}
         />
 

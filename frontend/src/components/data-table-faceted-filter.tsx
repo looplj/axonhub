@@ -9,7 +9,14 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 
-interface DataTableFacetedFilterBaseProps {
+/** Groups the complete controlled state for filters that are not backed by a table column. */
+interface ControlledSelection {
+  values: string[];
+  onChange: (values: string[]) => void;
+}
+
+interface DataTableFacetedFilterProps<TData, TValue> {
+  column?: Column<TData, TValue>;
   title?: string;
   options?: {
     label: string;
@@ -19,31 +26,25 @@ interface DataTableFacetedFilterBaseProps {
   singleSelect?: boolean;
   footer?: React.ReactNode;
   isLoading?: boolean;
+  controlledSelection?: ControlledSelection;
 }
 
-type DataTableFacetedFilterProps<TData, TValue> = DataTableFacetedFilterBaseProps &
-  (
-    | {
-        column?: Column<TData, TValue>;
-        selectedValues?: never;
-        onSelectedValuesChange?: never;
-      }
-    | {
-        column?: never;
-        selectedValues: string[];
-        onSelectedValuesChange: (values: string[]) => void;
-      }
-  );
-
 /** Renders the shared searchable faceted-filter UX for table-backed or controlled filters. */
-export function DataTableFacetedFilter<TData = unknown, TValue = unknown>(props: DataTableFacetedFilterProps<TData, TValue>) {
-  const { column, title, options = [], singleSelect = false, footer, isLoading = false } = props;
+export function DataTableFacetedFilter<TData, TValue>({
+  column,
+  title,
+  options = [],
+  singleSelect = false,
+  footer,
+  isLoading = false,
+  controlledSelection,
+}: DataTableFacetedFilterProps<TData, TValue>) {
   const { t } = useTranslation();
 
   const facets = column?.getFacetedUniqueValues() || new Map();
   const filterValue = column?.getFilterValue();
   const columnSelectedValues = singleSelect ? (filterValue ? [filterValue as string] : []) : ((filterValue || []) as string[]);
-  const selectedValues = new Set(props.onSelectedValuesChange ? props.selectedValues : columnSelectedValues);
+  const selectedValues = new Set(controlledSelection?.values ?? columnSelectedValues);
   const selectedOptions = Array.from(
     selectedValues,
     (value) => options.find((option) => option.value === value) ?? { label: value, value }
@@ -51,8 +52,8 @@ export function DataTableFacetedFilter<TData = unknown, TValue = unknown>(props:
 
   /** Updates a controlled filter or falls back to the table column filter. */
   const updateSelectedValues = (values: string[]) => {
-    if (props.onSelectedValuesChange) {
-      props.onSelectedValuesChange(values);
+    if (controlledSelection) {
+      controlledSelection.onChange(values);
       return;
     }
 
