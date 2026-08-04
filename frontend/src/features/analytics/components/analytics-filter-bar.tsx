@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { IconCalendar, IconX, IconFilter } from '@tabler/icons-react';
 import { cn } from '@/lib/utils';
-import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -12,6 +11,7 @@ import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useApiKeys } from '@/features/apikeys/data/apikeys';
 import { useUsers } from '@/features/users/data/users';
 import { useProjects } from '@/features/projects/data/projects';
+import { AnalyticsFacetedFilter } from './analytics-faceted-filter';
 
 // Calendar Date → 'YYYY-MM-DD' 字符串（直接取本地年月日，不做时区转换）
 function formatDate(date: Date): string {
@@ -291,38 +291,43 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
 
       {/* Dimension Filters */}
       <div className='flex flex-wrap items-center gap-2'>
-        <DataTableFacetedFilter
+        <AnalyticsFacetedFilter
           title={t('analytics.filter.project')}
           options={projectOptions}
-          controlledSelection={{ values: filter.projectIDs || [], onChange: setProjectIDs }}
+          selectedValues={filter.projectIDs || []}
+          onSelectedValuesChange={setProjectIDs}
           isLoading={isLoadingProjects}
         />
 
-        <DataTableFacetedFilter
+        <AnalyticsFacetedFilter
           title={t('analytics.filter.channel')}
           options={channelOptions}
-          controlledSelection={{ values: filter.channelIDs || [], onChange: setChannelIDs }}
+          selectedValues={filter.channelIDs || []}
+          onSelectedValuesChange={setChannelIDs}
           isLoading={isLoadingChannels}
         />
 
-        <DataTableFacetedFilter
+        <AnalyticsFacetedFilter
           title={t('analytics.filter.model')}
           options={modelOptions}
-          controlledSelection={{ values: filter.modelIDs || [], onChange: setModelIDs }}
+          selectedValues={filter.modelIDs || []}
+          onSelectedValuesChange={setModelIDs}
           isLoading={isLoadingChannels}
         />
 
-        <DataTableFacetedFilter
+        <AnalyticsFacetedFilter
           title={t('analytics.filter.apiKey')}
           options={apiKeyOptions}
-          controlledSelection={{ values: filter.apiKeyIDs || [], onChange: setAPIKeyIDs }}
+          selectedValues={filter.apiKeyIDs || []}
+          onSelectedValuesChange={setAPIKeyIDs}
           isLoading={isLoadingApiKeys}
         />
 
-        <DataTableFacetedFilter
+        <AnalyticsFacetedFilter
           title={t('analytics.filter.user')}
           options={userOptions}
-          controlledSelection={{ values: filter.userIDs || [], onChange: setUserIDs }}
+          selectedValues={filter.userIDs || []}
+          onSelectedValuesChange={setUserIDs}
           isLoading={isLoadingUsers}
         />
 
