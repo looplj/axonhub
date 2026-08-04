@@ -12,6 +12,10 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
+// maxAggregatedContentParts bounds provider-controlled content indexes before
+// the aggregator expands its dense content-part storage.
+const maxAggregatedContentParts = 1024
+
 // streamAggregator holds the state for aggregating stream chunks.
 type streamAggregator struct {
 	// Response metadata
@@ -86,8 +90,15 @@ func newAggregatedContentPart() *aggregatedContentPart {
 	}
 }
 
+// validAggregatedContentIndex reports whether an upstream content index is safe
+// to store in the aggregator's bounded dense representation.
+func validAggregatedContentIndex(contentIndex int) bool {
+	return contentIndex >= 0 && contentIndex < maxAggregatedContentParts
+}
+
+// ensureContentPart returns the content part at a validated bounded index.
 func ensureContentPart(item *aggregatedItem, contentIndex int) *aggregatedContentPart {
-	if item == nil || contentIndex < 0 {
+	if item == nil || !validAggregatedContentIndex(contentIndex) {
 		return nil
 	}
 
@@ -458,6 +469,11 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		part.Final = true
 
 	case StreamEventTypeReasoningTextDelta:
+		contentIndex := lo.FromPtr(ev.ContentIndex)
+		if !validAggregatedContentIndex(contentIndex) {
+			return
+		}
+
 		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
 		if item == nil {
 			item = newAggregatedItem()
@@ -470,11 +486,19 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
 		}
 
-		part := ensureContentPart(item, lo.FromPtr(ev.ContentIndex))
+		part := ensureContentPart(item, contentIndex)
+		if part == nil {
+			return
+		}
 		part.Type = "reasoning_text"
 		part.Text.WriteString(ev.Delta)
 
 	case StreamEventTypeReasoningTextDone:
+		contentIndex := lo.FromPtr(ev.ContentIndex)
+		if !validAggregatedContentIndex(contentIndex) {
+			return
+		}
+
 		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
 		if item == nil {
 			item = newAggregatedItem()
@@ -487,7 +511,10 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
 		}
 
-		part := ensureContentPart(item, lo.FromPtr(ev.ContentIndex))
+		part := ensureContentPart(item, contentIndex)
+		if part == nil {
+			return
+		}
 		part.Type = "reasoning_text"
 		applyDoneText(part.Text, ev.Text)
 
