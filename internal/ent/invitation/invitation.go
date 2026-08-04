@@ -25,6 +25,8 @@ const (
 	FieldTokenHash = "token_hash"
 	// FieldProjectID holds the string denoting the project_id field in the database.
 	FieldProjectID = "project_id"
+	// FieldRoleID holds the string denoting the role_id field in the database.
+	FieldRoleID = "role_id"
 	// FieldExpiresAt holds the string denoting the expires_at field in the database.
 	FieldExpiresAt = "expires_at"
 	// FieldMaxUses holds the string denoting the max_uses field in the database.
@@ -52,6 +54,7 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldTokenHash,
 	FieldProjectID,
+	FieldRoleID,
 	FieldExpiresAt,
 	FieldMaxUses,
 	FieldUsedCount,
@@ -121,6 +124,11 @@ func ByTokenHash(opts ...sql.OrderTermOption) OrderOption {
 // ByProjectID orders the results by the project_id field.
 func ByProjectID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldProjectID, opts...).ToFunc()
+}
+
+// ByRoleID orders the results by the role_id field.
+func ByRoleID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRoleID, opts...).ToFunc()
 }
 
 // ByExpiresAt orders the results by the expires_at field.

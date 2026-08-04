@@ -85,6 +85,33 @@ func (_u *InvitationUpdate) SetNillableProjectID(v *int) *InvitationUpdate {
 	return _u
 }
 
+// SetRoleID sets the "role_id" field.
+func (_u *InvitationUpdate) SetRoleID(v int) *InvitationUpdate {
+	_u.mutation.ResetRoleID()
+	_u.mutation.SetRoleID(v)
+	return _u
+}
+
+// SetNillableRoleID sets the "role_id" field if the given value is not nil.
+func (_u *InvitationUpdate) SetNillableRoleID(v *int) *InvitationUpdate {
+	if v != nil {
+		_u.SetRoleID(*v)
+	}
+	return _u
+}
+
+// AddRoleID adds value to the "role_id" field.
+func (_u *InvitationUpdate) AddRoleID(v int) *InvitationUpdate {
+	_u.mutation.AddRoleID(v)
+	return _u
+}
+
+// ClearRoleID clears the value of the "role_id" field.
+func (_u *InvitationUpdate) ClearRoleID() *InvitationUpdate {
+	_u.mutation.ClearRoleID()
+	return _u
+}
+
 // SetExpiresAt sets the "expires_at" field.
 func (_u *InvitationUpdate) SetExpiresAt(v time.Time) *InvitationUpdate {
 	_u.mutation.SetExpiresAt(v)
@@ -243,6 +270,15 @@ func (_u *InvitationUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if value, ok := _u.mutation.TokenHash(); ok {
 		_spec.SetField(invitation.FieldTokenHash, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.RoleID(); ok {
+		_spec.SetField(invitation.FieldRoleID, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRoleID(); ok {
+		_spec.AddField(invitation.FieldRoleID, field.TypeInt, value)
+	}
+	if _u.mutation.RoleIDCleared() {
+		_spec.ClearField(invitation.FieldRoleID, field.TypeInt)
+	}
 	if value, ok := _u.mutation.ExpiresAt(); ok {
 		_spec.SetField(invitation.FieldExpiresAt, field.TypeTime, value)
 	}
@@ -364,6 +400,33 @@ func (_u *InvitationUpdateOne) SetNillableProjectID(v *int) *InvitationUpdateOne
 	if v != nil {
 		_u.SetProjectID(*v)
 	}
+	return _u
+}
+
+// SetRoleID sets the "role_id" field.
+func (_u *InvitationUpdateOne) SetRoleID(v int) *InvitationUpdateOne {
+	_u.mutation.ResetRoleID()
+	_u.mutation.SetRoleID(v)
+	return _u
+}
+
+// SetNillableRoleID sets the "role_id" field if the given value is not nil.
+func (_u *InvitationUpdateOne) SetNillableRoleID(v *int) *InvitationUpdateOne {
+	if v != nil {
+		_u.SetRoleID(*v)
+	}
+	return _u
+}
+
+// AddRoleID adds value to the "role_id" field.
+func (_u *InvitationUpdateOne) AddRoleID(v int) *InvitationUpdateOne {
+	_u.mutation.AddRoleID(v)
+	return _u
+}
+
+// ClearRoleID clears the value of the "role_id" field.
+func (_u *InvitationUpdateOne) ClearRoleID() *InvitationUpdateOne {
+	_u.mutation.ClearRoleID()
 	return _u
 }
 
@@ -554,6 +617,15 @@ func (_u *InvitationUpdateOne) sqlSave(ctx context.Context) (_node *Invitation, 
 	}
 	if value, ok := _u.mutation.TokenHash(); ok {
 		_spec.SetField(invitation.FieldTokenHash, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.RoleID(); ok {
+		_spec.SetField(invitation.FieldRoleID, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedRoleID(); ok {
+		_spec.AddField(invitation.FieldRoleID, field.TypeInt, value)
+	}
+	if _u.mutation.RoleIDCleared() {
+		_spec.ClearField(invitation.FieldRoleID, field.TypeInt)
 	}
 	if value, ok := _u.mutation.ExpiresAt(); ok {
 		_spec.SetField(invitation.FieldExpiresAt, field.TypeTime, value)

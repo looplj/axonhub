@@ -18,6 +18,7 @@ export const formSchemaFactory = (t: (key: string) => string) =>
         channelTagsMatchMode: z.enum(['any', 'all', 'none']),
         modelIDs: z.array(z.string()).optional().nullable(),
         loadBalanceStrategy: z.string().optional().nullable(),
+        traceStickyMode: z.string().optional().nullable(),
         quota: z
           .object({
             requests: z.number().int().positive().optional().nullable(),

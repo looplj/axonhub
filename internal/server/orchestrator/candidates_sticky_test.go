@@ -4,10 +4,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
@@ -153,4 +155,164 @@ func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 		require.Equal(t, 2, result[0].Channel.ID)
 		require.True(t, result[0].TraceSticky)
 	})
+}
+
+func TestResolveLoadBalancer_ReportsAppliedStrategy(t *testing.T) {
+	adaptive := &LoadBalancer{}
+	failover := &LoadBalancer{}
+	balancers := map[string]*LoadBalancer{
+		biz.LoadBalancerStrategyAdaptive: adaptive,
+		biz.LoadBalancerStrategyFailover: failover,
+	}
+
+	lb, strategy := resolveLoadBalancer(balancers, biz.LoadBalancerStrategyFailover)
+	require.Same(t, failover, lb)
+	require.Equal(t, biz.LoadBalancerStrategyFailover, strategy)
+
+	lb, strategy = resolveLoadBalancer(balancers, biz.LoadBalancerStrategyCircuitBreaker)
+	require.Same(t, adaptive, lb)
+	require.Equal(t, biz.LoadBalancerStrategyAdaptive, strategy)
+}
+
+func TestLoadBalancedSelector_FallbackUpdatesEffectiveStrategy(t *testing.T) {
+	candidates := []*ChannelModelsCandidate{
+		stickyTestCandidate(1, 0),
+		stickyTestCandidate(2, 0),
+	}
+	for _, candidate := range candidates {
+		candidate.ModelRoutingPolicy = &ModelRoutingPolicy{
+			LoadBalancerStrategy: biz.LoadBalancerStrategyCircuitBreaker,
+			TraceStickyMode:      objects.RoutingPolicyDefault,
+		}
+	}
+
+	systemPolicy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		Enabled:              true,
+		MaxChannelRetries:    1,
+		LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive,
+		TraceStickyMode:      biz.TraceStickyDisabled,
+	}}
+	effectivePolicy := EffectiveRoutingPolicy{}
+	selector := WithRoutingPolicyLoadBalancedSelector(
+		&staticChannelSelector{candidates: candidates},
+		map[string]*LoadBalancer{
+			biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(systemPolicy, nil),
+			// circuit-breaker intentionally missing to force fallback
+		},
+		systemPolicy,
+		nil,
+		nil,
+		&effectivePolicy,
+	)
+
+	_, err := selector.Select(context.Background(), &llm.Request{Model: "gpt-4"})
+	require.NoError(t, err)
+	require.Equal(t, biz.LoadBalancerStrategyAdaptive, effectivePolicy.LoadBalancerStrategy)
+}
+
+func TestLoadBalancedSelector_ModelDisablesStickyWhenProfileDefaults(t *testing.T) {
+	trace := &ent.Trace{ID: 10}
+	ctx := contexts.WithTrace(context.Background(), trace)
+	modelPolicy := &ModelRoutingPolicy{
+		LoadBalancerStrategy: objects.RoutingPolicyDefault,
+		TraceStickyMode:      string(biz.TraceStickyDisabled),
+	}
+	candidates := []*ChannelModelsCandidate{
+		stickyTestCandidate(1, 0),
+		stickyTestCandidate(2, 1),
+	}
+	for _, candidate := range candidates {
+		candidate.ModelRoutingPolicy = modelPolicy
+	}
+
+	systemPolicy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		Enabled:              true,
+		MaxChannelRetries:    1,
+		LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive,
+		TraceStickyMode:      biz.TraceStickyPreferPreviousChannel,
+	}}
+	apiKey := &ent.APIKey{Profiles: &objects.APIKeyProfiles{
+		ActiveProfile: "default",
+		Profiles: []objects.APIKeyProfile{{
+			Name:                "default",
+			LoadBalanceStrategy: lo.ToPtr(objects.RoutingPolicyDefault),
+			TraceStickyMode:     lo.ToPtr(objects.RoutingPolicyDefault),
+		}},
+	}}
+	effectivePolicy := EffectiveRoutingPolicy{}
+	selector := WithRoutingPolicyLoadBalancedSelector(
+		&staticChannelSelector{candidates: candidates},
+		map[string]*LoadBalancer{
+			biz.LoadBalancerStrategyAdaptive: NewLoadBalancer(systemPolicy, nil),
+		},
+		systemPolicy,
+		&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
+		apiKey,
+		&effectivePolicy,
+	)
+
+	result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4"})
+	require.NoError(t, err)
+	require.Equal(t, 1, result[0].Channel.ID)
+	require.False(t, result[0].TraceSticky)
+	require.Equal(t, biz.TraceStickyDisabled, effectivePolicy.TraceStickyMode)
+}
+
+func TestLoadBalancedSelector_EffectiveRoutingPolicyPriority(t *testing.T) {
+	trace := &ent.Trace{ID: 10}
+	ctx := contexts.WithTrace(context.Background(), trace)
+	modelPolicy := &ModelRoutingPolicy{
+		LoadBalancerStrategy: biz.LoadBalancerStrategyFailover,
+		TraceStickyMode:      string(biz.TraceStickyDisabled),
+	}
+	candidates := []*ChannelModelsCandidate{
+		stickyTestCandidate(1, 0),
+		stickyTestCandidate(2, 0),
+	}
+	for _, candidate := range candidates {
+		candidate.ModelRoutingPolicy = modelPolicy
+	}
+
+	systemPolicy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		Enabled:              true,
+		MaxChannelRetries:    1,
+		LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive,
+		TraceStickyMode:      biz.TraceStickyPreferPreviousChannel,
+	}}
+	adaptiveTracker := &mockSelectionTracker{}
+	failoverTracker := &mockSelectionTracker{}
+	roundRobinTracker := &mockSelectionTracker{}
+	profileLoadBalancer := biz.LoadBalancerStrategyRoundRobin
+	profileTraceStickyMode := string(biz.TraceStickyPreferPreviousChannel)
+	apiKey := &ent.APIKey{Profiles: &objects.APIKeyProfiles{
+		ActiveProfile: "default",
+		Profiles: []objects.APIKeyProfile{{
+			Name:                "default",
+			LoadBalanceStrategy: &profileLoadBalancer,
+			TraceStickyMode:     &profileTraceStickyMode,
+		}},
+	}}
+	effectivePolicy := EffectiveRoutingPolicy{}
+	selector := WithRoutingPolicyLoadBalancedSelector(
+		&staticChannelSelector{candidates: candidates},
+		map[string]*LoadBalancer{
+			biz.LoadBalancerStrategyAdaptive:   NewLoadBalancer(systemPolicy, adaptiveTracker),
+			biz.LoadBalancerStrategyFailover:   NewLoadBalancer(systemPolicy, failoverTracker),
+			biz.LoadBalancerStrategyRoundRobin: NewLoadBalancer(systemPolicy, roundRobinTracker),
+		},
+		systemPolicy,
+		&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
+		apiKey,
+		&effectivePolicy,
+	)
+
+	result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4"})
+	require.NoError(t, err)
+	require.Equal(t, 2, result[0].Channel.ID)
+	require.True(t, result[0].TraceSticky)
+	require.Equal(t, biz.LoadBalancerStrategyRoundRobin, effectivePolicy.LoadBalancerStrategy)
+	require.Equal(t, biz.TraceStickyPreferPreviousChannel, effectivePolicy.TraceStickyMode)
+	require.Equal(t, 1, roundRobinTracker.selections[2])
+	require.Empty(t, adaptiveTracker.selections)
+	require.Empty(t, failoverTracker.selections)
 }

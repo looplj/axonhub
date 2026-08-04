@@ -168,6 +168,53 @@ func TestDeriveLoadBalancerStrategy(t *testing.T) {
 	}
 }
 
+func TestDeriveRoutingPolicyPriority(t *testing.T) {
+	retryPolicy := &biz.RetryPolicy{
+		LoadBalancerStrategy: biz.LoadBalancerStrategyAdaptive,
+		TraceStickyMode:      biz.TraceStickyPreferPreviousChannel,
+	}
+	modelPolicy := &ModelRoutingPolicy{
+		LoadBalancerStrategy: biz.LoadBalancerStrategyFailover,
+		TraceStickyMode:      string(biz.TraceStickyDisabled),
+	}
+
+	t.Run("model overrides system", func(t *testing.T) {
+		policy := deriveRoutingPolicy(retryPolicy, nil, modelPolicy)
+		assert.Equal(t, biz.LoadBalancerStrategyFailover, policy.LoadBalancerStrategy)
+		assert.Equal(t, biz.TraceStickyDisabled, policy.TraceStickyMode)
+	})
+
+	t.Run("profile default inherits model", func(t *testing.T) {
+		apiKey := &ent.APIKey{Profiles: &objects.APIKeyProfiles{
+			ActiveProfile: "default",
+			Profiles: []objects.APIKeyProfile{{
+				Name:                "default",
+				LoadBalanceStrategy: lo.ToPtr(objects.RoutingPolicyDefault),
+				TraceStickyMode:     lo.ToPtr(objects.RoutingPolicyDefault),
+			}},
+		}}
+
+		policy := deriveRoutingPolicy(retryPolicy, apiKey, modelPolicy)
+		assert.Equal(t, biz.LoadBalancerStrategyFailover, policy.LoadBalancerStrategy)
+		assert.Equal(t, biz.TraceStickyDisabled, policy.TraceStickyMode)
+	})
+
+	t.Run("profile overrides model and system", func(t *testing.T) {
+		apiKey := &ent.APIKey{Profiles: &objects.APIKeyProfiles{
+			ActiveProfile: "default",
+			Profiles: []objects.APIKeyProfile{{
+				Name:                "default",
+				LoadBalanceStrategy: lo.ToPtr(biz.LoadBalancerStrategyRoundRobin),
+				TraceStickyMode:     lo.ToPtr(string(biz.TraceStickyPreferPreviousChannel)),
+			}},
+		}}
+
+		policy := deriveRoutingPolicy(retryPolicy, apiKey, modelPolicy)
+		assert.Equal(t, biz.LoadBalancerStrategyRoundRobin, policy.LoadBalancerStrategy)
+		assert.Equal(t, biz.TraceStickyPreferPreviousChannel, policy.TraceStickyMode)
+	})
+}
+
 func TestExtractStatusCodeFromError(t *testing.T) {
 	tests := []struct {
 		name     string

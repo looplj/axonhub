@@ -1,6 +1,7 @@
 import { IconPlus, IconTemplate } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
+import { PermissionGuard } from '@/components/permission-guard';
 import { useApiKeysContext } from '../context/apikeys-context';
 
 export function ApiKeysPrimaryButtons() {
@@ -9,14 +10,16 @@ export function ApiKeysPrimaryButtons() {
 
   return (
     <div className='flex gap-2'>
-      <Button variant='outline' size='sm' onClick={() => openDialog('profileTemplates')}>
-        <IconTemplate className='mr-2 h-4 w-4' />
-        {t('apikeys.profileTemplates.button')}
-      </Button>
-      <Button onClick={() => openDialog('create')} size='sm'>
-        <IconPlus className='mr-2 h-4 w-4' />
-        {t('apikeys.createApiKey')}
-      </Button>
+      <PermissionGuard requiredScope='write_api_keys'>
+        <Button variant='outline' size='sm' onClick={() => openDialog('profileTemplates')}>
+          <IconTemplate className='mr-2 h-4 w-4' />
+          {t('apikeys.profileTemplates.button')}
+        </Button>
+        <Button onClick={() => openDialog('create')} size='sm'>
+          <IconPlus className='mr-2 h-4 w-4' />
+          {t('apikeys.createApiKey')}
+        </Button>
+      </PermissionGuard>
     </div>
   );
 }

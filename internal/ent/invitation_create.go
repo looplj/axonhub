@@ -77,6 +77,20 @@ func (_c *InvitationCreate) SetProjectID(v int) *InvitationCreate {
 	return _c
 }
 
+// SetRoleID sets the "role_id" field.
+func (_c *InvitationCreate) SetRoleID(v int) *InvitationCreate {
+	_c.mutation.SetRoleID(v)
+	return _c
+}
+
+// SetNillableRoleID sets the "role_id" field if the given value is not nil.
+func (_c *InvitationCreate) SetNillableRoleID(v *int) *InvitationCreate {
+	if v != nil {
+		_c.SetRoleID(*v)
+	}
+	return _c
+}
+
 // SetExpiresAt sets the "expires_at" field.
 func (_c *InvitationCreate) SetExpiresAt(v time.Time) *InvitationCreate {
 	_c.mutation.SetExpiresAt(v)
@@ -253,6 +267,10 @@ func (_c *InvitationCreate) createSpec() (*Invitation, *sqlgraph.CreateSpec) {
 		_spec.SetField(invitation.FieldTokenHash, field.TypeString, value)
 		_node.TokenHash = value
 	}
+	if value, ok := _c.mutation.RoleID(); ok {
+		_spec.SetField(invitation.FieldRoleID, field.TypeInt, value)
+		_node.RoleID = &value
+	}
 	if value, ok := _c.mutation.ExpiresAt(); ok {
 		_spec.SetField(invitation.FieldExpiresAt, field.TypeTime, value)
 		_node.ExpiresAt = &value
@@ -385,6 +403,30 @@ func (u *InvitationUpsert) SetProjectID(v int) *InvitationUpsert {
 // UpdateProjectID sets the "project_id" field to the value that was provided on create.
 func (u *InvitationUpsert) UpdateProjectID() *InvitationUpsert {
 	u.SetExcluded(invitation.FieldProjectID)
+	return u
+}
+
+// SetRoleID sets the "role_id" field.
+func (u *InvitationUpsert) SetRoleID(v int) *InvitationUpsert {
+	u.Set(invitation.FieldRoleID, v)
+	return u
+}
+
+// UpdateRoleID sets the "role_id" field to the value that was provided on create.
+func (u *InvitationUpsert) UpdateRoleID() *InvitationUpsert {
+	u.SetExcluded(invitation.FieldRoleID)
+	return u
+}
+
+// AddRoleID adds v to the "role_id" field.
+func (u *InvitationUpsert) AddRoleID(v int) *InvitationUpsert {
+	u.Add(invitation.FieldRoleID, v)
+	return u
+}
+
+// ClearRoleID clears the value of the "role_id" field.
+func (u *InvitationUpsert) ClearRoleID() *InvitationUpsert {
+	u.SetNull(invitation.FieldRoleID)
 	return u
 }
 
@@ -547,6 +589,34 @@ func (u *InvitationUpsertOne) SetProjectID(v int) *InvitationUpsertOne {
 func (u *InvitationUpsertOne) UpdateProjectID() *InvitationUpsertOne {
 	return u.Update(func(s *InvitationUpsert) {
 		s.UpdateProjectID()
+	})
+}
+
+// SetRoleID sets the "role_id" field.
+func (u *InvitationUpsertOne) SetRoleID(v int) *InvitationUpsertOne {
+	return u.Update(func(s *InvitationUpsert) {
+		s.SetRoleID(v)
+	})
+}
+
+// AddRoleID adds v to the "role_id" field.
+func (u *InvitationUpsertOne) AddRoleID(v int) *InvitationUpsertOne {
+	return u.Update(func(s *InvitationUpsert) {
+		s.AddRoleID(v)
+	})
+}
+
+// UpdateRoleID sets the "role_id" field to the value that was provided on create.
+func (u *InvitationUpsertOne) UpdateRoleID() *InvitationUpsertOne {
+	return u.Update(func(s *InvitationUpsert) {
+		s.UpdateRoleID()
+	})
+}
+
+// ClearRoleID clears the value of the "role_id" field.
+func (u *InvitationUpsertOne) ClearRoleID() *InvitationUpsertOne {
+	return u.Update(func(s *InvitationUpsert) {
+		s.ClearRoleID()
 	})
 }
 
@@ -884,6 +954,34 @@ func (u *InvitationUpsertBulk) SetProjectID(v int) *InvitationUpsertBulk {
 func (u *InvitationUpsertBulk) UpdateProjectID() *InvitationUpsertBulk {
 	return u.Update(func(s *InvitationUpsert) {
 		s.UpdateProjectID()
+	})
+}
+
+// SetRoleID sets the "role_id" field.
+func (u *InvitationUpsertBulk) SetRoleID(v int) *InvitationUpsertBulk {
+	return u.Update(func(s *InvitationUpsert) {
+		s.SetRoleID(v)
+	})
+}
+
+// AddRoleID adds v to the "role_id" field.
+func (u *InvitationUpsertBulk) AddRoleID(v int) *InvitationUpsertBulk {
+	return u.Update(func(s *InvitationUpsert) {
+		s.AddRoleID(v)
+	})
+}
+
+// UpdateRoleID sets the "role_id" field to the value that was provided on create.
+func (u *InvitationUpsertBulk) UpdateRoleID() *InvitationUpsertBulk {
+	return u.Update(func(s *InvitationUpsert) {
+		s.UpdateRoleID()
+	})
+}
+
+// ClearRoleID clears the value of the "role_id" field.
+func (u *InvitationUpsertBulk) ClearRoleID() *InvitationUpsertBulk {
+	return u.Update(func(s *InvitationUpsert) {
+		s.ClearRoleID()
 	})
 }
 

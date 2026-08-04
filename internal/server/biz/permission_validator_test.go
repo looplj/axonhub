@@ -351,6 +351,39 @@ func TestCanEditRole(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "insufficient permissions")
 	})
+
+	t.Run("project member can edit a project role with its effective scopes", func(t *testing.T) {
+		project, err := client.Project.Create().SetName("role-permission-project").Save(ctx)
+		require.NoError(t, err)
+		managedRole, err := client.Role.Create().
+			SetName("Managed Role").
+			SetLevel(role.LevelProject).
+			SetProjectID(project.ID).
+			SetScopes([]string{"read_prompts"}).
+			Save(ctx)
+		require.NoError(t, err)
+		userRole, err := client.Role.Create().
+			SetName("Project Administrator").
+			SetLevel(role.LevelProject).
+			SetProjectID(project.ID).
+			SetScopes([]string{"read_prompts", "write_roles"}).
+			Save(ctx)
+		require.NoError(t, err)
+		projectAdmin, err := client.User.Create().
+			SetEmail("project-admin@example.com").
+			SetFirstName("Project").
+			SetLastName("Admin").
+			SetPassword("password").
+			AddRoles(userRole).
+			Save(ctx)
+		require.NoError(t, err)
+		_, err = client.UserProject.Create().SetUserID(projectAdmin.ID).SetProjectID(project.ID).Save(ctx)
+		require.NoError(t, err)
+
+		projectAdmin, err = userService.GetUserByID(ctx, projectAdmin.ID)
+		require.NoError(t, err)
+		require.NoError(t, validator.CanEditRole(contexts.WithUser(ctx, projectAdmin), managedRole.ID, nil))
+	})
 }
 
 func TestProjectLevelPermissions(t *testing.T) {

@@ -17,6 +17,20 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
+func TestValidateModelSettingsRoutingPolicy(t *testing.T) {
+	settings := &objects.ModelSettings{}
+	require.NoError(t, validateModelSettings(settings))
+	require.Equal(t, objects.RoutingPolicyDefault, settings.LoadBalancerStrategy)
+	require.Equal(t, objects.RoutingPolicyDefault, settings.TraceStickyMode)
+
+	require.Error(t, validateModelSettings(&objects.ModelSettings{
+		LoadBalancerStrategy: "unknown",
+	}))
+	require.Error(t, validateModelSettings(&objects.ModelSettings{
+		TraceStickyMode: "unknown",
+	}))
+}
+
 func TestModelService_QueryModelChannelConnections(t *testing.T) {
 	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
 	defer client.Close()

@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/role"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
@@ -918,6 +919,40 @@ func TestAPIKeyService_CreateAPIKey_Type(t *testing.T) {
 		require.Len(t, apiKey.Scopes, 2)
 	})
 
+	t.Run("non-admin cannot create project type API key", func(t *testing.T) {
+		developerRole, err := client.Role.Create().
+			SetName("Developer").
+			SetLevel(role.LevelProject).
+			SetProjectID(testProject.ID).
+			SetScopes([]string{"write_api_keys"}).
+			Save(ctx)
+		require.NoError(t, err)
+		nonAdmin, err := client.User.Create().
+			SetEmail(fmt.Sprintf("developer-%d@example.com", time.Now().UnixNano())).
+			SetPassword("password").
+			SetStatus(user.StatusActivated).
+			Save(ctx)
+		require.NoError(t, err)
+		_, err = client.UserProject.Create().SetUserID(nonAdmin.ID).SetProjectID(testProject.ID).Save(ctx)
+		require.NoError(t, err)
+		_, err = client.UserRole.Create().SetUserID(nonAdmin.ID).SetRoleID(developerRole.ID).Save(ctx)
+		require.NoError(t, err)
+
+		projectType := apikey.TypeUser
+		_, err = apiKeyService.CreateAPIKey(contexts.WithUser(ctx, nonAdmin), ent.CreateAPIKeyInput{
+			Name:      "Developer Project API Key",
+			ProjectID: testProject.ID,
+			Type:      &projectType,
+		})
+		require.ErrorContains(t, err, "project API keys require project admin permissions")
+
+		_, err = apiKeyService.CreateAPIKey(contexts.WithUser(ctx, nonAdmin), ent.CreateAPIKeyInput{
+			Name:      "Developer Default API Key",
+			ProjectID: testProject.ID,
+		})
+		require.ErrorContains(t, err, "project API keys require project admin permissions")
+	})
+
 	t.Run("Create service_account type API key without scopes", func(t *testing.T) {
 		serviceAccountType := apikey.TypeServiceAccount
 		apiKey, err := apiKeyService.CreateAPIKey(ctxWithUser, ent.CreateAPIKeyInput{
@@ -1229,6 +1264,12 @@ func TestAPIKeyService_RotateAPIKey(t *testing.T) {
 		SetName(projectName).
 		SetDescription(projectName).
 		SetStatus(project.StatusActive).
+		Save(setupCtx)
+	require.NoError(t, err)
+	_, err = client.UserProject.Create().
+		SetUserID(ownerUser.ID).
+		SetProjectID(testProject.ID).
+		SetIsOwner(true).
 		Save(setupCtx)
 	require.NoError(t, err)
 

@@ -180,42 +180,32 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Get retry policy from system settings
 	retryPolicy := processor.SystemService.RetryPolicyOrDefault(ctx)
 
-	strategy := deriveLoadBalancerStrategy(retryPolicy, apiKey)
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "chat request received",
 			log.String("request_body", string(request.Body)),
 			log.Any("request_headers", request.Headers),
 			log.Any("retry_policy", retryPolicy),
 			log.String("system_load_balance_strategy", retryPolicy.LoadBalancerStrategy),
-			log.String("load_balance_strategy", strategy),
+			log.String("system_trace_sticky_mode", string(retryPolicy.TraceStickyMode)),
 		)
 	}
 
-	loadBalancer := processor.adaptiveLoadBalancer
-
-	switch strategy {
-	case biz.LoadBalancerStrategyAdaptive:
-		loadBalancer = processor.adaptiveLoadBalancer
-	case biz.LoadBalancerStrategyFailover:
-		loadBalancer = processor.failoverLoadBalancer
-	case biz.LoadBalancerStrategyCircuitBreaker:
-		loadBalancer = processor.circuitBreakerLoadBalancer
-	case biz.LoadBalancerStrategyRoundRobin:
-		loadBalancer = processor.roundRobinLoadBalancer
-	default:
-		// Default to adaptive load balancer
-	}
-
 	state := &PersistenceState{
-		APIKey:                apiKey,
-		RequestService:        processor.RequestService,
-		UsageLogService:       processor.UsageLogService,
-		ChannelService:        processor.ChannelService,
-		PromptProvider:        processor.PromptProvider,
-		PromptProtecter:       processor.PromptProtecter,
-		RetryPolicyProvider:   processor.SystemService,
-		CandidateSelector:     processor.channelSelector,
-		LoadBalancer:          loadBalancer,
+		APIKey:              apiKey,
+		RequestService:      processor.RequestService,
+		UsageLogService:     processor.UsageLogService,
+		ChannelService:      processor.ChannelService,
+		PromptProvider:      processor.PromptProvider,
+		PromptProtecter:     processor.PromptProtecter,
+		RetryPolicyProvider: processor.SystemService,
+		CandidateSelector:   processor.channelSelector,
+		LoadBalancers: map[string]*LoadBalancer{
+			biz.LoadBalancerStrategyAdaptive:       processor.adaptiveLoadBalancer,
+			biz.LoadBalancerStrategyFailover:       processor.failoverLoadBalancer,
+			biz.LoadBalancerStrategyCircuitBreaker: processor.circuitBreakerLoadBalancer,
+			biz.LoadBalancerStrategyRoundRobin:     processor.roundRobinLoadBalancer,
+		},
+		RoutingPolicy:         deriveRoutingPolicy(retryPolicy, apiKey, nil),
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,
 		CurrentCandidateIndex: 0,
@@ -278,7 +268,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// Unified performance tracking middleware.
 		withPerformanceRecording(outbound),
 
-		withModelCircuitBreaker(outbound, processor.modelCircuitBreaker, strategy),
+		withModelCircuitBreaker(outbound, processor.modelCircuitBreaker),
 
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.

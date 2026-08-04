@@ -321,6 +321,11 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 
 		apiKeyType = *input.Type
 	}
+	if apiKeyType == apikey.TypeUser {
+		if err := s.requireProjectAdmin(ctx, user.ID, input.ProjectID); err != nil {
+			return nil, err
+		}
+	}
 
 	// Generate API key with configured prefix
 	generatedKey, err := GenerateAPIKey(s.keyPrefix)
@@ -398,6 +403,29 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 	}
 
 	return apiKey, nil
+}
+
+func (s *APIKeyService) requireProjectAdmin(ctx context.Context, userID, projectID int) error {
+	currentUser, err := authz.RunWithSystemBypass(ctx, "api-key-project-permission", func(bypassCtx context.Context) (*ent.User, error) {
+		return s.entFromContext(bypassCtx).User.Query().
+			Where(user.IDEQ(userID)).
+			WithRoles().
+			WithProjectUsers().
+			Only(bypassCtx)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to load API key creator permissions: %w", err)
+	}
+
+	projectCtx := contexts.WithUser(ctx, currentUser)
+	if err := NewPermissionValidator().CanGrantScopes(projectCtx, []string{
+		string(scopes.ScopeWriteUsers),
+		string(scopes.ScopeWriteRoles),
+	}, &projectID); err != nil {
+		return fmt.Errorf("permission denied: project API keys require project admin permissions")
+	}
+
+	return nil
 }
 
 // UpdateAPIKey updates an existing API key.
@@ -581,6 +609,9 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 	if err := validateProfileFilters(profiles.Profiles); err != nil {
 		return nil, err
 	}
+	if err := validateProfileRoutingPolicies(profiles.Profiles); err != nil {
+		return nil, err
+	}
 
 	// Validate quota configuration (if present)
 	if err := validateProfileQuota(profiles.Profiles); err != nil {
@@ -636,6 +667,44 @@ func validateProfileFilters(profiles []objects.APIKeyProfile) error {
 		if !profile.ChannelTagsMatchMode.IsValid() {
 			return fmt.Errorf("profile '%s' channelTagsMatchMode is invalid", profile.Name)
 		}
+	}
+
+	return nil
+}
+
+func validateProfileRoutingPolicies(profiles []objects.APIKeyProfile) error {
+	for i := range profiles {
+		if err := normalizeAndValidateProfileRoutingPolicy(&profiles[i]); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func normalizeAndValidateProfileRoutingPolicy(profile *objects.APIKeyProfile) error {
+	if profile == nil {
+		return nil
+	}
+
+	if profile.LoadBalanceStrategy == nil {
+		profile.LoadBalanceStrategy = lo.ToPtr(objects.RoutingPolicyDefault)
+	} else {
+		normalized := objects.NormalizeRoutingPolicyValue(*profile.LoadBalanceStrategy)
+		profile.LoadBalanceStrategy = &normalized
+	}
+	if !objects.IsValidLoadBalancerStrategy(*profile.LoadBalanceStrategy) {
+		return fmt.Errorf("profile '%s' loadBalanceStrategy is invalid", profile.Name)
+	}
+
+	if profile.TraceStickyMode == nil {
+		profile.TraceStickyMode = lo.ToPtr(objects.RoutingPolicyDefault)
+	} else {
+		normalized := objects.NormalizeRoutingPolicyValue(*profile.TraceStickyMode)
+		profile.TraceStickyMode = &normalized
+	}
+	if !objects.IsValidTraceStickyMode(*profile.TraceStickyMode) {
+		return fmt.Errorf("profile '%s' traceStickyMode is invalid", profile.Name)
 	}
 
 	return nil

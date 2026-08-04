@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconPlus, IconTrash, IconSettings, IconChevronDown, IconChevronUp } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconSettings, IconChevronDown, IconChevronUp, IconInfoCircle } from '@tabler/icons-react';
 import { ApiKeySaveTemplateDialog } from './apikeys-save-template-dialog';
 import { ApiKeyLoadTemplatePopover } from './apikeys-load-template-popover';
 import { format, type Locale } from 'date-fns';
@@ -13,17 +13,24 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useApiKeyQuotaUsages } from '../data/apikeys';
-import { updateApiKeyProfilesInputSchemaFactory, type ApiKeyProfile, type ApiKeyProfileQuotaUsage, type UpdateApiKeyProfilesInput } from '../data/schema';
+import {
+  normalizeApiKeyProfileRoutingPolicy,
+  updateApiKeyProfilesInputSchemaFactory,
+  type ApiKeyProfile,
+  type ApiKeyProfileQuotaUsage,
+  type UpdateApiKeyProfilesInput,
+} from '../data/schema';
 
 type ApiKeyQuotaPeriod = NonNullable<NonNullable<ApiKeyProfile['quota']>['period']>;
 
@@ -134,7 +141,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
 
       return {
         activeProfile: fallbackActiveProfile,
-        profiles: initialData.profiles,
+        profiles: initialData.profiles.map(normalizeApiKeyProfileRoutingPolicy),
       };
     }
 
@@ -257,7 +264,8 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
       channelTags: [],
       channelTagsMatchMode: 'any',
       modelIDs: [],
-      loadBalanceStrategy: null,
+      loadBalanceStrategy: 'default',
+      traceStickyMode: 'default',
     });
   }, [appendProfile, profileFields]);
 
@@ -308,7 +316,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                       onLoadComplete={(loadedProfiles) => {
                         const resetData = {
                           activeProfile: loadedProfiles.activeProfile || loadedProfiles.profiles[0]?.name || '',
-                          profiles: loadedProfiles.profiles,
+                          profiles: loadedProfiles.profiles.map(normalizeApiKeyProfileRoutingPolicy),
                         };
                         setTemplateLoadPending(true);
                         form.reset(resetData);
@@ -867,42 +875,88 @@ function ProfileCard({
             )}
           </div>
 
-          {/* Load Balancer Strategy */}
-          <div className='border-t pt-6'>
+          {/* Load Balancer Strategy + Trace/Thread Affinity */}
+          <div className='grid gap-4 border-t pt-6 sm:grid-cols-2'>
             <FormField
               control={form.control}
               name={`profiles.${profileIndex}.loadBalanceStrategy`}
-              render={({ field }) => (
-                <FormItem className='space-y-4'>
-                  <div className='flex items-center justify-between gap-3'>
-                    <div>
-                      <h4 className='text-sm font-medium'>{t('apikeys.profiles.loadBalancerStrategy')}</h4>
-                      <FormDescription className='mt-1 text-xs'>
-                        {field.value === 'adaptive'
-                          ? t('system.retry.loadBalancerStrategy.documentation.adaptive')
-                          : field.value === 'failover'
-                          ? t('system.retry.loadBalancerStrategy.documentation.failover')
-                          : field.value === 'circuit-breaker'
-                          ? t('system.retry.loadBalancerStrategy.documentation.circuit-breaker')
-                          : field.value === 'round-robin'
+              render={({ field }) => {
+                const description =
+                  field.value === 'adaptive'
+                    ? t('system.retry.loadBalancerStrategy.documentation.adaptive')
+                    : field.value === 'failover'
+                      ? t('system.retry.loadBalancerStrategy.documentation.failover')
+                      : field.value === 'circuit-breaker'
+                        ? t('system.retry.loadBalancerStrategy.documentation.circuit-breaker')
+                        : field.value === 'round-robin'
                           ? t('system.retry.loadBalancerStrategy.documentation.round-robin')
-                          : t('apikeys.profiles.loadBalancerStrategyDescription')}
-                      </FormDescription>
+                          : t('apikeys.profiles.loadBalancerStrategyDescription');
+
+                return (
+                  <FormItem className='space-y-0'>
+                    <div className='flex items-center justify-between gap-3'>
+                      <div className='flex items-center gap-1.5'>
+                        <FormLabel className='text-sm font-medium'>{t('apikeys.profiles.loadBalancerStrategy')}</FormLabel>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button type='button' className='text-muted-foreground hover:text-foreground inline-flex'>
+                              <IconInfoCircle className='h-3.5 w-3.5' />
+                              <span className='sr-only'>{description}</span>
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className='max-w-xs text-xs'>{description}</TooltipContent>
+                        </Tooltip>
+                      </div>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} value={field.value || 'default'}>
+                          <SelectTrigger className='w-[140px] shrink-0'>
+                            <SelectValue placeholder={t('apikeys.profiles.loadBalancerStrategyPlaceholder')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value='default'>{t('apikeys.profiles.loadBalancerStrategyPlaceholder')}</SelectItem>
+                            <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
+                            <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
+                            <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
+                            <SelectItem value='round-robin'>{t('system.retry.loadBalancerStrategy.options.roundRobin')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+
+            <FormField
+              control={form.control}
+              name={`profiles.${profileIndex}.traceStickyMode`}
+              render={({ field }) => (
+                <FormItem className='space-y-0'>
+                  <div className='flex items-center justify-between gap-3'>
+                    <div className='flex items-center gap-1.5'>
+                      <FormLabel className='text-sm font-medium'>{t('apikeys.profiles.traceStickyMode')}</FormLabel>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type='button' className='text-muted-foreground hover:text-foreground inline-flex'>
+                            <IconInfoCircle className='h-3.5 w-3.5' />
+                            <span className='sr-only'>{t('apikeys.profiles.traceStickyModeDescription')}</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent className='max-w-xs text-xs'>
+                          {t('apikeys.profiles.traceStickyModeDescription')}
+                        </TooltipContent>
+                      </Tooltip>
                     </div>
                     <FormControl>
-                      <Select
-                        onValueChange={(val) => field.onChange(val === 'system_default' ? null : val)}
-                        value={field.value || 'system_default'}
-                      >
-                        <SelectTrigger className='w-[140px]'>
-                          <SelectValue placeholder={t('apikeys.profiles.loadBalancerStrategyPlaceholder')} />
+                      <Select onValueChange={field.onChange} value={field.value || 'default'}>
+                        <SelectTrigger className='w-[180px] shrink-0'>
+                          <SelectValue placeholder={t('apikeys.profiles.traceStickyModePlaceholder')} />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value='system_default'>{t('apikeys.profiles.loadBalancerStrategyPlaceholder')}</SelectItem>
-                          <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
-                          <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
-                          <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
-                          <SelectItem value='round-robin'>{t('system.retry.loadBalancerStrategy.options.roundRobin')}</SelectItem>
+                          <SelectItem value='default'>{t('apikeys.profiles.traceStickyModePlaceholder')}</SelectItem>
+                          <SelectItem value='prefer_previous_channel'>{t('system.retry.traceStickyMode.options.preferPreviousChannel')}</SelectItem>
+                          <SelectItem value='disabled'>{t('system.retry.traceStickyMode.options.disabled')}</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormControl>

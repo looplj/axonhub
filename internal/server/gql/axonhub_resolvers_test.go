@@ -77,6 +77,25 @@ func TestQueryResolver_AllChannelSummarys_ProjectProfileUsesIntersection(t *test
 	require.Equal(t, matchingChannel.ID, channels[0].ID)
 }
 
+func TestQueryResolver_AllChannelSummarys_RequiresChannelReadScopeWithoutProject(t *testing.T) {
+	resolver, ctx, client := setupTestQueryResolver(t)
+	defer client.Close()
+
+	_, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Protected").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"protected-model"}).
+		SetDefaultTestModel("protected-model").
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	unauthorizedCtx := ent.NewContext(context.Background(), client)
+	_, err = resolver.AllChannelSummarys(unauthorizedCtx, nil)
+	require.Error(t, err)
+}
+
 func TestQueryResolver_AllChannelTags_ProjectProfileFiltersVisibleTags(t *testing.T) {
 	resolver, ctx, client := setupTestQueryResolver(t)
 	defer client.Close()

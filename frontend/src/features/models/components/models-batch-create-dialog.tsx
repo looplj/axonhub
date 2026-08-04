@@ -285,6 +285,8 @@ export function ModelsBatchCreateDialog() {
         limit: { context: 0, output: 0 },
       },
       settings: {
+        loadBalancerStrategy: 'default',
+        traceStickyMode: 'default',
         associations: [
           {
             type: 'model',
