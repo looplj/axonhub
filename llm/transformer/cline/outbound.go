@@ -53,6 +53,20 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	return &OutboundTransformer{Outbound: t}, nil
 }
 
+// TransformRequest identifies Cline chat completion requests as originating from the Cline CLI.
+func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+	httpReq, err := t.Outbound.TransformRequest(ctx, llmReq)
+	if err != nil {
+		return nil, err
+	}
+
+	if httpReq.APIFormat == string(llm.APIFormatOpenAIChatCompletion) {
+		httpReq.Headers.Set("X-Client-Type", "cline-cli")
+	}
+
+	return httpReq, nil
+}
+
 // TransformResponse transforms the HTTP response to llm.Response.
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
 	if httpResp == nil {
