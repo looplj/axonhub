@@ -9,8 +9,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 
-interface DataTableFacetedFilterProps<TData, TValue> {
-  column?: Column<TData, TValue>;
+interface DataTableFacetedFilterBaseProps {
   title?: string;
   options?: {
     label: string;
@@ -19,33 +18,41 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   }[];
   singleSelect?: boolean;
   footer?: React.ReactNode;
-  selectedValues?: string[];
-  onSelectedValuesChange?: (values: string[]) => void;
   isLoading?: boolean;
 }
 
+type DataTableFacetedFilterProps<TData, TValue> = DataTableFacetedFilterBaseProps &
+  (
+    | {
+        column?: Column<TData, TValue>;
+        selectedValues?: never;
+        onSelectedValuesChange?: never;
+      }
+    | {
+        column?: never;
+        selectedValues: string[];
+        onSelectedValuesChange: (values: string[]) => void;
+      }
+  );
+
 /** Renders the shared searchable faceted-filter UX for table-backed or controlled filters. */
-export function DataTableFacetedFilter<TData, TValue>({
-  column,
-  title,
-  options = [],
-  singleSelect = false,
-  footer,
-  selectedValues: controlledSelectedValues,
-  onSelectedValuesChange,
-  isLoading = false,
-}: DataTableFacetedFilterProps<TData, TValue>) {
+export function DataTableFacetedFilter<TData = unknown, TValue = unknown>(props: DataTableFacetedFilterProps<TData, TValue>) {
+  const { column, title, options = [], singleSelect = false, footer, isLoading = false } = props;
   const { t } = useTranslation();
 
   const facets = column?.getFacetedUniqueValues() || new Map();
   const filterValue = column?.getFilterValue();
   const columnSelectedValues = singleSelect ? (filterValue ? [filterValue as string] : []) : ((filterValue || []) as string[]);
-  const selectedValues = new Set(controlledSelectedValues ?? columnSelectedValues);
+  const selectedValues = new Set(props.onSelectedValuesChange ? props.selectedValues : columnSelectedValues);
+  const selectedOptions = Array.from(
+    selectedValues,
+    (value) => options.find((option) => option.value === value) ?? { label: value, value }
+  );
 
   /** Updates a controlled filter or falls back to the table column filter. */
   const updateSelectedValues = (values: string[]) => {
-    if (onSelectedValuesChange) {
-      onSelectedValuesChange(values);
+    if (props.onSelectedValuesChange) {
+      props.onSelectedValuesChange(values);
       return;
     }
 
@@ -59,61 +66,44 @@ export function DataTableFacetedFilter<TData, TValue>({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button variant='outline' size='sm' className='h-8 border-dashed'>
-          <PlusCircledIcon className='h-4 w-4' />
-          {title}
-          {selectedValues.size > 0 && (
-            <>
-              <Separator orientation='vertical' className='mx-2 h-4' />
-              <Badge variant='secondary' className='rounded-sm px-1 font-normal lg:hidden'>
-                {selectedValues.size}
-              </Badge>
-              <div className='hidden space-x-1 lg:flex'>
-                {selectedValues.size > 2 ? (
-                  <Badge variant='secondary' className='rounded-sm px-1 font-normal'>
-                    {t('common.selectedItems', { count: selectedValues.size })}
+      <div className='bg-background dark:bg-input/30 dark:border-input flex h-8 w-fit items-center rounded-md border border-dashed shadow-xs'>
+        <PopoverTrigger asChild>
+          <Button variant='ghost' size='sm' className='h-full rounded-md border-0 shadow-none'>
+            <PlusCircledIcon className='h-4 w-4' />
+            {title}
+          </Button>
+        </PopoverTrigger>
+        {selectedValues.size > 0 && (
+          <>
+            <Separator orientation='vertical' className='mx-2 h-4' />
+            <Badge variant='secondary' className='mr-1 rounded-sm px-1 font-normal lg:hidden'>
+              {selectedValues.size}
+            </Badge>
+            <div className='mr-1 hidden space-x-1 lg:flex'>
+              {selectedValues.size > 2 ? (
+                <Badge variant='secondary' className='rounded-sm px-1 font-normal'>
+                  {t('common.selectedItems', { count: selectedValues.size })}
+                </Badge>
+              ) : (
+                selectedOptions.map((option) => (
+                  <Badge variant='secondary' key={option.value} className='gap-0.5 rounded-sm py-0 pr-0.5 pl-1 font-normal'>
+                    {option.label}
+                    <button
+                      type='button'
+                      aria-label={`${t('common.clearFilters')}: ${option.label}`}
+                      title={`${t('common.clearFilters')}: ${option.label}`}
+                      className='text-muted-foreground hover:bg-muted-foreground/20 hover:text-foreground inline-flex size-4 items-center justify-center rounded-sm transition-colors'
+                      onClick={() => removeSelectedValue(option.value)}
+                    >
+                      <Cross2Icon className='size-3' />
+                    </button>
                   </Badge>
-                ) : (
-                  options
-                    ?.filter((option) => selectedValues.has(option.value))
-                    .map((option) => (
-                      <Badge variant='secondary' key={option.value} className='gap-0.5 rounded-sm py-0 pr-0.5 pl-1 font-normal'>
-                        {option.label}
-                        <span
-                          role='button'
-                          tabIndex={0}
-                          aria-label={`${t('common.clearFilters')}: ${option.label}`}
-                          title={`${t('common.clearFilters')}: ${option.label}`}
-                          className='text-muted-foreground hover:bg-muted-foreground/20 hover:text-foreground inline-flex size-4 items-center justify-center rounded-sm transition-colors'
-                          onPointerDown={(event) => {
-                            // Removing a chip must not toggle the parent popover trigger.
-                            event.preventDefault();
-                            event.stopPropagation();
-                          }}
-                          onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            removeSelectedValue(option.value);
-                          }}
-                          onKeyDown={(event) => {
-                            if (event.key !== 'Enter' && event.key !== ' ') return;
-
-                            event.preventDefault();
-                            event.stopPropagation();
-                            removeSelectedValue(option.value);
-                          }}
-                        >
-                          <Cross2Icon className='size-3' />
-                        </span>
-                      </Badge>
-                    ))
-                )}
-              </div>
-            </>
-          )}
-        </Button>
-      </PopoverTrigger>
+                ))
+              )}
+            </div>
+          </>
+        )}
+      </div>
       <PopoverContent className='w-[200px] p-0' align='start'>
         <Command>
           <CommandInput placeholder={title} />
