@@ -106,6 +106,12 @@ func Run(opts ...fx.Option) {
 			video_storage.Module,
 			api.Module,
 			fx.Provide(fx.Annotate(func(cfg Config) string { return cfg.PublicURL }, fx.ResultTags(`name:"public_url"`))),
+			fx.Provide(func(cfg Config) api.SSEKeepAliveConfig {
+				return api.SSEKeepAliveConfig{
+					Enabled:  cfg.SSEKeepAlive.Enabled,
+					Interval: cfg.SSEKeepAlive.Interval,
+				}
+			}),
 			fx.Invoke(func(cfg log.Config) {
 				log.SetGlobalConfig(cfg)
 				tracing.SetupLogger(log.GetGlobalLogger())

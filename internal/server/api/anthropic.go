@@ -19,19 +19,20 @@ import (
 type AnthropicHandlersParams struct {
 	fx.In
 
-	ChannelService  *biz.ChannelService
-	ModelService    *biz.ModelService
-	DefaultSelector *orchestrator.DefaultSelector
-	RequestService  *biz.RequestService
-	SystemService   *biz.SystemService
-	UsageLogService *biz.UsageLogService
-	PromptService   *biz.PromptService
+	ChannelService              *biz.ChannelService
+	ModelService                *biz.ModelService
+	DefaultSelector             *orchestrator.DefaultSelector
+	RequestService              *biz.RequestService
+	SystemService               *biz.SystemService
+	UsageLogService             *biz.UsageLogService
+	PromptService               *biz.PromptService
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
-	QuotaService    *biz.QuotaService
-	HttpClient      *httpclient.HttpClient
-	LiveStreamRegistry *biz.LiveStreamRegistry
+	QuotaService                *biz.QuotaService
+	HttpClient                  *httpclient.HttpClient
+	LiveStreamRegistry          *biz.LiveStreamRegistry
 	ChannelLimiterManager       *orchestrator.ChannelLimiterManager
 	ProviderQuotaStatusProvider orchestrator.ProviderQuotaStatusProvider
+	SSEKeepAliveConfig          SSEKeepAliveConfig
 }
 
 type AnthropicHandlers struct {
@@ -59,6 +60,8 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 				params.ChannelLimiterManager,
 				params.ProviderQuotaStatusProvider,
 			),
+			sseKeepAlive:       params.SSEKeepAliveConfig,
+			sseHeartbeatFormat: sseHeartbeatAnthropic,
 		},
 		ChannelService: params.ChannelService,
 		ModelService:   params.ModelService,

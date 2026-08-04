@@ -62,6 +62,9 @@ server:
   base_path: ""                 # API 路由的基础路径
   request_timeout: "30s"        # 请求超时时间
   llm_request_timeout: "600s"   # LLM 请求超时时间
+  sse_keep_alive:
+    enabled: false               # SSE 流空闲时发送与 API 格式兼容的心跳
+    interval: "15s"              # 两次心跳之间的空闲时长
   trace:
     thread_header: "AH-Thread-Id" # 线程 ID 请求头名称
     trace_header: "AH-Trace-Id" # 追踪 ID 请求头名称
@@ -79,6 +82,8 @@ server:
 - `AXONHUB_SERVER_BASE_PATH`
 - `AXONHUB_SERVER_REQUEST_TIMEOUT`
 - `AXONHUB_SERVER_LLM_REQUEST_TIMEOUT`
+- `AXONHUB_SERVER_SSE_KEEP_ALIVE_ENABLED`
+- `AXONHUB_SERVER_SSE_KEEP_ALIVE_INTERVAL`
 - `AXONHUB_SERVER_TRACE_THREAD_HEADER`
 - `AXONHUB_SERVER_TRACE_TRACE_HEADER`
 - `AXONHUB_SERVER_TRACE_EXTRA_TRACE_HEADERS`
@@ -87,6 +92,8 @@ server:
 - `AXONHUB_SERVER_TRACE_CODEX_TRACE_ENABLED`
 - `AXONHUB_SERVER_DEBUG`
 - `AXONHUB_SERVER_DISABLE_SSL_VERIFY`
+
+SSE 心跳目前应用于 OpenAI 兼容和 Anthropic 兼容的流式 API，暂不应用于 Gemini 流式 API。
 
 ### 数据库配置
 
