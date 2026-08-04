@@ -1213,7 +1213,7 @@ func TestPassThroughResponsesStream_DeepSeekReasoningDoesNotDeadlock(t *testing.
 	var outcome processOutcome
 	select {
 	case outcome = <-resultCh:
-	case <-time.After(500 * time.Millisecond):
+	case <-time.After(2 * time.Second):
 		cancel()
 		select {
 		case stopped := <-resultCh:

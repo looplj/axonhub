@@ -74,17 +74,19 @@ type StreamEvent struct {
 	OutputIndex int   `json:"output_index"`
 	Item        *Item `json:"item,omitempty"`
 
-	// For content_part.*, output_text.*, reasoning_text.*, function_call_arguments.* events
+	// For content_part.*, output_text.*, reasoning_summary_text.*, reasoning_text.*,
+	// and function_call_arguments.* events.
 	ItemID       *string `json:"item_id,omitempty"`
 	ContentIndex *int    `json:"content_index,omitempty"`
 
 	// For content_part.added/done events
 	Part *StreamEventContentPart `json:"part,omitempty"`
 
-	// For output_text.delta, reasoning_text.delta, and function_call_arguments.delta events
+	// For output_text.delta, reasoning_summary_text.delta, reasoning_text.delta,
+	// and function_call_arguments.delta events.
 	Delta string `json:"delta,omitempty"`
 
-	// For output_text.done and reasoning_text.done events
+	// For output_text.done, reasoning_summary_text.done, and reasoning_text.done events.
 	Text string `json:"text,omitempty"`
 
 	// For function_call_arguments.done events
