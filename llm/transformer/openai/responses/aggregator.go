@@ -457,6 +457,40 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		applyDoneText(part.Text, ev.Text)
 		part.Final = true
 
+	case StreamEventTypeReasoningTextDelta:
+		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
+		if item == nil {
+			item = newAggregatedItem()
+			item.Type = "reasoning"
+			item.Status = "in_progress"
+			if ev.ItemID != nil && *ev.ItemID != "" {
+				item.ID = *ev.ItemID
+				a.outputItemsByID[item.ID] = item
+			}
+			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
+		}
+
+		part := ensureContentPart(item, lo.FromPtr(ev.ContentIndex))
+		part.Type = "reasoning_text"
+		part.Text.WriteString(ev.Delta)
+
+	case StreamEventTypeReasoningTextDone:
+		item := a.getItemForEvent(ev.OutputIndex, ev.ItemID)
+		if item == nil {
+			item = newAggregatedItem()
+			item.Type = "reasoning"
+			item.Status = "in_progress"
+			if ev.ItemID != nil && *ev.ItemID != "" {
+				item.ID = *ev.ItemID
+				a.outputItemsByID[item.ID] = item
+			}
+			a.outputItems[ev.OutputIndex] = append(a.outputItems[ev.OutputIndex], item)
+		}
+
+		part := ensureContentPart(item, lo.FromPtr(ev.ContentIndex))
+		part.Type = "reasoning_text"
+		applyDoneText(part.Text, ev.Text)
+
 	case StreamEventTypeOutputItemDone:
 		// Mark item as completed and update with final data
 		if ev.Item != nil {
@@ -643,9 +677,9 @@ func (a *streamAggregator) buildResponse() *Response {
 				})
 
 			case "reasoning":
-				// ...existing reasoning handling...
 				{
 					var summary []ReasoningSummary
+					var content *Input
 
 					if len(item.SummaryParts) > 0 {
 						maxSummaryIndex := -1
@@ -677,11 +711,25 @@ func (a *streamAggregator) buildResponse() *Response {
 						}
 					}
 
+					if len(item.Content) > 0 {
+						contentItems := make([]Item, 0, len(item.Content))
+						for _, part := range item.Content {
+							text := part.Text.String()
+							contentType := part.Type
+							if contentType == "" {
+								contentType = "reasoning_text"
+							}
+							contentItems = append(contentItems, Item{Type: contentType, Text: &text})
+						}
+						content = &Input{Items: contentItems}
+					}
+
 					output = append(output, Item{
 						ID:               item.ID,
 						Type:             item.Type,
 						Status:           lo.ToPtr(item.Status),
 						Summary:          summary,
+						Content:          content,
 						EncryptedContent: item.EncryptedContent,
 					})
 				}
