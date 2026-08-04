@@ -81,6 +81,9 @@ export function DataTableFacetedFilter<TData, TValue>({
                       <Badge variant='secondary' key={option.value} className='gap-0.5 rounded-sm py-0 pr-0.5 pl-1 font-normal'>
                         {option.label}
                         <span
+                          role='button'
+                          tabIndex={0}
+                          aria-label={`${t('common.clearFilters')}: ${option.label}`}
                           title={`${t('common.clearFilters')}: ${option.label}`}
                           className='text-muted-foreground hover:bg-muted-foreground/20 hover:text-foreground inline-flex size-4 items-center justify-center rounded-sm transition-colors'
                           onPointerDown={(event) => {
@@ -89,6 +92,13 @@ export function DataTableFacetedFilter<TData, TValue>({
                             event.stopPropagation();
                           }}
                           onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            removeSelectedValue(option.value);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key !== 'Enter' && event.key !== ' ') return;
+
                             event.preventDefault();
                             event.stopPropagation();
                             removeSelectedValue(option.value);
