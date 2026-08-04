@@ -812,7 +812,7 @@ func TestAggregateStreamChunks_ReasoningText(t *testing.T) {
 		{Type: "response.reasoning_text.delta", Data: []byte(`{"type":"response.reasoning_text.delta","sequence_number":2,"item_id":"rs_text","output_index":0,"content_index":0,"delta":"first"}`)},
 		{Type: "response.reasoning_text.delta", Data: []byte(`{"type":"response.reasoning_text.delta","sequence_number":3,"item_id":"rs_text","output_index":0,"content_index":0,"delta":" second"}`)},
 		{Type: "response.reasoning_text.done", Data: []byte(`{"type":"response.reasoning_text.done","sequence_number":4,"item_id":"rs_text","output_index":0,"content_index":0,"text":"first second"}`)},
-		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"id":"rs_text","type":"reasoning","status":"completed","summary":[],"content":[{"type":"reasoning_text","text":"first second"}]}}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"id":"rs_text","type":"reasoning","status":"completed","summary":[]}}`)},
 		{Type: "response.completed", Data: []byte(`{"type":"response.completed","sequence_number":6,"response":{"id":"resp_reasoning_text","object":"response","created_at":1700000000,"model":"deepseek-v4-flash","status":"completed","output":[]}}`)},
 	}
 

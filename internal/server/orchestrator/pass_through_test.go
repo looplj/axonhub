@@ -1145,7 +1145,10 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 // provider-specific reasoning events cannot fill the raw pass-through buffer before
 // the inbound raw-stream consumer is attached.
 func TestPassThroughResponsesStream_DeepSeekReasoningDoesNotDeadlock(t *testing.T) {
-	const model = "deepseek-v4-flash"
+	const (
+		model               = "deepseek-v4-flash"
+		reasoningEventCount = 80
+	)
 
 	provider, err := responsestransformer.NewOutboundTransformer("https://api.deepseek.com/v1", "test-api-key")
 	require.NoError(t, err)
@@ -1172,7 +1175,7 @@ func TestPassThroughResponsesStream_DeepSeekReasoningDoesNotDeadlock(t *testing.
 		ChannelModelsCandidates: []*ChannelModelsCandidate{candidate},
 	}
 	inbound, outbound := NewPersistentTransformers(state, responsestransformer.NewInboundTransformer())
-	executor := &mockExecutor{streamEvents: deepSeekResponsesReasoningEvents(80)}
+	executor := &mockExecutor{streamEvents: deepSeekResponsesReasoningEvents(reasoningEventCount)}
 	pipe := pipeline.NewFactory(executor).Pipeline(
 		inbound,
 		outbound,
@@ -1231,10 +1234,16 @@ func TestPassThroughResponsesStream_DeepSeekReasoningDoesNotDeadlock(t *testing.
 	require.True(t, outcome.result.Stream)
 
 	var eventTypes []string
+	reasoningDeltaCount := 0
 	for outcome.result.EventStream.Next() {
-		eventTypes = append(eventTypes, outcome.result.EventStream.Current().Type)
+		eventType := outcome.result.EventStream.Current().Type
+		eventTypes = append(eventTypes, eventType)
+		if eventType == "response.reasoning_text.delta" {
+			reasoningDeltaCount++
+		}
 	}
 	require.NoError(t, outcome.result.EventStream.Err())
+	require.Equal(t, reasoningEventCount, reasoningDeltaCount)
 	require.Contains(t, eventTypes, "response.output_text.delta")
 }
 
