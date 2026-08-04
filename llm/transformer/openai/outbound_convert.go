@@ -6,12 +6,20 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // RequestFromLLM creates OpenAI Request from unified llm.Request with reasoning field configuration.
 func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 	if r == nil {
 		return nil
+	}
+	// The plain codec cannot represent Responses-only tool lifecycle state.
+	// Wrapper transformers call this codec directly, so downgrade here to keep
+	// specialized calls from being serialized as invalid Chat history entries
+	// (empty names/arguments) that strict providers reject.
+	if isResponsesAPIFormat(r.APIFormat) {
+		r = shared.DowngradeResponsesChatToolLifecycle(r)
 	}
 	req := requestFromLLMBase(r)
 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {

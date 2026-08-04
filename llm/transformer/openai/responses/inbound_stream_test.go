@@ -925,3 +925,50 @@ func TestInboundTransformer_TransformStream_UsageBeforeFinishReasonKeepsMappedSt
 	require.NotNil(t, completed.IncompleteDetails)
 	require.Equal(t, "max_output_tokens", completed.IncompleteDetails.Reason)
 }
+
+func TestInboundTransformer_TransformStream_CompletesWhenFinishReasonMissing(t *testing.T) {
+	source := streams.SliceStream([]*llm.Response{
+		{ID: "resp_1", Model: "kimi-k3", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Content: llm.MessageContent{Content: lo.ToPtr("dispatching")}}}}},
+		{ID: "resp_1", Model: "kimi-k3", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+			ID: "call_task", Index: 0, Type: llm.ToolTypeFunction,
+			Function: llm.FunctionCall{Name: "Task", Arguments: `{"prompt":"fix the bug"}`},
+		}}}}}},
+		llm.DoneResponse,
+	})
+
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), source)
+	require.NoError(t, err)
+
+	var terminal *StreamEvent
+	closedTypes := make([]string, 0)
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		switch event.Type {
+		case StreamEventTypeResponseCompleted:
+			terminal = &event
+		case StreamEventTypeOutputItemDone:
+			if event.Item != nil {
+				closedTypes = append(closedTypes, event.Item.Type)
+			}
+		}
+	}
+	require.NoError(t, stream.Err())
+
+	require.NotNil(t, terminal, "stream must emit a terminal response when the upstream omits finish_reason")
+	require.NotNil(t, terminal.Response)
+	require.Equal(t, "completed", lo.FromPtr(terminal.Response.Status))
+	require.Contains(t, closedTypes, "message")
+	require.Contains(t, closedTypes, "function_call")
+
+	var taskItem *Item
+	for i := range terminal.Response.Output {
+		if terminal.Response.Output[i].Type == "function_call" {
+			taskItem = &terminal.Response.Output[i]
+			break
+		}
+	}
+	require.NotNil(t, taskItem, "terminal response must keep the dispatched tool call")
+	require.Equal(t, "Task", taskItem.Name)
+	require.Equal(t, `{"prompt":"fix the bug"}`, taskItem.Arguments)
+}

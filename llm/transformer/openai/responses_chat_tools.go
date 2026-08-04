@@ -1051,6 +1051,63 @@ func (r *responsesChatToolStreamRestorer) restore(response *llm.Response) {
 	}
 }
 
+// flushBuffered releases every call still held when the upstream stream ends
+// without a finish chunk that would normally release it. Providers that omit
+// finish_reason (or emit [DONE] in its place) would otherwise silently lose
+// each buffered call.
+func (r *responsesChatToolStreamRestorer) flushBuffered() []*llm.Response {
+	if len(r.pending) == 0 && len(r.ready) == 0 {
+		return nil
+	}
+
+	keys := make([][2]int, 0, len(r.pending)+len(r.ready))
+	for key := range r.ready {
+		keys = append(keys, key)
+	}
+	for key := range r.pending {
+		if _, buffered := r.ready[key]; !buffered {
+			keys = append(keys, key)
+		}
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if keys[i][0] != keys[j][0] {
+			return keys[i][0] < keys[j][0]
+		}
+		return keys[i][1] < keys[j][1]
+	})
+
+	byChoice := make(map[int][]llm.ToolCall, len(keys))
+	for _, key := range keys {
+		call, buffered := r.ready[key]
+		if !buffered {
+			call = r.pending[key]
+		}
+		delete(r.ready, key)
+		delete(r.pending, key)
+
+		message := &llm.Message{ToolCalls: []llm.ToolCall{call}}
+		restoreResponsesChatMessage(message, r.mappings, false)
+		byChoice[key[0]] = append(byChoice[key[0]], message.ToolCalls...)
+	}
+
+	choiceIndexes := make([]int, 0, len(byChoice))
+	for choiceIndex := range byChoice {
+		choiceIndexes = append(choiceIndexes, choiceIndex)
+	}
+	sort.Ints(choiceIndexes)
+
+	responses := make([]*llm.Response, 0, len(choiceIndexes))
+	for _, choiceIndex := range choiceIndexes {
+		responses = append(responses, &llm.Response{
+			Choices: []llm.Choice{{
+				Index: choiceIndex,
+				Delta: &llm.Message{ToolCalls: byChoice[choiceIndex]},
+			}},
+		})
+	}
+	return responses
+}
+
 func isAbnormalResponsesChatFinishReason(reason string) bool {
 	switch reason {
 	case "error", "length", "content_filter", "cancelled", "canceled":

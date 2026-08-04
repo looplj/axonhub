@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
@@ -153,4 +154,66 @@ func HasChatCompatibleAssistantPayload(msg llm.Message) bool {
 func hasOutputAudioPayload(audio *llm.OutputAudio) bool {
 	return audio != nil && (strings.TrimSpace(audio.ID) != "" || strings.TrimSpace(audio.Data) != "" ||
 		strings.TrimSpace(audio.Transcript) != "")
+}
+
+// SanitizeChatToolArguments repairs assistant tool-call arguments that are not
+// valid JSON. Truncated streams can leave clients replaying partial arguments,
+// which strict Chat providers reject for the whole request. Returns the
+// repaired slice and whether anything changed.
+func SanitizeChatToolArguments(messages []llm.Message) ([]llm.Message, bool) {
+	result := messages
+	changed := false
+
+	for messageIndex, message := range messages {
+		if message.Role != "assistant" || len(message.ToolCalls) == 0 {
+			continue
+		}
+
+		for callIndex, call := range message.ToolCalls {
+			repaired, ok := repairToolCallArguments(call)
+			if !ok {
+				continue
+			}
+
+			if !changed {
+				result = append([]llm.Message(nil), messages...)
+				changed = true
+			}
+			if &result[messageIndex].ToolCalls[0] == &message.ToolCalls[0] {
+				result[messageIndex].ToolCalls = append([]llm.ToolCall(nil), message.ToolCalls...)
+			}
+			result[messageIndex].ToolCalls[callIndex] = repaired
+		}
+	}
+
+	return result, changed
+}
+
+// repairToolCallArguments substitutes an empty JSON object for arguments that
+// no Chat provider can accept, reporting whether the call changed.
+func repairToolCallArguments(call llm.ToolCall) (llm.ToolCall, bool) {
+	if call.ResponseToolSearchCall != nil {
+		if isValidToolCallArguments(call.ResponseToolSearchCall.Arguments) {
+			return call, false
+		}
+		repairedSearchCall := *call.ResponseToolSearchCall
+		repairedSearchCall.Arguments = "{}"
+		call.ResponseToolSearchCall = &repairedSearchCall
+		call.Function.Arguments = "{}"
+		return call, true
+	}
+
+	if call.ResponseCustomToolCall != nil || isValidToolCallArguments(call.Function.Arguments) {
+		return call, false
+	}
+	call.Function.Arguments = "{}"
+	return call, true
+}
+
+func isValidToolCallArguments(arguments string) bool {
+	trimmed := strings.TrimSpace(arguments)
+	if trimmed == "" || trimmed == "null" {
+		return false
+	}
+	return json.Valid([]byte(trimmed))
 }

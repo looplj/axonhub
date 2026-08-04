@@ -299,3 +299,42 @@ func TestFilterOutResponsesChatToolLifecycleMessages_PairsOutputBeforeCallWithou
 	require.Equal(t, "tool", filtered[1].Role)
 	require.Equal(t, "plain output", lo.FromPtr(filtered[1].Content.Content))
 }
+
+func TestSanitizeChatToolArguments(t *testing.T) {
+	messages := []llm.Message{
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+		{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{
+				{ID: "call_ok", Type: llm.ToolTypeFunction, Function: llm.FunctionCall{Name: "read_file", Arguments: `{"path":"a.txt"}`}},
+				{ID: "call_empty", Type: llm.ToolTypeFunction, Function: llm.FunctionCall{Name: "Task", Arguments: ""}},
+				{ID: "call_truncated", Type: llm.ToolTypeFunction, Function: llm.FunctionCall{Name: "Bash", Arguments: `{"command":"ls`}},
+				{
+					ID: "call_search", Type: llm.ToolTypeResponsesToolSearch,
+					ResponseToolSearchCall: &llm.ResponseToolSearchCall{CallID: "call_search", Execution: "client", Arguments: "null"},
+				},
+			},
+		},
+	}
+
+	sanitized, changed := SanitizeChatToolArguments(messages)
+	require.True(t, changed)
+
+	require.Equal(t, `{"path":"a.txt"}`, sanitized[1].ToolCalls[0].Function.Arguments)
+	require.Equal(t, "{}", sanitized[1].ToolCalls[1].Function.Arguments)
+	require.Equal(t, "{}", sanitized[1].ToolCalls[2].Function.Arguments)
+	require.Equal(t, "{}", sanitized[1].ToolCalls[3].ResponseToolSearchCall.Arguments)
+
+	// The input slice must not be mutated in place.
+	require.Equal(t, "", messages[1].ToolCalls[1].Function.Arguments)
+	require.Equal(t, `{"command":"ls`, messages[1].ToolCalls[2].Function.Arguments)
+	require.Equal(t, "null", messages[1].ToolCalls[3].ResponseToolSearchCall.Arguments)
+
+	_, changed = SanitizeChatToolArguments([]llm.Message{
+		{Role: "assistant", ToolCalls: []llm.ToolCall{{ID: "c", Function: llm.FunctionCall{Name: "f", Arguments: `{}`}}}},
+	})
+	require.False(t, changed)
+
+	_, changed = SanitizeChatToolArguments(nil)
+	require.False(t, changed)
+}

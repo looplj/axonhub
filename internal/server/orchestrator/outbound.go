@@ -456,9 +456,22 @@ func filterResponsesChatToolMessagesForOutbound(
 		return nil
 	}
 
+	if !isResponsesFormat(llmRequest.APIFormat) || outbound == nil {
+		return llmRequest
+	}
+
+	// Truncated streams can leave clients replaying tool-call arguments that
+	// are not valid JSON. Repair them for every Responses-origin outbound
+	// (Chat and Responses-native alike) so strict providers do not reject the
+	// whole replayed history.
+	if sanitized, changed := shared.SanitizeChatToolArguments(llmRequest.Messages); changed {
+		cloned := *llmRequest
+		cloned.Messages = sanitized
+		llmRequest = &cloned
+	}
+
 	capabilities := responsesRequestCapabilities(outbound, llmRequest)
-	if !isResponsesFormat(llmRequest.APIFormat) || outbound == nil ||
-		capabilities.NativeResponses || capabilities.ChatToolLifecycle {
+	if capabilities.NativeResponses || capabilities.ChatToolLifecycle {
 		return llmRequest
 	}
 

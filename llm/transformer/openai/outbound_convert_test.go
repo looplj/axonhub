@@ -1777,3 +1777,86 @@ func TestRequestFromLLM_NormalizesTextPartTypesInMessages(t *testing.T) {
 	require.Equal(t, "text", req.Messages[0].Content.MultipleContent[0].Type)
 	require.Equal(t, "image_url", req.Messages[0].Content.MultipleContent[1].Type)
 }
+
+func TestRequestFromLLM_DowngradesResponsesToolLifecycle(t *testing.T) {
+	req := &llm.Request{
+		Model:     "kimi-k3",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID: "call_custom", Type: llm.ToolTypeResponsesCustomTool,
+						ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: "call_custom", Name: "grep", Input: "pattern"},
+					},
+					{
+						ID: "call_fn", Type: llm.ToolTypeFunction,
+						Function: llm.FunctionCall{Name: "read_file", Arguments: `{"path":"a.txt"}`},
+					},
+				},
+			},
+			{Role: "tool", ToolCallID: lo.ToPtr("call_custom"), Content: llm.MessageContent{Content: lo.ToPtr("match")}},
+			{Role: "tool", ToolCallID: lo.ToPtr("call_fn"), Content: llm.MessageContent{Content: lo.ToPtr("content")}},
+		},
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeResponsesCustomTool, ResponseCustomTool: &llm.ResponseCustomTool{Name: "grep"}},
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "read_file", Parameters: json.RawMessage(`{"type":"object"}`)}},
+		},
+	}
+
+	got := RequestFromLLM(req, ReasoningFieldContent)
+	require.NotNil(t, got)
+
+	require.Len(t, got.Tools, 1)
+	require.Equal(t, "read_file", got.Tools[0].Function.Name)
+
+	var assistant *Message
+	toolMessages := make([]Message, 0)
+	for i := range got.Messages {
+		msg := &got.Messages[i]
+		for _, call := range msg.ToolCalls {
+			require.NotEmpty(t, call.Function.Name, "tool call name must survive Responses downgrade")
+			require.NotEmpty(t, call.Function.Arguments, "tool call arguments must survive Responses downgrade")
+			require.NotEqual(t, llm.ToolTypeResponsesCustomTool, call.Type)
+		}
+		switch msg.Role {
+		case "assistant":
+			assistant = msg
+		case "tool":
+			toolMessages = append(toolMessages, *msg)
+		}
+	}
+
+	require.NotNil(t, assistant)
+	require.Len(t, assistant.ToolCalls, 1)
+	require.Equal(t, "read_file", assistant.ToolCalls[0].Function.Name)
+
+	require.Len(t, toolMessages, 1)
+	require.Equal(t, "call_fn", lo.FromPtr(toolMessages[0].ToolCallID))
+}
+
+func TestResponsesChatToolStreamRestorer_FlushBufferedAtStreamEnd(t *testing.T) {
+	restorer := newResponsesChatToolStreamRestorer(nil, []string{"Task", "TaskOutput"})
+
+	// The name "Task" is a prefix of "TaskOutput", so the restorer keeps the
+	// call buffered until a finish chunk resolves it.
+	chunk := &llm.Response{Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+		ID: "call_task", Index: 0, Type: llm.ToolTypeFunction,
+		Function: llm.FunctionCall{Name: "Task", Arguments: `{"prompt":"fix the bug"}`},
+	}}}}}}
+	restorer.restore(chunk)
+	require.Empty(t, chunk.Choices[0].Delta.ToolCalls)
+
+	flushed := restorer.flushBuffered()
+	require.Len(t, flushed, 1)
+	require.Len(t, flushed[0].Choices, 1)
+	calls := flushed[0].Choices[0].Delta.ToolCalls
+	require.Len(t, calls, 1)
+	require.Equal(t, "Task", calls[0].Function.Name)
+	require.Equal(t, "call_task", calls[0].ID)
+	require.Equal(t, `{"prompt":"fix the bug"}`, calls[0].Function.Arguments)
+
+	require.Empty(t, restorer.flushBuffered(), "second flush must be empty")
+}

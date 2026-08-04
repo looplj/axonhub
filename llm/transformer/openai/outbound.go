@@ -374,14 +374,73 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 	// Note: TransformStreamChunk only returns nil for events with explicit "choices":[]
 	// in the raw JSON. Events without a choices key (nil slice) are passed through.
 	restorer := newResponsesChatToolStreamRestorer(responsesChatToolMappings(req), responsesChatToolCatalog(req))
-	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	mapped := streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		response, err := t.TransformStreamChunk(ctx, event)
 		if err == nil {
 			restorer.restore(response)
 		}
 		return response, err
-	})), nil
+	}))
+	return &responsesChatToolFlushStream{inner: mapped, restorer: restorer}, nil
 }
+
+// responsesChatToolFlushStream releases tool calls the restorer still buffers
+// when the upstream stream ends without the finish chunk that would normally
+// release them. Without this, providers that omit finish_reason (or emit
+// [DONE] in its place) would silently drop every buffered call.
+type responsesChatToolFlushStream struct {
+	inner    streams.Stream[*llm.Response]
+	restorer *responsesChatToolStreamRestorer
+	buffer   []*llm.Response
+	current  *llm.Response
+	flushed  bool
+}
+
+func (s *responsesChatToolFlushStream) Next() bool {
+	if len(s.buffer) > 0 {
+		s.popBuffered()
+		return true
+	}
+
+	if !s.inner.Next() {
+		s.current = nil
+		if !s.flushed && s.inner.Err() == nil {
+			s.flushed = true
+			s.buffer = s.restorer.flushBuffered()
+			if len(s.buffer) > 0 {
+				s.popBuffered()
+				return true
+			}
+		}
+		return false
+	}
+
+	// Insert flushed calls ahead of the [DONE] sentinel so downstream consumers
+	// that stop at a terminal event still observe them.
+	if current := s.inner.Current(); !s.flushed &&
+		(current == llm.DoneResponse || (current != nil && current.Object == "[DONE]")) {
+		if flushed := s.restorer.flushBuffered(); len(flushed) > 0 {
+			s.flushed = true
+			s.buffer = append(flushed, current)
+			s.popBuffered()
+			return true
+		}
+	}
+
+	s.current = s.inner.Current()
+	return true
+}
+
+func (s *responsesChatToolFlushStream) popBuffered() {
+	s.current = s.buffer[0]
+	s.buffer = s.buffer[1:]
+}
+
+func (s *responsesChatToolFlushStream) Current() *llm.Response { return s.current }
+
+func (s *responsesChatToolFlushStream) Err() error { return s.inner.Err() }
+
+func (s *responsesChatToolFlushStream) Close() error { return s.inner.Close() }
 
 // responsesChatToolMappings retrieves per-request mappings used to restore Responses calls.
 func responsesChatToolMappings(req *httpclient.Request) map[string]responsesChatToolMapping {
