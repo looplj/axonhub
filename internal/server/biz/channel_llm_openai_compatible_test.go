@@ -110,6 +110,44 @@ func TestAtlasCloudChannel_BuildChannelWithOutbounds(t *testing.T) {
 	require.True(t, ok)
 }
 
+func TestOrcarouterChannel_BuildChannelWithOutbounds(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	entChannel := client.Channel.Create().
+		SetName("OrcaRouter Channel").
+		SetType(channel.TypeOrcarouter).
+		SetBaseURL("https://api.orcarouter.ai/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "sk-orca-test"}).
+		SetSupportedModels([]string{"anthropic/claude-sonnet-5"}).
+		SetDefaultTestModel("anthropic/claude-sonnet-5").
+		SaveX(ctx)
+
+	channelSvc := NewChannelServiceForTest(client)
+
+	built, err := channelSvc.buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+	require.NotNil(t, built)
+	require.NotNil(t, built.Outbound)
+	require.Len(t, built.Outbounds, 7)
+
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, built.Outbound.APIFormat())
+
+	embeddingOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIEmbedding.String())
+	require.NoError(t, err)
+	require.NotNil(t, embeddingOutbound)
+	_, ok := embeddingOutbound.(*openai.OutboundTransformer)
+	require.True(t, ok)
+
+	moderationOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIModeration.String())
+	require.NoError(t, err)
+	require.NotNil(t, moderationOutbound)
+	_, ok = moderationOutbound.(*openai.OutboundTransformer)
+	require.True(t, ok)
+}
+
 func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

@@ -37,6 +37,28 @@ test('Cline has localized channel and provider labels', () => {
   }
 });
 
+test('OrcaRouter is available as a channel type in frontend schemas and configs', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const providersConfig = read('features/channels/data/config_providers.ts');
+
+  assert.match(schema, /channelTypeSchema[\s\S]*'orcarouter'/, 'channelTypeSchema should accept orcarouter');
+  assert.match(channelsConfig, /orcarouter:\s*{[\s\S]*channelType:\s*'orcarouter'/, 'CHANNEL_CONFIGS should define orcarouter');
+  assert.match(channelsConfig, /orcarouter:\s*{[\s\S]*baseURL:\s*'https:\/\/api\.orcarouter\.ai\/v1'/, 'OrcaRouter should use the documented API base URL');
+  assert.match(channelsConfig, /orcarouter:\s*{[\s\S]*apiFormat:\s*OPENAI_CHAT_COMPLETIONS/, 'OrcaRouter should use OpenAI Chat Completions in the UI');
+  assert.match(channelsConfig, /CHANNEL_TYPE_TO_PROVIDER[\s\S]*orcarouter:\s*'orcarouter'/, 'OrcaRouter should map to the OrcaRouter provider');
+  assert.match(providersConfig, /orcarouter:\s*{[\s\S]*channelTypes:\s*\[\s*'orcarouter'\s*\]/, 'PROVIDER_CONFIGS should expose an OrcaRouter provider');
+});
+
+test('OrcaRouter has localized channel and provider labels', () => {
+  for (const locale of ['en', 'zh-CN']) {
+    const messages = parseLocale(locale);
+
+    assert.equal(messages['channels.types.orcarouter'], 'OrcaRouter');
+    assert.equal(messages['channels.providers.orcarouter'], 'OrcaRouter');
+  }
+});
+
 test('channel proxy connection reuse setting is submitted, echoed, and localized', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsData = read('features/channels/data/channels.ts');

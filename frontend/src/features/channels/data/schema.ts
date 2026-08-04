@@ -83,6 +83,7 @@ export const channelTypeSchema = z.enum([
   'anthropic_fake',
   'openai_fake',
   'openrouter',
+  'orcarouter',
   'xiaomi',
   'xiaomi_anthropic',
   'xai',
