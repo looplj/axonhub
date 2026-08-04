@@ -587,3 +587,247 @@ func TestResponseUnmarshalJSON_FullResponseWithAnnotations(t *testing.T) {
 	require.Equal(t, int64(7), resp.Usage.OutputTokens)
 	require.Equal(t, int64(10), resp.Usage.TotalTokens)
 }
+
+func TestResponseToolChoiceUnmarshalJSONErrorDoesNotMutate(t *testing.T) {
+	invalidInputs := []string{`{`, `1`, `true`, `[]`, `["auto"]`}
+	for _, input := range invalidInputs {
+		t.Run(input, func(t *testing.T) {
+			choice := ResponseToolChoice{
+				StringValue: "required",
+				ObjectValue: &ToolChoice{Type: lo.ToPtr("function"), Name: lo.ToPtr("lookup")},
+			}
+			before := choice
+
+			require.Error(t, json.Unmarshal([]byte(input), &choice))
+			require.Equal(t, before, choice)
+		})
+	}
+}
+
+func TestToolChoiceUnmarshalJSON_ClearsPreviousVariant(t *testing.T) {
+	choice := ToolChoice{
+		Type: lo.ToPtr("function"),
+		Name: lo.ToPtr("lookup"),
+	}
+
+	require.NoError(t, json.Unmarshal([]byte(`"auto"`), &choice))
+	require.Equal(t, "auto", lo.FromPtr(choice.Mode))
+	require.Nil(t, choice.Type)
+	require.Nil(t, choice.Name)
+	require.Nil(t, choice.Tools)
+
+	require.NoError(t, json.Unmarshal([]byte(`{"type":"function","name":"lookup"}`), &choice))
+	require.Nil(t, choice.Mode)
+	require.Equal(t, "function", lo.FromPtr(choice.Type))
+	require.Equal(t, "lookup", lo.FromPtr(choice.Name))
+	require.Nil(t, choice.Tools)
+
+	require.NoError(t, json.Unmarshal([]byte(`{"type":"allowed_tools","mode":"required","tools":[]}`), &choice))
+	require.Equal(t, "required", lo.FromPtr(choice.Mode))
+	require.Equal(t, "allowed_tools", lo.FromPtr(choice.Type))
+	require.Nil(t, choice.Name)
+	require.NotNil(t, choice.Tools)
+	require.Empty(t, choice.Tools)
+}
+
+func TestToolChoiceMarshalJSON_PreservesEmptyAllowedTools(t *testing.T) {
+	cases := []struct {
+		name     string
+		mode     *string
+		tools    []ToolOption
+		expected string
+	}{
+		{
+			name:     "nil mode and nil tools",
+			expected: `{"type":"allowed_tools","tools":[]}`,
+		},
+		{
+			name:     "auto with nil tools",
+			mode:     lo.ToPtr("auto"),
+			expected: `{"type":"allowed_tools","mode":"auto","tools":[]}`,
+		},
+		{
+			name:     "auto with empty tools",
+			mode:     lo.ToPtr("auto"),
+			tools:    []ToolOption{},
+			expected: `{"type":"allowed_tools","mode":"auto","tools":[]}`,
+		},
+		{
+			name:     "required with nil tools",
+			mode:     lo.ToPtr("required"),
+			expected: `{"type":"allowed_tools","mode":"required","tools":[]}`,
+		},
+		{
+			name:     "required with empty tools",
+			mode:     lo.ToPtr("required"),
+			tools:    []ToolOption{},
+			expected: `{"type":"allowed_tools","mode":"required","tools":[]}`,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			choice := ToolChoice{Type: lo.ToPtr("allowed_tools"), Mode: tc.mode, Tools: tc.tools}
+			data, err := json.Marshal(&choice)
+			require.NoError(t, err)
+			require.JSONEq(t, tc.expected, string(data))
+		})
+	}
+}
+
+func TestToolChoiceJSONPrimitiveMatrix(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		validate func(t *testing.T, choice ToolChoice)
+	}{
+		{
+			name:  "auto mode",
+			input: `"auto"`,
+			validate: func(t *testing.T, choice ToolChoice) {
+				require.Equal(t, "auto", lo.FromPtr(choice.Mode))
+				require.Nil(t, choice.Type)
+				require.Nil(t, choice.Name)
+			},
+		},
+		{
+			name:  "named function",
+			input: `{"type":"function","name":"lookup"}`,
+			validate: func(t *testing.T, choice ToolChoice) {
+				require.Equal(t, "function", lo.FromPtr(choice.Type))
+				require.Equal(t, "lookup", lo.FromPtr(choice.Name))
+			},
+		},
+		{
+			name:  "named custom",
+			input: `{"type":"custom","name":"apply_patch"}`,
+			validate: func(t *testing.T, choice ToolChoice) {
+				require.Equal(t, "custom", lo.FromPtr(choice.Type))
+				require.Equal(t, "apply_patch", lo.FromPtr(choice.Name))
+			},
+		},
+		{
+			name:  "named namespace",
+			input: `{"type":"namespace","name":"collaboration"}`,
+			validate: func(t *testing.T, choice ToolChoice) {
+				require.Equal(t, "namespace", lo.FromPtr(choice.Type))
+				require.Equal(t, "collaboration", lo.FromPtr(choice.Name))
+			},
+		},
+		{
+			name:  "named tool search",
+			input: `{"type":"tool_search","name":"discover"}`,
+			validate: func(t *testing.T, choice ToolChoice) {
+				require.Equal(t, "tool_search", lo.FromPtr(choice.Type))
+				require.Equal(t, "discover", lo.FromPtr(choice.Name))
+			},
+		},
+		{
+			name:  "named future client primitive",
+			input: `{"type":"future_client_tool","name":"later"}`,
+			validate: func(t *testing.T, choice ToolChoice) {
+				require.Equal(t, "future_client_tool", lo.FromPtr(choice.Type))
+				require.Equal(t, "later", lo.FromPtr(choice.Name))
+			},
+		},
+		{
+			name:  "type only hosted selector",
+			input: `{"type":"web_search"}`,
+			validate: func(t *testing.T, choice ToolChoice) {
+				require.Equal(t, "web_search", lo.FromPtr(choice.Type))
+				require.Nil(t, choice.Name)
+			},
+		},
+		{
+			name: "allowed primitive matrix keeps type name and order",
+			input: `{"type":"allowed_tools","mode":"required","tools":[
+				{"type":"function","name":"same"},
+				{"type":"custom","name":"same"},
+				{"type":"namespace","name":"workspace"},
+				{"type":"tool_search","name":"discover"},
+				{"type":"future_client_tool","name":"later"},
+				{"type":"future_server_tool","name":"hosted"}
+			]}`,
+			validate: func(t *testing.T, choice ToolChoice) {
+				require.Equal(t, "allowed_tools", lo.FromPtr(choice.Type))
+				require.Equal(t, "required", lo.FromPtr(choice.Mode))
+				require.Equal(t, []ToolOption{
+					{Type: "function", Name: "same"},
+					{Type: "custom", Name: "same"},
+					{Type: "namespace", Name: "workspace"},
+					{Type: "tool_search", Name: "discover"},
+					{Type: "future_client_tool", Name: "later"},
+					{Type: "future_server_tool", Name: "hosted"},
+				}, choice.Tools)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var decoded ToolChoice
+			require.NoError(t, json.Unmarshal([]byte(tt.input), &decoded))
+			tt.validate(t, decoded)
+
+			encoded, err := json.Marshal(&decoded)
+			require.NoError(t, err)
+			require.JSONEq(t, tt.input, string(encoded))
+
+			var roundTripped ToolChoice
+			require.NoError(t, json.Unmarshal(encoded, &roundTripped))
+			require.Equal(t, decoded, roundTripped)
+		})
+	}
+}
+
+func TestToolChoiceUnmarshalJSONErrorDoesNotMutate(t *testing.T) {
+	invalidInputs := []string{`{`, `1`, `true`, `[]`, `["auto"]`}
+	for _, input := range invalidInputs {
+		t.Run(input, func(t *testing.T) {
+			choice := ToolChoice{
+				Mode:  lo.ToPtr("required"),
+				Type:  lo.ToPtr("allowed_tools"),
+				Name:  lo.ToPtr("stale"),
+				Tools: []ToolOption{{Type: "function", Name: "lookup"}},
+			}
+			before := choice
+
+			require.Error(t, json.Unmarshal([]byte(input), &choice))
+			require.Equal(t, before, choice)
+		})
+	}
+}
+
+func FuzzResponsesToolChoiceJSONRoundTrip(f *testing.F) {
+	seeds := []string{
+		`"auto"`,
+		`{"type":"function","name":"lookup"}`,
+		`{"type":"custom","name":"apply_patch"}`,
+		`{"type":"future_client_tool","name":"later"}`,
+		`{"type":"web_search"}`,
+		`{"type":"mcp","server_label":"docs","name":"search"}`,
+		`{"type":"allowed_tools","mode":"auto","tools":[]}`,
+		`{"type":"allowed_tools","mode":"required","tools":[{"type":"function","name":"lookup"},{"type":"custom","name":"apply_patch"}]}`,
+		`null`,
+		`{}`,
+		`{`,
+	}
+	for _, seed := range seeds {
+		f.Add(seed)
+	}
+
+	f.Fuzz(func(t *testing.T, input string) {
+		var decoded ToolChoice
+		if err := json.Unmarshal([]byte(input), &decoded); err != nil {
+			return
+		}
+
+		encoded, err := json.Marshal(&decoded)
+		require.NoError(t, err)
+		var roundTripped ToolChoice
+		require.NoError(t, json.Unmarshal(encoded, &roundTripped))
+		reencoded, err := json.Marshal(&roundTripped)
+		require.NoError(t, err)
+		require.JSONEq(t, string(encoded), string(reencoded))
+	})
+}

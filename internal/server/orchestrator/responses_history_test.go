@@ -301,7 +301,76 @@ func TestPersistentOutboundTransformer_PreviousResponseIDRouting(t *testing.T) {
 		require.Equal(t, "resp_1", *out.capturedRequest.PreviousResponseID)
 	})
 
-	t.Run("Chat outbound prepends stored history and clears previous_response_id", func(t *testing.T) {
+	t.Run("non-native outbound rejects previous_response_id when storage is unavailable", func(t *testing.T) {
+		out := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+		processor := newProcessor(out, &PersistenceState{})
+		req := &llm.Request{
+			Model:              "gpt-5.5",
+			APIFormat:          llm.APIFormatOpenAIResponse,
+			PreviousResponseID: lo.ToPtr("resp_1"),
+			Messages:           []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("next")}}},
+		}
+
+		_, err := processor.TransformRequest(t.Context(), req)
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+		require.ErrorContains(t, err, "previous_response_id history storage is unavailable")
+		require.Nil(t, out.capturedRequest)
+	})
+
+	t.Run("non-native outbound without previous_response_id does not require storage", func(t *testing.T) {
+		out := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+		processor := newProcessor(out, &PersistenceState{})
+		req := &llm.Request{
+			Model:     "gpt-5.5",
+			APIFormat: llm.APIFormatOpenAIResponse,
+			Messages:  []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("first")}}},
+		}
+
+		_, err := processor.TransformRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.NotNil(t, out.capturedRequest)
+		require.Nil(t, out.capturedRequest.PreviousResponseID)
+		require.Len(t, out.capturedRequest.Messages, 1)
+		require.Equal(t, "first", lo.FromPtr(out.capturedRequest.Messages[0].Content.Content))
+	})
+
+	t.Run("model-aware Chat-format outbound keeps native GPT-5 Responses lifecycle", func(t *testing.T) {
+		out := &mockTransformer{
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			responsesCapabilities: func(req *llm.Request) transformer.ResponsesRequestCapabilities {
+				return transformer.ResponsesRequestCapabilities{NativeResponses: req != nil && req.Model == "gpt-5.6"}
+			},
+		}
+		processor := newProcessor(out, &PersistenceState{})
+		processor.state.ChannelModelsCandidates[0].Models[0].ActualModel = "gpt-5.6"
+		req := &llm.Request{
+			Model:              "mapped-copilot-model",
+			APIFormat:          llm.APIFormatOpenAIResponse,
+			PreviousResponseID: lo.ToPtr("resp_native"),
+			Messages: []llm.Message{{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr("custom_1"),
+				Content:    llm.MessageContent{Content: lo.ToPtr("patched")},
+			}},
+			Tools: []llm.Tool{{
+				Type: llm.ToolTypeResponsesCustomTool,
+				ResponseCustomTool: &llm.ResponseCustomTool{
+					Name: "apply_patch",
+				},
+			}},
+		}
+
+		_, err := processor.TransformRequest(t.Context(), req)
+		require.NoError(t, err)
+		require.Equal(t, "gpt-5.6", out.capturedRequest.Model)
+		require.Equal(t, "resp_native", lo.FromPtr(out.capturedRequest.PreviousResponseID))
+		require.Len(t, out.capturedRequest.Messages, 1)
+		require.Equal(t, "custom_1", lo.FromPtr(out.capturedRequest.Messages[0].ToolCallID))
+		require.Len(t, out.capturedRequest.Tools, 1)
+		require.Equal(t, llm.ToolTypeResponsesCustomTool, out.capturedRequest.Tools[0].Type)
+	})
+
+	t.Run("model-aware Chat-format outbound hydrates GPT-4 history and clears previous_response_id", func(t *testing.T) {
 		client := enttest.NewEntClient(t, "sqlite3", "file:responses_history_route?mode=memory&_fk=0")
 		ctx := ent.NewContext(authz.WithTestBypass(t.Context()), client)
 		seedPrimaryDatabaseStorage(t, ctx, client)
@@ -319,11 +388,17 @@ func TestPersistentOutboundTransformer_PreviousResponseIDRouting(t *testing.T) {
 			Save(ctx)
 		require.NoError(t, err)
 
-		out := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+		out := &mockTransformer{
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			responsesCapabilities: func(req *llm.Request) transformer.ResponsesRequestCapabilities {
+				return transformer.ResponsesRequestCapabilities{NativeResponses: req != nil && req.Model == "gpt-5.6"}
+			},
+		}
 		processor := newProcessor(out, &PersistenceState{
 			RequestService: requestService,
 			Request:        &ent.Request{ProjectID: 7},
 		})
+		processor.state.ChannelModelsCandidates[0].Models[0].ActualModel = "gpt-4o"
 		req := &llm.Request{
 			Model:              "gpt-5.5",
 			APIFormat:          llm.APIFormatOpenAIResponse,
@@ -337,6 +412,7 @@ func TestPersistentOutboundTransformer_PreviousResponseIDRouting(t *testing.T) {
 
 		_, err = processor.TransformRequest(ctx, req)
 		require.NoError(t, err)
+		require.Equal(t, "gpt-4o", out.capturedRequest.Model)
 		require.Nil(t, out.capturedRequest.PreviousResponseID)
 		require.Len(t, out.capturedRequest.Messages, 3)
 		require.Equal(t, "user", out.capturedRequest.Messages[0].Role)
@@ -346,6 +422,131 @@ func TestPersistentOutboundTransformer_PreviousResponseIDRouting(t *testing.T) {
 		// accumulate the same history repeatedly.
 		require.Equal(t, "resp_1", lo.FromPtr(req.PreviousResponseID))
 		require.Len(t, req.Messages, 1)
+	})
+
+	t.Run("Chat lifecycle outbound hydrates and preserves every special call-output pair", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:responses_history_lifecycle_route?mode=memory&_fk=0")
+		ctx := ent.NewContext(authz.WithTestBypass(t.Context()), client)
+		seedPrimaryDatabaseStorage(t, ctx, client)
+		requestService := createTestRequestService(t, client)
+		_, err := client.Request.Create().
+			SetProjectID(9).
+			SetModelID("gpt-5.5").
+			SetFormat(llm.APIFormatOpenAIResponse.String()).
+			SetSource(request.SourceAPI).
+			SetStatus(request.StatusCompleted).
+			SetStream(false).
+			SetRequestBody(objects.JSONRawMessage(`{"model":"gpt-5.5","input":"use tools"}`)).
+			SetResponseBody(objects.JSONRawMessage(`{
+				"id":"resp_lifecycle",
+				"model":"gpt-5.5",
+				"output":[
+					{"type":"custom_tool_call","name":"apply_patch","input":"patch","call_id":"custom_1"},
+					{"type":"tool_search_call","execution":"client","arguments":"{\"query\":\"agents\"}","call_id":"search_1"},
+					{"type":"function_call","name":"spawn_agent","namespace":"collaboration","arguments":"{}","call_id":"namespace_1"},
+					{"type":"function_call","name":"lookup","arguments":"{}","call_id":"plain_1"}
+				]
+			}`)).
+			SetExternalID("resp_lifecycle").
+			Save(ctx)
+		require.NoError(t, err)
+
+		out := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion, responsesChatTools: true}
+		processor := newProcessor(out, &PersistenceState{
+			RequestService: requestService,
+			Request:        &ent.Request{ProjectID: 9},
+		})
+		req := &llm.Request{
+			Model:              "gpt-5.5",
+			APIFormat:          llm.APIFormatOpenAIResponse,
+			PreviousResponseID: lo.ToPtr("resp_lifecycle"),
+			Messages: []llm.Message{
+				{Role: "tool", ToolCallID: lo.ToPtr("custom_1"), Content: llm.MessageContent{Content: lo.ToPtr("patched")}},
+				{Role: "tool", ToolCallID: lo.ToPtr("search_1"), Content: llm.MessageContent{Content: lo.ToPtr("found")}},
+				{Role: "tool", ToolCallID: lo.ToPtr("namespace_1"), Content: llm.MessageContent{Content: lo.ToPtr("spawned")}},
+				{Role: "tool", ToolCallID: lo.ToPtr("plain_1"), Content: llm.MessageContent{Content: lo.ToPtr("looked up")}},
+			},
+		}
+
+		_, err = processor.TransformRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, out.capturedRequest.PreviousResponseID)
+		require.Len(t, out.capturedRequest.Messages, 6)
+		require.Equal(t, "user", out.capturedRequest.Messages[0].Role)
+		require.Equal(t, "assistant", out.capturedRequest.Messages[1].Role)
+		require.Len(t, out.capturedRequest.Messages[1].ToolCalls, 4)
+		require.Equal(t, llm.ToolTypeResponsesCustomTool, out.capturedRequest.Messages[1].ToolCalls[0].Type)
+		require.Equal(t, llm.ToolTypeResponsesToolSearch, out.capturedRequest.Messages[1].ToolCalls[1].Type)
+		require.Equal(t, "collaboration", out.capturedRequest.Messages[1].ToolCalls[2].Function.Namespace)
+		require.Equal(t, llm.ToolTypeFunction, out.capturedRequest.Messages[1].ToolCalls[3].Type)
+
+		callIDs := lo.SliceToMap(out.capturedRequest.Messages[1].ToolCalls, func(call llm.ToolCall) (string, struct{}) {
+			return call.ID, struct{}{}
+		})
+		for _, message := range out.capturedRequest.Messages[2:] {
+			require.Equal(t, "tool", message.Role)
+			require.NotNil(t, message.ToolCallID)
+			require.Contains(t, callIDs, *message.ToolCallID)
+		}
+		// Hydration and lifecycle filtering operate on clones.
+		require.Equal(t, "resp_lifecycle", lo.FromPtr(req.PreviousResponseID))
+		require.Len(t, req.Messages, 4)
+	})
+
+	t.Run("Anthropic outbound hydrates then removes special calls and paired outputs", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:responses_history_special_route?mode=memory&_fk=0")
+		ctx := ent.NewContext(authz.WithTestBypass(t.Context()), client)
+		seedPrimaryDatabaseStorage(t, ctx, client)
+		requestService := createTestRequestService(t, client)
+		_, err := client.Request.Create().
+			SetProjectID(8).
+			SetModelID("gpt-5.5").
+			SetFormat(llm.APIFormatOpenAIResponse.String()).
+			SetSource(request.SourceAPI).
+			SetStatus(request.StatusCompleted).
+			SetStream(false).
+			SetRequestBody(objects.JSONRawMessage(`{"model":"gpt-5.5","input":"use tools"}`)).
+			SetResponseBody(objects.JSONRawMessage(`{
+				"id":"resp_special",
+				"model":"gpt-5.5",
+				"output":[
+					{"type":"custom_tool_call","name":"apply_patch","input":"patch","call_id":"custom_1"},
+					{"type":"tool_search_call","execution":"client","arguments":"{\"query\":\"agents\"}","call_id":"search_1"},
+					{"type":"function_call","name":"spawn_agent","namespace":"collaboration","arguments":"{}","call_id":"namespace_1"},
+					{"type":"function_call","name":"lookup","arguments":"{}","call_id":"plain_1"}
+				]
+			}`)).
+			SetExternalID("resp_special").
+			Save(ctx)
+		require.NoError(t, err)
+
+		out := &mockTransformer{apiFormat: llm.APIFormatAnthropicMessage}
+		processor := newProcessor(out, &PersistenceState{
+			RequestService: requestService,
+			Request:        &ent.Request{ProjectID: 8},
+		})
+		req := &llm.Request{
+			Model:              "gpt-5.5",
+			APIFormat:          llm.APIFormatOpenAIResponse,
+			PreviousResponseID: lo.ToPtr("resp_special"),
+			Messages: []llm.Message{
+				{Role: "tool", ToolCallID: lo.ToPtr("custom_1"), Content: llm.MessageContent{Content: lo.ToPtr("patched")}},
+				{Role: "tool", ToolCallID: lo.ToPtr("search_1"), Content: llm.MessageContent{Content: lo.ToPtr("found")}},
+				{Role: "tool", ToolCallID: lo.ToPtr("namespace_1"), Content: llm.MessageContent{Content: lo.ToPtr("spawned")}},
+				{Role: "tool", ToolCallID: lo.ToPtr("plain_1"), Content: llm.MessageContent{Content: lo.ToPtr("looked up")}},
+			},
+		}
+
+		_, err = processor.TransformRequest(ctx, req)
+		require.NoError(t, err)
+		require.Nil(t, out.capturedRequest.PreviousResponseID)
+		require.Len(t, out.capturedRequest.Messages, 3)
+		require.Equal(t, "user", out.capturedRequest.Messages[0].Role)
+		require.Equal(t, "assistant", out.capturedRequest.Messages[1].Role)
+		require.Len(t, out.capturedRequest.Messages[1].ToolCalls, 1)
+		require.Equal(t, "plain_1", out.capturedRequest.Messages[1].ToolCalls[0].ID)
+		require.Equal(t, "tool", out.capturedRequest.Messages[2].Role)
+		require.Equal(t, "plain_1", lo.FromPtr(out.capturedRequest.Messages[2].ToolCallID))
 	})
 }
 

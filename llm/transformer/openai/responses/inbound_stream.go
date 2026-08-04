@@ -302,6 +302,7 @@ func (s *responsesInboundStream) Next() bool {
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 			s.finishReason = *choice.FinishReason
+			abnormalFinish := isAbnormalResponsesFinishReason(s.finishReason)
 
 			// Map the Chat Completions finish_reason onto the Responses status so
 			// the final response.completed event reports abnormal termination
@@ -330,9 +331,14 @@ func (s *responsesInboundStream) Next() bool {
 				return false
 			}
 
-			// Close any open output items
-			if err := s.closeCurrentOutputItem(); err != nil {
-				s.err = err
+			var closeErr error
+			if abnormalFinish {
+				closeErr = s.closeCurrentNonToolOutputItem()
+			} else {
+				closeErr = s.closeCurrentOutputItem()
+			}
+			if closeErr != nil {
+				s.err = closeErr
 				return false
 			}
 		}
@@ -366,6 +372,15 @@ func (s *responsesInboundStream) Next() bool {
 
 	// Continue to the next event
 	return s.Next()
+}
+
+func isAbnormalResponsesFinishReason(reason string) bool {
+	switch reason {
+	case "length", "content_filter", "error", "cancelled", "canceled":
+		return true
+	default:
+		return false
+	}
 }
 
 func (s *responsesInboundStream) mergeTransformerMetadata(metadata map[string]any) {
@@ -1309,6 +1324,14 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 	}
 
 	return nil
+}
+
+func (s *responsesInboundStream) closeCurrentNonToolOutputItem() error {
+	started := s.toolCallItemStarted
+	s.toolCallItemStarted = nil
+	err := s.closeCurrentOutputItem()
+	s.toolCallItemStarted = started
+	return err
 }
 
 func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {

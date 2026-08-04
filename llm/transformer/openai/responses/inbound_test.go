@@ -87,10 +87,46 @@ func TestInboundTransformer_PromotesFutureClientFunctionLikeTools(t *testing.T) 
 	require.Equal(t, llm.ToolTypeFunction, request.Tools[0].Type)
 	require.Equal(t, "lookup", request.Tools[0].Function.Name)
 	require.Equal(t, "raw_tool", request.Tools[0].ResponsesOrigin)
+	require.Equal(t, "future_client_tool", request.Tools[0].ResponsesSourceType)
 	require.JSONEq(t, `{"type":"object","properties":{"query":{"type":"string"}}}`, string(request.Tools[0].Function.Parameters))
 	require.Equal(t, llm.ToolTypeFunction, request.Tools[1].Type)
 	require.Equal(t, "later_lookup", request.Tools[1].Function.Name)
 	require.Equal(t, "additional_tools", request.Tools[1].ResponsesOrigin)
+	require.Equal(t, "future_client_tool", request.Tools[1].ResponsesSourceType)
+}
+
+func TestInboundTransformer_PreservesAllowedToolsChoice(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5","input":"run","tools":[
+			{"type":"function","name":"lookup","parameters":{"type":"object"}},
+			{"type":"custom","name":"apply_patch"}
+		],
+		"tool_choice":{"type":"allowed_tools","mode":"auto","tools":[
+			{"type":"function","name":"lookup"},
+			{"type":"custom","name":"apply_patch"}
+		]}
+	}`)})
+	require.NoError(t, err)
+	require.NotNil(t, request.ToolChoice)
+	require.True(t, request.ToolChoice.AllowedToolsSet)
+	require.Equal(t, "auto", lo.FromPtr(request.ToolChoice.ToolChoice))
+	require.Equal(t, []llm.ToolOption{
+		{Type: "function", Name: "lookup"},
+		{Type: "custom", Name: "apply_patch"},
+	}, request.ToolChoice.AllowedTools)
+}
+
+func TestInboundTransformer_PreservesEmptyAllowedToolsChoice(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5","input":"run",
+		"tool_choice":{"type":"allowed_tools","mode":"auto","tools":[]}
+	}`)})
+	require.NoError(t, err)
+	require.NotNil(t, request.ToolChoice)
+	require.True(t, request.ToolChoice.AllowedToolsSet)
+	require.Empty(t, request.ToolChoice.AllowedTools)
 }
 
 func TestInboundTransformer_PreservesUnsupportedFutureToolForExplicitRejection(t *testing.T) {
@@ -1140,6 +1176,38 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
+func TestConvertToResponsesAPIResponse_AbnormalFinishKeepsToolCallInProgress(t *testing.T) {
+	tests := []struct {
+		finishReason string
+		status       string
+	}{
+		{finishReason: "length", status: "incomplete"},
+		{finishReason: "content_filter", status: "incomplete"},
+		{finishReason: "error", status: "failed"},
+		{finishReason: "cancelled", status: "canceled"},
+		{finishReason: "canceled", status: "canceled"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.finishReason, func(t *testing.T) {
+			response := convertToResponsesAPIResponse(&llm.Response{
+				ID: "chatcmpl_abnormal", Model: "glm", Choices: []llm.Choice{{
+					FinishReason: lo.ToPtr(tt.finishReason),
+					Message: &llm.Message{Role: "assistant", ToolCalls: []llm.ToolCall{{
+						ID: "call_partial", Type: llm.ToolTypeFunction,
+						Function: llm.FunctionCall{Name: "lookup", Arguments: `{"query":"partial`},
+					}}},
+				}},
+			})
+
+			require.Equal(t, tt.status, lo.FromPtr(response.Status))
+			require.Len(t, response.Output, 1)
+			require.Equal(t, "function_call", response.Output[0].Type)
+			require.Equal(t, "in_progress", lo.FromPtr(response.Output[0].Status))
+		})
+	}
+}
+
 func TestConvertItemToMessage_Compaction(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1587,6 +1655,81 @@ func TestConvertToolChoiceToLLM(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestConvertToolChoiceToLLMPrimitiveMatrix(t *testing.T) {
+	t.Run("named selectors retain primitive identity", func(t *testing.T) {
+		tests := []struct {
+			toolType string
+			name     string
+		}{
+			{toolType: "function", name: "lookup"},
+			{toolType: "custom", name: "apply_patch"},
+			{toolType: "namespace", name: "workspace"},
+			{toolType: "tool_search", name: "discover"},
+			{toolType: "future_client_tool", name: "later"},
+			{toolType: "future_server_tool", name: "hosted"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.toolType, func(t *testing.T) {
+				result := convertToolChoiceToLLM(&ToolChoice{
+					Type: lo.ToPtr(tt.toolType),
+					Name: lo.ToPtr(tt.name),
+				})
+				require.NotNil(t, result)
+				require.Nil(t, result.ToolChoice)
+				require.NotNil(t, result.NamedToolChoice)
+				require.Equal(t, tt.toolType, result.NamedToolChoice.Type)
+				require.Equal(t, tt.name, result.NamedToolChoice.Function.Name)
+				require.False(t, result.AllowedToolsSet)
+				require.Nil(t, result.AllowedTools)
+			})
+		}
+	})
+
+	t.Run("allowed selectors retain same name across primitive types", func(t *testing.T) {
+		for _, mode := range []string{"auto", "required"} {
+			t.Run(mode, func(t *testing.T) {
+				result := convertToolChoiceToLLM(&ToolChoice{
+					Type: lo.ToPtr("allowed_tools"),
+					Mode: lo.ToPtr(mode),
+					Tools: []ToolOption{
+						{Type: "function", Name: "same"},
+						{Type: "custom", Name: "same"},
+						{Type: "namespace", Name: "workspace"},
+						{Type: "tool_search", Name: "discover"},
+						{Type: "future_client_tool", Name: "later"},
+						{Type: "future_server_tool", Name: "hosted"},
+					},
+				})
+				require.NotNil(t, result)
+				require.Equal(t, mode, lo.FromPtr(result.ToolChoice))
+				require.Nil(t, result.NamedToolChoice)
+				require.True(t, result.AllowedToolsSet)
+				require.Equal(t, []llm.ToolOption{
+					{Type: "function", Name: "same"},
+					{Type: "custom", Name: "same"},
+					{Type: "namespace", Name: "workspace"},
+					{Type: "tool_search", Name: "discover"},
+					{Type: "future_client_tool", Name: "later"},
+					{Type: "future_server_tool", Name: "hosted"},
+				}, result.AllowedTools)
+			})
+		}
+	})
+
+	t.Run("type only selectors require raw sidecar", func(t *testing.T) {
+		for _, toolType := range []string{"web_search", "future_server_tool", "mcp"} {
+			t.Run(toolType, func(t *testing.T) {
+				result := convertToolChoiceToLLM(&ToolChoice{Type: lo.ToPtr(toolType)})
+				require.NotNil(t, result)
+				require.Nil(t, result.ToolChoice)
+				require.Nil(t, result.NamedToolChoice)
+				require.False(t, result.AllowedToolsSet)
+				require.Nil(t, result.AllowedTools)
+			})
+		}
+	})
 }
 
 func TestConvertToMessageContentParts(t *testing.T) {

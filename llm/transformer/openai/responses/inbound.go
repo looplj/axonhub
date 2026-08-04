@@ -262,7 +262,7 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	chatReq.Messages = messages
 
 	if len(req.Tools) > 0 {
-		tools, err := convertToolsToLLM(req.Tools)
+		tools, err := convertToolsToLLMWithRawIDs(req.Tools, "tools")
 		if err != nil {
 			return nil, err
 		}
@@ -273,17 +273,18 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	// additional_tools and client tool_search_output are position-sensitive in
 	// Responses. Promote their definitions for non-Responses downstreams while
 	// retaining their origin so Responses replay does not duplicate them at top level.
-	for _, item := range req.Input.Items {
+	for itemIndex, item := range req.Input.Items {
 		if item.Type != "additional_tools" && item.Type != "tool_search_output" {
 			continue
 		}
 
-		tools, err := convertToolsToLLM(item.Tools)
+		tools, err := convertToolsToLLMWithRawIDs(item.Tools, fmt.Sprintf("input:%d", itemIndex))
 		if err != nil {
 			return nil, err
 		}
 		for i := range tools {
 			tools[i].ResponsesOrigin = item.Type
+			tools[i].ResponsesOriginCallID = item.CallID
 		}
 		chatReq.Tools = append(chatReq.Tools, tools...)
 	}
@@ -328,7 +329,14 @@ func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 
 	result := &llm.ToolChoice{}
 
-	if src.Mode != nil {
+	if src.Type != nil && *src.Type == "allowed_tools" {
+		result.ToolChoice = src.Mode
+		result.AllowedToolsSet = true
+		result.AllowedTools = make([]llm.ToolOption, 0, len(src.Tools))
+		for _, tool := range src.Tools {
+			result.AllowedTools = append(result.AllowedTools, llm.ToolOption{Type: tool.Type, Name: tool.Name})
+		}
+	} else if src.Mode != nil {
 		result.ToolChoice = src.Mode
 	} else if src.Type != nil && src.Name != nil {
 		result.NamedToolChoice = &llm.NamedToolChoice{
@@ -817,6 +825,25 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 	}
 }
 
+func convertToolsToLLMWithRawIDs(tools []Tool, prefix string) ([]llm.Tool, error) {
+	result := make([]llm.Tool, 0, len(tools))
+	for declarationIndex, tool := range tools {
+		converted, err := convertToolsToLLM([]Tool{tool})
+		if err != nil {
+			return nil, err
+		}
+		needsRawID := prefix != "tools" || !isStructurallyRepresentedToolType(tool.Type) || tool.Type == "tool_search"
+		if needsRawID {
+			rawID := fmt.Sprintf("%s:%d", prefix, declarationIndex)
+			for i := range converted {
+				converted[i].ResponsesRawID = rawID
+			}
+		}
+		result = append(result, converted...)
+	}
+	return result, nil
+}
+
 // convertToolsToLLM converts Responses API tools to llm.Tool slice.
 func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 	result := make([]llm.Tool, 0, len(tools))
@@ -832,10 +859,11 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 			result = append(result, llm.Tool{
 				Type: "function",
 				Function: llm.Function{
-					Name:        tool.Name,
-					Description: tool.Description,
-					Parameters:  params,
-					Strict:      tool.Strict,
+					Name:         tool.Name,
+					Description:  tool.Description,
+					Parameters:   params,
+					Strict:       tool.Strict,
+					DeferLoading: tool.DeferLoading,
 				},
 			})
 
@@ -912,7 +940,7 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 		case "namespace":
 			for _, subTool := range tool.Tools {
 				if subTool.Type != "function" && !isGenericClientFunctionLike(subTool) {
-					result = append(result, opaqueResponsesTool(subTool, "raw_tool"))
+					result = append(result, opaqueResponsesTool(subTool, "raw_tool", tool.Name))
 					continue
 				}
 
@@ -924,15 +952,17 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 				converted := llm.Tool{
 					Type: "function",
 					Function: llm.Function{
-						Name:        namespaceFunctionName(tool.Name, subTool.Name),
-						Namespace:   tool.Name,
-						Description: subTool.Description,
-						Parameters:  params,
-						Strict:      subTool.Strict,
+						Name:         namespaceFunctionName(tool.Name, subTool.Name),
+						Namespace:    tool.Name,
+						Description:  subTool.Description,
+						Parameters:   params,
+						Strict:       subTool.Strict,
+						DeferLoading: subTool.DeferLoading,
 					},
 				}
 				if subTool.Type != "function" {
 					converted.ResponsesOrigin = "raw_tool"
+					converted.ResponsesSourceType = subTool.Type
 				}
 				result = append(result, converted)
 			}
@@ -947,13 +977,14 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 					Type: "function",
 					Function: llm.Function{
 						Name: tool.Name, Description: tool.Description,
-						Parameters: params, Strict: tool.Strict,
+						Parameters: params, Strict: tool.Strict, DeferLoading: tool.DeferLoading,
 					},
-					ResponsesOrigin: "raw_tool",
+					ResponsesOrigin:     "raw_tool",
+					ResponsesSourceType: tool.Type,
 				})
 				continue
 			}
-			result = append(result, opaqueResponsesTool(tool, "raw_tool"))
+			result = append(result, opaqueResponsesTool(tool, "raw_tool", ""))
 		}
 	}
 
@@ -971,11 +1002,11 @@ func isFunctionLike(tool Tool) bool {
 }
 
 // opaqueResponsesTool preserves an unsupported declaration for same-protocol replay.
-func opaqueResponsesTool(tool Tool, origin string) llm.Tool {
+func opaqueResponsesTool(tool Tool, origin, namespace string) llm.Tool {
 	return llm.Tool{
 		Type: llm.ToolTypeResponsesOpaqueTool,
 		ResponseOpaqueTool: &llm.ResponseOpaqueTool{
-			SourceType: tool.Type, Name: tool.Name, Execution: tool.Execution,
+			SourceType: tool.Type, Name: tool.Name, Namespace: namespace, Execution: tool.Execution,
 			Description: tool.Description,
 		},
 		ResponsesOrigin: origin,
@@ -1112,6 +1143,10 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 
 		// Handle tool calls (function calls and custom tool calls)
 		if len(message.ToolCalls) > 0 {
+			toolCallStatus := "completed"
+			if choice.FinishReason != nil && isAbnormalResponsesFinishReason(*choice.FinishReason) {
+				toolCallStatus = "in_progress"
+			}
 			for _, toolCall := range message.ToolCalls {
 				if toolCall.ResponseToolSearchCall != nil {
 					resp.Output = append(resp.Output, Item{
@@ -1119,7 +1154,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						CallID:    toolCall.ResponseToolSearchCall.CallID,
 						Execution: toolCall.ResponseToolSearchCall.Execution,
 						Arguments: toolCall.ResponseToolSearchCall.Arguments,
-						Status:    lo.ToPtr("completed"),
+						Status:    lo.ToPtr(toolCallStatus),
 					})
 				} else if toolCall.ResponseCustomToolCall != nil {
 					resp.Output = append(resp.Output, Item{
@@ -1128,7 +1163,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						CallID: toolCall.ResponseCustomToolCall.CallID,
 						Name:   toolCall.ResponseCustomToolCall.Name,
 						Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
-						Status: lo.ToPtr("completed"),
+						Status: lo.ToPtr(toolCallStatus),
 					})
 				} else {
 					resp.Output = append(resp.Output, Item{
@@ -1138,7 +1173,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						Name:      toolCall.Function.Name,
 						Namespace: toolCall.Function.Namespace,
 						Arguments: toolCall.Function.Arguments,
-						Status:    lo.ToPtr("completed"),
+						Status:    lo.ToPtr(toolCallStatus),
 					})
 				}
 			}
@@ -1227,6 +1262,9 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 				resp.IncompleteDetails = nil
 			case "error":
 				resp.Status = lo.ToPtr("failed")
+				resp.IncompleteDetails = nil
+			case "cancelled", "canceled":
+				resp.Status = lo.ToPtr("canceled")
 				resp.IncompleteDetails = nil
 			}
 		}

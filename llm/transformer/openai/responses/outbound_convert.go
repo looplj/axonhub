@@ -2,6 +2,7 @@ package responses
 
 import (
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"strings"
 	"unicode/utf8"
@@ -385,6 +386,107 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 	}
 }
 
+func synchronizeToolSearchOutputMessages(
+	messages []llm.Message,
+	tools []llm.Tool,
+	requestExt *llm.OpenAIResponsesRequestExtensions,
+) ([]llm.Message, error) {
+	if requestExt == nil || len(requestExt.RawInputItems) == 0 {
+		return messages, nil
+	}
+
+	trackedOrigins := make(map[string][]string)
+	for _, fragment := range requestExt.RawInputItems {
+		if fragment.Type == "tool_search_output" && fragment.CallID != "" {
+			trackedOrigins[fragment.CallID] = append(
+				trackedOrigins[fragment.CallID], fmt.Sprintf("input:%d:", fragment.OriginalIndex),
+			)
+		}
+	}
+	if len(trackedOrigins) == 0 {
+		return messages, nil
+	}
+
+	result := append([]llm.Message(nil), messages...)
+	seenOutputs := make(map[string]int)
+	toolSearchCallByID := make(map[string]bool)
+	for messageIndex := range result {
+		message := &result[messageIndex]
+		if message.Role == "assistant" {
+			for _, call := range message.ToolCalls {
+				if call.ID != "" {
+					toolSearchCallByID[call.ID] = call.ResponseToolSearchCall != nil
+				}
+			}
+		}
+		if message.Role != "tool" || message.ToolCallID == nil {
+			continue
+		}
+		callID := *message.ToolCallID
+		if !toolSearchCallByID[callID] {
+			continue
+		}
+		origins := trackedOrigins[callID]
+		occurrence := seenOutputs[callID]
+		if occurrence >= len(origins) {
+			continue
+		}
+		seenOutputs[callID] = occurrence + 1
+		originPrefix := origins[occurrence]
+
+		definitions := make([]Tool, 0)
+		for _, tool := range tools {
+			if tool.ResponsesOrigin != "tool_search_output" || tool.ResponsesOriginCallID != callID ||
+				!strings.HasPrefix(tool.ResponsesRawID, originPrefix) {
+				continue
+			}
+			definition, ok, err := responseToolSearchOutputDefinition(tool)
+			if err != nil {
+				return nil, err
+			}
+			if ok {
+				definitions = append(definitions, definition)
+			}
+		}
+		encoded, err := json.Marshal(definitions)
+		if err != nil {
+			return nil, err
+		}
+		message.Content = llm.MessageContent{Content: lo.ToPtr(string(encoded))}
+	}
+
+	return result, nil
+}
+
+func responseToolSearchOutputDefinition(src llm.Tool) (Tool, bool, error) {
+	switch src.Type {
+	case llm.ToolTypeFunction:
+		return convertFunctionToTool(src), true, nil
+	case llm.ToolTypeImageGeneration:
+		return convertImageGenerationToTool(src), true, nil
+	case llm.ToolTypeWebSearch, llm.ToolTypeGoogleSearch:
+		return convertWebSearchToTool(src), true, nil
+	case llm.ToolTypeResponsesCustomTool:
+		return convertCustomToTool(src), true, nil
+	case llm.ToolTypeResponsesToolSearch:
+		if src.ResponseToolSearch == nil {
+			return Tool{}, false, nil
+		}
+		parameters := map[string]any{}
+		if len(src.ResponseToolSearch.Parameters) > 0 {
+			if err := json.Unmarshal(src.ResponseToolSearch.Parameters, &parameters); err != nil {
+				return Tool{}, false, fmt.Errorf("failed to decode tool search parameters: %w", err)
+			}
+		}
+		return Tool{
+			Type: "tool_search", Execution: src.ResponseToolSearch.Execution,
+			Description: src.ResponseToolSearch.Description, Parameters: parameters,
+		}, true, nil
+	default:
+		return Tool{}, false, nil
+	}
+}
+
 func convertImageGenerationToTool(src llm.Tool) Tool {
 	tool := Tool{
 		Type: "image_generation",
@@ -462,10 +564,11 @@ func convertCustomToTool(src llm.Tool) Tool {
 // convertFunctionToTool converts an llm.Tool function to Responses API Tool format.
 func convertFunctionToTool(src llm.Tool) Tool {
 	tool := Tool{
-		Type:        "function",
-		Name:        src.Function.Name,
-		Description: src.Function.Description,
-		Strict:      src.Function.Strict,
+		Type:         "function",
+		Name:         src.Function.Name,
+		Description:  src.Function.Description,
+		Strict:       src.Function.Strict,
+		DeferLoading: src.Function.DeferLoading,
 	}
 
 	// Convert parameters from json.RawMessage to map[string]any
@@ -534,7 +637,15 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 
 	result := &ToolChoice{}
 
-	if src.ToolChoice != nil {
+	if src.AllowedToolsSet {
+		allowedType := "allowed_tools"
+		result.Type = &allowedType
+		result.Mode = src.ToolChoice
+		result.Tools = make([]ToolOption, 0, len(src.AllowedTools))
+		for _, tool := range src.AllowedTools {
+			result.Tools = append(result.Tools, ToolOption{Type: tool.Type, Name: tool.Name})
+		}
+	} else if src.ToolChoice != nil {
 		// String mode like "none", "auto", "required"
 		result.Mode = src.ToolChoice
 	} else if src.NamedToolChoice != nil {
@@ -668,7 +779,8 @@ func appendResponseWebSearchCallMetadata(transformerMetadata map[string]any, out
 	}
 
 	existing, _ := transformerMetadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)
-	transformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = append(existing, call)
+	cloned := append([]Item(nil), existing...)
+	transformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = append(cloned, call)
 }
 
 // convertOutputToMessage converts Responses API output items into an llm.Message.

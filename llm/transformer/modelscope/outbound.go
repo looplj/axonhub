@@ -22,6 +22,15 @@ type OutboundTransformer struct {
 	transformer.Outbound
 }
 
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
+
+func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
+	if capable, ok := t.Outbound.(transformer.ResponsesRequestCapabilitiesProvider); ok {
+		return capable.ResponsesRequestCapabilities(req)
+	}
+	return transformer.ResponsesRequestCapabilities{}
+}
+
 // NewOutboundTransformer creates a new ModelScope OutboundTransformer with legacy parameters.
 // Deprecated: Use NewOutboundTransformerWithConfig instead.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {

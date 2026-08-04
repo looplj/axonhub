@@ -384,6 +384,123 @@ func TestConvertToolMessage(t *testing.T) {
 	}
 }
 
+func TestConvertToolChoicePreservesAllowedTools(t *testing.T) {
+	required := "required"
+	converted := convertToolChoice(&llm.ToolChoice{
+		ToolChoice: &required, AllowedToolsSet: true,
+		AllowedTools: []llm.ToolOption{
+			{Type: "function", Name: "lookup"},
+			{Type: "custom", Name: "apply_patch"},
+		},
+	})
+	require.NotNil(t, converted)
+	require.Equal(t, "allowed_tools", lo.FromPtr(converted.Type))
+	require.Equal(t, "required", lo.FromPtr(converted.Mode))
+	require.Equal(t, []ToolOption{
+		{Type: "function", Name: "lookup"},
+		{Type: "custom", Name: "apply_patch"},
+	}, converted.Tools)
+}
+
+func TestConvertToolChoicePrimitiveMatrix(t *testing.T) {
+	t.Run("named selectors retain primitive identity", func(t *testing.T) {
+		tests := []struct {
+			toolType string
+			name     string
+		}{
+			{toolType: "function", name: "lookup"},
+			{toolType: "custom", name: "apply_patch"},
+			{toolType: "namespace", name: "workspace"},
+			{toolType: "tool_search", name: "discover"},
+			{toolType: "future_client_tool", name: "later"},
+			{toolType: "future_server_tool", name: "hosted"},
+		}
+		for _, tt := range tests {
+			t.Run(tt.toolType, func(t *testing.T) {
+				converted := convertToolChoice(&llm.ToolChoice{
+					NamedToolChoice: &llm.NamedToolChoice{
+						Type:     tt.toolType,
+						Function: llm.ToolFunction{Name: tt.name},
+					},
+				})
+				require.NotNil(t, converted)
+				require.Nil(t, converted.Mode)
+				require.Equal(t, tt.toolType, lo.FromPtr(converted.Type))
+				require.Equal(t, tt.name, lo.FromPtr(converted.Name))
+				require.Nil(t, converted.Tools)
+			})
+		}
+	})
+
+	t.Run("allowed selectors retain same name across primitive types", func(t *testing.T) {
+		for _, mode := range []string{"auto", "required"} {
+			t.Run(mode, func(t *testing.T) {
+				converted := convertToolChoice(&llm.ToolChoice{
+					ToolChoice:      lo.ToPtr(mode),
+					AllowedToolsSet: true,
+					AllowedTools: []llm.ToolOption{
+						{Type: "function", Name: "same"},
+						{Type: "custom", Name: "same"},
+						{Type: "namespace", Name: "workspace"},
+						{Type: "tool_search", Name: "discover"},
+						{Type: "future_client_tool", Name: "later"},
+						{Type: "future_server_tool", Name: "hosted"},
+					},
+				})
+				require.NotNil(t, converted)
+				require.Equal(t, "allowed_tools", lo.FromPtr(converted.Type))
+				require.Equal(t, mode, lo.FromPtr(converted.Mode))
+				require.Nil(t, converted.Name)
+				require.Equal(t, []ToolOption{
+					{Type: "function", Name: "same"},
+					{Type: "custom", Name: "same"},
+					{Type: "namespace", Name: "workspace"},
+					{Type: "tool_search", Name: "discover"},
+					{Type: "future_client_tool", Name: "later"},
+					{Type: "future_server_tool", Name: "hosted"},
+				}, converted.Tools)
+			})
+		}
+	})
+}
+
+func TestConvertToolSearchOutputMalformedContentDegradesWithWarning(t *testing.T) {
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	result := convertToolMessageWithType(llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_search"),
+		Content:    llm.MessageContent{Content: lo.ToPtr(`[{"type":"function"}`)},
+	}, "tool_search_output")
+
+	require.Equal(t, "tool_search_output", result.Type)
+	require.NotNil(t, result.Tools)
+	require.Empty(t, result.Tools)
+	require.Contains(t, logs.String(), "failed to decode tool_search_output tools")
+	require.Contains(t, logs.String(), "call_search")
+}
+
+func TestConvertToolSearchOutputNullContentDegradesWithWarning(t *testing.T) {
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	result := convertToolMessageWithType(llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_search_null"),
+		Content:    llm.MessageContent{Content: lo.ToPtr(`null`)},
+	}, "tool_search_output")
+
+	require.NotNil(t, result.Tools)
+	require.Empty(t, result.Tools)
+	require.Contains(t, logs.String(), "expected a JSON array")
+	require.Contains(t, logs.String(), "call_search_null")
+}
+
 // The wire shape matters as much as the struct: a tool result carrying an image
 // has to serialise as an output array of content parts, not as a string.
 func TestConvertToolMessageImageSerializesAsOutputArray(t *testing.T) {
@@ -586,6 +703,31 @@ func TestConvertWebSearchToTool(t *testing.T) {
 			require.Empty(t, result.Parameters)
 		})
 	}
+}
+
+func TestAppendResponseWebSearchCallMetadata_DoesNotMutateSourceSliceBackingArray(t *testing.T) {
+	original := make([]Item, 1, 2)
+	original[0] = Item{ID: "existing", Type: "web_search_call"}
+	metadata := map[string]any{
+		responsesWebSearchCallsTransformerMetadataKey: original,
+	}
+
+	appendResponseWebSearchCallMetadata(metadata, Item{
+		ID:   "new",
+		Type: "web_search_call",
+		Action: NewWebSearchAction(&WebSearchAction{
+			Type:  "search",
+			Query: "agents",
+		}),
+	})
+
+	extendedOriginal := original[:2]
+	require.Empty(t, extendedOriginal[1], "append must not write through caller-owned spare capacity")
+	stored, ok := metadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)
+	require.True(t, ok)
+	require.Len(t, stored, 2)
+	require.Equal(t, "existing", stored[0].ID)
+	require.Equal(t, "new", stored[1].ID)
 }
 
 func TestConvertStreamOptions(t *testing.T) {

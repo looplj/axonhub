@@ -1,6 +1,10 @@
 package shared
 
-import "github.com/looplj/axonhub/llm"
+import (
+	"strings"
+
+	"github.com/looplj/axonhub/llm"
+)
 
 // FilterOutResponseCustomToolMessages removes Responses-only custom tool calls
 // from assistant messages and drops tool result messages that correspond to
@@ -11,45 +15,91 @@ import "github.com/looplj/axonhub/llm"
 // case, Responses-only custom tools must be stripped from the message history
 // before the outbound transformer encodes the request for the target channel.
 func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
+	return filterOutToolLifecycleMessages(messages, func(toolCall llm.ToolCall) bool {
+		return toolCall.Type == llm.ToolTypeResponsesCustomTool || toolCall.ResponseCustomToolCall != nil
+	})
+}
+
+// FilterOutResponsesChatToolLifecycleMessages removes calls that need the
+// reversible Responses-to-Chat adapter and their paired tool outputs. Plain
+// function calls remain available to provider-specific Chat transformers.
+func FilterOutResponsesChatToolLifecycleMessages(messages []llm.Message) []llm.Message {
+	return filterOutToolLifecycleMessages(messages, func(toolCall llm.ToolCall) bool {
+		return toolCall.Type == llm.ToolTypeResponsesCustomTool ||
+			toolCall.ResponseCustomToolCall != nil ||
+			toolCall.Type == llm.ToolTypeResponsesToolSearch ||
+			toolCall.ResponseToolSearchCall != nil ||
+			toolCall.Function.Namespace != ""
+	})
+}
+
+func filterOutToolLifecycleMessages(messages []llm.Message, shouldRemove func(llm.ToolCall) bool) []llm.Message {
 	if len(messages) == 0 {
 		return nil
 	}
 
-	removedToolCallIDs := make(map[string]struct{})
-	filtered := make([]llm.Message, 0, len(messages))
-
-	for _, msg := range messages {
-		if msg.Role == "tool" && msg.ToolCallID != nil {
-			if _, removed := removedToolCallIDs[*msg.ToolCallID]; removed {
-				continue
+	type lifecycleOccurrence struct {
+		messageIndex int
+		remove       bool
+	}
+	occurrences := make(map[string][]lifecycleOccurrence)
+	for messageIndex, msg := range messages {
+		for _, toolCall := range msg.ToolCalls {
+			remove := shouldRemove(toolCall)
+			ids := []string{toolCall.ID}
+			if toolCall.ResponseCustomToolCall != nil {
+				ids = append(ids, toolCall.ResponseCustomToolCall.CallID)
+			}
+			if toolCall.ResponseToolSearchCall != nil {
+				ids = append(ids, toolCall.ResponseToolSearchCall.CallID)
+			}
+			seen := make(map[string]struct{}, len(ids))
+			for _, id := range ids {
+				if id == "" {
+					continue
+				}
+				if _, duplicate := seen[id]; duplicate {
+					continue
+				}
+				seen[id] = struct{}{}
+				occurrences[id] = append(occurrences[id], lifecycleOccurrence{messageIndex: messageIndex, remove: remove})
 			}
 		}
+	}
+	shouldRemoveOutput := func(id string, messageIndex int) bool {
+		matches := occurrences[id]
+		if len(matches) == 0 {
+			return false
+		}
+		for i := len(matches) - 1; i >= 0; i-- {
+			if matches[i].messageIndex < messageIndex {
+				return matches[i].remove
+			}
+		}
+		return matches[0].remove
+	}
 
-		if len(msg.ToolCalls) == 0 {
-			filtered = append(filtered, msg)
-			continue
+	filtered := make([]llm.Message, 0, len(messages))
+
+	for messageIndex, msg := range messages {
+		if msg.Role == "tool" && msg.ToolCallID != nil {
+			if shouldRemoveOutput(*msg.ToolCallID, messageIndex) {
+				continue
+			}
 		}
 
 		cloned := msg
-		cloned.ToolCalls = make([]llm.ToolCall, 0, len(msg.ToolCalls))
-
-		for _, toolCall := range msg.ToolCalls {
-			if toolCall.Type == llm.ToolTypeResponsesCustomTool || toolCall.ResponseCustomToolCall != nil {
-				if toolCall.ID != "" {
-					removedToolCallIDs[toolCall.ID] = struct{}{}
+		if len(msg.ToolCalls) > 0 {
+			cloned.ToolCalls = make([]llm.ToolCall, 0, len(msg.ToolCalls))
+			for _, toolCall := range msg.ToolCalls {
+				if shouldRemove(toolCall) {
+					continue
 				}
-
-				if toolCall.ResponseCustomToolCall != nil && toolCall.ResponseCustomToolCall.CallID != "" {
-					removedToolCallIDs[toolCall.ResponseCustomToolCall.CallID] = struct{}{}
-				}
-
-				continue
+				cloned.ToolCalls = append(cloned.ToolCalls, toolCall)
 			}
-
-			cloned.ToolCalls = append(cloned.ToolCalls, toolCall)
 		}
 
-		if shouldDropMessageAfterToolFiltering(cloned) {
+		if !HasChatCompatibleAssistantPayload(cloned) {
 			continue
 		}
 
@@ -59,18 +109,48 @@ func FilterOutResponseCustomToolMessages(messages []llm.Message) []llm.Message {
 	return filtered
 }
 
-func shouldDropMessageAfterToolFiltering(msg llm.Message) bool {
+// HasChatCompatibleAssistantPayload reports whether an assistant message still
+// contains substantive data after Responses-only lifecycle fields are removed.
+// Other roles have different validation rules and always pass through.
+func HasChatCompatibleAssistantPayload(msg llm.Message) bool {
+	if msg.Role != "assistant" {
+		return true
+	}
 	if len(msg.ToolCalls) > 0 {
-		return false
+		return true
 	}
-
-	if msg.Content.Content != nil || len(msg.Content.MultipleContent) > 0 {
-		return false
+	if msg.ReasoningContent != nil && strings.TrimSpace(*msg.ReasoningContent) != "" ||
+		msg.Reasoning != nil && strings.TrimSpace(*msg.Reasoning) != "" ||
+		strings.TrimSpace(msg.Refusal) != "" || hasOutputAudioPayload(msg.Audio) {
+		return true
 	}
-
-	if msg.Refusal != "" || msg.ToolCallID != nil || msg.ReasoningContent != nil || msg.Reasoning != nil || msg.Audio != nil {
-		return false
+	if len(msg.Content.MultipleContent) == 0 {
+		return msg.Content.Content != nil && strings.TrimSpace(*msg.Content.Content) != ""
 	}
+	for _, part := range msg.Content.MultipleContent {
+		switch part.Type {
+		case "text":
+			if part.Text != nil && strings.TrimSpace(*part.Text) != "" {
+				return true
+			}
+		case "image_url":
+			if part.ImageURL != nil && strings.TrimSpace(part.ImageURL.URL) != "" {
+				return true
+			}
+		case "video_url":
+			if part.VideoURL != nil && strings.TrimSpace(part.VideoURL.URL) != "" {
+				return true
+			}
+		case "input_audio":
+			if part.InputAudio != nil && strings.TrimSpace(part.InputAudio.Data) != "" {
+				return true
+			}
+		}
+	}
+	return false
+}
 
-	return true
+func hasOutputAudioPayload(audio *llm.OutputAudio) bool {
+	return audio != nil && (strings.TrimSpace(audio.ID) != "" || strings.TrimSpace(audio.Data) != "" ||
+		strings.TrimSpace(audio.Transcript) != "")
 }

@@ -48,6 +48,19 @@ type Tool struct {
 	// ResponsesOrigin marks tools whose original Responses declaration is replayed
 	// from a raw top-level or position-sensitive input fragment.
 	ResponsesOrigin string `json:"-"`
+
+	// ResponsesSourceType retains the original type of a client-executed,
+	// function-like Responses tool after it is promoted to the common function IR.
+	ResponsesSourceType string `json:"-"`
+
+	// ResponsesRawID identifies the exact raw declaration that produced this tool.
+	// It prevents duplicate declarations with equal common-IR fields from being
+	// confused during same-protocol replay.
+	ResponsesRawID string `json:"-"`
+
+	// ResponsesOriginCallID associates tools promoted from a tool_search_output
+	// item with the call whose output declared them.
+	ResponsesOriginCallID string `json:"-"`
 }
 
 // Function represents a function definition.
@@ -61,6 +74,9 @@ type Function struct {
 	// including const, enum, and other advanced features. This field is mutually exclusive with Parameters.
 	ParametersJsonSchema json.RawMessage `json:"parametersJsonSchema,omitempty"`
 	Strict               *bool           `json:"strict,omitempty"`
+	// DeferLoading marks a Responses function as discoverable through tool search
+	// instead of exposing it in the model's initial callable catalog.
+	DeferLoading bool `json:"defer_loading,omitempty"`
 }
 
 // FunctionCall represents a function call (deprecated).
@@ -118,6 +134,13 @@ type ToolFunction struct {
 type ToolChoice struct {
 	ToolChoice      *string          `json:"tool_choice,omitempty"`
 	NamedToolChoice *NamedToolChoice `json:"named_tool_choice,omitempty"`
+	AllowedTools    []ToolOption     `json:"allowed_tools,omitempty"`
+	AllowedToolsSet bool             `json:"-"`
+}
+
+type ToolOption struct {
+	Type string `json:"type"`
+	Name string `json:"name,omitempty"`
 }
 
 type NamedToolChoice struct {
@@ -126,6 +149,17 @@ type NamedToolChoice struct {
 }
 
 func (t ToolChoice) MarshalJSON() ([]byte, error) {
+	if t.AllowedToolsSet {
+		type allowedToolChoice struct {
+			Mode  *string      `json:"mode,omitempty"`
+			Tools []ToolOption `json:"tools"`
+		}
+		tools := t.AllowedTools
+		if tools == nil {
+			tools = []ToolOption{}
+		}
+		return json.Marshal(allowedToolChoice{Mode: t.ToolChoice, Tools: tools})
+	}
 	if t.ToolChoice != nil {
 		return json.Marshal(t.ToolChoice)
 	}
@@ -138,7 +172,18 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 
 	err := json.Unmarshal(data, &str)
 	if err == nil {
-		t.ToolChoice = &str
+		*t = ToolChoice{ToolChoice: &str}
+		return nil
+	}
+
+	var allowed struct {
+		Mode  *string      `json:"mode,omitempty"`
+		Tools []ToolOption `json:"tools"`
+	}
+	if err := json.Unmarshal(data, &allowed); err == nil && allowed.Tools != nil {
+		*t = ToolChoice{
+			ToolChoice: allowed.Mode, AllowedTools: allowed.Tools, AllowedToolsSet: true,
+		}
 		return nil
 	}
 
@@ -146,7 +191,7 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 
 	err = json.Unmarshal(data, &named)
 	if err == nil {
-		t.NamedToolChoice = &named
+		*t = ToolChoice{NamedToolChoice: &named}
 		return nil
 	}
 
@@ -318,6 +363,7 @@ type ResponseToolSearchCall struct {
 type ResponseOpaqueTool struct {
 	SourceType  string `json:"source_type"`
 	Name        string `json:"name,omitempty"`
+	Namespace   string `json:"namespace,omitempty"`
 	Execution   string `json:"execution,omitempty"`
 	Description string `json:"description,omitempty"`
 }

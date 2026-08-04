@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Config holds all configuration for the Cline outbound transformer.
@@ -56,7 +57,15 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 }
 
 // TransformRequest identifies Cline chat requests and preserves its accepted empty text-part form.
+// Responses API requests are first downgraded from Responses-only lifecycle state
+// without enabling the generic adapter, whose metadata Cline cannot restore.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+	if llmReq != nil && (llmReq.APIFormat == llm.APIFormatOpenAIResponse || llmReq.APIFormat == llm.APIFormatOpenAIResponseCompact) {
+		chatReq := *shared.DowngradeResponsesChatToolLifecycle(llmReq)
+		chatReq.APIFormat = llm.APIFormatOpenAIChatCompletion
+		llmReq = &chatReq
+	}
+
 	httpReq, err := t.Outbound.TransformRequest(ctx, llmReq)
 	if err != nil {
 		return nil, err

@@ -90,12 +90,13 @@ func requestFromLLMWithResponsesToolAdapter(r *llm.Request, reasoningField Reaso
 		return nil, nil, nil
 	}
 	toolAdapter := newResponsesChatToolAdapter(r.Tools)
+	degradedToolChoice := toolAdapter.degradeUnsupportedRawToolSelector(r)
 
 	req := requestFromLLMBase(r)
 
 	// Build the callable catalog before converting history so specialized calls
 	// resolve through the same stable names as the current tool declarations.
-	req.Tools = toolAdapter.convertTools(r.Tools)
+	req.Tools = toolAdapter.filterAllowedTools(toolAdapter.convertTools(r.Tools), r.ToolChoice)
 
 	// Convert messages. Responses can retain assistant-only metadata such as
 	// encrypted reasoning or compaction items that Chat Completions cannot
@@ -118,7 +119,9 @@ func requestFromLLMWithResponsesToolAdapter(r *llm.Request, reasoningField Reaso
 	}
 
 	// Convert ToolChoice
-	req.ToolChoice = toolAdapter.convertToolChoice(r.ToolChoice)
+	if !degradedToolChoice {
+		req.ToolChoice = toolAdapter.convertToolChoice(r.ToolChoice)
+	}
 
 	if len(req.Tools) == 0 {
 		req.ParallelToolCalls = nil

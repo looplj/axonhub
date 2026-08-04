@@ -387,7 +387,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	llmRequest.Model = entry.ActualModel
 
 	if isResponsesFormat(llmRequest.APIFormat) &&
-		p.wrapped.APIFormat() == llm.APIFormatOpenAIChatCompletion &&
+		!responsesRequestCapabilities(p.wrapped, llmRequest).NativeResponses &&
 		llmRequest.PreviousResponseID != nil {
 		hydrated, err := hydratePreviousResponsesForChat(ctx, llmRequest, p.state)
 		if err != nil {
@@ -410,7 +410,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 		llmRequest = transformedRequest
 	}
-	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, outboundFormat)
+	llmRequest = filterResponsesChatToolMessagesForOutbound(llmRequest, p.wrapped)
 
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)
@@ -448,41 +448,41 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	)
 }
 
-func filterResponseCustomToolMessagesForNonResponsesOutbound(
+func filterResponsesChatToolMessagesForOutbound(
 	llmRequest *llm.Request,
-	outboundFormat llm.APIFormat,
+	outbound transformer.Outbound,
 ) *llm.Request {
 	if llmRequest == nil {
 		return nil
 	}
 
-	if !isResponsesFormat(llmRequest.APIFormat) ||
-		isResponsesFormat(outboundFormat) ||
-		outboundFormat == llm.APIFormatOpenAIChatCompletion ||
-		!containsResponseCustomToolMessages(llmRequest.Messages) {
+	capabilities := responsesRequestCapabilities(outbound, llmRequest)
+	if !isResponsesFormat(llmRequest.APIFormat) || outbound == nil ||
+		capabilities.NativeResponses || capabilities.ChatToolLifecycle {
 		return llmRequest
 	}
 
-	cloned := *llmRequest
-	cloned.Messages = shared.FilterOutResponseCustomToolMessages(llmRequest.Messages)
+	return shared.DowngradeResponsesChatToolLifecycle(llmRequest)
+}
 
-	return &cloned
+func responsesRequestCapabilities(outbound transformer.Outbound, request *llm.Request) transformer.ResponsesRequestCapabilities {
+	if outbound == nil {
+		return transformer.ResponsesRequestCapabilities{}
+	}
+	if isResponsesFormat(outbound.APIFormat()) {
+		return transformer.ResponsesRequestCapabilities{NativeResponses: true}
+	}
+	if capable, ok := outbound.(transformer.ResponsesRequestCapabilitiesProvider); ok {
+		return capable.ResponsesRequestCapabilities(request)
+	}
+	if capable, ok := outbound.(transformer.ResponsesChatToolLifecycleCapable); ok && capable.SupportsResponsesChatToolLifecycle() {
+		return transformer.ResponsesRequestCapabilities{ChatToolLifecycle: true}
+	}
+	return transformer.ResponsesRequestCapabilities{}
 }
 
 func isResponsesFormat(format llm.APIFormat) bool {
 	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseCompact
-}
-
-func containsResponseCustomToolMessages(messages []llm.Message) bool {
-	for _, msg := range messages {
-		for _, toolCall := range msg.ToolCalls {
-			if toolCall.Type == llm.ToolTypeResponsesCustomTool || toolCall.ResponseCustomToolCall != nil {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {

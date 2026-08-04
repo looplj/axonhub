@@ -195,6 +195,30 @@ func TestOutboundTransformer_TransformRequest_OmitsMetadataWhenEmpty(t *testing.
 	require.Nil(t, hreq.Metadata)
 }
 
+func TestOutboundTransformer_TransformRequest_DoesNotMutateRetryMetadata(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	request := &llm.Request{
+		Model:               "gpt-5.6",
+		TransformerMetadata: map[string]any{"caller": "kept"},
+		Messages: []llm.Message{{
+			Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("generate an image")},
+		}},
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeImageGeneration,
+			ImageGeneration: &llm.ImageGeneration{
+				OutputFormat: "png",
+			},
+		}},
+	}
+	httpRequest, err := transformer.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"caller": "kept"}, request.TransformerMetadata)
+	require.NotContains(t, request.TransformerMetadata, "image_output_format")
+	require.Equal(t, "png", httpRequest.TransformerMetadata["image_output_format"])
+}
+
 func TestOutboundTransformer_TransformRequest_WebSearchRequiredToolChoice(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

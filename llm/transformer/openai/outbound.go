@@ -82,6 +82,9 @@ type OutboundTransformer struct {
 	config *Config
 }
 
+var _ transformer.ResponsesChatToolLifecycleCapable = (*OutboundTransformer)(nil)
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
+
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
@@ -148,6 +151,20 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIChatCompletion
 }
 
+// SupportsResponsesChatToolLifecycle reports that this transformer uses the
+// reversible Responses-to-Chat tool adapter for Responses-origin requests.
+func (t *OutboundTransformer) SupportsResponsesChatToolLifecycle() bool {
+	return true
+}
+
+// ResponsesRequestCapabilities reports lifecycle support for Responses chat
+// requests. Compact requests remain unsupported by this Chat endpoint.
+func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
+	return transformer.ResponsesRequestCapabilities{
+		ChatToolLifecycle: req != nil && req.RequestType != llm.RequestTypeCompact,
+	}
+}
+
 // TransformRequest transforms ChatCompletionRequest to Request.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
@@ -197,10 +214,20 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		reasoningField = ReasoningFieldContent
 	}
 
-	// Convert to OpenAI Request format (this strips helper fields)
-	oaiReq, toolAdapter, err := requestFromLLMWithResponsesToolAdapter(llmReq, reasoningField)
-	if err != nil {
-		return nil, fmt.Errorf("%w: failed to convert Responses tools to Chat Completions: %v", transformer.ErrInvalidRequest, err)
+	// Native Chat requests use the plain codec unchanged. Only Responses-origin
+	// requests need reversible lifecycle mappings and compatibility warnings.
+	var (
+		oaiReq      *Request
+		toolAdapter *responsesChatToolAdapter
+	)
+	if isResponsesAPIFormat(llmReq.APIFormat) {
+		var err error
+		oaiReq, toolAdapter, err = requestFromLLMWithResponsesToolAdapter(llmReq, reasoningField)
+		if err != nil {
+			return nil, fmt.Errorf("%w: failed to convert Responses tools to Chat Completions: %v", transformer.ErrInvalidRequest, err)
+		}
+	} else {
+		oaiReq = RequestFromLLM(llmReq, reasoningField)
 	}
 	// Apply per-channel reasoning_effort mapping for non-standard OpenAI-compatible providers.
 	// Entries in the map replace the effort value; values not in the map pass through unchanged.
@@ -237,20 +264,22 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	transformerMetadata := maps.Clone(llmReq.TransformerMetadata)
-	if transformerMetadata == nil {
-		transformerMetadata = map[string]any{}
-	}
-	if mappings := toolAdapter.mappings(); len(mappings) > 0 {
-		transformerMetadata[responsesChatToolMappingsMetadataKey] = mappings
-	}
-	if catalog := toolAdapter.catalog(); len(catalog) > 0 {
-		transformerMetadata[responsesChatToolCatalogMetadataKey] = catalog
-	}
-	if len(toolAdapter.warnings) > 0 {
-		transformerMetadata[responsesChatToolWarningsMetadataKey] = append([]string(nil), toolAdapter.warnings...)
-		slog.WarnContext(ctx, "Responses request degraded during Chat Completions conversion",
-			slog.String("model", llmReq.Model),
-			slog.Any("warnings", toolAdapter.warnings))
+	if toolAdapter != nil {
+		if transformerMetadata == nil {
+			transformerMetadata = map[string]any{}
+		}
+		if mappings := toolAdapter.mappings(); len(mappings) > 0 {
+			transformerMetadata[responsesChatToolMappingsMetadataKey] = mappings
+		}
+		if catalog := toolAdapter.catalog(); len(catalog) > 0 {
+			transformerMetadata[responsesChatToolCatalogMetadataKey] = catalog
+		}
+		if len(toolAdapter.warnings) > 0 {
+			transformerMetadata[responsesChatToolWarningsMetadataKey] = append([]string(nil), toolAdapter.warnings...)
+			slog.WarnContext(ctx, "Responses request degraded during Chat Completions conversion",
+				slog.String("model", llmReq.Model),
+				slog.Any("warnings", toolAdapter.warnings))
+		}
 	}
 
 	return &httpclient.Request{
@@ -263,6 +292,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Metadata:            nil,
 		TransformerMetadata: transformerMetadata,
 	}, nil
+}
+
+func isResponsesAPIFormat(format llm.APIFormat) bool {
+	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseCompact
 }
 
 // TransformResponse transforms Response to ChatCompletionResponse.

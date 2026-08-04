@@ -61,6 +61,31 @@ type Outbound interface {
 	AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
 
+// ResponsesChatToolLifecycleCapable is an optional outbound capability for
+// transformers that can reversibly encode Responses-only tool declarations,
+// history calls, and provider responses through Chat Completions.
+//
+// Returning Chat Completions from APIFormat is insufficient: provider-specific
+// transformers may implement their own request codec instead of delegating to
+// the generic OpenAI Responses-to-Chat adapter.
+type ResponsesChatToolLifecycleCapable interface {
+	SupportsResponsesChatToolLifecycle() bool
+}
+
+// ResponsesRequestCapabilities describes how one outbound will handle a
+// specific Responses-origin request. Some providers choose their upstream
+// protocol from the resolved model, so APIFormat alone is not sufficient.
+type ResponsesRequestCapabilities struct {
+	NativeResponses   bool
+	ChatToolLifecycle bool
+}
+
+// ResponsesRequestCapabilitiesProvider exposes request-aware Responses
+// handling without expanding the core Outbound interface.
+type ResponsesRequestCapabilitiesProvider interface {
+	ResponsesRequestCapabilities(*llm.Request) ResponsesRequestCapabilities
+}
+
 // VideoTaskOutbound is an optional extension interface for outbound transformers that support
 // video task query/delete operations (async task model).
 type VideoTaskOutbound interface {

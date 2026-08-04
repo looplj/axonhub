@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -401,6 +402,17 @@ func TestResponsesToChatCustomTool_ParateraStreamingSimulation(t *testing.T) {
 	require.Equal(t, "*** Begin Patch", *customDone.Input)
 	require.NotNil(t, completed)
 	require.Equal(t, "completed", *completed.Status)
+	var completedCustom *responsesapi.Item
+	for i := range completed.Output {
+		if completed.Output[i].Type == "custom_tool_call" {
+			completedCustom = &completed.Output[i]
+			break
+		}
+	}
+	require.NotNil(t, completedCustom)
+	require.Equal(t, customDone.CallID, completedCustom.CallID)
+	require.Equal(t, customDone.Name, completedCustom.Name)
+	require.Equal(t, "*** Begin Patch", lo.FromPtr(completedCustom.Input))
 }
 
 func TestResponsesToChatCustomTool_StreamingSingleChunkWrapper(t *testing.T) {
@@ -426,6 +438,7 @@ func TestResponsesToChatStream_MapsAbnormalFinishReasons(t *testing.T) {
 		{finishReason: "length", terminalType: responsesapi.StreamEventTypeResponseIncomplete, status: "incomplete", incompleteReason: "max_output_tokens"},
 		{finishReason: "content_filter", terminalType: responsesapi.StreamEventTypeResponseIncomplete, status: "incomplete", incompleteReason: "content_filter"},
 		{finishReason: "error", terminalType: responsesapi.StreamEventTypeResponseFailed, status: "failed"},
+		{finishReason: "cancelled", terminalType: responsesapi.StreamEventTypeResponseCancelled, status: "canceled"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.finishReason, func(t *testing.T) {
@@ -444,6 +457,78 @@ func TestResponsesToChatStream_MapsAbnormalFinishReasons(t *testing.T) {
 				require.Equal(t, tt.incompleteReason, terminal.Response.IncompleteDetails.Reason)
 			}
 		})
+	}
+}
+
+func TestResponsesToChatStream_AbnormalFinishDoesNotCompletePartialToolCalls(t *testing.T) {
+	terminals := []struct {
+		finishReason string
+		terminalType responsesapi.StreamEventType
+		status       string
+	}{
+		{finishReason: "length", terminalType: responsesapi.StreamEventTypeResponseIncomplete, status: "incomplete"},
+		{finishReason: "content_filter", terminalType: responsesapi.StreamEventTypeResponseIncomplete, status: "incomplete"},
+		{finishReason: "error", terminalType: responsesapi.StreamEventTypeResponseFailed, status: "failed"},
+		{finishReason: "cancelled", terminalType: responsesapi.StreamEventTypeResponseCancelled, status: "canceled"},
+	}
+	states := []struct {
+		name     string
+		toolName string
+		started  bool
+	}{
+		{name: "pending identity", toolName: "apply_"},
+		{name: "started call", toolName: "apply_patch", started: true},
+	}
+
+	for _, terminal := range terminals {
+		for _, state := range states {
+			t.Run(terminal.finishReason+"/"+state.name, func(t *testing.T) {
+				events, streamErr := simulateResponsesChatStream(t, `{
+					"model":"gpt-5.5","stream":true,"input":"apply","tools":[
+						{"type":"custom","name":"apply_patch","description":"Apply patch"}
+					]
+				}`, []map[string]any{
+					responsesChatToolDelta(map[string]any{
+						"index": 0, "id": "call_partial", "type": "function",
+						"function": map[string]any{"name": state.toolName, "arguments": `{"input":"partial`},
+					}),
+					{"index": 0, "delta": map[string]any{}, "finish_reason": terminal.finishReason},
+				})
+				require.NoError(t, streamErr)
+				require.NotEmpty(t, events)
+
+				added := false
+				for _, event := range events {
+					require.NotEqual(t, responsesapi.StreamEventTypeCustomToolCallInputDone, event.Type)
+					if event.Type == responsesapi.StreamEventTypeOutputItemDone && event.Item != nil {
+						require.NotEqual(t, "custom_tool_call", event.Item.Type)
+					}
+					require.NotEqual(t, responsesapi.StreamEventTypeResponseCompleted, event.Type)
+					if event.Type == responsesapi.StreamEventTypeOutputItemAdded && event.Item != nil && event.Item.Type == "custom_tool_call" {
+						added = true
+						require.Equal(t, "in_progress", lo.FromPtr(event.Item.Status))
+					}
+				}
+				require.Equal(t, state.started, added)
+
+				last := events[len(events)-1]
+				require.Equal(t, terminal.terminalType, last.Type)
+				require.NotNil(t, last.Response)
+				require.Equal(t, terminal.status, lo.FromPtr(last.Response.Status))
+				partialCalls := 0
+				for _, item := range last.Response.Output {
+					if item.Type == "custom_tool_call" {
+						partialCalls++
+						require.Equal(t, "in_progress", lo.FromPtr(item.Status))
+					}
+				}
+				if state.started {
+					require.Equal(t, 1, partialCalls)
+				} else {
+					require.Zero(t, partialCalls)
+				}
+			})
+		}
 	}
 }
 
@@ -715,6 +800,239 @@ func TestResponsesToChatStream_ParallelPlainAndCustomCallsCloseAfterAllDeltas(t 
 	require.Equal(t, 1, lookupArgumentsDoneCount)
 	require.Equal(t, 1, lookupOutputDoneCount)
 	require.Equal(t, 1, customOutputDoneCount)
+}
+
+func TestResponsesToChatStream_ParallelOutputOrderMatchesNonStreaming(t *testing.T) {
+	const nonStreamingRequest = `{
+		"model":"gpt-5.5","input":"look up and patch","tools":[
+			{"type":"custom","name":"apply_patch"},
+			{"type":"function","name":"lookup","parameters":{"type":"object"}}
+		]
+	}`
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(nonStreamingRequest)})
+	require.NoError(t, err)
+	chatOutbound, err := NewOutboundTransformer("https://paratera.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	chatResponse := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Request:    chatRequest,
+		Body: []byte(`{
+			"id":"chatcmpl_order","object":"chat.completion","created":1,"model":"glm-5.2",
+			"choices":[{"index":0,"finish_reason":"tool_calls","message":{"role":"assistant","tool_calls":[
+				{"id":"call_patch_order","type":"function","function":{"name":"apply_patch","arguments":"{\"input\":\"patch\"}"}},
+				{"id":"call_lookup_order","type":"function","function":{"name":"lookup","arguments":"{\"query\":\"hello\"}"}}
+			]}}]
+		}`),
+	}
+	llmResponse, err := chatOutbound.TransformResponse(ctx, chatResponse)
+	require.NoError(t, err)
+	responsesResponse, err := responsesInbound.TransformResponse(ctx, llmResponse)
+	require.NoError(t, err)
+	var nonStreaming responsesapi.Response
+	require.NoError(t, json.Unmarshal(responsesResponse.Body, &nonStreaming))
+
+	type orderedCall struct {
+		OutputIndex int
+		Type        string
+		CallID      string
+		Name        string
+		Payload     string
+	}
+	orderedItem := func(outputIndex int, item responsesapi.Item, includePayload bool) orderedCall {
+		payload := ""
+		if includePayload {
+			payload = item.Arguments
+			if item.Input != nil {
+				payload = *item.Input
+			}
+		}
+		return orderedCall{
+			OutputIndex: outputIndex, Type: item.Type, CallID: item.CallID, Name: item.Name, Payload: payload,
+		}
+	}
+	nonStreamingOrder := make([]orderedCall, 0, len(nonStreaming.Output))
+	nonStreamingAddedOrder := make([]orderedCall, 0, len(nonStreaming.Output))
+	for index := range nonStreaming.Output {
+		nonStreamingOrder = append(nonStreamingOrder, orderedItem(index, nonStreaming.Output[index], true))
+		nonStreamingAddedOrder = append(nonStreamingAddedOrder, orderedItem(index, nonStreaming.Output[index], false))
+	}
+
+	streamEvents, streamErr := simulateResponsesChatStream(t, `{
+		"model":"gpt-5.5","stream":true,"input":"look up and patch","tools":[
+			{"type":"custom","name":"apply_patch"},
+			{"type":"function","name":"lookup","parameters":{"type":"object"}}
+		]
+	}`, []map[string]any{
+		responsesChatToolDelta(map[string]any{
+			"index": 0, "id": "call_patch_order", "type": "function",
+			"function": map[string]any{"name": "apply_", "arguments": `{"input":"pa`},
+		}),
+		responsesChatToolDelta(map[string]any{
+			"index": 1, "id": "call_lookup_order", "type": "function",
+			"function": map[string]any{"name": "lookup", "arguments": `{"query":"hello"}`},
+		}),
+		responsesChatToolDelta(map[string]any{
+			"index": 0, "function": map[string]any{"name": "apply_", "arguments": `t`},
+		}),
+		responsesChatToolDelta(map[string]any{
+			"index": 0, "function": map[string]any{"name": "apply_patch", "arguments": `ch"}`},
+		}),
+		{"index": 0, "delta": map[string]any{}, "finish_reason": "tool_calls"},
+	})
+	require.NoError(t, streamErr)
+
+	streamingOrder := make([]orderedCall, 0, len(nonStreamingOrder))
+	streamingDoneOrder := make([]orderedCall, 0, len(nonStreamingOrder))
+	deltaCounts := make(map[int]int)
+	inputDoneCounts := make(map[int]int)
+	inputDonePayloads := make(map[int]string)
+	inputDoneTypes := make(map[int]responsesapi.StreamEventType)
+	inputDoneItemIDs := make(map[int]string)
+	var completed *responsesapi.Response
+	for i := range streamEvents {
+		event := streamEvents[i]
+		switch event.Type {
+		case responsesapi.StreamEventTypeOutputItemAdded:
+			if event.Item != nil {
+				switch event.Item.Type {
+				case "custom_tool_call":
+					require.NotNil(t, event.Item.Input)
+					require.Empty(t, *event.Item.Input)
+					require.Empty(t, event.Item.Arguments)
+				case "function_call":
+					require.Nil(t, event.Item.Input)
+					require.Empty(t, event.Item.Arguments)
+				}
+				streamingOrder = append(streamingOrder, orderedItem(event.OutputIndex, *event.Item, false))
+			}
+		case responsesapi.StreamEventTypeFunctionCallArgumentsDelta,
+			responsesapi.StreamEventTypeCustomToolCallInputDelta:
+			deltaCounts[event.OutputIndex]++
+		case responsesapi.StreamEventTypeFunctionCallArgumentsDone,
+			responsesapi.StreamEventTypeCustomToolCallInputDone:
+			inputDoneCounts[event.OutputIndex]++
+			inputDoneTypes[event.OutputIndex] = event.Type
+			inputDoneItemIDs[event.OutputIndex] = lo.FromPtr(event.ItemID)
+			inputDonePayloads[event.OutputIndex] = event.Arguments
+			if event.Type == responsesapi.StreamEventTypeCustomToolCallInputDone {
+				inputDonePayloads[event.OutputIndex] = event.Input
+			}
+		case responsesapi.StreamEventTypeOutputItemDone:
+			if event.Item != nil {
+				streamingDoneOrder = append(streamingDoneOrder, orderedItem(event.OutputIndex, *event.Item, true))
+			}
+		case responsesapi.StreamEventTypeResponseCompleted:
+			completed = event.Response
+		}
+	}
+	require.Equal(t, nonStreamingAddedOrder, streamingOrder)
+	require.Equal(t, nonStreamingOrder, streamingDoneOrder)
+	for outputIndex := range nonStreamingOrder {
+		require.Positive(t, deltaCounts[outputIndex], "output index %d must emit at least one delta", outputIndex)
+		require.Equal(t, 1, inputDoneCounts[outputIndex], "output index %d must emit exactly one input/arguments done", outputIndex)
+		require.Equal(t, nonStreamingOrder[outputIndex].Payload, inputDonePayloads[outputIndex], "output index %d done payload must match non-streaming output", outputIndex)
+		require.Equal(t, nonStreaming.Output[outputIndex].ID, inputDoneItemIDs[outputIndex], "output index %d done item ID must match", outputIndex)
+		expectedDoneType := responsesapi.StreamEventTypeFunctionCallArgumentsDone
+		if nonStreamingOrder[outputIndex].Type == "custom_tool_call" {
+			expectedDoneType = responsesapi.StreamEventTypeCustomToolCallInputDone
+		}
+		require.Equal(t, expectedDoneType, inputDoneTypes[outputIndex], "output index %d must use type-specific done event", outputIndex)
+	}
+	require.NotNil(t, completed)
+	require.Len(t, completed.Output, len(nonStreaming.Output))
+	completedOrder := make([]orderedCall, 0, len(completed.Output))
+	for outputIndex := range completed.Output {
+		completedOrder = append(completedOrder, orderedItem(outputIndex, completed.Output[outputIndex], true))
+	}
+	require.Equal(t, nonStreamingOrder, completedOrder)
+}
+
+func TestResponsesToChatStream_ToolSearchAndNamespaceFinishWithFinalFragments(t *testing.T) {
+	events, streamErr := simulateResponsesChatStream(t, `{
+		"model":"gpt-5.5","stream":true,"input":"discover and spawn","tools":[
+			{"type":"tool_search","execution":"client","parameters":{"type":"object"}},
+			{"type":"namespace","name":"collaboration","tools":[
+				{"type":"function","name":"spawn_agent","parameters":{"type":"object"}}
+			]}
+		]
+	}`, []map[string]any{
+		responsesChatToolDelta(map[string]any{
+			"index": 0, "id": "call_search_stream", "type": "function",
+			"function": map[string]any{"name": "tool_", "arguments": `{"query":"ag`},
+		}),
+		responsesChatToolDelta(map[string]any{
+			"index": 1, "id": "call_spawn_stream", "type": "function",
+			"function": map[string]any{"name": "collaboration__spawn_", "arguments": `{"task":"re`},
+		}),
+		{
+			"index": 0,
+			"delta": map[string]any{"tool_calls": []any{
+				map[string]any{"index": 0, "function": map[string]any{"name": "tool_search", "arguments": `ents"}`}},
+				map[string]any{"index": 1, "function": map[string]any{"name": "collaboration__spawn_agent", "arguments": `view"}`}},
+			}},
+			"finish_reason": "tool_calls",
+		},
+	})
+	require.NoError(t, streamErr)
+
+	added := make(map[int]responsesapi.Item)
+	deltas := make(map[int]string)
+	donePayloads := make(map[int]string)
+	doneItems := make(map[int]responsesapi.Item)
+	var completed *responsesapi.Response
+	for i := range events {
+		event := events[i]
+		switch event.Type {
+		case responsesapi.StreamEventTypeOutputItemAdded:
+			require.NotNil(t, event.Item)
+			added[event.OutputIndex] = *event.Item
+		case responsesapi.StreamEventTypeFunctionCallArgumentsDelta:
+			deltas[event.OutputIndex] += event.Delta
+		case responsesapi.StreamEventTypeFunctionCallArgumentsDone:
+			donePayloads[event.OutputIndex] = event.Arguments
+		case responsesapi.StreamEventTypeOutputItemDone:
+			require.NotNil(t, event.Item)
+			doneItems[event.OutputIndex] = *event.Item
+		case responsesapi.StreamEventTypeResponseCompleted:
+			completed = event.Response
+		}
+	}
+
+	require.Len(t, added, 2)
+	require.Equal(t, "tool_search_call", added[0].Type)
+	require.Equal(t, "call_search_stream", added[0].ID)
+	require.Equal(t, "call_search_stream", added[0].CallID)
+	require.Equal(t, "client", added[0].Execution)
+	require.JSONEq(t, `{}`, added[0].Arguments)
+	require.Equal(t, "function_call", added[1].Type)
+	require.Equal(t, "call_spawn_stream", added[1].ID)
+	require.Equal(t, "call_spawn_stream", added[1].CallID)
+	require.Equal(t, "spawn_agent", added[1].Name)
+	require.Equal(t, "collaboration", added[1].Namespace)
+	require.Empty(t, added[1].Arguments)
+
+	require.JSONEq(t, `{"query":"agents"}`, deltas[0])
+	require.JSONEq(t, `{"task":"review"}`, deltas[1])
+	require.JSONEq(t, deltas[0], donePayloads[0])
+	require.JSONEq(t, deltas[1], donePayloads[1])
+	require.Len(t, doneItems, 2)
+	require.Equal(t, "tool_search_call", doneItems[0].Type)
+	require.Equal(t, "client", doneItems[0].Execution)
+	require.JSONEq(t, deltas[0], doneItems[0].Arguments)
+	require.Equal(t, "function_call", doneItems[1].Type)
+	require.Equal(t, "spawn_agent", doneItems[1].Name)
+	require.Equal(t, "collaboration", doneItems[1].Namespace)
+	require.JSONEq(t, deltas[1], doneItems[1].Arguments)
+
+	require.NotNil(t, completed)
+	require.Len(t, completed.Output, 2)
+	require.Equal(t, doneItems[0], completed.Output[0])
+	require.Equal(t, doneItems[1], completed.Output[1])
 }
 
 func TestResponsesToChatCustomTool_PreservesJSONLikeRawInput(t *testing.T) {
@@ -1069,6 +1387,183 @@ func TestResponsesToChatTools_UnsupportedNamedChoiceReturnsBadRequest(t *testing
 	require.NoError(t, json.Unmarshal(httpErr.Body, &responseErr))
 	require.Equal(t, "invalid_request_error", responseErr.Error.Type)
 	require.Contains(t, responseErr.Error.Message, "unsupported_tool_choice")
+}
+
+func TestResponsesToChatTools_WarnsWhenRawToolSelectorDegradesToAuto(t *testing.T) {
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":"search",
+		"tools":[{
+			"type":"tool_search",
+			"execution":"client",
+			"parameters":{"type":"object"}
+		}],
+		"tool_choice":{
+			"type":"tool_search",
+			"tools":[{"type":"tool_search","name":"search_docs"}]
+		}
+	}`)})
+	require.NoError(t, err)
+	require.NotNil(t, llmRequest.ProviderExtensions)
+	require.NotNil(t, llmRequest.ProviderExtensions.OpenAIResponses)
+	require.NotNil(t, llmRequest.ProviderExtensions.OpenAIResponses.Request)
+	require.JSONEq(t, `{
+		"type":"tool_search",
+		"tools":[{"type":"tool_search","name":"search_docs"}]
+	}`, string(llmRequest.ProviderExtensions.OpenAIResponses.Request.RawToolChoice))
+
+	chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	var converted Request
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+	require.Nil(t, converted.ToolChoice)
+	require.Len(t, converted.Tools, 1)
+	require.Equal(t, "tool_search", converted.Tools[0].Function.Name)
+	warnings, ok := chatRequest.TransformerMetadata[responsesChatToolWarningsMetadataKey].([]string)
+	require.True(t, ok)
+	require.Contains(t, warnings,
+		"unsupported_tool_choice_degraded: tool_search selector cannot be represented in Chat Completions; using auto")
+}
+
+func TestResponsesToChatTools_DegradesEveryUnrepresentedRawSelector(t *testing.T) {
+	tests := []struct {
+		name            string
+		tools           string
+		toolChoice      string
+		selectorType    string
+		expectedToolLen int
+	}{
+		{
+			name: "type only web search", tools: `[{"type":"web_search"}]`,
+			toolChoice: `{"type":"web_search"}`, selectorType: "web_search",
+		},
+		{
+			name: "future selector policy", tools: `[]`,
+			toolChoice: `{"type":"future_selector","policy":"strict"}`, selectorType: "future_selector",
+		},
+		{
+			name:       "mcp selector identity",
+			tools:      `[{"type":"mcp","server_label":"docs","server_url":"https://example.com/mcp"}]`,
+			toolChoice: `{"type":"mcp","server_label":"docs","name":"search"}`, selectorType: "mcp",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			responsesInbound := responsesapi.NewInboundTransformer()
+			body := []byte(`{"model":"gpt-5.5","input":"use tools","tools":` + tc.tools + `,"tool_choice":` + tc.toolChoice + `}`)
+			llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: body})
+			require.NoError(t, err)
+
+			chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+			require.NoError(t, err)
+			chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+			require.NoError(t, err)
+
+			var converted Request
+			require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+			require.Nil(t, converted.ToolChoice)
+			require.Len(t, converted.Tools, tc.expectedToolLen)
+			warnings, ok := chatRequest.TransformerMetadata[responsesChatToolWarningsMetadataKey].([]string)
+			require.True(t, ok)
+			require.Contains(t, warnings,
+				"unsupported_tool_choice_degraded: "+tc.selectorType+" selector cannot be represented in Chat Completions; using auto")
+		})
+	}
+}
+
+func TestResponsesToChatTools_DoesNotDegradeRepresentedNamedSelector(t *testing.T) {
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":"lookup",
+		"tools":[{"type":"function","name":"lookup","parameters":{"type":"object"}}],
+		"tool_choice":{"type":"function","name":"lookup"}
+	}`)})
+	require.NoError(t, err)
+	if llmRequest.ProviderExtensions != nil && llmRequest.ProviderExtensions.OpenAIResponses != nil &&
+		llmRequest.ProviderExtensions.OpenAIResponses.Request != nil {
+		require.Empty(t, llmRequest.ProviderExtensions.OpenAIResponses.Request.RawToolChoice)
+	}
+
+	chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	var converted Request
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+	require.NotNil(t, converted.ToolChoice)
+	require.NotNil(t, converted.ToolChoice.NamedToolChoice)
+	require.Equal(t, "lookup", converted.ToolChoice.NamedToolChoice.Function.Name)
+	warnings, _ := chatRequest.TransformerMetadata[responsesChatToolWarningsMetadataKey].([]string)
+	for _, warning := range warnings {
+		require.NotContains(t, warning, "unsupported_tool_choice_degraded")
+	}
+}
+
+func TestResponsesToChatTools_StaleRawSelectorDoesNotOverrideCurrentChoice(t *testing.T) {
+	tests := []struct {
+		name         string
+		currentMode  *string
+		clear        bool
+		expectedMode *string
+	}{
+		{name: "cleared selector", clear: true},
+		{name: "replaced with none", currentMode: lo.ToPtr("none"), expectedMode: lo.ToPtr("none")},
+		{name: "named replaced with mode", currentMode: lo.ToPtr("auto"), expectedMode: lo.ToPtr("auto")},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			responsesInbound := responsesapi.NewInboundTransformer()
+			llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
+				"model":"gpt-5.5",
+				"input":"lookup",
+				"tools":[
+					{"type":"function","name":"lookup","parameters":{"type":"object"}},
+					{"type":"mcp","server_label":"docs","server_url":"https://example.com/mcp"}
+				],
+				"tool_choice":{"type":"mcp","server_label":"docs","name":"search"}
+			}`)})
+			require.NoError(t, err)
+			require.NotNil(t, llmRequest.ProviderExtensions)
+			require.NotNil(t, llmRequest.ProviderExtensions.OpenAIResponses)
+			require.NotNil(t, llmRequest.ProviderExtensions.OpenAIResponses.Request)
+			require.NotEmpty(t, llmRequest.ProviderExtensions.OpenAIResponses.Request.RawToolChoice)
+
+			if tc.clear {
+				llmRequest.ToolChoice = nil
+			} else {
+				llmRequest.ToolChoice = &llm.ToolChoice{ToolChoice: tc.currentMode}
+			}
+			chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+			require.NoError(t, err)
+			chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+			require.NoError(t, err)
+
+			var converted Request
+			require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+			if tc.expectedMode == nil {
+				require.Nil(t, converted.ToolChoice)
+			} else {
+				require.NotNil(t, converted.ToolChoice)
+				require.Equal(t, *tc.expectedMode, lo.FromPtr(converted.ToolChoice.ToolChoice))
+			}
+			warnings, _ := chatRequest.TransformerMetadata[responsesChatToolWarningsMetadataKey].([]string)
+			for _, warning := range warnings {
+				require.NotContains(t, warning, "unsupported_tool_choice_degraded")
+			}
+		})
+	}
 }
 
 func TestChatTools_FiltersEstablishedNonChatToolsWithoutCompatibilityWarning(t *testing.T) {

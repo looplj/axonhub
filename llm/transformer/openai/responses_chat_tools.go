@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 const (
@@ -21,6 +22,7 @@ const (
 	responsesChatToolCustom    responsesChatToolKind = "custom"
 	responsesChatToolSearch    responsesChatToolKind = "tool_search"
 	responsesChatToolNamespace responsesChatToolKind = "namespace"
+	responsesChatToolClient    responsesChatToolKind = "client_tool"
 )
 
 type responsesChatToolMapping struct {
@@ -28,6 +30,7 @@ type responsesChatToolMapping struct {
 	ChatName    string
 	Name        string
 	Namespace   string
+	SourceType  string
 	Execution   string
 	HistoryOnly bool
 }
@@ -56,7 +59,7 @@ func newResponsesChatToolAdapter(tools []llm.Tool) *responsesChatToolAdapter {
 		emittedPlain:      make(map[string]struct{}),
 	}
 	for _, tool := range tools {
-		if tool.Type == llm.ToolTypeFunction && tool.Function.Namespace == "" {
+		if tool.Type == llm.ToolTypeFunction && tool.Function.Namespace == "" && tool.ResponsesSourceType == "" {
 			if tool.Function.Name == "" {
 				a.addWarning("unsupported_tool_type: dropped function tool without a name")
 				continue
@@ -97,6 +100,9 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 				continue
 			}
 			tool.Function = normalizedFunction
+			if tool.Function.DeferLoading {
+				a.addWarning("defer_loading_degraded: function tool %q is immediately visible after conversion to Chat Completions", tool.Function.Name)
+			}
 			signature, err := functionDefinitionSignature(tool.Function)
 			if err != nil {
 				if tool.Function.Namespace != "" {
@@ -110,12 +116,27 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 				identity := mappingIdentity(responsesChatToolNamespace, name, tool.Function.Namespace)
 				mapping := responsesChatToolMapping{
 					Kind: responsesChatToolNamespace, Name: name, Namespace: tool.Function.Namespace,
+					SourceType: tool.ResponsesSourceType,
 				}
 				chatName, duplicate := a.registerMapping(identity, tool.Function.Name, "axonhub_namespace_tool", signature, mapping)
 				if duplicate {
 					continue
 				}
 				chatTool.Function.Name = chatName
+				if tool.ResponsesSourceType != "" {
+					a.addWarning("client_tool_output_degraded: %s tool %q returns as a function_call after Chat conversion", tool.ResponsesSourceType, name)
+				}
+			} else if tool.ResponsesSourceType != "" {
+				identity := clientToolIdentity(tool.ResponsesSourceType, tool.Function.Name)
+				mapping := responsesChatToolMapping{
+					Kind: responsesChatToolClient, Name: tool.Function.Name, SourceType: tool.ResponsesSourceType,
+				}
+				chatName, duplicate := a.registerMapping(identity, tool.Function.Name, "axonhub_client_tool", signature, mapping)
+				if duplicate {
+					continue
+				}
+				chatTool.Function.Name = chatName
+				a.addWarning("client_tool_output_degraded: %s tool %q returns as a function_call after Chat conversion", tool.ResponsesSourceType, tool.Function.Name)
 			} else {
 				if selected, ok := a.plainDefinitions[tool.Function.Name]; !ok || selected != signature {
 					continue
@@ -309,25 +330,7 @@ func (a *responsesChatToolAdapter) convertMessage(message llm.Message, reasoning
 // accepted as assistant history by Chat Completions providers. Non-assistant
 // roles use different validation rules and pass through unchanged.
 func hasChatAssistantPayload(message Message) bool {
-	if message.Role != "assistant" {
-		return true
-	}
-	if len(message.ToolCalls) > 0 ||
-		(message.ReasoningContent != nil && strings.TrimSpace(*message.ReasoningContent) != "") ||
-		(message.Reasoning != nil && strings.TrimSpace(*message.Reasoning) != "") ||
-		strings.TrimSpace(message.Refusal) != "" || message.Audio != nil {
-		return true
-	}
-	if message.Content.Content != nil && strings.TrimSpace(*message.Content.Content) != "" {
-		return true
-	}
-	for _, part := range message.Content.MultipleContent {
-		if (part.Text != nil && strings.TrimSpace(*part.Text) != "") ||
-			part.ImageURL != nil || part.VideoURL != nil || part.InputAudio != nil {
-			return true
-		}
-	}
-	return false
+	return shared.HasChatCompatibleAssistantPayload(message.ToLLMMessage())
 }
 
 // chatFunctionCall builds a Chat function call while preserving common call metadata.
@@ -345,6 +348,9 @@ func (a *responsesChatToolAdapter) convertToolChoice(choice *llm.ToolChoice) *To
 	}
 	result := &ToolChoice{ToolChoice: choice.ToolChoice}
 	if choice.NamedToolChoice == nil {
+		if choice.ToolChoice == nil {
+			return nil
+		}
 		return result
 	}
 	name := choice.NamedToolChoice.Function.Name
@@ -358,16 +364,25 @@ func (a *responsesChatToolAdapter) convertToolChoice(choice *llm.ToolChoice) *To
 		}
 		name = mapping.ChatName
 	case choice.NamedToolChoice.Type == llm.ToolTypeFunction:
-		if mapping, ok := a.findNamespaceToolChoiceMapping(name); ok {
-			if _, plain := a.emittedPlain[name]; plain && mapping.ChatName != name {
-				a.setError(fmt.Errorf("tool_name_conflict: function tool choice %q is ambiguous between plain and namespace tools", name))
-				return nil
-			}
+		mapping, namespace := a.findNamespaceToolChoiceMapping(name)
+		_, plain := a.emittedPlain[name]
+		if plain && namespace && mapping.ChatName != name {
+			a.setError(fmt.Errorf("tool_name_conflict: function tool choice %q is ambiguous between plain and namespace tools", name))
+			return nil
+		}
+		if namespace {
 			name = mapping.ChatName
+		} else if !plain {
+			a.setError(fmt.Errorf("unsupported_tool_choice: named tool %q is unavailable after Responses-to-Chat conversion", name))
+			return nil
 		}
 	case choice.NamedToolChoice.Type != "" && choice.NamedToolChoice.Type != llm.ToolTypeFunction:
-		a.setError(fmt.Errorf("unsupported_tool_choice: named %s tool %q cannot be translated to Chat Completions", choice.NamedToolChoice.Type, name))
-		return nil
+		mapping, ok := a.findSourceTypeToolChoiceMapping(choice.NamedToolChoice.Type, name)
+		if !ok {
+			a.setError(fmt.Errorf("unsupported_tool_choice: named %s tool %q cannot be translated to Chat Completions", choice.NamedToolChoice.Type, name))
+			return nil
+		}
+		name = mapping.ChatName
 	}
 	if _, ok := a.availableNames[name]; !ok {
 		a.setError(fmt.Errorf("unsupported_tool_choice: named tool %q is unavailable after Responses-to-Chat conversion", choice.NamedToolChoice.Function.Name))
@@ -375,6 +390,262 @@ func (a *responsesChatToolAdapter) convertToolChoice(choice *llm.ToolChoice) *To
 	}
 	result.NamedToolChoice = &NamedToolChoice{Type: llm.ToolTypeFunction, Function: ToolFunction{Name: name}}
 	return result
+}
+
+// degradeUnsupportedRawToolSelector detects a Responses selector whose
+// semantics cannot be inferred safely, records the loss, and asks the caller
+// to use Chat Completions' default automatic selection.
+func (a *responsesChatToolAdapter) degradeUnsupportedRawToolSelector(request *llm.Request) bool {
+	if request == nil || request.ProviderExtensions == nil || request.ProviderExtensions.OpenAIResponses == nil ||
+		request.ProviderExtensions.OpenAIResponses.Request == nil {
+		return false
+	}
+
+	rawChoice := request.ProviderExtensions.OpenAIResponses.Request.RawToolChoice
+	if len(rawChoice) == 0 {
+		return false
+	}
+	if !rawChatToolChoiceMatchesCurrent(rawChoice, request.ToolChoice) {
+		return false
+	}
+	selectorType, unsupported := unsupportedRawChatToolSelector(rawChoice)
+	if !unsupported {
+		return false
+	}
+
+	if selectorType == "" {
+		selectorType = "unknown"
+	}
+	a.addWarning(
+		"unsupported_tool_choice_degraded: %s selector cannot be represented in Chat Completions; using auto",
+		selectorType,
+	)
+	return true
+}
+
+// rawChatToolChoiceMatchesCurrent prevents a preserved raw selector from
+// overriding a selector that an intermediate request transform cleared or
+// replaced after the Responses request was decoded.
+func rawChatToolChoiceMatchesCurrent(rawChoice json.RawMessage, current *llm.ToolChoice) bool {
+	currentSignature, ok := llmToolChoiceSignature(current)
+	if !ok {
+		return false
+	}
+	rawSignature, ok := rawChatToolChoiceSemanticSignature(rawChoice)
+	return ok && rawSignature == currentSignature
+}
+
+func llmToolChoiceSignature(choice *llm.ToolChoice) (string, bool) {
+	if choice == nil {
+		return "", false
+	}
+	if choice.AllowedToolsSet {
+		tools := choice.AllowedTools
+		if tools == nil {
+			tools = []llm.ToolOption{}
+		}
+		data, err := json.Marshal(struct {
+			Mode  *string          `json:"mode,omitempty"`
+			Tools []llm.ToolOption `json:"tools"`
+		}{Mode: choice.ToolChoice, Tools: tools})
+		return "allowed:" + string(data), err == nil
+	}
+	if choice.ToolChoice != nil {
+		return "mode:" + *choice.ToolChoice, true
+	}
+	if choice.NamedToolChoice != nil {
+		return "named:" + choice.NamedToolChoice.Type + ":" + choice.NamedToolChoice.Function.Name, true
+	}
+	return "empty", true
+}
+
+func rawChatToolChoiceSemanticSignature(rawChoice json.RawMessage) (string, bool) {
+	var mode string
+	if json.Unmarshal(rawChoice, &mode) == nil {
+		return "mode:" + mode, true
+	}
+
+	var selector struct {
+		Type  *string         `json:"type"`
+		Name  *string         `json:"name"`
+		Mode  *string         `json:"mode"`
+		Tools json.RawMessage `json:"tools"`
+	}
+	if json.Unmarshal(rawChoice, &selector) != nil {
+		return "", false
+	}
+	if selector.Type != nil && *selector.Type == "allowed_tools" {
+		var tools []llm.ToolOption
+		if len(selector.Tools) > 0 && string(selector.Tools) != "null" && json.Unmarshal(selector.Tools, &tools) != nil {
+			return "", false
+		}
+		return llmToolChoiceSignature(&llm.ToolChoice{
+			ToolChoice: selector.Mode, AllowedTools: tools, AllowedToolsSet: true,
+		})
+	}
+	if selector.Mode != nil {
+		return "mode:" + *selector.Mode, true
+	}
+	if selector.Type != nil && selector.Name != nil {
+		return "named:" + *selector.Type + ":" + *selector.Name, true
+	}
+	return "empty", true
+}
+
+// unsupportedRawChatToolSelector protects callers that may carry a raw
+// extension created by an older transformer: fully represented string,
+// named, and allowed-tools selectors must retain their normal Chat mapping.
+func unsupportedRawChatToolSelector(rawChoice json.RawMessage) (string, bool) {
+	var mode string
+	if json.Unmarshal(rawChoice, &mode) == nil {
+		return "", false
+	}
+
+	var selector map[string]json.RawMessage
+	if json.Unmarshal(rawChoice, &selector) != nil || selector == nil {
+		return "unknown", true
+	}
+
+	selectorType := ""
+	if rawType, ok := selector["type"]; ok {
+		_ = json.Unmarshal(rawType, &selectorType)
+	}
+
+	if rawChatSelectorHasOnlyFields(selector, "type", "name") {
+		_, hasType := selector["type"]
+		_, hasName := selector["name"]
+		if hasType && hasName {
+			return selectorType, false
+		}
+	}
+	if rawChatSelectorHasOnlyFields(selector, "mode") {
+		if _, hasMode := selector["mode"]; hasMode {
+			return selectorType, false
+		}
+	}
+	if selectorType == "allowed_tools" && rawChatAllowedToolsSelectorFullyRepresented(selector) {
+		return selectorType, false
+	}
+
+	return selectorType, true
+}
+
+func rawChatAllowedToolsSelectorFullyRepresented(selector map[string]json.RawMessage) bool {
+	if !rawChatSelectorHasOnlyFields(selector, "type", "mode", "tools") {
+		return false
+	}
+	rawTools, ok := selector["tools"]
+	if !ok {
+		return false
+	}
+	var tools []map[string]json.RawMessage
+	if json.Unmarshal(rawTools, &tools) != nil || tools == nil {
+		return false
+	}
+	for _, tool := range tools {
+		if !rawChatSelectorHasOnlyFields(tool, "type", "name") {
+			return false
+		}
+		if _, hasType := tool["type"]; !hasType {
+			return false
+		}
+		if _, hasName := tool["name"]; !hasName {
+			return false
+		}
+	}
+	return true
+}
+
+func rawChatSelectorHasOnlyFields(object map[string]json.RawMessage, allowed ...string) bool {
+	if object == nil {
+		return false
+	}
+	allowedSet := make(map[string]struct{}, len(allowed))
+	for _, field := range allowed {
+		allowedSet[field] = struct{}{}
+	}
+	for field := range object {
+		if _, ok := allowedSet[field]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// filterAllowedTools applies a Responses allowed_tools constraint after all
+// identities have been mapped, leaving history mappings intact.
+func (a *responsesChatToolAdapter) filterAllowedTools(tools []Tool, choice *llm.ToolChoice) []Tool {
+	if choice == nil || !choice.AllowedToolsSet {
+		return tools
+	}
+
+	allowedNames := make(map[string]struct{}, len(choice.AllowedTools))
+	for _, option := range choice.AllowedTools {
+		names, ok := a.resolveAllowedTool(option)
+		if !ok {
+			a.addWarning("unsupported_allowed_tool: dropped unavailable %s tool %q from allowed_tools", option.Type, option.Name)
+			continue
+		}
+		for _, name := range names {
+			allowedNames[name] = struct{}{}
+		}
+	}
+
+	filtered := make([]Tool, 0, len(allowedNames))
+	a.availableNames = make(map[string]struct{}, len(allowedNames))
+	for _, tool := range tools {
+		if _, ok := allowedNames[tool.Function.Name]; !ok {
+			continue
+		}
+		filtered = append(filtered, tool)
+		a.availableNames[tool.Function.Name] = struct{}{}
+	}
+	for chatName, mapping := range a.byChatName {
+		_, active := allowedNames[chatName]
+		mapping.HistoryOnly = !active
+		a.byChatName[chatName] = mapping
+		for identity, candidate := range a.byIdentity {
+			if candidate.ChatName == chatName {
+				candidate.HistoryOnly = !active
+				a.byIdentity[identity] = candidate
+			}
+		}
+	}
+	return filtered
+}
+
+// resolveAllowedTool maps one type-aware Responses identity to emitted Chat names.
+func (a *responsesChatToolAdapter) resolveAllowedTool(option llm.ToolOption) ([]string, bool) {
+	if option.Type == "namespace" {
+		matched := make([]string, 0)
+		for _, mapping := range a.byIdentity {
+			if mapping.Kind == responsesChatToolNamespace && mapping.Namespace == option.Name {
+				matched = append(matched, mapping.ChatName)
+			}
+		}
+		if len(matched) > 0 {
+			sort.Strings(matched)
+			return matched, true
+		}
+	}
+	kind := choiceMappingKind(option.Type)
+	if kind != "" {
+		mapping, ok := a.findToolChoiceMapping(kind, option.Name)
+		return []string{mapping.ChatName}, ok
+	}
+	if option.Type == llm.ToolTypeFunction {
+		mapping, namespace := a.findNamespaceToolChoiceMapping(option.Name)
+		_, plain := a.emittedPlain[option.Name]
+		if plain == namespace {
+			return nil, false
+		}
+		if namespace {
+			return []string{mapping.ChatName}, true
+		}
+		return []string{option.Name}, true
+	}
+	mapping, ok := a.findSourceTypeToolChoiceMapping(option.Type, option.Name)
+	return []string{mapping.ChatName}, ok
 }
 
 // reserveName returns a collision-free Chat function name.
@@ -466,6 +737,25 @@ func (a *responsesChatToolAdapter) findNamespaceToolChoiceMapping(name string) (
 	return found, matched
 }
 
+// findSourceTypeToolChoiceMapping resolves a promoted future client tool by
+// its original Responses type and name.
+func (a *responsesChatToolAdapter) findSourceTypeToolChoiceMapping(sourceType, name string) (responsesChatToolMapping, bool) {
+	var found responsesChatToolMapping
+	matched := false
+	for _, mapping := range a.byIdentity {
+		if mapping.SourceType != sourceType || mapping.Name != name {
+			continue
+		}
+		if matched {
+			a.setError(fmt.Errorf("tool_name_conflict: %s tool choice %q is ambiguous", sourceType, name))
+			return responsesChatToolMapping{}, false
+		}
+		found = mapping
+		matched = true
+	}
+	return found, matched
+}
+
 // specialCallID selects the protocol-specific call ID and reports inconsistencies.
 func (a *responsesChatToolAdapter) specialCallID(call llm.ToolCall, specialized string) string {
 	if specialized != "" {
@@ -492,6 +782,10 @@ func (a *responsesChatToolAdapter) setError(err error) {
 // mappingIdentity returns the stable internal key for a Responses tool identity.
 func mappingIdentity(kind responsesChatToolKind, name, namespace string) string {
 	return string(kind) + "\x00" + namespace + "\x00" + name
+}
+
+func clientToolIdentity(sourceType, name string) string {
+	return mappingIdentity(responsesChatToolClient, name, sourceType)
 }
 
 // choiceMappingKind maps a Responses tool-choice type to its adapter category.
@@ -620,6 +914,7 @@ type responsesChatToolStreamRestorer struct {
 	catalog  map[string]struct{}
 	byIndex  map[[2]int]responsesChatToolMapping
 	pending  map[[2]int]llm.ToolCall
+	ready    map[[2]int]llm.ToolCall
 	plain    map[[2]int]struct{}
 }
 
@@ -633,6 +928,7 @@ func newResponsesChatToolStreamRestorer(
 		catalog:  map[string]struct{}{},
 		byIndex:  map[[2]int]responsesChatToolMapping{},
 		pending:  map[[2]int]llm.ToolCall{},
+		ready:    map[[2]int]llm.ToolCall{},
 		plain:    map[[2]int]struct{}{},
 	}
 	for _, catalog := range catalogs {
@@ -650,29 +946,40 @@ func (r *responsesChatToolStreamRestorer) restore(response *llm.Response) {
 	}
 	for i := range response.Choices {
 		choice := &response.Choices[i]
+		abnormalFinish := choice.FinishReason != nil && isAbnormalResponsesChatFinishReason(*choice.FinishReason)
 		message := choice.Delta
 		if message == nil {
 			message = choice.Message
 		}
 		if message != nil {
-			restored := make([]llm.ToolCall, 0, len(message.ToolCalls))
-			for j := range message.ToolCalls {
-				call := message.ToolCalls[j]
+			incoming := message.ToolCalls
+			message.ToolCalls = make([]llm.ToolCall, 0, len(incoming))
+			for j := range incoming {
+				call := incoming[j]
 				key := [2]int{choice.Index, call.Index}
+				if buffered, ok := r.ready[key]; ok {
+					name := buffered.Function.Name
+					call = mergeResponsesChatToolCallFragments(buffered, call)
+					call.Function.Name = name
+					r.ready[key] = call
+					continue
+				}
 				if mapping, ok := r.byIndex[key]; ok {
 					call.Function.Name = mapping.ChatName
-					restored = append(restored, call)
+					message.ToolCalls = append(message.ToolCalls, call)
 					continue
 				}
 				if _, ok := r.plain[key]; ok {
-					restored = append(restored, call)
+					message.ToolCalls = append(message.ToolCalls, call)
 					continue
 				}
 
 				currentName := call.Function.Name
 				if pending, ok := r.pending[key]; ok {
 					call = mergeResponsesChatToolCallFragments(pending, call)
-					if !r.isKnownName(call.Function.Name) && r.isKnownName(currentName) {
+					mergedNameValid := r.isKnownName(call.Function.Name) || r.isPotentialKnownName(call.Function.Name)
+					currentNameValid := currentName != "" && (r.isKnownName(currentName) || r.isPotentialKnownName(currentName))
+					if !mergedNameValid && currentNameValid {
 						call.Function.Name = currentName
 					}
 				}
@@ -684,13 +991,13 @@ func (r *responsesChatToolStreamRestorer) restore(response *llm.Response) {
 					}
 					r.byIndex[key] = mapping
 					delete(r.pending, key)
-					restored = append(restored, call)
+					r.ready[key] = call
 					continue
 				}
 				if _, exact := r.catalog[call.Function.Name]; exact && call.ID != "" && !potentialLongerName {
 					delete(r.pending, key)
 					r.plain[key] = struct{}{}
-					restored = append(restored, call)
+					r.ready[key] = call
 					continue
 				}
 				if call.ID == "" || potentialLongerName {
@@ -699,38 +1006,85 @@ func (r *responsesChatToolStreamRestorer) restore(response *llm.Response) {
 				}
 				delete(r.pending, key)
 				r.plain[key] = struct{}{}
-				restored = append(restored, call)
+				r.ready[key] = call
 			}
-			message.ToolCalls = restored
+			if !abnormalFinish {
+				r.releaseReady(choice.Index, message, false)
+			}
 		}
 
 		if choice.FinishReason != nil {
-			if message == nil {
-				message = &llm.Message{}
-				choice.Delta = message
-			}
-			pendingIndexes := make([]int, 0)
-			for key := range r.pending {
-				if key[0] == choice.Index {
-					pendingIndexes = append(pendingIndexes, key[1])
+			if abnormalFinish {
+				for key := range r.pending {
+					if key[0] == choice.Index {
+						delete(r.pending, key)
+					}
 				}
-			}
-			sort.Ints(pendingIndexes)
-			for _, index := range pendingIndexes {
-				key := [2]int{choice.Index, index}
-				call := r.pending[key]
-				if mapping, ok := r.mappings[call.Function.Name]; ok && !mapping.HistoryOnly {
-					r.byIndex[key] = mapping
-				} else {
-					r.plain[key] = struct{}{}
+				for key := range r.ready {
+					if key[0] == choice.Index {
+						delete(r.ready, key)
+					}
 				}
-				message.ToolCalls = append(message.ToolCalls, call)
-				delete(r.pending, key)
+			} else {
+				if message == nil {
+					message = &llm.Message{}
+					choice.Delta = message
+				}
+				for key := range r.pending {
+					if key[0] == choice.Index {
+						call := r.pending[key]
+						if mapping, ok := r.mappings[call.Function.Name]; ok && !mapping.HistoryOnly {
+							r.byIndex[key] = mapping
+						} else {
+							r.plain[key] = struct{}{}
+						}
+						r.ready[key] = call
+						delete(r.pending, key)
+					}
+				}
+				r.releaseReady(choice.Index, message, true)
 			}
 		}
 		if message != nil {
 			restoreResponsesChatMessage(message, r.mappings, false)
 		}
+	}
+}
+
+func isAbnormalResponsesChatFinishReason(reason string) bool {
+	switch reason {
+	case "error", "length", "content_filter", "cancelled", "canceled":
+		return true
+	default:
+		return false
+	}
+}
+
+// releaseReady starts observed calls in ascending index order. A provider that
+// first introduces a lower index after a higher index was already released
+// cannot be reordered without buffering every tool call until stream finish.
+func (r *responsesChatToolStreamRestorer) releaseReady(choiceIndex int, message *llm.Message, force bool) {
+	minPending := 0
+	hasPending := false
+	for key := range r.pending {
+		if key[0] != choiceIndex || hasPending && key[1] >= minPending {
+			continue
+		}
+		minPending = key[1]
+		hasPending = true
+	}
+
+	readyIndexes := make([]int, 0)
+	for key := range r.ready {
+		if key[0] == choiceIndex && (force || !hasPending || key[1] < minPending) {
+			readyIndexes = append(readyIndexes, key[1])
+		}
+	}
+	sort.Ints(readyIndexes)
+	for _, index := range readyIndexes {
+		key := [2]int{choiceIndex, index}
+		message.ToolCalls = append(message.ToolCalls, r.ready[key])
+		delete(r.ready, key)
 	}
 }
 
@@ -815,6 +1169,8 @@ func restoreResponsesChatMessage(message *llm.Message, mappings map[string]respo
 		case responsesChatToolNamespace:
 			call.Function.Name = mapping.Name
 			call.Function.Namespace = mapping.Namespace
+		case responsesChatToolClient:
+			call.Function.Name = mapping.Name
 		}
 	}
 }

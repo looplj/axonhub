@@ -194,6 +194,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("chat request is nil")
 	}
 
+	requestCopy := *llmReq
+	requestCopy.TransformerMetadata = maps.Clone(llmReq.TransformerMetadata)
+	llmReq = &requestCopy
+
 	originalRequestType := llmReq.RequestType
 	isImageRequest := originalRequestType == llm.RequestTypeImage
 
@@ -222,9 +226,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	apiKey := t.config.APIKeyProvider.Get(ctx)
 
 	var tools []Tool
+	requestExt := openAIResponsesRequestExtensions(llmReq)
+	replayRawInput := rawInputReplayMatchesCurrent(requestExt, llmReq.Messages, llmReq.Tools)
 	// Convert tools to Responses API format
 	for _, item := range llmReq.Tools {
-		if item.ResponsesOrigin != "" {
+		if !responsesOriginToolEmitsTopLevel(item, replayRawInput) {
 			continue
 		}
 		switch item.Type {
@@ -264,11 +270,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			continue
 		}
 	}
+	payloadMessages, err := synchronizeToolSearchOutputMessages(llmReq.Messages, llmReq.Tools, requestExt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to synchronize tool search output definitions: %w", err)
+	}
 
 	payload := Request{
 		Model:                llmReq.Model,
-		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions),
-		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
+		Input:                convertInputFromMessages(payloadMessages, llmReq.TransformOptions),
+		Instructions:         convertInstructionsFromMessages(payloadMessages),
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,
 		Stream:               llmReq.Stream,

@@ -215,7 +215,7 @@ type ToolChoiceAlias ToolChoice
 func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 	mode, err := xjson.To[string](data)
 	if err == nil {
-		t.Mode = &mode
+		*t = ToolChoice{Mode: &mode}
 		return nil
 	}
 
@@ -229,6 +229,22 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 }
 
 func (t *ToolChoice) MarshalJSON() ([]byte, error) {
+	if t.Type != nil && *t.Type == "allowed_tools" {
+		tools := t.Tools
+		if tools == nil {
+			tools = []ToolOption{}
+		}
+		return json.Marshal(&struct {
+			Mode  *string      `json:"mode,omitempty"`
+			Type  *string      `json:"type"`
+			Tools []ToolOption `json:"tools"`
+		}{
+			Mode:  t.Mode,
+			Type:  t.Type,
+			Tools: tools,
+		})
+	}
+
 	if t.Mode != nil && t.Type == nil && t.Name == nil && len(t.Tools) == 0 {
 		return json.Marshal(*t.Mode)
 	}
