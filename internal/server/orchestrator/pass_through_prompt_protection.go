@@ -111,28 +111,30 @@ func patchPassThroughPromptField(
 	return nextBody, true, nil
 }
 
-// patchPassThroughPromptJSONField mirrors Gemini's map unmarshal/marshal path
-// before replacement, so tool-scope rules cover functionResponse.response too.
+// patchPassThroughPromptJSONField applies tool-scope masks to string leaves in
+// Gemini's structured function-response object without changing its keys or numbers.
 func patchPassThroughPromptJSONField(
 	body []byte,
 	field rawPromptTextField,
 	value gjson.Result,
 	rules []*ent.PromptProtectionRule,
 ) ([]byte, bool, error) {
-	canonical, err := canonicalPromptProtectionJSON(value.Raw)
+	structured, err := decodePromptProtectionJSON(value.Raw)
 	if err != nil {
-		return nil, false, fmt.Errorf("normalize protected JSON at %q: %w", field.path, err)
+		return nil, false, fmt.Errorf("decode protected JSON at %q: %w", field.path, err)
 	}
 
-	replacement, changed := replacePassThroughPromptText(string(canonical), field.role, rules)
+	structured, changed := maskPromptProtectionJSONStrings(structured, field.role, rules)
 	if !changed {
 		return body, false, nil
 	}
-	if !json.Valid([]byte(replacement)) {
-		return nil, false, fmt.Errorf("protected JSON at %q is no longer valid", field.path)
+
+	replacement, err := json.Marshal(structured)
+	if err != nil {
+		return nil, false, fmt.Errorf("marshal protected JSON at %q: %w", field.path, err)
 	}
 
-	nextBody, err := sjson.SetRawBytes(body, field.path, []byte(replacement))
+	nextBody, err := sjson.SetRawBytes(body, field.path, replacement)
 	if err != nil {
 		return nil, false, fmt.Errorf("replace protected JSON at %q: %w", field.path, err)
 	}
@@ -140,15 +142,49 @@ func patchPassThroughPromptJSONField(
 	return nextBody, true, nil
 }
 
-// canonicalPromptProtectionJSON produces the same compact map JSON created by
-// Gemini inbound conversion for a structured function response.
-func canonicalPromptProtectionJSON(raw string) ([]byte, error) {
-	var value map[string]any
-	if err := json.Unmarshal([]byte(raw), &value); err != nil {
+// decodePromptProtectionJSON keeps JSON number tokens exact before recursively
+// masking a Gemini function-response object.
+func decodePromptProtectionJSON(raw string) (any, error) {
+	decoder := json.NewDecoder(strings.NewReader(raw))
+	decoder.UseNumber()
+
+	var value any
+	if err := decoder.Decode(&value); err != nil {
 		return nil, err
 	}
 
-	return json.Marshal(value)
+	return value, nil
+}
+
+// maskPromptProtectionJSONStrings recursively masks only string values, so a
+// rule cannot alter JSON property names or numeric function-response data.
+func maskPromptProtectionJSONStrings(value any, role string, rules []*ent.PromptProtectionRule) (any, bool) {
+	switch typedValue := value.(type) {
+	case string:
+		replacement, changed := replacePassThroughPromptText(typedValue, role, rules)
+
+		return replacement, changed
+	case []any:
+		changed := false
+		for i, item := range typedValue {
+			replacement, matched := maskPromptProtectionJSONStrings(item, role, rules)
+			typedValue[i] = replacement
+			changed = matched || changed
+		}
+
+		return typedValue, changed
+	case map[string]any:
+		changed := false
+		for key, item := range typedValue {
+			replacement, matched := maskPromptProtectionJSONStrings(item, role, rules)
+			typedValue[key] = replacement
+			changed = matched || changed
+		}
+
+		return typedValue, changed
+	default:
+		return value, false
+	}
 }
 
 // replacePassThroughPromptText applies the same ordered mask rules used by the
@@ -187,7 +223,7 @@ func rawPromptTextFields(body []byte, apiFormat llm.APIFormat) ([]rawPromptTextF
 	switch apiFormat {
 	case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOllamaChat:
 		return openAIChatPromptTextFields(body), nil
-	case llm.APIFormatOpenAIResponse:
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact:
 		return openAIResponsesPromptTextFields(body), nil
 	case llm.APIFormatAnthropicMessage:
 		return anthropicPromptTextFields(body), nil
