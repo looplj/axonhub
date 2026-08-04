@@ -15,11 +15,12 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-// rawPromptTextField identifies a string in an API-native request body and its
-// unified message role, so prompt-protection scopes retain their normal meaning.
+// rawPromptTextField identifies a scalar string or structured JSON value in an
+// API-native request body and its unified message role.
 type rawPromptTextField struct {
-	path string
-	role string
+	path           string
+	role           string
+	structuredJSON bool
 }
 
 // mergePassThroughRequestBodyWithPromptProtection preserves the original JSON
@@ -59,19 +60,12 @@ func patchPassThroughPromptProtection(
 	matchCount := 0
 
 	for _, field := range fields {
-		text := gjson.GetBytes(patched, field.path)
-		if !text.Exists() || text.Type != gjson.String {
-			return nil, fmt.Errorf("prompt text field %q is not a string", field.path)
+		nextBody, changed, err := patchPassThroughPromptField(patched, field, rules)
+		if err != nil {
+			return nil, err
 		}
-
-		replacement, changed := replacePassThroughPromptText(text.String(), field.role, rules)
 		if !changed {
 			continue
-		}
-
-		nextBody, err := sjson.SetBytes(patched, field.path, replacement)
-		if err != nil {
-			return nil, fmt.Errorf("replace protected prompt at %q: %w", field.path, err)
 		}
 
 		patched = nextBody
@@ -83,6 +77,78 @@ func patchPassThroughPromptProtection(
 	}
 
 	return patched, nil
+}
+
+// patchPassThroughPromptField applies mask rules to one raw string or the JSON
+// object used as Gemini's structured function-response content.
+func patchPassThroughPromptField(
+	body []byte,
+	field rawPromptTextField,
+	rules []*ent.PromptProtectionRule,
+) ([]byte, bool, error) {
+	value := gjson.GetBytes(body, field.path)
+	if !value.Exists() {
+		return nil, false, fmt.Errorf("prompt text field %q is missing", field.path)
+	}
+
+	if field.structuredJSON {
+		return patchPassThroughPromptJSONField(body, field, value, rules)
+	}
+	if value.Type != gjson.String {
+		return nil, false, fmt.Errorf("prompt text field %q is not a string", field.path)
+	}
+
+	replacement, changed := replacePassThroughPromptText(value.String(), field.role, rules)
+	if !changed {
+		return body, false, nil
+	}
+
+	nextBody, err := sjson.SetBytes(body, field.path, replacement)
+	if err != nil {
+		return nil, false, fmt.Errorf("replace protected prompt at %q: %w", field.path, err)
+	}
+
+	return nextBody, true, nil
+}
+
+// patchPassThroughPromptJSONField mirrors Gemini's map unmarshal/marshal path
+// before replacement, so tool-scope rules cover functionResponse.response too.
+func patchPassThroughPromptJSONField(
+	body []byte,
+	field rawPromptTextField,
+	value gjson.Result,
+	rules []*ent.PromptProtectionRule,
+) ([]byte, bool, error) {
+	canonical, err := canonicalPromptProtectionJSON(value.Raw)
+	if err != nil {
+		return nil, false, fmt.Errorf("normalize protected JSON at %q: %w", field.path, err)
+	}
+
+	replacement, changed := replacePassThroughPromptText(string(canonical), field.role, rules)
+	if !changed {
+		return body, false, nil
+	}
+	if !json.Valid([]byte(replacement)) {
+		return nil, false, fmt.Errorf("protected JSON at %q is no longer valid", field.path)
+	}
+
+	nextBody, err := sjson.SetRawBytes(body, field.path, []byte(replacement))
+	if err != nil {
+		return nil, false, fmt.Errorf("replace protected JSON at %q: %w", field.path, err)
+	}
+
+	return nextBody, true, nil
+}
+
+// canonicalPromptProtectionJSON produces the same compact map JSON created by
+// Gemini inbound conversion for a structured function response.
+func canonicalPromptProtectionJSON(raw string) ([]byte, error) {
+	var value map[string]any
+	if err := json.Unmarshal([]byte(raw), &value); err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(value)
 }
 
 // replacePassThroughPromptText applies the same ordered mask rules used by the
@@ -213,7 +279,9 @@ func geminiContentPromptTextFields(body []byte, contentPath, role string) []rawP
 	fields := make([]rawPromptTextField, 0)
 
 	for i := range jsonArrayLength(body, contentPath+".parts") {
-		fields = append(fields, rawStringField(body, fmt.Sprintf("%s.parts.%d.text", contentPath, i), role)...)
+		partPath := fmt.Sprintf("%s.parts.%d", contentPath, i)
+		fields = append(fields, rawStringField(body, partPath+".text", role)...)
+		fields = append(fields, rawJSONField(body, partPath+".functionResponse.response", "tool")...)
 	}
 
 	return fields
@@ -259,6 +327,16 @@ func rawStringField(body []byte, path, role string) []rawPromptTextField {
 	}
 
 	return []rawPromptTextField{{path: path, role: role}}
+}
+
+// rawJSONField returns one structured field when a provider stores protected
+// tool content as an object instead of a JSON string.
+func rawJSONField(body []byte, path, role string) []rawPromptTextField {
+	if gjson.GetBytes(body, path).Type != gjson.JSON {
+		return nil
+	}
+
+	return []rawPromptTextField{{path: path, role: role, structuredJSON: true}}
 }
 
 // jsonArrayLength returns the number of elements at a JSON array path.
