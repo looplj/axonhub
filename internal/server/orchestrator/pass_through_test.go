@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"testing"
@@ -21,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	responsestransformer "github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 func testHTTPStream(events []*httpclient.StreamEvent) streams.Stream[*httpclient.StreamEvent] {
@@ -1137,6 +1139,154 @@ func TestPassThroughStream_LLMMiddlewareRuns(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return tracker.eventCount() == 2
 	}, time.Second, 10*time.Millisecond, "tracking middleware should process 2 events")
+}
+
+// TestPassThroughResponsesStream_DeepSeekReasoningDoesNotDeadlock verifies that
+// provider-specific reasoning events cannot fill the raw pass-through buffer before
+// the inbound raw-stream consumer is attached.
+func TestPassThroughResponsesStream_DeepSeekReasoningDoesNotDeadlock(t *testing.T) {
+	const (
+		model               = "deepseek-v4-flash"
+		reasoningEventCount = 80
+	)
+
+	provider, err := responsestransformer.NewOutboundTransformer("https://api.deepseek.com/v1", "test-api-key")
+	require.NoError(t, err)
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "deepseek-responses",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+		Outbound: provider,
+	}
+	candidate := &ChannelModelsCandidate{
+		Channel: channel,
+		Models: []biz.ChannelModelEntry{
+			{RequestModel: model, ActualModel: model, Source: "direct"},
+		},
+		APIFormat: string(llm.APIFormatOpenAIResponse),
+	}
+	state := &PersistenceState{
+		OriginalModel:           model,
+		ChannelModelsCandidates: []*ChannelModelsCandidate{candidate},
+	}
+	inbound, outbound := NewPersistentTransformers(state, responsestransformer.NewInboundTransformer())
+	executor := &mockExecutor{streamEvents: deepSeekResponsesReasoningEvents(reasoningEventCount)}
+	pipe := pipeline.NewFactory(executor).Pipeline(
+		inbound,
+		outbound,
+		pipeline.WithEmptyResponseDetection(),
+		pipeline.WithMiddlewares(
+			applyPassThroughStream(outbound, nil),
+			applyPassThroughRequestBody(outbound, nil),
+			captureRawProviderStream(outbound, nil),
+		),
+	)
+
+	requestBody, err := json.Marshal(map[string]any{
+		"model":  model,
+		"stream": true,
+		"input":  "Reply with OK",
+	})
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	type processOutcome struct {
+		result *pipeline.Result
+		err    error
+	}
+	resultCh := make(chan processOutcome, 1)
+	go func() {
+		result, processErr := pipe.Process(ctx, &httpclient.Request{
+			Method:      http.MethodPost,
+			URL:         "/v1/responses",
+			ContentType: "application/json",
+			Headers:     http.Header{"Content-Type": []string{"application/json"}},
+			Body:        requestBody,
+		})
+		resultCh <- processOutcome{result: result, err: processErr}
+	}()
+
+	var outcome processOutcome
+	select {
+	case outcome = <-resultCh:
+	case <-time.After(2 * time.Second):
+		cancel()
+		select {
+		case stopped := <-resultCh:
+			if stopped.result != nil && stopped.result.EventStream != nil {
+				_ = stopped.result.EventStream.Close()
+			}
+		case <-time.After(time.Second):
+			t.Fatal("responses pass-through pipeline did not stop after cancellation")
+		}
+		t.Fatal("responses pass-through pipeline blocked before the raw stream consumer was attached")
+	}
+
+	require.NoError(t, outcome.err)
+	require.NotNil(t, outcome.result)
+	require.True(t, outcome.result.Stream)
+
+	var eventTypes []string
+	reasoningDeltaCount := 0
+	for outcome.result.EventStream.Next() {
+		eventType := outcome.result.EventStream.Current().Type
+		eventTypes = append(eventTypes, eventType)
+		if eventType == "response.reasoning_text.delta" {
+			reasoningDeltaCount++
+		}
+	}
+	require.NoError(t, outcome.result.EventStream.Err())
+	require.Equal(t, reasoningEventCount, reasoningDeltaCount)
+	require.Contains(t, eventTypes, "response.output_text.delta")
+}
+
+// deepSeekResponsesReasoningEvents builds the provider-specific event ordering that
+// exposed the pass-through deadlock: many unknown reasoning deltas precede text output.
+func deepSeekResponsesReasoningEvents(reasoningCount int) []*httpclient.StreamEvent {
+	events := make([]*httpclient.StreamEvent, 0, reasoningCount+3)
+	events = append(events, &httpclient.StreamEvent{
+		Type: "response.created",
+		Data: []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_deepseek_test","object":"response","created_at":1700000000,"status":"in_progress","model":"deepseek-v4-flash","output":[]}}`),
+	})
+
+	for i := range reasoningCount {
+		events = append(events, &httpclient.StreamEvent{
+			Type: "response.reasoning_text.delta",
+			Data: fmt.Appendf(
+				nil,
+				`{"type":"response.reasoning_text.delta","sequence_number":%d,"item_id":"reasoning_1","output_index":0,"content_index":0,"delta":"x"}`,
+				i+1,
+			),
+		})
+	}
+
+	events = append(events,
+		&httpclient.StreamEvent{
+			Type: "response.output_text.delta",
+			Data: fmt.Appendf(
+				nil,
+				`{"type":"response.output_text.delta","sequence_number":%d,"item_id":"message_1","output_index":1,"content_index":0,"delta":"OK"}`,
+				reasoningCount+1,
+			),
+		},
+		&httpclient.StreamEvent{
+			Type: "response.completed",
+			Data: fmt.Appendf(
+				nil,
+				`{"type":"response.completed","sequence_number":%d,"response":{"id":"resp_deepseek_test","object":"response","created_at":1700000000,"status":"completed","model":"deepseek-v4-flash","output":[],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`,
+				reasoningCount+2,
+			),
+		},
+	)
+
+	return events
 }
 
 func TestPassThroughStream_ErrorPropagates(t *testing.T) {
