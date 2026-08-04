@@ -1247,30 +1247,33 @@ func deepSeekResponsesReasoningEvents(reasoningCount int) []*httpclient.StreamEv
 		Data: []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_deepseek_test","object":"response","created_at":1700000000,"status":"in_progress","model":"deepseek-v4-flash","output":[]}}`),
 	})
 
-	for i := 0; i < reasoningCount; i++ {
+	for i := range reasoningCount {
 		events = append(events, &httpclient.StreamEvent{
 			Type: "response.reasoning_text.delta",
-			Data: []byte(fmt.Sprintf(
+			Data: fmt.Appendf(
+				nil,
 				`{"type":"response.reasoning_text.delta","sequence_number":%d,"item_id":"reasoning_1","output_index":0,"content_index":0,"delta":"x"}`,
 				i+1,
-			)),
+			),
 		})
 	}
 
 	events = append(events,
 		&httpclient.StreamEvent{
 			Type: "response.output_text.delta",
-			Data: []byte(fmt.Sprintf(
+			Data: fmt.Appendf(
+				nil,
 				`{"type":"response.output_text.delta","sequence_number":%d,"item_id":"message_1","output_index":1,"content_index":0,"delta":"OK"}`,
 				reasoningCount+1,
-			)),
+			),
 		},
 		&httpclient.StreamEvent{
 			Type: "response.completed",
-			Data: []byte(fmt.Sprintf(
+			Data: fmt.Appendf(
+				nil,
 				`{"type":"response.completed","sequence_number":%d,"response":{"id":"resp_deepseek_test","object":"response","created_at":1700000000,"status":"completed","model":"deepseek-v4-flash","output":[],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`,
 				reasoningCount+2,
-			)),
+			),
 		},
 	)
 
