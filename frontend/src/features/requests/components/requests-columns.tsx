@@ -191,9 +191,11 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       enableHiding: true,
       cell: ({ row }) => {
         const latestExecution = row.original.executions?.edges?.[0]?.node;
-        const reasoningEffort =
-          latestExecution?.reasoningEffort ??
-          (row.original.status === 'processing' && !latestExecution ? undefined : row.original.reasoningEffort);
+        const reasoningEffort = latestExecution
+          ? latestExecution.reasoningEffort
+          : row.original.status === 'processing'
+            ? undefined
+            : row.original.reasoningEffort;
 
         if (!reasoningEffort) {
           return <div className='text-muted-foreground text-xs'>-</div>;
