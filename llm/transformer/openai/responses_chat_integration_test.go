@@ -1687,3 +1687,43 @@ func TestResponsesToChatHistory_FlattensCustomToolOutput(t *testing.T) {
 		"Script completed\nWall time 1.5 seconds\nOutput:\n/repo\nfile.txt\n",
 		lo.FromPtr(toolMsg.Content.Content))
 }
+
+func TestResponsesToChatHistory_SanitizesEmptyToolSearchArguments(t *testing.T) {
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":[
+			{"type":"tool_search_call","call_id":"call_search","arguments":{}},
+			{"type":"tool_search_call","call_id":"call_search_bad"},
+			{"type":"function_call_output","call_id":"call_search","output":"done"},
+			{"type":"function_call_output","call_id":"call_search_bad","output":"done"},
+			{"role":"user","type":"message","content":[{"type":"input_text","text":"go"}]}
+		],
+		"tools":[
+			{"type":"tool_search","execution":"client","parameters":{"type":"object"}}
+		]
+	}`)})
+	require.NoError(t, err)
+
+	chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	var converted Request
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+
+	var assistantMsg *Message
+	for i := range converted.Messages {
+		if converted.Messages[i].Role == "assistant" && len(converted.Messages[i].ToolCalls) > 0 {
+			assistantMsg = &converted.Messages[i]
+			break
+		}
+	}
+	require.NotNil(t, assistantMsg, "expected an assistant message with tool calls")
+	require.Len(t, assistantMsg.ToolCalls, 2)
+	for _, call := range assistantMsg.ToolCalls {
+		require.Equal(t, "{}", call.Function.Arguments, "empty tool_search arguments must be normalized to {}")
+	}
+}

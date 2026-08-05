@@ -307,13 +307,24 @@ func (a *responsesChatToolAdapter) convertMessage(message llm.Message, reasoning
 					},
 				)
 			}
-			converted.ToolCalls = append(converted.ToolCalls, chatFunctionCall(call, a.specialCallID(call, call.ResponseToolSearchCall.CallID), mapping.ChatName, call.ResponseToolSearchCall.Arguments))
+			arguments := sanitizeToolSearchArguments(call.ResponseToolSearchCall.Arguments)
+			converted.ToolCalls = append(converted.ToolCalls, chatFunctionCall(call, a.specialCallID(call, call.ResponseToolSearchCall.CallID), mapping.ChatName, arguments))
 
 		default:
 			name := call.Function.Name
 			if call.Function.Namespace != "" {
-				name = call.Function.Namespace + "__" + call.Function.Name
+				fullName := call.Function.Namespace + "__" + call.Function.Name
 				if mapping, ok := a.findMapping(responsesChatToolNamespace, call.Function.Name, call.Function.Namespace); ok {
+					name = mapping.ChatName
+				} else {
+					mapping = a.registerHistoryMapping(
+						mappingIdentity(responsesChatToolNamespace, call.Function.Name, call.Function.Namespace),
+						fullName,
+						"axonhub_namespace_tool_history",
+						responsesChatToolMapping{
+							Kind: responsesChatToolNamespace, Name: call.Function.Name, Namespace: call.Function.Namespace,
+						},
+					)
 					name = mapping.ChatName
 				}
 			}
@@ -1230,4 +1241,15 @@ func restoreResponsesChatMessage(message *llm.Message, mappings map[string]respo
 			call.Function.Name = mapping.Name
 		}
 	}
+}
+
+func sanitizeToolSearchArguments(arguments string) string {
+	arguments = strings.TrimSpace(arguments)
+	if arguments == "" {
+		return "{}"
+	}
+	if json.Valid([]byte(arguments)) {
+		return arguments
+	}
+	return "{}"
 }

@@ -136,7 +136,7 @@ func (s *responsesInboundStream) Next() bool {
 				// open output items and synthesize the terminal event so clients
 				// do not see an abruptly truncated SSE stream.
 				if !s.hasResponseCreated {
-					return false
+					return s.emitStreamErrorEvent(errors.New("upstream stream ended without producing any response event")) == nil
 				}
 				if err := s.flushPendingReasoning(); err != nil {
 					s.err = err

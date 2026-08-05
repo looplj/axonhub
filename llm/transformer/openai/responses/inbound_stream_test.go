@@ -972,3 +972,22 @@ func TestInboundTransformer_TransformStream_CompletesWhenFinishReasonMissing(t *
 	require.Equal(t, "Task", taskItem.Name)
 	require.Equal(t, `{"prompt":"fix the bug"}`, taskItem.Arguments)
 }
+
+func TestInboundTransformer_TransformStream_EmitsErrorWhenUpstreamEndsWithoutResponseCreated(t *testing.T) {
+	source := streams.SliceStream([]*llm.Response{})
+
+	stream, err := NewInboundTransformer().TransformStream(t.Context(), source)
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		events = append(events, event)
+	}
+	require.NoError(t, stream.Err())
+
+	require.Len(t, events, 1)
+	require.Equal(t, StreamEventTypeError, events[0].Type)
+	require.NotEmpty(t, events[0].Message)
+}
