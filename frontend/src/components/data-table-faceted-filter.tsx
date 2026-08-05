@@ -21,6 +21,7 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   footer?: React.ReactNode;
 }
 
+/** Renders the searchable faceted filter backed by a TanStack Table column. */
 export function DataTableFacetedFilter<TData, TValue>({
   column,
   title,

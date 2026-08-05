@@ -6,13 +6,12 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useAnalyticsFilterStore } from '@/stores/analyticsStore';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useApiKeys } from '@/features/apikeys/data/apikeys';
 import { useUsers } from '@/features/users/data/users';
 import { useProjects } from '@/features/projects/data/projects';
+import { AnalyticsFacetedFilter } from './analytics-faceted-filter';
 
 // Calendar Date → 'YYYY-MM-DD' 字符串（直接取本地年月日，不做时区转换）
 function formatDate(date: Date): string {
@@ -26,77 +25,6 @@ function formatDate(date: Date): string {
 function parseDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d);
-}
-
-interface MultiSelectProps {
-  label: string;
-  placeholder: string;
-  options: { label: string; value: string }[];
-  selected: string[];
-  onChange: (values: string[]) => void;
-  isLoading?: boolean;
-}
-
-function MultiSelect({ label, placeholder, options, selected, onChange, isLoading }: MultiSelectProps) {
-  const [open, setOpen] = useState(false);
-
-  const toggle = (value: string) => {
-    if (selected.includes(value)) {
-      onChange(selected.filter((v) => v !== value));
-    } else {
-      onChange([...selected, value]);
-    }
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant='outline'
-          role='combobox'
-          aria-expanded={open}
-          className='h-8 min-w-[140px] justify-between text-xs font-normal'
-        >
-          <span className='truncate'>
-            {selected.length > 0 ? `${label} (${selected.length})` : placeholder}
-          </span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className='w-[220px] p-0' align='start'>
-        <div className='max-h-[300px] overflow-auto p-1'>
-          {isLoading ? (
-            <div className='flex items-center justify-center py-4'>
-              <Skeleton className='h-4 w-full' />
-            </div>
-          ) : options.length === 0 ? (
-            <div className='px-2 py-4 text-center text-xs text-muted-foreground'>
-              {placeholder}
-            </div>
-          ) : (
-            options.map((option) => (
-              <button
-                key={option.value}
-                type='button'
-                className={cn(
-                  'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs hover:bg-accent',
-                  selected.includes(option.value) && 'bg-accent'
-                )}
-                onClick={() => toggle(option.value)}
-              >
-                <input
-                  type='checkbox'
-                  checked={selected.includes(option.value)}
-                  onChange={() => {}}
-                  className='h-3 w-3'
-                />
-                <span className='truncate'>{option.label}</span>
-              </button>
-            ))
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
 }
 
 interface DateRangePickerProps {
@@ -363,48 +291,43 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
 
       {/* Dimension Filters */}
       <div className='flex flex-wrap items-center gap-2'>
-        <MultiSelect
-          label={t('analytics.filter.project')}
-          placeholder={t('analytics.filter.selectProject')}
+        <AnalyticsFacetedFilter
+          title={t('analytics.filter.project')}
           options={projectOptions}
-          selected={filter.projectIDs || []}
-          onChange={setProjectIDs}
+          selectedValues={filter.projectIDs || []}
+          onSelectedValuesChange={setProjectIDs}
           isLoading={isLoadingProjects}
         />
 
-        <MultiSelect
-          label={t('analytics.filter.channel')}
-          placeholder={t('analytics.filter.selectChannel')}
+        <AnalyticsFacetedFilter
+          title={t('analytics.filter.channel')}
           options={channelOptions}
-          selected={filter.channelIDs || []}
-          onChange={setChannelIDs}
+          selectedValues={filter.channelIDs || []}
+          onSelectedValuesChange={setChannelIDs}
           isLoading={isLoadingChannels}
         />
 
-        <MultiSelect
-          label={t('analytics.filter.model')}
-          placeholder={t('analytics.filter.selectModel')}
+        <AnalyticsFacetedFilter
+          title={t('analytics.filter.model')}
           options={modelOptions}
-          selected={filter.modelIDs || []}
-          onChange={setModelIDs}
+          selectedValues={filter.modelIDs || []}
+          onSelectedValuesChange={setModelIDs}
           isLoading={isLoadingChannels}
         />
 
-        <MultiSelect
-          label={t('analytics.filter.apiKey')}
-          placeholder={t('analytics.filter.selectAPIKey')}
+        <AnalyticsFacetedFilter
+          title={t('analytics.filter.apiKey')}
           options={apiKeyOptions}
-          selected={filter.apiKeyIDs || []}
-          onChange={setAPIKeyIDs}
+          selectedValues={filter.apiKeyIDs || []}
+          onSelectedValuesChange={setAPIKeyIDs}
           isLoading={isLoadingApiKeys}
         />
 
-        <MultiSelect
-          label={t('analytics.filter.user')}
-          placeholder={t('analytics.filter.selectUser')}
+        <AnalyticsFacetedFilter
+          title={t('analytics.filter.user')}
           options={userOptions}
-          selected={filter.userIDs || []}
-          onChange={setUserIDs}
+          selectedValues={filter.userIDs || []}
+          onSelectedValuesChange={setUserIDs}
           isLoading={isLoadingUsers}
         />
 
@@ -416,80 +339,6 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
           </Button>
         )}
       </div>
-
-      {/* Active Filters Display */}
-      {hasFilters && (
-        <div className='flex flex-wrap gap-1'>
-          {filter.startTime && (
-            <Badge variant='secondary' className='text-xs'>
-              {t('analytics.filter.startDate')}: {filter.startTime}
-              <button type='button' className='ml-1' onClick={() => setStartTime(null)}>
-                <IconX className='h-3 w-3' />
-              </button>
-            </Badge>
-          )}
-          {filter.endTime && (
-            <Badge variant='secondary' className='text-xs'>
-              {t('analytics.filter.endDate')}: {filter.endTime}
-              <button type='button' className='ml-1' onClick={() => setEndTime(null)}>
-                <IconX className='h-3 w-3' />
-              </button>
-            </Badge>
-          )}
-          {filter.projectIDs?.map((id) => {
-            const name = projectOptions.find((o) => o.value === id)?.label || id;
-            return (
-              <Badge key={id} variant='secondary' className='text-xs'>
-                {name}
-                <button type='button' className='ml-1' onClick={() => setProjectIDs(filter.projectIDs!.filter((i) => i !== id))}>
-                  <IconX className='h-3 w-3' />
-                </button>
-              </Badge>
-            );
-          })}
-          {filter.channelIDs?.map((id) => {
-            const name = channelOptions.find((o) => o.value === id)?.label || id;
-            return (
-              <Badge key={id} variant='secondary' className='text-xs'>
-                {name}
-                <button type='button' className='ml-1' onClick={() => setChannelIDs(filter.channelIDs!.filter((i) => i !== id))}>
-                  <IconX className='h-3 w-3' />
-                </button>
-              </Badge>
-            );
-          })}
-          {filter.modelIDs?.map((id) => (
-            <Badge key={id} variant='secondary' className='text-xs'>
-              {id}
-              <button type='button' className='ml-1' onClick={() => setModelIDs(filter.modelIDs!.filter((i) => i !== id))}>
-                <IconX className='h-3 w-3' />
-              </button>
-            </Badge>
-          ))}
-          {filter.apiKeyIDs?.map((id) => {
-            const name = apiKeyOptions.find((o) => o.value === id)?.label || id;
-            return (
-              <Badge key={id} variant='secondary' className='text-xs'>
-                {name}
-                <button type='button' className='ml-1' onClick={() => setAPIKeyIDs(filter.apiKeyIDs!.filter((i) => i !== id))}>
-                  <IconX className='h-3 w-3' />
-                </button>
-              </Badge>
-            );
-          })}
-          {filter.userIDs?.map((id) => {
-            const name = userOptions.find((o) => o.value === id)?.label || id;
-            return (
-              <Badge key={id} variant='secondary' className='text-xs'>
-                {name}
-                <button type='button' className='ml-1' onClick={() => setUserIDs(filter.userIDs!.filter((i) => i !== id))}>
-                  <IconX className='h-3 w-3' />
-                </button>
-              </Badge>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
