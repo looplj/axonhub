@@ -35,6 +35,8 @@ const (
 	FieldModelID = "model_id"
 	// FieldFormat holds the string denoting the format field in the database.
 	FieldFormat = "format"
+	// FieldReasoningEffort holds the string denoting the reasoning_effort field in the database.
+	FieldReasoningEffort = "reasoning_effort"
 	// FieldRequestBody holds the string denoting the request_body field in the database.
 	FieldRequestBody = "request_body"
 	// FieldResponseBody holds the string denoting the response_body field in the database.
@@ -104,6 +106,7 @@ var Columns = []string{
 	FieldExternalID,
 	FieldModelID,
 	FieldFormat,
+	FieldReasoningEffort,
 	FieldRequestBody,
 	FieldResponseBody,
 	FieldResponseChunks,
@@ -225,6 +228,11 @@ func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 // ByFormat orders the results by the format field.
 func ByFormat(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFormat, opts...).ToFunc()
+}
+
+// ByReasoningEffort orders the results by the reasoning_effort field.
+func ByReasoningEffort(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldReasoningEffort, opts...).ToFunc()
 }
 
 // ByErrorMessage orders the results by the error_message field.
