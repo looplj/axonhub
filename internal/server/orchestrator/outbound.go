@@ -471,7 +471,20 @@ func filterResponsesChatToolMessagesForOutbound(
 	}
 
 	capabilities := responsesRequestCapabilities(outbound, llmRequest)
-	if capabilities.NativeResponses || capabilities.ChatToolLifecycle {
+	if capabilities.NativeResponses {
+		return llmRequest
+	}
+
+	// Interrupted turns leave empty output items in client history. Strict
+	// Chat providers reject the replayed empty content, so drop or substitute
+	// it before any Chat conversion. Responses-native replays keep fidelity.
+	if sanitized, changed := shared.SanitizeChatMessageContent(llmRequest.Messages); changed {
+		cloned := *llmRequest
+		cloned.Messages = sanitized
+		llmRequest = &cloned
+	}
+
+	if capabilities.ChatToolLifecycle {
 		return llmRequest
 	}
 

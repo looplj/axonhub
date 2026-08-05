@@ -217,3 +217,91 @@ func isValidToolCallArguments(arguments string) bool {
 	}
 	return json.Valid([]byte(trimmed))
 }
+
+const emptyToolOutputPlaceholder = "(empty)"
+
+// SanitizeChatMessageContent removes messages that carry no expressible text
+// content and substitutes empty tool outputs, so strict Chat providers do not
+// reject replayed history with "text content is empty". Interrupted upstream
+// turns leave empty output items in client history; replaying them verbatim
+// poisons every subsequent request.
+func SanitizeChatMessageContent(messages []llm.Message) ([]llm.Message, bool) {
+	result := make([]llm.Message, 0, len(messages))
+	changed := false
+
+	for _, message := range messages {
+		sanitized, keep, modified := sanitizeChatMessageContent(message)
+		if !keep {
+			changed = true
+			continue
+		}
+		if modified {
+			changed = true
+		}
+		result = append(result, sanitized)
+	}
+
+	if !changed {
+		return messages, false
+	}
+	return result, true
+}
+
+func sanitizeChatMessageContent(message llm.Message) (llm.Message, bool, bool) {
+	// Tool-call turns are valid with null/empty content on every provider.
+	if len(message.ToolCalls) > 0 {
+		return message, true, false
+	}
+
+	if len(message.Content.MultipleContent) > 0 {
+		filtered := make([]llm.MessageContentPart, 0, len(message.Content.MultipleContent))
+		for _, part := range message.Content.MultipleContent {
+			if visibleChatContentPart(part) {
+				filtered = append(filtered, part)
+			}
+		}
+		if len(filtered) == len(message.Content.MultipleContent) {
+			return message, true, false
+		}
+		if len(filtered) > 0 {
+			message.Content.MultipleContent = filtered
+			return message, true, true
+		}
+		return substituteEmptyToolOutput(message)
+	}
+
+	if message.Content.Content != nil && strings.TrimSpace(*message.Content.Content) != "" {
+		return message, true, false
+	}
+
+	return substituteEmptyToolOutput(message)
+}
+
+// substituteEmptyToolOutput keeps tool messages paired with their call by
+// giving them a placeholder, and drops every other contentless message.
+func substituteEmptyToolOutput(message llm.Message) (llm.Message, bool, bool) {
+	if message.Role == "tool" {
+		placeholder := emptyToolOutputPlaceholder
+		message.Content = llm.MessageContent{Content: &placeholder}
+		return message, true, true
+	}
+	return message, false, false
+}
+
+func visibleChatContentPart(part llm.MessageContentPart) bool {
+	switch part.Type {
+	case "text", "input_text", "output_text":
+		return part.Text != nil && strings.TrimSpace(*part.Text) != ""
+	case "image_url":
+		return part.ImageURL != nil && strings.TrimSpace(part.ImageURL.URL) != ""
+	case "video_url":
+		return part.VideoURL != nil && strings.TrimSpace(part.VideoURL.URL) != ""
+	case "input_audio":
+		return part.InputAudio != nil && strings.TrimSpace(part.InputAudio.Data) != ""
+	case "compaction", "compaction_summary":
+		// Chat conversion drops these parts, so they cannot keep a message alive.
+		return false
+	default:
+		return true
+	}
+}

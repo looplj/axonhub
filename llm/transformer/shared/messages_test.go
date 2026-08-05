@@ -338,3 +338,48 @@ func TestSanitizeChatToolArguments(t *testing.T) {
 	_, changed = SanitizeChatToolArguments(nil)
 	require.False(t, changed)
 }
+
+func TestSanitizeChatMessageContent(t *testing.T) {
+	messages := []llm.Message{
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("")}},
+		{Role: "developer", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{Type: "text", Text: lo.ToPtr("  ")},
+			{Type: "text", Text: lo.ToPtr("keep me")},
+		}}},
+		{Role: "assistant", Content: llm.MessageContent{Content: nil}, ReasoningContent: lo.ToPtr("thinking only")},
+		{
+			Role:      "assistant",
+			Content:   llm.MessageContent{Content: lo.ToPtr("")},
+			ToolCalls: []llm.ToolCall{{ID: "call_1", Function: llm.FunctionCall{Name: "exec", Arguments: `{}`}}},
+		},
+		{Role: "tool", ToolCallID: lo.ToPtr("call_1"), Content: llm.MessageContent{Content: lo.ToPtr("")}},
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("real question")}},
+	}
+
+	sanitized, changed := SanitizeChatMessageContent(messages)
+	require.True(t, changed)
+	require.Len(t, sanitized, 4, "empty user and reasoning-only assistant messages must be dropped")
+
+	require.Equal(t, "developer", sanitized[0].Role)
+	require.Len(t, sanitized[0].Content.MultipleContent, 1)
+	require.Equal(t, "keep me", *sanitized[0].Content.MultipleContent[0].Text)
+
+	require.Equal(t, "assistant", sanitized[1].Role)
+	require.Len(t, sanitized[1].ToolCalls, 1, "tool-call assistant message must survive empty content")
+
+	require.Equal(t, "tool", sanitized[2].Role)
+	require.Equal(t, "(empty)", *sanitized[2].Content.Content)
+
+	require.Equal(t, "real question", *sanitized[3].Content.Content)
+
+	// No-op path returns the original slice unchanged.
+	intact := []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}}
+	got, changed := SanitizeChatMessageContent(intact)
+	require.False(t, changed)
+	require.Same(t, &intact[0], &got[0])
+
+	// Input slice must not be mutated in place.
+	require.Equal(t, "", *messages[0].Content.Content)
+	require.Equal(t, "thinking only", *messages[2].ReasoningContent)
+	require.Equal(t, "", *messages[4].Content.Content)
+}
