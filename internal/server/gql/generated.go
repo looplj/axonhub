@@ -1904,6 +1904,7 @@ type ComplexityRoot struct {
 	}
 
 	TransformOptions struct {
+		DowngradeMidConversationSystem func(childComplexity int) int
 		ForceArrayInputs               func(childComplexity int) int
 		ForceArrayInstructions         func(childComplexity int) int
 		ReasoningEffortMapping         func(childComplexity int) int
@@ -10544,6 +10545,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TraceEdge.Node(childComplexity), true
 
+	case "TransformOptions.downgradeMidConversationSystem":
+		if e.complexity.TransformOptions.DowngradeMidConversationSystem == nil {
+			break
+		}
+
+		return e.complexity.TransformOptions.DowngradeMidConversationSystem(childComplexity), true
 	case "TransformOptions.forceArrayInputs":
 		if e.complexity.TransformOptions.ForceArrayInputs == nil {
 			break
@@ -24521,6 +24528,8 @@ func (ec *executionContext) fieldContext_ChannelSettings_transformOptions(_ cont
 				return ec.fieldContext_TransformOptions_replaceDeveloperRoleWithSystem(ctx, field)
 			case "reasoningEffortMapping":
 				return ec.fieldContext_TransformOptions_reasoningEffortMapping(ctx, field)
+			case "downgradeMidConversationSystem":
+				return ec.fieldContext_TransformOptions_downgradeMidConversationSystem(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TransformOptions", field.Name)
 		},
@@ -56583,6 +56592,35 @@ func (ec *executionContext) fieldContext_TransformOptions_reasoningEffortMapping
 	return fc, nil
 }
 
+func (ec *executionContext) _TransformOptions_downgradeMidConversationSystem(ctx context.Context, field graphql.CollectedField, obj *objects.TransformOptions) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TransformOptions_downgradeMidConversationSystem,
+		func(ctx context.Context) (any, error) {
+			return obj.DowngradeMidConversationSystem, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TransformOptions_downgradeMidConversationSystem(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TransformOptions",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TriggerBackupPayload_success(ctx context.Context, field graphql.CollectedField, obj *TriggerBackupPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -82635,7 +82673,7 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"forceArrayInstructions", "forceArrayInputs", "replaceDeveloperRoleWithSystem", "reasoningEffortMapping"}
+	fieldsInOrder := [...]string{"forceArrayInstructions", "forceArrayInputs", "replaceDeveloperRoleWithSystem", "reasoningEffortMapping", "downgradeMidConversationSystem"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82670,6 +82708,13 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 				return it, err
 			}
 			it.ReasoningEffortMapping = data
+		case "downgradeMidConversationSystem":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("downgradeMidConversationSystem"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DowngradeMidConversationSystem = data
 		}
 	}
 
@@ -106418,6 +106463,8 @@ func (ec *executionContext) _TransformOptions(ctx context.Context, sel ast.Selec
 			}
 		case "reasoningEffortMapping":
 			out.Values[i] = ec._TransformOptions_reasoningEffortMapping(ctx, field, obj)
+		case "downgradeMidConversationSystem":
+			out.Values[i] = ec._TransformOptions_downgradeMidConversationSystem(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

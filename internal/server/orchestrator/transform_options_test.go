@@ -93,6 +93,52 @@ func TestApplyTransformOptions_ForceArrayInputs(t *testing.T) {
 	require.Equal(t, lo.ToPtr(true), result.TransformOptions.ArrayInputs)
 }
 
+func TestApplyTransformOptions_DowngradeMidConversationSystemDefaultDisabled(t *testing.T) {
+	// nil (legacy channels with no explicit setting) is a no-op: applyTransformOptions
+	// returns the original request untouched, and RequestFromLLM treats nil as disabled.
+	req := &llm.Request{Model: "test-model"}
+
+	settings := &objects.ChannelSettings{
+		TransformOptions: objects.TransformOptions{},
+	}
+
+	result := applyTransformOptions(req, settings)
+
+	require.Same(t, req, result)
+	require.Nil(t, result.TransformOptions.DowngradeMidConversationSystem)
+}
+
+func TestApplyTransformOptions_DowngradeMidConversationSystemExplicitTrue(t *testing.T) {
+	req := &llm.Request{Model: "test-model"}
+
+	settings := &objects.ChannelSettings{
+		TransformOptions: objects.TransformOptions{
+			DowngradeMidConversationSystem: lo.ToPtr(true),
+		},
+	}
+
+	result := applyTransformOptions(req, settings)
+
+	require.NotSame(t, req, result)
+	require.Equal(t, lo.ToPtr(true), result.TransformOptions.DowngradeMidConversationSystem)
+}
+
+func TestApplyTransformOptions_DowngradeMidConversationSystemExplicitFalse(t *testing.T) {
+	req := &llm.Request{Model: "test-model"}
+
+	settings := &objects.ChannelSettings{
+		TransformOptions: objects.TransformOptions{
+			DowngradeMidConversationSystem: lo.ToPtr(false),
+		},
+	}
+
+	result := applyTransformOptions(req, settings)
+
+	require.NotSame(t, req, result)
+	require.Equal(t, lo.ToPtr(false), result.TransformOptions.DowngradeMidConversationSystem,
+		"explicit false must reach llm.TransformOptions as false (not nil), so RequestFromLLM disables the downgrade")
+}
+
 func TestReplaceDeveloperRoleWithSystem(t *testing.T) {
 	tests := []struct {
 		name     string

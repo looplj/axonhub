@@ -20,7 +20,8 @@ func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSet
 
 	if !transformOptions.ForceArrayInstructions &&
 		!transformOptions.ForceArrayInputs &&
-		!transformOptions.ReplaceDeveloperRoleWithSystem {
+		!transformOptions.ReplaceDeveloperRoleWithSystem &&
+		transformOptions.DowngradeMidConversationSystem == nil {
 		return req
 	}
 
@@ -37,6 +38,12 @@ func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSet
 	if transformOptions.ReplaceDeveloperRoleWithSystem {
 		newReq.Messages = replaceDeveloperRoleWithSystem(newReq.Messages)
 	}
+
+	// Default disabled (nil or false); only an explicit true enables it. Always set an
+	// explicit value so RequestFromLLM's nil-check treats it correctly downstream.
+	newReq.TransformOptions.DowngradeMidConversationSystem = lo.ToPtr(
+		transformOptions.DowngradeMidConversationSystem != nil && *transformOptions.DowngradeMidConversationSystem,
+	)
 
 	return &newReq
 }
