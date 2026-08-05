@@ -116,6 +116,7 @@ export const channelTypeSchema = z.enum([
   'ollama_anthropic',
   'evolink',
   'evolink_anthropic',
+  'groq',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 

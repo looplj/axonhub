@@ -982,7 +982,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 	case channel.TypeOpenai, channel.TypeAtlascloud, channel.TypeDeepinfra, channel.TypeQiniu, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub,
-		channel.TypeOpencodeGo, channel.TypeEvolink:
+		channel.TypeOpencodeGo, channel.TypeEvolink, channel.TypeGroq:
 		var reasoningEffortMapping []llm.ReasoningEffortMapping
 		if c.Settings != nil {
 			reasoningEffortMapping = c.Settings.TransformOptions.ReasoningEffortMapping
