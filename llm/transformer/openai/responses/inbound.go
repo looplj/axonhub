@@ -417,6 +417,22 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 			continue
 		}
 
+		// Responses allows a single tool call to emit multiple output items
+		// sharing one call_id (e.g. codex exec yield/notify). Chat Completions
+		// requires exactly one tool message per tool_call_id, so merge
+		// consecutive outputs for the same call_id into one tool message.
+		if isToolOutputItemType(item.Type) {
+			merged, consumed, err := mergeToolOutputItems(input.Items, i)
+			if err != nil {
+				return nil, err
+			}
+			if merged != nil {
+				messages = append(messages, *merged)
+			}
+			i += consumed
+			continue
+		}
+
 		// Handle regular items
 		msg, err := convertItemToMessage(item)
 		if err != nil {
@@ -440,6 +456,92 @@ func isToolCallItemType(itemType string) bool {
 	default:
 		return false
 	}
+}
+
+// isToolOutputItemType reports whether an input item carries the result of a
+// tool call. Responses permits several such items sharing one call_id (codex
+// exec yield/notify); Chat Completions requires exactly one tool message per
+// tool_call_id.
+func isToolOutputItemType(itemType string) bool {
+	switch itemType {
+	case "function_call_output", "custom_tool_call_output", "tool_search_output":
+		return true
+	default:
+		return false
+	}
+}
+
+// mergeToolOutputItems converts all consecutive tool-output items starting at
+// startIdx that share first.CallID into a single Chat Completions tool message,
+// concatenating their content. Returns the merged message and items consumed.
+func mergeToolOutputItems(items []Item, startIdx int) (*llm.Message, int, error) {
+	if startIdx >= len(items) {
+		return nil, 0, nil
+	}
+	callID := items[startIdx].CallID
+	var (
+		parts    []llm.MessageContentPart
+		toolName string
+	)
+	consumed := 0
+	for idx := startIdx; idx < len(items); idx++ {
+		it := &items[idx]
+		if !isToolOutputItemType(it.Type) || it.CallID != callID {
+			break
+		}
+		outMsg, err := convertItemToMessage(it)
+		if err != nil {
+			return nil, consumed, err
+		}
+		if outMsg != nil {
+			if outMsg.ToolCallName != nil && toolName == "" {
+				toolName = *outMsg.ToolCallName
+			}
+			parts = appendMessageContentParts(parts, outMsg.Content)
+		}
+		consumed++
+	}
+	if consumed == 0 {
+		return nil, 0, nil
+	}
+	msg := &llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr(callID),
+	}
+	if toolName != "" {
+		msg.ToolCallName = lo.ToPtr(toolName)
+	}
+	switch len(parts) {
+	case 0:
+		// All outputs were empty; emit an empty tool message so the tool_call_id
+		// still has a corresponding tool response for Chat providers.
+		empty := ""
+		msg.Content = llm.MessageContent{Content: &empty}
+	case 1:
+		if parts[0].Type == "text" && parts[0].Text != nil {
+			msg.Content = llm.MessageContent{Content: parts[0].Text}
+		} else {
+			msg.Content = llm.MessageContent{MultipleContent: parts}
+		}
+	default:
+		msg.Content = llm.MessageContent{MultipleContent: parts}
+	}
+	return msg, consumed, nil
+}
+
+// appendMessageContentParts flattens content into its constituent parts and
+// appends them to dst.
+func appendMessageContentParts(dst []llm.MessageContentPart, content llm.MessageContent) []llm.MessageContentPart {
+	if len(content.MultipleContent) > 0 {
+		return append(dst, content.MultipleContent...)
+	}
+	if content.Content != nil && *content.Content != "" {
+		return append(dst, llm.MessageContentPart{
+			Type: "text",
+			Text: content.Content,
+		})
+	}
+	return dst
 }
 
 // convertReasoningWithFollowing converts a reasoning item and merges it with subsequent

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -915,6 +916,86 @@ func TestInboundTransformer_TransformRequest_GroupsConsecutiveFunctionCalls(t *t
 	require.Equal(t, "call_a", lo.FromPtr(result.Messages[2].ToolCallID))
 	require.Equal(t, "tool", result.Messages[3].Role)
 	require.Equal(t, "call_b", lo.FromPtr(result.Messages[3].ToolCallID))
+}
+
+func TestInboundTransformer_TransformRequest_MergesRepeatedToolOutputs(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	result, err := trans.TransformRequest(context.Background(), &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": [
+				{"role": "user", "content": "run exec"},
+				{
+					"type": "custom_tool_call",
+					"call_id": "call_1612831776e44d5ca84206c0",
+					"name": "exec",
+					"input": "const r = await tools.exec_command({cmd: 'echo hi'}); text(r.output);"
+				},
+				{
+					"type": "custom_tool_call_output",
+					"call_id": "call_1612831776e44d5ca84206c0",
+					"output": [{"type": "input_text", "text": "Script completed\nWall time 5.2 seconds\nOutput:\n"}]
+				},
+				{
+					"type": "custom_tool_call_output",
+					"call_id": "call_1612831776e44d5ca84206c0",
+					"name": "exec",
+					"output": "notify 工具测试成功"
+				}
+			]
+		}`),
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	// user, assistant(tool_call), tool(merged) = 3 messages, not 4.
+	require.Len(t, result.Messages, 3)
+	require.Equal(t, "assistant", result.Messages[1].Role)
+	require.Len(t, result.Messages[1].ToolCalls, 1)
+	require.Equal(t, "tool", result.Messages[2].Role)
+	require.Equal(t, "call_1612831776e44d5ca84206c0", lo.FromPtr(result.Messages[2].ToolCallID))
+	// Both outputs are concatenated into the single tool message.
+	merged := flattenToolContent(result.Messages[2].Content)
+	require.Contains(t, merged, "Script completed")
+	require.Contains(t, merged, "notify 工具测试成功")
+}
+
+func TestInboundTransformer_TransformRequest_MergesRepeatedFunctionOutputs(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	result, err := trans.TransformRequest(context.Background(), &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": [
+				{"role": "user", "content": "run fn"},
+				{"type": "function_call", "call_id": "call_x", "name": "fn", "arguments": "{}"},
+				{"type": "function_call_output", "call_id": "call_x", "output": "first"},
+				{"type": "function_call_output", "call_id": "call_x", "output": "second"}
+			]
+		}`),
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Messages, 3)
+	require.Equal(t, "tool", result.Messages[2].Role)
+	require.Equal(t, "call_x", lo.FromPtr(result.Messages[2].ToolCallID))
+	merged := flattenToolContent(result.Messages[2].Content)
+	require.Contains(t, merged, "first")
+	require.Contains(t, merged, "second")
+}
+
+func flattenToolContent(c llm.MessageContent) string {
+	if len(c.MultipleContent) == 0 && c.Content != nil {
+		return *c.Content
+	}
+	var b strings.Builder
+	for _, p := range c.MultipleContent {
+		if p.Type == "text" && p.Text != nil {
+			b.WriteString(*p.Text)
+		}
+	}
+	return b.String()
 }
 
 func TestInboundTransformer_TransformResponse(t *testing.T) {
