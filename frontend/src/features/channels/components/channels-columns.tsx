@@ -19,6 +19,7 @@ import {
   IconCopy,
   IconCoin,
   IconLoader2,
+  IconKey,
   IconKeyOff,
   IconGauge,
   IconHistory,
@@ -96,8 +97,6 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const isArchived = channel.status === 'archived';
   const hasError = !!channel.errorMessage;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
-  const apiKeysCount = channel.credentials?.apiKeys?.filter((key) => key.trim().length > 0).length ?? 0;
-  const hasMultipleAPIKeys = channelPermissions.canWrite && apiKeysCount > 1;
 
   const handleDefaultTest = async () => {
     try {
@@ -221,15 +220,15 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconPlugConnected size={16} className='mr-2' />
             {t('channels.endpoints.title')}
           </DropdownMenuItem>
-          {hasMultipleAPIKeys && (
+          {channelPermissions.canWrite && (
             <DropdownMenuItem
               onClick={() => {
                 setCurrentRow(channel);
-                setOpen('testAPIKeys');
+                setOpen('keyManagement');
               }}
             >
-              <IconPlayerPlay size={16} className='mr-2' />
-              {t('channels.actions.testAPIKeys', { count: apiKeysCount })}
+              <IconKey size={16} className='mr-2' />
+              {t('channels.actions.keyManagement')}
             </DropdownMenuItem>
           )}
           {channelPermissions.canWrite && (
