@@ -31,7 +31,7 @@ type ChannelsDialogType =
   | 'transformOptions'
   | 'rateLimit'
   | 'apiKeyRules'
-  | 'testAPIKeys'
+  | 'keyManagement'
   | 'disabledAPIKeys'
   | 'endpoints';
 
