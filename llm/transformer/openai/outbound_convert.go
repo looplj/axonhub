@@ -2,6 +2,7 @@ package openai
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -234,6 +235,13 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 	// Convert Content
 	msg.Content = MessageContentFromLLM(m.Content)
 
+	// Chat Completions accepts a string for the tool role; a multi-part tool
+	// result (e.g. a Responses function_call_output with several text items)
+	// would otherwise serialize as an array and be rejected with a 400.
+	if m.Role == "tool" {
+		msg.Content = flattenChatToolContent(msg.Content)
+	}
+
 	// Convert ToolCalls
 	if m.ToolCalls != nil {
 		msg.ToolCalls = lo.Map(m.ToolCalls, func(tc llm.ToolCall, _ int) ToolCall {
@@ -341,6 +349,27 @@ func normalizeContentPartType(partType string) string {
 	default:
 		return partType
 	}
+}
+
+// flattenChatToolContent collapses a Chat tool message's content into a single
+// string. Text parts are concatenated in order; parts a Chat tool message
+// cannot carry (e.g. images) are dropped, which still beats emitting an array
+// that the provider rejects outright.
+func flattenChatToolContent(content MessageContent) MessageContent {
+	if len(content.MultipleContent) == 0 {
+		return content
+	}
+
+	var builder strings.Builder
+	for _, part := range content.MultipleContent {
+		if part.Type == "text" && part.Text != nil {
+			builder.WriteString(*part.Text)
+		}
+	}
+
+	text := builder.String()
+
+	return MessageContent{Content: &text}
 }
 
 // ToolFromLLM creates OpenAI Tool from unified llm.Tool.

@@ -1595,3 +1595,95 @@ func TestChatTools_FiltersEstablishedNonChatToolsWithoutCompatibilityWarning(t *
 	require.False(t, warned)
 	require.NotContains(t, logs.String(), "Responses request degraded during Chat Completions conversion")
 }
+
+// TestResponsesToChatHistory_FlattensMultipartToolOutputToString guards against
+// a 400 from Chat Completions providers: the tool role requires string content,
+// but a Responses function_call_output with several text items produced an array.
+func TestResponsesToChatHistory_FlattensMultipartToolOutputToString(t *testing.T) {
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":[
+			{"role":"user","type":"message","content":[{"type":"input_text","text":"run it"}]},
+			{"type":"function_call","call_id":"call_1","name":"exec","arguments":"{\"input\":\"x\"}"},
+			{"type":"function_call_output","call_id":"call_1","output":[
+				{"type":"output_text","text":"Script failed\nWall time 0.0 seconds\nOutput:\n"},
+				{"type":"output_text","text":"Script error:\nSyntaxError: Unexpected token ':'"}
+			]}
+		],
+		"tools":[
+			{"type":"function","name":"exec","parameters":{"type":"object","properties":{"input":{"type":"string"}}}}
+		]
+	}`)})
+	require.NoError(t, err)
+
+	chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	var converted Request
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+
+	toolMsg, ok := lo.Find(converted.Messages, func(m Message) bool { return m.Role == "tool" })
+	require.True(t, ok)
+	require.Empty(t, toolMsg.Content.MultipleContent, "tool content must not be an array")
+	require.Equal(t,
+		"Script failed\nWall time 0.0 seconds\nOutput:\nScript error:\nSyntaxError: Unexpected token ':'",
+		lo.FromPtr(toolMsg.Content.Content))
+
+	// The serialised body must carry the tool content as a JSON string.
+	var raw struct {
+		Messages []struct {
+			Role    string          `json:"role"`
+			Content json.RawMessage `json:"content"`
+		} `json:"messages"`
+	}
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &raw))
+	rawTool, ok := lo.Find(raw.Messages, func(m struct {
+		Role    string          `json:"role"`
+		Content json.RawMessage `json:"content"`
+	}) bool { return m.Role == "tool" })
+	require.True(t, ok)
+	require.True(t, strings.HasPrefix(strings.TrimSpace(string(rawTool.Content)), `"`),
+		"tool content should serialise as a string, got: %s", string(rawTool.Content))
+}
+
+// TestResponsesToChatHistory_FlattensCustomToolOutput mirrors the Codex exec
+// custom tool, whose outputs arrive as custom_tool_call_output with several
+// text items and must land in the Chat tool message as a single string.
+func TestResponsesToChatHistory_FlattensCustomToolOutput(t *testing.T) {
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":[
+			{"role":"user","type":"message","content":[{"type":"input_text","text":"run"}]},
+			{"type":"custom_tool_call","call_id":"call_exec","name":"exec","input":"await tools.x()"},
+			{"type":"custom_tool_call_output","call_id":"call_exec","name":"exec","output":[
+				{"type":"output_text","text":"Script completed\nWall time 1.5 seconds\nOutput:\n"},
+				{"type":"output_text","text":"/repo\nfile.txt\n"}
+			]}
+		],
+		"tools":[
+			{"type":"custom","name":"exec","description":"Run JS"}
+		]
+	}`)})
+	require.NoError(t, err)
+
+	chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	var converted Request
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
+
+	toolMsg, ok := lo.Find(converted.Messages, func(m Message) bool { return m.Role == "tool" })
+	require.True(t, ok)
+	require.Empty(t, toolMsg.Content.MultipleContent, "custom tool output must not be an array")
+	require.Equal(t,
+		"Script completed\nWall time 1.5 seconds\nOutput:\n/repo\nfile.txt\n",
+		lo.FromPtr(toolMsg.Content.Content))
+}
