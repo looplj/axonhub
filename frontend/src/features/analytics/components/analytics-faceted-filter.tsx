@@ -38,6 +38,11 @@ export function AnalyticsFacetedFilter({
   // Missing options are not available in the popover, so keep them individually removable beside the collapsed count.
   const removableSelectedOptions =
     selectedValueSet.size > 2 ? selectedOptions.filter((option) => !optionValueSet.has(option.value)) : selectedOptions;
+  // Keep selected options at the top while preserving the source order within both groups.
+  const orderedOptions = [
+    ...options.filter((option) => selectedValueSet.has(option.value)),
+    ...options.filter((option) => !selectedValueSet.has(option.value)),
+  ];
 
   /** Removes one selected value without opening the sibling popover trigger. */
   const removeSelectedValue = (value: string) => {
@@ -86,7 +91,7 @@ export function AnalyticsFacetedFilter({
           <CommandList>
             <CommandEmpty>{isLoading ? t('common.loading') : t('common.noResultsFound')}</CommandEmpty>
             <CommandGroup>
-              {options.map((option) => {
+              {orderedOptions.map((option) => {
                 const isSelected = selectedValueSet.has(option.value);
                 return (
                   <CommandItem
