@@ -190,7 +190,12 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       enableSorting: false,
       enableHiding: true,
       cell: ({ row }) => {
-        const reasoningEffort = row.original.reasoningEffort;
+        const latestExecution = row.original.executions?.edges?.[0]?.node;
+        const reasoningEffort = latestExecution
+          ? latestExecution.reasoningEffort
+          : row.original.status === 'processing'
+            ? undefined
+            : row.original.reasoningEffort;
 
         if (!reasoningEffort) {
           return <div className='text-muted-foreground text-xs'>-</div>;

@@ -702,11 +702,11 @@ func init() {
 	// requestexecution.DefaultFormat holds the default value on creation for the format field.
 	requestexecution.DefaultFormat = requestexecutionDescFormat.Default.(string)
 	// requestexecutionDescStream is the schema descriptor for stream field.
-	requestexecutionDescStream := requestexecutionFields[13].Descriptor()
+	requestexecutionDescStream := requestexecutionFields[14].Descriptor()
 	// requestexecution.DefaultStream holds the default value on creation for the stream field.
 	requestexecution.DefaultStream = requestexecutionDescStream.Default.(bool)
 	// requestexecutionDescPassThroughApplied is the schema descriptor for pass_through_applied field.
-	requestexecutionDescPassThroughApplied := requestexecutionFields[19].Descriptor()
+	requestexecutionDescPassThroughApplied := requestexecutionFields[20].Descriptor()
 	// requestexecution.DefaultPassThroughApplied holds the default value on creation for the pass_through_applied field.
 	requestexecution.DefaultPassThroughApplied = requestexecutionDescPassThroughApplied.Default.(bool)
 	roleMixin := schema.Role{}.Mixin()
