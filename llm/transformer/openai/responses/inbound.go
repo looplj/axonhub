@@ -706,6 +706,23 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			Content:    llm.MessageContent{Content: lo.ToPtr(string(content))},
 		}, nil
 
+	case "agent_message":
+		// codex multi-agent dispatch: a message from another agent (author) to
+		// this agent (recipient). The task instruction lives in content parts,
+		// including encrypted_content parts that codex uses to carry plaintext
+		// inter-agent payloads. Treat it as a user-role message so downstream
+		// providers receive the dispatched task.
+		msg := &llm.Message{
+			ID:   item.ID,
+			Role: "user",
+		}
+		if item.Content != nil {
+			msg.Content = convertToMessageContent(*item.Content)
+		} else if item.Text != nil {
+			msg.Content = llm.MessageContent{Content: item.Text}
+		}
+		return msg, nil
+
 	case "reasoning":
 		// Reasoning is handled by convertReasoningWithFollowing in convertInputToMessages
 		// This case should not be reached in normal flow, but return nil to skip if it does
@@ -815,6 +832,21 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 			}, nil
 		}
 
+		return nil, nil
+
+	case "encrypted_content":
+		// codex agent_message content parts use encrypted_content to carry
+		// plaintext inter-agent payloads (e.g. dispatched task instructions).
+		// OpenAI reasoning item-level encrypted_content is handled separately
+		// in convertReasoningWithFollowing and never reaches this path, so a
+		// content part with this type is always a plaintext agent payload.
+		if item.EncryptedContent != nil && *item.EncryptedContent != "" {
+			return &llm.MessageContentPart{
+				ID:   item.ID,
+				Type: "text",
+				Text: item.EncryptedContent,
+			}, nil
+		}
 		return nil, nil
 
 	case "compaction", "compaction_summary":

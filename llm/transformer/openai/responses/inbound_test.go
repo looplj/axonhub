@@ -1350,6 +1350,78 @@ func TestConvertContentItemToPart_Compaction(t *testing.T) {
 	}
 }
 
+func TestConvertItemToMessage_AgentMessage(t *testing.T) {
+	tests := []struct {
+		name     string
+		item     *Item
+		validate func(t *testing.T, result *llm.Message, err error)
+	}{
+		{
+			name: "agent_message with input_text and encrypted_content parts",
+			item: &Item{
+				ID:   "amsg_1",
+				Type: "agent_message",
+				Content: &Input{Items: []Item{
+					{Type: "input_text", Text: lo.ToPtr("Message Type: NEW_TASK\nTask name: /root/say_hello\nSender: /root\nPayload:\n")},
+					{Type: "encrypted_content", EncryptedContent: lo.ToPtr("请用中文向用户打个招呼,做一个简短的自我介绍(说明你是一个子 agent),然后就结束,不要做其他工作。")},
+				}},
+			},
+			validate: func(t *testing.T, result *llm.Message, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "user", result.Role)
+				require.Len(t, result.Content.MultipleContent, 2)
+				require.Equal(t, "text", result.Content.MultipleContent[0].Type)
+				require.Contains(t, *result.Content.MultipleContent[0].Text, "NEW_TASK")
+				require.Equal(t, "text", result.Content.MultipleContent[1].Type)
+				require.Contains(t, *result.Content.MultipleContent[1].Text, "打个招呼")
+			},
+		},
+		{
+			name: "agent_message with only encrypted_content part",
+			item: &Item{
+				ID:   "amsg_2",
+				Type: "agent_message",
+				Content: &Input{Items: []Item{
+					{Type: "encrypted_content", EncryptedContent: lo.ToPtr("仅一句问候语作为最终答案")},
+				}},
+			},
+			validate: func(t *testing.T, result *llm.Message, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "user", result.Role)
+				require.NotNil(t, result.Content.Content)
+				require.Contains(t, *result.Content.Content, "问候语")
+			},
+		},
+		{
+			name: "agent_message with empty encrypted_content part is dropped",
+			item: &Item{
+				ID:   "amsg_3",
+				Type: "agent_message",
+				Content: &Input{Items: []Item{
+					{Type: "input_text", Text: lo.ToPtr("header")},
+					{Type: "encrypted_content", EncryptedContent: lo.ToPtr("")},
+				}},
+			},
+			validate: func(t *testing.T, result *llm.Message, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "user", result.Role)
+				require.NotNil(t, result.Content.Content)
+				require.Contains(t, *result.Content.Content, "header")
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertItemToMessage(tt.item)
+			tt.validate(t, result, err)
+		})
+	}
+}
+
 func TestInboundTransformer_TransformRequest_WithCompactionInput(t *testing.T) {
 	trans := NewInboundTransformer()
 
@@ -1414,6 +1486,48 @@ func TestInboundTransformer_TransformRequest_WithCompactionInput(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInboundTransformer_TransformRequest_WithAgentMessage(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	httpReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": [
+				{
+					"type": "message",
+					"role": "user",
+					"content": "请帮我起一个子agent打招呼"
+				},
+				{
+					"type": "agent_message",
+					"id": "amsg_1",
+					"author": "/root",
+					"recipient": "/root/say_hello",
+					"content": [
+						{"type": "input_text", "text": "Message Type: NEW_TASK\nTask name: /root/say_hello\nSender: /root\nPayload:\n"},
+						{"type": "encrypted_content", "encrypted_content": "请用中文向用户打个招呼,做一个简短的自我介绍(说明你是一个子 agent),然后就结束,不要做其他工作。"}
+					]
+				}
+			]
+		}`),
+	}
+
+	result, err := trans.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, result.Messages, 2)
+
+	require.Equal(t, "user", result.Messages[0].Role)
+	require.Equal(t, "请帮我起一个子agent打招呼", *result.Messages[0].Content.Content)
+
+	require.Equal(t, "user", result.Messages[1].Role)
+	require.Len(t, result.Messages[1].Content.MultipleContent, 2)
+	require.Equal(t, "text", result.Messages[1].Content.MultipleContent[0].Type)
+	require.Contains(t, *result.Messages[1].Content.MultipleContent[0].Text, "NEW_TASK")
+	require.Equal(t, "text", result.Messages[1].Content.MultipleContent[1].Type)
+	require.Contains(t, *result.Messages[1].Content.MultipleContent[1].Text, "打个招呼")
 }
 
 func TestInboundTransformer_TransformResponse_WithCompactionContent(t *testing.T) {
