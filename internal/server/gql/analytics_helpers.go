@@ -67,12 +67,12 @@ func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFi
 
 	if len(filter.ProjectIDs) > 0 {
 		ids := lo.Map(filter.ProjectIDs, func(g *objects.GUID, _ int) int { return g.ID })
-		s.Where(sql.InInts(usagelog.FieldProjectID, ids...))
+		s.Where(sql.InInts(s.C(usagelog.FieldProjectID), ids...))
 	}
 
 	if len(filter.ChannelIDs) > 0 {
 		ids := lo.Map(filter.ChannelIDs, func(g *objects.GUID, _ int) int { return g.ID })
-		s.Where(sql.InInts(usagelog.FieldChannelID, ids...))
+		s.Where(sql.InInts(s.C(usagelog.FieldChannelID), ids...))
 	}
 
 	if len(filter.ModelIDs) > 0 {
@@ -80,7 +80,7 @@ func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFi
 		for i, v := range filter.ModelIDs {
 			vals[i] = v
 		}
-		s.Where(sql.In(usagelog.FieldModelID, vals...))
+		s.Where(sql.In(s.C(usagelog.FieldModelID), vals...))
 	}
 
 	// API key / user filtering:
@@ -88,7 +88,7 @@ func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFi
 	// - apiKeyIDs == 0 && hasUserFilter: user filter matched no API keys → return empty
 	// - apiKeyIDs == 0 && !hasUserFilter: no API key filter → show all
 	if len(apiKeyIDs) > 0 {
-		s.Where(sql.InInts(usagelog.FieldAPIKeyID, apiKeyIDs...))
+		s.Where(sql.InInts(s.C(usagelog.FieldAPIKeyID), apiKeyIDs...))
 	} else if hasUserFilter {
 		s.Where(sql.False())
 	}
