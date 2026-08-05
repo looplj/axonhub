@@ -40,9 +40,20 @@ func TestExtractOutboundReasoningEffort(t *testing.T) {
 			want:   lo.ToPtr("xhigh"),
 		},
 		{
+			name:   "responses effort",
+			format: llm.APIFormatOpenAIResponse,
+			body:   `{"model":"gpt-5","reasoning":{"effort":"high"}}`,
+			want:   lo.ToPtr("high"),
+		},
+		{
 			name:   "missing effort",
 			format: llm.APIFormatOpenAIChatCompletion,
 			body:   `{"model":"gpt-4"}`,
+		},
+		{
+			name:   "responses missing effort",
+			format: llm.APIFormatOpenAIResponse,
+			body:   `{"model":"gpt-5","reasoning":{"summary":"auto"}}`,
 		},
 		{
 			name:   "non string effort",
@@ -124,4 +135,20 @@ func TestRequestService_CreateRequestExecutionPersistsReasoningEffort(t *testing
 	require.NoError(t, err)
 	require.NotNil(t, execution.ReasoningEffort)
 	require.Equal(t, "max", *execution.ReasoningEffort)
+
+	responsesExecution, err := requestService.CreateRequestExecution(
+		ctx,
+		&Channel{Channel: channelEntity},
+		"gpt-5.6-luna",
+		requestEntity,
+		httpclient.Request{
+			Body:      []byte(`{"model":"gpt-5.6-luna","reasoning":{"effort":"high"}}`),
+			APIFormat: string(llm.APIFormatOpenAIResponse),
+		},
+		llm.APIFormatOpenAIResponse,
+		false,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, responsesExecution.ReasoningEffort)
+	require.Equal(t, "high", *responsesExecution.ReasoningEffort)
 }

@@ -382,11 +382,18 @@ func (s *RequestService) CreateRequestExecution(
 // extractOutboundReasoningEffort returns the reasoning effort from the final
 // OpenAI-compatible request body that will be sent to the upstream provider.
 func extractOutboundReasoningEffort(channelRequest httpclient.Request, format llm.APIFormat) *string {
-	if format != llm.APIFormatOpenAIChatCompletion {
+	var path string
+
+	switch format {
+	case llm.APIFormatOpenAIChatCompletion:
+		path = "reasoning_effort"
+	case llm.APIFormatOpenAIResponse:
+		path = "reasoning.effort"
+	default:
 		return nil
 	}
 
-	result := gjson.GetBytes(channelRequest.Body, "reasoning_effort")
+	result := gjson.GetBytes(channelRequest.Body, path)
 	if result.Type != gjson.String || result.String() == "" {
 		return nil
 	}
