@@ -247,7 +247,9 @@ type ComplexityRoot struct {
 		Name              func(childComplexity int) int
 		OutputTokens      func(childComplexity int) int
 		RequestCount      func(childComplexity int) int
+		TokensPerSecond   func(childComplexity int) int
 		TotalTokens       func(childComplexity int) int
+		TtftMs            func(childComplexity int) int
 	}
 
 	AnalyticsMetadata struct {
@@ -3072,12 +3074,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AnalyticsDimensionStat.RequestCount(childComplexity), true
+	case "AnalyticsDimensionStat.tokensPerSecond":
+		if e.complexity.AnalyticsDimensionStat.TokensPerSecond == nil {
+			break
+		}
+
+		return e.complexity.AnalyticsDimensionStat.TokensPerSecond(childComplexity), true
 	case "AnalyticsDimensionStat.totalTokens":
 		if e.complexity.AnalyticsDimensionStat.TotalTokens == nil {
 			break
 		}
 
 		return e.complexity.AnalyticsDimensionStat.TotalTokens(childComplexity), true
+	case "AnalyticsDimensionStat.ttftMs":
+		if e.complexity.AnalyticsDimensionStat.TtftMs == nil {
+			break
+		}
+
+		return e.complexity.AnalyticsDimensionStat.TtftMs(childComplexity), true
 
 	case "AnalyticsMetadata.earliestDate":
 		if e.complexity.AnalyticsMetadata.EarliestDate == nil {
@@ -18073,6 +18087,64 @@ func (ec *executionContext) _AnalyticsDimensionStat_cost(ctx context.Context, fi
 }
 
 func (ec *executionContext) fieldContext_AnalyticsDimensionStat_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnalyticsDimensionStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnalyticsDimensionStat_tokensPerSecond(ctx context.Context, field graphql.CollectedField, obj *AnalyticsDimensionStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AnalyticsDimensionStat_tokensPerSecond,
+		func(ctx context.Context) (any, error) {
+			return obj.TokensPerSecond, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AnalyticsDimensionStat_tokensPerSecond(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnalyticsDimensionStat",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnalyticsDimensionStat_ttftMs(ctx context.Context, field graphql.CollectedField, obj *AnalyticsDimensionStat) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AnalyticsDimensionStat_ttftMs,
+		func(ctx context.Context) (any, error) {
+			return obj.TtftMs, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AnalyticsDimensionStat_ttftMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AnalyticsDimensionStat",
 		Field:      field,
@@ -46527,6 +46599,10 @@ func (ec *executionContext) fieldContext_Query_analyticsDimensionStats(ctx conte
 				return ec.fieldContext_AnalyticsDimensionStat_totalTokens(ctx, field)
 			case "cost":
 				return ec.fieldContext_AnalyticsDimensionStat_cost(ctx, field)
+			case "tokensPerSecond":
+				return ec.fieldContext_AnalyticsDimensionStat_tokensPerSecond(ctx, field)
+			case "ttftMs":
+				return ec.fieldContext_AnalyticsDimensionStat_ttftMs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AnalyticsDimensionStat", field.Name)
 		},
@@ -90130,6 +90206,10 @@ func (ec *executionContext) _AnalyticsDimensionStat(ctx context.Context, sel ast
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "tokensPerSecond":
+			out.Values[i] = ec._AnalyticsDimensionStat_tokensPerSecond(ctx, field, obj)
+		case "ttftMs":
+			out.Values[i] = ec._AnalyticsDimensionStat_ttftMs(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

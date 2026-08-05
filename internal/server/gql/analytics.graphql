@@ -68,6 +68,10 @@ type AnalyticsDimensionStat {
   outputTokens: Int!
   totalTokens: Int!
   cost: Float!
+  "Output token throughput in tokens per second, null when no valid latency metrics exist"
+  tokensPerSecond: Float
+  "Average time to first token in milliseconds, null when no streaming request recorded a first token"
+  ttftMs: Float
 }
 
 extend type Query {
