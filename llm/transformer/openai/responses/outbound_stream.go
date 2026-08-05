@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"reflect"
 	"strings"
 
 	"github.com/samber/lo"
@@ -332,20 +334,80 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeFunctionCallArgumentsDone:
-		// Function call completed - update state but don't emit an event
-		if streamEvent.CallID != "" {
-			if tc, ok := s.state.toolCalls[streamEvent.CallID]; ok {
-				if streamEvent.Name != "" {
-					tc.Function.Name = streamEvent.Name
-				}
-				if streamEvent.Namespace != "" {
-					tc.Function.Namespace = streamEvent.Namespace
-				}
-				tc.Function.Arguments = streamEvent.Arguments
+		callID := streamEvent.CallID
+		if callID == "" && streamEvent.ItemID != nil {
+			callID = s.state.itemToCallID[*streamEvent.ItemID]
+			if callID == "" {
+				// Fallback: item_id might be the call_id itself.
+				callID = *streamEvent.ItemID
 			}
 		}
 
-		return nil // Intentionally skip this event
+		tc, ok := s.state.toolCalls[callID]
+		if !ok {
+			return nil // Intentionally skip an unknown tool call.
+		}
+
+		identityChanged := false
+		if streamEvent.Name != "" && streamEvent.Name != tc.Function.Name {
+			tc.Function.Name = streamEvent.Name
+			identityChanged = true
+		}
+		if streamEvent.Namespace != "" && streamEvent.Namespace != tc.Function.Namespace {
+			tc.Function.Namespace = streamEvent.Namespace
+			identityChanged = true
+		}
+
+		// Some upstreams provide the complete JSON arguments only in the done event.
+		// Preserve arguments already emitted through delta events and forward only the
+		// missing suffix so downstream Responses streams receive the full value once.
+		finalArgs := streamEvent.Arguments
+		missingArgs := ""
+		if finalArgs == "" {
+			if !identityChanged {
+				return nil // An empty done event must not overwrite accumulated deltas.
+			}
+		} else {
+			forwardedArgs := tc.Function.Arguments
+			switch {
+			case forwardedArgs == "":
+				missingArgs = finalArgs
+			case strings.HasPrefix(finalArgs, forwardedArgs):
+				missingArgs = strings.TrimPrefix(finalArgs, forwardedArgs)
+			case equalJSONValues(forwardedArgs, finalArgs):
+				// The final payload may be reformatted without changing its meaning.
+				// The complete arguments were already forwarded, so do not emit a duplicate.
+				missingArgs = ""
+			default:
+				return fmt.Errorf("function call arguments mismatch for call_id %q", callID)
+			}
+
+			tc.Function.Arguments = finalArgs
+			if missingArgs == "" && !identityChanged {
+				return nil
+			}
+		}
+
+		toolCallIdx := s.state.toolCallIndex[callID]
+		resp.Choices = []llm.Choice{
+			{
+				Index: 0,
+				Delta: &llm.Message{
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:    tc.ID,
+							Type:  tc.Type,
+							Index: toolCallIdx,
+							Function: llm.FunctionCall{
+								Name:      tc.Function.Name,
+								Namespace: tc.Function.Namespace,
+								Arguments: missingArgs,
+							},
+						},
+					},
+				},
+			},
+		}
 
 	case StreamEventTypeCustomToolCallInputDelta:
 		// Custom tool call input delta - accumulate and emit as tool call delta
@@ -645,6 +707,39 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	s.enqueue(resp)
 
 	return nil
+}
+
+func equalJSONValues(left, right string) bool {
+	leftValue, err := decodeJSONValue(left)
+	if err != nil {
+		return false
+	}
+
+	rightValue, err := decodeJSONValue(right)
+	if err != nil {
+		return false
+	}
+
+	return reflect.DeepEqual(leftValue, rightValue)
+}
+
+// decodeJSONValue preserves numeric lexemes so semantic comparisons do not
+// lose precision for integers that cannot be represented exactly as float64.
+func decodeJSONValue(value string) (any, error) {
+	decoder := json.NewDecoder(strings.NewReader(value))
+	decoder.UseNumber()
+
+	var decoded any
+	if err := decoder.Decode(&decoded); err != nil {
+		return nil, err
+	}
+
+	var trailing any
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return nil, fmt.Errorf("unexpected trailing JSON value: %w", err)
+	}
+
+	return decoded, nil
 }
 
 func (s *responsesOutboundStream) Current() *llm.Response {
