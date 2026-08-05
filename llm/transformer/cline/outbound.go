@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/tidwall/sjson"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -53,7 +55,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	return &OutboundTransformer{Outbound: t}, nil
 }
 
-// TransformRequest identifies Cline chat completion requests as originating from the Cline CLI.
+// TransformRequest identifies Cline chat requests and preserves its accepted empty text-part form.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	httpReq, err := t.Outbound.TransformRequest(ctx, llmReq)
 	if err != nil {
@@ -64,7 +66,37 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		httpReq.Headers.Set("X-Client-Type", "cline-cli")
 	}
 
+	for i, message := range llmReq.Messages {
+		if !clineRequiresContent(message.Role) || !isEmptyClineContent(message.Content) {
+			continue
+		}
+
+		httpReq.Body, err = sjson.SetRawBytes(httpReq.Body, fmt.Sprintf("messages.%d.content", i), []byte(`[{"type":"text","text":""}]`))
+		if err != nil {
+			return nil, fmt.Errorf("failed to normalize Cline message content: %w", err)
+		}
+	}
+
 	return httpReq, nil
+}
+
+func clineRequiresContent(role string) bool {
+	switch role {
+	case "user", "system", "developer":
+		return true
+	default:
+		return false
+	}
+}
+
+func isEmptyClineContent(content llm.MessageContent) bool {
+	if len(content.MultipleContent) > 0 {
+		return len(content.MultipleContent) == 1 &&
+			content.MultipleContent[0].Type == "text" &&
+			(content.MultipleContent[0].Text == nil || *content.MultipleContent[0].Text == "")
+	}
+
+	return content.Content == nil || *content.Content == ""
 }
 
 // TransformResponse transforms the HTTP response to llm.Response.

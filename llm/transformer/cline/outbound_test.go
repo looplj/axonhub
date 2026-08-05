@@ -84,6 +84,47 @@ func TestOutboundTransformer_TransformRequest_IdentifiesAsClineCLI(t *testing.T)
 	}
 }
 
+func TestOutboundTransformer_TransformRequest_NormalizesOnlyRequiredEmptyContent(t *testing.T) {
+	transformer := newTestTransformer(t)
+	empty := ""
+	whitespace := "   "
+
+	req, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model: "cline-pass/deepseek-v4-flash",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: &empty}},
+			{Role: "system"},
+			{Role: "developer", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{}}},
+			{Role: "user", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{Type: "text", Text: &empty}}}},
+			{Role: "user", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{Type: "text"}}}},
+			{Role: "assistant", Content: llm.MessageContent{Content: &empty}},
+			{Role: "tool", Content: llm.MessageContent{Content: &empty}},
+			{Role: "user", Content: llm.MessageContent{Content: &whitespace}},
+		},
+	})
+	require.NoError(t, err)
+
+	assert.Equal(t, "cline-cli", req.Headers.Get("X-Client-Type"))
+
+	var body struct {
+		Messages []struct {
+			Content json.RawMessage `json:"content"`
+		} `json:"messages"`
+	}
+	require.NoError(t, json.Unmarshal(req.Body, &body))
+	require.Len(t, body.Messages, 8)
+
+	const emptyTextPart = `[{"type":"text","text":""}]`
+	assert.JSONEq(t, emptyTextPart, string(body.Messages[0].Content))
+	assert.JSONEq(t, emptyTextPart, string(body.Messages[1].Content))
+	assert.JSONEq(t, emptyTextPart, string(body.Messages[2].Content))
+	assert.JSONEq(t, emptyTextPart, string(body.Messages[3].Content))
+	assert.JSONEq(t, emptyTextPart, string(body.Messages[4].Content))
+	assert.Equal(t, `""`, string(body.Messages[5].Content))
+	assert.Equal(t, `""`, string(body.Messages[6].Content))
+	assert.Equal(t, `"   "`, string(body.Messages[7].Content))
+}
+
 func TestOutboundTransformer_TransformResponse_UnwrapsClineData(t *testing.T) {
 	transformer := newTestTransformer(t)
 
