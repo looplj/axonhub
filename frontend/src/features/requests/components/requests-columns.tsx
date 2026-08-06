@@ -17,7 +17,7 @@ import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } from '@/features/system/data/system';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
-import { calculateTokensPerSecond } from '../utils/tokens-per-second';
+import { calculateTokensPerSecond, getTokensPerSecondValue } from '../utils/tokens-per-second';
 import { getStatusColor } from './help';
 
 interface UseRequestsColumnsOptions {
@@ -135,6 +135,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                     className={`inline-flex h-5 w-5 items-center justify-center ${
                       passThroughApplied ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground/45'
                     }`}
+                    tabIndex={0}
+                    role='img'
                     aria-label={t(passThroughApplied ? 'requests.tooltips.passThroughApplied' : 'requests.tooltips.passThroughNotApplied')}
                   >
                     <IconRoute className='h-3.5 w-3.5' />
@@ -233,7 +235,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
             accessorFn: (row) => row.executions?.edges?.[0]?.node?.channel?.id ?? row.channel?.id ?? '',
             header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.channel')} />,
             enableSorting: false,
-            enableHiding: false,
+            enableHiding: true,
             cell: ({ row }) => {
               const request = row.original;
               const executions = request.executions?.edges?.flatMap((edge) => (edge.node ? [edge.node] : [])) ?? [];
@@ -269,7 +271,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                           {[...executions].reverse().map((execution, index) => (
                             <div key={execution.id ?? index} className='flex items-center gap-2 text-xs'>
                               <Badge className={`${getStatusColor(execution.status ?? '')} h-5 px-1.5 text-[10px]`}>
-                                {t(`requests.status.${execution.status}`)}
+                                {execution.status ? t(`requests.status.${execution.status}`) : t('requests.columns.unknown')}
                               </Badge>
                               <span>{execution.channel?.name || t('requests.columns.unknown')}</span>
                             </div>
@@ -313,7 +315,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
             <div className='flex items-center gap-3 font-medium'>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className='inline-flex items-center gap-1' aria-label={t('requests.tooltips.inputTokens')}>
+                  <span className='inline-flex items-center gap-1' tabIndex={0} role='img' aria-label={t('requests.tooltips.inputTokens')}>
                     <ArrowUp className='h-3.5 w-3.5 text-muted-foreground' />
                     {promptTokens.toLocaleString()}
                   </span>
@@ -322,7 +324,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <span className='inline-flex items-center gap-1' aria-label={t('requests.tooltips.outputTokens')}>
+                  <span className='inline-flex items-center gap-1' tabIndex={0} role='img' aria-label={t('requests.tooltips.outputTokens')}>
                     <ArrowDown className='h-3.5 w-3.5 text-muted-foreground' />
                     {completionTokens.toLocaleString()}
                   </span>
@@ -338,18 +340,13 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
           </div>
         );
       },
-      sortingFn: (rowA, rowB) => {
-        const a = (rowA.original.usageLogs?.edges?.[0]?.node?.promptTokens ?? 0) + (rowA.original.usageLogs?.edges?.[0]?.node?.completionTokens ?? 0);
-        const b = (rowB.original.usageLogs?.edges?.[0]?.node?.promptTokens ?? 0) + (rowB.original.usageLogs?.edges?.[0]?.node?.completionTokens ?? 0);
-        return a - b;
-      },
     },
     {
       id: 'cost',
       accessorFn: (row) => row.usageLogs?.edges?.[0]?.node?.totalCost ?? null,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.cost')} />,
       enableSorting: false,
-      enableHiding: false,
+      enableHiding: true,
       cell: ({ row }) => {
         const cost = row.original.usageLogs?.edges?.[0]?.node?.totalCost;
         if (cost == null) return <span className='font-mono text-xs'>-</span>;
@@ -371,7 +368,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       accessorFn: (row) => row.metricsLatencyMs ?? null,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.duration')} />,
       enableSorting: true,
-      enableHiding: false,
+      enableHiding: true,
       cell: ({ row }) => {
         const request = row.original;
         if (request.status !== 'completed' || request.metricsLatencyMs == null) {
@@ -393,19 +390,19 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     },
     {
       id: 'tokensPerSecond',
-      accessorFn: (row) => row.metricsLatencyMs ?? null,
+      accessorFn: (row) => getTokensPerSecondValue(row) ?? 0,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.tokensPerSecond')} />,
       enableSorting: true,
       enableHiding: true,
       cell: ({ row }) => <span className='font-mono text-xs'>{calculateTokensPerSecond(row.original)}</span>,
-      sortingFn: (rowA, rowB) => (rowA.original.metricsLatencyMs ?? 0) - (rowB.original.metricsLatencyMs ?? 0),
+      sortingFn: (rowA, rowB) => (getTokensPerSecondValue(rowA.original) ?? 0) - (getTokensPerSecondValue(rowB.original) ?? 0),
     },
     {
       id: 'caller',
       accessorFn: (row) => row.apiKey?.id ?? '',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.caller')} />,
       enableSorting: false,
-      enableHiding: false,
+      enableHiding: true,
       cell: ({ row }) => {
         const request = row.original;
         if (request.source !== 'api') {

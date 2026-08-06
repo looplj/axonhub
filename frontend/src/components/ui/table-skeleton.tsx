@@ -6,12 +6,12 @@ interface TableSkeletonProps {
   columns?: number;
 }
 
-export function TableSkeleton({ rows = 5 }: TableSkeletonProps) {
+export function TableSkeleton({ rows = 5, columns = 1 }: TableSkeletonProps) {
   return (
     <>
       {Array.from({ length: rows }).map((_, rowIndex) => (
         <TableRow key={rowIndex} className='group/row rounded-xl border-0 !bg-[var(--table-background)]'>
-          <td colSpan={100} className='border-0 bg-inherit px-4 py-3'>
+          <td colSpan={columns} className='border-0 bg-inherit px-4 py-3'>
             <Skeleton className='h-10 w-full rounded-lg' />
           </td>
         </TableRow>

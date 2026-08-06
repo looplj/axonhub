@@ -348,9 +348,14 @@ export default function RequestDetailPage() {
     });
   };
 
-  const copyRequestID = () => {
-    void navigator.clipboard.writeText(request?.id ?? requestId);
-    toast.success(t('requests.actions.copied'));
+  const copyRequestID = async () => {
+    try {
+      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(request?.id ?? requestId);
+      toast.success(t('requests.actions.copied'));
+    } catch {
+      toast.error(t('common.errors.copyFailed'));
+    }
   };
 
   return (
@@ -374,7 +379,7 @@ export default function RequestDetailPage() {
                 </h1>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant='ghost' size='icon-sm' className='h-7 w-7' onClick={copyRequestID} aria-label={t('requests.actions.copyRequestId')}>
+                    <Button variant='ghost' size='icon-sm' className='h-7 w-7' onClick={() => void copyRequestID()} aria-label={t('requests.actions.copyRequestId')}>
                       <Copy className='h-3.5 w-3.5' />
                     </Button>
                   </TooltipTrigger>
