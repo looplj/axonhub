@@ -58,7 +58,13 @@ function asFieldArrayPath(path: string) {
 }
 
 function usePriceEditorWatch<TValue>(control: Control<PriceEditorFormValues>, name: string) {
-  return useWatch({ control, name: asFieldPath(name) }) as unknown as TValue;
+  // compute + deepEqual guard: value-unchanged broadcasts (e.g. deleting a card elsewhere)
+  // must not force this subscriber to re-render.
+  return useWatch({
+    control,
+    name: asFieldPath(name),
+    compute: (value) => value,
+  }) as unknown as TValue;
 }
 
 type PriceItem = PriceEditorFormValues['prices'][number]['price']['items'][number];

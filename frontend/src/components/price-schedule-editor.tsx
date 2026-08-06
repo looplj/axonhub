@@ -83,7 +83,13 @@ function asFieldArrayPath(path: string) {
 }
 
 function useScheduleWatch<TValue>(control: Control<ScheduleFormValues>, name: string) {
-  return useWatch({ control, name: asFieldPath(name) }) as unknown as TValue;
+  // compute + deepEqual guard: value-unchanged broadcasts (e.g. deleting a card elsewhere)
+  // must not force this subscriber to re-render.
+  return useWatch({
+    control,
+    name: asFieldPath(name),
+    compute: (value) => value,
+  }) as unknown as TValue;
 }
 
 function pad2(n: number) {
@@ -746,6 +752,7 @@ const OverrideItemsEditor = memo(function OverrideItemsEditor({
   const items = useWatch({
     control,
     name: asFieldPath(`prices.${priceIndex}.price.schedule.overrides.${overrideIndex}.items`) as FieldPath<ScheduleFormValues>,
+    compute: (value) => value,
   }) as unknown as ScheduleFormValues['prices'][number]['price']['schedule']['overrides'][number]['items'] | undefined;
 
   const handleAddItem = useCallback(() => {
