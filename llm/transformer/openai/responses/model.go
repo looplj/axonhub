@@ -450,6 +450,7 @@ type URLCitation struct {
 
 const responsesWebSearchCallsTransformerMetadataKey = "openai_responses_web_search_calls"
 const responsesReasoningItemTransformerMetadataKey = "openai_responses_reasoning_item"
+const responsesEchoFieldsTransformerMetadataKey = "openai_responses_echo_fields"
 
 type responsesReasoningItemMetadata struct {
 	ID   string `json:"id,omitempty"`
@@ -1103,4 +1104,35 @@ type rawJSONSchema struct {
 	Description string          `json:"description,omitempty"`
 	Schema      json.RawMessage `json:"schema,omitempty"`
 	Strict      *bool           `json:"strict,omitempty"`
+}
+
+// applyEchoFields copies request-echo fields from src to dst.
+// These fields are present in upstream Response events (response.created,
+// response.completed, etc.) but are not part of the unified llm.Response IR,
+// so they must be carried through TransformerMetadata and re-applied when
+// rebuilding Response objects for the client.
+func applyEchoFields(dst, src *Response) {
+	if src == nil || dst == nil {
+		return
+	}
+	dst.Instructions = src.Instructions
+	dst.Metadata = src.Metadata
+	dst.ParallelToolCalls = src.ParallelToolCalls
+	dst.Temperature = src.Temperature
+	dst.ToolChoice = src.ToolChoice
+	dst.Tools = src.Tools
+	dst.TopP = src.TopP
+	dst.Background = src.Background
+	dst.Conversation = src.Conversation
+	dst.MaxOutputTokens = src.MaxOutputTokens
+	dst.MaxToolCalls = src.MaxToolCalls
+	dst.PromptCacheKey = src.PromptCacheKey
+	dst.PromptCacheRetention = src.PromptCacheRetention
+	dst.Reasoning = src.Reasoning
+	dst.SafetyIdentifier = src.SafetyIdentifier
+	dst.ServiceTier = src.ServiceTier
+	dst.Text = src.Text
+	dst.TopLogprobs = src.TopLogprobs
+	dst.Truncation = src.Truncation
+	dst.User = src.User
 }

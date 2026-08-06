@@ -76,6 +76,11 @@ type outboundStreamState struct {
 	// Transformer metadata tracking
 	transformerMetadata        map[string]any
 	transformerMetadataEmitted bool
+
+	// echoResponse holds the upstream Response object for echoing
+	// request-parameter fields (conversation, metadata, reasoning, etc.)
+	// that are not part of the unified llm.Response IR.
+	echoResponse *Response
 }
 
 func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
@@ -93,6 +98,19 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 
 func (s *responsesOutboundStream) enqueue(resp *llm.Response) {
 	s.eventQueue = append(s.eventQueue, resp)
+}
+
+// attachEchoFields stores the upstream Response echo fields on the emitted
+// llm.Response chunk's TransformerMetadata so the inbound stream can restore
+// them when rebuilding response.created / response.completed events.
+func (s *responsesOutboundStream) attachEchoFields(resp *llm.Response) {
+	if s.state.echoResponse == nil {
+		return
+	}
+	if resp.TransformerMetadata == nil {
+		resp.TransformerMetadata = map[string]any{}
+	}
+	resp.TransformerMetadata[responsesEchoFieldsTransformerMetadataKey] = s.state.echoResponse
 }
 
 func (s *responsesOutboundStream) Next() bool {
@@ -187,6 +205,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				s.state.usage = streamEvent.Response.Usage.ToUsage()
 				resp.Usage = s.state.usage
 			}
+			s.state.echoResponse = streamEvent.Response
 		}
 
 		resp.Choices = []llm.Choice{
@@ -197,6 +216,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				},
 			},
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeResponseInProgress:
 		// Update state but don't emit an event
@@ -670,6 +690,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			resp.TransformerMetadata = s.state.transformerMetadata
 			s.state.transformerMetadataEmitted = true
 		}
+		if streamEvent.Response != nil {
+			s.state.echoResponse = streamEvent.Response
+		}
 
 		// The Responses API signals abnormal completion via response.completed
 		// with a status other than "completed" (incomplete/failed/cancelled) - it
@@ -733,10 +756,14 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 			return nil
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeResponseFailed:
 		// Response failed
 		s.responseCompleted = true
+		if streamEvent.Response != nil {
+			s.state.echoResponse = streamEvent.Response
+		}
 		finishReason := "error"
 		resp.Choices = []llm.Choice{
 			{
@@ -744,10 +771,14 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				FinishReason: &finishReason,
 			},
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeResponseIncomplete:
 		// Response incomplete (e.g., max tokens)
 		s.responseCompleted = true
+		if streamEvent.Response != nil {
+			s.state.echoResponse = streamEvent.Response
+		}
 		finishReason := "length"
 		resp.Choices = []llm.Choice{
 			{
@@ -755,10 +786,14 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				FinishReason: &finishReason,
 			},
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeResponseCancelled:
 		// Response cancelled
 		s.responseCompleted = true
+		if streamEvent.Response != nil {
+			s.state.echoResponse = streamEvent.Response
+		}
 		finishReason := "cancelled"
 		resp.Choices = []llm.Choice{
 			{
@@ -766,6 +801,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				FinishReason: &finishReason,
 			},
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeError:
 		return &llm.ResponseError{

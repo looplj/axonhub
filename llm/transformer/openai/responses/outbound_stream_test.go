@@ -85,6 +85,14 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 			// exclude the last DONE event
 			for i, expectedEvent := range expectedEvents[:len(expectedEvents)-1] {
+				// Echo fields are carried via TransformerMetadata and tested
+				// separately; strip them for stream transformation comparison.
+				if actual := actualLLMResponses[i]; actual != nil && actual.TransformerMetadata != nil {
+					delete(actual.TransformerMetadata, responsesEchoFieldsTransformerMetadataKey)
+					if len(actual.TransformerMetadata) == 0 {
+						actual.TransformerMetadata = nil
+					}
+				}
 				if !xtest.Equal(expectedEvent, actualLLMResponses[i]) {
 					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expectedEvent, actualLLMResponses[i]))
 				}

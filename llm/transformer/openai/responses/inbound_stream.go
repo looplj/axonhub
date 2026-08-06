@@ -80,6 +80,7 @@ type responsesInboundStream struct {
 	usage               *llm.Usage
 	aggregator          *streamAggregator
 	transformerMetadata map[string]any
+	echoResponse        *Response
 
 	// Event queue
 	eventQueue []*httpclient.StreamEvent
@@ -216,6 +217,7 @@ func (s *responsesInboundStream) Next() bool {
 
 	if len(chunk.TransformerMetadata) > 0 {
 		s.mergeTransformerMetadata(chunk.TransformerMetadata)
+		s.captureEchoFields(chunk.TransformerMetadata)
 	}
 
 	// Generate response.created event if this is the first chunk
@@ -230,6 +232,7 @@ func (s *responsesInboundStream) Next() bool {
 			Status:    lo.ToPtr("in_progress"),
 			Output:    []Item{},
 		}
+		applyEchoFields(response, s.echoResponse)
 
 		if s.usage != nil {
 			response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
@@ -391,6 +394,7 @@ func (s *responsesInboundStream) enqueueTerminalResponse() error {
 	s.responseCompleted = true
 	s.aggregator.status = status
 	response := s.aggregator.buildResponse()
+	applyEchoFields(response, s.echoResponse)
 	if status == "incomplete" {
 		reason := "max_output_tokens"
 		if s.finishReason == "content_filter" {
@@ -419,6 +423,21 @@ func (s *responsesInboundStream) mergeTransformerMetadata(metadata map[string]an
 		existingCalls := getResponseWebSearchCallsFromMetadata(s.transformerMetadata)
 		mergedCalls := append(existingCalls, calls...)
 		s.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = mergedCalls
+	}
+}
+
+// captureEchoFields extracts the upstream Response echo fields from
+// TransformerMetadata so they can be restored on rebuilt response events.
+func (s *responsesInboundStream) captureEchoFields(metadata map[string]any) {
+	if len(metadata) == 0 {
+		return
+	}
+	raw, ok := metadata[responsesEchoFieldsTransformerMetadataKey]
+	if !ok || raw == nil {
+		return
+	}
+	if echo, ok := raw.(*Response); ok {
+		s.echoResponse = echo
 	}
 }
 
@@ -1442,6 +1461,7 @@ func (s *responsesInboundStream) buildFailedResponse(code, message string) *Resp
 			Message: message,
 		},
 	}
+	applyEchoFields(response, s.echoResponse)
 
 	if s.aggregator != nil {
 		aggregated := s.aggregator.buildResponse()
