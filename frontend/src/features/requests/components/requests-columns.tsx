@@ -2,12 +2,11 @@
 
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
-import { IconRoute, IconArrowsJoin2 } from '@tabler/icons-react';
+import { IconArrowsJoin2, IconRoute } from '@tabler/icons-react';
+import { ArrowDown, ArrowUp, Ban, FileText } from 'lucide-react';
 import { zhCN, enUS } from 'date-fns/locale';
-import { ArrowLeftRight, Ban, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { extractNumberID } from '@/lib/utils';
 import { formatDuration } from '@/utils/format-duration';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -18,29 +17,21 @@ import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } from '@/features/system/data/system';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
-import { calculateTokensPerSecond, useDisplayMode } from '../utils/tokens-per-second';
+import { calculateTokensPerSecond, getTokensPerSecondValue } from '../utils/tokens-per-second';
 import { getStatusColor } from './help';
 
 interface UseRequestsColumnsOptions {
-  onBodyClick?: (requestId: string, index: number) => void;
   onViewDetail?: (requestId: string) => void;
 }
 
+export const DEFAULT_HIDDEN_COLUMN_IDS = ['status', 'source', 'apiFormat', 'clientIP', 'tokensPerSecond'];
+
 export const DEFAULT_MOBILE_HIDDEN_COLUMN_IDS = [
-  'apiFormat',
-  'passThrough',
-  'reasoningEffort',
-  'stream',
-  'source',
-  'clientIP',
+  ...DEFAULT_HIDDEN_COLUMN_IDS,
   'channel',
-  'apiKey',
-  'tokens',
-  'readCache',
-  'writeCache',
   'cost',
-  'latency',
-  'details',
+  'duration',
+  'caller',
 ];
 
 export const MODEL_ID_COLUMN = 'modelID' as const;
@@ -54,7 +45,6 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
   const { data: securitySettings } = useSecuritySettings();
   const updateSecuritySettings = useUpdateSecuritySettings();
   const { navigateWithSearch } = usePaginationSearch({ defaultPageSize: 20 });
-  const [displayMode, setDisplayMode] = useDisplayMode();
   const canManageSecuritySettings = hasSystemScope('write_settings');
 
   const blockedIPs = securitySettings?.blockedIPs ?? [];
@@ -79,71 +69,86 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
     const normalizedIP = clientIP.trim();
     if (!normalizedIP) return;
 
-    const nextBlockedIPs = blockedIPs.filter((ip) => ip.trim() !== normalizedIP);
-    await updateSecuritySettings.mutateAsync({ blockedIPs: nextBlockedIPs });
+    await updateSecuritySettings.mutateAsync({ blockedIPs: blockedIPs.filter((ip) => ip.trim() !== normalizedIP) });
   };
 
-  // Define all columns
+  const openDetail = (requestId: string) => {
+    if (options?.onViewDetail) {
+      options.onViewDetail(requestId);
+      return;
+    }
+
+    navigateWithSearch({
+      to: '/project/requests/$requestId',
+      params: { requestId },
+    });
+  };
+
   const columns: ColumnDef<Request>[] = [
     {
-      accessorKey: 'id',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.id')} />,
-      cell: ({ row }) => {
-        return (
-          <button
-            onClick={() => options?.onBodyClick?.(row.original.id, row.index)}
-            className='text-primary cursor-pointer font-mono text-xs hover:underline'
-          >
-            #{extractNumberID(row.getValue('id'))}
-          </button>
-        );
-      },
+      id: 'request',
+      accessorFn: (row) => row.createdAt,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.request')} />,
       enableSorting: true,
       enableHiding: false,
-    },
-
-    {
-      id: 'modelID',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.modelId')} />,
-      enableSorting: false,
       cell: ({ row }) => {
         const request = row.original;
-        const originalModelId = request.modelID || t('requests.columns.unknown');
-
-        // Check if there are any executions with different model IDs
-        const executions = request.executions?.edges?.map((edge) => edge.node) || [];
-        const executionModelIds = Array.from(new Set(executions.map((exe) => exe?.modelID || ''))).filter(
-          (id) => id && id !== originalModelId
+        return (
+          <div className='flex min-w-[142px] flex-col gap-1'>
+            <span className='text-sm font-medium'>{format(new Date(request.createdAt), 'yyyy-MM-dd HH:mm:ss', { locale })}</span>
+            <Badge className={`${getStatusColor(request.status)} w-fit`}>{t(`requests.status.${request.status}`)}</Badge>
+          </div>
         );
-
-        if (executionModelIds.length > 0) {
-          return (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type='button'
-                  className='flex w-fit cursor-help items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-800/50 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50'
-                >
-                  <span>{originalModelId}</span>
-                  <IconRoute className='h-3.5 w-3.5 opacity-80' />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side='right' className='border-amber-200 bg-white dark:bg-zinc-900'>
-                <div className='flex items-center gap-2 p-2'>
-                  <span className='text-muted-foreground text-xs whitespace-nowrap'>{t('requests.columns.executedModelId')}:</span>
-                  <span className='rounded bg-amber-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'>
-                    {executionModelIds[0]}
-                  </span>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          );
-        }
-
-        return <div className='px-2 text-sm font-medium'>{originalModelId}</div>;
       },
     },
+    {
+      id: 'status',
+      accessorKey: 'status',
+      enableHiding: false,
+      filterFn: (row, id, value) => value.includes(row.getValue(id)),
+      cell: () => null,
+    },
+    {
+      id: 'modelID',
+      accessorFn: (row) => row.modelID,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.model')} />,
+      enableSorting: false,
+      enableHiding: false,
+      cell: ({ row }) => {
+        const request = row.original;
+        const executions = request.executions?.edges?.flatMap((edge) => (edge.node ? [edge.node] : [])) ?? [];
+        const reasoningEffort = executions[0]?.reasoningEffort ?? request.reasoningEffort;
+        const passThroughApplied = executions.some((execution) => execution.passThroughApplied);
 
+        return (
+          <div className='flex min-w-[160px] flex-col gap-1'>
+            <span className='font-mono text-xs font-medium'>{request.modelID || t('requests.columns.unknown')}</span>
+            <div className='flex items-center gap-1.5'>
+              {reasoningEffort && (
+                <Badge className='border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-900/20 dark:text-sky-300'>
+                  {reasoningEffort}
+                </Badge>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`inline-flex h-5 w-5 items-center justify-center ${
+                      passThroughApplied ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground/45'
+                    }`}
+                    tabIndex={0}
+                    role='img'
+                    aria-label={t(passThroughApplied ? 'requests.tooltips.passThroughApplied' : 'requests.tooltips.passThroughNotApplied')}
+                  >
+                    <IconRoute className='h-3.5 w-3.5' />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{t(passThroughApplied ? 'requests.tooltips.passThroughApplied' : 'requests.tooltips.passThroughNotApplied')}</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        );
+      },
+    },
     {
       id: 'apiFormat',
       accessorFn: (row) => row.format,
@@ -152,128 +157,33 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       enableHiding: true,
       cell: ({ row }) => {
         const format = row.original.format;
-        if (!format) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
-        return (
+        return format ? (
           <span className='inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-300'>
             {format}
           </span>
+        ) : (
+          <span className='text-muted-foreground text-xs'>-</span>
         );
       },
-    },
-
-    {
-      id: 'passThrough',
-      accessorFn: (row) => row.executions?.edges?.some((edge) => edge.node?.passThroughApplied) ?? false,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.passThrough')} />,
-      enableSorting: false,
-      enableHiding: true,
-      cell: ({ row }) => {
-        const executions = row.original.executions?.edges?.map((edge) => edge.node).filter(Boolean) || [];
-        const appliedExecution = executions.find((execution) => execution?.passThroughApplied);
-
-        if (!appliedExecution) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
-
-        return (
-          <Badge className='border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'>
-            {t('requests.passThrough.applied')}
-          </Badge>
-        );
-      },
-    },
-    {
-      accessorKey: 'reasoningEffort',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.reasoningEffort')} />,
-      enableSorting: false,
-      enableHiding: true,
-      cell: ({ row }) => {
-        const latestExecution = row.original.executions?.edges?.[0]?.node;
-        const reasoningEffort = latestExecution
-          ? latestExecution.reasoningEffort
-          : row.original.status === 'processing'
-            ? undefined
-            : row.original.reasoningEffort;
-
-        if (!reasoningEffort) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
-
-        return (
-          <Badge className='border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-900/20 dark:text-sky-300'>
-            {reasoningEffort}
-          </Badge>
-        );
-      },
-    },
-
-    {
-      id: 'stream',
-      accessorKey: 'stream',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.stream')} />,
-      enableSorting: false,
-      cell: ({ row }) => {
-        const isStream = row.original.stream;
-        return (
-          <Badge
-            className={
-              isStream
-                ? 'border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
-                : 'border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
-            }
-          >
-            {isStream ? t('requests.stream.streaming') : t('requests.stream.nonStreaming')}
-          </Badge>
-        );
-      },
-      filterFn: (row, _id, value) => {
-        return value.includes(row.original.stream?.toString() || '-');
-      },
-      enableHiding: true,
     },
     {
       id: 'source',
       accessorKey: 'source',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.source')} />,
-      enableSorting: false,
-      cell: ({ row }) => {
-        const source = row.getValue('source') as string;
-        const sourceColors: Record<string, string> = {
-          api: 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800',
-          playground: 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800',
-        };
-        return (
-          <Badge
-            className={
-              sourceColors[source] ||
-              'border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
-            }
-          >
-            {t(`requests.source.${source}`)}
-          </Badge>
-        );
-      },
-      filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id));
-      },
+      enableHiding: false,
+      filterFn: (row, id, value) => value.includes(row.getValue(id)),
+      cell: () => null,
     },
     {
       id: 'clientIP',
       accessorKey: 'clientIP',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.clientIP')} />,
       enableSorting: false,
+      enableHiding: true,
       cell: ({ row }) => {
-        const clientIP = (row.getValue('clientIP') as string) || '';
-        const normalizedIP = clientIP.trim();
-
-        if (!normalizedIP) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
+        const normalizedIP = row.original.clientIP?.trim() ?? '';
+        if (!normalizedIP) return <span className='text-muted-foreground text-xs'>-</span>;
 
         const isBlocked = blockedIPs.includes(normalizedIP);
-
         return (
           <div className='flex items-center gap-2'>
             <span className='font-mono text-xs'>{normalizedIP}</span>
@@ -286,12 +196,9 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                       type='button'
                       variant='ghost'
                       size='icon-sm'
-                      className='h-6 w-6 shrink-0 rounded-full text-red-500/80 hover:bg-red-50 hover:text-red-600 dark:text-red-300/80 dark:hover:bg-red-950/30 dark:hover:text-red-300'
+                      className='h-6 w-6 shrink-0 text-red-500/80 hover:bg-red-50 hover:text-red-600 dark:text-red-300/80 dark:hover:bg-red-950/30 dark:hover:text-red-300'
                       disabled={updateSecuritySettings.isPending}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleUnblockIP(normalizedIP);
-                      }}
+                      onClick={() => void handleUnblockIP(normalizedIP)}
                       aria-label={t('requests.actions.unblockIP')}
                     >
                       <Ban className='h-3.5 w-3.5' />
@@ -306,12 +213,9 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                       type='button'
                       variant='ghost'
                       size='icon-sm'
-                      className='text-muted-foreground h-6 w-6 shrink-0 rounded-md border border-dashed border-transparent hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:hover:border-red-800/50 dark:hover:bg-red-950/30 dark:hover:text-red-300'
+                      className='text-muted-foreground h-6 w-6 shrink-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-300'
                       disabled={updateSecuritySettings.isPending}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void handleBlockIP(normalizedIP);
-                      }}
+                      onClick={() => void handleBlockIP(normalizedIP)}
                       aria-label={t('requests.actions.blockIP')}
                     >
                       <Ban className='h-3.5 w-3.5' />
@@ -324,369 +228,214 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         );
       },
     },
-    // Channel column - only show if user has permission to view channels
     ...(permissions.canViewChannels
       ? ([
           {
             id: 'channel',
-            accessorFn: (row) => row.channel?.id || '',
+            accessorFn: (row) => row.executions?.edges?.[0]?.node?.channel?.id ?? row.channel?.id ?? '',
             header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.channel')} />,
             enableSorting: false,
+            enableHiding: true,
             cell: ({ row }) => {
               const request = row.original;
-              const channel = request.channel;
+              const executions = request.executions?.edges?.flatMap((edge) => (edge.node ? [edge.node] : [])) ?? [];
+              const finalExecution = executions[0];
+              const channel = finalExecution?.channel ?? request.channel;
+              const hasExecutionPath =
+                executions.length > 1 ||
+                executions.some((execution) => execution.modelID && execution.modelID !== request.modelID) ||
+                executions.some((execution) => execution.channel?.id && execution.channel.id !== channel?.id);
 
-              if (!channel) {
-                return <div className='text-muted-foreground font-mono text-xs'>-</div>;
-              }
+              if (!channel) return <span className='text-muted-foreground font-mono text-xs'>-</span>;
 
-              // Check if there are any executions with different channels
-              const executions = request.executions?.edges?.map((edge) => edge.node).filter((exe) => !!exe) || [];
-              const hasMultipleChannels = executions.some((exe) => exe.channel?.id && exe.channel.id !== channel.id);
-
-              if (executions.length > 1 || hasMultipleChannels) {
-                const sortedExecutions = [...executions].sort((a, b) => {
-                  const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-                  const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-                  return dateB - dateA;
-                });
-
-                return (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type='button'
-                        className='flex w-fit cursor-help items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 dark:border-rose-800/50 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50'
-                      >
-                        <span>{channel.name}</span>
-                        <IconArrowsJoin2 className='h-3.5 w-3.5 opacity-80' />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side='right' className='border-rose-200 bg-white p-0 dark:bg-zinc-900'>
-                      <div className='flex min-w-[240px] flex-col'>
-                        <div className='flex flex-col gap-1 border-b bg-rose-50/50 p-3 dark:bg-rose-900/10'>
-                          <div className='flex items-center gap-2 text-xs font-bold tracking-wider text-rose-900 uppercase dark:text-rose-300'>
-                            <IconArrowsJoin2 className='h-3.5 w-3.5' />
-                            {t('requests.columns.retryProcess')}
-                          </div>
-                        </div>
-                        <div className='flex flex-col gap-1 p-2'>
-                          {sortedExecutions.map((exe, idx) => (
-                            <div
-                              key={exe.id || idx}
-                              className='hover:bg-muted/50 flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors'
-                            >
-                              <Badge className={`${getStatusColor(exe.status || '')} h-5 shrink-0 px-1.5 text-[10px] font-bold uppercase`}>
-                                {t(`requests.status.${exe.status}`)}
+              return (
+                <div className='flex min-w-[120px] items-center gap-1.5'>
+                  <span className='font-mono text-xs'>{channel.name}</span>
+                  {hasExecutionPath && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type='button'
+                          variant='ghost'
+                          size='icon-sm'
+                          className='h-6 w-6 shrink-0 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/30 dark:hover:text-rose-200'
+                          onClick={() => openDetail(request.id)}
+                          aria-label={t('requests.tooltips.executionChain')}
+                        >
+                          <IconArrowsJoin2 className='h-3.5 w-3.5' />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side='right' className='max-w-xs p-2'>
+                        <div className='space-y-1.5'>
+                          <p className='text-xs font-medium'>{t('requests.tooltips.executionChain')}</p>
+                          {[...executions].reverse().map((execution, index) => (
+                            <div key={execution.id ?? index} className='flex items-center gap-2 text-xs'>
+                              <Badge className={`${getStatusColor(execution.status ?? '')} h-5 px-1.5 text-[10px]`}>
+                                {execution.status ? t(`requests.status.${execution.status}`) : t('requests.columns.unknown')}
                               </Badge>
-                              <div className='flex min-w-0 flex-col'>
-                                <span className='text-foreground truncate text-xs font-semibold'>
-                                  {exe.channel?.name || t('requests.columns.unknown')}
-                                </span>
-                                {exe.createdAt && (
-                                  <span className='text-muted-foreground text-[10px]'>
-                                    {format(new Date(exe.createdAt), 'HH:mm:ss', { locale })}
-                                  </span>
-                                )}
-                              </div>
+                              <span>{execution.channel?.name || t('requests.columns.unknown')}</span>
                             </div>
                           ))}
                         </div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              }
-
-              return <div className='px-2 font-mono text-xs'>{channel.name}</div>;
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+              );
             },
             filterFn: (row, _id, value) => {
-              // For client-side filtering, check if any of the selected channels match
-              if (value.length === 0) return true; // No filter applied
-
-              const channel = row.original.channel;
-              if (!channel) return false;
-
-              return value.includes(channel.id);
+              if (value.length === 0) return true;
+              const channel = row.original.executions?.edges?.[0]?.node?.channel ?? row.original.channel;
+              return !!channel?.id && value.includes(channel.id);
             },
           },
         ] as ColumnDef<Request>[])
       : []),
-    // API Key column - only show if user has permission to view API keys
-    ...(permissions.canViewApiKeys
-      ? ([
-          {
-            accessorKey: 'apiKey',
-            header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.apiKey')} />,
-            enableSorting: false,
-            cell: ({ row }) => {
-              return <div className='font-mono text-xs'>{row.original.apiKey?.name || '-'}</div>;
-            },
-          },
-        ] as ColumnDef<Request>[])
-      : []),
-
     {
-      accessorKey: 'status',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} />,
-      cell: ({ row }) => {
-        const status = row.getValue('status') as string;
-        return <Badge className={getStatusColor(status)}>{t(`requests.status.${status}`)}</Badge>;
-      },
-      filterFn: (row, id, value) => {
-        return value.includes(row.getValue(id));
-      },
-      enableSorting: false,
-      enableHiding: true,
-    },
-    {
-      id: 'tokens',
+      id: 'usage',
       accessorFn: (row) => {
         const usageLog = row.usageLogs?.edges?.[0]?.node;
-        return (usageLog?.promptTokens || 0) + (usageLog?.completionTokens || 0);
+        return (usageLog?.promptTokens ?? 0) + (usageLog?.completionTokens ?? 0);
       },
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.tokens')} />,
-      cell: ({ row }) => {
-        const request = row.original;
-        const usageLog = request.usageLogs?.edges?.[0]?.node;
-
-        if (!usageLog) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
-
-        const promptTokens = usageLog.promptTokens || 0;
-        const completionTokens = usageLog.completionTokens || 0;
-        const reasoningTokens = usageLog.completionReasoningTokens || 0;
-        const totalTokens = promptTokens + completionTokens;
-
-        return (
-          <div className='space-y-0.5 text-xs'>
-            <div className='text-sm font-medium'>
-              {t('requests.columns.totalTokens')}
-              {(totalTokens || 0).toLocaleString()}
-            </div>
-            <div className='text-muted-foreground'>
-              {t('requests.columns.input')}: {promptTokens.toLocaleString()} | {t('requests.columns.output')}:{' '}
-              {completionTokens.toLocaleString()}
-            </div>
-            {reasoningTokens > 0 && (
-              <div className='text-muted-foreground'>
-                {t('requests.columns.reasoning')}: {reasoningTokens.toLocaleString()}
-              </div>
-            )}
-          </div>
-        );
-      },
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.usage')} />,
       enableSorting: true,
-      enableHiding: true,
-      sortingFn: (rowA, rowB) => {
-        const a =
-          (rowA.original.usageLogs?.edges?.[0]?.node?.promptTokens || 0) +
-          (rowA.original.usageLogs?.edges?.[0]?.node?.completionTokens || 0);
-        const b =
-          (rowB.original.usageLogs?.edges?.[0]?.node?.promptTokens || 0) +
-          (rowB.original.usageLogs?.edges?.[0]?.node?.completionTokens || 0);
-        return a - b;
-      },
-    },
-    {
-      id: 'readCache',
-      accessorFn: (row) => row.usageLogs?.edges?.[0]?.node?.promptCachedTokens || 0,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.readCache')} />,
+      enableHiding: false,
       cell: ({ row }) => {
-        const request = row.original;
-        const usageLog = request.usageLogs?.edges?.[0]?.node;
+        const usageLog = row.original.usageLogs?.edges?.[0]?.node;
+        if (!usageLog) return <span className='text-muted-foreground text-xs'>-</span>;
 
-        if (!usageLog) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
-
-        const cachedTokens = usageLog.promptCachedTokens || 0;
-        const promptTokens = usageLog.promptTokens || 0;
-
-        if (cachedTokens === 0) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
-
-        const hitRate = promptTokens > 0 ? (cachedTokens / promptTokens) * 100 : 0;
-        const isLowHitRate = hitRate < 80 && promptTokens >= 40000;
+        const promptTokens = usageLog.promptTokens ?? 0;
+        const completionTokens = usageLog.completionTokens ?? 0;
+        const readCacheTokens = usageLog.promptCachedTokens ?? 0;
+        const writeCacheTokens = usageLog.promptWriteCachedTokens ?? 0;
+        const hasCache = readCacheTokens > 0 || writeCacheTokens > 0;
 
         return (
-          <div className='text-xs'>
-            <div className='text-sm font-medium'>{cachedTokens.toLocaleString()}</div>
-            <div className={isLowHitRate ? 'font-medium text-red-600 dark:text-red-400' : 'text-muted-foreground'}>
-              {t('requests.columns.cacheHitRate', {
-                rate: hitRate.toFixed(1),
-              })}
+          <div className='min-w-[170px] space-y-1 text-xs'>
+            <div className='flex items-center gap-3 font-medium'>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className='inline-flex items-center gap-1' tabIndex={0} role='img' aria-label={t('requests.tooltips.inputTokens')}>
+                    <ArrowUp className='h-3.5 w-3.5 text-muted-foreground' />
+                    {promptTokens.toLocaleString()}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{t('requests.tooltips.inputTokens')}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className='inline-flex items-center gap-1' tabIndex={0} role='img' aria-label={t('requests.tooltips.outputTokens')}>
+                    <ArrowDown className='h-3.5 w-3.5 text-muted-foreground' />
+                    {completionTokens.toLocaleString()}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{t('requests.tooltips.outputTokens')}</TooltipContent>
+              </Tooltip>
+            </div>
+            <div className='text-muted-foreground whitespace-nowrap'>
+              {hasCache
+                ? `${t('requests.columns.cache')} ${readCacheTokens.toLocaleString()} (${t('requests.columns.read')})  ${writeCacheTokens.toLocaleString()} (${t('requests.columns.write')})`
+                : `${t('requests.columns.cache')} -`}
             </div>
           </div>
         );
-      },
-      enableSorting: true,
-      enableHiding: true,
-      sortingFn: (rowA, rowB) => {
-        const a = rowA.original.usageLogs?.edges?.[0]?.node?.promptCachedTokens || 0;
-        const b = rowB.original.usageLogs?.edges?.[0]?.node?.promptCachedTokens || 0;
-        return a - b;
-      },
-    },
-    {
-      id: 'writeCache',
-      accessorFn: (row) => row.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0,
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.writeCache')} />,
-      cell: ({ row }) => {
-        const request = row.original;
-        const usageLog = request.usageLogs?.edges?.[0]?.node;
-
-        if (!usageLog) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
-
-        const writeCachedTokens = usageLog.promptWriteCachedTokens || 0;
-        const promptTokens = usageLog.promptTokens || 0;
-
-        if (writeCachedTokens === 0) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
-
-        return (
-          <div className='text-xs'>
-            <div className='text-sm font-medium'>{writeCachedTokens.toLocaleString()}</div>
-            <div className='text-muted-foreground'>
-              {t('requests.columns.writeCacheRate', {
-                rate: promptTokens > 0 ? ((writeCachedTokens / promptTokens) * 100).toFixed(1) : '0.0',
-              })}
-            </div>
-          </div>
-        );
-      },
-      enableSorting: true,
-      enableHiding: true,
-      sortingFn: (rowA, rowB) => {
-        const a = rowA.original.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0;
-        const b = rowB.original.usageLogs?.edges?.[0]?.node?.promptWriteCachedTokens || 0;
-        return a - b;
       },
     },
     {
       id: 'cost',
-      accessorFn: (row) => {
-        const usageLog = row.usageLogs?.edges?.[0]?.node;
-        return usageLog?.totalCost ?? null;
-      },
+      accessorFn: (row) => row.usageLogs?.edges?.[0]?.node?.totalCost ?? null,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.cost')} />,
       enableSorting: false,
       enableHiding: true,
       cell: ({ row }) => {
-        const usageLog = row.original.usageLogs?.edges?.[0]?.node;
-        const cost = usageLog?.totalCost;
-        if (cost === undefined || cost === null) return <div className='font-mono text-xs'>-</div>;
+        const cost = row.original.usageLogs?.edges?.[0]?.node?.totalCost;
+        if (cost == null) return <span className='font-mono text-xs'>-</span>;
 
         return (
-          <div className='font-mono text-xs font-medium'>
+          <span className='font-mono text-xs font-medium'>
             {t('currencies.format', {
               val: cost,
               currency: settings?.currencyCode ?? 'USD',
               locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
               minimumFractionDigits: 6,
             })}
-          </div>
+          </span>
         );
       },
     },
     {
-      id: 'latency',
+      id: 'duration',
       accessorFn: (row) => row.metricsLatencyMs ?? null,
-      header: ({ column }) => (
-        <div className='flex items-center gap-1'>
-          {displayMode === 'latency' ? (
-            <DataTableColumnHeader column={column} title={t('requests.columns.latency')} />
-          ) : (
-            <span className='text-sm font-medium uppercase'>{t('requests.columns.tokensPerSecond')}</span>
-          )}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setDisplayMode((prev) => (prev === 'latency' ? 'tokensPerSecond' : 'latency'));
-            }}
-            className='hover:text-primary cursor-pointer transition-colors'
-            title={displayMode === 'latency' ? t('requests.columns.showTokensPerSecond') : t('requests.columns.showLatency')}
-            type='button'
-          >
-            <ArrowLeftRight className='text-muted-foreground h-3 w-3' />
-          </button>
-        </div>
-      ),
-      cell: ({ row }) => {
-        const request = row.original;
-        const latencyParts = [];
-
-        if (request.status === 'completed') {
-          if (displayMode === 'latency') {
-            if (request.metricsLatencyMs != null) {
-              latencyParts.push(formatDuration(request.metricsLatencyMs));
-            }
-          } else {
-            const tokensPerSecond = calculateTokensPerSecond(request);
-            if (tokensPerSecond !== '-') {
-              latencyParts.push(tokensPerSecond);
-            }
-          }
-
-          if (request.stream && request.metricsFirstTokenLatencyMs != null) {
-            latencyParts.push(`TTFT: ${formatDuration(request.metricsFirstTokenLatencyMs)}`);
-          }
-        }
-
-        if (latencyParts.length === 0) {
-          return <div className='text-muted-foreground text-xs'>-</div>;
-        }
-
-        return <div className='font-mono text-xs'>{latencyParts.join(' | ')}</div>;
-      },
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.duration')} />,
       enableSorting: true,
       enableHiding: true,
-      sortingFn: (rowA, rowB) => {
-        const a = rowA.original.metricsLatencyMs ?? 0;
-        const b = rowB.original.metricsLatencyMs ?? 0;
-        return a - b;
+      cell: ({ row }) => {
+        const request = row.original;
+        if (request.status !== 'completed' || request.metricsLatencyMs == null) {
+          return <span className='text-muted-foreground text-xs'>-</span>;
+        }
+
+        if (!request.stream) {
+          return <span className='font-mono text-xs'>{t('requests.duration.total', { duration: formatDuration(request.metricsLatencyMs) })} · {t('requests.stream.nonStreaming')}</span>;
+        }
+
+        return (
+          <div className='min-w-[128px] font-mono text-xs'>
+            {request.metricsFirstTokenLatencyMs != null && <div>{t('requests.duration.firstToken', { duration: formatDuration(request.metricsFirstTokenLatencyMs) })}</div>}
+            <div className='text-muted-foreground'>{t('requests.duration.total', { duration: formatDuration(request.metricsLatencyMs) })} · {t('requests.stream.streaming')}</div>
+          </div>
+        );
       },
+      sortingFn: (rowA, rowB) => (rowA.original.metricsLatencyMs ?? 0) - (rowB.original.metricsLatencyMs ?? 0),
+    },
+    {
+      id: 'tokensPerSecond',
+      accessorFn: (row) => getTokensPerSecondValue(row) ?? 0,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.tokensPerSecond')} />,
+      enableSorting: true,
+      enableHiding: true,
+      cell: ({ row }) => <span className='font-mono text-xs'>{calculateTokensPerSecond(row.original)}</span>,
+      sortingFn: (rowA, rowB) => (getTokensPerSecondValue(rowA.original) ?? 0) - (getTokensPerSecondValue(rowB.original) ?? 0),
+    },
+    {
+      id: 'caller',
+      accessorFn: (row) => row.apiKey?.id ?? '',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.caller')} />,
+      enableSorting: false,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const request = row.original;
+        if (request.source !== 'api') {
+          return <Badge variant='secondary'>{t(`requests.source.${request.source}`)}</Badge>;
+        }
+
+        return <span className='font-mono text-xs'>{request.apiKey?.name || '-'}</span>;
+      },
+      filterFn: (row, _id, value) => value.length === 0 || value.includes(row.original.apiKey?.id ?? ''),
     },
     {
       id: 'details',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.details')} />,
+      header: () => <span className='sr-only'>{t('requests.columns.details')}</span>,
       cell: ({ row }) => (
-        <Button
-          variant='outline'
-          size='sm'
-          onClick={() => {
-            if (options?.onViewDetail) {
-              options.onViewDetail(row.original.id);
-              return;
-            }
-
-            navigateWithSearch({
-              to: '/project/requests/$requestId',
-              params: { requestId: row.original.id },
-            });
-          }}
-        >
-          <FileText className='mr-2 h-4 w-4' />
-          {t('requests.actions.viewDetails')}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type='button'
+              variant='ghost'
+              size='icon-sm'
+              className='h-8 w-8'
+              onClick={() => openDetail(row.original.id)}
+              aria-label={t('requests.actions.viewDetails')}
+            >
+              <FileText className='h-4 w-4' />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{t('requests.actions.viewDetails')}</TooltipContent>
+        </Tooltip>
       ),
-      enableHiding: true,
-    },
-    {
-      accessorKey: 'createdAt',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
-      cell: ({ row }) => {
-        const date = new Date(row.getValue('createdAt'));
-        return <div className='text-xs'>{format(date, 'yyyy-MM-dd HH:mm:ss', { locale })}</div>;
-      },
-      enableSorting: false,
-      enableHiding: true,
+      enableHiding: false,
     },
   ];
+
   return columns;
 }
