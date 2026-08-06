@@ -132,9 +132,9 @@ function RequestFilterControls({
           footer={channelFooter}
         />
       )}
-      {canViewApiKeys && table.getColumn('apiKey') && (apiKeyOptions.length > 0 || isFetchingApiKeys) && (
+      {canViewApiKeys && table.getColumn('caller') && (apiKeyOptions.length > 0 || isFetchingApiKeys) && (
         <DataTableFacetedFilter
-          column={table.getColumn('apiKey')}
+          column={table.getColumn('caller')}
           title={t('requests.filters.apiKey')}
           options={apiKeyOptions}
           footer={apiKeyFooter}
@@ -212,14 +212,14 @@ export function DataTableToolbar<TData>({
 
     if (checked === false) {
       // When turning off show archived, prune any archived IDs from the filter
-      const currentFilter = table.getColumn('apiKey')?.getFilterValue() as string[] | undefined;
+      const currentFilter = table.getColumn('caller')?.getFilterValue() as string[] | undefined;
       if (currentFilter && currentFilter.length > 0) {
         // Compute visible IDs from raw data (filtering for non-archived status)
         const visibleIds = new Set(
           apiKeysData?.edges?.filter((edge) => edge.node.status !== 'archived')?.map((edge) => edge.node.id) ?? []
         );
         const prunedFilter = currentFilter.filter((id) => visibleIds.has(id));
-        table.getColumn('apiKey')?.setFilterValue(prunedFilter.length > 0 ? prunedFilter : undefined);
+        table.getColumn('caller')?.setFilterValue(prunedFilter.length > 0 ? prunedFilter : undefined);
       }
     }
   };
