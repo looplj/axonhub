@@ -1,35 +1,34 @@
 {
-  "id": "resp_020592949fb9ce090069355e9a54788196911d78a6360a88f2",
   "object": "response",
+  "id": "resp_020592949fb9ce090069355e9a54788196911d78a6360a88f2",
   "created_at": 1765105306,
-  "status": "completed",
   "model": "gpt-4o",
   "output": [
     {
       "id": "rs_0f60342a2cefd3d80069384a0037848193afeafd76535af96e",
       "type": "reasoning",
-      "status": "in_progress",
+      "status": "completed",
       "summary": [
         {
-          "type": "summary_text",
-          "text": "I need"
+          "text": "I need",
+          "type": "summary_text"
         }
       ]
     },
     {
-      "id": "msg_020592949fb9ce090069355e9c05408196bb3d459b4ca2b073",
+      "id": "item_AapHfiojLge85gx9",
       "type": "message",
-      "status": "completed",
+      "role": "assistant",
       "content": [
         {
           "type": "output_text",
           "text": "Hello! I'm an AI assistant designed to help with a wide range of tasks, including answering math questions and providing current weather information. For your project, I'll first calculate the product of 25 and 4, and then I'll retrieve the current weather conditions in Tokyo.\n\nI'll be using dedicated tools for these tasks:\n\n1. A calculation tool to find the product of 25 multiplied by 4.\n2. A weather information tool to get the latest weather update for Tokyo.\n\nLet's start with the calculations and weather retrieval. I'll execute both tasks simultaneously to save time."
         }
       ],
-      "role": "assistant"
+      "status": "completed"
     },
     {
-      "id": "fc_020592949fb9ce090069355e9ec7c8819698be65c589e9e388",
+      "id": "call_zfEfzIJcwVLuoHXhbdyXeb77",
       "type": "function_call",
       "status": "completed",
       "call_id": "call_zfEfzIJcwVLuoHXhbdyXeb77",
@@ -37,7 +36,7 @@
       "arguments": "{\"expression\":\"25 * 4\"}"
     },
     {
-      "id": "fc_020592949fb9ce090069355e9ef2308196ae83c4ec1c19243b",
+      "id": "call_QGIzrBsREQ0xDM1snIlUGG78",
       "type": "function_call",
       "status": "completed",
       "call_id": "call_QGIzrBsREQ0xDM1snIlUGG78",
@@ -45,9 +44,17 @@
       "arguments": "{\"location\":\"Tokyo\"}"
     }
   ],
+  "status": "completed",
   "usage": {
     "input_tokens": 8,
+    "input_tokens_details": {
+      "cache_write_tokens": 0,
+      "cached_tokens": 0
+    },
     "output_tokens": 162,
+    "output_tokens_details": {
+      "reasoning_tokens": 0
+    },
     "total_tokens": 170
   }
 }

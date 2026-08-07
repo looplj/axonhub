@@ -375,27 +375,28 @@ func isAbnormalResponsesFinishReason(reason string) bool {
 	}
 }
 
-// enqueueTerminalResponse maps Chat finish reasons to Responses terminal states.
+// enqueueTerminalResponse maps Chat finish reasons onto the terminal
+// response.completed status. The Responses API signals truncation and failure
+// through the response status rather than a dedicated event type, so the
+// stream always terminates with response.completed.
 func (s *responsesInboundStream) enqueueTerminalResponse() error {
 	status := "completed"
-	eventType := StreamEventTypeResponseCompleted
 	switch s.finishReason {
 	case "length", "content_filter":
 		status = "incomplete"
-		eventType = StreamEventTypeResponseIncomplete
 	case "error":
 		status = "failed"
-		eventType = StreamEventTypeResponseFailed
 	case "cancelled", "canceled":
-		status = "canceled"
-		eventType = StreamEventTypeResponseCancelled
+		status = "cancelled"
 	}
 
 	s.responseCompleted = true
-	s.aggregator.status = status
+	if s.aggregator.status == "" || s.aggregator.status == "in_progress" {
+		s.aggregator.status = status
+	}
 	response := s.aggregator.buildResponse()
 	applyEchoFields(response, s.echoResponse)
-	if status == "incomplete" {
+	if status == "incomplete" && response.IncompleteDetails == nil {
 		reason := "max_output_tokens"
 		if s.finishReason == "content_filter" {
 			reason = "content_filter"
@@ -408,8 +409,8 @@ func (s *responsesInboundStream) enqueueTerminalResponse() error {
 	if calls := getResponseWebSearchCallsFromMetadata(s.transformerMetadata); len(calls) > 0 {
 		response.Output = append(append([]Item(nil), calls...), response.Output...)
 	}
-	if err := s.enqueueEvent(&StreamEvent{Type: eventType, Response: response}); err != nil {
-		return fmt.Errorf("failed to enqueue %s event: %w", eventType, err)
+	if err := s.enqueueEvent(&StreamEvent{Type: StreamEventTypeResponseCompleted, Response: response}); err != nil {
+		return fmt.Errorf("failed to enqueue response.completed event: %w", err)
 	}
 	return nil
 }
@@ -874,7 +875,8 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 	// A Responses function_call must include its name in output_item.added for
 	// clients to route it. Some upstreams provide that identity only in a later
 	// arguments delta or done event, so retain the call until it is known.
-	if tc.ResponseCustomToolCall == nil && tc.Function.Name == "" {
+	// Custom and tool-search calls carry their identity from the first chunk.
+	if tc.ResponseCustomToolCall == nil && tc.ResponseToolSearchCall == nil && tc.Function.Name == "" {
 		return nil
 	}
 
@@ -1112,6 +1114,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 	item := Item{
 		ID:               s.currentItemID,
 		Type:             "reasoning",
+		Status:           lo.ToPtr("completed"),
 		Summary:          summary,
 		EncryptedContent: encryptedContent,
 	}

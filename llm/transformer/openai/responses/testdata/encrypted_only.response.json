@@ -8,7 +8,7 @@
     {
       "id": "rs_encrypted_only",
       "type": "reasoning",
-      "status": "in_progress",
+      "status": "completed",
       "summary": [],
       "encrypted_content": "QVhOMTAzencrypted_data_here"
     }

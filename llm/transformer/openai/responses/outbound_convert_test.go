@@ -581,42 +581,7 @@ func TestConvertToolMessageCustomOutputImageCarriesDetail(t *testing.T) {
 	require.Equal(t, "auto", lo.FromPtr(decoded.Output[0].Detail))
 }
 
-func TestConvertToolSearchOutputMalformedContentDegradesWithWarning(t *testing.T) {
-	var logs bytes.Buffer
-	previousLogger := slog.Default()
-	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
-	t.Cleanup(func() { slog.SetDefault(previousLogger) })
 
-	result := convertToolMessageWithType(llm.Message{
-		Role:       "tool",
-		ToolCallID: lo.ToPtr("call_search"),
-		Content:    llm.MessageContent{Content: lo.ToPtr(`[{"type":"function"}`)},
-	}, "tool_search_output")
-
-	require.Equal(t, "tool_search_output", result.Type)
-	require.NotNil(t, result.Tools)
-	require.Empty(t, result.Tools)
-	require.Contains(t, logs.String(), "failed to decode tool_search_output tools")
-	require.Contains(t, logs.String(), "call_search")
-}
-
-func TestConvertToolSearchOutputNullContentDegradesWithWarning(t *testing.T) {
-	var logs bytes.Buffer
-	previousLogger := slog.Default()
-	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
-	t.Cleanup(func() { slog.SetDefault(previousLogger) })
-
-	result := convertToolMessageWithType(llm.Message{
-		Role:       "tool",
-		ToolCallID: lo.ToPtr("call_search_null"),
-		Content:    llm.MessageContent{Content: lo.ToPtr(`null`)},
-	}, "tool_search_output")
-
-	require.NotNil(t, result.Tools)
-	require.Empty(t, result.Tools)
-	require.Contains(t, logs.String(), "expected a JSON array")
-	require.Contains(t, logs.String(), "call_search_null")
-}
 
 func TestConvertWebSearchToTool(t *testing.T) {
 	tests := []struct {

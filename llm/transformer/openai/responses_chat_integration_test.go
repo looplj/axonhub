@@ -435,10 +435,10 @@ func TestResponsesToChatStream_MapsAbnormalFinishReasons(t *testing.T) {
 		status           string
 		incompleteReason string
 	}{
-		{finishReason: "length", terminalType: responsesapi.StreamEventTypeResponseIncomplete, status: "incomplete", incompleteReason: "max_output_tokens"},
-		{finishReason: "content_filter", terminalType: responsesapi.StreamEventTypeResponseIncomplete, status: "incomplete", incompleteReason: "content_filter"},
-		{finishReason: "error", terminalType: responsesapi.StreamEventTypeResponseFailed, status: "failed"},
-		{finishReason: "cancelled", terminalType: responsesapi.StreamEventTypeResponseCancelled, status: "canceled"},
+		{finishReason: "length", terminalType: responsesapi.StreamEventTypeResponseCompleted, status: "incomplete", incompleteReason: "max_output_tokens"},
+		{finishReason: "content_filter", terminalType: responsesapi.StreamEventTypeResponseCompleted, status: "incomplete", incompleteReason: "content_filter"},
+		{finishReason: "error", terminalType: responsesapi.StreamEventTypeResponseCompleted, status: "failed"},
+		{finishReason: "cancelled", terminalType: responsesapi.StreamEventTypeResponseCompleted, status: "cancelled"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.finishReason, func(t *testing.T) {
@@ -466,10 +466,10 @@ func TestResponsesToChatStream_AbnormalFinishDoesNotCompletePartialToolCalls(t *
 		terminalType responsesapi.StreamEventType
 		status       string
 	}{
-		{finishReason: "length", terminalType: responsesapi.StreamEventTypeResponseIncomplete, status: "incomplete"},
-		{finishReason: "content_filter", terminalType: responsesapi.StreamEventTypeResponseIncomplete, status: "incomplete"},
-		{finishReason: "error", terminalType: responsesapi.StreamEventTypeResponseFailed, status: "failed"},
-		{finishReason: "cancelled", terminalType: responsesapi.StreamEventTypeResponseCancelled, status: "canceled"},
+		{finishReason: "length", terminalType: responsesapi.StreamEventTypeResponseCompleted, status: "incomplete"},
+		{finishReason: "content_filter", terminalType: responsesapi.StreamEventTypeResponseCompleted, status: "incomplete"},
+		{finishReason: "error", terminalType: responsesapi.StreamEventTypeResponseCompleted, status: "failed"},
+		{finishReason: "cancelled", terminalType: responsesapi.StreamEventTypeResponseCompleted, status: "cancelled"},
 	}
 	states := []struct {
 		name     string
