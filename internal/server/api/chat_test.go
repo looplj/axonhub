@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -104,6 +105,72 @@ func (s *trackingStream) Current() *httpclient.StreamEvent { return s.current }
 func (s *trackingStream) Err() error                       { return nil }
 func (s *trackingStream) Close() error                     { return nil }
 
+type delayedStream struct {
+	delay   time.Duration
+	event   *httpclient.StreamEvent
+	current *httpclient.StreamEvent
+	done    bool
+}
+
+func (s *delayedStream) Next() bool {
+	if s.done {
+		return false
+	}
+
+	time.Sleep(s.delay)
+	s.current = s.event
+	s.done = true
+
+	return true
+}
+
+func (s *delayedStream) Current() *httpclient.StreamEvent { return s.current }
+func (s *delayedStream) Err() error                       { return nil }
+func (s *delayedStream) Close() error                     { return nil }
+
+type blockingStream struct {
+	nextStarted  chan struct{}
+	nextReleased chan struct{}
+	nextReturned chan struct{}
+}
+
+func (s *blockingStream) Next() bool {
+	close(s.nextStarted)
+	<-s.nextReleased
+	close(s.nextReturned)
+
+	return false
+}
+
+func (s *blockingStream) Current() *httpclient.StreamEvent { return nil }
+func (s *blockingStream) Err() error                       { return nil }
+func (s *blockingStream) Close() error                     { return nil }
+
+type blockingEventStream struct {
+	event        *httpclient.StreamEvent
+	nextStarted  chan struct{}
+	nextReleased chan struct{}
+	current      *httpclient.StreamEvent
+	done         bool
+}
+
+func (s *blockingEventStream) Next() bool {
+	if s.done {
+		return false
+	}
+
+	close(s.nextStarted)
+	<-s.nextReleased
+	s.current = s.event
+	s.done = true
+
+	return true
+}
+
+func (s *blockingEventStream) Current() *httpclient.StreamEvent { return s.current }
+func (s *blockingEventStream) Err() error                       { return nil }
+func (s *blockingEventStream) Close() error                     { return nil }
+
 type failingResponseWriter struct {
 	gin.ResponseWriter
 
@@ -115,6 +182,26 @@ func (w *failingResponseWriter) Write(_ []byte) (int, error) {
 	w.writes++
 
 	return 0, w.err
+}
+
+type heartbeatFailingResponseWriter struct {
+	gin.ResponseWriter
+
+	err    error
+	failed chan struct{}
+}
+
+func (w *heartbeatFailingResponseWriter) Write(_ []byte) (int, error) {
+	select {
+	case w.failed <- struct{}{}:
+	default:
+	}
+
+	return 0, w.err
+}
+
+func (w *heartbeatFailingResponseWriter) WriteString(data string) (int, error) {
+	return w.Write([]byte(data))
 }
 
 func TestWriteSSEStream_Success(t *testing.T) {
@@ -133,6 +220,156 @@ func TestWriteSSEStream_Success(t *testing.T) {
 	body := w.Body.String()
 	assert.Contains(t, body, `{"id":"1","choices":[{"delta":{"content":"Hi"}}]}`)
 	assert.Contains(t, body, `[DONE]`)
+}
+
+func TestWriteSSEStream_OpenAIHeartbeat(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	stream := &delayedStream{
+		delay: 25 * time.Millisecond,
+		event: &httpclient.StreamEvent{Data: []byte(`[DONE]`)},
+	}
+
+	writeSSEStream(c, stream, FormatStreamError, SSEKeepAliveConfig{
+		Enabled:  true,
+		Interval: 5 * time.Millisecond,
+	}, sseHeartbeatOpenAI)
+
+	body := w.Body.String()
+	require.Contains(t, body, ": keep-alive\n\n")
+	require.Contains(t, body, "data: [DONE]\n\n")
+}
+
+func TestWriteSSEStream_AnthropicHeartbeat(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	stream := &delayedStream{
+		delay: 25 * time.Millisecond,
+		event: &httpclient.StreamEvent{Type: "message_stop", Data: []byte(`{"type":"message_stop"}`)},
+	}
+
+	writeSSEStream(c, stream, FormatStreamError, SSEKeepAliveConfig{
+		Enabled:  true,
+		Interval: 5 * time.Millisecond,
+	}, sseHeartbeatAnthropic)
+
+	body := w.Body.String()
+	require.Contains(t, body, "event: ping\ndata: {\"type\":\"ping\"}\n\n")
+	require.Contains(t, body, "event:message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
+}
+
+func TestWriteSSEStream_HeartbeatWriteErrorWaitsForReader(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	failingWriter := &heartbeatFailingResponseWriter{
+		ResponseWriter: c.Writer,
+		err:            errors.New("broken pipe"),
+		failed:         make(chan struct{}, 1),
+	}
+	c.Writer = failingWriter
+
+	stream := &blockingStream{
+		nextStarted:  make(chan struct{}),
+		nextReleased: make(chan struct{}),
+		nextReturned: make(chan struct{}),
+	}
+
+	done := make(chan struct{})
+	go func() {
+		writeSSEStreamWithHeartbeat(c, stream, FormatStreamError, time.Millisecond, sseHeartbeatOpenAI)
+		close(done)
+	}()
+
+	select {
+	case <-failingWriter.failed:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for heartbeat write failure")
+	}
+
+	select {
+	case <-stream.nextStarted:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for stream reader")
+	}
+
+	select {
+	case <-done:
+		t.Fatal("writer returned before the stream reader stopped")
+	case <-time.After(10 * time.Millisecond):
+	}
+
+	close(stream.nextReleased)
+
+	select {
+	case <-stream.nextReturned:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for stream reader to stop")
+	}
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for SSE writer")
+	}
+}
+
+func TestWriteSSEStream_CanceledContextDrainsHeartbeatReader(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	c.Request = httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+
+	stream := &blockingEventStream{
+		event:        &httpclient.StreamEvent{Data: []byte(`[DONE]`)},
+		nextStarted:  make(chan struct{}),
+		nextReleased: make(chan struct{}),
+	}
+
+	done := make(chan struct{})
+	go func() {
+		writeSSEStreamWithHeartbeat(c, stream, FormatStreamError, time.Hour, sseHeartbeatOpenAI)
+		close(done)
+	}()
+
+	select {
+	case <-stream.nextStarted:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for stream reader")
+	}
+
+	cancel()
+	close(stream.nextReleased)
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for canceled SSE writer")
+	}
+
+	assert.Contains(t, w.Body.String(), "data: [DONE]\n\n")
+	assert.NotContains(t, w.Body.String(), "keep-alive")
+}
+
+func TestWriteSSEStream_DefaultHasNoHeartbeat(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	stream := &delayedStream{
+		delay: 10 * time.Millisecond,
+		event: &httpclient.StreamEvent{Data: []byte(`[DONE]`)},
+	}
+
+	WriteSSEStream(c, stream)
+
+	require.NotContains(t, w.Body.String(), "keep-alive")
 }
 
 func TestWriteSSEStream_CanceledContextStillDrainsBufferedEvents(t *testing.T) {

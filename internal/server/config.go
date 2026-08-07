@@ -91,6 +91,8 @@ type Config struct {
 	// LLMRequestTimeout is the maximum duration for processing a request to LLM.
 	LLMRequestTimeout time.Duration `conf:"llm_request_timeout" yaml:"llm_request_timeout" json:"llm_request_timeout"`
 
+	SSEKeepAlive SSEKeepAlive `conf:"sse_keep_alive" yaml:"sse_keep_alive" json:"sse_keep_alive"`
+
 	Trace     tracing.Config `conf:"trace" yaml:"trace" json:"trace"`
 	Dashboard Dashboard      `conf:"dashboard" yaml:"dashboard" json:"dashboard"`
 
@@ -104,6 +106,11 @@ type Config struct {
 	// This is important for backup restore which uploads large backup files.
 	// Default: 32 MB. Increase this if you have large backup files.
 	MaxMultipartMemory MemorySize `conf:"max_multipart_memory" yaml:"max_multipart_memory" json:"max_multipart_memory"`
+}
+
+type SSEKeepAlive struct {
+	Enabled  bool          `conf:"enabled" yaml:"enabled" json:"enabled"`
+	Interval time.Duration `conf:"interval" yaml:"interval" json:"interval"`
 }
 
 // Dashboard holds configuration for the dashboard cache settings.
