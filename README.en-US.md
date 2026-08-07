@@ -73,6 +73,30 @@
   <tbody>
     <tr>
       <td align="center" valign="middle">
+        <a href="https://lj.s.gy/8HNo22" target="_blank">
+          <img src="https://www-static.qbox.me/_next/static/media/logo.0fc18feaa621d2068a7180631f742256.jpg" alt="Qiniu Cloud AI" height="90"/>
+          <br/>
+          <strong>Qiniu Cloud AI</strong>
+        </a>
+      </td>
+      <td valign="middle">
+        Qiniu Cloud AI is an enterprise-grade LLM MaaS platform operated by Qiniu Cloud (02567.HK), providing one-stop access to 150+ mainstream models worldwide. It supports major model provider protocols and text, image, audio, video, file processing, and other multimodal capabilities, serving more than 1.69 million enterprises and developers. As an exclusive benefit for AxonHub users, <a href="https://lj.s.gy/8HNo22" target="_blank">register through this link</a> to receive 12 million free tokens for enterprise users or 3 million free tokens for developers.
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="https://lj.s.gy/Wo8IuN" target="_blank">
+          <img src="https://api.fenno.ai/branding/standard/icon.webp" alt="FennoAI" height="90"/>
+          <br/>
+          <strong>FennoAI</strong>
+        </a>
+      </td>
+      <td valign="middle">
+        FennoAI is a highly stable, high-performance API relay provider for enterprise R&amp;D teams and developers. It is compatible with the OpenAI and Anthropic protocols and integrates seamlessly with Codex, Claude Code, OpenCode, and other mainstream AI coding tools. The platform supports enterprise-grade reliability at a scale of hundreds of billions of tokens per day, as well as business-to-business settlement and invoicing for domestic and international entities. As an exclusive benefit for AxonHub users, <a href="https://lj.s.gy/Wo8IuN" target="_blank">purchase a subscription through this link</a> for just $1.99 and receive $50 worth of Coding Plan credits. Referral rewards are also available, with up to 20% commission for successful referrals.
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="middle">
         <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">
           <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
           <br/>
