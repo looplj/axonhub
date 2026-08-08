@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -130,11 +131,37 @@ func TestProtectPromptsMaskMultipleContent(t *testing.T) {
 	assert.Equal(t, "secret text", *request.Messages[0].Content.MultipleContent[0].Text)
 }
 
+// TestProtectPromptsRecordsMaskRules verifies that raw-body pass-through can
+// apply exactly the rules that masked the unified request.
+func TestProtectPromptsRecordsMaskRules(t *testing.T) {
+	rule := &ent.PromptProtectionRule{Name: "mask-secret"}
+	state := &PersistenceState{
+		PromptProtecter: &stubPromptProtecter{
+			result: &llm.Request{},
+			rules:  []*ent.PromptProtectionRule{rule},
+		},
+	}
+	inbound := &PersistentInboundTransformer{state: state}
+	middleware := protectPrompts(inbound)
+
+	result, err := middleware.OnInboundLlmRequest(context.Background(), &llm.Request{})
+	require.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, []*ent.PromptProtectionRule{rule}, state.PromptProtectionMaskRules)
+}
+
 type stubPromptProtecter struct {
 	result *llm.Request
 	err    error
+	rules  []*ent.PromptProtectionRule
 }
 
+// Protect implements the base prompt protection contract for tests.
 func (s *stubPromptProtecter) Protect(context.Context, *llm.Request) (*llm.Request, error) {
 	return s.result, s.err
+}
+
+// ProtectWithResult exposes matched mask rules for pass-through tests.
+func (s *stubPromptProtecter) ProtectWithResult(context.Context, *llm.Request) (biz.PromptProtectionResult, error) {
+	return biz.PromptProtectionResult{Request: s.result, MatchedRules: s.rules}, s.err
 }

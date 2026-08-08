@@ -96,7 +96,12 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 			log.String("api_format", request.APIFormat),
 		)
 
-		body, err := mergePassThroughRequestBody(llmReq.RawRequest.Body, llmReq.APIFormat, llmReq.Model)
+		body, err := mergePassThroughRequestBodyWithPromptProtection(
+			llmReq.RawRequest.Body,
+			llmReq.APIFormat,
+			llmReq.Model,
+			outbound.state.PromptProtectionMaskRules,
+		)
 		if err != nil {
 			log.Warn(ctx, "failed to merge pass-through body, keeping outbound body",
 				log.String("channel", channel.Name),

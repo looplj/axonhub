@@ -1383,6 +1383,108 @@ func TestApplyPassThroughBodyPreservesMappedModel(t *testing.T) {
 	require.Equal(t, `{"model":"my-alias","messages":[{"role":"user","content":"hi"}],"temperature":0.4}`, string(outbound.state.LlmRequest.RawRequest.Body))
 }
 
+// TestApplyPassThroughBodyMasksPromptProtectedOpenAIContent verifies that pass-through
+// retains the client's JSON structure while applying prompt-protection replacements.
+func TestApplyPassThroughBodyMasksPromptProtectedOpenAIContent(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-prompt-protection",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+
+	rule := &ent.PromptProtectionRule{
+		Name:    "mask-secret",
+		Pattern: "secret-[0-9]+",
+		Settings: &objects.PromptProtectionSettings{
+			Action:      objects.PromptProtectionActionMask,
+			Replacement: "[MASKED]",
+			Scopes:      []objects.PromptProtectionScope{objects.PromptProtectionScopeUser},
+		},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate:          &ChannelModelsCandidate{Channel: channel},
+			PromptProtectionMaskRules: []*ent.PromptProtectionRule{rule},
+			LlmRequest: &llm.Request{
+				Model:     "gpt-4o",
+				APIFormat: llm.APIFormatOpenAIChatCompletion,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+					Body:      []byte(`{"model":"my-alias","messages":[{"role":"system","content":"secret-001"},{"role":"user","content":"secret-002"},{"role":"user","content":[{"type":"text","text":"secret-003"},{"type":"image_url","image_url":{"url":"https://example.com/image.png"}}]}],"provider_option":{"preserve":true}}`),
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		Body:      []byte(`{"model":"gpt-4o","messages":[]}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	assert.Equal(t, "gpt-4o", gjson.GetBytes(processed.Body, "model").String())
+	assert.Equal(t, "secret-001", gjson.GetBytes(processed.Body, "messages.0.content").String())
+	assert.Equal(t, "[MASKED]", gjson.GetBytes(processed.Body, "messages.1.content").String())
+	assert.Equal(t, "[MASKED]", gjson.GetBytes(processed.Body, "messages.2.content.0.text").String())
+	assert.Equal(t, "https://example.com/image.png", gjson.GetBytes(processed.Body, "messages.2.content.1.image_url.url").String())
+	assert.True(t, gjson.GetBytes(processed.Body, "provider_option.preserve").Bool())
+}
+
+// TestApplyPassThroughBodyKeepsProtectedBodyForUnsupportedPromptLayout verifies
+// that an unknown raw JSON layout cannot cause protected text to be replayed.
+func TestApplyPassThroughBodyKeepsProtectedBodyForUnsupportedPromptLayout(t *testing.T) {
+	ctx := context.Background()
+	format := llm.APIFormatAiSDKText
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-prompt-protection-fallback",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+	rule := &ent.PromptProtectionRule{
+		Name:    "mask-secret",
+		Pattern: "secret",
+		Settings: &objects.PromptProtectionSettings{
+			Action:      objects.PromptProtectionActionMask,
+			Replacement: "[MASKED]",
+		},
+	}
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate:          &ChannelModelsCandidate{Channel: channel},
+			PromptProtectionMaskRules: []*ent.PromptProtectionRule{rule},
+			LlmRequest: &llm.Request{
+				APIFormat: format,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(format),
+					Body:      []byte(`{"messages":[{"role":"user","content":"secret"}]}`),
+				},
+			},
+		},
+	}
+	request := &httpclient.Request{
+		APIFormat: string(format),
+		Body:      []byte(`{"messages":[{"role":"user","content":"[MASKED]"}]}`),
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	assert.Equal(t, string(request.Body), string(processed.Body))
+	assert.NotContains(t, string(processed.Body), `"content":"secret"`)
+}
+
 func TestApplyPassThroughBodyPreservesMappedModelForJinaRerank(t *testing.T) {
 	ctx := context.Background()
 
