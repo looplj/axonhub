@@ -384,9 +384,15 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	llmRequest.Model = entry.ActualModel
 
+	outboundFormat := p.wrapped.APIFormat()
+	if candidate.APIFormat != "" {
+		outboundFormat = llm.APIFormat(candidate.APIFormat)
+	}
+
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
-	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, p.wrapped.APIFormat())
+	llmRequest = applyClaudeCodeCacheCompatibility(llmRequest, outboundFormat)
+	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, outboundFormat)
 
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)
@@ -404,7 +410,24 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 	}
 
-	return p.wrapped.TransformRequest(ctx, llmRequest)
+	isClaudeCodeClient := isClaudeCodeRequest(llmRequest)
+	originalReasoningEffort := llmRequest.ReasoningEffort
+	httpRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	if httpRequest.APIFormat != "" {
+		outboundFormat = llm.APIFormat(httpRequest.APIFormat)
+	}
+
+	return applyClaudeCodeOpenAIReasoningEffortMapping(
+		httpRequest,
+		candidate.Channel.Settings,
+		outboundFormat,
+		isClaudeCodeClient,
+		originalReasoningEffort,
+	)
 }
 
 func filterResponseCustomToolMessagesForNonResponsesOutbound(

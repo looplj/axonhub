@@ -1,13 +1,16 @@
 package orchestrator
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestApplyTransformOptions_ReplaceDeveloperRoleWithSystem(t *testing.T) {
@@ -93,50 +96,249 @@ func TestApplyTransformOptions_ForceArrayInputs(t *testing.T) {
 	require.Equal(t, lo.ToPtr(true), result.TransformOptions.ArrayInputs)
 }
 
-func TestApplyTransformOptions_DowngradeMidConversationSystemDefaultDisabled(t *testing.T) {
-	// nil (legacy channels with no explicit setting) is a no-op: applyTransformOptions
-	// returns the original request untouched, and RequestFromLLM treats nil as disabled.
-	req := &llm.Request{Model: "test-model"}
-
-	settings := &objects.ChannelSettings{
-		TransformOptions: objects.TransformOptions{},
+func TestApplyClaudeCodeCacheCompatibility_AffectedFormats(t *testing.T) {
+	formats := []llm.APIFormat{
+		llm.APIFormatOpenAIChatCompletion,
+		llm.APIFormatOpenAIResponse,
+		llm.APIFormatOpenAIResponseCompact,
+		llm.APIFormatAnthropicMessage,
 	}
 
-	result := applyTransformOptions(req, settings)
+	for _, format := range formats {
+		t.Run(format.String(), func(t *testing.T) {
+			req := newClaudeCodeRequest([]llm.Message{
+				{Role: "system"},
+				{Role: "SYSTEM"},
+				{Role: "user"},
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("reminder 1")}},
+				{Role: "assistant"},
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("reminder 2")}},
+			})
 
-	require.Same(t, req, result)
-	require.Nil(t, result.TransformOptions.DowngradeMidConversationSystem)
+			result := applyClaudeCodeCacheCompatibility(req, format)
+
+			require.NotSame(t, req, result)
+			require.Equal(t, []string{"system", "SYSTEM", "user", "user", "assistant", "user"}, messageRoles(result.Messages))
+			require.Equal(t, []string{"system", "SYSTEM", "user", "system", "assistant", "system"}, messageRoles(req.Messages),
+				"automatic compatibility handling must not mutate the shared inbound request")
+			require.Equal(t, "reminder 1", *result.Messages[3].Content.Content)
+			require.Equal(t, "reminder 2", *result.Messages[5].Content.Content)
+		})
+	}
 }
 
-func TestApplyTransformOptions_DowngradeMidConversationSystemExplicitTrue(t *testing.T) {
-	req := &llm.Request{Model: "test-model"}
-
-	settings := &objects.ChannelSettings{
-		TransformOptions: objects.TransformOptions{
-			DowngradeMidConversationSystem: lo.ToPtr(true),
+func TestApplyClaudeCodeCacheCompatibility_NoOpConditions(t *testing.T) {
+	tests := []struct {
+		name   string
+		req    *llm.Request
+		format llm.APIFormat
+	}{
+		{
+			name: "non Claude Code client",
+			req: requestWithUserAgent("codex_cli_rs/1.0", []llm.Message{
+				{Role: "user"},
+				{Role: "system"},
+			}),
+			format: llm.APIFormatOpenAIResponse,
+		},
+		{
+			name: "leading system block only",
+			req: newClaudeCodeRequest([]llm.Message{
+				{Role: "system"},
+				{Role: "system"},
+				{Role: "user"},
+			}),
+			format: llm.APIFormatAnthropicMessage,
+		},
+		{
+			name: "reminder already carried as user content",
+			req: newClaudeCodeRequest([]llm.Message{
+				{Role: "system"},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("<system-reminder>safe</system-reminder>")}},
+			}),
+			format: llm.APIFormatOpenAIChatCompletion,
+		},
+		{
+			name: "unaffected outbound protocol",
+			req: newClaudeCodeRequest([]llm.Message{
+				{Role: "user"},
+				{Role: "system"},
+			}),
+			format: llm.APIFormatGeminiContents,
+		},
+		{
+			name:   "missing raw request",
+			req:    &llm.Request{Messages: []llm.Message{{Role: "user"}, {Role: "system"}}},
+			format: llm.APIFormatOpenAIResponse,
 		},
 	}
 
-	result := applyTransformOptions(req, settings)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := applyClaudeCodeCacheCompatibility(tt.req, tt.format)
 
-	require.NotSame(t, req, result)
-	require.Equal(t, lo.ToPtr(true), result.TransformOptions.DowngradeMidConversationSystem)
+			require.Same(t, tt.req, result)
+		})
+	}
 }
 
-func TestApplyTransformOptions_DowngradeMidConversationSystemExplicitFalse(t *testing.T) {
-	req := &llm.Request{Model: "test-model"}
+func TestApplyClaudeCodeOpenAIReasoningEffortMapping(t *testing.T) {
+	settings := &objects.ChannelSettings{TransformOptions: objects.TransformOptions{
+		ReasoningEffortMapping: []llm.ReasoningEffortMapping{
+			{From: "xhigh", To: "max"},
+			{From: "max", To: "high"},
+		},
+	}}
 
-	settings := &objects.ChannelSettings{
-		TransformOptions: objects.TransformOptions{
-			DowngradeMidConversationSystem: lo.ToPtr(false),
+	tests := []struct {
+		name             string
+		format           llm.APIFormat
+		claudeCodeClient bool
+		originalEffort   string
+		body             string
+		path             string
+		expectedEffort   string
+		expectClone      bool
+	}{
+		{
+			name:             "maps unmapped Chat Completions body",
+			format:           llm.APIFormatOpenAIChatCompletion,
+			claudeCodeClient: true,
+			originalEffort:   "xhigh",
+			body:             `{"model":"test","reasoning_effort":"xhigh"}`,
+			path:             "reasoning_effort",
+			expectedEffort:   "max",
+			expectClone:      true,
+		},
+		{
+			name:             "maps unmapped Responses body",
+			format:           llm.APIFormatOpenAIResponse,
+			claudeCodeClient: true,
+			originalEffort:   "xhigh",
+			body:             `{"model":"test","reasoning":{"effort":"xhigh"}}`,
+			path:             "reasoning.effort",
+			expectedEffort:   "max",
+			expectClone:      true,
+		},
+		{
+			name:             "maps unmapped compact Responses body",
+			format:           llm.APIFormatOpenAIResponseCompact,
+			claudeCodeClient: true,
+			originalEffort:   "xhigh",
+			body:             `{"model":"test","reasoning":{"effort":"xhigh"}}`,
+			path:             "reasoning.effort",
+			expectedEffort:   "max",
+			expectClone:      true,
+		},
+		{
+			name:             "does not apply a second mapping",
+			format:           llm.APIFormatOpenAIChatCompletion,
+			claudeCodeClient: true,
+			originalEffort:   "xhigh",
+			body:             `{"model":"test","reasoning_effort":"max"}`,
+			path:             "reasoning_effort",
+			expectedEffort:   "max",
+		},
+		{
+			name:             "does not restore provider-cleared effort",
+			format:           llm.APIFormatOpenAIChatCompletion,
+			claudeCodeClient: true,
+			originalEffort:   "xhigh",
+			body:             `{"model":"test"}`,
+			path:             "reasoning_effort",
+		},
+		{
+			name:           "non Claude Code client keeps original behavior",
+			format:         llm.APIFormatOpenAIChatCompletion,
+			originalEffort: "xhigh",
+			body:           `{"model":"test","reasoning_effort":"xhigh"}`,
+			path:           "reasoning_effort",
+			expectedEffort: "xhigh",
+		},
+		{
+			name:             "Anthropic outbound keeps original behavior",
+			format:           llm.APIFormatAnthropicMessage,
+			claudeCodeClient: true,
+			originalEffort:   "xhigh",
+			body:             `{"model":"test","output_config":{"effort":"max"}}`,
+			path:             "output_config.effort",
+			expectedEffort:   "max",
 		},
 	}
 
-	result := applyTransformOptions(req, settings)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			httpRequest := &httpclient.Request{Body: []byte(tt.body)}
 
-	require.NotSame(t, req, result)
-	require.Equal(t, lo.ToPtr(false), result.TransformOptions.DowngradeMidConversationSystem,
-		"explicit false must reach llm.TransformOptions as false (not nil), so RequestFromLLM disables the downgrade")
+			result, err := applyClaudeCodeOpenAIReasoningEffortMapping(
+				httpRequest,
+				settings,
+				tt.format,
+				tt.claudeCodeClient,
+				tt.originalEffort,
+			)
+			require.NoError(t, err)
+
+			if tt.expectClone {
+				require.NotSame(t, httpRequest, result)
+			} else {
+				require.Same(t, httpRequest, result)
+			}
+			require.Equal(t, tt.expectedEffort, gjson.GetBytes(result.Body, tt.path).String())
+		})
+	}
+
+	t.Run("empty mapping keeps original behavior", func(t *testing.T) {
+		httpRequest := &httpclient.Request{Body: []byte(`{"model":"test","reasoning_effort":"xhigh"}`)}
+		result, err := applyClaudeCodeOpenAIReasoningEffortMapping(
+			httpRequest,
+			&objects.ChannelSettings{},
+			llm.APIFormatOpenAIChatCompletion,
+			true,
+			"xhigh",
+		)
+		require.NoError(t, err)
+		require.Same(t, httpRequest, result)
+		require.Equal(t, "xhigh", gjson.GetBytes(result.Body, "reasoning_effort").String())
+	})
+
+	t.Run("mapped effort updates the stored JSON body", func(t *testing.T) {
+		body := []byte(`{"model":"test","reasoning_effort":"xhigh"}`)
+		httpRequest := &httpclient.Request{Body: body, JSONBody: body}
+
+		result, err := applyClaudeCodeOpenAIReasoningEffortMapping(
+			httpRequest,
+			settings,
+			llm.APIFormatOpenAIChatCompletion,
+			true,
+			"xhigh",
+		)
+		require.NoError(t, err)
+		require.Equal(t, "max", gjson.GetBytes(result.Body, "reasoning_effort").String())
+		require.Equal(t, "max", gjson.GetBytes(result.JSONBody, "reasoning_effort").String())
+	})
+}
+
+func newClaudeCodeRequest(messages []llm.Message) *llm.Request {
+	return requestWithUserAgent("claude-cli/2.1.170 (external, cli)", messages)
+}
+
+func requestWithUserAgent(userAgent string, messages []llm.Message) *llm.Request {
+	return &llm.Request{
+		Messages: messages,
+		RawRequest: &httpclient.Request{
+			Headers: http.Header{"User-Agent": []string{userAgent}},
+		},
+	}
+}
+
+func messageRoles(messages []llm.Message) []string {
+	roles := make([]string, len(messages))
+	for i, message := range messages {
+		roles[i] = message.Role
+	}
+
+	return roles
 }
 
 func TestReplaceDeveloperRoleWithSystem(t *testing.T) {

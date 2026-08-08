@@ -380,15 +380,17 @@ func (s *RequestService) CreateRequestExecution(
 }
 
 // extractOutboundReasoningEffort returns the reasoning effort from the final
-// OpenAI-compatible request body that will be sent to the upstream provider.
+// request body that will be sent to the upstream provider.
 func extractOutboundReasoningEffort(channelRequest httpclient.Request, format llm.APIFormat) *string {
 	var path string
 
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
 		path = "reasoning_effort"
-	case llm.APIFormatOpenAIResponse:
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact:
 		path = "reasoning.effort"
+	case llm.APIFormatAnthropicMessage:
+		path = "output_config.effort"
 	default:
 		return nil
 	}
