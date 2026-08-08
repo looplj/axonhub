@@ -826,7 +826,7 @@ func TestConvertInstructionsFromMessages(t *testing.T) {
 			expected: "",
 		},
 		{
-			name: "mixed system and developer messages",
+			name: "only leading system messages become instructions",
 			msgs: []llm.Message{
 				{
 					Role: "system",
@@ -844,6 +844,36 @@ func TestConvertInstructionsFromMessages(t *testing.T) {
 					Role: "system",
 					Content: llm.MessageContent{
 						Content: lo.ToPtr("system 2"),
+					},
+				},
+			},
+			expected: "system 1",
+		},
+		{
+			name: "contiguous leading system messages become instructions",
+			msgs: []llm.Message{
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("system 1"),
+					},
+				},
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("system 2"),
+					},
+				},
+				{
+					Role: "user",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("question"),
+					},
+				},
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("later system"),
 					},
 				},
 			},
@@ -866,6 +896,18 @@ func TestConvertInputFromMessages(t *testing.T) {
 		transformOptions llm.TransformOptions
 		expected         Input
 	}{
+		{
+			name: "single leading system message is excluded from input",
+			msgs: []llm.Message{
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("system instruction"),
+					},
+				},
+			},
+			expected: Input{},
+		},
 		{
 			name: "single developer message",
 			msgs: []llm.Message{
@@ -937,6 +979,92 @@ func TestConvertInputFromMessages(t *testing.T) {
 								},
 							},
 						},
+					},
+				},
+			},
+		},
+		{
+			name: "mid-conversation system message preserves chronology as developer",
+			msgs: []llm.Message{
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("top-level instruction"),
+					},
+				},
+				{
+					Role: "user",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("run the tool"),
+					},
+				},
+				{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_1",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "lookup",
+								Arguments: `{}`,
+							},
+						},
+					},
+				},
+				{
+					Role:       "tool",
+					ToolCallID: lo.ToPtr("call_1"),
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("tool result"),
+					},
+				},
+				{
+					Role: "system",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("harness reminder"),
+					},
+				},
+				{
+					Role: "assistant",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("done"),
+					},
+				},
+			},
+			expected: Input{
+				Items: []Item{
+					{
+						Type: "message",
+						Role: "user",
+						Content: &Input{Items: []Item{
+							{Type: "input_text", Text: lo.ToPtr("run the tool")},
+						}},
+					},
+					{
+						Type:      "function_call",
+						CallID:    "call_1",
+						Name:      "lookup",
+						Arguments: `{}`,
+					},
+					{
+						Type:   "function_call_output",
+						CallID: "call_1",
+						Output: &Input{Text: lo.ToPtr("tool result")},
+					},
+					{
+						Type: "message",
+						Role: "developer",
+						Content: &Input{Items: []Item{
+							{Type: "input_text", Text: lo.ToPtr("harness reminder")},
+						}},
+					},
+					{
+						Type:   "message",
+						Role:   "assistant",
+						Status: lo.ToPtr("completed"),
+						Content: &Input{Items: []Item{
+							{Type: "output_text", Text: lo.ToPtr("done")},
+						}},
 					},
 				},
 			},

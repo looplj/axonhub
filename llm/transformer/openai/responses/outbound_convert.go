@@ -56,11 +56,11 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 
 	var instructions []string
 
-	// find the last user message
 	for _, msg := range msgs {
 		if msg.Role != "system" {
-			continue
+			break
 		}
+
 		// Collect text from either the simple string content or parts
 		if msg.Content.Content != nil {
 			instructions = append(instructions, *msg.Content.Content)
@@ -88,6 +88,16 @@ func convertInstructionsFromMessages(msgs []llm.Message) string {
 	return strings.Join(instructions, "\n")
 }
 
+func leadingSystemMessageCount(msgs []llm.Message) int {
+	for i, msg := range msgs {
+		if msg.Role != "system" {
+			return i
+		}
+	}
+
+	return len(msgs)
+}
+
 // convertInputFromMessages converts LLM messages to Responses API Input format.
 // User messages become items with content array containing input_text items.
 // Assistant messages become items with type "message" and content array containing output_text items.
@@ -99,7 +109,7 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 
 	wasArrayFormat := transformOptions.ArrayInputs != nil && *transformOptions.ArrayInputs
 
-	if len(msgs) == 1 && msgs[0].Content.Content != nil && !wasArrayFormat {
+	if len(msgs) == 1 && msgs[0].Role != "system" && msgs[0].Content.Content != nil && !wasArrayFormat {
 		return Input{Text: msgs[0].Content.Content}
 	}
 
@@ -109,8 +119,17 @@ func convertInputFromMessages(msgs []llm.Message, transformOptions llm.Transform
 	// callID -> item type (function_call_output or custom_tool_call_output)
 	toolResultItemTypeByCallID := map[string]string{}
 
-	for _, msg := range msgs {
+	leadingSystemMessages := leadingSystemMessageCount(msgs)
+
+	for msgIndex, msg := range msgs {
+		if msgIndex < leadingSystemMessages {
+			continue
+		}
+
 		switch msg.Role {
+		case "system":
+			msg.Role = "developer"
+			items = append(items, convertUserMessage(msg))
 		case "user", "developer":
 			items = append(items, convertUserMessage(msg))
 		case "assistant":
