@@ -84,6 +84,70 @@ func TestItemMarshalJSON_ReasoningSummaryBehavior(t *testing.T) {
 	}
 }
 
+func TestItemUnmarshalJSON_PolymorphicReasoningContent(t *testing.T) {
+	tests := []struct {
+		name      string
+		payload   string
+		roundTrip string
+		validate  func(t *testing.T, content *PolymorphicReasoningContent)
+	}{
+		{
+			name:    "chat-compatible function call string",
+			payload: `{"type":"function_call","name":"get_weather","arguments":"{}","reasoning_content":"checking the weather"}`,
+			validate: func(t *testing.T, content *PolymorphicReasoningContent) {
+				require.NotNil(t, content)
+				require.NotNil(t, content.Text)
+				require.Equal(t, "checking the weather", *content.Text)
+				require.Nil(t, content.Items)
+			},
+		},
+		{
+			name:      "native responses reasoning array",
+			payload:   `{"type":"reasoning","reasoning_content":[{"type":"reasoning_text","text":"first"},{"type":"reasoning_text","text":"second"}]}`,
+			roundTrip: `{"type":"reasoning","summary":[],"reasoning_content":[{"type":"reasoning_text","text":"first"},{"type":"reasoning_text","text":"second"}]}`,
+			validate: func(t *testing.T, content *PolymorphicReasoningContent) {
+				require.NotNil(t, content)
+				require.Nil(t, content.Text)
+				require.Equal(t, []ReasoningContent{
+					{Type: "reasoning_text", Text: "first"},
+					{Type: "reasoning_text", Text: "second"},
+				}, content.Items)
+			},
+		},
+		{
+			name:      "null remains absent",
+			payload:   `{"type":"function_call","name":"get_weather","arguments":"{}","reasoning_content":null}`,
+			roundTrip: `{"type":"function_call","name":"get_weather","arguments":"{}"}`,
+			validate: func(t *testing.T, content *PolymorphicReasoningContent) {
+				require.Nil(t, content)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var item Item
+			err := json.Unmarshal([]byte(tt.payload), &item)
+			require.NoError(t, err)
+			tt.validate(t, item.ReasoningContent)
+
+			encoded, err := json.Marshal(item)
+			require.NoError(t, err)
+			expected := tt.payload
+			if tt.roundTrip != "" {
+				expected = tt.roundTrip
+			}
+			require.JSONEq(t, expected, string(encoded))
+		})
+	}
+}
+
+func TestItemUnmarshalJSON_RejectsInvalidReasoningContent(t *testing.T) {
+	var item Item
+	err := json.Unmarshal([]byte(`{"type":"function_call","arguments":"{}","reasoning_content":{"text":"invalid"}}`), &item)
+	require.ErrorContains(t, err, "invalid reasoning_content")
+}
+
 func TestItemMarshalJSON_Compaction(t *testing.T) {
 	cases := []struct {
 		name     string
