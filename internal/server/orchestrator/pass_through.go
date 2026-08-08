@@ -16,6 +16,20 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+// codexResponsesPassThroughHeaders contains client metadata that Codex-compatible
+// Responses upstreams use to select protocol behavior. Keep this as an explicit
+// allowlist: inbound credentials and transport headers must never be copied.
+var codexResponsesPassThroughHeaders = []string{
+	"X-Codex-Turn-Metadata",
+	"X-Codex-Window-Id",
+	"X-Client-Request-Id",
+	"X-Codex-Beta-Features",
+	"Session-Id",
+	"Originator",
+	"X-OpenAI-Internal-Codex-Responses-Lite",
+	"Thread-Id",
+}
+
 // isPassThroughEnabled returns true when the effective pass-through flag for the current
 // channel is enabled and both the inbound and outbound API formats are identical.
 //
@@ -109,6 +123,39 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 
 		request.Body = body
 		outbound.state.PassThroughApplied = true
+
+		return request, nil
+	})
+}
+
+// applyPassThroughRequestHeaders forwards the Codex Responses metadata paired with
+// a pass-through body. These headers are part of the client's protocol negotiation;
+// dropping them while replaying the original body can change how a compatible
+// upstream interprets the same request.
+func applyPassThroughRequestHeaders(outbound *PersistentOutboundTransformer) pipeline.Middleware {
+	return pipeline.OnRawRequest("pass-through-request-headers", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		if !outbound.state.PassThroughApplied || outbound.state.LlmRequest == nil ||
+			outbound.state.LlmRequest.APIFormat != llm.APIFormatOpenAIResponse ||
+			outbound.state.LlmRequest.RawRequest == nil {
+			return request, nil
+		}
+
+		if request.Headers == nil {
+			request.Headers = make(http.Header)
+		}
+
+		inboundHeaders := outbound.state.LlmRequest.RawRequest.Headers
+		for _, header := range codexResponsesPassThroughHeaders {
+			values := inboundHeaders.Values(header)
+			if len(values) == 0 {
+				continue
+			}
+
+			request.Headers.Del(header)
+			for _, value := range values {
+				request.Headers.Add(header, value)
+			}
+		}
 
 		return request, nil
 	})
