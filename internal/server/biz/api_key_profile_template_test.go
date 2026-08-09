@@ -228,8 +228,135 @@ func TestLoadTemplate_HappyPath(t *testing.T) {
 
 	// Verify loaded profile is appended
 	require.Equal(t, "Production", updatedKey.Profiles.Profiles[1].Name)
+	require.NotNil(t, updatedKey.Profiles.Profiles[1].TemplateID)
+	require.Equal(t, template.ID, *updatedKey.Profiles.Profiles[1].TemplateID)
+	require.Equal(t, template.Name, updatedKey.Profiles.Profiles[1].TemplateName)
 	require.Len(t, updatedKey.Profiles.Profiles[1].ModelMappings, 1)
 	require.Equal(t, "claude-3", updatedKey.Profiles.Profiles[1].ModelMappings[0].From)
+}
+
+func TestUpdateTemplatePublishesToLinkedAndUnchangedLegacyProfiles(t *testing.T) {
+	svc, client := setupTestTemplateService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	projectEntity, err := client.Project.Create().
+		SetName(fmt.Sprintf("publish-project-%d", time.Now().UnixNano())).
+		SetDescription("publish test").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	template, err := client.APIKeyProfileTemplate.Create().
+		SetName("Production").
+		SetProject(projectEntity).
+		SetProfile(&objects.APIKeyProfile{
+			Name:          "Production",
+			ModelMappings: []objects.ModelMapping{{From: "claude", To: "old-model"}},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	templateID := template.ID
+	createKey := func(name string, profile objects.APIKeyProfile) *ent.APIKey {
+		key, createErr := client.APIKey.Create().
+			SetName(name).
+			SetKey(fmt.Sprintf("ah-%s-%d", name, time.Now().UnixNano())).
+			SetProjectID(projectEntity.ID).
+			SetType(apikey.TypeUser).
+			SetProfiles(&objects.APIKeyProfiles{ActiveProfile: profile.Name, Profiles: []objects.APIKeyProfile{profile}}).
+			Save(ctx)
+		require.NoError(t, createErr)
+		return key
+	}
+
+	linkedKey := createKey("linked", objects.APIKeyProfile{
+		Name:          "Local alias",
+		TemplateID:    &templateID,
+		TemplateName:  template.Name,
+		ModelMappings: []objects.ModelMapping{{From: "claude", To: "old-model"}},
+	})
+	legacyKey := createKey("legacy", objects.APIKeyProfile{
+		Name:          "Production",
+		ModelMappings: []objects.ModelMapping{{From: "claude", To: "old-model"}},
+	})
+	detachedKey := createKey("detached", objects.APIKeyProfile{
+		Name:          "Production",
+		ModelMappings: []objects.ModelMapping{{From: "claude", To: "custom-model"}},
+	})
+
+	count, err := svc.CountLinkedProfiles(ctx, template)
+	require.NoError(t, err)
+	require.Equal(t, 2, count)
+
+	_, err = svc.UpdateTemplate(ctx, template.ID, ent.UpdateAPIKeyProfileTemplateInput{}, &objects.APIKeyProfile{
+		Name:          "Production",
+		ModelMappings: []objects.ModelMapping{{From: "claude", To: "new-model"}},
+	})
+	require.NoError(t, err)
+
+	for _, key := range []*ent.APIKey{linkedKey, legacyKey} {
+		updated, getErr := client.APIKey.Get(ctx, key.ID)
+		require.NoError(t, getErr)
+		require.Equal(t, "new-model", updated.Profiles.Profiles[0].ModelMappings[0].To)
+		require.NotNil(t, updated.Profiles.Profiles[0].TemplateID)
+		require.Equal(t, template.ID, *updated.Profiles.Profiles[0].TemplateID)
+	}
+
+	updatedLinked, err := client.APIKey.Get(ctx, linkedKey.ID)
+	require.NoError(t, err)
+	require.Equal(t, "Local alias", updatedLinked.Profiles.Profiles[0].Name)
+
+	updatedDetached, err := client.APIKey.Get(ctx, detachedKey.ID)
+	require.NoError(t, err)
+	require.Equal(t, "custom-model", updatedDetached.Profiles.Profiles[0].ModelMappings[0].To)
+	require.Nil(t, updatedDetached.Profiles.Profiles[0].TemplateID)
+
+	_, err = svc.DeleteTemplate(ctx, template.ID)
+	require.NoError(t, err)
+	for _, key := range []*ent.APIKey{linkedKey, legacyKey} {
+		updated, getErr := client.APIKey.Get(ctx, key.ID)
+		require.NoError(t, getErr)
+		require.Nil(t, updated.Profiles.Profiles[0].TemplateID)
+		require.Empty(t, updated.Profiles.Profiles[0].TemplateName)
+		require.Equal(t, "new-model", updated.Profiles.Profiles[0].ModelMappings[0].To)
+	}
+}
+
+func TestDetachModifiedTemplateProfiles(t *testing.T) {
+	templateID := 7
+	existing := &objects.APIKeyProfiles{Profiles: []objects.APIKeyProfile{
+		{
+			Name:          "linked",
+			TemplateID:    &templateID,
+			TemplateName:  "Production",
+			ModelMappings: []objects.ModelMapping{{From: "claude", To: "old-model"}},
+		},
+	}}
+
+	unchanged := &objects.APIKeyProfiles{Profiles: []objects.APIKeyProfile{
+		{
+			Name:          "linked",
+			TemplateID:    &templateID,
+			TemplateName:  "tampered name",
+			ModelMappings: []objects.ModelMapping{{From: "claude", To: "old-model"}},
+		},
+	}}
+	detachModifiedTemplateProfiles(existing, unchanged)
+	require.NotNil(t, unchanged.Profiles[0].TemplateID)
+	require.Equal(t, "Production", unchanged.Profiles[0].TemplateName)
+
+	modified := &objects.APIKeyProfiles{Profiles: []objects.APIKeyProfile{
+		{
+			Name:          "linked",
+			TemplateID:    &templateID,
+			TemplateName:  "Production",
+			ModelMappings: []objects.ModelMapping{{From: "claude", To: "custom-model"}},
+		},
+	}}
+	detachModifiedTemplateProfiles(existing, modified)
+	require.Nil(t, modified.Profiles[0].TemplateID)
+	require.Empty(t, modified.Profiles[0].TemplateName)
 }
 
 // TestLoadTemplate_NameConflict tests loading a template where profile name already exists.

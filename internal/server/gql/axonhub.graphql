@@ -397,6 +397,8 @@ input UpdateAPIKeyProfilesInput {
 
 input APIKeyProfileInput {
   name: String!
+  templateID: Int
+  templateName: String
   modelMappings: [ModelMappingInput!]
   channelIDs: [Int!]
   channelTags: [String!]
@@ -442,6 +444,8 @@ type APIKeyProfiles {
 
 type APIKeyProfile {
   name: String!
+  templateID: Int
+  templateName: String
   modelMappings: [ModelMapping!]
   channelIDs: [Int!]
   channelTags: [String!]
@@ -459,8 +463,10 @@ enum ChannelTagsMatchMode {
 }
 
 # ApiKeyProfileTemplate uses the Ent-generated type and input types from ent.graphql
-
-
+extend type APIKeyProfileTemplate {
+  """Number of API key profiles that currently follow this template."""
+  linkedProfilesCount: Int!
+}
 
 # Load template input - custom input for loading template to API key
 input LoadApiKeyProfileTemplateInput {

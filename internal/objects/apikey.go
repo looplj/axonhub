@@ -12,7 +12,12 @@ type APIKeyProfiles struct {
 }
 
 type APIKeyProfile struct {
-	Name                string         `json:"name"`
+	Name string `json:"name"`
+	// TemplateID links this profile to the template it was loaded from. A nil
+	// value means the profile is independently managed. The pointer keeps old
+	// serialized profiles fully backward compatible.
+	TemplateID          *int           `json:"templateID,omitempty"`
+	TemplateName        string         `json:"templateName,omitempty"`
 	ModelMappings       []ModelMapping `json:"modelMappings"`
 	Quota               *APIKeyQuota   `json:"quota,omitempty"`
 	LoadBalanceStrategy *string        `json:"loadBalanceStrategy,omitempty"`
@@ -93,6 +98,10 @@ func (p *APIKeyProfile) Clone() *APIKeyProfile {
 		return nil
 	}
 	cp := *p
+	if p.TemplateID != nil {
+		id := *p.TemplateID
+		cp.TemplateID = &id
+	}
 	if len(p.ModelMappings) > 0 {
 		cp.ModelMappings = make([]ModelMapping, len(p.ModelMappings))
 		copy(cp.ModelMappings, p.ModelMappings)

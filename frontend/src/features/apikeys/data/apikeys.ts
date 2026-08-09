@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
-
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -18,7 +17,13 @@ import type {
   UpdateApiKeyProfileTemplateInput,
   UpdateApiKeyProfilesInput,
 } from './schema';
-import { apiKeyConnectionSchema, apiKeyProfileQuotaUsageSchema, apiKeyProfileTemplateSchema, apiKeySchema, apiKeyTokenUsageStatsSchema } from './schema';
+import {
+  apiKeyConnectionSchema,
+  apiKeyProfileQuotaUsageSchema,
+  apiKeyProfileTemplateSchema,
+  apiKeySchema,
+  apiKeyTokenUsageStatsSchema,
+} from './schema';
 
 const NOAUTH_API_KEY_TYPE = 'noauth';
 
@@ -47,6 +52,14 @@ function buildApiKeysQuery(permissions: { canViewUsers: boolean }) {
             status
             scopes
             allowedIps
+            profiles {
+              activeProfile
+              profiles {
+                name
+                templateID
+                templateName
+              }
+            }
           }
           cursor
         }
@@ -89,6 +102,8 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
           activeProfile
           profiles {
             name
+            templateID
+            templateName
             modelMappings { from to }
             channelIDs
             channelTags
@@ -187,6 +202,8 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
         activeProfile
         profiles {
           name
+          templateID
+          templateName
           modelMappings {
             from
             to
@@ -296,6 +313,7 @@ const APIKEY_PROFILE_TEMPLATES_QUERY = `
           name
           description
           projectID
+          linkedProfilesCount
           profile {
             name
             modelMappings { from to }
@@ -331,6 +349,7 @@ const CREATE_APIKEY_PROFILE_TEMPLATE_MUTATION = `
       updatedAt
       name
       description
+      linkedProfilesCount
       profile {
         name
       }
@@ -346,6 +365,7 @@ const UPDATE_APIKEY_PROFILE_TEMPLATE_MUTATION = `
       updatedAt
       name
       description
+      linkedProfilesCount
       profile {
         name
       }
@@ -372,6 +392,8 @@ const LOAD_APIKEY_PROFILE_TEMPLATE_MUTATION = `
         activeProfile
         profiles {
           name
+          templateID
+          templateName
           modelMappings { from to }
           channelIDs
           channelTags
@@ -728,7 +750,8 @@ export function useApiKeyProfileTemplates(projectID: string | null) {
     queryKey: ['apiKeyProfileTemplates', projectID, selectedProjectId],
     queryFn: async () => {
       try {
-        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const requestProjectId = projectID ?? selectedProjectId;
+        const headers = requestProjectId ? { 'X-Project-ID': requestProjectId } : undefined;
         const data = await graphqlRequest<{ apiKeyProfileTemplates: { edges: { node: ApiKeyProfileTemplate }[]; totalCount: number } }>(
           APIKEY_PROFILE_TEMPLATES_QUERY,
           {},
@@ -751,7 +774,8 @@ export function useCreateApiKeyProfileTemplate() {
 
   return useMutation({
     mutationFn: (input: CreateApiKeyProfileTemplateInput) => {
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+      const requestProjectId = input.projectID ?? selectedProjectId;
+      const headers = requestProjectId ? { 'X-Project-ID': requestProjectId } : undefined;
       const { profile, ...inputFields } = {
         ...input,
         projectID: input.projectID ?? null,
@@ -764,6 +788,8 @@ export function useCreateApiKeyProfileTemplate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeyProfileTemplates'] });
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
+      queryClient.invalidateQueries({ queryKey: ['apiKey'] });
     },
   });
 }
@@ -773,12 +799,11 @@ export function useUpdateApiKeyProfileTemplate() {
   const selectedProjectId = useSelectedProjectId();
 
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: UpdateApiKeyProfileTemplateInput }) => {
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+    mutationFn: ({ id, input, projectID }: { id: string; input: UpdateApiKeyProfileTemplateInput; projectID?: string | null }) => {
+      const requestProjectId = projectID ?? selectedProjectId;
+      const headers = requestProjectId ? { 'X-Project-ID': requestProjectId } : undefined;
       const { profile, ...inputFields } = input;
-      const resolvedProfile = profile
-        ? { ...profile, name: input.name ?? profile.name }
-        : undefined;
+      const resolvedProfile = profile ? { ...profile, name: input.name ?? profile.name } : undefined;
       return graphqlRequest<{ updateApiKeyProfileTemplate: ApiKeyProfileTemplate }>(
         UPDATE_APIKEY_PROFILE_TEMPLATE_MUTATION,
         { id, input: inputFields, profile: resolvedProfile },
@@ -787,6 +812,8 @@ export function useUpdateApiKeyProfileTemplate() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['apiKeyProfileTemplates'] });
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
+      queryClient.invalidateQueries({ queryKey: ['apiKey'] });
     },
   });
 }
@@ -807,6 +834,8 @@ export function useDeleteApiKeyProfileTemplate() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeyProfileTemplates'] });
+      queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
+      queryClient.invalidateQueries({ queryKey: ['apiKey'] });
       toast.success(t('apikeys.templates.deleteSuccessMessage', { name: data.deleteApiKeyProfileTemplate.name }));
     },
     onError: () => {
@@ -822,11 +851,7 @@ export function useLoadApiKeyProfileTemplate() {
   return useMutation({
     mutationFn: (input: { templateID: string; apiKeyID: string }) => {
       const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      return graphqlRequest<{ loadApiKeyProfileTemplate: ApiKey }>(
-        LOAD_APIKEY_PROFILE_TEMPLATE_MUTATION,
-        { input },
-        headers
-      );
+      return graphqlRequest<{ loadApiKeyProfileTemplate: ApiKey }>(LOAD_APIKEY_PROFILE_TEMPLATE_MUTATION, { input }, headers);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['apiKeys'] });
