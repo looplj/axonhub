@@ -58,6 +58,8 @@ type Channel struct {
 	OrderingWeight int `json:"ordering_weight,omitempty"`
 	// ErrorMessage holds the value of the "error_message" field.
 	ErrorMessage *string `json:"error_message,omitempty"`
+	// Set when the channel was disabled automatically, and cleared when it recovers; distinguishes an automatic disable from an operator one.
+	AutoDisabledAt *time.Time `json:"auto_disabled_at,omitempty"`
 	// User-defined remark or note for the channel
 	Remark *string `json:"remark,omitempty"`
 	// Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
@@ -164,7 +166,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldAutoSyncModelPattern, channel.FieldDefaultTestModel, channel.FieldErrorMessage, channel.FieldRemark:
 			values[i] = new(sql.NullString)
-		case channel.FieldCreatedAt, channel.FieldUpdatedAt:
+		case channel.FieldCreatedAt, channel.FieldUpdatedAt, channel.FieldAutoDisabledAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -316,6 +318,13 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 				_m.ErrorMessage = new(string)
 				*_m.ErrorMessage = value.String
 			}
+		case channel.FieldAutoDisabledAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field auto_disabled_at", values[i])
+			} else if value.Valid {
+				_m.AutoDisabledAt = new(time.Time)
+				*_m.AutoDisabledAt = value.Time
+			}
 		case channel.FieldRemark:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field remark", values[i])
@@ -452,6 +461,11 @@ func (_m *Channel) String() string {
 	if v := _m.ErrorMessage; v != nil {
 		builder.WriteString("error_message=")
 		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.AutoDisabledAt; v != nil {
+		builder.WriteString("auto_disabled_at=")
+		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
 	if v := _m.Remark; v != nil {

@@ -12,7 +12,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
 func TestAggregatedMetrics_Clone(t *testing.T) {
@@ -342,20 +341,9 @@ func TestChannelService_RecordPerformance(t *testing.T) {
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
-	svc := &ChannelService{
-		AbstractService: &AbstractService{
-			db: client,
-		},
-		SystemService: &SystemService{
-			AbstractService: &AbstractService{
-				db: client,
-			},
-			Cache: xcache.NewFromConfig[ent.System](xcache.Config{Mode: xcache.ModeMemory}),
-		},
-		channelPerfMetrics: make(map[int]*channelMetrics),
-		channelErrorCounts: make(map[int]map[int]int),
-		perfWindowSeconds:  600,
-	}
+	// Auto-disable resolution reads the enabled-channel cache, so the fixture
+	// needs the fully wired service rather than a bare struct literal.
+	svc := newTestChannelService(client)
 
 	now := time.Now()
 

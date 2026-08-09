@@ -429,6 +429,10 @@ type Channel implements Node {
   orderingWeight: Int!
   errorMessage: String
   """
+  Set when the channel was disabled automatically, and cleared when it recovers; distinguishes an automatic disable from an operator one.
+  """
+  autoDisabledAt: Time
+  """
   User-defined remark or note for the channel
   """
   remark: String
@@ -1478,6 +1482,19 @@ input ChannelWhereInput {
   errorMessageNotNil: Boolean
   errorMessageEqualFold: String
   errorMessageContainsFold: String
+  """
+  auto_disabled_at field predicates
+  """
+  autoDisabledAt: Time
+  autoDisabledAtNEQ: Time
+  autoDisabledAtIn: [Time!]
+  autoDisabledAtNotIn: [Time!]
+  autoDisabledAtGT: Time
+  autoDisabledAtGTE: Time
+  autoDisabledAtLT: Time
+  autoDisabledAtLTE: Time
+  autoDisabledAtIsNil: Boolean
+  autoDisabledAtNotNil: Boolean
   """
   remark field predicates
   """

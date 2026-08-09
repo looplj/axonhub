@@ -179,6 +179,8 @@ enum CapabilityPolicy {
 
 enum APIKeyAutoDisableAction {
   temporary_disable
+  disable_until_cron
+  permanent_disable
   permanent_disable_delete
 }
 
@@ -188,6 +190,8 @@ type APIKeyAutoDisableRule {
   times: Int!
   action: APIKeyAutoDisableAction!
   disableDurationMinutes: Int
+  disableUntilCron: String
+  disableUntilTimezone: String
 }
 
 input APIKeyAutoDisableRuleInput {
@@ -196,6 +200,8 @@ input APIKeyAutoDisableRuleInput {
   times: Int!
   action: APIKeyAutoDisableAction!
   disableDurationMinutes: Int
+  disableUntilCron: String
+  disableUntilTimezone: String
 }
 
 type ChannelPolicies {
