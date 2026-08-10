@@ -41,8 +41,9 @@ func (svc *ChannelService) DisableAPIKey(
 		return fmt.Errorf("failed to get channel: %w", err)
 	}
 
-	// 检查 key 是否在 credentials 中
-	allKeys := ch.Credentials.GetAllAPIKeys()
+	// 检查 key 是否在 credentials 中。OAuth 渠道用固定的 OAuthCredentialRef 作为
+	// 唯一凭证标识，所以这里按凭证引用而非明文 key 匹配。
+	allKeys := ch.Credentials.GetAllCredentialRefs()
 
 	found := slices.Contains(allKeys, key)
 	if !found {
@@ -76,8 +77,8 @@ func (svc *ChannelService) DisableAPIKey(
 
 	newDisabledKeys := append(activeDisabledKeys, disabledKey)
 
-	// 计算 enabled keys
-	enabledKeys := ch.Credentials.GetEnabledAPIKeys(newDisabledKeys)
+	// 计算 enabled 凭证
+	enabledKeys := ch.Credentials.GetEnabledCredentialRefs(newDisabledKeys)
 
 	// 更新 channel
 	update := svc.entFromContext(ctx).Channel.UpdateOneID(channelID).
@@ -88,6 +89,7 @@ func (svc *ChannelService) DisableAPIKey(
 	if channelDisabled {
 		update.SetStatus(channel.StatusDisabled)
 		update.SetErrorMessage(fmt.Sprintf("%s (last error: %d)", allKeysDisabledErrorPrefix, errorCode))
+		update.SetAutoDisabledAt(time.Now())
 		log.Warn(ctx, "Channel disabled because all API keys are disabled",
 			log.Int("channel_id", channelID),
 			log.String("channel_name", ch.Name),
@@ -358,7 +360,7 @@ func applyRecoveredChannelStatus(
 ) *ent.ChannelUpdateOne {
 	if ch.Status != channel.StatusDisabled || ch.ErrorMessage == nil ||
 		!strings.HasPrefix(*ch.ErrorMessage, allKeysDisabledErrorPrefix) ||
-		len(credentials.GetEnabledAPIKeys(disabledKeys)) == 0 {
+		len(credentials.GetEnabledCredentialRefs(disabledKeys)) == 0 {
 		return update
 	}
 
@@ -367,7 +369,7 @@ func applyRecoveredChannelStatus(
 		log.String("channel_name", ch.Name),
 	)
 
-	return update.SetStatus(channel.StatusEnabled).ClearErrorMessage()
+	return update.SetStatus(channel.StatusEnabled).ClearErrorMessage().ClearAutoDisabledAt()
 }
 
 // cleanupExpiredDisabledAPIKeys prunes elapsed temporary disables and restores

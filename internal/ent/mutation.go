@@ -2123,6 +2123,7 @@ type ChannelMutation struct {
 	ordering_weight              *int
 	addordering_weight           *int
 	error_message                *string
+	auto_disabled_at             *time.Time
 	remark                       *string
 	endpoints                    *[]objects.ChannelEndpoint
 	appendendpoints              []objects.ChannelEndpoint
@@ -3138,6 +3139,55 @@ func (m *ChannelMutation) ResetErrorMessage() {
 	delete(m.clearedFields, channel.FieldErrorMessage)
 }
 
+// SetAutoDisabledAt sets the "auto_disabled_at" field.
+func (m *ChannelMutation) SetAutoDisabledAt(t time.Time) {
+	m.auto_disabled_at = &t
+}
+
+// AutoDisabledAt returns the value of the "auto_disabled_at" field in the mutation.
+func (m *ChannelMutation) AutoDisabledAt() (r time.Time, exists bool) {
+	v := m.auto_disabled_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAutoDisabledAt returns the old "auto_disabled_at" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldAutoDisabledAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAutoDisabledAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAutoDisabledAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAutoDisabledAt: %w", err)
+	}
+	return oldValue.AutoDisabledAt, nil
+}
+
+// ClearAutoDisabledAt clears the value of the "auto_disabled_at" field.
+func (m *ChannelMutation) ClearAutoDisabledAt() {
+	m.auto_disabled_at = nil
+	m.clearedFields[channel.FieldAutoDisabledAt] = struct{}{}
+}
+
+// AutoDisabledAtCleared returns if the "auto_disabled_at" field was cleared in this mutation.
+func (m *ChannelMutation) AutoDisabledAtCleared() bool {
+	_, ok := m.clearedFields[channel.FieldAutoDisabledAt]
+	return ok
+}
+
+// ResetAutoDisabledAt resets all changes to the "auto_disabled_at" field.
+func (m *ChannelMutation) ResetAutoDisabledAt() {
+	m.auto_disabled_at = nil
+	delete(m.clearedFields, channel.FieldAutoDisabledAt)
+}
+
 // SetRemark sets the "remark" field.
 func (m *ChannelMutation) SetRemark(s string) {
 	m.remark = &s
@@ -3595,7 +3645,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 21)
+	fields := make([]string, 0, 22)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -3653,6 +3703,9 @@ func (m *ChannelMutation) Fields() []string {
 	if m.error_message != nil {
 		fields = append(fields, channel.FieldErrorMessage)
 	}
+	if m.auto_disabled_at != nil {
+		fields = append(fields, channel.FieldAutoDisabledAt)
+	}
 	if m.remark != nil {
 		fields = append(fields, channel.FieldRemark)
 	}
@@ -3705,6 +3758,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.OrderingWeight()
 	case channel.FieldErrorMessage:
 		return m.ErrorMessage()
+	case channel.FieldAutoDisabledAt:
+		return m.AutoDisabledAt()
 	case channel.FieldRemark:
 		return m.Remark()
 	case channel.FieldEndpoints:
@@ -3756,6 +3811,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldOrderingWeight(ctx)
 	case channel.FieldErrorMessage:
 		return m.OldErrorMessage(ctx)
+	case channel.FieldAutoDisabledAt:
+		return m.OldAutoDisabledAt(ctx)
 	case channel.FieldRemark:
 		return m.OldRemark(ctx)
 	case channel.FieldEndpoints:
@@ -3902,6 +3959,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetErrorMessage(v)
 		return nil
+	case channel.FieldAutoDisabledAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAutoDisabledAt(v)
+		return nil
 	case channel.FieldRemark:
 		v, ok := value.(string)
 		if !ok {
@@ -3997,6 +4061,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldErrorMessage) {
 		fields = append(fields, channel.FieldErrorMessage)
 	}
+	if m.FieldCleared(channel.FieldAutoDisabledAt) {
+		fields = append(fields, channel.FieldAutoDisabledAt)
+	}
 	if m.FieldCleared(channel.FieldRemark) {
 		fields = append(fields, channel.FieldRemark)
 	}
@@ -4040,6 +4107,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 		return nil
 	case channel.FieldErrorMessage:
 		m.ClearErrorMessage()
+		return nil
+	case channel.FieldAutoDisabledAt:
+		m.ClearAutoDisabledAt()
 		return nil
 	case channel.FieldRemark:
 		m.ClearRemark()
@@ -4111,6 +4181,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldErrorMessage:
 		m.ResetErrorMessage()
+		return nil
+	case channel.FieldAutoDisabledAt:
+		m.ResetAutoDisabledAt()
 		return nil
 	case channel.FieldRemark:
 		m.ResetRemark()

@@ -307,11 +307,48 @@ func (c *ChannelCredentials) GetAllAPIKeys() []string {
 	return keys
 }
 
+// OAuthCredentialRef identifies the OAuth credential of a channel in the
+// auto-disable bookkeeping. A channel holds at most one OAuth credential, and
+// its access token is replaced on every refresh, so a fixed sentinel is used as
+// the stable identity instead of the token itself.
+//
+//nolint:gosec // Not a credential: a fixed sentinel that never authenticates anything.
+const OAuthCredentialRef = "__oauth__"
+
+// GetAllCredentialRefs returns the identities of every credential the channel
+// can be disabled on. Key-based channels are identified by the API keys
+// themselves; an OAuth channel is represented by the single OAuthCredentialRef
+// so that auto-disable and scheduled recovery treat it as a one-key channel.
+//
+// This is deliberately separate from GetAllAPIKeys: the sentinel must never
+// reach outbound requests, credential management UI, the channel tester or
+// backups, all of which consume GetAllAPIKeys.
+func (c *ChannelCredentials) GetAllCredentialRefs() []string {
+	if c == nil {
+		return nil
+	}
+
+	if c.IsOAuth() {
+		return []string{OAuthCredentialRef}
+	}
+
+	return c.GetAllAPIKeys()
+}
+
+// GetEnabledCredentialRefs returns the credential refs that are not disabled.
+func (c *ChannelCredentials) GetEnabledCredentialRefs(disabledKeys []DisabledAPIKey) []string {
+	return filterDisabled(c.GetAllCredentialRefs(), disabledKeys)
+}
+
 // GetEnabledAPIKeys returns API keys that are not disabled.
 func (c *ChannelCredentials) GetEnabledAPIKeys(disabledKeys []DisabledAPIKey) []string {
-	allKeys := c.GetAllAPIKeys()
+	return filterDisabled(c.GetAllAPIKeys(), disabledKeys)
+}
+
+// filterDisabled drops every candidate that carries an active disable record.
+func filterDisabled(candidates []string, disabledKeys []DisabledAPIKey) []string {
 	if len(disabledKeys) == 0 {
-		return allKeys
+		return candidates
 	}
 
 	disabledSet := make(map[string]struct{}, len(disabledKeys))
@@ -323,8 +360,8 @@ func (c *ChannelCredentials) GetEnabledAPIKeys(disabledKeys []DisabledAPIKey) []
 		disabledSet[dk.Key] = struct{}{}
 	}
 
-	enabled := make([]string, 0, len(allKeys))
-	for _, key := range allKeys {
+	enabled := make([]string, 0, len(candidates))
+	for _, key := range candidates {
 		if _, ok := disabledSet[key]; ok {
 			continue
 		}
@@ -393,7 +430,11 @@ const (
 )
 
 type ChannelPolicies struct {
-	Stream                 CapabilityPolicy        `json:"stream,omitempty"`
+	Stream CapabilityPolicy `json:"stream,omitempty"`
+
+	// APIKeyAutoDisableRules are the channel's own auto-disable rules. They are
+	// evaluated before the global retry policy and, when one matches, own the
+	// failure outright. Channels without rules fall back to the global policy.
 	APIKeyAutoDisableRules []APIKeyAutoDisableRule `json:"apiKeyAutoDisableRules,omitempty"`
 }
 
@@ -401,17 +442,45 @@ type APIKeyAutoDisableAction string
 
 const (
 	APIKeyAutoDisableActionTemporary APIKeyAutoDisableAction = "temporary_disable"
-	APIKeyAutoDisableActionPermanent APIKeyAutoDisableAction = "permanent_disable_delete"
+
+	// APIKeyAutoDisableActionPermanentDelete disables the credential and then
+	// removes it from the channel's credentials entirely.
+	APIKeyAutoDisableActionPermanentDelete APIKeyAutoDisableAction = "permanent_disable_delete"
+
+	// APIKeyAutoDisableActionPermanent disables the credential with no expiry but
+	// keeps it on the channel, so an operator can inspect and re-enable it by hand.
+	APIKeyAutoDisableActionPermanent APIKeyAutoDisableAction = "permanent_disable"
+
+	// APIKeyAutoDisableActionUntilCron disables the credential until the first
+	// occurrence of DisableUntilCron after the failure. It exists because quota
+	// resets happen at fixed wall-clock times, which a relative duration cannot
+	// express: the delay needed to reach 03:00 depends on when the failure hit.
+	APIKeyAutoDisableActionUntilCron APIKeyAutoDisableAction = "disable_until_cron"
 )
 
 // APIKeyAutoDisableRule applies to one channel and matches status codes and/or
 // error-message patterns. Empty conditions match any upstream error.
+//
+// Rules act on a single credential. Channels holding several API keys disable
+// only the failing key and keep serving on the rest; the channel itself is
+// disabled once every credential is unavailable, and recovers as soon as one
+// becomes available again. An OAuth channel has exactly one credential
+// (OAuthCredentialRef), so for it the two levels coincide.
 type APIKeyAutoDisableRule struct {
-	StatusCodes            []int                   `json:"statusCodes,omitempty"`
-	KeywordPatterns        []string                `json:"keywordPatterns,omitempty"`
-	Times                  int                     `json:"times"`
-	Action                 APIKeyAutoDisableAction `json:"action"`
-	DisableDurationMinutes *int                    `json:"disableDurationMinutes,omitempty"`
+	StatusCodes     []int                   `json:"statusCodes,omitempty"`
+	KeywordPatterns []string                `json:"keywordPatterns,omitempty"`
+	Times           int                     `json:"times"`
+	Action          APIKeyAutoDisableAction `json:"action"`
+
+	// DisableDurationMinutes applies to APIKeyAutoDisableActionTemporary. A nil
+	// value disables the credential indefinitely.
+	DisableDurationMinutes *int `json:"disableDurationMinutes,omitempty"`
+
+	// DisableUntilCron and DisableUntilTimezone apply to
+	// APIKeyAutoDisableActionUntilCron. DisableUntilCron uses the standard
+	// 5-field crontab format; an empty timezone means UTC.
+	DisableUntilCron     string `json:"disableUntilCron,omitempty"`
+	DisableUntilTimezone string `json:"disableUntilTimezone,omitempty"`
 }
 
 // ParseOverrideOperations parses the override parameters string.

@@ -327,6 +327,26 @@ func (_u *ChannelUpdate) ClearErrorMessage() *ChannelUpdate {
 	return _u
 }
 
+// SetAutoDisabledAt sets the "auto_disabled_at" field.
+func (_u *ChannelUpdate) SetAutoDisabledAt(v time.Time) *ChannelUpdate {
+	_u.mutation.SetAutoDisabledAt(v)
+	return _u
+}
+
+// SetNillableAutoDisabledAt sets the "auto_disabled_at" field if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableAutoDisabledAt(v *time.Time) *ChannelUpdate {
+	if v != nil {
+		_u.SetAutoDisabledAt(*v)
+	}
+	return _u
+}
+
+// ClearAutoDisabledAt clears the value of the "auto_disabled_at" field.
+func (_u *ChannelUpdate) ClearAutoDisabledAt() *ChannelUpdate {
+	_u.mutation.ClearAutoDisabledAt()
+	return _u
+}
+
 // SetRemark sets the "remark" field.
 func (_u *ChannelUpdate) SetRemark(v string) *ChannelUpdate {
 	_u.mutation.SetRemark(v)
@@ -753,6 +773,12 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(channel.FieldErrorMessage, field.TypeString)
+	}
+	if value, ok := _u.mutation.AutoDisabledAt(); ok {
+		_spec.SetField(channel.FieldAutoDisabledAt, field.TypeTime, value)
+	}
+	if _u.mutation.AutoDisabledAtCleared() {
+		_spec.ClearField(channel.FieldAutoDisabledAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.Remark(); ok {
 		_spec.SetField(channel.FieldRemark, field.TypeString, value)
@@ -1337,6 +1363,26 @@ func (_u *ChannelUpdateOne) ClearErrorMessage() *ChannelUpdateOne {
 	return _u
 }
 
+// SetAutoDisabledAt sets the "auto_disabled_at" field.
+func (_u *ChannelUpdateOne) SetAutoDisabledAt(v time.Time) *ChannelUpdateOne {
+	_u.mutation.SetAutoDisabledAt(v)
+	return _u
+}
+
+// SetNillableAutoDisabledAt sets the "auto_disabled_at" field if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableAutoDisabledAt(v *time.Time) *ChannelUpdateOne {
+	if v != nil {
+		_u.SetAutoDisabledAt(*v)
+	}
+	return _u
+}
+
+// ClearAutoDisabledAt clears the value of the "auto_disabled_at" field.
+func (_u *ChannelUpdateOne) ClearAutoDisabledAt() *ChannelUpdateOne {
+	_u.mutation.ClearAutoDisabledAt()
+	return _u
+}
+
 // SetRemark sets the "remark" field.
 func (_u *ChannelUpdateOne) SetRemark(v string) *ChannelUpdateOne {
 	_u.mutation.SetRemark(v)
@@ -1793,6 +1839,12 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if _u.mutation.ErrorMessageCleared() {
 		_spec.ClearField(channel.FieldErrorMessage, field.TypeString)
+	}
+	if value, ok := _u.mutation.AutoDisabledAt(); ok {
+		_spec.SetField(channel.FieldAutoDisabledAt, field.TypeTime, value)
+	}
+	if _u.mutation.AutoDisabledAtCleared() {
+		_spec.ClearField(channel.FieldAutoDisabledAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.Remark(); ok {
 		_spec.SetField(channel.FieldRemark, field.TypeString, value)
