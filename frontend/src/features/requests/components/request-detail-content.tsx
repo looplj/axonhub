@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { DashboardIcon } from '@radix-ui/react-icons';
 import { zhCN, enUS } from 'date-fns/locale';
@@ -18,8 +18,10 @@ import { type Request, useRequest, useRequestExecutions } from '../data';
 import { ChunksDialog } from './chunks-dialog';
 import { CurlPreviewDialog } from './curl-preview-dialog';
 import { getStatusColor } from './help';
+import { RequestConversationViewer } from './request-conversation-viewer';
 import { ResponseFlow } from './response-flow';
 import { parseResponse } from '../utils/response-parser';
+import { parseRequestConversation } from '../utils/request-conversation';
 import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
 
 interface RequestDetailContentProps {
@@ -44,10 +46,24 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const [audioLoadFailed, setAudioLoadFailed] = useState(false);
   const [responseView, setResponseView] = useState<'preview' | 'json'>('preview');
+  const [requestBodyView, setRequestBodyView] = useState<'conversation' | 'json'>('conversation');
 
   const { data: settings } = useGeneralSettings();
   const { data: requestData, isLoading } = useRequest(requestId, { projectId, disableAutoRefresh: isPreviewStreaming });
   const request = previewRequest ?? requestData;
+
+  // Auto-select the appropriate request-body view once data is available:
+  // use the conversation view only when the body actually parses as a conversation.
+  // Only auto-adjust when the underlying request body changes, so manual toggles stick.
+  const lastAutoBodyRef = useRef<string>('');
+  useEffect(() => {
+    if (!request) return;
+    const bodyKey = JSON.stringify({ id: request?.id, body: request?.requestBody, format: request?.format });
+    if (bodyKey === lastAutoBodyRef.current) return;
+    lastAutoBodyRef.current = bodyKey;
+    const isConversation = !!parseRequestConversation(request.requestBody, request.format);
+    setRequestBodyView(isConversation ? 'conversation' : 'json');
+  }, [request?.id, request?.requestBody, request?.format]);
   const {
     data: executions,
     isLoading: isExecutionsLoading,
@@ -538,25 +554,37 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                 </div>
               )}
               <div className='space-y-4'>
-                <div className='flex items-center justify-between'>
+                <div className='flex flex-wrap items-center justify-between gap-2'>
                   <h4 className='flex items-center gap-2 text-base font-semibold'>
                     <FileText className='text-primary h-4 w-4' />
                     {t('requests.columns.requestBody')}
                   </h4>
-                  <div className='flex gap-2'>
-                    <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.requestBody))} className='hover:bg-primary hover:text-primary-foreground'>
-                      <Copy className='mr-2 h-4 w-4' />
-                      {t('requests.dialogs.jsonViewer.copy')}
-                    </Button>
-                    <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.requestBody), `request-body-${request.id}.json`)} className='hover:bg-primary hover:text-primary-foreground'>
-                      <Download className='mr-2 h-4 w-4' />
-                      {t('requests.dialogs.jsonViewer.download')}
-                    </Button>
+                  <div className='flex flex-wrap items-center gap-2'>
+                    <Tabs value={requestBodyView} onValueChange={(v: any) => setRequestBodyView(v)} className='w-auto'>
+                      <TabsList className='grid w-[220px] grid-cols-2'>
+                        <TabsTrigger value='conversation'>{t('requests.detail.tabs.conversation')}</TabsTrigger>
+                        <TabsTrigger value='json'>{t('requests.detail.tabs.json')}</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+                    <div className='flex gap-2'>
+                      <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.requestBody))} className='hover:bg-primary hover:text-primary-foreground'>
+                        <Copy className='mr-2 h-4 w-4' />
+                        {t('requests.dialogs.jsonViewer.copy')}
+                      </Button>
+                      <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.requestBody), `request-body-${request.id}.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                        <Download className='mr-2 h-4 w-4' />
+                        {t('requests.dialogs.jsonViewer.download')}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                  <JsonViewer data={request.requestBody} rootName='' defaultExpanded={true} expandDepth='all' hideArrayIndices={true} className='text-sm' />
-                </div>
+                {requestBodyView === 'conversation' ? (
+                  <RequestConversationViewer body={request.requestBody} format={request.format} />
+                ) : (
+                  <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
+                    <JsonViewer data={request.requestBody} rootName='' defaultExpanded={true} expandDepth='all' hideArrayIndices={true} className='text-sm' />
+                  </div>
+                )}
               </div>
             </TabsContent>
 
