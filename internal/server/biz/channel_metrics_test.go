@@ -516,7 +516,7 @@ func TestChannelMetrics_LoadAllFromExecutions_TimeFormatCompat(t *testing.T) {
 	ctx = ent.NewContext(ctx, client)
 	ctx = authz.WithTestBypass(ctx)
 
-	now := time.Now()
+	now := time.Now().UTC()
 	svc := &ChannelService{}
 
 	// failed record 1: current driver format (written via ent)
@@ -579,12 +579,13 @@ func TestChannelMetrics_LoadAllFromExecutions_TimeFormatCompat(t *testing.T) {
 	require.NoError(t, err)
 
 	// channel 1: 3 records, last_failure_at is the lexicographically largest failed
-	// record (failed2 at -1h)
+	// record (failed2 at -1h). Compare absolute instants (Unix) instead of
+	// time.Time values, which are sensitive to the Location pointer.
 	require.Contains(t, metrics, 1)
 	require.Equal(t, int64(3), metrics[1].RequestCount)
 	require.NotNil(t, metrics[1].LastFailureAt)
-	require.Equal(t, now.Add(-1*time.Hour).Truncate(time.Second), metrics[1].LastFailureAt.Truncate(time.Second))
-	require.NotEqual(t, failed1.CreatedAt.Truncate(time.Second), metrics[1].LastFailureAt.Truncate(time.Second))
+	require.Equal(t, now.Add(-1*time.Hour).Truncate(time.Second).Unix(), metrics[1].LastFailureAt.Unix())
+	require.NotEqual(t, failed1.CreatedAt.Truncate(time.Second).Unix(), metrics[1].LastFailureAt.Unix())
 
 	// channel 2: no failed records, LastFailureAt must be nil
 	require.Contains(t, metrics, 2)
