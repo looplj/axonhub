@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -313,8 +314,9 @@ var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit bre
 
 // PersistentOutboundTransformer wraps an outbound transformer with shared persistence state.
 type PersistentOutboundTransformer struct {
-	wrapped transformer.Outbound
-	state   *PersistenceState
+	wrapped                       transformer.Outbound
+	state                         *PersistenceState
+	outboundLlmRequestMiddlewares []pipeline.OutboundLlmRequestMiddleware
 }
 
 func shouldForceStreamingForCandidate(candidate *ChannelModelsCandidate, req *llm.Request) bool {
@@ -391,7 +393,13 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
-	llmRequest = applyClaudeCodeCacheCompatibility(llmRequest, outboundFormat)
+	for _, middleware := range p.outboundLlmRequestMiddlewares {
+		transformedRequest, err := middleware.OnOutboundLlmRequest(ctx, llmRequest, outboundFormat)
+		if err != nil {
+			return nil, fmt.Errorf("failed to apply %s middleware: %w", middleware.Name(), err)
+		}
+		llmRequest = transformedRequest
+	}
 	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, outboundFormat)
 
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {
@@ -410,7 +418,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 	}
 
-	isClaudeCodeClient := isClaudeCodeRequest(llmRequest)
+	isClaudeCodeClient := cc.IsClaudeCodeRequest(llmRequest)
 	originalReasoningEffort := llmRequest.ReasoningEffort
 	httpRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {

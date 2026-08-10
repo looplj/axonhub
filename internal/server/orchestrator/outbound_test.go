@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -111,6 +112,9 @@ func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatib
 			}
 			processor := &PersistentOutboundTransformer{
 				wrapped: outbound,
+				outboundLlmRequestMiddlewares: []pipeline.OutboundLlmRequestMiddleware{
+					cc.SystemCacheCompatibility(),
+				},
 				state: &PersistenceState{
 					ChannelModelsCandidates: []*ChannelModelsCandidate{{
 						Channel:   selectedChannel,
@@ -135,6 +139,65 @@ func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatib
 			require.NoError(t, err)
 			require.Equal(t, tt.wantEffort, gjson.GetBytes(httpRequest.Body, "reasoning_effort").String())
 			require.Equal(t, tt.wantSecondRole, gjson.GetBytes(httpRequest.Body, "messages.1.role").String())
+		})
+	}
+}
+
+func TestPersistentOutboundTransformer_TransformRequest_AppliesSystemCompatibilityPerAttempt(t *testing.T) {
+	tests := []struct {
+		name          string
+		formats       []llm.APIFormat
+		expectedRoles []string
+	}{
+		{
+			name:          "supported then unsupported",
+			formats:       []llm.APIFormat{llm.APIFormatOpenAIChatCompletion, llm.APIFormatGeminiContents},
+			expectedRoles: []string{"user", "system"},
+		},
+		{
+			name:          "unsupported then supported",
+			formats:       []llm.APIFormat{llm.APIFormatGeminiContents, llm.APIFormatOpenAIResponse},
+			expectedRoles: []string{"system", "user"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			candidates := make([]*ChannelModelsCandidate, 0, len(tt.formats))
+			for index, format := range tt.formats {
+				outbound := &mockTransformer{apiFormat: format, requestAPIFormat: format}
+				channel := &biz.Channel{
+					Channel:  &ent.Channel{ID: index + 1, Name: format.String()},
+					Outbound: outbound,
+				}
+				candidates = append(candidates, &ChannelModelsCandidate{
+					Channel:   channel,
+					Models:    []biz.ChannelModelEntry{{RequestModel: "alias", ActualModel: "provider-model"}},
+					APIFormat: format.String(),
+				})
+			}
+
+			state := &PersistenceState{ChannelModelsCandidates: candidates}
+			_, processor := NewPersistentTransformers(state, nil, cc.SystemCacheCompatibility())
+			request := &llm.Request{
+				Model: "alias",
+				Messages: []llm.Message{
+					{Role: "system"},
+					{Role: "user"},
+					{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("reminder")}},
+				},
+				RawRequest: &httpclient.Request{Headers: http.Header{
+					"User-Agent": []string{"claude-cli/2.1.170 (external, cli)"},
+				}},
+			}
+
+			for attempt, expectedRole := range tt.expectedRoles {
+				processor.state.CurrentCandidateIndex = attempt
+				httpRequest, err := processor.TransformRequest(context.Background(), request)
+				require.NoError(t, err)
+				require.Equal(t, expectedRole, gjson.GetBytes(httpRequest.Body, "messages.2.role").String())
+				require.Equal(t, "system", request.Messages[2].Role, "attempt middleware must not mutate the shared request")
+			}
 		})
 	}
 }

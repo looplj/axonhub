@@ -63,6 +63,17 @@ type Middleware interface {
 	OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
 }
 
+// OutboundLlmRequestMiddleware is an optional middleware extension for unified
+// requests that must be processed once per outbound attempt. Dynamic outbound
+// routers invoke it after selecting the attempt's API format and before the
+// provider transformer serializes the request. Implementations run in
+// registration order.
+type OutboundLlmRequestMiddleware interface {
+	Middleware
+
+	OnOutboundLlmRequest(ctx context.Context, request *llm.Request, format llm.APIFormat) (*llm.Request, error)
+}
+
 func OnLlmRequest(name string, handler func(ctx context.Context, request *llm.Request) (*llm.Request, error)) Middleware {
 	return &simpleMiddleware{
 		name:                  name,

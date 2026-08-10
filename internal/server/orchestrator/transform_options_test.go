@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
-	"net/http"
 	"testing"
 
 	"github.com/samber/lo"
@@ -94,92 +93,6 @@ func TestApplyTransformOptions_ForceArrayInputs(t *testing.T) {
 
 	require.NotSame(t, req, result)
 	require.Equal(t, lo.ToPtr(true), result.TransformOptions.ArrayInputs)
-}
-
-func TestApplyClaudeCodeCacheCompatibility_AffectedFormats(t *testing.T) {
-	formats := []llm.APIFormat{
-		llm.APIFormatOpenAIChatCompletion,
-		llm.APIFormatOpenAIResponse,
-		llm.APIFormatOpenAIResponseCompact,
-		llm.APIFormatAnthropicMessage,
-	}
-
-	for _, format := range formats {
-		t.Run(format.String(), func(t *testing.T) {
-			req := newClaudeCodeRequest([]llm.Message{
-				{Role: "system"},
-				{Role: "SYSTEM"},
-				{Role: "user"},
-				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("reminder 1")}},
-				{Role: "assistant"},
-				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("reminder 2")}},
-			})
-
-			result := applyClaudeCodeCacheCompatibility(req, format)
-
-			require.NotSame(t, req, result)
-			require.Equal(t, []string{"system", "SYSTEM", "user", "user", "assistant", "user"}, messageRoles(result.Messages))
-			require.Equal(t, []string{"system", "SYSTEM", "user", "system", "assistant", "system"}, messageRoles(req.Messages),
-				"automatic compatibility handling must not mutate the shared inbound request")
-			require.Equal(t, "reminder 1", *result.Messages[3].Content.Content)
-			require.Equal(t, "reminder 2", *result.Messages[5].Content.Content)
-		})
-	}
-}
-
-func TestApplyClaudeCodeCacheCompatibility_NoOpConditions(t *testing.T) {
-	tests := []struct {
-		name   string
-		req    *llm.Request
-		format llm.APIFormat
-	}{
-		{
-			name: "non Claude Code client",
-			req: requestWithUserAgent("codex_cli_rs/1.0", []llm.Message{
-				{Role: "user"},
-				{Role: "system"},
-			}),
-			format: llm.APIFormatOpenAIResponse,
-		},
-		{
-			name: "leading system block only",
-			req: newClaudeCodeRequest([]llm.Message{
-				{Role: "system"},
-				{Role: "system"},
-				{Role: "user"},
-			}),
-			format: llm.APIFormatAnthropicMessage,
-		},
-		{
-			name: "reminder already carried as user content",
-			req: newClaudeCodeRequest([]llm.Message{
-				{Role: "system"},
-				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("<system-reminder>safe</system-reminder>")}},
-			}),
-			format: llm.APIFormatOpenAIChatCompletion,
-		},
-		{
-			name: "unaffected outbound protocol",
-			req: newClaudeCodeRequest([]llm.Message{
-				{Role: "user"},
-				{Role: "system"},
-			}),
-			format: llm.APIFormatGeminiContents,
-		},
-		{
-			name:   "missing raw request",
-			req:    &llm.Request{Messages: []llm.Message{{Role: "user"}, {Role: "system"}}},
-			format: llm.APIFormatOpenAIResponse,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := applyClaudeCodeCacheCompatibility(tt.req, tt.format)
-
-			require.Same(t, tt.req, result)
-		})
-	}
 }
 
 func TestApplyClaudeCodeOpenAIReasoningEffortMapping(t *testing.T) {
@@ -317,28 +230,6 @@ func TestApplyClaudeCodeOpenAIReasoningEffortMapping(t *testing.T) {
 		require.Equal(t, "max", gjson.GetBytes(result.Body, "reasoning_effort").String())
 		require.Equal(t, "max", gjson.GetBytes(result.JSONBody, "reasoning_effort").String())
 	})
-}
-
-func newClaudeCodeRequest(messages []llm.Message) *llm.Request {
-	return requestWithUserAgent("claude-cli/2.1.170 (external, cli)", messages)
-}
-
-func requestWithUserAgent(userAgent string, messages []llm.Message) *llm.Request {
-	return &llm.Request{
-		Messages: messages,
-		RawRequest: &httpclient.Request{
-			Headers: http.Header{"User-Agent": []string{userAgent}},
-		},
-	}
-}
-
-func messageRoles(messages []llm.Message) []string {
-	roles := make([]string, len(messages))
-	for i, message := range messages {
-		roles[i] = message.Role
-	}
-
-	return roles
 }
 
 func TestReplaceDeveloperRoleWithSystem(t *testing.T) {

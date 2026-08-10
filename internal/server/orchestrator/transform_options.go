@@ -45,53 +45,6 @@ func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSet
 	return &newReq
 }
 
-// applyClaudeCodeCacheCompatibility keeps the stable prompt prefix produced by Claude Code.
-// Claude Code can inject real system-role messages after the leading system block. OpenAI
-// Responses and Anthropic Messages move those messages into their leading instruction/system
-// fields, and many OpenAI-compatible Chat Completions upstreams do the same internally. That
-// changes the beginning of the prompt on later turns and defeats prefix caching.
-//
-// Only Claude Code requests targeting an affected text protocol are considered. Existing user
-// messages that merely contain <system-reminder> text are already safe and remain untouched.
-func applyClaudeCodeCacheCompatibility(req *llm.Request, outboundFormat llm.APIFormat) *llm.Request {
-	if !isClaudeCodeRequest(req) || !supportsClaudeCodeSystemDowngrade(outboundFormat) {
-		return req
-	}
-
-	messages, changed := downgradeMidConversationSystemMessages(req.Messages)
-	if !changed {
-		return req
-	}
-
-	newReq := *req
-	newReq.Messages = messages
-
-	return &newReq
-}
-
-func isClaudeCodeRequest(req *llm.Request) bool {
-	if req == nil || req.RawRequest == nil || req.RawRequest.Headers == nil {
-		return false
-	}
-
-	userAgent := strings.TrimSpace(req.RawRequest.Headers.Get("User-Agent"))
-
-	return strings.HasPrefix(userAgent, "claude-cli/")
-}
-
-func supportsClaudeCodeSystemDowngrade(format llm.APIFormat) bool {
-	//nolint:exhaustive // Only text protocols that may hoist system messages are relevant.
-	switch format {
-	case llm.APIFormatOpenAIChatCompletion,
-		llm.APIFormatOpenAIResponse,
-		llm.APIFormatOpenAIResponseCompact,
-		llm.APIFormatAnthropicMessage:
-		return true
-	default:
-		return false
-	}
-}
-
 // applyClaudeCodeOpenAIReasoningEffortMapping is a common fallback for dedicated
 // OpenAI-compatible transformers that do not consume the channel mapping themselves.
 // Existing transformer-level mapping remains authoritative: if the final outbound value
@@ -155,35 +108,6 @@ func applyClaudeCodeOpenAIReasoningEffortMapping(
 	}
 
 	return &cloned, nil
-}
-
-// downgradeMidConversationSystemMessages preserves the leading contiguous system block and
-// changes every later system role to user. All later system messages must be handled together:
-// a trailing reminder becomes part of the history on the next turn, so changing only the final
-// message would make its role alternate between turns and destabilize the cache again.
-func downgradeMidConversationSystemMessages(messages []llm.Message) ([]llm.Message, bool) {
-	leadingSystemEnd := 0
-	for leadingSystemEnd < len(messages) && strings.EqualFold(messages[leadingSystemEnd].Role, "system") {
-		leadingSystemEnd++
-	}
-
-	var result []llm.Message
-	for i := leadingSystemEnd; i < len(messages); i++ {
-		if !strings.EqualFold(messages[i].Role, "system") {
-			continue
-		}
-
-		if result == nil {
-			result = append([]llm.Message(nil), messages...)
-		}
-		result[i].Role = "user"
-	}
-
-	if result == nil {
-		return messages, false
-	}
-
-	return result, true
 }
 
 // replaceDeveloperRoleWithSystem replaces developer role with system in messages.
