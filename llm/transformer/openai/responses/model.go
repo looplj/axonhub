@@ -942,7 +942,8 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 // forms such as 1786360449.0 are validated with pure lexeme arithmetic so
 // that non-integral values (1786360449.5), int64 overflow, and excessive
 // exponents (1e1000000) are rejected without materializing arbitrary
-// precision numbers.
+// precision numbers. Non-normalized scientific notation such as
+// 170000000000000000000000000000e-20 (exactly 1700000000) is accepted.
 func parseCreatedAtSeconds(raw string) (int64, error) {
 	// Integer form: ParseInt handles int64 range checks directly.
 	if v, err := strconv.ParseInt(raw, 10, 64); err == nil {
@@ -963,13 +964,6 @@ func parseCreatedAtSeconds(raw string) (int64, error) {
 		if err != nil {
 			return 0, fmt.Errorf("invalid created_at value %q", raw)
 		}
-		// int64 holds at most 19 decimal digits, so any |exp| beyond that is
-		// guaranteed out of range. Bounding the exponent here also keeps the
-		// scale arithmetic below from overflowing machine integers on values
-		// such as 1e-9223372036854775808.
-		if e > 19 || e < -19 {
-			return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
-		}
 		exp = e
 		body = body[:i]
 	}
@@ -983,38 +977,60 @@ func parseCreatedAtSeconds(raw string) (int64, error) {
 		return 0, fmt.Errorf("invalid created_at value %q", raw)
 	}
 
-	// The value equals digits * 10^(exp - len(frac)). With |exp| <= 19 the
-	// scale below stays well within machine integer bounds.
+	// digits is the sign-free digit sequence; the value equals
+	// digits * 10^(exp - len(frac)).
 	digits := body + frac
+
+	// Leading zeros do not affect the value; all-zero input is exactly zero.
+	sig := strings.TrimLeft(digits, "0")
+	if sig == "" {
+		return 0, nil
+	}
+
+	// trailingZeros bounds how many zeros a negative exponent can cancel
+	// before the value stops being an integer (e.g. 1786360449.5).
+	trailingZeros := 0
+	for i := len(digits) - 1; i >= 0 && digits[i] == '0'; i-- {
+		trailingZeros++
+	}
+
+	// Bound the exponent against the mantissa before computing the scale, so
+	// machine integer arithmetic cannot overflow on values such as
+	// 1e-9223372036854775808. These bounds are exact: a non-zero value with
+	// exp > len(frac)+19 is at least 10^19 and overflows int64, while a
+	// negative exp beyond trailingZeros cannot be canceled into an integer.
+	switch {
+	case exp > len(frac)+19:
+		return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
+	case exp < -trailingZeros:
+		return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
+	}
+
+	// scale = len(frac) - exp is now bounded: |scale| <= max(19, len(frac)+trailingZeros).
 	scale := len(frac) - exp
 	switch {
 	case scale < 0:
 		// Pad trailing zeros: a value larger than int64 can be rejected by
 		// digit count alone, before building the padded string.
-		if len(digits)+(-scale) > len(strconv.FormatInt(math.MaxInt64, 10)) {
+		if len(sig)+(-scale) > len(strconv.FormatInt(math.MaxInt64, 10)) {
 			return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
 		}
-		digits += strings.Repeat("0", -scale)
+		sig += strings.Repeat("0", -scale)
 	case scale > 0:
 		// Strip trailing zeros: an insufficient zero tail means the value is
 		// not an integer (e.g. 1786360449.5).
-		if len(digits) <= scale {
+		if len(sig) <= scale {
 			return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
 		}
-		for _, c := range digits[len(digits)-scale:] {
+		for _, c := range sig[len(sig)-scale:] {
 			if c != '0' {
 				return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
 			}
 		}
-		digits = digits[:len(digits)-scale]
+		sig = sig[:len(sig)-scale]
 	}
 
-	digits = strings.TrimLeft(digits, "0")
-	if digits == "" {
-		digits = "0"
-	}
-
-	v, err := strconv.ParseInt(sign+digits, 10, 64)
+	v, err := strconv.ParseInt(sign+sig, 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
 	}

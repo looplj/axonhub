@@ -423,6 +423,11 @@ func TestResponseUnmarshalJSON_CreatedAtCompatibility(t *testing.T) {
 			want:    0,
 		},
 		{
+			name:    "non-normalized scientific notation with canceling exponent",
+			payload: `{"id":"resp_1","created_at":170000000000000000000000000000e-20,"model":"gpt-5","output":[]}`,
+			want:    1700000000,
+		},
+		{
 			name:    "max int64 created_at",
 			payload: `{"id":"resp_1","created_at":9223372036854775807,"model":"gpt-5","output":[]}`,
 			want:    9223372036854775807,
@@ -457,10 +462,10 @@ func TestResponseUnmarshalJSON_CreatedAtCompatibility(t *testing.T) {
 			errContains: "out of int64 range",
 		},
 		{
-			name:        "created_at with min-int exponent is rejected without overflow",
+			name:        "created_at with min-int exponent is rejected as non-integral",
 			payload:     `{"id":"resp_1","created_at":1e-9223372036854775808,"model":"gpt-5","output":[]}`,
 			wantErr:     true,
-			errContains: "out of int64 range",
+			errContains: "integer number of seconds",
 		},
 		{
 			name:        "created_at with max-int exponent is rejected without overflow",
