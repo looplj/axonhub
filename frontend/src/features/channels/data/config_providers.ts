@@ -35,6 +35,7 @@ import {
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
+import { FennoIcon } from '../components/fenno-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import { ApiFormat, ChannelType } from './schema';
@@ -63,6 +64,18 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: AtlasCloudIcon,
     color: 'bg-sky-100 text-sky-800 border-sky-200',
     channelTypes: ['atlascloud'],
+  },
+  qiniu: {
+    provider: 'qiniu',
+    icon: Qiniu,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    channelTypes: ['qiniu_anthropic', 'qiniu'],
+  },
+  fenno: {
+    provider: 'fenno',
+    icon: FennoIcon,
+    color: 'bg-[#EEF2FF] text-[#3155C6] border-[#C7D2FE]',
+    channelTypes: ['fenno'],
   },
   deepseek: {
     provider: 'deepseek',
@@ -225,12 +238,6 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: DeepInfra,
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     channelTypes: ['deepinfra'],
-  },
-  qiniu: {
-    provider: 'qiniu',
-    icon: Qiniu,
-    color: 'bg-blue-100 text-blue-800 border-blue-200',
-    channelTypes: ['qiniu'],
   },
   cerebras: {
     provider: 'cerebras',
