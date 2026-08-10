@@ -102,8 +102,12 @@ func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Conte
 	// (currently "2026-08-10 13:22:10.251164681 +0000 UTC"; older versions may
 	// carry a fixed 9-digit fraction ".000000000"). database/sql cannot scan such
 	// TEXT directly into time.Time, so read it as a string first and parse manually.
-	// When there are no failed records the column is NULL, which a string field
-	// safely receives as an empty string.
+	// When there are no failed records the column is NULL: ent's struct scan wraps
+	// string fields in a *string intermediary (dialect/sql/scan.go), so NULL is
+	// safely received as an empty string instead of a scan error.
+	// Note: the lexical MAX(...) equals the chronologically latest failure because
+	// every write path (ent + the SQLite driver) serializes times with the same
+	// "YYYY-MM-DD HH:MM:SS" prefix, regardless of the fractional part.
 	type queryResult struct {
 		ChannelID     int    `json:"channel_id"`
 		RequestCount  int64  `json:"request_count"`

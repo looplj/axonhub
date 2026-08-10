@@ -637,7 +637,9 @@ func TestParseDBTime(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tt.want.Unix(), got.Unix())
+			// Compare full instants (including fractional seconds) with Equal,
+			// which ignores the Location pointer, unlike == / require.Equal.
+			require.True(t, got.Equal(tt.want), "parseDBTime(%q) = %v, want %v", tt.value, got, tt.want)
 		})
 	}
 }
