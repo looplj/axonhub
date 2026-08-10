@@ -408,6 +408,16 @@ func TestResponseUnmarshalJSON_CreatedAtCompatibility(t *testing.T) {
 			want:    0,
 		},
 		{
+			name:    "zero created_at with trailing zero fraction",
+			payload: `{"id":"resp_1","created_at":0.000,"model":"gpt-5","output":[]}`,
+			want:    0,
+		},
+		{
+			name:    "exponent-form integral created_at",
+			payload: `{"id":"resp_1","created_at":1.7e9,"model":"gpt-5","output":[]}`,
+			want:    1700000000,
+		},
+		{
 			name:    "missing created_at keeps zero value",
 			payload: `{"id":"resp_1","model":"gpt-5","output":[]}`,
 			want:    0,
@@ -427,6 +437,24 @@ func TestResponseUnmarshalJSON_CreatedAtCompatibility(t *testing.T) {
 			payload:     `{"id":"resp_1","created_at":1786360449.5,"model":"gpt-5","output":[]}`,
 			wantErr:     true,
 			errContains: "created_at",
+		},
+		{
+			name:        "quoted created_at is rejected",
+			payload:     `{"id":"resp_1","created_at":"1786360449","model":"gpt-5","output":[]}`,
+			wantErr:     true,
+			errContains: "created_at",
+		},
+		{
+			name:        "quoted float created_at is rejected",
+			payload:     `{"id":"resp_1","created_at":"1786360449.0","model":"gpt-5","output":[]}`,
+			wantErr:     true,
+			errContains: "created_at",
+		},
+		{
+			name:        "created_at with excessive exponent is rejected without expansion",
+			payload:     `{"id":"resp_1","created_at":1e1000000,"model":"gpt-5","output":[]}`,
+			wantErr:     true,
+			errContains: "out of int64 range",
 		},
 		{
 			name:        "created_at exceeding int64 is rejected",

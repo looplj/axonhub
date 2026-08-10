@@ -6,8 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
+	"math"
 	"strconv"
+	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
@@ -908,7 +909,7 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 	type alias Response
 
 	var raw struct {
-		CreatedAt json.Number `json:"created_at"`
+		CreatedAt json.RawMessage `json:"created_at"`
 		*alias
 	}
 	raw.alias = (*alias)(r)
@@ -917,11 +918,17 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	if raw.CreatedAt == "" {
+	if xjson.IsNull(raw.CreatedAt) {
 		return nil
 	}
 
-	createdAt, err := parseCreatedAtSeconds(raw.CreatedAt.String())
+	// created_at must be a JSON number. Reject string forms such as
+	// "1786360449" so the previous int64 field behavior is preserved.
+	if c := raw.CreatedAt[0]; c != '-' && (c < '0' || c > '9') {
+		return fmt.Errorf("invalid responses api created_at: must be a JSON number, got %q", string(raw.CreatedAt))
+	}
+
+	createdAt, err := parseCreatedAtSeconds(string(raw.CreatedAt))
 	if err != nil {
 		return fmt.Errorf("invalid responses api created_at: %w", err)
 	}
@@ -932,26 +939,84 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 
 // parseCreatedAtSeconds converts a JSON created_at number lexeme to an int64
 // unix timestamp. The integer form (1786360449) is parsed directly; float
-// forms such as 1786360449.0 are validated with exact rational arithmetic so
-// that non-integral values (1786360449.5) and int64 overflow are rejected
-// rather than silently truncated or wrapped.
+// forms such as 1786360449.0 are validated with pure lexeme arithmetic so
+// that non-integral values (1786360449.5), int64 overflow, and excessive
+// exponents (1e1000000) are rejected without materializing arbitrary
+// precision numbers.
 func parseCreatedAtSeconds(raw string) (int64, error) {
+	// Integer form: ParseInt handles int64 range checks directly.
 	if v, err := strconv.ParseInt(raw, 10, 64); err == nil {
 		return v, nil
 	}
 
-	rat, ok := new(big.Rat).SetString(raw)
-	if !ok {
+	// Float form: split into sign / integer / fraction / exponent. The JSON
+	// lexeme is guaranteed valid by the caller, so these checks are defensive.
+	sign := ""
+	body := raw
+	if len(body) > 0 && (body[0] == '-' || body[0] == '+') {
+		sign, body = string(body[0]), body[1:]
+	}
+
+	exp := 0
+	if i := strings.IndexAny(body, "eE"); i >= 0 {
+		e, err := strconv.Atoi(body[i+1:])
+		if err != nil {
+			return 0, fmt.Errorf("invalid created_at value %q", raw)
+		}
+		exp = e
+		body = body[:i]
+	}
+
+	frac := ""
+	if i := strings.IndexByte(body, '.'); i >= 0 {
+		body, frac = body[:i], body[i+1:]
+	}
+
+	if body == "" || !isDecimalDigits(body) || !isDecimalDigits(frac) {
 		return 0, fmt.Errorf("invalid created_at value %q", raw)
 	}
-	if !rat.IsInt() {
-		return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
+
+	// The value equals digits * 10^(exp - len(frac)).
+	digits := body + frac
+	scale := len(frac) - exp
+	switch {
+	case scale < 0:
+		// Pad trailing zeros: a value larger than int64 can be rejected by
+		// digit count alone, before building the padded string.
+		if len(digits)+(-scale) > len(strconv.FormatInt(math.MaxInt64, 10)) {
+			return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
+		}
+		digits += strings.Repeat("0", -scale)
+	case scale > 0:
+		// Strip trailing zeros: an insufficient zero tail means the value is
+		// not an integer (e.g. 1786360449.5).
+		if len(digits) <= scale || !strings.HasSuffix(digits, strings.Repeat("0", scale)) {
+			return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
+		}
+		digits = digits[:len(digits)-scale]
 	}
-	if !rat.Num().IsInt64() {
+
+	digits = strings.TrimLeft(digits, "0")
+	if digits == "" {
+		digits = "0"
+	}
+
+	v, err := strconv.ParseInt(sign+digits, 10, 64)
+	if err != nil {
 		return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
 	}
 
-	return rat.Num().Int64(), nil
+	return v, nil
+}
+
+// isDecimalDigits reports whether s is empty or consists only of ASCII digits.
+func isDecimalDigits(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 type ContentItem struct {
