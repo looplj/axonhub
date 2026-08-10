@@ -256,6 +256,7 @@
   "models.developers.xiaomi": "小米",
   "models.developers.zai": "智谱",
   "models.developers.poolside": "Poolside",
+  "models.developers.thinkingmachines": "Thinking Machines",
   "models.groupedView.expandAll": "展开全部",
   "models.groupedView.collapseAll": "折叠全部",
   "models.groupedView.summary": "{{groups}} 个开发者 · {{models}} 个模型",
