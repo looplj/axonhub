@@ -173,9 +173,13 @@ func (svc *ChannelService) bulkUpdateChannelStatus(ctx context.Context, ids []in
 		return fmt.Errorf("expected to find %d channels, but found %d", len(ids), count)
 	}
 
+	// Any manual status change hands the channel back to the operator, so the
+	// auto-disable marker is dropped: a manually disabled channel must not be
+	// picked up by the auto-enable schedule.
 	updater := client.Channel.Update().
 		Where(channel.IDIn(ids...)).
-		SetStatus(status)
+		SetStatus(status).
+		ClearAutoDisabledAt()
 
 	if clearErrorMessage {
 		updater.ClearErrorMessage()

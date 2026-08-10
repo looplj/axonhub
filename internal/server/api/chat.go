@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-contrib/sse"
 	"github.com/gin-gonic/gin"
@@ -26,9 +28,25 @@ const (
 // StreamWriter is a function type for writing stream events to the response.
 type StreamWriter func(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent])
 
+// SSEKeepAliveConfig controls downstream heartbeats for SSE-compatible APIs.
+type SSEKeepAliveConfig struct {
+	Enabled  bool
+	Interval time.Duration
+}
+
+type sseHeartbeatFormat uint8
+
+const (
+	sseHeartbeatNone sseHeartbeatFormat = iota
+	sseHeartbeatOpenAI
+	sseHeartbeatAnthropic
+)
+
 type ChatCompletionHandlers struct {
 	ChatCompletionOrchestrator *orchestrator.ChatCompletionOrchestrator
 	StreamWriter               StreamWriter
+	sseKeepAlive               SSEKeepAliveConfig
+	sseHeartbeatFormat         sseHeartbeatFormat
 }
 
 func NewChatCompletionHandlers(orchestrator *orchestrator.ChatCompletionOrchestrator) *ChatCompletionHandlers {
@@ -106,12 +124,13 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 
 		c.Header("Access-Control-Allow-Origin", "*")
 
-		streamWriter := handlers.StreamWriter
-		if streamWriter == nil {
-			streamWriter = WriteSSEStream
+		stream := newUpstreamErrorStream(ctx, result.ChatCompletionStream, handlers.ChatCompletionOrchestrator.SystemService)
+		if handlers.StreamWriter != nil {
+			handlers.StreamWriter(c, stream)
+			return
 		}
 
-		streamWriter(c, newUpstreamErrorStream(ctx, result.ChatCompletionStream, handlers.ChatCompletionOrchestrator.SystemService))
+		writeSSEStream(c, stream, FormatStreamError, handlers.sseKeepAlive, handlers.sseHeartbeatFormat)
 	}
 }
 
@@ -132,6 +151,25 @@ func WriteSSEStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEven
 
 // WriteSSEStreamWithErrorFormatter writes stream events as SSE with a custom error formatter.
 func WriteSSEStreamWithErrorFormatter(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent], formatErr StreamErrorFormatter) {
+	writeSSEStream(c, stream, formatErr, SSEKeepAliveConfig{}, sseHeartbeatNone)
+}
+
+func writeSSEStream(
+	c *gin.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+	formatErr StreamErrorFormatter,
+	keepAlive SSEKeepAliveConfig,
+	heartbeatFormat sseHeartbeatFormat,
+) {
+	if !keepAlive.Enabled || keepAlive.Interval <= 0 || heartbeatFormat == sseHeartbeatNone {
+		writeSSEStreamWithoutHeartbeat(c, stream, formatErr)
+		return
+	}
+
+	writeSSEStreamWithHeartbeat(c, stream, formatErr, keepAlive.Interval, heartbeatFormat)
+}
+
+func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent], formatErr StreamErrorFormatter) {
 	ctx := c.Request.Context()
 	clientDisconnected := false
 
@@ -146,9 +184,7 @@ func WriteSSEStreamWithErrorFormatter(c *gin.Context, stream streams.Stream[*htt
 	}()
 
 	// Set SSE headers
-	c.Header("Content-Type", sse.ContentType)
-	c.Header("Cache-Control", "no-cache")
-	c.Header("Connection", "keep-alive")
+	setSSEHeaders(c)
 	c.Writer.Flush()
 
 	// Do not pre-check ctx.Done() before Next(). If the client disconnects right
@@ -198,6 +234,149 @@ func WriteSSEStreamWithErrorFormatter(c *gin.Context, stream streams.Stream[*htt
 		c.SSEvent(cur.Type, cur.Data)
 		log.Debug(ctx, "write stream event", log.Any("event", cur))
 		c.Writer.Flush()
+	}
+}
+
+func writeSSEStreamWithHeartbeat(
+	c *gin.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+	formatErr StreamErrorFormatter,
+	interval time.Duration,
+	heartbeatFormat sseHeartbeatFormat,
+) {
+	ctx := c.Request.Context()
+	clientDisconnected := false
+
+	if formatErr == nil {
+		formatErr = FormatStreamError
+	}
+
+	defer func() {
+		if clientDisconnected {
+			log.Warn(ctx, "Client disconnected")
+		}
+	}()
+
+	setSSEHeaders(c)
+	c.Writer.Flush()
+
+	reader := newSSEStreamReader(ctx, stream)
+	// The caller closes the stream after this function returns. Wait for the
+	// reader first so Close cannot race with Next or Current.
+	defer reader.Stop()
+
+	timer := time.NewTimer(interval)
+	defer timer.Stop()
+
+	timerC := timer.C
+	ctxDone := ctx.Done()
+	eventsAfterCancel := 0
+
+	for {
+		select {
+		case <-ctxDone:
+			clientDisconnected = true
+			ctxDone = nil
+			stopTimer(timer)
+			timerC = nil
+
+		case result := <-reader.Results():
+			if result.done {
+				writeSSEStreamEnd(c, ctx, result.err, formatErr, &clientDisconnected)
+				return
+			}
+
+			if ctx.Err() != nil {
+				eventsAfterCancel++
+				if eventsAfterCancel > maxStreamEventsAfterCancel {
+					clientDisconnected = true
+					log.Warn(ctx, "Stream still producing after cancellation, aborting drain",
+						log.Int("events_after_cancel", eventsAfterCancel))
+					return
+				}
+			}
+
+			cur := result.event
+			c.SSEvent(cur.Type, cur.Data)
+			log.Debug(ctx, "write stream event", log.Any("event", cur))
+			c.Writer.Flush()
+
+			if timerC != nil {
+				resetTimer(timer, interval)
+			}
+
+		case <-timerC:
+			if err := writeSSEHeartbeat(c.Writer, heartbeatFormat); err != nil {
+				clientDisconnected = true
+				log.Warn(ctx, "Failed to write SSE heartbeat", log.Cause(err))
+				return
+			}
+
+			c.Writer.Flush()
+			timer.Reset(interval)
+		}
+	}
+}
+
+func writeSSEStreamEnd(
+	c *gin.Context,
+	ctx context.Context,
+	streamErr error,
+	formatErr StreamErrorFormatter,
+	clientDisconnected *bool,
+) {
+	if streamErr != nil {
+		if errors.Is(streamErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
+			*clientDisconnected = true
+
+			if !errors.Is(streamErr, context.Canceled) {
+				log.Warn(ctx, "Stream error after client disconnected", log.Cause(streamErr))
+			}
+		} else {
+			log.Error(ctx, "Error in stream", log.Cause(streamErr))
+			c.SSEvent("error", formatErr(ctx, streamErr))
+		}
+	} else if errors.Is(ctx.Err(), context.Canceled) {
+		*clientDisconnected = true
+	}
+
+	c.Writer.Flush()
+}
+
+func stopTimer(timer *time.Timer) {
+	if !timer.Stop() {
+		select {
+		case <-timer.C:
+		default:
+		}
+	}
+}
+
+func resetTimer(timer *time.Timer, interval time.Duration) {
+	stopTimer(timer)
+	timer.Reset(interval)
+}
+
+func setSSEHeaders(c *gin.Context) {
+	setSSEResponseHeaders(c.Writer.Header())
+}
+
+func setSSEResponseHeaders(header http.Header) {
+	header.Set("Content-Type", sse.ContentType)
+	header.Set("Cache-Control", "no-cache")
+	header.Set("Connection", "keep-alive")
+}
+
+func writeSSEHeartbeat(writer io.Writer, format sseHeartbeatFormat) error {
+	switch format {
+	case sseHeartbeatOpenAI:
+		_, err := io.WriteString(writer, ": keep-alive\n\n")
+		return err
+	case sseHeartbeatAnthropic:
+		_, err := io.WriteString(writer, "event: ping\ndata: {\"type\":\"ping\"}\n\n")
+		return err
+	default:
+		return errors.New("unsupported SSE heartbeat format")
 	}
 }
 

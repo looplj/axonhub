@@ -62,6 +62,9 @@ server:
   base_path: ""                 # Base path for API routes
   request_timeout: "30s"        # Request timeout duration
   llm_request_timeout: "600s"   # LLM request timeout duration
+  sse_keep_alive:
+    enabled: false               # Send API-compatible heartbeats while an SSE stream is idle
+    interval: "15s"              # Idle duration between heartbeats
   trace:
     thread_header: "AH-Thread-Id" # Thread ID header name
     trace_header: "AH-Trace-Id" # Trace ID header name
@@ -79,6 +82,8 @@ server:
 - `AXONHUB_SERVER_BASE_PATH`
 - `AXONHUB_SERVER_REQUEST_TIMEOUT`
 - `AXONHUB_SERVER_LLM_REQUEST_TIMEOUT`
+- `AXONHUB_SERVER_SSE_KEEP_ALIVE_ENABLED`
+- `AXONHUB_SERVER_SSE_KEEP_ALIVE_INTERVAL`
 - `AXONHUB_SERVER_TRACE_THREAD_HEADER`
 - `AXONHUB_SERVER_TRACE_TRACE_HEADER`
 - `AXONHUB_SERVER_TRACE_EXTRA_TRACE_HEADERS`
@@ -87,6 +92,8 @@ server:
 - `AXONHUB_SERVER_TRACE_CODEX_TRACE_ENABLED`
 - `AXONHUB_SERVER_DEBUG`
 - `AXONHUB_SERVER_DISABLE_SSL_VERIFY`
+
+SSE keep-alive currently applies to OpenAI-compatible and Anthropic-compatible streaming APIs. Gemini streaming APIs are excluded.
 
 ### Database Configuration
 

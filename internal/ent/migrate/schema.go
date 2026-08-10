@@ -115,6 +115,7 @@ var (
 		{Name: "settings", Type: field.TypeJSON, Nullable: true},
 		{Name: "ordering_weight", Type: field.TypeInt, Default: 0},
 		{Name: "error_message", Type: field.TypeString, Nullable: true},
+		{Name: "auto_disabled_at", Type: field.TypeTime, Nullable: true},
 		{Name: "remark", Type: field.TypeString, Nullable: true},
 		{Name: "endpoints", Type: field.TypeJSON, Nullable: true},
 	}

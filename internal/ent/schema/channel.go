@@ -148,6 +148,12 @@ func (Channel) Fields() []ent.Field {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput),
 			),
+		field.Time("auto_disabled_at").
+			Optional().Nillable().
+			Comment("Set when the channel was disabled automatically, and cleared when it recovers; distinguishes an automatic disable from an operator one.").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 		field.String("remark").
 			Optional().Nillable().
 			Comment("User-defined remark or note for the channel"),

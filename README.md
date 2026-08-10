@@ -73,6 +73,30 @@
   <tbody>
     <tr>
       <td align="center" valign="middle">
+        <a href="https://lj.s.gy/8HNo22" target="_blank">
+          <img src="https://www-static.qbox.me/_next/static/media/logo.0fc18feaa621d2068a7180631f742256.jpg" alt="七牛云 AI" height="90"/>
+          <br/>
+          <strong>七牛云 AI</strong>
+        </a>
+      </td>
+      <td valign="middle">
+        七牛云 AI 是七牛云（02567.HK）旗下企业级大模型 MaaS 平台，一站式调用全球 150+ 主流模型，兼容全球主流模型厂商协议，覆盖文本、图像、音频、视频、文件处理等全模态处理能力，服务超过 169 万企业及开发者用户。七牛云 AI 为 AxonHub 项目的用户提供了专属福利：通过<a href="https://lj.s.gy/8HNo22" target="_blank">此链接</a>注册，企业用户免费领 1200 万 Token，开发者免费领 300 万 Token。
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="middle">
+        <a href="https://lj.s.gy/Wo8IuN" target="_blank">
+          <img src="https://api.fenno.ai/branding/standard/icon.webp" alt="FennoAI" height="90"/>
+          <br/>
+          <strong>FennoAI</strong>
+        </a>
+      </td>
+      <td valign="middle">
+        FennoAI 是一家面向企业研发团队和开发者的高稳定、高性能 API 中转服务商，兼容 OpenAI 与 Anthropic 协议，可无缝接入 Codex、Claude Code、OpenCode 等主流 AI 编程工具。平台具备企业级稳定性，可支撑千亿 Token/日的调用规模，并支持境内外主体公对公结算及开票，满足企业级研发与采购需求。作为 AxonHub 用户专属福利，通过<a href="https://lj.s.gy/Wo8IuN" target="_blank">专属链接</a>购买订阅，仅需 1.99 美元即可获得价值 50 美元的 Coding Plan 额度。同时支持邀请奖励，邀请好友购买最高可获得 20% 返佣，邀请越多，奖励越高。
+      </td>
+    </tr>
+    <tr>
+      <td align="center" valign="middle">
         <a href="https://bloome.im/app?ref=MjgMzmCY&utm_medium=github&utm_source=looplj-axonhub-ivor-202606" target="_blank">
           <img src="docs/sponsors/bloome.png" alt="Bloome" height="90"/>
           <br/>

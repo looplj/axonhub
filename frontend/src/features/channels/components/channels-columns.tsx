@@ -24,7 +24,7 @@ import {
   IconGauge,
   IconHistory,
   IconPlugConnected,
-  IconShieldLock,
+  IconClockPlay,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -235,11 +235,11 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <DropdownMenuItem
               onClick={() => {
                 setCurrentRow(channel);
-                setOpen('apiKeyRules');
+                setOpen('availability');
               }}
             >
-              <IconShieldLock size={16} className='mr-2' />
-              {t('channels.dialogs.apiKeyRules.action')}
+              <IconClockPlay size={16} className='mr-2' />
+              {t('channels.dialogs.availability.action')}
             </DropdownMenuItem>
           )}
           {hasDisabledAPIKeys && (
@@ -358,47 +358,42 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
     <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
   );
 
+  // Both indicators are shown independently: a channel disabled because every
+  // credential is unavailable carries an error *and* disabled credentials, and
+  // hiding the key icon behind the error would lose the reason it went down.
   const content = (
     <div className='flex justify-center'>
       <div className='flex max-w-56 items-center gap-2'>
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
-        {!hasError && hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
+        {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
         {nameElement}
       </div>
     </div>
   );
 
-  if (hasError) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent>
-          <div className='space-y-1'>
+  if (!hasError && !hasDisabledKeys) {
+    return content;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{content}</TooltipTrigger>
+      <TooltipContent>
+        <div className='space-y-1'>
+          {hasError && (
             <p className='text-destructive text-sm'>
               {t(`channels.messages.${channel.errorMessage}`, {
                 defaultValue: channel.errorMessage,
               })}
             </p>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  if (hasDisabledKeys) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent>
-          <p className='text-sm text-amber-500'>
-            {t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}
-          </p>
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
-  return content;
+          )}
+          {hasDisabledKeys && (
+            <p className='text-sm text-amber-500'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>
+          )}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
 });
 
 NameCell.displayName = 'NameCell';

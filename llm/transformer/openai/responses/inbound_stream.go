@@ -129,7 +129,11 @@ func (s *responsesInboundStream) Next() bool {
 	if !s.source.Next() {
 		if s.err == nil && !s.errorEventEmitted && s.source.Err() == nil && s.hasFinished && !s.responseCompleted {
 			s.responseCompleted = true
-			s.aggregator.status = "completed"
+			// Only fall back to completed when no terminal status was mapped
+			// from a finish_reason (incomplete/failed/cancelled).
+			if s.aggregator.status == "" || s.aggregator.status == "in_progress" {
+				s.aggregator.status = "completed"
+			}
 			response := s.aggregator.buildResponse()
 			if s.usage != nil {
 				response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
@@ -295,6 +299,22 @@ func (s *responsesInboundStream) Next() bool {
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 
+			// Map the Chat Completions finish_reason onto the Responses status so
+			// the final response.completed event reports abnormal termination
+			// (truncation, content rejection, failure) instead of always claiming success.
+			switch *choice.FinishReason {
+			case "length":
+				s.aggregator.status = "incomplete"
+				s.aggregator.incompleteDetails = &ResponseIncompleteDetails{Reason: "max_output_tokens"}
+			case "content_filter":
+				s.aggregator.status = "incomplete"
+				s.aggregator.incompleteDetails = &ResponseIncompleteDetails{Reason: "content_filter"}
+			case "error":
+				s.aggregator.status = "failed"
+			case "cancelled", "canceled":
+				s.aggregator.status = "cancelled"
+			}
+
 			if err := s.flushPendingReasoning(); err != nil {
 				s.err = err
 				return false
@@ -320,7 +340,11 @@ func (s *responsesInboundStream) Next() bool {
 		s.usage = chunk.Usage
 
 		// Build final response using aggregator
-		s.aggregator.status = "completed"
+		// A mapped terminal status (incomplete/failed/cancelled) must win over
+		// the default; only fall back to completed when still in_progress.
+		if s.aggregator.status == "" || s.aggregator.status == "in_progress" {
+			s.aggregator.status = "completed"
+		}
 		response := s.aggregator.buildResponse()
 		response.Usage = ConvertLLMUsageToResponsesUsage(s.usage)
 		if calls := getResponseWebSearchCallsFromMetadata(s.transformerMetadata); len(calls) > 0 {

@@ -57,6 +57,8 @@ const (
 	FieldOrderingWeight = "ordering_weight"
 	// FieldErrorMessage holds the string denoting the error_message field in the database.
 	FieldErrorMessage = "error_message"
+	// FieldAutoDisabledAt holds the string denoting the auto_disabled_at field in the database.
+	FieldAutoDisabledAt = "auto_disabled_at"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
 	// FieldEndpoints holds the string denoting the endpoints field in the database.
@@ -141,6 +143,7 @@ var Columns = []string{
 	FieldSettings,
 	FieldOrderingWeight,
 	FieldErrorMessage,
+	FieldAutoDisabledAt,
 	FieldRemark,
 	FieldEndpoints,
 }
@@ -367,6 +370,11 @@ func ByOrderingWeight(opts ...sql.OrderTermOption) OrderOption {
 // ByErrorMessage orders the results by the error_message field.
 func ByErrorMessage(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldErrorMessage, opts...).ToFunc()
+}
+
+// ByAutoDisabledAt orders the results by the auto_disabled_at field.
+func ByAutoDisabledAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAutoDisabledAt, opts...).ToFunc()
 }
 
 // ByRemark orders the results by the remark field.

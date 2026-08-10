@@ -26,6 +26,11 @@ import (
 	"github.com/samber/lo"
 )
 
+// LinkedProfilesCount is the resolver for the linkedProfilesCount field.
+func (r *aPIKeyProfileTemplateResolver) LinkedProfilesCount(ctx context.Context, obj *ent.APIKeyProfileTemplate) (int, error) {
+	return r.apiKeyProfileTemplateService.CountLinkedProfiles(ctx, obj)
+}
+
 // DefaultEndpoints is the resolver for the defaultEndpoints field.
 func (r *channelResolver) DefaultEndpoints(ctx context.Context, obj *ent.Channel) ([]*objects.ChannelEndpoint, error) {
 	if obj == nil {

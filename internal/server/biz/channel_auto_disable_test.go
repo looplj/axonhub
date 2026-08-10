@@ -220,7 +220,7 @@ func TestChannelService_checkAndHandleAPIKeyError(t *testing.T) {
 				tt.setupFunc()
 			}
 
-			result := svc.checkAndHandleAPIKeyError(ctx, tt.perf, tt.policy)
+			result := svc.checkAndHandleAPIKeyError(ctx, tt.perf, tt.policy.AutoDisableChannel.Statuses)
 			require.Equal(t, tt.expectedDisabled, result)
 
 			if tt.expectedDisabled {
@@ -323,7 +323,7 @@ func TestChannelService_checkAndHandleChannelError(t *testing.T) {
 				tt.setupFunc()
 			}
 
-			result := svc.checkAndHandleChannelError(ctx, tt.perf, tt.policy)
+			result := svc.checkAndHandleChannelError(ctx, tt.perf, tt.policy.AutoDisableChannel.Statuses)
 			require.Equal(t, tt.expectedDisabled, result)
 
 			if tt.expectedDisabled {
@@ -487,7 +487,7 @@ func TestChannelService_MultipleStatusCodes(t *testing.T) {
 		Success:            false,
 	}
 
-	result := svc.checkAndHandleAPIKeyError(ctx, perf401, policy)
+	result := svc.checkAndHandleAPIKeyError(ctx, perf401, policy.AutoDisableChannel.Statuses)
 	require.True(t, result)
 
 	// Reset for 403 test
@@ -506,7 +506,7 @@ func TestChannelService_MultipleStatusCodes(t *testing.T) {
 		Success:            false,
 	}
 
-	result = svc.checkAndHandleAPIKeyError(ctx, perf403, policy)
+	result = svc.checkAndHandleAPIKeyError(ctx, perf403, policy.AutoDisableChannel.Statuses)
 	require.True(t, result)
 
 	// Verify key2 is disabled
@@ -554,7 +554,7 @@ func TestChannelService_ConcurrentErrorTracking(t *testing.T) {
 				ResponseStatusCode: 401,
 				Success:            false,
 			}
-			svc.checkAndHandleAPIKeyError(ctx, perf, policy)
+			svc.checkAndHandleAPIKeyError(ctx, perf, policy.AutoDisableChannel.Statuses)
 		}(i)
 	}
 
@@ -766,7 +766,7 @@ func TestChannelService_ChannelAPIKeyRulePermanentActionKeepsLastKeyDisabled(t *
 			{
 				StatusCodes: []int{401},
 				Times:       1,
-				Action:      objects.APIKeyAutoDisableActionPermanent,
+				Action:      objects.APIKeyAutoDisableActionPermanentDelete,
 			},
 		}}).
 		Save(ctx)

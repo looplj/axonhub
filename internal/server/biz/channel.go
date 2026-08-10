@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/aptible/supercronic/cronexpr"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -211,10 +212,13 @@ func (svc *ChannelService) RegisterScheduledTasks(ctx context.Context, s *schedu
 		return err
 	}
 
+	// Ticks every minute rather than every five so that a disable_until_cron rule
+	// recovers within a minute of the instant it scheduled, matching the finest
+	// granularity a crontab expression can express.
 	return s.Register(ctx, scheduler.TaskSpec{
 		Name:        "channel-disabled-api-key-cleanup",
-		Description: "Recover temporarily disabled channel API keys",
-		CronExpr:    "*/5 * * * *",
+		Description: "Recover temporarily disabled channel credentials and the channels they gated",
+		CronExpr:    "* * * * *",
 		Timezone:    "UTC",
 	}, svc.cleanupExpiredDisabledAPIKeys)
 }
@@ -702,6 +706,8 @@ func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
 			return fmt.Errorf("API key rule %d consecutive error count must be at least 1", i+1)
 		}
 
+		// Each action owns one schedule field; the others are cleared so a rule
+		// edited from one action to another cannot leave stale settings behind.
 		switch rule.Action {
 		case objects.APIKeyAutoDisableActionTemporary:
 			if rule.DisableDurationMinutes == nil {
@@ -710,8 +716,32 @@ func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
 			if *rule.DisableDurationMinutes < 1 {
 				return fmt.Errorf("API key rule %d disable duration must be at least 1 minute", i+1)
 			}
-		case objects.APIKeyAutoDisableActionPermanent:
+
+			rule.DisableUntilCron = ""
+			rule.DisableUntilTimezone = ""
+		case objects.APIKeyAutoDisableActionUntilCron:
+			rule.DisableUntilCron = strings.TrimSpace(rule.DisableUntilCron)
+			rule.DisableUntilTimezone = strings.TrimSpace(rule.DisableUntilTimezone)
+
+			if rule.DisableUntilCron == "" {
+				return fmt.Errorf("API key rule %d requires a cron expression for scheduled recovery", i+1)
+			}
+
+			if _, err := cronexpr.Parse(rule.DisableUntilCron); err != nil {
+				return fmt.Errorf("API key rule %d has invalid cron expression %q: %w", i+1, rule.DisableUntilCron, err)
+			}
+
+			if rule.DisableUntilTimezone != "" {
+				if _, err := time.LoadLocation(rule.DisableUntilTimezone); err != nil {
+					return fmt.Errorf("API key rule %d has invalid timezone %q: %w", i+1, rule.DisableUntilTimezone, err)
+				}
+			}
+
 			rule.DisableDurationMinutes = nil
+		case objects.APIKeyAutoDisableActionPermanent, objects.APIKeyAutoDisableActionPermanentDelete:
+			rule.DisableDurationMinutes = nil
+			rule.DisableUntilCron = ""
+			rule.DisableUntilTimezone = ""
 		default:
 			return fmt.Errorf("API key rule %d has unsupported action %q", i+1, rule.Action)
 		}
@@ -924,8 +954,11 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 // UpdateChannelStatus updates the status of a channel.
 func (svc *ChannelService) UpdateChannelStatus(ctx context.Context, id int, status channel.Status) (*ent.Channel, error) {
+	// A manual status change takes the channel out of the auto-disable lifecycle,
+	// so the auto-enable schedule no longer applies to it.
 	channel, err := svc.entFromContext(ctx).Channel.UpdateOneID(id).
 		SetStatus(status).
+		ClearAutoDisabledAt().
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update channel status: %w", err)

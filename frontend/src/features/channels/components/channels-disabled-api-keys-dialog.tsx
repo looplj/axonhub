@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChannels } from '../context/channels-context';
+import { OAUTH_CREDENTIAL_REF } from '../data/schema';
 import {
   useChannelDisabledAPIKeys,
   useEnableChannelAPIKey,
@@ -227,7 +228,9 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
                       </PopoverContent>
                     </Popover>
 
-                    {/* Delete Selected */}
+                    {/* Delete Selected. Hidden when the selection includes the OAuth
+                        credential, which the backend refuses to delete. */}
+                    {!selectedKeys.has(OAUTH_CREDENTIAL_REF) && (
                     <Popover open={confirmDeleteSelected} onOpenChange={setConfirmDeleteSelected}>
                       <PopoverTrigger asChild>
                         <Button size='sm' variant='outline' className='text-destructive' disabled={isPending}>
@@ -251,6 +254,7 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
                         </div>
                       </PopoverContent>
                     </Popover>
+                    )}
                   </div>
                 )}
               </div>
@@ -277,7 +281,13 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
                         />
                         <div className='flex flex-col gap-1'>
                           <div className='flex items-center gap-2'>
-                            <code className='bg-muted rounded px-2 py-0.5 font-mono text-sm'>****{dk.key.slice(-4)}</code>
+                            {dk.key === OAUTH_CREDENTIAL_REF ? (
+                              <span className='bg-muted rounded px-2 py-0.5 text-sm'>
+                                {t('channels.dialogs.disabledAPIKeys.oauthCredential')}
+                              </span>
+                            ) : (
+                              <code className='bg-muted rounded px-2 py-0.5 font-mono text-sm'>****{dk.key.slice(-4)}</code>
+                            )}
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <span className='text-destructive flex items-center gap-1 text-xs'>
@@ -335,7 +345,10 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
                           </PopoverContent>
                         </Popover>
 
-                        {/* Delete single key */}
+                        {/* Delete single key. The OAuth credential is not deletable:
+                            it is not a member of Credentials.APIKeys and the backend
+                            rejects deletion for OAuth channels. */}
+                        {dk.key !== OAUTH_CREDENTIAL_REF && (
                         <Popover
                           open={confirmDeletePopoverKey === dk.key}
                           onOpenChange={(isOpen) => setConfirmDeletePopoverKey(isOpen ? dk.key : null)}
@@ -359,6 +372,7 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
                             </div>
                           </PopoverContent>
                         </Popover>
+                        )}
                       </div>
                     </div>
                   ))}

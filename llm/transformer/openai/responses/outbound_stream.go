@@ -591,9 +591,39 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			s.state.transformerMetadataEmitted = true
 		}
 
-		finishReason := "stop"
-		if len(s.state.toolCalls) > 0 {
-			finishReason = "tool_calls"
+		// The Responses API signals abnormal completion via response.completed
+		// with a status other than "completed" (incomplete/failed/cancelled) - it
+		// does not emit separate events for those cases. Map the status onto the
+		// Chat Completions finish_reason; fall back to the tool_calls/stop
+		// inference only when the status is absent or plain "completed".
+		finishReason := ""
+		if streamEvent.Response != nil && streamEvent.Response.Status != nil {
+			switch *streamEvent.Response.Status {
+			case "incomplete":
+				// Distinguish truncation from content-filter rejection via the
+				// incomplete details the upstream attached to the response.
+				reason := ""
+				if streamEvent.Response.IncompleteDetails != nil {
+					reason = streamEvent.Response.IncompleteDetails.Reason
+				}
+				switch reason {
+				case "content_filter":
+					finishReason = "content_filter"
+				default:
+					finishReason = "length"
+				}
+			case "failed":
+				finishReason = "error"
+			case "cancelled", "canceled":
+				finishReason = "cancelled"
+			}
+		}
+		if finishReason == "" {
+			if len(s.state.toolCalls) > 0 {
+				finishReason = "tool_calls"
+			} else {
+				finishReason = "stop"
+			}
 		}
 
 		// First event: finish_reason with empty delta

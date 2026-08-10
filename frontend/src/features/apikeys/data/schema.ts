@@ -60,12 +60,16 @@ export const apiKeySchema = z.object({
         .array(
           z.object({
             name: z.string(),
-            modelMappings: z.array(
-              z.object({
-                from: z.string(),
-                to: z.string(),
-              })
-            ),
+            templateID: z.number().optional().nullable(),
+            templateName: z.string().optional().nullable(),
+            modelMappings: z
+              .array(
+                z.object({
+                  from: z.string(),
+                  to: z.string(),
+                })
+              )
+              .default([]),
             channelIDs: z.array(z.number()).optional().nullable(),
             channelTags: z.array(z.string()).optional().nullable(),
             channelTagsMatchMode: channelTagsMatchModeFieldSchema,
@@ -98,6 +102,7 @@ export const apiKeySchema = z.object({
               .nullable(),
           })
         )
+        .optional()
         .nullable(),
     })
     .optional()
@@ -164,6 +169,8 @@ export type ModelMapping = z.infer<typeof modelMappingSchema>;
 // API Key Profile schema
 export const apiKeyProfileSchema = z.object({
   name: z.string(),
+  templateID: z.number().optional().nullable(),
+  templateName: z.string().optional().nullable(),
   modelMappings: z.array(modelMappingSchema),
   channelIDs: z.array(z.number()).optional().nullable(),
   channelTags: z.array(z.string()).optional().nullable(),
@@ -214,6 +221,7 @@ export const apiKeyProfileTemplateSchema = z.object({
   projectID: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  linkedProfilesCount: z.number().int().nonnegative().default(0),
 });
 export type ApiKeyProfileTemplate = z.infer<typeof apiKeyProfileTemplateSchema>;
 
@@ -243,6 +251,8 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
         .array(
           z.object({
             name: z.string().min(1, t('apikeys.validation.profileNameRequired')),
+            templateID: z.number().optional().nullable(),
+            templateName: z.string().optional().nullable(),
             modelMappings: z.array(
               z.object({
                 from: z.string().min(1, t('apikeys.validation.sourceModelRequired')),

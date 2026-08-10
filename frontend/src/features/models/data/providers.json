@@ -2523,11 +2523,6 @@
             "input_audio": 0.5
           },
           "display_name": "Gemini 3.1 Flash Lite Preview",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true
-            }
-          },
           "type": "chat"
         },
         {
@@ -5645,6 +5640,64 @@
           "type": "chat"
         },
         {
+          "id": "voxtral-mini-tts-latest",
+          "name": "Voxtral Mini TTS (latest)",
+          "description": "Multilingual text-to-speech model with zero-shot voice cloning",
+          "family": "voxtral",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2026-03-01",
+          "last_updated": "2026-03-01",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "audio"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "output": 8192
+          },
+          "display_name": "Voxtral Mini TTS (latest)",
+          "type": "chat"
+        },
+        {
+          "id": "voxtral-mini-latest",
+          "name": "Voxtral Mini (latest)",
+          "description": "Speech transcription model for accurate audio-to-text and captioning workflows",
+          "family": "voxtral",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2026-02-01",
+          "last_updated": "2026-02-01",
+          "modalities": {
+            "input": [
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8192,
+            "output": 8192
+          },
+          "display_name": "Voxtral Mini (latest)",
+          "type": "chat"
+        },
+        {
           "id": "labs-devstral-small-2512",
           "name": "Devstral Small 2",
           "description": "Legacy model retained for compatibility with older integrations",
@@ -5818,6 +5871,40 @@
             "output": 2
           },
           "display_name": "Mistral Medium 3.1",
+          "type": "chat"
+        },
+        {
+          "id": "voxtral-small-latest",
+          "name": "Voxtral Small (latest)",
+          "description": "Instruct model with native audio input for speech understanding and tool use",
+          "family": "voxtral",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2025-07-15",
+          "last_updated": "2025-07-15",
+          "modalities": {
+            "input": [
+              "text",
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 32000,
+            "output": 32000
+          },
+          "cost": {
+            "input": 0.1,
+            "output": 0.3
+          },
+          "display_name": "Voxtral Small (latest)",
           "type": "chat"
         },
         {
@@ -6715,12 +6802,12 @@
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
-              "continuation": [
-                "thinking_blocks"
-              ],
               "interleaved": true,
               "summaries": true,
-              "visibility": "summary"
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ]
             }
           }
         }
@@ -7070,7 +7157,7 @@
         {
           "id": "deepseek-v4-flash",
           "name": "DeepSeek V4 Flash",
-          "description": "Fast DeepSeek V4 lane for economical reasoning, coding, and long-context work",
+          "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
           "family": "deepseek-flash",
           "attachment": false,
           "reasoning": {
@@ -7084,6 +7171,7 @@
             {
               "type": "effort",
               "values": [
+                "low",
                 "high",
                 "max"
               ]
@@ -7096,8 +7184,8 @@
           "structured_output": true,
           "temperature": true,
           "knowledge": "2025-05",
-          "release_date": "2026-04-24",
-          "last_updated": "2026-04-24",
+          "release_date": "2026-07-31",
+          "last_updated": "2026-07-31",
           "modalities": {
             "input": [
               "text"
@@ -7122,11 +7210,22 @@
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
+              "default_enabled": true,
+              "mode": "effort",
+              "effort": "high",
               "interleaved": true,
               "summaries": true,
               "visibility": "summary",
               "continuation": [
                 "thinking_blocks"
+              ],
+              "effort_options": [
+                "low",
+                "high",
+                "max"
+              ],
+              "notes": [
+                "The DeepSeek API maps xhigh to high for V4 Flash; effort_options lists distinct model-effective levels."
               ]
             }
           }
@@ -7186,11 +7285,21 @@
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
+              "default_enabled": true,
+              "mode": "effort",
+              "effort": "high",
               "interleaved": true,
               "summaries": true,
               "visibility": "summary",
               "continuation": [
                 "thinking_blocks"
+              ],
+              "effort_options": [
+                "high",
+                "max"
+              ],
+              "notes": [
+                "The DeepSeek API maps low to high and xhigh to max for V4 Pro; effort_options lists distinct model-effective levels."
               ]
             }
           }
@@ -7291,6 +7400,78 @@
       "doc": "https://www.alibabacloud.com/help/en/model-studio/models",
       "display_name": "alibaba",
       "models": [
+        {
+          "id": "qwen3.8-max",
+          "name": "Qwen3.8 Max",
+          "description": "2.4-trillion-parameter MoE flagship for coding, professional work, multimodal understanding, and long-horizon agentic workflows",
+          "family": "qwen",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "xhigh"
+              ]
+            },
+            {
+              "type": "budget_tokens",
+              "min": 0,
+              "max": 262144
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-08-03",
+          "last_updated": "2026-08-03",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 131072
+          },
+          "cost": {
+            "input": 2,
+            "output": 6,
+            "cache_read": 0.25,
+            "cache_write": 2.5
+          },
+          "display_name": "Qwen3.8 Max",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary"
+            }
+          },
+          "type": "chat"
+        },
         {
           "id": "qwen3.7-plus",
           "name": "Qwen3.7 Plus",
@@ -11677,26 +11858,6 @@
             "context": 1000000,
             "output": 128000
           },
-          "experimental": {
-            "modes": {
-              "fast": {
-                "cost": {
-                  "input": 30,
-                  "output": 150,
-                  "cache_read": 3,
-                  "cache_write": 37.5
-                },
-                "provider": {
-                  "body": {
-                    "speed": "fast"
-                  },
-                  "headers": {
-                    "anthropic-beta": "fast-mode-2026-02-01"
-                  }
-                }
-              }
-            }
-          },
           "cost": {
             "input": 5,
             "output": 25,
@@ -11860,26 +12021,6 @@
           "limit": {
             "context": 1000000,
             "output": 128000
-          },
-          "experimental": {
-            "modes": {
-              "fast": {
-                "cost": {
-                  "input": 30,
-                  "output": 150,
-                  "cache_read": 3,
-                  "cache_write": 37.5
-                },
-                "provider": {
-                  "body": {
-                    "speed": "fast"
-                  },
-                  "headers": {
-                    "anthropic-beta": "fast-mode-2026-02-01"
-                  }
-                }
-              }
-            }
           },
           "cost": {
             "input": 5,
@@ -12325,142 +12466,6 @@
             "cache_write": 3.75
           },
           "display_name": "Claude Sonnet 4.5",
-          "type": "chat",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": false,
-              "mode": "budget",
-              "budget": {
-                "min": 1024,
-                "unit": "tokens"
-              },
-              "interleaved": true,
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thinking_blocks"
-              ],
-              "notes": [
-                "Claude 4 manual thinking uses thinking.type = \"enabled\" with budget_tokens.",
-                "Interleaved thinking requires the interleaved-thinking-2025-05-14 beta header for this model family."
-              ]
-            }
-          }
-        },
-        {
-          "id": "claude-opus-4-1",
-          "name": "Claude Opus 4.1 (latest)",
-          "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
-          "family": "claude-opus",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": false
-          },
-          "reasoning_options": [
-            {
-              "type": "budget_tokens",
-              "min": 1024
-            }
-          ],
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-03-31",
-          "release_date": "2025-08-05",
-          "last_updated": "2025-08-05",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 200000,
-            "output": 32000
-          },
-          "status": "deprecated",
-          "cost": {
-            "input": 15,
-            "output": 75,
-            "cache_read": 1.5,
-            "cache_write": 18.75
-          },
-          "display_name": "Claude Opus 4.1 (latest)",
-          "type": "chat",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": false,
-              "mode": "budget",
-              "budget": {
-                "min": 1024,
-                "unit": "tokens"
-              },
-              "interleaved": true,
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thinking_blocks"
-              ],
-              "notes": [
-                "Claude 4 manual thinking uses thinking.type = \"enabled\" with budget_tokens.",
-                "Interleaved thinking requires the interleaved-thinking-2025-05-14 beta header for this model family."
-              ]
-            }
-          }
-        },
-        {
-          "id": "claude-opus-4-1-20250805",
-          "name": "Claude Opus 4.1",
-          "description": "Flagship Claude model for deep reasoning, coding, and long-horizon agents",
-          "family": "claude-opus",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": false
-          },
-          "reasoning_options": [
-            {
-              "type": "budget_tokens",
-              "min": 1024
-            }
-          ],
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-03-31",
-          "release_date": "2025-08-05",
-          "last_updated": "2025-08-05",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 200000,
-            "output": 32000
-          },
-          "status": "deprecated",
-          "cost": {
-            "input": 15,
-            "output": 75,
-            "cache_read": 1.5,
-            "cache_write": 18.75
-          },
-          "display_name": "Claude Opus 4.1",
           "type": "chat",
           "extra_capabilities": {
             "reasoning": {
@@ -16658,14 +16663,16 @@
           "id": "ibm-granite/granite-4.0-h-micro",
           "name": "IBM: Granite 4.0 Micro",
           "description": "Efficient model for low-latency assistance, extraction, and routine automation",
+          "family": "granite",
           "attachment": false,
           "reasoning": {
             "supported": false
           },
           "tool_call": false,
+          "structured_output": false,
           "temperature": true,
           "release_date": "2025-10-20",
-          "last_updated": "2026-03-15",
+          "last_updated": "2025-10-20",
           "modalities": {
             "input": [
               "text"
@@ -16674,14 +16681,14 @@
               "text"
             ]
           },
-          "open_weights": true,
+          "open_weights": false,
           "limit": {
             "context": 131000,
-            "output": 32768
+            "output": 131000
           },
           "cost": {
             "input": 0.017,
-            "output": 0.11
+            "output": 0.112
           },
           "display_name": "IBM: Granite 4.0 Micro",
           "type": "chat"
@@ -17431,7 +17438,7 @@
       "name": "ByteDance",
       "display_name": "ByteDance",
       "doc": "https://www.volcengine.com/docs/82379/1330310?lang=zh",
-      "updated_at": "2026-07-20T09:28:20Z",
+      "updated_at": "2026-08-07T08:10:05Z",
       "metadata": {
         "source": "volcengine-docs",
         "doc_detail_url": "https://www.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh"
@@ -17447,7 +17454,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -17465,7 +17472,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-1-5-lite-32k",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-1-5-lite-32k",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-1-5-lite-32k",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -17494,7 +17501,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -17512,7 +17519,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-1-5-pro-32k",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-1-5-pro-32k",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-1-5-pro-32k",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -17541,7 +17548,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -17559,7 +17566,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-1-5-pro-32k",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-1-5-pro-32k",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-1-5-pro-32k",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -17587,7 +17594,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -17606,7 +17613,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-1-5-vision-pro-32k",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-1-5-vision-pro-32k",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-1-5-vision-pro-32k",
             "section_titles": [
               "工具调用能力",
               "视觉理解能力"
@@ -17630,7 +17637,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -17649,7 +17656,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-embedding-vision",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-embedding-vision",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-embedding-vision",
             "section_titles": [
               "向量化能力"
             ],
@@ -17671,7 +17678,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -17690,7 +17697,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-embedding-vision",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-embedding-vision",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-embedding-vision",
             "section_titles": [
               "向量化能力"
             ],
@@ -17714,7 +17721,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -17735,7 +17742,7 @@
             "max_thinking_tokens": 32000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-1-6",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -17773,7 +17780,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -17794,7 +17801,7 @@
             "max_thinking_tokens": 32000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-1-6",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -17832,7 +17839,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -17853,7 +17860,7 @@
             "max_thinking_tokens": 32000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6-flash",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6-flash",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-1-6-flash",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -17890,7 +17897,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -17911,7 +17918,7 @@
             "max_thinking_tokens": 32000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6-flash",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6-flash",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-1-6-flash",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -17948,7 +17955,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -17969,7 +17976,7 @@
             "max_thinking_tokens": 32000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-6-vision",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-6-vision",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-1-6-vision",
             "section_titles": [
               "GUI 任务处理能力",
               "上下文缓存能力",
@@ -18008,7 +18015,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18029,7 +18036,7 @@
             "max_thinking_tokens": 32000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-1-8",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-1-8",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-1-8",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18066,7 +18073,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18087,7 +18094,7 @@
             "max_thinking_tokens": 128000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-code",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-code",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-2-0-code",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18123,7 +18130,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18144,7 +18151,7 @@
             "max_thinking_tokens": 128000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-lite",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-lite",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-2-0-lite",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18182,7 +18189,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18203,7 +18210,7 @@
             "max_thinking_tokens": 128000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-lite",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-lite",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-2-0-lite",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18240,7 +18247,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18261,7 +18268,7 @@
             "max_thinking_tokens": 128000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-mini",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-mini",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-2-0-mini",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18299,7 +18306,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18320,7 +18327,7 @@
             "max_thinking_tokens": 128000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-mini",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-mini",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-2-0-mini",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18356,7 +18363,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18377,7 +18384,7 @@
             "max_thinking_tokens": 128000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-2-0-pro",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-0-pro",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-2-0-pro",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18413,7 +18420,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18434,7 +18441,7 @@
             "max_thinking_tokens": 256000,
             "max_input_tokens": 256000,
             "canonical_id": "doubao-seed-2-1-pro",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-1-pro",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-2-1-pro",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18471,7 +18478,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18492,7 +18499,7 @@
             "max_thinking_tokens": 256000,
             "max_input_tokens": 256000,
             "canonical_id": "doubao-seed-2-1-turbo",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-2-1-turbo",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-2-1-turbo",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18527,7 +18534,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18546,7 +18553,7 @@
             "source": "volcengine-docs",
             "max_input_tokens": 96000,
             "canonical_id": "doubao-seed-character",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-character",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-character",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18577,7 +18584,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18598,7 +18605,7 @@
             "max_thinking_tokens": 128000,
             "max_input_tokens": 96000,
             "canonical_id": "doubao-seed-character",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-character&_vtm_=a106466.b106468.0_0.0_0.0.1961_7630866813484467762&projectName=default",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-character&_vtm_=a106466.b106468.0_0.0_0.0.1961_7630866813484467762&projectName=default",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18634,7 +18641,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18655,7 +18662,7 @@
             "max_thinking_tokens": 32000,
             "max_input_tokens": 224000,
             "canonical_id": "doubao-seed-code",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-code",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-code",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18691,7 +18698,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18712,7 +18719,7 @@
             "max_thinking_tokens": 256000,
             "max_input_tokens": 1024000,
             "canonical_id": "doubao-seed-evolving",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-evolving",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-evolving",
             "section_titles": [
               "上下文缓存能力",
               "工具调用能力",
@@ -18747,7 +18754,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18766,7 +18773,7 @@
             "source": "volcengine-docs",
             "max_input_tokens": 1000,
             "canonical_id": "doubao-seed-translation",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seed-translation",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seed-translation",
             "section_titles": [
               "文本生成能力"
             ],
@@ -18784,16 +18791,15 @@
           "name": "doubao-seedance-1-0-pro-250528",
           "display_name": "doubao-seedance-1-0-pro-250528",
           "type": "video",
-          "attachment": true,
+          "attachment": false,
           "reasoning": {
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
-          "vision": true,
+          "last_updated": "2026-08-07T08:10:05Z",
+          "vision": false,
           "modalities": {
             "input": [
-              "image",
               "text"
             ],
             "output": [
@@ -18807,12 +18813,11 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedance-1-0-pro",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedance-1-0-pro&projectName=default",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedance-1-0-pro&projectName=default",
             "section_titles": [
               "视频生成能力"
             ],
             "capabilities": [
-              "图生视频",
               "文生视频"
             ],
             "raw_limits": [
@@ -18826,16 +18831,15 @@
           "name": "doubao-seedance-1-0-pro-fast-251015",
           "display_name": "doubao-seedance-1-0-pro-fast-251015",
           "type": "video",
-          "attachment": true,
+          "attachment": false,
           "reasoning": {
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
-          "vision": true,
+          "last_updated": "2026-08-07T08:10:05Z",
+          "vision": false,
           "modalities": {
             "input": [
-              "image",
               "text"
             ],
             "output": [
@@ -18849,12 +18853,11 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedance-1-0-pro-fast",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedance-1-0-pro-fast&projectName=default",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedance-1-0-pro-fast&projectName=default",
             "section_titles": [
               "视频生成能力"
             ],
             "capabilities": [
-              "图生视频",
               "文生视频"
             ],
             "raw_limits": [
@@ -18868,17 +18871,15 @@
           "name": "doubao-seedance-1-5-pro-251215",
           "display_name": "doubao-seedance-1-5-pro-251215",
           "type": "video",
-          "attachment": true,
+          "attachment": false,
           "reasoning": {
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
-          "vision": true,
+          "last_updated": "2026-08-07T08:10:05Z",
+          "vision": false,
           "modalities": {
             "input": [
-              "audio",
-              "image",
               "text"
             ],
             "output": [
@@ -18892,14 +18893,12 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedance-1-5-pro",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedance-1-5-pro",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedance-1-5-pro",
             "section_titles": [
               "视频生成能力"
             ],
             "capabilities": [
-              "图生视频",
-              "文生视频",
-              "音画同生"
+              "文生视频"
             ],
             "raw_limits": [
               "最大 RPM: 600 最大并发: 10",
@@ -18917,12 +18916,10 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
-              "audio",
-              "image",
               "text",
               "video"
             ],
@@ -18933,18 +18930,16 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedance-2-0",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedance-2-0&projectName=default",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedance-2-0&projectName=default",
             "section_titles": [
               "视频生成能力"
             ],
             "capabilities": [
-              "图生视频",
               "文生视频",
-              "编辑视频",
-              "音画同生"
+              "编辑视频"
             ],
             "raw_limits": [
-              "非 4k 分辨率： 最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3 4k 分辨率： 最大 RPM 企业用户：15 个人用户：15 最大并发 企业用户：1 个人用户：1"
+              "非 4k 分辨率： 最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3 个人用户: 3 4k 分辨率： 最大 RPM 企业用户：15 个人用户：15 最大并发 企业用户：1 个人用户：1"
             ]
           }
         },
@@ -18958,12 +18953,10 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
-              "audio",
-              "image",
               "text",
               "video"
             ],
@@ -18974,15 +18967,13 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedance-2-0-fast",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedance-2-0-fast",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedance-2-0-fast",
             "section_titles": [
               "视频生成能力"
             ],
             "capabilities": [
-              "图生视频",
               "文生视频",
-              "编辑视频",
-              "音画同生"
+              "编辑视频"
             ],
             "raw_limits": [
               "最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3"
@@ -18999,12 +18990,10 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
-              "audio",
-              "image",
               "text",
               "video"
             ],
@@ -19015,15 +19004,50 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedance-2-0-mini",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedance-2-0-mini",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedance-2-0-mini",
             "section_titles": [
               "视频生成能力"
             ],
             "capabilities": [
-              "图生视频",
               "文生视频",
-              "编辑视频",
-              "音画同生"
+              "编辑视频"
+            ],
+            "raw_limits": [
+              "最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3"
+            ]
+          }
+        },
+        {
+          "id": "doubao-seedance-2-5-260628",
+          "name": "doubao-seedance-2-5-260628",
+          "display_name": "doubao-seedance-2-5-260628",
+          "type": "video",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "last_updated": "2026-08-07T08:10:05Z",
+          "vision": true,
+          "modalities": {
+            "input": [
+              "text",
+              "video"
+            ],
+            "output": [
+              "video"
+            ]
+          },
+          "metadata": {
+            "source": "volcengine-docs",
+            "canonical_id": "doubao-seedance-2-5",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedance-2-5",
+            "section_titles": [
+              "视频生成能力"
+            ],
+            "capabilities": [
+              "文生视频",
+              "编辑视频"
             ],
             "raw_limits": [
               "最大 RPM: 企业用户: 600 个人用户: 180 最大并发: 企业用户: 10 个人用户: 3"
@@ -19040,7 +19064,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19057,7 +19081,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedream-4-0",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedream-4-0",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedream-4-0",
             "section_titles": [
               "图片生成能力"
             ],
@@ -19077,7 +19101,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19094,7 +19118,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedream-4-5",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedream-4-5",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedream-4-5",
             "section_titles": [
               "图片生成能力"
             ],
@@ -19114,7 +19138,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19131,7 +19155,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedream-5-0",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedream-5-0",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedream-5-0",
             "section_titles": [
               "图片生成能力"
             ],
@@ -19151,7 +19175,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-07-20T09:28:20Z",
+          "last_updated": "2026-08-07T08:10:05Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19168,7 +19192,7 @@
           "metadata": {
             "source": "volcengine-docs",
             "canonical_id": "doubao-seedream-5-0-pro",
-            "detail_url": "https://console.volcengine.com/ark/region:ark+cn-beijing/model/detail?Id=doubao-seedream-5-0-pro",
+            "detail_url": "https://console.volcengine.com/ark/region:cn-beijing/model/detail?Id=doubao-seedream-5-0-pro",
             "section_titles": [
               "图片生成能力"
             ],
@@ -19558,19 +19582,18 @@
       "models": [
         {
           "id": "kat-coder-pro-v2.5",
-          "name": "Kat Coder Pro V2.5",
-          "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+          "name": "KAT Coder Pro V2.5",
+          "description": "Higher-capability KAT Coder model for complex code generation, repository-scale editing, debugging, and agentic software-development workflows.",
           "family": "kat-coder",
           "attachment": false,
           "reasoning": {
-            "supported": true,
+            "supported": false,
             "default": true
           },
-          "reasoning_options": [],
           "tool_call": true,
-          "temperature": true,
-          "release_date": "2026-07-10",
-          "last_updated": "2026-07-10",
+          "structured_output": true,
+          "release_date": "2026-07-14",
+          "last_updated": "2026-07-14",
           "modalities": {
             "input": [
               "text",
@@ -19583,6 +19606,7 @@
           "open_weights": false,
           "limit": {
             "context": 256000,
+            "input": 256000,
             "output": 80000
           },
           "cost": {
@@ -19590,8 +19614,10 @@
             "output": 2.96,
             "cache_read": 0.15
           },
-          "display_name": "Kat Coder Pro V2.5",
+          "display_name": "KAT Coder Pro V2.5",
           "type": "chat",
+          "temperature": true,
+          "reasoning_options": [],
           "metadata": {
             "source": "public-provider-conf"
           },
@@ -19599,19 +19625,18 @@
         },
         {
           "id": "kat-coder-air-v2.5",
-          "name": "Kat Coder Air V2.5",
-          "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+          "name": "KAT Coder Air V2.5",
+          "description": "Fast, cost-efficient KAT Coder model for code generation, editing, debugging, and agentic software-development workflows.",
           "family": "kat-coder",
           "attachment": false,
           "reasoning": {
-            "supported": true,
+            "supported": false,
             "default": true
           },
-          "reasoning_options": [],
           "tool_call": true,
-          "temperature": true,
-          "release_date": "2026-07-10",
-          "last_updated": "2026-07-10",
+          "structured_output": true,
+          "release_date": "2026-07-14",
+          "last_updated": "2026-07-14",
           "modalities": {
             "input": [
               "text",
@@ -19624,6 +19649,7 @@
           "open_weights": false,
           "limit": {
             "context": 256000,
+            "input": 256000,
             "output": 80000
           },
           "cost": {
@@ -19631,8 +19657,10 @@
             "output": 0.6,
             "cache_read": 0.03
           },
-          "display_name": "Kat Coder Air V2.5",
+          "display_name": "KAT Coder Air V2.5",
           "type": "chat",
+          "temperature": true,
+          "reasoning_options": [],
           "metadata": {
             "source": "public-provider-conf"
           },
@@ -19642,6 +19670,7 @@
           "id": "kat-coder-pro-v2",
           "name": "KAT Coder Pro V2",
           "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+          "family": "kat-coder",
           "attachment": false,
           "reasoning": {
             "supported": false,
@@ -19668,11 +19697,10 @@
           "cost": {
             "input": 0.3,
             "output": 1.2,
-            "cache_read": 0.06
+            "cache_read": 0.15
           },
           "display_name": "KAT Coder Pro V2",
           "type": "chat",
-          "family": "kat-coder",
           "temperature": true,
           "reasoning_options": [],
           "metadata": {
@@ -19751,74 +19779,6 @@
           },
           "display_name": "KAT-Coder-Pro V1",
           "type": "chat"
-        },
-        {
-          "id": "kat-coder-exp-72b-1010",
-          "name": "KAT Coder Exp 72B 1010",
-          "description": "Compact GPT model for low-latency assistance and high-volume workloads",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "structured_output": false,
-          "release_date": "2025-10-28",
-          "last_updated": "2025-10-28",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 128000,
-            "input": 128000,
-            "output": 32768
-          },
-          "cost": {
-            "input": 0.1,
-            "output": 0.2
-          },
-          "display_name": "KAT Coder Exp 72B 1010",
-          "type": "chat",
-          "family": "kat-coder"
-        },
-        {
-          "id": "kat-coder-air-v1",
-          "name": "KAT Coder Air V1",
-          "description": "Compact GPT model for low-latency assistance and high-volume workloads",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": false,
-          "structured_output": false,
-          "release_date": "2025-10-28",
-          "last_updated": "2025-10-28",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 128000,
-            "input": 128000,
-            "output": 32768
-          },
-          "cost": {
-            "input": 0.1,
-            "output": 0.2
-          },
-          "display_name": "KAT Coder Air V1",
-          "type": "chat",
-          "family": "kat-coder"
         },
         {
           "id": "kat-coder",
