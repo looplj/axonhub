@@ -1,15 +1,15 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { format, type Locale } from 'date-fns';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash, IconSettings, IconChevronDown, IconChevronUp, IconInfoCircle } from '@tabler/icons-react';
-import { ApiKeySaveTemplateDialog } from './apikeys-save-template-dialog';
-import { ApiKeyLoadTemplatePopover } from './apikeys-load-template-popover';
-import { format, type Locale } from 'date-fns';
-import { zhCN, enUS } from 'date-fns/locale';
 import { useQueryModels } from '@/gql/models';
+import { zhCN, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
+import { useSelectedProjectId } from '@/stores/projectStore';
 import { extractNumberID } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,7 +21,6 @@ import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
-import { useSelectedProjectId } from '@/stores/projectStore';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useApiKeyQuotaUsages } from '../data/apikeys';
 import {
@@ -31,6 +30,8 @@ import {
   type ApiKeyProfileQuotaUsage,
   type UpdateApiKeyProfilesInput,
 } from '../data/schema';
+import { ApiKeyLoadTemplatePopover } from './apikeys-load-template-popover';
+import { ApiKeySaveTemplateDialog } from './apikeys-save-template-dialog';
 
 type ApiKeyQuotaPeriod = NonNullable<NonNullable<ApiKeyProfile['quota']>['period']>;
 
@@ -509,6 +510,8 @@ function ProfileCard({
   // Watch all profiles to check for duplicates
   const allProfiles = form.watch('profiles') || [];
   const profileName = form.watch(`profiles.${profileIndex}.name`);
+  const templateID = form.watch(`profiles.${profileIndex}.templateID`);
+  const templateName = form.watch(`profiles.${profileIndex}.templateName`);
   const channelTagsMatchMode = form.watch(`profiles.${profileIndex}.channelTagsMatchMode`);
   const isExcludeMode = channelTagsMatchMode === 'none';
   const quotaUsage = profileName ? quotaUsageByProfileName.get(profileName) : undefined;
@@ -594,12 +597,7 @@ function ProfileCard({
             >
               {isCollapsed ? <IconChevronDown className='h-4 w-4' /> : <IconChevronUp className='h-4 w-4' />}
             </Button>
-            <Button
-              type='button'
-              variant='ghost'
-              size='sm'
-              onClick={() => onSaveTemplate(profileIndex)}
-            >
+            <Button type='button' variant='ghost' size='sm' onClick={() => onSaveTemplate(profileIndex)}>
               {t('apikeys.templates.saveAsTemplateButton')}
             </Button>
             {canRemove && (
@@ -609,6 +607,28 @@ function ProfileCard({
             )}
           </div>
         </div>
+        {templateID != null && (
+          <div className='bg-muted/50 mt-3 flex flex-wrap items-center justify-between gap-2 rounded-md px-3 py-2'>
+            <div className='flex min-w-0 items-center gap-2'>
+              <Badge variant='secondary' className='shrink-0'>
+                {t('apikeys.profiles.linked')}
+              </Badge>
+              <span className='truncate text-sm font-medium'>{templateName || `#${templateID}`}</span>
+              <span className='text-muted-foreground hidden text-xs md:inline'>{t('apikeys.profiles.linkedHint')}</span>
+            </div>
+            <Button
+              type='button'
+              variant='ghost'
+              size='sm'
+              onClick={() => {
+                form.setValue(`profiles.${profileIndex}.templateID`, null, { shouldDirty: true });
+                form.setValue(`profiles.${profileIndex}.templateName`, null, { shouldDirty: true });
+              }}
+            >
+              {t('apikeys.profiles.detachTemplate')}
+            </Button>
+          </div>
+        )}
       </CardHeader>
       {!isCollapsed && (
         <CardContent className='space-y-6'>
@@ -855,7 +875,8 @@ function ProfileCard({
                       <div>
                         <div className='text-muted-foreground text-xs'>{t('apikeys.profiles.quotaCost')}</div>
                         <div className='text-sm'>
-                          {(quotaUsage.usage.totalCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}/{currentQuota?.cost ?? '∞'}
+                          {(quotaUsage.usage.totalCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}/
+                          {currentQuota?.cost ?? '∞'}
                         </div>
                       </div>
                     </div>
@@ -865,8 +886,7 @@ function ProfileCard({
                         {quotaUsage.window.start ? format(quotaUsage.window.start, 'PPpp', { locale }) : '-'}
                       </div>
                       <div>
-                        {t('common.filters.endTime')}{' '}
-                        {quotaUsageEnd ? format(quotaUsageEnd, 'PPpp', { locale }) : '-'}
+                        {t('common.filters.endTime')} {quotaUsageEnd ? format(quotaUsageEnd, 'PPpp', { locale }) : '-'}
                       </div>
                     </div>
                   </div>
@@ -943,9 +963,7 @@ function ProfileCard({
                             <span className='sr-only'>{t('apikeys.profiles.traceStickyModeDescription')}</span>
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent className='max-w-xs text-xs'>
-                          {t('apikeys.profiles.traceStickyModeDescription')}
-                        </TooltipContent>
+                        <TooltipContent className='max-w-xs text-xs'>{t('apikeys.profiles.traceStickyModeDescription')}</TooltipContent>
                       </Tooltip>
                     </div>
                     <FormControl>
@@ -955,7 +973,9 @@ function ProfileCard({
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value='default'>{t('apikeys.profiles.traceStickyModePlaceholder')}</SelectItem>
-                          <SelectItem value='prefer_previous_channel'>{t('system.retry.traceStickyMode.options.preferPreviousChannel')}</SelectItem>
+                          <SelectItem value='prefer_previous_channel'>
+                            {t('system.retry.traceStickyMode.options.preferPreviousChannel')}
+                          </SelectItem>
                           <SelectItem value='disabled'>{t('system.retry.traceStickyMode.options.disabled')}</SelectItem>
                         </SelectContent>
                       </Select>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { IconLoader2, IconPencil, IconPlus, IconTemplate, IconTrash } from '@tabler/icons-react';
+import { IconCopy, IconLoader2, IconPencil, IconPlus, IconTemplate, IconTrash, IconUpload } from '@tabler/icons-react';
 import { zhCN, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -21,6 +21,7 @@ import { useApiKeyProfileTemplates, useDeleteApiKeyProfileTemplate } from '../da
 import type { ApiKeyProfileTemplate } from '../data/schema';
 import { ApiKeyCreateTemplateDialog } from './apikeys-create-template-dialog';
 import { ApiKeyEditTemplateDialog } from './apikeys-edit-template-dialog';
+import { ApiKeyTemplateTransferDialog, TemplateExportButton } from './apikeys-template-transfer-dialog';
 
 interface ApiKeysProfileTemplatesDialogProps {
   open: boolean;
@@ -33,12 +34,14 @@ function TemplateItem({
   isDeleting,
   onEdit,
   isEditing,
+  onCopy,
 }: {
   template: ApiKeyProfileTemplate;
   onDelete: (template: ApiKeyProfileTemplate) => void;
   isDeleting: boolean;
   onEdit: (template: ApiKeyProfileTemplate) => void;
   isEditing: boolean;
+  onCopy: (template: ApiKeyProfileTemplate) => void;
 }) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language?.startsWith('zh') ? zhCN : enUS;
@@ -54,9 +57,19 @@ function TemplateItem({
         <div className='text-muted-foreground/70 mt-1 flex items-center gap-3 text-[11px]'>
           <span>{template.profile?.name}</span>
           {mappingCount > 0 && <span>{t('apikeys.profileTemplates.mappingCount', { count: mappingCount })}</span>}
+          <span>{t('apikeys.profileTemplates.linkedCount', { count: template.linkedProfilesCount })}</span>
           <span>{createdDate}</span>
         </div>
       </div>
+      <button
+        type='button'
+        className='text-muted-foreground hover:text-foreground mt-0.5 shrink-0 rounded p-1 transition-colors'
+        onClick={() => onCopy(template)}
+        aria-label={t('apikeys.templateTransfer.copyButton')}
+      >
+        <IconCopy className='h-3.5 w-3.5' />
+      </button>
+      <TemplateExportButton template={template} />
       <button
         type='button'
         className='text-muted-foreground hover:text-foreground mt-0.5 shrink-0 rounded p-1 transition-colors disabled:cursor-not-allowed disabled:opacity-50'
@@ -87,6 +100,8 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ApiKeyProfileTemplate | null>(null);
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [copyTarget, setCopyTarget] = useState<ApiKeyProfileTemplate | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const { data: templates, isLoading: isLoadingTemplates } = useApiKeyProfileTemplates(selectedProjectId);
   const deleteTemplate = useDeleteApiKeyProfileTemplate();
@@ -119,7 +134,11 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
           </DialogHeader>
 
           {!isEmpty && !isLoadingTemplates && (
-            <div className='flex justify-end'>
+            <div className='flex justify-end gap-2'>
+              <Button variant='outline' size='sm' onClick={() => setImportDialogOpen(true)} className='flex items-center gap-2'>
+                <IconUpload className='h-4 w-4' />
+                {t('apikeys.templateTransfer.importButton')}
+              </Button>
               <Button variant='outline' size='sm' onClick={() => setCreateDialogOpen(true)} className='flex items-center gap-2'>
                 <IconPlus className='h-4 w-4' />
                 {t('apikeys.profileTemplates.createButton')}
@@ -152,6 +171,7 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
                     isDeleting={deletingTemplateId === template.id}
                     onEdit={setEditTarget}
                     isEditing={editingTemplateId === template.id}
+                    onCopy={setCopyTarget}
                   />
                 ))}
               </div>
@@ -160,10 +180,16 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
 
           <div className='flex justify-end gap-2'>
             {isEmpty && (
-              <Button onClick={() => setCreateDialogOpen(true)} size='sm' className='flex items-center gap-2'>
-                <IconPlus className='h-4 w-4' />
-                {t('apikeys.profileTemplates.createButton')}
-              </Button>
+              <>
+                <Button variant='outline' onClick={() => setImportDialogOpen(true)} size='sm' className='flex items-center gap-2'>
+                  <IconUpload className='h-4 w-4' />
+                  {t('apikeys.templateTransfer.importButton')}
+                </Button>
+                <Button onClick={() => setCreateDialogOpen(true)} size='sm' className='flex items-center gap-2'>
+                  <IconPlus className='h-4 w-4' />
+                  {t('apikeys.profileTemplates.createButton')}
+                </Button>
+              </>
             )}
             <Button variant='outline' onClick={() => onOpenChange(false)}>
               {t('common.buttons.close')}
@@ -192,7 +218,24 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
       </AlertDialog>
 
       {createDialogOpen && <ApiKeyCreateTemplateDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />}
-      {editTarget && <ApiKeyEditTemplateDialog open={!!editTarget} onOpenChange={(open) => { if (!open) setEditTarget(null); }} template={editTarget} />}
+      {editTarget && (
+        <ApiKeyEditTemplateDialog
+          open={!!editTarget}
+          onOpenChange={(open) => {
+            if (!open) setEditTarget(null);
+          }}
+          template={editTarget}
+        />
+      )}
+      {copyTarget && (
+        <ApiKeyTemplateTransferDialog
+          open={!!copyTarget}
+          onOpenChange={(isOpen) => !isOpen && setCopyTarget(null)}
+          mode='copy'
+          template={copyTarget}
+        />
+      )}
+      {importDialogOpen && <ApiKeyTemplateTransferDialog open={importDialogOpen} onOpenChange={setImportDialogOpen} mode='import' />}
     </>
   );
 }
