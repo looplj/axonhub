@@ -784,3 +784,96 @@ func TestApplyUpstreamErrorPolicy_DoesNotRewriteLocalResponseError(t *testing.T)
 
 	assert.Equal(t, localErr, err)
 }
+
+// An upstream that ends at EOF without a terminal event produces no stream error,
+// so the client must be told explicitly instead of reading a truncated generation
+// as a successful completion.
+func TestWriteSSEStream_IncompleteStreamReportsErrorToClient(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	// Deltas only: no finish_reason, no usage, no [DONE].
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"1","choices":[{"delta":{"role":"assistant"}}]}`)},
+		{Data: []byte(`{"id":"1","choices":[{"delta":{"reasoning_content":"The"}}]}`)},
+	}
+
+	WriteSSEStream(c, streams.SliceStream(events))
+
+	body := w.Body.String()
+	require.Contains(t, body, "event:error")
+	require.Contains(t, body, orchestrator.ErrStreamIncomplete.Error())
+}
+
+func TestWriteSSEStream_IncompleteStreamReportsErrorWithHeartbeat(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"1","choices":[{"delta":{"content":"Hi"}}]}`)},
+	}
+
+	writeSSEStream(c, streams.SliceStream(events), FormatStreamError, SSEKeepAliveConfig{
+		Enabled:  true,
+		Interval: time.Hour,
+	}, sseHeartbeatOpenAI)
+
+	body := w.Body.String()
+	require.Contains(t, body, "event:error")
+	require.Contains(t, body, orchestrator.ErrStreamIncomplete.Error())
+}
+
+// A stream that carries finish_reason but no [DONE] is already complete; clients
+// commonly close right after that chunk, so it must not be flagged as incomplete.
+func TestWriteSSEStream_FinishReasonWithoutDoneIsNotIncomplete(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"1","choices":[{"delta":{"content":"Hi"}}]}`)},
+		{Data: []byte(`{"id":"1","choices":[{"delta":{},"finish_reason":"stop"}]}`)},
+	}
+
+	WriteSSEStream(c, streams.SliceStream(events))
+
+	body := w.Body.String()
+	require.NotContains(t, body, "event:error")
+	require.NotContains(t, body, orchestrator.ErrStreamIncomplete.Error())
+}
+
+func TestWriteSSEStream_CompletedStreamReportsNoError(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"1","choices":[{"delta":{"content":"Hi"}}]}`)},
+		{Data: []byte(`[DONE]`)},
+	}
+
+	WriteSSEStream(c, streams.SliceStream(events))
+
+	body := w.Body.String()
+	require.Contains(t, body, "[DONE]")
+	require.NotContains(t, body, "event:error")
+}
+
+// Anthropic streams terminate with message_stop rather than [DONE].
+func TestWriteSSEStream_MessageStopIsNotIncomplete(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	events := []*httpclient.StreamEvent{
+		{Type: "content_block_delta", Data: []byte(`{"type":"content_block_delta"}`)},
+		{Type: "message_stop", Data: []byte(`{"type":"message_stop"}`)},
+	}
+
+	WriteSSEStream(c, streams.SliceStream(events))
+
+	body := w.Body.String()
+	require.NotContains(t, body, "event:error")
+}

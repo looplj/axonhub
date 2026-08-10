@@ -17,6 +17,11 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
+// ErrStreamIncomplete reports an upstream stream that ended without a terminal
+// event and without an aggregated complete response. The same value is persisted
+// on the request and delivered to the client, so both sides agree on the reason.
+var ErrStreamIncomplete = errors.New("stream ended without terminal event or completed response")
+
 // InboundPersistentStream wraps a stream and tracks all responses for final saving to database.
 // It implements the streams.Stream interface and handles persistence in the Close method.
 //
@@ -72,7 +77,7 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
 		// summary to avoid buffering the full audio payload in memory.
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
-		if isTerminalStreamEvent(event) {
+		if IsTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
 		}
 	}
@@ -80,9 +85,11 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	return event
 }
 
-// isTerminalStreamEvent checks both SSE metadata and JSON data for a successful
-// protocol-level or semantic completion marker.
-func isTerminalStreamEvent(event *httpclient.StreamEvent) bool {
+// IsTerminalStreamEvent checks both SSE metadata and JSON data for a successful
+// protocol-level or semantic completion marker. The SSE writers use it to decide
+// whether the client actually received a completion marker, so this must stay the
+// single source of truth for "the stream ended properly".
+func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 	if event == nil {
 		return false
 	}
@@ -215,7 +222,7 @@ func (ts *InboundPersistentStream) Close() error {
 		if ts.request != nil {
 			persistCtx := context.WithoutCancel(ctx)
 
-			errToReport := errors.New("stream ended without terminal event or completed response")
+			errToReport := ErrStreamIncomplete
 
 			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))

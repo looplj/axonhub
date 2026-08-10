@@ -85,7 +85,7 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 		// Check if this is a terminal event, which indicates the stream completed successfully.
 		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
 		// response.completed; for Anthropic Messages API this is message_stop.
-		if isTerminalStreamEvent(event) {
+		if IsTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
 		}
 	}
@@ -167,7 +167,7 @@ func (ts *OutboundPersistentStream) Close() error {
 			errToReport = ctxErr
 		}
 		if errToReport == nil {
-			errToReport = errors.New("stream ended without terminal event or completed response")
+			errToReport = ErrStreamIncomplete
 		}
 
 		if ts.requestExec != nil {
@@ -184,7 +184,7 @@ func (ts *OutboundPersistentStream) Close() error {
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
-		errToReport := errors.New("stream ended without terminal event or completed response")
+		errToReport := ErrStreamIncomplete
 		if ts.requestExec != nil {
 			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, errToReport); err != nil {
 				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
