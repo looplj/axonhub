@@ -457,6 +457,18 @@ func TestResponseUnmarshalJSON_CreatedAtCompatibility(t *testing.T) {
 			errContains: "out of int64 range",
 		},
 		{
+			name:        "created_at with min-int exponent is rejected without overflow",
+			payload:     `{"id":"resp_1","created_at":1e-9223372036854775808,"model":"gpt-5","output":[]}`,
+			wantErr:     true,
+			errContains: "out of int64 range",
+		},
+		{
+			name:        "created_at with max-int exponent is rejected without overflow",
+			payload:     `{"id":"resp_1","created_at":1e9223372036854775807,"model":"gpt-5","output":[]}`,
+			wantErr:     true,
+			errContains: "out of int64 range",
+		},
+		{
 			name:        "created_at exceeding int64 is rejected",
 			payload:     `{"id":"resp_1","created_at":9223372036854775808,"model":"gpt-5","output":[]}`,
 			wantErr:     true,

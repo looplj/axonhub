@@ -963,6 +963,13 @@ func parseCreatedAtSeconds(raw string) (int64, error) {
 		if err != nil {
 			return 0, fmt.Errorf("invalid created_at value %q", raw)
 		}
+		// int64 holds at most 19 decimal digits, so any |exp| beyond that is
+		// guaranteed out of range. Bounding the exponent here also keeps the
+		// scale arithmetic below from overflowing machine integers on values
+		// such as 1e-9223372036854775808.
+		if e > 19 || e < -19 {
+			return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
+		}
 		exp = e
 		body = body[:i]
 	}
@@ -976,7 +983,8 @@ func parseCreatedAtSeconds(raw string) (int64, error) {
 		return 0, fmt.Errorf("invalid created_at value %q", raw)
 	}
 
-	// The value equals digits * 10^(exp - len(frac)).
+	// The value equals digits * 10^(exp - len(frac)). With |exp| <= 19 the
+	// scale below stays well within machine integer bounds.
 	digits := body + frac
 	scale := len(frac) - exp
 	switch {
@@ -990,8 +998,13 @@ func parseCreatedAtSeconds(raw string) (int64, error) {
 	case scale > 0:
 		// Strip trailing zeros: an insufficient zero tail means the value is
 		// not an integer (e.g. 1786360449.5).
-		if len(digits) <= scale || !strings.HasSuffix(digits, strings.Repeat("0", scale)) {
+		if len(digits) <= scale {
 			return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
+		}
+		for _, c := range digits[len(digits)-scale:] {
+			if c != '0' {
+				return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
+			}
 		}
 		digits = digits[:len(digits)-scale]
 	}
