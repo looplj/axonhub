@@ -97,11 +97,17 @@ type channelMetricsResult struct {
 // loadAllChannelMetricsFromExecutions loads metrics for all channels using a single GROUP BY query.
 // Uses raw SQL via Modify to get request count and last failure time in one query.
 func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Context, client *ent.Client, since time.Time) (map[int]*channelMetricsResult, error) {
-	// Single query to get request count and last failure time for all channels
+	// Aggregate result columns (MAX(...)) lose their declared type in SQLite and
+	// are returned as TEXT, formatted according to the driver that wrote them
+	// (currently "2026-08-10 13:22:10.251164681 +0000 UTC"; older versions may
+	// carry a fixed 9-digit fraction ".000000000"). database/sql cannot scan such
+	// TEXT directly into time.Time, so read it as a string first and parse manually.
+	// When there are no failed records the column is NULL, which a string field
+	// safely receives as an empty string.
 	type queryResult struct {
-		ChannelID     int       `json:"channel_id"`
-		RequestCount  int64     `json:"request_count"`
-		LastFailureAt time.Time `json:"last_failure_at"`
+		ChannelID     int    `json:"channel_id"`
+		RequestCount  int64  `json:"request_count"`
+		LastFailureAt string `json:"last_failure_at"`
 	}
 
 	var results []queryResult
@@ -134,14 +140,44 @@ func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Conte
 			ChannelID:    r.ChannelID,
 			RequestCount: r.RequestCount,
 		}
-		if !r.LastFailureAt.IsZero() {
-			m.LastFailureAt = &r.LastFailureAt
+		if r.LastFailureAt != "" {
+			if t, parseErr := parseDBTime(r.LastFailureAt); parseErr == nil {
+				m.LastFailureAt = &t
+			} else {
+				log.Warn(ctx, "failed to parse last_failure_at",
+					log.String("value", r.LastFailureAt),
+					log.Cause(parseErr),
+				)
+			}
 		}
 
 		metricsMap[r.ChannelID] = m
 	}
 
 	return metricsMap, nil
+}
+
+// dbTimeFormats covers the time formats written by historical SQLite drivers:
+//   - time.Time.String() format (current modernc driver default, e.g. "2026-08-10 13:22:10.251164681 +0000 UTC")
+//   - the legacy fixed 9-digit fraction format (e.g. "2026-04-18 07:41:37.000000000 +0000 UTC",
+//     matched by the same layout's .999999999)
+//   - RFC3339 / RFC3339Nano as a fallback
+var dbTimeFormats = []string{
+	"2006-01-02 15:04:05.999999999 -0700 MST",
+	time.RFC3339Nano,
+	time.RFC3339,
+	"2006-01-02 15:04:05",
+}
+
+// parseDBTime parses a time stored as text in SQLite into time.Time.
+func parseDBTime(value string) (time.Time, error) {
+	for _, format := range dbTimeFormats {
+		if t, err := time.Parse(format, value); err == nil {
+			return t, nil
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("unrecognized time format: %q", value)
 }
 
 // populateChannelMetrics populates channelMetrics from the aggregated result.

@@ -2,6 +2,8 @@ package biz
 
 import (
 	"context"
+	"database/sql"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -496,4 +499,144 @@ func TestPerformanceRecord_Methods(t *testing.T) {
 		}
 		require.False(t, invalidPerf2.IsValid())
 	})
+}
+
+// TestChannelMetrics_LoadAllFromExecutions_TimeFormatCompat covers SQLite
+// created_at stored as TEXT with formats from different driver generations:
+// the MAX(...) aggregate is returned as a string and must parse both the
+// current driver format and the legacy .000000000 format, and must not error
+// when there are no failed records (NULL).
+func TestChannelMetrics_LoadAllFromExecutions_TimeFormatCompat(t *testing.T) {
+	// Use a file database so legacy driver timestamp formats can be injected via raw SQL
+	dbPath := filepath.Join(t.TempDir(), "metrics.db")
+	client := enttest.NewEntClient(t, "sqlite3", "file:"+dbPath+"?_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	now := time.Now()
+	svc := &ChannelService{}
+
+	// failed record 1: current driver format (written via ent)
+	failed1 := client.RequestExecution.Create().
+		SetProjectID(1).
+		SetRequestID(1001).
+		SetChannelID(1).
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusFailed).
+		SetCreatedAt(now.Add(-2 * time.Hour)).
+		SetUpdatedAt(now.Add(-2 * time.Hour)).
+		SaveX(ctx)
+
+	// failed record 2: created_at rewritten via raw SQL to the legacy .000000000 format
+	legacyAt := now.Add(-1 * time.Hour).Format("2006-01-02 15:04:05.000000000 -0700 MST")
+	failed2 := client.RequestExecution.Create().
+		SetProjectID(1).
+		SetRequestID(1002).
+		SetChannelID(1).
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusFailed).
+		SetCreatedAt(now.Add(-1 * time.Hour)).
+		SetUpdatedAt(now.Add(-1 * time.Hour)).
+		SaveX(ctx)
+
+	sqlDB, err := sql.Open("sqlite3", "file:"+dbPath+"?_fk=0")
+	require.NoError(t, err)
+	defer sqlDB.Close()
+
+	_, err = sqlDB.Exec("UPDATE request_executions SET created_at = ? WHERE id = ?", legacyAt, failed2.ID)
+	require.NoError(t, err)
+
+	// completed record: counts toward request_count but not last_failure_at
+	client.RequestExecution.Create().
+		SetProjectID(1).
+		SetRequestID(1003).
+		SetChannelID(1).
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		SetCreatedAt(now.Add(-30 * time.Minute)).
+		SetUpdatedAt(now.Add(-30 * time.Minute)).
+		SaveX(ctx)
+
+	// channel with only completed records: MAX(CASE ...) is NULL and must not error
+	client.RequestExecution.Create().
+		SetProjectID(1).
+		SetRequestID(2001).
+		SetChannelID(2).
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		SetCreatedAt(now.Add(-1 * time.Hour)).
+		SetUpdatedAt(now.Add(-1 * time.Hour)).
+		SaveX(ctx)
+
+	metrics, err := svc.loadAllChannelMetricsFromExecutions(ctx, client, now.Add(-6*time.Hour))
+	require.NoError(t, err)
+
+	// channel 1: 3 records, last_failure_at is the lexicographically largest failed
+	// record (failed2 at -1h)
+	require.Contains(t, metrics, 1)
+	require.Equal(t, int64(3), metrics[1].RequestCount)
+	require.NotNil(t, metrics[1].LastFailureAt)
+	require.Equal(t, now.Add(-1*time.Hour).Truncate(time.Second), metrics[1].LastFailureAt.Truncate(time.Second))
+	require.NotEqual(t, failed1.CreatedAt.Truncate(time.Second), metrics[1].LastFailureAt.Truncate(time.Second))
+
+	// channel 2: no failed records, LastFailureAt must be nil
+	require.Contains(t, metrics, 2)
+	require.Equal(t, int64(1), metrics[2].RequestCount)
+	require.Nil(t, metrics[2].LastFailureAt)
+}
+
+func TestParseDBTime(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name    string
+		value   string
+		want    time.Time
+		wantErr bool
+	}{
+		{
+			name:  "current driver String() format",
+			value: now.Format("2006-01-02 15:04:05.999999999 -0700 MST"),
+			want:  now,
+		},
+		{
+			name:  "legacy fixed 9-digit format",
+			value: "2026-04-18 07:41:37.000000000 +0000 UTC",
+			want:  time.Date(2026, 4, 18, 7, 41, 37, 0, time.UTC),
+		},
+		{
+			name:  "RFC3339Nano",
+			value: "2026-08-10T13:22:10.251164681Z",
+			want:  time.Date(2026, 8, 10, 13, 22, 10, 251164681, time.UTC),
+		},
+		{
+			name:  "sqlite CURRENT_TIMESTAMP format",
+			value: "2026-04-18 07:41:37",
+			want:  time.Date(2026, 4, 18, 7, 41, 37, 0, time.UTC),
+		},
+		{
+			name:    "unrecognized format",
+			value:   "not-a-time",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseDBTime(tt.value)
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want.Unix(), got.Unix())
+		})
+	}
 }
