@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
+	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
@@ -895,6 +898,154 @@ type Response struct {
 
 	// A stable identifier for your end-users (deprecated, use safety_identifier).
 	User *string `json:"user,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler for Response so that created_at
+// accepts both integer (1786360449) and float-encoded integral (1786360449.0)
+// unix timestamps. Some Responses-compatible providers serialize integer
+// timestamps as JSON floats (e.g. Python's 1786360449.0); the value is always
+// kept as int64 internally. Every other field uses the default decoding.
+func (r *Response) UnmarshalJSON(data []byte) error {
+	type alias Response
+
+	var raw struct {
+		CreatedAt json.RawMessage `json:"created_at"`
+		*alias
+	}
+	raw.alias = (*alias)(r)
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	if xjson.IsNull(raw.CreatedAt) {
+		return nil
+	}
+
+	// created_at must be a JSON number. Reject string forms such as
+	// "1786360449" so the previous int64 field behavior is preserved.
+	if c := raw.CreatedAt[0]; c != '-' && (c < '0' || c > '9') {
+		return fmt.Errorf("invalid responses api created_at: must be a JSON number, got %q", string(raw.CreatedAt))
+	}
+
+	createdAt, err := parseCreatedAtSeconds(string(raw.CreatedAt))
+	if err != nil {
+		return fmt.Errorf("invalid responses api created_at: %w", err)
+	}
+	r.CreatedAt = createdAt
+
+	return nil
+}
+
+// parseCreatedAtSeconds converts a JSON created_at number lexeme to an int64
+// unix timestamp. The integer form (1786360449) is parsed directly; float
+// forms such as 1786360449.0 are validated with pure lexeme arithmetic so
+// that non-integral values (1786360449.5), int64 overflow, and excessive
+// exponents (1e1000000) are rejected without materializing arbitrary
+// precision numbers. Non-normalized scientific notation such as
+// 170000000000000000000000000000e-20 (exactly 1700000000) is accepted.
+func parseCreatedAtSeconds(raw string) (int64, error) {
+	// Integer form: ParseInt handles int64 range checks directly.
+	if v, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		return v, nil
+	}
+
+	// Float form: split into sign / integer / fraction / exponent. The JSON
+	// lexeme is guaranteed valid by the caller, so these checks are defensive.
+	sign := ""
+	body := raw
+	if len(body) > 0 && (body[0] == '-' || body[0] == '+') {
+		sign, body = string(body[0]), body[1:]
+	}
+
+	exp := 0
+	if i := strings.IndexAny(body, "eE"); i >= 0 {
+		e, err := strconv.Atoi(body[i+1:])
+		if err != nil {
+			return 0, fmt.Errorf("invalid created_at value %q", raw)
+		}
+		exp = e
+		body = body[:i]
+	}
+
+	frac := ""
+	if i := strings.IndexByte(body, '.'); i >= 0 {
+		body, frac = body[:i], body[i+1:]
+	}
+
+	if body == "" || !isDecimalDigits(body) || !isDecimalDigits(frac) {
+		return 0, fmt.Errorf("invalid created_at value %q", raw)
+	}
+
+	// digits is the sign-free digit sequence; the value equals
+	// digits * 10^(exp - len(frac)).
+	digits := body + frac
+
+	// Leading zeros do not affect the value; all-zero input is exactly zero.
+	sig := strings.TrimLeft(digits, "0")
+	if sig == "" {
+		return 0, nil
+	}
+
+	// trailingZeros bounds how many zeros a negative exponent can cancel
+	// before the value stops being an integer (e.g. 1786360449.5).
+	trailingZeros := 0
+	for i := len(digits) - 1; i >= 0 && digits[i] == '0'; i-- {
+		trailingZeros++
+	}
+
+	// Bound the exponent against the mantissa before computing the scale, so
+	// machine integer arithmetic cannot overflow on values such as
+	// 1e-9223372036854775808. These bounds are exact: a non-zero value with
+	// exp > len(frac)+19 is at least 10^19 and overflows int64, while a
+	// negative exp beyond trailingZeros cannot be canceled into an integer.
+	switch {
+	case exp > len(frac)+19:
+		return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
+	case exp < -trailingZeros:
+		return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
+	}
+
+	// scale = len(frac) - exp is now bounded: |scale| <= max(19, len(frac)+trailingZeros).
+	scale := len(frac) - exp
+	switch {
+	case scale < 0:
+		// Pad trailing zeros: a value larger than int64 can be rejected by
+		// digit count alone, before building the padded string.
+		if len(sig)+(-scale) > len(strconv.FormatInt(math.MaxInt64, 10)) {
+			return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
+		}
+		sig += strings.Repeat("0", -scale)
+	case scale > 0:
+		// Strip trailing zeros: an insufficient zero tail means the value is
+		// not an integer (e.g. 1786360449.5).
+		if len(sig) <= scale {
+			return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
+		}
+		for _, c := range sig[len(sig)-scale:] {
+			if c != '0' {
+				return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
+			}
+		}
+		sig = sig[:len(sig)-scale]
+	}
+
+	v, err := strconv.ParseInt(sign+sig, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
+	}
+
+	return v, nil
+}
+
+// isDecimalDigits reports whether s is empty or consists only of ASCII digits.
+func isDecimalDigits(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 type ContentItem struct {
