@@ -263,14 +263,14 @@ func TestInboundPersistentStream_Close_WithAggregationError(t *testing.T) {
 func TestIsTerminalStreamEvent_AudioDoneEvents(t *testing.T) {
 	// OpenAI audio SSE streams have no [DONE] sentinel; terminal completion is
 	// signaled by typed *.done events surfaced via StreamEvent.Type.
-	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.done"}))
-	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.done"}))
-	require.True(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: httpclient.BinaryStreamDoneEventType}))
+	require.True(t, IsTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.done"}))
+	require.True(t, IsTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.done"}))
+	require.True(t, IsTerminalStreamEvent(&httpclient.StreamEvent{Type: httpclient.BinaryStreamDoneEventType}))
 
 	// Other events must not be treated as terminal.
-	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.delta"}))
-	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.delta"}))
-	require.False(t, isTerminalStreamEvent(&httpclient.StreamEvent{Type: "audio/mpeg"}))
+	require.False(t, IsTerminalStreamEvent(&httpclient.StreamEvent{Type: "speech.audio.delta"}))
+	require.False(t, IsTerminalStreamEvent(&httpclient.StreamEvent{Type: "transcript.text.delta"}))
+	require.False(t, IsTerminalStreamEvent(&httpclient.StreamEvent{Type: "audio/mpeg"}))
 }
 
 func TestIsTerminalStreamEvent_SemanticCompletionInData(t *testing.T) {
@@ -312,7 +312,7 @@ func TestIsTerminalStreamEvent_SemanticCompletionInData(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, isTerminalStreamEvent(tt.event))
+			require.Equal(t, tt.want, IsTerminalStreamEvent(tt.event))
 		})
 	}
 }

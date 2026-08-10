@@ -903,7 +903,7 @@ func TestPassThroughChannelStream_DrainsBufferedEventsAfterCancel(t *testing.T) 
 
 	require.Len(t, events, 2)
 	assert.Equal(t, []byte("[DONE]"), events[1].Data)
-	assert.True(t, isTerminalStreamEvent(events[1]))
+	assert.True(t, IsTerminalStreamEvent(events[1]))
 }
 
 func TestPassThroughChannelStream_StopsAtEmptyBufferAfterCancel(t *testing.T) {

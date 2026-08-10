@@ -194,26 +194,11 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 	// contract that Next() returns false promptly once cancellation is observed and
 	// its buffer is drained; eventsAfterCancel bounds streams that violate it.
 	eventsAfterCancel := 0
+	terminalSeen := false
 
 	for {
 		if !stream.Next() {
-			if err := stream.Err(); err != nil {
-				if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
-					clientDisconnected = true
-
-					// Keep genuine upstream failures visible even when the client is gone.
-					if !errors.Is(err, context.Canceled) {
-						log.Warn(ctx, "Stream error after client disconnected", log.Cause(err))
-					}
-				} else {
-					log.Error(ctx, "Error in stream", log.Cause(err))
-					c.SSEvent("error", formatErr(ctx, err))
-				}
-			} else if errors.Is(ctx.Err(), context.Canceled) {
-				clientDisconnected = true
-			}
-
-			c.Writer.Flush()
+			writeSSEStreamEnd(c, ctx, stream.Err(), formatErr, terminalSeen, &clientDisconnected)
 
 			return
 		}
@@ -231,6 +216,10 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 		}
 
 		cur := stream.Current()
+		if orchestrator.IsTerminalStreamEvent(cur) {
+			terminalSeen = true
+		}
+
 		c.SSEvent(cur.Type, cur.Data)
 		log.Debug(ctx, "write stream event", log.Any("event", cur))
 		c.Writer.Flush()
@@ -271,6 +260,7 @@ func writeSSEStreamWithHeartbeat(
 	timerC := timer.C
 	ctxDone := ctx.Done()
 	eventsAfterCancel := 0
+	terminalSeen := false
 
 	for {
 		select {
@@ -282,7 +272,7 @@ func writeSSEStreamWithHeartbeat(
 
 		case result := <-reader.Results():
 			if result.done {
-				writeSSEStreamEnd(c, ctx, result.err, formatErr, &clientDisconnected)
+				writeSSEStreamEnd(c, ctx, result.err, formatErr, terminalSeen, &clientDisconnected)
 				return
 			}
 
@@ -297,6 +287,10 @@ func writeSSEStreamWithHeartbeat(
 			}
 
 			cur := result.event
+			if orchestrator.IsTerminalStreamEvent(cur) {
+				terminalSeen = true
+			}
+
 			c.SSEvent(cur.Type, cur.Data)
 			log.Debug(ctx, "write stream event", log.Any("event", cur))
 			c.Writer.Flush()
@@ -318,14 +312,25 @@ func writeSSEStreamWithHeartbeat(
 	}
 }
 
+// writeSSEStreamEnd finalizes the SSE response once the stream is drained.
+//
+// terminalSeen reports whether a completion marker was actually written to the
+// client. An upstream that ends at EOF without one produces no stream error (see
+// the io.EOF branch in the SSE decoder), so without this check the response would
+// end silently and the client would read a truncated generation as a successful
+// completion. The orchestrator detects the same condition, but only in Close(),
+// which runs after this writer returns and the body is already flushed — too late
+// to tell the client anything.
 func writeSSEStreamEnd(
 	c *gin.Context,
 	ctx context.Context,
 	streamErr error,
 	formatErr StreamErrorFormatter,
+	terminalSeen bool,
 	clientDisconnected *bool,
 ) {
-	if streamErr != nil {
+	switch {
+	case streamErr != nil:
 		if errors.Is(streamErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
 			*clientDisconnected = true
 
@@ -336,8 +341,12 @@ func writeSSEStreamEnd(
 			log.Error(ctx, "Error in stream", log.Cause(streamErr))
 			c.SSEvent("error", formatErr(ctx, streamErr))
 		}
-	} else if errors.Is(ctx.Err(), context.Canceled) {
+	case errors.Is(ctx.Err(), context.Canceled):
 		*clientDisconnected = true
+	case !terminalSeen:
+		log.Error(ctx, "Stream ended without terminal event, reporting incomplete stream to client",
+			log.Cause(orchestrator.ErrStreamIncomplete))
+		c.SSEvent("error", formatErr(ctx, orchestrator.ErrStreamIncomplete))
 	}
 
 	c.Writer.Flush()
