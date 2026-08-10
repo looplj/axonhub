@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"strconv"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
@@ -895,6 +897,61 @@ type Response struct {
 
 	// A stable identifier for your end-users (deprecated, use safety_identifier).
 	User *string `json:"user,omitempty"`
+}
+
+// UnmarshalJSON implements json.Unmarshaler for Response so that created_at
+// accepts both integer (1786360449) and float-encoded integral (1786360449.0)
+// unix timestamps. Some Responses-compatible providers serialize integer
+// timestamps as JSON floats (e.g. Python's 1786360449.0); the value is always
+// kept as int64 internally. Every other field uses the default decoding.
+func (r *Response) UnmarshalJSON(data []byte) error {
+	type alias Response
+
+	var raw struct {
+		CreatedAt json.Number `json:"created_at"`
+		*alias
+	}
+	raw.alias = (*alias)(r)
+
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	if raw.CreatedAt == "" {
+		return nil
+	}
+
+	createdAt, err := parseCreatedAtSeconds(raw.CreatedAt.String())
+	if err != nil {
+		return fmt.Errorf("invalid responses api created_at: %w", err)
+	}
+	r.CreatedAt = createdAt
+
+	return nil
+}
+
+// parseCreatedAtSeconds converts a JSON created_at number lexeme to an int64
+// unix timestamp. The integer form (1786360449) is parsed directly; float
+// forms such as 1786360449.0 are validated with exact rational arithmetic so
+// that non-integral values (1786360449.5) and int64 overflow are rejected
+// rather than silently truncated or wrapped.
+func parseCreatedAtSeconds(raw string) (int64, error) {
+	if v, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		return v, nil
+	}
+
+	rat, ok := new(big.Rat).SetString(raw)
+	if !ok {
+		return 0, fmt.Errorf("invalid created_at value %q", raw)
+	}
+	if !rat.IsInt() {
+		return 0, fmt.Errorf("created_at must be an integer number of seconds, got %q", raw)
+	}
+	if !rat.Num().IsInt64() {
+		return 0, fmt.Errorf("created_at %q is out of int64 range", raw)
+	}
+
+	return rat.Num().Int64(), nil
 }
 
 type ContentItem struct {
