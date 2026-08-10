@@ -522,3 +522,125 @@ func (s *errorResponseStream) Err() error {
 func (s *errorResponseStream) Close() error {
 	return nil
 }
+
+// Chat Completions finish_reason must be propagated onto the Responses
+// response.completed status: truncation and failure are otherwise silently
+// reported as a successful completion downstream.
+func TestInboundTransformer_TransformStream_MapsFinishReasonToCompletedStatus(t *testing.T) {
+	tests := []struct {
+		name                 string
+		finishReason         string
+		expectedStatus       string
+		expectedIncomplete   *ResponseIncompleteDetails
+	}{
+		{name: "length maps to incomplete", finishReason: "length", expectedStatus: "incomplete", expectedIncomplete: &ResponseIncompleteDetails{Reason: "max_output_tokens"}},
+		{name: "content_filter maps to incomplete", finishReason: "content_filter", expectedStatus: "incomplete", expectedIncomplete: &ResponseIncompleteDetails{Reason: "content_filter"}},
+		{name: "error maps to failed", finishReason: "error", expectedStatus: "failed"},
+		{name: "cancelled maps to cancelled", finishReason: "cancelled", expectedStatus: "cancelled"},
+		{name: "canceled (US spelling) maps to cancelled", finishReason: "canceled", expectedStatus: "cancelled"},
+		{name: "unknown finish reason stays completed", finishReason: "bogus", expectedStatus: "completed"},
+		{name: "stop stays completed", finishReason: "stop", expectedStatus: "completed"},
+		{name: "tool_calls stays completed", finishReason: "tool_calls", expectedStatus: "completed"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			trans := NewInboundTransformer()
+
+			stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+				{
+					Object:  "chat.completion.chunk",
+					ID:      "resp_finish_reason_map",
+					Created: 1700000000,
+					Model:   "gpt-5",
+					Choices: []llm.Choice{{
+						Index:        0,
+						Delta:        &llm.Message{Role: "assistant"},
+						FinishReason: lo.ToPtr(tt.finishReason),
+					}},
+				},
+				{
+					Object:  "chat.completion.chunk",
+					ID:      "resp_finish_reason_map",
+					Created: 1700000000,
+					Model:   "gpt-5",
+					Usage:   &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+				},
+			}))
+			require.NoError(t, err)
+
+			var completed *Response
+			for stream.Next() {
+				var ev StreamEvent
+				require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
+				if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
+					completed = ev.Response
+				}
+			}
+			require.NoError(t, stream.Err())
+
+			require.NotNil(t, completed)
+			require.NotNil(t, completed.Status)
+			require.Equal(t, tt.expectedStatus, *completed.Status)
+			if tt.expectedIncomplete != nil {
+				require.NotNil(t, completed.IncompleteDetails)
+				require.Equal(t, tt.expectedIncomplete.Reason, completed.IncompleteDetails.Reason)
+			} else {
+				require.Nil(t, completed.IncompleteDetails)
+			}
+		})
+	}
+}
+
+// When the usage chunk arrives before the finish_reason chunk, the terminal
+// status mapped from finish_reason must still be preserved by the stream-end
+// fallback path (it must not be overwritten with "completed").
+func TestInboundTransformer_TransformStream_UsageBeforeFinishReasonKeepsMappedStatus(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_usage_first",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Role: "assistant"}}},
+		},
+		// Usage arrives before the terminal finish_reason.
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_usage_first",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Usage:   &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_usage_first",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Choices: []llm.Choice{{
+				Index:        0,
+				Delta:        &llm.Message{},
+				FinishReason: lo.ToPtr("length"),
+			}},
+		},
+	}))
+	require.NoError(t, err)
+
+	var completed *Response
+	for stream.Next() {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
+		if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
+			completed = ev.Response
+		}
+	}
+	require.NoError(t, stream.Err())
+
+	require.NotNil(t, completed)
+	require.NotNil(t, completed.Status)
+	require.Equal(t, "incomplete", *completed.Status)
+	require.NotNil(t, completed.IncompleteDetails)
+	require.Equal(t, "max_output_tokens", completed.IncompleteDetails.Reason)
+}
