@@ -13,6 +13,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	entchannel "github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -21,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -31,24 +33,173 @@ type mockTransformer struct {
 	aggregatedMeta     llm.ResponseMeta
 	aggregatedErr      error
 	apiFormat          llm.APIFormat
+	requestAPIFormat   llm.APIFormat
+	includeEffort      bool
 }
 
 func (m *mockTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
-	body, err := json.Marshal(map[string]any{
+	payload := map[string]any{
 		"model":       req.Model,
 		"messages":    req.Messages,
 		"temperature": 0.5,
 		"max_tokens":  1000,
-	})
+	}
+	if m.includeEffort {
+		payload["reasoning_effort"] = req.ReasoningEffort
+	}
+
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
 
 	return &httpclient.Request{
-		Method: "POST",
-		URL:    "https://api.example.com/v1/chat/completions",
-		Body:   body,
+		Method:    "POST",
+		URL:       "https://api.example.com/v1/chat/completions",
+		Body:      body,
+		APIFormat: string(m.requestAPIFormat),
 	}, nil
+}
+
+func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatibility(t *testing.T) {
+	tests := []struct {
+		name           string
+		channelType    entchannel.Type
+		userAgent      string
+		wantEffort     string
+		wantSecondRole string
+	}{
+		{
+			name:           "Claude Code maps DeepSeek OpenAI outbound",
+			channelType:    entchannel.TypeDeepseek,
+			userAgent:      "claude-cli/2.1.170 (external, cli)",
+			wantEffort:     "max",
+			wantSecondRole: "user",
+		},
+		{
+			name:           "Claude Code maps OpenCode OpenAI outbound",
+			channelType:    entchannel.TypeOpencodeGo,
+			userAgent:      "claude-cli/2.1.170 (external, cli)",
+			wantEffort:     "max",
+			wantSecondRole: "user",
+		},
+		{
+			name:           "non Claude Code DeepSeek keeps transformer behavior",
+			channelType:    entchannel.TypeDeepseek,
+			userAgent:      "codex_cli_rs/1.0",
+			wantEffort:     "xhigh",
+			wantSecondRole: "system",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outbound := &mockTransformer{
+				apiFormat:        llm.APIFormatGeminiContents,
+				requestAPIFormat: llm.APIFormatOpenAIChatCompletion,
+				includeEffort:    true,
+			}
+			selectedChannel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:   1,
+					Name: tt.name,
+					Type: tt.channelType,
+					Settings: &objects.ChannelSettings{TransformOptions: objects.TransformOptions{
+						ReasoningEffortMapping: []llm.ReasoningEffortMapping{{From: "xhigh", To: "max"}},
+					}},
+				},
+				Outbound: outbound,
+			}
+			processor := &PersistentOutboundTransformer{
+				wrapped: outbound,
+				outboundLlmRequestMiddlewares: []pipeline.OutboundLlmRequestMiddleware{
+					cc.SystemCacheCompatibility(),
+				},
+				state: &PersistenceState{
+					ChannelModelsCandidates: []*ChannelModelsCandidate{{
+						Channel:   selectedChannel,
+						Models:    []biz.ChannelModelEntry{{RequestModel: "alias", ActualModel: "provider-model"}},
+						APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+					}},
+				},
+			}
+			request := &llm.Request{
+				Model:           "alias",
+				ReasoningEffort: "xhigh",
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
+					{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("reminder")}},
+				},
+				RawRequest: &httpclient.Request{Headers: http.Header{
+					"User-Agent": []string{tt.userAgent},
+				}},
+			}
+
+			httpRequest, err := processor.TransformRequest(context.Background(), request)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantEffort, gjson.GetBytes(httpRequest.Body, "reasoning_effort").String())
+			require.Equal(t, tt.wantSecondRole, gjson.GetBytes(httpRequest.Body, "messages.1.role").String())
+		})
+	}
+}
+
+func TestPersistentOutboundTransformer_TransformRequest_AppliesSystemCompatibilityPerAttempt(t *testing.T) {
+	tests := []struct {
+		name          string
+		formats       []llm.APIFormat
+		expectedRoles []string
+	}{
+		{
+			name:          "supported then unsupported",
+			formats:       []llm.APIFormat{llm.APIFormatOpenAIChatCompletion, llm.APIFormatGeminiContents},
+			expectedRoles: []string{"user", "system"},
+		},
+		{
+			name:          "unsupported then supported",
+			formats:       []llm.APIFormat{llm.APIFormatGeminiContents, llm.APIFormatOpenAIResponse},
+			expectedRoles: []string{"system", "user"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			candidates := make([]*ChannelModelsCandidate, 0, len(tt.formats))
+			for index, format := range tt.formats {
+				outbound := &mockTransformer{apiFormat: format, requestAPIFormat: format}
+				channel := &biz.Channel{
+					Channel:  &ent.Channel{ID: index + 1, Name: format.String()},
+					Outbound: outbound,
+				}
+				candidates = append(candidates, &ChannelModelsCandidate{
+					Channel:   channel,
+					Models:    []biz.ChannelModelEntry{{RequestModel: "alias", ActualModel: "provider-model"}},
+					APIFormat: format.String(),
+				})
+			}
+
+			state := &PersistenceState{ChannelModelsCandidates: candidates}
+			_, processor := NewPersistentTransformers(state, nil, cc.SystemCacheCompatibility())
+			request := &llm.Request{
+				Model: "alias",
+				Messages: []llm.Message{
+					{Role: "system"},
+					{Role: "user"},
+					{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("reminder")}},
+				},
+				RawRequest: &httpclient.Request{Headers: http.Header{
+					"User-Agent": []string{"claude-cli/2.1.170 (external, cli)"},
+				}},
+			}
+
+			for attempt, expectedRole := range tt.expectedRoles {
+				processor.state.CurrentCandidateIndex = attempt
+				httpRequest, err := processor.TransformRequest(context.Background(), request)
+				require.NoError(t, err)
+				require.Equal(t, expectedRole, gjson.GetBytes(httpRequest.Body, "messages.2.role").String())
+				require.Equal(t, "system", request.Messages[2].Role, "attempt middleware must not mutate the shared request")
+			}
+		})
+	}
 }
 
 func (m *mockTransformer) TransformResponse(ctx context.Context, resp *httpclient.Response) (*llm.Response, error) {

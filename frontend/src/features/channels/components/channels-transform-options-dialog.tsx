@@ -29,7 +29,6 @@ const transformOptionsFormSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
-  downgradeMidConversationSystem: z.boolean().optional(),
   reasoningEffortMapping: z
     .array(
       z.object({
@@ -61,8 +60,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
       forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
       forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
       replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
-      // Default disabled: only an explicit true enables the downgrade.
-      downgradeMidConversationSystem: currentRow.settings?.transformOptions?.downgradeMidConversationSystem ?? false,
       reasoningEffortMapping: currentRow.settings?.transformOptions?.reasoningEffortMapping || [],
     },
   });
@@ -77,7 +74,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
         forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
         forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
         replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
-        downgradeMidConversationSystem: currentRow.settings?.transformOptions?.downgradeMidConversationSystem ?? false,
         reasoningEffortMapping: currentRow.settings?.transformOptions?.reasoningEffortMapping || [],
       });
       setDraft({ from: '', to: '' });
@@ -112,9 +108,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
         forceArrayInstructions: values.forceArrayInstructions,
         forceArrayInputs: values.forceArrayInputs,
         replaceDeveloperRoleWithSystem: values.replaceDeveloperRoleWithSystem,
-        // The dialog is the sole editor; always send an explicit value so users can
-        // turn the (default-on) downgrade off for this channel.
-        downgradeMidConversationSystem: values.downgradeMidConversationSystem,
       };
       // Empty list is treated as "clear": send [] so the backend removes the mapping.
       // undefined would mean "don't touch", but the dialog is the sole editor here.
@@ -217,27 +210,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
                           </FormLabel>
                           <p className='text-muted-foreground text-xs'>
                             {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description')}
-                          </p>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name='downgradeMidConversationSystem'
-                    render={({ field }) => (
-                      <FormItem className='flex items-center gap-2'>
-                        <FormControl>
-                          <Checkbox checked={field.value ?? false} onCheckedChange={field.onChange} />
-                        </FormControl>
-                        <div className='space-y-0.5'>
-                          <FormLabel className='cursor-pointer text-sm font-normal'>
-                            {t('channels.dialogs.fields.transformOptions.downgradeMidConversationSystem.label')}
-                          </FormLabel>
-                          <p className='text-muted-foreground text-xs'>
-                            {t('channels.dialogs.fields.transformOptions.downgradeMidConversationSystem.description')}
                           </p>
                         </div>
                         <FormMessage />

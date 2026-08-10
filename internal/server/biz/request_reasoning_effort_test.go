@@ -46,6 +46,18 @@ func TestExtractOutboundReasoningEffort(t *testing.T) {
 			want:   lo.ToPtr("high"),
 		},
 		{
+			name:   "compact responses effort",
+			format: llm.APIFormatOpenAIResponseCompact,
+			body:   `{"model":"gpt-5","reasoning":{"effort":"max"}}`,
+			want:   lo.ToPtr("max"),
+		},
+		{
+			name:   "anthropic output config effort",
+			format: llm.APIFormatAnthropicMessage,
+			body:   `{"model":"deepseek-v4-flash","output_config":{"effort":"max"}}`,
+			want:   lo.ToPtr("max"),
+		},
+		{
 			name:   "missing effort",
 			format: llm.APIFormatOpenAIChatCompletion,
 			body:   `{"model":"gpt-4"}`,
@@ -56,13 +68,18 @@ func TestExtractOutboundReasoningEffort(t *testing.T) {
 			body:   `{"model":"gpt-5","reasoning":{"summary":"auto"}}`,
 		},
 		{
+			name:   "anthropic missing output config effort",
+			format: llm.APIFormatAnthropicMessage,
+			body:   `{"model":"deepseek-v4-flash","thinking":{"type":"adaptive"}}`,
+		},
+		{
 			name:   "non string effort",
 			format: llm.APIFormatOpenAIChatCompletion,
 			body:   `{"model":"gpt-5","reasoning_effort":5}`,
 		},
 		{
 			name:   "different API format",
-			format: llm.APIFormatAnthropicMessage,
+			format: llm.APIFormatGeminiContents,
 			body:   `{"reasoning_effort":"max"}`,
 		},
 	}
@@ -151,4 +168,20 @@ func TestRequestService_CreateRequestExecutionPersistsReasoningEffort(t *testing
 	require.NoError(t, err)
 	require.NotNil(t, responsesExecution.ReasoningEffort)
 	require.Equal(t, "high", *responsesExecution.ReasoningEffort)
+
+	anthropicExecution, err := requestService.CreateRequestExecution(
+		ctx,
+		&Channel{Channel: channelEntity},
+		"deepseek-v4-flash",
+		requestEntity,
+		httpclient.Request{
+			Body:      []byte(`{"model":"deepseek-v4-flash","output_config":{"effort":"max"}}`),
+			APIFormat: string(llm.APIFormatAnthropicMessage),
+		},
+		llm.APIFormatAnthropicMessage,
+		false,
+	)
+	require.NoError(t, err)
+	require.NotNil(t, anthropicExecution.ReasoningEffort)
+	require.Equal(t, "max", *anthropicExecution.ReasoningEffort)
 }
