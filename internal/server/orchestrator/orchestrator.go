@@ -258,6 +258,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	middlewares = append(middlewares,
 		// applyPassThroughBody runs first so that override operations can still modify the pass-through body.
 		applyPassThroughRequestBody(outbound, processor.SystemService),
+		// Codex Responses metadata must travel with a pass-through body so compatible
+		// upstreams preserve the client's protocol behavior.
+		applyPassThroughRequestHeaders(outbound),
 		applyOverrideRequestBody(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial
 		// User-Agent value (either from client pass-through or default "axonhub/1.0").
