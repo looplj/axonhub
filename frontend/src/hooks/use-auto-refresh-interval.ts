@@ -34,11 +34,18 @@ export function writeAutoRefreshInterval(storageKey: string, interval: AutoRefre
   }
 }
 
-export function useAutoRefreshInterval(storageKey: string) {
-  const [interval, setIntervalState] = useState<AutoRefreshInterval>(() => {
-    if (typeof window === 'undefined') return null;
+export function readBrowserAutoRefreshInterval(storageKey: string): AutoRefreshInterval {
+  if (typeof window === 'undefined') return null;
+
+  try {
     return readAutoRefreshInterval(storageKey, window.localStorage);
-  });
+  } catch {
+    return null;
+  }
+}
+
+export function useAutoRefreshInterval(storageKey: string) {
+  const [interval, setIntervalState] = useState<AutoRefreshInterval>(() => readBrowserAutoRefreshInterval(storageKey));
 
   const setInterval = useCallback(
     (nextInterval: AutoRefreshInterval) => {

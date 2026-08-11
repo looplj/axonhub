@@ -4,6 +4,7 @@ import {
   AUTO_REFRESH_INTERVALS,
   parseAutoRefreshInterval,
   readAutoRefreshInterval,
+  readBrowserAutoRefreshInterval,
   writeAutoRefreshInterval,
 } from './use-auto-refresh-interval.ts';
 
@@ -39,6 +40,30 @@ test('removes invalid stored values', () => {
 
   assert.equal(readAutoRefreshInterval('refresh-key', storage), null);
   assert.equal(storage.getItem('refresh-key'), null);
+});
+
+test('returns disabled when the browser localStorage accessor throws', () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
+  const throwingWindow = {};
+  Object.defineProperty(throwingWindow, 'localStorage', {
+    get() {
+      throw new Error('localStorage is blocked');
+    },
+  });
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: throwingWindow,
+  });
+
+  try {
+    assert.equal(readBrowserAutoRefreshInterval('refresh-key'), null);
+  } finally {
+    if (previousWindow) {
+      Object.defineProperty(globalThis, 'window', previousWindow);
+    } else {
+      delete globalThis.window;
+    }
+  }
 });
 
 test('persists intervals independently and removes disabled settings', () => {
