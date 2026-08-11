@@ -1,19 +1,20 @@
 import { useMemo } from 'react';
 import { CheckIcon, Cross2Icon, PlusCircledIcon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
-import { RefreshCw, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { cn } from '@/lib/utils';
+import type { DateTimeRangeValue } from '@/utils/date-range';
+import type { AutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
+import { AutoRefreshControl } from '@/components/auto-refresh-control';
 import { DateRangePicker } from '@/components/date-range-picker';
-import type { DateTimeRangeValue } from '@/utils/date-range';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;
@@ -25,8 +26,8 @@ interface DataTableToolbarProps<TData> {
   onStatusFilterChange?: (statuses: string[]) => void;
   onRefresh?: () => void;
   showRefresh?: boolean;
-  autoRefresh?: boolean;
-  onAutoRefreshChange?: (enabled: boolean) => void;
+  autoRefreshInterval?: AutoRefreshInterval;
+  onAutoRefreshIntervalChange?: (interval: AutoRefreshInterval) => void;
 }
 
 export function ThreadsTableToolbar<TData>({
@@ -39,8 +40,8 @@ export function ThreadsTableToolbar<TData>({
   onStatusFilterChange,
   onRefresh,
   showRefresh = false,
-  autoRefresh = false,
-  onAutoRefreshChange,
+  autoRefreshInterval = null,
+  onAutoRefreshIntervalChange,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
   const scrollRef = useHorizontalScroll<HTMLDivElement>();
@@ -58,7 +59,7 @@ export function ThreadsTableToolbar<TData>({
 
   return (
     <div ref={scrollRef} className='flex items-center justify-between gap-2 overflow-x-auto'>
-      <div className='flex flex-1 items-center space-x-2 shrink-0'>
+      <div className='flex flex-1 shrink-0 items-center space-x-2'>
         <Input
           placeholder={t('threads.filters.filterThreadId')}
           value={threadIdFilter}
@@ -108,9 +109,7 @@ export function ThreadsTableToolbar<TData>({
                         <CommandItem
                           key={option.value}
                           onSelect={() => {
-                            const newFilter = isSelected
-                              ? statusFilter.filter((s) => s !== option.value)
-                              : [...statusFilter, option.value];
+                            const newFilter = isSelected ? statusFilter.filter((s) => s !== option.value) : [...statusFilter, option.value];
                             onStatusFilterChange(newFilter.length > 0 ? newFilter : []);
                           }}
                         >
@@ -163,20 +162,9 @@ export function ThreadsTableToolbar<TData>({
           </Button>
         )}
       </div>
-      <div className='flex items-center space-x-2 shrink-0'>
-        {showRefresh && onAutoRefreshChange && (
-          <div className='flex items-center space-x-2 shrink-0'>
-            <Switch checked={autoRefresh} onCheckedChange={onAutoRefreshChange} id='auto-refresh-switch' />
-            <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm whitespace-nowrap'>
-              {t('common.autoRefresh')}
-            </label>
-          </div>
-        )}
-        {showRefresh && onRefresh && (
-          <Button variant='outline' size='sm' onClick={onRefresh} className='shrink-0'>
-            <RefreshCw className={`mr-2 h-4 w-4 ${autoRefresh ? 'animate-spin' : ''}`} />
-            {t('common.refresh')}
-          </Button>
+      <div className='flex shrink-0 items-center space-x-2'>
+        {showRefresh && onRefresh && onAutoRefreshIntervalChange && (
+          <AutoRefreshControl interval={autoRefreshInterval} onIntervalChange={onAutoRefreshIntervalChange} onRefresh={onRefresh} />
         )}
       </div>
     </div>

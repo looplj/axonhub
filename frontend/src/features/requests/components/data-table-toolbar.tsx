@@ -1,17 +1,18 @@
 import { useMemo, useState } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
-import { Filter, RefreshCw, X } from 'lucide-react';
+import { Filter, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import type { DateTimeRangeValue } from '@/utils/date-range';
+import type { AutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Switch } from '@/components/ui/switch';
+import { AutoRefreshControl } from '@/components/auto-refresh-control';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
 import { DateRangePicker } from '@/components/date-range-picker';
 import { useApiKeys } from '@/features/apikeys/data';
@@ -28,8 +29,8 @@ interface DataTableToolbarProps<TData> {
   onResetFilters?: () => void;
   onRefresh?: () => void;
   showRefresh?: boolean;
-  autoRefresh?: boolean;
-  onAutoRefreshChange?: (enabled: boolean) => void;
+  autoRefreshInterval?: AutoRefreshInterval;
+  onAutoRefreshIntervalChange?: (interval: AutoRefreshInterval) => void;
 }
 
 interface RequestFilterControlsProps {
@@ -185,8 +186,8 @@ export function DataTableToolbar<TData>({
   onResetFilters,
   onRefresh,
   showRefresh = false,
-  autoRefresh = false,
-  onAutoRefreshChange,
+  autoRefreshInterval = null,
+  onAutoRefreshIntervalChange,
 }: DataTableToolbarProps<TData>) {
   const { t } = useTranslation();
   const [showArchivedApiKeys, setShowArchivedApiKeys] = useState(false);
@@ -406,24 +407,8 @@ export function DataTableToolbar<TData>({
       />
       <div className='hidden flex-1 sm:block' />
       <div className='flex shrink-0 flex-wrap items-center gap-2'>
-        {showRefresh && onAutoRefreshChange && (
-          <div className='flex shrink-0 items-center gap-2'>
-            <Switch
-              checked={autoRefresh}
-              onCheckedChange={onAutoRefreshChange}
-              id='auto-refresh-switch'
-              aria-label={t('common.autoRefresh')}
-            />
-            <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm whitespace-nowrap'>
-              {t('common.autoRefresh')}
-            </label>
-          </div>
-        )}
-        {showRefresh && onRefresh && (
-          <Button variant='outline' size='sm' onClick={onRefresh} aria-label={t('common.refresh')} className='shrink-0'>
-            <RefreshCw className={`h-4 w-4 ${autoRefresh ? 'animate-spin' : ''} sm:mr-2`} />
-            <span className='hidden sm:inline'>{t('common.refresh')}</span>
-          </Button>
+        {showRefresh && onRefresh && onAutoRefreshIntervalChange && (
+          <AutoRefreshControl interval={autoRefreshInterval} onIntervalChange={onAutoRefreshIntervalChange} onRefresh={onRefresh} />
         )}
         <DataTableViewOptions table={table} />
       </div>

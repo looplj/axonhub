@@ -14,11 +14,12 @@ import {
 } from '@tanstack/react-table';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import type { DateTimeRangeValue } from '@/utils/date-range';
+import type { AutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
-import type { DateTimeRangeValue } from '@/utils/date-range';
 import { Trace, TraceConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
 import { useTracesColumns } from './traces-columns';
@@ -50,8 +51,8 @@ interface TracesTableProps {
   onStatusFilterChange?: (statuses: string[]) => void;
   onRefresh: () => void;
   showRefresh: boolean;
-  autoRefresh?: boolean;
-  onAutoRefreshChange?: (enabled: boolean) => void;
+  autoRefreshInterval?: AutoRefreshInterval;
+  onAutoRefreshIntervalChange?: (interval: AutoRefreshInterval) => void;
 }
 
 export function TracesTable({
@@ -71,8 +72,8 @@ export function TracesTable({
   onStatusFilterChange,
   onRefresh,
   showRefresh,
-  autoRefresh = false,
-  onAutoRefreshChange,
+  autoRefreshInterval = null,
+  onAutoRefreshIntervalChange,
 }: TracesTableProps) {
   const { t } = useTranslation();
   const tracesColumns = useTracesColumns();
@@ -81,7 +82,7 @@ export function TracesTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
-  const displayedData = useAnimatedList(data, autoRefresh, pageSize);
+  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize);
 
   const table = useReactTable({
     data: displayedData,
@@ -119,8 +120,8 @@ export function TracesTable({
         onStatusFilterChange={onStatusFilterChange}
         onRefresh={onRefresh}
         showRefresh={showRefresh}
-        autoRefresh={autoRefresh}
-        onAutoRefreshChange={onAutoRefreshChange}
+        autoRefreshInterval={autoRefreshInterval}
+        onAutoRefreshIntervalChange={onAutoRefreshIntervalChange}
       />
       <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
         <Table data-testid='traces-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>

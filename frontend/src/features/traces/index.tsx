@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { buildDateRangeWhereClause, type DateTimeRangeValue } from '@/utils/date-range';
+import { useAutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
@@ -18,7 +19,7 @@ function TracesContent() {
   const [dateRange, setDateRange] = useState<DateTimeRangeValue | undefined>();
   const [traceIdFilter, setTraceIdFilter] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useAutoRefreshInterval('traces-auto-refresh-interval-ms');
   const debouncedTraceIdFilter = useDebounce(traceIdFilter, 300);
 
   // Build where clause with filters
@@ -58,7 +59,7 @@ function TracesContent() {
     () => {
       refetch();
     },
-    autoRefresh && isFirstPage ? 30000 : null
+    isFirstPage ? autoRefreshInterval : null
   );
 
   const handleNextPage = () => {
@@ -124,8 +125,8 @@ function TracesContent() {
         onStatusFilterChange={handleStatusFilterChange}
         onRefresh={refetch}
         showRefresh={isFirstPage}
-        autoRefresh={autoRefresh}
-        onAutoRefreshChange={setAutoRefresh}
+        autoRefreshInterval={autoRefreshInterval}
+        onAutoRefreshIntervalChange={setAutoRefreshInterval}
       />
     </div>
   );
@@ -140,7 +141,7 @@ export default function TracesManagement() {
         <div className='flex flex-1 items-center justify-between'>
           <div>
             <h2 className='text-xl font-bold tracking-tight'>{t('traces.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('traces.description')}</p>
+            <p className='text-muted-foreground text-sm'>{t('traces.description')}</p>
           </div>
         </div>
       </Header>
