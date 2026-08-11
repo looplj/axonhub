@@ -23,10 +23,11 @@ import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { Request, RequestConnection } from '../data/schema';
 import { DataTableToolbar } from './data-table-toolbar';
+import { RequestBodyDrawer } from './request-body-drawer';
 import { DEFAULT_HIDDEN_COLUMN_IDS, DEFAULT_MOBILE_HIDDEN_COLUMN_IDS, useRequestsColumns } from './requests-columns';
 
 const COLUMN_VISIBILITY_STORAGE_KEY = 'requests-table-column-visibility';
-const COLUMN_VISIBILITY_STORAGE_VERSION = 3;
+const COLUMN_VISIBILITY_STORAGE_VERSION = 6;
 
 const MotionTableRow = motion.create(TableRow);
 
@@ -49,6 +50,7 @@ interface RequestsTableProps {
   apiKeyFilter: string[];
   modelIDFilter: string;
   dateRange?: DateTimeRangeValue;
+  queryWhere?: Record<string, any>;
   onNextPage: () => void;
   onPreviousPage: () => void;
   onPageSizeChange: (pageSize: number) => void;
@@ -92,6 +94,7 @@ export function RequestsTable({
   apiKeyFilter,
   modelIDFilter,
   dateRange,
+  queryWhere,
   onNextPage,
   onPreviousPage,
   onPageSizeChange,
@@ -106,7 +109,17 @@ export function RequestsTable({
 }: RequestsTableProps) {
   const { t } = useTranslation();
 
-  const requestsColumns = useRequestsColumns({ onViewDetail });
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerInitialRequestId, setDrawerInitialRequestId] = useState<string | null>(null);
+  const [drawerInitialIndex, setDrawerInitialIndex] = useState(0);
+
+  const handleBodyClick = useCallback((requestId: string, index: number) => {
+    setDrawerInitialRequestId(requestId);
+    setDrawerInitialIndex(index);
+    setDrawerOpen(true);
+  }, []);
+
+  const requestsColumns = useRequestsColumns({ onBodyClick: handleBodyClick, onViewDetail });
   const [sorting, setSorting] = useState<SortingState>([]);
   const isMobile = useIsMobile();
 
@@ -352,6 +365,17 @@ export function RequestsTable({
           onPageSizeChange={onPageSizeChange}
         />
       </div>
+
+      <RequestBodyDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        initialRequestId={drawerInitialRequestId}
+        initialIndex={drawerInitialIndex}
+        initialRequests={data}
+        pageInfo={pageInfo}
+        queryWhere={queryWhere}
+        onViewDetail={onViewDetail}
+      />
     </div>
   );
 }

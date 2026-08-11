@@ -347,6 +347,7 @@ function RequestsContent() {
         apiKeyFilter={apiKeyFilter}
         modelIDFilter={modelIDFilter}
         dateRange={dateRange}
+        queryWhere={whereClause}
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
