@@ -128,6 +128,25 @@ func TestDetectProviderFromURL_FalsePositives(t *testing.T) {
 	}
 }
 
+func TestDetectProviderFromURL_CharmHyper(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+	}{
+		{"exact domain", "https://hyper.charm.land"},
+		{"subdomain", "https://custom.hyper.charm.land"},
+		{"with path", "https://hyper.charm.land/v1/credits"},
+		{"http scheme", "http://hyper.charm.land"},
+		{"with port", "https://hyper.charm.land:443"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DetectProviderFromURL(tt.baseURL)
+			require.Equal(t, "charm_hyper", result)
+		})
+	}
+}
+
 func TestDetectProviderFromURL_Apertis(t *testing.T) {
 	tests := []struct {
 		name    string

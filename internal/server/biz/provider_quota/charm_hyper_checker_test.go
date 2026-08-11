@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -239,6 +240,62 @@ func TestCharmHyper_CheckQuota_FallbackKey(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, "available", quota.Status)
+}
+
+func TestCharmHyper_CheckQuota_WithProxy(t *testing.T) {
+	// WithProxy creates a new HttpClient with its own transport,
+	// so we must use a real test server rather than a mock transport.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "Bearer test-api-key", r.Header.Get("Authorization"))
+		require.Equal(t, "/v1/credits", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"balance": 50}`))
+	}))
+	defer server.Close()
+
+	checker := NewCharmHyperQuotaChecker(httpclient.NewHttpClientWithClient(&http.Client{}))
+
+	proxyConfig := &httpclient.ProxyConfig{
+		Type: httpclient.ProxyTypeDisabled,
+	}
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		BaseURL: server.URL,
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+		Settings: &objects.ChannelSettings{
+			Proxy: proxyConfig,
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.Equal(t, "charm_hyper", quota.ProviderType)
+}
+
+func TestCharmHyper_CheckQuota_WarningBoundary(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"balance": 20}`
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewCharmHyperQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		BaseURL: "https://hyper.charm.land",
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "warning", quota.Status)
+	require.True(t, quota.Ready)
 }
 
 func TestCharmHyper_SupportsChannel(t *testing.T) {

@@ -29,7 +29,6 @@ type CharmHyperQuotaChecker struct {
 	httpClient *httpclient.HttpClient
 }
 
-// NewCharmHyperQuotaChecker creates a new CharmHyperQuotaChecker.
 func NewCharmHyperQuotaChecker(httpClient *httpclient.HttpClient) *CharmHyperQuotaChecker {
 	return &CharmHyperQuotaChecker{httpClient: httpClient}
 }
@@ -109,7 +108,6 @@ func (c *CharmHyperQuotaChecker) computeStatus(balance float64) (status string, 
 	return "available", true, usageRatio
 }
 
-// SupportsChannel checks if the checker supports the given channel.
 func (c *CharmHyperQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	if ch.Type != channel.TypeOpenai && ch.Type != channel.TypeOpenaiResponses {
 		return false
