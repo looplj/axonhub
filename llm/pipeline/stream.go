@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+
 	"errors"
 	"fmt"
 	"log/slog"
@@ -28,8 +29,8 @@ const (
 )
 
 const (
-	maxPreReadEvents             = 3
-	maxPreCommitRetryProbeEvents = 16
+	maxPreReadEvents           = 3
+	maxPreCommitBufferedEvents = 1024
 )
 
 func newFirstEventTimeoutGuard(ctx context.Context, timeout time.Duration) (context.Context, *firstEventTimeoutGuard) {
@@ -178,9 +179,6 @@ func (p *pipeline) preReadLlmStream(
 ) (streams.Stream[*llm.Response], error) {
 	preReadUntilContent := p.hasStreamRetryBudget()
 	probeLimit := maxPreReadEvents
-	if preReadUntilContent {
-		probeLimit = maxPreCommitRetryProbeEvents
-	}
 
 	var buffered []*llm.Response
 
@@ -197,6 +195,11 @@ func (p *pipeline) preReadLlmStream(
 
 		event := llmStream.Current()
 		buffered = append(buffered, event)
+		if preReadUntilContent && len(buffered) > maxPreCommitBufferedEvents {
+			llmStream.Close()
+
+			return nil, ErrPreCommitBufferExceeded
+		}
 
 		if hasResponseContent(event) {
 			// Has content, not empty - prepend buffered events back
@@ -226,7 +229,11 @@ func (p *pipeline) preReadLlmStream(
 			return nil, ErrEmptyResponse
 		}
 
-		if len(buffered) >= probeLimit {
+		// Once retry is enabled, metadata must remain private to this attempt
+		// until meaningful content commits it, a terminal event completes it, or
+		// the stream fails. Flushing merely because an event-count probe limit was
+		// reached leaks a failed attempt and makes a still-safe retry impossible.
+		if !preReadUntilContent && len(buffered) >= probeLimit {
 			break
 		}
 	}

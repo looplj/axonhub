@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"maps"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -138,6 +139,39 @@ func TestGetDecoder(t *testing.T) {
 	factory, exists = GetDecoder("application/non-existent")
 	require.False(t, exists)
 	require.Nil(t, factory)
+}
+
+func TestDefaultSSEDecoder_LastEventAtEOFDoesNotPanicOnRepeatedNext(t *testing.T) {
+	decoder := NewDefaultSSEDecoder(t.Context(), newMockReadCloser([]byte("data: trailing-event\n")))
+
+	require.True(t, decoder.Next())
+	require.Equal(t, []byte("trailing-event"), decoder.Current().Data)
+
+	for range 3 {
+		require.NotPanics(t, func() {
+			require.False(t, decoder.Next())
+		})
+		require.NoError(t, decoder.Err())
+	}
+}
+
+func TestDefaultSSEDecoder_RejectsOversizedEventAtParserBoundary(t *testing.T) {
+	const limit = 1024
+	raw := "data: " + strings.Repeat("x", limit+1) + "\n\n"
+	decoder := NewSSEDecoderWithMaxEventSize(t.Context(), newMockReadCloser([]byte(raw)), limit)
+
+	require.False(t, decoder.Next())
+	require.Nil(t, decoder.Current())
+	require.ErrorIs(t, decoder.Err(), ErrStreamEventTooLarge)
+}
+
+func TestDefaultSSEDecoder_DoesNotClassifyErrorTextAsOversizedEvent(t *testing.T) {
+	wantErr := errors.New("upstream token too long due proxy")
+	decoder := NewSSEDecoderWithMaxEventSize(t.Context(), &readChunkThenError{err: wantErr}, 1024)
+
+	require.False(t, decoder.Next())
+	require.ErrorIs(t, decoder.Err(), wantErr)
+	require.NotErrorIs(t, decoder.Err(), ErrStreamEventTooLarge)
 }
 
 func TestDefaultSSEDecoder(t *testing.T) {

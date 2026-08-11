@@ -1,9 +1,11 @@
 package pipeline
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/samber/lo"
@@ -156,6 +158,7 @@ type llmErrorAfterStream struct {
 	index   int
 	current *llm.Response
 	err     error
+	closed  bool
 }
 
 func (s *llmErrorAfterStream) Next() bool {
@@ -182,6 +185,7 @@ func (s *llmErrorAfterStream) Err() error {
 }
 
 func (s *llmErrorAfterStream) Close() error {
+	s.closed = true
 	return nil
 }
 
@@ -579,7 +583,7 @@ func TestPipeline_Process_StreamDoesNotRetryAfterContent(t *testing.T) {
 	require.ErrorIs(t, res.EventStream.Err(), upstreamErr)
 }
 
-func TestPipeline_Process_StreamStopsPreCommitProbeAfterBound(t *testing.T) {
+func TestPipeline_Process_StreamKeepsMetadataPrivateUntilContent(t *testing.T) {
 	ctx := context.Background()
 	streamFlag := true
 	const nonContentEventsBeforeContent = 64
@@ -625,7 +629,7 @@ func TestPipeline_Process_StreamStopsPreCommitProbeAfterBound(t *testing.T) {
 	require.True(t, res.Stream)
 	require.Equal(t, 1, attempts)
 	require.NotNil(t, sourceStream)
-	require.Equal(t, maxPreCommitRetryProbeEvents, sourceStream.index)
+	require.Equal(t, nonContentEventsBeforeContent+1, sourceStream.index)
 
 	events, err := streams.All(res.EventStream)
 	require.NoError(t, err)
@@ -633,6 +637,117 @@ func TestPipeline_Process_StreamStopsPreCommitProbeAfterBound(t *testing.T) {
 	require.Equal(t, "metadata", string(events[0].Data))
 	require.Equal(t, "ok", string(events[nonContentEventsBeforeContent].Data))
 	require.Equal(t, "[DONE]", string(events[nonContentEventsBeforeContent+1].Data))
+}
+
+func TestPipeline_Process_StreamFailsClosedAtPreCommitBufferLimit(t *testing.T) {
+	ctx := context.Background()
+	streamFlag := true
+
+	inbound := &mockInbound{
+		transformRequest: func(context.Context, *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: &streamFlag}, nil
+		},
+	}
+
+	attempts := 0
+	prepareForRetryCalls := 0
+	nextChannelCalls := 0
+	executor := &mockExecutor{
+		doStream: func(context.Context, *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			attempts++
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("raw")}}), nil
+		},
+	}
+	sourceEvents := make([]*llm.Response, maxPreCommitBufferedEvents+1)
+	for i := range sourceEvents {
+		sourceEvents[i] = llmEmptyChunk()
+	}
+	sourceStream := &llmErrorAfterStream{items: sourceEvents}
+	outbound := &mockOutbound{
+		hasMoreChannels: func() bool { return true },
+		nextChannel: func(context.Context) error {
+			nextChannelCalls++
+			return nil
+		},
+		transformStream: func(context.Context, *httpclient.Request, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			return sourceStream, nil
+		},
+		canRetry: func(error) bool { return true },
+		prepareForRetry: func(context.Context) error {
+			prepareForRetryCalls++
+			return nil
+		},
+	}
+	p := NewFactory(executor).Pipeline(inbound, outbound, WithRetry(1, 1, 0))
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+	require.Nil(t, res)
+	require.ErrorIs(t, err, ErrPreCommitBufferExceeded)
+	require.Equal(t, 1, attempts, "resource-limit failures must not be retried")
+	require.Equal(t, 0, prepareForRetryCalls, "resource-limit failures must bypass same-channel retry preparation")
+	require.Equal(t, 0, nextChannelCalls, "resource-limit failures must not switch channels")
+	require.True(t, sourceStream.closed, "resource-limit failures must close the source stream")
+}
+
+func TestPipeline_Process_StreamEventTooLargeBypassesAllRetries(t *testing.T) {
+	ctx := context.Background()
+	streamFlag := true
+	inbound := &mockInbound{
+		transformRequest: func(context.Context, *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: &streamFlag}, nil
+		},
+	}
+
+	const limit = 1024
+	raw := "data: " + strings.Repeat("x", limit+1) + "\n\n"
+	body := newPipelineTrackingReadCloser([]byte(raw))
+	attempts := 0
+	prepareForRetryCalls := 0
+	nextChannelCalls := 0
+	executor := &mockExecutor{
+		doStream: func(context.Context, *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			attempts++
+			return httpclient.NewSSEDecoderWithMaxEventSize(ctx, body, limit), nil
+		},
+	}
+	outbound := &mockOutbound{
+		hasMoreChannels: func() bool { return true },
+		nextChannel: func(context.Context) error {
+			nextChannelCalls++
+			return nil
+		},
+		transformStream: func(_ context.Context, _ *httpclient.Request, rawStream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			return streams.Map(rawStream, func(*httpclient.StreamEvent) *llm.Response { return llmEmptyChunk() }), nil
+		},
+		canRetry: func(error) bool { return true },
+		prepareForRetry: func(context.Context) error {
+			prepareForRetryCalls++
+			return nil
+		},
+	}
+	p := NewFactory(executor).Pipeline(inbound, outbound, WithRetry(1, 1, 0))
+
+	res, err := p.Process(ctx, &httpclient.Request{})
+	require.Nil(t, res)
+	require.ErrorIs(t, err, httpclient.ErrStreamEventTooLarge)
+	require.Equal(t, 1, attempts)
+	require.Equal(t, 0, prepareForRetryCalls)
+	require.Equal(t, 0, nextChannelCalls)
+	require.True(t, body.closed)
+}
+
+type pipelineTrackingReadCloser struct {
+	*bytes.Reader
+	closed bool
+}
+
+func newPipelineTrackingReadCloser(data []byte) *pipelineTrackingReadCloser {
+	return &pipelineTrackingReadCloser{Reader: bytes.NewReader(data)}
+}
+
+func (r *pipelineTrackingReadCloser) Close() error {
+	r.closed = true
+	return nil
 }
 
 func llmEmptyChunk() *llm.Response {
