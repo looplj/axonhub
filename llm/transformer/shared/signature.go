@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"bytes"
 	"encoding/base64"
 	"strings"
 )
@@ -25,11 +26,14 @@ type GuessResult struct {
 //
 // Heuristics:
 //   - "gAAAA*" / "gAAA*" prefix → OpenAI
-//   - "EqQ*" / "Eqo*" / "Eqr*" prefix → Anthropic
+//   - standard base64 whose decoded bytes contain an Anthropic model marker
+//     (for example, "claude-sonnet-5") → Anthropic
 //   - standard base64 with protobuf-like decoded bytes → Gemini
 //   - otherwise → unknown
 func GuessSignatureProvider(raw string) GuessResult {
-	s := strings.Trim(raw, `"`)
+	s := strings.TrimSpace(raw)
+	s = strings.Trim(s, `"`)
+	s = strings.TrimSpace(s)
 
 	reason := make([]string, 0, 3)
 
@@ -42,21 +46,20 @@ func GuessSignatureProvider(raw string) GuessResult {
 		}
 	}
 
-	// Anthropic thinking signature common sample prefixes
-	if strings.HasPrefix(s, "EqQ") || strings.HasPrefix(s, "Eqo") || strings.HasPrefix(s, "Eqr") {
-		reason = append(reason, "starts with Eq*, commonly seen in Anthropic thinking.signature examples")
-		return GuessResult{
-			Provider: ProviderAnthropic,
-			Reasons:  reason,
-		}
-	}
-
 	isStdBase64 := isStdBase64String(s)
 
-	// Check standard base64 for protobuf-like bytes (Gemini).
-	// Valid standard base64 is never OpenAI — OpenAI uses base64url encoding.
 	if isStdBase64 {
-		bytes, err := base64.StdEncoding.DecodeString(s)
+		bytes, err := decodeStdBase64(s)
+		if err == nil && containsAnthropicModel(bytes) {
+			reason = append(reason, "standard base64 decoded bytes contain an Anthropic model marker")
+			return GuessResult{
+				Provider: ProviderAnthropic,
+				Reasons:  reason,
+			}
+		}
+
+		// Check standard base64 for protobuf-like bytes (Gemini).
+		// Valid standard base64 is never OpenAI — OpenAI uses base64url encoding.
 		if err == nil && looksLikeProto(bytes) {
 			reason = append(reason, "standard base64 and decoded bytes look protobuf-like, which fits Gemini thoughtSignature")
 			return GuessResult{
@@ -64,6 +67,7 @@ func GuessSignatureProvider(raw string) GuessResult {
 				Reasons:  reason,
 			}
 		}
+
 		reason = append(reason, "standard base64 without known provider prefix")
 		return GuessResult{
 			Provider: ProviderUnknown,
@@ -76,6 +80,25 @@ func GuessSignatureProvider(raw string) GuessResult {
 		Provider: ProviderUnknown,
 		Reasons:  reason,
 	}
+}
+
+// decodeStdBase64 accepts both padded and unpadded standard Base64. Anthropic
+// signatures are opaque bytes and commonly have a length divisible by three,
+// but accepting the unpadded form makes detection safe across proxies/clients.
+func decodeStdBase64(s string) ([]byte, error) {
+	if strings.ContainsRune(s, '=') {
+		return base64.StdEncoding.DecodeString(s)
+	}
+	return base64.RawStdEncoding.DecodeString(s)
+}
+
+// containsAnthropicModel checks for provider-specific model identifiers in the
+// decoded opaque payload. Signatures are binary (often protobuf-like), so the
+// model name is searched as an ASCII substring rather than treating the whole
+// payload as text or attempting to fully parse its wire format.
+func containsAnthropicModel(buf []byte) bool {
+	lower := bytes.ToLower(buf)
+	return bytes.Contains(lower, []byte("claude")) || bytes.Contains(lower, []byte("anthropic"))
 }
 
 // isStdBase64String checks if s matches standard base64 pattern [A-Za-z0-9+/]+={0,2}.
