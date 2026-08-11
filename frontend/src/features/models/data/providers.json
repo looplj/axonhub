@@ -2873,90 +2873,6 @@
           "type": "image-generation"
         },
         {
-          "id": "gemini-3-pro-preview",
-          "name": "Gemini 3 Pro Preview",
-          "description": "Preview Gemini flagship for complex reasoning, coding, and rich multimodal prompts",
-          "family": "gemini-pro",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "reasoning_options": [
-            {
-              "type": "effort",
-              "values": [
-                "low",
-                "high"
-              ]
-            }
-          ],
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2025-11-18",
-          "last_updated": "2025-11-18",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "video",
-              "audio",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "status": "deprecated",
-          "cost": {
-            "input": 2,
-            "output": 12,
-            "cache_read": 0.2,
-            "tiers": [
-              {
-                "input": 4,
-                "output": 18,
-                "cache_read": 0.4,
-                "tier": {
-                  "type": "context",
-                  "size": 200000
-                }
-              }
-            ],
-            "context_over_200k": {
-              "input": 4,
-              "output": 18,
-              "cache_read": 0.4
-            }
-          },
-          "display_name": "Gemini 3 Pro Preview",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "default_enabled": true,
-              "mode": "level",
-              "level": "high",
-              "level_options": [
-                "low",
-                "high"
-              ],
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thought_signatures"
-              ]
-            }
-          },
-          "type": "chat"
-        },
-        {
           "id": "veo-3.1-generate-preview",
           "name": "Veo 3.1",
           "description": "Video model for prompt-guided generation, editing, and motion workflows",
@@ -3474,89 +3390,6 @@
           "type": "chat"
         },
         {
-          "id": "gemini-2.0-flash",
-          "name": "Gemini 2.0 Flash",
-          "description": "Earlier Gemini Flash workhorse for responsive multimodal apps and tool use",
-          "family": "gemini-flash",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": false
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2024-06",
-          "release_date": "2024-12-11",
-          "last_updated": "2024-12-11",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 8192
-          },
-          "status": "deprecated",
-          "cost": {
-            "input": 0.1,
-            "output": 0.4,
-            "cache_read": 0.025
-          },
-          "display_name": "Gemini 2.0 Flash",
-          "search": {
-            "supported": true,
-            "default": false
-          },
-          "type": "chat"
-        },
-        {
-          "id": "gemini-2.0-flash-lite",
-          "name": "Gemini 2.0 Flash Lite",
-          "description": "Legacy model retained for compatibility with older integrations",
-          "family": "gemini-flash-lite",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2024-06",
-          "release_date": "2024-12-11",
-          "last_updated": "2024-12-11",
-          "modalities": {
-            "input": [
-              "text",
-              "image"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 8192
-          },
-          "status": "deprecated",
-          "cost": {
-            "input": 0.075,
-            "output": 0.3
-          },
-          "display_name": "Gemini 2.0 Flash Lite",
-          "search": {
-            "supported": false
-          },
-          "type": "chat"
-        },
-        {
           "id": "gemini-2.5-flash-preview-09-2025",
           "name": "Gemini 2.5 Flash Preview 09 2025",
           "display_name": "Gemini 2.5 Flash Preview 09 2025",
@@ -3692,6 +3525,36 @@
           "type": "chat"
         },
         {
+          "id": "gemini-2.0-flash",
+          "name": "Gemini 2.0 Flash",
+          "display_name": "Gemini 2.0 Flash",
+          "temperature": true,
+          "attachment": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1048576,
+            "output": 8192
+          },
+          "reasoning": {
+            "supported": true,
+            "default": false
+          },
+          "search": {
+            "supported": true,
+            "default": false
+          },
+          "type": "chat"
+        },
+        {
           "id": "gemini-2.0-flash-preview-image-generation",
           "name": "Gemini 2.0 Flash Preview Image Generation",
           "display_name": "Gemini 2.0 Flash Preview Image Generation",
@@ -3710,6 +3573,34 @@
           },
           "limit": {
             "context": 32000,
+            "output": 8192
+          },
+          "reasoning": {
+            "supported": false
+          },
+          "search": {
+            "supported": false
+          },
+          "type": "chat"
+        },
+        {
+          "id": "gemini-2.0-flash-lite",
+          "name": "Gemini 2.0 Flash Lite",
+          "display_name": "Gemini 2.0 Flash Lite",
+          "temperature": true,
+          "attachment": true,
+          "tool_call": true,
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "limit": {
+            "context": 1048576,
             "output": 8192
           },
           "reasoning": {
@@ -7459,6 +7350,134 @@
             "cache_write": 2.5
           },
           "display_name": "Qwen3.8 Max",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary"
+            }
+          },
+          "type": "chat"
+        },
+        {
+          "id": "deepseek-v4-flash-0731",
+          "name": "DeepSeek V4 Flash 0731",
+          "description": "Official DeepSeek V4 Flash release with enhanced agentic capabilities and integrated DSpark speculative decoding",
+          "family": "deepseek-flash",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "high",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2025-05",
+          "release_date": "2026-07-31",
+          "last_updated": "2026-07-31",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 384000
+          },
+          "cost": {
+            "input": 0.2,
+            "output": 0.4,
+            "cache_read": 0.04
+          },
+          "display_name": "DeepSeek V4 Flash 0731",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary"
+            }
+          },
+          "type": "chat"
+        },
+        {
+          "id": "glm-5.2",
+          "name": "GLM-5.2",
+          "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+          "family": "glm",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "none",
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-06-13",
+          "last_updated": "2026-06-13",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 131072
+          },
+          "cost": {
+            "input": 1.4,
+            "output": 4.4,
+            "cache_read": 0.28,
+            "cache_write": 0
+          },
+          "display_name": "GLM-5.2",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -16694,6 +16713,40 @@
           "type": "chat"
         },
         {
+          "id": "ibm/granite-4-h-small",
+          "name": "Granite-4.0-H-Small",
+          "description": "Open-weight hybrid model for enterprise chat, coding, retrieval-augmented generation, and tool-calling workloads",
+          "family": "granite",
+          "attachment": false,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2025-10-02",
+          "last_updated": "2025-10-02",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0.0636,
+            "output": 0.265
+          },
+          "display_name": "Granite-4.0-H-Small",
+          "type": "chat"
+        },
+        {
           "id": "granite-code",
           "name": "granite-code",
           "display_name": "granite-code",
@@ -19859,6 +19912,77 @@
           },
           "vision": false,
           "family": "kat-coder"
+        }
+      ]
+    },
+    "thinkingmachines": {
+      "id": "thinkingmachines",
+      "name": "Thinking Machines",
+      "display_name": "Thinking Machines",
+      "models": [
+        {
+          "id": "thinkingmachines/inkling-small",
+          "name": "Inkling Small",
+          "description": "Multimodal MoE reasoning model (276B total, 12B active) for text, image, and audio",
+          "family": "ling",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-07-30",
+          "last_updated": "2026-07-30",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1048576,
+            "output": 1048576
+          },
+          "display_name": "Inkling Small",
+          "type": "chat"
+        },
+        {
+          "id": "thinkingmachines/inkling",
+          "name": "Inkling",
+          "description": "Multimodal MoE reasoning model (975B total, 41B active) for text, image, and audio",
+          "family": "ling",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "tool_call": true,
+          "temperature": true,
+          "release_date": "2026-07-15",
+          "last_updated": "2026-07-15",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1048576,
+            "output": 1048576
+          },
+          "display_name": "Inkling",
+          "type": "chat"
         }
       ]
     }

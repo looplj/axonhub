@@ -1010,5 +1010,76 @@
       },
       "vision": true
     }
-  ]
+  ],
+  "thinkingmachines": {
+    "id": "thinkingmachines",
+    "name": "Thinking Machines",
+    "display_name": "Thinking Machines",
+    "models": [
+      {
+        "id": "thinkingmachines/inkling-small",
+        "name": "Inkling Small",
+        "description": "Multimodal MoE reasoning model (276B total, 12B active) for text, image, and audio",
+        "family": "ling",
+        "attachment": true,
+        "reasoning": {
+          "supported": true,
+          "default": true
+        },
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-07-30",
+        "last_updated": "2026-07-30",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "audio"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "limit": {
+          "context": 1048576,
+          "output": 1048576
+        },
+        "display_name": "Inkling Small",
+        "type": "chat"
+      },
+      {
+        "id": "thinkingmachines/inkling",
+        "name": "Inkling",
+        "description": "Multimodal MoE reasoning model (975B total, 41B active) for text, image, and audio",
+        "family": "ling",
+        "attachment": true,
+        "reasoning": {
+          "supported": true,
+          "default": true
+        },
+        "tool_call": true,
+        "temperature": true,
+        "release_date": "2026-07-15",
+        "last_updated": "2026-07-15",
+        "modalities": {
+          "input": [
+            "text",
+            "image",
+            "audio"
+          ],
+          "output": [
+            "text"
+          ]
+        },
+        "open_weights": true,
+        "limit": {
+          "context": 1048576,
+          "output": 1048576
+        },
+        "display_name": "Inkling",
+        "type": "chat"
+      }
+    ]
+  }
 }

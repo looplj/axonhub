@@ -485,6 +485,16 @@ function filterProviders(data, allowedIds) {
 		}
 	}
 
+	// thinkingmachines canonical models are curated in scripts/sync/models.json
+	// (models.dev lab page); the upstream entry only carries tinker-specific
+	// model IDs, so exclude it and let mergeWithModelsJson supply it.
+	if (allowedIds.includes("thinkingmachines")) {
+		delete filtered.thinkingmachines;
+		console.log(
+			"Excluded upstream thinkingmachines provider entry (canonical models come from models.json)",
+		);
+	}
+
 	return { providers: filtered };
 }
 
@@ -512,6 +522,7 @@ function mergeWithModelsJson(data, modelsJsonPath) {
 
 	for (const [providerKey, models] of Object.entries(modelsJson)) {
 		if (data.providers[providerKey]) {
+			if (!Array.isArray(models)) continue;
 			const existingProvider = data.providers[providerKey];
 			if (!existingProvider.models) {
 				existingProvider.models = [];
@@ -525,10 +536,16 @@ function mergeWithModelsJson(data, modelsJsonPath) {
 					existingIds.add(model.id);
 				}
 			}
-		} else {
+		} else if (Array.isArray(models)) {
 			data.providers[providerKey] = {
 				id: providerKey,
 				models: models,
+			};
+		} else if (isObject(models) && Array.isArray(models.models)) {
+			data.providers[providerKey] = {
+				...models,
+				id: models.id || providerKey,
+				models: models.models,
 			};
 		}
 	}
