@@ -257,6 +257,12 @@ func (p *pipeline) preReadLlmStream(
 		return nil, err
 	}
 
+	if preReadUntilContent {
+		llmStream.Close()
+
+		return nil, llm.ErrStreamIncomplete
+	}
+
 	// Didn't find content or finish in the bounded empty-response probe - treat
 	// as non-empty and let the handler consume the stream.
 	if len(buffered) > 0 {

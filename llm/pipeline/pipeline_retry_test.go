@@ -431,7 +431,10 @@ func TestPipeline_Process_RetryPreservesOriginalStreamIntent(t *testing.T) {
 			return &httpclient.Request{}, nil
 		},
 		transformStream: func(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
-			return streams.SliceStream([]*llm.Response{{}}), nil
+			return streams.SliceStream([]*llm.Response{
+				llmContentChunk("ok"),
+				llm.DoneResponse,
+			}), nil
 		},
 	}
 
@@ -450,6 +453,58 @@ func TestPipeline_Process_RetryPreservesOriginalStreamIntent(t *testing.T) {
 	require.Equal(t, `{"ok":true}`, string(res.Response.Body))
 	require.Equal(t, 2, attempts)
 	require.Equal(t, 2, transformAttempts)
+}
+
+func TestPipeline_Process_StreamRetriesMetadataOnlyCleanEOFWithoutLeak(t *testing.T) {
+	streamFlag := true
+	inbound := &mockInbound{
+		transformRequest: func(context.Context, *httpclient.Request) (*llm.Request, error) {
+			return &llm.Request{Stream: &streamFlag}, nil
+		},
+		transformStream: transformLlmContentToEvents,
+	}
+
+	attempts := 0
+	executor := &mockExecutor{
+		doStream: func(context.Context, *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+			attempts++
+
+			return streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte("raw")}}), nil
+		},
+	}
+	outbound := &mockOutbound{
+		canRetry:        func(err error) bool { return errors.Is(err, llm.ErrStreamIncomplete) },
+		prepareForRetry: func(context.Context) error { return nil },
+		transformStream: func(context.Context, *httpclient.Request, streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
+			if attempts == 1 {
+				return streams.SliceStream([]*llm.Response{{
+					ID:      "first-attempt-metadata",
+					Object:  "chat.completion.chunk",
+					Choices: []llm.Choice{{Delta: &llm.Message{}}},
+				}}), nil
+			}
+
+			return streams.SliceStream([]*llm.Response{
+				llmContentChunk("ok"),
+				llm.DoneResponse,
+			}), nil
+		},
+	}
+	p := NewFactory(executor).Pipeline(inbound, outbound, WithRetry(0, 1, 0))
+
+	res, err := p.Process(t.Context(), &httpclient.Request{})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.Equal(t, 2, attempts)
+
+	events, err := streams.All(res.EventStream)
+	require.NoError(t, err)
+	payloads := make([]string, 0, len(events))
+	for _, event := range events {
+		payloads = append(payloads, string(event.Data))
+	}
+	require.NotContains(t, payloads, "metadata")
+	require.Equal(t, []string{"ok", "[DONE]"}, payloads)
 }
 
 func TestPipeline_Process_StreamRetriesPreCommitError(t *testing.T) {
@@ -687,6 +742,28 @@ func TestPipeline_Process_StreamFailsClosedAtPreCommitBufferLimit(t *testing.T) 
 	require.Equal(t, 0, prepareForRetryCalls, "resource-limit failures must bypass same-channel retry preparation")
 	require.Equal(t, 0, nextChannelCalls, "resource-limit failures must not switch channels")
 	require.True(t, sourceStream.closed, "resource-limit failures must close the source stream")
+}
+
+func TestPipeline_PreReadLlmStreamReturnsIncompleteForMetadataOnlyEOFWithRetry(t *testing.T) {
+	ctx := t.Context()
+	sourceStream := &llmErrorAfterStream{items: []*llm.Response{llmEmptyChunk()}}
+	p := &pipeline{maxSameChannelRetries: 1}
+
+	stream, err := p.preReadLlmStream(ctx, sourceStream, nil)
+	require.Nil(t, stream)
+	require.ErrorIs(t, err, llm.ErrStreamIncomplete)
+	require.True(t, sourceStream.closed)
+}
+
+func TestPipeline_PreReadLlmStreamReturnsIncompleteForEmptyEOFWithRetry(t *testing.T) {
+	ctx := t.Context()
+	sourceStream := &llmErrorAfterStream{}
+	p := &pipeline{maxSameChannelRetries: 1}
+
+	stream, err := p.preReadLlmStream(ctx, sourceStream, nil)
+	require.Nil(t, stream)
+	require.ErrorIs(t, err, llm.ErrStreamIncomplete)
+	require.True(t, sourceStream.closed)
 }
 
 func TestPipeline_PreReadLlmStreamFailsClosedAtPreCommitByteLimit(t *testing.T) {
