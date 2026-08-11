@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -51,6 +51,7 @@ interface ThreadsTableProps {
   onRefresh: () => void;
   showRefresh: boolean;
   autoRefreshInterval?: AutoRefreshInterval;
+  autoRefreshResumeKey?: number;
   onAutoRefreshIntervalChange?: (interval: AutoRefreshInterval) => void;
 }
 
@@ -72,6 +73,7 @@ export function ThreadsTable({
   onRefresh,
   showRefresh,
   autoRefreshInterval = null,
+  autoRefreshResumeKey = 0,
   onAutoRefreshIntervalChange,
 }: ThreadsTableProps) {
   const { t } = useTranslation();
@@ -81,7 +83,11 @@ export function ThreadsTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
-  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize);
+  const animationResetKey = useMemo(
+    () => JSON.stringify({ dateRange, threadIdFilter, statusFilter, autoRefreshResumeKey }),
+    [dateRange, threadIdFilter, statusFilter, autoRefreshResumeKey]
+  );
+  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize, animationResetKey);
 
   const table = useReactTable({
     data: displayedData,

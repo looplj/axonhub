@@ -54,11 +54,12 @@ function ThreadsContent() {
   const pageInfo = data?.pageInfo;
   const isFirstPage = !paginationArgs.after && cursorHistory.length === 0;
 
-  useInterval(
+  const autoRefreshResumeKey = useInterval(
     () => {
       refetch();
     },
-    isFirstPage ? autoRefreshInterval : null
+    isFirstPage ? autoRefreshInterval : null,
+    { refreshOnResume: true }
   );
 
   const handleNextPage = () => {
@@ -125,6 +126,7 @@ function ThreadsContent() {
         onRefresh={refetch}
         showRefresh={isFirstPage}
         autoRefreshInterval={autoRefreshInterval}
+        autoRefreshResumeKey={autoRefreshResumeKey}
         onAutoRefreshIntervalChange={setAutoRefreshInterval}
       />
     </div>

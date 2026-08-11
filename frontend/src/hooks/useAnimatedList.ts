@@ -5,20 +5,48 @@ const MAX_ITEMS = 50;
 const parsedInterval = parseInt(import.meta.env.VITE_REQUESTS_ANIMATION_INTERVAL, 10);
 const ANIMATION_INTERVAL = !isNaN(parsedInterval) && parsedInterval > 0 ? parsedInterval : 500;
 
-export function useAnimatedList<T extends { id: string; createdAt: Date | string }>(data: T[], autoRefresh: boolean, pageSize: number = MAX_ITEMS) {
-  const [displayedData, setDisplayedData] = useState<T[]>(data);
-  const queueRef = useRef<T[]>([]);
-  const prevDataLengthRef = useRef<number>(data.length);
-
+export function useAnimatedList<T extends { id: string; createdAt: Date | string }>(
+  data: T[],
+  autoRefresh: boolean,
+  pageSize: number = MAX_ITEMS,
+  resetKey?: string
+) {
   const getTimestamp = (date: Date | string): number => {
     return date instanceof Date ? date.getTime() : new Date(date).getTime();
   };
+  const dataSignature = data.map((item) => `${item.id}:${getTimestamp(item.createdAt)}`).join('|');
+
+  const [displayedData, setDisplayedData] = useState<T[]>(data);
+  const queueRef = useRef<T[]>([]);
+  const prevDataLengthRef = useRef<number>(data.length);
+  const prevResetKeyRef = useRef(resetKey);
+  const prevDataSignatureRef = useRef(dataSignature);
+  const pendingResetDataSignatureRef = useRef<string | null>(null);
 
   useEffect(() => {
+    const resetKeyChanged = resetKey !== prevResetKeyRef.current;
+    if (resetKeyChanged) {
+      prevResetKeyRef.current = resetKey;
+      pendingResetDataSignatureRef.current = prevDataSignatureRef.current;
+    }
+
+    if (pendingResetDataSignatureRef.current !== null) {
+      // The first result after a query change is a new result set, not a poll update.
+      if (dataSignature !== pendingResetDataSignatureRef.current) {
+        pendingResetDataSignatureRef.current = null;
+      }
+      setDisplayedData(data);
+      queueRef.current = [];
+      prevDataLengthRef.current = data.length;
+      prevDataSignatureRef.current = dataSignature;
+      return;
+    }
+
     if (!autoRefresh) {
       setDisplayedData(data);
       queueRef.current = [];
       prevDataLengthRef.current = data.length;
+      prevDataSignatureRef.current = dataSignature;
       return;
     }
 
@@ -27,8 +55,7 @@ export function useAnimatedList<T extends { id: string; createdAt: Date | string
       const newDataMap = new Map(data.map((r) => [r.id, r]));
 
       // Compute the minimum timestamp from incoming data to establish the time window
-      const minTimestampOfNewData =
-        data.length > 0 ? Math.min(...data.map((item) => getTimestamp(item.createdAt))) : 0;
+      const minTimestampOfNewData = data.length > 0 ? Math.min(...data.map((item) => getTimestamp(item.createdAt))) : 0;
 
       // Only flag removals when the removed item is still within the new data's time window
       // Items pushed off by pagination (older than minTimestampOfNewData) should not trigger a reset
@@ -70,7 +97,8 @@ export function useAnimatedList<T extends { id: string; createdAt: Date | string
       prevDataLengthRef.current = data.length;
       return updatedDisplayed;
     });
-  }, [data, autoRefresh]);
+    prevDataSignatureRef.current = dataSignature;
+  }, [data, autoRefresh, resetKey]);
 
   useInterval(
     () => {

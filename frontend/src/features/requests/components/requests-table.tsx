@@ -62,6 +62,7 @@ interface RequestsTableProps {
   onRefresh: () => void;
   showRefresh: boolean;
   autoRefreshInterval?: AutoRefreshInterval;
+  autoRefreshResumeKey?: number;
   onAutoRefreshIntervalChange?: (interval: AutoRefreshInterval) => void;
 }
 
@@ -106,6 +107,7 @@ export function RequestsTable({
   onRefresh,
   showRefresh,
   autoRefreshInterval = null,
+  autoRefreshResumeKey = 0,
   onAutoRefreshIntervalChange,
 }: RequestsTableProps) {
   const { t } = useTranslation();
@@ -204,7 +206,11 @@ export function RequestsTable({
     });
   }, [isMobile, visibilityReady]);
 
-  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize);
+  const animationResetKey = useMemo(
+    () => JSON.stringify({ queryWhere: queryWhere ?? null, autoRefreshResumeKey }),
+    [queryWhere, autoRefreshResumeKey]
+  );
+  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize, animationResetKey);
 
   const columnFilters = useMemo<ColumnFiltersState>(() => {
     const filters: ColumnFiltersState = [];

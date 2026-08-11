@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ColumnFiltersState,
   RowData,
@@ -52,6 +52,7 @@ interface TracesTableProps {
   onRefresh: () => void;
   showRefresh: boolean;
   autoRefreshInterval?: AutoRefreshInterval;
+  autoRefreshResumeKey?: number;
   onAutoRefreshIntervalChange?: (interval: AutoRefreshInterval) => void;
 }
 
@@ -73,6 +74,7 @@ export function TracesTable({
   onRefresh,
   showRefresh,
   autoRefreshInterval = null,
+  autoRefreshResumeKey = 0,
   onAutoRefreshIntervalChange,
 }: TracesTableProps) {
   const { t } = useTranslation();
@@ -82,7 +84,11 @@ export function TracesTable({
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
 
-  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize);
+  const animationResetKey = useMemo(
+    () => JSON.stringify({ dateRange, traceIdFilter, statusFilter, autoRefreshResumeKey }),
+    [dateRange, traceIdFilter, statusFilter, autoRefreshResumeKey]
+  );
+  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize, animationResetKey);
 
   const table = useReactTable({
     data: displayedData,

@@ -110,7 +110,8 @@ export default function TraceDetailPage() {
     () => {
       refetch();
     },
-    autoRefreshInterval
+    autoRefreshInterval,
+    { refreshOnResume: true }
   );
 
   const handleSpanSelect = (parentTrace: Segment, span: Span, type: 'request' | 'response') => {
