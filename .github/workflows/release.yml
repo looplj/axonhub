@@ -40,6 +40,9 @@ jobs:
           go-version: stable
           cache: true
 
+      - name: Verify production dependency graphs
+        run: ./scripts/verify-go-sse-dependency.sh
+
       - name: Update VERSION file
         if: ${{ !contains(github.ref_name, 'beta') && !contains(github.ref_name, 'rc') }}
         run: |
