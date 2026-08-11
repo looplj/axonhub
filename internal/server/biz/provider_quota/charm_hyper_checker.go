@@ -17,7 +17,7 @@ const charmHyperBaseline = 100.0
 
 // CharmHyperCreditsResponse represents the response from GET /v1/credits.
 type CharmHyperCreditsResponse struct {
-	Balance float64 `json:"balance"`
+	Balance *float64 `json:"balance"`
 }
 
 // CharmHyperQuotaChecker checks quota for Charm Hyper channels.
@@ -73,13 +73,16 @@ func (c *CharmHyperQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return QuotaData{}, fmt.Errorf("parsing Charm Hyper quota response: %w", err)
 	}
+	if resp.Balance == nil {
+		return QuotaData{}, fmt.Errorf("Charm Hyper quota response missing balance field")
+	}
 
-	status, ready, usageRatio := c.computeStatus(resp.Balance)
+	status, ready, usageRatio := c.computeStatus(*resp.Balance)
 
 	return QuotaData{
 		Status:       status,
 		ProviderType: "charm_hyper",
-		RawData:      map[string]any{"balance": resp.Balance},
+		RawData:      map[string]any{"balance": *resp.Balance},
 		NextResetAt:  nil,
 		Ready:        ready,
 		Limits: []QuotaLimitStatus{

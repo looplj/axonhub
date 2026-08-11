@@ -130,6 +130,46 @@ func TestCharmHyper_CheckQuota_MalformedJSON(t *testing.T) {
 	require.Contains(t, err.Error(), "parsing Charm Hyper quota response")
 }
 
+func TestCharmHyper_CheckQuota_MissingBalanceField(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewCharmHyperQuotaChecker(httpClient)
+
+	_, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{APIKey: "test-api-key"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "missing balance field")
+}
+
+func TestCharmHyper_CheckQuota_NullBalance(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"balance":null}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewCharmHyperQuotaChecker(httpClient)
+
+	_, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{APIKey: "test-api-key"},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "missing balance field")
+}
+
 func TestCharmHyper_CheckQuota_HTTPError(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
