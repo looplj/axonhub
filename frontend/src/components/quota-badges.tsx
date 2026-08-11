@@ -178,6 +178,12 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     }
   } else if (isOpenaiType(channel.type) && channel.providerType === 'apertis') {
     percentage = getApertisPercentage(channel.quotaStatus.quotaData as ProviderApertisQuotaData | undefined);
+  } else if (isOpenaiType(channel.type) && channel.providerType === 'charm_hyper') {
+    const qd = channel.quotaStatus.quotaData;
+    const balance = qd?.raw_data?.balance;
+    if (typeof balance === 'number') {
+      percentage = Math.max(0, Math.min(100, (1.0 - balance / 100) * 100));
+    }
   }
   return percentage;
 }
