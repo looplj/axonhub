@@ -434,6 +434,7 @@
   "system.quota.collection.providers.kimi_code": "Kimi Code",
   "system.quota.collection.providers.minimax": "MiniMax",
   "system.quota.collection.providers.zhipu": "BigModel",
+  "system.quota.collection.providers.charm_hyper": "Charm Hyper",
   "system.quota.title": "Quota Enforcement",
   "system.quota.description": "Configure how AxonHub handles channels that have exhausted their provider quota.",
   "system.quota.enabled.label": "Enable Quota Enforcement",

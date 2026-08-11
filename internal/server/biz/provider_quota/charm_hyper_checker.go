@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -14,6 +15,9 @@ import (
 
 // CharmHyper default baseline for status thresholds.
 const charmHyperBaseline = 100.0
+
+// charmHyperWarningThreshold is the credit balance below which a warning status is shown.
+const charmHyperWarningThreshold = 20
 
 // CharmHyperCreditsResponse represents the response from GET /v1/credits.
 type CharmHyperCreditsResponse struct {
@@ -67,7 +71,6 @@ func (c *CharmHyperQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 	return c.parseResponse(resp.Body)
 }
 
-// parseResponse parses the API response body into QuotaData.
 func (c *CharmHyperQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	var resp CharmHyperCreditsResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
@@ -91,7 +94,6 @@ func (c *CharmHyperQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	}, nil
 }
 
-// computeStatus determines status, ready, and usage ratio from the balance.
 func (c *CharmHyperQuotaChecker) computeStatus(balance float64) (status string, ready bool, usageRatio float64) {
 	usageRatio = 1.0 - balance/charmHyperBaseline
 	if usageRatio < 0 {
@@ -101,7 +103,7 @@ func (c *CharmHyperQuotaChecker) computeStatus(balance float64) (status string, 
 	if balance == 0 {
 		return "exhausted", false, 1.0
 	}
-	if balance <= 20 {
+	if balance <= charmHyperWarningThreshold {
 		return "warning", true, usageRatio
 	}
 	return "available", true, usageRatio
@@ -115,19 +117,19 @@ func (c *CharmHyperQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	return DetectProviderFromURL(ch.BaseURL) == "charm_hyper"
 }
 
-// extractAPIKey extracts the API key from channel credentials.
 func (c *CharmHyperQuotaChecker) extractAPIKey(ch *ent.Channel) string {
-	if ch.Credentials.APIKey != "" {
-		return ch.Credentials.APIKey
+	apiKey := strings.TrimSpace(ch.Credentials.APIKey)
+	if apiKey != "" {
+		return apiKey
 	}
 	if len(ch.Credentials.APIKeys) > 0 {
-		return ch.Credentials.APIKeys[0]
+		return strings.TrimSpace(ch.Credentials.APIKeys[0])
 	}
 	return ""
 }
 
-// buildCharmHyperQuotaURL builds the full quota URL from the base URL.
 func buildCharmHyperQuotaURL(baseURL string) string {
+	baseURL = strings.TrimSpace(baseURL)
 	parsed, err := url.Parse(baseURL)
 	if err != nil {
 		return "https://hyper.charm.land/v1/credits"
