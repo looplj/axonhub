@@ -1139,12 +1139,12 @@ func TestInboundTransformer_ThinkingWithOtherFields(t *testing.T) {
 func TestOutboundConvert_RedactedThinkingToAnthropic(t *testing.T) {
 	const (
 		thinking     = "Let me analyze this step by step..."
-		signature    = "EqQAAABBBCCCDDDDEEEEFFFFGGGGHHHHIIIIJJJJKKKKLLLLMMMMNNNNOOOOPPPPQQQQRRRRSSSSTTTTUUUUVVVVWWWWXXXXYYYYZZZZaaaabbbbccccddddeeeeffffgggghhhhiiiijjjjkkkkllllmmmmnnnnooooppppqqqqrrrrssssttttuuuuvvvvwwwwxxxxyyyyzzzz0000111122223333444455556666777788889999"
+		signature    = "Eq0CCokBCBAYAipAmkim+S4ApjNpcVSh82hYj016e9aYlvNfdj8ZaVbASj64fkCHtgDxjvumIhTpVr6WsoYoGyBtZOuoFPg7JUV7vjIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRjYTEwYTFhOS03ZWFmLTRiZDUtYWFkMy1iY2MyY2Q1MWQ1MDgSDETIROQHvz1/jQbeLxIMwjZzeFruDsqTqYxwGgy4ekwdZi3oeDEsWGsiMD3w0HGjBb28dNuTqZE1X2zCSndpSwOWYwRhbrXFV8RIg6jFiS+MSo6Gt0QUFWKh4CpD8q8wDmAKZYQ45z+1rFBwX7SWdXo02qQNUkGIwm1fTFf/GIRTRwIUTNdG35tcDHWh6pJ/if5LjcPdJTMiiw+bFgPTCBgB"
 		redactedData = "EmwKAhgBEgy3va3pzix/LafPsn4aDFIT2Xlxh0L5L8rLVyIwxtE3rAFBa8cr3qpPkNRj2YfWXGmKDxH4mPnZ5sQ7vB9URj2pLmN3kF8/dW5hR7xJ0aP1oLs9yTcMnKVf2wRpEGjH9XZaBt4UvDcPrQ..."
 		textContent  = "Based on my analysis..."
 	)
 
-	// Signatures in unified format are encoded with the Anthropic prefix + channel identity
+	// Signatures in unified format are Base64 encoded for transport.
 	encodedSignature := *shared.EncodeAnthropicSignature(lo.ToPtr(signature))
 
 	chatReq := &llm.Request{

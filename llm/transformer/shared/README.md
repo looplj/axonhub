@@ -54,7 +54,7 @@ everything else (including `unknown`) is dropped.
 | Pattern | Provider |
 |---------|----------|
 | `gAAAA*` / `gAAA*` prefix | OpenAI |
-| `EqQ*` / `Eqo*` / `Eqr*` prefix | Anthropic |
+| standard base64 whose decoded bytes contain an Anthropic model marker such as `claude-sonnet-5` | Anthropic |
 | standard base64 with protobuf-like decoded bytes | Gemini |
 | anything else | `unknown` (filtered by all `Decode...` helpers) |
 

@@ -7,7 +7,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const realAnthropicSignature = "Eq0CCokBCBAYAipAmkim+S4ApjNpcVSh82hYj016e9aYlvNfdj8ZaVbASj64fkCHtgDxjvumIhTpVr6WsoYoGyBtZOuoFPg7JUV7vjIPY2xhdWRlLXNvbm5ldC01OABCCHRoaW5raW5nWiRjYTEwYTFhOS03ZWFmLTRiZDUtYWFkMy1iY2MyY2Q1MWQ1MDgSDETIROQHvz1/jQbeLxIMwjZzeFruDsqTqYxwGgy4ekwdZi3oeDEsWGsiMD3w0HGjBb28dNuTqZE1X2zCSndpSwOWYwRhbrXFV8RIg6jFiS+MSo6Gt0QUFWKh4CpD8q8wDmAKZYQ45z+1rFBwX7SWdXo02qQNUkGIwm1fTFf/GIRTRwIUTNdG35tcDHWh6pJ/if5LjcPdJTMiiw+bFgPTCBgB"
+
 func TestGuessSignatureProvider(t *testing.T) {
+	// Mirrors a current Anthropic signature: the encoded value starts with
+	// "Eq0C" and its opaque decoded payload contains a Claude model name.
+	anthropicBinarySignature := make([]byte, 306)
+	copy(anthropicBinarySignature, []byte{0x12, 0xad, 0x02, 0x0a, 0x89, 0x01})
+	copy(anthropicBinarySignature[6:], "claude-sonnet-5 thinking ca10a1a9-7eaf-4bd5-aad3-bcc2cd51d508")
+
 	tests := []struct {
 		name             string
 		raw              string
@@ -27,20 +35,32 @@ func TestGuessSignatureProvider(t *testing.T) {
 			expectReasons:    true,
 		},
 		{
-			name:             "Anthropic EqQ prefix",
+			name:             "EqQ prefix without decoded model marker",
 			raw:              "EqQBCAEDEgQIAhAEGAAgAigBMOzOAg==",
-			expectedProvider: ProviderAnthropic,
+			expectedProvider: ProviderUnknown,
 			expectReasons:    true,
 		},
 		{
-			name:             "Anthropic Eqo prefix",
+			name:             "Eqo prefix without decoded model marker",
 			raw:              "EqoBxxxxxxxx",
+			expectedProvider: ProviderUnknown,
+			expectReasons:    true,
+		},
+		{
+			name:             "Eqr prefix without decoded model marker",
+			raw:              "EqrBxxxxxxxx",
+			expectedProvider: ProviderUnknown,
+			expectReasons:    true,
+		},
+		{
+			name:             "Anthropic decoded payload with Claude model and Eq0 prefix",
+			raw:              base64.StdEncoding.EncodeToString(anthropicBinarySignature),
 			expectedProvider: ProviderAnthropic,
 			expectReasons:    true,
 		},
 		{
-			name:             "Anthropic Eqr prefix",
-			raw:              "EqrBxxxxxxxx",
+			name:             "real Anthropic claude-sonnet-5 signature",
+			raw:              realAnthropicSignature,
 			expectedProvider: ProviderAnthropic,
 			expectReasons:    true,
 		},
@@ -83,6 +103,41 @@ func TestGuessSignatureProvider(t *testing.T) {
 			if tt.expectReasons {
 				require.NotEmpty(t, result.Reasons)
 			}
+		})
+	}
+}
+
+func TestContainsAnthropicModel(t *testing.T) {
+	tests := []struct {
+		name     string
+		buf      []byte
+		expected bool
+	}{
+		{
+			name:     "Claude model marker in binary payload",
+			buf:      []byte{0x12, 0x03, 0x00, 'C', 'l', 'a', 'u', 'd', 'e'},
+			expected: true,
+		},
+		{
+			name:     "Anthropic marker in binary payload",
+			buf:      []byte{0x00, 0x01, 'a', 'n', 't', 'h', 'r', 'o', 'p', 'i', 'c'},
+			expected: true,
+		},
+		{
+			name:     "generic protobuf without model marker",
+			buf:      []byte{0x0a, 0x02, 0x08, 0x01},
+			expected: false,
+		},
+		{
+			name:     "case insensitive marker",
+			buf:      []byte("CLAUDE-OPUS"),
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, containsAnthropicModel(tt.buf))
 		})
 	}
 }
@@ -282,9 +337,9 @@ func TestGuessSignatureProviderEdgeCases(t *testing.T) {
 			expectedProvider: ProviderOpenAI,
 		},
 		{
-			name:             "Anthropic prefix exact match EqQ",
+			name:             "EqQ prefix exact match is unknown",
 			raw:              "EqQ",
-			expectedProvider: ProviderAnthropic,
+			expectedProvider: ProviderUnknown,
 		},
 		{
 			name:             "Gemini empty protobuf",
