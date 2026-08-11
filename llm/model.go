@@ -18,6 +18,11 @@ var (
 	DoneResponse = &Response{
 		Object: "[DONE]",
 	}
+
+	// ErrStreamIncomplete means a streaming response ended without a protocol
+	// terminal event. Pipelines may retry it only before meaningful output is
+	// committed to the caller.
+	ErrStreamIncomplete = errors.New("stream ended without terminal event")
 )
 
 // Request is the unified llm request model for AxonHub, to keep compatibility with major app and framework.

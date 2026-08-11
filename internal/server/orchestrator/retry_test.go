@@ -371,6 +371,12 @@ func TestIsRetryableErrorForChannel(t *testing.T) {
 			expected: true,
 		},
 		{
+			name:     "wrapped incomplete Responses stream is retryable without channel settings",
+			err:      fmt.Errorf("failed to stream request: %w", llm.ErrStreamIncomplete),
+			channel:  nil,
+			expected: true,
+		},
+		{
 			name:     "wrapped upstream EOF is retryable without channel settings",
 			err:      fmt.Errorf("failed to stream request: %w", io.EOF),
 			channel:  nil,

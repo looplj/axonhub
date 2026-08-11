@@ -54,7 +54,9 @@ func isRetryableTransportError(err error) bool {
 		return false
 	}
 
-	if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
+	if errors.Is(err, io.EOF) ||
+		errors.Is(err, io.ErrUnexpectedEOF) ||
+		errors.Is(err, llm.ErrStreamIncomplete) {
 		return true
 	}
 

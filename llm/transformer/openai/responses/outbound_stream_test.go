@@ -121,6 +121,45 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformStream_IncompleteResponseDoesNotEmitDone(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		events []*httpclient.StreamEvent
+	}{
+		{name: "empty upstream stream"},
+		{
+			name: "with response ID",
+			events: []*httpclient.StreamEvent{
+				{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_incomplete","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+			},
+		},
+		{
+			name: "with empty response ID",
+			events: []*httpclient.StreamEvent{
+				{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(tt.events))
+			require.NoError(t, err)
+
+			var responses []*llm.Response
+			for stream.Next() {
+				responses = append(responses, stream.Current())
+			}
+
+			require.ErrorIs(t, stream.Err(), ErrStreamIncomplete)
+			require.NotContains(t, responses, llm.DoneResponse)
+		})
+	}
+}
+
 func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
