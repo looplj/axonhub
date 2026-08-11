@@ -2,7 +2,7 @@ package pipeline
 
 import (
 	"context"
-
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -31,6 +31,7 @@ const (
 const (
 	maxPreReadEvents           = 3
 	maxPreCommitBufferedEvents = 1024
+	maxPreCommitBufferedBytes  = 8 * 1024 * 1024
 )
 
 func newFirstEventTimeoutGuard(ctx context.Context, timeout time.Duration) (context.Context, *firstEventTimeoutGuard) {
@@ -181,6 +182,7 @@ func (p *pipeline) preReadLlmStream(
 	probeLimit := maxPreReadEvents
 
 	var buffered []*llm.Response
+	bufferedBytes := 0
 
 	for i := 0; ; i++ {
 		hasNext, err := nextLlmStreamEvent(ctx, llmStream, i == 0, firstEventGuard)
@@ -194,16 +196,27 @@ func (p *pipeline) preReadLlmStream(
 		}
 
 		event := llmStream.Current()
+		if hasResponseContent(event) {
+			// Meaningful output commits the attempt immediately. Do not apply the
+			// private metadata budget to legitimate large media/audio payloads.
+			buffered = append(buffered, event)
+
+			return streams.PrependStream(llmStream, buffered...), nil
+		}
+		if preReadUntilContent {
+			eventBytes, err := json.Marshal(event)
+			if err != nil || len(eventBytes) > maxPreCommitBufferedBytes-bufferedBytes {
+				llmStream.Close()
+
+				return nil, ErrPreCommitBufferExceeded
+			}
+			bufferedBytes += len(eventBytes)
+		}
 		buffered = append(buffered, event)
 		if preReadUntilContent && len(buffered) > maxPreCommitBufferedEvents {
 			llmStream.Close()
 
 			return nil, ErrPreCommitBufferExceeded
-		}
-
-		if hasResponseContent(event) {
-			// Has content, not empty - prepend buffered events back
-			return streams.PrependStream(llmStream, buffered...), nil
 		}
 
 		if !preReadUntilContent && !p.emptyResponseDetection {

@@ -689,6 +689,47 @@ func TestPipeline_Process_StreamFailsClosedAtPreCommitBufferLimit(t *testing.T) 
 	require.True(t, sourceStream.closed, "resource-limit failures must close the source stream")
 }
 
+func TestPipeline_PreReadLlmStreamFailsClosedAtPreCommitByteLimit(t *testing.T) {
+	ctx := context.Background()
+	const metadataEvents = 9
+	const metadataBytesPerEvent = 1024 * 1024
+
+	sourceEvents := make([]*llm.Response, metadataEvents)
+	for i := range sourceEvents {
+		sourceEvents[i] = &llm.Response{
+			ID:     strings.Repeat("m", metadataBytesPerEvent),
+			Object: "chat.completion.chunk",
+			Choices: []llm.Choice{{
+				Delta: &llm.Message{},
+			}},
+		}
+	}
+	sourceStream := &llmErrorAfterStream{items: sourceEvents}
+	p := &pipeline{maxSameChannelRetries: 1}
+
+	stream, err := p.preReadLlmStream(ctx, sourceStream, nil)
+	require.Nil(t, stream)
+	require.ErrorIs(t, err, ErrPreCommitBufferExceeded)
+	require.True(t, sourceStream.closed, "byte-limit failures must close the source stream")
+}
+
+func TestPipeline_PreReadLlmStreamAllowsLargeFirstMeaningfulEvent(t *testing.T) {
+	ctx := context.Background()
+	largeContent := strings.Repeat("x", maxPreCommitBufferedBytes+1)
+	sourceStream := &llmErrorAfterStream{items: []*llm.Response{
+		llmContentChunk(largeContent),
+		llm.DoneResponse,
+	}}
+	p := &pipeline{maxSameChannelRetries: 1}
+
+	stream, err := p.preReadLlmStream(ctx, sourceStream, nil)
+	require.NoError(t, err)
+	require.NotNil(t, stream)
+	require.False(t, sourceStream.closed)
+	require.True(t, stream.Next())
+	require.Equal(t, largeContent, *stream.Current().Choices[0].Delta.Content.Content)
+}
+
 func TestPipeline_Process_StreamEventTooLargeBypassesAllRetries(t *testing.T) {
 	ctx := context.Background()
 	streamFlag := true

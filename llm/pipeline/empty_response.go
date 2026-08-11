@@ -14,7 +14,8 @@ var ErrEmptyResponse = errors.New("empty response detected")
 var ErrStreamFirstEventTimeout = errors.New("stream first event timeout")
 
 // ErrPreCommitBufferExceeded indicates that a retryable stream produced too
-// many non-meaningful events before reaching a safe commitment boundary.
+// many or too many bytes of non-meaningful events before reaching a safe
+// commitment boundary.
 // The attempt is failed without exposing its buffered events to the caller.
 var ErrPreCommitBufferExceeded = errors.New("pre-commit stream buffer limit exceeded")
 

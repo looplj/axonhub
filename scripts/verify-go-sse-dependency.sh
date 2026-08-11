@@ -37,12 +37,21 @@ if [ -n "$binary" ]; then
 
   build_info=$(go version -m "$binary")
   tab=$(printf '\t')
-  if ! printf '%s\n' "$build_info" | grep -F "dep${tab}$module${tab}v0.11.0" >/dev/null; then
-    printf 'production binary does not declare %s\n%s\n' "$module" "$build_info" >&2
-    exit 1
-  fi
-  if ! printf '%s\n' "$build_info" | grep -F "=>${tab}$expected_path${tab}$expected_version" >/dev/null; then
-    printf 'production binary has wrong go-sse replacement; want %s\n%s\n' "$expected" "$build_info" >&2
+  if ! printf '%s\n' "$build_info" | awk -F "$tab" -v module="$module" -v version="v0.11.0" -v replacement_path="$expected_path" -v replacement_version="$expected_version" '
+    $2 == "dep" && $3 == module && $4 == version {
+      if (getline next_line <= 0) {
+        exit 1
+      }
+      field_count = split(next_line, fields, FS)
+      if (field_count < 4 || fields[2] != "=>" || fields[3] != replacement_path || fields[4] != replacement_version) {
+        exit 1
+      }
+      found = 1
+      exit 0
+    }
+    END { if (!found) exit 1 }
+  '; then
+    printf 'production binary has wrong or unassociated go-sse replacement; want %s directly after %s@v0.11.0\n%s\n' "$expected" "$module" "$build_info" >&2
     exit 1
   fi
   printf 'verified production binary dependency: %s -> %s\n' "$binary" "$expected"
