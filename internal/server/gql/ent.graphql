@@ -3758,6 +3758,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   kimi_code
   minimax
   zhipu
+  charm_hyper
 }
 """
 ProviderQuotaStatusStatus is enum for the field status

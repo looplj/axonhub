@@ -364,6 +364,7 @@ func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerKimiCodeSupport()
 	svc.registerMinimaxSupport()
 	svc.registerZhipuSupport()
+	svc.registerCharmHyperSupport()
 }
 
 func (svc *ProviderQuotaService) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
@@ -426,6 +427,10 @@ func (svc *ProviderQuotaService) registerMinimaxSupport() {
 
 func (svc *ProviderQuotaService) registerZhipuSupport() {
 	svc.checkers["zhipu"] = provider_quota.NewZhipuQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerCharmHyperSupport() {
+	svc.checkers["charm_hyper"] = provider_quota.NewCharmHyperQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) intervalToCronExpr(interval time.Duration) string {
