@@ -1243,6 +1243,24 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 	return xjson.EmptyJSONRawMessage, nil
 }
 
+func isFinishedStreamStatus(status request.Status) bool {
+	switch status {
+	case request.StatusCompleted, request.StatusFailed, request.StatusCanceled:
+		return true
+	default:
+		return false
+	}
+}
+
+func isFinishedExecutionStatus(status requestexecution.Status) bool {
+	switch status {
+	case requestexecution.StatusCompleted, requestexecution.StatusFailed, requestexecution.StatusCanceled:
+		return true
+	default:
+		return false
+	}
+}
+
 // LoadResponseChunks returns the request response chunks, loading from external storage when necessary.
 func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Request) ([]objects.JSONRawMessage, error) {
 	if req == nil {
@@ -1253,13 +1271,19 @@ func (s *RequestService) LoadResponseChunks(ctx context.Context, req *ent.Reques
 		chunks := s.LiveStreamRegistry.GetRequestChunks(req.ID)
 		return chunks, nil
 	}
-	// Only load response chunks if request is completed and streaming.
-	if !req.Stream || req.Status != request.StatusCompleted {
+	// Load persisted chunks for finished streams, including failed/canceled ones
+	// that still buffered partial upstream output for debugging.
+	if !req.Stream || !isFinishedStreamStatus(req.Status) {
 		return []objects.JSONRawMessage{}, nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, req.DataStorageID)
 	if err != nil {
+		// No external storage configured (common in tests / DB-only installs).
+		// Fall back to whatever was persisted on the request row.
+		if len(req.ResponseChunks) > 0 {
+			return req.ResponseChunks, nil
+		}
 		log.Warn(ctx, "Failed to get data storage for request response chunks", log.Cause(err), log.Int("request_id", req.ID))
 		return []objects.JSONRawMessage{}, nil
 	}
@@ -1374,13 +1398,19 @@ func (s *RequestService) LoadRequestExecutionResponseChunks(ctx context.Context,
 		chunks := s.LiveStreamRegistry.GetExecutionChunks(exec.ID)
 		return chunks, nil
 	}
-	// Only load response body if execution is completed
-	if !exec.Stream || exec.Status != requestexecution.StatusCompleted {
+	// Load persisted chunks for finished streams, including failed/canceled ones
+	// that still buffered partial upstream output for debugging.
+	if !exec.Stream || !isFinishedExecutionStatus(exec.Status) {
 		return []objects.JSONRawMessage{}, nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, exec.DataStorageID)
 	if err != nil {
+		// No external storage configured (common in tests / DB-only installs).
+		// Fall back to whatever was persisted on the execution row.
+		if len(exec.ResponseChunks) > 0 {
+			return exec.ResponseChunks, nil
+		}
 		log.Warn(ctx, "Failed to get data storage for execution response chunks", log.Cause(err), log.Int("execution_id", exec.ID))
 		return []objects.JSONRawMessage{}, nil
 	}

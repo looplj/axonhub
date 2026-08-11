@@ -800,7 +800,12 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 		ctx := ent.NewContext(ctx, client)
 		project := createTestProject(t, ctx, client)
 		ch := createTestChannel(t, ctx, client)
-		_, requestService, _, usageLogService := setupTestServices(t, client)
+		_, requestService, systemService, usageLogService := setupTestServices(t, client)
+		require.NoError(t, systemService.SetStoragePolicy(ctx, &biz.StoragePolicy{
+			StoreChunks:       true,
+			StoreRequestBody:  true,
+			StoreResponseBody: true,
+		}))
 
 		req, err := client.Request.Create().
 			SetProjectID(project.ID).
@@ -823,8 +828,9 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 			Save(ctx)
 		require.NoError(t, err)
 
+		partialEvent := &httpclient.StreamEvent{Type: "response.in_progress", Data: []byte(`{"type":"response.in_progress"}`)}
 		stream := &sliceEventStream{
-			events: []*httpclient.StreamEvent{{Type: "response.in_progress", Data: []byte(`{"type":"response.in_progress"}`)}},
+			events: []*httpclient.StreamEvent{partialEvent},
 		}
 		transformer := &mockTransformer{
 			apiFormat:          llm.APIFormatOpenAIResponse,
@@ -844,6 +850,13 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 		require.Equal(t, requestexecution.StatusFailed, dbExec.Status)
 		require.Contains(t, dbExec.ErrorMessage, "stream ended without terminal event or completed response")
 		require.False(t, state.StreamCompleted)
+
+		storeChunks, err := systemService.StoreChunks(ctx)
+		require.NoError(t, err)
+		require.True(t, storeChunks, "store_chunks should be enabled for this test")
+
+		// Incomplete streams must still persist buffered chunks for debugging.
+		require.Len(t, dbExec.ResponseChunks, 1, "failed execution should keep response_chunks in DB")
 	})
 
 	t.Run("aggregated completed response without terminal event is completed", func(t *testing.T) {

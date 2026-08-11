@@ -167,9 +167,10 @@ func (ts *InboundPersistentStream) Close() error {
 	// regardless of what chunks we have. Stream errors indicate the upstream response
 	// was incomplete or corrupted.
 	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) {
-		if ts.request != nil {
-			persistCtx := context.WithoutCancel(ctx)
+		persistCtx := context.WithoutCancel(ctx)
+		ts.persistFailureChunks(persistCtx)
 
+		if ts.request != nil {
 			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, streamErr); err != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
 			}
@@ -196,9 +197,10 @@ func (ts *InboundPersistentStream) Close() error {
 	// Check if context was canceled (client disconnected before [DONE]).
 	// Skip the error path if we determined the stream actually completed successfully above.
 	if (ctxErr != nil || streamErr != nil) && !ts.state.StreamCompleted {
-		if ts.request != nil {
-			persistCtx := context.WithoutCancel(ctx)
+		persistCtx := context.WithoutCancel(ctx)
+		ts.persistFailureChunks(persistCtx)
 
+		if ts.request != nil {
 			errToReport := ctxErr
 			if errToReport == nil {
 				errToReport = streamErr
@@ -219,9 +221,11 @@ func (ts *InboundPersistentStream) Close() error {
 	if !ts.state.StreamCompleted {
 		log.Debug(ctx, "Stream ended without terminal event or completed response, treating as incomplete")
 
-		if ts.request != nil {
-			persistCtx := context.WithoutCancel(ctx)
+		persistCtx := context.WithoutCancel(ctx)
+		// Persist partial chunks for debugging; do not mark the request completed.
+		ts.persistFailureChunks(persistCtx)
 
+		if ts.request != nil {
 			errToReport := ErrStreamIncomplete
 
 			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
@@ -263,6 +267,19 @@ func (ts *InboundPersistentStream) persistResponseChunks(ctx context.Context) {
 	}
 
 	ts._persistResponse(persistCtx, responseBody, meta)
+}
+
+// persistFailureChunks stores buffered SSE chunks for a failed/incomplete stream
+// without marking the request completed. Used so truncated upstream responses remain
+// inspectable when store_chunks is enabled.
+func (ts *InboundPersistentStream) persistFailureChunks(ctx context.Context) {
+	if ts.request == nil || len(ts.responseChunks) == 0 {
+		return
+	}
+
+	if err := ts.requestService.SaveRequestChunks(ctx, ts.request.ID, ts.responseChunks); err != nil {
+		log.Warn(ctx, "Failed to save request chunks after stream failure", log.Cause(err))
+	}
 }
 
 // _persistResponse performs the actual persistence with pre-aggregated data.
