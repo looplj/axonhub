@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import type { DateTimeRangeValue } from '@/utils/date-range';
+import type { AutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { useIsMobile, MOBILE_BREAKPOINT } from '@/hooks/use-mobile';
 import { useAnimatedList } from '@/hooks/useAnimatedList';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -60,8 +61,9 @@ interface RequestsTableProps {
   onViewDetail: (requestId: string) => void;
   onRefresh: () => void;
   showRefresh: boolean;
-  autoRefresh?: boolean;
-  onAutoRefreshChange?: (enabled: boolean) => void;
+  autoRefreshInterval?: AutoRefreshInterval;
+  autoRefreshResumeKey?: number;
+  onAutoRefreshIntervalChange?: (interval: AutoRefreshInterval) => void;
 }
 
 export interface RequestTableFilters {
@@ -104,8 +106,9 @@ export function RequestsTable({
   onViewDetail,
   onRefresh,
   showRefresh,
-  autoRefresh = false,
-  onAutoRefreshChange,
+  autoRefreshInterval = null,
+  autoRefreshResumeKey = 0,
+  onAutoRefreshIntervalChange,
 }: RequestsTableProps) {
   const { t } = useTranslation();
 
@@ -203,7 +206,11 @@ export function RequestsTable({
     });
   }, [isMobile, visibilityReady]);
 
-  const displayedData = useAnimatedList(data, autoRefresh, pageSize);
+  const animationResetKey = useMemo(
+    () => JSON.stringify({ queryWhere: queryWhere ?? null, autoRefreshResumeKey }),
+    [queryWhere, autoRefreshResumeKey]
+  );
+  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize, animationResetKey);
 
   const columnFilters = useMemo<ColumnFiltersState>(() => {
     const filters: ColumnFiltersState = [];
@@ -286,8 +293,8 @@ export function RequestsTable({
         onResetFilters={onResetFilters}
         onRefresh={onRefresh}
         showRefresh={showRefresh}
-        autoRefresh={autoRefresh}
-        onAutoRefreshChange={onAutoRefreshChange}
+        autoRefreshInterval={autoRefreshInterval}
+        onAutoRefreshIntervalChange={onAutoRefreshIntervalChange}
       />
       <div className='shadow-soft relative mt-2 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)] sm:mt-4'>
         <div className='min-w-max'>

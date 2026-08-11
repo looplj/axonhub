@@ -2,18 +2,19 @@ import { useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { zhCN, enUS } from 'date-fns/locale';
-import { ArrowLeft, FileText, Activity, RefreshCw, List, GitBranch, Waypoints, Maximize2, X, Wrench, MessageSquare, ChevronDown } from 'lucide-react';
+import { ArrowLeft, FileText, Activity, List, GitBranch, Waypoints, Maximize2, X, Wrench, MessageSquare, ChevronDown } from 'lucide-react';
 import { IconArchive, IconPin, IconRotate } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn, extractNumberID } from '@/lib/utils';
+import { useAutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
+import { AutoRefreshControl } from '@/components/auto-refresh-control';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,7 +43,7 @@ export default function TraceDetailPage() {
   const [selectedTrace, setSelectedTrace] = useState<Segment | null>(null);
   const [selectedSpan, setSelectedSpan] = useState<Span | null>(null);
   const [selectedSpanType, setSelectedSpanType] = useState<'request' | 'response' | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useAutoRefreshInterval('trace-detail-auto-refresh-interval-ms');
   const [viewMode, setViewMode] = useState<'flat' | 'flow' | 'tree'>('flat');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
@@ -109,7 +110,8 @@ export default function TraceDetailPage() {
     () => {
       refetch();
     },
-    autoRefresh ? 30000 : null
+    autoRefreshInterval,
+    { refreshOnResume: true }
   );
 
   const handleSpanSelect = (parentTrace: Segment, span: Span, type: 'request' | 'response') => {
@@ -193,16 +195,12 @@ export default function TraceDetailPage() {
               </div>
             </div>
             <div className='flex items-center gap-1 sm:gap-2 shrink-0'>
-              <div className='hidden sm:flex items-center gap-2'>
-                <Switch checked={autoRefresh} onCheckedChange={setAutoRefresh} id='auto-refresh-switch' />
-                <label htmlFor='auto-refresh-switch' className='text-muted-foreground cursor-pointer text-sm whitespace-nowrap'>
-                  {t('common.autoRefresh')}
-                </label>
-              </div>
-              <Button variant='outline' size='sm' onClick={() => refetch()} disabled={isLoading} className='px-2 sm:px-3'>
-                <RefreshCw className={`h-4 w-4 ${isLoading || autoRefresh ? 'animate-spin' : ''}`} />
-                <span className='hidden sm:inline ml-2'>{t('common.refresh')}</span>
-              </Button>
+              <AutoRefreshControl
+                interval={autoRefreshInterval}
+                onIntervalChange={setAutoRefreshInterval}
+                onRefresh={refetch}
+                disabled={isLoading}
+              />
               {(() => {
                 const status = trace.status ?? 'active';
                 if (status === 'active') {
