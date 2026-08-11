@@ -209,3 +209,87 @@ func TestDefaultSelector_Select_DeduplicateAcrossConditionalAssociationsByActual
 	require.Len(t, result[0].Models, 1)
 	require.Equal(t, "gpt-4", result[0].Models[0].ActualModel)
 }
+
+func TestDefaultSelector_Select_ConditionalMismatchKeepsDuplicateFallback(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Conditional Fallback Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelService := newTestChannelServiceForChannels(client)
+	modelService := newTestModelService(client)
+	systemService := newTestSystemService(client)
+	selector := NewDefaultSelector(channelService, modelService, systemService)
+
+	model, err := client.Model.Create().
+		SetModelID("conditional-fallback-model").
+		SetName("Conditional Fallback Model").
+		SetDeveloper("openai").
+		SetIcon("openai").
+		SetGroup("test").
+		SetModelCard(&objects.ModelCard{}).
+		SetStatus("enabled").
+		SetSettings(&objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type:     "channel_model",
+					Priority: 0,
+					When: &objects.ModelAssociationWhen{
+						Enabled: true,
+						Condition: &objects.Condition{
+							Type:  objects.ConditionTypeGroup,
+							Logic: "and",
+							Conditions: []objects.Condition{
+								{
+									Type:     objects.ConditionTypeCondition,
+									Field:    objects.ModelAssociationConditionFieldRequestFormat,
+									Operator: "eq",
+									Value:    llm.APIFormatAnthropicMessage.String(),
+								},
+							},
+						},
+					},
+					ChannelModel: &objects.ChannelModelAssociation{
+						ChannelID: ch.ID,
+						ModelID:   "gpt-4",
+					},
+				},
+				{
+					Type:     "channel_model",
+					Priority: 1,
+					ChannelModel: &objects.ChannelModelAssociation{
+						ChannelID: ch.ID,
+						ModelID:   "gpt-4",
+					},
+				},
+			},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	openAIResult, err := selector.Select(ctx, &llm.Request{
+		Model:     model.ModelID,
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+	})
+	require.NoError(t, err)
+	require.Len(t, openAIResult, 1)
+	require.Equal(t, ch.ID, openAIResult[0].Channel.ID)
+	require.Equal(t, 1, openAIResult[0].Priority, "should use the unconditional fallback")
+
+	anthropicResult, err := selector.Select(ctx, &llm.Request{
+		Model:     model.ModelID,
+		APIFormat: llm.APIFormatAnthropicMessage,
+	})
+	require.NoError(t, err)
+	require.Len(t, anthropicResult, 1)
+	require.Equal(t, ch.ID, anthropicResult[0].Channel.ID)
+	require.Equal(t, 0, anthropicResult[0].Priority, "should keep the first matching conditional association")
+}

@@ -89,19 +89,20 @@ func MatchConnections(
 
 // MatchAssociations matches associations against channels while
 // preserving the originating association for each batch of resolved connections.
-// Deduplication still applies across the full association list.
+// Deduplication applies within each association. Cross-association deduplication
+// must happen after request-specific conditions have been evaluated.
 func MatchAssociations(
 	associations []*objects.ModelAssociation,
 	channels []*Channel,
 ) []*AssociationMatch {
 	result := make([]*AssociationMatch, 0, len(associations))
-	tracker := NewDuplicateKeyTracker()
 
 	for _, assoc := range associations {
 		if assoc == nil || assoc.Disabled {
 			continue
 		}
 
+		tracker := NewDuplicateKeyTracker()
 		connections := matchSingleAssociation(assoc, channels, tracker)
 		if len(connections) == 0 {
 			continue
