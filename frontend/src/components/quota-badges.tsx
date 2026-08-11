@@ -1572,7 +1572,7 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                 <div className='space-y-1'>
                   <div className='flex items-center justify-between text-xs'>
                     <span className='text-muted-foreground font-medium'>{t('quota.label.credits_remaining')}</span>
-                    <span className='text-foreground font-medium'>{balance.toFixed(2)}</span>
+                    <span className='text-foreground font-medium'>{Number.isInteger(balance) ? balance : balance.toFixed(2)}</span>
                   </div>
                   <ProgressBar percentage={usedPct} />
                 </div>
