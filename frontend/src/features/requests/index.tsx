@@ -186,7 +186,7 @@ function RequestsContent() {
     [currentSearch]
   );
   const debouncedModelIDFilter = useDebounce(modelIDFilter, 300);
-  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(true);
 
   // Build where clause with filters
   const whereClause = (() => {
