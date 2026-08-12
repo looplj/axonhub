@@ -356,12 +356,11 @@ func TestWithTrace_OpenCodeDisabled(t *testing.T) {
 	})
 	router.Use(WithTrace(config, traceService))
 
-	var traceID string
+	var hasTrace bool
 
 	router.POST("/v1/chat/completions", func(c *gin.Context) {
-		trace, ok := contexts.GetTrace(c.Request.Context())
-		require.True(t, ok)
-		traceID = trace.TraceID
+		_, ok := contexts.GetTrace(c.Request.Context())
+		hasTrace = ok
 
 		c.Status(http.StatusOK)
 	})
@@ -374,8 +373,7 @@ func TestWithTrace_OpenCodeDisabled(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	require.Regexp(t, `^at-`, traceID)
-	require.NotEqual(t, "opencode-session-123", traceID)
+	require.False(t, hasTrace)
 }
 
 func TestWithTrace_OpenCodeHeaderSetsTrace(t *testing.T) {
@@ -517,12 +515,11 @@ func TestWithTrace_CodexDisabled(t *testing.T) {
 	})
 	router.Use(WithTrace(config, traceService))
 
-	var traceID string
+	var hasTrace bool
 
 	router.POST("/v1/chat/completions", func(c *gin.Context) {
-		trace, ok := contexts.GetTrace(c.Request.Context())
-		require.True(t, ok)
-		traceID = trace.TraceID
+		_, ok := contexts.GetTrace(c.Request.Context())
+		hasTrace = ok
 
 		c.Status(http.StatusOK)
 	})
@@ -535,8 +532,7 @@ func TestWithTrace_CodexDisabled(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	require.Regexp(t, `^at-`, traceID)
-	require.NotEqual(t, "codex-session-123", traceID)
+	require.False(t, hasTrace)
 }
 
 func TestWithTrace_CodexHeaderSetsTrace(t *testing.T) {
@@ -718,7 +714,7 @@ func TestWithTrace_CodexHeaderHasPriorityOverTurnMetadata(t *testing.T) {
 	require.Equal(t, "codex-session-123", capturedSessionID)
 }
 
-func TestWithTrace_CodexTurnMetadataInvalidOrMissingSessionUsesGeneratedTrace(t *testing.T) {
+func TestWithTrace_CodexTurnMetadataInvalidOrMissingSessionDoesNotSetTrace(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	config := tracing.Config{
@@ -770,17 +766,11 @@ func TestWithTrace_CodexTurnMetadataInvalidOrMissingSessionUsesGeneratedTrace(t 
 			var (
 				hasTrace   bool
 				hasSession bool
-				sessionID  string
-				traceID    string
 			)
 
 			router.POST("/v1/chat/completions", func(c *gin.Context) {
-				trace, ok := contexts.GetTrace(c.Request.Context())
-				hasTrace = ok
-				if trace != nil {
-					traceID = trace.TraceID
-				}
-				sessionID, hasSession = shared.GetSessionID(c.Request.Context())
+				_, hasTrace = contexts.GetTrace(c.Request.Context())
+				_, hasSession = shared.GetSessionID(c.Request.Context())
 				c.Status(http.StatusOK)
 			})
 
@@ -792,15 +782,13 @@ func TestWithTrace_CodexTurnMetadataInvalidOrMissingSessionUsesGeneratedTrace(t 
 			router.ServeHTTP(w, req)
 
 			require.Equal(t, http.StatusOK, w.Code)
-			require.True(t, hasTrace)
-			require.Regexp(t, `^at-`, traceID)
-			require.True(t, hasSession)
-			require.Equal(t, traceID, sessionID)
+			require.False(t, hasTrace)
+			require.False(t, hasSession)
 		})
 	}
 }
 
-func TestWithTrace_CodexSessionMissingUsesGeneratedTrace(t *testing.T) {
+func TestWithTrace_CodexSessionMissingDoesNotSetTrace(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
 	config := tracing.Config{
@@ -829,20 +817,12 @@ func TestWithTrace_CodexSessionMissingUsesGeneratedTrace(t *testing.T) {
 	})
 	router.Use(WithTrace(config, traceService))
 
-	var (
-		hasTrace bool
-		traceID  string
-	)
+	var hasTrace bool
 	var hasSession bool
-	var sessionID string
 
 	router.POST("/v1/chat/completions", func(c *gin.Context) {
-		trace, ok := contexts.GetTrace(c.Request.Context())
-		hasTrace = ok
-		if trace != nil {
-			traceID = trace.TraceID
-		}
-		sessionID, hasSession = shared.GetSessionID(c.Request.Context())
+		_, hasTrace = contexts.GetTrace(c.Request.Context())
+		_, hasSession = shared.GetSessionID(c.Request.Context())
 
 		c.Status(http.StatusOK)
 	})
@@ -853,10 +833,8 @@ func TestWithTrace_CodexSessionMissingUsesGeneratedTrace(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	require.True(t, hasTrace)
-	require.Regexp(t, `^at-`, traceID)
-	require.True(t, hasSession)
-	require.Equal(t, traceID, sessionID)
+	require.False(t, hasTrace)
+	require.False(t, hasSession)
 }
 
 func TestWithTraceID_Success(t *testing.T) {
@@ -1298,7 +1276,7 @@ func TestWithTrace_ExtraTraceBodyFields_InvalidJSON(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 }
 
-func TestWithTrace_GeneratesTraceAndWritesResponseAliases(t *testing.T) {
+func TestWithTrace_DoesNotPersistLoggingTraceWithoutExplicitSource(t *testing.T) {
 	config := tracing.Config{
 		ResponseTraceHeaders: []string{"AH-Trace-Id", "X-Oneapi-Request-Id", "  "},
 	}
@@ -1324,18 +1302,16 @@ func TestWithTrace_GeneratesTraceAndWritesResponseAliases(t *testing.T) {
 	})
 	router.Use(WithTrace(config, traceService))
 
-	var traceID string
+	var (
+		hasPersistedTrace bool
+		loggingTraceID    string
+	)
 	router.GET("/stream", func(c *gin.Context) {
-		trace, ok := contexts.GetTrace(c.Request.Context())
-		require.True(t, ok)
-		traceID = trace.TraceID
+		_, hasPersistedTrace = contexts.GetTrace(c.Request.Context())
+		loggingTraceID, _ = tracing.GetTraceID(c.Request.Context())
 
-		contextTraceID, ok := tracing.GetTraceID(c.Request.Context())
-		require.True(t, ok)
-		require.Equal(t, traceID, contextTraceID)
-
-		// Response headers must be available before the streaming response starts.
-		require.Equal(t, traceID, c.Writer.Header().Get("Ah-Trace-Id"))
+		// A logging-only trace ID must not be exposed as a persisted trace alias.
+		require.Empty(t, c.Writer.Header().Get("Ah-Trace-Id"))
 		c.Header("Content-Type", "text/event-stream")
 		_, err := c.Writer.WriteString("data: complete\n\n")
 		require.NoError(t, err)
@@ -1345,13 +1321,14 @@ func TestWithTrace_GeneratesTraceAndWritesResponseAliases(t *testing.T) {
 	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/stream", nil))
 
 	require.Equal(t, http.StatusOK, w.Code)
-	require.Regexp(t, `^at-`, traceID)
-	require.Equal(t, traceID, w.Header().Get("Ah-Trace-Id"))
-	require.Equal(t, traceID, w.Header().Get("X-Oneapi-Request-Id"))
+	require.False(t, hasPersistedTrace)
+	require.Regexp(t, `^at-`, loggingTraceID)
+	require.Empty(t, w.Header().Get("Ah-Trace-Id"))
+	require.Empty(t, w.Header().Get("X-Oneapi-Request-Id"))
 
-	storedTrace, err := client.Trace.Query().Only(ctx)
+	traceCount, err := client.Trace.Query().Count(ctx)
 	require.NoError(t, err)
-	require.Equal(t, traceID, storedTrace.TraceID)
+	require.Zero(t, traceCount)
 }
 
 func TestWithTrace_UsesExtraHeaderForResponseAlias(t *testing.T) {
@@ -1403,8 +1380,9 @@ func TestWithTrace_UsesExtraHeaderForResponseAlias(t *testing.T) {
 	require.Equal(t, "new-api-trace-123", storedTrace.TraceID)
 }
 
-func TestWithTrace_WritesResponseAliasesWithoutProject(t *testing.T) {
+func TestWithTrace_WritesResponseAliasesForExplicitTraceWithoutProject(t *testing.T) {
 	config := tracing.Config{
+		TraceHeader:          "AH-Trace-Id",
 		ResponseTraceHeaders: []string{"AH-Trace-Id", "X-Oneapi-Request-Id"},
 	}
 
@@ -1413,17 +1391,18 @@ func TestWithTrace_WritesResponseAliasesWithoutProject(t *testing.T) {
 	router.GET("/test", func(c *gin.Context) {
 		traceID, ok := tracing.GetTraceID(c.Request.Context())
 		require.True(t, ok)
-		require.Regexp(t, `^at-`, traceID)
+		require.Equal(t, "client-trace-123", traceID)
 		c.Status(http.StatusOK)
 	})
 
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	req.Header.Set("Ah-Trace-Id", "client-trace-123")
 	w := httptest.NewRecorder()
-	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/test", nil))
+	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	traceID := w.Header().Get("Ah-Trace-Id")
-	require.Regexp(t, `^at-`, traceID)
-	require.Equal(t, traceID, w.Header().Get("X-Oneapi-Request-Id"))
+	require.Equal(t, "client-trace-123", w.Header().Get("Ah-Trace-Id"))
+	require.Equal(t, "client-trace-123", w.Header().Get("X-Oneapi-Request-Id"))
 }
 
 func TestWithTrace_WritesResponseAliasesWhenTracePersistenceFails(t *testing.T) {

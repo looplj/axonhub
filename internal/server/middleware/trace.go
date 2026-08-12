@@ -107,13 +107,12 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		}
 
 		if traceID == "" {
-			// WithLoggingTracing creates a trace ID for every request. Reuse it so
-			// requests without an inbound trace header still have a persisted trace.
-			if existingTraceID, ok := tracing.GetTraceID(c.Request.Context()); ok {
-				traceID = existingTraceID
-			} else {
-				traceID = tracing.GenerateTraceID()
-			}
+			// WithLoggingTracing creates an ID for log correlation, but that alone
+			// must not opt the request into persisted tracing. Only explicitly
+			// configured trace sources should create a trace record.
+			c.Next()
+
+			return
 		}
 
 		// The trace middleware can resolve a more specific ID from fallback headers
