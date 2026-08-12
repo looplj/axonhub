@@ -153,7 +153,7 @@ func convertImageURLToGeminiPart(image *llm.ImageURL) *Part {
 	return &Part{
 		FileData: &FileData{
 			FileURI:  image.URL,
-			MIMEType: image.MIMEType,
+			MIMEType: imageMIMEType(image),
 		},
 	}
 }
