@@ -28,6 +28,8 @@ func (Request) Indexes() []ent.Index {
 			StorageKey("requests_by_api_key_id_created_at"),
 		index.Fields("project_id", "created_at").
 			StorageKey("requests_by_project_id_created_at"),
+		index.Fields("project_id", "user_id", "created_at").
+			StorageKey("requests_by_project_id_user_id_created_at"),
 		index.Fields("channel_id", "created_at").
 			StorageKey("requests_by_channel_id_created_at"),
 		index.Fields("trace_id", "created_at").
@@ -44,6 +46,17 @@ func (Request) Fields() []ent.Field {
 			Optional().
 			Immutable().
 			Comment("API Key ID of the request, null for the request from the Admin."),
+		field.Int("user_id").
+			Optional().
+			Nillable().
+			Immutable().
+			Annotations(entgql.Skip(
+				entgql.SkipType,
+				entgql.SkipWhereInput,
+				entgql.SkipMutationCreateInput,
+				entgql.SkipMutationUpdateInput,
+			)).
+			Comment("User ID of the Playground request creator"),
 		field.Int("project_id").
 			Immutable().
 			Default(1).

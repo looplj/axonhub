@@ -224,6 +224,12 @@ func (s *RequestService) CreateRequest(
 		mut = mut.SetTraceID(trace.ID)
 	}
 
+	if contexts.GetSourceOrDefault(ctx, request.SourceAPI) == request.SourcePlayground {
+		if user, ok := contexts.GetUser(ctx); ok && user != nil {
+			mut = mut.SetUserID(user.ID)
+		}
+	}
+
 	// Create request
 	req, err := mut.Save(ctx)
 	if err != nil {

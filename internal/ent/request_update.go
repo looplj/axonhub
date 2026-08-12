@@ -479,6 +479,9 @@ func (_u *RequestUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if _u.mutation.UserIDCleared() {
+		_spec.ClearField(request.FieldUserID, field.TypeInt)
+	}
 	if _u.mutation.ReasoningEffortCleared() {
 		_spec.ClearField(request.FieldReasoningEffort, field.TypeString)
 	}
@@ -1190,6 +1193,9 @@ func (_u *RequestUpdateOne) sqlSave(ctx context.Context) (_node *Request, err er
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(request.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.UserIDCleared() {
+		_spec.ClearField(request.FieldUserID, field.TypeInt)
 	}
 	if _u.mutation.ReasoningEffortCleared() {
 		_spec.ClearField(request.FieldReasoningEffort, field.TypeString)
