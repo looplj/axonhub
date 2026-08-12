@@ -9,20 +9,31 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-func imageMIMEType(image *llm.ImageURL) string {
-	if image.MIMEType != "" {
-		return image.MIMEType
+func mediaMIMEType(explicitMIMEType, rawURL string, accepts func(string) bool) string {
+	if explicitMIMEType != "" {
+		return explicitMIMEType
 	}
 
-	parsed, err := url.Parse(image.URL)
+	parsed, err := url.Parse(rawURL)
 	if err != nil {
 		return ""
 	}
 
-	mediaType := mime.TypeByExtension(path.Ext(parsed.Path))
+	extension := strings.ToLower(path.Ext(parsed.Path))
+	mediaType := mime.TypeByExtension(extension)
 	if value, _, ok := strings.Cut(mediaType, ";"); ok {
-		return value
+		mediaType = value
 	}
 
-	return mediaType
+	if accepts(mediaType) {
+		return mediaType
+	}
+
+	return ""
+}
+
+func imageMIMEType(image *llm.ImageURL) string {
+	return mediaMIMEType(image.MIMEType, image.URL, func(mediaType string) bool {
+		return strings.HasPrefix(mediaType, "image/")
+	})
 }
