@@ -10,7 +10,7 @@ import (
 )
 
 func mediaMIMEType(explicitMIMEType, rawURL string, accepts func(string) bool) string {
-	if explicitMIMEType != "" {
+	if explicitMIMEType != "" && accepts(explicitMIMEType) {
 		return explicitMIMEType
 	}
 

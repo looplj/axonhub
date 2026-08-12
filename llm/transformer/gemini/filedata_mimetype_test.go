@@ -54,6 +54,42 @@ func TestGeminiToVertexFileData_preservesMediaMIMETypes(t *testing.T) {
 	require.Equal(t, "audio/mpeg", got.Contents[0].Parts[3].FileData.MIMEType)
 }
 
+func TestGeminiToVertexFileData_infersMIMEWhenDeclaredTypeIsUnsupported(t *testing.T) {
+	inbound := NewInboundTransformer()
+	outbound, err := NewOutboundTransformerWithConfig(Config{
+		BaseURL:      "https://us-central1-aiplatform.googleapis.com",
+		PlatformType: PlatformVertex,
+	})
+	require.NoError(t, err)
+
+	inboundRequest := &httpclient.Request{
+		Path: "/v1beta/models/gemini-test-model:generateContent",
+		Body: []byte(`{
+			"contents": [{
+				"role": "user",
+				"parts": [{
+					"fileData": {
+						"mimeType": "application/octet-stream",
+						"fileUri": "https://assets.example.com/audio/input.mp3"
+					}
+				}]
+			}]
+		}`),
+	}
+
+	llmRequest, err := inbound.TransformRequest(t.Context(), inboundRequest)
+	require.NoError(t, err)
+	vertexRequest, err := outbound.TransformRequest(t.Context(), llmRequest)
+	require.NoError(t, err)
+
+	var got GenerateContentRequest
+	require.NoError(t, json.Unmarshal(vertexRequest.Body, &got))
+	require.Len(t, got.Contents, 1)
+	require.Len(t, got.Contents[0].Parts, 1)
+	require.NotNil(t, got.Contents[0].Parts[0].FileData)
+	require.Equal(t, "audio/mpeg", got.Contents[0].Parts[0].FileData.MIMEType)
+}
+
 func TestImageMIMEType_leavesUnknownURLTypesEmpty(t *testing.T) {
 	tests := []struct {
 		name string
