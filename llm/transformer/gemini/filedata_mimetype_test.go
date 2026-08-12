@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -28,7 +29,7 @@ func TestGeminiToVertexFileData_preservesMIMEType(t *testing.T) {
 				"parts": [{
 					"fileData": {
 						"mimeType": "image/png",
-						"fileUri": "gs://example-bucket/image.png"
+						"fileUri": "gs://example-bucket/image.jpg"
 					}
 				}]
 			}]
@@ -49,6 +50,24 @@ func TestGeminiToVertexFileData_preservesMIMEType(t *testing.T) {
 	require.Len(t, got.Contents[0].Parts, 1)
 	require.NotNil(t, got.Contents[0].Parts[0].FileData)
 	require.Equal(t, "image/png", got.Contents[0].Parts[0].FileData.MIMEType)
+}
+
+func TestImageMIMEType_leavesUnknownURLTypesEmpty(t *testing.T) {
+	tests := []struct {
+		name string
+		url  string
+	}{
+		{name: "extensionless", url: "https://assets.example.com/images/input"},
+		{name: "unknown extension", url: "https://assets.example.com/images/input.axonhubtest"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			image := &llm.ImageURL{URL: tt.url}
+
+			require.Empty(t, imageMIMEType(image))
+		})
+	}
 }
 
 func TestOpenAIImageURLToVertexFileData_infersMIMETypeFromURLPath(t *testing.T) {
