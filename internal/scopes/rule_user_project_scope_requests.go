@@ -96,6 +96,7 @@ func UserProjectScopeReadRequestsRule(requiredScope ScopeSlug) privacy.QueryRule
 	})
 }
 
+// userIsProjectOwner reports whether a user owns the selected project.
 func userIsProjectOwner(user *ent.User, projectID int) bool {
 	for _, membership := range user.Edges.ProjectUsers {
 		if membership.ProjectID == projectID && membership.IsOwner {
