@@ -335,15 +335,17 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 				textParts = append(textParts, llm.MessageContentPart{
 					Type: "video_url",
 					VideoURL: &llm.VideoURL{
-						URL: dataURL,
+						URL:      dataURL,
+						MIMEType: part.InlineData.MIMEType,
 					},
 				})
 			} else if isAudioMIMEType(part.InlineData.MIMEType) {
 				textParts = append(textParts, llm.MessageContentPart{
 					Type: "input_audio",
 					InputAudio: &llm.InputAudio{
-						Format: audioMIMETypeToFormat(part.InlineData.MIMEType),
-						Data:   part.InlineData.Data,
+						Format:   audioMIMETypeToFormat(part.InlineData.MIMEType),
+						Data:     part.InlineData.Data,
+						MIMEType: part.InlineData.MIMEType,
 					},
 				})
 			} else {
@@ -359,7 +361,10 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 
 		case part.FileData != nil:
 			// Convert file data based on MIME type or URL extension
-			mimeType := part.FileData.MIMEType
+			mimeType := mediaMIMEType(part.FileData.MIMEType, part.FileData.FileURI, func(mediaType string) bool {
+				return isDocumentMIMEType(mediaType) || isVideoMIMEType(mediaType) ||
+					isAudioMIMEType(mediaType) || strings.HasPrefix(mediaType, "image/")
+			})
 			if isDocumentMIMEType(mimeType) {
 				// Document type (PDF, Word, etc.)
 				textParts = append(textParts, llm.MessageContentPart{
@@ -373,14 +378,17 @@ func convertGeminiContentToLLMMessage(content *Content, previousContents []*Cont
 				textParts = append(textParts, llm.MessageContentPart{
 					Type: "video_url",
 					VideoURL: &llm.VideoURL{
-						URL: part.FileData.FileURI,
+						URL:      part.FileData.FileURI,
+						MIMEType: mimeType,
 					},
 				})
 			} else if isAudioMIMEType(mimeType) {
 				textParts = append(textParts, llm.MessageContentPart{
 					Type: "input_audio",
 					InputAudio: &llm.InputAudio{
-						Format: audioMIMETypeToFormat(mimeType),
+						Format:   audioMIMETypeToFormat(mimeType),
+						URL:      part.FileData.FileURI,
+						MIMEType: mimeType,
 					},
 				})
 			} else {
