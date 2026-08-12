@@ -81,6 +81,33 @@ func TestV1_0_0_Beta9_IsIdempotent(t *testing.T) {
 	require.Nil(t, extractSettingsJSONField(t, driver, ch.ID, "$.providerQuota"))
 }
 
+func TestV1_0_0_Beta9_StripsJsonNullProviderQuota(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:beta9-jsonnull?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+
+	ch := client.Channel.Create().
+		SetName("opencode-json-null").
+		SetType(channel.TypeOpencodeGo).
+		SetCredentials(objects.ChannelCredentials{APIKey: "sk-test"}).
+		SetSupportedModels([]string{"test-model"}).
+		SetDefaultTestModel("test-model").
+		SetSettings(&objects.ChannelSettings{}).
+		SaveX(ctx)
+
+	driver := client.Driver().(*entsql.Driver)
+	// JSON-null providerQuota is a present key that json_extract maps to SQL NULL.
+	_, err := driver.ExecContext(ctx,
+		"UPDATE channels SET settings = ? WHERE id = ?",
+		`{"providerQuota":null}`, ch.ID)
+	require.NoError(t, err)
+
+	require.NoError(t, datamigrate.NewV1_0_0_Beta9().Migrate(ctx, client))
+
+	require.Nil(t, extractSettingsJSONField(t, driver, ch.ID, "$.providerQuota"))
+}
+
 func TestV1_0_0_Beta9_LeavesUntouchedChannelsAlone(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:beta9-untouched?mode=memory&_fk=1")
 	defer client.Close()

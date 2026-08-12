@@ -41,6 +41,8 @@ type opencodeGoUsageWindow struct {
 	Status string `json:"status"`
 }
 
+// OpenCodeGoUsageWindow is a normalized usage window from the OpenCode Go
+// usage API, at 100-based usage percent with a computed reset deadline.
 type OpenCodeGoUsageWindow struct {
 	UsagePercent float64
 	ResetInSec   float64
@@ -48,11 +50,14 @@ type OpenCodeGoUsageWindow struct {
 	APISubStatus string
 }
 
+// OpenCodeGoQuotaChecker fetches OpenCode Go quota status from the official
+// usage API using the channel's upstream API key.
 type OpenCodeGoQuotaChecker struct {
 	httpClient *httpclient.HttpClient
 	now        func() time.Time
 }
 
+// NewOpenCodeGoQuotaChecker creates a checker with the shared HTTP client.
 func NewOpenCodeGoQuotaChecker(httpClient *httpclient.HttpClient) *OpenCodeGoQuotaChecker {
 	return &OpenCodeGoQuotaChecker{
 		httpClient: httpClient,
@@ -60,14 +65,11 @@ func NewOpenCodeGoQuotaChecker(httpClient *httpclient.HttpClient) *OpenCodeGoQuo
 	}
 }
 
-// opencodeGoAPIKey returns the first non-empty API key configured on the
-// channel, checking APIKey first then walking APIKeys and skipping blanks.
+// opencodeGoAPIKey returns the first usable API key configured on the channel.
+// It reuses ChannelCredentials.GetAllAPIKeys for the legacy-key ordering and
+// OAuth exclusion, keeping only the trim-and-skip-blank selection here.
 func opencodeGoAPIKey(ch *ent.Channel) string {
-	if apiKey := strings.TrimSpace(ch.Credentials.APIKey); apiKey != "" {
-		return apiKey
-	}
-
-	for _, candidate := range ch.Credentials.APIKeys {
+	for _, candidate := range ch.Credentials.GetAllAPIKeys() {
 		if trimmed := strings.TrimSpace(candidate); trimmed != "" {
 			return trimmed
 		}
@@ -76,6 +78,8 @@ func opencodeGoAPIKey(ch *ent.Channel) string {
 	return ""
 }
 
+// CheckQuota fetches and parses OpenCode Go usage for the channel. Non-2xx
+// responses surface as errors from the HTTP client with their status code.
 func (c *OpenCodeGoQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
 	apiKey := opencodeGoAPIKey(ch)
 	if apiKey == "" {
@@ -102,6 +106,7 @@ func (c *OpenCodeGoQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel
 	return c.parseResponse(resp.Body)
 }
 
+// SupportsChannel reports whether the channel is an OpenCode Go variant.
 func (c *OpenCodeGoQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	return ch.Type == channel.TypeOpencodeGo || ch.Type == channel.TypeOpencodeGoAnthropic
 }

@@ -44,7 +44,9 @@ func (v *V1_0_0_Beta9) Migrate(ctx context.Context, client *ent.Client) (err err
 	case dialect.Postgres:
 		stmt = `UPDATE channels SET settings = settings #- '{providerQuota}' WHERE settings ? 'providerQuota'`
 	case dialect.SQLite:
-		stmt = `UPDATE channels SET settings = json_remove(settings, '$.providerQuota') WHERE json_extract(settings, '$.providerQuota') IS NOT NULL`
+		// json_type (not json_extract) distinguishes a present JSON-null value
+		// from an absent key, so "providerQuota": null is purged as well.
+		stmt = `UPDATE channels SET settings = json_remove(settings, '$.providerQuota') WHERE json_type(settings, '$.providerQuota') IS NOT NULL`
 	default:
 		log.Info(ctx, "Unsupported dialect, skipping stale providerQuota cleanup",
 			log.String("dialect", driver.Dialect()))
