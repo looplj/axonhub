@@ -106,7 +106,7 @@
   "system.general.title": "常规设置",
   "system.general.description": "管理系统的通用配置选项",
   "system.general.currencyCode.label": "货币代码",
-  "system.general.currencyCode.placeholder": "例如：USD, RMB",
+  "system.general.currencyCode.placeholder": "例如：USD, CNY",
   "system.general.currencyCode.description": "仅供系统展示费用使用，不会用来实际计费，修改以后实时生效",
   "system.general.timezone.label": "时区",
   "system.general.timezone.placeholder": "选择时区",

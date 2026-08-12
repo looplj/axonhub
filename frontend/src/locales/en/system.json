@@ -106,7 +106,7 @@
   "system.general.title": "General Settings",
   "system.general.description": "Manage general system configuration options",
   "system.general.currencyCode.label": "Currency Code",
-  "system.general.currencyCode.placeholder": "e.g. USD, RMB",
+  "system.general.currencyCode.placeholder": "e.g. USD, CNY",
   "system.general.currencyCode.description": "For system fee display only, not used for actual billing, changes take effect in real-time",
   "system.general.timezone.label": "Timezone",
   "system.general.timezone.placeholder": "Select timezone",

@@ -123,7 +123,7 @@ const (
 
 // SystemGeneralSettings represents general system configuration settings.
 type SystemGeneralSettings struct {
-	// CurrencyCode is the code used for currency display (e.g., USD, RMB).
+	// CurrencyCode is the code used for currency display (e.g., USD, CNY).
 	CurrencyCode string `json:"currency_code"`
 	Timezone     string `json:"timezone"`
 }
