@@ -344,6 +344,9 @@ func TestOpenCodeGo_ParseResetsAt(t *testing.T) {
 		{name: "rfc3339 millis", raw: `"2026-08-12T11:24:29.905Z"`, want: now.Add(905 * time.Millisecond), wantOK: true},
 		{name: "unix seconds", raw: `1782370800`, want: time.Unix(1782370800, 0), wantOK: true},
 		{name: "unix millis", raw: `1782370800000`, want: time.UnixMilli(1782370800000), wantOK: true},
+		{name: "seconds below ms threshold", raw: `999999999999`, want: time.Unix(999999999999, 0), wantOK: true},
+		{name: "ms at threshold", raw: `1000000000000`, want: time.UnixMilli(1000000000000), wantOK: true},
+		{name: "overflowing literal", raw: `1e300`, wantOK: false},
 		{name: "garbage string", raw: `"not-a-time"`, wantOK: false},
 		{name: "null", raw: `null`, wantOK: false},
 		{name: "negative", raw: `-5`, wantOK: false},
@@ -359,6 +362,44 @@ func TestOpenCodeGo_ParseResetsAt(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOpenCodeGo_CheckQuota_NegativePercent(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"usage":{"rolling":{"percent":-5,"resetsAt":"2026-06-25T15:00:00Z"}}}`
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader(body)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	})
+
+	checker := NewOpenCodeGoQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Type:        channel.TypeOpencodeGo,
+		Credentials: objects.ChannelCredentials{APIKey: "test-key"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+
+	windows := quota.RawData["windows"].(map[string]any)
+	rolling := windows["rolling"].(map[string]any)
+	require.InDelta(t, -5, rolling["usage_percent"], 0.001)
+	require.InDelta(t, 105, rolling["percent_remaining"], 0.001)
+}
+
+func TestOpenCodeGo_CheckQuota_ExcludesOAuthAPIKey(t *testing.T) {
+	checker := NewOpenCodeGoQuotaChecker(nil)
+
+	_, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Type: channel.TypeOpencodeGo,
+		// APIKey holds OAuth JSON, which GetAllAPIKeys excludes — so no usable key.
+		Credentials: objects.ChannelCredentials{APIKey: `{"access_token":"oauth-token"}`},
+	})
+	require.ErrorContains(t, err, "channel has no API key")
 }
 
 func TestOpenCodeGo_SupportsChannel(t *testing.T) {

@@ -2,10 +2,10 @@ package datamigrate
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -34,13 +34,14 @@ func (v *V1_0_0_Beta9) Version() string {
 func (v *V1_0_0_Beta9) Migrate(ctx context.Context, client *ent.Client) (err error) {
 	ctx = authz.WithSystemBypass(ctx, "database-migrate")
 
-	driver, ok := client.Driver().(*entsql.Driver)
-	if !ok {
-		return fmt.Errorf("database driver is not *entsql.Driver")
-	}
+	// Use the dialect.Driver.Exec interface rather than asserting a concrete
+	// *entsql.Driver: under read-replica configuration the ent client wraps the
+	// driver in a routerDriver (internal/server/db), which still implements
+	// dialect.Driver.Exec (routing writes to the master).
+	dialectName := client.Driver().Dialect()
 
 	var stmt string
-	switch driver.Dialect() {
+	switch dialectName {
 	case dialect.Postgres:
 		stmt = `UPDATE channels SET settings = settings #- '{providerQuota}' WHERE settings ? 'providerQuota'`
 	case dialect.SQLite:
@@ -49,12 +50,12 @@ func (v *V1_0_0_Beta9) Migrate(ctx context.Context, client *ent.Client) (err err
 		stmt = `UPDATE channels SET settings = json_remove(settings, '$.providerQuota') WHERE json_type(settings, '$.providerQuota') IS NOT NULL`
 	default:
 		log.Info(ctx, "Unsupported dialect, skipping stale providerQuota cleanup",
-			log.String("dialect", driver.Dialect()))
+			log.String("dialect", dialectName))
 		return nil
 	}
 
-	result, err := driver.ExecContext(ctx, stmt)
-	if err != nil {
+	var result sql.Result
+	if err := client.Driver().Exec(ctx, stmt, []any{}, &result); err != nil {
 		return fmt.Errorf("failed to purge settings.providerQuota: %w", err)
 	}
 

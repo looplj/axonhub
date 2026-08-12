@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -227,7 +226,10 @@ func parseOpenCodeGoResetsAt(raw json.RawMessage) (time.Time, bool) {
 
 	var asSeconds float64
 	if err := json.Unmarshal(raw, &asSeconds); err == nil {
-		if !isFiniteOpenCodeGoNumber(asSeconds) || asSeconds < 0 {
+		// json.Unmarshal already rejects NaN/Infinity tokens, so only a sane
+		// magnitude guard is needed here. 1e15 is well beyond any plausible
+		// timestamp in either unit.
+		if asSeconds < 0 || asSeconds > 1e15 {
 			return time.Time{}, false
 		}
 		// >= 1e12 is epoch milliseconds (year ~33,658 in seconds); seconds
@@ -239,10 +241,6 @@ func parseOpenCodeGoResetsAt(raw json.RawMessage) (time.Time, bool) {
 	}
 
 	return time.Time{}, false
-}
-
-func isFiniteOpenCodeGoNumber(value float64) bool {
-	return !math.IsNaN(value) && !math.IsInf(value, 0)
 }
 
 func normalizeOpenCodeGoWindowStatus(usageRatio float64) string {
