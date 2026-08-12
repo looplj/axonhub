@@ -177,6 +177,10 @@ export type ProviderNeuralWattQuotaData = ProviderQuotaDataCommon & {
   } | null;
 };
 
+export type ProviderCharmHyperQuotaData = ProviderQuotaDataCommon & {
+  balance?: number | null;
+};
+
 export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
   is_subscriber?: boolean;
   payg?: {
@@ -467,6 +471,13 @@ export type ProviderQuotaChannel = {
     }
   | {
       type: 'openai' | 'openai_responses';
+      providerType: 'charm_hyper';
+      quotaStatus: {
+        quotaData: ProviderCharmHyperQuotaData;
+      };
+    }
+  | {
+      type: 'openai' | 'openai_responses';
       providerType?: undefined;
       quotaStatus: {
         quotaData: ProviderQuotaDataCommon;
@@ -629,6 +640,14 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
         type: typeVal,
         providerType: 'apertis' as const,
         quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderApertisQuotaData },
+      };
+    }
+    if (providerType === 'charm_hyper') {
+      return {
+        ...base,
+        type: typeVal,
+        providerType: 'charm_hyper' as const,
+        quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCharmHyperQuotaData },
       };
     }
     return {

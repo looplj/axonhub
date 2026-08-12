@@ -17,6 +17,7 @@ import {
   ProviderSyntheticQuotaData,
   ProviderNeuralWattQuotaData,
   ProviderApertisQuotaData,
+  ProviderCharmHyperQuotaData,
   ProviderOpenCodeGoQuotaData,
   OpenCodeGoQuotaWindow,
   ProviderKimiCodeQuotaData,
@@ -178,6 +179,12 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     }
   } else if (isOpenaiType(channel.type) && channel.providerType === 'apertis') {
     percentage = getApertisPercentage(channel.quotaStatus.quotaData as ProviderApertisQuotaData | undefined);
+  } else if (isOpenaiType(channel.type) && channel.providerType === 'charm_hyper') {
+    const qd = channel.quotaStatus.quotaData as ProviderCharmHyperQuotaData | undefined;
+    const balance = qd?.balance;
+    if (typeof balance === 'number') {
+      percentage = Math.max(0, Math.min(100, (1.0 - balance / 100) * 100));
+    }
   }
   return percentage;
 }
@@ -1549,6 +1556,28 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
             }
 
             return items;
+          })()}
+        </div>
+      )}
+
+      {isOpenaiType(channel.type) && channel.providerType === 'charm_hyper' && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData as ProviderCharmHyperQuotaData | undefined;
+            if (!qd || typeof qd.balance !== 'number') return null;
+            const balance = qd.balance;
+            const usedPct = Math.max(0, Math.min(100, (1.0 - balance / 100) * 100));
+            return (
+              <div className='space-y-2.5'>
+                <div className='space-y-1'>
+                  <div className='flex items-center justify-between text-xs'>
+                    <span className='text-muted-foreground font-medium'>{t('quota.label.credits_remaining')}</span>
+                    <span className='text-foreground font-medium'>{Number.isInteger(balance) ? balance : balance.toFixed(2)}</span>
+                  </div>
+                  <ProgressBar percentage={usedPct} />
+                </div>
+              </div>
+            );
           })()}
         </div>
       )}

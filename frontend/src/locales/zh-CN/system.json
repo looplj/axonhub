@@ -423,6 +423,7 @@
   "system.quota.collection.providers.kimi_code": "Kimi Code",
   "system.quota.collection.providers.minimax": "MiniMax",
   "system.quota.collection.providers.zhipu": "BigModel",
+  "system.quota.collection.providers.charm_hyper": "Charm Hyper",
   "system.quota.title": "配额执行",
   "system.quota.description": "配置 AxonHub 如何处理已耗尽提供商配额的渠道。",
   "system.quota.enabled.label": "启用配额执行",
