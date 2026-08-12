@@ -673,14 +673,6 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                       </div>
                       <ProgressBar
                         percentage={qd.rate_limit.primary_window.used_percent || 0}
-                        durationPercentage={
-                          qd.rate_limit.primary_window.limit_window_seconds
-                            ? calcDurationPercent(
-                                qd.rate_limit.primary_window.limit_window_seconds,
-                                qd.rate_limit.primary_window.reset_after_seconds
-                              )
-                            : undefined
-                        }
                       />
                     </div>
 
@@ -728,14 +720,6 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                       </div>
                       <ProgressBar
                         percentage={qd.rate_limit.secondary_window.used_percent}
-                        durationPercentage={
-                          qd.rate_limit.secondary_window.limit_window_seconds
-                            ? calcDurationPercent(
-                                qd.rate_limit.secondary_window.limit_window_seconds,
-                                qd.rate_limit.secondary_window.reset_after_seconds
-                              )
-                            : undefined
-                        }
                       />
                     </div>
 
