@@ -346,6 +346,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-black-100 text-black-800 border-black-200',
     icon: XAI,
   },
+  xai_responses: {
+    channelType: 'xai_responses',
+    baseURL: 'https://api.x.ai/v1',
+    defaultModels: ['grok-4', 'grok-3', 'grok-3-mini', 'grok-code-fast', 'grok-4-fast-reasoning', 'grok-4-fast-non-reasoning'],
+    apiFormat: OPENAI_RESPONSES,
+    color: 'bg-black-100 text-black-800 border-black-200',
+    icon: XAI,
+  },
   longcat: {
     channelType: 'longcat',
     baseURL: 'https://api.longcat.chat/openai/v1',
@@ -872,6 +880,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   xiaomi: 'xiaomi',
   xiaomi_anthropic: 'xiaomi',
   xai: 'xai',
+  xai_responses: 'xai',
   openrouter: 'openrouter',
   vercel: 'vercel',
   ppio: 'ppio',

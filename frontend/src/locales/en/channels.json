@@ -69,6 +69,7 @@
   "channels.types.zai_anthropic": "Zai (Anthropic)",
   "channels.types.vercel": "Vercel",
   "channels.types.xai": "xAI",
+  "channels.types.xai_responses": "xAI (Responses)",
   "channels.types.ppio": "PPIO",
   "channels.types.siliconflow": "SiliconFlow",
   "channels.types.volcengine": "Volcengine",
