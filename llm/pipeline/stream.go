@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -28,8 +29,9 @@ const (
 )
 
 const (
-	maxPreReadEvents             = 3
-	maxPreCommitRetryProbeEvents = 16
+	maxPreReadEvents           = 3
+	maxPreCommitBufferedEvents = 1024
+	maxPreCommitBufferedBytes  = 8 * 1024 * 1024
 )
 
 func newFirstEventTimeoutGuard(ctx context.Context, timeout time.Duration) (context.Context, *firstEventTimeoutGuard) {
@@ -178,11 +180,9 @@ func (p *pipeline) preReadLlmStream(
 ) (streams.Stream[*llm.Response], error) {
 	preReadUntilContent := p.hasStreamRetryBudget()
 	probeLimit := maxPreReadEvents
-	if preReadUntilContent {
-		probeLimit = maxPreCommitRetryProbeEvents
-	}
 
 	var buffered []*llm.Response
+	bufferedBytes := 0
 
 	for i := 0; ; i++ {
 		hasNext, err := nextLlmStreamEvent(ctx, llmStream, i == 0, firstEventGuard)
@@ -196,11 +196,27 @@ func (p *pipeline) preReadLlmStream(
 		}
 
 		event := llmStream.Current()
-		buffered = append(buffered, event)
-
 		if hasResponseContent(event) {
-			// Has content, not empty - prepend buffered events back
+			// Meaningful output commits the attempt immediately. Do not apply the
+			// private metadata budget to legitimate large media/audio payloads.
+			buffered = append(buffered, event)
+
 			return streams.PrependStream(llmStream, buffered...), nil
+		}
+		if preReadUntilContent {
+			eventBytes, err := json.Marshal(event)
+			if err != nil || len(eventBytes) > maxPreCommitBufferedBytes-bufferedBytes {
+				llmStream.Close()
+
+				return nil, ErrPreCommitBufferExceeded
+			}
+			bufferedBytes += len(eventBytes)
+		}
+		buffered = append(buffered, event)
+		if preReadUntilContent && len(buffered) > maxPreCommitBufferedEvents {
+			llmStream.Close()
+
+			return nil, ErrPreCommitBufferExceeded
 		}
 
 		if !preReadUntilContent && !p.emptyResponseDetection {
@@ -226,7 +242,11 @@ func (p *pipeline) preReadLlmStream(
 			return nil, ErrEmptyResponse
 		}
 
-		if len(buffered) >= probeLimit {
+		// Once retry is enabled, metadata must remain private to this attempt
+		// until meaningful content commits it, a terminal event completes it, or
+		// the stream fails. Flushing merely because an event-count probe limit was
+		// reached leaks a failed attempt and makes a still-safe retry impossible.
+		if !preReadUntilContent && len(buffered) >= probeLimit {
 			break
 		}
 	}
@@ -235,6 +255,12 @@ func (p *pipeline) preReadLlmStream(
 		llmStream.Close()
 
 		return nil, err
+	}
+
+	if preReadUntilContent {
+		llmStream.Close()
+
+		return nil, llm.ErrStreamIncomplete
 	}
 
 	// Didn't find content or finish in the bounded empty-response probe - treat

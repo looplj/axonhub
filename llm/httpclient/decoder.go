@@ -1,16 +1,23 @@
 package httpclient
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
+
 	"sync"
 	"sync/atomic"
 
 	"github.com/tmaxmax/go-sse"
 )
+
+var ErrStreamEventTooLarge = errors.New("stream event exceeds byte limit")
+
+const defaultMaxSSEEventBytes = 32 * 1024 * 1024
 
 // decoderRegistry holds registered stream decoders.
 type decoderRegistry struct {
@@ -43,14 +50,24 @@ func GetDecoder(contentType string) (StreamDecoderFactory, bool) {
 
 // NewDefaultSSEDecoder creates a new default SSE decoder.
 func NewDefaultSSEDecoder(ctx context.Context, rc io.ReadCloser) StreamDecoder {
+	return NewSSEDecoderWithMaxEventSize(ctx, rc, defaultMaxSSEEventBytes)
+}
+
+// NewSSEDecoderWithMaxEventSize creates an SSE decoder with a hard parser
+// limit, so oversized events are rejected before an Event string and []byte
+// payload copy are constructed.
+func NewSSEDecoderWithMaxEventSize(ctx context.Context, rc io.ReadCloser, maxEventSize int) StreamDecoder {
+	if maxEventSize <= 0 {
+		maxEventSize = defaultMaxSSEEventBytes
+	}
+
 	return &defaultSSEDecoder{
 		ctx:    ctx,
 		reader: rc,
-		// sseStream: sse.NewStream(rc),
-		// 图片生成需要大量数据，设置最大事件大小
 		sseStream: sse.NewStreamWithConfig(rc, &sse.StreamConfig{
-			MaxEventSize: 32 * 1024 * 1024,
+			MaxEventSize: maxEventSize,
 		}),
+		maxEventSize: maxEventSize,
 	}
 }
 
@@ -102,11 +119,12 @@ var _ StreamDecoder = (*defaultSSEDecoder)(nil)
 //
 //nolint:containedctx // Checked.
 type defaultSSEDecoder struct {
-	ctx       context.Context
-	reader    io.ReadCloser
-	sseStream *sse.Stream
-	current   *StreamEvent
-	err       error
+	ctx          context.Context
+	reader       io.ReadCloser
+	sseStream    *sse.Stream
+	maxEventSize int
+	current      *StreamEvent
+	err          error
 
 	closed    atomic.Bool
 	closeOnce sync.Once
@@ -145,7 +163,9 @@ func (s *defaultSSEDecoder) Next() bool {
 		// If the error surfaced because ctx was canceled (or the reader was
 		// closed by an external Close), surface ctx.Err() to callers so they
 		// can distinguish cancellation from genuine transport errors.
-		if ctxErr := s.ctx.Err(); ctxErr != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			s.err = fmt.Errorf("%w: limit %d bytes", ErrStreamEventTooLarge, s.maxEventSize)
+		} else if ctxErr := s.ctx.Err(); ctxErr != nil {
 			s.err = ctxErr
 		} else {
 			s.err = err

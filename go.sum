@@ -495,8 +495,6 @@ github.com/looplj/afero-s3 v0.1.0 h1:B2VofflXt9GrjQ/ONmBMjeVtad9Z28jXtKX/mYVv9ew
 github.com/looplj/afero-s3 v0.1.0/go.mod h1:CfIusUkltysLoEnACCEfmpjS+ZnVeaDjyzwTUwe3nM8=
 github.com/looplj/afero-webdav v0.0.0-20260128073818-3f60e732e991 h1:Qh5Dm6w5tYT/C9Wamk7r8Zg6fK6y+FazUsPhXNXnPH4=
 github.com/looplj/afero-webdav v0.0.0-20260128073818-3f60e732e991/go.mod h1:dvy2V3qeb9vf5chZMo0KagJbu9AgoGcqQBmrwW8BQRA=
-github.com/looplj/go-sse v0.0.0-20250909130008-e74a1155bc3b h1:E0c0wVuenqlLPK0pwZbIFGNBjcRl/ZTRqmkRzq0mfVE=
-github.com/looplj/go-sse v0.0.0-20250909130008-e74a1155bc3b/go.mod h1:u/2kZQR1tyngo1lKaNCj1mJmhXGZWS1Zs5yiSOD+Eg8=
 github.com/looplj/gqlgen v0.0.0-20251206072334-03e453169896 h1:vB1dSfc9KYDBrVxDq6lBF9H/THDuM1bhJBqOAd1a1qs=
 github.com/looplj/gqlgen v0.0.0-20251206072334-03e453169896/go.mod h1:vTaS5InUFQaOue1T0RzHyDFUk9uq4/wG5nVVv61wQ4I=
 github.com/looplj/sse v0.0.0-20260223020440-b463add2d52f h1:GcfleKbwMbO1w6h35dqtoZoO7/bDSPZkHqDEwDXZfDk=
@@ -755,6 +753,8 @@ github.com/vmihailenco/msgpack/v5 v5.4.1 h1:cQriyiUvjTwOHg8QZaPihLWeRAAVoCpE00IU
 github.com/vmihailenco/msgpack/v5 v5.4.1/go.mod h1:GaZTsDaehaPpQVyxrf5mtQlH+pc21PIudVV/E3rRQok=
 github.com/vmihailenco/tagparser/v2 v2.0.0 h1:y09buUbR+b5aycVFQs/g70pqKVZNBmxwAhO7/IwNM9g=
 github.com/vmihailenco/tagparser/v2 v2.0.0/go.mod h1:Wri+At7QHww0WTrCBeu4J6bNtoV6mEfg5OIWRZA9qds=
+github.com/wtj-0527/go-sse v0.0.0-20260811060543-0bb36b8ea0cd h1:OFUcWJyJttRssn06S1tf3bXFJMuqirWox7E0dtoETJ8=
+github.com/wtj-0527/go-sse v0.0.0-20260811060543-0bb36b8ea0cd/go.mod h1:u/2kZQR1tyngo1lKaNCj1mJmhXGZWS1Zs5yiSOD+Eg8=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=

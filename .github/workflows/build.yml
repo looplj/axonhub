@@ -35,6 +35,11 @@ jobs:
       - name: Build main binary
         run: go build -ldflags "-s -w" -tags=nomsgpack -o axonhub ./cmd/axonhub
 
+      - name: Verify production dependency graph
+        run: |
+          ./scripts/verify-go-sse-dependency-test.sh
+          ./scripts/verify-go-sse-dependency.sh ./axonhub
+
       - name: Build schema generator
         run: cd cmd/schema && go build -o schema
 
