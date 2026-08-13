@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
+import { useProviderQuotaStatuses } from '../data/quotas';
 import {
   useProviderQuotaCollectionSettings,
   useQuotaEnforcementSettings,
@@ -21,7 +22,6 @@ import {
   type ProviderQuotaCollectionProvider,
   type QuotaEnforcementMode,
 } from '../data/system';
-import { useProviderQuotaStatuses } from '../data/quotas';
 
 interface QuotaEnforcementFormData {
   enabled: boolean;
@@ -38,7 +38,7 @@ export function QuotaSettings() {
   const { t } = useTranslation();
   const { data: quotaSettings, isLoading: isQuotaSettingsLoading } = useQuotaEnforcementSettings();
   const { data: collectionSettings, isLoading: isCollectionSettingsLoading } = useProviderQuotaCollectionSettings();
-  const { data: providerQuotaChannels } = useProviderQuotaStatuses();
+  const { channels: providerQuotaChannels } = useProviderQuotaStatuses();
   const updateQuotaEnforcementSettings = useUpdateQuotaEnforcementSettings();
   const updateProviderQuotaCollectionSettings = useUpdateProviderQuotaCollectionSettings();
 
@@ -74,9 +74,7 @@ export function QuotaSettings() {
   const handleCollectionProviderChange = useCallback((providerType: string, checked: boolean) => {
     setCollectionFormData((prev) => ({
       ...prev,
-      providers: prev.providers.map((provider) =>
-        provider.provider === providerType ? { ...provider, enabled: checked } : provider
-      ),
+      providers: prev.providers.map((provider) => (provider.provider === providerType ? { ...provider, enabled: checked } : provider)),
     }));
   }, []);
 
@@ -150,11 +148,7 @@ export function QuotaSettings() {
 
             <div className='flex justify-end'>
               <Button type='submit' disabled={updateProviderQuotaCollectionSettings.isPending} className='min-w-24'>
-                {updateProviderQuotaCollectionSettings.isPending ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : (
-                  t('common.buttons.save')
-                )}
+                {updateProviderQuotaCollectionSettings.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : t('common.buttons.save')}
               </Button>
             </div>
           </form>
@@ -191,9 +185,7 @@ export function QuotaSettings() {
                   <div className='text-muted-foreground mb-2 text-sm'>{t('system.quota.mode.description')}</div>
                   <Select
                     value={quotaFormData.mode}
-                    onValueChange={(value) =>
-                      setQuotaFormData((prev) => ({ ...prev, mode: value as QuotaEnforcementMode }))
-                    }
+                    onValueChange={(value) => setQuotaFormData((prev) => ({ ...prev, mode: value as QuotaEnforcementMode }))}
                   >
                     <SelectTrigger id='quota-mode' className='w-56'>
                       <SelectValue placeholder={t('system.quota.mode.placeholder')} />
@@ -215,9 +207,7 @@ export function QuotaSettings() {
 
                 <div className='space-y-2'>
                   <Label>{t('system.quota.enforcement.allowedChannels.label')}</Label>
-                  <div className='text-muted-foreground text-sm'>
-                    {t('system.quota.enforcement.allowedChannels.description')}
-                  </div>
+                  <div className='text-muted-foreground text-sm'>{t('system.quota.enforcement.allowedChannels.description')}</div>
                   <ChannelMultiSelect
                     value={quotaFormData.allowedChannelIDs}
                     onChange={(ids) => setQuotaFormData((prev) => ({ ...prev, allowedChannelIDs: ids }))}
@@ -231,11 +221,7 @@ export function QuotaSettings() {
 
             <div className='flex justify-end'>
               <Button type='submit' disabled={updateQuotaEnforcementSettings.isPending} className='min-w-24'>
-                {updateQuotaEnforcementSettings.isPending ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : (
-                  t('common.buttons.save')
-                )}
+                {updateQuotaEnforcementSettings.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : t('common.buttons.save')}
               </Button>
             </div>
           </form>
@@ -245,7 +231,15 @@ export function QuotaSettings() {
   );
 }
 
-function ChannelMultiSelect({ value, onChange, channels }: { value: string[]; onChange: (v: string[]) => void; channels: { id: string; name: string }[] }) {
+function ChannelMultiSelect({
+  value,
+  onChange,
+  channels,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  channels: { id: string; name: string }[];
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
@@ -263,9 +257,7 @@ function ChannelMultiSelect({ value, onChange, channels }: { value: string[]; on
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant='outline' role='combobox' aria-expanded={open} className='w-full justify-between'>
-            {value.length > 0
-              ? `${value.length} channel${value.length > 1 ? 's' : ''} selected`
-              : t('common.select.placeholder')}
+            {value.length > 0 ? `${value.length} channel${value.length > 1 ? 's' : ''} selected` : t('common.select.placeholder')}
             <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
           </Button>
         </PopoverTrigger>

@@ -634,7 +634,9 @@ func (r *queryResolver) GetCacheDiagnostics(ctx context.Context, input *GetCache
 
 // AllowedChannelIDs is the resolver for the allowedChannelIDs field.
 func (r *quotaEnforcementSettingsResolver) AllowedChannelIDs(ctx context.Context, obj *biz.QuotaEnforcementSettings) ([]*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: AllowedChannelIDs - allowedChannelIDs"))
+	return lo.Map(obj.AllowedChannelIDs, func(id int, _ int) *objects.GUID {
+		return &objects.GUID{Type: "Channel", ID: id}
+	}), nil
 }
 
 // ProviderQuotaCollectionSettings returns ProviderQuotaCollectionSettingsResolver implementation.
