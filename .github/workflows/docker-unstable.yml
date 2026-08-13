@@ -17,6 +17,7 @@ jobs:
         with:
           ref: unstable
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Pin commit SHA & date
         id: pin
@@ -49,6 +50,7 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.commit_sha }}
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Write VERSION
         run: echo "v1.0.0-beta5-unstable.${{ needs.prepare.outputs.build_date }}" > internal/build/VERSION
