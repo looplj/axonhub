@@ -224,6 +224,42 @@ func TestOutboundTransformer_TransformRequest_WebSearchRequiredToolChoice(t *tes
 	require.Equal(t, "required", payload["tool_choice"])
 }
 
+func TestOutboundTransformer_TransformRequest_ImageGenerationToolChoice(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model:     "gpt-5.5",
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Messages: []llm.Message{{
+			Role: "user",
+			Content: llm.MessageContent{
+				Content: lo.ToPtr("Generate an image."),
+			},
+		}},
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeImageGeneration,
+			ImageGeneration: &llm.ImageGeneration{
+				Model: "gpt-image-2",
+			},
+		}},
+		ToolChoice: &llm.ToolChoice{
+			NamedToolChoice: &llm.NamedToolChoice{Type: llm.ToolTypeImageGeneration},
+		},
+	}
+
+	hreq, err := transformer.TransformRequest(context.Background(), req)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(hreq.Body, &payload)
+	require.NoError(t, err)
+	require.Equal(t, "image_generation", payload["tool_choice"].(map[string]any)["type"])
+	require.NotContains(t, payload["tool_choice"].(map[string]any), "name")
+	require.Equal(t, "image_generation", payload["tools"].([]any)[0].(map[string]any)["type"])
+	require.Equal(t, "gpt-image-2", payload["tools"].([]any)[0].(map[string]any)["model"])
+}
+
 func TestOutboundTransformer_TransformRequest_ReplaysProviderRawToolsAndToolChoice(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{
