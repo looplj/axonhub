@@ -34,6 +34,15 @@ type OutboundTransformer struct {
 	config *Config
 }
 
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
+
+func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
+	if capable, ok := t.Outbound.(transformer.ResponsesRequestCapabilitiesProvider); ok {
+		return capable.ResponsesRequestCapabilities(req)
+	}
+	return transformer.ResponsesRequestCapabilities{}
+}
+
 // NewOutboundTransformer creates a new xAI OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	if baseURL == "" {
@@ -107,6 +116,9 @@ func (t *OutboundTransformer) TransformRequest(
 	if len(chatReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
+
+	requestCopy := *chatReq
+	chatReq = &requestCopy
 
 	switch chatReq.Model {
 	case "grok-4":

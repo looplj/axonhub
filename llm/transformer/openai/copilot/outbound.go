@@ -21,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 var modelVersionRegex = regexp.MustCompile(`^gpt-(\d+)`)
@@ -65,6 +66,7 @@ type OutboundTransformerParams struct {
 }
 
 var _ transformer.Outbound = (*OutboundTransformer)(nil)
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
 
 func NewOutboundTransformer(params OutboundTransformerParams) (*OutboundTransformer, error) {
 	if params.TokenProvider == nil {
@@ -98,6 +100,14 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIChatCompletion
 }
 
+// ResponsesRequestCapabilities reflects Copilot's model-dependent protocol:
+// GPT-5+ uses native Responses, while older models use Chat Completions.
+func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
+	return transformer.ResponsesRequestCapabilities{
+		NativeResponses: req != nil && usesResponsesAPI(req.Model),
+	}
+}
+
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
 		return nil, errors.New("request is nil")
@@ -107,12 +117,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, errors.New("model is required")
 	}
 
-	if len(llmReq.Messages) == 0 {
-		return nil, errors.New("messages are required")
-	}
-
 	if usesResponsesAPI(llmReq.Model) {
 		return t.transformResponsesRequest(ctx, llmReq)
+	}
+	if llmReq.APIFormat == llm.APIFormatOpenAIResponse || llmReq.APIFormat == llm.APIFormatOpenAIResponseCompact {
+		llmReq = shared.DowngradeResponsesChatToolLifecycle(llmReq)
+	}
+	if len(llmReq.Messages) == 0 {
+		return nil, errors.New("messages are required")
 	}
 
 	token, err := t.tokenProvider.GetToken(ctx)
@@ -301,6 +313,8 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 				StatusCode: httpResp.StatusCode,
 				Headers:    httpResp.Headers,
 				Body:       unwrappedBody,
+				Request:    httpResp.Request,
+				RawRequest: httpResp.RawRequest,
 			}
 
 			return t.responses.TransformResponse(ctx, wrappedResp)

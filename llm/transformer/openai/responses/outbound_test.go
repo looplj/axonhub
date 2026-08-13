@@ -195,6 +195,30 @@ func TestOutboundTransformer_TransformRequest_OmitsMetadataWhenEmpty(t *testing.
 	require.Nil(t, hreq.Metadata)
 }
 
+func TestOutboundTransformer_TransformRequest_DoesNotMutateRetryMetadata(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	request := &llm.Request{
+		Model:               "gpt-5.6",
+		TransformerMetadata: map[string]any{"caller": "kept"},
+		Messages: []llm.Message{{
+			Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("generate an image")},
+		}},
+		Tools: []llm.Tool{{
+			Type: llm.ToolTypeImageGeneration,
+			ImageGeneration: &llm.ImageGeneration{
+				OutputFormat: "png",
+			},
+		}},
+	}
+	httpRequest, err := transformer.TransformRequest(t.Context(), request)
+	require.NoError(t, err)
+	require.Equal(t, map[string]any{"caller": "kept"}, request.TransformerMetadata)
+	require.NotContains(t, request.TransformerMetadata, "image_output_format")
+	require.Equal(t, "png", httpRequest.TransformerMetadata["image_output_format"])
+}
+
 func TestOutboundTransformer_TransformRequest_WebSearchRequiredToolChoice(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
@@ -314,6 +338,34 @@ func TestOutboundTransformer_TransformRequest_ReplaysProviderRawToolsAndToolChoi
 	require.True(t, ok)
 	require.Equal(t, "tool_search", toolChoice["type"])
 	require.Len(t, toolChoice["tools"], 1)
+}
+
+func TestOutboundTransformer_TransformRequest_ReplaysFutureFunctionLikeTool(t *testing.T) {
+	inbound := NewInboundTransformer()
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-4o","input":"lookup","tools":[{
+			"type":"future_client_tool","name":"lookup","execution":"client",
+			"future_option":{"mode":"fast"},
+			"parameters":{"type":"object","properties":{"query":{"type":"string"}}}
+		}]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, llmReq.Tools, 1)
+	require.Equal(t, llm.ToolTypeFunction, llmReq.Tools[0].Type)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	tools := payload["tools"].([]any)
+	require.Len(t, tools, 1)
+	tool := tools[0].(map[string]any)
+	require.Equal(t, "future_client_tool", tool["type"])
+	require.Equal(t, "lookup", tool["name"])
+	require.Equal(t, "fast", tool["future_option"].(map[string]any)["mode"])
 }
 
 func TestOutboundTransformer_TransformRequest_ReplaysNamespaceTool(t *testing.T) {
@@ -1299,6 +1351,40 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 				require.Equal(t, int64(10), result.Usage.PromptTokens)
 				require.Equal(t, int64(20), result.Usage.CompletionTokens)
 				require.Equal(t, int64(30), result.Usage.TotalTokens)
+			},
+		},
+		{
+			name: "response with tool search call",
+			httpResp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body: []byte(`{
+					"id":"resp_tool_search",
+					"object":"response",
+					"created_at":1759161016,
+					"status":"completed",
+					"model":"gpt-5",
+					"output":[{
+						"id":"ts_123",
+						"type":"tool_search_call",
+						"status":"completed",
+						"call_id":"call_search_123",
+						"execution":"client",
+						"arguments":{"query":"agents"}
+					}]
+				}`),
+			},
+			validate: func(t *testing.T, result *llm.Response) {
+				require.Len(t, result.Choices, 1)
+				require.Equal(t, "tool_calls", lo.FromPtr(result.Choices[0].FinishReason))
+				require.NotNil(t, result.Choices[0].Message)
+				require.Len(t, result.Choices[0].Message.ToolCalls, 1)
+				tc := result.Choices[0].Message.ToolCalls[0]
+				require.Equal(t, "call_search_123", tc.ID)
+				require.Equal(t, llm.ToolTypeResponsesToolSearch, tc.Type)
+				require.NotNil(t, tc.ResponseToolSearchCall)
+				require.Equal(t, "call_search_123", tc.ResponseToolSearchCall.CallID)
+				require.Equal(t, "client", tc.ResponseToolSearchCall.Execution)
+				require.JSONEq(t, `{"query":"agents"}`, tc.ResponseToolSearchCall.Arguments)
 			},
 		},
 		{

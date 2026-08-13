@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -51,7 +52,47 @@ func TestAggregateStreamChunks_CancelledFallbackUsesCanonicalStatus(t *testing.T
 	var body Response
 	require.NoError(t, json.Unmarshal(resultBytes, &body))
 	require.NotNil(t, body.Status)
-	require.Equal(t, "canceled", *body.Status)
+	require.Equal(t, "cancelled", *body.Status)
+}
+
+func TestAggregateStreamChunks_ToolSearchCallPreservesFinalLifecycleFields(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{
+			"type":"response.created",
+			"response":{"id":"resp_search","object":"response","created_at":1,"model":"gpt-5.5","status":"in_progress","output":[]}
+		}`)},
+		{Type: "response.output_item.added", Data: []byte(`{
+			"type":"response.output_item.added","output_index":0,
+			"item":{"id":"item_search","type":"tool_search_call","status":"in_progress","call_id":"call_search","execution":"client","arguments":{}}
+		}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{
+			"type":"response.function_call_arguments.delta","output_index":0,"item_id":"item_search","delta":"{\"query\":\"agents\"}"
+		}`)},
+		{Type: "response.function_call_arguments.done", Data: []byte(`{
+			"type":"response.function_call_arguments.done","output_index":0,"item_id":"item_search","arguments":"{\"query\":\"agents\"}"
+		}`)},
+		{Type: "response.output_item.done", Data: []byte(`{
+			"type":"response.output_item.done","output_index":0,
+			"item":{"id":"item_search","type":"tool_search_call","status":"completed","call_id":"call_search","execution":"client","arguments":{"query":"agents"}}
+		}`)},
+		{Type: "response.completed", Data: []byte(`{
+			"type":"response.completed",
+			"response":{"id":"resp_search","object":"response","created_at":1,"model":"gpt-5.5","status":"completed","output":[]}
+		}`)},
+	}
+
+	resultBytes, _, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	var response Response
+	require.NoError(t, json.Unmarshal(resultBytes, &response))
+	require.Len(t, response.Output, 1)
+	item := response.Output[0]
+	require.Equal(t, "item_search", item.ID)
+	require.Equal(t, "tool_search_call", item.Type)
+	require.Equal(t, "completed", lo.FromPtr(item.Status))
+	require.Equal(t, "call_search", item.CallID)
+	require.Equal(t, "client", item.Execution)
+	require.JSONEq(t, `{"query":"agents"}`, item.Arguments)
 }
 
 func TestAggregateStreamChunks_CancelledSnapshotPreservesStatus(t *testing.T) {

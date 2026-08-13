@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Config holds all configuration for the NanoGPT outbound transformer.
@@ -56,6 +57,18 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	return &OutboundTransformer{
 		Outbound: t,
 	}, nil
+}
+
+// TransformRequest safely downgrades Responses-only lifecycle state without
+// enabling the generic adapter, whose metadata NanoGPT cannot restore.
+func (t *OutboundTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
+	if req == nil || (req.APIFormat != llm.APIFormatOpenAIResponse && req.APIFormat != llm.APIFormatOpenAIResponseCompact) {
+		return t.Outbound.TransformRequest(ctx, req)
+	}
+
+	chatReq := *shared.DowngradeResponsesChatToolLifecycle(req)
+	chatReq.APIFormat = llm.APIFormatOpenAIChatCompletion
+	return t.Outbound.TransformRequest(ctx, &chatReq)
 }
 
 // TransformResponse transforms the HTTP response to llm.Response.

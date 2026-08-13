@@ -86,6 +86,14 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 
 			// exclude the last DONE event
 			for i, expectedEvent := range expectedEvents[:len(expectedEvents)-1] {
+				// Echo fields are carried via TransformerMetadata and tested
+				// separately; strip them for stream transformation comparison.
+				if actual := actualLLMResponses[i]; actual != nil && actual.TransformerMetadata != nil {
+					delete(actual.TransformerMetadata, responsesEchoFieldsTransformerMetadataKey)
+					if len(actual.TransformerMetadata) == 0 {
+						actual.TransformerMetadata = nil
+					}
+				}
 				if !xtest.Equal(expectedEvent, actualLLMResponses[i]) {
 					t.Fatalf("event %d mismatch:\n%s", i, cmp.Diff(expectedEvent, actualLLMResponses[i]))
 				}
@@ -1263,4 +1271,51 @@ func TestOutboundTransformer_TransformStream_CreatedAtCompatibility(t *testing.T
 			require.Equal(t, int64(1786360449), last.Created)
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformStream_ToolSearchCallLifecycle(t *testing.T) {
+	callID := "call_search_123"
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_tool_search","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ts_123","type":"tool_search_call","status":"in_progress","call_id":"call_search_123","execution":"client","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"ts_123","output_index":0,"delta":"{\"query\":"}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"ts_123","output_index":0,"delta":"\"agents\"}"}`)},
+		{Type: "response.function_call_arguments.done", Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"ts_123","output_index":0}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ts_123","type":"tool_search_call","status":"completed","call_id":"call_search_123","execution":"client"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_tool_search","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	stream := newResponsesOutboundStream(streams.AppendStream(streams.SliceStream(events), lo.ToPtr(llm.DoneStreamEvent)))
+	actual, err := streams.All(streams.NoNil(stream))
+	require.NoError(t, err)
+	require.Len(t, actual, 6)
+
+	added := actual[1].Choices[0].Delta.ToolCalls[0]
+	require.Equal(t, callID, added.ID)
+	require.Equal(t, llm.ToolTypeResponsesToolSearch, added.Type)
+	require.Equal(t, 0, added.Index)
+	require.NotNil(t, added.ResponseToolSearchCall)
+	require.Equal(t, callID, added.ResponseToolSearchCall.CallID)
+	require.Equal(t, "client", added.ResponseToolSearchCall.Execution)
+
+	var arguments string
+	for _, response := range actual[2:4] {
+		require.Len(t, response.Choices, 1)
+		require.NotNil(t, response.Choices[0].Delta)
+		require.Len(t, response.Choices[0].Delta.ToolCalls, 1)
+		delta := response.Choices[0].Delta.ToolCalls[0]
+		require.Equal(t, llm.ToolTypeResponsesToolSearch, delta.Type)
+		require.Equal(t, 0, delta.Index)
+		require.NotNil(t, delta.ResponseToolSearchCall)
+		require.Equal(t, callID, delta.ResponseToolSearchCall.CallID)
+		require.Equal(t, "client", delta.ResponseToolSearchCall.Execution)
+		arguments += delta.ResponseToolSearchCall.Arguments
+	}
+	require.JSONEq(t, `{"query":"agents"}`, arguments)
+	require.NotNil(t, stream.state.toolCalls[callID])
+	require.NotNil(t, stream.state.toolCalls[callID].ResponseToolSearchCall)
+	require.JSONEq(t, `{"query":"agents"}`, stream.state.toolCalls[callID].ResponseToolSearchCall.Arguments)
+
+	require.Equal(t, "tool_calls", lo.FromPtr(actual[4].Choices[0].FinishReason))
+	require.Equal(t, llm.DoneResponse, actual[5])
 }

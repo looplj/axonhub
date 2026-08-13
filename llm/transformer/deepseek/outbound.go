@@ -30,6 +30,15 @@ type OutboundTransformer struct {
 	completion     transformer.Outbound
 }
 
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
+
+func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
+	if capable, ok := t.Outbound.(transformer.ResponsesRequestCapabilitiesProvider); ok {
+		return capable.ResponsesRequestCapabilities(req)
+	}
+	return transformer.ResponsesRequestCapabilities{}
+}
+
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
 		BaseURL:        baseURL,

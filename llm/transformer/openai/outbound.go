@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
+	"maps"
 	"net/http"
 	"strings"
 
@@ -80,6 +82,9 @@ type OutboundTransformer struct {
 	config *Config
 }
 
+var _ transformer.ResponsesChatToolLifecycleCapable = (*OutboundTransformer)(nil)
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
+
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
@@ -146,6 +151,20 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIChatCompletion
 }
 
+// SupportsResponsesChatToolLifecycle reports that this transformer uses the
+// reversible Responses-to-Chat tool adapter for Responses-origin requests.
+func (t *OutboundTransformer) SupportsResponsesChatToolLifecycle() bool {
+	return true
+}
+
+// ResponsesRequestCapabilities reports lifecycle support for Responses chat
+// requests. Compact requests remain unsupported by this Chat endpoint.
+func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
+	return transformer.ResponsesRequestCapabilities{
+		ChatToolLifecycle: req != nil && req.RequestType != llm.RequestTypeCompact,
+	}
+}
+
 // TransformRequest transforms ChatCompletionRequest to Request.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
@@ -195,8 +214,21 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		reasoningField = ReasoningFieldContent
 	}
 
-	// Convert to OpenAI Request format (this strips helper fields)
-	oaiReq := RequestFromLLM(llmReq, reasoningField)
+	// Native Chat requests use the plain codec unchanged. Only Responses-origin
+	// requests need reversible lifecycle mappings and compatibility warnings.
+	var (
+		oaiReq      *Request
+		toolAdapter *responsesChatToolAdapter
+	)
+	if isResponsesAPIFormat(llmReq.APIFormat) {
+		var err error
+		oaiReq, toolAdapter, err = requestFromLLMWithResponsesToolAdapter(llmReq, reasoningField)
+		if err != nil {
+			return nil, fmt.Errorf("%w: failed to convert Responses tools to Chat Completions: %v", transformer.ErrInvalidRequest, err)
+		}
+	} else {
+		oaiReq = RequestFromLLM(llmReq, reasoningField)
+	}
 	// Apply per-channel reasoning_effort mapping for non-standard OpenAI-compatible providers.
 	// Entries in the map replace the effort value; values not in the map pass through unchanged.
 	// e.g. ollama channel with {"xhigh": "max"} converts Anthropic's internal "xhigh" back to "max".
@@ -231,15 +263,39 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("failed to build platform URL: %w", err)
 	}
 
+	transformerMetadata := maps.Clone(llmReq.TransformerMetadata)
+	if toolAdapter != nil {
+		if transformerMetadata == nil {
+			transformerMetadata = map[string]any{}
+		}
+		if mappings := toolAdapter.mappings(); len(mappings) > 0 {
+			transformerMetadata[responsesChatToolMappingsMetadataKey] = mappings
+		}
+		if catalog := toolAdapter.catalog(); len(catalog) > 0 {
+			transformerMetadata[responsesChatToolCatalogMetadataKey] = catalog
+		}
+		if len(toolAdapter.warnings) > 0 {
+			transformerMetadata[responsesChatToolWarningsMetadataKey] = append([]string(nil), toolAdapter.warnings...)
+			slog.WarnContext(ctx, "Responses request degraded during Chat Completions conversion",
+				slog.String("model", llmReq.Model),
+				slog.Any("warnings", toolAdapter.warnings))
+		}
+	}
+
 	return &httpclient.Request{
-		Method:    http.MethodPost,
-		URL:       url,
-		Headers:   headers,
-		Body:      body,
-		Auth:      authConfig,
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-		Metadata:  nil,
+		Method:              http.MethodPost,
+		URL:                 url,
+		Headers:             headers,
+		Body:                body,
+		Auth:                authConfig,
+		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
+		Metadata:            nil,
+		TransformerMetadata: transformerMetadata,
 	}, nil
+}
+
+func isResponsesAPIFormat(format llm.APIFormat) bool {
+	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseCompact
 }
 
 // TransformResponse transforms Response to ChatCompletionResponse.
@@ -291,8 +347,11 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
 	}
 
-	// Convert to unified llm.Response
-	return oaiResp.ToLLMResponse(), nil
+	// Convert to unified llm.Response and restore Responses-only calls that were
+	// represented as Chat function calls for this request.
+	llmResp := oaiResp.ToLLMResponse()
+	restoreResponsesChatToolCalls(llmResp, responsesChatToolMappings(httpResp.Request))
+	return llmResp, nil
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
@@ -314,9 +373,91 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 	//
 	// Note: TransformStreamChunk only returns nil for events with explicit "choices":[]
 	// in the raw JSON. Events without a choices key (nil slice) are passed through.
-	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
-		return t.TransformStreamChunk(ctx, event)
-	})), nil
+	restorer := newResponsesChatToolStreamRestorer(responsesChatToolMappings(req), responsesChatToolCatalog(req))
+	mapped := streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+		response, err := t.TransformStreamChunk(ctx, event)
+		if err == nil {
+			restorer.restore(response)
+		}
+		return response, err
+	}))
+	return &responsesChatToolFlushStream{inner: mapped, restorer: restorer}, nil
+}
+
+// responsesChatToolFlushStream releases tool calls the restorer still buffers
+// when the upstream stream ends without the finish chunk that would normally
+// release them. Without this, providers that omit finish_reason (or emit
+// [DONE] in its place) would silently drop every buffered call.
+type responsesChatToolFlushStream struct {
+	inner    streams.Stream[*llm.Response]
+	restorer *responsesChatToolStreamRestorer
+	buffer   []*llm.Response
+	current  *llm.Response
+	flushed  bool
+}
+
+func (s *responsesChatToolFlushStream) Next() bool {
+	if len(s.buffer) > 0 {
+		s.popBuffered()
+		return true
+	}
+
+	if !s.inner.Next() {
+		s.current = nil
+		if !s.flushed && s.inner.Err() == nil {
+			s.flushed = true
+			s.buffer = s.restorer.flushBuffered()
+			if len(s.buffer) > 0 {
+				s.popBuffered()
+				return true
+			}
+		}
+		return false
+	}
+
+	// Insert flushed calls ahead of the [DONE] sentinel so downstream consumers
+	// that stop at a terminal event still observe them.
+	if current := s.inner.Current(); !s.flushed &&
+		(current == llm.DoneResponse || (current != nil && current.Object == "[DONE]")) {
+		if flushed := s.restorer.flushBuffered(); len(flushed) > 0 {
+			s.flushed = true
+			s.buffer = append(flushed, current)
+			s.popBuffered()
+			return true
+		}
+	}
+
+	s.current = s.inner.Current()
+	return true
+}
+
+func (s *responsesChatToolFlushStream) popBuffered() {
+	s.current = s.buffer[0]
+	s.buffer = s.buffer[1:]
+}
+
+func (s *responsesChatToolFlushStream) Current() *llm.Response { return s.current }
+
+func (s *responsesChatToolFlushStream) Err() error { return s.inner.Err() }
+
+func (s *responsesChatToolFlushStream) Close() error { return s.inner.Close() }
+
+// responsesChatToolMappings retrieves per-request mappings used to restore Responses calls.
+func responsesChatToolMappings(req *httpclient.Request) map[string]responsesChatToolMapping {
+	if req == nil || req.TransformerMetadata == nil {
+		return nil
+	}
+	mappings, _ := req.TransformerMetadata[responsesChatToolMappingsMetadataKey].(map[string]responsesChatToolMapping)
+	return mappings
+}
+
+// responsesChatToolCatalog retrieves callable names used to restore fragmented tool calls.
+func responsesChatToolCatalog(req *httpclient.Request) []string {
+	if req == nil || req.TransformerMetadata == nil {
+		return nil
+	}
+	catalog, _ := req.TransformerMetadata[responsesChatToolCatalogMetadataKey].([]string)
+	return catalog
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(

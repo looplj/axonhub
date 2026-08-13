@@ -31,6 +31,15 @@ type OutboundTransformer struct {
 	transformer.Outbound
 }
 
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
+
+func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
+	if capable, ok := t.Outbound.(transformer.ResponsesRequestCapabilitiesProvider); ok {
+		return capable.ResponsesRequestCapabilities(req)
+	}
+	return transformer.ResponsesRequestCapabilities{}
+}
+
 // NewOutboundTransformerWithConfig creates a new Cerebras OutboundTransformer.
 func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, error) {
 	if config == nil {

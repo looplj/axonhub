@@ -386,6 +386,16 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	llmRequest.Model = entry.ActualModel
 
+	if isResponsesFormat(llmRequest.APIFormat) &&
+		!responsesRequestCapabilities(p.wrapped, llmRequest).NativeResponses &&
+		llmRequest.PreviousResponseID != nil {
+		hydrated, err := hydratePreviousResponsesForChat(ctx, llmRequest, p.state)
+		if err != nil {
+			return nil, err
+		}
+		llmRequest = hydrated
+	}
+
 	outboundFormat := p.wrapped.APIFormat()
 	if candidate.APIFormat != "" {
 		outboundFormat = llm.APIFormat(candidate.APIFormat)
@@ -400,7 +410,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 		llmRequest = transformedRequest
 	}
-	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, outboundFormat)
+	llmRequest = filterResponsesChatToolMessagesForOutbound(llmRequest, p.wrapped)
 
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)
@@ -438,38 +448,67 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	)
 }
 
-func filterResponseCustomToolMessagesForNonResponsesOutbound(
+func filterResponsesChatToolMessagesForOutbound(
 	llmRequest *llm.Request,
-	outboundFormat llm.APIFormat,
+	outbound transformer.Outbound,
 ) *llm.Request {
 	if llmRequest == nil {
 		return nil
 	}
 
-	if !isResponsesFormat(llmRequest.APIFormat) || isResponsesFormat(outboundFormat) || !containsResponseCustomToolMessages(llmRequest.Messages) {
+	if !isResponsesFormat(llmRequest.APIFormat) || outbound == nil {
 		return llmRequest
 	}
 
-	cloned := *llmRequest
-	cloned.Messages = shared.FilterOutResponseCustomToolMessages(llmRequest.Messages)
+	// Truncated streams can leave clients replaying tool-call arguments that
+	// are not valid JSON. Repair them for every Responses-origin outbound
+	// (Chat and Responses-native alike) so strict providers do not reject the
+	// whole replayed history.
+	if sanitized, changed := shared.SanitizeChatToolArguments(llmRequest.Messages); changed {
+		cloned := *llmRequest
+		cloned.Messages = sanitized
+		llmRequest = &cloned
+	}
 
-	return &cloned
+	capabilities := responsesRequestCapabilities(outbound, llmRequest)
+	if capabilities.NativeResponses {
+		return llmRequest
+	}
+
+	// Interrupted turns leave empty output items in client history. Strict
+	// Chat providers reject the replayed empty content, so drop or substitute
+	// it before any Chat conversion. Responses-native replays keep fidelity.
+	if sanitized, changed := shared.SanitizeChatMessageContent(llmRequest.Messages); changed {
+		cloned := *llmRequest
+		cloned.Messages = sanitized
+		llmRequest = &cloned
+	}
+
+	if capabilities.ChatToolLifecycle {
+		return llmRequest
+	}
+
+	return shared.DowngradeResponsesChatToolLifecycle(llmRequest)
+}
+
+func responsesRequestCapabilities(outbound transformer.Outbound, request *llm.Request) transformer.ResponsesRequestCapabilities {
+	if outbound == nil {
+		return transformer.ResponsesRequestCapabilities{}
+	}
+	if isResponsesFormat(outbound.APIFormat()) {
+		return transformer.ResponsesRequestCapabilities{NativeResponses: true}
+	}
+	if capable, ok := outbound.(transformer.ResponsesRequestCapabilitiesProvider); ok {
+		return capable.ResponsesRequestCapabilities(request)
+	}
+	if capable, ok := outbound.(transformer.ResponsesChatToolLifecycleCapable); ok && capable.SupportsResponsesChatToolLifecycle() {
+		return transformer.ResponsesRequestCapabilities{ChatToolLifecycle: true}
+	}
+	return transformer.ResponsesRequestCapabilities{}
 }
 
 func isResponsesFormat(format llm.APIFormat) bool {
 	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseCompact
-}
-
-func containsResponseCustomToolMessages(messages []llm.Message) bool {
-	for _, msg := range messages {
-		for _, toolCall := range msg.ToolCalls {
-			if toolCall.Type == llm.ToolTypeResponsesCustomTool || toolCall.ResponseCustomToolCall != nil {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {

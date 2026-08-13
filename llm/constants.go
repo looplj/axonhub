@@ -82,4 +82,11 @@ const (
 	// ToolTypeResponsesCustomTool is the custom tool type for OpenAI Responses API.
 	// Custom tools use freeform input (not JSON) and a grammar-based format definition.
 	ToolTypeResponsesCustomTool = "responses_custom_tool"
+
+	// ToolTypeResponsesToolSearch is the client-executed tool search type for OpenAI Responses API.
+	ToolTypeResponsesToolSearch = "responses_tool_search"
+
+	// ToolTypeResponsesOpaqueTool preserves a Responses tool whose execution
+	// semantics cannot be represented by the common tool model.
+	ToolTypeResponsesOpaqueTool = "responses_opaque_tool"
 )

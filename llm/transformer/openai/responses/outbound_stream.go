@@ -73,6 +73,11 @@ type outboundStreamState struct {
 	// Transformer metadata tracking
 	transformerMetadata        map[string]any
 	transformerMetadataEmitted bool
+
+	// echoResponse holds the upstream Response object for echoing
+	// request-parameter fields (conversation, metadata, reasoning, etc.)
+	// that are not part of the unified llm.Response IR.
+	echoResponse *Response
 }
 
 func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) *responsesOutboundStream {
@@ -90,6 +95,19 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 
 func (s *responsesOutboundStream) enqueue(resp *llm.Response) {
 	s.eventQueue = append(s.eventQueue, resp)
+}
+
+// attachEchoFields stores the upstream Response echo fields on the emitted
+// llm.Response chunk's TransformerMetadata so the inbound stream can restore
+// them when rebuilding response.created / response.completed events.
+func (s *responsesOutboundStream) attachEchoFields(resp *llm.Response) {
+	if s.state.echoResponse == nil {
+		return
+	}
+	if resp.TransformerMetadata == nil {
+		resp.TransformerMetadata = map[string]any{}
+	}
+	resp.TransformerMetadata[responsesEchoFieldsTransformerMetadataKey] = s.state.echoResponse
 }
 
 func (s *responsesOutboundStream) Next() bool {
@@ -184,6 +202,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				s.state.usage = streamEvent.Response.Usage.ToUsage()
 				resp.Usage = s.state.usage
 			}
+			s.state.echoResponse = streamEvent.Response
 		}
 
 		resp.Choices = []llm.Choice{
@@ -194,6 +213,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				},
 			},
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeResponseInProgress:
 		// Update state but don't emit an event
@@ -298,6 +318,40 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				},
 			}
 
+		case "tool_search_call":
+			toolCallIdx := len(s.state.toolCalls)
+			s.state.toolCalls[item.CallID] = &llm.ToolCall{
+				ID:   item.CallID,
+				Type: llm.ToolTypeResponsesToolSearch,
+				ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+					CallID:    item.CallID,
+					Execution: item.Execution,
+					Arguments: item.Arguments,
+				},
+			}
+			s.state.itemToCallID[item.ID] = item.CallID
+			s.state.toolCallIndex[item.CallID] = toolCallIdx
+
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{
+							{
+								ID:    item.CallID,
+								Type:  llm.ToolTypeResponsesToolSearch,
+								Index: toolCallIdx,
+								ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+									CallID:    item.CallID,
+									Execution: item.Execution,
+									Arguments: item.Arguments,
+								},
+							},
+						},
+					},
+				},
+			}
+
 		default:
 			// For other item types (e.g., message), skip - no meaningful content to emit
 			return nil // Intentionally skip this event
@@ -314,8 +368,31 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			}
 
 			if tc, ok := s.state.toolCalls[callID]; ok {
-				tc.Function.Arguments += streamEvent.Delta
 				toolCallIdx := s.state.toolCallIndex[callID]
+				if tc.ResponseToolSearchCall != nil {
+					tc.ResponseToolSearchCall.Arguments += streamEvent.Delta
+					resp.Choices = []llm.Choice{
+						{
+							Index: 0,
+							Delta: &llm.Message{
+								ToolCalls: []llm.ToolCall{
+									{
+										Index: toolCallIdx,
+										Type:  llm.ToolTypeResponsesToolSearch,
+										ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+											CallID:    callID,
+											Execution: tc.ResponseToolSearchCall.Execution,
+											Arguments: streamEvent.Delta,
+										},
+									},
+								},
+							},
+						},
+					}
+					break
+				}
+
+				tc.Function.Arguments += streamEvent.Delta
 
 				resp.Choices = []llm.Choice{
 					{
@@ -348,6 +425,13 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		tc, ok := s.state.toolCalls[callID]
 		if !ok {
 			return nil // Intentionally skip an unknown tool call.
+		}
+
+		if tc.ResponseToolSearchCall != nil {
+			if streamEvent.Arguments != "" {
+				tc.ResponseToolSearchCall.Arguments = streamEvent.Arguments
+			}
+			return nil
 		}
 
 		identityChanged := false
@@ -513,6 +597,17 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if streamEvent.Item == nil {
 			return nil // Intentionally skip this event
 		}
+		if streamEvent.Item.Type == "tool_search_call" {
+			if tc, ok := s.state.toolCalls[streamEvent.Item.CallID]; ok && tc.ResponseToolSearchCall != nil {
+				if streamEvent.Item.Execution != "" {
+					tc.ResponseToolSearchCall.Execution = streamEvent.Item.Execution
+				}
+				if streamEvent.Item.Arguments != "" {
+					tc.ResponseToolSearchCall.Arguments = streamEvent.Item.Arguments
+				}
+			}
+			return nil // Tool call was emitted by item.added and argument deltas.
+		}
 		if streamEvent.Item.Type == "compaction" || streamEvent.Item.Type == "compaction_summary" {
 			resp.Choices = []llm.Choice{{
 				Index: 0,
@@ -595,6 +690,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			resp.TransformerMetadata = s.state.transformerMetadata
 			s.state.transformerMetadataEmitted = true
 		}
+		if streamEvent.Response != nil {
+			s.state.echoResponse = streamEvent.Response
+		}
 
 		// The Responses API signals abnormal completion via response.completed
 		// with a status other than "completed" (incomplete/failed/cancelled) - it
@@ -658,6 +756,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 			return nil
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeResponseFailed:
 		if s.responseCompleted {
@@ -665,6 +764,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 		// Response failed
 		s.responseCompleted = true
+		if streamEvent.Response != nil {
+			s.state.echoResponse = streamEvent.Response
+		}
 		finishReason := "error"
 		resp.Choices = []llm.Choice{
 			{
@@ -672,6 +774,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				FinishReason: &finishReason,
 			},
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeResponseIncomplete:
 		if s.responseCompleted {
@@ -679,6 +782,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 		// Response incomplete (e.g., max tokens)
 		s.responseCompleted = true
+		if streamEvent.Response != nil {
+			s.state.echoResponse = streamEvent.Response
+		}
 		finishReason := "length"
 		resp.Choices = []llm.Choice{
 			{
@@ -686,6 +792,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				FinishReason: &finishReason,
 			},
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeResponseCancelled:
 		if s.responseCompleted {
@@ -693,6 +800,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 		// Response cancelled
 		s.responseCompleted = true
+		if streamEvent.Response != nil {
+			s.state.echoResponse = streamEvent.Response
+		}
 		finishReason := "cancelled"
 		resp.Choices = []llm.Choice{
 			{
@@ -700,6 +810,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				FinishReason: &finishReason,
 			},
 		}
+		s.attachEchoFields(resp)
 
 	case StreamEventTypeError:
 		return &llm.ResponseError{
