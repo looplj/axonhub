@@ -312,12 +312,12 @@ func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 
 	if src.Mode != nil {
 		result.ToolChoice = src.Mode
-	} else if src.Type != nil && src.Name != nil {
+	} else if src.Type != nil {
 		result.NamedToolChoice = &llm.NamedToolChoice{
 			Type: *src.Type,
-			Function: llm.ToolFunction{
-				Name: *src.Name,
-			},
+		}
+		if src.Name != nil {
+			result.NamedToolChoice.Function.Name = *src.Name
 		}
 	}
 
