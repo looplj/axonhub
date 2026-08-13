@@ -614,8 +614,9 @@ type UpdateProviderQuotaCollectionSettingsInput struct {
 }
 
 type UpdateQuotaEnforcementSettingsInput struct {
-	Enabled *bool                     `json:"enabled,omitempty"`
-	Mode    *biz.QuotaEnforcementMode `json:"mode,omitempty"`
+	Enabled           *bool                     `json:"enabled,omitempty"`
+	Mode              *biz.QuotaEnforcementMode `json:"mode,omitempty"`
+	AllowedChannelIDs []*objects.GUID           `json:"allowedChannelIDs,omitempty"`
 }
 
 type UpdateSecuritySettingsInput struct {

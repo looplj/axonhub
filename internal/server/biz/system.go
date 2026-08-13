@@ -208,6 +208,8 @@ type QuotaEnforcementSettings struct {
 	Enabled bool `json:"enabled"`
 	// Mode defines how quota is enforced.
 	Mode QuotaEnforcementMode `json:"mode"`
+	// AllowedChannelIDs contains channel IDs that bypass quota filtering.
+	AllowedChannelIDs []int `json:"allowedChannelIDs"`
 }
 
 // SecuritySettings represents system-wide request access controls.
