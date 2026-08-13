@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -44,8 +45,15 @@ type OutboundTransformer struct {
 
 var (
 	_ transformer.Outbound               = (*OutboundTransformer)(nil)
+	_ transformer.PassThroughBodyPolicy  = (*OutboundTransformer)(nil)
 	_ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
 )
+
+var responsesBlockedPassThroughFields = []string{
+	"max_output_tokens",
+	"max_completion_tokens",
+	"max_tokens",
+}
 
 type Params struct {
 	TokenProvider oauth.TokenGetter
@@ -92,6 +100,20 @@ func (t *OutboundTransformer) TokenProvider() oauth.TokenGetter {
 	}
 
 	return t.tokens
+}
+
+func (t *OutboundTransformer) AllowPassThroughBody(_ context.Context, llmReq *llm.Request, _ *httpclient.Request) bool {
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIResponse || llmReq.RawRequest == nil {
+		return true
+	}
+
+	for _, field := range responsesBlockedPassThroughFields {
+		if gjson.GetBytes(llmReq.RawRequest.Body, field).Exists() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
