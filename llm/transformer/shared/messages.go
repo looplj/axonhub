@@ -130,7 +130,7 @@ func HasChatCompatibleAssistantPayload(msg llm.Message) bool {
 	}
 	for _, part := range msg.Content.MultipleContent {
 		switch part.Type {
-		case "text":
+		case "text", "input_text", "output_text":
 			if part.Text != nil && strings.TrimSpace(*part.Text) != "" {
 				return true
 			}
@@ -163,6 +163,9 @@ func hasOutputAudioPayload(audio *llm.OutputAudio) bool {
 func SanitizeChatToolArguments(messages []llm.Message) ([]llm.Message, bool) {
 	result := messages
 	changed := false
+	// toolCallsCopied tracks per message whether ToolCalls was already copied
+	// into a fresh slice, guarding the copy-on-write below.
+	toolCallsCopied := make([]bool, len(messages))
 
 	for messageIndex, message := range messages {
 		if message.Role != "assistant" || len(message.ToolCalls) == 0 {
@@ -179,8 +182,9 @@ func SanitizeChatToolArguments(messages []llm.Message) ([]llm.Message, bool) {
 				result = append([]llm.Message(nil), messages...)
 				changed = true
 			}
-			if &result[messageIndex].ToolCalls[0] == &message.ToolCalls[0] {
+			if !toolCallsCopied[messageIndex] {
 				result[messageIndex].ToolCalls = append([]llm.ToolCall(nil), message.ToolCalls...)
+				toolCallsCopied[messageIndex] = true
 			}
 			result[messageIndex].ToolCalls[callIndex] = repaired
 		}

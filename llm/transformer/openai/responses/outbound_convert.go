@@ -435,11 +435,13 @@ func synchronizeToolSearchOutputMessages(
 		originPrefix := origins[occurrence]
 
 		definitions := make([]Tool, 0)
+		hasOriginTools := false
 		for _, tool := range tools {
 			if tool.ResponsesOrigin != "tool_search_output" || tool.ResponsesOriginCallID != callID ||
 				!strings.HasPrefix(tool.ResponsesRawID, originPrefix) {
 				continue
 			}
+			hasOriginTools = true
 			definition, ok, err := responseToolSearchOutputDefinition(tool)
 			if err != nil {
 				return nil, err
@@ -447,6 +449,13 @@ func synchronizeToolSearchOutputMessages(
 			if ok {
 				definitions = append(definitions, definition)
 			}
+		}
+		if len(definitions) == 0 && hasOriginTools {
+			// Origin tools exist but none convert to definitions (for example
+			// opaque declarations). Overwriting the content with an empty array
+			// would erase the original output, so keep it and let
+			// convertToolMessageWithType keep or decode the original value.
+			continue
 		}
 		encoded, err := json.Marshal(definitions)
 		if err != nil {

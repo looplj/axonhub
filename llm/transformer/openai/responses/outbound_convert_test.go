@@ -581,8 +581,6 @@ func TestConvertToolMessageCustomOutputImageCarriesDetail(t *testing.T) {
 	require.Equal(t, "auto", lo.FromPtr(decoded.Output[0].Detail))
 }
 
-
-
 func TestConvertWebSearchToTool(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1965,5 +1963,87 @@ func TestResponseToolSearchOutputDefinition(t *testing.T) {
 		_, ok, err := responseToolSearchOutputDefinition(llm.Tool{Type: llm.ToolTypeResponsesOpaqueTool})
 		require.NoError(t, err)
 		require.False(t, ok)
+	})
+}
+
+func TestSynchronizeToolSearchOutputMessagesDefinitionSync(t *testing.T) {
+	callID := "call_search_sync"
+	newMessages := func() []llm.Message {
+		return []llm.Message{
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						ID:                     callID,
+						ResponseToolSearchCall: &llm.ResponseToolSearchCall{CallID: callID},
+					},
+				},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: lo.ToPtr(callID),
+				Content:    llm.MessageContent{Content: lo.ToPtr(`{"result":"raw search output"}`)},
+			},
+		}
+	}
+	requestExt := &llm.OpenAIResponsesRequestExtensions{
+		RawInputItems: []llm.OpenAIResponsesRawFragment{
+			{Type: "tool_search_output", CallID: callID, OriginalIndex: 4},
+		},
+	}
+
+	t.Run("unconvertible origin definitions keep original content", func(t *testing.T) {
+		// The origin declaration still exists in the tool catalog but its type
+		// cannot be converted into a definition (opaque tool). The original
+		// output must not be erased by an empty definition array.
+		tools := []llm.Tool{
+			{
+				Type: llm.ToolTypeResponsesOpaqueTool,
+				ResponseOpaqueTool: &llm.ResponseOpaqueTool{
+					SourceType: "future_hosted_tool",
+					Name:       "discover",
+				},
+				ResponsesOrigin:       "tool_search_output",
+				ResponsesOriginCallID: callID,
+				ResponsesRawID:        "input:4:0",
+			},
+		}
+
+		result, err := synchronizeToolSearchOutputMessages(newMessages(), tools, requestExt)
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+		require.Equal(t, `{"result":"raw search output"}`, lo.FromPtr(result[1].Content.Content))
+	})
+
+	t.Run("absent origin definitions clear content", func(t *testing.T) {
+		result, err := synchronizeToolSearchOutputMessages(newMessages(), nil, requestExt)
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+		require.Equal(t, "[]", lo.FromPtr(result[1].Content.Content))
+	})
+
+	t.Run("matching definitions replace content", func(t *testing.T) {
+		tools := []llm.Tool{
+			{
+				Type:                  llm.ToolTypeFunction,
+				Function:              llm.Function{Name: "lookup", Description: "Look things up"},
+				ResponsesOrigin:       "tool_search_output",
+				ResponsesOriginCallID: callID,
+				ResponsesRawID:        "input:4:0",
+			},
+		}
+
+		result, err := synchronizeToolSearchOutputMessages(newMessages(), tools, requestExt)
+		require.NoError(t, err)
+		require.Len(t, result, 2)
+
+		content := lo.FromPtr(result[1].Content.Content)
+		require.NotEqual(t, `{"result":"raw search output"}`, content)
+
+		var definitions []Tool
+		require.NoError(t, json.Unmarshal([]byte(content), &definitions))
+		require.Len(t, definitions, 1)
+		require.Equal(t, "function", definitions[0].Type)
+		require.Equal(t, "lookup", definitions[0].Name)
 	})
 }

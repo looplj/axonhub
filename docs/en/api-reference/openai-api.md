@@ -61,11 +61,11 @@ AxonHub provides partial support for the OpenAI Responses API, including continu
 
 **Capabilities:**
 - ✅ `previous_response_id` passthrough is supported for continued Responses conversations on the same upstream channel
-- ✅ When a Responses request is routed to a Chat Completions channel, AxonHub expands `previous_response_id` into explicit Chat history within the same project and API-key scope
+- ✅ When a Responses request is routed to a Chat Completions channel whose per-channel `enableResponsesChatCompat` transform option is enabled, AxonHub expands `previous_response_id` into explicit Chat history within the same project and API-key scope
 - ✅ Basic response generation is fully functional
 - ✅ Streaming responses are supported
 
-Responses-to-Chat history expansion requires both request and response body storage to be enabled for the referenced turns. If the referenced response is missing, outside the current scope, or its bodies were not retained, AxonHub returns `400 invalid_request_error`. Storage service failures remain server errors. Previous turns' top-level `instructions` are not inherited, matching Responses API semantics.
+Responses-to-Chat history expansion is opt-in per channel: only channels with the `enableResponsesChatCompat` transform option enabled perform the expansion, while channels without it retain the legacy Responses-to-Chat conversion. The expansion requires both request and response body storage to be enabled for the referenced turns. If the referenced response is missing, outside the current scope, or its bodies were not retained, AxonHub returns `400 invalid_request_error`. Storage service failures remain server errors. Previous turns' top-level `instructions` are not inherited, matching Responses API semantics.
 
 **Example Request:**
 ```go

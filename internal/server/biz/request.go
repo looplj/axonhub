@@ -90,16 +90,12 @@ func storedResponseExchangeFitsBudget(requestBytes, responseBytes, maxBytes int6
 // other storage errors remain server errors so callers can retry them.
 func (s *RequestService) loadStoredResponseExchangeBody(
 	ctx context.Context,
-	stored *ent.Request,
+	dataStorage *ent.DataStorage,
 	databaseBody objects.JSONRawMessage,
 	externalKey string,
 	bodyName string,
 	maxBytes int64,
 ) (objects.JSONRawMessage, error) {
-	dataStorage, err := s.getDataStorage(ctx, stored.DataStorageID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve %s storage: %w", bodyName, err)
-	}
 	if !s.shouldUseExternalStorage(ctx, dataStorage) {
 		if databaseBody == nil {
 			return xjson.EmptyJSONRawMessage, nil
@@ -1433,6 +1429,13 @@ func (s *RequestService) LoadCompletedResponseExchange(
 			return nil, fmt.Errorf("failed to load previous response %q database bodies: %w", externalID, err)
 		}
 		if len(bodyRows) == 0 {
+			exists, existsErr := client.Request.Query().Where(request.IDEQ(metadata.ID)).Exist(ctx)
+			if existsErr != nil {
+				return nil, fmt.Errorf("failed to load previous response %q database bodies: %w", externalID, existsErr)
+			}
+			if !exists {
+				return nil, nil
+			}
 			return nil, ErrStoredResponseExchangeTooLarge
 		}
 		stored.RequestBody = bodyRows[0].RequestBody
@@ -1441,7 +1444,7 @@ func (s *RequestService) LoadCompletedResponseExchange(
 
 	requestBody, err := s.loadStoredResponseExchangeBody(
 		ctx,
-		stored,
+		dataStorage,
 		stored.RequestBody,
 		GenerateRequestBodyKey(stored.ProjectID, stored.ID),
 		"previous response request body",
@@ -1452,7 +1455,7 @@ func (s *RequestService) LoadCompletedResponseExchange(
 	}
 	responseBody, err := s.loadStoredResponseExchangeBody(
 		ctx,
-		stored,
+		dataStorage,
 		stored.ResponseBody,
 		GenerateResponseBodyKey(stored.ProjectID, stored.ID),
 		"previous response body",

@@ -91,6 +91,19 @@ type ResponsesRequestCapabilitiesProvider interface {
 	ResponsesRequestCapabilities(*llm.Request) ResponsesRequestCapabilities
 }
 
+// ResponsesRequestCapabilitiesOf delegates to t's
+// ResponsesRequestCapabilitiesProvider implementation when t provides one,
+// and returns the zero value otherwise. Wrapper transformers that embed
+// another Outbound should pass the embedded transformer so capability
+// reporting is forwarded without duplicating the delegation logic.
+func ResponsesRequestCapabilitiesOf(t Outbound, req *llm.Request) ResponsesRequestCapabilities {
+	if capable, ok := t.(ResponsesRequestCapabilitiesProvider); ok {
+		return capable.ResponsesRequestCapabilities(req)
+	}
+
+	return ResponsesRequestCapabilities{}
+}
+
 // VideoTaskOutbound is an optional extension interface for outbound transformers that support
 // video task query/delete operations (async task model).
 type VideoTaskOutbound interface {

@@ -29,10 +29,7 @@ type OutboundTransformer struct {
 var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
 
 func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
-	if capable, ok := t.Outbound.(transformer.ResponsesRequestCapabilitiesProvider); ok {
-		return capable.ResponsesRequestCapabilities(req)
-	}
-	return transformer.ResponsesRequestCapabilities{}
+	return transformer.ResponsesRequestCapabilitiesOf(t.Outbound, req)
 }
 
 // NewOutboundTransformer creates a new Bailian OutboundTransformer with legacy parameters.

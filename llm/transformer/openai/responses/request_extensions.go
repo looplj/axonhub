@@ -311,7 +311,11 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		return nil, err
 	}
 
-	if tools, ok := mergeRawOnlyTools(obj["tools"], requestExt, llmReq.Messages, llmReq.Tools); ok {
+	// Compute once: replay matching re-marshals every message and tool, so
+	// both raw merges share the same verdict.
+	replayRawInput := rawInputReplayMatchesCurrent(requestExt, llmReq.Messages, llmReq.Tools)
+
+	if tools, ok := mergeRawOnlyTools(obj["tools"], requestExt, llmReq.Tools, replayRawInput); ok {
 		toolsRaw, err := json.Marshal(tools)
 		if err != nil {
 			return nil, err
@@ -323,7 +327,7 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
 	}
 
-	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt, llmReq.Messages, llmReq.Tools); ok {
+	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt, replayRawInput); ok {
 		inputRaw, err := json.Marshal(input)
 		if err != nil {
 			return nil, err
@@ -337,13 +341,12 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 func mergeRawOnlyInputItems(
 	structuredRaw json.RawMessage,
 	requestExt *llm.OpenAIResponsesRequestExtensions,
-	currentMessages []llm.Message,
-	currentTools []llm.Tool,
+	replayRawInput bool,
 ) ([]json.RawMessage, bool) {
 	if requestExt == nil || len(requestExt.RawInputItems) == 0 {
 		return nil, false
 	}
-	if !rawInputReplayMatchesCurrent(requestExt, currentMessages, currentTools) {
+	if !replayRawInput {
 		return nil, false
 	}
 	rawFragments := requestExt.RawInputItems
@@ -396,8 +399,8 @@ func mergeRawOnlyInputItems(
 func mergeRawOnlyTools(
 	structuredRaw json.RawMessage,
 	requestExt *llm.OpenAIResponsesRequestExtensions,
-	currentMessages []llm.Message,
 	currentTools []llm.Tool,
+	replayRawInput bool,
 ) ([]json.RawMessage, bool) {
 	if requestExt == nil || len(requestExt.RawTools) == 0 {
 		return nil, false
@@ -434,7 +437,6 @@ func mergeRawOnlyTools(
 	}
 
 	currentSignatures := replayToolSignatures(currentTools)
-	replayRawInput := rawInputReplayMatchesCurrent(requestExt, currentMessages, currentTools)
 	tools := make([]json.RawMessage, 0, len(structuredTools)+len(groups))
 	structuredIndex := 0
 	replayed := false

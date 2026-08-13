@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
+	responsesapi "github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -1269,7 +1270,7 @@ func restoreResponsesChatMessage(message *llm.Message, mappings map[string]respo
 			if call.TransformerMetadata == nil {
 				call.TransformerMetadata = map[string]any{}
 			}
-			call.TransformerMetadata["openai_responses_chat_wrapped_custom"] = true
+			call.TransformerMetadata[responsesapi.ChatWrappedCustomMetadataKey] = true
 		case responsesChatToolSearch:
 			call.Type = llm.ToolTypeResponsesToolSearch
 			call.ResponseToolSearchCall = &llm.ResponseToolSearchCall{CallID: call.ID, Execution: mapping.Execution, Arguments: call.Function.Arguments}

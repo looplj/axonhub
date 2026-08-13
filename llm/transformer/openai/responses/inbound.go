@@ -666,7 +666,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 				if nextItem.Content != nil && len(nextItem.Content.Items) > 0 && nextItem.isOutputMessageContent() {
 					msg.Content = convertContentItemsToMessageContent(nextItem.GetContentItems())
 				} else if nextItem.Content != nil {
-					msg.Content = convertToMessageContent(*nextItem.Content)
+					msg.Content = convertToMessageContent(*nextItem.Content, nextItem.Type)
 				} else if nextItem.Text != nil {
 					msg.Content = llm.MessageContent{Content: nextItem.Text}
 				}
@@ -703,7 +703,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		if item.Content != nil && len(item.Content.Items) > 0 && item.isOutputMessageContent() {
 			msg.Content = convertContentItemsToMessageContent(item.GetContentItems())
 		} else if item.Content != nil {
-			msg.Content = convertToMessageContent(*item.Content)
+			msg.Content = convertToMessageContent(*item.Content, item.Type)
 		} else if item.Text != nil {
 			msg.Content = llm.MessageContent{Content: item.Text}
 		}
@@ -791,7 +791,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		msg := &llm.Message{
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
-			Content:    convertToMessageContent(*item.Output),
+			Content:    convertToMessageContent(*item.Output, item.Type),
 		}
 		if item.Name != "" {
 			msg.ToolCallName = lo.ToPtr(item.Name)
@@ -807,7 +807,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		msg := &llm.Message{
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
-			Content:    convertToMessageContent(*item.Output),
+			Content:    convertToMessageContent(*item.Output, item.Type),
 		}
 		if item.Name != "" {
 			msg.ToolCallName = lo.ToPtr(item.Name)
@@ -841,7 +841,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 			Role: "user",
 		}
 		if item.Content != nil {
-			msg.Content = convertToMessageContent(*item.Content)
+			msg.Content = convertToMessageContent(*item.Content, item.Type)
 		} else if item.Text != nil {
 			msg.Content = llm.MessageContent{Content: item.Text}
 		}
@@ -861,8 +861,8 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 	}
 }
 
-func convertToMessageContent(content Input) llm.MessageContent {
-	items := convertToMessageContentParts(content)
+func convertToMessageContent(content Input, ownerType string) llm.MessageContent {
+	items := convertToMessageContentParts(content, ownerType)
 	// If only one text item, return simple Content
 	if len(items) == 1 && (items[0].Type == "text" || items[0].Type == "input_text") && items[0].Text != nil {
 		return llm.MessageContent{
@@ -903,7 +903,7 @@ func convertContentItemsToMessageContent(items []ContentItem) llm.MessageContent
 }
 
 // convertToMessageContentParts converts content items to []llm.MessageContentPart.
-func convertToMessageContentParts(input Input) []llm.MessageContentPart {
+func convertToMessageContentParts(input Input, ownerType string) []llm.MessageContentPart {
 	if input.Text != nil {
 		return []llm.MessageContentPart{
 			{
@@ -915,7 +915,7 @@ func convertToMessageContentParts(input Input) []llm.MessageContentPart {
 
 	parts := make([]llm.MessageContentPart, 0, len(input.Items))
 	for i := range input.Items {
-		part, err := convertContentItemToPart(&input.Items[i])
+		part, err := convertContentItemToPart(&input.Items[i], ownerType)
 		if err != nil || part == nil {
 			continue
 		}
@@ -927,7 +927,7 @@ func convertToMessageContentParts(input Input) []llm.MessageContentPart {
 }
 
 // convertContentItemToPart converts a content item to llm.MessageContentPart.
-func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
+func convertContentItemToPart(item *Item, ownerType string) (*llm.MessageContentPart, error) {
 	if item == nil {
 		return nil, nil
 	}
@@ -962,9 +962,10 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 		// codex agent_message content parts use encrypted_content to carry
 		// plaintext inter-agent payloads (e.g. dispatched task instructions).
 		// OpenAI reasoning item-level encrypted_content is handled separately
-		// in convertReasoningWithFollowing and never reaches this path, so a
-		// content part with this type is always a plaintext agent payload.
-		if item.EncryptedContent != nil && *item.EncryptedContent != "" {
+		// in convertReasoningWithFollowing and never reaches this path.
+		// Content parts of other owning item types must not surface opaque
+		// encrypted values as user-visible text.
+		if ownerType == "agent_message" && item.EncryptedContent != nil && *item.EncryptedContent != "" {
 			return &llm.MessageContentPart{
 				ID:   item.ID,
 				Type: "text",

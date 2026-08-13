@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -15,7 +17,7 @@ import (
 )
 
 const (
-	maxPreviousResponseChainDepth         = 1024
+	maxPreviousResponseChainDepth         = 256
 	maxPreviousResponseHistoryBytes int64 = 32 * 1024 * 1024
 )
 
@@ -97,9 +99,15 @@ func loadPreviousResponsesHistory(
 	visited := make(map[string]struct{})
 	currentID := responseID
 	var historyBytes int64
+	chainStart := time.Now()
 
 	for depth := 0; currentID != ""; depth++ {
 		if depth >= maxPreviousResponseChainDepth {
+			slog.InfoContext(ctx, "previous_response_id chain depth limit reached",
+				"hops", depth,
+				"duration", time.Since(chainStart),
+				"bytes", historyBytes,
+			)
 			return nil, fmt.Errorf("%w: previous_response_id chain exceeds %d responses", transformer.ErrInvalidRequest, maxPreviousResponseChainDepth)
 		}
 		if _, exists := visited[currentID]; exists {
@@ -178,6 +186,12 @@ func loadPreviousResponsesHistory(
 			currentID = strings.TrimSpace(*requestState.PreviousResponseID)
 		}
 	}
+
+	slog.InfoContext(ctx, "previous_response_id chain resolved",
+		"hops", len(segments),
+		"duration", time.Since(chainStart),
+		"bytes", historyBytes,
+	)
 
 	history := make([]llm.Message, 0)
 	for i := len(segments) - 1; i >= 0; i-- {

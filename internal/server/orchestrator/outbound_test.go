@@ -25,6 +25,7 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	anthropictransformer "github.com/looplj/axonhub/llm/transformer/anthropic"
 	bailiantransformer "github.com/looplj/axonhub/llm/transformer/bailian"
 	longcattransformer "github.com/looplj/axonhub/llm/transformer/longcat"
 	modelscopetransformer "github.com/looplj/axonhub/llm/transformer/modelscope"
@@ -251,8 +252,10 @@ func (m *mockTransformer) ResponsesRequestCapabilities(req *llm.Request) transfo
 	}
 }
 
-func TestSupportsResponsesChatToolLifecycle_UsesExplicitProviderCapability(t *testing.T) {
+func TestResponsesRequestCapabilities_UsesExplicitProviderCapability(t *testing.T) {
 	genericOpenAI, err := openaitransformer.NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	anthropic, err := anthropictransformer.NewOutboundTransformer("https://anthropic.example.com", "test-key")
 	require.NoError(t, err)
 	moonshot, err := moonshottransformer.NewOutboundTransformer("https://moonshot.example.com", "test-key")
 	require.NoError(t, err)
@@ -267,6 +270,8 @@ func TestSupportsResponsesChatToolLifecycle_UsesExplicitProviderCapability(t *te
 
 	require.True(t, responsesRequestCapabilities(genericOpenAI, &llm.Request{}).ChatToolLifecycle)
 	require.False(t, responsesRequestCapabilities(&mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}, &llm.Request{}).ChatToolLifecycle)
+	// Anthropic declares no Responses capabilities, so lifecycle support stays false.
+	require.False(t, responsesRequestCapabilities(anthropic, &llm.Request{}).ChatToolLifecycle)
 	for _, outbound := range []transformer.Outbound{bailian, longcat, modelscope, xai, moonshot} {
 		require.True(t, responsesRequestCapabilities(outbound, &llm.Request{}).ChatToolLifecycle)
 	}
@@ -1135,8 +1140,10 @@ func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t 
 	require.Equal(t, testChannel, processor.state.CurrentCandidate.Channel)
 }
 
-func TestFilterResponsesChatToolMessagesForOutbound(t *testing.T) {
-	baseRequest := &llm.Request{
+// newResponsesChatToolFilterRequest builds a fresh Responses-format request
+// fixture so each sub-test mutates its own copy instead of sharing state.
+func newResponsesChatToolFilterRequest() *llm.Request {
+	return &llm.Request{
 		APIFormat: llm.APIFormatOpenAIResponse,
 		Tools: []llm.Tool{
 			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "get_weather"}},
@@ -1195,17 +1202,13 @@ func TestFilterResponsesChatToolMessagesForOutbound(t *testing.T) {
 			},
 			{
 				Role:       "tool",
-				ToolCallID: func() *string { v := "call_custom_1"; return &v }(),
-				Content: llm.MessageContent{
-					Content: func() *string { v := "custom"; return &v }(),
-				},
+				ToolCallID: lo.ToPtr("call_custom_1"),
+				Content:    llm.MessageContent{Content: lo.ToPtr("custom")},
 			},
 			{
 				Role:       "tool",
-				ToolCallID: func() *string { v := "call_function_1"; return &v }(),
-				Content: llm.MessageContent{
-					Content: func() *string { v := "function"; return &v }(),
-				},
+				ToolCallID: lo.ToPtr("call_function_1"),
+				Content:    llm.MessageContent{Content: lo.ToPtr("function")},
 			},
 			{
 				Role:       "tool",
@@ -1219,17 +1222,21 @@ func TestFilterResponsesChatToolMessagesForOutbound(t *testing.T) {
 			},
 		},
 	}
+}
 
+func TestFilterResponsesChatToolMessagesForOutbound(t *testing.T) {
 	t.Run("preserves when outbound Chat adapter supports custom lifecycle", func(t *testing.T) {
+		request := newResponsesChatToolFilterRequest()
 		outbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion, responsesChatTools: true}
-		got := filterResponsesChatToolMessagesForOutbound(baseRequest, outbound)
-		require.Same(t, baseRequest, got)
+		got := filterResponsesChatToolMessagesForOutbound(request, outbound)
+		require.Same(t, request, got)
 	})
 
 	t.Run("filters and pairs all special calls when Chat outbound has no lifecycle adapter", func(t *testing.T) {
+		request := newResponsesChatToolFilterRequest()
 		outbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
-		got := filterResponsesChatToolMessagesForOutbound(baseRequest, outbound)
-		require.NotSame(t, baseRequest, got)
+		got := filterResponsesChatToolMessagesForOutbound(request, outbound)
+		require.NotSame(t, request, got)
 		require.Len(t, got.Messages, 2)
 		require.Len(t, got.Messages[0].ToolCalls, 1)
 		require.Equal(t, llm.ToolTypeFunction, got.Messages[0].ToolCalls[0].Type)
@@ -1240,18 +1247,25 @@ func TestFilterResponsesChatToolMessagesForOutbound(t *testing.T) {
 		require.NotNil(t, got.ToolChoice)
 		require.Equal(t, "auto", lo.FromPtr(got.ToolChoice.ToolChoice))
 		require.False(t, got.ToolChoice.AllowedToolsSet)
+
+		// Filtering must leave the original inbound request untouched.
+		require.Len(t, request.Tools, 5)
+		require.Len(t, request.Messages, 5)
+		require.Len(t, request.Messages[0].ToolCalls, 4)
+		require.True(t, request.ToolChoice.AllowedToolsSet)
 	})
 
 	t.Run("does not filter when outbound is responses", func(t *testing.T) {
-		got := filterResponsesChatToolMessagesForOutbound(baseRequest, &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse})
-		require.Same(t, baseRequest, got)
+		request := newResponsesChatToolFilterRequest()
+		got := filterResponsesChatToolMessagesForOutbound(request, &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse})
+		require.Same(t, request, got)
 	})
 
 	t.Run("does not filter when inbound is not responses", func(t *testing.T) {
-		nonResponsesReq := *baseRequest
-		nonResponsesReq.APIFormat = llm.APIFormatOpenAIChatCompletion
-		got := filterResponsesChatToolMessagesForOutbound(&nonResponsesReq, &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion})
-		require.Same(t, &nonResponsesReq, got)
+		request := newResponsesChatToolFilterRequest()
+		request.APIFormat = llm.APIFormatOpenAIChatCompletion
+		got := filterResponsesChatToolMessagesForOutbound(request, &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion})
+		require.Same(t, request, got)
 	})
 }
 
@@ -1266,19 +1280,20 @@ func TestFilterResponsesChatToolMessagesForOutbound_RequestCapabilityMatrix(t *t
 	tests := []struct {
 		name        string
 		apiFormat   llm.APIFormat
+		requestType llm.RequestType
 		capability  capabilityKind
 		wantSame    bool
 		wantSpecial bool
 	}{
-		{name: "Responses to native", apiFormat: llm.APIFormatOpenAIResponse, capability: capabilityNative, wantSame: true, wantSpecial: true},
-		{name: "Responses to Chat lifecycle", apiFormat: llm.APIFormatOpenAIResponse, capability: capabilityLifecycle, wantSame: true, wantSpecial: true},
-		{name: "Responses to plain Chat", apiFormat: llm.APIFormatOpenAIResponse, capability: capabilityPlain, wantSpecial: false},
-		{name: "Compact to native", apiFormat: llm.APIFormatOpenAIResponseCompact, capability: capabilityNative, wantSame: true, wantSpecial: true},
-		{name: "Compact to Chat lifecycle", apiFormat: llm.APIFormatOpenAIResponseCompact, capability: capabilityLifecycle, wantSame: true, wantSpecial: true},
-		{name: "Compact to plain Chat", apiFormat: llm.APIFormatOpenAIResponseCompact, capability: capabilityPlain, wantSpecial: false},
-		{name: "Chat to native", apiFormat: llm.APIFormatOpenAIChatCompletion, capability: capabilityNative, wantSame: true, wantSpecial: true},
-		{name: "Chat to Chat lifecycle", apiFormat: llm.APIFormatOpenAIChatCompletion, capability: capabilityLifecycle, wantSame: true, wantSpecial: true},
-		{name: "Chat to plain Chat", apiFormat: llm.APIFormatOpenAIChatCompletion, capability: capabilityPlain, wantSame: true, wantSpecial: true},
+		{name: "Responses to native", apiFormat: llm.APIFormatOpenAIResponse, requestType: "", capability: capabilityNative, wantSame: true, wantSpecial: true},
+		{name: "Responses to Chat lifecycle", apiFormat: llm.APIFormatOpenAIResponse, requestType: "", capability: capabilityLifecycle, wantSame: true, wantSpecial: true},
+		{name: "Responses to plain Chat", apiFormat: llm.APIFormatOpenAIResponse, requestType: "", capability: capabilityPlain, wantSpecial: false},
+		{name: "Compact to native", apiFormat: llm.APIFormatOpenAIResponseCompact, requestType: llm.RequestTypeCompact, capability: capabilityNative, wantSame: true, wantSpecial: true},
+		{name: "Compact to Chat lifecycle", apiFormat: llm.APIFormatOpenAIResponseCompact, requestType: llm.RequestTypeCompact, capability: capabilityLifecycle, wantSame: true, wantSpecial: true},
+		{name: "Compact to plain Chat", apiFormat: llm.APIFormatOpenAIResponseCompact, requestType: llm.RequestTypeCompact, capability: capabilityPlain, wantSpecial: false},
+		{name: "Chat to native", apiFormat: llm.APIFormatOpenAIChatCompletion, requestType: "", capability: capabilityNative, wantSame: true, wantSpecial: true},
+		{name: "Chat to Chat lifecycle", apiFormat: llm.APIFormatOpenAIChatCompletion, requestType: "", capability: capabilityLifecycle, wantSame: true, wantSpecial: true},
+		{name: "Chat to plain Chat", apiFormat: llm.APIFormatOpenAIChatCompletion, requestType: "", capability: capabilityPlain, wantSame: true, wantSpecial: true},
 	}
 
 	for _, tt := range tests {
@@ -1287,7 +1302,7 @@ func TestFilterResponsesChatToolMessagesForOutbound_RequestCapabilityMatrix(t *t
 			plainCallID := "plain_1"
 			request := &llm.Request{
 				APIFormat:   tt.apiFormat,
-				RequestType: map[bool]llm.RequestType{true: llm.RequestTypeCompact}[tt.apiFormat == llm.APIFormatOpenAIResponseCompact],
+				RequestType: tt.requestType,
 				Messages: []llm.Message{
 					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("run")}},
 					{Role: "assistant", ToolCalls: []llm.ToolCall{

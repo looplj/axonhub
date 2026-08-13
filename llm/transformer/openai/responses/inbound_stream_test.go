@@ -378,7 +378,7 @@ func TestInboundTransformer_TransformStream_KeepsResponsesReasoningItemsSeparate
 }
 
 func TestInboundTransformer_TransformStream_EmitsAdaptedSpecialToolCalls(t *testing.T) {
-	wrappedMetadata := map[string]any{"openai_responses_chat_wrapped_custom": true}
+	wrappedMetadata := map[string]any{ChatWrappedCustomMetadataKey: true}
 	source := streams.SliceStream([]*llm.Response{
 		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Role: "assistant"}}}},
 		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{
@@ -465,7 +465,7 @@ func TestInboundTransformer_TransformStream_DegradesMalformedWrappedCustomInput(
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
 	t.Cleanup(func() { slog.SetDefault(previousLogger) })
 
-	wrappedMetadata := map[string]any{"openai_responses_chat_wrapped_custom": true}
+	wrappedMetadata := map[string]any{ChatWrappedCustomMetadataKey: true}
 	source := streams.SliceStream([]*llm.Response{
 		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
 			ID: "call_custom", Index: 0,
@@ -496,7 +496,7 @@ func TestInboundTransformer_TransformStream_WarnsOnMissingWrappedCustomInput(t *
 	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
 	t.Cleanup(func() { slog.SetDefault(previousLogger) })
 
-	wrappedMetadata := map[string]any{"openai_responses_chat_wrapped_custom": true}
+	wrappedMetadata := map[string]any{ChatWrappedCustomMetadataKey: true}
 	source := streams.SliceStream([]*llm.Response{
 		{ID: "resp_tools", Model: "glm-5.2", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
 			ID: "call_custom", Index: 0,

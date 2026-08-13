@@ -1425,7 +1425,62 @@ func TestConvertContentItemToPart_Compaction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := convertContentItemToPart(tt.item)
+			result, err := convertContentItemToPart(tt.item, "message")
+			tt.validate(t, result, err)
+		})
+	}
+}
+
+func TestConvertContentItemToPart_EncryptedContent(t *testing.T) {
+	tests := []struct {
+		name      string
+		item      *Item
+		ownerType string
+		validate  func(t *testing.T, result *llm.MessageContentPart, err error)
+	}{
+		{
+			name:      "agent_message owner converts encrypted_content to text",
+			item:      &Item{ID: "enc_1", Type: "encrypted_content", EncryptedContent: lo.ToPtr("dispatched task")},
+			ownerType: "agent_message",
+			validate: func(t *testing.T, result *llm.MessageContentPart, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, result)
+				require.Equal(t, "text", result.Type)
+				require.Equal(t, "dispatched task", *result.Text)
+			},
+		},
+		{
+			name:      "agent_message owner drops empty encrypted_content",
+			item:      &Item{ID: "enc_2", Type: "encrypted_content", EncryptedContent: lo.ToPtr("")},
+			ownerType: "agent_message",
+			validate: func(t *testing.T, result *llm.MessageContentPart, err error) {
+				require.NoError(t, err)
+				require.Nil(t, result)
+			},
+		},
+		{
+			name:      "message owner does not surface encrypted_content as text",
+			item:      &Item{ID: "enc_3", Type: "encrypted_content", EncryptedContent: lo.ToPtr("opaque")},
+			ownerType: "message",
+			validate: func(t *testing.T, result *llm.MessageContentPart, err error) {
+				require.NoError(t, err)
+				require.Nil(t, result)
+			},
+		},
+		{
+			name:      "function_call_output owner does not surface encrypted_content as text",
+			item:      &Item{ID: "enc_4", Type: "encrypted_content", EncryptedContent: lo.ToPtr("opaque")},
+			ownerType: "function_call_output",
+			validate: func(t *testing.T, result *llm.MessageContentPart, err error) {
+				require.NoError(t, err)
+				require.Nil(t, result)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := convertContentItemToPart(tt.item, tt.ownerType)
 			tt.validate(t, result, err)
 		})
 	}
@@ -2038,7 +2093,7 @@ func TestConvertToMessageContentParts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertToMessageContentParts(tt.input)
+			result := convertToMessageContentParts(tt.input, "message")
 			tt.validate(t, result)
 		})
 	}
@@ -2094,7 +2149,7 @@ func TestConvertToMessageContent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertToMessageContent(tt.input)
+			result := convertToMessageContent(tt.input, "message")
 			tt.validate(t, result)
 		})
 	}

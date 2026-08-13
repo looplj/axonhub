@@ -1319,3 +1319,92 @@ func TestOutboundTransformer_TransformStream_ToolSearchCallLifecycle(t *testing.
 	require.Equal(t, "tool_calls", lo.FromPtr(actual[4].Choices[0].FinishReason))
 	require.Equal(t, llm.DoneResponse, actual[5])
 }
+
+func TestOutboundTransformer_TransformStream_ToolSearchArgumentsProvidedOnlyInDone(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	callID := "call_search_done"
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp_ts_done","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ts_done","type":"tool_search_call","status":"in_progress","call_id":"call_search_done","execution":"client","arguments":""}}`)},
+		{Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"ts_done","output_index":0,"arguments":"{\"query\":\"agents\"}"}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp_ts_done","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var arguments string
+
+	argumentChunks := 0
+
+	for _, response := range responses {
+		if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil {
+			continue
+		}
+
+		for _, toolCall := range response.Choices[0].Delta.ToolCalls {
+			if toolCall.ResponseToolSearchCall == nil || toolCall.ResponseToolSearchCall.Arguments == "" {
+				continue
+			}
+
+			argumentChunks++
+			require.Equal(t, callID, toolCall.ResponseToolSearchCall.CallID)
+			require.Equal(t, "client", toolCall.ResponseToolSearchCall.Execution)
+			arguments += toolCall.ResponseToolSearchCall.Arguments
+		}
+	}
+
+	// The complete arguments arrive only in the done event; downstream must
+	// receive them exactly once without duplicated content.
+	require.Equal(t, 1, argumentChunks)
+	require.JSONEq(t, `{"query":"agents"}`, arguments)
+}
+
+func TestOutboundTransformer_TransformStream_CompletedWithUsageCarriesEchoFields(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp_echo_usage","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[],"conversation":{"id":"conv_echo"}}}`)},
+		{Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"Hello"}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp_echo_usage","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[],"conversation":{"id":"conv_echo"},"usage":{"input_tokens":10,"output_tokens":5,"total_tokens":15}}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var completedChunk *llm.Response
+	var usageChunk *llm.Response
+
+	for _, response := range responses {
+		if response == llm.DoneResponse {
+			continue
+		}
+		if len(response.Choices) > 0 && response.Choices[0].FinishReason != nil {
+			completedChunk = response
+		}
+		if response.Usage != nil && len(response.Choices) == 0 {
+			usageChunk = response
+		}
+	}
+
+	require.NotNil(t, completedChunk)
+	require.NotNil(t, usageChunk)
+	require.NotEmpty(t, usageChunk.Usage)
+
+	raw, ok := completedChunk.TransformerMetadata[responsesEchoFieldsTransformerMetadataKey]
+	require.True(t, ok, "completed chunk must carry echo metadata on the usage path")
+
+	echo, ok := raw.(*Response)
+	require.True(t, ok)
+	require.NotNil(t, echo.Conversation)
+	require.Equal(t, "conv_echo", echo.Conversation.ID)
+}

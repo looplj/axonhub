@@ -17,6 +17,13 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+// ChatWrappedCustomMetadataKey marks Responses custom tool calls whose input
+// was wrapped by the Responses-to-Chat tool adapter. The Chat adapter
+// (producer) and the Responses inbound stream (consumer) must share this
+// exported key so the wrapped metadata propagates and wrapping suppression
+// stays consistent across both sides.
+const ChatWrappedCustomMetadataKey = "openai_responses_chat_wrapped_custom"
+
 // TransformStream transforms the unified llm.Response stream to OpenAI Responses API SSE events.
 func (t *InboundTransformer) TransformStream(
 	ctx context.Context,
@@ -75,6 +82,9 @@ type responsesInboundStream struct {
 	toolCallItemStarted map[int]bool
 	toolCallOutputIndex map[int]int // Maps tool call index to output index
 	toolCallItemID      map[int]string
+	// skipToolCallClosure suppresses closing open tool call items while
+	// closeCurrentNonToolOutputItem closes only message/reasoning items.
+	skipToolCallClosure bool
 
 	// Response accumulation using streamAggregator
 	usage               *llm.Usage
@@ -1011,13 +1021,13 @@ func (s *responsesInboundStream) handleCustomToolCallDelta(tc llm.ToolCall) erro
 	toolCallIndex := tc.Index
 	state := s.toolCalls[toolCallIndex]
 	state.ResponseCustomToolCall.Input += tc.ResponseCustomToolCall.Input
-	if wrapped, _ := tc.TransformerMetadata["openai_responses_chat_wrapped_custom"].(bool); wrapped {
+	if wrapped, _ := tc.TransformerMetadata[ChatWrappedCustomMetadataKey].(bool); wrapped {
 		if state.TransformerMetadata == nil {
 			state.TransformerMetadata = map[string]any{}
 		}
-		state.TransformerMetadata["openai_responses_chat_wrapped_custom"] = true
+		state.TransformerMetadata[ChatWrappedCustomMetadataKey] = true
 	}
-	if wrapped, _ := state.TransformerMetadata["openai_responses_chat_wrapped_custom"].(bool); wrapped {
+	if wrapped, _ := state.TransformerMetadata[ChatWrappedCustomMetadataKey].(bool); wrapped {
 		return nil
 	}
 
@@ -1247,6 +1257,12 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 		}
 	}
 
+	// Non-tool closures must not touch tool call state; skipping here also
+	// avoids writing to a nil toolCallItemStarted map.
+	if s.skipToolCallClosure {
+		return nil
+	}
+
 	// Close any open tool call items
 	toolCallIndexes := lo.Keys(s.toolCalls)
 	sort.Ints(toolCallIndexes)
@@ -1284,7 +1300,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 		case tc.ResponseCustomToolCall != nil:
 			// Custom tool call - emit custom_tool_call_input.done then output_item.done
 			fullInput := tc.ResponseCustomToolCall.Input
-			if wrapped, _ := tc.TransformerMetadata["openai_responses_chat_wrapped_custom"].(bool); wrapped {
+			if wrapped, _ := tc.TransformerMetadata[ChatWrappedCustomMetadataKey].(bool); wrapped {
 				var input struct {
 					Input *string `json:"input"`
 				}
@@ -1381,11 +1397,10 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 }
 
 func (s *responsesInboundStream) closeCurrentNonToolOutputItem() error {
-	started := s.toolCallItemStarted
-	s.toolCallItemStarted = nil
-	err := s.closeCurrentOutputItem()
-	s.toolCallItemStarted = started
-	return err
+	s.skipToolCallClosure = true
+	defer func() { s.skipToolCallClosure = false }()
+
+	return s.closeCurrentOutputItem()
 }
 
 func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {

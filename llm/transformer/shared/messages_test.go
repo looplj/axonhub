@@ -421,3 +421,68 @@ func TestSanitizeChatMessageContent_MultimodalVisibility(t *testing.T) {
 	})
 	require.True(t, changed, "invisible parts are stripped even when the message survives")
 }
+
+func TestHasChatCompatibleAssistantPayload(t *testing.T) {
+	tests := []struct {
+		name string
+		msg  llm.Message
+		want bool
+	}{
+		{
+			name: "assistant with only input_text part",
+			msg: llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+					{Type: "input_text", Text: lo.ToPtr("hello")},
+				}},
+			},
+			want: true,
+		},
+		{
+			name: "assistant with only output_text part",
+			msg: llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+					{Type: "output_text", Text: lo.ToPtr("hello")},
+				}},
+			},
+			want: true,
+		},
+		{
+			name: "assistant with only blank input_text part",
+			msg: llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+					{Type: "input_text", Text: lo.ToPtr("   ")},
+				}},
+			},
+			want: false,
+		},
+		{
+			name: "assistant with nil-text output_text part",
+			msg: llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+					{Type: "output_text"},
+				}},
+			},
+			want: false,
+		},
+		{
+			name: "assistant with text part",
+			msg: llm.Message{
+				Role: "assistant",
+				Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+					{Type: "text", Text: lo.ToPtr("hello")},
+				}},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, HasChatCompatibleAssistantPayload(tt.msg))
+		})
+	}
+}

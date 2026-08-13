@@ -428,10 +428,56 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 		if tc.ResponseToolSearchCall != nil {
-			if streamEvent.Arguments != "" {
-				tc.ResponseToolSearchCall.Arguments = streamEvent.Arguments
+			finalArgs := streamEvent.Arguments
+			if finalArgs == "" {
+				return nil // An empty done event must not overwrite accumulated deltas.
 			}
-			return nil
+
+			// Some upstreams provide the complete arguments only in the done
+			// event. Preserve arguments already emitted through delta events and
+			// forward only the missing suffix so downstream Responses streams
+			// receive the full value once.
+			forwardedArgs := tc.ResponseToolSearchCall.Arguments
+			missingArgs := ""
+
+			switch {
+			case forwardedArgs == "":
+				missingArgs = finalArgs
+			case strings.HasPrefix(finalArgs, forwardedArgs):
+				missingArgs = strings.TrimPrefix(finalArgs, forwardedArgs)
+			case equalJSONValues(forwardedArgs, finalArgs):
+				// The complete arguments were already forwarded through deltas.
+				missingArgs = ""
+			default:
+				return fmt.Errorf("tool search call arguments mismatch for call_id %q", callID)
+			}
+
+			tc.ResponseToolSearchCall.Arguments = finalArgs
+			if missingArgs == "" {
+				return nil
+			}
+
+			toolCallIdx := s.state.toolCallIndex[callID]
+			resp.Choices = []llm.Choice{
+				{
+					Index: 0,
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{
+							{
+								Index: toolCallIdx,
+								Type:  llm.ToolTypeResponsesToolSearch,
+								ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+									CallID:    callID,
+									Execution: tc.ResponseToolSearchCall.Execution,
+									Arguments: missingArgs,
+								},
+							},
+						},
+					},
+				},
+			}
+
+			break
 		}
 
 		identityChanged := false
@@ -738,6 +784,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			},
 		}
 
+		// Attach echo fields before the usage path below so the completed chunk
+		// carries them even when it is enqueued and returned early.
+		s.attachEchoFields(resp)
+
 		// Second event: usage (if available)
 		if streamEvent.Response != nil && streamEvent.Response.Usage != nil {
 			s.state.usage = streamEvent.Response.Usage.ToUsage()
@@ -756,7 +806,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 			return nil
 		}
-		s.attachEchoFields(resp)
 
 	case StreamEventTypeResponseFailed:
 		if s.responseCompleted {

@@ -780,7 +780,7 @@ func (s *DataStorageService) LoadDataLimited(
 
 		file, err := fs.Open(key)
 		if err != nil {
-			return nil, fmt.Errorf("failed to open file: %w", err)
+			return nil, fmt.Errorf("failed to open file: %w", mapWebDAVNotFoundError(err))
 		}
 		defer file.Close()
 
@@ -793,6 +793,22 @@ func (s *DataStorageService) LoadDataLimited(
 	default:
 		return nil, fmt.Errorf("unsupported storage type: %s", ds.Type)
 	}
+}
+
+// mapWebDAVNotFoundError converts a gowebdav HTTP 404 status error into
+// os.ErrNotExist so callers can treat a missing WebDAV object like a missing
+// local file. Other errors pass through unchanged.
+func mapWebDAVNotFoundError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	var statusErr gowebdav.StatusError
+	if errors.As(err, &statusErr) && statusErr.Status == http.StatusNotFound {
+		return os.ErrNotExist
+	}
+
+	return err
 }
 
 // readDataLimited caps allocation even when advertisedSize is absent or wrong.

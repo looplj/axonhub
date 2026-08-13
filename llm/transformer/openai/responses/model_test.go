@@ -597,6 +597,9 @@ func TestResponseToolChoiceUnmarshalJSONErrorDoesNotMutate(t *testing.T) {
 				ObjectValue: &ToolChoice{Type: lo.ToPtr("function"), Name: lo.ToPtr("lookup")},
 			}
 			before := choice
+			// Deep snapshot the pointee; a shallow copy would share the
+			// pointer and hide in-place mutations of the ObjectValue.
+			before.ObjectValue = deepCopyToolChoice(choice.ObjectValue)
 
 			require.Error(t, json.Unmarshal([]byte(input), &choice))
 			require.Equal(t, before, choice)
@@ -790,15 +793,46 @@ func TestToolChoiceUnmarshalJSONErrorDoesNotMutate(t *testing.T) {
 				Name:  lo.ToPtr("stale"),
 				Tools: []ToolOption{{Type: "function", Name: "lookup"}},
 			}
-			before := choice
+			// Snapshot pointers and copy Tools into a fresh slice so the
+			// comparison does not share the mutated backing array.
+			before := *deepCopyToolChoice(&choice)
 
 			require.Error(t, json.Unmarshal([]byte(input), &choice))
-			require.Equal(t, before, choice)
+			require.Equal(t, lo.FromPtr(before.Mode), lo.FromPtr(choice.Mode))
+			require.Equal(t, lo.FromPtr(before.Type), lo.FromPtr(choice.Type))
+			require.Equal(t, lo.FromPtr(before.Name), lo.FromPtr(choice.Name))
+			require.Len(t, choice.Tools, len(before.Tools))
+			for i := range before.Tools {
+				require.Equal(t, before.Tools[i], choice.Tools[i])
+			}
 		})
 	}
 }
 
-func FuzzResponsesToolChoiceJSONRoundTrip(f *testing.F) {
+// deepCopyToolChoice returns a snapshot of tc that shares no pointer fields
+// or slice backing array with the original, for mutation assertions.
+func deepCopyToolChoice(tc *ToolChoice) *ToolChoice {
+	if tc == nil {
+		return nil
+	}
+	cp := *tc
+	if tc.Mode != nil {
+		cp.Mode = lo.ToPtr(*tc.Mode)
+	}
+	if tc.Type != nil {
+		cp.Type = lo.ToPtr(*tc.Type)
+	}
+	if tc.Name != nil {
+		cp.Name = lo.ToPtr(*tc.Name)
+	}
+	cp.Tools = append([]ToolOption(nil), tc.Tools...)
+	return &cp
+}
+
+// FuzzToolChoiceJSONRoundTrip fuzzes ToolChoice (not ResponseToolChoice).
+// It asserts that encoding is idempotent: re-encoding a decoded value is
+// stable. It does not assert fidelity to the original raw input.
+func FuzzToolChoiceJSONRoundTrip(f *testing.F) {
 	seeds := []string{
 		`"auto"`,
 		`{"type":"function","name":"lookup"}`,
