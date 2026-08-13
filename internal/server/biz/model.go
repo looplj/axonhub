@@ -640,6 +640,8 @@ func (svc *ModelService) ListModels(ctx context.Context, statusIn []model.Status
 // When QueryAllChannelModels in system settings is false, it returns configured models instead.
 // If an API key is present in context and has an active profile with modelIDs configured,
 // only those models will be returned.
+// When HideUnroutableModelsInList is true, configured models with no capable
+// endpoint on the key-scoped channels are omitted from this public list.
 func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, error) {
 	var (
 		channels = svc.channelService.GetEnabledChannels()
@@ -686,7 +688,7 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 	}
 
 	// Query configured Model entities (used in both modes)
-	configuredModels, err := svc.queryConfiguredModelFacades(ctx, allowedModelIDs, channels)
+	configuredModels, suppressedIDs, err := svc.queryConfiguredModelFacades(ctx, allowedModelIDs, channels)
 	if err != nil {
 		return nil, err
 	}
@@ -699,12 +701,17 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 	// QueryAllChannelModels=true: merge configured models (higher priority) with channel models
 	var (
 		models    = configuredModels
-		modelSet  = make(map[string]bool, len(configuredModels))
+		modelSet  = make(map[string]bool, len(configuredModels)+len(suppressedIDs))
 		blacklist = settings.ModelBlacklistRegex
 	)
 
 	for _, m := range configuredModels {
 		modelSet[m.ID] = true
+	}
+	// Hidden configured IDs must not reappear as channel-derived facades.
+	// Routing still binds those IDs to the configured associations.
+	for id := range suppressedIDs {
+		modelSet[id] = true
 	}
 
 	for _, ch := range channels {
@@ -748,7 +755,9 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 
 // queryConfiguredModelFacades queries enabled Model entities and returns them as ModelFacades
 // filtered by allowed model IDs and channel associations.
-func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowedModelIDs []string, channels []*Channel) ([]ModelFacade, error) {
+// suppressedIDs are configured model IDs omitted as structurally unroutable; callers that
+// merge channel-derived models must treat them as already seen so they are not resurrected.
+func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowedModelIDs []string, channels []*Channel) ([]ModelFacade, map[string]struct{}, error) {
 	query := svc.entFromContext(ctx).
 		Model.
 		Query().
@@ -759,27 +768,35 @@ func (svc *ModelService) queryConfiguredModelFacades(ctx context.Context, allowe
 
 	enabledModels, err := query.All(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list configured models: %w", err)
+		return nil, nil, fmt.Errorf("failed to list configured models: %w", err)
 	}
 
 	var models []ModelFacade
+	suppressedIDs := make(map[string]struct{})
 	systemSettings := svc.modelSettingsOrDefault(ctx)
 
 	for _, m := range enabledModels {
 		effectiveAssociations := EffectiveModelAssociations(systemSettings, m)
-		associations := MatchConnections(effectiveAssociations, channels)
-		if len(associations) > 0 {
-			models = append(models, ModelFacade{
-				ID:          m.ModelID,
-				DisplayName: m.ModelID,
-				CreatedAt:   m.CreatedAt,
-				Created:     m.CreatedAt.Unix(),
-				OwnedBy:     "configured",
-			})
+		connections := MatchConnections(effectiveAssociations, channels)
+		if len(connections) == 0 {
+			continue
 		}
+
+		if systemSettings.HideUnroutableModelsInList && !hasCapableEndpointForModel(m, connections) {
+			suppressedIDs[m.ModelID] = struct{}{}
+			continue
+		}
+
+		models = append(models, ModelFacade{
+			ID:          m.ModelID,
+			DisplayName: m.ModelID,
+			CreatedAt:   m.CreatedAt,
+			Created:     m.CreatedAt.Unix(),
+			OwnedBy:     "configured",
+		})
 	}
 
-	return models, nil
+	return models, suppressedIDs, nil
 }
 
 // CountAssociatedChannels counts the number of unique channels associated with the given model associations.

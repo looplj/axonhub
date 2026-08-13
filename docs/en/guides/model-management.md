@@ -146,16 +146,17 @@ Example configuration in Admin UI:
 
 ## System Settings
 
-In **System Settings > Model Settings**, there are two important options:
+In **System Settings > Model Settings**, there are three common options:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | Query All Channel Models | Enabled | When enabled, `/v1/models` API returns all models from enabled channels + configured models |
 | Fallback to Channels on Model Not Found | Enabled | When enabled, if requested model has no associations, system automatically finds channels supporting it |
+| Hide Unroutable Models in Lists | Disabled | When enabled, public model-list APIs hide configured models that the current API key cannot structurally route to a capable channel. Requests for those models still return 422. The admin models table is unchanged. |
 
 **Recommendations:**
-- For beginners: Keep both enabled, system handles most cases automatically
-- For strict control: Disable both to only allow explicitly configured models
+- For beginners: Keep Query All Channel Models and Fallback to Channels enabled; leave Hide Unroutable Models off unless list/call mismatches matter
+- For strict control: Disable Query All Channel Models and Fallback to Channels so only explicitly configured models are used; enable Hide Unroutable Models so `/v1/models` matches that routing
 
 ## FAQ
 
