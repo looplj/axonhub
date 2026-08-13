@@ -33,23 +33,23 @@ test('ChannelMultiSelect displays selected channel names via Badge', () => {
   // Selected IDs render as Badge chips showing the channel name (or fallback to id).
   assert.match(
     source,
-    /value\.map\(.*channelId.*channel\?\.name\s*\|\|\s*channelId.*Badge/s,
+    /value\.map\(.*Badge.*channel\?\.name\s*\|\|\s*channelId/s,
     'selected channels should render as Badge chips showing channel name or id fallback'
   );
 });
 
-test('ChannelMultiSelect Badge onClick calls handleRemove', () => {
+test('ChannelMultiSelect Badge contains Button that calls handleRemove', () => {
   assert.match(
     source,
-    /Badge[^>]*onClick=\{\(\)\s*=>\s*handleRemove\(channelId\)\}/s,
-    'Badge click should call handleRemove for that channel'
+    /Badge[^>]*>[\s\S]*?Button[\s\S]*?onClick=\{\(\)\s*=>\s*handleRemove\(channelId\)\}/s,
+    'Button inside Badge should call handleRemove for that channel'
   );
 });
 
 test('ChannelMultiSelect button label reflects selection count', () => {
   assert.match(
     source,
-    /value\.length > 0.*\$\{value\.length\} channel.*selected/s,
+    /value\.length > 0.*t\(['"]system\.quota\.enforcement\.allowedChannels\.selectedCount['"]/s,
     'button should show selection count when channels are selected'
   );
 });

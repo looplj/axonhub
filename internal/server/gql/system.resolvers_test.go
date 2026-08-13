@@ -180,8 +180,8 @@ func TestMutationResolver_UpdateSystemChannelSettings_MergesPrompts(t *testing.T
 }
 
 func TestQuotaEnforcementSettingsResolver_AllowedChannelIDs(t *testing.T) {
-	resolver, ctx, _ := setupTestSystemMutationResolver(t)
-	defer func() { /* client closed by defers below */ }()
+	resolver, ctx, client := setupTestSystemMutationResolver(t)
+	defer client.Close()
 
 	qrs := resolver.QuotaEnforcementSettings().(*quotaEnforcementSettingsResolver)
 

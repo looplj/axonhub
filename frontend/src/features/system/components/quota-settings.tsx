@@ -257,7 +257,7 @@ function ChannelMultiSelect({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button variant='outline' role='combobox' aria-expanded={open} className='w-full justify-between'>
-            {value.length > 0 ? `${value.length} channel${value.length > 1 ? 's' : ''} selected` : t('common.select.placeholder')}
+            {value.length > 0 ? t('system.quota.enforcement.allowedChannels.selectedCount', { count: value.length }) : t('common.select.placeholder')}
             <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
           </Button>
         </PopoverTrigger>
@@ -282,9 +282,17 @@ function ChannelMultiSelect({
           {value.map((channelId) => {
             const channel = channels.find((c) => c.id === channelId);
             return (
-              <Badge key={channelId} variant='secondary' className='cursor-pointer' onClick={() => handleRemove(channelId)}>
+              <Badge key={channelId} variant='secondary' className='group flex items-center gap-0.5'>
                 {channel?.name || channelId}
-                <span className='ml-1 text-xs'>×</span>
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='h-4 w-4 p-0 opacity-70 hover:opacity-100'
+                  aria-label={t('system.quota.enforcement.allowedChannels.removeChannel', { name: channel?.name || channelId })}
+                  onClick={() => handleRemove(channelId)}
+                >
+                  ×
+                </Button>
               </Badge>
             );
           })}
