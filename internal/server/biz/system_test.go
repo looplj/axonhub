@@ -817,6 +817,7 @@ func TestSystemService_ModelSettingsBackwardCompatibility(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, settings.FallbackToChannelsOnModelNotFound)
 	require.True(t, settings.QueryAllChannelModels)
+	require.False(t, settings.HideUnroutableModelsInList)
 	require.NotNil(t, settings.DeveloperSettings)
 	require.Empty(t, settings.DeveloperSettings)
 }

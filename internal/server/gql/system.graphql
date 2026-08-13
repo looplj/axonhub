@@ -222,6 +222,7 @@ type SystemModelSettings {
   defaultModelAPIIncludeAll: Boolean!
   autoReasoningEffort: Boolean!
   modelBlacklistRegex: String!
+  hideUnroutableModelsInList: Boolean!
   developerSettings: [DeveloperModelSettings!]!
 }
 
@@ -231,6 +232,7 @@ input UpdateSystemModelSettingsInput {
   defaultModelAPIIncludeAll: Boolean
   autoReasoningEffort: Boolean
   modelBlacklistRegex: String
+  hideUnroutableModelsInList: Boolean
   developerSettings: [DeveloperModelSettingsInput!]
 }
 
