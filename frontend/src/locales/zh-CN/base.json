@@ -149,6 +149,7 @@
   "common.columnOrderDialogTitle": "列顺序",
   "common.columnOrderDialogDescription": "拖动以重新排序列。布局会自动保存。",
   "common.resetColumnOrder": "重置顺序",
+  "common.dragToReorder": "拖动以重新排序 {{label}}",
   "common.noData": "暂无数据",
   "common.noResults": "无结果。",
   "common.loadError": "加载失败:",

@@ -31,7 +31,7 @@ function SortableColumnRow({ id, label }: SortableColumnRowProps) {
         {...attributes}
         {...listeners}
         className='cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing'
-        aria-label={`Drag to reorder ${label}`}
+        aria-label={t('common.dragToReorder', { label })}
       >
         <GripVertical className='h-5 w-5' />
       </button>
@@ -80,6 +80,7 @@ export function DataTableColumnOrderDialog<TData>({
         reorderableColumnIds: reorderableIds,
         storedOrder: nextReorderable,
         pinnedLast: ['details'],
+        pinned: ['status', 'source'],
       }),
     );
   };
@@ -100,8 +101,8 @@ export function DataTableColumnOrderDialog<TData>({
   };
 
   const handleReset = () => {
-    setItems([...reorderableIds]);
     table.setColumnOrder([]);
+    setItems(getReorderableColumnIds(table));
   };
 
   return (

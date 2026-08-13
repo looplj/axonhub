@@ -1,6 +1,6 @@
 import type { Column, Table } from '@tanstack/react-table';
 
-export const NON_REORDERABLE_COLUMN_IDS = ['details'] as const;
+export const NON_REORDERABLE_COLUMN_IDS = ['details', 'status', 'source'] as const;
 
 export function isReorderableColumn<TData>(column: Column<TData>): boolean {
   if ((NON_REORDERABLE_COLUMN_IDS as readonly string[]).includes(column.id)) return false;
@@ -17,6 +17,7 @@ export interface ReconcileColumnOrderParams {
   reorderableColumnIds: string[];
   storedOrder: string[] | null;
   pinnedLast?: string[];
+  pinned?: string[];
 }
 
 export function reconcileColumnOrder({
@@ -24,12 +25,14 @@ export function reconcileColumnOrder({
   reorderableColumnIds,
   storedOrder,
   pinnedLast = [],
+  pinned = [],
 }: ReconcileColumnOrderParams): string[] {
   const valid = (storedOrder ?? []).filter((id) => reorderableColumnIds.includes(id));
   const missing = reorderableColumnIds.filter((id) => !valid.includes(id));
   const ordered = [...valid, ...missing];
-  const pinned = pinnedLast.filter((id) => allColumnIds.includes(id));
-  return [...ordered.filter((id) => !pinned.includes(id)), ...pinned];
+  const pinnedValid = pinned.filter((id) => allColumnIds.includes(id));
+  const pinnedLastValid = pinnedLast.filter((id) => allColumnIds.includes(id));
+  return [...ordered, ...pinnedValid, ...pinnedLastValid];
 }
 
 export function readColumnOrder(storageKey: string, version: number): string[] | null {
