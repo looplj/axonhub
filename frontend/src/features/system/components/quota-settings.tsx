@@ -263,7 +263,7 @@ function ChannelMultiSelect({
         </PopoverTrigger>
         <PopoverContent className='w-full p-0' align='start'>
           <Command>
-            <CommandInput placeholder={t('common.search.placeholder')} />
+            <CommandInput placeholder={t('search.placeholder')} />
             <CommandEmpty>{t('common.noResults')}</CommandEmpty>
             <CommandGroup className='max-h-64 overflow-auto'>
               {channels.map((channel) => (
