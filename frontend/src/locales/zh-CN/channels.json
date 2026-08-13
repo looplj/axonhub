@@ -69,6 +69,7 @@
   "channels.types.zai_anthropic": "Zai (Anthropic)",
   "channels.types.vercel": "Vercel",
   "channels.types.xai": "xAI",
+  "channels.types.xai_responses": "xAI (Responses)",
   "channels.types.ppio": "欧派云",
   "channels.types.siliconflow": "硅基流动",
   "channels.types.volcengine": "火山引擎",

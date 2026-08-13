@@ -1294,6 +1294,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   xiaomi
   xiaomi_anthropic
   xai
+  xai_responses
   ppio
   siliconflow
   volcengine
