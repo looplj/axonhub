@@ -386,7 +386,12 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	llmRequest.Model = entry.ActualModel
 
-	if isResponsesFormat(llmRequest.APIFormat) &&
+	compatEnabled := channelEnablesResponsesChatCompat(candidate)
+
+	// previous_response_id expansion is part of the beta Responses-to-Chat
+	// compatibility. Disabled channels keep the legacy behavior where the ID is
+	// simply ignored by Chat endpoints.
+	if compatEnabled && isResponsesFormat(llmRequest.APIFormat) &&
 		!responsesRequestCapabilities(p.wrapped, llmRequest).NativeResponses &&
 		llmRequest.PreviousResponseID != nil {
 		hydrated, err := hydratePreviousResponsesForChat(ctx, llmRequest, p.state)
@@ -410,7 +415,16 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 		llmRequest = transformedRequest
 	}
-	llmRequest = filterResponsesChatToolMessagesForOutbound(llmRequest, p.wrapped)
+	if compatEnabled {
+		llmRequest = filterResponsesChatToolMessagesForOutbound(llmRequest, p.wrapped)
+	} else {
+		llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, outboundFormat)
+	}
+
+	// Tell outbound transformers whether this attempt may use the beta
+	// Responses-to-Chat conversion. Channels without the compatibility enabled
+	// keep the legacy generic conversion.
+	llmRequest.TransformOptions.DisableResponsesChatCompat = !compatEnabled
 
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)

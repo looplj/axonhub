@@ -292,7 +292,13 @@ func TestLoadPreviousResponsesHistory_RejectsCumulativeHistoryOverByteLimit(t *t
 func TestPersistentOutboundTransformer_PreviousResponseIDRouting(t *testing.T) {
 	newProcessor := func(out *mockTransformer, state *PersistenceState) *PersistentOutboundTransformer {
 		channel := &biz.Channel{
-			Channel:  &ent.Channel{ID: 1, Name: "test-channel"},
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "test-channel",
+				Settings: &objects.ChannelSettings{
+					TransformOptions: objects.TransformOptions{EnableResponsesChatCompat: true},
+				},
+			},
 			Outbound: out,
 		}
 		state.ChannelModelsCandidates = []*ChannelModelsCandidate{{
