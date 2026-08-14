@@ -93,6 +93,8 @@ func TestCodexOutbound_PassthroughModernCodexHeaders(t *testing.T) {
 	req.Header.Set("X-Codex-Window-Id", "window-123")
 	req.Header.Set("X-Client-Request-Id", "request-123")
 	req.Header.Set("X-Codex-Beta-Features", "js_repl")
+	req.Header.Set("Thread-Id", "thread-123")
+	req.Header.Set("X-Openai-Internal-Codex-Responses-Lite", "true")
 
 	finalReq, err := sim.Simulate(ctx, req)
 	require.NoError(t, err)
@@ -101,6 +103,67 @@ func TestCodexOutbound_PassthroughModernCodexHeaders(t *testing.T) {
 	assert.Equal(t, "window-123", finalReq.Header.Get("X-Codex-Window-Id"))
 	assert.Equal(t, "request-123", finalReq.Header.Get("X-Client-Request-Id"))
 	assert.Equal(t, "js_repl", finalReq.Header.Get("X-Codex-Beta-Features"))
+	assert.Equal(t, "thread-123", finalReq.Header.Get("Thread-Id"))
+	assert.Equal(t, "true", finalReq.Header.Get("X-Openai-Internal-Codex-Responses-Lite"))
+}
+
+func TestCodexOutbound_NonCodexInboundDefaults(t *testing.T) {
+	ctx := context.Background()
+	sim := newCodexSimulator(t)
+	// Plain OpenAI-compatible client: no Session-Id / Thread-Id / X-Codex-* headers.
+	req := newCodexChatCompletionRequest(t)
+	req.Header.Set("Session-Id", "fixed-session")
+
+	finalReq, err := sim.Simulate(ctx, req)
+	require.NoError(t, err)
+
+	sessionID := "fixed-session"
+	windowID := sessionID + ":0"
+
+	// Identity headers are fabricated from the resolved session so the upstream
+	// sees a complete Codex session shape even for non-Codex clients.
+	assert.Equal(t, sessionID, finalReq.Header.Get("Thread-Id"))
+	assert.Equal(t, sessionID, finalReq.Header.Get("Conversation_id"))
+	assert.Equal(t, windowID, finalReq.Header.Get("X-Codex-Window-Id"))
+	assert.Equal(t, fabricatedBetaFeatures, finalReq.Header.Get("X-Codex-Beta-Features"))
+	assert.Equal(t, "true", finalReq.Header.Get("X-Openai-Internal-Codex-Responses-Lite"))
+
+	// X-Client-Request-Id and the turn id are per-request UUIDs.
+	clientRequestID := finalReq.Header.Get("X-Client-Request-Id")
+	require.NotEmpty(t, clientRequestID)
+	_, err = uuid.Parse(clientRequestID)
+	assert.NoError(t, err)
+
+	var turnMetadata TurnMetadata
+	require.NoError(t, json.Unmarshal([]byte(finalReq.Header.Get("X-Codex-Turn-Metadata")), &turnMetadata))
+	// installation_id is deterministically derived from the ChatGPT account id.
+	assert.Equal(t, uuid.NewSHA1(uuid.NameSpaceOID, []byte(testChatAccountID)).String(), turnMetadata.InstallationID)
+	assert.Equal(t, sessionID, turnMetadata.SessionID)
+	assert.Equal(t, sessionID, turnMetadata.ThreadID)
+	assert.Equal(t, windowID, turnMetadata.WindowID)
+	assert.Equal(t, "turn", turnMetadata.RequestKind)
+	assert.Equal(t, "user", turnMetadata.ThreadSource)
+	assert.Equal(t, "none", turnMetadata.Sandbox)
+	assert.Empty(t, turnMetadata.Workspaces)
+	_, err = uuid.Parse(turnMetadata.TurnID)
+	assert.NoError(t, err)
+
+	// turn_started_at_unix_ms is deterministic per session and stays inside the
+	// current 10-minute bucket.
+	nowMS := time.Now().UnixMilli()
+	const bucketMS = int64(10 * time.Minute / time.Millisecond)
+	bucketStart := nowMS - nowMS%bucketMS
+	assert.GreaterOrEqual(t, turnMetadata.TurnStartedAtUnixMS, bucketStart)
+	assert.Less(t, turnMetadata.TurnStartedAtUnixMS, bucketStart+bucketMS)
+
+	// A second request for the same session fabricates the same turn started time.
+	req2 := newCodexChatCompletionRequest(t)
+	req2.Header.Set("Session-Id", "fixed-session")
+	finalReq2, err := sim.Simulate(ctx, req2)
+	require.NoError(t, err)
+	var turnMetadata2 TurnMetadata
+	require.NoError(t, json.Unmarshal([]byte(finalReq2.Header.Get("X-Codex-Turn-Metadata")), &turnMetadata2))
+	assert.Equal(t, turnMetadata.TurnStartedAtUnixMS, turnMetadata2.TurnStartedAtUnixMS)
 }
 
 func TestCodexOutbound_SessionIDPrecedence(t *testing.T) {
