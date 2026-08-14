@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/looplj/axonhub/llm/transformer/xai/subscription"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm/transformer/xai/subscription"
 )
 
 func TestChannelService_ListModels(t *testing.T) {

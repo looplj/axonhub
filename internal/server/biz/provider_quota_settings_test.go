@@ -5,11 +5,11 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
 
