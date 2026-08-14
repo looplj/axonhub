@@ -203,6 +203,22 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			// Enable reasoning summary for Codex CLI requests.
 			reqCopy.ReasoningSummary = lo.ToPtr("auto")
 		}
+
+		// Responses Lite (signaled on the raw request above) rejects requests
+		// whose reasoning context is not "all_turns"; clients that never sent a
+		// reasoning block would otherwise fail upstream with HTTP 400. Only fill
+		// in a missing context — never override what the client explicitly sent.
+		if providerExt := reqCopy.ProviderExtensions; providerExt == nil || providerExt.OpenAIResponses == nil ||
+			providerExt.OpenAIResponses.Request == nil || providerExt.OpenAIResponses.Request.ReasoningContext == "" {
+			oaiExt := llm.EnsureOpenAIResponsesProviderExtensions(&reqCopy)
+			if oaiExt != nil {
+				if oaiExt.Request == nil {
+					oaiExt.Request = &llm.OpenAIResponsesRequestExtensions{ReasoningContext: "all_turns"}
+				} else {
+					oaiExt.Request.ReasoningContext = "all_turns"
+				}
+			}
+		}
 	}
 
 	// Codex Responses rejects token limit fields, so strip them out.
