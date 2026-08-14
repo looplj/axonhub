@@ -358,12 +358,13 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 		if err := svc.validateModelSettings(input.Settings); err != nil {
 			return nil, err
 		}
+		svc.normalizeVisionDelegationSettings(input.Settings)
 
 		sourceType := model.TypeChat
 		if input.Type != nil {
 			sourceType = *input.Type
 		}
-		if err := svc.validateVisionDelegation(ctx, input.ModelID, sourceType, input.ModelCard, input.Settings); err != nil {
+		if _, err := svc.validateVisionDelegation(ctx, input.ModelID, sourceType, input.ModelCard, input.Settings); err != nil {
 			return nil, err
 		}
 	}
@@ -405,12 +406,13 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 			if err := svc.validateModelSettings(input.Settings); err != nil {
 				return nil, err
 			}
+			svc.normalizeVisionDelegationSettings(input.Settings)
 
 			sourceType := model.TypeChat
 			if input.Type != nil {
 				sourceType = *input.Type
 			}
-			if err := svc.validateVisionDelegation(ctx, input.ModelID, sourceType, input.ModelCard, input.Settings); err != nil {
+			if _, err := svc.validateVisionDelegation(ctx, input.ModelID, sourceType, input.ModelCard, input.Settings); err != nil {
 				return nil, err
 			}
 		}
@@ -502,6 +504,13 @@ func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.Upd
 		if input.Settings != nil {
 			nextSettings = input.Settings
 		}
+		if nextSettings != nil && nextSettings.VisionDelegation.TargetModelID != nil {
+			// Normalize a copy: when input.Settings is nil, nextSettings aliases
+			// the loaded ent.Model and must stay untouched by normalization.
+			normalizedSettings := *nextSettings
+			svc.normalizeVisionDelegationSettings(&normalizedSettings)
+			nextSettings = &normalizedSettings
+		}
 		settingsChanged := input.Settings != nil
 		sourceCapabilityChanged := input.ModelCard != nil || input.Type != nil
 		if !settingsChanged && sourceCapabilityChanged && nextSettings != nil && nextSettings.VisionDelegation.Enabled &&
@@ -512,7 +521,7 @@ func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.Upd
 			settingsChanged = true
 		}
 
-		if err := svc.validateVisionDelegation(txCtx, nextModelID, nextType, nextCard, nextSettings); err != nil {
+		if _, err := svc.validateVisionDelegation(txCtx, nextModelID, nextType, nextCard, nextSettings); err != nil {
 			return err
 		}
 

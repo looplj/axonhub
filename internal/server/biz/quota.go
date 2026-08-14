@@ -256,6 +256,11 @@ func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod, loc *time.Loca
 	}
 }
 
+// requestCount counts client requests, not upstream work: usage logs are
+// written per execution, so a retried request (multiple channel attempts) or a
+// vision-delegated request (primary + child execution) spans several rows.
+// COUNT(DISTINCT request_id) with the purpose filter therefore also fixes the
+// pre-delegation double counting of retried requests.
 func (s *QuotaService) requestCount(ctx context.Context, apiKeyID int, window QuotaWindow) (int64, error) {
 	q := s.ent.UsageLog.Query().Where(
 		usagelog.APIKeyIDEQ(apiKeyID),

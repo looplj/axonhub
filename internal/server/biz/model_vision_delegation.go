@@ -15,22 +15,35 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+// normalizeVisionDelegationSettings trims the configured target model ID in place.
+// Callers own the settings being persisted (create/update inputs), so mutating
+// them here is safe; read paths must not go through this function.
+func (svc *ModelService) normalizeVisionDelegationSettings(settings *objects.ModelSettings) {
+	if settings == nil {
+		return
+	}
+
+	if targetModelID := settings.VisionDelegation.TargetModelID; targetModelID != nil {
+		settings.VisionDelegation.TargetModelID = lo.ToPtr(strings.TrimSpace(*targetModelID))
+	}
+}
+
 func (svc *ModelService) validateVisionDelegation(
 	ctx context.Context,
 	sourceModelID string,
 	sourceType model.Type,
 	sourceCard *objects.ModelCard,
 	settings *objects.ModelSettings,
-) error {
+) (*ent.Model, error) {
 	if settings == nil || !settings.VisionDelegation.Enabled {
-		return nil
+		return nil, nil
 	}
 
 	if sourceType != model.TypeChat {
-		return fmt.Errorf("vision delegation is only available for chat models")
+		return nil, fmt.Errorf("vision delegation is only available for chat models")
 	}
 	if sourceCard != nil && sourceCard.SupportsVision() {
-		return fmt.Errorf("model %q already supports image input natively", sourceModelID)
+		return nil, fmt.Errorf("model %q already supports image input natively", sourceModelID)
 	}
 
 	targetModelID := ""
@@ -38,25 +51,24 @@ func (svc *ModelService) validateVisionDelegation(
 		targetModelID = strings.TrimSpace(*settings.VisionDelegation.TargetModelID)
 	}
 	if targetModelID == "" {
-		return fmt.Errorf("vision delegation target model is required")
+		return nil, fmt.Errorf("vision delegation target model is required")
 	}
-	settings.VisionDelegation.TargetModelID = lo.ToPtr(targetModelID)
 
 	target, err := svc.entFromContext(ctx).Model.Query().
 		Where(model.ModelIDEQ(targetModelID)).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return fmt.Errorf("vision delegation target model %q does not exist", targetModelID)
+			return nil, fmt.Errorf("vision delegation target model %q does not exist", targetModelID)
 		}
-		return fmt.Errorf("failed to query vision delegation target model: %w", err)
+		return nil, fmt.Errorf("failed to query vision delegation target model: %w", err)
 	}
 
 	if err := svc.validateVisionDelegationTarget(ctx, sourceModelID, target); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return target, nil
 }
 
 func (svc *ModelService) validateVisionDelegationTarget(ctx context.Context, sourceModelID string, target *ent.Model) error {
@@ -118,18 +130,16 @@ func (svc *ModelService) isModelRoutableForVisionDelegation(ctx context.Context,
 		len(llm.CapableAPIFormats(llm.RequestTypeChat)) > 0, nil
 }
 
+// GetVisionDelegationTarget re-validates the delegation config against live
+// state (target enabled, still vision-capable, still routable) on every image
+// request and fails closed: a stale config surfaces to the client as an error
+// instead of silently sending image parts to a text-only upstream.
 func (svc *ModelService) GetVisionDelegationTarget(ctx context.Context, source *ent.Model) (*ent.Model, error) {
 	if source == nil || source.Settings == nil || !source.Settings.VisionDelegation.Enabled {
 		return nil, fmt.Errorf("vision delegation is not enabled")
 	}
 
-	if err := svc.validateVisionDelegation(ctx, source.ModelID, source.Type, source.ModelCard, source.Settings); err != nil {
-		return nil, err
-	}
-
-	return svc.entFromContext(ctx).Model.Query().
-		Where(model.ModelIDEQ(*source.Settings.VisionDelegation.TargetModelID)).
-		Only(ctx)
+	return svc.validateVisionDelegation(ctx, source.ModelID, source.Type, source.ModelCard, source.Settings)
 }
 
 func (svc *ModelService) EffectiveModelCard(ctx context.Context, source *ent.Model) *objects.ModelCard {

@@ -166,6 +166,11 @@ func (m *visionDelegationMiddleware) execute(
 		return nil, fmt.Errorf("failed to encode vision delegation request: %w", err)
 	}
 
+	// The child pipeline deliberately skips checkApiKeyModelAccess and
+	// applyModelMapping: delegation is an operator-configured hop (admin sets the
+	// target model), the same trust given to model mapping, which can also route
+	// a restricted key to models outside its allowlist. The API key still pays
+	// for the child execution, so usage attribution and quotas hold.
 	childState := &PersistenceState{
 		APIKey:                parentState.APIKey,
 		RequestService:        parentState.RequestService,
@@ -298,8 +303,11 @@ func collectVisionDelegationInput(request *llm.Request) (*visionDelegationInput,
 				continue
 			}
 
-			if part.ImageURL == nil || part.ImageURL.FileID != "" {
-				return nil, fmt.Errorf("provider file_id image references are not supported")
+			if part.ImageURL == nil {
+				return nil, fmt.Errorf("malformed image part without image_url payload")
+			}
+			if part.ImageURL.FileID != "" {
+				return nil, fmt.Errorf("provider file_id image references are not supported: the current turn contains an image managed by the upstream provider and it cannot be delegated; images without file_id are delegatable")
 			}
 
 			canonical, key, err := canonicalVisionImage(part.ImageURL)

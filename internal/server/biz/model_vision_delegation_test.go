@@ -54,23 +54,31 @@ func TestModelServiceVisionDelegationCandidatesAndValidation(t *testing.T) {
 	}))
 
 	settings := visionDelegationTestSettings(ch.ID, "source-model", visionTarget.ModelID, true)
-	require.NoError(t, svc.validateVisionDelegation(ctx, "source-model", model.TypeChat, &objects.ModelCard{}, settings))
-	require.Equal(t, "vision-model", lo.FromPtr(settings.VisionDelegation.TargetModelID))
+	settings.VisionDelegation.TargetModelID = lo.ToPtr("  " + visionTarget.ModelID + "  ")
+	_, err = svc.validateVisionDelegation(ctx, "source-model", model.TypeChat, &objects.ModelCard{}, settings)
+	require.NoError(t, err)
+	// Validation is a read: normalization to the trimmed ID happens in the
+	// write paths (create/update), never through this entry point.
+	require.Equal(t, "  "+visionTarget.ModelID+"  ", lo.FromPtr(settings.VisionDelegation.TargetModelID))
 
-	require.ErrorContains(t, svc.validateVisionDelegation(
+	_, err = svc.validateVisionDelegation(
 		ctx, "vision-model", model.TypeChat, &objects.ModelCard{},
 		visionDelegationTestSettings(ch.ID, "vision-model", "vision-model", true),
-	), "must differ")
-	require.ErrorContains(t, svc.validateVisionDelegation(
+	)
+	require.ErrorContains(t, err, "must differ")
+	_, err = svc.validateVisionDelegation(
 		ctx, "source-model", model.TypeEmbedding, &objects.ModelCard{}, settings,
-	), "only available for chat")
-	require.ErrorContains(t, svc.validateVisionDelegation(
+	)
+	require.ErrorContains(t, err, "only available for chat")
+	_, err = svc.validateVisionDelegation(
 		ctx, "source-model", model.TypeChat, &objects.ModelCard{Vision: true}, settings,
-	), "already supports image")
-	require.ErrorContains(t, svc.validateVisionDelegation(
+	)
+	require.ErrorContains(t, err, "already supports image")
+	_, err = svc.validateVisionDelegation(
 		ctx, "source-model", model.TypeChat, &objects.ModelCard{},
 		visionDelegationTestSettings(ch.ID, "source-model", "chained-model", true),
-	), "delegates vision itself")
+	)
+	require.ErrorContains(t, err, "delegates vision itself")
 
 	effective := svc.EffectiveModelCard(ctx, textSource)
 	require.NotNil(t, effective)
