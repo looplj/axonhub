@@ -925,7 +925,7 @@ var (
 	// UsageStatsColumns holds the columns for the "usage_stats" table.
 	UsageStatsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "date", Type: field.TypeString},
+		{Name: "date", Type: field.TypeString, Size: 10},
 		{Name: "api_key_id", Type: field.TypeInt, Default: 0},
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "channel_id", Type: field.TypeInt, Default: 0},
@@ -949,11 +949,6 @@ var (
 				Name:    "usage_stats_unique",
 				Unique:  true,
 				Columns: []*schema.Column{UsageStatsColumns[1], UsageStatsColumns[2], UsageStatsColumns[5], UsageStatsColumns[4], UsageStatsColumns[3]},
-			},
-			{
-				Name:    "usage_stats_by_date",
-				Unique:  false,
-				Columns: []*schema.Column{UsageStatsColumns[1]},
 			},
 			{
 				Name:    "usage_stats_by_api_key_date",

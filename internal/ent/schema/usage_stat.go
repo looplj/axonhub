@@ -19,7 +19,7 @@ type UsageStat struct {
 
 func (UsageStat) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("date").Immutable().Comment("Local calendar date (YYYY-MM-DD) the usage belongs to"),
+		field.String("date").MaxLen(10).Immutable().Comment("Local calendar date (YYYY-MM-DD) the usage belongs to"),
 		field.Int("api_key_id").Default(0).Immutable().Comment("API key ID; 0 means no API key"),
 		field.Int("project_id").Default(1).Immutable().Comment("Project ID"),
 		field.Int("channel_id").Default(0).Immutable().Comment("Channel ID; 0 means no channel"),
@@ -38,10 +38,11 @@ func (UsageStat) Fields() []ent.Field {
 
 func (UsageStat) Indexes() []ent.Index {
 	return []ent.Index{
+		// The unique index already starts with date, so a standalone
+		// date index would be redundant (B-tree leftmost-prefix).
 		index.Fields("date", "api_key_id", "model_id", "channel_id", "project_id").
 			Unique().
 			StorageKey("usage_stats_unique"),
-		index.Fields("date").StorageKey("usage_stats_by_date"),
 		index.Fields("api_key_id", "date").StorageKey("usage_stats_by_api_key_date"),
 		index.Fields("model_id", "date").StorageKey("usage_stats_by_model_date"),
 		index.Fields("channel_id", "date").StorageKey("usage_stats_by_channel_date"),

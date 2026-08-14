@@ -276,6 +276,11 @@ func (_c *UsageStatCreate) check() error {
 	if _, ok := _c.mutation.Date(); !ok {
 		return &ValidationError{Name: "date", err: errors.New(`ent: missing required field "UsageStat.date"`)}
 	}
+	if v, ok := _c.mutation.Date(); ok {
+		if err := usagestat.DateValidator(v); err != nil {
+			return &ValidationError{Name: "date", err: fmt.Errorf(`ent: validator failed for field "UsageStat.date": %w`, err)}
+		}
+	}
 	if _, ok := _c.mutation.APIKeyID(); !ok {
 		return &ValidationError{Name: "api_key_id", err: errors.New(`ent: missing required field "UsageStat.api_key_id"`)}
 	}

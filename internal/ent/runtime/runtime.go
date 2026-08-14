@@ -931,6 +931,10 @@ func init() {
 	}
 	usagestatFields := schema.UsageStat{}.Fields()
 	_ = usagestatFields
+	// usagestatDescDate is the schema descriptor for date field.
+	usagestatDescDate := usagestatFields[0].Descriptor()
+	// usagestat.DateValidator is a validator for the "date" field. It is called by the builders before save.
+	usagestat.DateValidator = usagestatDescDate.Validators[0].(func(string) error)
 	// usagestatDescAPIKeyID is the schema descriptor for api_key_id field.
 	usagestatDescAPIKeyID := usagestatFields[1].Descriptor()
 	// usagestat.DefaultAPIKeyID holds the default value on creation for the api_key_id field.

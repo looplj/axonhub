@@ -24,6 +24,10 @@ var usageStatConflictColumns = []string{
 	usagestat.FieldProjectID,
 }
 
+// backfillBatchSize controls how many aggregate rows are written per bulk
+// upsert. Package-level so tests can shrink it to exercise multi-batch runs.
+var backfillBatchSize = 2000
+
 // LocalDateString renders a time in the given location as YYYY-MM-DD.
 func LocalDateString(t time.Time, loc *time.Location) string {
 	return t.In(loc).Format("2006-01-02")
@@ -110,7 +114,6 @@ func (s *UsageLogService) BackfillUsageStats(ctx context.Context) error {
 		return nil
 	}
 
-	const batchSize = 2000
 	loc := s.SystemService.TimeLocation(ctx)
 
 	type statKey struct {
@@ -138,7 +141,7 @@ func (s *UsageLogService) BackfillUsageStats(ctx context.Context) error {
 	for {
 		logs, err := client.UsageLog.Query().
 			Order(ent.Asc(usagelog.FieldID)).
-			Limit(batchSize).
+			Limit(backfillBatchSize).
 			All(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to query usage logs for backfill: %w", err)
@@ -173,40 +176,61 @@ func (s *UsageLogService) BackfillUsageStats(ctx context.Context) error {
 		}
 
 		processed += len(logs)
-		if len(logs) < batchSize {
+		if len(logs) < backfillBatchSize {
 			break
 		}
 	}
 
-	// Upsert aggregates in batches (idempotent on conflict).
-	bulk := make([]*ent.UsageStatCreate, 0, len(agg))
+	// Collect aggregate rows first (builders must be created on the
+	// transactional client so the whole write is atomic — a failed batch
+	// cannot leave partial aggregates behind).
+	type aggRow struct {
+		key statKey
+		val *statVal
+	}
+	rows := make([]aggRow, 0, len(agg))
 	for key, v := range agg {
-		bulk = append(bulk, client.UsageStat.Create().
-			SetDate(key.date).
-			SetAPIKeyID(key.apiKeyID).
-			SetProjectID(key.projectID).
-			SetChannelID(key.channelID).
-			SetModelID(key.modelID).
-			SetRequestCount(v.requestCount).
-			SetPromptTokens(v.promptTokens).
-			SetCompletionTokens(v.completionTokens).
-			SetTotalTokens(v.totalTokens).
-			SetPromptCachedTokens(v.promptCachedTokens).
-			SetPromptWriteCachedTokens(v.promptWriteCachedTokens).
-			SetCompletionReasoningTokens(v.completionReasoningTokens).
-			SetTotalCost(v.totalCost))
+		rows = append(rows, aggRow{key: key, val: v})
 	}
 
-	for i := 0; i < len(bulk); i += batchSize {
-		end := min(i+batchSize, len(bulk))
+	tx, err := client.Tx(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to start backfill transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback() }()
+	txClient := tx.Client()
+
+	for i := 0; i < len(rows); i += backfillBatchSize {
+		end := min(i+backfillBatchSize, len(rows))
+		builders := make([]*ent.UsageStatCreate, 0, end-i)
+		for _, r := range rows[i:end] {
+			builders = append(builders, txClient.UsageStat.Create().
+				SetDate(r.key.date).
+				SetAPIKeyID(r.key.apiKeyID).
+				SetProjectID(r.key.projectID).
+				SetChannelID(r.key.channelID).
+				SetModelID(r.key.modelID).
+				SetRequestCount(r.val.requestCount).
+				SetPromptTokens(r.val.promptTokens).
+				SetCompletionTokens(r.val.completionTokens).
+				SetTotalTokens(r.val.totalTokens).
+				SetPromptCachedTokens(r.val.promptCachedTokens).
+				SetPromptWriteCachedTokens(r.val.promptWriteCachedTokens).
+				SetCompletionReasoningTokens(r.val.completionReasoningTokens).
+				SetTotalCost(r.val.totalCost))
+		}
 		// Backfill only runs when the table is empty, so conflicts should
 		// never happen; UpdateNewValues keeps re-runs idempotent.
-		if err := client.UsageStat.CreateBulk(bulk[i:end]...).
+		if err := txClient.UsageStat.CreateBulk(builders...).
 			OnConflict(sql.ConflictColumns(usageStatConflictColumns...)).
 			UpdateNewValues().
 			Exec(ctx); err != nil {
 			return fmt.Errorf("failed to bulk insert usage stats: %w", err)
 		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit backfill: %w", err)
 	}
 
 	log.Info(ctx, "Usage stats backfill completed",

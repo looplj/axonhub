@@ -78,6 +78,8 @@ func ValidColumn(column string) bool {
 var (
 	Hooks  [1]ent.Hook
 	Policy ent.Policy
+	// DateValidator is a validator for the "date" field. It is called by the builders before save.
+	DateValidator func(string) error
 	// DefaultAPIKeyID holds the default value on creation for the "api_key_id" field.
 	DefaultAPIKeyID int
 	// DefaultProjectID holds the default value on creation for the "project_id" field.

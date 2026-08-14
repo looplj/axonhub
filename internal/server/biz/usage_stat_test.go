@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -149,4 +150,35 @@ func TestUsageStat_SurvivesLogCleanup(t *testing.T) {
 		total += r.RequestCount
 	}
 	require.Equal(t, int64(2), total)
+}
+
+// Backfill paginates correctly when aggregates span multiple batches.
+func TestUsageStat_BackfillMultiBatch(t *testing.T) {
+	client, svc := newUsageStatTestEnv(t)
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	old := backfillBatchSize
+	backfillBatchSize = 5
+	defer func() { backfillBatchSize = old }()
+
+	now := time.Now().UTC()
+	// 12 logs, each a distinct model so each becomes its own aggregate row
+	// (12 rows > batch 5, exercising multi-batch bulk upserts).
+	for i := 0; i < 12; i++ {
+		createTestUsageLog(t, ctx, client, now, fmt.Sprintf("m-%02d", i), 10, 5)
+	}
+
+	require.NoError(t, svc.BackfillUsageStats(ctx))
+
+	rows, err := client.UsageStat.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, rows, 12)
+
+	var total int64
+	for _, r := range rows {
+		total += r.RequestCount
+	}
+	require.Equal(t, int64(12), total)
 }
