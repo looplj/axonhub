@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/spf13/afero"
-	"github.com/studio-b12/gowebdav"
 	"github.com/stretchr/testify/require"
+	"github.com/studio-b12/gowebdav"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -161,7 +161,7 @@ func (r *repeatingReader) Read(p []byte) (int, error) {
 		return 0, nil
 	}
 	n := min(len(p), r.remaining)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		p[i] = 'x'
 	}
 	r.remaining -= n
@@ -170,6 +170,7 @@ func (r *repeatingReader) Read(p []byte) (int, error) {
 
 type errorOpenFs struct {
 	afero.Fs
+
 	openErr error
 }
 

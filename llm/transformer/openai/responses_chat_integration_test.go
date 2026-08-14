@@ -1178,7 +1178,16 @@ func responsesChatToolDelta(toolCall map[string]any) map[string]any {
 	}
 }
 
-func simulateResponsesChatStream(t *testing.T, requestBody string, choices []map[string]any) ([]responsesapi.StreamEvent, error) {
+// runResponsesChatStream drives the full Responses-to-Chat streaming round trip:
+// it transforms the Responses request, lets build construct chat chunk choices
+// from the converted Chat Completions request, wraps each choice in a
+// chat.completion.chunk envelope terminated by [DONE], transforms the stream
+// back through both transformers, and drains the resulting Responses events.
+func runResponsesChatStream(
+	t *testing.T,
+	requestBody string,
+	build func(converted *Request) []map[string]any,
+) ([]responsesapi.StreamEvent, error) {
 	t.Helper()
 	ctx := context.Background()
 	responsesInbound := responsesapi.NewInboundTransformer()
@@ -1188,11 +1197,14 @@ func simulateResponsesChatStream(t *testing.T, requestBody string, choices []map
 	require.NoError(t, err)
 	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
 	require.NoError(t, err)
+	var converted Request
+	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
 
+	choices := build(&converted)
 	providerEvents := make([]*httpclient.StreamEvent, 0, len(choices)+1)
 	for _, choice := range choices {
 		providerEvents = append(providerEvents, &httpclient.StreamEvent{Data: marshalResponsesChatTestJSON(t, map[string]any{
-			"id": "chatcmpl_stream_abnormal", "object": "chat.completion.chunk", "created": 1, "model": "glm-5.2",
+			"id": "chatcmpl_stream_test", "object": "chat.completion.chunk", "created": 1, "model": "glm-5.2",
 			"choices": []any{choice},
 		})})
 	}
@@ -1209,6 +1221,17 @@ func simulateResponsesChatStream(t *testing.T, requestBody string, choices []map
 		events = append(events, event)
 	}
 	return events, responsesStream.Err()
+}
+
+const responsesChatCustomToolRequestBody = `{
+	"model":"gpt-5.5","stream":true,"input":"apply the patch","tools":[
+		{"type":"custom","name":"apply_patch","description":"Apply unified patch"}
+	]
+}`
+
+func simulateResponsesChatStream(t *testing.T, requestBody string, choices []map[string]any) ([]responsesapi.StreamEvent, error) {
+	t.Helper()
+	return runResponsesChatStream(t, requestBody, func(*Request) []map[string]any { return choices })
 }
 
 func simulateResponsesChatCustomChoices(
@@ -1216,98 +1239,29 @@ func simulateResponsesChatCustomChoices(
 	build func(customName string) []map[string]any,
 ) ([]responsesapi.StreamEvent, error) {
 	t.Helper()
-	ctx := context.Background()
-	responsesInbound := responsesapi.NewInboundTransformer()
-	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
-		"model":"gpt-5.5","stream":true,"input":"apply the patch","tools":[
-			{"type":"custom","name":"apply_patch","description":"Apply unified patch"}
-		]
-	}`)})
-	require.NoError(t, err)
-	chatOutbound, err := NewOutboundTransformer("https://paratera.example.com", "test-key")
-	require.NoError(t, err)
-	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
-	require.NoError(t, err)
-	var converted Request
-	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
-	require.Len(t, converted.Tools, 1)
-
-	choices := build(converted.Tools[0].Function.Name)
-	choices = append(choices, map[string]any{"index": 0, "delta": map[string]any{}, "finish_reason": "tool_calls"})
-	providerEvents := make([]*httpclient.StreamEvent, 0, len(choices)+1)
-	for _, choice := range choices {
-		providerEvents = append(providerEvents, &httpclient.StreamEvent{Data: marshalResponsesChatTestJSON(t, map[string]any{
-			"id": "chatcmpl_stream_custom_abnormal", "object": "chat.completion.chunk", "created": 1, "model": "glm-5.2",
-			"choices": []any{choice},
-		})})
-	}
-	providerEvents = append(providerEvents, &httpclient.StreamEvent{Data: []byte("[DONE]")})
-	llmStream, err := chatOutbound.TransformStream(ctx, chatRequest, streams.SliceStream(providerEvents))
-	require.NoError(t, err)
-	responsesStream, err := responsesInbound.TransformStream(ctx, llmStream)
-	require.NoError(t, err)
-
-	var events []responsesapi.StreamEvent
-	for responsesStream.Next() {
-		var event responsesapi.StreamEvent
-		require.NoError(t, json.Unmarshal(responsesStream.Current().Data, &event))
-		events = append(events, event)
-	}
-	return events, responsesStream.Err()
+	return runResponsesChatStream(t, responsesChatCustomToolRequestBody, func(converted *Request) []map[string]any {
+		require.Len(t, converted.Tools, 1)
+		choices := build(converted.Tools[0].Function.Name)
+		return append(choices, map[string]any{"index": 0, "delta": map[string]any{}, "finish_reason": "tool_calls"})
+	})
 }
 
 func simulateResponsesChatCustomStream(t *testing.T, argumentFragments []string) ([]responsesapi.StreamEvent, error) {
 	t.Helper()
-	ctx := context.Background()
-	responsesInbound := responsesapi.NewInboundTransformer()
-	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{
-		"model":"gpt-5.5","stream":true,"input":"apply the patch","tools":[
-			{"type":"custom","name":"apply_patch","description":"Apply unified patch"}
-		]
-	}`)})
-	require.NoError(t, err)
-	chatOutbound, err := NewOutboundTransformer("https://paratera.example.com", "test-key")
-	require.NoError(t, err)
-	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
-	require.NoError(t, err)
-	var converted Request
-	require.NoError(t, json.Unmarshal(chatRequest.Body, &converted))
-	require.Len(t, converted.Tools, 1)
-
-	chatChunk := func(choice map[string]any) *httpclient.StreamEvent {
-		return &httpclient.StreamEvent{Data: marshalResponsesChatTestJSON(t, map[string]any{
-			"id": "chatcmpl_stream_edge", "object": "chat.completion.chunk", "created": 1, "model": "glm-5.2",
-			"choices": []any{choice},
-		})}
-	}
-	providerEvents := make([]*httpclient.StreamEvent, 0, len(argumentFragments)+2)
-	for i, fragment := range argumentFragments {
-		toolCall := map[string]any{"index": 0, "function": map[string]any{"arguments": fragment}}
-		if i == 0 {
-			toolCall["id"] = "call_patch_edge"
-			toolCall["type"] = "function"
-			toolCall["function"].(map[string]any)["name"] = converted.Tools[0].Function.Name
+	return runResponsesChatStream(t, responsesChatCustomToolRequestBody, func(converted *Request) []map[string]any {
+		require.Len(t, converted.Tools, 1)
+		choices := make([]map[string]any, 0, len(argumentFragments)+1)
+		for i, fragment := range argumentFragments {
+			toolCall := map[string]any{"index": 0, "function": map[string]any{"arguments": fragment}}
+			if i == 0 {
+				toolCall["id"] = "call_patch_edge"
+				toolCall["type"] = "function"
+				toolCall["function"].(map[string]any)["name"] = converted.Tools[0].Function.Name
+			}
+			choices = append(choices, responsesChatToolDelta(toolCall))
 		}
-		providerEvents = append(providerEvents, chatChunk(map[string]any{
-			"index": 0, "delta": map[string]any{"tool_calls": []any{toolCall}},
-		}))
-	}
-	providerEvents = append(providerEvents,
-		chatChunk(map[string]any{"index": 0, "delta": map[string]any{}, "finish_reason": "tool_calls"}),
-		&httpclient.StreamEvent{Data: []byte("[DONE]")},
-	)
-	llmStream, err := chatOutbound.TransformStream(ctx, chatRequest, streams.SliceStream(providerEvents))
-	require.NoError(t, err)
-	responsesStream, err := responsesInbound.TransformStream(ctx, llmStream)
-	require.NoError(t, err)
-
-	var events []responsesapi.StreamEvent
-	for responsesStream.Next() {
-		var event responsesapi.StreamEvent
-		require.NoError(t, json.Unmarshal(responsesStream.Current().Data, &event))
-		events = append(events, event)
-	}
-	return events, responsesStream.Err()
+		return append(choices, map[string]any{"index": 0, "delta": map[string]any{}, "finish_reason": "tool_calls"})
+	})
 }
 
 func completedCustomInput(t *testing.T, events []responsesapi.StreamEvent) string {
@@ -1648,7 +1602,9 @@ func TestResponsesToChatHistory_FlattensMultipartToolOutputToString(t *testing.T
 	rawTool, ok := lo.Find(raw.Messages, func(m struct {
 		Role    string          `json:"role"`
 		Content json.RawMessage `json:"content"`
-	}) bool { return m.Role == "tool" })
+	}) bool {
+		return m.Role == "tool"
+	})
 	require.True(t, ok)
 	require.True(t, strings.HasPrefix(strings.TrimSpace(string(rawTool.Content)), `"`),
 		"tool content should serialise as a string, got: %s", string(rawTool.Content))

@@ -956,7 +956,7 @@ func TestInboundTransformer_TransformRequest_MergesRepeatedToolOutputs(t *testin
 	require.Equal(t, "tool", result.Messages[2].Role)
 	require.Equal(t, "call_1612831776e44d5ca84206c0", lo.FromPtr(result.Messages[2].ToolCallID))
 	// Both outputs are concatenated into the single tool message.
-	merged := flattenToolContent(result.Messages[2].Content)
+	merged := flattenToolContent(t, result.Messages[2].Content)
 	require.Contains(t, merged, "Script completed")
 	require.Contains(t, merged, "notify 工具测试成功")
 }
@@ -980,18 +980,22 @@ func TestInboundTransformer_TransformRequest_MergesRepeatedFunctionOutputs(t *te
 	require.Len(t, result.Messages, 3)
 	require.Equal(t, "tool", result.Messages[2].Role)
 	require.Equal(t, "call_x", lo.FromPtr(result.Messages[2].ToolCallID))
-	merged := flattenToolContent(result.Messages[2].Content)
+	merged := flattenToolContent(t, result.Messages[2].Content)
 	require.Contains(t, merged, "first")
 	require.Contains(t, merged, "second")
 }
 
-func flattenToolContent(c llm.MessageContent) string {
+func flattenToolContent(t *testing.T, c llm.MessageContent) string {
+	t.Helper()
 	if len(c.MultipleContent) == 0 && c.Content != nil {
 		return *c.Content
 	}
 	var b strings.Builder
 	for _, p := range c.MultipleContent {
-		if p.Type == "text" && p.Text != nil {
+		if p.Type != "text" {
+			t.Fatalf("flattenToolContent: unexpected non-text part type %q", p.Type)
+		}
+		if p.Text != nil {
 			b.WriteString(*p.Text)
 		}
 	}
@@ -2846,8 +2850,8 @@ func TestInboundTransformer_TransformRequest_MergesInterleavedToolOutputs(t *tes
 
 	require.Equal(t, "tool", result.Messages[2].Role)
 	require.Equal(t, "call_a", lo.FromPtr(result.Messages[2].ToolCallID))
-	require.Equal(t, "a1a2", flattenToolContent(result.Messages[2].Content))
+	require.Equal(t, "a1a2", flattenToolContent(t, result.Messages[2].Content))
 	require.Equal(t, "tool", result.Messages[3].Role)
 	require.Equal(t, "call_b", lo.FromPtr(result.Messages[3].ToolCallID))
-	require.Equal(t, "b1", flattenToolContent(result.Messages[3].Content))
+	require.Equal(t, "b1", flattenToolContent(t, result.Messages[3].Content))
 }

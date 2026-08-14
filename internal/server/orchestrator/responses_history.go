@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"slices"
 	"strings"
 	"time"
 
@@ -134,12 +135,12 @@ func loadPreviousResponsesHistory(
 
 		var requestState storedResponseRequestState
 		if err := json.Unmarshal(exchange.RequestBody, &requestState); err != nil {
-			return nil, fmt.Errorf("%w: stored request for previous response %q is invalid: %v", transformer.ErrInvalidRequest, currentID, err)
+			return nil, fmt.Errorf("%w: stored request for previous response %q is invalid: %w", transformer.ErrInvalidRequest, currentID, err)
 		}
 
 		previousRequest, err := inbound.TransformRequest(ctx, &httpclient.Request{Body: exchange.RequestBody})
 		if err != nil {
-			return nil, fmt.Errorf("%w: stored request for previous response %q is unavailable or invalid: %v", transformer.ErrInvalidRequest, currentID, err)
+			return nil, fmt.Errorf("%w: stored request for previous response %q is unavailable or invalid: %w", transformer.ErrInvalidRequest, currentID, err)
 		}
 		// Responses top-level instructions apply only to their own generation and
 		// are not inherited through previous_response_id. The inbound transformer
@@ -154,7 +155,7 @@ func loadPreviousResponsesHistory(
 
 		var previousResponse responsesapi.Response
 		if err := json.Unmarshal(exchange.ResponseBody, &previousResponse); err != nil {
-			return nil, fmt.Errorf("%w: stored previous response %q is invalid: %v", transformer.ErrInvalidRequest, currentID, err)
+			return nil, fmt.Errorf("%w: stored previous response %q is invalid: %w", transformer.ErrInvalidRequest, currentID, err)
 		}
 		if previousResponse.ID != currentID {
 			return nil, fmt.Errorf("%w: stored previous response ID %q does not match requested ID %q", transformer.ErrInvalidRequest, previousResponse.ID, currentID)
@@ -173,7 +174,7 @@ func loadPreviousResponsesHistory(
 		}
 		previousOutput, err := inbound.TransformRequest(ctx, &httpclient.Request{Body: syntheticBody})
 		if err != nil {
-			return nil, fmt.Errorf("%w: stored previous response %q output is invalid: %v", transformer.ErrInvalidRequest, currentID, err)
+			return nil, fmt.Errorf("%w: stored previous response %q output is invalid: %w", transformer.ErrInvalidRequest, currentID, err)
 		}
 
 		segmentMessages := make([]llm.Message, 0, len(previousRequest.Messages)+len(previousOutput.Messages))
@@ -194,8 +195,8 @@ func loadPreviousResponsesHistory(
 	)
 
 	history := make([]llm.Message, 0)
-	for i := len(segments) - 1; i >= 0; i-- {
-		history = append(history, segments[i].messages...)
+	for _, segment := range slices.Backward(segments) {
+		history = append(history, segment.messages...)
 	}
 
 	return history, nil
