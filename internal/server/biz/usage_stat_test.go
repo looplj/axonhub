@@ -166,7 +166,7 @@ func TestUsageStat_BackfillMultiBatch(t *testing.T) {
 	now := time.Now().UTC()
 	// 12 logs, each a distinct model so each becomes its own aggregate row
 	// (12 rows > batch 5, exercising multi-batch bulk upserts).
-	for i := 0; i < 12; i++ {
+	for i := range 12 {
 		createTestUsageLog(t, ctx, client, now, fmt.Sprintf("m-%02d", i), 10, 5)
 	}
 
