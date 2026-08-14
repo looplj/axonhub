@@ -33,6 +33,8 @@ const (
 	FieldExternalID = "external_id"
 	// FieldModelID holds the string denoting the model_id field in the database.
 	FieldModelID = "model_id"
+	// FieldPurpose holds the string denoting the purpose field in the database.
+	FieldPurpose = "purpose"
 	// FieldFormat holds the string denoting the format field in the database.
 	FieldFormat = "format"
 	// FieldReasoningEffort holds the string denoting the reasoning_effort field in the database.
@@ -69,6 +71,8 @@ const (
 	EdgeChannel = "channel"
 	// EdgeDataStorage holds the string denoting the data_storage edge name in mutations.
 	EdgeDataStorage = "data_storage"
+	// EdgeUsageLogs holds the string denoting the usage_logs edge name in mutations.
+	EdgeUsageLogs = "usage_logs"
 	// Table holds the table name of the requestexecution in the database.
 	Table = "request_executions"
 	// RequestTable is the table that holds the request relation/edge.
@@ -92,6 +96,13 @@ const (
 	DataStorageInverseTable = "data_storages"
 	// DataStorageColumn is the table column denoting the data_storage relation/edge.
 	DataStorageColumn = "data_storage_id"
+	// UsageLogsTable is the table that holds the usage_logs relation/edge.
+	UsageLogsTable = "usage_logs"
+	// UsageLogsInverseTable is the table name for the UsageLog entity.
+	// It exists in this package in order to avoid circular dependency with the "usagelog" package.
+	UsageLogsInverseTable = "usage_logs"
+	// UsageLogsColumn is the table column denoting the usage_logs relation/edge.
+	UsageLogsColumn = "request_execution_id"
 )
 
 // Columns holds all SQL columns for requestexecution fields.
@@ -105,6 +116,7 @@ var Columns = []string{
 	FieldDataStorageID,
 	FieldExternalID,
 	FieldModelID,
+	FieldPurpose,
 	FieldFormat,
 	FieldReasoningEffort,
 	FieldRequestBody,
@@ -150,6 +162,32 @@ var (
 	// DefaultPassThroughApplied holds the default value on creation for the "pass_through_applied" field.
 	DefaultPassThroughApplied bool
 )
+
+// Purpose defines the type for the "purpose" enum field.
+type Purpose string
+
+// PurposePrimary is the default value of the Purpose enum.
+const DefaultPurpose = PurposePrimary
+
+// Purpose values.
+const (
+	PurposePrimary          Purpose = "primary"
+	PurposeVisionDelegation Purpose = "vision_delegation"
+)
+
+func (pu Purpose) String() string {
+	return string(pu)
+}
+
+// PurposeValidator is a validator for the "purpose" field enum values. It is called by the builders before save.
+func PurposeValidator(pu Purpose) error {
+	switch pu {
+	case PurposePrimary, PurposeVisionDelegation:
+		return nil
+	default:
+		return fmt.Errorf("requestexecution: invalid enum value for purpose field: %q", pu)
+	}
+}
 
 // Status defines the type for the "status" enum field.
 type Status string
@@ -223,6 +261,11 @@ func ByExternalID(opts ...sql.OrderTermOption) OrderOption {
 // ByModelID orders the results by the model_id field.
 func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModelID, opts...).ToFunc()
+}
+
+// ByPurpose orders the results by the purpose field.
+func ByPurpose(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPurpose, opts...).ToFunc()
 }
 
 // ByFormat orders the results by the format field.
@@ -300,6 +343,20 @@ func ByDataStorageField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newDataStorageStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByUsageLogsCount orders the results by usage_logs count.
+func ByUsageLogsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newUsageLogsStep(), opts...)
+	}
+}
+
+// ByUsageLogs orders the results by usage_logs terms.
+func ByUsageLogs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newUsageLogsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newRequestStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -320,6 +377,31 @@ func newDataStorageStep() *sqlgraph.Step {
 		sqlgraph.To(DataStorageInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, DataStorageTable, DataStorageColumn),
 	)
+}
+func newUsageLogsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(UsageLogsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, UsageLogsTable, UsageLogsColumn),
+	)
+}
+
+// MarshalGQL implements graphql.Marshaler interface.
+func (e Purpose) MarshalGQL(w io.Writer) {
+	io.WriteString(w, strconv.Quote(e.String()))
+}
+
+// UnmarshalGQL implements graphql.Unmarshaler interface.
+func (e *Purpose) UnmarshalGQL(val interface{}) error {
+	str, ok := val.(string)
+	if !ok {
+		return fmt.Errorf("enum %T must be a string", val)
+	}
+	*e = Purpose(str)
+	if err := PurposeValidator(*e); err != nil {
+		return fmt.Errorf("%s is not a valid Purpose", str)
+	}
+	return nil
 }
 
 // MarshalGQL implements graphql.Marshaler interface.

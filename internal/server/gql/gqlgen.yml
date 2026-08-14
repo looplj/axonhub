@@ -511,6 +511,12 @@ models:
   ModelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelSettings
+  VisionDelegation:
+    model:
+      - github.com/looplj/axonhub/internal/objects.VisionDelegation
+  VisionDelegationInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.VisionDelegation
   ModelAssociation:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelAssociation

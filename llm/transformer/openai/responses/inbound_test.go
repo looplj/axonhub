@@ -1610,6 +1610,22 @@ func TestConvertItemToMessage_Reasoning(t *testing.T) {
 	require.Nil(t, result, "reasoning items should return nil from convertItemToMessage")
 }
 
+func TestConvertInputImageFileIDPreservesUnsupportedReference(t *testing.T) {
+	item := &Item{Type: "input_image", FileID: lo.ToPtr("file_123")}
+
+	message, err := convertItemToMessage(item)
+	require.NoError(t, err)
+	require.NotNil(t, message)
+	require.Len(t, message.Content.MultipleContent, 1)
+	require.Equal(t, "file_123", message.Content.MultipleContent[0].ImageURL.FileID)
+
+	part, err := convertContentItemToPart(item)
+	require.NoError(t, err)
+	require.NotNil(t, part)
+	require.NotNil(t, part.ImageURL)
+	require.Equal(t, "file_123", part.ImageURL.FileID)
+}
+
 func TestConvertInputToMessages_GroupsConsecutiveToolCalls(t *testing.T) {
 	input := &Input{Items: []Item{
 		{Role: "user", Content: &Input{Text: lo.ToPtr("Run both tools.")}},

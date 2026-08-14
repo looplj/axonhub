@@ -7,6 +7,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
@@ -89,7 +90,11 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		format = llm.APIFormat(request.APIFormat)
 	}
 
-	requestExec, err := state.RequestService.CreateRequestExecution(
+	purpose := state.ExecutionPurpose
+	if purpose == "" {
+		purpose = requestexecution.PurposePrimary
+	}
+	requestExec, err := state.RequestService.CreateRequestExecutionWithPurpose(
 		ctx,
 		channel,
 		entry.ActualModel,
@@ -97,13 +102,14 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		*request,
 		format,
 		state.PassThroughApplied,
+		purpose,
 	)
 	if err != nil {
 		return nil, err
 	}
 
 	// Update request with channel ID after channel selection
-	if state.Request != nil && state.Request.ChannelID != channel.ID {
+	if state.ownsRequestLifecycle() && state.Request != nil && state.Request.ChannelID != channel.ID {
 		err := state.RequestService.UpdateRequestChannelID(ctx, state.Request.ID, channel.ID)
 		if err != nil {
 			return nil, err

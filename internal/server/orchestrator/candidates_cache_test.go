@@ -62,6 +62,10 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 		candidates, err := selector.selectModelCandidates(ctx, req)
 		require.NoError(t, err)
 		require.NotEmpty(t, candidates)
+		for _, candidate := range candidates {
+			require.NotNil(t, candidate.SourceModel)
+			require.Equal(t, modelID, candidate.SourceModel.ModelID)
+		}
 
 		// Verify cache was populated
 		selector.cacheMu.RLock()

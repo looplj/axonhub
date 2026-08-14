@@ -70,6 +70,11 @@ func RequestID(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldRequestID, v))
 }
 
+// RequestExecutionID applies equality check predicate on the "request_execution_id" field. It's identical to RequestExecutionIDEQ.
+func RequestExecutionID(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldRequestExecutionID, v))
+}
+
 // APIKeyID applies equality check predicate on the "api_key_id" field. It's identical to APIKeyIDEQ.
 func APIKeyID(v int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldAPIKeyID, v))
@@ -263,6 +268,36 @@ func RequestIDIn(vs ...int) predicate.UsageLog {
 // RequestIDNotIn applies the NotIn predicate on the "request_id" field.
 func RequestIDNotIn(vs ...int) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotIn(FieldRequestID, vs...))
+}
+
+// RequestExecutionIDEQ applies the EQ predicate on the "request_execution_id" field.
+func RequestExecutionIDEQ(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldRequestExecutionID, v))
+}
+
+// RequestExecutionIDNEQ applies the NEQ predicate on the "request_execution_id" field.
+func RequestExecutionIDNEQ(v int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldRequestExecutionID, v))
+}
+
+// RequestExecutionIDIn applies the In predicate on the "request_execution_id" field.
+func RequestExecutionIDIn(vs ...int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldRequestExecutionID, vs...))
+}
+
+// RequestExecutionIDNotIn applies the NotIn predicate on the "request_execution_id" field.
+func RequestExecutionIDNotIn(vs ...int) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldRequestExecutionID, vs...))
+}
+
+// RequestExecutionIDIsNil applies the IsNil predicate on the "request_execution_id" field.
+func RequestExecutionIDIsNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIsNull(FieldRequestExecutionID))
+}
+
+// RequestExecutionIDNotNil applies the NotNil predicate on the "request_execution_id" field.
+func RequestExecutionIDNotNil() predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotNull(FieldRequestExecutionID))
 }
 
 // APIKeyIDEQ applies the EQ predicate on the "api_key_id" field.
@@ -1235,6 +1270,29 @@ func HasRequest() predicate.UsageLog {
 func HasRequestWith(preds ...predicate.Request) predicate.UsageLog {
 	return predicate.UsageLog(func(s *sql.Selector) {
 		step := newRequestStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasRequestExecution applies the HasEdge predicate on the "request_execution" edge.
+func HasRequestExecution() predicate.UsageLog {
+	return predicate.UsageLog(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, RequestExecutionTable, RequestExecutionColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasRequestExecutionWith applies the HasEdge predicate on the "request_execution" edge with a given conditions (other predicates).
+func HasRequestExecutionWith(preds ...predicate.RequestExecution) predicate.UsageLog {
+	return predicate.UsageLog(func(s *sql.Selector) {
+		step := newRequestExecutionStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

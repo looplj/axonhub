@@ -266,6 +266,28 @@ func (s *RequestService) CreateRequestExecution(
 	format llm.APIFormat,
 	passThroughApplied bool,
 ) (*ent.RequestExecution, error) {
+	return s.CreateRequestExecutionWithPurpose(
+		ctx,
+		channel,
+		modelID,
+		request,
+		channelRequest,
+		format,
+		passThroughApplied,
+		requestexecution.PurposePrimary,
+	)
+}
+
+func (s *RequestService) CreateRequestExecutionWithPurpose(
+	ctx context.Context,
+	channel *Channel,
+	modelID string,
+	request *ent.Request,
+	channelRequest httpclient.Request,
+	format llm.APIFormat,
+	passThroughApplied bool,
+	purpose requestexecution.Purpose,
+) (*ent.RequestExecution, error) {
 	// Decide whether to store the channel request body
 	storeRequestBody := true
 	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
@@ -329,6 +351,7 @@ func (s *RequestService) CreateRequestExecution(
 		SetProjectID(request.ProjectID).
 		SetChannelID(channel.ID).
 		SetModelID(modelID).
+		SetPurpose(purpose).
 		SetRequestBody(requestBodyForDB).
 		SetStatus(requestexecution.StatusProcessing).
 		SetStream(request.Stream).

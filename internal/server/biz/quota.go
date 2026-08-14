@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
@@ -256,7 +257,13 @@ func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod, loc *time.Loca
 }
 
 func (s *QuotaService) requestCount(ctx context.Context, apiKeyID int, window QuotaWindow) (int64, error) {
-	q := s.ent.UsageLog.Query().Where(usagelog.APIKeyIDEQ(apiKeyID))
+	q := s.ent.UsageLog.Query().Where(
+		usagelog.APIKeyIDEQ(apiKeyID),
+		usagelog.Or(
+			usagelog.RequestExecutionIDIsNil(),
+			usagelog.HasRequestExecutionWith(requestexecution.PurposeEQ(requestexecution.PurposePrimary)),
+		),
+	)
 
 	if window.Start != nil {
 		q = q.Where(usagelog.CreatedAtGTE(*window.Start))
@@ -270,12 +277,22 @@ func (s *QuotaService) requestCount(ctx context.Context, apiKeyID int, window Qu
 		}
 	}
 
-	n, err := q.Count(ctx)
+	type countResult struct {
+		Count int64 `json:"count"`
+	}
+
+	var results []countResult
+	err := q.Modify(func(s *sql.Selector) {
+		s.Select(sql.As(fmt.Sprintf("COUNT(DISTINCT %s)", s.C(usagelog.FieldRequestID)), "count"))
+	}).Scan(ctx, &results)
 	if err != nil {
 		return 0, err
 	}
+	if len(results) == 0 {
+		return 0, nil
+	}
 
-	return int64(n), nil
+	return results[0].Count, nil
 }
 
 type usageAggResult struct {

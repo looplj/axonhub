@@ -48,6 +48,11 @@ func (RequestExecution) Fields() []ent.Field {
 			Optional().
 			MaxLen(512),
 		field.String("model_id").Immutable(),
+		field.Enum("purpose").
+			Values("primary", "vision_delegation").
+			Default("primary").
+			Immutable().
+			Comment("Purpose of this upstream execution"),
 		//  The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),
 		field.String("reasoning_effort").
@@ -119,6 +124,7 @@ func (RequestExecution) Edges() []ent.Edge {
 			Field("data_storage_id").
 			Immutable().
 			Unique(),
+		edge.To("usage_logs", UsageLog.Type),
 	}
 }
 

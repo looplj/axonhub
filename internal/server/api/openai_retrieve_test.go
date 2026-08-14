@@ -215,6 +215,117 @@ func TestOpenAIHandlers_RetrieveModel_ReturnsExtendedConfiguredModel(t *testing.
 	require.Equal(t, []string{"text"}, got.Modalities.Output)
 }
 
+func TestOpenAIHandlers_ModelsExposeEffectiveDelegatedVision(t *testing.T) {
+	client, channelSvc, _, router, ctx := setupOpenAIRetrieveTest(t)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Shared Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"text-model", "vision-model"}).
+		SetDefaultTestModel("text-model").
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+	channelSvc.SetEnabledChannelsForTest([]*biz.Channel{{Channel: ch}})
+
+	association := func(modelID string) []*objects.ModelAssociation {
+		return []*objects.ModelAssociation{{
+			Type: "channel_model",
+			ChannelModel: &objects.ChannelModelAssociation{
+				ChannelID: ch.ID,
+				ModelID:   modelID,
+			},
+		}}
+	}
+
+	visionTarget, err := client.Model.Create().
+		SetDeveloper("test").
+		SetModelID("vision-model").
+		SetName("Vision Model").
+		SetType(model.TypeChat).
+		SetGroup("test").
+		SetIcon("test").
+		SetModelCard(&objects.ModelCard{
+			Vision:     true,
+			Modalities: objects.ModelCardModalities{Input: []string{"text", "image"}, Output: []string{"text"}},
+		}).
+		SetSettings(&objects.ModelSettings{Associations: association("vision-model")}).
+		SetStatus(model.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	targetModelID := visionTarget.ModelID
+	_, err = client.Model.Create().
+		SetDeveloper("test").
+		SetModelID("text-model").
+		SetName("Text Model").
+		SetType(model.TypeChat).
+		SetGroup("test").
+		SetIcon("test").
+		SetModelCard(&objects.ModelCard{
+			Modalities: objects.ModelCardModalities{Input: []string{"text"}, Output: []string{"text"}},
+		}).
+		SetSettings(&objects.ModelSettings{
+			Associations: association("text-model"),
+			VisionDelegation: objects.VisionDelegation{
+				Enabled:       true,
+				TargetModelID: &targetModelID,
+			},
+		}).
+		SetStatus(model.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	assertDelegatedVision := func(got OpenAIModel) {
+		t.Helper()
+		require.NotNil(t, got.Capabilities)
+		require.True(t, got.Capabilities.Vision)
+		require.NotNil(t, got.Modalities)
+		require.Equal(t, []string{"text", "image"}, got.Modalities.Input)
+	}
+
+	retrieve := func() OpenAIModel {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodGet, "/v1/models/text-model?include=all", nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+
+		var got OpenAIModel
+		require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
+		return got
+	}
+
+	assertDelegatedVision(retrieve())
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/models?include=all", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	var listed struct {
+		Data []OpenAIModel `json:"data"`
+	}
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&listed))
+	var listedSource *OpenAIModel
+	for i := range listed.Data {
+		if listed.Data[i].ID == "text-model" {
+			listedSource = &listed.Data[i]
+			break
+		}
+	}
+	require.NotNil(t, listedSource)
+	assertDelegatedVision(*listedSource)
+
+	_, err = client.Model.UpdateOneID(visionTarget.ID).SetStatus(model.StatusDisabled).Save(ctx)
+	require.NoError(t, err)
+	withoutTarget := retrieve()
+	require.NotNil(t, withoutTarget.Capabilities)
+	require.False(t, withoutTarget.Capabilities.Vision)
+	require.Equal(t, []string{"text"}, withoutTarget.Modalities.Input)
+}
+
 func TestOpenAIHandlers_RetrieveModel_ReturnsEmptyModalitiesWhenZeroValue(t *testing.T) {
 	client, channelSvc, _, router, ctx := setupOpenAIRetrieveTest(t)
 

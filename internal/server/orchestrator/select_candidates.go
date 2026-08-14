@@ -6,6 +6,8 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -113,6 +115,19 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 				return nil, NewQuotaExhaustedError(llmRequest.Model)
 			}
 			return nil, fmt.Errorf("%w: %s", biz.ErrInvalidModel, llmRequest.Model)
+		}
+
+		if inbound.state.SourceModel == nil {
+			inbound.state.SourceModel = candidates[0].SourceModel
+		}
+		if inbound.state.SourceModel == nil && inbound.state.DelegationDepth == 0 &&
+			inbound.state.ModelService != nil && detectRequestContentFeatures(llmRequest).hasImage {
+			sourceModel, err := inbound.state.ModelService.GetModelByModelID(ctx, llmRequest.Model, model.StatusEnabled)
+			if err == nil {
+				inbound.state.SourceModel = sourceModel
+			} else if !ent.IsNotFound(err) {
+				return nil, err
+			}
 		}
 
 		if settings.Enabled && settings.Mode == biz.QuotaEnforcementModeDePrioritize {

@@ -105,33 +105,29 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 	loc := r.systemService.TimeLocation(ctx)
 	period := xtime.GetCalendarPeriods(loc)
 
-	if requestsToday, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.Today.Start)).
-		Count(ctx); err != nil {
+	if requestsToday, err := countClientRequests(ctx, r.client.UsageLog.Query().
+		Where(usagelog.CreatedAtGTE(period.Today.Start))); err != nil {
 		log.Warn(ctx, "failed to count today's requests", log.Cause(err))
 	} else {
 		stats.RequestsToday = requestsToday
 	}
 
-	if requestsThisWeek, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.ThisWeek.Start)).
-		Count(ctx); err != nil {
+	if requestsThisWeek, err := countClientRequests(ctx, r.client.UsageLog.Query().
+		Where(usagelog.CreatedAtGTE(period.ThisWeek.Start))); err != nil {
 		log.Warn(ctx, "failed to count this week's requests", log.Cause(err))
 	} else {
 		stats.RequestsThisWeek = requestsThisWeek
 	}
 
-	if requestsLastWeek, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.LastWeek.Start), usagelog.CreatedAtLT(period.LastWeek.End)).
-		Count(ctx); err != nil {
+	if requestsLastWeek, err := countClientRequests(ctx, r.client.UsageLog.Query().
+		Where(usagelog.CreatedAtGTE(period.LastWeek.Start), usagelog.CreatedAtLT(period.LastWeek.End))); err != nil {
 		log.Warn(ctx, "failed to count last week's requests", log.Cause(err))
 	} else {
 		stats.RequestsLastWeek = requestsLastWeek
 	}
 
-	if requestsThisMonth, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.ThisMonth.Start)).
-		Count(ctx); err != nil {
+	if requestsThisMonth, err := countClientRequests(ctx, r.client.UsageLog.Query().
+		Where(usagelog.CreatedAtGTE(period.ThisMonth.Start))); err != nil {
 		log.Warn(ctx, "failed to count this month's requests", log.Cause(err))
 	} else {
 		stats.RequestsThisMonth = requestsThisMonth
@@ -158,6 +154,7 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context, timeWindow *s
 
 	// Aggregate by channel directly in the database using usage_logs table joined with channels
 	err := r.client.UsageLog.Query().
+		Where(clientRequestUsagePredicate()).
 		Modify(func(s *sql.Selector) {
 			channelTable := sql.Table(channel.Table)
 			s.Join(channelTable).On(
@@ -179,7 +176,7 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context, timeWindow *s
 			// Select fields: channel name, type and the count of logs
 			s.Select(
 				sql.As(channelTable.C(channel.FieldName), "channel_name"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "count"),
+				sql.As(distinctRequestCountExpr(s), "count"),
 			)
 
 			// Order by count descending and limit to top 10
@@ -214,7 +211,7 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context, timeWindow *str
 
 	var results []modelStats
 
-	query := r.client.UsageLog.Query()
+	query := r.client.UsageLog.Query().Where(clientRequestUsagePredicate())
 
 	// Apply time window filter when provided
 	if applyFilter {
@@ -223,7 +220,7 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context, timeWindow *str
 
 	err := query.
 		GroupBy(usagelog.FieldModelID).
-		Aggregate(ent.As(ent.Count(), "request_count")).
+		Aggregate(ent.As(distinctRequestCountAggregate(), "request_count")).
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get requests by model: %w", err)
@@ -265,7 +262,7 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context, timeWindow *st
 
 	// Database-level aggregation
 	query := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil())
+		Where(usagelog.APIKeyIDNotNil(), clientRequestUsagePredicate())
 
 	// Apply time window filter when provided
 	if applyFilter {
@@ -274,7 +271,7 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context, timeWindow *st
 
 	err := query.
 		GroupBy(usagelog.FieldAPIKeyID).
-		Aggregate(ent.As(ent.Count(), "request_count")).
+		Aggregate(ent.As(distinctRequestCountAggregate(), "request_count")).
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get requests by API key: %w", err)
@@ -567,7 +564,7 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 
 			s.Select(
 				sql.As(dateExpr, "date"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "total_count"),
+				sql.As(clientRequestCountExpr(s), "total_count"),
 				sql.As(sql.Sum(s.C(usagelog.FieldTotalTokens)), "total_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
 			).
@@ -630,11 +627,12 @@ func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequests
 
 	// Use database aggregation without ordering (GroupBy doesn't support Order)
 	err := r.client.UsageLog.Query().
+		Where(clientRequestUsagePredicate()).
 		Limit(limitCount).
 		Modify(func(s *sql.Selector) {
 			s.Select(
 				usagelog.FieldProjectID,
-				sql.As(sql.Count("*"), "request_count"),
+				sql.As(distinctRequestCountExpr(s), "request_count"),
 			).
 				GroupBy(usagelog.FieldProjectID).
 				OrderBy(sql.Desc("request_count"))
@@ -1860,7 +1858,7 @@ func (r *queryResolver) UsageStatsByUser(ctx context.Context, timeWindow *string
 			sql.As(userTable.C("first_name"), "first_name"),
 			sql.As(userTable.C("last_name"), "last_name"),
 			sql.As(userTable.C("email"), "email"),
-			sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+			sql.As(clientRequestCountExpr(s), "request_count"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
 		).

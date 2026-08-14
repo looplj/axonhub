@@ -358,6 +358,14 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 		if err := svc.validateModelSettings(input.Settings); err != nil {
 			return nil, err
 		}
+
+		sourceType := model.TypeChat
+		if input.Type != nil {
+			sourceType = *input.Type
+		}
+		if err := svc.validateVisionDelegation(ctx, input.ModelID, sourceType, input.ModelCard, input.Settings); err != nil {
+			return nil, err
+		}
 	}
 
 	// Check if a model with the same developer and modelId already exists
@@ -395,6 +403,14 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 	for _, input := range inputs {
 		if input.Settings != nil {
 			if err := svc.validateModelSettings(input.Settings); err != nil {
+				return nil, err
+			}
+
+			sourceType := model.TypeChat
+			if input.Type != nil {
+				sourceType = *input.Type
+			}
+			if err := svc.validateVisionDelegation(ctx, input.ModelID, sourceType, input.ModelCard, input.Settings); err != nil {
 				return nil, err
 			}
 		}
@@ -463,84 +479,138 @@ func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.Upd
 		}
 	}
 
-	mut := svc.entFromContext(ctx).Model.UpdateOneID(id).
-		SetNillableDeveloper(input.Developer).
-		SetNillableModelID(input.ModelID).
-		SetNillableType(input.Type).
-		SetNillableName(input.Name).
-		SetNillableGroup(input.Group).
-		SetNillableStatus(input.Status).
-		SetNillableIcon(input.Icon)
+	var updated *ent.Model
+	err := svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		existing, err := svc.entFromContext(txCtx).Model.Get(txCtx, id)
+		if err != nil {
+			return fmt.Errorf("failed to query model: %w", err)
+		}
 
-	if input.ModelCard != nil {
-		mut.SetModelCard(input.ModelCard)
-	}
+		nextModelID := existing.ModelID
+		if input.ModelID != nil {
+			nextModelID = *input.ModelID
+		}
+		nextType := existing.Type
+		if input.Type != nil {
+			nextType = *input.Type
+		}
+		nextCard := existing.ModelCard
+		if input.ModelCard != nil {
+			nextCard = input.ModelCard
+		}
+		nextSettings := existing.Settings
+		if input.Settings != nil {
+			nextSettings = input.Settings
+		}
+		settingsChanged := input.Settings != nil
+		sourceCapabilityChanged := input.ModelCard != nil || input.Type != nil
+		if !settingsChanged && sourceCapabilityChanged && nextSettings != nil && nextSettings.VisionDelegation.Enabled &&
+			(nextType != model.TypeChat || nextCard != nil && nextCard.SupportsVision()) {
+			normalizedSettings := *nextSettings
+			normalizedSettings.VisionDelegation.Enabled = false
+			nextSettings = &normalizedSettings
+			settingsChanged = true
+		}
 
-	if input.Settings != nil {
-		mut.SetSettings(input.Settings)
-	}
+		if err := svc.validateVisionDelegation(txCtx, nextModelID, nextType, nextCard, nextSettings); err != nil {
+			return err
+		}
 
-	if input.Remark != nil {
-		mut.SetRemark(*input.Remark)
-	}
+		mut := svc.entFromContext(txCtx).Model.UpdateOneID(id).
+			SetNillableDeveloper(input.Developer).
+			SetNillableModelID(input.ModelID).
+			SetNillableType(input.Type).
+			SetNillableName(input.Name).
+			SetNillableGroup(input.Group).
+			SetNillableStatus(input.Status).
+			SetNillableIcon(input.Icon)
 
-	if input.ClearRemark {
-		mut.ClearRemark()
-	}
+		if input.ModelCard != nil {
+			mut.SetModelCard(input.ModelCard)
+		}
+		if settingsChanged {
+			mut.SetSettings(nextSettings)
+		}
+		if input.Remark != nil {
+			mut.SetRemark(*input.Remark)
+		}
+		if input.ClearRemark {
+			mut.ClearRemark()
+		}
 
-	model, err := mut.Save(ctx)
+		updated, err = mut.Save(txCtx)
+		if err != nil {
+			return fmt.Errorf("failed to update model: %w", err)
+		}
+
+		if err := svc.renameVisionDelegationReferences(txCtx, existing.ModelID, updated.ModelID); err != nil {
+			return err
+		}
+		if !modelCanServeAsVisionDelegationTarget(updated) {
+			if err := svc.disableVisionDelegationReferences(txCtx, []string{updated.ModelID}, false); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to update model: %w", err)
+		return nil, err
 	}
 
-	return model, nil
+	return updated, nil
 }
 
 // UpdateModelStatus updates the status of a model.
 func (svc *ModelService) UpdateModelStatus(ctx context.Context, id int, status model.Status) (*ent.Model, error) {
-	model, err := svc.entFromContext(ctx).Model.UpdateOneID(id).
-		SetStatus(status).
-		Save(ctx)
+	var updated *ent.Model
+	err := svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		var err error
+		updated, err = svc.entFromContext(txCtx).Model.UpdateOneID(id).
+			SetStatus(status).
+			Save(txCtx)
+		if err != nil {
+			return fmt.Errorf("failed to update model status: %w", err)
+		}
+		if status != model.StatusEnabled {
+			return svc.disableVisionDelegationReferences(txCtx, []string{updated.ModelID}, false)
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to update model status: %w", err)
+		return nil, err
 	}
 
-	return model, nil
+	return updated, nil
 }
 
 // DeleteModel deletes a model by ID.
 func (svc *ModelService) DeleteModel(ctx context.Context, id int) error {
-	if err := svc.entFromContext(ctx).Model.DeleteOneID(id).Exec(ctx); err != nil {
-		return fmt.Errorf("failed to delete model: %w", err)
-	}
+	return svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		target, err := svc.entFromContext(txCtx).Model.Get(txCtx, id)
+		if err != nil {
+			return fmt.Errorf("failed to query model: %w", err)
+		}
+		if err := svc.disableVisionDelegationReferences(txCtx, []string{target.ModelID}, true); err != nil {
+			return err
+		}
+		if err := svc.entFromContext(txCtx).Model.DeleteOneID(id).Exec(txCtx); err != nil {
+			return fmt.Errorf("failed to delete model: %w", err)
+		}
 
-	return nil
+		return nil
+	})
 }
 
 // BulkArchiveModels archives multiple models by their IDs.
 func (svc *ModelService) BulkArchiveModels(ctx context.Context, ids []int) error {
-	_, err := svc.entFromContext(ctx).Model.Update().
-		Where(model.IDIn(ids...)).
-		SetStatus(model.StatusArchived).
-		Save(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to bulk archive models: %w", err)
-	}
-
-	return nil
+	return svc.bulkUpdateModelStatus(ctx, ids, model.StatusArchived)
 }
 
 // BulkDisableModels disables multiple models by their IDs.
 func (svc *ModelService) BulkDisableModels(ctx context.Context, ids []int) error {
-	_, err := svc.entFromContext(ctx).Model.Update().
-		Where(model.IDIn(ids...)).
-		SetStatus(model.StatusDisabled).
-		Save(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to bulk disable models: %w", err)
-	}
-
-	return nil
+	return svc.bulkUpdateModelStatus(ctx, ids, model.StatusDisabled)
 }
 
 // BulkEnableModels enables multiple models by their IDs.
@@ -558,14 +628,50 @@ func (svc *ModelService) BulkEnableModels(ctx context.Context, ids []int) error 
 
 // BulkDeleteModels deletes multiple models by their IDs.
 func (svc *ModelService) BulkDeleteModels(ctx context.Context, ids []int) error {
-	_, err := svc.entFromContext(ctx).Model.Delete().
-		Where(model.IDIn(ids...)).
-		Exec(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to bulk delete models: %w", err)
-	}
+	return svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		targets, err := svc.entFromContext(txCtx).Model.Query().
+			Where(model.IDIn(ids...)).
+			All(txCtx)
+		if err != nil {
+			return fmt.Errorf("failed to query models for bulk delete: %w", err)
+		}
+		if err := svc.disableVisionDelegationReferences(txCtx, lo.Map(targets, func(target *ent.Model, _ int) string {
+			return target.ModelID
+		}), true); err != nil {
+			return err
+		}
+		if _, err := svc.entFromContext(txCtx).Model.Delete().
+			Where(model.IDIn(ids...)).
+			Exec(txCtx); err != nil {
+			return fmt.Errorf("failed to bulk delete models: %w", err)
+		}
 
-	return nil
+		return nil
+	})
+}
+
+func (svc *ModelService) bulkUpdateModelStatus(ctx context.Context, ids []int, status model.Status) error {
+	return svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		targets, err := svc.entFromContext(txCtx).Model.Query().
+			Where(model.IDIn(ids...)).
+			All(txCtx)
+		if err != nil {
+			return fmt.Errorf("failed to query models for bulk status update: %w", err)
+		}
+		if _, err := svc.entFromContext(txCtx).Model.Update().
+			Where(model.IDIn(ids...)).
+			SetStatus(status).
+			Save(txCtx); err != nil {
+			return fmt.Errorf("failed to bulk update model status: %w", err)
+		}
+		if status != model.StatusEnabled {
+			return svc.disableVisionDelegationReferences(txCtx, lo.Map(targets, func(target *ent.Model, _ int) string {
+				return target.ModelID
+			}), false)
+		}
+
+		return nil
+	})
 }
 
 // QueryModelChannelConnections queries channels and their models based on model associations.

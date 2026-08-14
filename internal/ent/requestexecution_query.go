@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -16,20 +17,23 @@ import (
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 )
 
 // RequestExecutionQuery is the builder for querying RequestExecution entities.
 type RequestExecutionQuery struct {
 	config
-	ctx             *QueryContext
-	order           []requestexecution.OrderOption
-	inters          []Interceptor
-	predicates      []predicate.RequestExecution
-	withRequest     *RequestQuery
-	withChannel     *ChannelQuery
-	withDataStorage *DataStorageQuery
-	loadTotal       []func(context.Context, []*RequestExecution) error
-	modifiers       []func(*sql.Selector)
+	ctx                *QueryContext
+	order              []requestexecution.OrderOption
+	inters             []Interceptor
+	predicates         []predicate.RequestExecution
+	withRequest        *RequestQuery
+	withChannel        *ChannelQuery
+	withDataStorage    *DataStorageQuery
+	withUsageLogs      *UsageLogQuery
+	loadTotal          []func(context.Context, []*RequestExecution) error
+	modifiers          []func(*sql.Selector)
+	withNamedUsageLogs map[string]*UsageLogQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -125,6 +129,28 @@ func (_q *RequestExecutionQuery) QueryDataStorage() *DataStorageQuery {
 			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, selector),
 			sqlgraph.To(datastorage.Table, datastorage.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, requestexecution.DataStorageTable, requestexecution.DataStorageColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryUsageLogs chains the current query on the "usage_logs" edge.
+func (_q *RequestExecutionQuery) QueryUsageLogs() *UsageLogQuery {
+	query := (&UsageLogClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, selector),
+			sqlgraph.To(usagelog.Table, usagelog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, requestexecution.UsageLogsTable, requestexecution.UsageLogsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -327,6 +353,7 @@ func (_q *RequestExecutionQuery) Clone() *RequestExecutionQuery {
 		withRequest:     _q.withRequest.Clone(),
 		withChannel:     _q.withChannel.Clone(),
 		withDataStorage: _q.withDataStorage.Clone(),
+		withUsageLogs:   _q.withUsageLogs.Clone(),
 		// clone intermediate query.
 		sql:       _q.sql.Clone(),
 		path:      _q.path,
@@ -364,6 +391,17 @@ func (_q *RequestExecutionQuery) WithDataStorage(opts ...func(*DataStorageQuery)
 		opt(query)
 	}
 	_q.withDataStorage = query
+	return _q
+}
+
+// WithUsageLogs tells the query-builder to eager-load the nodes that are connected to
+// the "usage_logs" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RequestExecutionQuery) WithUsageLogs(opts ...func(*UsageLogQuery)) *RequestExecutionQuery {
+	query := (&UsageLogClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withUsageLogs = query
 	return _q
 }
 
@@ -445,10 +483,11 @@ func (_q *RequestExecutionQuery) sqlAll(ctx context.Context, hooks ...queryHook)
 	var (
 		nodes       = []*RequestExecution{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withRequest != nil,
 			_q.withChannel != nil,
 			_q.withDataStorage != nil,
+			_q.withUsageLogs != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -487,6 +526,20 @@ func (_q *RequestExecutionQuery) sqlAll(ctx context.Context, hooks ...queryHook)
 	if query := _q.withDataStorage; query != nil {
 		if err := _q.loadDataStorage(ctx, query, nodes, nil,
 			func(n *RequestExecution, e *DataStorage) { n.Edges.DataStorage = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withUsageLogs; query != nil {
+		if err := _q.loadUsageLogs(ctx, query, nodes,
+			func(n *RequestExecution) { n.Edges.UsageLogs = []*UsageLog{} },
+			func(n *RequestExecution, e *UsageLog) { n.Edges.UsageLogs = append(n.Edges.UsageLogs, e) }); err != nil {
+			return nil, err
+		}
+	}
+	for name, query := range _q.withNamedUsageLogs {
+		if err := _q.loadUsageLogs(ctx, query, nodes,
+			func(n *RequestExecution) { n.appendNamedUsageLogs(name) },
+			func(n *RequestExecution, e *UsageLog) { n.appendNamedUsageLogs(name, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -582,6 +635,36 @@ func (_q *RequestExecutionQuery) loadDataStorage(ctx context.Context, query *Dat
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (_q *RequestExecutionQuery) loadUsageLogs(ctx context.Context, query *UsageLogQuery, nodes []*RequestExecution, init func(*RequestExecution), assign func(*RequestExecution, *UsageLog)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*RequestExecution)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(usagelog.FieldRequestExecutionID)
+	}
+	query.Where(predicate.UsageLog(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(requestexecution.UsageLogsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RequestExecutionID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "request_execution_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }
@@ -686,6 +769,20 @@ func (_q *RequestExecutionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 func (_q *RequestExecutionQuery) Modify(modifiers ...func(s *sql.Selector)) *RequestExecutionSelect {
 	_q.modifiers = append(_q.modifiers, modifiers...)
 	return _q.Select()
+}
+
+// WithNamedUsageLogs tells the query-builder to eager-load the nodes that are connected to the "usage_logs"
+// edge with the given name. The optional arguments are used to configure the query builder of the edge.
+func (_q *RequestExecutionQuery) WithNamedUsageLogs(name string, opts ...func(*UsageLogQuery)) *RequestExecutionQuery {
+	query := (&UsageLogClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	if _q.withNamedUsageLogs == nil {
+		_q.withNamedUsageLogs = make(map[string]*UsageLogQuery)
+	}
+	_q.withNamedUsageLogs[name] = query
+	return _q
 }
 
 // RequestExecutionGroupBy is the group-by builder for RequestExecution entities.

@@ -5,28 +5,33 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconInfoCircle } from '@tabler/icons-react';
 import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { extractNumberIDAsNumber } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
-import { FilterBuilder, type FilterBuilderCondition, type FilterBuilderField, type FilterBuilderGroupListValue } from '@/components/filter-builder';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  FilterBuilder,
+  type FilterBuilderCondition,
+  type FilterBuilderField,
+  type FilterBuilderGroupListValue,
+} from '@/components/filter-builder';
 import { useAllChannelSummarys, useAllChannelTags } from '@/features/channels/data/channels';
 import { useModelSettings, useUpdateModelSettings } from '@/features/system/data/system';
 import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
 import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/schema';
-import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
 
 const MAX_ASSOCIATION_PRIORITY = 10;
@@ -305,7 +310,12 @@ function validateWhenConditionNode(
       path: [...path, 'value'],
     });
   }
-  if (condition.field === 'daily_time' && typeof condition.value === 'string' && dailyTimeRangePattern.test(condition.value) && !dailyTimeRangeHasDifferentEndpoints(condition.value)) {
+  if (
+    condition.field === 'daily_time' &&
+    typeof condition.value === 'string' &&
+    dailyTimeRangePattern.test(condition.value) &&
+    !dailyTimeRangeHasDifferentEndpoints(condition.value)
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Start and end time must be different',
@@ -351,7 +361,9 @@ function validateWhenGroupList(value: FilterBuilderGroupListValue, ctx: z.Refine
     });
   }
 
-  groups.slice(0, 1).forEach((group, index) => validateWhenConditionNode(group, ctx, [...path, 'groups', index], 1, MAX_WHEN_CONDITION_DEPTH));
+  groups
+    .slice(0, 1)
+    .forEach((group, index) => validateWhenConditionNode(group, ctx, [...path, 'groups', index], 1, MAX_WHEN_CONDITION_DEPTH));
 }
 
 const associationFormSchema = z.object({
@@ -362,7 +374,10 @@ const associationFormSchema = z.object({
     .array(
       z.object({
         type: z.enum(['channel_model', 'channel_regex', 'model', 'regex', 'channel_tags_model', 'channel_tags_regex']),
-        priority: z.number().min(0, 'Priority must be at least 0').max(MAX_ASSOCIATION_PRIORITY, `Priority cannot exceed ${MAX_ASSOCIATION_PRIORITY}`),
+        priority: z
+          .number()
+          .min(0, 'Priority must be at least 0')
+          .max(MAX_ASSOCIATION_PRIORITY, `Priority cannot exceed ${MAX_ASSOCIATION_PRIORITY}`),
         disabled: z.boolean().default(false),
         whenEnabled: z.boolean().default(false),
         whenCondition: z.custom<FilterBuilderGroupListValue>().default(DEFAULT_WHEN_CONDITION),
@@ -463,7 +478,9 @@ function isCompleteAssociationFormRow(assoc: AssociationFormRow, inheritedModelI
     return Boolean(associationModelID(assoc, inheritedModelID) || assoc.inheritModel);
   }
   if (assoc.type === 'channel_tags_model') {
-    return Boolean(assoc.channelTags && assoc.channelTags.length > 0 && (associationModelID(assoc, inheritedModelID) || assoc.inheritModel));
+    return Boolean(
+      assoc.channelTags && assoc.channelTags.length > 0 && (associationModelID(assoc, inheritedModelID) || assoc.inheritModel)
+    );
   }
   if (assoc.type === 'channel_tags_regex') {
     return Boolean(assoc.channelTags && assoc.channelTags.length > 0 && assoc.pattern);
@@ -684,9 +701,7 @@ function buildDeveloperChannelPreview(associations: AssociationFormRow[], channe
     }
 
     if (assoc.type === 'channel_tags_model' && assoc.channelTags && assoc.channelTags.length > 0) {
-      channelOptions
-        .filter((channel) => assoc.channelTags?.some((tag) => channel.tags.includes(tag)))
-        .forEach(addChannel);
+      channelOptions.filter((channel) => assoc.channelTags?.some((tag) => channel.tags.includes(tag))).forEach(addChannel);
     }
   });
 
@@ -833,13 +848,9 @@ export function ModelsAssociationDialog() {
     if (isOpen) {
       const associations = isDeveloperMode ? developerAssociations : currentRow?.settings?.associations || [];
       form.reset({
-        disableDeveloperSettingsInheritance: isDeveloperMode ? false : currentRow?.settings?.disableDeveloperSettingsInheritance ?? false,
-        loadBalancerStrategy: isDeveloperMode
-          ? 'default'
-          : normalizeModelRoutingPolicyValue(currentRow?.settings?.loadBalancerStrategy),
-        traceStickyMode: isDeveloperMode
-          ? 'default'
-          : normalizeModelRoutingPolicyValue(currentRow?.settings?.traceStickyMode),
+        disableDeveloperSettingsInheritance: isDeveloperMode ? false : (currentRow?.settings?.disableDeveloperSettingsInheritance ?? false),
+        loadBalancerStrategy: isDeveloperMode ? 'default' : normalizeModelRoutingPolicyValue(currentRow?.settings?.loadBalancerStrategy),
+        traceStickyMode: isDeveloperMode ? 'default' : normalizeModelRoutingPolicyValue(currentRow?.settings?.traceStickyMode),
         associations: associations
           .filter((assoc) => !isDeveloperMode || assoc.type === 'channel_model' || assoc.type === 'channel_tags_model')
           .map((assoc) => modelAssociationToFormRow(assoc, isDeveloperMode)),
@@ -884,6 +895,7 @@ export function ModelsAssociationDialog() {
             associations,
             loadBalancerStrategy: data.loadBalancerStrategy,
             traceStickyMode: data.traceStickyMode,
+            visionDelegation: currentRow!.settings?.visionDelegation,
           },
         },
       });
@@ -906,8 +918,7 @@ export function ModelsAssociationDialog() {
 
     // Get the priority of the last rule (highest priority)
     const currentAssociations = form.getValues('associations') || [];
-    const lastPriority =
-      currentAssociations.length > 0 ? Math.max(...currentAssociations.map((a) => a.priority ?? 0)) : 0;
+    const lastPriority = currentAssociations.length > 0 ? Math.max(...currentAssociations.map((a) => a.priority ?? 0)) : 0;
 
     append({
       type: 'channel_model',
@@ -935,7 +946,7 @@ export function ModelsAssociationDialog() {
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent ref={dialogContentRef} className='flex h-[90vh] max-h-[800px] flex-col w-full max-w-full sm:max-w-6xl'>
+      <DialogContent ref={dialogContentRef} className='flex h-[90vh] max-h-[800px] w-full max-w-full flex-col sm:max-w-6xl'>
         <DialogHeader className='shrink-0 text-left'>
           <DialogTitle className='text-lg sm:text-xl'>
             {isDeveloperMode ? t('models.dialogs.developerAssociation.title') : t('models.dialogs.association.title')}
@@ -1017,8 +1028,12 @@ export function ModelsAssociationDialog() {
                                       <SelectItem value='default'>{t('models.fields.routingSystemDefault')}</SelectItem>
                                       <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
                                       <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
-                                      <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
-                                      <SelectItem value='round-robin'>{t('system.retry.loadBalancerStrategy.options.roundRobin')}</SelectItem>
+                                      <SelectItem value='circuit-breaker'>
+                                        {t('system.retry.loadBalancerStrategy.options.circuitBreaker')}
+                                      </SelectItem>
+                                      <SelectItem value='round-robin'>
+                                        {t('system.retry.loadBalancerStrategy.options.roundRobin')}
+                                      </SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </FormControl>
@@ -1060,7 +1075,9 @@ export function ModelsAssociationDialog() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value='default'>{t('models.fields.routingSystemDefault')}</SelectItem>
-                                      <SelectItem value='prefer_previous_channel'>{t('system.retry.traceStickyMode.options.preferPreviousChannel')}</SelectItem>
+                                      <SelectItem value='prefer_previous_channel'>
+                                        {t('system.retry.traceStickyMode.options.preferPreviousChannel')}
+                                      </SelectItem>
                                       <SelectItem value='disabled'>{t('system.retry.traceStickyMode.options.disabled')}</SelectItem>
                                     </SelectContent>
                                   </Select>
@@ -1074,13 +1091,19 @@ export function ModelsAssociationDialog() {
                     </div>
                   )}
 
-                  {fields.length === 0 && <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>}
+                  {fields.length === 0 && (
+                    <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>
+                  )}
 
                   {fields.length > 0 && (
-                    <div className='grid grid-cols-[2.25rem_3rem_1fr_2.25rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-3 sm:px-[13px] pb-2'>
+                    <div className='grid grid-cols-[2.25rem_3rem_1fr_2.25rem] items-center gap-2 border-b px-3 pb-2 sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] sm:px-[13px]'>
                       <div />
-                      <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.priority')}</div>
-                      <div className='text-muted-foreground text-center text-xs font-medium sm:block hidden'>{t('models.dialogs.association.type')}</div>
+                      <div className='text-muted-foreground text-center text-xs font-medium'>
+                        {t('models.dialogs.association.priority')}
+                      </div>
+                      <div className='text-muted-foreground hidden text-center text-xs font-medium sm:block'>
+                        {t('models.dialogs.association.type')}
+                      </div>
                       <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.rule')}</div>
                       <div />
                     </div>
@@ -1119,12 +1142,14 @@ export function ModelsAssociationDialog() {
             </div>
           </div>
 
-            {/* Right Side - Preview */}
-          <div className='flex min-h-0 flex-1 flex-col border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-6'>
+          {/* Right Side - Preview */}
+          <div className='flex min-h-0 flex-1 flex-col border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6'>
             <div className='shrink-0 space-y-2 pb-4'>
               <h3 className='text-sm font-semibold'>{t('models.dialogs.association.preview')}</h3>
               <p className='text-muted-foreground text-xs'>
-                {isDeveloperMode ? t('models.dialogs.developerAssociation.previewDescription') : t('models.dialogs.association.previewDescription')}
+                {isDeveloperMode
+                  ? t('models.dialogs.developerAssociation.previewDescription')
+                  : t('models.dialogs.association.previewDescription')}
               </p>
               <Input
                 placeholder={t('models.dialogs.association.filterByChannel')}
@@ -1146,7 +1171,7 @@ export function ModelsAssociationDialog() {
           </div>
         </div>
 
-        <DialogFooter className='shrink-0 border-t pt-4 flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-end'>
+        <DialogFooter className='flex shrink-0 flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end sm:gap-0'>
           <Button type='button' variant='outline' onClick={handleClose} className='w-full sm:w-auto'>
             {t('common.buttons.cancel')}
           </Button>
@@ -1164,9 +1189,7 @@ export function ModelsAssociationDialog() {
   );
 }
 
-function readPromptTokensCondition(
-  when: ModelAssociation['when']
-): { enabled: boolean; condition: FilterBuilderGroupListValue } {
+function readPromptTokensCondition(when: ModelAssociation['when']): { enabled: boolean; condition: FilterBuilderGroupListValue } {
   if (!when) {
     return { enabled: false, condition: DEFAULT_WHEN_CONDITION };
   }
@@ -1316,7 +1339,16 @@ function AssociationTypeSelectContent({ isDeveloperMode }: { isDeveloperMode: bo
   );
 }
 
-function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
+function AssociationRow({
+  index,
+  form,
+  isDeveloperMode,
+  channelOptions,
+  allModelOptions,
+  allTags,
+  onRemove,
+  portalContainer,
+}: AssociationRowProps) {
   const { t } = useTranslation();
 
   const type = form.watch(`associations.${index}.type`);
@@ -1394,7 +1426,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
 
   return (
     <div className={`flex flex-col gap-3 rounded-lg border p-3 ${disabled ? 'opacity-50' : ''}`}>
-      <div className='grid grid-cols-[2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
+      <div className='grid grid-cols-[2.5rem_4rem_1fr_2.5rem] items-center gap-2 sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem]'>
         {/* Enable/Disable Switch */}
         <div className='flex items-center justify-center'>
           <Switch
@@ -1418,7 +1450,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                   {...field}
                   value={field.value ?? 0}
                   onChange={(e) => field.onChange(Math.max(0, Math.min(MAX_ASSOCIATION_PRIORITY, Number(e.target.value) || 0)))}
-                  className='h-10 sm:h-9 text-center [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
+                  className='h-10 text-center [-moz-appearance:textfield] sm:h-9 [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
                   placeholder='0'
                 />
               </FormControl>
@@ -1431,10 +1463,10 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
           control={form.control}
           name={`associations.${index}.type`}
           render={({ field }) => (
-            <FormItem className='min-w-0 gap-0 sm:block hidden'>
+            <FormItem className='hidden min-w-0 gap-0 sm:block'>
               <FormControl>
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className='h-10 sm:h-9 w-full text-xs'>
+                  <SelectTrigger className='h-10 w-full text-xs sm:h-9'>
                     <SelectValue />
                   </SelectTrigger>
                   <AssociationTypeSelectContent isDeveloperMode={isDeveloperMode} />
@@ -1519,7 +1551,13 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
         )}
 
         {/* Delete Button */}
-        <Button type='button' variant='ghost' size='sm' onClick={onRemove} className='text-destructive hover:text-destructive h-10 sm:h-9 w-10 sm:w-9 p-0'>
+        <Button
+          type='button'
+          variant='ghost'
+          size='sm'
+          onClick={onRemove}
+          className='text-destructive hover:text-destructive h-10 w-10 p-0 sm:h-9 sm:w-9'
+        >
           <IconTrash className='h-5 w-5 sm:h-4 sm:w-4' />
         </Button>
       </div>
@@ -1548,7 +1586,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
 
       {/* Model and Pattern on Second Row for channel_model and channel_regex */}
       {showModelPatternOnSecondRow && (
-        <div className='ml-0 sm:ml-[6.25rem] grid gap-2'>
+        <div className='ml-0 grid gap-2 sm:ml-[6.25rem]'>
           {showModel && (
             <FormField
               control={form.control}
@@ -1600,7 +1638,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
 
       {/* Channel Tags Input - Second Row */}
       {showChannelTags && (
-        <div className='ml-0 sm:ml-[6.25rem] grid gap-2'>
+        <div className='ml-0 grid gap-2 sm:ml-[6.25rem]'>
           <FormField
             control={form.control}
             name={`associations.${index}.channelTags`}
@@ -1613,7 +1651,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                     onChange={field.onChange}
                     placeholder={t('models.dialogs.association.selectChannelTags')}
                     suggestions={allTags}
-                    className='h-auto min-h-10 sm:min-h-9 py-1'
+                    className='h-auto min-h-10 py-1 sm:min-h-9'
                   />
                 </FormControl>
                 {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
@@ -1623,18 +1661,22 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
         </div>
       )}
 
-      <div className='ml-0 sm:ml-[6.25rem] border-t pt-2'>
+      <div className='ml-0 border-t pt-2 sm:ml-[6.25rem]'>
         <Button
           type='button'
           variant='ghost'
           size='sm'
           onClick={() => setWhenExpanded(!whenExpanded)}
-          className='text-muted-foreground hover:text-foreground mb-2 h-10 sm:h-7 px-3 sm:px-2 text-xs'
+          className='text-muted-foreground hover:text-foreground mb-2 h-10 px-3 text-xs sm:h-7 sm:px-2'
         >
-          {whenExpanded ? <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' /> : <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />}
+          {whenExpanded ? (
+            <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />
+          ) : (
+            <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />
+          )}
           {t('models.dialogs.association.conditions.section')}
           {hasWhenData && !whenExpanded && (
-            <Badge variant='secondary' className='ml-2 h-5 sm:h-4 px-2 sm:px-1 text-xs sm:text-[10px]'>
+            <Badge variant='secondary' className='ml-2 h-5 px-2 text-xs sm:h-4 sm:px-1 sm:text-[10px]'>
               1
             </Badge>
           )}
@@ -1685,7 +1727,9 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                       fields={whenFilterFields.map((item) => ({
                         ...item,
                         label: t(`models.dialogs.association.conditions.fields.${item.value}`),
-                        placeholder: t(`models.dialogs.association.conditions.placeholders.${item.value}`, { defaultValue: item.placeholder }),
+                        placeholder: t(`models.dialogs.association.conditions.placeholders.${item.value}`, {
+                          defaultValue: item.placeholder,
+                        }),
                         operators: item.operators?.map((operator) => ({
                           value: operator.value,
                           label: t(`models.dialogs.association.conditions.operators.${operator.value}`),
@@ -1697,8 +1741,12 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                         subField: item.subField
                           ? {
                               ...item.subField,
-                              label: t(`models.dialogs.association.conditions.subFields.${item.value}.label`, { defaultValue: item.subField.label }),
-                              placeholder: t(`models.dialogs.association.conditions.subFields.${item.value}.placeholder`, { defaultValue: item.subField.placeholder }),
+                              label: t(`models.dialogs.association.conditions.subFields.${item.value}.label`, {
+                                defaultValue: item.subField.label,
+                              }),
+                              placeholder: t(`models.dialogs.association.conditions.subFields.${item.value}.placeholder`, {
+                                defaultValue: item.subField.placeholder,
+                              }),
                             }
                           : undefined,
                       }))}
@@ -1729,25 +1777,29 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
 
       {/* Exclude Section */}
       {showExclude && (
-        <div className='ml-0 sm:ml-[6.25rem] border-t pt-2'>
+        <div className='ml-0 border-t pt-2 sm:ml-[6.25rem]'>
           <Button
             type='button'
             variant='ghost'
             size='sm'
             onClick={() => setExcludeExpanded(!excludeExpanded)}
-            className='text-muted-foreground hover:text-foreground mb-2 h-10 sm:h-7 px-3 sm:px-2 text-xs'
+            className='text-muted-foreground hover:text-foreground mb-2 h-10 px-3 text-xs sm:h-7 sm:px-2'
           >
-            {excludeExpanded ? <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' /> : <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />}
+            {excludeExpanded ? (
+              <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />
+            ) : (
+              <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />
+            )}
             {t('models.dialogs.association.excludeSection')}
             {hasExcludeData && !excludeExpanded && (
-              <Badge variant='secondary' className='ml-2 h-5 sm:h-4 px-2 sm:px-1 text-xs sm:text-[10px]'>
+              <Badge variant='secondary' className='ml-2 h-5 px-2 text-xs sm:h-4 sm:px-1 sm:text-[10px]'>
                 {(excludeChannelNamePattern ? 1 : 0) + (excludeChannelIds?.length || 0) + (excludeChannelTags?.length || 0)}
               </Badge>
             )}
           </Button>
           {excludeExpanded && (
             <div className='space-y-3'>
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                 <FormField
                   control={form.control}
                   name={`associations.${index}.excludeChannelNamePattern`}
@@ -1778,7 +1830,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                           onChange={field.onChange}
                           placeholder={t('models.dialogs.association.excludeChannelTags')}
                           suggestions={allTags}
-                          className='h-auto min-h-10 sm:min-h-9 py-1'
+                          className='h-auto min-h-10 py-1 sm:min-h-9'
                         />
                       </FormControl>
                       <FormMessage />
@@ -1809,7 +1861,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                         }}
                         placeholder={t('models.dialogs.association.excludeChannelIds')}
                         suggestions={channelOptions.map((opt) => opt.label)}
-                        className='h-auto min-h-10 sm:min-h-9 py-1'
+                        className='h-auto min-h-10 py-1 sm:min-h-9'
                       />
                     </FormControl>
                     <FormMessage />
@@ -1848,7 +1900,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
             hint = t('models.dialogs.association.ruleHints.channelTagsRegex', { pattern, tags: channelTags.join(', ') });
           }
           if (hint) {
-            return <div className='text-muted-foreground ml-0 sm:ml-[6.25rem] text-xs'>{hint}</div>;
+            return <div className='text-muted-foreground ml-0 text-xs sm:ml-[6.25rem]'>{hint}</div>;
           }
           return null;
         })()}

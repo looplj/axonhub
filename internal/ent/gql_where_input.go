@@ -7615,6 +7615,12 @@ type RequestExecutionWhereInput struct {
 	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
 	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
 
+	// "purpose" field predicates.
+	Purpose      *requestexecution.Purpose  `json:"purpose,omitempty"`
+	PurposeNEQ   *requestexecution.Purpose  `json:"purposeNEQ,omitempty"`
+	PurposeIn    []requestexecution.Purpose `json:"purposeIn,omitempty"`
+	PurposeNotIn []requestexecution.Purpose `json:"purposeNotIn,omitempty"`
+
 	// "format" field predicates.
 	Format             *string  `json:"format,omitempty"`
 	FormatNEQ          *string  `json:"formatNEQ,omitempty"`
@@ -7754,6 +7760,10 @@ type RequestExecutionWhereInput struct {
 	// "data_storage" edge predicates.
 	HasDataStorage     *bool                    `json:"hasDataStorage,omitempty"`
 	HasDataStorageWith []*DataStorageWhereInput `json:"hasDataStorageWith,omitempty"`
+
+	// "usage_logs" edge predicates.
+	HasUsageLogs     *bool                 `json:"hasUsageLogs,omitempty"`
+	HasUsageLogsWith []*UsageLogWhereInput `json:"hasUsageLogsWith,omitempty"`
 }
 
 // AddPredicates adds custom predicates to the where input to be used during the filtering phase.
@@ -8054,6 +8064,18 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.ModelIDContainsFold != nil {
 		predicates = append(predicates, requestexecution.ModelIDContainsFold(*i.ModelIDContainsFold))
+	}
+	if i.Purpose != nil {
+		predicates = append(predicates, requestexecution.PurposeEQ(*i.Purpose))
+	}
+	if i.PurposeNEQ != nil {
+		predicates = append(predicates, requestexecution.PurposeNEQ(*i.PurposeNEQ))
+	}
+	if len(i.PurposeIn) > 0 {
+		predicates = append(predicates, requestexecution.PurposeIn(i.PurposeIn...))
+	}
+	if len(i.PurposeNotIn) > 0 {
+		predicates = append(predicates, requestexecution.PurposeNotIn(i.PurposeNotIn...))
 	}
 	if i.Format != nil {
 		predicates = append(predicates, requestexecution.FormatEQ(*i.Format))
@@ -8427,6 +8449,24 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, requestexecution.HasDataStorageWith(with...))
+	}
+	if i.HasUsageLogs != nil {
+		p := requestexecution.HasUsageLogs()
+		if !*i.HasUsageLogs {
+			p = requestexecution.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasUsageLogsWith) > 0 {
+		with := make([]predicate.UsageLog, 0, len(i.HasUsageLogsWith))
+		for _, w := range i.HasUsageLogsWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasUsageLogsWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, requestexecution.HasUsageLogsWith(with...))
 	}
 	switch len(predicates) {
 	case 0:
@@ -9837,6 +9877,14 @@ type UsageLogWhereInput struct {
 	RequestIDIn    []int `json:"requestIDIn,omitempty"`
 	RequestIDNotIn []int `json:"requestIDNotIn,omitempty"`
 
+	// "request_execution_id" field predicates.
+	RequestExecutionID       *int  `json:"requestExecutionID,omitempty"`
+	RequestExecutionIDNEQ    *int  `json:"requestExecutionIDNEQ,omitempty"`
+	RequestExecutionIDIn     []int `json:"requestExecutionIDIn,omitempty"`
+	RequestExecutionIDNotIn  []int `json:"requestExecutionIDNotIn,omitempty"`
+	RequestExecutionIDIsNil  bool  `json:"requestExecutionIDIsNil,omitempty"`
+	RequestExecutionIDNotNil bool  `json:"requestExecutionIDNotNil,omitempty"`
+
 	// "api_key_id" field predicates.
 	APIKeyID       *int  `json:"apiKeyID,omitempty"`
 	APIKeyIDNEQ    *int  `json:"apiKeyIDNEQ,omitempty"`
@@ -10070,6 +10118,10 @@ type UsageLogWhereInput struct {
 	HasRequest     *bool                `json:"hasRequest,omitempty"`
 	HasRequestWith []*RequestWhereInput `json:"hasRequestWith,omitempty"`
 
+	// "request_execution" edge predicates.
+	HasRequestExecution     *bool                         `json:"hasRequestExecution,omitempty"`
+	HasRequestExecutionWith []*RequestExecutionWhereInput `json:"hasRequestExecutionWith,omitempty"`
+
 	// "project" edge predicates.
 	HasProject     *bool                `json:"hasProject,omitempty"`
 	HasProjectWith []*ProjectWhereInput `json:"hasProjectWith,omitempty"`
@@ -10233,6 +10285,24 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if len(i.RequestIDNotIn) > 0 {
 		predicates = append(predicates, usagelog.RequestIDNotIn(i.RequestIDNotIn...))
+	}
+	if i.RequestExecutionID != nil {
+		predicates = append(predicates, usagelog.RequestExecutionIDEQ(*i.RequestExecutionID))
+	}
+	if i.RequestExecutionIDNEQ != nil {
+		predicates = append(predicates, usagelog.RequestExecutionIDNEQ(*i.RequestExecutionIDNEQ))
+	}
+	if len(i.RequestExecutionIDIn) > 0 {
+		predicates = append(predicates, usagelog.RequestExecutionIDIn(i.RequestExecutionIDIn...))
+	}
+	if len(i.RequestExecutionIDNotIn) > 0 {
+		predicates = append(predicates, usagelog.RequestExecutionIDNotIn(i.RequestExecutionIDNotIn...))
+	}
+	if i.RequestExecutionIDIsNil {
+		predicates = append(predicates, usagelog.RequestExecutionIDIsNil())
+	}
+	if i.RequestExecutionIDNotNil {
+		predicates = append(predicates, usagelog.RequestExecutionIDNotNil())
 	}
 	if i.APIKeyID != nil {
 		predicates = append(predicates, usagelog.APIKeyIDEQ(*i.APIKeyID))
@@ -10819,6 +10889,24 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 			with = append(with, p)
 		}
 		predicates = append(predicates, usagelog.HasRequestWith(with...))
+	}
+	if i.HasRequestExecution != nil {
+		p := usagelog.HasRequestExecution()
+		if !*i.HasRequestExecution {
+			p = usagelog.Not(p)
+		}
+		predicates = append(predicates, p)
+	}
+	if len(i.HasRequestExecutionWith) > 0 {
+		with := make([]predicate.RequestExecution, 0, len(i.HasRequestExecutionWith))
+		for _, w := range i.HasRequestExecutionWith {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'HasRequestExecutionWith'", err)
+			}
+			with = append(with, p)
+		}
+		predicates = append(predicates, usagelog.HasRequestExecutionWith(with...))
 	}
 	if i.HasProject != nil {
 		p := usagelog.HasProject()

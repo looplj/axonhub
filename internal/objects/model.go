@@ -1,5 +1,7 @@
 package objects
 
+import "slices"
+
 type ModelCardReasoning struct {
 	Supported bool `json:"supported"`
 	Default   bool `json:"default"`
@@ -36,11 +38,34 @@ type ModelCard struct {
 	LastUpdated string              `json:"lastUpdated"`
 }
 
+func (c ModelCard) SupportsVision() bool {
+	return c.Vision || slices.Contains(c.Modalities.Input, "image")
+}
+
+func (c ModelCard) WithDelegatedVision(settings *ModelSettings) ModelCard {
+	if settings == nil || !settings.VisionDelegation.Enabled || settings.VisionDelegation.TargetModelID == nil {
+		return c
+	}
+
+	c.Vision = true
+	if !slices.Contains(c.Modalities.Input, "image") {
+		c.Modalities.Input = append(slices.Clone(c.Modalities.Input), "image")
+	}
+
+	return c
+}
+
+type VisionDelegation struct {
+	Enabled       bool    `json:"enabled"`
+	TargetModelID *string `json:"targetModelID"`
+}
+
 type ModelSettings struct {
 	DisableDeveloperSettingsInheritance bool                `json:"disableDeveloperSettingsInheritance"`
 	Associations                        []*ModelAssociation `json:"associations"`
 	LoadBalancerStrategy                string              `json:"loadBalancerStrategy"`
 	TraceStickyMode                     string              `json:"traceStickyMode"`
+	VisionDelegation                    VisionDelegation    `json:"visionDelegation"`
 }
 
 const (

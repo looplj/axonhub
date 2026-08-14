@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/looplj/axonhub/internal/ent/predicate"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -287,9 +288,45 @@ func (_u *RequestExecutionUpdate) SetNillablePassThroughApplied(v *bool) *Reques
 	return _u
 }
 
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
+func (_u *RequestExecutionUpdate) AddUsageLogIDs(ids ...int) *RequestExecutionUpdate {
+	_u.mutation.AddUsageLogIDs(ids...)
+	return _u
+}
+
+// AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
+func (_u *RequestExecutionUpdate) AddUsageLogs(v ...*UsageLog) *RequestExecutionUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddUsageLogIDs(ids...)
+}
+
 // Mutation returns the RequestExecutionMutation object of the builder.
 func (_u *RequestExecutionUpdate) Mutation() *RequestExecutionMutation {
 	return _u.mutation
+}
+
+// ClearUsageLogs clears all "usage_logs" edges to the UsageLog entity.
+func (_u *RequestExecutionUpdate) ClearUsageLogs() *RequestExecutionUpdate {
+	_u.mutation.ClearUsageLogs()
+	return _u
+}
+
+// RemoveUsageLogIDs removes the "usage_logs" edge to UsageLog entities by IDs.
+func (_u *RequestExecutionUpdate) RemoveUsageLogIDs(ids ...int) *RequestExecutionUpdate {
+	_u.mutation.RemoveUsageLogIDs(ids...)
+	return _u
+}
+
+// RemoveUsageLogs removes "usage_logs" edges to UsageLog entities.
+func (_u *RequestExecutionUpdate) RemoveUsageLogs(v ...*UsageLog) *RequestExecutionUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveUsageLogIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -462,6 +499,51 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	}
 	if value, ok := _u.mutation.PassThroughApplied(); ok {
 		_spec.SetField(requestexecution.FieldPassThroughApplied, field.TypeBool, value)
+	}
+	if _u.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.UsageLogsTable,
+			Columns: []string{requestexecution.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !_u.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.UsageLogsTable,
+			Columns: []string{requestexecution.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UsageLogsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.UsageLogsTable,
+			Columns: []string{requestexecution.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -741,9 +823,45 @@ func (_u *RequestExecutionUpdateOne) SetNillablePassThroughApplied(v *bool) *Req
 	return _u
 }
 
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
+func (_u *RequestExecutionUpdateOne) AddUsageLogIDs(ids ...int) *RequestExecutionUpdateOne {
+	_u.mutation.AddUsageLogIDs(ids...)
+	return _u
+}
+
+// AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
+func (_u *RequestExecutionUpdateOne) AddUsageLogs(v ...*UsageLog) *RequestExecutionUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddUsageLogIDs(ids...)
+}
+
 // Mutation returns the RequestExecutionMutation object of the builder.
 func (_u *RequestExecutionUpdateOne) Mutation() *RequestExecutionMutation {
 	return _u.mutation
+}
+
+// ClearUsageLogs clears all "usage_logs" edges to the UsageLog entity.
+func (_u *RequestExecutionUpdateOne) ClearUsageLogs() *RequestExecutionUpdateOne {
+	_u.mutation.ClearUsageLogs()
+	return _u
+}
+
+// RemoveUsageLogIDs removes the "usage_logs" edge to UsageLog entities by IDs.
+func (_u *RequestExecutionUpdateOne) RemoveUsageLogIDs(ids ...int) *RequestExecutionUpdateOne {
+	_u.mutation.RemoveUsageLogIDs(ids...)
+	return _u
+}
+
+// RemoveUsageLogs removes "usage_logs" edges to UsageLog entities.
+func (_u *RequestExecutionUpdateOne) RemoveUsageLogs(v ...*UsageLog) *RequestExecutionUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveUsageLogIDs(ids...)
 }
 
 // Where appends a list predicates to the RequestExecutionUpdate builder.
@@ -946,6 +1064,51 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	}
 	if value, ok := _u.mutation.PassThroughApplied(); ok {
 		_spec.SetField(requestexecution.FieldPassThroughApplied, field.TypeBool, value)
+	}
+	if _u.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.UsageLogsTable,
+			Columns: []string{requestexecution.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedUsageLogsIDs(); len(nodes) > 0 && !_u.mutation.UsageLogsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.UsageLogsTable,
+			Columns: []string{requestexecution.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UsageLogsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.UsageLogsTable,
+			Columns: []string{requestexecution.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &RequestExecution{config: _u.config}

@@ -38,6 +38,8 @@ type RequestExecution struct {
 	ExternalID string `json:"external_id,omitempty"`
 	// ModelID holds the value of the "model_id" field.
 	ModelID string `json:"model_id,omitempty"`
+	// Purpose of this upstream execution
+	Purpose requestexecution.Purpose `json:"purpose,omitempty"`
 	// Format holds the value of the "format" field.
 	Format string `json:"format,omitempty"`
 	// Final reasoning effort sent to the upstream provider
@@ -82,11 +84,15 @@ type RequestExecutionEdges struct {
 	Channel *Channel `json:"channel,omitempty"`
 	// DataStorage holds the value of the data_storage edge.
 	DataStorage *DataStorage `json:"data_storage,omitempty"`
+	// UsageLogs holds the value of the usage_logs edge.
+	UsageLogs []*UsageLog `json:"usage_logs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
 	// totalCount holds the count of the edges above.
-	totalCount [3]map[string]int
+	totalCount [4]map[string]int
+
+	namedUsageLogs map[string][]*UsageLog
 }
 
 // RequestOrErr returns the Request value or an error if the edge
@@ -122,6 +128,15 @@ func (e RequestExecutionEdges) DataStorageOrErr() (*DataStorage, error) {
 	return nil, &NotLoadedError{edge: "data_storage"}
 }
 
+// UsageLogsOrErr returns the UsageLogs value or an error if the edge
+// was not loaded in eager-loading.
+func (e RequestExecutionEdges) UsageLogsOrErr() ([]*UsageLog, error) {
+	if e.loadedTypes[3] {
+		return e.UsageLogs, nil
+	}
+	return nil, &NotLoadedError{edge: "usage_logs"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
@@ -133,7 +148,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs, requestexecution.FieldMetricsReasoningDurationMs:
 			values[i] = new(sql.NullInt64)
-		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldReasoningEffort, requestexecution.FieldErrorMessage, requestexecution.FieldStatus, requestexecution.FieldRequestURL:
+		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldPurpose, requestexecution.FieldFormat, requestexecution.FieldReasoningEffort, requestexecution.FieldErrorMessage, requestexecution.FieldStatus, requestexecution.FieldRequestURL:
 			values[i] = new(sql.NullString)
 		case requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -205,6 +220,12 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field model_id", values[i])
 			} else if value.Valid {
 				_m.ModelID = value.String
+			}
+		case requestexecution.FieldPurpose:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field purpose", values[i])
+			} else if value.Valid {
+				_m.Purpose = requestexecution.Purpose(value.String)
 			}
 		case requestexecution.FieldFormat:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -337,6 +358,11 @@ func (_m *RequestExecution) QueryDataStorage() *DataStorageQuery {
 	return NewRequestExecutionClient(_m.config).QueryDataStorage(_m)
 }
 
+// QueryUsageLogs queries the "usage_logs" edge of the RequestExecution entity.
+func (_m *RequestExecution) QueryUsageLogs() *UsageLogQuery {
+	return NewRequestExecutionClient(_m.config).QueryUsageLogs(_m)
+}
+
 // Update returns a builder for updating this RequestExecution.
 // Note that you need to call RequestExecution.Unwrap() before calling this method if this RequestExecution
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -383,6 +409,9 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
 	builder.WriteString(_m.ModelID)
+	builder.WriteString(", ")
+	builder.WriteString("purpose=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Purpose))
 	builder.WriteString(", ")
 	builder.WriteString("format=")
 	builder.WriteString(_m.Format)
@@ -440,6 +469,30 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(fmt.Sprintf("%v", _m.PassThroughApplied))
 	builder.WriteByte(')')
 	return builder.String()
+}
+
+// NamedUsageLogs returns the UsageLogs named value or an error if the edge was not
+// loaded in eager-loading with this name.
+func (_m *RequestExecution) NamedUsageLogs(name string) ([]*UsageLog, error) {
+	if _m.Edges.namedUsageLogs == nil {
+		return nil, &NotLoadedError{edge: name}
+	}
+	nodes, ok := _m.Edges.namedUsageLogs[name]
+	if !ok {
+		return nil, &NotLoadedError{edge: name}
+	}
+	return nodes, nil
+}
+
+func (_m *RequestExecution) appendNamedUsageLogs(name string, edges ...*UsageLog) {
+	if _m.Edges.namedUsageLogs == nil {
+		_m.Edges.namedUsageLogs = make(map[string][]*UsageLog)
+	}
+	if len(edges) == 0 {
+		_m.Edges.namedUsageLogs[name] = []*UsageLog{}
+	} else {
+		_m.Edges.namedUsageLogs[name] = append(_m.Edges.namedUsageLogs[name], edges...)
+	}
 }
 
 // RequestExecutions is a parsable slice of RequestExecution.

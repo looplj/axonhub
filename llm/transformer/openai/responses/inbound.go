@@ -552,6 +552,19 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 				},
 			}, nil
 		}
+		if item.FileID != nil {
+			return &llm.Message{
+				Role: lo.Ternary(item.Role != "", item.Role, "user"),
+				Content: llm.MessageContent{
+					MultipleContent: []llm.MessageContentPart{
+						{
+							Type:     "image_url",
+							ImageURL: &llm.ImageURL{FileID: *item.FileID},
+						},
+					},
+				},
+			}, nil
+		}
 
 		return nil, nil
 
@@ -732,6 +745,13 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 					URL:    *item.ImageURL,
 					Detail: item.Detail,
 				},
+			}, nil
+		}
+		if item.FileID != nil {
+			return &llm.MessageContentPart{
+				ID:       item.ID,
+				Type:     "image_url",
+				ImageURL: &llm.ImageURL{FileID: *item.FileID},
 			}, nil
 		}
 

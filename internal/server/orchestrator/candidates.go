@@ -30,6 +30,7 @@ type ChannelModelsCandidate struct {
 	Models             []biz.ChannelModelEntry
 	APIFormat          string // selected endpoint API format for this candidate
 	TraceSticky        bool   // selected from the last successful trace or thread channel
+	SourceModel        *ent.Model
 	ModelRoutingPolicy *ModelRoutingPolicy
 }
 
@@ -216,6 +217,7 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		TraceStickyMode:      traceStickyMode,
 	}
 	for _, candidate := range candidates {
+		candidate.SourceModel = model
 		candidate.ModelRoutingPolicy = modelRoutingPolicy
 	}
 

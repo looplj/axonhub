@@ -1984,6 +1984,7 @@ input CreateUsageLogInput {
   """
   costPriceReferenceID: String
   requestID: ID!
+  requestExecutionID: ID
   projectID: ID!
   channelID: ID
 }
@@ -4588,6 +4589,10 @@ type RequestExecution implements Node {
   dataStorageID: ID
   externalID: String
   modelID: String!
+  """
+  Purpose of this upstream execution
+  """
+  purpose: RequestExecutionPurpose!
   format: String!
   """
   Final reasoning effort sent to the upstream provider
@@ -4624,6 +4629,7 @@ type RequestExecution implements Node {
   request: Request!
   channel: Channel @goField(forceResolver: true)
   dataStorage: DataStorage
+  usageLogs: [UsageLog!]
 }
 """
 A connection to a list of items.
@@ -4674,6 +4680,13 @@ Properties by which RequestExecution connections can be ordered.
 enum RequestExecutionOrderField {
   CREATED_AT
   UPDATED_AT
+}
+"""
+RequestExecutionPurpose is enum for the field purpose
+"""
+enum RequestExecutionPurpose @goModel(model: "github.com/looplj/axonhub/internal/ent/requestexecution.Purpose") {
+  primary
+  vision_delegation
 }
 """
 RequestExecutionStatus is enum for the field status
@@ -4796,6 +4809,13 @@ input RequestExecutionWhereInput {
   modelIDHasSuffix: String
   modelIDEqualFold: String
   modelIDContainsFold: String
+  """
+  purpose field predicates
+  """
+  purpose: RequestExecutionPurpose
+  purposeNEQ: RequestExecutionPurpose
+  purposeIn: [RequestExecutionPurpose!]
+  purposeNotIn: [RequestExecutionPurpose!]
   """
   format field predicates
   """
@@ -4950,6 +4970,11 @@ input RequestExecutionWhereInput {
   """
   hasDataStorage: Boolean
   hasDataStorageWith: [DataStorageWhereInput!]
+  """
+  usage_logs edge predicates
+  """
+  hasUsageLogs: Boolean
+  hasUsageLogsWith: [UsageLogWhereInput!]
 }
 """
 Ordering options for Request connections
@@ -6526,6 +6551,10 @@ type UsageLog implements Node {
   Related request ID
   """
   requestID: ID!
+  """
+  Related upstream execution ID
+  """
+  requestExecutionID: ID
   apiKeyID: Int
   """
   Project ID, default to 1 for backward compatibility
@@ -6608,6 +6637,7 @@ type UsageLog implements Node {
   """
   costPriceReferenceID: String
   request: Request!
+  requestExecution: RequestExecution
   project: Project!
   channel: Channel @goField(forceResolver: true)
 }
@@ -6717,6 +6747,15 @@ input UsageLogWhereInput {
   requestIDNEQ: ID
   requestIDIn: [ID!]
   requestIDNotIn: [ID!]
+  """
+  request_execution_id field predicates
+  """
+  requestExecutionID: ID
+  requestExecutionIDNEQ: ID
+  requestExecutionIDIn: [ID!]
+  requestExecutionIDNotIn: [ID!]
+  requestExecutionIDIsNil: Boolean
+  requestExecutionIDNotNil: Boolean
   """
   api_key_id field predicates
   """
@@ -6971,6 +7010,11 @@ input UsageLogWhereInput {
   """
   hasRequest: Boolean
   hasRequestWith: [RequestWhereInput!]
+  """
+  request_execution edge predicates
+  """
+  hasRequestExecution: Boolean
+  hasRequestExecutionWith: [RequestExecutionWhereInput!]
   """
   project edge predicates
   """

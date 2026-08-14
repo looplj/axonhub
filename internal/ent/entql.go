@@ -442,6 +442,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldDataStorageID:              {Type: field.TypeInt, Column: requestexecution.FieldDataStorageID},
 			requestexecution.FieldExternalID:                 {Type: field.TypeString, Column: requestexecution.FieldExternalID},
 			requestexecution.FieldModelID:                    {Type: field.TypeString, Column: requestexecution.FieldModelID},
+			requestexecution.FieldPurpose:                    {Type: field.TypeEnum, Column: requestexecution.FieldPurpose},
 			requestexecution.FieldFormat:                     {Type: field.TypeString, Column: requestexecution.FieldFormat},
 			requestexecution.FieldReasoningEffort:            {Type: field.TypeString, Column: requestexecution.FieldReasoningEffort},
 			requestexecution.FieldRequestBody:                {Type: field.TypeJSON, Column: requestexecution.FieldRequestBody},
@@ -548,6 +549,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldCreatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldCreatedAt},
 			usagelog.FieldUpdatedAt:                          {Type: field.TypeTime, Column: usagelog.FieldUpdatedAt},
 			usagelog.FieldRequestID:                          {Type: field.TypeInt, Column: usagelog.FieldRequestID},
+			usagelog.FieldRequestExecutionID:                 {Type: field.TypeInt, Column: usagelog.FieldRequestExecutionID},
 			usagelog.FieldAPIKeyID:                           {Type: field.TypeInt, Column: usagelog.FieldAPIKeyID},
 			usagelog.FieldProjectID:                          {Type: field.TypeInt, Column: usagelog.FieldProjectID},
 			usagelog.FieldChannelID:                          {Type: field.TypeInt, Column: usagelog.FieldChannelID},
@@ -1137,6 +1139,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		"DataStorage",
 	)
 	graph.MustAddE(
+		"usage_logs",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.UsageLogsTable,
+			Columns: []string{requestexecution.UsageLogsColumn},
+			Bidi:    false,
+		},
+		"RequestExecution",
+		"UsageLog",
+	)
+	graph.MustAddE(
 		"users",
 		&sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
@@ -1243,6 +1257,18 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		"UsageLog",
 		"Request",
+	)
+	graph.MustAddE(
+		"request_execution",
+		&sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   usagelog.RequestExecutionTable,
+			Columns: []string{usagelog.RequestExecutionColumn},
+			Bidi:    false,
+		},
+		"UsageLog",
+		"RequestExecution",
 	)
 	graph.MustAddE(
 		"project",
@@ -3555,6 +3581,11 @@ func (f *RequestExecutionFilter) WhereModelID(p entql.StringP) {
 	f.Where(p.Field(requestexecution.FieldModelID))
 }
 
+// WherePurpose applies the entql string predicate on the purpose field.
+func (f *RequestExecutionFilter) WherePurpose(p entql.StringP) {
+	f.Where(p.Field(requestexecution.FieldPurpose))
+}
+
 // WhereFormat applies the entql string predicate on the format field.
 func (f *RequestExecutionFilter) WhereFormat(p entql.StringP) {
 	f.Where(p.Field(requestexecution.FieldFormat))
@@ -3666,6 +3697,20 @@ func (f *RequestExecutionFilter) WhereHasDataStorage() {
 // WhereHasDataStorageWith applies a predicate to check if query has an edge data_storage with a given conditions (other predicates).
 func (f *RequestExecutionFilter) WhereHasDataStorageWith(preds ...predicate.DataStorage) {
 	f.Where(entql.HasEdgeWith("data_storage", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasUsageLogs applies a predicate to check if query has an edge usage_logs.
+func (f *RequestExecutionFilter) WhereHasUsageLogs() {
+	f.Where(entql.HasEdge("usage_logs"))
+}
+
+// WhereHasUsageLogsWith applies a predicate to check if query has an edge usage_logs with a given conditions (other predicates).
+func (f *RequestExecutionFilter) WhereHasUsageLogsWith(preds ...predicate.UsageLog) {
+	f.Where(entql.HasEdgeWith("usage_logs", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}
@@ -4114,6 +4159,11 @@ func (f *UsageLogFilter) WhereRequestID(p entql.IntP) {
 	f.Where(p.Field(usagelog.FieldRequestID))
 }
 
+// WhereRequestExecutionID applies the entql int predicate on the request_execution_id field.
+func (f *UsageLogFilter) WhereRequestExecutionID(p entql.IntP) {
+	f.Where(p.Field(usagelog.FieldRequestExecutionID))
+}
+
 // WhereAPIKeyID applies the entql int predicate on the api_key_id field.
 func (f *UsageLogFilter) WhereAPIKeyID(p entql.IntP) {
 	f.Where(p.Field(usagelog.FieldAPIKeyID))
@@ -4227,6 +4277,20 @@ func (f *UsageLogFilter) WhereHasRequest() {
 // WhereHasRequestWith applies a predicate to check if query has an edge request with a given conditions (other predicates).
 func (f *UsageLogFilter) WhereHasRequestWith(preds ...predicate.Request) {
 	f.Where(entql.HasEdgeWith("request", sqlgraph.WrapFunc(func(s *sql.Selector) {
+		for _, p := range preds {
+			p(s)
+		}
+	})))
+}
+
+// WhereHasRequestExecution applies a predicate to check if query has an edge request_execution.
+func (f *UsageLogFilter) WhereHasRequestExecution() {
+	f.Where(entql.HasEdge("request_execution"))
+}
+
+// WhereHasRequestExecutionWith applies a predicate to check if query has an edge request_execution with a given conditions (other predicates).
+func (f *UsageLogFilter) WhereHasRequestExecutionWith(preds ...predicate.RequestExecution) {
+	f.Where(entql.HasEdgeWith("request_execution", sqlgraph.WrapFunc(func(s *sql.Selector) {
 		for _, p := range preds {
 			p(s)
 		}

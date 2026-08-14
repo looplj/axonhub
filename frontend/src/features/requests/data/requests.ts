@@ -69,8 +69,11 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                 node {
                   id
                   createdAt
+                  updatedAt
                   modelID
+                  purpose
                   status
+                  metricsLatencyMs
                   reasoningEffort
                   passThroughApplied${executionChannelFields}
                 }
@@ -84,12 +87,75 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
               }
               totalCount
             }
-            usageLogs(first: 1) {
+            visionExecutions: executions(
+              first: 100
+              orderBy: { field: CREATED_AT, direction: ASC }
+              where: { purpose: vision_delegation }
+            ) {
               edges {
                 node {
                   id
+                  createdAt
+                  updatedAt
+                  modelID
+                  purpose
+                  status
+                  metricsLatencyMs
+                  reasoningEffort
+                  passThroughApplied${executionChannelFields}
+                }
+                cursor
+              }
+              pageInfo {
+                hasNextPage
+                hasPreviousPage
+                startCursor
+                endCursor
+              }
+              totalCount
+            }
+            usageLogs(first: 100, orderBy: { field: CREATED_AT, direction: ASC }) {
+              edges {
+                node {
+                  id
+                  source
                   promptTokens
                   completionTokens
+                  completionAudioTokens
+                  completionReasoningTokens
+                  totalTokens
+                  promptCachedTokens
+                  promptWriteCachedTokens
+                  totalCost
+                  requestExecution {
+                    purpose
+                  }
+                  costItems {
+                    itemCode
+                    quantity
+                    subtotal
+                  }
+                }
+              }
+              totalCount
+            }
+            primaryUsageLogs: usageLogs(
+              first: 1
+              orderBy: { field: CREATED_AT, direction: DESC }
+              where: {
+                or: [
+                  { requestExecutionIDIsNil: true }
+                  { hasRequestExecutionWith: [{ purpose: primary }] }
+                ]
+              }
+            ) {
+              edges {
+                node {
+                  id
+                  source
+                  promptTokens
+                  completionTokens
+                  completionAudioTokens
                   completionReasoningTokens
                   totalTokens
                   promptCachedTokens
@@ -97,6 +163,32 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                   totalCost
                 }
               }
+            }
+            visionUsageLogs: usageLogs(
+              first: 100
+              orderBy: { field: CREATED_AT, direction: ASC }
+              where: { hasRequestExecutionWith: [{ purpose: vision_delegation }] }
+            ) {
+              edges {
+                node {
+                  id
+                  source
+                  promptTokens
+                  completionTokens
+                  completionAudioTokens
+                  completionReasoningTokens
+                  totalTokens
+                  promptCachedTokens
+                  promptWriteCachedTokens
+                  totalCost
+                  costItems {
+                    itemCode
+                    quantity
+                    subtotal
+                  }
+                }
+              }
+              totalCount
             }
           }
           cursor
@@ -152,19 +244,30 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           status
           format
           metricsReasoningDurationMs
-          usageLogs(first: 1) {
+          usageLogs(first: 100, orderBy: { field: CREATED_AT, direction: ASC }) {
             edges {
               node {
                   id
+                  source
                   promptTokens
                   completionTokens
+                  completionAudioTokens
                   completionReasoningTokens
                   totalTokens
                   promptCachedTokens
                   promptWriteCachedTokens
                   totalCost
+                  requestExecution {
+                    purpose
+                  }
+                  costItems {
+                    itemCode
+                    quantity
+                    subtotal
+                  }
                 }
             }
+            totalCount
           }
         }
       }
@@ -242,6 +345,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 updatedAt
                 requestID${channelFields}
                 modelID
+                purpose
                 projectID
                 dataStorageID
                 requestHeaders
@@ -258,6 +362,23 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 passThroughApplied
                 metricsFirstTokenLatencyMs
                 metricsReasoningDurationMs
+                usageLogs {
+                  id
+                  source
+                  promptTokens
+                  completionTokens
+                  completionAudioTokens
+                  completionReasoningTokens
+                  totalTokens
+                  promptCachedTokens
+                  promptWriteCachedTokens
+                  totalCost
+                  costItems {
+                    itemCode
+                    quantity
+                    subtotal
+                  }
+                }
               }
               cursor
             }
@@ -276,23 +397,26 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
 }
 
 // Query hooks
-export function useRequests(variables?: {
-  first?: number;
-  after?: string;
-  last?: number;
-  before?: string;
-  orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
-  where?: {
-    status?: string;
-    source?: string;
-    channelID?: string;
-    channelIDIn?: string[];
-    statusIn?: string[];
-    sourceIn?: string[];
-    projectID?: string;
-    [key: string]: any;
-  };
-}, options?: { projectId?: string | null; scopeToSelectedProject?: boolean; enabled?: boolean }) {
+export function useRequests(
+  variables?: {
+    first?: number;
+    after?: string;
+    last?: number;
+    before?: string;
+    orderBy?: { field: 'CREATED_AT'; direction: 'ASC' | 'DESC' };
+    where?: {
+      status?: string;
+      source?: string;
+      channelID?: string;
+      channelIDIn?: string[];
+      statusIn?: string[];
+      sourceIn?: string[];
+      projectID?: string;
+      [key: string]: any;
+    };
+  },
+  options?: { projectId?: string | null; scopeToSelectedProject?: boolean; enabled?: boolean }
+) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
   const permissions = useRequestPermissions();
@@ -355,9 +479,7 @@ export function useRequest(
         const previousRequest = queryClient.getQueryData<Request>(queryKey);
         const shouldUseLightweightPolling = previousRequest?.status === 'processing';
 
-        const query = shouldUseLightweightPolling
-          ? buildRequestDetailPollingQuery(permissions)
-          : buildRequestDetailQuery(permissions);
+        const query = shouldUseLightweightPolling ? buildRequestDetailPollingQuery(permissions) : buildRequestDetailQuery(permissions);
 
         const data = await graphqlRequest<{ node: Request }>(query, { id }, headers);
         if (!data.node) {
@@ -418,9 +540,7 @@ export async function fetchAdjacentRequestPage(params: {
 }): Promise<{ requests: Request[]; pageInfo: RequestConnection['pageInfo'] }> {
   const query = buildRequestsQuery(params.permissions);
   const variables =
-    params.direction === 'older'
-      ? { first: params.pageSize, after: params.cursor }
-      : { last: params.pageSize, before: params.cursor };
+    params.direction === 'older' ? { first: params.pageSize, after: params.cursor } : { last: params.pageSize, before: params.cursor };
 
   const where: Record<string, any> = { ...params.where };
   if (params.projectId) where.projectID = params.projectId;

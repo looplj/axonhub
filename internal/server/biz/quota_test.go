@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -91,6 +92,100 @@ func TestQuotaService_AllTime_RequestCountExceeded(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, res.Allowed)
 	require.Contains(t, res.Message, "requests quota exceeded")
+}
+
+func TestQuotaService_VisionDelegationCountsOneRequestAndAllUsage(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := ent.NewContext(authz.WithTestBypass(context.Background()), client)
+	projectEntity, err := client.Project.Create().
+		SetName("p").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	const apiKeyID = 101
+	now := time.Now().UTC()
+	requestEntity, err := client.Request.Create().
+		SetProjectID(projectEntity.ID).
+		SetAPIKeyID(apiKeyID).
+		SetModelID("text-model").
+		SetFormat("openai/chat_completions").
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
+		SetCreatedAt(now).
+		Save(ctx)
+	require.NoError(t, err)
+
+	visionExecution, err := client.RequestExecution.Create().
+		SetProjectID(projectEntity.ID).
+		SetRequestID(requestEntity.ID).
+		SetModelID("vision-model").
+		SetPurpose(requestexecution.PurposeVisionDelegation).
+		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
+		SetStatus(requestexecution.StatusCompleted).
+		SetCreatedAt(now).
+		Save(ctx)
+	require.NoError(t, err)
+
+	primaryExecution, err := client.RequestExecution.Create().
+		SetProjectID(projectEntity.ID).
+		SetRequestID(requestEntity.ID).
+		SetModelID("text-model").
+		SetPurpose(requestexecution.PurposePrimary).
+		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
+		SetStatus(requestexecution.StatusCompleted).
+		SetCreatedAt(now).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(requestEntity.ID).
+		SetRequestExecutionID(visionExecution.ID).
+		SetAPIKeyID(apiKeyID).
+		SetProjectID(projectEntity.ID).
+		SetModelID("vision-model").
+		SetTotalTokens(20).
+		SetTotalCost(2).
+		SetCreatedAt(now).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(requestEntity.ID).
+		SetRequestExecutionID(primaryExecution.ID).
+		SetAPIKeyID(apiKeyID).
+		SetProjectID(projectEntity.ID).
+		SetModelID("text-model").
+		SetTotalTokens(10).
+		SetTotalCost(1).
+		SetCreatedAt(now).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(requestEntity.ID).
+		SetAPIKeyID(apiKeyID).
+		SetProjectID(projectEntity.ID).
+		SetModelID("legacy-model").
+		SetTotalTokens(5).
+		SetTotalCost(0.5).
+		SetCreatedAt(now).
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc := NewQuotaService(client, NewSystemService(SystemServiceParams{Ent: client}))
+	window := QuotaWindow{End: lo.ToPtr(now), EndInclusive: true}
+
+	count, err := svc.requestCount(ctx, apiKeyID, window)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), count)
+
+	usage, err := svc.usageAgg(ctx, apiKeyID, window, true, true)
+	require.NoError(t, err)
+	require.Equal(t, int64(35), usage.TotalTokens)
+	require.True(t, usage.TotalCost.Equal(decimal.NewFromFloat(3.5)))
 }
 
 func TestQuotaService_PastDuration_TotalTokensExceeded(t *testing.T) {

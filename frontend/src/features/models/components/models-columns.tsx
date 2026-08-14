@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { format } from 'date-fns';
-import { ColumnDef, Row, Table } from '@tanstack/react-table';
-import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
+import { CellContext, ColumnDef, Row, Table } from '@tanstack/react-table';
+import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight, IconScanEye } from '@tabler/icons-react';
 import * as Icons from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -77,6 +77,55 @@ function AssociationRulesCell({ row }: { row: Row<Model> }) {
       <IconLink className='mr-1 h-3 w-3' />
       {`${associationCount}`}
     </Button>
+  );
+}
+
+function VisionDelegationCell({ row, table }: CellContext<Model, unknown>) {
+  const { t } = useTranslation();
+  const { setOpen, setCurrentRow } = useModels();
+  const { channelPermissions } = usePermissions();
+  const model = row.original;
+  const targetModelID = model.settings?.visionDelegation?.targetModelID;
+  const enabled = Boolean(model.settings?.visionDelegation?.enabled && targetModelID);
+  const targetModel = enabled ? table.options.data.find((candidate) => candidate.modelID === targetModelID) : undefined;
+  const targetLabel = targetModel?.name || targetModelID;
+  const targetDescription = targetModel ? `${targetModel.name} (${targetModel.modelID})` : targetModelID;
+
+  const handleOpen = useCallback(() => {
+    setCurrentRow(model);
+    setOpen('visionDelegation');
+  }, [model, setCurrentRow, setOpen]);
+
+  const content = enabled ? (
+    <span className='block max-w-full truncate text-xs font-medium'>{targetLabel}</span>
+  ) : (
+    <IconScanEye className='text-muted-foreground h-4 w-4' />
+  );
+
+  return (
+    <div className='flex justify-center'>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {channelPermissions.canWrite ? (
+            <Button
+              type='button'
+              variant='ghost'
+              size={enabled ? 'sm' : 'icon'}
+              className={enabled ? 'h-8 max-w-full px-2' : 'h-8 w-8'}
+              onClick={handleOpen}
+              aria-label={t('models.dialogs.visionDelegation.configure')}
+            >
+              {content}
+            </Button>
+          ) : (
+            <span className={enabled ? 'block max-w-full truncate px-2 text-xs font-medium' : 'flex h-8 w-8 items-center justify-center'}>
+              {content}
+            </span>
+          )}
+        </TooltipTrigger>
+        <TooltipContent>{targetDescription || t('models.dialogs.visionDelegation.configure')}</TooltipContent>
+      </Tooltip>
+    </div>
   );
 }
 
@@ -231,7 +280,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.toolCall')} />,
       cell: ({ row }) => {
         const model = row.original;
-        const toolCall = model.modelCard?.toolCall;
+        const toolCall = (model.effectiveModelCard || model.modelCard)?.toolCall;
 
         return (
           <div className='flex justify-center'>
@@ -240,6 +289,17 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         );
       },
       enableSorting: false,
+    },
+    {
+      id: 'visionDelegation',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title={t('models.columns.visionDelegation')} className='w-full text-center' />
+      ),
+      cell: VisionDelegationCell,
+      enableSorting: false,
+      meta: {
+        className: 'w-32 min-w-32 max-w-32 text-center',
+      },
     },
     // {
     //   id: 'context',
@@ -309,8 +369,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       },
       enableSorting: false,
     },
-
-    {
+      {
           accessorKey: 'createdAt',
           header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} />,
           cell: ({ row }) => {

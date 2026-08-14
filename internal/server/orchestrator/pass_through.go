@@ -38,6 +38,10 @@ var codexResponsesPassThroughHeaders = []string{
 // to the global system setting. systemService may be nil; in that case only the channel-level
 // setting is consulted (used by tests that exercise per-channel behavior in isolation).
 func (p *PersistentOutboundTransformer) isPassThroughEnabled(ctx context.Context, systemService *biz.SystemService) bool {
+	if p.state == nil || p.state.DisableRequestBodyPassThrough {
+		return false
+	}
+
 	channel := p.GetCurrentChannel()
 	if channel == nil {
 		return false

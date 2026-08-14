@@ -3345,6 +3345,22 @@ func (c *RequestExecutionClient) QueryDataStorage(_m *RequestExecution) *DataSto
 	return query
 }
 
+// QueryUsageLogs queries the usage_logs edge of a RequestExecution.
+func (c *RequestExecutionClient) QueryUsageLogs(_m *RequestExecution) *UsageLogQuery {
+	query := (&UsageLogClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(requestexecution.Table, requestexecution.FieldID, id),
+			sqlgraph.To(usagelog.Table, usagelog.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, requestexecution.UsageLogsTable, requestexecution.UsageLogsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *RequestExecutionClient) Hooks() []Hook {
 	return c.hooks.RequestExecution
@@ -4153,6 +4169,22 @@ func (c *UsageLogClient) QueryRequest(_m *UsageLog) *RequestQuery {
 			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
 			sqlgraph.To(request.Table, request.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.RequestTable, usagelog.RequestColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryRequestExecution queries the request_execution edge of a UsageLog.
+func (c *UsageLogClient) QueryRequestExecution(_m *UsageLog) *RequestExecutionQuery {
+	query := (&RequestExecutionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(usagelog.Table, usagelog.FieldID, id),
+			sqlgraph.To(requestexecution.Table, requestexecution.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, usagelog.RequestExecutionTable, usagelog.RequestExecutionColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

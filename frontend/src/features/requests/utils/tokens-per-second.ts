@@ -19,16 +19,14 @@ const VALID_DISPLAY_MODES: DisplayMode[] = ['latency', 'tokensPerSecond'];
  * @returns The numeric rate or null if calculation is not possible
  */
 export function getTokensPerSecondValue(request: Request): number | null {
-  const usageLog = request.usageLogs?.edges?.[0]?.node;
+  const usageLog = request.primaryUsageLogs?.edges?.[0]?.node ?? request.usageLogs?.edges?.[0]?.node;
   if (!usageLog || request.metricsLatencyMs == null || request.metricsLatencyMs <= 0) {
     return null;
   }
 
   // Sum all completion token types (matching fastest performers logic)
   const completionTokens =
-    (usageLog.completionTokens || 0) +
-    (usageLog.completionReasoningTokens || 0) +
-    (usageLog.completionAudioTokens || 0);
+    (usageLog.completionTokens || 0) + (usageLog.completionReasoningTokens || 0) + (usageLog.completionAudioTokens || 0);
 
   if (completionTokens === 0) {
     return null;

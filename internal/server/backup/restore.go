@@ -108,6 +108,9 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 		if err := svc.restoreModels(ctx, db, backupData.Models, opts, channelIDMap); err != nil {
 			return err
 		}
+		if err := repairRestoredVisionDelegations(ctx, db); err != nil {
+			return err
+		}
 	}
 
 	if opts.IncludeProjects {
@@ -1185,23 +1188,25 @@ func (svc *BackupService) restoreUsageLogs(
 		requestIDs = append(requestIDs, requestID)
 	}
 
-	existingLogRequestIDs := map[int]struct{}{}
+	existingLogFingerprints := map[string]int{}
 	for start := 0; start < len(requestIDs); start += backupBatchSize {
 		end := min(start+backupBatchSize, len(requestIDs))
 		logs, err := db.UsageLog.Query().
 			Where(usagelog.RequestIDIn(requestIDs[start:end]...)).
-			Select(usagelog.FieldRequestID).
 			All(ctx)
 		if err != nil {
 			return err
 		}
 
 		for _, usageLog := range logs {
-			existingLogRequestIDs[usageLog.RequestID] = struct{}{}
+			fingerprint, err := usageLogFingerprint(usageLog)
+			if err != nil {
+				return err
+			}
+			existingLogFingerprints[fingerprint]++
 		}
 	}
 
-	restoredLogRequestIDs := map[int]struct{}{}
 	builders := make([]*ent.UsageLogCreate, 0, min(len(usageLogs), backupBatchSize))
 	flush := func() error {
 		if len(builders) == 0 {
@@ -1225,22 +1230,6 @@ func (svc *BackupService) restoreUsageLogs(
 		requestID, ok := requestIDMap[usageData.RequestID]
 		if !ok {
 			log.Warn(ctx, "request not found for restoring usage log, skipping",
-				log.Int("usage_log_id", usageData.ID),
-				log.Int("request_id", usageData.RequestID),
-			)
-			continue
-		}
-
-		if _, existing := existingLogRequestIDs[requestID]; existing {
-			log.Warn(ctx, "usage log already exists for request, skipping",
-				log.Int("usage_log_id", usageData.ID),
-				log.Int("request_id", usageData.RequestID),
-			)
-			continue
-		}
-
-		if _, duplicate := restoredLogRequestIDs[requestID]; duplicate {
-			log.Warn(ctx, "duplicate usage log for request in backup, skipping",
 				log.Int("usage_log_id", usageData.ID),
 				log.Int("request_id", usageData.RequestID),
 			)
@@ -1272,6 +1261,19 @@ func (svc *BackupService) restoreUsageLogs(
 			)
 		}
 
+		fingerprint, err := backupUsageLogFingerprint(usageData, requestID, projectID, channelID, apiKeyID)
+		if err != nil {
+			return err
+		}
+		if existingLogFingerprints[fingerprint] > 0 {
+			existingLogFingerprints[fingerprint]--
+			log.Warn(ctx, "usage log already exists, skipping",
+				log.Int("usage_log_id", usageData.ID),
+				log.Int("request_id", usageData.RequestID),
+			)
+			continue
+		}
+
 		builders = append(builders, db.UsageLog.Create().
 			SetCreatedAt(usageData.CreatedAt).
 			SetUpdatedAt(usageData.UpdatedAt).
@@ -1297,7 +1299,6 @@ func (svc *BackupService) restoreUsageLogs(
 			SetNillableTotalCost(usageData.TotalCost).
 			SetCostItems(usageData.CostItems).
 			SetNillableCostPriceReferenceID(nilIfEmpty(usageData.CostPriceReferenceID)))
-		restoredLogRequestIDs[requestID] = struct{}{}
 
 		if len(builders) >= backupBatchSize {
 			if err := flush(); err != nil {
@@ -1307,6 +1308,106 @@ func (svc *BackupService) restoreUsageLogs(
 	}
 
 	return flush()
+}
+
+type usageLogFingerprintData struct {
+	CreatedAt                          time.Time
+	UpdatedAt                          time.Time
+	RequestID                          int
+	APIKeyID                           int
+	ProjectID                          int
+	ChannelID                          int
+	ModelID                            string
+	PromptTokens                       int64
+	CompletionTokens                   int64
+	TotalTokens                        int64
+	PromptAudioTokens                  int64
+	PromptCachedTokens                 int64
+	PromptWriteCachedTokens            int64
+	PromptWriteCachedTokens5m          int64
+	PromptWriteCachedTokens1h          int64
+	CompletionAudioTokens              int64
+	CompletionReasoningTokens          int64
+	CompletionAcceptedPredictionTokens int64
+	CompletionRejectedPredictionTokens int64
+	Source                             usagelog.Source
+	Format                             string
+	TotalCost                          *float64
+	CostItems                          []objects.CostItem
+	CostPriceReferenceID               string
+}
+
+func usageLogFingerprint(usageData *ent.UsageLog) (string, error) {
+	return marshalUsageLogFingerprint(usageLogFingerprintData{
+		CreatedAt:                          usageData.CreatedAt,
+		UpdatedAt:                          usageData.UpdatedAt,
+		RequestID:                          usageData.RequestID,
+		APIKeyID:                           usageData.APIKeyID,
+		ProjectID:                          usageData.ProjectID,
+		ChannelID:                          usageData.ChannelID,
+		ModelID:                            usageData.ModelID,
+		PromptTokens:                       usageData.PromptTokens,
+		CompletionTokens:                   usageData.CompletionTokens,
+		TotalTokens:                        usageData.TotalTokens,
+		PromptAudioTokens:                  usageData.PromptAudioTokens,
+		PromptCachedTokens:                 usageData.PromptCachedTokens,
+		PromptWriteCachedTokens:            usageData.PromptWriteCachedTokens,
+		PromptWriteCachedTokens5m:          usageData.PromptWriteCachedTokens5m,
+		PromptWriteCachedTokens1h:          usageData.PromptWriteCachedTokens1h,
+		CompletionAudioTokens:              usageData.CompletionAudioTokens,
+		CompletionReasoningTokens:          usageData.CompletionReasoningTokens,
+		CompletionAcceptedPredictionTokens: usageData.CompletionAcceptedPredictionTokens,
+		CompletionRejectedPredictionTokens: usageData.CompletionRejectedPredictionTokens,
+		Source:                             usageData.Source,
+		Format:                             usageData.Format,
+		TotalCost:                          usageData.TotalCost,
+		CostItems:                          usageData.CostItems,
+		CostPriceReferenceID:               usageData.CostPriceReferenceID,
+	})
+}
+
+func backupUsageLogFingerprint(usageData *BackupUsageLog, requestID, projectID, channelID, apiKeyID int) (string, error) {
+	return marshalUsageLogFingerprint(usageLogFingerprintData{
+		CreatedAt:                          usageData.CreatedAt,
+		UpdatedAt:                          usageData.UpdatedAt,
+		RequestID:                          requestID,
+		APIKeyID:                           apiKeyID,
+		ProjectID:                          projectID,
+		ChannelID:                          channelID,
+		ModelID:                            usageData.ModelID,
+		PromptTokens:                       usageData.PromptTokens,
+		CompletionTokens:                   usageData.CompletionTokens,
+		TotalTokens:                        usageData.TotalTokens,
+		PromptAudioTokens:                  usageData.PromptAudioTokens,
+		PromptCachedTokens:                 usageData.PromptCachedTokens,
+		PromptWriteCachedTokens:            usageData.PromptWriteCachedTokens,
+		PromptWriteCachedTokens5m:          usageData.PromptWriteCachedTokens5m,
+		PromptWriteCachedTokens1h:          usageData.PromptWriteCachedTokens1h,
+		CompletionAudioTokens:              usageData.CompletionAudioTokens,
+		CompletionReasoningTokens:          usageData.CompletionReasoningTokens,
+		CompletionAcceptedPredictionTokens: usageData.CompletionAcceptedPredictionTokens,
+		CompletionRejectedPredictionTokens: usageData.CompletionRejectedPredictionTokens,
+		Source:                             usageData.Source,
+		Format:                             usageData.Format,
+		TotalCost:                          usageData.TotalCost,
+		CostItems:                          usageData.CostItems,
+		CostPriceReferenceID:               usageData.CostPriceReferenceID,
+	})
+}
+
+func marshalUsageLogFingerprint(data usageLogFingerprintData) (string, error) {
+	data.CreatedAt = data.CreatedAt.UTC()
+	data.UpdatedAt = data.UpdatedAt.UTC()
+	if data.CostItems == nil {
+		data.CostItems = []objects.CostItem{}
+	}
+
+	b, err := json.Marshal(data)
+	if err != nil {
+		return "", fmt.Errorf("marshal usage log fingerprint: %w", err)
+	}
+
+	return string(b), nil
 }
 
 func (svc *BackupService) ensureUsageLogRequests(

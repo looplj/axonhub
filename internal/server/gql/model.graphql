@@ -40,6 +40,12 @@ type ModelSettings {
   associations: [ModelAssociation!]!
   loadBalancerStrategy: String!
   traceStickyMode: String!
+  visionDelegation: VisionDelegation!
+}
+
+type VisionDelegation {
+  enabled: Boolean!
+  targetModelID: String
 }
 
 type ModelAssociation {
@@ -137,6 +143,12 @@ input ModelSettingsInput {
   associations: [ModelAssociationInput!]!
   loadBalancerStrategy: String
   traceStickyMode: String
+  visionDelegation: VisionDelegationInput
+}
+
+input VisionDelegationInput {
+  enabled: Boolean
+  targetModelID: String
 }
 
 input ModelAssociationInput {
@@ -212,6 +224,7 @@ type UnassociatedChannel {
 
 extend type Model {
   associatedChannelCount: Int! @goField(forceResolver: true)
+  effectiveModelCard: ModelCard! @goField(forceResolver: true)
 }
 
 extend type Query {
@@ -221,6 +234,7 @@ extend type Query {
     associations: [ModelAssociationInput!]!
   ): [ModelChannelConnection!]!
   queryUnassociatedChannels: [UnassociatedChannel!]!
+  visionDelegationCandidates(sourceModelID: String!): [Model!]!
 }
 
 extend type Mutation {

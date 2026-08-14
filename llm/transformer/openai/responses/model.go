@@ -543,6 +543,9 @@ type Item struct {
 	// The URL of the image url or base64 encoded image, for input_image type.
 	ImageURL *string `json:"image_url,omitempty"`
 
+	// The provider-managed file reference for input_image type.
+	FileID *string `json:"file_id,omitempty"`
+
 	// The detail of the image. high, low, or auto, for input_image type.
 	Detail *string `json:"detail,omitempty"`
 

@@ -60,7 +60,7 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
 
 			s.Select(
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "total_requests"),
+				sql.As(clientRequestCountExpr(s), "total_requests"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "total_input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "total_cached_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "total_output_tokens"),
@@ -158,7 +158,7 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+				sql.As(clientRequestCountExpr(s), "request_count"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "cost"),
 			).
 				GroupBy(dateExpr).

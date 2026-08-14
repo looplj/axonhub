@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -17,6 +18,7 @@ type PersistenceState struct {
 	RequestService      *biz.RequestService
 	UsageLogService     *biz.UsageLogService
 	ChannelService      *biz.ChannelService
+	ModelService        *biz.ModelService
 	PromptProvider      PromptProvider
 	PromptProtecter     PromptProtecter
 	RetryPolicyProvider RetryPolicyProvider
@@ -33,14 +35,18 @@ type PersistenceState struct {
 	OriginalModel string
 	RawRequest    *httpclient.Request
 	LlmRequest    *llm.Request
+	SourceModel   *ent.Model
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.
 	OriginalRequestStream *bool
 
 	// Persistence state
-	Request     *ent.Request
-	RequestExec *ent.RequestExecution
+	Request          *ent.Request
+	RequestExec      *ent.RequestExecution
+	OwnsRequest      bool
+	ExecutionPurpose requestexecution.Purpose
+	DelegationDepth  int
 
 	// ChannelModelsCandidates is the primary state for channel selection
 	ChannelModelsCandidates []*ChannelModelsCandidate
@@ -82,4 +88,11 @@ type PersistenceState struct {
 
 	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
 	PassThroughApplied bool
+	// DisableRequestBodyPassThrough prevents replaying RawRequest.Body after a middleware
+	// has materially rewritten the structured request.
+	DisableRequestBodyPassThrough bool
+}
+
+func (s *PersistenceState) ownsRequestLifecycle() bool {
+	return s != nil && (s.OwnsRequest || s.DelegationDepth == 0)
 }

@@ -630,6 +630,7 @@ var (
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "external_id", Type: field.TypeString, Nullable: true, Size: 512},
 		{Name: "model_id", Type: field.TypeString},
+		{Name: "purpose", Type: field.TypeEnum, Enums: []string{"primary", "vision_delegation"}, Default: "primary"},
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
 		{Name: "reasoning_effort", Type: field.TypeString, Nullable: true},
 		{Name: "request_body", Type: field.TypeJSON},
@@ -657,19 +658,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "request_executions_channels_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[21]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[22]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "request_executions_data_storages_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[22]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[23]},
 				RefColumns: []*schema.Column{DataStoragesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "request_executions_requests_executions",
-				Columns:    []*schema.Column{RequestExecutionsColumns[23]},
+				Columns:    []*schema.Column{RequestExecutionsColumns[24]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -678,17 +679,17 @@ var (
 			{
 				Name:    "request_executions_by_request_id_status_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[23], RequestExecutionsColumns[13], RequestExecutionsColumns[1]},
+				Columns: []*schema.Column{RequestExecutionsColumns[24], RequestExecutionsColumns[14], RequestExecutionsColumns[1]},
 			},
 			{
 				Name:    "request_executions_by_request_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[23], RequestExecutionsColumns[1]},
+				Columns: []*schema.Column{RequestExecutionsColumns[24], RequestExecutionsColumns[1]},
 			},
 			{
 				Name:    "request_executions_by_channel_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{RequestExecutionsColumns[21], RequestExecutionsColumns[1]},
+				Columns: []*schema.Column{RequestExecutionsColumns[22], RequestExecutionsColumns[1]},
 			},
 		},
 	}
@@ -863,6 +864,7 @@ var (
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
 		{Name: "project_id", Type: field.TypeInt, Default: 1},
 		{Name: "request_id", Type: field.TypeInt},
+		{Name: "request_execution_id", Type: field.TypeInt, Nullable: true},
 	}
 	// UsageLogsTable holds the schema information for the "usage_logs" table.
 	UsageLogsTable = &schema.Table{
@@ -888,12 +890,23 @@ var (
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
+			{
+				Symbol:     "usage_logs_request_executions_usage_logs",
+				Columns:    []*schema.Column{UsageLogsColumns[25]},
+				RefColumns: []*schema.Column{RequestExecutionsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
 		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "usage_logs_by_request_id",
 				Unique:  false,
 				Columns: []*schema.Column{UsageLogsColumns[24]},
+			},
+			{
+				Name:    "usage_logs_by_request_execution_id",
+				Unique:  false,
+				Columns: []*schema.Column{UsageLogsColumns[25]},
 			},
 			{
 				Name:    "usage_logs_by_created_at",
@@ -1090,6 +1103,7 @@ func init() {
 	UsageLogsTable.ForeignKeys[0].RefTable = ChannelsTable
 	UsageLogsTable.ForeignKeys[1].RefTable = ProjectsTable
 	UsageLogsTable.ForeignKeys[2].RefTable = RequestsTable
+	UsageLogsTable.ForeignKeys[3].RefTable = RequestExecutionsTable
 	UserProjectsTable.ForeignKeys[0].RefTable = UsersTable
 	UserProjectsTable.ForeignKeys[1].RefTable = ProjectsTable
 	UserRolesTable.ForeignKeys[0].RefTable = UsersTable

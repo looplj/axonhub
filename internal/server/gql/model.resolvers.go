@@ -24,6 +24,16 @@ func (r *modelResolver) AssociatedChannelCount(ctx context.Context, obj *ent.Mod
 	return r.modelService.CountModelAssociatedChannels(ctx, obj)
 }
 
+// EffectiveModelCard is the resolver for the effectiveModelCard field.
+func (r *modelResolver) EffectiveModelCard(ctx context.Context, obj *ent.Model) (*objects.ModelCard, error) {
+	effective := r.modelService.EffectiveModelCard(ctx, obj)
+	if effective == nil {
+		return &objects.ModelCard{}, nil
+	}
+
+	return effective, nil
+}
+
 // CreateModel is the resolver for the createModel field.
 func (r *mutationResolver) CreateModel(ctx context.Context, input ent.CreateModelInput) (*ent.Model, error) {
 	return r.modelService.CreateModel(ctx, input)
@@ -193,4 +203,9 @@ func (r *queryResolver) QueryModelChannelConnections(ctx context.Context, associ
 // QueryUnassociatedChannels is the resolver for the queryUnassociatedChannels field.
 func (r *queryResolver) QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error) {
 	return r.modelService.QueryUnassociatedChannels(ctx)
+}
+
+// VisionDelegationCandidates is the resolver for the visionDelegationCandidates field.
+func (r *queryResolver) VisionDelegationCandidates(ctx context.Context, sourceModelID string) ([]*ent.Model, error) {
+	return r.modelService.ListVisionDelegationCandidates(ctx, sourceModelID)
 }

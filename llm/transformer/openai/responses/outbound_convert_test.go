@@ -941,6 +941,24 @@ func TestConvertInputFromMessages(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "provider file image reference",
+			msgs: []llm.Message{{
+				Role: "user",
+				Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+					Type:     "image_url",
+					ImageURL: &llm.ImageURL{FileID: "file_123"},
+				}}},
+			}},
+			expected: Input{Items: []Item{{
+				Type: "message",
+				Role: "user",
+				Content: &Input{Items: []Item{{
+					Type:   "input_image",
+					FileID: lo.ToPtr("file_123"),
+				}}},
+			}}},
+		},
 	}
 
 	for _, tt := range tests {

@@ -102,7 +102,10 @@ export type FilterCondition = {
 export const filterConditionSchema: z.ZodType<FilterCondition> = z.object({
   type: z.enum(['condition', 'group']).default('condition'),
   logic: z.string().optional(),
-  conditions: z.array(z.lazy(() => filterConditionSchema)).optional().default([]),
+  conditions: z
+    .array(z.lazy(() => filterConditionSchema))
+    .optional()
+    .default([]),
   field: z.string().optional(),
   operator: z.string().optional(),
   value: z.any().optional(),
@@ -141,6 +144,13 @@ export const modelSettingsSchema = z.object({
   associations: z.array(modelAssociationSchema).optional().default([]),
   loadBalancerStrategy: z.enum(['default', 'adaptive', 'failover', 'circuit-breaker', 'round-robin']).optional().default('default'),
   traceStickyMode: z.enum(['default', 'disabled', 'prefer_previous_channel']).optional().default('default'),
+  visionDelegation: z
+    .object({
+      enabled: z.boolean().optional().default(false),
+      targetModelID: z.string().optional().nullable(),
+    })
+    .optional()
+    .default({ enabled: false, targetModelID: null }),
 });
 export type ModelSettings = z.infer<typeof modelSettingsSchema>;
 
@@ -155,6 +165,7 @@ export const modelSchema = z.object({
   icon: z.string(),
   group: z.string(),
   modelCard: modelCardSchema,
+  effectiveModelCard: modelCardSchema.optional(),
   settings: modelSettingsSchema,
   status: modelStatusSchema,
   remark: z.string().optional().nullable(),

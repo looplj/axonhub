@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -119,6 +120,20 @@ func (_c *RequestExecutionCreate) SetNillableExternalID(v *string) *RequestExecu
 // SetModelID sets the "model_id" field.
 func (_c *RequestExecutionCreate) SetModelID(v string) *RequestExecutionCreate {
 	_c.mutation.SetModelID(v)
+	return _c
+}
+
+// SetPurpose sets the "purpose" field.
+func (_c *RequestExecutionCreate) SetPurpose(v requestexecution.Purpose) *RequestExecutionCreate {
+	_c.mutation.SetPurpose(v)
+	return _c
+}
+
+// SetNillablePurpose sets the "purpose" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillablePurpose(v *requestexecution.Purpose) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetPurpose(*v)
+	}
 	return _c
 }
 
@@ -307,6 +322,21 @@ func (_c *RequestExecutionCreate) SetDataStorage(v *DataStorage) *RequestExecuti
 	return _c.SetDataStorageID(v.ID)
 }
 
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by IDs.
+func (_c *RequestExecutionCreate) AddUsageLogIDs(ids ...int) *RequestExecutionCreate {
+	_c.mutation.AddUsageLogIDs(ids...)
+	return _c
+}
+
+// AddUsageLogs adds the "usage_logs" edges to the UsageLog entity.
+func (_c *RequestExecutionCreate) AddUsageLogs(v ...*UsageLog) *RequestExecutionCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddUsageLogIDs(ids...)
+}
+
 // Mutation returns the RequestExecutionMutation object of the builder.
 func (_c *RequestExecutionCreate) Mutation() *RequestExecutionMutation {
 	return _c.mutation
@@ -354,6 +384,10 @@ func (_c *RequestExecutionCreate) defaults() {
 		v := requestexecution.DefaultProjectID
 		_c.mutation.SetProjectID(v)
 	}
+	if _, ok := _c.mutation.Purpose(); !ok {
+		v := requestexecution.DefaultPurpose
+		_c.mutation.SetPurpose(v)
+	}
 	if _, ok := _c.mutation.Format(); !ok {
 		v := requestexecution.DefaultFormat
 		_c.mutation.SetFormat(v)
@@ -383,6 +417,14 @@ func (_c *RequestExecutionCreate) check() error {
 	}
 	if _, ok := _c.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "RequestExecution.model_id"`)}
+	}
+	if _, ok := _c.mutation.Purpose(); !ok {
+		return &ValidationError{Name: "purpose", err: errors.New(`ent: missing required field "RequestExecution.purpose"`)}
+	}
+	if v, ok := _c.mutation.Purpose(); ok {
+		if err := requestexecution.PurposeValidator(v); err != nil {
+			return &ValidationError{Name: "purpose", err: fmt.Errorf(`ent: validator failed for field "RequestExecution.purpose": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Format(); !ok {
 		return &ValidationError{Name: "format", err: errors.New(`ent: missing required field "RequestExecution.format"`)}
@@ -453,6 +495,10 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 	if value, ok := _c.mutation.ModelID(); ok {
 		_spec.SetField(requestexecution.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
+	}
+	if value, ok := _c.mutation.Purpose(); ok {
+		_spec.SetField(requestexecution.FieldPurpose, field.TypeEnum, value)
+		_node.Purpose = value
 	}
 	if value, ok := _c.mutation.Format(); ok {
 		_spec.SetField(requestexecution.FieldFormat, field.TypeString, value)
@@ -563,6 +609,22 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.DataStorageID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.UsageLogsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   requestexecution.UsageLogsTable,
+			Columns: []string{requestexecution.UsageLogsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(usagelog.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -885,6 +947,9 @@ func (u *RequestExecutionUpsertOne) UpdateNewValues() *RequestExecutionUpsertOne
 		}
 		if _, exists := u.create.mutation.ModelID(); exists {
 			s.SetIgnore(requestexecution.FieldModelID)
+		}
+		if _, exists := u.create.mutation.Purpose(); exists {
+			s.SetIgnore(requestexecution.FieldPurpose)
 		}
 		if _, exists := u.create.mutation.Format(); exists {
 			s.SetIgnore(requestexecution.FieldFormat)
@@ -1402,6 +1467,9 @@ func (u *RequestExecutionUpsertBulk) UpdateNewValues() *RequestExecutionUpsertBu
 			}
 			if _, exists := b.mutation.ModelID(); exists {
 				s.SetIgnore(requestexecution.FieldModelID)
+			}
+			if _, exists := b.mutation.Purpose(); exists {
+				s.SetIgnore(requestexecution.FieldPurpose)
 			}
 			if _, exists := b.mutation.Format(); exists {
 				s.SetIgnore(requestexecution.FieldFormat)

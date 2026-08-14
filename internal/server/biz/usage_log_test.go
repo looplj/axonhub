@@ -12,11 +12,70 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/llm"
 )
+
+func TestUsageLogService_CreateUsageLogFromRequest_UsesExecutionIdentity(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := ent.NewContext(authz.WithTestBypass(context.Background()), client)
+
+	p, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	ch, err := client.Channel.Create().
+		SetName("vision-channel").
+		SetType("openai").
+		SetBaseURL("https://api.openai.com/v1").
+		SetSupportedModels([]string{"vision-model"}).
+		SetDefaultTestModel("vision-model").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	req, err := client.Request.Create().
+		SetProjectID(p.ID).
+		SetModelID("text-model").
+		SetFormat(string(llm.APIFormatAnthropicMessage)).
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
+		Save(ctx)
+	require.NoError(t, err)
+
+	execution, err := client.RequestExecution.Create().
+		SetProjectID(p.ID).
+		SetRequestID(req.ID).
+		SetChannelID(ch.ID).
+		SetModelID("vision-model").
+		SetPurpose(requestexecution.PurposeVisionDelegation).
+		SetFormat(string(llm.APIFormatOpenAIChatCompletion)).
+		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
+		SetStatus(requestexecution.StatusCompleted).
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc := NewUsageLogService(
+		client,
+		NewSystemService(SystemServiceParams{CacheConfig: xcache.Config{}, Ent: client}),
+		NewChannelServiceForTest(client),
+	)
+	created, err := svc.CreateUsageLogFromRequest(ctx, req, execution, &llm.Usage{TotalTokens: 17})
+	require.NoError(t, err)
+	require.NotNil(t, created)
+	require.Equal(t, execution.ID, created.RequestExecutionID)
+	require.Equal(t, req.ID, created.RequestID)
+	require.Equal(t, ch.ID, created.ChannelID)
+	require.Equal(t, "vision-model", created.ModelID)
+	require.Equal(t, string(llm.APIFormatOpenAIChatCompletion), created.Format)
+}
 
 func TestUsageLogService_CreateUsageLog_PromptWriteCachedTokens(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")

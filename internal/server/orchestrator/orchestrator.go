@@ -6,6 +6,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
@@ -70,10 +71,16 @@ func NewChatCompletionOrchestrator(
 		quotaStrategy,
 	).WithoutWeightTieBreaker().WithRoundRobinHealthFilter(roundRobinHealthFilter)
 
+	var modelService *biz.ModelService
+	if defaultSelector != nil {
+		modelService = defaultSelector.ModelService
+	}
+
 	return &ChatCompletionOrchestrator{
 		Inbound:            inbound,
 		RequestService:     requestService,
 		ChannelService:     channelService,
+		ModelService:       modelService,
 		SystemService:      systemService,
 		UsageLogService:    usageLogService,
 		QuotaService:       quotaService,
@@ -105,6 +112,7 @@ type ChatCompletionOrchestrator struct {
 	Inbound            transformer.Inbound
 	RequestService     *biz.RequestService
 	ChannelService     *biz.ChannelService
+	ModelService       *biz.ModelService
 	SystemService      *biz.SystemService
 	UsageLogService    *biz.UsageLogService
 	QuotaService       *biz.QuotaService
@@ -196,6 +204,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		RequestService:      processor.RequestService,
 		UsageLogService:     processor.UsageLogService,
 		ChannelService:      processor.ChannelService,
+		ModelService:        processor.ModelService,
 		PromptProvider:      processor.PromptProvider,
 		PromptProtecter:     processor.PromptProtecter,
 		RetryPolicyProvider: processor.SystemService,
@@ -210,6 +219,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		ModelMapper:           processor.ModelMapper,
 		Proxy:                 processor.proxy,
 		CurrentCandidateIndex: 0,
+		OwnsRequest:           true,
+		ExecutionPurpose:      requestexecution.PurposePrimary,
 	}
 
 	var pipelineOpts []pipeline.Option
@@ -253,6 +264,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyPassThroughResponse(outbound, processor.SystemService),
 		applyPassThroughStream(outbound, processor.SystemService),
 		persistRequest(inbound),
+		visionDelegation(processor, inbound),
 	)
 
 	// Add outbound middlewares (executed after outbound.TransformRequest)

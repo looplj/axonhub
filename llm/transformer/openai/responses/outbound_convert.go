@@ -169,11 +169,16 @@ func convertUserMessage(msg llm.Message) Item {
 				}
 			case "image_url":
 				if p.ImageURL != nil {
-					contentItems = append(contentItems, Item{
-						Type:     "input_image",
-						ImageURL: &p.ImageURL.URL,
-						Detail:   p.ImageURL.Detail,
-					})
+					item := Item{
+						Type:   "input_image",
+						Detail: p.ImageURL.Detail,
+					}
+					if p.ImageURL.FileID != "" {
+						item.FileID = &p.ImageURL.FileID
+					} else {
+						item.ImageURL = &p.ImageURL.URL
+					}
+					contentItems = append(contentItems, item)
 				}
 			case "compaction", "compaction_summary":
 				if p.Compact != nil {
@@ -329,11 +334,16 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 					// custom_tool_call_output's content array resolves to; the
 					// function_call_output param schema makes it optional. Both
 					// document "auto" as the default, so always send one.
-					output.Items = append(output.Items, Item{
-						Type:     "input_image",
-						ImageURL: &p.ImageURL.URL,
-						Detail:   lo.ToPtr(lo.FromPtrOr(p.ImageURL.Detail, "auto")),
-					})
+					item := Item{
+						Type:   "input_image",
+						Detail: lo.ToPtr(lo.FromPtrOr(p.ImageURL.Detail, "auto")),
+					}
+					if p.ImageURL.FileID != "" {
+						item.FileID = &p.ImageURL.FileID
+					} else {
+						item.ImageURL = &p.ImageURL.URL
+					}
+					output.Items = append(output.Items, item)
 				}
 			}
 		}

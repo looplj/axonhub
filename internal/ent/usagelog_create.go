@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -57,6 +58,20 @@ func (_c *UsageLogCreate) SetNillableUpdatedAt(v *time.Time) *UsageLogCreate {
 // SetRequestID sets the "request_id" field.
 func (_c *UsageLogCreate) SetRequestID(v int) *UsageLogCreate {
 	_c.mutation.SetRequestID(v)
+	return _c
+}
+
+// SetRequestExecutionID sets the "request_execution_id" field.
+func (_c *UsageLogCreate) SetRequestExecutionID(v int) *UsageLogCreate {
+	_c.mutation.SetRequestExecutionID(v)
+	return _c
+}
+
+// SetNillableRequestExecutionID sets the "request_execution_id" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableRequestExecutionID(v *int) *UsageLogCreate {
+	if v != nil {
+		_c.SetRequestExecutionID(*v)
+	}
 	return _c
 }
 
@@ -341,6 +356,11 @@ func (_c *UsageLogCreate) SetNillableCostPriceReferenceID(v *string) *UsageLogCr
 // SetRequest sets the "request" edge to the Request entity.
 func (_c *UsageLogCreate) SetRequest(v *Request) *UsageLogCreate {
 	return _c.SetRequestID(v.ID)
+}
+
+// SetRequestExecution sets the "request_execution" edge to the RequestExecution entity.
+func (_c *UsageLogCreate) SetRequestExecution(v *RequestExecution) *UsageLogCreate {
+	return _c.SetRequestExecutionID(v.ID)
 }
 
 // SetProject sets the "project" edge to the Project entity.
@@ -634,6 +654,23 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.RequestID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.RequestExecutionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   usagelog.RequestExecutionTable,
+			Columns: []string{usagelog.RequestExecutionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(requestexecution.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.RequestExecutionID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
@@ -1080,6 +1117,9 @@ func (u *UsageLogUpsertOne) UpdateNewValues() *UsageLogUpsertOne {
 		}
 		if _, exists := u.create.mutation.RequestID(); exists {
 			s.SetIgnore(usagelog.FieldRequestID)
+		}
+		if _, exists := u.create.mutation.RequestExecutionID(); exists {
+			s.SetIgnore(usagelog.FieldRequestExecutionID)
 		}
 		if _, exists := u.create.mutation.APIKeyID(); exists {
 			s.SetIgnore(usagelog.FieldAPIKeyID)
@@ -1710,6 +1750,9 @@ func (u *UsageLogUpsertBulk) UpdateNewValues() *UsageLogUpsertBulk {
 			}
 			if _, exists := b.mutation.RequestID(); exists {
 				s.SetIgnore(usagelog.FieldRequestID)
+			}
+			if _, exists := b.mutation.RequestExecutionID(); exists {
+				s.SetIgnore(usagelog.FieldRequestExecutionID)
 			}
 			if _, exists := b.mutation.APIKeyID(); exists {
 				s.SetIgnore(usagelog.FieldAPIKeyID)

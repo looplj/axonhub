@@ -13,7 +13,9 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/system"
+	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -787,6 +789,115 @@ func TestBackupService_Restore_UsageStats(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, usageLogsAfterSecondRestore, 1)
 	require.Equal(t, restoredRequest.ID, usageLogsAfterSecondRestore[0].RequestID)
+}
+
+func TestBackupService_Restore_MultipleUsageLogsPerRequest(t *testing.T) {
+	client, service, ctx := setupBackupTest(t)
+	defer client.Close()
+
+	user, err := client.User.Query().First(ctx)
+	require.NoError(t, err)
+	proj := createBackupTestProject(t, client, ctx, "Project1", "Test Project")
+	ch := createBackupTestChannel(t, client, ctx, "Channel 1", channel.TypeOpenai)
+	ak := createBackupTestAPIKey(t, client, ctx, user, proj, "API Key 1", "sk-test-key-1")
+	req, originalUsage := createBackupTestUsage(t, client, ctx, proj, ch, ak)
+	require.NoError(t, client.UsageLog.DeleteOne(originalUsage).Exec(ctx))
+
+	primaryExecution, err := client.RequestExecution.Create().
+		SetProjectID(proj.ID).
+		SetRequestID(req.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-4").
+		SetPurpose(requestexecution.PurposePrimary).
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		Save(ctx)
+	require.NoError(t, err)
+
+	visionExecution, err := client.RequestExecution.Create().
+		SetProjectID(proj.ID).
+		SetRequestID(req.ID).
+		SetChannelID(ch.ID).
+		SetModelID("vision-model").
+		SetPurpose(requestexecution.PurposeVisionDelegation).
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetRequestExecutionID(primaryExecution.ID).
+		SetAPIKeyID(ak.ID).
+		SetProjectID(proj.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-4").
+		SetPromptTokens(40).
+		SetCompletionTokens(60).
+		SetTotalTokens(100).
+		SetTotalCost(1).
+		SetSource(usagelog.SourceAPI).
+		SetFormat("openai/chat_completions").
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetRequestExecutionID(visionExecution.ID).
+		SetAPIKeyID(ak.ID).
+		SetProjectID(proj.ID).
+		SetChannelID(ch.ID).
+		SetModelID("vision-model").
+		SetPromptTokens(20).
+		SetCompletionTokens(30).
+		SetTotalTokens(50).
+		SetTotalCost(2).
+		SetSource(usagelog.SourceAPI).
+		SetFormat("openai/chat_completions").
+		Save(ctx)
+	require.NoError(t, err)
+
+	data, err := service.Backup(ctx, BackupOptions{
+		IncludeAPIKeys:    true,
+		IncludeUsageStats: true,
+	})
+	require.NoError(t, err)
+
+	var backupData BackupData
+	require.NoError(t, json.Unmarshal(data, &backupData))
+	require.Len(t, backupData.UsageLogs, 2)
+	require.ElementsMatch(t,
+		[]int{primaryExecution.ID, visionExecution.ID},
+		[]int{backupData.UsageLogs[0].RequestExecutionID, backupData.UsageLogs[1].RequestExecutionID},
+	)
+
+	_, err = client.UsageLog.Delete().Exec(ctx)
+	require.NoError(t, err)
+	_, err = client.RequestExecution.Delete().Exec(ctx)
+	require.NoError(t, err)
+	_, err = client.Request.Delete().Exec(ctx)
+	require.NoError(t, err)
+
+	restore := func() {
+		t.Helper()
+		require.NoError(t, service.Restore(ctx, data, RestoreOptions{IncludeUsageStats: true}))
+
+		usageLogs, queryErr := client.UsageLog.Query().All(ctx)
+		require.NoError(t, queryErr)
+		require.Len(t, usageLogs, 2)
+
+		usageByModel := make(map[string]*ent.UsageLog, len(usageLogs))
+		for _, usageLog := range usageLogs {
+			usageByModel[usageLog.ModelID] = usageLog
+		}
+		require.Equal(t, int64(100), usageByModel["gpt-4"].TotalTokens)
+		require.Equal(t, int64(50), usageByModel["vision-model"].TotalTokens)
+		require.Equal(t, 1.0, *usageByModel["gpt-4"].TotalCost)
+		require.Equal(t, 2.0, *usageByModel["vision-model"].TotalCost)
+	}
+
+	restore()
+	restore()
 }
 
 func TestBackupService_Restore_UsageStatsWithRequestLogs(t *testing.T) {

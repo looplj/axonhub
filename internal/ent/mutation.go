@@ -18813,6 +18813,7 @@ type RequestExecutionMutation struct {
 	addproject_id                     *int
 	external_id                       *string
 	model_id                          *string
+	purpose                           *requestexecution.Purpose
 	format                            *string
 	reasoning_effort                  *string
 	request_body                      *objects.JSONRawMessage
@@ -18843,6 +18844,9 @@ type RequestExecutionMutation struct {
 	clearedchannel                    bool
 	data_storage                      *int
 	cleareddata_storage               bool
+	usage_logs                        map[int]struct{}
+	removedusage_logs                 map[int]struct{}
+	clearedusage_logs                 bool
 	done                              bool
 	oldValue                          func(context.Context) (*RequestExecution, error)
 	predicates                        []predicate.RequestExecution
@@ -19291,6 +19295,42 @@ func (m *RequestExecutionMutation) OldModelID(ctx context.Context) (v string, er
 // ResetModelID resets all changes to the "model_id" field.
 func (m *RequestExecutionMutation) ResetModelID() {
 	m.model_id = nil
+}
+
+// SetPurpose sets the "purpose" field.
+func (m *RequestExecutionMutation) SetPurpose(r requestexecution.Purpose) {
+	m.purpose = &r
+}
+
+// Purpose returns the value of the "purpose" field in the mutation.
+func (m *RequestExecutionMutation) Purpose() (r requestexecution.Purpose, exists bool) {
+	v := m.purpose
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPurpose returns the old "purpose" field's value of the RequestExecution entity.
+// If the RequestExecution object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RequestExecutionMutation) OldPurpose(ctx context.Context) (v requestexecution.Purpose, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPurpose is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPurpose requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPurpose: %w", err)
+	}
+	return oldValue.Purpose, nil
+}
+
+// ResetPurpose resets all changes to the "purpose" field.
+func (m *RequestExecutionMutation) ResetPurpose() {
+	m.purpose = nil
 }
 
 // SetFormat sets the "format" field.
@@ -20191,6 +20231,60 @@ func (m *RequestExecutionMutation) ResetDataStorage() {
 	m.cleareddata_storage = false
 }
 
+// AddUsageLogIDs adds the "usage_logs" edge to the UsageLog entity by ids.
+func (m *RequestExecutionMutation) AddUsageLogIDs(ids ...int) {
+	if m.usage_logs == nil {
+		m.usage_logs = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.usage_logs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearUsageLogs clears the "usage_logs" edge to the UsageLog entity.
+func (m *RequestExecutionMutation) ClearUsageLogs() {
+	m.clearedusage_logs = true
+}
+
+// UsageLogsCleared reports if the "usage_logs" edge to the UsageLog entity was cleared.
+func (m *RequestExecutionMutation) UsageLogsCleared() bool {
+	return m.clearedusage_logs
+}
+
+// RemoveUsageLogIDs removes the "usage_logs" edge to the UsageLog entity by IDs.
+func (m *RequestExecutionMutation) RemoveUsageLogIDs(ids ...int) {
+	if m.removedusage_logs == nil {
+		m.removedusage_logs = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.usage_logs, ids[i])
+		m.removedusage_logs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedUsageLogs returns the removed IDs of the "usage_logs" edge to the UsageLog entity.
+func (m *RequestExecutionMutation) RemovedUsageLogsIDs() (ids []int) {
+	for id := range m.removedusage_logs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// UsageLogsIDs returns the "usage_logs" edge IDs in the mutation.
+func (m *RequestExecutionMutation) UsageLogsIDs() (ids []int) {
+	for id := range m.usage_logs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetUsageLogs resets all changes to the "usage_logs" edge.
+func (m *RequestExecutionMutation) ResetUsageLogs() {
+	m.usage_logs = nil
+	m.clearedusage_logs = false
+	m.removedusage_logs = nil
+}
+
 // Where appends a list predicates to the RequestExecutionMutation builder.
 func (m *RequestExecutionMutation) Where(ps ...predicate.RequestExecution) {
 	m.predicates = append(m.predicates, ps...)
@@ -20225,7 +20319,7 @@ func (m *RequestExecutionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RequestExecutionMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, requestexecution.FieldCreatedAt)
 	}
@@ -20249,6 +20343,9 @@ func (m *RequestExecutionMutation) Fields() []string {
 	}
 	if m.model_id != nil {
 		fields = append(fields, requestexecution.FieldModelID)
+	}
+	if m.purpose != nil {
+		fields = append(fields, requestexecution.FieldPurpose)
 	}
 	if m.format != nil {
 		fields = append(fields, requestexecution.FieldFormat)
@@ -20319,6 +20416,8 @@ func (m *RequestExecutionMutation) Field(name string) (ent.Value, bool) {
 		return m.ExternalID()
 	case requestexecution.FieldModelID:
 		return m.ModelID()
+	case requestexecution.FieldPurpose:
+		return m.Purpose()
 	case requestexecution.FieldFormat:
 		return m.Format()
 	case requestexecution.FieldReasoningEffort:
@@ -20374,6 +20473,8 @@ func (m *RequestExecutionMutation) OldField(ctx context.Context, name string) (e
 		return m.OldExternalID(ctx)
 	case requestexecution.FieldModelID:
 		return m.OldModelID(ctx)
+	case requestexecution.FieldPurpose:
+		return m.OldPurpose(ctx)
 	case requestexecution.FieldFormat:
 		return m.OldFormat(ctx)
 	case requestexecution.FieldReasoningEffort:
@@ -20468,6 +20569,13 @@ func (m *RequestExecutionMutation) SetField(name string, value ent.Value) error 
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModelID(v)
+		return nil
+	case requestexecution.FieldPurpose:
+		v, ok := value.(requestexecution.Purpose)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPurpose(v)
 		return nil
 	case requestexecution.FieldFormat:
 		v, ok := value.(string)
@@ -20791,6 +20899,9 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 	case requestexecution.FieldModelID:
 		m.ResetModelID()
 		return nil
+	case requestexecution.FieldPurpose:
+		m.ResetPurpose()
+		return nil
 	case requestexecution.FieldFormat:
 		m.ResetFormat()
 		return nil
@@ -20842,7 +20953,7 @@ func (m *RequestExecutionMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RequestExecutionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.request != nil {
 		edges = append(edges, requestexecution.EdgeRequest)
 	}
@@ -20851,6 +20962,9 @@ func (m *RequestExecutionMutation) AddedEdges() []string {
 	}
 	if m.data_storage != nil {
 		edges = append(edges, requestexecution.EdgeDataStorage)
+	}
+	if m.usage_logs != nil {
+		edges = append(edges, requestexecution.EdgeUsageLogs)
 	}
 	return edges
 }
@@ -20871,25 +20985,42 @@ func (m *RequestExecutionMutation) AddedIDs(name string) []ent.Value {
 		if id := m.data_storage; id != nil {
 			return []ent.Value{*id}
 		}
+	case requestexecution.EdgeUsageLogs:
+		ids := make([]ent.Value, 0, len(m.usage_logs))
+		for id := range m.usage_logs {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RequestExecutionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
+	if m.removedusage_logs != nil {
+		edges = append(edges, requestexecution.EdgeUsageLogs)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *RequestExecutionMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case requestexecution.EdgeUsageLogs:
+		ids := make([]ent.Value, 0, len(m.removedusage_logs))
+		for id := range m.removedusage_logs {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RequestExecutionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.clearedrequest {
 		edges = append(edges, requestexecution.EdgeRequest)
 	}
@@ -20898,6 +21029,9 @@ func (m *RequestExecutionMutation) ClearedEdges() []string {
 	}
 	if m.cleareddata_storage {
 		edges = append(edges, requestexecution.EdgeDataStorage)
+	}
+	if m.clearedusage_logs {
+		edges = append(edges, requestexecution.EdgeUsageLogs)
 	}
 	return edges
 }
@@ -20912,6 +21046,8 @@ func (m *RequestExecutionMutation) EdgeCleared(name string) bool {
 		return m.clearedchannel
 	case requestexecution.EdgeDataStorage:
 		return m.cleareddata_storage
+	case requestexecution.EdgeUsageLogs:
+		return m.clearedusage_logs
 	}
 	return false
 }
@@ -20945,6 +21081,9 @@ func (m *RequestExecutionMutation) ResetEdge(name string) error {
 		return nil
 	case requestexecution.EdgeDataStorage:
 		m.ResetDataStorage()
+		return nil
+	case requestexecution.EdgeUsageLogs:
+		m.ResetUsageLogs()
 		return nil
 	}
 	return fmt.Errorf("unknown RequestExecution edge %s", name)
@@ -24029,6 +24168,8 @@ type UsageLogMutation struct {
 	clearedFields                            map[string]struct{}
 	request                                  *int
 	clearedrequest                           bool
+	request_execution                        *int
+	clearedrequest_execution                 bool
 	project                                  *int
 	clearedproject                           bool
 	channel                                  *int
@@ -24242,6 +24383,55 @@ func (m *UsageLogMutation) OldRequestID(ctx context.Context) (v int, err error) 
 // ResetRequestID resets all changes to the "request_id" field.
 func (m *UsageLogMutation) ResetRequestID() {
 	m.request = nil
+}
+
+// SetRequestExecutionID sets the "request_execution_id" field.
+func (m *UsageLogMutation) SetRequestExecutionID(i int) {
+	m.request_execution = &i
+}
+
+// RequestExecutionID returns the value of the "request_execution_id" field in the mutation.
+func (m *UsageLogMutation) RequestExecutionID() (r int, exists bool) {
+	v := m.request_execution
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestExecutionID returns the old "request_execution_id" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldRequestExecutionID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestExecutionID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestExecutionID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestExecutionID: %w", err)
+	}
+	return oldValue.RequestExecutionID, nil
+}
+
+// ClearRequestExecutionID clears the value of the "request_execution_id" field.
+func (m *UsageLogMutation) ClearRequestExecutionID() {
+	m.request_execution = nil
+	m.clearedFields[usagelog.FieldRequestExecutionID] = struct{}{}
+}
+
+// RequestExecutionIDCleared returns if the "request_execution_id" field was cleared in this mutation.
+func (m *UsageLogMutation) RequestExecutionIDCleared() bool {
+	_, ok := m.clearedFields[usagelog.FieldRequestExecutionID]
+	return ok
+}
+
+// ResetRequestExecutionID resets all changes to the "request_execution_id" field.
+func (m *UsageLogMutation) ResetRequestExecutionID() {
+	m.request_execution = nil
+	delete(m.clearedFields, usagelog.FieldRequestExecutionID)
 }
 
 // SetAPIKeyID sets the "api_key_id" field.
@@ -25516,6 +25706,33 @@ func (m *UsageLogMutation) ResetRequest() {
 	m.clearedrequest = false
 }
 
+// ClearRequestExecution clears the "request_execution" edge to the RequestExecution entity.
+func (m *UsageLogMutation) ClearRequestExecution() {
+	m.clearedrequest_execution = true
+	m.clearedFields[usagelog.FieldRequestExecutionID] = struct{}{}
+}
+
+// RequestExecutionCleared reports if the "request_execution" edge to the RequestExecution entity was cleared.
+func (m *UsageLogMutation) RequestExecutionCleared() bool {
+	return m.RequestExecutionIDCleared() || m.clearedrequest_execution
+}
+
+// RequestExecutionIDs returns the "request_execution" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// RequestExecutionID instead. It exists only for internal usage by the builders.
+func (m *UsageLogMutation) RequestExecutionIDs() (ids []int) {
+	if id := m.request_execution; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRequestExecution resets all changes to the "request_execution" edge.
+func (m *UsageLogMutation) ResetRequestExecution() {
+	m.request_execution = nil
+	m.clearedrequest_execution = false
+}
+
 // ClearProject clears the "project" edge to the Project entity.
 func (m *UsageLogMutation) ClearProject() {
 	m.clearedproject = true
@@ -25604,7 +25821,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 24)
+	fields := make([]string, 0, 25)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
@@ -25613,6 +25830,9 @@ func (m *UsageLogMutation) Fields() []string {
 	}
 	if m.request != nil {
 		fields = append(fields, usagelog.FieldRequestID)
+	}
+	if m.request_execution != nil {
+		fields = append(fields, usagelog.FieldRequestExecutionID)
 	}
 	if m.api_key_id != nil {
 		fields = append(fields, usagelog.FieldAPIKeyID)
@@ -25691,6 +25911,8 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case usagelog.FieldRequestID:
 		return m.RequestID()
+	case usagelog.FieldRequestExecutionID:
+		return m.RequestExecutionID()
 	case usagelog.FieldAPIKeyID:
 		return m.APIKeyID()
 	case usagelog.FieldProjectID:
@@ -25748,6 +25970,8 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldUpdatedAt(ctx)
 	case usagelog.FieldRequestID:
 		return m.OldRequestID(ctx)
+	case usagelog.FieldRequestExecutionID:
+		return m.OldRequestExecutionID(ctx)
 	case usagelog.FieldAPIKeyID:
 		return m.OldAPIKeyID(ctx)
 	case usagelog.FieldProjectID:
@@ -25819,6 +26043,13 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRequestID(v)
+		return nil
+	case usagelog.FieldRequestExecutionID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestExecutionID(v)
 		return nil
 	case usagelog.FieldAPIKeyID:
 		v, ok := value.(int)
@@ -26168,6 +26399,9 @@ func (m *UsageLogMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *UsageLogMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(usagelog.FieldRequestExecutionID) {
+		fields = append(fields, usagelog.FieldRequestExecutionID)
+	}
 	if m.FieldCleared(usagelog.FieldAPIKeyID) {
 		fields = append(fields, usagelog.FieldAPIKeyID)
 	}
@@ -26224,6 +26458,9 @@ func (m *UsageLogMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *UsageLogMutation) ClearField(name string) error {
 	switch name {
+	case usagelog.FieldRequestExecutionID:
+		m.ClearRequestExecutionID()
+		return nil
 	case usagelog.FieldAPIKeyID:
 		m.ClearAPIKeyID()
 		return nil
@@ -26282,6 +26519,9 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldRequestID:
 		m.ResetRequestID()
+		return nil
+	case usagelog.FieldRequestExecutionID:
+		m.ResetRequestExecutionID()
 		return nil
 	case usagelog.FieldAPIKeyID:
 		m.ResetAPIKeyID()
@@ -26352,9 +26592,12 @@ func (m *UsageLogMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UsageLogMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.request != nil {
 		edges = append(edges, usagelog.EdgeRequest)
+	}
+	if m.request_execution != nil {
+		edges = append(edges, usagelog.EdgeRequestExecution)
 	}
 	if m.project != nil {
 		edges = append(edges, usagelog.EdgeProject)
@@ -26373,6 +26616,10 @@ func (m *UsageLogMutation) AddedIDs(name string) []ent.Value {
 		if id := m.request; id != nil {
 			return []ent.Value{*id}
 		}
+	case usagelog.EdgeRequestExecution:
+		if id := m.request_execution; id != nil {
+			return []ent.Value{*id}
+		}
 	case usagelog.EdgeProject:
 		if id := m.project; id != nil {
 			return []ent.Value{*id}
@@ -26387,7 +26634,7 @@ func (m *UsageLogMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UsageLogMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	return edges
 }
 
@@ -26399,9 +26646,12 @@ func (m *UsageLogMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UsageLogMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.clearedrequest {
 		edges = append(edges, usagelog.EdgeRequest)
+	}
+	if m.clearedrequest_execution {
+		edges = append(edges, usagelog.EdgeRequestExecution)
 	}
 	if m.clearedproject {
 		edges = append(edges, usagelog.EdgeProject)
@@ -26418,6 +26668,8 @@ func (m *UsageLogMutation) EdgeCleared(name string) bool {
 	switch name {
 	case usagelog.EdgeRequest:
 		return m.clearedrequest
+	case usagelog.EdgeRequestExecution:
+		return m.clearedrequest_execution
 	case usagelog.EdgeProject:
 		return m.clearedproject
 	case usagelog.EdgeChannel:
@@ -26432,6 +26684,9 @@ func (m *UsageLogMutation) ClearEdge(name string) error {
 	switch name {
 	case usagelog.EdgeRequest:
 		m.ClearRequest()
+		return nil
+	case usagelog.EdgeRequestExecution:
+		m.ClearRequestExecution()
 		return nil
 	case usagelog.EdgeProject:
 		m.ClearProject()
@@ -26449,6 +26704,9 @@ func (m *UsageLogMutation) ResetEdge(name string) error {
 	switch name {
 	case usagelog.EdgeRequest:
 		m.ResetRequest()
+		return nil
+	case usagelog.EdgeRequestExecution:
+		m.ResetRequestExecution()
 		return nil
 	case usagelog.EdgeProject:
 		m.ResetProject()

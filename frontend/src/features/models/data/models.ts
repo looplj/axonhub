@@ -52,10 +52,40 @@ const MODELS_QUERY = `
             releaseDate
             lastUpdated
           }
+          effectiveModelCard {
+            reasoning {
+              supported
+              default
+            }
+            toolCall
+            temperature
+            modalities {
+              input
+              output
+            }
+            vision
+            cost {
+              input
+              output
+              cacheRead
+              cacheWrite
+            }
+            limit {
+              context
+              output
+            }
+            knowledge
+            releaseDate
+            lastUpdated
+          }
           settings {
             disableDeveloperSettingsInheritance
             loadBalancerStrategy
             traceStickyMode
+            visionDelegation {
+              enabled
+              targetModelID
+            }
             associations {
               type
               priority
@@ -177,6 +207,10 @@ const CREATE_MODEL_MUTATION = `
         disableDeveloperSettingsInheritance
         loadBalancerStrategy
         traceStickyMode
+        visionDelegation {
+          enabled
+          targetModelID
+        }
         associations {
           type
           priority
@@ -280,6 +314,10 @@ const BULK_CREATE_MODELS_MUTATION = `
         disableDeveloperSettingsInheritance
         loadBalancerStrategy
         traceStickyMode
+        visionDelegation {
+          enabled
+          targetModelID
+        }
         associations {
           type
           priority
@@ -383,6 +421,10 @@ const UPDATE_MODEL_MUTATION = `
         disableDeveloperSettingsInheritance
         loadBalancerStrategy
         traceStickyMode
+        visionDelegation {
+          enabled
+          targetModelID
+        }
         associations {
           type
           priority
@@ -778,6 +820,30 @@ export function useQueryModelChannelConnections() {
         queryModelChannelConnections: ModelChannelConnection[];
       }>(MODEL_CHANNEL_CONNECTIONS_QUERY, { associations });
       return data.queryModelChannelConnections;
+    },
+  });
+}
+
+const VISION_DELEGATION_CANDIDATES_QUERY = `
+  query VisionDelegationCandidates($sourceModelID: String!) {
+    visionDelegationCandidates(sourceModelID: $sourceModelID) {
+      id
+      modelID
+      name
+      status
+    }
+  }
+`;
+
+export function useVisionDelegationCandidates(sourceModelID?: string, enabled = true) {
+  return useQuery({
+    queryKey: ['visionDelegationCandidates', sourceModelID],
+    enabled: enabled && Boolean(sourceModelID),
+    queryFn: async () => {
+      const data = await graphqlRequest<{
+        visionDelegationCandidates: Array<Pick<Model, 'id' | 'modelID' | 'name' | 'status'>>;
+      }>(VISION_DELEGATION_CANDIDATES_QUERY, { sourceModelID });
+      return data.visionDelegationCandidates;
     },
   });
 }

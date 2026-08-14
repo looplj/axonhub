@@ -560,6 +560,10 @@ type ImageURL struct {
 	// URL is the URL of the image.
 	URL string `json:"url"`
 
+	// FileID preserves provider-managed image references that cannot be delegated
+	// without downloading through the originating provider.
+	FileID string `json:"file_id,omitempty"`
+
 	// MIMEType is the MIME type of the image when provided by the source protocol.
 	MIMEType string `json:"mime_type,omitempty"`
 

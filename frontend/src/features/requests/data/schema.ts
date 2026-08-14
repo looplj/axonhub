@@ -16,6 +16,25 @@ export type RequestSource = z.infer<typeof requestSourceSchema>;
 export const requestExecutionStatusSchema = z.enum(['pending', 'processing', 'completed', 'failed', 'canceled']);
 export type RequestExecutionStatus = z.infer<typeof requestExecutionStatusSchema>;
 
+export const requestExecutionPurposeSchema = z.enum(['primary', 'vision_delegation']);
+export type RequestExecutionPurpose = z.infer<typeof requestExecutionPurposeSchema>;
+
+const embeddedUsageLogsSchema = z
+  .object({
+    edges: z
+      .array(
+        z.object({
+          node: usageLogSchema.partial().nullable().optional(),
+          cursor: z.string().optional(),
+        })
+      )
+      .optional(),
+    pageInfo: pageInfoSchema.optional(),
+    totalCount: z.number().optional(),
+  })
+  .optional()
+  .nullable();
+
 // Request Execution
 export const requestExecutionSchema = z.object({
   id: z.string(),
@@ -26,6 +45,7 @@ export const requestExecutionSchema = z.object({
   // channelID: z.number(),
   channel: channelSchema.partial().nullable().optional(),
   modelID: z.string(),
+  purpose: requestExecutionPurposeSchema.default('primary'),
   requestHeaders: z.any().nullable().optional(),
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage
@@ -40,6 +60,7 @@ export const requestExecutionSchema = z.object({
   metricsReasoningDurationMs: z.number().nullable().optional(),
   requestURL: z.string().nullable().optional(),
   passThroughApplied: z.boolean().optional(),
+  usageLogs: z.array(usageLogSchema.partial()).optional().nullable(),
 });
 export type RequestExecution = z.infer<typeof requestExecutionSchema>;
 
@@ -80,20 +101,21 @@ export const requestSchema = z.object({
       totalCount: z.number(),
     })
     .optional(),
-  usageLogs: z
+  visionExecutions: z
     .object({
-      edges: z
-        .array(
-          z.object({
-            node: usageLogSchema.partial().nullable().optional(),
-            cursor: z.string().optional(),
-          })
-        )
-        .optional(),
-      pageInfo: pageInfoSchema.optional(),
+      edges: z.array(
+        z.object({
+          node: requestExecutionSchema.partial().nullable().optional(),
+          cursor: z.string(),
+        })
+      ),
+      pageInfo: pageInfoSchema,
+      totalCount: z.number(),
     })
-    .optional()
-    .nullable(),
+    .optional(),
+  usageLogs: embeddedUsageLogsSchema,
+  primaryUsageLogs: embeddedUsageLogsSchema,
+  visionUsageLogs: embeddedUsageLogsSchema,
 });
 
 export type Request = z.infer<typeof requestSchema>;

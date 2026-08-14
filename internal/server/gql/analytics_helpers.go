@@ -190,7 +190,7 @@ func (r *queryResolver) queryChannelStats(ctx context.Context, filter *Analytics
 			s.Select(
 				sql.As(s.C(usagelog.FieldChannelID), "channel_id"),
 				sql.As(channelTable.C(channel.FieldName), "name"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+				sql.As(clientRequestCountExpr(s), "request_count"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
@@ -233,7 +233,7 @@ func (r *queryResolver) queryModelStats(ctx context.Context, filter *AnalyticsFi
 			s.Select(
 				sql.As(s.C(usagelog.FieldModelID), "id"),
 				sql.As(s.C(usagelog.FieldModelID), "name"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+				sql.As(clientRequestCountExpr(s), "request_count"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
@@ -271,7 +271,7 @@ func (r *queryResolver) queryAPIKeyStats(ctx context.Context, filter *AnalyticsF
 
 			s.Select(
 				sql.As(s.C(usagelog.FieldAPIKeyID), "api_key_id"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+				sql.As(clientRequestCountExpr(s), "request_count"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
@@ -356,7 +356,7 @@ func (r *queryResolver) queryUserStats(ctx context.Context, filter *AnalyticsFil
 				sql.As(userTable.C("first_name"), "first_name"),
 				sql.As(userTable.C("last_name"), "last_name"),
 				sql.As(userTable.C("email"), "email"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
+				sql.As(clientRequestCountExpr(s), "request_count"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),

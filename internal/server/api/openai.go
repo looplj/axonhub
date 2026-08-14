@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	entprivacy "github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
@@ -600,6 +601,10 @@ func convertModelFacadeToOpenAIModel(m biz.ModelFacade) OpenAIModel {
 // The include set specifies which optional fields to populate. If nil or empty, all fields are populated.
 // Supported field names: name, description, context_length, max_output_tokens, modalities, capabilities, pricing, icon, type.
 func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIModel {
+	return convertModelToOpenAIExtendedWithCard(m, m.ModelCard, include)
+}
+
+func convertModelToOpenAIExtendedWithCard(m *ent.Model, modelCard *objects.ModelCard, include map[string]bool) OpenAIModel {
 	result := OpenAIModel{
 		ID:      m.ModelID,
 		Object:  openAIModelObjectType,
@@ -633,14 +638,14 @@ func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIM
 		}
 	}
 
-	if m.ModelCard != nil {
+	if modelCard != nil {
 		// Modalities, Capabilities, ContextLength, MaxOutputTokens, Pricing come from ModelCard
 		if shouldInclude("modalities") {
-			input := m.ModelCard.Modalities.Input
+			input := modelCard.Modalities.Input
 			if input == nil {
 				input = []string{}
 			}
-			output := m.ModelCard.Modalities.Output
+			output := modelCard.Modalities.Output
 			if output == nil {
 				output = []string{}
 			}
@@ -651,24 +656,24 @@ func convertModelToOpenAIExtended(m *ent.Model, include map[string]bool) OpenAIM
 		}
 		if shouldInclude("capabilities") {
 			caps := Capabilities{
-				Vision:    m.ModelCard.Vision,
-				ToolCall:  m.ModelCard.ToolCall,
-				Reasoning: m.ModelCard.Reasoning.Supported,
+				Vision:    modelCard.Vision,
+				ToolCall:  modelCard.ToolCall,
+				Reasoning: modelCard.Reasoning.Supported,
 			}
 			result.Capabilities = &caps
 		}
 		if shouldInclude("context_length") {
-			result.ContextLength = m.ModelCard.Limit.Context
+			result.ContextLength = modelCard.Limit.Context
 		}
 		if shouldInclude("max_output_tokens") {
-			result.MaxOutputTokens = m.ModelCard.Limit.Output
+			result.MaxOutputTokens = modelCard.Limit.Output
 		}
 		if shouldInclude("pricing") {
 			pricing := Pricing{
-				Input:      m.ModelCard.Cost.Input,
-				Output:     m.ModelCard.Cost.Output,
-				CacheRead:  m.ModelCard.Cost.CacheRead,
-				CacheWrite: m.ModelCard.Cost.CacheWrite,
+				Input:      modelCard.Cost.Input,
+				Output:     modelCard.Cost.Output,
+				CacheRead:  modelCard.Cost.CacheRead,
+				CacheWrite: modelCard.Cost.CacheWrite,
 				Unit:       "per_1m_tokens",
 				Currency:   "USD",
 			}
@@ -777,7 +782,11 @@ func (handlers *OpenAIHandlers) RetrieveModel(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, convertModelToOpenAIExtended(configuredModel, include))
+	c.JSON(http.StatusOK, convertModelToOpenAIExtendedWithCard(
+		configuredModel,
+		handlers.ModelService.EffectiveModelCard(ctx, configuredModel),
+		include,
+	))
 }
 
 // ListModels returns all available models.
@@ -838,7 +847,11 @@ func (handlers *OpenAIHandlers) ListModels(c *gin.Context) {
 
 		openaiModels = lo.Map(visibleModels, func(m biz.ModelFacade, _ int) OpenAIModel {
 			if dbModel, ok := dbModelMap[m.ID]; ok {
-				return convertModelToOpenAIExtended(dbModel, include)
+				return convertModelToOpenAIExtendedWithCard(
+					dbModel,
+					handlers.ModelService.EffectiveModelCard(ctx, dbModel),
+					include,
+				)
 			}
 
 			return convertModelFacadeToOpenAIModel(m)

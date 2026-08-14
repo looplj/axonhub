@@ -8,6 +8,7 @@ type DialogType =
   | 'delete'
   | 'archive'
   | 'association'
+  | 'visionDelegation'
   | 'developerAssociation'
   | 'settings'
   | 'bulkEnable'

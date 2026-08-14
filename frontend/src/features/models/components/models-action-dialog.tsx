@@ -241,7 +241,6 @@ export function ModelsActionDialog() {
           icon: data.icon,
           group: data.group,
           modelCard: data.modelCard,
-          settings: data.settings,
           remark: data.remark,
         };
         await updateModel.mutateAsync({ id: currentRow.id, input: updateData });

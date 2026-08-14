@@ -79,7 +79,7 @@ func (m *persistRequestMiddleware) OnOutboundLlmResponse(ctx context.Context, ll
 
 func (m *persistRequestMiddleware) OnInboundRawResponse(ctx context.Context, httpResp *httpclient.Response) (*httpclient.Response, error) {
 	state := m.inbound.state
-	if state.Request == nil || httpResp == nil {
+	if !state.ownsRequestLifecycle() || state.Request == nil || httpResp == nil {
 		return httpResp, nil
 	}
 

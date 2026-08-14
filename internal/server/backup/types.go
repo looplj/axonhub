@@ -142,6 +142,7 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 		CreatedAt                          time.Time          `json:"created_at,omitzero"`
 		UpdatedAt                          time.Time          `json:"updated_at,omitzero"`
 		RequestID                          int                `json:"request_id,omitempty"`
+		RequestExecutionID                 int                `json:"request_execution_id,omitempty"`
 		ProjectID                          int                `json:"project_id,omitempty"`
 		ChannelID                          int                `json:"channel_id,omitempty"`
 		ModelID                            string             `json:"model_id,omitempty"`
@@ -172,6 +173,7 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 		CreatedAt:                          l.CreatedAt,
 		UpdatedAt:                          l.UpdatedAt,
 		RequestID:                          l.RequestID,
+		RequestExecutionID:                 l.RequestExecutionID,
 		ProjectID:                          l.ProjectID,
 		ChannelID:                          l.ChannelID,
 		ModelID:                            l.ModelID,

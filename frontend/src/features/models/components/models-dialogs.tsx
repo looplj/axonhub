@@ -8,6 +8,7 @@ import { ModelsBulkEnableDialog } from './models-bulk-enable-dialog';
 import { ModelsDeleteDialog } from './models-delete-dialog';
 import { ModelSettingsDialog } from './models-settings-dialog';
 import { ModelsUnassociatedDialog } from './models-unassociated-dialog';
+import { ModelsVisionDelegationDialog } from './models-vision-delegation-dialog';
 
 export function ModelsDialogs() {
   const { open } = useModels();
@@ -19,6 +20,7 @@ export function ModelsDialogs() {
       {open === 'delete' && <ModelsDeleteDialog />}
       {open === 'archive' && <ModelsArchiveDialog />}
       {(open === 'association' || open === 'developerAssociation') && <ModelsAssociationDialog />}
+      {open === 'visionDelegation' && <ModelsVisionDelegationDialog />}
       {open === 'settings' && <ModelSettingsDialog />}
       {open === 'unassociated' && <ModelsUnassociatedDialog />}
       <ModelsBulkDisableDialog />
