@@ -142,6 +142,8 @@ func parseZhipuQuotaResponse(body []byte) (QuotaData, error) {
 	// 5h window reports no reset time at 0% usage). When all entries have a
 	// reset time, trust API return order: index 0 → five_hour, index 1 → weekly.
 	windowNames := []string{"five_hour", "weekly_limit"}
+	windowLabels := []string{QuotaWindow5h, QuotaWindowWeekly}
+	windowLengths := []time.Duration{5 * time.Hour, 7 * 24 * time.Hour}
 	ordered := orderZhipuBuckets(tokenLimits)
 
 	overallStatus := "available"
@@ -168,7 +170,8 @@ func parseZhipuQuotaResponse(body []byte) (QuotaData, error) {
 			}
 		}
 
-		limits = append(limits, NewTokenLimitStatus(status, ratio, resetAt))
+		limits = append(limits, NewTokenLimitStatus(status, ratio, resetAt).
+			WithWindow(windowLabels[i], windowLengths[i]))
 		overallStatus = worseZhipuStatus(overallStatus, status)
 
 		var resetAtStr *string

@@ -191,6 +191,8 @@ func (c *OpenCodeGoQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 			UsageRatio:  usageRatio,
 			Ready:       IsReadyStatus(status),
 			NextResetAt: &resetAtCopy,
+			Window:      opencodeGoWindowLabel(key),
+			PeriodStart: opencodeGoPeriodStart(key, resetAt),
 		})
 	}
 
@@ -241,6 +243,39 @@ func parseOpenCodeGoResetsAt(raw json.RawMessage) (time.Time, bool) {
 	}
 
 	return time.Time{}, false
+}
+
+// opencodeGoWindowLabel maps an API window key onto a normalized window label.
+// The API's "rolling" window is the plan's 5 hour window, which is how the rest
+// of the app already labels it.
+func opencodeGoWindowLabel(key string) string {
+	switch key {
+	case "rolling":
+		return QuotaWindow5h
+	case "weekly":
+		return QuotaWindowWeekly
+	case "monthly":
+		return QuotaWindowMonthly
+	default:
+		return key
+	}
+}
+
+// opencodeGoPeriodStart returns the start of the window that ends at resetAt.
+// The API only reports the reset deadline, so the start comes from the length
+// of the window the key names. The monthly window steps back a calendar month
+// instead of a fixed 30 days so it lands on the actual cycle boundary.
+func opencodeGoPeriodStart(key string, resetAt time.Time) *time.Time {
+	switch key {
+	case "rolling":
+		return PeriodStartFromReset(&resetAt, 5*time.Hour)
+	case "weekly":
+		return PeriodStartFromReset(&resetAt, 7*24*time.Hour)
+	case "monthly":
+		return PeriodStartFromMonthlyReset(&resetAt)
+	default:
+		return nil
+	}
 }
 
 func normalizeOpenCodeGoWindowStatus(usageRatio float64) string {

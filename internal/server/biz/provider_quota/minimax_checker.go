@@ -113,6 +113,19 @@ func buildMinimaxQuotaURL(baseURL string) string {
 	return fmt.Sprintf("%s://%s/v1/token_plan/remains", parsed.Scheme, parsed.Host)
 }
 
+// minimaxPeriodStart converts a MiniMax epoch-millisecond window start into a
+// period start. The API reports the start of both the interval and the weekly
+// window directly, so no window length has to be assumed.
+func minimaxPeriodStart(startMillis int64) *time.Time {
+	if startMillis <= 0 {
+		return nil
+	}
+
+	t := time.UnixMilli(startMillis)
+
+	return &t
+}
+
 // minimaxTotalPercent converts boost_permille to a total percent.
 // e.g. 1500 → 150.0. Returns 100.0 if permille is 0 or absent.
 func minimaxTotalPercent(boostPermille int) float64 {
@@ -208,6 +221,8 @@ func parseMinimaxResponse(body []byte) (QuotaData, error) {
 			UsageRatio:  intervalRatio,
 			Ready:       IsReadyStatus(intervalStatus),
 			NextResetAt: intervalResetAt,
+			Window:      QuotaWindow5h,
+			PeriodStart: minimaxPeriodStart(model.StartTime),
 		})
 
 		overallStatus = worseStatus(overallStatus, intervalStatus)
@@ -239,6 +254,8 @@ func parseMinimaxResponse(body []byte) (QuotaData, error) {
 				UsageRatio:  weeklyRatio,
 				Ready:       IsReadyStatus(weeklyStatus),
 				NextResetAt: weeklyResetAt,
+				Window:      QuotaWindowWeekly,
+				PeriodStart: minimaxPeriodStart(model.WeeklyStartTime),
 			})
 
 			overallStatus = worseStatus(overallStatus, weeklyStatus)

@@ -108,8 +108,10 @@ func parseKimiCodeUsageResponse(body []byte) (QuotaData, error) {
 	}
 
 	rows := make([]kimiCodeUsageRow, 0, len(response.Limits)+1)
+	windows := make([]time.Duration, 0, len(response.Limits)+1)
 	if row, ok := parseKimiCodeUsageRow(response.Usage, "Weekly limit"); ok {
 		rows = append(rows, row)
+		windows = append(windows, 7*24*time.Hour)
 	}
 	for i, item := range response.Limits {
 		detail := item
@@ -119,6 +121,7 @@ func parseKimiCodeUsageResponse(body []byte) (QuotaData, error) {
 		label := kimiCodeLimitLabel(item, detail, i)
 		if row, ok := parseKimiCodeUsageRow(detail, label); ok {
 			rows = append(rows, row)
+			windows = append(windows, kimiCodeWindowLength(item, detail))
 		}
 	}
 	if len(rows) == 0 {
@@ -128,7 +131,7 @@ func parseKimiCodeUsageResponse(body []byte) (QuotaData, error) {
 	status := "available"
 	limits := make([]QuotaLimitStatus, 0, len(rows))
 	var nextResetAt *time.Time
-	for _, row := range rows {
+	for i, row := range rows {
 		ratio := 0.0
 		if row.Limit > 0 {
 			ratio = float64(row.Used) / float64(row.Limit)
@@ -151,7 +154,14 @@ func parseKimiCodeUsageResponse(body []byte) (QuotaData, error) {
 				nextResetAt = &parsed
 			}
 		}
-		limits = append(limits, NewTokenLimitStatus(rowStatus, ratio, resetAt))
+
+		window := windows[i]
+		windowLabel := NormalizeQuotaWindowLabel(window)
+		if windowLabel == "" {
+			windowLabel = row.Label
+		}
+
+		limits = append(limits, NewTokenLimitStatus(rowStatus, ratio, resetAt).WithWindow(windowLabel, window))
 	}
 
 	rawData := map[string]any{"rows": rows}
@@ -199,6 +209,32 @@ func parseKimiCodeUsageRow(raw map[string]any, fallbackLabel string) (kimiCodeUs
 		ResetAt:           kimiCodeResetAt(raw),
 		ResetAfterSeconds: kimiCodeResetAfterSeconds(raw),
 	}, true
+}
+
+// kimiCodeWindowLength reads the length of a limit window from the usage
+// payload, which reports it as a duration plus a time unit (e.g. 300 MINUTES).
+// It returns 0 when the payload does not describe one, mirroring the lookup
+// order of kimiCodeLimitLabel.
+func kimiCodeWindowLength(item, detail map[string]any) time.Duration {
+	window, _ := item["window"].(map[string]any)
+
+	duration, ok := firstKimiCodeInt(window["duration"], item["duration"], detail["duration"])
+	if !ok || duration <= 0 {
+		return 0
+	}
+
+	unit, _ := firstKimiCodeString(window["timeUnit"], item["timeUnit"], detail["timeUnit"])
+
+	switch {
+	case strings.Contains(unit, "MINUTE"):
+		return time.Duration(duration) * time.Minute
+	case strings.Contains(unit, "HOUR"):
+		return time.Duration(duration) * time.Hour
+	case strings.Contains(unit, "DAY"):
+		return time.Duration(duration) * 24 * time.Hour
+	default:
+		return time.Duration(duration) * time.Second
+	}
 }
 
 func kimiCodeLimitLabel(item, detail map[string]any, index int) string {

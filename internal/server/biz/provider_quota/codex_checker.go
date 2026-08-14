@@ -282,12 +282,20 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		usageRatio = 1.0
 	}
 
-	limits := []QuotaLimitStatus{
-		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt),
+	if primaryWindowUsedPercent != nil {
+		usageRatio = *primaryWindowUsedPercent / 100.0
 	}
 
-	if primaryWindowUsedPercent != nil {
-		limits[0].UsageRatio = *primaryWindowUsedPercent / 100.0
+	// The API reports how long the primary window lasts, so the period it
+	// covers can be pinned down exactly.
+	var primaryWindow time.Duration
+	if response.RateLimit != nil && response.RateLimit.PrimaryWindow != nil && response.RateLimit.PrimaryWindow.LimitWindowSeconds != nil {
+		primaryWindow = time.Duration(*response.RateLimit.PrimaryWindow.LimitWindowSeconds) * time.Second
+	}
+
+	limits := []QuotaLimitStatus{
+		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt).
+			WithWindow(QuotaWindowPrimary, primaryWindow),
 	}
 
 	return QuotaData{
