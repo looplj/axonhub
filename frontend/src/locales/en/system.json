@@ -336,6 +336,7 @@
   "quota.status.cline_pass_unavailable": "Cline Pass unavailable",
   "quota.status.blocked": "Blocked",
   "quota.status.deprioritized": "Deprioritized",
+  "quota.status.bypassed": "Bypassed",
   "quota.label.resets_in": "Resets in",
   "quota.label.resets_in_time": "Resets in {{time}}",
   "quota.label.regenerates_in_time": "Regenerates in {{time}}",
@@ -445,5 +446,10 @@
   "system.quota.mode.options.exhaustedOnly": "Block Exhausted",
   "system.quota.mode.options.dePrioritize": "De-prioritize",
   "system.quota.mode.documentation.EXHAUSTED_ONLY": "Channels with fully exhausted quota will be temporarily disabled. Requests will only be routed to channels with remaining quota. This is the strictest mode and ensures no requests go to exhausted channels.",
-  "system.quota.mode.documentation.DE_PRIORITIZE": "Channels with exhausted quota will be deprioritized in load balancing but not fully disabled. If all channels are exhausted, requests will still be routed. This provides a softer approach that maintains availability."
+  "system.quota.mode.documentation.DE_PRIORITIZE": "Channels with exhausted quota will be deprioritized in load balancing but not fully disabled. If all channels are exhausted, requests will still be routed. This provides a softer approach that maintains availability.",
+  "system.quota.enforcement.allowedChannels.label": "Exempt Channels",
+  "system.quota.enforcement.allowedChannels.description": "Channels selected here will continue serving requests even when their provider quota is exhausted.",
+  "system.quota.enforcement.allowedChannels.selectedCount_one": "{{count}} channel selected",
+  "system.quota.enforcement.allowedChannels.selectedCount_other": "{{count}} channels selected",
+  "system.quota.enforcement.allowedChannels.removeChannel": "Remove {{name}}"
 }

@@ -73,6 +73,7 @@
   "common.autoRefresh": "Auto Refresh",
   "common.showArchived": "Show archived",
   "common.selected": "selected",
+  "common.select.placeholder": "Select an option",
   "common.selectedItems": "{{count}} selected",
   "common.noResultsFound": "No results found",
   "common.clearFilters": "Clear filters",
