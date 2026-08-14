@@ -8,6 +8,8 @@ jobs:
   prepare:
     name: Pin commit & date
     runs-on: ubuntu-slim
+    permissions:
+      contents: read
     outputs:
       commit_sha: ${{ steps.pin.outputs.commit_sha }}
       build_date: ${{ steps.pin.outputs.build_date }}
@@ -26,11 +28,18 @@ jobs:
           git fetch --tags --force --depth=1
           BASE_VERSION=$(git tag --list 'v[0-9]*' --sort=-v:refname | head -n1)
           if [ -z "$BASE_VERSION" ]; then
-            BASE_VERSION=$(cat internal/build/VERSION 2>/dev/null || echo v0.0.0)
+            BASE_VERSION=$(cat internal/build/VERSION 2>/dev/null || true)
           fi
-          echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
-          echo "build_date=$(date +%Y%m%d)" >> $GITHUB_OUTPUT
-          echo "base_version=$BASE_VERSION" >> $GITHUB_OUTPUT
+          if [ -z "$BASE_VERSION" ]; then
+            BASE_VERSION=v0.0.0
+          fi
+          if ! printf '%s\n' "$BASE_VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
+            echo "Invalid base version: $BASE_VERSION" >&2
+            exit 1
+          fi
+          printf 'commit_sha=%s\n' "$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          printf 'build_date=%s\n' "$(date +%Y%m%d)" >> "$GITHUB_OUTPUT"
+          printf 'base_version=%s\n' "$BASE_VERSION" >> "$GITHUB_OUTPUT"
 
   build_single_arch:
     name: Build & push (${{ matrix.arch }}) [native]
@@ -60,7 +69,10 @@ jobs:
           persist-credentials: false
 
       - name: Write VERSION
-        run: echo "${{ needs.prepare.outputs.base_version }}-unstable.${{ needs.prepare.outputs.build_date }}" > internal/build/VERSION
+        env:
+          BASE_VERSION: ${{ needs.prepare.outputs.base_version }}
+          BUILD_DATE: ${{ needs.prepare.outputs.build_date }}
+        run: printf '%s\n' "${BASE_VERSION}-unstable.${BUILD_DATE}" > internal/build/VERSION
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
