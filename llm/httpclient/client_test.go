@@ -3,6 +3,7 @@ package httpclient
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"log/slog"
@@ -27,17 +28,44 @@ func TestHttpClientImpl_Do_DoesNotLogSecrets(t *testing.T) {
 	previousLogger := slog.Default()
 	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
 	t.Cleanup(func() { slog.SetDefault(previousLogger) })
-	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+	target := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writer.Header().Set("Content-Type", "application/json")
 		_, _ = writer.Write([]byte(`{"access_token":"response-secret"}`))
 	}))
-	t.Cleanup(server.Close)
-	client := NewHttpClientWithClient(server.Client())
-	client.proxyConfig = &ProxyConfig{Username: "proxy-user", Password: "proxy-secret"}
-	_ = getProxyFunc(&ProxyConfig{Type: ProxyTypeURL, URL: "https://proxy-user:proxy-secret@proxy.example.test?key=proxy-query-secret"})
+	t.Cleanup(target.Close)
+	var proxied atomic.Bool
+	proxy := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		proxied.Store(true)
+		require.Equal(t, "Basic "+base64.StdEncoding.EncodeToString([]byte("proxy-user:proxy-secret")), request.Header.Get("Proxy-Authorization"))
+		forward, err := http.NewRequestWithContext(request.Context(), request.Method, target.URL+request.URL.RequestURI(), request.Body)
+		if err != nil {
+			writer.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		forward.Header = request.Header.Clone()
+		forward.Header.Del("Proxy-Authorization")
+		response, err := http.DefaultClient.Do(forward)
+		if err != nil {
+			writer.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		defer response.Body.Close()
+		for name, values := range response.Header {
+			for _, value := range values {
+				writer.Header().Add(name, value)
+			}
+		}
+		writer.WriteHeader(response.StatusCode)
+		body, _ := io.ReadAll(response.Body)
+		_, _ = writer.Write(body)
+	}))
+	t.Cleanup(proxy.Close)
+	client := NewHttpClientWithClient(&http.Client{Transport: &http.Transport{
+		Proxy: getProxyFunc(&ProxyConfig{Type: ProxyTypeURL, URL: proxy.URL + "?key=proxy-query-secret", Username: "proxy-user", Password: "proxy-secret"}),
+	}})
 	request := &Request{
 		Method:      http.MethodPost,
-		URL:         server.URL + "/oauth/token?key=query-secret",
+		URL:         target.URL + "/oauth/token?key=query-secret",
 		ContentType: "application/x-www-form-urlencoded",
 		Body:        []byte("refresh_token=request-secret"),
 		JSONBody:    []byte(`{"access_token":"json-secret"}`),
@@ -49,10 +77,12 @@ func TestHttpClientImpl_Do_DoesNotLogSecrets(t *testing.T) {
 
 	// Then
 	require.NoError(t, err)
+	require.True(t, proxied.Load(), "request should have traversed the proxy")
 	output := logs.String()
 	for _, secret := range []string{"request-secret", "json-secret", "auth-secret", "proxy-user", "proxy-secret", "proxy-query-secret", "response-secret", "query-secret"} {
 		require.NotContains(t, output, secret)
 	}
+	require.Contains(t, output, "use custom proxy")
 	require.Contains(t, output, "execute http request")
 	require.Contains(t, output, "body_size")
 	require.Contains(t, output, "/oauth/token")
@@ -110,10 +140,11 @@ func TestHttpClientImpl_DoStream_DoesNotLogSecrets(t *testing.T) {
 	}
 
 	// When
-	_, err := client.DoStream(t.Context(), request)
+	stream, err := client.DoStream(t.Context(), request)
 
 	// Then
 	require.NoError(t, err)
+	t.Cleanup(func() { _ = stream.Close() })
 	output := logs.String()
 	for _, secret := range []string{"stream-request-secret", "stream-secret", "stream-query-secret"} {
 		require.NotContains(t, output, secret)
