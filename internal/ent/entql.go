@@ -398,6 +398,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldCreatedAt:                  {Type: field.TypeTime, Column: request.FieldCreatedAt},
 			request.FieldUpdatedAt:                  {Type: field.TypeTime, Column: request.FieldUpdatedAt},
 			request.FieldAPIKeyID:                   {Type: field.TypeInt, Column: request.FieldAPIKeyID},
+			request.FieldUserID:                     {Type: field.TypeInt, Column: request.FieldUserID},
 			request.FieldProjectID:                  {Type: field.TypeInt, Column: request.FieldProjectID},
 			request.FieldTraceID:                    {Type: field.TypeInt, Column: request.FieldTraceID},
 			request.FieldDataStorageID:              {Type: field.TypeInt, Column: request.FieldDataStorageID},
@@ -3260,6 +3261,11 @@ func (f *RequestFilter) WhereUpdatedAt(p entql.TimeP) {
 // WhereAPIKeyID applies the entql int predicate on the api_key_id field.
 func (f *RequestFilter) WhereAPIKeyID(p entql.IntP) {
 	f.Where(p.Field(request.FieldAPIKeyID))
+}
+
+// WhereUserID applies the entql int predicate on the user_id field.
+func (f *RequestFilter) WhereUserID(p entql.IntP) {
+	f.Where(p.Field(request.FieldUserID))
 }
 
 // WhereProjectID applies the entql int predicate on the project_id field.
