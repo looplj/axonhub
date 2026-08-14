@@ -131,6 +131,8 @@ func (ts *OutboundPersistentStream) Close() error {
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
+		ts.persistFailureChunks(persistCtx)
+
 		if ts.requestExec != nil {
 			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, streamErr); err != nil {
 				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
@@ -163,6 +165,9 @@ func (ts *OutboundPersistentStream) Close() error {
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
+		// Keep partial chunks for debugging even when the request fails/cancels.
+		ts.persistFailureChunks(persistCtx)
+
 		errToReport := streamErr
 		if errToReport == nil {
 			errToReport = ctxErr
@@ -184,6 +189,10 @@ func (ts *OutboundPersistentStream) Close() error {
 		ts.logFinalizationDecision(ctx, "incomplete_stream_without_terminal_event", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
+
+		// Upstream dropped mid-stream (clean EOF, no terminal). Persist what we
+		// buffered so operators can inspect the truncated generation.
+		ts.persistFailureChunks(persistCtx)
 
 		errToReport := ErrStreamIncomplete
 		if ts.requestExec != nil {
@@ -254,6 +263,19 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
 		}
 
 		ts.persistAggregatedResponse(persistCtx, responseBody, meta)
+	}
+}
+
+// persistFailureChunks stores buffered SSE chunks for a failed/incomplete stream
+// without marking the execution completed or writing usage. Callers must already
+// hold a detached persist context so client cancel cannot abort the write.
+func (ts *OutboundPersistentStream) persistFailureChunks(ctx context.Context) {
+	if ts.requestExec == nil || len(ts.responseChunks) == 0 {
+		return
+	}
+
+	if err := ts.RequestService.SaveRequestExecutionChunks(ctx, ts.requestExec.ID, ts.responseChunks); err != nil {
+		log.Warn(ctx, "Failed to save request execution chunks after stream failure", log.Cause(err))
 	}
 }
 
