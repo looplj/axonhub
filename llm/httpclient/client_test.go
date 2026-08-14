@@ -1,9 +1,11 @@
 package httpclient
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +20,42 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tmaxmax/go-sse"
 )
+
+func TestHttpClientImpl_Do_DoesNotLogSecrets(t *testing.T) {
+	// Given
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		_, _ = writer.Write([]byte(`{"access_token":"response-secret"}`))
+	}))
+	t.Cleanup(server.Close)
+	client := NewHttpClientWithClient(server.Client())
+	client.proxyConfig = &ProxyConfig{Username: "proxy-user", Password: "proxy-secret"}
+	_ = getProxyFunc(&ProxyConfig{Type: ProxyTypeURL, URL: "https://proxy-user:proxy-secret@proxy.example.test?key=proxy-query-secret"})
+	request := &Request{
+		Method:      http.MethodPost,
+		URL:         server.URL + "/oauth/token?key=query-secret",
+		ContentType: "application/x-www-form-urlencoded",
+		Body:        []byte("refresh_token=request-secret"),
+		JSONBody:    []byte(`{"access_token":"json-secret"}`),
+		Auth:        &AuthConfig{Type: AuthTypeBearer, APIKey: "auth-secret"},
+	}
+
+	// When
+	_, err := client.Do(t.Context(), request)
+
+	// Then
+	require.NoError(t, err)
+	output := logs.String()
+	for _, secret := range []string{"request-secret", "json-secret", "auth-secret", "proxy-user", "proxy-secret", "proxy-query-secret", "response-secret", "query-secret"} {
+		require.NotContains(t, output, secret)
+	}
+	require.Contains(t, output, "execute http request")
+	require.Contains(t, output, "body_size")
+}
 
 func TestHttpClientImpl_Do(t *testing.T) {
 	tests := []struct {
