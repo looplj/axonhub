@@ -368,6 +368,16 @@ func (c *ChannelCredentials) IsOAuth() bool {
 	return isOAuthJSON(c.APIKey)
 }
 
+func (c *ChannelCredentials) ResolveOAuthCredentials() (*OAuthCredentials, error) {
+	if c != nil && c.OAuth != nil && strings.TrimSpace(c.OAuth.AccessToken) != "" {
+		return c.OAuth, nil
+	}
+	if c == nil {
+		return oauth.ParseCredentialsJSON("")
+	}
+	return oauth.ParseCredentialsJSON(c.APIKey)
+}
+
 // isOAuthJSON checks if a string is an OAuth JSON credential.
 func isOAuthJSON(s string) bool {
 	s = strings.TrimSpace(s)

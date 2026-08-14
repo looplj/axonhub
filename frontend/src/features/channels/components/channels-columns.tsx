@@ -211,15 +211,17 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconGauge size={16} className='mr-2' />
             {t('channels.dialogs.rateLimit.action')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={() => {
-              setCurrentRow(channel);
-              setOpen('endpoints');
-            }}
-          >
-            <IconPlugConnected size={16} className='mr-2' />
-            {t('channels.endpoints.title')}
-          </DropdownMenuItem>
+          {channel.type !== 'xai_subscription' && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('endpoints');
+              }}
+            >
+              <IconPlugConnected size={16} className='mr-2' />
+              {t('channels.endpoints.title')}
+            </DropdownMenuItem>
+          )}
           {channelPermissions.canWrite && (
             <DropdownMenuItem
               onClick={() => {

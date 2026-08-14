@@ -161,6 +161,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-black-100 text-black-800 border-black-200',
     channelTypes: ['xai', 'xai_responses'],
   },
+  xai_subscription: {
+    provider: 'xai_subscription',
+    icon: XAI,
+    color: 'bg-black-100 text-black-800 border-black-200',
+    channelTypes: ['xai_subscription'],
+  },
   burncloud: {
     provider: 'burncloud',
     icon: BurnCloud,
