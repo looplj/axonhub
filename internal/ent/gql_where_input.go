@@ -29,6 +29,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -10863,6 +10864,612 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 		return predicates[0], nil
 	default:
 		return usagelog.And(predicates...), nil
+	}
+}
+
+// UsageStatWhereInput represents a where input for filtering UsageStat queries.
+type UsageStatWhereInput struct {
+	Predicates []predicate.UsageStat  `json:"-"`
+	Not        *UsageStatWhereInput   `json:"not,omitempty"`
+	Or         []*UsageStatWhereInput `json:"or,omitempty"`
+	And        []*UsageStatWhereInput `json:"and,omitempty"`
+
+	// "id" field predicates.
+	ID      *int  `json:"id,omitempty"`
+	IDNEQ   *int  `json:"idNEQ,omitempty"`
+	IDIn    []int `json:"idIn,omitempty"`
+	IDNotIn []int `json:"idNotIn,omitempty"`
+	IDGT    *int  `json:"idGT,omitempty"`
+	IDGTE   *int  `json:"idGTE,omitempty"`
+	IDLT    *int  `json:"idLT,omitempty"`
+	IDLTE   *int  `json:"idLTE,omitempty"`
+
+	// "date" field predicates.
+	Date             *string  `json:"date,omitempty"`
+	DateNEQ          *string  `json:"dateNEQ,omitempty"`
+	DateIn           []string `json:"dateIn,omitempty"`
+	DateNotIn        []string `json:"dateNotIn,omitempty"`
+	DateGT           *string  `json:"dateGT,omitempty"`
+	DateGTE          *string  `json:"dateGTE,omitempty"`
+	DateLT           *string  `json:"dateLT,omitempty"`
+	DateLTE          *string  `json:"dateLTE,omitempty"`
+	DateContains     *string  `json:"dateContains,omitempty"`
+	DateHasPrefix    *string  `json:"dateHasPrefix,omitempty"`
+	DateHasSuffix    *string  `json:"dateHasSuffix,omitempty"`
+	DateEqualFold    *string  `json:"dateEqualFold,omitempty"`
+	DateContainsFold *string  `json:"dateContainsFold,omitempty"`
+
+	// "api_key_id" field predicates.
+	APIKeyID      *int  `json:"apiKeyID,omitempty"`
+	APIKeyIDNEQ   *int  `json:"apiKeyIDNEQ,omitempty"`
+	APIKeyIDIn    []int `json:"apiKeyIDIn,omitempty"`
+	APIKeyIDNotIn []int `json:"apiKeyIDNotIn,omitempty"`
+	APIKeyIDGT    *int  `json:"apiKeyIDGT,omitempty"`
+	APIKeyIDGTE   *int  `json:"apiKeyIDGTE,omitempty"`
+	APIKeyIDLT    *int  `json:"apiKeyIDLT,omitempty"`
+	APIKeyIDLTE   *int  `json:"apiKeyIDLTE,omitempty"`
+
+	// "project_id" field predicates.
+	ProjectID      *int  `json:"projectID,omitempty"`
+	ProjectIDNEQ   *int  `json:"projectIDNEQ,omitempty"`
+	ProjectIDIn    []int `json:"projectIDIn,omitempty"`
+	ProjectIDNotIn []int `json:"projectIDNotIn,omitempty"`
+	ProjectIDGT    *int  `json:"projectIDGT,omitempty"`
+	ProjectIDGTE   *int  `json:"projectIDGTE,omitempty"`
+	ProjectIDLT    *int  `json:"projectIDLT,omitempty"`
+	ProjectIDLTE   *int  `json:"projectIDLTE,omitempty"`
+
+	// "channel_id" field predicates.
+	ChannelID      *int  `json:"channelID,omitempty"`
+	ChannelIDNEQ   *int  `json:"channelIDNEQ,omitempty"`
+	ChannelIDIn    []int `json:"channelIDIn,omitempty"`
+	ChannelIDNotIn []int `json:"channelIDNotIn,omitempty"`
+	ChannelIDGT    *int  `json:"channelIDGT,omitempty"`
+	ChannelIDGTE   *int  `json:"channelIDGTE,omitempty"`
+	ChannelIDLT    *int  `json:"channelIDLT,omitempty"`
+	ChannelIDLTE   *int  `json:"channelIDLTE,omitempty"`
+
+	// "model_id" field predicates.
+	ModelID             *string  `json:"modelID,omitempty"`
+	ModelIDNEQ          *string  `json:"modelIDNEQ,omitempty"`
+	ModelIDIn           []string `json:"modelIDIn,omitempty"`
+	ModelIDNotIn        []string `json:"modelIDNotIn,omitempty"`
+	ModelIDGT           *string  `json:"modelIDGT,omitempty"`
+	ModelIDGTE          *string  `json:"modelIDGTE,omitempty"`
+	ModelIDLT           *string  `json:"modelIDLT,omitempty"`
+	ModelIDLTE          *string  `json:"modelIDLTE,omitempty"`
+	ModelIDContains     *string  `json:"modelIDContains,omitempty"`
+	ModelIDHasPrefix    *string  `json:"modelIDHasPrefix,omitempty"`
+	ModelIDHasSuffix    *string  `json:"modelIDHasSuffix,omitempty"`
+	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
+	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
+
+	// "request_count" field predicates.
+	RequestCount      *int64  `json:"requestCount,omitempty"`
+	RequestCountNEQ   *int64  `json:"requestCountNEQ,omitempty"`
+	RequestCountIn    []int64 `json:"requestCountIn,omitempty"`
+	RequestCountNotIn []int64 `json:"requestCountNotIn,omitempty"`
+	RequestCountGT    *int64  `json:"requestCountGT,omitempty"`
+	RequestCountGTE   *int64  `json:"requestCountGTE,omitempty"`
+	RequestCountLT    *int64  `json:"requestCountLT,omitempty"`
+	RequestCountLTE   *int64  `json:"requestCountLTE,omitempty"`
+
+	// "prompt_tokens" field predicates.
+	PromptTokens      *int64  `json:"promptTokens,omitempty"`
+	PromptTokensNEQ   *int64  `json:"promptTokensNEQ,omitempty"`
+	PromptTokensIn    []int64 `json:"promptTokensIn,omitempty"`
+	PromptTokensNotIn []int64 `json:"promptTokensNotIn,omitempty"`
+	PromptTokensGT    *int64  `json:"promptTokensGT,omitempty"`
+	PromptTokensGTE   *int64  `json:"promptTokensGTE,omitempty"`
+	PromptTokensLT    *int64  `json:"promptTokensLT,omitempty"`
+	PromptTokensLTE   *int64  `json:"promptTokensLTE,omitempty"`
+
+	// "completion_tokens" field predicates.
+	CompletionTokens      *int64  `json:"completionTokens,omitempty"`
+	CompletionTokensNEQ   *int64  `json:"completionTokensNEQ,omitempty"`
+	CompletionTokensIn    []int64 `json:"completionTokensIn,omitempty"`
+	CompletionTokensNotIn []int64 `json:"completionTokensNotIn,omitempty"`
+	CompletionTokensGT    *int64  `json:"completionTokensGT,omitempty"`
+	CompletionTokensGTE   *int64  `json:"completionTokensGTE,omitempty"`
+	CompletionTokensLT    *int64  `json:"completionTokensLT,omitempty"`
+	CompletionTokensLTE   *int64  `json:"completionTokensLTE,omitempty"`
+
+	// "total_tokens" field predicates.
+	TotalTokens      *int64  `json:"totalTokens,omitempty"`
+	TotalTokensNEQ   *int64  `json:"totalTokensNEQ,omitempty"`
+	TotalTokensIn    []int64 `json:"totalTokensIn,omitempty"`
+	TotalTokensNotIn []int64 `json:"totalTokensNotIn,omitempty"`
+	TotalTokensGT    *int64  `json:"totalTokensGT,omitempty"`
+	TotalTokensGTE   *int64  `json:"totalTokensGTE,omitempty"`
+	TotalTokensLT    *int64  `json:"totalTokensLT,omitempty"`
+	TotalTokensLTE   *int64  `json:"totalTokensLTE,omitempty"`
+
+	// "prompt_cached_tokens" field predicates.
+	PromptCachedTokens      *int64  `json:"promptCachedTokens,omitempty"`
+	PromptCachedTokensNEQ   *int64  `json:"promptCachedTokensNEQ,omitempty"`
+	PromptCachedTokensIn    []int64 `json:"promptCachedTokensIn,omitempty"`
+	PromptCachedTokensNotIn []int64 `json:"promptCachedTokensNotIn,omitempty"`
+	PromptCachedTokensGT    *int64  `json:"promptCachedTokensGT,omitempty"`
+	PromptCachedTokensGTE   *int64  `json:"promptCachedTokensGTE,omitempty"`
+	PromptCachedTokensLT    *int64  `json:"promptCachedTokensLT,omitempty"`
+	PromptCachedTokensLTE   *int64  `json:"promptCachedTokensLTE,omitempty"`
+
+	// "prompt_write_cached_tokens" field predicates.
+	PromptWriteCachedTokens      *int64  `json:"promptWriteCachedTokens,omitempty"`
+	PromptWriteCachedTokensNEQ   *int64  `json:"promptWriteCachedTokensNEQ,omitempty"`
+	PromptWriteCachedTokensIn    []int64 `json:"promptWriteCachedTokensIn,omitempty"`
+	PromptWriteCachedTokensNotIn []int64 `json:"promptWriteCachedTokensNotIn,omitempty"`
+	PromptWriteCachedTokensGT    *int64  `json:"promptWriteCachedTokensGT,omitempty"`
+	PromptWriteCachedTokensGTE   *int64  `json:"promptWriteCachedTokensGTE,omitempty"`
+	PromptWriteCachedTokensLT    *int64  `json:"promptWriteCachedTokensLT,omitempty"`
+	PromptWriteCachedTokensLTE   *int64  `json:"promptWriteCachedTokensLTE,omitempty"`
+
+	// "completion_reasoning_tokens" field predicates.
+	CompletionReasoningTokens      *int64  `json:"completionReasoningTokens,omitempty"`
+	CompletionReasoningTokensNEQ   *int64  `json:"completionReasoningTokensNEQ,omitempty"`
+	CompletionReasoningTokensIn    []int64 `json:"completionReasoningTokensIn,omitempty"`
+	CompletionReasoningTokensNotIn []int64 `json:"completionReasoningTokensNotIn,omitempty"`
+	CompletionReasoningTokensGT    *int64  `json:"completionReasoningTokensGT,omitempty"`
+	CompletionReasoningTokensGTE   *int64  `json:"completionReasoningTokensGTE,omitempty"`
+	CompletionReasoningTokensLT    *int64  `json:"completionReasoningTokensLT,omitempty"`
+	CompletionReasoningTokensLTE   *int64  `json:"completionReasoningTokensLTE,omitempty"`
+
+	// "total_cost" field predicates.
+	TotalCost      *float64  `json:"totalCost,omitempty"`
+	TotalCostNEQ   *float64  `json:"totalCostNEQ,omitempty"`
+	TotalCostIn    []float64 `json:"totalCostIn,omitempty"`
+	TotalCostNotIn []float64 `json:"totalCostNotIn,omitempty"`
+	TotalCostGT    *float64  `json:"totalCostGT,omitempty"`
+	TotalCostGTE   *float64  `json:"totalCostGTE,omitempty"`
+	TotalCostLT    *float64  `json:"totalCostLT,omitempty"`
+	TotalCostLTE   *float64  `json:"totalCostLTE,omitempty"`
+}
+
+// AddPredicates adds custom predicates to the where input to be used during the filtering phase.
+func (i *UsageStatWhereInput) AddPredicates(predicates ...predicate.UsageStat) {
+	i.Predicates = append(i.Predicates, predicates...)
+}
+
+// Filter applies the UsageStatWhereInput filter on the UsageStatQuery builder.
+func (i *UsageStatWhereInput) Filter(q *UsageStatQuery) (*UsageStatQuery, error) {
+	if i == nil {
+		return q, nil
+	}
+	p, err := i.P()
+	if err != nil {
+		if err == ErrEmptyUsageStatWhereInput {
+			return q, nil
+		}
+		return nil, err
+	}
+	return q.Where(p), nil
+}
+
+// ErrEmptyUsageStatWhereInput is returned in case the UsageStatWhereInput is empty.
+var ErrEmptyUsageStatWhereInput = errors.New("ent: empty predicate UsageStatWhereInput")
+
+// P returns a predicate for filtering usagestats.
+// An error is returned if the input is empty or invalid.
+func (i *UsageStatWhereInput) P() (predicate.UsageStat, error) {
+	var predicates []predicate.UsageStat
+	if i.Not != nil {
+		p, err := i.Not.P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'not'", err)
+		}
+		predicates = append(predicates, usagestat.Not(p))
+	}
+	switch n := len(i.Or); {
+	case n == 1:
+		p, err := i.Or[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'or'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		or := make([]predicate.UsageStat, 0, n)
+		for _, w := range i.Or {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'or'", err)
+			}
+			or = append(or, p)
+		}
+		predicates = append(predicates, usagestat.Or(or...))
+	}
+	switch n := len(i.And); {
+	case n == 1:
+		p, err := i.And[0].P()
+		if err != nil {
+			return nil, fmt.Errorf("%w: field 'and'", err)
+		}
+		predicates = append(predicates, p)
+	case n > 1:
+		and := make([]predicate.UsageStat, 0, n)
+		for _, w := range i.And {
+			p, err := w.P()
+			if err != nil {
+				return nil, fmt.Errorf("%w: field 'and'", err)
+			}
+			and = append(and, p)
+		}
+		predicates = append(predicates, usagestat.And(and...))
+	}
+	predicates = append(predicates, i.Predicates...)
+	if i.ID != nil {
+		predicates = append(predicates, usagestat.IDEQ(*i.ID))
+	}
+	if i.IDNEQ != nil {
+		predicates = append(predicates, usagestat.IDNEQ(*i.IDNEQ))
+	}
+	if len(i.IDIn) > 0 {
+		predicates = append(predicates, usagestat.IDIn(i.IDIn...))
+	}
+	if len(i.IDNotIn) > 0 {
+		predicates = append(predicates, usagestat.IDNotIn(i.IDNotIn...))
+	}
+	if i.IDGT != nil {
+		predicates = append(predicates, usagestat.IDGT(*i.IDGT))
+	}
+	if i.IDGTE != nil {
+		predicates = append(predicates, usagestat.IDGTE(*i.IDGTE))
+	}
+	if i.IDLT != nil {
+		predicates = append(predicates, usagestat.IDLT(*i.IDLT))
+	}
+	if i.IDLTE != nil {
+		predicates = append(predicates, usagestat.IDLTE(*i.IDLTE))
+	}
+	if i.Date != nil {
+		predicates = append(predicates, usagestat.DateEQ(*i.Date))
+	}
+	if i.DateNEQ != nil {
+		predicates = append(predicates, usagestat.DateNEQ(*i.DateNEQ))
+	}
+	if len(i.DateIn) > 0 {
+		predicates = append(predicates, usagestat.DateIn(i.DateIn...))
+	}
+	if len(i.DateNotIn) > 0 {
+		predicates = append(predicates, usagestat.DateNotIn(i.DateNotIn...))
+	}
+	if i.DateGT != nil {
+		predicates = append(predicates, usagestat.DateGT(*i.DateGT))
+	}
+	if i.DateGTE != nil {
+		predicates = append(predicates, usagestat.DateGTE(*i.DateGTE))
+	}
+	if i.DateLT != nil {
+		predicates = append(predicates, usagestat.DateLT(*i.DateLT))
+	}
+	if i.DateLTE != nil {
+		predicates = append(predicates, usagestat.DateLTE(*i.DateLTE))
+	}
+	if i.DateContains != nil {
+		predicates = append(predicates, usagestat.DateContains(*i.DateContains))
+	}
+	if i.DateHasPrefix != nil {
+		predicates = append(predicates, usagestat.DateHasPrefix(*i.DateHasPrefix))
+	}
+	if i.DateHasSuffix != nil {
+		predicates = append(predicates, usagestat.DateHasSuffix(*i.DateHasSuffix))
+	}
+	if i.DateEqualFold != nil {
+		predicates = append(predicates, usagestat.DateEqualFold(*i.DateEqualFold))
+	}
+	if i.DateContainsFold != nil {
+		predicates = append(predicates, usagestat.DateContainsFold(*i.DateContainsFold))
+	}
+	if i.APIKeyID != nil {
+		predicates = append(predicates, usagestat.APIKeyIDEQ(*i.APIKeyID))
+	}
+	if i.APIKeyIDNEQ != nil {
+		predicates = append(predicates, usagestat.APIKeyIDNEQ(*i.APIKeyIDNEQ))
+	}
+	if len(i.APIKeyIDIn) > 0 {
+		predicates = append(predicates, usagestat.APIKeyIDIn(i.APIKeyIDIn...))
+	}
+	if len(i.APIKeyIDNotIn) > 0 {
+		predicates = append(predicates, usagestat.APIKeyIDNotIn(i.APIKeyIDNotIn...))
+	}
+	if i.APIKeyIDGT != nil {
+		predicates = append(predicates, usagestat.APIKeyIDGT(*i.APIKeyIDGT))
+	}
+	if i.APIKeyIDGTE != nil {
+		predicates = append(predicates, usagestat.APIKeyIDGTE(*i.APIKeyIDGTE))
+	}
+	if i.APIKeyIDLT != nil {
+		predicates = append(predicates, usagestat.APIKeyIDLT(*i.APIKeyIDLT))
+	}
+	if i.APIKeyIDLTE != nil {
+		predicates = append(predicates, usagestat.APIKeyIDLTE(*i.APIKeyIDLTE))
+	}
+	if i.ProjectID != nil {
+		predicates = append(predicates, usagestat.ProjectIDEQ(*i.ProjectID))
+	}
+	if i.ProjectIDNEQ != nil {
+		predicates = append(predicates, usagestat.ProjectIDNEQ(*i.ProjectIDNEQ))
+	}
+	if len(i.ProjectIDIn) > 0 {
+		predicates = append(predicates, usagestat.ProjectIDIn(i.ProjectIDIn...))
+	}
+	if len(i.ProjectIDNotIn) > 0 {
+		predicates = append(predicates, usagestat.ProjectIDNotIn(i.ProjectIDNotIn...))
+	}
+	if i.ProjectIDGT != nil {
+		predicates = append(predicates, usagestat.ProjectIDGT(*i.ProjectIDGT))
+	}
+	if i.ProjectIDGTE != nil {
+		predicates = append(predicates, usagestat.ProjectIDGTE(*i.ProjectIDGTE))
+	}
+	if i.ProjectIDLT != nil {
+		predicates = append(predicates, usagestat.ProjectIDLT(*i.ProjectIDLT))
+	}
+	if i.ProjectIDLTE != nil {
+		predicates = append(predicates, usagestat.ProjectIDLTE(*i.ProjectIDLTE))
+	}
+	if i.ChannelID != nil {
+		predicates = append(predicates, usagestat.ChannelIDEQ(*i.ChannelID))
+	}
+	if i.ChannelIDNEQ != nil {
+		predicates = append(predicates, usagestat.ChannelIDNEQ(*i.ChannelIDNEQ))
+	}
+	if len(i.ChannelIDIn) > 0 {
+		predicates = append(predicates, usagestat.ChannelIDIn(i.ChannelIDIn...))
+	}
+	if len(i.ChannelIDNotIn) > 0 {
+		predicates = append(predicates, usagestat.ChannelIDNotIn(i.ChannelIDNotIn...))
+	}
+	if i.ChannelIDGT != nil {
+		predicates = append(predicates, usagestat.ChannelIDGT(*i.ChannelIDGT))
+	}
+	if i.ChannelIDGTE != nil {
+		predicates = append(predicates, usagestat.ChannelIDGTE(*i.ChannelIDGTE))
+	}
+	if i.ChannelIDLT != nil {
+		predicates = append(predicates, usagestat.ChannelIDLT(*i.ChannelIDLT))
+	}
+	if i.ChannelIDLTE != nil {
+		predicates = append(predicates, usagestat.ChannelIDLTE(*i.ChannelIDLTE))
+	}
+	if i.ModelID != nil {
+		predicates = append(predicates, usagestat.ModelIDEQ(*i.ModelID))
+	}
+	if i.ModelIDNEQ != nil {
+		predicates = append(predicates, usagestat.ModelIDNEQ(*i.ModelIDNEQ))
+	}
+	if len(i.ModelIDIn) > 0 {
+		predicates = append(predicates, usagestat.ModelIDIn(i.ModelIDIn...))
+	}
+	if len(i.ModelIDNotIn) > 0 {
+		predicates = append(predicates, usagestat.ModelIDNotIn(i.ModelIDNotIn...))
+	}
+	if i.ModelIDGT != nil {
+		predicates = append(predicates, usagestat.ModelIDGT(*i.ModelIDGT))
+	}
+	if i.ModelIDGTE != nil {
+		predicates = append(predicates, usagestat.ModelIDGTE(*i.ModelIDGTE))
+	}
+	if i.ModelIDLT != nil {
+		predicates = append(predicates, usagestat.ModelIDLT(*i.ModelIDLT))
+	}
+	if i.ModelIDLTE != nil {
+		predicates = append(predicates, usagestat.ModelIDLTE(*i.ModelIDLTE))
+	}
+	if i.ModelIDContains != nil {
+		predicates = append(predicates, usagestat.ModelIDContains(*i.ModelIDContains))
+	}
+	if i.ModelIDHasPrefix != nil {
+		predicates = append(predicates, usagestat.ModelIDHasPrefix(*i.ModelIDHasPrefix))
+	}
+	if i.ModelIDHasSuffix != nil {
+		predicates = append(predicates, usagestat.ModelIDHasSuffix(*i.ModelIDHasSuffix))
+	}
+	if i.ModelIDEqualFold != nil {
+		predicates = append(predicates, usagestat.ModelIDEqualFold(*i.ModelIDEqualFold))
+	}
+	if i.ModelIDContainsFold != nil {
+		predicates = append(predicates, usagestat.ModelIDContainsFold(*i.ModelIDContainsFold))
+	}
+	if i.RequestCount != nil {
+		predicates = append(predicates, usagestat.RequestCountEQ(*i.RequestCount))
+	}
+	if i.RequestCountNEQ != nil {
+		predicates = append(predicates, usagestat.RequestCountNEQ(*i.RequestCountNEQ))
+	}
+	if len(i.RequestCountIn) > 0 {
+		predicates = append(predicates, usagestat.RequestCountIn(i.RequestCountIn...))
+	}
+	if len(i.RequestCountNotIn) > 0 {
+		predicates = append(predicates, usagestat.RequestCountNotIn(i.RequestCountNotIn...))
+	}
+	if i.RequestCountGT != nil {
+		predicates = append(predicates, usagestat.RequestCountGT(*i.RequestCountGT))
+	}
+	if i.RequestCountGTE != nil {
+		predicates = append(predicates, usagestat.RequestCountGTE(*i.RequestCountGTE))
+	}
+	if i.RequestCountLT != nil {
+		predicates = append(predicates, usagestat.RequestCountLT(*i.RequestCountLT))
+	}
+	if i.RequestCountLTE != nil {
+		predicates = append(predicates, usagestat.RequestCountLTE(*i.RequestCountLTE))
+	}
+	if i.PromptTokens != nil {
+		predicates = append(predicates, usagestat.PromptTokensEQ(*i.PromptTokens))
+	}
+	if i.PromptTokensNEQ != nil {
+		predicates = append(predicates, usagestat.PromptTokensNEQ(*i.PromptTokensNEQ))
+	}
+	if len(i.PromptTokensIn) > 0 {
+		predicates = append(predicates, usagestat.PromptTokensIn(i.PromptTokensIn...))
+	}
+	if len(i.PromptTokensNotIn) > 0 {
+		predicates = append(predicates, usagestat.PromptTokensNotIn(i.PromptTokensNotIn...))
+	}
+	if i.PromptTokensGT != nil {
+		predicates = append(predicates, usagestat.PromptTokensGT(*i.PromptTokensGT))
+	}
+	if i.PromptTokensGTE != nil {
+		predicates = append(predicates, usagestat.PromptTokensGTE(*i.PromptTokensGTE))
+	}
+	if i.PromptTokensLT != nil {
+		predicates = append(predicates, usagestat.PromptTokensLT(*i.PromptTokensLT))
+	}
+	if i.PromptTokensLTE != nil {
+		predicates = append(predicates, usagestat.PromptTokensLTE(*i.PromptTokensLTE))
+	}
+	if i.CompletionTokens != nil {
+		predicates = append(predicates, usagestat.CompletionTokensEQ(*i.CompletionTokens))
+	}
+	if i.CompletionTokensNEQ != nil {
+		predicates = append(predicates, usagestat.CompletionTokensNEQ(*i.CompletionTokensNEQ))
+	}
+	if len(i.CompletionTokensIn) > 0 {
+		predicates = append(predicates, usagestat.CompletionTokensIn(i.CompletionTokensIn...))
+	}
+	if len(i.CompletionTokensNotIn) > 0 {
+		predicates = append(predicates, usagestat.CompletionTokensNotIn(i.CompletionTokensNotIn...))
+	}
+	if i.CompletionTokensGT != nil {
+		predicates = append(predicates, usagestat.CompletionTokensGT(*i.CompletionTokensGT))
+	}
+	if i.CompletionTokensGTE != nil {
+		predicates = append(predicates, usagestat.CompletionTokensGTE(*i.CompletionTokensGTE))
+	}
+	if i.CompletionTokensLT != nil {
+		predicates = append(predicates, usagestat.CompletionTokensLT(*i.CompletionTokensLT))
+	}
+	if i.CompletionTokensLTE != nil {
+		predicates = append(predicates, usagestat.CompletionTokensLTE(*i.CompletionTokensLTE))
+	}
+	if i.TotalTokens != nil {
+		predicates = append(predicates, usagestat.TotalTokensEQ(*i.TotalTokens))
+	}
+	if i.TotalTokensNEQ != nil {
+		predicates = append(predicates, usagestat.TotalTokensNEQ(*i.TotalTokensNEQ))
+	}
+	if len(i.TotalTokensIn) > 0 {
+		predicates = append(predicates, usagestat.TotalTokensIn(i.TotalTokensIn...))
+	}
+	if len(i.TotalTokensNotIn) > 0 {
+		predicates = append(predicates, usagestat.TotalTokensNotIn(i.TotalTokensNotIn...))
+	}
+	if i.TotalTokensGT != nil {
+		predicates = append(predicates, usagestat.TotalTokensGT(*i.TotalTokensGT))
+	}
+	if i.TotalTokensGTE != nil {
+		predicates = append(predicates, usagestat.TotalTokensGTE(*i.TotalTokensGTE))
+	}
+	if i.TotalTokensLT != nil {
+		predicates = append(predicates, usagestat.TotalTokensLT(*i.TotalTokensLT))
+	}
+	if i.TotalTokensLTE != nil {
+		predicates = append(predicates, usagestat.TotalTokensLTE(*i.TotalTokensLTE))
+	}
+	if i.PromptCachedTokens != nil {
+		predicates = append(predicates, usagestat.PromptCachedTokensEQ(*i.PromptCachedTokens))
+	}
+	if i.PromptCachedTokensNEQ != nil {
+		predicates = append(predicates, usagestat.PromptCachedTokensNEQ(*i.PromptCachedTokensNEQ))
+	}
+	if len(i.PromptCachedTokensIn) > 0 {
+		predicates = append(predicates, usagestat.PromptCachedTokensIn(i.PromptCachedTokensIn...))
+	}
+	if len(i.PromptCachedTokensNotIn) > 0 {
+		predicates = append(predicates, usagestat.PromptCachedTokensNotIn(i.PromptCachedTokensNotIn...))
+	}
+	if i.PromptCachedTokensGT != nil {
+		predicates = append(predicates, usagestat.PromptCachedTokensGT(*i.PromptCachedTokensGT))
+	}
+	if i.PromptCachedTokensGTE != nil {
+		predicates = append(predicates, usagestat.PromptCachedTokensGTE(*i.PromptCachedTokensGTE))
+	}
+	if i.PromptCachedTokensLT != nil {
+		predicates = append(predicates, usagestat.PromptCachedTokensLT(*i.PromptCachedTokensLT))
+	}
+	if i.PromptCachedTokensLTE != nil {
+		predicates = append(predicates, usagestat.PromptCachedTokensLTE(*i.PromptCachedTokensLTE))
+	}
+	if i.PromptWriteCachedTokens != nil {
+		predicates = append(predicates, usagestat.PromptWriteCachedTokensEQ(*i.PromptWriteCachedTokens))
+	}
+	if i.PromptWriteCachedTokensNEQ != nil {
+		predicates = append(predicates, usagestat.PromptWriteCachedTokensNEQ(*i.PromptWriteCachedTokensNEQ))
+	}
+	if len(i.PromptWriteCachedTokensIn) > 0 {
+		predicates = append(predicates, usagestat.PromptWriteCachedTokensIn(i.PromptWriteCachedTokensIn...))
+	}
+	if len(i.PromptWriteCachedTokensNotIn) > 0 {
+		predicates = append(predicates, usagestat.PromptWriteCachedTokensNotIn(i.PromptWriteCachedTokensNotIn...))
+	}
+	if i.PromptWriteCachedTokensGT != nil {
+		predicates = append(predicates, usagestat.PromptWriteCachedTokensGT(*i.PromptWriteCachedTokensGT))
+	}
+	if i.PromptWriteCachedTokensGTE != nil {
+		predicates = append(predicates, usagestat.PromptWriteCachedTokensGTE(*i.PromptWriteCachedTokensGTE))
+	}
+	if i.PromptWriteCachedTokensLT != nil {
+		predicates = append(predicates, usagestat.PromptWriteCachedTokensLT(*i.PromptWriteCachedTokensLT))
+	}
+	if i.PromptWriteCachedTokensLTE != nil {
+		predicates = append(predicates, usagestat.PromptWriteCachedTokensLTE(*i.PromptWriteCachedTokensLTE))
+	}
+	if i.CompletionReasoningTokens != nil {
+		predicates = append(predicates, usagestat.CompletionReasoningTokensEQ(*i.CompletionReasoningTokens))
+	}
+	if i.CompletionReasoningTokensNEQ != nil {
+		predicates = append(predicates, usagestat.CompletionReasoningTokensNEQ(*i.CompletionReasoningTokensNEQ))
+	}
+	if len(i.CompletionReasoningTokensIn) > 0 {
+		predicates = append(predicates, usagestat.CompletionReasoningTokensIn(i.CompletionReasoningTokensIn...))
+	}
+	if len(i.CompletionReasoningTokensNotIn) > 0 {
+		predicates = append(predicates, usagestat.CompletionReasoningTokensNotIn(i.CompletionReasoningTokensNotIn...))
+	}
+	if i.CompletionReasoningTokensGT != nil {
+		predicates = append(predicates, usagestat.CompletionReasoningTokensGT(*i.CompletionReasoningTokensGT))
+	}
+	if i.CompletionReasoningTokensGTE != nil {
+		predicates = append(predicates, usagestat.CompletionReasoningTokensGTE(*i.CompletionReasoningTokensGTE))
+	}
+	if i.CompletionReasoningTokensLT != nil {
+		predicates = append(predicates, usagestat.CompletionReasoningTokensLT(*i.CompletionReasoningTokensLT))
+	}
+	if i.CompletionReasoningTokensLTE != nil {
+		predicates = append(predicates, usagestat.CompletionReasoningTokensLTE(*i.CompletionReasoningTokensLTE))
+	}
+	if i.TotalCost != nil {
+		predicates = append(predicates, usagestat.TotalCostEQ(*i.TotalCost))
+	}
+	if i.TotalCostNEQ != nil {
+		predicates = append(predicates, usagestat.TotalCostNEQ(*i.TotalCostNEQ))
+	}
+	if len(i.TotalCostIn) > 0 {
+		predicates = append(predicates, usagestat.TotalCostIn(i.TotalCostIn...))
+	}
+	if len(i.TotalCostNotIn) > 0 {
+		predicates = append(predicates, usagestat.TotalCostNotIn(i.TotalCostNotIn...))
+	}
+	if i.TotalCostGT != nil {
+		predicates = append(predicates, usagestat.TotalCostGT(*i.TotalCostGT))
+	}
+	if i.TotalCostGTE != nil {
+		predicates = append(predicates, usagestat.TotalCostGTE(*i.TotalCostGTE))
+	}
+	if i.TotalCostLT != nil {
+		predicates = append(predicates, usagestat.TotalCostLT(*i.TotalCostLT))
+	}
+	if i.TotalCostLTE != nil {
+		predicates = append(predicates, usagestat.TotalCostLTE(*i.TotalCostLTE))
+	}
+
+	switch len(predicates) {
+	case 0:
+		return nil, ErrEmptyUsageStatWhereInput
+	case 1:
+		return predicates[0], nil
+	default:
+		return usagestat.And(predicates...), nil
 	}
 }
 

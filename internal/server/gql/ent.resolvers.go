@@ -861,6 +861,11 @@ func (r *usageLogResolver) Channel(ctx context.Context, obj *ent.UsageLog) (*ent
 }
 
 // ID is the resolver for the id field.
+func (r *usageStatResolver) ID(ctx context.Context, obj *ent.UsageStat) (*objects.GUID, error) {
+	panic(fmt.Errorf("not implemented: ID - id"))
+}
+
+// ID is the resolver for the id field.
 func (r *userResolver) ID(ctx context.Context, obj *ent.User) (*objects.GUID, error) {
 	return &objects.GUID{
 		Type: ent.TypeUser,
@@ -1004,6 +1009,9 @@ func (r *Resolver) Trace() TraceResolver { return &traceResolver{r} }
 // UsageLog returns UsageLogResolver implementation.
 func (r *Resolver) UsageLog() UsageLogResolver { return &usageLogResolver{r} }
 
+// UsageStat returns UsageStatResolver implementation.
+func (r *Resolver) UsageStat() UsageStatResolver { return &usageStatResolver{r} }
+
 // User returns UserResolver implementation.
 func (r *Resolver) User() UserResolver { return &userResolver{r} }
 
@@ -1035,6 +1043,7 @@ type systemResolver struct{ *Resolver }
 type threadResolver struct{ *Resolver }
 type traceResolver struct{ *Resolver }
 type usageLogResolver struct{ *Resolver }
+type usageStatResolver struct{ *Resolver }
 type userResolver struct{ *Resolver }
 type userProjectResolver struct{ *Resolver }
 type userRoleResolver struct{ *Resolver }

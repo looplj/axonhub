@@ -35,6 +35,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -6789,6 +6790,255 @@ func (_m *UsageLog) ToEdge(order *UsageLogOrder) *UsageLogEdge {
 		order = DefaultUsageLogOrder
 	}
 	return &UsageLogEdge{
+		Node:   _m,
+		Cursor: order.Field.toCursor(_m),
+	}
+}
+
+// UsageStatEdge is the edge representation of UsageStat.
+type UsageStatEdge struct {
+	Node   *UsageStat `json:"node"`
+	Cursor Cursor     `json:"cursor"`
+}
+
+// UsageStatConnection is the connection containing edges to UsageStat.
+type UsageStatConnection struct {
+	Edges      []*UsageStatEdge `json:"edges"`
+	PageInfo   PageInfo         `json:"pageInfo"`
+	TotalCount int              `json:"totalCount"`
+}
+
+func (c *UsageStatConnection) build(nodes []*UsageStat, pager *usagestatPager, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *UsageStat
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *UsageStat {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *UsageStat {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*UsageStatEdge, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &UsageStatEdge{
+			Node:   node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+// UsageStatPaginateOption enables pagination customization.
+type UsageStatPaginateOption func(*usagestatPager) error
+
+// WithUsageStatOrder configures pagination ordering.
+func WithUsageStatOrder(order *UsageStatOrder) UsageStatPaginateOption {
+	if order == nil {
+		order = DefaultUsageStatOrder
+	}
+	o := *order
+	return func(pager *usagestatPager) error {
+		if err := o.Direction.Validate(); err != nil {
+			return err
+		}
+		if o.Field == nil {
+			o.Field = DefaultUsageStatOrder.Field
+		}
+		pager.order = &o
+		return nil
+	}
+}
+
+// WithUsageStatFilter configures pagination filter.
+func WithUsageStatFilter(filter func(*UsageStatQuery) (*UsageStatQuery, error)) UsageStatPaginateOption {
+	return func(pager *usagestatPager) error {
+		if filter == nil {
+			return errors.New("UsageStatQuery filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type usagestatPager struct {
+	reverse bool
+	order   *UsageStatOrder
+	filter  func(*UsageStatQuery) (*UsageStatQuery, error)
+}
+
+func newUsageStatPager(opts []UsageStatPaginateOption, reverse bool) (*usagestatPager, error) {
+	pager := &usagestatPager{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	if pager.order == nil {
+		pager.order = DefaultUsageStatOrder
+	}
+	return pager, nil
+}
+
+func (p *usagestatPager) applyFilter(query *UsageStatQuery) (*UsageStatQuery, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+func (p *usagestatPager) toCursor(_m *UsageStat) Cursor {
+	return p.order.Field.toCursor(_m)
+}
+
+func (p *usagestatPager) applyCursors(query *UsageStatQuery, after, before *Cursor) (*UsageStatQuery, error) {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	for _, predicate := range entgql.CursorsPredicate(after, before, DefaultUsageStatOrder.Field.column, p.order.Field.column, direction) {
+		query = query.Where(predicate)
+	}
+	return query, nil
+}
+
+func (p *usagestatPager) applyOrder(query *UsageStatQuery) *UsageStatQuery {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+	if p.order.Field != DefaultUsageStatOrder.Field {
+		query = query.Order(DefaultUsageStatOrder.Field.toTerm(direction.OrderTermOption()))
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return query
+}
+
+func (p *usagestatPager) orderExpr(query *UsageStatQuery) sql.Querier {
+	direction := p.order.Direction
+	if p.reverse {
+		direction = direction.Reverse()
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(p.order.Field.column)
+	}
+	return sql.ExprFunc(func(b *sql.Builder) {
+		b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+		if p.order.Field != DefaultUsageStatOrder.Field {
+			b.Comma().Ident(DefaultUsageStatOrder.Field.column).Pad().WriteString(string(direction))
+		}
+	})
+}
+
+// Paginate executes the query and returns a relay based cursor connection to UsageStat.
+func (_m *UsageStatQuery) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...UsageStatPaginateOption,
+) (*UsageStatConnection, error) {
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := newUsageStatPager(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if _m, err = pager.applyFilter(_m); err != nil {
+		return nil, err
+	}
+	conn := &UsageStatConnection{Edges: []*UsageStatEdge{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := _m.Clone()
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if _m, err = pager.applyCursors(_m, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		_m.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := _m.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	_m = pager.applyOrder(_m)
+	nodes, err := _m.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+}
+
+// UsageStatOrderField defines the ordering field of UsageStat.
+type UsageStatOrderField struct {
+	// Value extracts the ordering value from the given UsageStat.
+	Value    func(*UsageStat) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) usagestat.OrderOption
+	toCursor func(*UsageStat) Cursor
+}
+
+// UsageStatOrder defines the ordering of UsageStat.
+type UsageStatOrder struct {
+	Direction OrderDirection       `json:"direction"`
+	Field     *UsageStatOrderField `json:"field"`
+}
+
+// DefaultUsageStatOrder is the default ordering of UsageStat.
+var DefaultUsageStatOrder = &UsageStatOrder{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &UsageStatOrderField{
+		Value: func(_m *UsageStat) (ent.Value, error) {
+			return _m.ID, nil
+		},
+		column: usagestat.FieldID,
+		toTerm: usagestat.ByID,
+		toCursor: func(_m *UsageStat) Cursor {
+			return Cursor{ID: _m.ID}
+		},
+	},
+}
+
+// ToEdge converts UsageStat into UsageStatEdge.
+func (_m *UsageStat) ToEdge(order *UsageStatOrder) *UsageStatEdge {
+	if order == nil {
+		order = DefaultUsageStatOrder
+	}
+	return &UsageStatEdge{
 		Node:   _m,
 		Cursor: order.Field.toCursor(_m),
 	}

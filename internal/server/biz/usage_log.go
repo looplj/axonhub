@@ -172,6 +172,14 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		s.OnUsageLogCreated()
 	}
 
+	// Keep the day-granularity aggregate in sync. Best-effort: a failure
+	// here must not fail the request, the detail row is the source of truth.
+	if err := s.upsertUsageStat(ctx, usageLog); err != nil {
+		log.Warn(ctx, "failed to upsert usage stat for usage log",
+			log.Int("usage_log_id", usageLog.ID),
+			log.Cause(err))
+	}
+
 	return usageLog, nil
 }
 

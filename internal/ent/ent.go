@@ -34,6 +34,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -119,6 +120,7 @@ func checkColumn(t, c string) error {
 			thread.Table:                   thread.ValidColumn,
 			trace.Table:                    trace.ValidColumn,
 			usagelog.Table:                 usagelog.ValidColumn,
+			usagestat.Table:                usagestat.ValidColumn,
 			user.Table:                     user.ValidColumn,
 			userproject.Table:              userproject.ValidColumn,
 			userrole.Table:                 userrole.ValidColumn,

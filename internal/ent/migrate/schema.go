@@ -922,6 +922,61 @@ var (
 			},
 		},
 	}
+	// UsageStatsColumns holds the columns for the "usage_stats" table.
+	UsageStatsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "date", Type: field.TypeString},
+		{Name: "api_key_id", Type: field.TypeInt, Default: 0},
+		{Name: "project_id", Type: field.TypeInt, Default: 1},
+		{Name: "channel_id", Type: field.TypeInt, Default: 0},
+		{Name: "model_id", Type: field.TypeString},
+		{Name: "request_count", Type: field.TypeInt64, Default: 0},
+		{Name: "prompt_tokens", Type: field.TypeInt64, Default: 0},
+		{Name: "completion_tokens", Type: field.TypeInt64, Default: 0},
+		{Name: "total_tokens", Type: field.TypeInt64, Default: 0},
+		{Name: "prompt_cached_tokens", Type: field.TypeInt64, Default: 0},
+		{Name: "prompt_write_cached_tokens", Type: field.TypeInt64, Default: 0},
+		{Name: "completion_reasoning_tokens", Type: field.TypeInt64, Default: 0},
+		{Name: "total_cost", Type: field.TypeFloat64, Default: 0},
+	}
+	// UsageStatsTable holds the schema information for the "usage_stats" table.
+	UsageStatsTable = &schema.Table{
+		Name:       "usage_stats",
+		Columns:    UsageStatsColumns,
+		PrimaryKey: []*schema.Column{UsageStatsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "usage_stats_unique",
+				Unique:  true,
+				Columns: []*schema.Column{UsageStatsColumns[1], UsageStatsColumns[2], UsageStatsColumns[5], UsageStatsColumns[4], UsageStatsColumns[3]},
+			},
+			{
+				Name:    "usage_stats_by_date",
+				Unique:  false,
+				Columns: []*schema.Column{UsageStatsColumns[1]},
+			},
+			{
+				Name:    "usage_stats_by_api_key_date",
+				Unique:  false,
+				Columns: []*schema.Column{UsageStatsColumns[2], UsageStatsColumns[1]},
+			},
+			{
+				Name:    "usage_stats_by_model_date",
+				Unique:  false,
+				Columns: []*schema.Column{UsageStatsColumns[5], UsageStatsColumns[1]},
+			},
+			{
+				Name:    "usage_stats_by_channel_date",
+				Unique:  false,
+				Columns: []*schema.Column{UsageStatsColumns[4], UsageStatsColumns[1]},
+			},
+			{
+				Name:    "usage_stats_by_project_date",
+				Unique:  false,
+				Columns: []*schema.Column{UsageStatsColumns[3], UsageStatsColumns[1]},
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -1057,6 +1112,7 @@ var (
 		ThreadsTable,
 		TracesTable,
 		UsageLogsTable,
+		UsageStatsTable,
 		UsersTable,
 		UserProjectsTable,
 		UserRolesTable,

@@ -117,8 +117,21 @@ func Run(opts ...fx.Option) {
 				tracing.SetupLogger(log.GetGlobalLogger())
 				slog.SetDefault(log.GetGlobalLogger().AsSlog())
 			}),
-			fx.Invoke(func(usageLogSvc *biz.UsageLogService) {
+			fx.Invoke(func(lc fx.Lifecycle, usageLogSvc *biz.UsageLogService) {
 				usageLogSvc.OnUsageLogCreated = gql.InvalidateAllTimeTokenStatsCache
+				lc.Append(fx.Hook{
+					OnStart: func(ctx context.Context) error {
+						// Best-effort backfill of day aggregates from existing
+						// usage_logs. Runs before the GC scheduler starts so
+						// cleanup never races the aggregation. Non-fatal on
+						// failure — usage stats just stay empty until a
+						// manual backfill.
+						if err := usageLogSvc.BackfillUsageStats(ctx); err != nil {
+							log.Error(ctx, "usage stats backfill failed", log.Cause(err))
+						}
+						return nil
+					},
+				})
 			}),
 			fx.Invoke(func(cfg Config) {
 				if cfg.Dashboard.AllTimeTokenStatsSoftTTL > 0 && cfg.Dashboard.AllTimeTokenStatsHardTTL > 0 {

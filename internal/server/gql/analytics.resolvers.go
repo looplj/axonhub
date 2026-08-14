@@ -10,11 +10,10 @@ import (
 	"fmt"
 	"time"
 
-	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/samber/lo"
@@ -22,10 +21,8 @@ import (
 
 // AnalyticsMetadata is the resolver for the analyticsMetadata field.
 func (r *queryResolver) AnalyticsMetadata(ctx context.Context) (*AnalyticsMetadata, error) {
-	loc := r.systemService.TimeLocation(ctx)
-
-	// Find earliest created_at
-	first, err := r.client.UsageLog.Query().Order(ent.Asc(usagelog.FieldCreatedAt)).First(ctx)
+	// Earliest available date in the day-granularity usage stats.
+	first, err := r.client.UsageStat.Query().Order(ent.Asc(usagestat.FieldDate)).First(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return &AnalyticsMetadata{}, nil
@@ -34,7 +31,7 @@ func (r *queryResolver) AnalyticsMetadata(ctx context.Context) (*AnalyticsMetada
 		return nil, err
 	}
 
-	d := first.CreatedAt.In(loc).Format("2006-01-02")
+	d := first.Date
 	return &AnalyticsMetadata{EarliestDate: &d}, nil
 }
 
@@ -45,7 +42,7 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 	loc := r.systemService.TimeLocation(ctx)
 
 	type overviewResult struct {
-		TotalRequests     int     `json:"total_requests"`
+		TotalRequests     int64   `json:"total_requests"`
 		TotalInputTokens  int64   `json:"total_input_tokens"`
 		TotalCachedTokens int64   `json:"total_cached_tokens"`
 		TotalOutputTokens int64   `json:"total_output_tokens"`
@@ -55,17 +52,17 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 
 	var results []overviewResult
 
-	err := r.client.UsageLog.Query().
+	err := r.client.UsageStat.Query().
 		Modify(func(s *sql.Selector) {
 			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
 
 			s.Select(
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "total_requests"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "total_input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "total_cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "total_output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "total_requests"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "total_input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "total_cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "total_output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalTokens)), "total_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "total_cost"),
 			)
 		}).
 		Scan(ctx, &results)
@@ -84,7 +81,7 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 		TotalCachedInputTokens:   safeIntFromInt64(r0.TotalCachedTokens),
 		TotalUncachedInputTokens: safeIntFromInt64(r0.TotalInputTokens - r0.TotalCachedTokens),
 		TotalOutputTokens:        safeIntFromInt64(r0.TotalOutputTokens),
-		TotalRequests:            r0.TotalRequests,
+		TotalRequests:            safeIntFromInt64(r0.TotalRequests),
 		TotalCost:                r0.TotalCost,
 	}, nil
 }
@@ -96,7 +93,6 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 
 	loc := r.systemService.TimeLocation(ctx)
 	nowUTC := xtime.UTCNow()
-	_, offsetSeconds := nowUTC.In(loc).Zone()
 
 	// Determine date range — 同仪表盘 parseTimeWindow 模式
 	var startDay, endDay time.Time
@@ -126,42 +122,28 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 		CachedTokens int64   `json:"cached_tokens"`
 		OutputTokens int64   `json:"output_tokens"`
 		TotalTokens  int64   `json:"total_tokens"`
-		RequestCount int     `json:"request_count"`
+		RequestCount int64   `json:"request_count"`
 		Cost         float64 `json:"cost"`
 	}
 
 	var results []dailyStats
 
-	err := r.client.UsageLog.Query().
+	err := r.client.UsageStat.Query().
 		Modify(func(s *sql.Selector) {
 			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
 
-			// Build dialect-specific date expression
-			createdAtCol := s.C(usagelog.FieldCreatedAt)
-			var dateExpr string
-
-			switch s.Dialect() {
-			case dialect.SQLite:
-				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", createdAtCol, offsetSeconds)
-			case dialect.MySQL:
-				offsetStr := xtime.FormatUTCOffset(offsetSeconds)
-				dateExpr = fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", createdAtCol, offsetStr)
-			case dialect.Postgres:
-				dateExpr = fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", createdAtCol, loc.String())
-			default:
-				dateExpr = fmt.Sprintf("DATE(%s)", createdAtCol)
-			}
-
+			// usage_stats is already grouped by local calendar date; no
+			// dialect-specific date expressions needed.
 			s.Select(
-				sql.As(dateExpr, "date"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "cost"),
+				s.C(usagestat.FieldDate),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalTokens)), "total_tokens"),
+				sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "request_count"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "cost"),
 			).
-				GroupBy(dateExpr).
+				GroupBy(s.C(usagestat.FieldDate)).
 				OrderBy("date")
 		}).
 		Scan(ctx, &results)
@@ -188,7 +170,7 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 				UncachedInputTokens: safeIntFromInt64(stats.InputTokens - stats.CachedTokens),
 				OutputTokens:        safeIntFromInt64(stats.OutputTokens),
 				TotalTokens:         safeIntFromInt64(stats.TotalTokens),
-				RequestCount:        stats.RequestCount,
+				RequestCount:        safeIntFromInt64(stats.RequestCount),
 				Cost:                stats.Cost,
 			})
 		} else {

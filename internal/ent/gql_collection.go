@@ -31,6 +31,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -5270,6 +5271,133 @@ func newUsageLogPaginateArgs(rv map[string]any) *usagelogPaginateArgs {
 	}
 	if v, ok := rv[whereField].(*UsageLogWhereInput); ok {
 		args.opts = append(args.opts, WithUsageLogFilter(v.Filter))
+	}
+	return args
+}
+
+// CollectFields tells the query-builder to eagerly load connected nodes by resolver context.
+func (_q *UsageStatQuery) CollectFields(ctx context.Context, satisfies ...string) (*UsageStatQuery, error) {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return _q, nil
+	}
+	if err := _q.collectField(ctx, false, graphql.GetOperationContext(ctx), fc.Field, nil, satisfies...); err != nil {
+		return nil, err
+	}
+	return _q, nil
+}
+
+func (_q *UsageStatQuery) collectField(ctx context.Context, oneNode bool, opCtx *graphql.OperationContext, collected graphql.CollectedField, path []string, satisfies ...string) error {
+	path = append([]string(nil), path...)
+	var (
+		unknownSeen    bool
+		fieldSeen      = make(map[string]struct{}, len(usagestat.Columns))
+		selectedFields = []string{usagestat.FieldID}
+	)
+	for _, field := range graphql.CollectFields(opCtx, collected.Selections, satisfies) {
+		switch field.Name {
+		case "date":
+			if _, ok := fieldSeen[usagestat.FieldDate]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldDate)
+				fieldSeen[usagestat.FieldDate] = struct{}{}
+			}
+		case "apiKeyID":
+			if _, ok := fieldSeen[usagestat.FieldAPIKeyID]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldAPIKeyID)
+				fieldSeen[usagestat.FieldAPIKeyID] = struct{}{}
+			}
+		case "projectID":
+			if _, ok := fieldSeen[usagestat.FieldProjectID]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldProjectID)
+				fieldSeen[usagestat.FieldProjectID] = struct{}{}
+			}
+		case "channelID":
+			if _, ok := fieldSeen[usagestat.FieldChannelID]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldChannelID)
+				fieldSeen[usagestat.FieldChannelID] = struct{}{}
+			}
+		case "modelID":
+			if _, ok := fieldSeen[usagestat.FieldModelID]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldModelID)
+				fieldSeen[usagestat.FieldModelID] = struct{}{}
+			}
+		case "requestCount":
+			if _, ok := fieldSeen[usagestat.FieldRequestCount]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldRequestCount)
+				fieldSeen[usagestat.FieldRequestCount] = struct{}{}
+			}
+		case "promptTokens":
+			if _, ok := fieldSeen[usagestat.FieldPromptTokens]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldPromptTokens)
+				fieldSeen[usagestat.FieldPromptTokens] = struct{}{}
+			}
+		case "completionTokens":
+			if _, ok := fieldSeen[usagestat.FieldCompletionTokens]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldCompletionTokens)
+				fieldSeen[usagestat.FieldCompletionTokens] = struct{}{}
+			}
+		case "totalTokens":
+			if _, ok := fieldSeen[usagestat.FieldTotalTokens]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldTotalTokens)
+				fieldSeen[usagestat.FieldTotalTokens] = struct{}{}
+			}
+		case "promptCachedTokens":
+			if _, ok := fieldSeen[usagestat.FieldPromptCachedTokens]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldPromptCachedTokens)
+				fieldSeen[usagestat.FieldPromptCachedTokens] = struct{}{}
+			}
+		case "promptWriteCachedTokens":
+			if _, ok := fieldSeen[usagestat.FieldPromptWriteCachedTokens]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldPromptWriteCachedTokens)
+				fieldSeen[usagestat.FieldPromptWriteCachedTokens] = struct{}{}
+			}
+		case "completionReasoningTokens":
+			if _, ok := fieldSeen[usagestat.FieldCompletionReasoningTokens]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldCompletionReasoningTokens)
+				fieldSeen[usagestat.FieldCompletionReasoningTokens] = struct{}{}
+			}
+		case "totalCost":
+			if _, ok := fieldSeen[usagestat.FieldTotalCost]; !ok {
+				selectedFields = append(selectedFields, usagestat.FieldTotalCost)
+				fieldSeen[usagestat.FieldTotalCost] = struct{}{}
+			}
+		case "id":
+		case "__typename":
+		default:
+			unknownSeen = true
+		}
+	}
+	if !unknownSeen {
+		_q.Select(selectedFields...)
+	}
+	return nil
+}
+
+type usagestatPaginateArgs struct {
+	first, last   *int
+	after, before *Cursor
+	opts          []UsageStatPaginateOption
+}
+
+func newUsageStatPaginateArgs(rv map[string]any) *usagestatPaginateArgs {
+	args := &usagestatPaginateArgs{}
+	if rv == nil {
+		return args
+	}
+	if v := rv[firstField]; v != nil {
+		args.first = v.(*int)
+	}
+	if v := rv[lastField]; v != nil {
+		args.last = v.(*int)
+	}
+	if v := rv[afterField]; v != nil {
+		args.after = v.(*Cursor)
+	}
+	if v := rv[beforeField]; v != nil {
+		args.before = v.(*Cursor)
+	}
+	if v, ok := rv[whereField].(*UsageStatWhereInput); ok {
+		args.opts = append(args.opts, WithUsageStatFilter(v.Filter))
 	}
 	return args
 }

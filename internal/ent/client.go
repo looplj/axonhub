@@ -37,6 +37,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -91,6 +92,8 @@ type Client struct {
 	Trace *TraceClient
 	// UsageLog is the client for interacting with the UsageLog builders.
 	UsageLog *UsageLogClient
+	// UsageStat is the client for interacting with the UsageStat builders.
+	UsageStat *UsageStatClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 	// UserProject is the client for interacting with the UserProject builders.
@@ -132,6 +135,7 @@ func (c *Client) init() {
 	c.Thread = NewThreadClient(c.config)
 	c.Trace = NewTraceClient(c.config)
 	c.UsageLog = NewUsageLogClient(c.config)
+	c.UsageStat = NewUsageStatClient(c.config)
 	c.User = NewUserClient(c.config)
 	c.UserProject = NewUserProjectClient(c.config)
 	c.UserRole = NewUserRoleClient(c.config)
@@ -249,6 +253,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Thread:                   NewThreadClient(cfg),
 		Trace:                    NewTraceClient(cfg),
 		UsageLog:                 NewUsageLogClient(cfg),
+		UsageStat:                NewUsageStatClient(cfg),
 		User:                     NewUserClient(cfg),
 		UserProject:              NewUserProjectClient(cfg),
 		UserRole:                 NewUserRoleClient(cfg),
@@ -293,6 +298,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Thread:                   NewThreadClient(cfg),
 		Trace:                    NewTraceClient(cfg),
 		UsageLog:                 NewUsageLogClient(cfg),
+		UsageStat:                NewUsageStatClient(cfg),
 		User:                     NewUserClient(cfg),
 		UserProject:              NewUserProjectClient(cfg),
 		UserRole:                 NewUserRoleClient(cfg),
@@ -329,8 +335,8 @@ func (c *Client) Use(hooks ...Hook) {
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
 		c.DataStorage, c.Invitation, c.Model, c.OIDCIdentity, c.Project, c.Prompt,
 		c.PromptProtectionRule, c.ProviderQuotaStatus, c.Request, c.RequestExecution,
-		c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject,
-		c.UserRole,
+		c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.UsageStat, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Use(hooks...)
 	}
@@ -344,8 +350,8 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 		c.ChannelModelPriceVersion, c.ChannelOverrideTemplate, c.ChannelProbe,
 		c.DataStorage, c.Invitation, c.Model, c.OIDCIdentity, c.Project, c.Prompt,
 		c.PromptProtectionRule, c.ProviderQuotaStatus, c.Request, c.RequestExecution,
-		c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.User, c.UserProject,
-		c.UserRole,
+		c.Role, c.System, c.Thread, c.Trace, c.UsageLog, c.UsageStat, c.User,
+		c.UserProject, c.UserRole,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -398,6 +404,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Trace.mutate(ctx, m)
 	case *UsageLogMutation:
 		return c.UsageLog.mutate(ctx, m)
+	case *UsageStatMutation:
+		return c.UsageStat.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	case *UserProjectMutation:
@@ -4218,6 +4226,140 @@ func (c *UsageLogClient) mutate(ctx context.Context, m *UsageLogMutation) (Value
 	}
 }
 
+// UsageStatClient is a client for the UsageStat schema.
+type UsageStatClient struct {
+	config
+}
+
+// NewUsageStatClient returns a client for the UsageStat from the given config.
+func NewUsageStatClient(c config) *UsageStatClient {
+	return &UsageStatClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `usagestat.Hooks(f(g(h())))`.
+func (c *UsageStatClient) Use(hooks ...Hook) {
+	c.hooks.UsageStat = append(c.hooks.UsageStat, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `usagestat.Intercept(f(g(h())))`.
+func (c *UsageStatClient) Intercept(interceptors ...Interceptor) {
+	c.inters.UsageStat = append(c.inters.UsageStat, interceptors...)
+}
+
+// Create returns a builder for creating a UsageStat entity.
+func (c *UsageStatClient) Create() *UsageStatCreate {
+	mutation := newUsageStatMutation(c.config, OpCreate)
+	return &UsageStatCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of UsageStat entities.
+func (c *UsageStatClient) CreateBulk(builders ...*UsageStatCreate) *UsageStatCreateBulk {
+	return &UsageStatCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *UsageStatClient) MapCreateBulk(slice any, setFunc func(*UsageStatCreate, int)) *UsageStatCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &UsageStatCreateBulk{err: fmt.Errorf("calling to UsageStatClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*UsageStatCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &UsageStatCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for UsageStat.
+func (c *UsageStatClient) Update() *UsageStatUpdate {
+	mutation := newUsageStatMutation(c.config, OpUpdate)
+	return &UsageStatUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UsageStatClient) UpdateOne(_m *UsageStat) *UsageStatUpdateOne {
+	mutation := newUsageStatMutation(c.config, OpUpdateOne, withUsageStat(_m))
+	return &UsageStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UsageStatClient) UpdateOneID(id int) *UsageStatUpdateOne {
+	mutation := newUsageStatMutation(c.config, OpUpdateOne, withUsageStatID(id))
+	return &UsageStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for UsageStat.
+func (c *UsageStatClient) Delete() *UsageStatDelete {
+	mutation := newUsageStatMutation(c.config, OpDelete)
+	return &UsageStatDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *UsageStatClient) DeleteOne(_m *UsageStat) *UsageStatDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *UsageStatClient) DeleteOneID(id int) *UsageStatDeleteOne {
+	builder := c.Delete().Where(usagestat.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UsageStatDeleteOne{builder}
+}
+
+// Query returns a query builder for UsageStat.
+func (c *UsageStatClient) Query() *UsageStatQuery {
+	return &UsageStatQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeUsageStat},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a UsageStat entity by its id.
+func (c *UsageStatClient) Get(ctx context.Context, id int) (*UsageStat, error) {
+	return c.Query().Where(usagestat.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UsageStatClient) GetX(ctx context.Context, id int) *UsageStat {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *UsageStatClient) Hooks() []Hook {
+	hooks := c.hooks.UsageStat
+	return append(hooks[:len(hooks):len(hooks)], usagestat.Hooks[:]...)
+}
+
+// Interceptors returns the client interceptors.
+func (c *UsageStatClient) Interceptors() []Interceptor {
+	return c.inters.UsageStat
+}
+
+func (c *UsageStatClient) mutate(ctx context.Context, m *UsageStatMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&UsageStatCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&UsageStatUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&UsageStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&UsageStatDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown UsageStat mutation op: %q", m.Op())
+	}
+}
+
 // UserClient is a client for the User schema.
 type UserClient struct {
 	config
@@ -4803,13 +4945,13 @@ type (
 		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
 		Invitation, Model, OIDCIdentity, Project, Prompt, PromptProtectionRule,
 		ProviderQuotaStatus, Request, RequestExecution, Role, System, Thread, Trace,
-		UsageLog, User, UserProject, UserRole []ent.Hook
+		UsageLog, UsageStat, User, UserProject, UserRole []ent.Hook
 	}
 	inters struct {
 		APIKey, APIKeyProfileTemplate, Channel, ChannelModelPrice,
 		ChannelModelPriceVersion, ChannelOverrideTemplate, ChannelProbe, DataStorage,
 		Invitation, Model, OIDCIdentity, Project, Prompt, PromptProtectionRule,
 		ProviderQuotaStatus, Request, RequestExecution, Role, System, Thread, Trace,
-		UsageLog, User, UserProject, UserRole []ent.Interceptor
+		UsageLog, UsageStat, User, UserProject, UserRole []ent.Interceptor
 	}
 )

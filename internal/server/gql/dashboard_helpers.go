@@ -13,7 +13,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/ent/channelprobe"
-	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
@@ -185,15 +185,17 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 		return make(map[int][]*ModelTokenUsageStats)
 	}
 
-	query := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDIn(apiKeyIDs...))
+	query := r.client.UsageStat.Query().
+		Where(usagestat.APIKeyIDIn(apiKeyIDs...))
 
 	if input != nil {
 		if input.CreatedAtGTE != nil {
-			query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
+			loc := r.systemService.TimeLocation(ctx)
+			query = query.Where(usagestat.DateGTE(input.CreatedAtGTE.In(loc).Format("2006-01-02")))
 		}
 		if input.CreatedAtLTE != nil {
-			query = query.Where(usagelog.CreatedAtLTE(*input.CreatedAtLTE))
+			loc := r.systemService.TimeLocation(ctx)
+			query = query.Where(usagestat.DateLTE(input.CreatedAtLTE.In(loc).Format("2006-01-02")))
 		}
 	}
 
@@ -211,19 +213,19 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 
 	err := query.Modify(func(s *sql.Selector) {
 		s.Select(
-			s.C(usagelog.FieldAPIKeyID),
-			s.C(usagelog.FieldModelID),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+			s.C(usagestat.FieldAPIKeyID),
+			s.C(usagestat.FieldModelID),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionReasoningTokens)), "reasoning_tokens"),
 			// Order by billable total (input + output). Reasoning is already inside
 			// completion_tokens, so adding it would double-count and bias the
 			// per-API-key top-N model ranking toward reasoning-heavy models.
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
-				s.C(usagelog.FieldPromptTokens),
-				s.C(usagelog.FieldCompletionTokens)), "total_tokens"),
-		).GroupBy(s.C(usagelog.FieldAPIKeyID), s.C(usagelog.FieldModelID)).
+				s.C(usagestat.FieldPromptTokens),
+				s.C(usagestat.FieldCompletionTokens)), "total_tokens"),
+		).GroupBy(s.C(usagestat.FieldAPIKeyID), s.C(usagestat.FieldModelID)).
 			OrderBy(sql.Desc("total_tokens"))
 	}).Scan(ctx, &allResults)
 	if err != nil {
@@ -246,6 +248,28 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 	}
 
 	return resultMap
+}
+
+// sumRequestCount sums request_count from the day-granularity usage stats
+// table for an inclusive local-date range. Empty strings mean unbounded.
+func (r *queryResolver) sumRequestCount(ctx context.Context, dateGTE, dateLTE string) (int, error) {
+	q := r.client.UsageStat.Query()
+	if dateGTE != "" {
+		q = q.Where(usagestat.DateGTE(dateGTE))
+	}
+	if dateLTE != "" {
+		q = q.Where(usagestat.DateLTE(dateLTE))
+	}
+
+	var agg struct {
+		Count int64 `json:"count"`
+	}
+	if err := q.Modify(func(s *sql.Selector) {
+		s.Select(sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "count"))
+	}).Scan(ctx, &agg); err != nil {
+		return 0, err
+	}
+	return safeIntFromInt64(agg.Count), nil
 }
 
 // parseTimeWindow parses a time window string and returns the start time and a flag indicating

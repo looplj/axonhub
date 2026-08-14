@@ -25,7 +25,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
-	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
@@ -105,33 +105,27 @@ func (r *queryResolver) RequestStats(ctx context.Context) (*RequestStats, error)
 	loc := r.systemService.TimeLocation(ctx)
 	period := xtime.GetCalendarPeriods(loc)
 
-	if requestsToday, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.Today.Start)).
-		Count(ctx); err != nil {
+	if requestsToday, err := r.sumRequestCount(ctx, period.Today.Start.In(loc).Format("2006-01-02"), ""); err != nil {
 		log.Warn(ctx, "failed to count today's requests", log.Cause(err))
 	} else {
 		stats.RequestsToday = requestsToday
 	}
 
-	if requestsThisWeek, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.ThisWeek.Start)).
-		Count(ctx); err != nil {
+	if requestsThisWeek, err := r.sumRequestCount(ctx, period.ThisWeek.Start.In(loc).Format("2006-01-02"), ""); err != nil {
 		log.Warn(ctx, "failed to count this week's requests", log.Cause(err))
 	} else {
 		stats.RequestsThisWeek = requestsThisWeek
 	}
 
-	if requestsLastWeek, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.LastWeek.Start), usagelog.CreatedAtLT(period.LastWeek.End)).
-		Count(ctx); err != nil {
+	if requestsLastWeek, err := r.sumRequestCount(ctx,
+		period.LastWeek.Start.In(loc).Format("2006-01-02"),
+		period.LastWeek.End.AddDate(0, 0, -1).In(loc).Format("2006-01-02")); err != nil {
 		log.Warn(ctx, "failed to count last week's requests", log.Cause(err))
 	} else {
 		stats.RequestsLastWeek = requestsLastWeek
 	}
 
-	if requestsThisMonth, err := r.client.UsageLog.Query().
-		Where(usagelog.CreatedAtGTE(period.ThisMonth.Start)).
-		Count(ctx); err != nil {
+	if requestsThisMonth, err := r.sumRequestCount(ctx, period.ThisMonth.Start.In(loc).Format("2006-01-02"), ""); err != nil {
 		log.Warn(ctx, "failed to count this month's requests", log.Cause(err))
 	} else {
 		stats.RequestsThisMonth = requestsThisMonth
@@ -156,12 +150,13 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context, timeWindow *s
 
 	var results []channelStats
 
-	// Aggregate by channel directly in the database using usage_logs table joined with channels
-	err := r.client.UsageLog.Query().
+	// Aggregate by channel directly in the database using usage_stats joined with channels
+	loc := r.systemService.TimeLocation(ctx)
+	err := r.client.UsageStat.Query().
 		Modify(func(s *sql.Selector) {
 			channelTable := sql.Table(channel.Table)
 			s.Join(channelTable).On(
-				s.C(usagelog.FieldChannelID),
+				s.C(usagestat.FieldChannelID),
 				channelTable.C(channel.FieldID),
 			)
 
@@ -170,7 +165,7 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context, timeWindow *s
 
 			// Apply time window filter when provided
 			if applyFilter {
-				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+				s.Where(sql.GTE(s.C(usagestat.FieldDate), since.In(loc).Format("2006-01-02")))
 			}
 
 			// Group by channel fields to get names and types directly
@@ -179,7 +174,7 @@ func (r *queryResolver) RequestStatsByChannel(ctx context.Context, timeWindow *s
 			// Select fields: channel name, type and the count of logs
 			s.Select(
 				sql.As(channelTable.C(channel.FieldName), "channel_name"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "count"),
+				sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "count"),
 			)
 
 			// Order by count descending and limit to top 10
@@ -214,16 +209,17 @@ func (r *queryResolver) RequestStatsByModel(ctx context.Context, timeWindow *str
 
 	var results []modelStats
 
-	query := r.client.UsageLog.Query()
+	query := r.client.UsageStat.Query()
 
 	// Apply time window filter when provided
 	if applyFilter {
-		query = query.Where(usagelog.CreatedAtGTE(since))
+		loc := r.systemService.TimeLocation(ctx)
+		query = query.Where(usagestat.DateGTE(since.In(loc).Format("2006-01-02")))
 	}
 
 	err := query.
-		GroupBy(usagelog.FieldModelID).
-		Aggregate(ent.As(ent.Count(), "request_count")).
+		GroupBy(usagestat.FieldModelID).
+		Aggregate(ent.As(ent.Sum(usagestat.FieldRequestCount), "request_count")).
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get requests by model: %w", err)
@@ -264,17 +260,18 @@ func (r *queryResolver) RequestStatsByAPIKey(ctx context.Context, timeWindow *st
 	var results []apiKeyStats
 
 	// Database-level aggregation
-	query := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil())
+	query := r.client.UsageStat.Query().
+		Where(usagestat.APIKeyIDGT(0))
 
 	// Apply time window filter when provided
 	if applyFilter {
-		query = query.Where(usagelog.CreatedAtGTE(since))
+		loc := r.systemService.TimeLocation(ctx)
+		query = query.Where(usagestat.DateGTE(since.In(loc).Format("2006-01-02")))
 	}
 
 	err := query.
-		GroupBy(usagelog.FieldAPIKeyID).
-		Aggregate(ent.As(ent.Count(), "request_count")).
+		GroupBy(usagestat.FieldAPIKeyID).
+		Aggregate(ent.As(ent.Sum(usagestat.FieldRequestCount), "request_count")).
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get requests by API key: %w", err)
@@ -345,31 +342,32 @@ func (r *queryResolver) TokenStatsByAPIKey(ctx context.Context, timeWindow *stri
 
 	var results []tokenStats
 
-	// Aggregate directly on usage_logs.api_key_id. Joining to requests is unnecessary
-	// (the column is already on usage_logs) and breaks once the requests table is
-	// pruned by GC retention while usage_logs are still kept.
-	err := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil()).
+	// Aggregate directly on usage_stats.api_key_id. Joining to requests is
+	// unnecessary (the column is already on usage_stats) and breaks once the
+	// requests table is pruned by GC retention while stats are still kept.
+	loc := r.systemService.TimeLocation(ctx)
+	err := r.client.UsageStat.Query().
+		Where(usagestat.APIKeyIDGT(0)).
 		Modify(func(s *sql.Selector) {
 			if applyFilter {
-				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+				s.Where(sql.GTE(s.C(usagestat.FieldDate), since.In(loc).Format("2006-01-02")))
 			}
 
-			s.GroupBy(s.C(usagelog.FieldAPIKeyID))
+			s.GroupBy(s.C(usagestat.FieldAPIKeyID))
 
 			s.Select(
-				sql.As(s.C(usagelog.FieldAPIKeyID), "api_key_id"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+				sql.As(s.C(usagestat.FieldAPIKeyID), "api_key_id"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionReasoningTokens)), "reasoning_tokens"),
 			)
 
 			// Order by billable total (input + output). Reasoning is already inside
 			// completion_tokens, so adding it would double-count.
 			s.OrderBy(sql.Desc(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
-				s.C(usagelog.FieldPromptTokens),
-				s.C(usagelog.FieldCompletionTokens))))
+				s.C(usagestat.FieldPromptTokens),
+				s.C(usagestat.FieldCompletionTokens))))
 			s.Limit(10)
 		}).
 		Scan(ctx, &results)
@@ -467,14 +465,16 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 	// privacy rule for this internal stats query.
 	statsCtx := authz.WithScopeDecision(ctx, scopes.ScopeReadAPIKeys)
 
-	query := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDIn(accessibleIDs...))
+	query := r.client.UsageStat.Query().
+		Where(usagestat.APIKeyIDIn(accessibleIDs...))
 
 	if input.CreatedAtGTE != nil {
-		query = query.Where(usagelog.CreatedAtGTE(*input.CreatedAtGTE))
+		loc := r.systemService.TimeLocation(ctx)
+		query = query.Where(usagestat.DateGTE(input.CreatedAtGTE.In(loc).Format("2006-01-02")))
 	}
 	if input.CreatedAtLTE != nil {
-		query = query.Where(usagelog.CreatedAtLTE(*input.CreatedAtLTE))
+		loc := r.systemService.TimeLocation(ctx)
+		query = query.Where(usagestat.DateLTE(input.CreatedAtLTE.In(loc).Format("2006-01-02")))
 	}
 
 	type usageStats struct {
@@ -489,12 +489,12 @@ func (r *queryResolver) APIKeyTokenUsageStats(ctx context.Context, input *APIKey
 
 	err = query.Modify(func(s *sql.Selector) {
 		s.Select(
-			s.C(usagelog.FieldAPIKeyID),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
-		).GroupBy(s.C(usagelog.FieldAPIKeyID))
+			s.C(usagestat.FieldAPIKeyID),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+		).GroupBy(s.C(usagestat.FieldAPIKeyID))
 	}).Scan(statsCtx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get API key token usage stats: %w", err)
@@ -527,51 +527,35 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 	nowUTC := xtime.UTCNow()
 	nowLocal := nowUTC.In(loc)
 	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
-	startDateUTC := startDateLocal.UTC()
-	_, offsetSeconds := nowLocal.Zone()
 
 	// Use GROUP BY aggregation for efficient database-level computation
 	type dailyStats struct {
 		Date   string  `json:"date"`
-		Count  int     `json:"total_count"`
-		Tokens int     `json:"total_tokens"`
+		Count  int64   `json:"total_count"`
+		Tokens int64   `json:"total_tokens"`
 		Cost   float64 `json:"total_cost"`
 	}
 
 	var results []dailyStats
 
-	// Use raw SQL for complex GROUP BY with conditional counting
-	err := r.client.UsageLog.Query().
+	// usage_stats is already grouped by local calendar date, so no
+	// dialect-specific date expressions are needed.
+	todayStr := nowLocal.Format("2006-01-02")
+	startDateStr := startDateLocal.Format("2006-01-02")
+
+	err := r.client.UsageStat.Query().
 		Where(
-			usagelog.CreatedAtGTE(startDateUTC),
-			usagelog.CreatedAtLT(nowUTC),
+			usagestat.DateGTE(startDateStr),
+			usagestat.DateLTE(todayStr),
 		).
 		Modify(func(s *sql.Selector) {
-			// Build a dialect-specific date expression that returns a string 'YYYY-MM-DD'
-			var dateExpr string
-			// Use qualified column name to avoid ambiguity when joining
-			createdAtCol := s.C(usagelog.FieldCreatedAt)
-
-			switch s.Dialect() {
-			case dialect.SQLite:
-				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", createdAtCol, offsetSeconds)
-			case dialect.MySQL:
-				offsetStr := xtime.FormatUTCOffset(offsetSeconds)
-				dateExpr = fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", createdAtCol, offsetStr)
-			case dialect.Postgres:
-				dateExpr = fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", createdAtCol, loc.String())
-			default:
-				// Fallback to ANSI-ish cast; many DBs accept this, but not guaranteed
-				dateExpr = fmt.Sprintf("DATE(%s)", createdAtCol)
-			}
-
 			s.Select(
-				sql.As(dateExpr, "date"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "total_count"),
-				sql.As(sql.Sum(s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				s.C(usagestat.FieldDate),
+				sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "total_count"),
+				sql.As(sql.Sum(s.C(usagestat.FieldTotalTokens)), "total_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "total_cost"),
 			).
-				GroupBy(dateExpr).
+				GroupBy(s.C(usagestat.FieldDate)).
 				OrderBy("date")
 		}).
 		Scan(ctx, &results)
@@ -595,8 +579,8 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 			// Use aggregated data from database
 			response = append(response, &DailyRequestStats{
 				Date:   dateStr,
-				Count:  stats.Count,
-				Tokens: stats.Tokens,
+				Count:  safeIntFromInt64(stats.Count),
+				Tokens: safeIntFromInt64(stats.Tokens),
 				Cost:   stats.Cost,
 			})
 		} else {
@@ -629,14 +613,14 @@ func (r *queryResolver) TopRequestsProjects(ctx context.Context) ([]*TopRequests
 	var results []projectRequestCount
 
 	// Use database aggregation without ordering (GroupBy doesn't support Order)
-	err := r.client.UsageLog.Query().
+	err := r.client.UsageStat.Query().
 		Limit(limitCount).
 		Modify(func(s *sql.Selector) {
 			s.Select(
-				usagelog.FieldProjectID,
-				sql.As(sql.Count("*"), "request_count"),
+				usagestat.FieldProjectID,
+				sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "request_count"),
 			).
-				GroupBy(usagelog.FieldProjectID).
+				GroupBy(usagestat.FieldProjectID).
 				OrderBy(sql.Desc("request_count"))
 		}).
 		Scan(ctx, &results)
@@ -713,13 +697,13 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 
 		var records []tokenSums
 
-		err := r.client.UsageLog.Query().
-			Where(usagelog.CreatedAtGTE(since)).
+		err := r.client.UsageStat.Query().
+			Where(usagestat.DateGTE(since.In(loc).Format("2006-01-02"))).
 			Modify(func(s *sql.Selector) {
 				s.Select(
-					sql.As(sql.Sum(usagelog.FieldPromptTokens), "input_tokens"),
-					sql.As(sql.Sum(usagelog.FieldCompletionTokens), "output_tokens"),
-					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+					sql.As(sql.Sum(s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+					sql.As(sql.Sum(s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
 				)
 			}).
 			Scan(ctx, &records)
@@ -781,12 +765,12 @@ func (r *queryResolver) TokenStats(ctx context.Context) (*TokenStats, error) {
 
 			var allTimeRecords []allTimeTokenSums
 
-			err := r.client.UsageLog.Query().
+			err := r.client.UsageStat.Query().
 				Modify(func(s *sql.Selector) {
 					s.Select(
-						sql.As(sql.Sum(usagelog.FieldPromptTokens), "input_tokens"),
-						sql.As(sql.Sum(usagelog.FieldCompletionTokens), "output_tokens"),
-						sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
+						sql.As(sql.Sum(s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+						sql.As(sql.Sum(s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+						sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
 					)
 				}).
 				Scan(ctx, &allTimeRecords)
@@ -1484,11 +1468,12 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *str
 
 	var results []channelTokenStats
 
-	err := r.client.UsageLog.Query().
+	loc := r.systemService.TimeLocation(ctx)
+	err := r.client.UsageStat.Query().
 		Modify(func(s *sql.Selector) {
 			channelTable := sql.Table(channel.Table)
 			s.Join(channelTable).On(
-				s.C(usagelog.FieldChannelID),
+				s.C(usagestat.FieldChannelID),
 				channelTable.C(channel.FieldID),
 			)
 
@@ -1496,7 +1481,7 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *str
 
 			// Apply time window filter when provided
 			if applyFilter {
-				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+				s.Where(sql.GTE(s.C(usagestat.FieldDate), since.In(loc).Format("2006-01-02")))
 			}
 
 			s.GroupBy(channelTable.C(channel.FieldID), channelTable.C(channel.FieldName))
@@ -1504,17 +1489,17 @@ func (r *queryResolver) TokenStatsByChannel(ctx context.Context, timeWindow *str
 			s.Select(
 				sql.As(channelTable.C(channel.FieldID), "channel_id"),
 				sql.As(channelTable.C(channel.FieldName), "channel_name"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionReasoningTokens)), "reasoning_tokens"),
 			)
 
 			// Order by billable total (input + output). Reasoning is already inside
 			// completion_tokens, so adding it would double-count.
 			s.OrderBy(sql.Desc(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
-				s.C(usagelog.FieldPromptTokens),
-				s.C(usagelog.FieldCompletionTokens))))
+				s.C(usagestat.FieldPromptTokens),
+				s.C(usagestat.FieldCompletionTokens))))
 			s.Limit(10)
 		}).
 		Scan(ctx, &results)
@@ -1553,28 +1538,29 @@ func (r *queryResolver) TokenStatsByModel(ctx context.Context, timeWindow *strin
 
 	var results []modelTokenStats
 
-	err := r.client.UsageLog.Query().
+	loc := r.systemService.TimeLocation(ctx)
+	err := r.client.UsageStat.Query().
 		Modify(func(s *sql.Selector) {
 			// Apply time window filter when provided
 			if applyFilter {
-				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+				s.Where(sql.GTE(s.C(usagestat.FieldDate), since.In(loc).Format("2006-01-02")))
 			}
 
-			s.GroupBy(s.C(usagelog.FieldModelID))
+			s.GroupBy(s.C(usagestat.FieldModelID))
 
 			s.Select(
-				s.C(usagelog.FieldModelID),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionReasoningTokens)), "reasoning_tokens"),
+				s.C(usagestat.FieldModelID),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionReasoningTokens)), "reasoning_tokens"),
 			)
 
 			// Order by billable total (input + output). Reasoning is already inside
 			// completion_tokens, so adding it would double-count.
 			s.OrderBy(sql.Desc(fmt.Sprintf("COALESCE(SUM(%s), 0) + COALESCE(SUM(%s), 0)",
-				s.C(usagelog.FieldPromptTokens),
-				s.C(usagelog.FieldCompletionTokens))))
+				s.C(usagestat.FieldPromptTokens),
+				s.C(usagestat.FieldCompletionTokens))))
 			s.Limit(10)
 		}).
 		Scan(ctx, &results)
@@ -1609,11 +1595,12 @@ func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *stri
 
 	var results []channelCostStats
 
-	err := r.client.UsageLog.Query().
+	loc := r.systemService.TimeLocation(ctx)
+	err := r.client.UsageStat.Query().
 		Modify(func(s *sql.Selector) {
 			channelTable := sql.Table(channel.Table)
 			s.Join(channelTable).On(
-				s.C(usagelog.FieldChannelID),
+				s.C(usagestat.FieldChannelID),
 				channelTable.C(channel.FieldID),
 			)
 
@@ -1621,14 +1608,14 @@ func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *stri
 
 			// Apply time window filtering
 			if applyFilter {
-				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+				s.Where(sql.GTE(s.C(usagestat.FieldDate), since.In(loc).Format("2006-01-02")))
 			}
 
 			s.GroupBy(channelTable.C(channel.FieldName))
 
 			s.Select(
 				sql.As(channelTable.C(channel.FieldName), "channel_name"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "total_cost"),
 			)
 
 			s.OrderBy(sql.Desc("total_cost"))
@@ -1660,18 +1647,19 @@ func (r *queryResolver) CostStatsByModel(ctx context.Context, timeWindow *string
 
 	var results []modelCostStats
 
-	err := r.client.UsageLog.Query().
+	loc := r.systemService.TimeLocation(ctx)
+	err := r.client.UsageStat.Query().
 		Modify(func(s *sql.Selector) {
 			// Apply time window filtering
 			if applyFilter {
-				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+				s.Where(sql.GTE(s.C(usagestat.FieldDate), since.In(loc).Format("2006-01-02")))
 			}
 
-			s.GroupBy(s.C(usagelog.FieldModelID))
+			s.GroupBy(s.C(usagestat.FieldModelID))
 
 			s.Select(
-				s.C(usagelog.FieldModelID),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				s.C(usagestat.FieldModelID),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "total_cost"),
 			)
 
 			s.OrderBy(sql.Desc("total_cost"))
@@ -1703,19 +1691,20 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 
 	var results []apiKeyCostStats
 
-	err := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil()).
+	loc := r.systemService.TimeLocation(ctx)
+	err := r.client.UsageStat.Query().
+		Where(usagestat.APIKeyIDGT(0)).
 		Modify(func(s *sql.Selector) {
 			// Apply time window filtering
 			if applyFilter {
-				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+				s.Where(sql.GTE(s.C(usagestat.FieldDate), since.In(loc).Format("2006-01-02")))
 			}
 
-			s.GroupBy(s.C(usagelog.FieldAPIKeyID))
+			s.GroupBy(s.C(usagestat.FieldAPIKeyID))
 
 			s.Select(
-				s.C(usagelog.FieldAPIKeyID),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				s.C(usagestat.FieldAPIKeyID),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "total_cost"),
 			)
 
 			s.OrderBy(sql.Desc("total_cost"))
@@ -1829,15 +1818,17 @@ func (r *queryResolver) UsageStatsByUser(ctx context.Context, timeWindow *string
 
 	var results []userUsageStats
 
-	query := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil()).
-		Where(usagelog.ProjectIDEQ(projectID))
+	query := r.client.UsageStat.Query().
+		Where(usagestat.APIKeyIDGT(0)).
+		Where(usagestat.ProjectIDEQ(projectID))
 
 	if applyGTE {
-		query = query.Where(usagelog.CreatedAtGTE(since))
+		loc := r.systemService.TimeLocation(ctx)
+		query = query.Where(usagestat.DateGTE(since.In(loc).Format("2006-01-02")))
 	}
 	if applyLTE {
-		query = query.Where(usagelog.CreatedAtLTE(until))
+		loc := r.systemService.TimeLocation(ctx)
+		query = query.Where(usagestat.DateLTE(until.In(loc).Format("2006-01-02")))
 	}
 
 	err := query.Modify(func(s *sql.Selector) {
@@ -1845,7 +1836,7 @@ func (r *queryResolver) UsageStatsByUser(ctx context.Context, timeWindow *string
 		userTable := sql.Table("users")
 
 		s.Join(apiKeyTable).On(
-			s.C(usagelog.FieldAPIKeyID),
+			s.C(usagestat.FieldAPIKeyID),
 			apiKeyTable.C(apikey.FieldID),
 		)
 		s.Join(userTable).On(
@@ -1860,9 +1851,9 @@ func (r *queryResolver) UsageStatsByUser(ctx context.Context, timeWindow *string
 			sql.As(userTable.C("first_name"), "first_name"),
 			sql.As(userTable.C("last_name"), "last_name"),
 			sql.As(userTable.C("email"), "email"),
-			sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+			sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "request_count"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalTokens)), "total_tokens"),
+			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "total_cost"),
 		).
 			GroupBy(
 				userTable.C("id"),

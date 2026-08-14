@@ -31,6 +31,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -686,6 +687,33 @@ func (f TraverseUsageLog) Traverse(ctx context.Context, q ent.Query) error {
 	return fmt.Errorf("unexpected query type %T. expect *ent.UsageLogQuery", q)
 }
 
+// The UsageStatFunc type is an adapter to allow the use of ordinary function as a Querier.
+type UsageStatFunc func(context.Context, *ent.UsageStatQuery) (ent.Value, error)
+
+// Query calls f(ctx, q).
+func (f UsageStatFunc) Query(ctx context.Context, q ent.Query) (ent.Value, error) {
+	if q, ok := q.(*ent.UsageStatQuery); ok {
+		return f(ctx, q)
+	}
+	return nil, fmt.Errorf("unexpected query type %T. expect *ent.UsageStatQuery", q)
+}
+
+// The TraverseUsageStat type is an adapter to allow the use of ordinary function as Traverser.
+type TraverseUsageStat func(context.Context, *ent.UsageStatQuery) error
+
+// Intercept is a dummy implementation of Intercept that returns the next Querier in the pipeline.
+func (f TraverseUsageStat) Intercept(next ent.Querier) ent.Querier {
+	return next
+}
+
+// Traverse calls f(ctx, q).
+func (f TraverseUsageStat) Traverse(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.UsageStatQuery); ok {
+		return f(ctx, q)
+	}
+	return fmt.Errorf("unexpected query type %T. expect *ent.UsageStatQuery", q)
+}
+
 // The UserFunc type is an adapter to allow the use of ordinary function as a Querier.
 type UserFunc func(context.Context, *ent.UserQuery) (ent.Value, error)
 
@@ -814,6 +842,8 @@ func NewQuery(q ent.Query) (Query, error) {
 		return &query[*ent.TraceQuery, predicate.Trace, trace.OrderOption]{typ: ent.TypeTrace, tq: q}, nil
 	case *ent.UsageLogQuery:
 		return &query[*ent.UsageLogQuery, predicate.UsageLog, usagelog.OrderOption]{typ: ent.TypeUsageLog, tq: q}, nil
+	case *ent.UsageStatQuery:
+		return &query[*ent.UsageStatQuery, predicate.UsageStat, usagestat.OrderOption]{typ: ent.TypeUsageStat, tq: q}, nil
 	case *ent.UserQuery:
 		return &query[*ent.UserQuery, predicate.User, user.OrderOption]{typ: ent.TypeUser, tq: q}, nil
 	case *ent.UserProjectQuery:

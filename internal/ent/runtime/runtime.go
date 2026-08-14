@@ -28,6 +28,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -919,6 +920,61 @@ func init() {
 	usagelogDescCostItems := usagelogFields[20].Descriptor()
 	// usagelog.DefaultCostItems holds the default value on creation for the cost_items field.
 	usagelog.DefaultCostItems = usagelogDescCostItems.Default.([]objects.CostItem)
+	usagestat.Policy = privacy.NewPolicies(schema.UsageStat{})
+	usagestat.Hooks[0] = func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if err := usagestat.Policy.EvalMutation(ctx, m); err != nil {
+				return nil, err
+			}
+			return next.Mutate(ctx, m)
+		})
+	}
+	usagestatFields := schema.UsageStat{}.Fields()
+	_ = usagestatFields
+	// usagestatDescAPIKeyID is the schema descriptor for api_key_id field.
+	usagestatDescAPIKeyID := usagestatFields[1].Descriptor()
+	// usagestat.DefaultAPIKeyID holds the default value on creation for the api_key_id field.
+	usagestat.DefaultAPIKeyID = usagestatDescAPIKeyID.Default.(int)
+	// usagestatDescProjectID is the schema descriptor for project_id field.
+	usagestatDescProjectID := usagestatFields[2].Descriptor()
+	// usagestat.DefaultProjectID holds the default value on creation for the project_id field.
+	usagestat.DefaultProjectID = usagestatDescProjectID.Default.(int)
+	// usagestatDescChannelID is the schema descriptor for channel_id field.
+	usagestatDescChannelID := usagestatFields[3].Descriptor()
+	// usagestat.DefaultChannelID holds the default value on creation for the channel_id field.
+	usagestat.DefaultChannelID = usagestatDescChannelID.Default.(int)
+	// usagestatDescRequestCount is the schema descriptor for request_count field.
+	usagestatDescRequestCount := usagestatFields[5].Descriptor()
+	// usagestat.DefaultRequestCount holds the default value on creation for the request_count field.
+	usagestat.DefaultRequestCount = usagestatDescRequestCount.Default.(int64)
+	// usagestatDescPromptTokens is the schema descriptor for prompt_tokens field.
+	usagestatDescPromptTokens := usagestatFields[6].Descriptor()
+	// usagestat.DefaultPromptTokens holds the default value on creation for the prompt_tokens field.
+	usagestat.DefaultPromptTokens = usagestatDescPromptTokens.Default.(int64)
+	// usagestatDescCompletionTokens is the schema descriptor for completion_tokens field.
+	usagestatDescCompletionTokens := usagestatFields[7].Descriptor()
+	// usagestat.DefaultCompletionTokens holds the default value on creation for the completion_tokens field.
+	usagestat.DefaultCompletionTokens = usagestatDescCompletionTokens.Default.(int64)
+	// usagestatDescTotalTokens is the schema descriptor for total_tokens field.
+	usagestatDescTotalTokens := usagestatFields[8].Descriptor()
+	// usagestat.DefaultTotalTokens holds the default value on creation for the total_tokens field.
+	usagestat.DefaultTotalTokens = usagestatDescTotalTokens.Default.(int64)
+	// usagestatDescPromptCachedTokens is the schema descriptor for prompt_cached_tokens field.
+	usagestatDescPromptCachedTokens := usagestatFields[9].Descriptor()
+	// usagestat.DefaultPromptCachedTokens holds the default value on creation for the prompt_cached_tokens field.
+	usagestat.DefaultPromptCachedTokens = usagestatDescPromptCachedTokens.Default.(int64)
+	// usagestatDescPromptWriteCachedTokens is the schema descriptor for prompt_write_cached_tokens field.
+	usagestatDescPromptWriteCachedTokens := usagestatFields[10].Descriptor()
+	// usagestat.DefaultPromptWriteCachedTokens holds the default value on creation for the prompt_write_cached_tokens field.
+	usagestat.DefaultPromptWriteCachedTokens = usagestatDescPromptWriteCachedTokens.Default.(int64)
+	// usagestatDescCompletionReasoningTokens is the schema descriptor for completion_reasoning_tokens field.
+	usagestatDescCompletionReasoningTokens := usagestatFields[11].Descriptor()
+	// usagestat.DefaultCompletionReasoningTokens holds the default value on creation for the completion_reasoning_tokens field.
+	usagestat.DefaultCompletionReasoningTokens = usagestatDescCompletionReasoningTokens.Default.(int64)
+	// usagestatDescTotalCost is the schema descriptor for total_cost field.
+	usagestatDescTotalCost := usagestatFields[12].Descriptor()
+	// usagestat.DefaultTotalCost holds the default value on creation for the total_cost field.
+	usagestat.DefaultTotalCost = usagestatDescTotalCost.Default.(float64)
 	userMixin := schema.User{}.Mixin()
 	user.Policy = privacy.NewPolicies(schema.User{})
 	user.Hooks[0] = func(next ent.Mutator) ent.Mutator {

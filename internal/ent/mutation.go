@@ -34,6 +34,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -71,6 +72,7 @@ const (
 	TypeThread                   = "Thread"
 	TypeTrace                    = "Trace"
 	TypeUsageLog                 = "UsageLog"
+	TypeUsageStat                = "UsageStat"
 	TypeUser                     = "User"
 	TypeUserProject              = "UserProject"
 	TypeUserRole                 = "UserRole"
@@ -26458,6 +26460,1346 @@ func (m *UsageLogMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown UsageLog edge %s", name)
+}
+
+// UsageStatMutation represents an operation that mutates the UsageStat nodes in the graph.
+type UsageStatMutation struct {
+	config
+	op                             Op
+	typ                            string
+	id                             *int
+	date                           *string
+	api_key_id                     *int
+	addapi_key_id                  *int
+	project_id                     *int
+	addproject_id                  *int
+	channel_id                     *int
+	addchannel_id                  *int
+	model_id                       *string
+	request_count                  *int64
+	addrequest_count               *int64
+	prompt_tokens                  *int64
+	addprompt_tokens               *int64
+	completion_tokens              *int64
+	addcompletion_tokens           *int64
+	total_tokens                   *int64
+	addtotal_tokens                *int64
+	prompt_cached_tokens           *int64
+	addprompt_cached_tokens        *int64
+	prompt_write_cached_tokens     *int64
+	addprompt_write_cached_tokens  *int64
+	completion_reasoning_tokens    *int64
+	addcompletion_reasoning_tokens *int64
+	total_cost                     *float64
+	addtotal_cost                  *float64
+	clearedFields                  map[string]struct{}
+	done                           bool
+	oldValue                       func(context.Context) (*UsageStat, error)
+	predicates                     []predicate.UsageStat
+}
+
+var _ ent.Mutation = (*UsageStatMutation)(nil)
+
+// usagestatOption allows management of the mutation configuration using functional options.
+type usagestatOption func(*UsageStatMutation)
+
+// newUsageStatMutation creates new mutation for the UsageStat entity.
+func newUsageStatMutation(c config, op Op, opts ...usagestatOption) *UsageStatMutation {
+	m := &UsageStatMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeUsageStat,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withUsageStatID sets the ID field of the mutation.
+func withUsageStatID(id int) usagestatOption {
+	return func(m *UsageStatMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *UsageStat
+		)
+		m.oldValue = func(ctx context.Context) (*UsageStat, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().UsageStat.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withUsageStat sets the old UsageStat of the mutation.
+func withUsageStat(node *UsageStat) usagestatOption {
+	return func(m *UsageStatMutation) {
+		m.oldValue = func(context.Context) (*UsageStat, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m UsageStatMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m UsageStatMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *UsageStatMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *UsageStatMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().UsageStat.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetDate sets the "date" field.
+func (m *UsageStatMutation) SetDate(s string) {
+	m.date = &s
+}
+
+// Date returns the value of the "date" field in the mutation.
+func (m *UsageStatMutation) Date() (r string, exists bool) {
+	v := m.date
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDate returns the old "date" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldDate(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDate: %w", err)
+	}
+	return oldValue.Date, nil
+}
+
+// ResetDate resets all changes to the "date" field.
+func (m *UsageStatMutation) ResetDate() {
+	m.date = nil
+}
+
+// SetAPIKeyID sets the "api_key_id" field.
+func (m *UsageStatMutation) SetAPIKeyID(i int) {
+	m.api_key_id = &i
+	m.addapi_key_id = nil
+}
+
+// APIKeyID returns the value of the "api_key_id" field in the mutation.
+func (m *UsageStatMutation) APIKeyID() (r int, exists bool) {
+	v := m.api_key_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAPIKeyID returns the old "api_key_id" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldAPIKeyID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAPIKeyID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAPIKeyID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAPIKeyID: %w", err)
+	}
+	return oldValue.APIKeyID, nil
+}
+
+// AddAPIKeyID adds i to the "api_key_id" field.
+func (m *UsageStatMutation) AddAPIKeyID(i int) {
+	if m.addapi_key_id != nil {
+		*m.addapi_key_id += i
+	} else {
+		m.addapi_key_id = &i
+	}
+}
+
+// AddedAPIKeyID returns the value that was added to the "api_key_id" field in this mutation.
+func (m *UsageStatMutation) AddedAPIKeyID() (r int, exists bool) {
+	v := m.addapi_key_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAPIKeyID resets all changes to the "api_key_id" field.
+func (m *UsageStatMutation) ResetAPIKeyID() {
+	m.api_key_id = nil
+	m.addapi_key_id = nil
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *UsageStatMutation) SetProjectID(i int) {
+	m.project_id = &i
+	m.addproject_id = nil
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *UsageStatMutation) ProjectID() (r int, exists bool) {
+	v := m.project_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldProjectID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// AddProjectID adds i to the "project_id" field.
+func (m *UsageStatMutation) AddProjectID(i int) {
+	if m.addproject_id != nil {
+		*m.addproject_id += i
+	} else {
+		m.addproject_id = &i
+	}
+}
+
+// AddedProjectID returns the value that was added to the "project_id" field in this mutation.
+func (m *UsageStatMutation) AddedProjectID() (r int, exists bool) {
+	v := m.addproject_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *UsageStatMutation) ResetProjectID() {
+	m.project_id = nil
+	m.addproject_id = nil
+}
+
+// SetChannelID sets the "channel_id" field.
+func (m *UsageStatMutation) SetChannelID(i int) {
+	m.channel_id = &i
+	m.addchannel_id = nil
+}
+
+// ChannelID returns the value of the "channel_id" field in the mutation.
+func (m *UsageStatMutation) ChannelID() (r int, exists bool) {
+	v := m.channel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChannelID returns the old "channel_id" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldChannelID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChannelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChannelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChannelID: %w", err)
+	}
+	return oldValue.ChannelID, nil
+}
+
+// AddChannelID adds i to the "channel_id" field.
+func (m *UsageStatMutation) AddChannelID(i int) {
+	if m.addchannel_id != nil {
+		*m.addchannel_id += i
+	} else {
+		m.addchannel_id = &i
+	}
+}
+
+// AddedChannelID returns the value that was added to the "channel_id" field in this mutation.
+func (m *UsageStatMutation) AddedChannelID() (r int, exists bool) {
+	v := m.addchannel_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetChannelID resets all changes to the "channel_id" field.
+func (m *UsageStatMutation) ResetChannelID() {
+	m.channel_id = nil
+	m.addchannel_id = nil
+}
+
+// SetModelID sets the "model_id" field.
+func (m *UsageStatMutation) SetModelID(s string) {
+	m.model_id = &s
+}
+
+// ModelID returns the value of the "model_id" field in the mutation.
+func (m *UsageStatMutation) ModelID() (r string, exists bool) {
+	v := m.model_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelID returns the old "model_id" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldModelID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelID: %w", err)
+	}
+	return oldValue.ModelID, nil
+}
+
+// ResetModelID resets all changes to the "model_id" field.
+func (m *UsageStatMutation) ResetModelID() {
+	m.model_id = nil
+}
+
+// SetRequestCount sets the "request_count" field.
+func (m *UsageStatMutation) SetRequestCount(i int64) {
+	m.request_count = &i
+	m.addrequest_count = nil
+}
+
+// RequestCount returns the value of the "request_count" field in the mutation.
+func (m *UsageStatMutation) RequestCount() (r int64, exists bool) {
+	v := m.request_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRequestCount returns the old "request_count" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldRequestCount(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRequestCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRequestCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRequestCount: %w", err)
+	}
+	return oldValue.RequestCount, nil
+}
+
+// AddRequestCount adds i to the "request_count" field.
+func (m *UsageStatMutation) AddRequestCount(i int64) {
+	if m.addrequest_count != nil {
+		*m.addrequest_count += i
+	} else {
+		m.addrequest_count = &i
+	}
+}
+
+// AddedRequestCount returns the value that was added to the "request_count" field in this mutation.
+func (m *UsageStatMutation) AddedRequestCount() (r int64, exists bool) {
+	v := m.addrequest_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetRequestCount resets all changes to the "request_count" field.
+func (m *UsageStatMutation) ResetRequestCount() {
+	m.request_count = nil
+	m.addrequest_count = nil
+}
+
+// SetPromptTokens sets the "prompt_tokens" field.
+func (m *UsageStatMutation) SetPromptTokens(i int64) {
+	m.prompt_tokens = &i
+	m.addprompt_tokens = nil
+}
+
+// PromptTokens returns the value of the "prompt_tokens" field in the mutation.
+func (m *UsageStatMutation) PromptTokens() (r int64, exists bool) {
+	v := m.prompt_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPromptTokens returns the old "prompt_tokens" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldPromptTokens(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPromptTokens is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPromptTokens requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPromptTokens: %w", err)
+	}
+	return oldValue.PromptTokens, nil
+}
+
+// AddPromptTokens adds i to the "prompt_tokens" field.
+func (m *UsageStatMutation) AddPromptTokens(i int64) {
+	if m.addprompt_tokens != nil {
+		*m.addprompt_tokens += i
+	} else {
+		m.addprompt_tokens = &i
+	}
+}
+
+// AddedPromptTokens returns the value that was added to the "prompt_tokens" field in this mutation.
+func (m *UsageStatMutation) AddedPromptTokens() (r int64, exists bool) {
+	v := m.addprompt_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPromptTokens resets all changes to the "prompt_tokens" field.
+func (m *UsageStatMutation) ResetPromptTokens() {
+	m.prompt_tokens = nil
+	m.addprompt_tokens = nil
+}
+
+// SetCompletionTokens sets the "completion_tokens" field.
+func (m *UsageStatMutation) SetCompletionTokens(i int64) {
+	m.completion_tokens = &i
+	m.addcompletion_tokens = nil
+}
+
+// CompletionTokens returns the value of the "completion_tokens" field in the mutation.
+func (m *UsageStatMutation) CompletionTokens() (r int64, exists bool) {
+	v := m.completion_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCompletionTokens returns the old "completion_tokens" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldCompletionTokens(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCompletionTokens is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCompletionTokens requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCompletionTokens: %w", err)
+	}
+	return oldValue.CompletionTokens, nil
+}
+
+// AddCompletionTokens adds i to the "completion_tokens" field.
+func (m *UsageStatMutation) AddCompletionTokens(i int64) {
+	if m.addcompletion_tokens != nil {
+		*m.addcompletion_tokens += i
+	} else {
+		m.addcompletion_tokens = &i
+	}
+}
+
+// AddedCompletionTokens returns the value that was added to the "completion_tokens" field in this mutation.
+func (m *UsageStatMutation) AddedCompletionTokens() (r int64, exists bool) {
+	v := m.addcompletion_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCompletionTokens resets all changes to the "completion_tokens" field.
+func (m *UsageStatMutation) ResetCompletionTokens() {
+	m.completion_tokens = nil
+	m.addcompletion_tokens = nil
+}
+
+// SetTotalTokens sets the "total_tokens" field.
+func (m *UsageStatMutation) SetTotalTokens(i int64) {
+	m.total_tokens = &i
+	m.addtotal_tokens = nil
+}
+
+// TotalTokens returns the value of the "total_tokens" field in the mutation.
+func (m *UsageStatMutation) TotalTokens() (r int64, exists bool) {
+	v := m.total_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalTokens returns the old "total_tokens" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldTotalTokens(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalTokens is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalTokens requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalTokens: %w", err)
+	}
+	return oldValue.TotalTokens, nil
+}
+
+// AddTotalTokens adds i to the "total_tokens" field.
+func (m *UsageStatMutation) AddTotalTokens(i int64) {
+	if m.addtotal_tokens != nil {
+		*m.addtotal_tokens += i
+	} else {
+		m.addtotal_tokens = &i
+	}
+}
+
+// AddedTotalTokens returns the value that was added to the "total_tokens" field in this mutation.
+func (m *UsageStatMutation) AddedTotalTokens() (r int64, exists bool) {
+	v := m.addtotal_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalTokens resets all changes to the "total_tokens" field.
+func (m *UsageStatMutation) ResetTotalTokens() {
+	m.total_tokens = nil
+	m.addtotal_tokens = nil
+}
+
+// SetPromptCachedTokens sets the "prompt_cached_tokens" field.
+func (m *UsageStatMutation) SetPromptCachedTokens(i int64) {
+	m.prompt_cached_tokens = &i
+	m.addprompt_cached_tokens = nil
+}
+
+// PromptCachedTokens returns the value of the "prompt_cached_tokens" field in the mutation.
+func (m *UsageStatMutation) PromptCachedTokens() (r int64, exists bool) {
+	v := m.prompt_cached_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPromptCachedTokens returns the old "prompt_cached_tokens" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldPromptCachedTokens(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPromptCachedTokens is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPromptCachedTokens requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPromptCachedTokens: %w", err)
+	}
+	return oldValue.PromptCachedTokens, nil
+}
+
+// AddPromptCachedTokens adds i to the "prompt_cached_tokens" field.
+func (m *UsageStatMutation) AddPromptCachedTokens(i int64) {
+	if m.addprompt_cached_tokens != nil {
+		*m.addprompt_cached_tokens += i
+	} else {
+		m.addprompt_cached_tokens = &i
+	}
+}
+
+// AddedPromptCachedTokens returns the value that was added to the "prompt_cached_tokens" field in this mutation.
+func (m *UsageStatMutation) AddedPromptCachedTokens() (r int64, exists bool) {
+	v := m.addprompt_cached_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPromptCachedTokens resets all changes to the "prompt_cached_tokens" field.
+func (m *UsageStatMutation) ResetPromptCachedTokens() {
+	m.prompt_cached_tokens = nil
+	m.addprompt_cached_tokens = nil
+}
+
+// SetPromptWriteCachedTokens sets the "prompt_write_cached_tokens" field.
+func (m *UsageStatMutation) SetPromptWriteCachedTokens(i int64) {
+	m.prompt_write_cached_tokens = &i
+	m.addprompt_write_cached_tokens = nil
+}
+
+// PromptWriteCachedTokens returns the value of the "prompt_write_cached_tokens" field in the mutation.
+func (m *UsageStatMutation) PromptWriteCachedTokens() (r int64, exists bool) {
+	v := m.prompt_write_cached_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPromptWriteCachedTokens returns the old "prompt_write_cached_tokens" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldPromptWriteCachedTokens(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPromptWriteCachedTokens is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPromptWriteCachedTokens requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPromptWriteCachedTokens: %w", err)
+	}
+	return oldValue.PromptWriteCachedTokens, nil
+}
+
+// AddPromptWriteCachedTokens adds i to the "prompt_write_cached_tokens" field.
+func (m *UsageStatMutation) AddPromptWriteCachedTokens(i int64) {
+	if m.addprompt_write_cached_tokens != nil {
+		*m.addprompt_write_cached_tokens += i
+	} else {
+		m.addprompt_write_cached_tokens = &i
+	}
+}
+
+// AddedPromptWriteCachedTokens returns the value that was added to the "prompt_write_cached_tokens" field in this mutation.
+func (m *UsageStatMutation) AddedPromptWriteCachedTokens() (r int64, exists bool) {
+	v := m.addprompt_write_cached_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPromptWriteCachedTokens resets all changes to the "prompt_write_cached_tokens" field.
+func (m *UsageStatMutation) ResetPromptWriteCachedTokens() {
+	m.prompt_write_cached_tokens = nil
+	m.addprompt_write_cached_tokens = nil
+}
+
+// SetCompletionReasoningTokens sets the "completion_reasoning_tokens" field.
+func (m *UsageStatMutation) SetCompletionReasoningTokens(i int64) {
+	m.completion_reasoning_tokens = &i
+	m.addcompletion_reasoning_tokens = nil
+}
+
+// CompletionReasoningTokens returns the value of the "completion_reasoning_tokens" field in the mutation.
+func (m *UsageStatMutation) CompletionReasoningTokens() (r int64, exists bool) {
+	v := m.completion_reasoning_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCompletionReasoningTokens returns the old "completion_reasoning_tokens" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldCompletionReasoningTokens(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCompletionReasoningTokens is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCompletionReasoningTokens requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCompletionReasoningTokens: %w", err)
+	}
+	return oldValue.CompletionReasoningTokens, nil
+}
+
+// AddCompletionReasoningTokens adds i to the "completion_reasoning_tokens" field.
+func (m *UsageStatMutation) AddCompletionReasoningTokens(i int64) {
+	if m.addcompletion_reasoning_tokens != nil {
+		*m.addcompletion_reasoning_tokens += i
+	} else {
+		m.addcompletion_reasoning_tokens = &i
+	}
+}
+
+// AddedCompletionReasoningTokens returns the value that was added to the "completion_reasoning_tokens" field in this mutation.
+func (m *UsageStatMutation) AddedCompletionReasoningTokens() (r int64, exists bool) {
+	v := m.addcompletion_reasoning_tokens
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCompletionReasoningTokens resets all changes to the "completion_reasoning_tokens" field.
+func (m *UsageStatMutation) ResetCompletionReasoningTokens() {
+	m.completion_reasoning_tokens = nil
+	m.addcompletion_reasoning_tokens = nil
+}
+
+// SetTotalCost sets the "total_cost" field.
+func (m *UsageStatMutation) SetTotalCost(f float64) {
+	m.total_cost = &f
+	m.addtotal_cost = nil
+}
+
+// TotalCost returns the value of the "total_cost" field in the mutation.
+func (m *UsageStatMutation) TotalCost() (r float64, exists bool) {
+	v := m.total_cost
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalCost returns the old "total_cost" field's value of the UsageStat entity.
+// If the UsageStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageStatMutation) OldTotalCost(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalCost is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalCost requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalCost: %w", err)
+	}
+	return oldValue.TotalCost, nil
+}
+
+// AddTotalCost adds f to the "total_cost" field.
+func (m *UsageStatMutation) AddTotalCost(f float64) {
+	if m.addtotal_cost != nil {
+		*m.addtotal_cost += f
+	} else {
+		m.addtotal_cost = &f
+	}
+}
+
+// AddedTotalCost returns the value that was added to the "total_cost" field in this mutation.
+func (m *UsageStatMutation) AddedTotalCost() (r float64, exists bool) {
+	v := m.addtotal_cost
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalCost resets all changes to the "total_cost" field.
+func (m *UsageStatMutation) ResetTotalCost() {
+	m.total_cost = nil
+	m.addtotal_cost = nil
+}
+
+// Where appends a list predicates to the UsageStatMutation builder.
+func (m *UsageStatMutation) Where(ps ...predicate.UsageStat) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the UsageStatMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *UsageStatMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.UsageStat, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *UsageStatMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *UsageStatMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (UsageStat).
+func (m *UsageStatMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *UsageStatMutation) Fields() []string {
+	fields := make([]string, 0, 13)
+	if m.date != nil {
+		fields = append(fields, usagestat.FieldDate)
+	}
+	if m.api_key_id != nil {
+		fields = append(fields, usagestat.FieldAPIKeyID)
+	}
+	if m.project_id != nil {
+		fields = append(fields, usagestat.FieldProjectID)
+	}
+	if m.channel_id != nil {
+		fields = append(fields, usagestat.FieldChannelID)
+	}
+	if m.model_id != nil {
+		fields = append(fields, usagestat.FieldModelID)
+	}
+	if m.request_count != nil {
+		fields = append(fields, usagestat.FieldRequestCount)
+	}
+	if m.prompt_tokens != nil {
+		fields = append(fields, usagestat.FieldPromptTokens)
+	}
+	if m.completion_tokens != nil {
+		fields = append(fields, usagestat.FieldCompletionTokens)
+	}
+	if m.total_tokens != nil {
+		fields = append(fields, usagestat.FieldTotalTokens)
+	}
+	if m.prompt_cached_tokens != nil {
+		fields = append(fields, usagestat.FieldPromptCachedTokens)
+	}
+	if m.prompt_write_cached_tokens != nil {
+		fields = append(fields, usagestat.FieldPromptWriteCachedTokens)
+	}
+	if m.completion_reasoning_tokens != nil {
+		fields = append(fields, usagestat.FieldCompletionReasoningTokens)
+	}
+	if m.total_cost != nil {
+		fields = append(fields, usagestat.FieldTotalCost)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *UsageStatMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case usagestat.FieldDate:
+		return m.Date()
+	case usagestat.FieldAPIKeyID:
+		return m.APIKeyID()
+	case usagestat.FieldProjectID:
+		return m.ProjectID()
+	case usagestat.FieldChannelID:
+		return m.ChannelID()
+	case usagestat.FieldModelID:
+		return m.ModelID()
+	case usagestat.FieldRequestCount:
+		return m.RequestCount()
+	case usagestat.FieldPromptTokens:
+		return m.PromptTokens()
+	case usagestat.FieldCompletionTokens:
+		return m.CompletionTokens()
+	case usagestat.FieldTotalTokens:
+		return m.TotalTokens()
+	case usagestat.FieldPromptCachedTokens:
+		return m.PromptCachedTokens()
+	case usagestat.FieldPromptWriteCachedTokens:
+		return m.PromptWriteCachedTokens()
+	case usagestat.FieldCompletionReasoningTokens:
+		return m.CompletionReasoningTokens()
+	case usagestat.FieldTotalCost:
+		return m.TotalCost()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *UsageStatMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case usagestat.FieldDate:
+		return m.OldDate(ctx)
+	case usagestat.FieldAPIKeyID:
+		return m.OldAPIKeyID(ctx)
+	case usagestat.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case usagestat.FieldChannelID:
+		return m.OldChannelID(ctx)
+	case usagestat.FieldModelID:
+		return m.OldModelID(ctx)
+	case usagestat.FieldRequestCount:
+		return m.OldRequestCount(ctx)
+	case usagestat.FieldPromptTokens:
+		return m.OldPromptTokens(ctx)
+	case usagestat.FieldCompletionTokens:
+		return m.OldCompletionTokens(ctx)
+	case usagestat.FieldTotalTokens:
+		return m.OldTotalTokens(ctx)
+	case usagestat.FieldPromptCachedTokens:
+		return m.OldPromptCachedTokens(ctx)
+	case usagestat.FieldPromptWriteCachedTokens:
+		return m.OldPromptWriteCachedTokens(ctx)
+	case usagestat.FieldCompletionReasoningTokens:
+		return m.OldCompletionReasoningTokens(ctx)
+	case usagestat.FieldTotalCost:
+		return m.OldTotalCost(ctx)
+	}
+	return nil, fmt.Errorf("unknown UsageStat field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *UsageStatMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case usagestat.FieldDate:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDate(v)
+		return nil
+	case usagestat.FieldAPIKeyID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAPIKeyID(v)
+		return nil
+	case usagestat.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case usagestat.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChannelID(v)
+		return nil
+	case usagestat.FieldModelID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelID(v)
+		return nil
+	case usagestat.FieldRequestCount:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRequestCount(v)
+		return nil
+	case usagestat.FieldPromptTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPromptTokens(v)
+		return nil
+	case usagestat.FieldCompletionTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCompletionTokens(v)
+		return nil
+	case usagestat.FieldTotalTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalTokens(v)
+		return nil
+	case usagestat.FieldPromptCachedTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPromptCachedTokens(v)
+		return nil
+	case usagestat.FieldPromptWriteCachedTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPromptWriteCachedTokens(v)
+		return nil
+	case usagestat.FieldCompletionReasoningTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCompletionReasoningTokens(v)
+		return nil
+	case usagestat.FieldTotalCost:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalCost(v)
+		return nil
+	}
+	return fmt.Errorf("unknown UsageStat field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *UsageStatMutation) AddedFields() []string {
+	var fields []string
+	if m.addapi_key_id != nil {
+		fields = append(fields, usagestat.FieldAPIKeyID)
+	}
+	if m.addproject_id != nil {
+		fields = append(fields, usagestat.FieldProjectID)
+	}
+	if m.addchannel_id != nil {
+		fields = append(fields, usagestat.FieldChannelID)
+	}
+	if m.addrequest_count != nil {
+		fields = append(fields, usagestat.FieldRequestCount)
+	}
+	if m.addprompt_tokens != nil {
+		fields = append(fields, usagestat.FieldPromptTokens)
+	}
+	if m.addcompletion_tokens != nil {
+		fields = append(fields, usagestat.FieldCompletionTokens)
+	}
+	if m.addtotal_tokens != nil {
+		fields = append(fields, usagestat.FieldTotalTokens)
+	}
+	if m.addprompt_cached_tokens != nil {
+		fields = append(fields, usagestat.FieldPromptCachedTokens)
+	}
+	if m.addprompt_write_cached_tokens != nil {
+		fields = append(fields, usagestat.FieldPromptWriteCachedTokens)
+	}
+	if m.addcompletion_reasoning_tokens != nil {
+		fields = append(fields, usagestat.FieldCompletionReasoningTokens)
+	}
+	if m.addtotal_cost != nil {
+		fields = append(fields, usagestat.FieldTotalCost)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *UsageStatMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case usagestat.FieldAPIKeyID:
+		return m.AddedAPIKeyID()
+	case usagestat.FieldProjectID:
+		return m.AddedProjectID()
+	case usagestat.FieldChannelID:
+		return m.AddedChannelID()
+	case usagestat.FieldRequestCount:
+		return m.AddedRequestCount()
+	case usagestat.FieldPromptTokens:
+		return m.AddedPromptTokens()
+	case usagestat.FieldCompletionTokens:
+		return m.AddedCompletionTokens()
+	case usagestat.FieldTotalTokens:
+		return m.AddedTotalTokens()
+	case usagestat.FieldPromptCachedTokens:
+		return m.AddedPromptCachedTokens()
+	case usagestat.FieldPromptWriteCachedTokens:
+		return m.AddedPromptWriteCachedTokens()
+	case usagestat.FieldCompletionReasoningTokens:
+		return m.AddedCompletionReasoningTokens()
+	case usagestat.FieldTotalCost:
+		return m.AddedTotalCost()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *UsageStatMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case usagestat.FieldAPIKeyID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAPIKeyID(v)
+		return nil
+	case usagestat.FieldProjectID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddProjectID(v)
+		return nil
+	case usagestat.FieldChannelID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddChannelID(v)
+		return nil
+	case usagestat.FieldRequestCount:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddRequestCount(v)
+		return nil
+	case usagestat.FieldPromptTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPromptTokens(v)
+		return nil
+	case usagestat.FieldCompletionTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCompletionTokens(v)
+		return nil
+	case usagestat.FieldTotalTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalTokens(v)
+		return nil
+	case usagestat.FieldPromptCachedTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPromptCachedTokens(v)
+		return nil
+	case usagestat.FieldPromptWriteCachedTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPromptWriteCachedTokens(v)
+		return nil
+	case usagestat.FieldCompletionReasoningTokens:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCompletionReasoningTokens(v)
+		return nil
+	case usagestat.FieldTotalCost:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalCost(v)
+		return nil
+	}
+	return fmt.Errorf("unknown UsageStat numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *UsageStatMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *UsageStatMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *UsageStatMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown UsageStat nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *UsageStatMutation) ResetField(name string) error {
+	switch name {
+	case usagestat.FieldDate:
+		m.ResetDate()
+		return nil
+	case usagestat.FieldAPIKeyID:
+		m.ResetAPIKeyID()
+		return nil
+	case usagestat.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case usagestat.FieldChannelID:
+		m.ResetChannelID()
+		return nil
+	case usagestat.FieldModelID:
+		m.ResetModelID()
+		return nil
+	case usagestat.FieldRequestCount:
+		m.ResetRequestCount()
+		return nil
+	case usagestat.FieldPromptTokens:
+		m.ResetPromptTokens()
+		return nil
+	case usagestat.FieldCompletionTokens:
+		m.ResetCompletionTokens()
+		return nil
+	case usagestat.FieldTotalTokens:
+		m.ResetTotalTokens()
+		return nil
+	case usagestat.FieldPromptCachedTokens:
+		m.ResetPromptCachedTokens()
+		return nil
+	case usagestat.FieldPromptWriteCachedTokens:
+		m.ResetPromptWriteCachedTokens()
+		return nil
+	case usagestat.FieldCompletionReasoningTokens:
+		m.ResetCompletionReasoningTokens()
+		return nil
+	case usagestat.FieldTotalCost:
+		m.ResetTotalCost()
+		return nil
+	}
+	return fmt.Errorf("unknown UsageStat field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *UsageStatMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *UsageStatMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *UsageStatMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *UsageStatMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *UsageStatMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *UsageStatMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *UsageStatMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown UsageStat unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *UsageStatMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown UsageStat edge %s", name)
 }
 
 // UserMutation represents an operation that mutates the User nodes in the graph.

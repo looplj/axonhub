@@ -2598,6 +2598,122 @@ func (_m *UsageLog) Node(ctx context.Context) (node *Node, err error) {
 }
 
 // Node implements Noder interface
+func (_m *UsageStat) Node(ctx context.Context) (node *Node, err error) {
+	node = &Node{
+		ID:     _m.ID,
+		Type:   "UsageStat",
+		Fields: make([]*Field, 13),
+		Edges:  make([]*Edge, 0),
+	}
+	var buf []byte
+	if buf, err = json.Marshal(_m.Date); err != nil {
+		return nil, err
+	}
+	node.Fields[0] = &Field{
+		Type:  "string",
+		Name:  "date",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.APIKeyID); err != nil {
+		return nil, err
+	}
+	node.Fields[1] = &Field{
+		Type:  "int",
+		Name:  "api_key_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ProjectID); err != nil {
+		return nil, err
+	}
+	node.Fields[2] = &Field{
+		Type:  "int",
+		Name:  "project_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ChannelID); err != nil {
+		return nil, err
+	}
+	node.Fields[3] = &Field{
+		Type:  "int",
+		Name:  "channel_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.ModelID); err != nil {
+		return nil, err
+	}
+	node.Fields[4] = &Field{
+		Type:  "string",
+		Name:  "model_id",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.RequestCount); err != nil {
+		return nil, err
+	}
+	node.Fields[5] = &Field{
+		Type:  "int64",
+		Name:  "request_count",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.PromptTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[6] = &Field{
+		Type:  "int64",
+		Name:  "prompt_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.CompletionTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[7] = &Field{
+		Type:  "int64",
+		Name:  "completion_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[8] = &Field{
+		Type:  "int64",
+		Name:  "total_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.PromptCachedTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "int64",
+		Name:  "prompt_cached_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.PromptWriteCachedTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[10] = &Field{
+		Type:  "int64",
+		Name:  "prompt_write_cached_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.CompletionReasoningTokens); err != nil {
+		return nil, err
+	}
+	node.Fields[11] = &Field{
+		Type:  "int64",
+		Name:  "completion_reasoning_tokens",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.TotalCost); err != nil {
+		return nil, err
+	}
+	node.Fields[12] = &Field{
+		Type:  "float64",
+		Name:  "total_cost",
+		Value: string(buf),
+	}
+	return node, nil
+}
+
+// Node implements Noder interface
 func (_m *User) Node(ctx context.Context) (node *Node, err error) {
 	node = &Node{
 		ID:     _m.ID,

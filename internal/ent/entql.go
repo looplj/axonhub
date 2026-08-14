@@ -26,6 +26,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/thread"
 	"github.com/looplj/axonhub/internal/ent/trace"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/ent/userproject"
 	"github.com/looplj/axonhub/internal/ent/userrole"
@@ -38,7 +39,7 @@ import (
 
 // schemaGraph holds a representation of ent/schema at runtime.
 var schemaGraph = func() *sqlgraph.Schema {
-	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 25)}
+	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 26)}
 	graph.Nodes[0] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   apikey.Table,
@@ -573,6 +574,32 @@ var schemaGraph = func() *sqlgraph.Schema {
 	}
 	graph.Nodes[22] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
+			Table:   usagestat.Table,
+			Columns: usagestat.Columns,
+			ID: &sqlgraph.FieldSpec{
+				Type:   field.TypeInt,
+				Column: usagestat.FieldID,
+			},
+		},
+		Type: "UsageStat",
+		Fields: map[string]*sqlgraph.FieldSpec{
+			usagestat.FieldDate:                      {Type: field.TypeString, Column: usagestat.FieldDate},
+			usagestat.FieldAPIKeyID:                  {Type: field.TypeInt, Column: usagestat.FieldAPIKeyID},
+			usagestat.FieldProjectID:                 {Type: field.TypeInt, Column: usagestat.FieldProjectID},
+			usagestat.FieldChannelID:                 {Type: field.TypeInt, Column: usagestat.FieldChannelID},
+			usagestat.FieldModelID:                   {Type: field.TypeString, Column: usagestat.FieldModelID},
+			usagestat.FieldRequestCount:              {Type: field.TypeInt64, Column: usagestat.FieldRequestCount},
+			usagestat.FieldPromptTokens:              {Type: field.TypeInt64, Column: usagestat.FieldPromptTokens},
+			usagestat.FieldCompletionTokens:          {Type: field.TypeInt64, Column: usagestat.FieldCompletionTokens},
+			usagestat.FieldTotalTokens:               {Type: field.TypeInt64, Column: usagestat.FieldTotalTokens},
+			usagestat.FieldPromptCachedTokens:        {Type: field.TypeInt64, Column: usagestat.FieldPromptCachedTokens},
+			usagestat.FieldPromptWriteCachedTokens:   {Type: field.TypeInt64, Column: usagestat.FieldPromptWriteCachedTokens},
+			usagestat.FieldCompletionReasoningTokens: {Type: field.TypeInt64, Column: usagestat.FieldCompletionReasoningTokens},
+			usagestat.FieldTotalCost:                 {Type: field.TypeFloat64, Column: usagestat.FieldTotalCost},
+		},
+	}
+	graph.Nodes[23] = &sqlgraph.Node{
+		NodeSpec: sqlgraph.NodeSpec{
 			Table:   user.Table,
 			Columns: user.Columns,
 			ID: &sqlgraph.FieldSpec{
@@ -596,7 +623,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			user.FieldScopes:         {Type: field.TypeJSON, Column: user.FieldScopes},
 		},
 	}
-	graph.Nodes[23] = &sqlgraph.Node{
+	graph.Nodes[24] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   userproject.Table,
 			Columns: userproject.Columns,
@@ -615,7 +642,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			userproject.FieldScopes:    {Type: field.TypeJSON, Column: userproject.FieldScopes},
 		},
 	}
-	graph.Nodes[24] = &sqlgraph.Node{
+	graph.Nodes[25] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   userrole.Table,
 			Columns: userrole.Columns,
@@ -4262,6 +4289,111 @@ func (f *UsageLogFilter) WhereHasChannelWith(preds ...predicate.Channel) {
 }
 
 // addPredicate implements the predicateAdder interface.
+func (_q *UsageStatQuery) addPredicate(pred func(s *sql.Selector)) {
+	_q.predicates = append(_q.predicates, pred)
+}
+
+// Filter returns a Filter implementation to apply filters on the UsageStatQuery builder.
+func (_q *UsageStatQuery) Filter() *UsageStatFilter {
+	return &UsageStatFilter{config: _q.config, predicateAdder: _q}
+}
+
+// addPredicate implements the predicateAdder interface.
+func (m *UsageStatMutation) addPredicate(pred func(s *sql.Selector)) {
+	m.predicates = append(m.predicates, pred)
+}
+
+// Filter returns an entql.Where implementation to apply filters on the UsageStatMutation builder.
+func (m *UsageStatMutation) Filter() *UsageStatFilter {
+	return &UsageStatFilter{config: m.config, predicateAdder: m}
+}
+
+// UsageStatFilter provides a generic filtering capability at runtime for UsageStatQuery.
+type UsageStatFilter struct {
+	predicateAdder
+	config
+}
+
+// Where applies the entql predicate on the query filter.
+func (f *UsageStatFilter) Where(p entql.P) {
+	f.addPredicate(func(s *sql.Selector) {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[22].Type, p, s); err != nil {
+			s.AddError(err)
+		}
+	})
+}
+
+// WhereID applies the entql int predicate on the id field.
+func (f *UsageStatFilter) WhereID(p entql.IntP) {
+	f.Where(p.Field(usagestat.FieldID))
+}
+
+// WhereDate applies the entql string predicate on the date field.
+func (f *UsageStatFilter) WhereDate(p entql.StringP) {
+	f.Where(p.Field(usagestat.FieldDate))
+}
+
+// WhereAPIKeyID applies the entql int predicate on the api_key_id field.
+func (f *UsageStatFilter) WhereAPIKeyID(p entql.IntP) {
+	f.Where(p.Field(usagestat.FieldAPIKeyID))
+}
+
+// WhereProjectID applies the entql int predicate on the project_id field.
+func (f *UsageStatFilter) WhereProjectID(p entql.IntP) {
+	f.Where(p.Field(usagestat.FieldProjectID))
+}
+
+// WhereChannelID applies the entql int predicate on the channel_id field.
+func (f *UsageStatFilter) WhereChannelID(p entql.IntP) {
+	f.Where(p.Field(usagestat.FieldChannelID))
+}
+
+// WhereModelID applies the entql string predicate on the model_id field.
+func (f *UsageStatFilter) WhereModelID(p entql.StringP) {
+	f.Where(p.Field(usagestat.FieldModelID))
+}
+
+// WhereRequestCount applies the entql int64 predicate on the request_count field.
+func (f *UsageStatFilter) WhereRequestCount(p entql.Int64P) {
+	f.Where(p.Field(usagestat.FieldRequestCount))
+}
+
+// WherePromptTokens applies the entql int64 predicate on the prompt_tokens field.
+func (f *UsageStatFilter) WherePromptTokens(p entql.Int64P) {
+	f.Where(p.Field(usagestat.FieldPromptTokens))
+}
+
+// WhereCompletionTokens applies the entql int64 predicate on the completion_tokens field.
+func (f *UsageStatFilter) WhereCompletionTokens(p entql.Int64P) {
+	f.Where(p.Field(usagestat.FieldCompletionTokens))
+}
+
+// WhereTotalTokens applies the entql int64 predicate on the total_tokens field.
+func (f *UsageStatFilter) WhereTotalTokens(p entql.Int64P) {
+	f.Where(p.Field(usagestat.FieldTotalTokens))
+}
+
+// WherePromptCachedTokens applies the entql int64 predicate on the prompt_cached_tokens field.
+func (f *UsageStatFilter) WherePromptCachedTokens(p entql.Int64P) {
+	f.Where(p.Field(usagestat.FieldPromptCachedTokens))
+}
+
+// WherePromptWriteCachedTokens applies the entql int64 predicate on the prompt_write_cached_tokens field.
+func (f *UsageStatFilter) WherePromptWriteCachedTokens(p entql.Int64P) {
+	f.Where(p.Field(usagestat.FieldPromptWriteCachedTokens))
+}
+
+// WhereCompletionReasoningTokens applies the entql int64 predicate on the completion_reasoning_tokens field.
+func (f *UsageStatFilter) WhereCompletionReasoningTokens(p entql.Int64P) {
+	f.Where(p.Field(usagestat.FieldCompletionReasoningTokens))
+}
+
+// WhereTotalCost applies the entql float64 predicate on the total_cost field.
+func (f *UsageStatFilter) WhereTotalCost(p entql.Float64P) {
+	f.Where(p.Field(usagestat.FieldTotalCost))
+}
+
+// addPredicate implements the predicateAdder interface.
 func (_q *UserQuery) addPredicate(pred func(s *sql.Selector)) {
 	_q.predicates = append(_q.predicates, pred)
 }
@@ -4290,7 +4422,7 @@ type UserFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[22].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[23].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4488,7 +4620,7 @@ type UserProjectFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserProjectFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[23].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[24].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
@@ -4586,7 +4718,7 @@ type UserRoleFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *UserRoleFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[24].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[25].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})

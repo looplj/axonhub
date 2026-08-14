@@ -12,7 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
-	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/ent/usagestat"
 	"github.com/looplj/axonhub/internal/objects"
 )
 
@@ -51,27 +51,26 @@ func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFi
 	if filter.StartTime != nil {
 		startDate := parseDateStr(*filter.StartTime, loc)
 		if !startDate.IsZero() {
-			// 同仪表盘：本地午夜转 UTC 再比较，数据库 created_at 是 UTC
-			s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), startDate.UTC()))
+			s.Where(sql.GTE(s.C(usagestat.FieldDate), startDate.Format("2006-01-02")))
 		}
 	}
 
 	if filter.EndTime != nil {
 		endDate := parseDateStr(*filter.EndTime, loc)
 		if !endDate.IsZero() {
-			endDateNext := endDate.AddDate(0, 0, 1)
-			s.Where(sql.LT(s.C(usagelog.FieldCreatedAt), endDateNext.UTC()))
+			// usage_stats.date is the local calendar date; include the whole end day.
+			s.Where(sql.LTE(s.C(usagestat.FieldDate), endDate.Format("2006-01-02")))
 		}
 	}
 
 	if len(filter.ProjectIDs) > 0 {
 		ids := lo.Map(filter.ProjectIDs, func(g *objects.GUID, _ int) int { return g.ID })
-		s.Where(sql.InInts(usagelog.FieldProjectID, ids...))
+		s.Where(sql.InInts(usagestat.FieldProjectID, ids...))
 	}
 
 	if len(filter.ChannelIDs) > 0 {
 		ids := lo.Map(filter.ChannelIDs, func(g *objects.GUID, _ int) int { return g.ID })
-		s.Where(sql.InInts(usagelog.FieldChannelID, ids...))
+		s.Where(sql.InInts(usagestat.FieldChannelID, ids...))
 	}
 
 	if len(filter.ModelIDs) > 0 {
@@ -79,7 +78,7 @@ func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFi
 		for i, v := range filter.ModelIDs {
 			vals[i] = v
 		}
-		s.Where(sql.In(usagelog.FieldModelID, vals...))
+		s.Where(sql.In(usagestat.FieldModelID, vals...))
 	}
 
 	// API key / user filtering:
@@ -87,7 +86,7 @@ func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFi
 	// - apiKeyIDs == 0 && hasUserFilter: user filter matched no API keys → return empty
 	// - apiKeyIDs == 0 && !hasUserFilter: no API key filter → show all
 	if len(apiKeyIDs) > 0 {
-		s.Where(sql.InInts(usagelog.FieldAPIKeyID, apiKeyIDs...))
+		s.Where(sql.InInts(usagestat.FieldAPIKeyID, apiKeyIDs...))
 	} else if hasUserFilter {
 		s.Where(sql.False())
 	}
@@ -176,11 +175,11 @@ func (r *queryResolver) queryChannelStats(ctx context.Context, filter *Analytics
 
 	var rawResults []channelStatsRaw
 
-	err := r.client.UsageLog.Query().
+	err := r.client.UsageStat.Query().
 		Modify(func(s *sql.Selector) {
 			channelTable := sql.Table(channel.Table)
 			s.Join(channelTable).On(
-				s.C(usagelog.FieldChannelID),
+				s.C(usagestat.FieldChannelID),
 				channelTable.C(channel.FieldID),
 			)
 			s.Where(sql.EQ(channelTable.C(channel.FieldDeletedAt), 0))
@@ -188,16 +187,16 @@ func (r *queryResolver) queryChannelStats(ctx context.Context, filter *Analytics
 			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
 
 			s.Select(
-				sql.As(s.C(usagelog.FieldChannelID), "channel_id"),
+				sql.As(s.C(usagestat.FieldChannelID), "channel_id"),
 				sql.As(channelTable.C(channel.FieldName), "name"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "cost"),
+				sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "request_count"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalTokens)), "total_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "cost"),
 			).
-				GroupBy(s.C(usagelog.FieldChannelID), channelTable.C(channel.FieldName)).
+				GroupBy(s.C(usagestat.FieldChannelID), channelTable.C(channel.FieldName)).
 				OrderBy(sql.Desc("total_tokens"))
 		}).
 		Scan(ctx, &rawResults)
@@ -226,21 +225,21 @@ func (r *queryResolver) queryChannelStats(ctx context.Context, filter *Analytics
 func (r *queryResolver) queryModelStats(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) ([]dimStats, error) {
 	var results []dimStats
 
-	err := r.client.UsageLog.Query().
+	err := r.client.UsageStat.Query().
 		Modify(func(s *sql.Selector) {
 			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
 
 			s.Select(
-				sql.As(s.C(usagelog.FieldModelID), "id"),
-				sql.As(s.C(usagelog.FieldModelID), "name"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "cost"),
+				sql.As(s.C(usagestat.FieldModelID), "id"),
+				sql.As(s.C(usagestat.FieldModelID), "name"),
+				sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "request_count"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalTokens)), "total_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "cost"),
 			).
-				GroupBy(s.C(usagelog.FieldModelID)).
+				GroupBy(s.C(usagestat.FieldModelID)).
 				OrderBy(sql.Desc("total_tokens"))
 		}).
 		Scan(ctx, &results)
@@ -264,21 +263,21 @@ func (r *queryResolver) queryAPIKeyStats(ctx context.Context, filter *AnalyticsF
 
 	var rawResults []apiKeyStatsRaw
 
-	err := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil()).
+	err := r.client.UsageStat.Query().
+		Where(usagestat.APIKeyIDGT(0)).
 		Modify(func(s *sql.Selector) {
 			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
 
 			s.Select(
-				sql.As(s.C(usagelog.FieldAPIKeyID), "api_key_id"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "cost"),
+				sql.As(s.C(usagestat.FieldAPIKeyID), "api_key_id"),
+				sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "request_count"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalTokens)), "total_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "cost"),
 			).
-				GroupBy(s.C(usagelog.FieldAPIKeyID)).
+				GroupBy(s.C(usagestat.FieldAPIKeyID)).
 				OrderBy(sql.Desc("total_tokens"))
 		}).
 		Scan(ctx, &rawResults)
@@ -333,14 +332,14 @@ func (r *queryResolver) queryUserStats(ctx context.Context, filter *AnalyticsFil
 
 	var rawResults []userStatsRaw
 
-	err := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil()).
+	err := r.client.UsageStat.Query().
+		Where(usagestat.APIKeyIDGT(0)).
 		Modify(func(s *sql.Selector) {
 			apiKeyTable := sql.Table(apikey.Table)
 			userTable := sql.Table("users")
 
 			s.Join(apiKeyTable).On(
-				s.C(usagelog.FieldAPIKeyID),
+				s.C(usagestat.FieldAPIKeyID),
 				apiKeyTable.C(apikey.FieldID),
 			)
 			s.Join(userTable).On(
@@ -356,12 +355,12 @@ func (r *queryResolver) queryUserStats(ctx context.Context, filter *AnalyticsFil
 				sql.As(userTable.C("first_name"), "first_name"),
 				sql.As(userTable.C("last_name"), "last_name"),
 				sql.As(userTable.C("email"), "email"),
-				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "cost"),
+				sql.As(sql.Sum(s.C(usagestat.FieldRequestCount)), "request_count"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptTokens)), "input_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldPromptCachedTokens)), "cached_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldCompletionTokens)), "output_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalTokens)), "total_tokens"),
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagestat.FieldTotalCost)), "cost"),
 			).
 				GroupBy(
 					userTable.C("id"),
