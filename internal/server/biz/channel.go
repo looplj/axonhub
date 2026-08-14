@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"slices"
@@ -25,6 +26,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
+	xaisubscription "github.com/looplj/axonhub/llm/transformer/xai/subscription"
 )
 
 // ChannelModelEntry represents a model that the channel can handle.
@@ -526,6 +528,11 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 // createChannel creates a new channel without triggering a reload.
 // This is useful for batch operations where reload should happen once at the end.
 func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	if input.Type == channel.TypeXaiSubscription {
+		officialBaseURL := xaisubscription.DefaultBaseURL
+		input.BaseURL = &officialBaseURL
+		input.Endpoints = nil
+	}
 	if err := NormalizeAPIKeyAutoDisableRules(input.Policies); err != nil {
 		return nil, err
 	}
@@ -781,6 +788,20 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	if err := NormalizeAPIKeyAutoDisableRules(input.Policies); err != nil {
 		return nil, err
 	}
+	officialBaseURL := xaisubscription.DefaultBaseURL
+	if input.Type != nil && *input.Type == channel.TypeXaiSubscription {
+		input.BaseURL = &officialBaseURL
+		input.Endpoints = []objects.ChannelEndpoint{}
+	} else if input.Type == nil && (input.BaseURL != nil || input.Endpoints != nil) {
+		existing, err := svc.entFromContext(ctx).Channel.Query().Where(channel.IDEQ(id), channel.TypeEQ(channel.TypeXaiSubscription)).Exist(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check xAI subscription channel: %w", err)
+		}
+		if existing {
+			input.BaseURL = &officialBaseURL
+			input.Endpoints = []objects.ChannelEndpoint{}
+		}
+	}
 
 	// Check if name is being updated and if it conflicts with existing channels
 	if input.Name != nil {
@@ -1001,6 +1022,9 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 	ch, err := svc.entFromContext(ctx).Channel.Get(ctx, input.ChannelID.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel: %w", err)
+	}
+	if ch.Type == channel.TypeXaiSubscription {
+		return nil, errors.New("xAI subscription channels do not support custom endpoints")
 	}
 
 	ch, err = svc.entFromContext(ctx).Channel.UpdateOne(ch).
