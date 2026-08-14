@@ -138,11 +138,18 @@ func (s *UsageLogService) BackfillUsageStats(ctx context.Context) error {
 	agg := make(map[statKey]*statVal)
 	processed := 0
 
+	// Paginate by ID cursor: each page must be strictly after the last ID of
+	// the previous page, otherwise pages repeat forever once the log count
+	// exceeds the batch size.
+	var lastID int
 	for {
-		logs, err := client.UsageLog.Query().
+		q := client.UsageLog.Query().
 			Order(ent.Asc(usagelog.FieldID)).
-			Limit(backfillBatchSize).
-			All(ctx)
+			Limit(backfillBatchSize)
+		if lastID > 0 {
+			q = q.Where(usagelog.IDGT(lastID))
+		}
+		logs, err := q.All(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to query usage logs for backfill: %w", err)
 		}
@@ -175,6 +182,7 @@ func (s *UsageLogService) BackfillUsageStats(ctx context.Context) error {
 			}
 		}
 
+		lastID = logs[len(logs)-1].ID
 		processed += len(logs)
 		if len(logs) < backfillBatchSize {
 			break
