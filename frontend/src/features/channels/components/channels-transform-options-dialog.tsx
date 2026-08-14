@@ -29,7 +29,6 @@ const transformOptionsFormSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
-  enableResponsesChatCompat: z.boolean().optional(),
   reasoningEffortMapping: z
     .array(
       z.object({
@@ -61,7 +60,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
       forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
       forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
       replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
-      enableResponsesChatCompat: currentRow.settings?.transformOptions?.enableResponsesChatCompat || false,
       reasoningEffortMapping: currentRow.settings?.transformOptions?.reasoningEffortMapping || [],
     },
   });
@@ -76,7 +74,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
         forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
         forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
         replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
-        enableResponsesChatCompat: currentRow.settings?.transformOptions?.enableResponsesChatCompat || false,
         reasoningEffortMapping: currentRow.settings?.transformOptions?.reasoningEffortMapping || [],
       });
       setDraft({ from: '', to: '' });
@@ -111,7 +108,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
         forceArrayInstructions: values.forceArrayInstructions,
         forceArrayInputs: values.forceArrayInputs,
         replaceDeveloperRoleWithSystem: values.replaceDeveloperRoleWithSystem,
-        enableResponsesChatCompat: values.enableResponsesChatCompat,
       };
       // Empty list is treated as "clear": send [] so the backend removes the mapping.
       // undefined would mean "don't touch", but the dialog is the sole editor here.
@@ -214,27 +210,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
                           </FormLabel>
                           <p className='text-muted-foreground text-xs'>
                             {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description')}
-                          </p>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name='enableResponsesChatCompat'
-                    render={({ field }) => (
-                      <FormItem className='flex items-center gap-2'>
-                        <FormControl>
-                          <Checkbox checked={field.value || false} onCheckedChange={field.onChange} />
-                        </FormControl>
-                        <div className='space-y-0.5'>
-                          <FormLabel className='cursor-pointer text-sm font-normal'>
-                            {t('channels.dialogs.fields.transformOptions.enableResponsesChatCompat.label')}
-                          </FormLabel>
-                          <p className='text-muted-foreground text-xs'>
-                            {t('channels.dialogs.fields.transformOptions.enableResponsesChatCompat.description')}
                           </p>
                         </div>
                         <FormMessage />

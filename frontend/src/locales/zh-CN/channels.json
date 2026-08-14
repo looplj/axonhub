@@ -388,8 +388,6 @@
   "channels.dialogs.fields.transformOptions.forceArrayInputs.description": "强制渠道接受数组格式的输入",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label": "将 developer 角色替换为 system",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "用于不支持 developer 角色的渠道，发送请求前将 developer 角色替换为 system",
-  "channels.dialogs.fields.transformOptions.enableResponsesChatCompat.label": "启用 Responses 与 Chat 兼容（测试版）",
-  "channels.dialogs.fields.transformOptions.enableResponsesChatCompat.description": "测试版：开启后，Responses 请求由 Chat 端点承接时使用高保真协议转换，包含工具映射与 previous_response_id 历史展开；关闭时沿用原有的通用转换逻辑。",
   "channels.dialogs.fields.transformOptions.reasoningEffortMapping.label": "reasoning_effort 映射",
   "channels.dialogs.fields.transformOptions.reasoningEffortMapping.description": "将 reasoning_effort 按映射表替换后发送给上游。每条把源值替换为目标值，未命中的保持原样。例如从 \"xhigh\" 到 \"max\" 适配只认 max 的非标准 OpenAI 兼容渠道",
   "channels.dialogs.fields.transformOptions.reasoningEffortMapping.fromPlaceholder": "源 effort（如 xhigh）",

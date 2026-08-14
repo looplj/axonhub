@@ -216,13 +216,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Native Chat requests use the plain codec unchanged. Only Responses-origin
 	// requests need reversible lifecycle mappings and compatibility warnings.
-	// Channels without the beta Responses/Chat compatibility keep the legacy
-	// generic conversion for Responses-origin requests.
 	var (
 		oaiReq      *Request
 		toolAdapter *responsesChatToolAdapter
 	)
-	if isResponsesAPIFormat(llmReq.APIFormat) && !llmReq.TransformOptions.DisableResponsesChatCompat {
+	if isResponsesAPIFormat(llmReq.APIFormat) {
 		var err error
 		oaiReq, toolAdapter, err = requestFromLLMWithResponsesToolAdapter(llmReq, reasoningField)
 		if err != nil {

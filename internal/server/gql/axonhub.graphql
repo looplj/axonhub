@@ -62,7 +62,6 @@ type TransformOptions {
   forceArrayInputs: Boolean!
   replaceDeveloperRoleWithSystem: Boolean!
   reasoningEffortMapping: [ReasoningEffortMapping!]
-  enableResponsesChatCompat: Boolean!
 }
 
 type SyncChannelModelsPayload {
@@ -80,7 +79,6 @@ input TransformOptionsInput {
   forceArrayInputs: Boolean
   replaceDeveloperRoleWithSystem: Boolean
   reasoningEffortMapping: [ReasoningEffortMappingInput!]
-  enableResponsesChatCompat: Boolean
 }
 
 enum ProxyType {

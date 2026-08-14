@@ -120,10 +120,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if usesResponsesAPI(llmReq.Model) {
 		return t.transformResponsesRequest(ctx, llmReq)
 	}
-	// Channels without the beta Responses/Chat compatibility keep the legacy
-	// behavior for Responses-origin requests hitting Chat models.
-	if (llmReq.APIFormat == llm.APIFormatOpenAIResponse || llmReq.APIFormat == llm.APIFormatOpenAIResponseCompact) &&
-		!llmReq.TransformOptions.DisableResponsesChatCompat {
+	if llmReq.APIFormat == llm.APIFormatOpenAIResponse || llmReq.APIFormat == llm.APIFormatOpenAIResponseCompact {
 		llmReq = shared.DowngradeResponsesChatToolLifecycle(llmReq)
 	}
 	if len(llmReq.Messages) == 0 {

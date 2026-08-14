@@ -120,14 +120,6 @@ type TransformOptions struct {
 	// Consumed by the OpenAI-shared outbound transformer. Other transformers ignore it
 	// for now. Strong-typed to mirror ModelMapping; see llm.ReasoningEffortMapping.
 	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoningEffortMapping,omitempty"`
-
-	// EnableResponsesChatCompat enables the beta high-fidelity conversion for
-	// Responses requests served by Chat Completions endpoints on this channel.
-	// When enabled, those requests use the reversible tool/lifecycle mapping and
-	// previous_response_id history expansion. When disabled (default), they fall
-	// back to the legacy generic conversion. Chat requests served by Responses
-	// endpoints are unaffected by this option.
-	EnableResponsesChatCompat bool `json:"enableResponsesChatCompat"`
 }
 
 type ChannelSettings struct {

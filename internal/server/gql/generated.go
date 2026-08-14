@@ -1902,7 +1902,6 @@ type ComplexityRoot struct {
 	}
 
 	TransformOptions struct {
-		EnableResponsesChatCompat      func(childComplexity int) int
 		ForceArrayInputs               func(childComplexity int) int
 		ForceArrayInstructions         func(childComplexity int) int
 		ReasoningEffortMapping         func(childComplexity int) int
@@ -10567,12 +10566,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.TraceEdge.Node(childComplexity), true
 
-	case "TransformOptions.enableResponsesChatCompat":
-		if e.complexity.TransformOptions.EnableResponsesChatCompat == nil {
-			break
-		}
-
-		return e.complexity.TransformOptions.EnableResponsesChatCompat(childComplexity), true
 	case "TransformOptions.forceArrayInputs":
 		if e.complexity.TransformOptions.ForceArrayInputs == nil {
 			break
@@ -24711,8 +24704,6 @@ func (ec *executionContext) fieldContext_ChannelSettings_transformOptions(_ cont
 				return ec.fieldContext_TransformOptions_replaceDeveloperRoleWithSystem(ctx, field)
 			case "reasoningEffortMapping":
 				return ec.fieldContext_TransformOptions_reasoningEffortMapping(ctx, field)
-			case "enableResponsesChatCompat":
-				return ec.fieldContext_TransformOptions_enableResponsesChatCompat(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type TransformOptions", field.Name)
 		},
@@ -56776,35 +56767,6 @@ func (ec *executionContext) fieldContext_TransformOptions_reasoningEffortMapping
 	return fc, nil
 }
 
-func (ec *executionContext) _TransformOptions_enableResponsesChatCompat(ctx context.Context, field graphql.CollectedField, obj *objects.TransformOptions) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TransformOptions_enableResponsesChatCompat,
-		func(ctx context.Context) (any, error) {
-			return obj.EnableResponsesChatCompat, nil
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_TransformOptions_enableResponsesChatCompat(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TransformOptions",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TriggerBackupPayload_success(ctx context.Context, field graphql.CollectedField, obj *TriggerBackupPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -82996,7 +82958,7 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"forceArrayInstructions", "forceArrayInputs", "replaceDeveloperRoleWithSystem", "reasoningEffortMapping", "enableResponsesChatCompat"}
+	fieldsInOrder := [...]string{"forceArrayInstructions", "forceArrayInputs", "replaceDeveloperRoleWithSystem", "reasoningEffortMapping"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83031,13 +82993,6 @@ func (ec *executionContext) unmarshalInputTransformOptionsInput(ctx context.Cont
 				return it, err
 			}
 			it.ReasoningEffortMapping = data
-		case "enableResponsesChatCompat":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enableResponsesChatCompat"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.EnableResponsesChatCompat = data
 		}
 	}
 
@@ -106770,11 +106725,6 @@ func (ec *executionContext) _TransformOptions(ctx context.Context, sel ast.Selec
 			}
 		case "reasoningEffortMapping":
 			out.Values[i] = ec._TransformOptions_reasoningEffortMapping(ctx, field, obj)
-		case "enableResponsesChatCompat":
-			out.Values[i] = ec._TransformOptions_enableResponsesChatCompat(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
