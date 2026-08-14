@@ -98,6 +98,9 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
   } else if (channel.type === 'codex') {
     const qd = channel.quotaStatus.quotaData;
     percentage = qd.rate_limit?.primary_window?.used_percent || 0;
+  } else if (channel.type === 'xai_subscription') {
+    const qd = channel.quotaStatus.quotaData;
+    percentage = Math.max(qd.billing?.weekly?.usage_percent ?? 0, qd.billing?.monthly?.usage_percent ?? 0);
   } else if (channel.type === 'cline') {
     const qd = channel.quotaStatus.quotaData;
     percentage = isClineActivePassQuotaData(qd)
@@ -759,6 +762,75 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                     </Button>
                   </div>
                 )}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {channel.type === 'xai_subscription' && (
+        <div className='mt-4 space-y-4'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData;
+            const weekly = qd.billing?.weekly;
+            const monthly = qd.billing?.monthly;
+            return (
+              <>
+                {qd.plan_type ? (
+                  <div className='text-muted-foreground flex items-center justify-between text-xs'>
+                    <span>{t('quota.label.plan')}</span>
+                    <span className='text-foreground font-medium'>{qd.plan_type}</span>
+                  </div>
+                ) : null}
+                {weekly ? (
+                  <div className='space-y-1.5'>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{t('quota.window.weekly')}</span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(weekly.usage_percent ?? 0) })}
+                      </span>
+                    </div>
+                    <ProgressBar percentage={weekly.usage_percent ?? 0} />
+                    {weekly.reset_at ? (
+                      <div className='text-muted-foreground text-right text-[11px]'>{formatTimeToReset(weekly.reset_at)}</div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {monthly ? (
+                  <div className='border-border/60 space-y-1.5 border-t border-dashed pt-3'>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>
+                        {t('quota.window.monthly')}{' '}
+                        {monthly.limit_usd ? (
+                          <span className='font-normal opacity-70'>
+                            (
+                            {t('currencies.format', {
+                              val: monthly.used_usd ?? 0,
+                              currency: 'USD',
+                              locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                              minimumFractionDigits: 2,
+                            })}
+                            {' / '}
+                            {t('currencies.format', {
+                              val: monthly.limit_usd,
+                              currency: 'USD',
+                              locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                              minimumFractionDigits: 2,
+                            })}
+                            )
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(monthly.usage_percent ?? 0) })}
+                      </span>
+                    </div>
+                    <ProgressBar percentage={monthly.usage_percent ?? 0} />
+                    {monthly.reset_at ? (
+                      <div className='text-muted-foreground text-right text-[11px]'>{formatTimeToReset(monthly.reset_at)}</div>
+                    ) : null}
+                  </div>
+                ) : null}
               </>
             );
           })()}

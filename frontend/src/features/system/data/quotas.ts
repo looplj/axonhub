@@ -73,6 +73,20 @@ type ProviderCodexQuotaData = ProviderQuotaDataCommon & {
   };
 };
 
+export type XAISubscriptionBillingWindow = {
+  readonly usage_percent?: number;
+  readonly reset_at?: string;
+  readonly limit_usd?: number;
+  readonly used_usd?: number;
+};
+
+export type ProviderXAISubscriptionQuotaData = ProviderQuotaDataCommon & {
+  readonly billing?: {
+    readonly weekly?: XAISubscriptionBillingWindow;
+    readonly monthly?: XAISubscriptionBillingWindow;
+  };
+};
+
 type CopilotQuotaSnapshot = {
   entitlement: number;
   has_quota: boolean;
@@ -383,6 +397,12 @@ export type ProviderQuotaChannel = {
       type: 'codex';
       quotaStatus: {
         quotaData: ProviderCodexQuotaData;
+      };
+    }
+  | {
+      type: 'xai_subscription';
+      quotaStatus: {
+        quotaData: ProviderXAISubscriptionQuotaData;
       };
     }
   | {
