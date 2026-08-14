@@ -10,6 +10,7 @@ func NormalizeSSOToken(value string) string {
 		value = strings.TrimSpace(value[len("cookie:"):])
 	}
 
+	sawCookie := false
 	for _, part := range strings.Split(value, ";") {
 		name, token, found := strings.Cut(strings.TrimSpace(part), "=")
 		if !found {
@@ -17,8 +18,14 @@ func NormalizeSSOToken(value string) string {
 		}
 		switch strings.ToLower(strings.TrimSpace(name)) {
 		case "sso", "sso-rw":
-			return sanitizeSSOToken(token)
+			sawCookie = true
+			if sanitized := sanitizeSSOToken(token); sanitized != "" {
+				return sanitized
+			}
 		}
+	}
+	if sawCookie {
+		return ""
 	}
 
 	if token, _, found := strings.Cut(value, ";"); found {

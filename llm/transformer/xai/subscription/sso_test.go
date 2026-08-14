@@ -41,3 +41,25 @@ func TestNormalizeSSOToken_rejects_oversized_token(t *testing.T) {
 	// Then
 	require.Empty(t, token)
 }
+
+func TestNormalizeSSOToken_skips_empty_cookie_and_uses_next(t *testing.T) {
+	// Given
+	input := "sso=; sso-rw=valid-token"
+
+	// When
+	result := NormalizeSSOToken(input)
+
+	// Then
+	require.Equal(t, "valid-token", result)
+}
+
+func TestNormalizeSSOToken_empty_supported_cookies_yield_empty(t *testing.T) {
+	// Given
+	input := "sso=; sso-rw="
+
+	// When
+	result := NormalizeSSOToken(input)
+
+	// Then
+	require.Empty(t, result)
+}
