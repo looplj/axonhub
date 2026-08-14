@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
 )
@@ -176,6 +177,130 @@ func TestMutationResolver_UpdateSystemChannelSettings_MergesPrompts(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, "You are a helpful assistant.", setting.TestSystemPrompt)
 	require.Equal(t, "updated user", setting.TestUserPrompt)
+}
+
+func TestQuotaEnforcementSettingsResolver_AllowedChannelIDs(t *testing.T) {
+	resolver, ctx, client := setupTestSystemMutationResolver(t)
+	defer client.Close()
+
+	qrs := resolver.QuotaEnforcementSettings().(*quotaEnforcementSettingsResolver)
+
+	t.Run("non-empty slice maps to []*objects.GUID correctly", func(t *testing.T) {
+		settings := &biz.QuotaEnforcementSettings{
+			AllowedChannelIDs: []int{42, 7, 99},
+		}
+		guids, err := qrs.AllowedChannelIDs(ctx, settings)
+		require.NoError(t, err)
+		require.Len(t, guids, 3)
+		require.Equal(t, "Channel", guids[0].Type)
+		require.Equal(t, 42, guids[0].ID)
+		require.Equal(t, "Channel", guids[1].Type)
+		require.Equal(t, 7, guids[1].ID)
+		require.Equal(t, "Channel", guids[2].Type)
+		require.Equal(t, 99, guids[2].ID)
+	})
+
+	t.Run("nil slice returns empty slice", func(t *testing.T) {
+		settings := &biz.QuotaEnforcementSettings{
+			AllowedChannelIDs: nil,
+		}
+		guids, err := qrs.AllowedChannelIDs(ctx, settings)
+		require.NoError(t, err)
+		require.NotNil(t, guids)
+		require.Empty(t, guids)
+	})
+
+	t.Run("empty slice returns empty slice", func(t *testing.T) {
+		settings := &biz.QuotaEnforcementSettings{
+			AllowedChannelIDs: []int{},
+		}
+		guids, err := qrs.AllowedChannelIDs(ctx, settings)
+		require.NoError(t, err)
+		require.NotNil(t, guids)
+		require.Empty(t, guids)
+	})
+
+	t.Run("round-trips with mutation resolver IntGuids conversion", func(t *testing.T) {
+		originalIDs := []int{10, 20, 30}
+		settings := &biz.QuotaEnforcementSettings{
+			AllowedChannelIDs: originalIDs,
+		}
+		// Query resolver: int -> []*GUID
+		guids, err := qrs.AllowedChannelIDs(ctx, settings)
+		require.NoError(t, err)
+		// Mutation resolver: []*GUID -> int
+		back := objects.IntGuids(guids)
+		require.Equal(t, originalIDs, back)
+	})
+}
+
+func TestMutationResolver_UpdateQuotaEnforcementSettings(t *testing.T) {
+	resolver, ctx, client := setupTestSystemMutationResolver(t)
+	defer client.Close()
+
+	t.Run("AllowedChannelIDs round-trips through mutation", func(t *testing.T) {
+		channelIDs := []*objects.GUID{
+			{Type: "Channel", ID: 5},
+			{Type: "Channel", ID: 13},
+		}
+		ok, err := resolver.UpdateQuotaEnforcementSettings(ctx, UpdateQuotaEnforcementSettingsInput{
+			Enabled:           lo.ToPtr(true),
+			Mode:              lo.ToPtr(biz.QuotaEnforcementModeDePrioritize),
+			AllowedChannelIDs: channelIDs,
+		})
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		// Verify via service
+		settings, err := resolver.systemService.QuotaEnforcementSettings(ctx)
+		require.NoError(t, err)
+		require.Equal(t, []int{5, 13}, settings.AllowedChannelIDs)
+		require.True(t, settings.Enabled)
+		require.Equal(t, biz.QuotaEnforcementModeDePrioritize, settings.Mode)
+	})
+
+	t.Run("partial update preserves other fields", func(t *testing.T) {
+		// Seed existing settings
+		require.NoError(t, resolver.systemService.SetQuotaEnforcementSettings(ctx, biz.QuotaEnforcementSettings{
+			Enabled:           true,
+			Mode:              biz.QuotaEnforcementModeDePrioritize,
+			AllowedChannelIDs: []int{1, 2, 3},
+		}))
+
+		// Only change AllowedChannelIDs
+		newIDs := []*objects.GUID{{Type: "Channel", ID: 99}}
+		ok, err := resolver.UpdateQuotaEnforcementSettings(ctx, UpdateQuotaEnforcementSettingsInput{
+			AllowedChannelIDs: newIDs,
+		})
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		settings, err := resolver.systemService.QuotaEnforcementSettings(ctx)
+		require.NoError(t, err)
+		// AllowedChannelIDs updated
+		require.Equal(t, []int{99}, settings.AllowedChannelIDs)
+		// Other fields preserved
+		require.True(t, settings.Enabled)
+		require.Equal(t, biz.QuotaEnforcementModeDePrioritize, settings.Mode)
+	})
+
+	t.Run("nil AllowedChannelIDs input preserves existing", func(t *testing.T) {
+		// Seed existing settings
+		require.NoError(t, resolver.systemService.SetQuotaEnforcementSettings(ctx, biz.QuotaEnforcementSettings{
+			Enabled:           true,
+			Mode:              biz.QuotaEnforcementModeExhaustedOnly,
+			AllowedChannelIDs: []int{7, 8},
+		}))
+
+		// Send an update that does NOT include AllowedChannelIDs (nil)
+		ok, err := resolver.UpdateQuotaEnforcementSettings(ctx, UpdateQuotaEnforcementSettingsInput{})
+		require.NoError(t, err)
+		require.True(t, ok)
+
+		settings, err := resolver.systemService.QuotaEnforcementSettings(ctx)
+		require.NoError(t, err)
+		require.Equal(t, []int{7, 8}, settings.AllowedChannelIDs)
+	})
 }
 
 func TestUpdateSystemChannelSettingsInput_PromptPresence(t *testing.T) {

@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm/transformer/xai/subscription"
 )
 
 func TestChannelService_ListModels(t *testing.T) {
@@ -235,6 +236,82 @@ func TestChannelService_CreateChannel_PersistsAutoSyncModelPatternAndManualModel
 	require.Equal(t, []string{"manual-1"}, got.ManualModels)
 	require.Equal(t, "^gpt-", got.AutoSyncModelPattern)
 	require.Equal(t, true, got.AutoSyncSupportedModels)
+}
+
+func TestChannelService_XAISubscriptionAlwaysUsesOfficialBaseURL(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+
+	created, err := svc.CreateChannel(ctx, ent.CreateChannelInput{
+		Type: channel.TypeXaiSubscription, BaseURL: new("https://attacker.example/v1"), Name: "xAI subscription",
+		Credentials: objects.ChannelCredentials{APIKey: `{"access_token":"synthetic"}`}, SupportedModels: []string{"grok-4.5"}, DefaultTestModel: "grok-4.5",
+		Endpoints: []objects.ChannelEndpoint{{APIFormat: "openai/responses", BaseURL: "https://attacker.example/v1"}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, subscription.DefaultBaseURL, created.BaseURL)
+	require.Empty(t, created.Endpoints)
+	created = client.Channel.UpdateOneID(created.ID).
+		SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/responses", BaseURL: "https://attacker.example/legacy"}}).
+		SaveX(ctx)
+
+	updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
+		BaseURL:   new("https://attacker.example/v2"),
+		Endpoints: []objects.ChannelEndpoint{{APIFormat: "openai/responses", BaseURL: "https://attacker.example/v2"}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, subscription.DefaultBaseURL, updated.BaseURL)
+	require.Empty(t, updated.Endpoints)
+
+	apiKeyChannel := client.Channel.Create().
+		SetType(channel.TypeXai).
+		SetName("xAI API key converted to subscription").
+		SetBaseURL("https://api.x.ai/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "synthetic"}).
+		SetSupportedModels([]string{"grok-4.5"}).
+		SetDefaultTestModel("grok-4.5").
+		SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/responses", BaseURL: "https://attacker.example/conversion"}}).
+		SaveX(ctx)
+	converted, err := svc.UpdateChannel(ctx, apiKeyChannel.ID, &ent.UpdateChannelInput{Type: new(channel.TypeXaiSubscription)})
+	require.NoError(t, err)
+	require.Equal(t, subscription.DefaultBaseURL, converted.BaseURL)
+	require.Empty(t, converted.Endpoints)
+
+	_, err = svc.SaveChannelEndpoints(ctx, SaveChannelEndpointsInput{
+		ChannelID: objects.GUID{Type: "Channel", ID: created.ID},
+		Endpoints: []objects.ChannelEndpoint{{APIFormat: "openai/responses"}},
+	})
+	require.ErrorContains(t, err, "do not support custom endpoints")
+}
+
+func TestChannelService_XAISubscriptionCanConvertToAPIKeyChannel(t *testing.T) {
+	// Given
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	created := client.Channel.Create().
+		SetType(channel.TypeXaiSubscription).
+		SetName("xAI subscription converted to API key").
+		SetBaseURL(subscription.DefaultBaseURL).
+		SetCredentials(objects.ChannelCredentials{APIKey: `{"access_token":"synthetic"}`}).
+		SetSupportedModels([]string{"grok-4.5"}).
+		SetDefaultTestModel("grok-4.5").
+		SaveX(ctx)
+	apiBaseURL := "https://api.x.ai/v1"
+	apiEndpoints := []objects.ChannelEndpoint{{APIFormat: "openai/responses"}}
+
+	// When
+	updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
+		Type:      new(channel.TypeXai),
+		BaseURL:   &apiBaseURL,
+		Endpoints: apiEndpoints,
+	})
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, channel.TypeXai, updated.Type)
+	require.Equal(t, apiBaseURL, updated.BaseURL)
+	require.Equal(t, apiEndpoints, updated.Endpoints)
 }
 
 func setupTestChannelService(t *testing.T) (*ChannelService, *ent.Client) {

@@ -138,6 +138,7 @@
   "common.autoRefresh": "自动刷新",
   "common.showArchived": "显示已归档",
   "common.selected": "已选择",
+  "common.select.placeholder": "选择一个选项",
   "common.selectedItems": "已选择 {{count}} 项",
   "common.noResultsFound": "未找到结果",
   "common.clearFilters": "清除筛选",

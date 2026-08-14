@@ -179,11 +179,13 @@ enum QuotaEnforcementMode {
 type QuotaEnforcementSettings {
   enabled: Boolean!
   mode: QuotaEnforcementMode!
+  allowedChannelIDs: [ID!]!
 }
 
 input UpdateQuotaEnforcementSettingsInput {
   enabled: Boolean
   mode: QuotaEnforcementMode
+  allowedChannelIDs: [ID!]
 }
 
 type ProviderQuotaCollectionProvider {

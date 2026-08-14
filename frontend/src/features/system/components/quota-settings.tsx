@@ -1,14 +1,19 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { useProviderQuotaStatuses } from '../data/quotas';
 import {
   useProviderQuotaCollectionSettings,
   useQuotaEnforcementSettings,
@@ -21,6 +26,7 @@ import {
 interface QuotaEnforcementFormData {
   enabled: boolean;
   mode: QuotaEnforcementMode;
+  allowedChannelIDs: string[];
 }
 
 interface ProviderQuotaCollectionFormData {
@@ -32,12 +38,14 @@ export function QuotaSettings() {
   const { t } = useTranslation();
   const { data: quotaSettings, isLoading: isQuotaSettingsLoading } = useQuotaEnforcementSettings();
   const { data: collectionSettings, isLoading: isCollectionSettingsLoading } = useProviderQuotaCollectionSettings();
+  const { channels: providerQuotaChannels } = useProviderQuotaStatuses();
   const updateQuotaEnforcementSettings = useUpdateQuotaEnforcementSettings();
   const updateProviderQuotaCollectionSettings = useUpdateProviderQuotaCollectionSettings();
 
   const [quotaFormData, setQuotaFormData] = useState<QuotaEnforcementFormData>({
     enabled: false,
     mode: 'EXHAUSTED_ONLY',
+    allowedChannelIDs: [],
   });
   const [collectionFormData, setCollectionFormData] = useState<ProviderQuotaCollectionFormData>({
     enabled: true,
@@ -49,6 +57,7 @@ export function QuotaSettings() {
       setQuotaFormData({
         enabled: quotaSettings.enabled,
         mode: quotaSettings.mode,
+        allowedChannelIDs: quotaSettings.allowedChannelIDs || [],
       });
     }
   }, [quotaSettings]);
@@ -65,9 +74,7 @@ export function QuotaSettings() {
   const handleCollectionProviderChange = useCallback((providerType: string, checked: boolean) => {
     setCollectionFormData((prev) => ({
       ...prev,
-      providers: prev.providers.map((provider) =>
-        provider.provider === providerType ? { ...provider, enabled: checked } : provider
-      ),
+      providers: prev.providers.map((provider) => (provider.provider === providerType ? { ...provider, enabled: checked } : provider)),
     }));
   }, []);
 
@@ -141,11 +148,7 @@ export function QuotaSettings() {
 
             <div className='flex justify-end'>
               <Button type='submit' disabled={updateProviderQuotaCollectionSettings.isPending} className='min-w-24'>
-                {updateProviderQuotaCollectionSettings.isPending ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : (
-                  t('common.buttons.save')
-                )}
+                {updateProviderQuotaCollectionSettings.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : t('common.buttons.save')}
               </Button>
             </div>
           </form>
@@ -182,9 +185,7 @@ export function QuotaSettings() {
                   <div className='text-muted-foreground mb-2 text-sm'>{t('system.quota.mode.description')}</div>
                   <Select
                     value={quotaFormData.mode}
-                    onValueChange={(value) =>
-                      setQuotaFormData((prev) => ({ ...prev, mode: value as QuotaEnforcementMode }))
-                    }
+                    onValueChange={(value) => setQuotaFormData((prev) => ({ ...prev, mode: value as QuotaEnforcementMode }))}
                   >
                     <SelectTrigger id='quota-mode' className='w-56'>
                       <SelectValue placeholder={t('system.quota.mode.placeholder')} />
@@ -203,6 +204,16 @@ export function QuotaSettings() {
                     </div>
                   )}
                 </div>
+
+                <div className='space-y-2'>
+                  <Label>{t('system.quota.enforcement.allowedChannels.label')}</Label>
+                  <div className='text-muted-foreground text-sm'>{t('system.quota.enforcement.allowedChannels.description')}</div>
+                  <ChannelMultiSelect
+                    value={quotaFormData.allowedChannelIDs}
+                    onChange={(ids) => setQuotaFormData((prev) => ({ ...prev, allowedChannelIDs: ids }))}
+                    channels={providerQuotaChannels || []}
+                  />
+                </div>
               </div>
             )}
 
@@ -210,16 +221,83 @@ export function QuotaSettings() {
 
             <div className='flex justify-end'>
               <Button type='submit' disabled={updateQuotaEnforcementSettings.isPending} className='min-w-24'>
-                {updateQuotaEnforcementSettings.isPending ? (
-                  <Loader2 className='h-4 w-4 animate-spin' />
-                ) : (
-                  t('common.buttons.save')
-                )}
+                {updateQuotaEnforcementSettings.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : t('common.buttons.save')}
               </Button>
             </div>
           </form>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function ChannelMultiSelect({
+  value,
+  onChange,
+  channels,
+}: {
+  value: string[];
+  onChange: (v: string[]) => void;
+  channels: { id: string; name: string }[];
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+
+  const handleSelect = (channelId: string) => {
+    const newValue = value.includes(channelId) ? value.filter((v) => v !== channelId) : [...value, channelId];
+    onChange(newValue);
+  };
+
+  const handleRemove = (channelId: string) => {
+    onChange(value.filter((v) => v !== channelId));
+  };
+
+  return (
+    <div className='space-y-2'>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant='outline' role='combobox' aria-expanded={open} className='w-full justify-between'>
+            {value.length > 0 ? t('system.quota.enforcement.allowedChannels.selectedCount', { count: value.length }) : t('common.select.placeholder')}
+            <ChevronsUpDown className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className='w-full p-0' align='start'>
+          <Command>
+            <CommandInput placeholder={t('search.placeholder')} />
+            <CommandEmpty>{t('common.noResults')}</CommandEmpty>
+            <CommandGroup className='max-h-64 overflow-auto'>
+              {channels.map((channel) => (
+                <CommandItem key={channel.id} value={channel.name} onSelect={() => handleSelect(channel.id)}>
+                  <Check className={cn('mr-2 h-4 w-4', value.includes(channel.id) ? 'opacity-100' : 'opacity-0')} />
+                  <span>{channel.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
+      {value.length > 0 && (
+        <div className='flex flex-wrap gap-2'>
+          {value.map((channelId) => {
+            const channel = channels.find((c) => c.id === channelId);
+            return (
+              <Badge key={channelId} variant='secondary' className='group flex items-center gap-0.5'>
+                {channel?.name || channelId}
+                <Button
+                  variant='ghost'
+                  size='sm'
+                  className='h-4 w-4 p-0 opacity-70 hover:opacity-100'
+                  aria-label={t('system.quota.enforcement.allowedChannels.removeChannel', { name: channel?.name || channelId })}
+                  onClick={() => handleRemove(channelId)}
+                >
+                  ×
+                </Button>
+              </Badge>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

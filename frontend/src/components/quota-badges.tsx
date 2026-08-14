@@ -37,6 +37,7 @@ const BADGE_COLOR_CLASSES: Record<string, string> = {
   green: 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20',
   red: 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20',
   amber: 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20',
+  blue: 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20',
 };
 
 const STATUS_LABELS = {
@@ -98,6 +99,9 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
   } else if (channel.type === 'codex') {
     const qd = channel.quotaStatus.quotaData;
     percentage = qd.rate_limit?.primary_window?.used_percent || 0;
+  } else if (channel.type === 'xai_subscription') {
+    const qd = channel.quotaStatus.quotaData;
+    percentage = Math.max(qd.billing?.weekly?.usage_percent ?? 0, qd.billing?.monthly?.usage_percent ?? 0);
   } else if (channel.type === 'cline') {
     const qd = channel.quotaStatus.quotaData;
     percentage = isClineActivePassQuotaData(qd)
@@ -268,7 +272,7 @@ function formatTokenCount(n: number): string {
   return `${n}`;
 }
 
-function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel; enforcementMode?: QuotaEnforcementMode | null }) {
+function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: ProviderQuotaChannel; enforcementMode?: QuotaEnforcementMode | null; allowedChannelIDs?: string[] | null }) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
@@ -278,8 +282,10 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
   const clinePassUnavailable = channel.type === 'cline' && isClineUnavailablePassQuotaData(channel.quotaStatus.quotaData);
   const statusLabel = clinePassUnavailable ? t('quota.status.cline_pass_unavailable') : t(STATUS_LABELS[status]);
 
+  const isAllowed = allowedChannelIDs?.includes(channel.id) ?? false;
+
   const enforcementEffect =
-    enforcementMode && (status === 'exhausted' || (status === 'warning' && enforcementMode === 'DE_PRIORITIZE'))
+    enforcementMode && !isAllowed && (status === 'exhausted' || (status === 'warning' && enforcementMode === 'DE_PRIORITIZE'))
       ? enforcementMode === 'EXHAUSTED_ONLY'
         ? ('blocked' as const)
         : ('deprioritized' as const)
@@ -453,6 +459,11 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
           {enforcementEffect && (
             <Badge variant='outline' className={BADGE_COLOR_CLASSES[enforcementEffect === 'blocked' ? 'red' : 'amber']}>
               {t(`quota.status.${enforcementEffect}`)}
+            </Badge>
+          )}
+          {isAllowed && (status === 'exhausted' || status === 'warning') && (
+            <Badge variant='outline' className={BADGE_COLOR_CLASSES.blue}>
+              {t('quota.status.bypassed')}
             </Badge>
           )}
         </div>
@@ -759,6 +770,75 @@ function QuotaRow({ channel, enforcementMode }: { channel: ProviderQuotaChannel;
                     </Button>
                   </div>
                 )}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {channel.type === 'xai_subscription' && (
+        <div className='mt-4 space-y-4'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData;
+            const weekly = qd.billing?.weekly;
+            const monthly = qd.billing?.monthly;
+            return (
+              <>
+                {qd.plan_type ? (
+                  <div className='text-muted-foreground flex items-center justify-between text-xs'>
+                    <span>{t('quota.label.plan')}</span>
+                    <span className='text-foreground font-medium'>{qd.plan_type}</span>
+                  </div>
+                ) : null}
+                {weekly ? (
+                  <div className='space-y-1.5'>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{t('quota.window.weekly')}</span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(weekly.usage_percent ?? 0) })}
+                      </span>
+                    </div>
+                    <ProgressBar percentage={weekly.usage_percent ?? 0} />
+                    {weekly.reset_at ? (
+                      <div className='text-muted-foreground text-right text-[11px]'>{formatTimeToReset(weekly.reset_at)}</div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {monthly ? (
+                  <div className='border-border/60 space-y-1.5 border-t border-dashed pt-3'>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>
+                        {t('quota.window.monthly')}{' '}
+                        {monthly.limit_usd ? (
+                          <span className='font-normal opacity-70'>
+                            (
+                            {t('currencies.format', {
+                              val: monthly.used_usd ?? 0,
+                              currency: 'USD',
+                              locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                              minimumFractionDigits: 2,
+                            })}
+                            {' / '}
+                            {t('currencies.format', {
+                              val: monthly.limit_usd,
+                              currency: 'USD',
+                              locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                              minimumFractionDigits: 2,
+                            })}
+                            )
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(monthly.usage_percent ?? 0) })}
+                      </span>
+                    </div>
+                    <ProgressBar percentage={monthly.usage_percent ?? 0} />
+                    {monthly.reset_at ? (
+                      <div className='text-muted-foreground text-right text-[11px]'>{formatTimeToReset(monthly.reset_at)}</div>
+                    ) : null}
+                  </div>
+                ) : null}
               </>
             );
           })()}
@@ -1592,6 +1672,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
   const { channels, isLoading, isError, error } = useProviderQuotaStatuses();
   const { data: enforcementSettings } = useQuotaEnforcementSettings();
   const enforcementMode = enforcementSettings?.enabled ? enforcementSettings.mode : null;
+  const allowedChannelIDs = enforcementSettings?.enabled ? enforcementSettings.allowedChannelIDs : null;
 
   if (!isLoading && !isError && channels.length === 0) return null;
 
@@ -1635,7 +1716,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
         className={`max-h-[60vh] overflow-y-auto pr-1 pl-1 ${groupedChannels.length > 4 ? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2' : ''}`}
       >
         {groupedChannels.map((channel: ProviderQuotaChannel) => (
-          <QuotaRow key={channel.id} channel={channel} enforcementMode={enforcementMode} />
+          <QuotaRow key={channel.id} channel={channel} enforcementMode={enforcementMode} allowedChannelIDs={allowedChannelIDs} />
         ))}
       </div>
     );

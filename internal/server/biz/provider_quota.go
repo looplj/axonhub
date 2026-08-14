@@ -39,6 +39,25 @@ const (
 	maxQuotaErrorBackoffSteps = 4
 )
 
+var providerQuotaChannelTypes = []channel.Type{
+	channel.TypeClaudecode,
+	channel.TypeCodex,
+	channel.TypeXaiSubscription,
+	channel.TypeGithubCopilot,
+	channel.TypeNanogpt,
+	channel.TypeNanogptResponses,
+	channel.TypeCline,
+	channel.TypeOpenai,
+	channel.TypeOpenaiResponses,
+	channel.TypeOpencodeGo,
+	channel.TypeOpencodeGoAnthropic,
+	channel.TypeMoonshotCoding,
+	channel.TypeMinimax,
+	channel.TypeMinimaxAnthropic,
+	channel.TypeZhipu,
+	channel.TypeZhipuAnthropic,
+}
+
 // quotaErrorBackoff returns the next-check delay after `failures` consecutive
 // quota check failures: base, 2x, 4x, ... capped at maxQuotaErrorBackoffMultiplier.
 // A successful check clears the counter (saveQuotaStatus overwrites quota_data),
@@ -353,6 +372,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
+	svc.registerXAISubscriptionSupport()
 	svc.registerGithubCopilotSupport()
 	svc.registerNanoGPTSupport()
 	svc.registerClineSupport()
@@ -383,6 +403,10 @@ func (svc *ProviderQuotaService) registerClaudeCodeSupport() {
 
 func (svc *ProviderQuotaService) registerCodexSupport() {
 	svc.checkers["codex"] = provider_quota.NewCodexQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerXAISubscriptionSupport() {
+	svc.checkers["xai_subscription"] = provider_quota.NewXAISubscriptionQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerGithubCopilotSupport() {
@@ -634,7 +658,7 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	q := svc.db.Channel.Query().
 		Where(
 			channel.StatusEQ(channel.StatusEnabled),
-			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot, channel.TypeNanogpt, channel.TypeNanogptResponses, channel.TypeCline, channel.TypeOpenai, channel.TypeOpenaiResponses, channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic, channel.TypeMoonshotCoding, channel.TypeMinimax, channel.TypeMinimaxAnthropic, channel.TypeZhipu, channel.TypeZhipuAnthropic),
+			channel.TypeIn(providerQuotaChannelTypes...),
 		)
 
 	if !force {
@@ -878,6 +902,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "claudecode"
 	case channel.TypeCodex:
 		return "codex"
+	case channel.TypeXaiSubscription:
+		return "xai_subscription"
 	case channel.TypeGithubCopilot:
 		return "github_copilot"
 	case channel.TypeNanogpt, channel.TypeNanogptResponses:
@@ -907,7 +933,7 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 		}
 	}
 
-	if ch.Type == channel.TypeCodex || ch.Type == channel.TypeClaudecode {
+	if ch.Type == channel.TypeCodex || ch.Type == channel.TypeClaudecode || ch.Type == channel.TypeXaiSubscription {
 		return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey)
 	}
 

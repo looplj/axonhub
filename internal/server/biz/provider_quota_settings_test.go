@@ -2,14 +2,20 @@ package biz
 
 import (
 	"encoding/json"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 )
+
+func TestProviderQuotaChannelTypes_include_xAI_subscription(t *testing.T) {
+	require.True(t, slices.Contains(providerQuotaChannelTypes, channel.TypeXaiSubscription))
+}
 
 func setupProviderQuotaSettingsTest(t *testing.T) (*SystemService, *ent.Client) {
 	t.Helper()
@@ -28,6 +34,7 @@ func TestSystemService_ProviderQuotaCollectionSettings_DefaultsToEnabled(t *test
 	require.NoError(t, err)
 	require.True(t, settings.Enabled)
 	require.True(t, settings.Providers["codex"])
+	require.True(t, settings.Providers["xai_subscription"])
 	require.True(t, settings.Providers["minimax"])
 	require.True(t, settings.Providers["zhipu"])
 }
