@@ -188,14 +188,20 @@ func (c *ClaudeCodeQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 }
 
 func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.Header) QuotaLimitStatus {
-	var utilizationKey, resetKey string
+	var (
+		utilizationKey, resetKey string
+		window                   time.Duration
+	)
+
 	switch windowKey {
 	case "5h":
 		utilizationKey = "Anthropic-Ratelimit-Unified-5h-Utilization"
 		resetKey = "Anthropic-Ratelimit-Unified-5h-Reset"
+		window = 5 * time.Hour
 	case "7d":
 		utilizationKey = "Anthropic-Ratelimit-Unified-7d-Utilization"
 		resetKey = "Anthropic-Ratelimit-Unified-7d-Reset"
+		window = 7 * 24 * time.Hour
 	}
 
 	utilization := parseFloat(headers.Get(utilizationKey))
@@ -220,7 +226,7 @@ func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.
 		UsageRatio:  utilization,
 		Ready:       IsReadyStatus(status),
 		NextResetAt: nextReset,
-	}
+	}.WithWindow(windowKey, window)
 }
 
 func getEndpointURL(baseURL string) string {

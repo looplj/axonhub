@@ -228,12 +228,14 @@ func buildNanoGPTQuotaURL(baseURL string) string {
 
 func buildNanoGPTLimitStatuses(imageWindow, dailyTokenWindow, weeklyTokenWindow *NanoGPTQuotaWindow) []QuotaLimitStatus {
 	typed := []struct {
-		window   *NanoGPTQuotaWindow
-		limitType QuotaLimitType
+		window      *NanoGPTQuotaWindow
+		limitType   QuotaLimitType
+		windowLabel string
+		windowLen   time.Duration
 	}{
-		{window: imageWindow, limitType: QuotaLimitTypeImage},
-		{window: dailyTokenWindow, limitType: QuotaLimitTypeToken},
-		{window: weeklyTokenWindow, limitType: QuotaLimitTypeToken},
+		{window: imageWindow, limitType: QuotaLimitTypeImage, windowLabel: QuotaWindowDaily, windowLen: 24 * time.Hour},
+		{window: dailyTokenWindow, limitType: QuotaLimitTypeToken, windowLabel: QuotaWindowDaily, windowLen: 24 * time.Hour},
+		{window: weeklyTokenWindow, limitType: QuotaLimitTypeToken, windowLabel: QuotaWindowWeekly, windowLen: 7 * 24 * time.Hour},
 	}
 
 	var limits []QuotaLimitStatus
@@ -271,7 +273,7 @@ func buildNanoGPTLimitStatuses(imageWindow, dailyTokenWindow, weeklyTokenWindow 
 			UsageRatio:  usageRatio,
 			Ready:       IsReadyStatus(status),
 			NextResetAt: resetAt,
-		})
+		}.WithWindow(w.windowLabel, w.windowLen))
 	}
 
 	return limits

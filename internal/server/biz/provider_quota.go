@@ -173,6 +173,14 @@ func quotaStatusRank(s providerquotastatus.Status) int {
 //        * NextResetAt: optional timestamp of next quota reset
 //        * RawData: provider-specific data (stored in JSON format)
 //
+//    When the provider reports (or the plan fixes) the length of a limit
+//    window, label the limit with QuotaLimitStatus.WithWindow so it also
+//    carries a PeriodStart. That is what lets the service price the period from
+//    usage logs (see provider_quota_cost.go); limits without a period start
+//    simply get no money estimate. Do NOT derive one from a timestamp that is
+//    an incremental regeneration tick rather than a window boundary — see the
+//    synthetic checker for that case.
+//
 // 2. Add the provider type to the database schema
 //
 //    In internal/ent/schema/channel.go:
@@ -725,6 +733,7 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 	}
 
 	// Save quota status
+	svc.fillPeriodQuotas(ctx, ch.ID, &quotaData, now)
 	svc.saveQuotaStatus(ctx, ch.ID, providerType, quotaData, now)
 
 	log.Debug(ctx, "Updated quota status",
@@ -942,6 +951,18 @@ func (svc *ProviderQuotaService) mergeLimitsIntoQuotaData(quotaData provider_quo
 			if l.NextResetAt != nil {
 				m["nextResetAt"] = l.NextResetAt.Format(time.RFC3339)
 			}
+			if l.Window != "" {
+				m["window"] = l.Window
+			}
+			if l.PeriodStart != nil {
+				m["periodStart"] = l.PeriodStart.Format(time.RFC3339)
+			}
+			if l.PeriodCost != nil {
+				m["periodCost"] = *l.PeriodCost
+			}
+			if l.PeriodQuota != nil {
+				m["periodQuota"] = *l.PeriodQuota
+			}
 			limitMaps = append(limitMaps, m)
 		}
 		data["_limits"] = limitMaps
@@ -996,6 +1017,24 @@ func extractLimitsFromQuotaData(data map[string]any) []provider_quota.QuotaLimit
 			if t, err := time.Parse(time.RFC3339, ts); err == nil {
 				ls.NextResetAt = &t
 			}
+		}
+
+		if w, ok := m["window"].(string); ok {
+			ls.Window = w
+		}
+
+		if ts, ok := m["periodStart"].(string); ok {
+			if t, err := time.Parse(time.RFC3339, ts); err == nil {
+				ls.PeriodStart = &t
+			}
+		}
+
+		if c, ok := m["periodCost"].(float64); ok {
+			ls.PeriodCost = &c
+		}
+
+		if q, ok := m["periodQuota"].(float64); ok {
+			ls.PeriodQuota = &q
 		}
 
 		limits = append(limits, ls)

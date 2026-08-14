@@ -57,15 +57,26 @@ func (c *GithubCopilotQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Chan
 	if lowestPercentage > 0 {
 		usageRatio = 1.0 - (lowestPercentage / 100.0)
 	}
+	// Copilot quotas reset monthly on the account's billing date, so the period
+	// they cover starts one calendar month before that date.
+	resetAt := c.parseResetDate(payload)
 	limits := []QuotaLimitStatus{
-		NewTokenLimitStatus(status, usageRatio, c.parseResetDate(payload)),
+		{
+			Type:        QuotaLimitTypeToken,
+			Status:      status,
+			UsageRatio:  usageRatio,
+			Ready:       IsReadyStatus(status),
+			NextResetAt: resetAt,
+			Window:      QuotaWindowMonthly,
+			PeriodStart: PeriodStartFromMonthlyReset(resetAt),
+		},
 	}
 
 	return QuotaData{
 		Status:       status,
 		ProviderType: "github_copilot",
 		RawData:      c.prepareRawData(payload),
-		NextResetAt:  c.parseResetDate(payload),
+		NextResetAt:  resetAt,
 		Ready:        IsReadyStatus(status),
 		Limits:       limits,
 	}, nil

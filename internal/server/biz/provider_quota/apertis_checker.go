@@ -352,6 +352,10 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 			UsageRatio:  usageRatio,
 			Ready:       IsReadyStatus(subStatus),
 			NextResetAt: nextResetAt,
+			Window:      QuotaWindowCycle,
+			// Apertis reports the cycle boundaries outright, so the period the
+			// usage ratio covers needs no guessing.
+			PeriodStart: parseApertisCycleStart(resp.Subscription.CycleStart),
 		})
 	}
 
@@ -366,6 +370,21 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 	}
 
 	return limits
+}
+
+// parseApertisCycleStart parses the subscription cycle start reported by the
+// billing endpoint, returning nil when it is absent or malformed.
+func parseApertisCycleStart(cycleStart string) *time.Time {
+	if cycleStart == "" {
+		return nil
+	}
+
+	start, err := time.Parse(time.RFC3339, cycleStart)
+	if err != nil {
+		return nil
+	}
+
+	return &start
 }
 
 // convertApertisResponseToMap converts the response to a map for RawData storage.
