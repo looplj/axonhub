@@ -55,6 +55,70 @@ func TestHttpClientImpl_Do_DoesNotLogSecrets(t *testing.T) {
 	}
 	require.Contains(t, output, "execute http request")
 	require.Contains(t, output, "body_size")
+	require.Contains(t, output, "/oauth/token")
+	require.NotContains(t, output, "key=query-secret")
+}
+
+func TestHttpClientImpl_DoFailed_DoesNotLogSecrets(t *testing.T) {
+	// Given
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "application/json")
+		writer.WriteHeader(http.StatusBadRequest)
+		_, _ = writer.Write([]byte(`{"error":"auth-secret rejected"}`))
+	}))
+	t.Cleanup(server.Close)
+	client := NewHttpClientWithClient(server.Client())
+	request := &Request{
+		Method:      http.MethodPost,
+		URL:         server.URL + "/fail?key=fail-query-secret",
+		ContentType: "application/json",
+		Body:        []byte(`{"refresh_token":"fail-request-secret"}`),
+	}
+
+	// When
+	_, err := client.Do(t.Context(), request)
+
+	// Then
+	require.Error(t, err)
+	output := logs.String()
+	for _, secret := range []string{"fail-request-secret", "auth-secret", "fail-query-secret"} {
+		require.NotContains(t, output, secret)
+	}
+	require.Contains(t, output, "/fail")
+}
+
+func TestHttpClientImpl_DoStream_DoesNotLogSecrets(t *testing.T) {
+	// Given
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.Header().Set("Content-Type", "text/event-stream")
+		_, _ = writer.Write([]byte(`data: {"access_token":"stream-secret"}\n\n`))
+	}))
+	t.Cleanup(server.Close)
+	client := NewHttpClientWithClient(server.Client())
+	request := &Request{
+		Method: http.MethodPost,
+		URL:    server.URL + "/stream?key=stream-query-secret",
+		Body:   []byte(`{"refresh_token":"stream-request-secret"}`),
+	}
+
+	// When
+	_, err := client.DoStream(t.Context(), request)
+
+	// Then
+	require.NoError(t, err)
+	output := logs.String()
+	for _, secret := range []string{"stream-request-secret", "stream-secret", "stream-query-secret"} {
+		require.NotContains(t, output, secret)
+	}
+	require.Contains(t, output, "/stream")
 }
 
 func TestHttpClientImpl_Do(t *testing.T) {
