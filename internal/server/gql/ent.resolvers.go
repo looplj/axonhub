@@ -862,7 +862,10 @@ func (r *usageLogResolver) Channel(ctx context.Context, obj *ent.UsageLog) (*ent
 
 // ID is the resolver for the id field.
 func (r *usageStatResolver) ID(ctx context.Context, obj *ent.UsageStat) (*objects.GUID, error) {
-	panic(fmt.Errorf("not implemented: ID - id"))
+	return &objects.GUID{
+		Type: ent.TypeUsageStat,
+		ID:   obj.ID,
+	}, nil
 }
 
 // ID is the resolver for the id field.
