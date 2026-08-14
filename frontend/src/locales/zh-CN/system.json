@@ -336,6 +336,7 @@
   "quota.status.cline_pass_unavailable": "Cline Pass 不可用",
   "quota.status.blocked": "已屏蔽",
   "quota.status.deprioritized": "已降级",
+  "quota.status.bypassed": "已绕过",
   "quota.label.resets_in": "重置于",
   "quota.label.resets_in_time": "重置于 {{time}}",
   "quota.label.regenerates_in_time": "再生于 {{time}}",

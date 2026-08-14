@@ -336,6 +336,7 @@
   "quota.status.cline_pass_unavailable": "Cline Pass unavailable",
   "quota.status.blocked": "Blocked",
   "quota.status.deprioritized": "Deprioritized",
+  "quota.status.bypassed": "Bypassed",
   "quota.label.resets_in": "Resets in",
   "quota.label.resets_in_time": "Resets in {{time}}",
   "quota.label.regenerates_in_time": "Regenerates in {{time}}",
