@@ -1198,6 +1198,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         shouldTouch: true,
         shouldValidate: true,
       });
+      setXaiSSOToken('');
       toast.success(t('channels.dialogs.xaiSso.messages.imported'));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
@@ -1291,7 +1292,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         const updateInput = {
           ...dataWithModels,
           settings: nextSettings,
-          ...(isOAuthChannel ? { type: undefined } : {}),
+          ...(isOAuthChannel ? { type: currentRow.type } : {}),
         } as z.infer<typeof updateChannelInputSchema>;
 
         const apiKey = values.credentials?.apiKey || '';
@@ -2226,6 +2227,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   id='xai-sso-token'
                                   value={xaiSSOToken}
                                   onChange={(event) => setXaiSSOToken(event.target.value)}
+                                  spellCheck={false}
+                                  autoComplete='off'
                                   placeholder={t('channels.dialogs.xaiSso.placeholder')}
                                   className='min-h-[96px] resize-y font-mono text-xs'
                                 />
