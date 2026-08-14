@@ -868,6 +868,8 @@ export function ModelsAssociationDialog() {
           queryAllChannelModels: settings!.queryAllChannelModels,
           defaultModelAPIIncludeAll: settings!.defaultModelAPIIncludeAll,
           autoReasoningEffort: settings!.autoReasoningEffort,
+          modelBlacklistRegex: settings!.modelBlacklistRegex,
+          hideUnroutableModelsInList: settings!.hideUnroutableModelsInList,
           developerSettings: nextDeveloperSettings.sort((a, b) => a.developer.localeCompare(b.developer)),
         });
         handleClose();

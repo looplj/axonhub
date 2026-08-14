@@ -21,19 +21,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: stable
-          stable: true
           cache: true
 
       - name: Build main binary
         run: go build -ldflags "-s -w" -tags=nomsgpack -o axonhub ./cmd/axonhub
+
+      - name: Verify production dependency graph
+        run: |
+          ./scripts/verify-go-sse-dependency-test.sh
+          ./scripts/verify-go-sse-dependency.sh ./axonhub
 
       - name: Build schema generator
         run: cd cmd/schema && go build -o schema
@@ -49,18 +54,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
           run_install: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'pnpm'

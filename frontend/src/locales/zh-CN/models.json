@@ -194,6 +194,8 @@
   "models.dialogs.settings.modelBlacklistRegex.label": "模型下发黑名单",
   "models.dialogs.settings.modelBlacklistRegex.description": "正则表达式；匹配的渠道模型不会出现在 /v1/models 输出中。已显式配置的 Model 实体不受影响。仅在「查询所有渠道模型」启用时生效。留空表示不过滤。",
   "models.dialogs.settings.modelBlacklistRegex.placeholder": "例如：.*-preview$|.*-deprecated.*",
+  "models.dialogs.settings.hideUnroutableModelsInList.label": "列表中隐藏不可路由模型",
+  "models.dialogs.settings.hideUnroutableModelsInList.description": "启用后，/v1/models 等公开模型列表接口会隐藏当前 API Key 选不到任何可用渠道的已配置模型。直接请求这些模型仍返回 422。管理端模型表不受影响。",
   "models.dialogs.settings.defaultModelAPIIncludeAll.label": "/v1/models 默认返回完整模型信息",
   "models.dialogs.settings.defaultModelAPIIncludeAll.description": "启用后，GET /v1/models 默认返回与 ?include=all 相同的扩展元数据。禁用后，仅返回基础字段，除非显式指定 include。",
   "models.dialogs.settings.autoReasoningEffort.label": "自动推理强度",

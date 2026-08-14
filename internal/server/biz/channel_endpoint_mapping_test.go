@@ -107,6 +107,11 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
+			name:     "xai responses defaults to responses",
+			typ:      channel.TypeXaiResponses,
+			expected: []string{llm.APIFormatOpenAIResponse.String()},
+		},
+		{
 			name: "codex exposes responses plus image generation and edit",
 			typ:  channel.TypeCodex,
 			expected: []string{

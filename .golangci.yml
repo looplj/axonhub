@@ -78,7 +78,8 @@ linters:
     - dogsled
     - unqueryvet
     - predeclared
-    
+    - gomodguard
+
 
   # all available settings of specific linters
   settings:

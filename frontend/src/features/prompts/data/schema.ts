@@ -24,7 +24,7 @@ export const promptSchema = z.object({
   id: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
-  projectID: z.number(),
+  projectID: z.string(),
   name: z.string(),
   description: z.string(),
   role: z.string(),
