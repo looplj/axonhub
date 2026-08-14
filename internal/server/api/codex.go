@@ -1,9 +1,6 @@
 package api
 
 import (
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
@@ -52,29 +49,6 @@ type codexOAuthState struct {
 	CreatedAt    int64  `json:"created_at"`
 }
 
-func generateCodexCodeVerifier() (string, error) {
-	b := make([]byte, 64)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-
-	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(b), nil
-}
-
-func generateCodexCodeChallenge(verifier string) string {
-	hash := sha256.Sum256([]byte(verifier))
-	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(hash[:])
-}
-
-func generateCodexState() (string, error) {
-	b := make([]byte, 32)
-	if _, err := rand.Read(b); err != nil {
-		return "", err
-	}
-
-	return base64.URLEncoding.WithPadding(base64.NoPadding).EncodeToString(b), nil
-}
-
 func codexOAuthCacheKey(sessionID string) string {
 	return fmt.Sprintf("codex:oauth:%s", sessionID)
 }
@@ -90,19 +64,19 @@ func (h *CodexHandlers) StartOAuth(c *gin.Context) {
 		return
 	}
 
-	state, err := generateCodexState()
+	state, err := oauth.GenerateState(32)
 	if err != nil {
 		JSONError(c, http.StatusInternalServerError, fmt.Errorf("failed to generate oauth state: %w", err))
 		return
 	}
 
-	codeVerifier, err := generateCodexCodeVerifier()
+	codeVerifier, err := oauth.GenerateCodeVerifier(64)
 	if err != nil {
 		JSONError(c, http.StatusInternalServerError, fmt.Errorf("failed to generate code verifier: %w", err))
 		return
 	}
 
-	codeChallenge := generateCodexCodeChallenge(codeVerifier)
+	codeChallenge := oauth.GenerateCodeChallenge(codeVerifier)
 
 	cacheKey := codexOAuthCacheKey(state)
 	if err := h.stateCache.Set(ctx, cacheKey, codexOAuthState{CodeVerifier: codeVerifier, CreatedAt: time.Now().Unix()}, xcache.WithExpiration(10*time.Minute)); err != nil {

@@ -89,6 +89,7 @@ export const channelTypeSchema = z.enum([
   'xiaomi_anthropic',
   'xai',
   'xai_responses',
+  'xai_subscription',
   'ppio',
   'siliconflow',
   'volcengine',
@@ -498,12 +499,14 @@ export type SaveChannelModelPriceInput = z.infer<typeof saveChannelModelPriceInp
 function validateOAuthCredentials(type: string, apiKey: string | undefined, ctx: z.RefinementCtx) {
   if (!apiKey) return;
 
-  // For GitHub Copilot, enforce JSON format
   const isCopilot = type === 'github_copilot';
-  if (isCopilot && !apiKey.trim().startsWith('{')) {
+  const requiresJSON = isCopilot || type === 'xai_subscription';
+  if (requiresJSON && !apiKey.trim().startsWith('{')) {
     ctx.addIssue({
       code: 'custom' as const,
-      message: 'channels.dialogs.oauth.errors.copilotCredentialsInvalid',
+      message: isCopilot
+        ? 'channels.dialogs.oauth.errors.copilotCredentialsInvalid'
+        : 'channels.dialogs.oauth.errors.credentialsInvalid',
       path: ['credentials', 'apiKey'],
     });
     return;
@@ -573,7 +576,11 @@ export const createChannelInputSchema = z
   })
   .superRefine((data, ctx) => {
     const isOAuthType =
-      data.type === 'codex' || data.type === 'claudecode' || data.type === 'antigravity' || data.type === 'github_copilot';
+      data.type === 'codex' ||
+      data.type === 'claudecode' ||
+      data.type === 'antigravity' ||
+      data.type === 'github_copilot' ||
+      data.type === 'xai_subscription';
     const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
     const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
 
@@ -668,7 +675,11 @@ export const updateChannelInputSchema = z
     // For OAuth validation on updates: validate if type is OAuth, or if credentials.apiKey is provided
     // (which indicates OAuth credentials are being set)
     const isOAuthType =
-      effectiveType === 'codex' || effectiveType === 'claudecode' || effectiveType === 'antigravity' || effectiveType === 'github_copilot';
+      effectiveType === 'codex' ||
+      effectiveType === 'claudecode' ||
+      effectiveType === 'antigravity' ||
+      effectiveType === 'github_copilot' ||
+      effectiveType === 'xai_subscription';
 
     // Derive type from parent context if not available
     let derivedType = effectiveType;

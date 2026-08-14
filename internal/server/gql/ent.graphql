@@ -1295,6 +1295,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   xiaomi_anthropic
   xai
   xai_responses
+  xai_subscription
   ppio
   siliconflow
   volcengine
@@ -3748,6 +3749,7 @@ ProviderQuotaStatusProviderType is enum for the field provider_type
 enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/internal/ent/providerquotastatus.ProviderType") {
   claudecode
   codex
+  xai_subscription
   github_copilot
   nanogpt
   cline

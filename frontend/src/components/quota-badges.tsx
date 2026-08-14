@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import {
   useProviderQuotaStatuses,
   ProviderQuotaChannel,
+  ProviderQuotaLimit,
   ProviderNanoGPTQuotaData,
   NanoGPTQuotaWindow,
   ProviderWaferQuotaData,
@@ -29,7 +30,7 @@ import {
   resetChannelQuotaNow,
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
-import { useQuotaEnforcementSettings, type QuotaEnforcementMode } from '@/features/system/data/system';
+import { useGeneralSettings, useQuotaEnforcementSettings, type QuotaEnforcementMode } from '@/features/system/data/system';
 
 const syntheticWeeklyRegenTickPct = 0.02;
 
@@ -99,6 +100,9 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
   } else if (channel.type === 'codex') {
     const qd = channel.quotaStatus.quotaData;
     percentage = qd.rate_limit?.primary_window?.used_percent || 0;
+  } else if (channel.type === 'xai_subscription') {
+    const qd = channel.quotaStatus.quotaData;
+    percentage = Math.max(qd.billing?.weekly?.usage_percent ?? 0, qd.billing?.monthly?.usage_percent ?? 0);
   } else if (channel.type === 'cline') {
     const qd = channel.quotaStatus.quotaData;
     percentage = isClineActivePassQuotaData(qd)
@@ -267,6 +271,72 @@ function formatTokenCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return `${n}`;
+}
+
+const WINDOW_LABEL_KEYS: Record<string, string> = {
+  '5h': 'quota.window.5h',
+  '7d': 'quota.window.7d',
+  '30d': 'quota.window.30d',
+  daily: 'quota.window.daily',
+  weekly: 'quota.window.weekly',
+  monthly: 'quota.window.monthly',
+  primary: 'quota.label.primary_window',
+  secondary: 'quota.label.secondary_window',
+  overage: 'quota.label.overage_window',
+  cycle: 'quota.label.subscription',
+};
+
+// PeriodQuotaEstimate prices each limit window: the backend sums what the
+// channel cost during the window from AxonHub usage logs and divides by the
+// usage ratio the provider reported, which yields what the whole window is
+// worth. Windows the backend could not price are simply absent.
+function PeriodQuotaEstimate({ limits }: { limits: ProviderQuotaLimit[] }) {
+  const { t, i18n } = useTranslation();
+  const { data: generalSettings } = useGeneralSettings();
+
+  const priced = limits.filter((limit) => limit.periodQuota != null);
+  if (priced.length === 0) return null;
+
+  const formatCurrency = (val: number) =>
+    t('currencies.format', {
+      val,
+      currency: generalSettings?.currencyCode || 'USD',
+      locale: i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+  return (
+    <div className='border-border/60 mt-3 space-y-2 border-t border-dashed pt-3'>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className='text-muted-foreground cursor-default text-xs font-medium'>{t('quota.label.period_quota')}</span>
+        </TooltipTrigger>
+        <TooltipContent side='top' className='max-w-[260px]'>
+          {t('quota.label.period_quota_hint')}
+        </TooltipContent>
+      </Tooltip>
+
+      {priced.map((limit, index) => {
+        const labelKey = limit.window ? WINDOW_LABEL_KEYS[limit.window] : undefined;
+        const label = labelKey ? t(labelKey) : limit.window || t('quota.label.token_usage');
+
+        return (
+          <div key={`${limit.window ?? limit.type}-${index}`} className='flex items-center justify-between text-xs'>
+            <span className='text-muted-foreground'>{label}</span>
+            <span className='text-foreground font-medium'>
+              {t('quota.label.period_quota_value', {
+                // The backend only estimates a quota once it has a cost, so
+                // both figures are always available here.
+                used: formatCurrency(limit.periodCost ?? 0),
+                total: formatCurrency(limit.periodQuota as number),
+              })}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: ProviderQuotaChannel; enforcementMode?: QuotaEnforcementMode | null; allowedChannelIDs?: string[] | null }) {
@@ -523,6 +593,12 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                       </div>
                       <ProgressBar type='duration' percentage={getClaudeDurationPercent('7d', qd.windows['7d'].reset) || 0} />
                     </div>
+                    {qd.windows['7d'].reset && (
+                      <div className='text-muted-foreground pt-0.5 text-right text-[11px]'>
+                        {formatTimeToReset(new Date(qd.windows['7d'].reset * 1000).toISOString())} (
+                        {formatDate(qd.windows['7d'].reset)})
+                      </div>
+                    )}
                   </div>
                 )}
                 {qd.windows?.['overage'] && (
@@ -767,6 +843,75 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                     </Button>
                   </div>
                 )}
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {channel.type === 'xai_subscription' && (
+        <div className='mt-4 space-y-4'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData;
+            const weekly = qd.billing?.weekly;
+            const monthly = qd.billing?.monthly;
+            return (
+              <>
+                {qd.plan_type ? (
+                  <div className='text-muted-foreground flex items-center justify-between text-xs'>
+                    <span>{t('quota.label.plan')}</span>
+                    <span className='text-foreground font-medium'>{qd.plan_type}</span>
+                  </div>
+                ) : null}
+                {weekly ? (
+                  <div className='space-y-1.5'>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{t('quota.window.weekly')}</span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(weekly.usage_percent ?? 0) })}
+                      </span>
+                    </div>
+                    <ProgressBar percentage={weekly.usage_percent ?? 0} />
+                    {weekly.reset_at ? (
+                      <div className='text-muted-foreground text-right text-[11px]'>{formatTimeToReset(weekly.reset_at)}</div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {monthly ? (
+                  <div className='border-border/60 space-y-1.5 border-t border-dashed pt-3'>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>
+                        {t('quota.window.monthly')}{' '}
+                        {monthly.limit_usd ? (
+                          <span className='font-normal opacity-70'>
+                            (
+                            {t('currencies.format', {
+                              val: monthly.used_usd ?? 0,
+                              currency: 'USD',
+                              locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                              minimumFractionDigits: 2,
+                            })}
+                            {' / '}
+                            {t('currencies.format', {
+                              val: monthly.limit_usd,
+                              currency: 'USD',
+                              locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                              minimumFractionDigits: 2,
+                            })}
+                            )
+                          </span>
+                        ) : null}
+                      </span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(monthly.usage_percent ?? 0) })}
+                      </span>
+                    </div>
+                    <ProgressBar percentage={monthly.usage_percent ?? 0} />
+                    {monthly.reset_at ? (
+                      <div className='text-muted-foreground text-right text-[11px]'>{formatTimeToReset(monthly.reset_at)}</div>
+                    ) : null}
+                  </div>
+                ) : null}
               </>
             );
           })()}
@@ -1565,6 +1710,8 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
           })()}
         </div>
       )}
+
+      <PeriodQuotaEstimate limits={quota.limits} />
     </div>
   );
 }

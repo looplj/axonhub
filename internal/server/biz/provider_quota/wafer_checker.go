@@ -161,8 +161,25 @@ func (c *WaferQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		usageRatio = getUsageRatio(response.CurrentPeriodUsedPercent)
 	}
 
+	// Wafer reports both ends of the billing window, so the period the usage
+	// percent covers is known outright.
+	var periodStart *time.Time
+	if response.WindowStart != nil {
+		if t, err := time.Parse(time.RFC3339, *response.WindowStart); err == nil {
+			periodStart = &t
+		}
+	}
+
 	limits := []QuotaLimitStatus{
-		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt),
+		{
+			Type:        QuotaLimitTypeToken,
+			Status:      normalizedStatus,
+			UsageRatio:  usageRatio,
+			Ready:       IsReadyStatus(normalizedStatus),
+			NextResetAt: nextResetAt,
+			Window:      QuotaWindowCycle,
+			PeriodStart: periodStart,
+		},
 	}
 
 	return QuotaData{

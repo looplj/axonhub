@@ -67,6 +67,32 @@ test('Cline has localized channel and provider labels', () => {
   }
 });
 
+test('xAI subscription is exposed as an OAuth Responses channel', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const providersConfig = read('features/channels/data/config_providers.ts');
+  const channelColumns = read('features/channels/components/channels-columns.tsx');
+
+  assert.match(schema, /channelTypeSchema[\s\S]*'xai_subscription'/);
+  assert.equal((schema.match(/data\.type === 'xai_subscription'/g) ?? []).length, 1, 'create schema should validate xAI OAuth credentials');
+  assert.match(schema, /effectiveType === 'xai_subscription'/, 'update schema should validate xAI OAuth credentials');
+  assert.match(
+    schema,
+    /requiresJSON\s*=\s*isCopilot\s*\|\|\s*type\s*===\s*'xai_subscription'[\s\S]*if\s*\(requiresJSON\s*&&\s*!apiKey\.trim\(\)\.startsWith\('\{'\)\)/,
+    'xAI subscription should reject a plain API key before the generic JSON early return'
+  );
+  assert.match(
+    channelsConfig,
+    /xai_subscription:\s*{[\s\S]*baseURL:\s*'https:\/\/cli-chat-proxy\.grok\.com\/v1'[\s\S]*apiFormat:\s*OPENAI_RESPONSES/
+  );
+  assert.match(providersConfig, /xai_subscription:\s*{[\s\S]*channelTypes:\s*\[\s*'xai_subscription'\s*\]/);
+  assert.match(
+    channelColumns,
+    /channel\.type !== 'xai_subscription'\s*&&\s*\([\s\S]*setOpen\('endpoints'\)/,
+    'xAI subscription channels should not expose an endpoint editor that the server rejects'
+  );
+});
+
 test('channel proxy connection reuse setting is submitted, echoed, and localized', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsData = read('features/channels/data/channels.ts');

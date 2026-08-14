@@ -354,6 +354,25 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-black-100 text-black-800 border-black-200',
     icon: XAI,
   },
+  xai_subscription: {
+    channelType: 'xai_subscription',
+    baseURL: 'https://cli-chat-proxy.grok.com/v1',
+    defaultModels: [
+      'grok-4.6',
+      'grok-4.5',
+      'grok-4.3',
+      'grok-3-mini',
+      'grok-3-mini-fast',
+      'grok-build-0.1',
+      'grok-composer-2.5-fast',
+      'grok-4.20-0309-reasoning',
+      'grok-4.20-0309-non-reasoning',
+      'grok-4.20-multi-agent-0309',
+    ],
+    apiFormat: OPENAI_RESPONSES,
+    color: 'bg-black-100 text-black-800 border-black-200',
+    icon: XAI,
+  },
   longcat: {
     channelType: 'longcat',
     baseURL: 'https://api.longcat.chat/openai/v1',
@@ -821,6 +840,7 @@ export type Provider =
   | 'longcat'
   | 'xiaomi'
   | 'xai'
+  | 'xai_subscription'
   | 'openrouter'
   | 'vercel'
   | 'ppio'
@@ -881,6 +901,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   xiaomi_anthropic: 'xiaomi',
   xai: 'xai',
   xai_responses: 'xai',
+  xai_subscription: 'xai_subscription',
   openrouter: 'openrouter',
   vercel: 'vercel',
   ppio: 'ppio',

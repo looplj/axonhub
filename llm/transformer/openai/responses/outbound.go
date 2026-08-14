@@ -30,7 +30,10 @@ var (
 const (
 	TransportHTTP       = "http"
 	TransportWebSocket  = "websocket"
-	ResponsesLiteHeader = "X-OpenAI-Internal-Codex-Responses-Lite"
+	// ResponsesLiteHeader is the Codex Responses Lite signal. It uses the
+	// canonical spelling ("Openai"): http.Header canonicalizes keys, so lookups
+	// match whatever case a Codex client sends.
+	ResponsesLiteHeader = "X-Openai-Internal-Codex-Responses-Lite"
 )
 
 type Config struct {

@@ -39,6 +39,25 @@ const (
 	maxQuotaErrorBackoffSteps = 4
 )
 
+var providerQuotaChannelTypes = []channel.Type{
+	channel.TypeClaudecode,
+	channel.TypeCodex,
+	channel.TypeXaiSubscription,
+	channel.TypeGithubCopilot,
+	channel.TypeNanogpt,
+	channel.TypeNanogptResponses,
+	channel.TypeCline,
+	channel.TypeOpenai,
+	channel.TypeOpenaiResponses,
+	channel.TypeOpencodeGo,
+	channel.TypeOpencodeGoAnthropic,
+	channel.TypeMoonshotCoding,
+	channel.TypeMinimax,
+	channel.TypeMinimaxAnthropic,
+	channel.TypeZhipu,
+	channel.TypeZhipuAnthropic,
+}
+
 // quotaErrorBackoff returns the next-check delay after `failures` consecutive
 // quota check failures: base, 2x, 4x, ... capped at maxQuotaErrorBackoffMultiplier.
 // A successful check clears the counter (saveQuotaStatus overwrites quota_data),
@@ -172,6 +191,14 @@ func quotaStatusRank(s providerquotastatus.Status) int {
 //        * Ready: true for available/warning, false for exhausted/unknown
 //        * NextResetAt: optional timestamp of next quota reset
 //        * RawData: provider-specific data (stored in JSON format)
+//
+//    When the provider reports (or the plan fixes) the length of a limit
+//    window, label the limit with QuotaLimitStatus.WithWindow so it also
+//    carries a PeriodStart. That is what lets the service price the period from
+//    usage logs (see provider_quota_cost.go); limits without a period start
+//    simply get no money estimate. Do NOT derive one from a timestamp that is
+//    an incremental regeneration tick rather than a window boundary — see the
+//    synthetic checker for that case.
 //
 // 2. Add the provider type to the database schema
 //
@@ -353,6 +380,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
+	svc.registerXAISubscriptionSupport()
 	svc.registerGithubCopilotSupport()
 	svc.registerNanoGPTSupport()
 	svc.registerClineSupport()
@@ -383,6 +411,10 @@ func (svc *ProviderQuotaService) registerClaudeCodeSupport() {
 
 func (svc *ProviderQuotaService) registerCodexSupport() {
 	svc.checkers["codex"] = provider_quota.NewCodexQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerXAISubscriptionSupport() {
+	svc.checkers["xai_subscription"] = provider_quota.NewXAISubscriptionQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerGithubCopilotSupport() {
@@ -634,7 +666,7 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	q := svc.db.Channel.Query().
 		Where(
 			channel.StatusEQ(channel.StatusEnabled),
-			channel.TypeIn(channel.TypeClaudecode, channel.TypeCodex, channel.TypeGithubCopilot, channel.TypeNanogpt, channel.TypeNanogptResponses, channel.TypeCline, channel.TypeOpenai, channel.TypeOpenaiResponses, channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic, channel.TypeMoonshotCoding, channel.TypeMinimax, channel.TypeMinimaxAnthropic, channel.TypeZhipu, channel.TypeZhipuAnthropic),
+			channel.TypeIn(providerQuotaChannelTypes...),
 		)
 
 	if !force {
@@ -725,6 +757,7 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 	}
 
 	// Save quota status
+	svc.fillPeriodQuotas(ctx, ch.ID, &quotaData, now)
 	svc.saveQuotaStatus(ctx, ch.ID, providerType, quotaData, now)
 
 	log.Debug(ctx, "Updated quota status",
@@ -878,6 +911,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "claudecode"
 	case channel.TypeCodex:
 		return "codex"
+	case channel.TypeXaiSubscription:
+		return "xai_subscription"
 	case channel.TypeGithubCopilot:
 		return "github_copilot"
 	case channel.TypeNanogpt, channel.TypeNanogptResponses:
@@ -907,7 +942,7 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 		}
 	}
 
-	if ch.Type == channel.TypeCodex || ch.Type == channel.TypeClaudecode {
+	if ch.Type == channel.TypeCodex || ch.Type == channel.TypeClaudecode || ch.Type == channel.TypeXaiSubscription {
 		return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey)
 	}
 
@@ -941,6 +976,18 @@ func (svc *ProviderQuotaService) mergeLimitsIntoQuotaData(quotaData provider_quo
 			}
 			if l.NextResetAt != nil {
 				m["nextResetAt"] = l.NextResetAt.Format(time.RFC3339)
+			}
+			if l.Window != "" {
+				m["window"] = l.Window
+			}
+			if l.PeriodStart != nil {
+				m["periodStart"] = l.PeriodStart.Format(time.RFC3339)
+			}
+			if l.PeriodCost != nil {
+				m["periodCost"] = *l.PeriodCost
+			}
+			if l.PeriodQuota != nil {
+				m["periodQuota"] = *l.PeriodQuota
 			}
 			limitMaps = append(limitMaps, m)
 		}
@@ -996,6 +1043,24 @@ func extractLimitsFromQuotaData(data map[string]any) []provider_quota.QuotaLimit
 			if t, err := time.Parse(time.RFC3339, ts); err == nil {
 				ls.NextResetAt = &t
 			}
+		}
+
+		if w, ok := m["window"].(string); ok {
+			ls.Window = w
+		}
+
+		if ts, ok := m["periodStart"].(string); ok {
+			if t, err := time.Parse(time.RFC3339, ts); err == nil {
+				ls.PeriodStart = &t
+			}
+		}
+
+		if c, ok := m["periodCost"].(float64); ok {
+			ls.PeriodCost = &c
+		}
+
+		if q, ok := m["periodQuota"].(float64); ok {
+			ls.PeriodQuota = &q
 		}
 
 		limits = append(limits, ls)

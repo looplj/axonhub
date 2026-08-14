@@ -205,12 +205,15 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 			}
 		}
 
+		// The rolling window's NextTickAt is a regeneration tick, not the end of
+		// a fixed window, so no period start can be derived from it.
 		limits = append(limits, QuotaLimitStatus{
 			Type:        QuotaLimitTypeToken,
 			Status:      status,
 			UsageRatio:  usageRatio,
 			Ready:       IsReadyStatus(status),
 			NextResetAt: resetAt,
+			Window:      QuotaWindow5h,
 		})
 	}
 
@@ -243,12 +246,15 @@ func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus 
 		}
 	}
 
+	// NextRegenAt marks the next incremental regeneration of the weekly pool
+	// rather than a hard window boundary, so it cannot anchor a period start.
 	return QuotaLimitStatus{
 		Type:        QuotaLimitTypeToken,
 		Status:      status,
 		UsageRatio:  usageRatio,
 		Ready:       IsReadyStatus(status),
 		NextResetAt: resetAt,
+		Window:      QuotaWindowWeekly,
 	}
 }
 
