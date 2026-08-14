@@ -28,13 +28,6 @@ const PROVIDER_QUOTA_STATUSES_QUERY = `
             quotaData
             providerType
           }
-          settings {
-            providerQuota {
-              opencodeGo {
-                workspaceId
-              }
-            }
-          }
         }
       }
     }
@@ -418,7 +411,6 @@ export type ProviderQuotaChannel = {
     }
   | {
       type: 'opencode_go' | 'opencode_go_anthropic';
-      workspaceId?: string | null;
       quotaStatus: {
         quotaData: ProviderOpenCodeGoQuotaData;
       };
@@ -498,13 +490,6 @@ type QueryChannelNode = {
   name: string;
   type: string;
   providerQuotaStatus: ProviderQuotaStatusNode | null;
-  settings?: {
-    providerQuota?: {
-      opencodeGo?: {
-        workspaceId?: string | null;
-      } | null;
-    } | null;
-  } | null;
 };
 
 type QueryChannelsResponse = {
@@ -583,7 +568,6 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
     return {
       ...base,
       type: node.type as 'opencode_go' | 'opencode_go_anthropic',
-      workspaceId: node.settings?.providerQuota?.opencodeGo?.workspaceId ?? null,
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderOpenCodeGoQuotaData },
     };
   }

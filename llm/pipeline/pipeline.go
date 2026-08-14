@@ -286,6 +286,9 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		}
 
 		lastErr = err
+		if errors.Is(lastErr, ErrPreCommitBufferExceeded) || errors.Is(lastErr, httpclient.ErrStreamEventTooLarge) {
+			return nil, lastErr
+		}
 
 		// Stop retrying if the context is canceled or the deadline is exceeded.
 		if ctx.Err() != nil {

@@ -87,8 +87,8 @@ require (
 // Replace gqlgen with looplj/gqlgen to add type conversion between GUID and int.
 replace github.com/99designs/gqlgen => github.com/looplj/gqlgen v0.0.0-20251206072334-03e453169896
 
-// Replace go-sse with looplj/go-sse to add Stream type.
-replace github.com/tmaxmax/go-sse => github.com/looplj/go-sse v0.0.0-20250909130008-e74a1155bc3b
+// Replace go-sse with the AxonHub fork that provides Stream and idempotent EOF handling.
+replace github.com/tmaxmax/go-sse => github.com/wtj-0527/go-sse v0.0.0-20260811060543-0bb36b8ea0cd
 
 // Replace gin-contrib/sse with looplj/sse to add space after data: to improve compatibility.
 replace github.com/gin-contrib/sse => github.com/looplj/sse v0.0.0-20260223020440-b463add2d52f

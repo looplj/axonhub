@@ -58,4 +58,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/tmaxmax/go-sse => github.com/looplj/go-sse v0.0.0-20250909130008-e74a1155bc3b
+replace github.com/tmaxmax/go-sse => github.com/wtj-0527/go-sse v0.0.0-20260811060543-0bb36b8ea0cd

@@ -487,6 +487,12 @@ type SystemModelSettings struct {
 	// disables the filter. Only effective when QueryAllChannelModels is true.
 	ModelBlacklistRegex string `json:"model_blacklist_regex"`
 
+	// HideUnroutableModelsInList hides configured Model entities from public
+	// model-list APIs when the current API key has no structurally routable
+	// channel for that entity. It does not change request 422 semantics and
+	// does not affect the admin GraphQL models table.
+	HideUnroutableModelsInList bool `json:"hide_unroutable_models_in_list"`
+
 	// DeveloperSettings stores reusable channel association rules keyed by model developer.
 	// Models with the same developer inherit these associations before applying their
 	// own model-level associations.

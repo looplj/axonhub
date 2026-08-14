@@ -30,9 +30,10 @@ jobs:
 
     steps:
       - name: Check out (shallow)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Resolve tag & write VERSION
         run: |
@@ -43,23 +44,23 @@ jobs:
           echo "Building tag: $TAG for ${{ matrix.arch }}"
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract metadata (labels)
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             looplj/axonhub
 
       - name: Build & push single-arch (to both registries)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: ${{ matrix.platform }}
@@ -83,7 +84,7 @@ jobs:
         run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}

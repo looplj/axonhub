@@ -923,24 +923,8 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 		return false
 	}
 
-	if ch.Type == channel.TypeOpencodeGo || ch.Type == channel.TypeOpencodeGoAnthropic {
-		return hasOpenCodeGoQuotaCredentials(ch)
-	}
-
 	return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey) ||
 		strings.TrimSpace(ch.Credentials.APIKey) != "" || len(ch.Credentials.APIKeys) > 0
-}
-
-// hasOpenCodeGoQuotaCredentials reports whether the channel has the auth cookie
-// configured for OpenCode Go quota polling. The quota check scrapes the dashboard
-// using this cookie (not the upstream request credentials), so gate on it directly
-// to avoid repeatedly running checks that can only fail with "missing auth cookie".
-func hasOpenCodeGoQuotaCredentials(ch *ent.Channel) bool {
-	if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.OpencodeGo == nil {
-		return false
-	}
-
-	return strings.TrimSpace(ch.Settings.ProviderQuota.OpencodeGo.AuthCookie) != ""
 }
 
 func (svc *ProviderQuotaService) mergeLimitsIntoQuotaData(quotaData provider_quota.QuotaData) map[string]any {

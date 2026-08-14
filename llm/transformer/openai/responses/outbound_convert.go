@@ -506,7 +506,9 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 	} else if src.NamedToolChoice != nil {
 		// Specific tool choice
 		result.Type = &src.NamedToolChoice.Type
-		result.Name = &src.NamedToolChoice.Function.Name
+		if src.NamedToolChoice.Function.Name != "" {
+			result.Name = &src.NamedToolChoice.Function.Name
+		}
 	}
 
 	return result

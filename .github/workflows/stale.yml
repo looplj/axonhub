@@ -13,7 +13,7 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v9
+      - uses: actions/stale@v11
         with:
           # Stale timing
           days-before-stale: 7

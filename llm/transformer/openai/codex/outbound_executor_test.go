@@ -72,6 +72,43 @@ func TestCodexOutbound_StreamAcceptHeader(t *testing.T) {
 	assert.Equal(t, "Bearer "+accessToken, headers.Get("Authorization"))
 }
 
+func TestCodexOutbound_RejectsPassThroughBodyWithTokenLimitFields(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "max_output_tokens", body: `{"model":"gpt-5.4-mini","input":"hi","stream":true,"max_output_tokens":12000}`},
+		{name: "max_completion_tokens", body: `{"model":"gpt-5.4-mini","input":"hi","stream":true,"max_completion_tokens":12000}`},
+		{name: "max_tokens", body: `{"model":"gpt-5.4-mini","input":"hi","stream":true,"max_tokens":12000}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outbound := &OutboundTransformer{}
+			llmReq := &llm.Request{
+				APIFormat: llm.APIFormatOpenAIResponse,
+				RawRequest: &httpclient.Request{
+					Body: []byte(tt.body),
+				},
+			}
+
+			require.False(t, outbound.AllowPassThroughBody(context.Background(), llmReq, &httpclient.Request{}))
+		})
+	}
+}
+
+func TestCodexOutbound_AllowsPassThroughBodyWithoutTokenLimitFields(t *testing.T) {
+	outbound := &OutboundTransformer{}
+	llmReq := &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		RawRequest: &httpclient.Request{
+			Body: []byte(`{"model":"gpt-5.4-mini","input":"hi","stream":true}`),
+		},
+	}
+
+	require.True(t, outbound.AllowPassThroughBody(context.Background(), llmReq, &httpclient.Request{}))
+}
+
 func TestCodexOutbound_StreamAllowsDownstreamIdentityOverrides(t *testing.T) {
 	ctx := context.Background()
 	accessToken := testAccessTokenWithAccountID(t)

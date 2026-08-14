@@ -61,6 +61,11 @@ type Outbound interface {
 	AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
 
+// PassThroughBodyPolicy lets outbound transformers veto raw body pass-through.
+type PassThroughBodyPolicy interface {
+	AllowPassThroughBody(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool
+}
+
 // VideoTaskOutbound is an optional extension interface for outbound transformers that support
 // video task query/delete operations (async task model).
 type VideoTaskOutbound interface {

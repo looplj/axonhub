@@ -10,6 +10,8 @@ before:
     - make build-frontend
     - make generate-schema
     - go mod tidy
+    - ./scripts/verify-go-sse-dependency-test.sh
+    - ./scripts/verify-go-sse-dependency.sh
 
 builds:
   - id: build
@@ -23,6 +25,9 @@ builds:
       - -s -w -X github.com/looplj/axonhub/internal/build.BuildTime={{ .Date }}
     env:
       - CGO_ENABLED=0
+    hooks:
+      post:
+        - ./scripts/verify-go-sse-dependency.sh "{{ .Path }}"
     goos:
       - linux
       - windows

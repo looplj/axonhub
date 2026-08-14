@@ -1413,6 +1413,19 @@ func TestConvertToolChoiceToLLM(t *testing.T) {
 				require.Equal(t, "get_weather", result.NamedToolChoice.Function.Name)
 			},
 		},
+		{
+			name: "specific non-function tool without name",
+			input: &ToolChoice{
+				Type: lo.ToPtr("image_generation"),
+			},
+			validate: func(t *testing.T, result *llm.ToolChoice) {
+				require.NotNil(t, result)
+				require.Nil(t, result.ToolChoice)
+				require.NotNil(t, result.NamedToolChoice)
+				require.Equal(t, "image_generation", result.NamedToolChoice.Type)
+				require.Empty(t, result.NamedToolChoice.Function.Name)
+			},
+		},
 	}
 
 	for _, tt := range tests {
