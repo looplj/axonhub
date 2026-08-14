@@ -18,6 +18,7 @@ interface SortableColumnRowProps {
 }
 
 function SortableColumnRow({ id, label }: SortableColumnRowProps) {
+  const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
   const style = {

@@ -27,7 +27,7 @@ export function reconcileColumnOrder({
   pinnedLast = [],
   pinned = [],
 }: ReconcileColumnOrderParams): string[] {
-  const valid = (storedOrder ?? []).filter((id) => reorderableColumnIds.includes(id));
+  const valid = Array.from(new Set((storedOrder ?? []).filter((id) => reorderableColumnIds.includes(id))));
   const missing = reorderableColumnIds.filter((id) => !valid.includes(id));
   const ordered = [...valid, ...missing];
   const pinnedValid = pinned.filter((id) => allColumnIds.includes(id));
