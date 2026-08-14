@@ -3,6 +3,7 @@ package openai
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -62,16 +63,16 @@ func newResponsesChatToolAdapter(tools []llm.Tool) *responsesChatToolAdapter {
 	for _, tool := range tools {
 		if tool.Type == llm.ToolTypeFunction && tool.Function.Namespace == "" && tool.ResponsesSourceType == "" {
 			if tool.Function.Name == "" {
-				a.addWarning("unsupported_tool_type: dropped function tool without a name")
+				a.addWarningf("unsupported_tool_type: dropped function tool without a name")
 				continue
 			}
 			signature, err := functionDefinitionSignature(tool.Function)
 			if err != nil {
-				a.addWarning("invalid function tool %q was dropped: %v", tool.Function.Name, err)
+				a.addWarningf("invalid function tool %q was dropped: %v", tool.Function.Name, err)
 				continue
 			}
 			if previous, exists := a.plainDefinitions[tool.Function.Name]; exists && previous != signature {
-				a.addWarning("tool_name_conflict: kept first definition of function %q", tool.Function.Name)
+				a.addWarningf("tool_name_conflict: kept first definition of function %q", tool.Function.Name)
 				continue
 			}
 			a.plainDefinitions[tool.Function.Name] = signature
@@ -89,25 +90,25 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 		case llm.ToolTypeFunction:
 			if tool.Function.Name == "" {
 				if tool.Function.Namespace != "" {
-					a.addWarning("unsupported_tool_type: dropped namespace function tool without a name")
+					a.addWarningf("unsupported_tool_type: dropped namespace function tool without a name")
 				}
 				continue
 			}
 			normalizedFunction, err := normalizeChatFunctionDefinition(tool.Function)
 			if err != nil {
 				if tool.Function.Namespace != "" {
-					a.addWarning("invalid namespace tool %q was dropped: %v", tool.Function.Name, err)
+					a.addWarningf("invalid namespace tool %q was dropped: %v", tool.Function.Name, err)
 				}
 				continue
 			}
 			tool.Function = normalizedFunction
 			if tool.Function.DeferLoading {
-				a.addWarning("defer_loading_degraded: function tool %q is immediately visible after conversion to Chat Completions", tool.Function.Name)
+				a.addWarningf("defer_loading_degraded: function tool %q is immediately visible after conversion to Chat Completions", tool.Function.Name)
 			}
 			signature, err := functionDefinitionSignature(tool.Function)
 			if err != nil {
 				if tool.Function.Namespace != "" {
-					a.addWarning("invalid namespace tool %q was dropped: %v", tool.Function.Name, err)
+					a.addWarningf("invalid namespace tool %q was dropped: %v", tool.Function.Name, err)
 				}
 				continue
 			}
@@ -125,7 +126,7 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 				}
 				chatTool.Function.Name = chatName
 				if tool.ResponsesSourceType != "" {
-					a.addWarning("client_tool_output_degraded: %s tool %q returns as a function_call after Chat conversion", tool.ResponsesSourceType, name)
+					a.addWarningf("client_tool_output_degraded: %s tool %q returns as a function_call after Chat conversion", tool.ResponsesSourceType, name)
 				}
 			} else if tool.ResponsesSourceType != "" {
 				identity := clientToolIdentity(tool.ResponsesSourceType, tool.Function.Name)
@@ -137,7 +138,7 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 					continue
 				}
 				chatTool.Function.Name = chatName
-				a.addWarning("client_tool_output_degraded: %s tool %q returns as a function_call after Chat conversion", tool.ResponsesSourceType, tool.Function.Name)
+				a.addWarningf("client_tool_output_degraded: %s tool %q returns as a function_call after Chat conversion", tool.ResponsesSourceType, tool.Function.Name)
 			} else {
 				if selected, ok := a.plainDefinitions[tool.Function.Name]; !ok || selected != signature {
 					continue
@@ -152,17 +153,17 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 
 		case llm.ToolTypeResponsesCustomTool:
 			if tool.ResponseCustomTool == nil {
-				a.addWarning("unsupported_tool_type: dropped custom tool with missing definition")
+				a.addWarningf("unsupported_tool_type: dropped custom tool with missing definition")
 				continue
 			}
 			if tool.ResponseCustomTool.Name == "" {
-				a.addWarning("unsupported_tool_type: dropped custom tool without a name")
+				a.addWarningf("unsupported_tool_type: dropped custom tool without a name")
 				continue
 			}
 			identity := mappingIdentity(responsesChatToolCustom, tool.ResponseCustomTool.Name, "")
 			signature, err := json.Marshal(tool.ResponseCustomTool)
 			if err != nil {
-				a.addWarning("invalid custom tool %q was dropped: %v", tool.ResponseCustomTool.Name, err)
+				a.addWarningf("invalid custom tool %q was dropped: %v", tool.ResponseCustomTool.Name, err)
 				continue
 			}
 			mapping := responsesChatToolMapping{Kind: responsesChatToolCustom, Name: tool.ResponseCustomTool.Name}
@@ -172,7 +173,7 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 			}
 			if format := tool.ResponseCustomTool.Format; format != nil &&
 				(strings.EqualFold(strings.TrimSpace(format.Type), "grammar") || format.Definition != "") {
-				a.addWarning("grammar_constraint_degraded: custom tool %q grammar is advisory after conversion to Chat Completions", tool.ResponseCustomTool.Name)
+				a.addWarningf("grammar_constraint_degraded: custom tool %q grammar is advisory after conversion to Chat Completions", tool.ResponseCustomTool.Name)
 			}
 			description := responsesChatCustomToolDescription(tool.ResponseCustomTool)
 			result = append(result, Tool{
@@ -184,16 +185,16 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 			})
 		case llm.ToolTypeResponsesToolSearch:
 			if tool.ResponseToolSearch == nil {
-				a.addWarning("unsupported_tool_type: dropped tool_search with missing definition")
+				a.addWarningf("unsupported_tool_type: dropped tool_search with missing definition")
 				continue
 			}
 			if tool.ResponseToolSearch.Execution != "client" {
-				a.addWarning("unsupported_execution_owner: dropped tool_search with execution %q", tool.ResponseToolSearch.Execution)
+				a.addWarningf("unsupported_execution_owner: dropped tool_search with execution %q", tool.ResponseToolSearch.Execution)
 				continue
 			}
 			parameters, err := normalizeChatFunctionParameters(tool.ResponseToolSearch.Parameters)
 			if err != nil {
-				a.addWarning("invalid tool_search definition was dropped: %v", err)
+				a.addWarningf("invalid tool_search definition was dropped: %v", err)
 				continue
 			}
 			normalizedToolSearch := *tool.ResponseToolSearch
@@ -201,7 +202,7 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 			identity := mappingIdentity(responsesChatToolSearch, "tool_search", "")
 			signature, err := json.Marshal(&normalizedToolSearch)
 			if err != nil {
-				a.addWarning("invalid tool_search definition was dropped: %v", err)
+				a.addWarningf("invalid tool_search definition was dropped: %v", err)
 				continue
 			}
 			mapping := responsesChatToolMapping{
@@ -220,10 +221,10 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 
 		case llm.ToolTypeResponsesOpaqueTool:
 			if tool.ResponseOpaqueTool == nil {
-				a.addWarning("unsupported_tool_type: dropped opaque Responses tool with missing definition")
+				a.addWarningf("unsupported_tool_type: dropped opaque Responses tool with missing definition")
 				continue
 			}
-			a.addWarning("unsupported_tool_type: dropped Responses tool %q (%s) without a Chat lifecycle codec", tool.ResponseOpaqueTool.Name, tool.ResponseOpaqueTool.SourceType)
+			a.addWarningf("unsupported_tool_type: dropped Responses tool %q (%s) without a Chat lifecycle codec", tool.ResponseOpaqueTool.Name, tool.ResponseOpaqueTool.SourceType)
 
 		case llm.ToolTypeImageGeneration, llm.ToolTypeWebSearch, llm.ToolTypeGoogleSearch,
 			llm.ToolTypeGoogleCodeExecution, llm.ToolTypeGoogleUrlContext:
@@ -233,7 +234,7 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 			continue
 
 		default:
-			a.addWarning("unsupported_tool_type: dropped %s tool that cannot be translated to Chat Completions", tool.Type)
+			a.addWarningf("unsupported_tool_type: dropped %s tool that cannot be translated to Chat Completions", tool.Type)
 		}
 	}
 	return result
@@ -430,7 +431,7 @@ func (a *responsesChatToolAdapter) degradeUnsupportedRawToolSelector(request *ll
 	if selectorType == "" {
 		selectorType = "unknown"
 	}
-	a.addWarning(
+	a.addWarningf(
 		"unsupported_tool_choice_degraded: %s selector cannot be represented in Chat Completions; using auto",
 		selectorType,
 	)
@@ -601,7 +602,7 @@ func (a *responsesChatToolAdapter) filterAllowedTools(tools []Tool, choice *llm.
 	for _, option := range choice.AllowedTools {
 		names, ok := a.resolveAllowedTool(option)
 		if !ok {
-			a.addWarning("unsupported_allowed_tool: dropped unavailable %s tool %q from allowed_tools", option.Type, option.Name)
+			a.addWarningf("unsupported_allowed_tool: dropped unavailable %s tool %q from allowed_tools", option.Type, option.Name)
 			continue
 		}
 		for _, name := range names {
@@ -688,7 +689,7 @@ func (a *responsesChatToolAdapter) reserveName(preferred, fallback string) strin
 func (a *responsesChatToolAdapter) registerMapping(identity, preferred, fallback, signature string, mapping responsesChatToolMapping) (string, bool) {
 	if existing, ok := a.byIdentity[identity]; ok {
 		if existingSignature := a.mappingSignatures[identity]; existingSignature != signature {
-			a.addWarning("tool_name_conflict: kept first definition of tool %q", mapping.Name)
+			a.addWarningf("tool_name_conflict: kept first definition of tool %q", mapping.Name)
 		}
 		return existing.ChatName, true
 	}
@@ -805,15 +806,15 @@ func (a *responsesChatToolAdapter) findClientHistoryMapping(name string) (respon
 func (a *responsesChatToolAdapter) specialCallID(call llm.ToolCall, specialized string) string {
 	if specialized != "" {
 		if call.ID != "" && specialized != call.ID {
-			a.addWarning("tool_call_id_conflict: used specialized call ID %q instead of outer call ID %q", specialized, call.ID)
+			a.addWarningf("tool_call_id_conflict: used specialized call ID %q instead of outer call ID %q", specialized, call.ID)
 		}
 		return specialized
 	}
 	return call.ID
 }
 
-// addWarning records a non-fatal conversion degradation.
-func (a *responsesChatToolAdapter) addWarning(format string, args ...any) {
+// addWarningf records a non-fatal conversion degradation.
+func (a *responsesChatToolAdapter) addWarningf(format string, args ...any) {
 	a.warnings = append(a.warnings, fmt.Sprintf(format, args...))
 }
 
@@ -920,9 +921,7 @@ func (a *responsesChatToolAdapter) mappings() map[string]responsesChatToolMappin
 		return nil
 	}
 	result := make(map[string]responsesChatToolMapping, len(a.byChatName))
-	for name, mapping := range a.byChatName {
-		result[name] = mapping
-	}
+	maps.Copy(result, a.byChatName)
 	return result
 }
 
@@ -1239,9 +1238,7 @@ func mergeResponsesChatToolCallFragments(pending, current llm.ToolCall) llm.Tool
 		if merged.TransformerMetadata == nil {
 			merged.TransformerMetadata = map[string]any{}
 		}
-		for key, value := range current.TransformerMetadata {
-			merged.TransformerMetadata[key] = value
-		}
+		maps.Copy(merged.TransformerMetadata, current.TransformerMetadata)
 	}
 	return merged
 }

@@ -1298,7 +1298,7 @@ func TestOutboundTransformer_TransformStream_ToolSearchCallLifecycle(t *testing.
 	require.Equal(t, callID, added.ResponseToolSearchCall.CallID)
 	require.Equal(t, "client", added.ResponseToolSearchCall.Execution)
 
-	var arguments string
+	var arguments strings.Builder
 	for _, response := range actual[2:4] {
 		require.Len(t, response.Choices, 1)
 		require.NotNil(t, response.Choices[0].Delta)
@@ -1309,9 +1309,9 @@ func TestOutboundTransformer_TransformStream_ToolSearchCallLifecycle(t *testing.
 		require.NotNil(t, delta.ResponseToolSearchCall)
 		require.Equal(t, callID, delta.ResponseToolSearchCall.CallID)
 		require.Equal(t, "client", delta.ResponseToolSearchCall.Execution)
-		arguments += delta.ResponseToolSearchCall.Arguments
+		arguments.WriteString(delta.ResponseToolSearchCall.Arguments)
 	}
-	require.JSONEq(t, `{"query":"agents"}`, arguments)
+	require.JSONEq(t, `{"query":"agents"}`, arguments.String())
 	require.NotNil(t, stream.state.toolCalls[callID])
 	require.NotNil(t, stream.state.toolCalls[callID].ResponseToolSearchCall)
 	require.JSONEq(t, `{"query":"agents"}`, stream.state.toolCalls[callID].ResponseToolSearchCall.Arguments)
@@ -1338,7 +1338,7 @@ func TestOutboundTransformer_TransformStream_ToolSearchArgumentsProvidedOnlyInDo
 	responses, err := streams.All(stream)
 	require.NoError(t, err)
 
-	var arguments string
+	var arguments strings.Builder
 
 	argumentChunks := 0
 
@@ -1355,14 +1355,14 @@ func TestOutboundTransformer_TransformStream_ToolSearchArgumentsProvidedOnlyInDo
 			argumentChunks++
 			require.Equal(t, callID, toolCall.ResponseToolSearchCall.CallID)
 			require.Equal(t, "client", toolCall.ResponseToolSearchCall.Execution)
-			arguments += toolCall.ResponseToolSearchCall.Arguments
+			arguments.WriteString(toolCall.ResponseToolSearchCall.Arguments)
 		}
 	}
 
 	// The complete arguments arrive only in the done event; downstream must
 	// receive them exactly once without duplicated content.
 	require.Equal(t, 1, argumentChunks)
-	require.JSONEq(t, `{"query":"agents"}`, arguments)
+	require.JSONEq(t, `{"query":"agents"}`, arguments.String())
 }
 
 func TestOutboundTransformer_TransformStream_CompletedWithUsageCarriesEchoFields(t *testing.T) {

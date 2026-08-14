@@ -121,7 +121,7 @@ func requestFromLLMWithResponsesToolAdapter(r *llm.Request, reasoningField Reaso
 		return converted, true
 	})
 	if droppedEmptyAssistants > 0 {
-		toolAdapter.addWarning(
+		toolAdapter.addWarningf(
 			"empty_assistant_message: dropped %d history message(s) with no Chat-compatible payload",
 			droppedEmptyAssistants,
 		)

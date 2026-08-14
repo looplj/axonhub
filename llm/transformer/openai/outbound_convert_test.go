@@ -794,7 +794,6 @@ func TestResponsesChatToolAdapter_RejectsUnsupportedNamedToolChoice(t *testing.T
 	}
 	_, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
 	require.ErrorContains(t, err, "unsupported_tool_choice")
-
 }
 
 func TestUnsupportedRawChatToolSelector_DoesNotDegradeRepresentedSelectors(t *testing.T) {

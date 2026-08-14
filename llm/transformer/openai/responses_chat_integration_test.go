@@ -1591,7 +1591,7 @@ func TestResponsesToChatHistory_FlattensMultipartToolOutputToString(t *testing.T
 		"Script failed\nWall time 0.0 seconds\nOutput:\nScript error:\nSyntaxError: Unexpected token ':'",
 		lo.FromPtr(toolMsg.Content.Content))
 
-	// The serialised body must carry the tool content as a JSON string.
+	// The serialized body must carry the tool content as a JSON string.
 	var raw struct {
 		Messages []struct {
 			Role    string          `json:"role"`
@@ -1602,12 +1602,13 @@ func TestResponsesToChatHistory_FlattensMultipartToolOutputToString(t *testing.T
 	rawTool, ok := lo.Find(raw.Messages, func(m struct {
 		Role    string          `json:"role"`
 		Content json.RawMessage `json:"content"`
-	}) bool {
+	},
+	) bool {
 		return m.Role == "tool"
 	})
 	require.True(t, ok)
 	require.True(t, strings.HasPrefix(strings.TrimSpace(string(rawTool.Content)), `"`),
-		"tool content should serialise as a string, got: %s", string(rawTool.Content))
+		"tool content should serialize as a string, got: %s", string(rawTool.Content))
 }
 
 // TestResponsesToChatHistory_FlattensCustomToolOutput mirrors the Codex exec

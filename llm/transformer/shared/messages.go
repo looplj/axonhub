@@ -2,6 +2,7 @@ package shared
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
@@ -72,9 +73,9 @@ func filterOutToolLifecycleMessages(messages []llm.Message, shouldRemove func(ll
 		if len(matches) == 0 {
 			return false
 		}
-		for i := len(matches) - 1; i >= 0; i-- {
-			if matches[i].messageIndex < messageIndex {
-				return matches[i].remove
+		for _, v := range slices.Backward(matches) {
+			if v.messageIndex < messageIndex {
+				return v.remove
 			}
 		}
 		return matches[0].remove
