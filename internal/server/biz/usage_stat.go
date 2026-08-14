@@ -198,10 +198,7 @@ func (s *UsageLogService) BackfillUsageStats(ctx context.Context) error {
 	}
 
 	for i := 0; i < len(bulk); i += batchSize {
-		end := i + batchSize
-		if end > len(bulk) {
-			end = len(bulk)
-		}
+		end := min(i+batchSize, len(bulk))
 		// Backfill only runs when the table is empty, so conflicts should
 		// never happen; UpdateNewValues keeps re-runs idempotent.
 		if err := client.UsageStat.CreateBulk(bulk[i:end]...).
