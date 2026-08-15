@@ -482,7 +482,8 @@ func TestCollectVisionDelegationInputIgnoresHistoricalImages(t *testing.T) {
 func TestCollectVisionDelegationInputIgnoresHistoricalFileID(t *testing.T) {
 	request := &llm.Request{Messages: []llm.Message{
 		{Role: "user", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
-			Type: "text", Text: lo.ToPtr("Describe this image")}, {
+			Type: "text", Text: lo.ToPtr("Describe this image"),
+		}, {
 			Type: "image_url", ImageURL: &llm.ImageURL{FileID: "file_historical"},
 		}}}},
 		{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("It is a chart.")}},

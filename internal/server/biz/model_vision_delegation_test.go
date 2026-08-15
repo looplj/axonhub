@@ -116,18 +116,24 @@ func TestModelServiceVisionDelegationRouteConditionsMatchChildRequest(t *testing
 	}{
 		{
 			name: "streaming only",
-			condition: objects.Condition{Type: objects.ConditionTypeCondition,
-				Field: objects.ModelAssociationConditionFieldStream, Operator: "eq", Value: true},
+			condition: objects.Condition{
+				Type:  objects.ConditionTypeCondition,
+				Field: objects.ModelAssociationConditionFieldStream, Operator: "eq", Value: true,
+			},
 		},
 		{
 			name: "responses only",
-			condition: objects.Condition{Type: objects.ConditionTypeCondition,
-				Field: objects.ModelAssociationConditionFieldRequestFormat, Operator: "eq", Value: llm.APIFormatOpenAIResponse.String()},
+			condition: objects.Condition{
+				Type:  objects.ConditionTypeCondition,
+				Field: objects.ModelAssociationConditionFieldRequestFormat, Operator: "eq", Value: llm.APIFormatOpenAIResponse.String(),
+			},
 		},
 		{
 			name: "missing request header",
-			condition: objects.Condition{Type: objects.ConditionTypeCondition,
-				Field: objects.ModelAssociationConditionFieldRequestHeaderPrefix + "X-Vision-Only", Operator: "eq", Value: "yes"},
+			condition: objects.Condition{
+				Type:  objects.ConditionTypeCondition,
+				Field: objects.ModelAssociationConditionFieldRequestHeaderPrefix + "X-Vision-Only", Operator: "eq", Value: "yes",
+			},
 		},
 		{
 			name: "matches generated child request",

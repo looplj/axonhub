@@ -1535,30 +1535,30 @@ func (svc *BackupService) restoreUsageLogs(
 }
 
 type usageLogFingerprintData struct {
-	CreatedAt                          time.Time
-	UpdatedAt                          time.Time
-	RequestID                          int
-	APIKeyID                           int
-	ProjectID                          int
-	ChannelID                          int
-	ModelID                            string
-	PromptTokens                       int64
-	CompletionTokens                   int64
-	TotalTokens                        int64
-	PromptAudioTokens                  int64
-	PromptCachedTokens                 int64
-	PromptWriteCachedTokens            int64
-	PromptWriteCachedTokens5m          int64
-	PromptWriteCachedTokens1h          int64
-	CompletionAudioTokens              int64
-	CompletionReasoningTokens          int64
-	CompletionAcceptedPredictionTokens int64
-	CompletionRejectedPredictionTokens int64
-	Source                             usagelog.Source
-	Format                             string
-	TotalCost                          *float64
-	CostItems                          []objects.CostItem
-	CostPriceReferenceID               string
+	CreatedAt                          time.Time          `json:"created_at"`
+	UpdatedAt                          time.Time          `json:"updated_at"`
+	RequestID                          int                `json:"request_id"`
+	APIKeyID                           int                `json:"api_key_id"`
+	ProjectID                          int                `json:"project_id"`
+	ChannelID                          int                `json:"channel_id"`
+	ModelID                            string             `json:"model_id"`
+	PromptTokens                       int64              `json:"prompt_tokens"`
+	CompletionTokens                   int64              `json:"completion_tokens"`
+	TotalTokens                        int64              `json:"total_tokens"`
+	PromptAudioTokens                  int64              `json:"prompt_audio_tokens"`
+	PromptCachedTokens                 int64              `json:"prompt_cached_tokens"`
+	PromptWriteCachedTokens            int64              `json:"prompt_write_cached_tokens"`
+	PromptWriteCachedTokens5m          int64              `json:"prompt_write_cached_tokens_5m"`
+	PromptWriteCachedTokens1h          int64              `json:"prompt_write_cached_tokens_1h"`
+	CompletionAudioTokens              int64              `json:"completion_audio_tokens"`
+	CompletionReasoningTokens          int64              `json:"completion_reasoning_tokens"`
+	CompletionAcceptedPredictionTokens int64              `json:"completion_accepted_prediction_tokens"`
+	CompletionRejectedPredictionTokens int64              `json:"completion_rejected_prediction_tokens"`
+	Source                             usagelog.Source    `json:"source"`
+	Format                             string             `json:"format"`
+	TotalCost                          *float64           `json:"total_cost"`
+	CostItems                          []objects.CostItem `json:"cost_items"`
+	CostPriceReferenceID               string             `json:"cost_price_reference_id"`
 }
 
 func usageLogFingerprint(usageData *ent.UsageLog) (string, error) {

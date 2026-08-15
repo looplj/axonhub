@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"time"
 
@@ -156,6 +157,10 @@ func (m *visionDelegationMiddleware) execute(
 	primaryRequest *llm.Request,
 ) (*llm.Response, error) {
 	parentState := m.inbound.state
+	if parentState == nil {
+		return nil, errors.New("vision delegation persistence state is unavailable")
+	}
+
 	retryPolicy := m.processor.SystemService.RetryPolicyOrDefault(ctx)
 	stream := false
 	reasoningEffort := ""
@@ -243,7 +248,7 @@ func (m *visionDelegationMiddleware) execute(
 	childHeaders := http.Header{
 		"Content-Type": []string{"application/json"},
 	}
-	if parentState != nil && parentState.RawRequest != nil {
+	if parentState.RawRequest != nil {
 		if userAgent := strings.TrimSpace(parentState.RawRequest.Headers.Get("User-Agent")); userAgent != "" {
 			childHeaders.Set("User-Agent", userAgent)
 		}
@@ -272,6 +277,7 @@ func visionDelegationMaxCompletionTokens(reasoningEffort string) int64 {
 
 type captureVisionDelegationResponse struct {
 	pipeline.DummyMiddleware
+
 	response *llm.Response
 }
 
@@ -359,9 +365,9 @@ func collectVisionDelegationInput(request *llm.Request) (*visionDelegationInput,
 // prior turns and should not trigger a new delegation.
 func latestInputTurnRange(messages []llm.Message) (int, int) {
 	latestInput := -1
-	for index := len(messages) - 1; index >= 0; index-- {
-		if strings.EqualFold(messages[index].Role, "user") ||
-			strings.EqualFold(messages[index].Role, "tool") {
+	for index, message := range slices.Backward(messages) {
+		if strings.EqualFold(message.Role, "user") ||
+			strings.EqualFold(message.Role, "tool") {
 			latestInput = index
 			break
 		}
@@ -370,9 +376,9 @@ func latestInputTurnRange(messages []llm.Message) (int, int) {
 		return len(messages), len(messages)
 	}
 
-	for index := latestInput - 1; index >= 0; index-- {
-		if strings.EqualFold(messages[index].Role, "assistant") ||
-			strings.EqualFold(messages[index].Role, "model") {
+	for index, message := range slices.Backward(messages[:latestInput]) {
+		if strings.EqualFold(message.Role, "assistant") ||
+			strings.EqualFold(message.Role, "model") {
 			return index + 1, latestInput + 1
 		}
 	}
@@ -685,7 +691,6 @@ func replaceImagesWithVisionEvidence(request *llm.Request, evidenceImage visionI
 			message.Content.MultipleContent = nil
 		}
 	}
-
 }
 
 func ensureVisionPolicyMessage(request *llm.Request) {
