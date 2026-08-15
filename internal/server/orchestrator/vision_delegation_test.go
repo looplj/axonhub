@@ -107,12 +107,12 @@ func TestReplaceImagesWithVisionEvidenceUsesLatestImagePosition(t *testing.T) {
 
 	replaceImagesWithVisionEvidence(request, input.evidenceImage, "The badge is red.")
 	require.NotContains(t, messageText(request.Messages[1]), visionEvidenceStart)
-	require.Contains(t, messageText(request.Messages[3]), visionEvidenceStart)
+	require.Contains(t, messageText(request.Messages[2]), visionEvidenceStart)
 	require.NotContains(t, messageText(request.Messages[1]), "image_url")
-	require.NotContains(t, messageText(request.Messages[3]), "image_url")
+	require.NotContains(t, messageText(request.Messages[2]), "image_url")
 }
 
-func TestReplaceImagesWithVisionEvidenceInjectsPolicyAndStripsMarkers(t *testing.T) {
+func TestReplaceImagesWithVisionEvidenceStripsMarkers(t *testing.T) {
 	request := &llm.Request{Messages: []llm.Message{
 		{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("You are a helpful assistant.")}},
 		{
@@ -130,6 +130,7 @@ func TestReplaceImagesWithVisionEvidenceInjectsPolicyAndStripsMarkers(t *testing
 	require.NoError(t, err)
 
 	replaceImagesWithVisionEvidence(request, input.evidenceImage, "The badge is red.")
+	ensureVisionPolicyMessage(request)
 
 	serialized, err := json.Marshal(request)
 	require.NoError(t, err)
@@ -139,10 +140,59 @@ func TestReplaceImagesWithVisionEvidenceInjectsPolicyAndStripsMarkers(t *testing
 	require.Contains(t, string(serialized), "inline] inside prose is kept")
 
 	require.Equal(t, "system", request.Messages[0].Role)
-	require.Contains(t, messageText(request.Messages[0]), "already been inspected by AxonHub")
-	require.Contains(t, messageText(request.Messages[0]), "AXONHUB_VISION_EVIDENCE")
+	require.Equal(t, "You are a helpful assistant.", messageText(request.Messages[0]))
 	require.Equal(t, "system", request.Messages[1].Role)
-	require.Equal(t, "You are a helpful assistant.", messageText(request.Messages[1]))
+	require.Contains(t, messageText(request.Messages[1]), "When an AXONHUB_VISION_EVIDENCE block is present")
+}
+
+func TestEnsureVisionPolicyMessageFollowsLeadingInstructionsAndIsIdempotent(t *testing.T) {
+	request := &llm.Request{Messages: []llm.Message{
+		{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("system instruction")}},
+		{Role: "developer", Content: llm.MessageContent{Content: lo.ToPtr("developer instruction")}},
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("question")}},
+	}}
+
+	ensureVisionPolicyMessage(request)
+	ensureVisionPolicyMessage(request)
+
+	require.Len(t, request.Messages, 4)
+	require.Equal(t, "system instruction", messageText(request.Messages[0]))
+	require.Equal(t, "developer instruction", messageText(request.Messages[1]))
+	require.Equal(t, visionPolicySystemMessage, messageText(request.Messages[2]))
+	require.Equal(t, "question", messageText(request.Messages[3]))
+}
+
+func TestVisionPolicyPrefixMatchesImageTurnAndHistoricalFollowUp(t *testing.T) {
+	imageTurn := &llm.Request{Messages: []llm.Message{
+		{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("stable system instruction")}},
+		{Role: "user", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{Type: "text", Text: lo.ToPtr("Describe this image")},
+			{Type: "image_url", ImageURL: &llm.ImageURL{URL: base64TestImage("same-image")}},
+		}}},
+	}}
+	input, err := collectVisionDelegationInput(imageTurn)
+	require.NoError(t, err)
+	replaceImagesWithVisionEvidence(imageTurn, input.evidenceImage, "The image shows a red badge.")
+	ensureVisionPolicyMessage(imageTurn)
+
+	followUp := &llm.Request{Messages: []llm.Message{
+		{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("stable system instruction")}},
+		{Role: "user", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{Type: "text", Text: lo.ToPtr("Describe this image")},
+			{Type: "image_url", ImageURL: &llm.ImageURL{URL: base64TestImage("same-image")}},
+		}}},
+		{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("It shows a red badge.")}},
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("What model are you?")}},
+	}}
+	followUpInput, err := collectVisionDelegationInput(followUp)
+	require.NoError(t, err)
+	require.Empty(t, followUpInput.images)
+	require.True(t, removeVisionImages(followUp))
+	ensureVisionPolicyMessage(followUp)
+
+	require.Equal(t, imageTurn.Messages[:2], followUp.Messages[:2])
+	require.Contains(t, messageText(imageTurn.Messages[2]), visionEvidenceStart)
+	require.NotContains(t, messageText(followUp.Messages[2]), visionEvidenceStart)
 }
 
 func TestStripImageSourceMarkerPreservesFollowingText(t *testing.T) {
@@ -196,8 +246,8 @@ func TestVisionImageSourceMarkerCleanupHandlesScalarContent(t *testing.T) {
 	}}
 
 	replaceImagesWithVisionEvidence(request, visionImagePosition{message: -1, part: -1}, "The screenshot shows error E102.")
-	require.Equal(t, "Please describe the error", messageText(request.Messages[1]))
-	require.Equal(t, "", messageText(request.Messages[2]))
+	require.Equal(t, "Please describe the error", messageText(request.Messages[0]))
+	require.Equal(t, "", messageText(request.Messages[1]))
 
 	serialized, err := json.Marshal(request)
 	require.NoError(t, err)
@@ -378,8 +428,8 @@ func TestReplaceImagesWithVisionEvidenceKeepsLaterToolMessageValid(t *testing.T)
 	require.Len(t, input.images, 1)
 
 	replaceImagesWithVisionEvidence(request, input.evidenceImage, "The image shows a poster.")
-	require.Equal(t, "", lo.FromPtr(request.Messages[2].Content.Content))
-	require.Nil(t, request.Messages[2].Content.MultipleContent)
+	require.Equal(t, "", lo.FromPtr(request.Messages[1].Content.Content))
+	require.Nil(t, request.Messages[1].Content.MultipleContent)
 
 	serialized, err := json.Marshal(request)
 	require.NoError(t, err)
@@ -389,7 +439,7 @@ func TestReplaceImagesWithVisionEvidenceKeepsLaterToolMessageValid(t *testing.T)
 		} `json:"messages"`
 	}
 	require.NoError(t, json.Unmarshal(serialized, &payload))
-	require.Equal(t, "", payload.Messages[2].Content)
+	require.Equal(t, "", payload.Messages[1].Content)
 }
 
 func TestCollectVisionDelegationInputRejectsFileID(t *testing.T) {
@@ -486,7 +536,7 @@ func TestVisionDelegationPipelinePersistsSeparateExecutionsAndUsage(t *testing.T
 	require.NotContains(t, string(requests[0].Body), `"User-Agent"`)
 	require.NotContains(t, string(requests[1].Body), "image_url")
 	require.Contains(t, string(requests[1].Body), "AXONHUB_VISION_EVIDENCE")
-	require.Contains(t, string(requests[1].Body), "already been inspected by AxonHub")
+	require.Contains(t, string(requests[1].Body), "When an AXONHUB_VISION_EVIDENCE block is present")
 	require.NotContains(t, string(requests[1].Body), "untrusted visual evidence")
 
 	dbRequests, err := client.Request.Query().All(ctx)
@@ -895,6 +945,7 @@ func TestVisionDelegationDoesNotRepeatHistoricalImagesOnTextFollowUp(t *testing.
 	require.Len(t, requests, 1)
 	require.NotContains(t, string(requests[0].Body), "image_url")
 	require.NotContains(t, string(requests[0].Body), visionEvidenceStart)
+	require.Contains(t, string(requests[0].Body), visionPolicySystemMessage)
 	require.Contains(t, string(requests[0].Body), "What model are you?")
 
 	executions, err := fixture.client.RequestExecution.Query().All(fixture.ctx)
