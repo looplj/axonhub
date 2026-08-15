@@ -89,17 +89,16 @@ export function useErrorHandler() {
           params.resource = t('common.errors.resourceFallback');
         }
 
-        // Build error message
-        let message: string;
+        // 优先使用后端返回的具体消息，回退到 i18n 翻译
+        let i18nMessage = '';
         try {
-          message = t(i18nKey, params);
+          i18nMessage = t(i18nKey, params);
         } catch {
-          // Fallback to raw message if translation fails
-          message = firstError.message;
+          // ignore
         }
+        const message = firstError.message || i18nMessage;
 
         if (showToast) {
-          // 直接展示具体错误消息
           toast.error(message, { duration: 5000 });
         }
 

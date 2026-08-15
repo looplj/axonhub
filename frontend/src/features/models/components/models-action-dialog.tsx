@@ -179,6 +179,18 @@ export function ModelsActionDialog() {
     [form, isEdit]
   );
 
+  // 用户直接在输入框键入时实时同步 form 值，避免 blur/submit 竞态导致提交旧值。
+  // 注意不要同步 modelIdInput：它是 AutoComplete 的“已提交选中值”，若跟随搜索词变化，
+  // 手输完整 model ID 后再点选该项会被判定为取消选择而清空，blur 时也不会再触发
+  // handleModelIdChange，导致新建模型时 name/group/type/modelCard 无法回填。
+  const handleModelIdSearchChange = useCallback(
+    (value: string) => {
+      setModelIdSearchValue(value);
+      form.setValue('modelID', value);
+    },
+    [form]
+  );
+
   const handleModelIdChange = useCallback(
     (modelId: string) => {
       setModelIdInput(modelId);
@@ -313,7 +325,7 @@ export function ModelsActionDialog() {
                               selectedValue={modelIdInput}
                               onSelectedValueChange={handleModelIdChange}
                               searchValue={modelIdSearchValue}
-                              onSearchValueChange={setModelIdSearchValue}
+                              onSearchValueChange={handleModelIdSearchChange}
                               items={modelIdOptions}
                               placeholder={t('models.fields.modelIdPlaceholder')}
                               emptyMessage={t('models.fields.noModels')}
@@ -324,7 +336,7 @@ export function ModelsActionDialog() {
                               selectedValue={modelIdInput}
                               onSelectedValueChange={handleModelIdChange}
                               searchValue={modelIdSearchValue}
-                              onSearchValueChange={setModelIdSearchValue}
+                              onSearchValueChange={handleModelIdSearchChange}
                               items={[]}
                               placeholder={t('models.fields.modelIdPlaceholder')}
                               emptyMessage={t('models.fields.noModels')}

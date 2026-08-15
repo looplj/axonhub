@@ -23,14 +23,15 @@ const queryClient = new QueryClient({
         // eslint-disable-next-line no-console
         if (import.meta.env.DEV) console.log({ failureCount, error });
 
-        if (failureCount >= 0 && import.meta.env.DEV) return false;
-        if (failureCount > 3 && import.meta.env.PROD) return false;
+        if (import.meta.env.DEV) return false;
+        if (failureCount > 2) return false;
 
         // For fetch API errors, we check if it's a Response object with status
         const status =
           error instanceof Response ? error.status : error && typeof error === 'object' && 'status' in error ? (error as any).status : 0;
 
-        return ![401, 403, 422].includes(status);
+        // Don't retry auth errors or server errors (500 hammers a failing backend)
+        return ![401, 403, 422, 500].includes(status);
       },
       refetchOnWindowFocus: import.meta.env.PROD,
       staleTime: 10 * 1000, // 10s
