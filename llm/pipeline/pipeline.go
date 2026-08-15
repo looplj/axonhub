@@ -352,12 +352,13 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		if !canRetry && !fallbackApplied {
 			if fallback, ok := p.Outbound.(RequestFallback); ok && fallback.CanFallback(llmRequest, lastErr) {
 				if err := fallback.PrepareFallback(ctx, llmRequest); err != nil {
-					return nil, fmt.Errorf("failed to prepare request fallback: %w", err)
+					slog.WarnContext(ctx, "failed to prepare request fallback", slog.Any("error", err))
+				} else {
+					fallbackApplied = true
+					channelSwitches = 0
+					sameChannelRetries = 0
+					canRetry = true
 				}
-				fallbackApplied = true
-				channelSwitches = 0
-				sameChannelRetries = 0
-				canRetry = true
 			}
 		}
 

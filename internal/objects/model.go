@@ -61,7 +61,11 @@ type VisionDelegation struct {
 }
 
 type UnsupportedImageFallback struct {
-	Enabled bool `json:"enabled"`
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+func (f UnsupportedImageFallback) IsEnabled() bool {
+	return f.Enabled != nil && *f.Enabled
 }
 
 type ModelSettings struct {

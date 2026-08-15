@@ -50,7 +50,7 @@ type VisionDelegation {
 }
 
 type UnsupportedImageFallback {
-  enabled: Boolean!
+  enabled: Boolean! @goField(forceResolver: true)
 }
 
 type ModelAssociation {

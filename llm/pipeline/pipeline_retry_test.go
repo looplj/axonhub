@@ -462,6 +462,38 @@ func TestPipeline_Process_RequestFallbackRunsOnceAfterOrdinaryRetries(t *testing
 	require.Equal(t, 1, fallbackCalls)
 }
 
+func TestPipeline_Process_RequestFallbackPreparationPreservesUpstreamError(t *testing.T) {
+	upstreamErr := errors.New("upstream rejected request")
+	prepareErr := errors.New("candidate selector unavailable")
+	execCalls := 0
+	executor := &mockExecutor{
+		do: func(context.Context, *httpclient.Request) (*httpclient.Response, error) {
+			execCalls++
+			return nil, upstreamErr
+		},
+	}
+	outbound := &mockRequestFallbackOutbound{
+		mockOutbound: &mockOutbound{},
+		canFallback: func(*llm.Request, error) bool {
+			return true
+		},
+		prepareFallback: func(context.Context, *llm.Request) error {
+			return prepareErr
+		},
+	}
+
+	p := &pipeline{
+		Executor: executor,
+		Inbound:  &mockInbound{},
+		Outbound: outbound,
+	}
+
+	_, err := p.Process(context.Background(), &httpclient.Request{})
+	require.ErrorIs(t, err, upstreamErr)
+	require.NotErrorIs(t, err, prepareErr)
+	require.Equal(t, 1, execCalls)
+}
+
 func TestPipeline_Process_RetryPreservesOriginalStreamIntent(t *testing.T) {
 	ctx := context.Background()
 

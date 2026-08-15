@@ -698,11 +698,14 @@ func (p *PersistentOutboundTransformer) CanFallback(request *llm.Request, err er
 // PrepareFallback rewrites the shared request, discards attempt-local state,
 // and resolves candidates against the new text-only request shape.
 func (p *PersistentOutboundTransformer) PrepareFallback(ctx context.Context, request *llm.Request) error {
-	if p.state == nil || request == nil || !applyUnsupportedImageFallback(p.state, request) {
+	if p.state == nil || request == nil {
 		return errors.New("unsupported image fallback has no image input to replace")
 	}
 	if p.state.ReselectCandidates == nil {
 		return errors.New("unsupported image fallback candidate selector is unavailable")
+	}
+	if !applyUnsupportedImageFallback(p.state, request) {
+		return errors.New("unsupported image fallback has no image input to replace")
 	}
 
 	p.resetPassThroughStreamState()

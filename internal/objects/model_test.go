@@ -41,9 +41,15 @@ func TestModelCardSupportsVision(t *testing.T) {
 func TestModelSettingsUnsupportedImageFallbackJSONCompatibility(t *testing.T) {
 	var legacy ModelSettings
 	require.NoError(t, json.Unmarshal([]byte(`{"visionDelegation":{"enabled":false}}`), &legacy))
-	require.False(t, legacy.UnsupportedImageFallback.Enabled)
+	require.False(t, legacy.UnsupportedImageFallback.IsEnabled())
+	require.Nil(t, legacy.UnsupportedImageFallback.Enabled)
 
 	var configured ModelSettings
 	require.NoError(t, json.Unmarshal([]byte(`{"unsupportedImageFallback":{"enabled":true}}`), &configured))
-	require.True(t, configured.UnsupportedImageFallback.Enabled)
+	require.True(t, configured.UnsupportedImageFallback.IsEnabled())
+
+	var disabled ModelSettings
+	require.NoError(t, json.Unmarshal([]byte(`{"unsupportedImageFallback":{"enabled":false}}`), &disabled))
+	require.False(t, disabled.UnsupportedImageFallback.IsEnabled())
+	require.NotNil(t, disabled.UnsupportedImageFallback.Enabled)
 }

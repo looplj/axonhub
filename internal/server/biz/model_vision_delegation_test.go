@@ -47,6 +47,11 @@ func TestModelServiceVisionDelegationCandidatesAndValidation(t *testing.T) {
 		&objects.ModelCard{Vision: true},
 		visionDelegationTestSettings(ch.ID, "chained-model", "vision-model", true),
 	)
+	createVisionDelegationTestModel(
+		t, ctx, client, ch.ID, "text-target", model.StatusEnabled,
+		&objects.ModelCard{Modalities: objects.ModelCardModalities{Input: []string{"text"}}},
+		&objects.ModelSettings{},
+	)
 
 	candidates, err := svc.ListVisionDelegationCandidates(ctx, "source-model")
 	require.NoError(t, err)
@@ -80,6 +85,11 @@ func TestModelServiceVisionDelegationCandidatesAndValidation(t *testing.T) {
 		visionDelegationTestSettings(ch.ID, "source-model", "chained-model", true),
 	)
 	require.ErrorContains(t, err, "delegates vision itself")
+	_, err = svc.validateVisionDelegation(
+		ctx, "source-model", model.TypeChat, &objects.ModelCard{},
+		visionDelegationTestSettings(ch.ID, "source-model", "text-target", true),
+	)
+	require.ErrorIs(t, err, ErrVisionDelegationTargetImageUnsupported)
 
 	effective := svc.EffectiveModelCard(ctx, textSource)
 	require.NotNil(t, effective)
@@ -276,6 +286,33 @@ func TestModelServiceUpdateModelAllowsUnrelatedChangeWithStaleVisionTarget(t *te
 	require.NoError(t, err)
 	require.Equal(t, "Renamed source", updated.Name)
 	require.True(t, updated.Settings.VisionDelegation.Enabled)
+}
+
+func TestModelServiceUpdateModelPreservesOmittedUnsupportedImageFallback(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	ch := createVisionDelegationTestChannel(t, ctx, client, "source-model")
+	svc := &ModelService{AbstractService: &AbstractService{db: client}}
+	settings := visionDelegationTestSettings(ch.ID, "source-model", "", false)
+	settings.UnsupportedImageFallback.Enabled = lo.ToPtr(true)
+	source := createVisionDelegationTestModel(
+		t, ctx, client, ch.ID, "source-model", model.StatusEnabled,
+		&objects.ModelCard{Modalities: objects.ModelCardModalities{Input: []string{"text"}}}, settings,
+	)
+
+	partialSettings := *settings
+	partialSettings.UnsupportedImageFallback = objects.UnsupportedImageFallback{}
+	updated, err := svc.UpdateModel(ctx, source.ID, &ent.UpdateModelInput{Settings: &partialSettings})
+	require.NoError(t, err)
+	require.True(t, updated.Settings.UnsupportedImageFallback.IsEnabled())
+
+	partialSettings.UnsupportedImageFallback.Enabled = lo.ToPtr(false)
+	updated, err = svc.UpdateModel(ctx, source.ID, &ent.UpdateModelInput{Settings: &partialSettings})
+	require.NoError(t, err)
+	require.False(t, updated.Settings.UnsupportedImageFallback.IsEnabled())
+	require.NotNil(t, updated.Settings.UnsupportedImageFallback.Enabled)
 }
 
 func TestModelServiceVisionDelegationBulkLifecycle(t *testing.T) {

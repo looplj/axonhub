@@ -46,7 +46,7 @@ func TestUnsupportedImageFallbackMiddleware(t *testing.T) {
 				Settings: &objects.ModelSettings{
 					VisionDelegation: objects.VisionDelegation{Enabled: tt.delegation},
 					UnsupportedImageFallback: objects.UnsupportedImageFallback{
-						Enabled: tt.enabled,
+						Enabled: lo.ToPtr(tt.enabled),
 					},
 				},
 			}}
@@ -133,6 +133,17 @@ func TestIsUnsupportedImageInputError(t *testing.T) {
 			require.Equal(t, tt.want, isUnsupportedImageInputError(tt.err))
 		})
 	}
+}
+
+func TestPrepareUnsupportedImageFallbackValidatesSelectorBeforeRewrite(t *testing.T) {
+	state := &PersistenceState{}
+	request := requestWithImage("Describe this image")
+	outbound := &PersistentOutboundTransformer{state: state}
+
+	err := outbound.PrepareFallback(t.Context(), request)
+	require.ErrorContains(t, err, "candidate selector is unavailable")
+	require.True(t, detectRequestContentFeatures(request).hasImage)
+	require.False(t, state.DisableRequestBodyPassThrough)
 }
 
 func TestTextOnlyUnsupportedImageFallbackRunsBeforePrimaryCall(t *testing.T) {
@@ -275,7 +286,7 @@ func updateSourceImageHandling(
 	source, err := fixture.client.Model.Query().Where(model.ModelIDEQ("text-model")).Only(fixture.ctx)
 	require.NoError(t, err)
 	source.Settings.VisionDelegation.Enabled = delegationEnabled
-	source.Settings.UnsupportedImageFallback.Enabled = fallbackEnabled
+	source.Settings.UnsupportedImageFallback.Enabled = lo.ToPtr(fallbackEnabled)
 	source.ModelCard.Vision = nativeVision
 	if nativeVision {
 		source.ModelCard.Modalities.Input = []string{"text", "image"}

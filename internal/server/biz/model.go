@@ -502,7 +502,11 @@ func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.Upd
 		}
 		nextSettings := existing.Settings
 		if input.Settings != nil {
-			nextSettings = input.Settings
+			normalizedSettings := *input.Settings
+			if normalizedSettings.UnsupportedImageFallback.Enabled == nil && existing.Settings != nil {
+				normalizedSettings.UnsupportedImageFallback = existing.Settings.UnsupportedImageFallback
+			}
+			nextSettings = &normalizedSettings
 		}
 		if nextSettings != nil && nextSettings.VisionDelegation.TargetModelID != nil {
 			// Normalize a copy: when input.Settings is nil, nextSettings aliases

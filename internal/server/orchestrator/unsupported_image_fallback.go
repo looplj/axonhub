@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/pipeline"
 )
@@ -41,7 +42,7 @@ func unsupportedImageFallback(inbound *PersistentInboundTransformer) pipeline.Mi
 }
 
 func unsupportedImageFallbackEnabled(source *ent.Model) bool {
-	return source != nil && source.Settings != nil && source.Settings.UnsupportedImageFallback.Enabled
+	return source != nil && source.Settings != nil && source.Settings.UnsupportedImageFallback.IsEnabled()
 }
 
 func modelDeclaresTextOnly(source *ent.Model) bool {
@@ -89,10 +90,7 @@ func isUnsupportedImageInputError(err error) bool {
 }
 
 func isVisionDelegationTargetImageUnsupportedError(err error) bool {
-	return err != nil && strings.Contains(
-		strings.ToLower(err.Error()),
-		"does not support image input natively",
-	)
+	return errors.Is(err, biz.ErrVisionDelegationTargetImageUnsupported)
 }
 
 func applyUnsupportedImageFallback(state *PersistenceState, request *llm.Request) bool {

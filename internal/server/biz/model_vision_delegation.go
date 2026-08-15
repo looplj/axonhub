@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,6 +15,9 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 )
+
+// ErrVisionDelegationTargetImageUnsupported identifies a configured target that cannot accept images.
+var ErrVisionDelegationTargetImageUnsupported = errors.New("vision delegation target does not support image input natively")
 
 // normalizeVisionDelegationSettings trims the configured target model ID in place.
 // Callers own the settings being persisted (create/update inputs), so mutating
@@ -85,7 +89,7 @@ func (svc *ModelService) validateVisionDelegationTarget(ctx context.Context, sou
 		return fmt.Errorf("vision delegation target model %q is not a chat model", target.ModelID)
 	}
 	if target.ModelCard == nil || !target.ModelCard.SupportsVision() {
-		return fmt.Errorf("vision delegation target model %q does not support image input natively", target.ModelID)
+		return fmt.Errorf("%w: model %q", ErrVisionDelegationTargetImageUnsupported, target.ModelID)
 	}
 	if target.Settings != nil && target.Settings.VisionDelegation.Enabled {
 		return fmt.Errorf("vision delegation target model %q delegates vision itself", target.ModelID)

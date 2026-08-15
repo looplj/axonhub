@@ -209,3 +209,15 @@ func (r *queryResolver) QueryUnassociatedChannels(ctx context.Context) ([]*biz.U
 func (r *queryResolver) VisionDelegationCandidates(ctx context.Context, sourceModelID string) ([]*ent.Model, error) {
 	return r.modelService.ListVisionDelegationCandidates(ctx, sourceModelID)
 }
+
+// Enabled is the resolver for the enabled field.
+func (r *unsupportedImageFallbackResolver) Enabled(ctx context.Context, obj *objects.UnsupportedImageFallback) (bool, error) {
+	return obj.IsEnabled(), nil
+}
+
+// UnsupportedImageFallback returns UnsupportedImageFallbackResolver implementation.
+func (r *Resolver) UnsupportedImageFallback() UnsupportedImageFallbackResolver {
+	return &unsupportedImageFallbackResolver{r}
+}
+
+type unsupportedImageFallbackResolver struct{ *Resolver }
