@@ -86,6 +86,9 @@ const MODELS_QUERY = `
               enabled
               targetModelID
             }
+            unsupportedImageFallback {
+              enabled
+            }
             associations {
               type
               priority
@@ -211,6 +214,9 @@ const CREATE_MODEL_MUTATION = `
           enabled
           targetModelID
         }
+        unsupportedImageFallback {
+          enabled
+        }
         associations {
           type
           priority
@@ -318,6 +324,9 @@ const BULK_CREATE_MODELS_MUTATION = `
           enabled
           targetModelID
         }
+        unsupportedImageFallback {
+          enabled
+        }
         associations {
           type
           priority
@@ -424,6 +433,9 @@ const UPDATE_MODEL_MUTATION = `
         visionDelegation {
           enabled
           targetModelID
+        }
+        unsupportedImageFallback {
+          enabled
         }
         associations {
           type

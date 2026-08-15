@@ -151,6 +151,12 @@ export const modelSettingsSchema = z.object({
     })
     .optional()
     .default({ enabled: false, targetModelID: null }),
+  unsupportedImageFallback: z
+    .object({
+      enabled: z.boolean().optional().default(false),
+    })
+    .optional()
+    .default({ enabled: false }),
 });
 export type ModelSettings = z.infer<typeof modelSettingsSchema>;
 

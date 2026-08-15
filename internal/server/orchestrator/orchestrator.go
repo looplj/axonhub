@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/pipeline/cc"
@@ -249,6 +250,17 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	middlewares = append(middlewares, processor.Middlewares...)
 
 	inbound, outbound := NewPersistentTransformers(state, processor.Inbound, processor.Middlewares...)
+	candidateSelection := selectCandidates(inbound, processor.quotaProvider, processor.SystemService)
+	state.ReselectCandidates = func(ctx context.Context, request *llm.Request) error {
+		state.ChannelModelsCandidates = nil
+		state.CurrentCandidateIndex = 0
+		state.CurrentCandidate = nil
+		state.CurrentModelIndex = 0
+
+		_, err := candidateSelection.OnInboundLlmRequest(ctx, request)
+
+		return err
+	}
 
 	// Add inbound middlewares (executed after inbound.TransformRequest)
 	middlewares = append(middlewares,
@@ -257,9 +269,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		checkApiKeyModelAccess(inbound),
 		applyModelMapping(inbound),
 		resolveVisionDelegationSourceModel(inbound),
+		unsupportedImageFallback(inbound),
 		// Non-delegated requests select normally here. Delegated image requests
 		// are deferred until the post-rewrite selection below.
-		selectCandidates(inbound, processor.quotaProvider, processor.SystemService),
+		candidateSelection,
 		injectPrompts(inbound),
 		protectPrompts(inbound),
 		// Response pass-through middlewares run before persistRequest so the raw provider
@@ -270,7 +283,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		visionDelegation(processor, inbound),
 		// Vision delegation rewrites image requests into text evidence. Conditional
 		// associations must therefore be evaluated against the rewritten request.
-		selectCandidates(inbound, processor.quotaProvider, processor.SystemService),
+		candidateSelection,
 	)
 
 	// Add outbound middlewares (executed after outbound.TransformRequest)

@@ -71,6 +71,29 @@ type mockOutbound struct {
 	aggregateStreamChunks func(context.Context, []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
 
+type mockRequestFallbackOutbound struct {
+	*mockOutbound
+
+	canFallback     func(*llm.Request, error) bool
+	prepareFallback func(context.Context, *llm.Request) error
+}
+
+func (m *mockRequestFallbackOutbound) CanFallback(request *llm.Request, err error) bool {
+	if m.canFallback != nil {
+		return m.canFallback(request, err)
+	}
+
+	return false
+}
+
+func (m *mockRequestFallbackOutbound) PrepareFallback(ctx context.Context, request *llm.Request) error {
+	if m.prepareFallback != nil {
+		return m.prepareFallback(ctx, request)
+	}
+
+	return nil
+}
+
 func (m *mockOutbound) APIFormat() llm.APIFormat { return m.apiFormat }
 func (m *mockOutbound) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
 	if m.transformRequest != nil {
@@ -394,6 +417,49 @@ func TestPipeline_Process_RetryLogic(t *testing.T) {
 		require.Nil(t, res)
 		require.Equal(t, 4, execCalls)
 	})
+}
+
+func TestPipeline_Process_RequestFallbackRunsOnceAfterOrdinaryRetries(t *testing.T) {
+	ctx := context.Background()
+	execCalls := 0
+	executor := &mockExecutor{
+		do: func(context.Context, *httpclient.Request) (*httpclient.Response, error) {
+			execCalls++
+			return nil, errors.New("upstream rejected request")
+		},
+	}
+
+	retryCalls := 0
+	fallbackCalls := 0
+	outbound := &mockRequestFallbackOutbound{
+		mockOutbound: &mockOutbound{
+			canRetry: func(error) bool { return true },
+			prepareForRetry: func(context.Context) error {
+				retryCalls++
+				return nil
+			},
+		},
+		canFallback: func(*llm.Request, error) bool { return true },
+		prepareFallback: func(_ context.Context, request *llm.Request) error {
+			fallbackCalls++
+			require.Equal(t, 1, retryCalls, "fallback must wait for the initial retry budget")
+			request.Model = "fallback-model"
+			return nil
+		},
+	}
+
+	p := &pipeline{
+		Executor:              executor,
+		Inbound:               &mockInbound{},
+		Outbound:              outbound,
+		maxSameChannelRetries: 1,
+	}
+
+	_, err := p.Process(ctx, &httpclient.Request{})
+	require.Error(t, err)
+	require.Equal(t, 4, execCalls, "the retry budget is available once before and once after the rewrite")
+	require.Equal(t, 2, retryCalls)
+	require.Equal(t, 1, fallbackCalls)
 }
 
 func TestPipeline_Process_RetryPreservesOriginalStreamIntent(t *testing.T) {

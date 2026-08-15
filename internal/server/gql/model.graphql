@@ -41,11 +41,16 @@ type ModelSettings {
   loadBalancerStrategy: String!
   traceStickyMode: String!
   visionDelegation: VisionDelegation!
+  unsupportedImageFallback: UnsupportedImageFallback!
 }
 
 type VisionDelegation {
   enabled: Boolean!
   targetModelID: String
+}
+
+type UnsupportedImageFallback {
+  enabled: Boolean!
 }
 
 type ModelAssociation {
@@ -144,11 +149,16 @@ input ModelSettingsInput {
   loadBalancerStrategy: String
   traceStickyMode: String
   visionDelegation: VisionDelegationInput
+  unsupportedImageFallback: UnsupportedImageFallbackInput
 }
 
 input VisionDelegationInput {
   enabled: Boolean
   targetModelID: String
+}
+
+input UnsupportedImageFallbackInput {
+  enabled: Boolean
 }
 
 input ModelAssociationInput {

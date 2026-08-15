@@ -35,6 +35,13 @@ type ChannelRetryable interface {
 	PrepareForRetry(ctx context.Context) error
 }
 
+// RequestFallback supports a one-time semantic rewrite after ordinary retries
+// are exhausted, such as replacing unsupported image inputs with text.
+type RequestFallback interface {
+	CanFallback(request *llm.Request, err error) bool
+	PrepareFallback(ctx context.Context, request *llm.Request) error
+}
+
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
@@ -275,6 +282,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 	channelSwitches := 0
 	sameChannelRetries := 0
+	fallbackApplied := false
 
 	// Step 3: Process the request
 	for {
@@ -338,7 +346,22 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 			}
 		}
 
-		// If no retry strategy worked, break and return last error
+		// A semantic request fallback is independent from transport retry limits.
+		// It runs only after the configured same-channel and cross-channel options
+		// are exhausted, and may reset channel selection for the rewritten request.
+		if !canRetry && !fallbackApplied {
+			if fallback, ok := p.Outbound.(RequestFallback); ok && fallback.CanFallback(llmRequest, lastErr) {
+				if err := fallback.PrepareFallback(ctx, llmRequest); err != nil {
+					return nil, fmt.Errorf("failed to prepare request fallback: %w", err)
+				}
+				fallbackApplied = true
+				channelSwitches = 0
+				sameChannelRetries = 0
+				canRetry = true
+			}
+		}
+
+		// If no retry or fallback strategy worked, break and return last error.
 		if !canRetry {
 			break
 		}

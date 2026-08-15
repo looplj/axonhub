@@ -926,6 +926,7 @@ type ComplexityRoot struct {
 		DisableDeveloperSettingsInheritance func(childComplexity int) int
 		LoadBalancerStrategy                func(childComplexity int) int
 		TraceStickyMode                     func(childComplexity int) int
+		UnsupportedImageFallback            func(childComplexity int) int
 		VisionDelegation                    func(childComplexity int) int
 	}
 
@@ -1923,6 +1924,10 @@ type ComplexityRoot struct {
 	UnassociatedChannel struct {
 		Channel func(childComplexity int) int
 		Models  func(childComplexity int) int
+	}
+
+	UnsupportedImageFallback struct {
+		Enabled func(childComplexity int) int
 	}
 
 	UpstreamErrorPolicy struct {
@@ -5604,6 +5609,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelSettings.TraceStickyMode(childComplexity), true
+	case "ModelSettings.unsupportedImageFallback":
+		if e.complexity.ModelSettings.UnsupportedImageFallback == nil {
+			break
+		}
+
+		return e.complexity.ModelSettings.UnsupportedImageFallback(childComplexity), true
 	case "ModelSettings.visionDelegation":
 		if e.complexity.ModelSettings.VisionDelegation == nil {
 			break
@@ -10678,6 +10689,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UnassociatedChannel.Models(childComplexity), true
 
+	case "UnsupportedImageFallback.enabled":
+		if e.complexity.UnsupportedImageFallback.Enabled == nil {
+			break
+		}
+
+		return e.complexity.UnsupportedImageFallback.Enabled(childComplexity), true
+
 	case "UpstreamErrorPolicy.customMessage":
 		if e.complexity.UpstreamErrorPolicy.CustomMessage == nil {
 			break
@@ -11671,6 +11689,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTraceWhereInput,
 		ec.unmarshalInputTransformOptionsInput,
 		ec.unmarshalInputTriggerGcCleanupInput,
+		ec.unmarshalInputUnsupportedImageFallbackInput,
 		ec.unmarshalInputUpdateAPIKeyInput,
 		ec.unmarshalInputUpdateAPIKeyProfileTemplateInput,
 		ec.unmarshalInputUpdateAPIKeyProfilesInput,
@@ -29203,6 +29222,8 @@ func (ec *executionContext) fieldContext_Model_settings(_ context.Context, field
 				return ec.fieldContext_ModelSettings_traceStickyMode(ctx, field)
 			case "visionDelegation":
 				return ec.fieldContext_ModelSettings_visionDelegation(ctx, field)
+			case "unsupportedImageFallback":
+				return ec.fieldContext_ModelSettings_unsupportedImageFallback(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelSettings", field.Name)
 		},
@@ -31411,6 +31432,39 @@ func (ec *executionContext) fieldContext_ModelSettings_visionDelegation(_ contex
 				return ec.fieldContext_VisionDelegation_targetModelID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type VisionDelegation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelSettings_unsupportedImageFallback(ctx context.Context, field graphql.CollectedField, obj *objects.ModelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelSettings_unsupportedImageFallback,
+		func(ctx context.Context) (any, error) {
+			return obj.UnsupportedImageFallback, nil
+		},
+		nil,
+		ec.marshalNUnsupportedImageFallback2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUnsupportedImageFallback,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelSettings_unsupportedImageFallback(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_UnsupportedImageFallback_enabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UnsupportedImageFallback", field.Name)
 		},
 	}
 	return fc, nil
@@ -57369,6 +57423,35 @@ func (ec *executionContext) fieldContext_UnassociatedChannel_models(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _UnsupportedImageFallback_enabled(ctx context.Context, field graphql.CollectedField, obj *objects.UnsupportedImageFallback) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UnsupportedImageFallback_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UnsupportedImageFallback_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UnsupportedImageFallback",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UpstreamErrorPolicy_mode(ctx context.Context, field graphql.CollectedField, obj *biz.UpstreamErrorPolicy) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -72755,7 +72838,7 @@ func (ec *executionContext) unmarshalInputModelSettingsInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"disableDeveloperSettingsInheritance", "associations", "loadBalancerStrategy", "traceStickyMode", "visionDelegation"}
+	fieldsInOrder := [...]string{"disableDeveloperSettingsInheritance", "associations", "loadBalancerStrategy", "traceStickyMode", "visionDelegation", "unsupportedImageFallback"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -72797,6 +72880,13 @@ func (ec *executionContext) unmarshalInputModelSettingsInput(ctx context.Context
 				return it, err
 			}
 			it.VisionDelegation = data
+		case "unsupportedImageFallback":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unsupportedImageFallback"))
+			data, err := ec.unmarshalOUnsupportedImageFallbackInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUnsupportedImageFallback(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UnsupportedImageFallback = data
 		}
 	}
 
@@ -83689,6 +83779,33 @@ func (ec *executionContext) unmarshalInputTriggerGcCleanupInput(ctx context.Cont
 				return it, err
 			}
 			it.UsageLogsCleanupDays = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUnsupportedImageFallbackInput(ctx context.Context, obj any) (objects.UnsupportedImageFallback, error) {
+	var it objects.UnsupportedImageFallback
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
 		}
 	}
 
@@ -97207,6 +97324,11 @@ func (ec *executionContext) _ModelSettings(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "unsupportedImageFallback":
+			out.Values[i] = ec._ModelSettings_unsupportedImageFallback(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -107745,6 +107867,45 @@ func (ec *executionContext) _UnassociatedChannel(ctx context.Context, sel ast.Se
 	return out
 }
 
+var unsupportedImageFallbackImplementors = []string{"UnsupportedImageFallback"}
+
+func (ec *executionContext) _UnsupportedImageFallback(ctx context.Context, sel ast.SelectionSet, obj *objects.UnsupportedImageFallback) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, unsupportedImageFallbackImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UnsupportedImageFallback")
+		case "enabled":
+			out.Values[i] = ec._UnsupportedImageFallback_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var upstreamErrorPolicyImplementors = []string{"UpstreamErrorPolicy"}
 
 func (ec *executionContext) _UpstreamErrorPolicy(ctx context.Context, sel ast.SelectionSet, obj *biz.UpstreamErrorPolicy) graphql.Marshaler {
@@ -107836,39 +107997,6 @@ func (ec *executionContext) _UsageLog(ctx context.Context, sel ast.SelectionSet,
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "requestExecutionID":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._UsageLog_requestExecutionID(ctx, field, obj)
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "createdAt":
 			out.Values[i] = ec._UsageLog_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -107892,6 +108020,39 @@ func (ec *executionContext) _UsageLog(ctx context.Context, sel ast.SelectionSet,
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "requestExecutionID":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._UsageLog_requestExecutionID(ctx, field, obj)
 				return res
 			}
 
@@ -115877,6 +116038,10 @@ func (ec *executionContext) marshalNUnassociatedChannel2ᚖgithubᚗcomᚋlooplj
 	return ec._UnassociatedChannel(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNUnsupportedImageFallback2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUnsupportedImageFallback(ctx context.Context, sel ast.SelectionSet, v objects.UnsupportedImageFallback) graphql.Marshaler {
+	return ec._UnsupportedImageFallback(ctx, sel, &v)
+}
+
 func (ec *executionContext) unmarshalNUpdateAPIKeyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUpdateAPIKeyInput(ctx context.Context, v any) (ent.UpdateAPIKeyInput, error) {
 	res, err := ec.unmarshalInputUpdateAPIKeyInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -122874,6 +123039,11 @@ func (ec *executionContext) marshalOTransformOptions2githubᚗcomᚋloopljᚋaxo
 
 func (ec *executionContext) unmarshalOTransformOptionsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐTransformOptions(ctx context.Context, v any) (objects.TransformOptions, error) {
 	res, err := ec.unmarshalInputTransformOptionsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOUnsupportedImageFallbackInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐUnsupportedImageFallback(ctx context.Context, v any) (objects.UnsupportedImageFallback, error) {
+	res, err := ec.unmarshalInputUnsupportedImageFallbackInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

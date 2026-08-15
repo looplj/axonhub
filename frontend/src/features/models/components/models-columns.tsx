@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { format } from 'date-fns';
 import { CellContext, ColumnDef, Row, Table } from '@tanstack/react-table';
-import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight, IconScanEye } from '@tabler/icons-react';
+import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight, IconPhotoOff, IconScanEye } from '@tabler/icons-react';
 import * as Icons from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -80,13 +80,14 @@ function AssociationRulesCell({ row }: { row: Row<Model> }) {
   );
 }
 
-function VisionDelegationCell({ row, table }: CellContext<Model, unknown>) {
+function ImageHandlingCell({ row, table }: CellContext<Model, unknown>) {
   const { t } = useTranslation();
   const { setOpen, setCurrentRow } = useModels();
   const { channelPermissions } = usePermissions();
   const model = row.original;
   const targetModelID = model.settings?.visionDelegation?.targetModelID;
   const enabled = Boolean(model.settings?.visionDelegation?.enabled && targetModelID);
+  const fallbackEnabled = model.settings?.unsupportedImageFallback?.enabled ?? false;
   const targetModel = enabled ? table.options.data.find((candidate) => candidate.modelID === targetModelID) : undefined;
   const targetLabel = targetModel?.name || targetModelID;
   const targetDescription = targetModel ? `${targetModel.name} (${targetModel.modelID})` : targetModelID;
@@ -98,8 +99,21 @@ function VisionDelegationCell({ row, table }: CellContext<Model, unknown>) {
 
   const content = enabled ? (
     <span className='block max-w-full truncate text-xs font-medium'>{targetLabel}</span>
+  ) : fallbackEnabled ? (
+    <IconPhotoOff className='h-4 w-4 text-amber-600 dark:text-amber-400' />
   ) : (
     <IconScanEye className='text-muted-foreground h-4 w-4' />
+  );
+
+  const tooltipContent = enabled ? (
+    <div className='space-y-1'>
+      <div>{targetDescription}</div>
+      {fallbackEnabled && <div>{t('models.dialogs.unsupportedImageFallback.enabledStatus')}</div>}
+    </div>
+  ) : fallbackEnabled ? (
+    t('models.dialogs.unsupportedImageFallback.enabledStatus')
+  ) : (
+    t('models.dialogs.imageHandling.configure')
   );
 
   return (
@@ -113,7 +127,7 @@ function VisionDelegationCell({ row, table }: CellContext<Model, unknown>) {
               size={enabled ? 'sm' : 'icon'}
               className={enabled ? 'h-8 max-w-full px-2' : 'h-8 w-8'}
               onClick={handleOpen}
-              aria-label={t('models.dialogs.visionDelegation.configure')}
+              aria-label={t('models.dialogs.imageHandling.configure')}
             >
               {content}
             </Button>
@@ -123,7 +137,7 @@ function VisionDelegationCell({ row, table }: CellContext<Model, unknown>) {
             </span>
           )}
         </TooltipTrigger>
-        <TooltipContent>{targetDescription || t('models.dialogs.visionDelegation.configure')}</TooltipContent>
+        <TooltipContent>{tooltipContent}</TooltipContent>
       </Tooltip>
     </div>
   );
@@ -293,9 +307,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     {
       id: 'visionDelegation',
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title={t('models.columns.visionDelegation')} className='w-full text-center' />
+        <DataTableColumnHeader column={column} title={t('models.columns.imageHandling')} className='w-full text-center' />
       ),
-      cell: VisionDelegationCell,
+      cell: ImageHandlingCell,
       enableSorting: false,
       meta: {
         className: 'w-32 min-w-32 max-w-32 text-center',

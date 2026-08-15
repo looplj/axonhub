@@ -15,6 +15,7 @@ export function ModelsVisionDelegationDialog() {
   const dialogContentRef = useRef<HTMLDivElement>(null);
   const [enabled, setEnabled] = useState(false);
   const [targetModelID, setTargetModelID] = useState('');
+  const [fallbackEnabled, setFallbackEnabled] = useState(false);
   const isOpen = open === 'visionDelegation';
   const { data: candidates = [], isLoading } = useVisionDelegationCandidates(currentRow?.modelID, isOpen);
   const supportsNativeVision = Boolean(
@@ -25,6 +26,7 @@ export function ModelsVisionDelegationDialog() {
     if (!isOpen || !currentRow) return;
     setEnabled(currentRow.settings?.visionDelegation?.enabled ?? false);
     setTargetModelID(currentRow.settings?.visionDelegation?.targetModelID ?? '');
+    setFallbackEnabled(currentRow.settings?.unsupportedImageFallback?.enabled ?? false);
   }, [currentRow, isOpen]);
 
   const candidateOptions = useMemo(() => {
@@ -62,6 +64,9 @@ export function ModelsVisionDelegationDialog() {
               enabled,
               targetModelID: targetModelID || null,
             },
+            unsupportedImageFallback: {
+              enabled: fallbackEnabled,
+            },
           },
         },
       });
@@ -69,7 +74,7 @@ export function ModelsVisionDelegationDialog() {
     } catch (_error) {
       // Error is handled by the mutation.
     }
-  }, [currentRow, enabled, handleClose, supportsNativeVision, targetAvailable, targetModelID, updateModel]);
+  }, [currentRow, enabled, fallbackEnabled, handleClose, supportsNativeVision, targetAvailable, targetModelID, updateModel]);
 
   if (!currentRow) return null;
 
@@ -77,49 +82,77 @@ export function ModelsVisionDelegationDialog() {
     <Dialog open={isOpen} onOpenChange={(nextOpen) => !nextOpen && handleClose()}>
       <DialogContent ref={dialogContentRef} className='sm:max-w-lg'>
         <DialogHeader>
-          <DialogTitle>{t('models.dialogs.visionDelegation.title')}</DialogTitle>
-          <DialogDescription>{t('models.dialogs.visionDelegation.description', { name: currentRow.name })}</DialogDescription>
+          <DialogTitle>{t('models.dialogs.imageHandling.title')}</DialogTitle>
+          <DialogDescription>{t('models.dialogs.imageHandling.description', { name: currentRow.name })}</DialogDescription>
         </DialogHeader>
 
         <div className='space-y-5 py-2'>
-          <div className='flex items-center justify-between gap-4 border-b pb-4'>
-            <Label htmlFor='vision-delegation-enabled' className='text-sm font-medium'>
-              {t('models.dialogs.visionDelegation.enabled')}
-            </Label>
-            <Switch id='vision-delegation-enabled' checked={enabled} onCheckedChange={setEnabled} disabled={updateModel.isPending} />
-          </div>
-
-          {enabled && (
-            <div className='space-y-2'>
-              {supportsNativeVision && (
-                <p role='alert' className='text-sm font-medium text-red-600 dark:text-red-400'>
-                  {t('models.dialogs.visionDelegation.nativeVisionWarning')}
-                </p>
-              )}
-              <Label>{t('models.dialogs.visionDelegation.target')}</Label>
-              <AutoCompleteSelect
-                selectedValue={targetModelID}
-                onSelectedValueChange={setTargetModelID}
-                items={candidateOptions}
-                isLoading={isLoading}
-                placeholder={t('models.dialogs.visionDelegation.placeholder')}
-                emptyMessage={t('models.dialogs.visionDelegation.noCandidates')}
-                portalContainer={dialogContentRef.current}
-                inputClassName='h-9'
-              />
-              {(isLoading || targetModelID) && (
-                <p
-                  className={targetAvailable ? 'text-xs text-green-600 dark:text-green-400' : 'text-xs text-amber-600 dark:text-amber-400'}
-                >
-                  {isLoading
-                    ? t('models.dialogs.visionDelegation.checking')
-                    : targetAvailable
-                      ? t('models.dialogs.visionDelegation.available')
-                      : t('models.dialogs.visionDelegation.unavailable')}
-                </p>
-              )}
+          <section className='space-y-4'>
+            <div>
+              <h3 className='text-sm font-medium'>{t('models.dialogs.visionDelegation.title')}</h3>
+              <p className='text-muted-foreground mt-1 text-xs'>
+                {t('models.dialogs.visionDelegation.description', { name: currentRow.name })}
+              </p>
             </div>
-          )}
+
+            <div className='flex items-center justify-between gap-4'>
+              <Label htmlFor='vision-delegation-enabled' className='text-sm font-medium'>
+                {t('models.dialogs.visionDelegation.enabled')}
+              </Label>
+              <Switch id='vision-delegation-enabled' checked={enabled} onCheckedChange={setEnabled} disabled={updateModel.isPending} />
+            </div>
+
+            {enabled && (
+              <div className='space-y-2'>
+                {supportsNativeVision && (
+                  <p role='alert' className='text-sm font-medium text-red-600 dark:text-red-400'>
+                    {t('models.dialogs.visionDelegation.nativeVisionWarning')}
+                  </p>
+                )}
+                <Label>{t('models.dialogs.visionDelegation.target')}</Label>
+                <AutoCompleteSelect
+                  selectedValue={targetModelID}
+                  onSelectedValueChange={setTargetModelID}
+                  items={candidateOptions}
+                  isLoading={isLoading}
+                  placeholder={t('models.dialogs.visionDelegation.placeholder')}
+                  emptyMessage={t('models.dialogs.visionDelegation.noCandidates')}
+                  portalContainer={dialogContentRef.current}
+                  inputClassName='h-9'
+                />
+                {(isLoading || targetModelID) && (
+                  <p
+                    className={
+                      targetAvailable ? 'text-xs text-green-600 dark:text-green-400' : 'text-xs text-amber-600 dark:text-amber-400'
+                    }
+                  >
+                    {isLoading
+                      ? t('models.dialogs.visionDelegation.checking')
+                      : targetAvailable
+                        ? t('models.dialogs.visionDelegation.available')
+                        : t('models.dialogs.visionDelegation.unavailable')}
+                  </p>
+                )}
+              </div>
+            )}
+          </section>
+
+          <section className='space-y-3 border-t pt-4'>
+            <div className='flex items-center justify-between gap-4'>
+              <div>
+                <Label htmlFor='unsupported-image-fallback-enabled' className='text-sm font-medium'>
+                  {t('models.dialogs.unsupportedImageFallback.title')}
+                </Label>
+                <p className='text-muted-foreground mt-1 text-xs'>{t('models.dialogs.unsupportedImageFallback.description')}</p>
+              </div>
+              <Switch
+                id='unsupported-image-fallback-enabled'
+                checked={fallbackEnabled}
+                onCheckedChange={setFallbackEnabled}
+                disabled={updateModel.isPending}
+              />
+            </div>
+          </section>
         </div>
 
         <DialogFooter>

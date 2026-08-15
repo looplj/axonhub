@@ -60,12 +60,17 @@ type VisionDelegation struct {
 	TargetModelID *string `json:"targetModelID"`
 }
 
+type UnsupportedImageFallback struct {
+	Enabled bool `json:"enabled"`
+}
+
 type ModelSettings struct {
-	DisableDeveloperSettingsInheritance bool                `json:"disableDeveloperSettingsInheritance"`
-	Associations                        []*ModelAssociation `json:"associations"`
-	LoadBalancerStrategy                string              `json:"loadBalancerStrategy"`
-	TraceStickyMode                     string              `json:"traceStickyMode"`
-	VisionDelegation                    VisionDelegation    `json:"visionDelegation"`
+	DisableDeveloperSettingsInheritance bool                     `json:"disableDeveloperSettingsInheritance"`
+	Associations                        []*ModelAssociation      `json:"associations"`
+	LoadBalancerStrategy                string                   `json:"loadBalancerStrategy"`
+	TraceStickyMode                     string                   `json:"traceStickyMode"`
+	VisionDelegation                    VisionDelegation         `json:"visionDelegation"`
+	UnsupportedImageFallback            UnsupportedImageFallback `json:"unsupportedImageFallback"`
 }
 
 const (

@@ -101,6 +101,11 @@ func (m *visionDelegationMiddleware) OnInboundLlmRequest(ctx context.Context, re
 
 	target, err := state.ModelService.GetVisionDelegationTarget(ctx, state.SourceModel)
 	if err != nil {
+		if unsupportedImageFallbackEnabled(state.SourceModel) &&
+			isVisionDelegationTargetImageUnsupportedError(err) &&
+			applyUnsupportedImageFallback(state, request) {
+			return request, nil
+		}
 		return nil, visionDelegationError(
 			http.StatusBadRequest,
 			"vision_delegation_unavailable",
@@ -114,6 +119,11 @@ func (m *visionDelegationMiddleware) OnInboundLlmRequest(ctx context.Context, re
 		evidence, err = normalizeVisionEvidence(response)
 	}
 	if err != nil {
+		if unsupportedImageFallbackEnabled(state.SourceModel) &&
+			isUnsupportedImageInputError(err) &&
+			applyUnsupportedImageFallback(state, request) {
+			return request, nil
+		}
 		switch {
 		case errors.Is(err, pipeline.ErrNonStreamResponseTimeout),
 			errors.Is(err, context.DeadlineExceeded),

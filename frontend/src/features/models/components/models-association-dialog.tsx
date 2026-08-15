@@ -896,6 +896,7 @@ export function ModelsAssociationDialog() {
             loadBalancerStrategy: data.loadBalancerStrategy,
             traceStickyMode: data.traceStickyMode,
             visionDelegation: currentRow!.settings?.visionDelegation,
+            unsupportedImageFallback: currentRow!.settings?.unsupportedImageFallback,
           },
         },
       });

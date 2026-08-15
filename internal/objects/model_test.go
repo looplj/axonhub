@@ -1,6 +1,7 @@
 package objects
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
@@ -35,4 +36,14 @@ func TestModelCardSupportsVision(t *testing.T) {
 	require.True(t, ModelCard{Vision: true}.SupportsVision())
 	require.True(t, ModelCard{Modalities: ModelCardModalities{Input: []string{"text", "image"}}}.SupportsVision())
 	require.False(t, ModelCard{Modalities: ModelCardModalities{Input: []string{"text"}}}.SupportsVision())
+}
+
+func TestModelSettingsUnsupportedImageFallbackJSONCompatibility(t *testing.T) {
+	var legacy ModelSettings
+	require.NoError(t, json.Unmarshal([]byte(`{"visionDelegation":{"enabled":false}}`), &legacy))
+	require.False(t, legacy.UnsupportedImageFallback.Enabled)
+
+	var configured ModelSettings
+	require.NoError(t, json.Unmarshal([]byte(`{"unsupportedImageFallback":{"enabled":true}}`), &configured))
+	require.True(t, configured.UnsupportedImageFallback.Enabled)
 }

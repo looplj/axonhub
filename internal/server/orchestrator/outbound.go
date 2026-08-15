@@ -684,6 +684,46 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	return isRetryableErrorForChannel(err, p.state.CurrentCandidate.Channel)
 }
 
+// CanFallback reports whether the primary request may be retried once after
+// replacing image inputs that the upstream explicitly rejected.
+func (p *PersistentOutboundTransformer) CanFallback(request *llm.Request, err error) bool {
+	return p.state != nil &&
+		p.state.DelegationDepth == 0 &&
+		unsupportedImageFallbackEnabled(p.state.SourceModel) &&
+		request != nil &&
+		detectRequestContentFeatures(request).hasImage &&
+		isUnsupportedImageInputError(err)
+}
+
+// PrepareFallback rewrites the shared request, discards attempt-local state,
+// and resolves candidates against the new text-only request shape.
+func (p *PersistentOutboundTransformer) PrepareFallback(ctx context.Context, request *llm.Request) error {
+	if p.state == nil || request == nil || !applyUnsupportedImageFallback(p.state, request) {
+		return errors.New("unsupported image fallback has no image input to replace")
+	}
+	if p.state.ReselectCandidates == nil {
+		return errors.New("unsupported image fallback candidate selector is unavailable")
+	}
+
+	p.resetPassThroughStreamState()
+	p.state.RequestExec = nil
+	p.state.PassThroughApplied = false
+	p.state.RawProviderRequest = nil
+	p.state.RawProviderResponse = nil
+	p.state.LlmRequest = request
+	request.Model = p.state.OriginalModel
+
+	if err := p.state.ReselectCandidates(ctx, request); err != nil {
+		return fmt.Errorf("failed to select candidates for unsupported image fallback: %w", err)
+	}
+
+	log.Warn(ctx, "upstream rejected image input; retrying with unsupported image marker",
+		log.String("model", p.state.OriginalModel),
+	)
+
+	return nil
+}
+
 // PrepareForRetry implements the pipeline.ChannelRetryable interface.
 // This will reset the request execution for the same channel, so that the same request can be retried.
 // It will try the next model in the same channel if available.

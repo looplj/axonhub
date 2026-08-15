@@ -517,6 +517,12 @@ models:
   VisionDelegationInput:
     model:
       - github.com/looplj/axonhub/internal/objects.VisionDelegation
+  UnsupportedImageFallback:
+    model:
+      - github.com/looplj/axonhub/internal/objects.UnsupportedImageFallback
+  UnsupportedImageFallbackInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.UnsupportedImageFallback
   ModelAssociation:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelAssociation

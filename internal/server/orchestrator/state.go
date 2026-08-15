@@ -55,6 +55,8 @@ type PersistenceState struct {
 	ChannelModelsCandidates []*ChannelModelsCandidate
 	// Candidate state - current candidate index of ChannelModelsCandidates
 	CurrentCandidateIndex int
+	// ReselectCandidates resolves routes again after a semantic request rewrite.
+	ReselectCandidates func(context.Context, *llm.Request) error
 	// CurrentCandidate is the currently selected candidate of ChannelModelsCandidates
 	CurrentCandidate *ChannelModelsCandidate
 	// CurrentModelIndex is the current model index in CurrentCandidate.Models
