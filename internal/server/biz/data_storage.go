@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -39,8 +38,6 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 )
-
-var errDataExceedsLimit = errors.New("stored data exceeds byte limit")
 
 // DataStorageService handles data storage operations.
 type DataStorageService struct {
@@ -733,103 +730,6 @@ func (s *DataStorageService) LoadData(ctx context.Context, ds *ent.DataStorage, 
 	default:
 		return nil, fmt.Errorf("unsupported storage type: %s", ds.Type)
 	}
-}
-
-// LoadDataLimited loads at most maxBytes without materializing an oversized
-// external object. It checks advertised size first and also caps the reader so
-// incorrect or missing size metadata cannot bypass the limit.
-func (s *DataStorageService) LoadDataLimited(
-	ctx context.Context,
-	ds *ent.DataStorage,
-	key string,
-	maxBytes int64,
-) ([]byte, error) {
-	if maxBytes < 0 {
-		return nil, errDataExceedsLimit
-	}
-
-	switch ds.Type {
-	case datastorage.TypeDatabase:
-		if int64(len(key)) > maxBytes {
-			return nil, errDataExceedsLimit
-		}
-		return []byte(key), nil
-	case datastorage.TypeFs, datastorage.TypeS3, datastorage.TypeGcs, datastorage.TypeWebdav:
-		if store, ok, err := s.objectStoreFor(ctx, ds); err != nil {
-			return nil, err
-		} else if ok {
-			body, size, err := store.OpenObject(ctx, normalizeObjectKey(key))
-			if err != nil {
-				return nil, err
-			}
-			defer body.Close()
-
-			return readDataLimited(body, size, maxBytes)
-		}
-
-		fs, err := s.GetFileSystem(ctx, ds)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get file system: %w", err)
-		}
-
-		if ds.Type == datastorage.TypeFs {
-			key = filepath.FromSlash(key)
-		} else if ds.Type == datastorage.TypeWebdav || isS3PathStyle(ds) {
-			key = strings.TrimPrefix(key, "/")
-		}
-
-		file, err := fs.Open(key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to open file: %w", mapWebDAVNotFoundError(err))
-		}
-		defer file.Close()
-
-		info, err := file.Stat()
-		if err != nil {
-			return nil, fmt.Errorf("failed to stat file: %w", err)
-		}
-
-		return readDataLimited(file, info.Size(), maxBytes)
-	default:
-		return nil, fmt.Errorf("unsupported storage type: %s", ds.Type)
-	}
-}
-
-// mapWebDAVNotFoundError converts a gowebdav HTTP 404 status error into
-// os.ErrNotExist so callers can treat a missing WebDAV object like a missing
-// local file. Other errors pass through unchanged.
-func mapWebDAVNotFoundError(err error) error {
-	if err == nil {
-		return nil
-	}
-
-	var statusErr gowebdav.StatusError
-	if errors.As(err, &statusErr) && statusErr.Status == http.StatusNotFound {
-		return os.ErrNotExist
-	}
-
-	return err
-}
-
-// readDataLimited caps allocation even when advertisedSize is absent or wrong.
-func readDataLimited(reader io.Reader, advertisedSize, maxBytes int64) ([]byte, error) {
-	if advertisedSize > maxBytes {
-		return nil, errDataExceedsLimit
-	}
-
-	readLimit := maxBytes
-	if readLimit < math.MaxInt64 {
-		readLimit++
-	}
-	data, err := io.ReadAll(io.LimitReader(reader, readLimit))
-	if err != nil {
-		return nil, err
-	}
-	if int64(len(data)) > maxBytes {
-		return nil, errDataExceedsLimit
-	}
-
-	return data, nil
 }
 
 // isS3Provided checks if any S3 field is provided in the input (non-empty).

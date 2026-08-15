@@ -616,11 +616,6 @@ var (
 				Columns: []*schema.Column{RequestsColumns[26], RequestsColumns[1]},
 			},
 			{
-				Name:    "requests_by_project_id_external_id",
-				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[25], RequestsColumns[11], RequestsColumns[1]},
-			},
-			{
 				Name:    "requests_by_created_at",
 				Unique:  false,
 				Columns: []*schema.Column{RequestsColumns[1]},

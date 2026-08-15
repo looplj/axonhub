@@ -408,16 +408,6 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	llmRequest.Model = entry.ActualModel
 
-	if isResponsesFormat(llmRequest.APIFormat) &&
-		!responsesRequestCapabilities(p.wrapped, llmRequest).NativeResponses &&
-		llmRequest.PreviousResponseID != nil {
-		hydrated, err := hydratePreviousResponsesForChat(ctx, llmRequest, p.state)
-		if err != nil {
-			return nil, err
-		}
-		llmRequest = hydrated
-	}
-
 	outboundFormat := p.wrapped.APIFormat()
 	if candidate.APIFormat != "" {
 		outboundFormat = llm.APIFormat(candidate.APIFormat)

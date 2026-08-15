@@ -54,18 +54,15 @@ fmt.Println(responseText)
 
 ### OpenAI Responses API
 
-AxonHub 提供对 OpenAI Responses API 的部分支持，包括连续对话。
+AxonHub 提供对 OpenAI Responses API 的部分支持。该 API 为单轮交互提供了简化的接口。
 
 **端点：**
 - `POST /v1/responses` - 生成响应
 
 **能力：**
 - ✅ 支持 `previous_response_id` 透传，可用于同一上游 channel 上的连续 Responses 对话复用
-- ✅ 当 Responses 请求被路由到 Chat Completions channel 时，AxonHub 会在同一项目和 API Key 作用域内将 `previous_response_id` 展开为显式 Chat 历史
 - ✅ 基本响应生成完全可用
 - ✅ 支持流式响应
-
-Responses 到 Chat 的历史展开要求被引用轮次同时启用请求体和响应体存储。引用响应不存在、超出当前作用域或正文未保留时，AxonHub 返回 `400 invalid_request_error`；存储服务故障仍按服务端错误返回。历史轮次的顶层 `instructions` 不会被继承，与 Responses API 语义一致。
 
 **示例请求：**
 ```go

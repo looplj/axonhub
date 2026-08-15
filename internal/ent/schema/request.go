@@ -32,8 +32,6 @@ func (Request) Indexes() []ent.Index {
 			StorageKey("requests_by_channel_id_created_at"),
 		index.Fields("trace_id", "created_at").
 			StorageKey("requests_by_trace_id_created_at"),
-		index.Fields("project_id", "external_id", "created_at").
-			StorageKey("requests_by_project_id_external_id"),
 		// Performance indexes for dashboard queries
 		index.Fields("created_at").
 			StorageKey("requests_by_created_at"),
