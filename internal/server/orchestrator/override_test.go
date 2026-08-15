@@ -2390,3 +2390,93 @@ func TestOverrideOperationsArrayOps(t *testing.T) {
 		require.Equal(t, "calculate", gjson.Get(got, "tools.0.function.name").String())
 	})
 }
+
+// TestOverrideBodySkipsNonJSONBody guards the image edit regression: sjson rebuilds a
+// non-JSON document from scratch, so applying body overrides to a multipart payload used
+// to replace the whole form with a tiny JSON object while Content-Type still advertised
+// the multipart boundary, producing a truncated upstream request.
+func TestOverrideBodySkipsNonJSONBody(t *testing.T) {
+	ctx := context.Background()
+
+	multipartBody := []byte("--boundary123\r\n" +
+		"Content-Disposition: form-data; name=\"image\"; filename=\"image_1.png\"\r\n" +
+		"Content-Type: image/png\r\n\r\n" +
+		"\x89PNG\r\n\x1a\nbinary-image-bytes\r\n" +
+		"--boundary123\r\n" +
+		"Content-Disposition: form-data; name=\"prompt\"\r\n\r\n" +
+		"make it blue\r\n" +
+		"--boundary123--\r\n")
+
+	newOutbound := func() *PersistentOutboundTransformer {
+		channel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:              1,
+				Name:            "test-channel",
+				SupportedModels: []string{"gpt-image-1"},
+				Settings: &objects.ChannelSettings{
+					BodyOverrideOperations: []objects.OverrideOperation{
+						{Op: objects.OverrideOpSet, Path: "response_format", Value: "b64_json"},
+					},
+				},
+			},
+			Outbound: &mockTransformer{},
+		}
+
+		return &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate:      &ChannelModelsCandidate{Channel: channel},
+				CurrentCandidateIndex: 0,
+				CurrentModelIndex:     0,
+				LlmRequest:            &llm.Request{Model: "gpt-image-1"},
+			},
+		}
+	}
+
+	t.Run("multipart body is left untouched", func(t *testing.T) {
+		headers := make(http.Header)
+		headers.Set("Content-Type", "multipart/form-data; boundary=boundary123")
+
+		request := &httpclient.Request{
+			Method:      "POST",
+			URL:         "https://api.example.com/v1/images/edits",
+			Headers:     headers,
+			ContentType: "multipart/form-data; boundary=boundary123",
+			Body:        multipartBody,
+		}
+
+		modified, err := applyOverrideRequestBody(newOutbound()).OnOutboundRawRequest(ctx, request)
+		require.NoError(t, err)
+		require.Equal(t, multipartBody, modified.Body)
+	})
+
+	t.Run("multipart body without explicit content type is left untouched", func(t *testing.T) {
+		request := &httpclient.Request{
+			Method: "POST",
+			URL:    "https://api.example.com/v1/images/edits",
+			Body:   multipartBody,
+		}
+
+		modified, err := applyOverrideRequestBody(newOutbound()).OnOutboundRawRequest(ctx, request)
+		require.NoError(t, err)
+		require.Equal(t, multipartBody, modified.Body)
+	})
+
+	t.Run("json body still gets overridden", func(t *testing.T) {
+		headers := make(http.Header)
+		headers.Set("Content-Type", "application/json")
+
+		request := &httpclient.Request{
+			Method:      "POST",
+			URL:         "https://api.example.com/v1/images/generations",
+			Headers:     headers,
+			ContentType: "application/json",
+			Body:        []byte(`{"model":"gpt-image-1","prompt":"a cat"}`),
+		}
+
+		modified, err := applyOverrideRequestBody(newOutbound()).OnOutboundRawRequest(ctx, request)
+		require.NoError(t, err)
+		require.Equal(t, "b64_json", gjson.GetBytes(modified.Body, "response_format").String())
+		require.Equal(t, "a cat", gjson.GetBytes(modified.Body, "prompt").String())
+	})
+}

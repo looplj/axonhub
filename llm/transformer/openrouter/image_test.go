@@ -85,23 +85,22 @@ func TestOutboundTransformer_ImageGenerationRequest(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, req)
 
-			// Verify it's a POST request to /chat/completions
+			// Verify it's a POST request to the OpenRouter image router.
 			require.Equal(t, http.MethodPost, req.Method)
-			require.Contains(t, req.URL, "/chat/completions")
+			require.Contains(t, req.URL, "/images")
 
 			// Verify request type is set
 			require.Equal(t, llm.RequestTypeImage.String(), req.RequestType)
+			require.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), req.APIFormat)
 
-			// Parse body and verify modalities
+			// Parse body and verify the image-generation request shape.
 			var body map[string]any
 
 			err = json.Unmarshal(req.Body, &body)
 			require.NoError(t, err)
 
-			modalities, ok := body["modalities"].([]any)
-			require.True(t, ok, "modalities should be present")
-			require.Contains(t, modalities, "image")
-			require.Contains(t, modalities, "text")
+			require.Equal(t, tt.request.Model, body["model"])
+			require.Equal(t, tt.request.Image.Prompt, body["prompt"])
 
 			// Verify stream is not set (must be false for image generation)
 			_, hasStream := body["stream"]
@@ -121,10 +120,10 @@ func TestOutboundTransformer_ImageGenerationResponse(t *testing.T) {
 		want     *llm.Response
 	}{
 		{
-			name:     "response with images array",
-			response: `{"id":"gen-1759393520-lxwGJP80UyDdG9VmVTQj","model":"google/gemini-2.5-flash-image-preview","object":"chat.completion","created":1759393520,"choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"","images":[{"type":"image_url","image_url":{"url":"data:image/png;base64,iVBORw0KGgo"},"index":0}]}}],"usage":{"prompt_tokens":7,"completion_tokens":1290,"total_tokens":1297}}`,
+			name:     "response with data array",
+			response: `{"created":1759393520,"data":[{"b64_json":"iVBORw0KGgo","media_type":"image/png"}],"usage":{"prompt_tokens":7,"completion_tokens":1290,"total_tokens":1297}}`,
 			want: &llm.Response{
-				ID:          "gen-1759393520-lxwGJP80UyDdG9VmVTQj",
+				ID:          "img-1759393520",
 				Object:      "chat.completion",
 				Created:     1759393520,
 				Model:       "test-model",
@@ -146,10 +145,10 @@ func TestOutboundTransformer_ImageGenerationResponse(t *testing.T) {
 			},
 		},
 		{
-			name:     "response with content array",
-			response: `{"id":"gen-test","model":"test-model","object":"chat.completion","created":1759393520,"choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":[{"type":"image_url","image_url":{"url":"data:image/jpeg;base64,/9j/4AAQ"}}]}}],"usage":{"prompt_tokens":10,"completion_tokens":100,"total_tokens":110}}`,
+			name:     "response with multiple data images",
+			response: `{"created":1759393520,"data":[{"b64_json":"/9j/4AAQ","media_type":"image/jpeg"},{"b64_json":"R0lGODlh","media_type":"image/gif"}],"usage":{"prompt_tokens":10,"completion_tokens":100,"total_tokens":110}}`,
 			want: &llm.Response{
-				ID:          "gen-test",
+				ID:          "img-1759393520",
 				Object:      "chat.completion",
 				Created:     1759393520,
 				Model:       "test-model",
@@ -160,6 +159,10 @@ func TestOutboundTransformer_ImageGenerationResponse(t *testing.T) {
 						{
 							B64JSON: "/9j/4AAQ",
 							URL:     "data:image/jpeg;base64,/9j/4AAQ",
+						},
+						{
+							B64JSON: "R0lGODlh",
+							URL:     "data:image/gif;base64,R0lGODlh",
 						},
 					},
 				},
@@ -284,9 +287,9 @@ func TestOutboundTransformer_ImageEditRequest(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, req)
 
-			// Verify it's a POST request to /chat/completions
+			// Verify it's a POST request to the OpenRouter image router.
 			require.Equal(t, http.MethodPost, req.Method)
-			require.Contains(t, req.URL, "/chat/completions")
+			require.Contains(t, req.URL, "/images")
 
 			// Parse body and verify structure
 			var body map[string]any
@@ -294,53 +297,22 @@ func TestOutboundTransformer_ImageEditRequest(t *testing.T) {
 			err = json.Unmarshal(req.Body, &body)
 			require.NoError(t, err)
 
-			// Verify messages contain content parts
-			messages, ok := body["messages"].([]any)
-			require.True(t, ok, "messages should be present")
-			require.Len(t, messages, 1)
+			require.Equal(t, tt.request.Model, body["model"])
+			require.Equal(t, tt.request.Image.Prompt, body["prompt"])
 
-			firstMsg, ok := messages[0].(map[string]any)
-			require.True(t, ok)
-
-			content, ok := firstMsg["content"].([]any)
-			require.True(t, ok, "content should be an array of parts")
-
-			// Count image_url parts and text parts
-			imageCount := 0
-			textCount := 0
-
-			for _, part := range content {
-				partMap, ok := part.(map[string]any)
+			inputReferences, ok := body["input_references"].([]any)
+			require.True(t, ok, "input_references should be present")
+			require.Len(t, inputReferences, tt.expectedImgCount)
+			for _, reference := range inputReferences {
+				referenceMap, ok := reference.(map[string]any)
 				require.True(t, ok)
-
-				partType, ok := partMap["type"].(string)
+				require.Equal(t, "image_url", referenceMap["type"])
+				imageURL, ok := referenceMap["image_url"].(map[string]any)
 				require.True(t, ok)
-
-				switch partType {
-				case "image_url":
-					imageCount++
-					// Verify image_url structure
-					imageURL, ok := partMap["image_url"].(map[string]any)
-					require.True(t, ok)
-					url, ok := imageURL["url"].(string)
-					require.True(t, ok)
-					require.True(t, strings.HasPrefix(url, "data:image/"), "image URL should be a data URL")
-				case "text":
-					textCount++
-					text, ok := partMap["text"].(string)
-					require.True(t, ok)
-					require.Equal(t, tt.request.Image.Prompt, text)
-				}
+				url, ok := imageURL["url"].(string)
+				require.True(t, ok)
+				require.True(t, strings.HasPrefix(url, "data:image/"), "image URL should be a data URL")
 			}
-
-			require.Equal(t, tt.expectedImgCount, imageCount, "expected %d image parts", tt.expectedImgCount)
-			require.Equal(t, 1, textCount, "expected 1 text part")
-
-			// Verify modalities
-			modalities, ok := body["modalities"].([]any)
-			require.True(t, ok, "modalities should be present")
-			require.Contains(t, modalities, "image")
-			require.Contains(t, modalities, "text")
 		})
 	}
 }
