@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/samber/lo"
@@ -70,23 +71,68 @@ func isUnsupportedImageInputError(err error) bool {
 		return false
 	}
 
-	detail := strings.ToLower(strings.Join([]string{
-		responseErr.Detail.Code,
-		responseErr.Detail.Type,
-		responseErr.Detail.Param,
-		responseErr.Detail.Message,
-	}, " "))
-	imageCue := lo.SomeBy([]string{
-		"image", "vision", "multimodal", "multi-modal", "图片", "图像", "视觉", "多模态",
-	}, func(cue string) bool { return strings.Contains(detail, cue) })
-	unsupportedCue := lo.SomeBy([]string{
-		"unsupported", "not supported", "does not support", "doesn't support",
-		"not accept", "doesn't accept", "not allowed", "text-only", "text only",
-		"only supports text", "cannot process", "can't process",
-		"不支持", "不接受", "仅支持文本", "纯文本", "无法处理", "不能处理",
-	}, func(cue string) bool { return strings.Contains(detail, cue) })
+	normalizeProviderCode := func(value string) string {
+		return strings.NewReplacer("-", "_", ".", "_", " ", "_").Replace(strings.ToLower(strings.TrimSpace(value)))
+	}
+	explicitProviderCodes := []string{
+		"unsupported_image",
+		"unsupported_image_input",
+		"image_not_supported",
+		"image_input_unsupported",
+		"image_input_not_supported",
+		"images_not_supported",
+		"unsupported_vision",
+		"unsupported_vision_input",
+		"vision_not_supported",
+		"vision_input_unsupported",
+		"unsupported_multimodal",
+		"unsupported_multimodal_input",
+		"multimodal_not_supported",
+		"multimodal_input_unsupported",
+		"unsupported_modality_image",
+		"image_modality_unsupported",
+		"image_modality_not_supported",
+	}
+	if slices.Contains(explicitProviderCodes, normalizeProviderCode(responseErr.Detail.Code)) ||
+		slices.Contains(explicitProviderCodes, normalizeProviderCode(responseErr.Detail.Type)) {
+		return true
+	}
 
-	return imageCue && unsupportedCue
+	message := strings.ToLower(responseErr.Detail.Message)
+	return lo.SomeBy([]string{
+		"image input is unsupported",
+		"image input is not supported",
+		"image input not supported",
+		"image inputs are unsupported",
+		"images are not supported",
+		"does not support image input",
+		"doesn't support image input",
+		"does not support images",
+		"doesn't support images",
+		"image modality is unsupported",
+		"unsupported image modality",
+		"vision input is unsupported",
+		"vision input is not supported",
+		"does not support vision",
+		"doesn't support vision",
+		"multimodal input is unsupported",
+		"multi-modal input is unsupported",
+		"does not support multimodal",
+		"does not support multi-modal",
+		"only supports text",
+		"supports text only",
+		"text-only model",
+		"text only model",
+		"不支持图片输入",
+		"不支持图像输入",
+		"不支持视觉输入",
+		"不支持多模态输入",
+		"模型不支持图片",
+		"模型不支持图像",
+		"仅支持文本",
+		"只支持文本",
+		"纯文本模型",
+	}, func(cue string) bool { return strings.Contains(message, cue) })
 }
 
 func isVisionDelegationTargetImageUnsupportedError(err error) bool {

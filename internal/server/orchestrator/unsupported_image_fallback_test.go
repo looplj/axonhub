@@ -104,10 +104,10 @@ func TestReplaceImagesWithUnsupportedMarkerPreservesMessageShape(t *testing.T) {
 }
 
 func TestIsUnsupportedImageInputError(t *testing.T) {
-	unsupported := func(status int, message string) error {
+	unsupported := func(status int, code, message string) error {
 		return pipeline.WrapUpstreamError(&llm.ResponseError{
 			StatusCode: status,
-			Detail:     llm.ErrorDetail{Message: message},
+			Detail:     llm.ErrorDetail{Code: code, Message: message},
 		})
 	}
 
@@ -116,14 +116,19 @@ func TestIsUnsupportedImageInputError(t *testing.T) {
 		err  error
 		want bool
 	}{
-		{name: "explicit rejection", err: unsupported(http.StatusBadRequest, "this model does not support image input"), want: true},
-		{name: "unsupported media", err: unsupported(http.StatusUnsupportedMediaType, "vision input is unsupported"), want: true},
-		{name: "unprocessable image", err: unsupported(http.StatusUnprocessableEntity, "cannot process 图片"), want: true},
+		{name: "explicit rejection", err: unsupported(http.StatusBadRequest, "", "this model does not support image input"), want: true},
+		{name: "unsupported vision", err: unsupported(http.StatusUnsupportedMediaType, "", "vision input is unsupported"), want: true},
+		{name: "provider capability code", err: unsupported(http.StatusUnprocessableEntity, "image_input_not_supported", "invalid input"), want: true},
+		{name: "chinese text only rejection", err: unsupported(http.StatusBadRequest, "", "该模型仅支持文本"), want: true},
 		{name: "bare response error", err: &llm.ResponseError{StatusCode: http.StatusBadRequest, Detail: llm.ErrorDetail{Message: "image unsupported"}}},
-		{name: "unrelated bad request", err: unsupported(http.StatusBadRequest, "temperature is invalid")},
-		{name: "authentication", err: unsupported(http.StatusUnauthorized, "image input is unsupported")},
-		{name: "rate limit", err: unsupported(http.StatusTooManyRequests, "image input is unsupported")},
-		{name: "server error", err: unsupported(http.StatusInternalServerError, "image input is unsupported")},
+		{name: "generic cannot process", err: unsupported(http.StatusUnprocessableEntity, "", "cannot process image")},
+		{name: "invalid image url", err: unsupported(http.StatusBadRequest, "invalid_image_url", "image URL is not allowed")},
+		{name: "malformed media", err: unsupported(http.StatusUnsupportedMediaType, "unsupported_media_type", "cannot process malformed image")},
+		{name: "policy rejection", err: unsupported(http.StatusBadRequest, "content_policy_violation", "image content is not allowed")},
+		{name: "unrelated bad request", err: unsupported(http.StatusBadRequest, "", "temperature is invalid")},
+		{name: "authentication", err: unsupported(http.StatusUnauthorized, "", "image input is unsupported")},
+		{name: "rate limit", err: unsupported(http.StatusTooManyRequests, "", "image input is unsupported")},
+		{name: "server error", err: unsupported(http.StatusInternalServerError, "", "image input is unsupported")},
 		{name: "timeout", err: pipeline.ErrNonStreamResponseTimeout},
 		{name: "generic error", err: errors.New("image input is unsupported")},
 	}
