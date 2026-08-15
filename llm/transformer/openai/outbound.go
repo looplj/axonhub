@@ -82,10 +82,7 @@ type OutboundTransformer struct {
 	config *Config
 }
 
-var (
-	_ transformer.ResponsesChatToolLifecycleCapable    = (*OutboundTransformer)(nil)
-	_ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
-)
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
 
 // NewOutboundTransformer creates a new OpenAI OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
@@ -151,12 +148,6 @@ func validateConfig(config *Config) error {
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIChatCompletion
-}
-
-// SupportsResponsesChatToolLifecycle reports that this transformer uses the
-// reversible Responses-to-Chat tool adapter for Responses-origin requests.
-func (t *OutboundTransformer) SupportsResponsesChatToolLifecycle() bool {
-	return true
 }
 
 // ResponsesRequestCapabilities reports lifecycle support for Responses chat

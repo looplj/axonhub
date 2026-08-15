@@ -238,10 +238,6 @@ func (m *mockTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIChatCompletion
 }
 
-func (m *mockTransformer) SupportsResponsesChatToolLifecycle() bool {
-	return m.responsesChatTools
-}
-
 func (m *mockTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
 	if m.responsesCapabilities != nil {
 		return m.responsesCapabilities(req)

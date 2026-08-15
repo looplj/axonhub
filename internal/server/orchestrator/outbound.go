@@ -523,9 +523,6 @@ func responsesRequestCapabilities(outbound transformer.Outbound, request *llm.Re
 	if capable, ok := outbound.(transformer.ResponsesRequestCapabilitiesProvider); ok {
 		return capable.ResponsesRequestCapabilities(request)
 	}
-	if capable, ok := outbound.(transformer.ResponsesChatToolLifecycleCapable); ok && capable.SupportsResponsesChatToolLifecycle() {
-		return transformer.ResponsesRequestCapabilities{ChatToolLifecycle: true}
-	}
 	return transformer.ResponsesRequestCapabilities{}
 }
 
