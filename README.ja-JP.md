@@ -43,19 +43,6 @@
         Atlas Cloud の <a href="https://lj.s.gy/jknt2V" target="_blank">新しいコーディングプラン特典</a> で、よりお得な API アクセスをご利用ください。
       </p>
     </td>
-    <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/jKk8uU" target="_blank">
-        <img src="https://raw.githubusercontent.com/Krill-ai-org/krill-ai-static/refs/heads/main/krill-logo/Eng/250x150.png" alt="Krill AI" height="50"/>
-        <br/>
-        <strong>Krill AI</strong>
-      </a>
-      <p align="left">
-        本プロジェクトを支援いただいている Krill AI に感謝します。Krill は GPT、Claude、Gemini および多数の中国国内モデル向けに、公式かつ安定した高速 API 中継サービスを提供しています。エンタープライズ向けカスタマイズ、請求書発行、1日16時間・週7日の専用技術サポートに対応しています。独自に最適化された WebSocket 接続により、最初のトークンをより速く受け取れます。
-      </p>
-      <p align="left">
-        <a href="https://lj.s.gy/jKk8uU" target="_blank">このリンク</a> から登録し、チャージ時に <code>AxonHub</code> クーポンコードを入力すると、初回の Codex プラン購入が 23% オフになります。
-      </p>
-    </td>
   </tr>
 </table>
 
