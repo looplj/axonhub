@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
@@ -40,7 +41,7 @@ func (svc *BackupService) Restore(ctx context.Context, data []byte, opts Restore
 		return err
 	}
 
-	if !lo.Contains([]string{BackupVersion, BackupVersionV4, BackupVersionV3, BackupVersionV2, BackupVersionV1}, backupData.Version) {
+	if !lo.Contains([]string{BackupVersion, BackupVersionV5, BackupVersionV4, BackupVersionV3, BackupVersionV2, BackupVersionV1}, backupData.Version) {
 		log.Warn(ctx, "backup version mismatch",
 			log.String("expected", BackupVersion),
 			log.String("got", backupData.Version))
@@ -134,7 +135,7 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 	}
 
 	if opts.IncludeUsageStats || opts.IncludeRequestLogs {
-		if err := svc.restoreUsageData(ctx, db, backupData.UsageRequests, backupData.UsageLogs, opts); err != nil {
+		if err := svc.restoreUsageData(ctx, db, backupData.UsageRequests, backupData.RequestExecutions, backupData.UsageLogs, opts); err != nil {
 			return err
 		}
 	}
@@ -867,6 +868,7 @@ func (svc *BackupService) restoreUsageData(
 	ctx context.Context,
 	db *ent.Client,
 	requestsData []*BackupUsageRequest,
+	executionsData []*BackupRequestExecution,
 	usageLogs []*BackupUsageLog,
 	opts RestoreOptions,
 ) error {
@@ -884,7 +886,25 @@ func (svc *BackupService) restoreUsageData(
 	}
 
 	if opts.IncludeUsageStats {
-		return svc.restoreUsageLogs(ctx, db, usageLogs, requestIDMap, resolver)
+		if err := svc.ensureUsageLogRequests(ctx, db, usageLogs, requestIDMap, resolver); err != nil {
+			return err
+		}
+	}
+
+	executionIDMap, err := svc.restoreRequestExecutions(
+		ctx,
+		db,
+		executionsData,
+		requestIDMap,
+		resolver,
+		opts.IncludeRequestLogs,
+	)
+	if err != nil {
+		return err
+	}
+
+	if opts.IncludeUsageStats {
+		return svc.restoreUsageLogs(ctx, db, usageLogs, requestIDMap, executionIDMap, resolver)
 	}
 
 	return nil
@@ -1168,19 +1188,202 @@ func sameUsageRequest(existing *ent.Request, backup *BackupUsageRequest, project
 		existing.CreatedAt.Equal(backup.CreatedAt)
 }
 
+func (svc *BackupService) restoreRequestExecutions(
+	ctx context.Context,
+	db *ent.Client,
+	executionsData []*BackupRequestExecution,
+	requestIDMap map[int]int,
+	resolver *usageRestoreResolver,
+	includeRequestLogs bool,
+) (map[int]int, error) {
+	idMap := map[int]int{}
+	if len(executionsData) == 0 {
+		return idMap, nil
+	}
+
+	requestIDs := lo.Uniq(lo.Values(requestIDMap))
+	existingByDetails := map[bool]map[string][]int{
+		false: {},
+		true:  {},
+	}
+	for start := 0; start < len(requestIDs); start += backupBatchSize {
+		end := min(start+backupBatchSize, len(requestIDs))
+		executions, err := db.RequestExecution.Query().
+			Where(requestexecution.RequestIDIn(requestIDs[start:end]...)).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, execution := range executions {
+			for _, includeDetails := range []bool{false, true} {
+				fingerprint, err := requestExecutionFingerprint(
+					backupRequestExecution(execution, includeDetails),
+					execution.RequestID,
+					execution.ProjectID,
+					execution.ChannelID,
+				)
+				if err != nil {
+					return nil, err
+				}
+				existingByDetails[includeDetails][fingerprint] = append(
+					existingByDetails[includeDetails][fingerprint],
+					execution.ID,
+				)
+			}
+		}
+	}
+
+	for _, executionData := range executionsData {
+		if executionData == nil || executionData.ID == 0 {
+			continue
+		}
+		executionData = requestExecutionDataForRestore(executionData, includeRequestLogs)
+
+		requestID, ok := requestIDMap[executionData.RequestID]
+		if !ok {
+			log.Warn(ctx, "request not found for restoring execution, skipping",
+				log.Int("request_execution_id", executionData.ID),
+				log.Int("request_id", executionData.RequestID),
+			)
+			continue
+		}
+
+		projectID, ok := resolver.resolveProjectID(executionData.ProjectID, executionData.ProjectName)
+		if !ok {
+			log.Warn(ctx, "project not found for restoring execution, skipping",
+				log.Int("request_execution_id", executionData.ID),
+				log.String("project", executionData.ProjectName),
+			)
+			continue
+		}
+
+		channelID, ok := resolver.resolveChannelID(executionData.ChannelID, executionData.ChannelName)
+		if !ok && hasBackupChannelRef(executionData.ChannelID, executionData.ChannelName) {
+			log.Warn(ctx, "channel not found for restoring execution, restoring with null channel",
+				log.Int("request_execution_id", executionData.ID),
+				log.Int("channel_id", executionData.ChannelID),
+				log.String("channel", executionData.ChannelName),
+			)
+		}
+
+		fingerprint, err := requestExecutionFingerprint(executionData, requestID, projectID, channelID)
+		if err != nil {
+			return nil, err
+		}
+		existingByFingerprint := existingByDetails[executionData.DetailsIncluded]
+		if existingIDs := existingByFingerprint[fingerprint]; len(existingIDs) > 0 {
+			idMap[executionData.ID] = existingIDs[0]
+			existingByFingerprint[fingerprint] = existingIDs[1:]
+			continue
+		}
+
+		requestBody := executionData.RequestBody
+		if len(requestBody) == 0 {
+			requestBody = objects.JSONRawMessage("{}")
+		}
+		create := db.RequestExecution.Create().
+			SetCreatedAt(executionData.CreatedAt).
+			SetUpdatedAt(executionData.UpdatedAt).
+			SetProjectID(projectID).
+			SetRequestID(requestID).
+			SetNillableChannelID(nilIfZero(channelID)).
+			SetExternalID(executionData.ExternalID).
+			SetModelID(executionData.ModelID).
+			SetPurpose(executionData.Purpose).
+			SetFormat(executionData.Format).
+			SetNillableReasoningEffort(executionData.ReasoningEffort).
+			SetRequestBody(requestBody).
+			SetErrorMessage(executionData.ErrorMessage).
+			SetNillableResponseStatusCode(executionData.ResponseStatusCode).
+			SetStatus(executionData.Status).
+			SetStream(executionData.Stream).
+			SetNillableMetricsLatencyMs(executionData.MetricsLatencyMs).
+			SetNillableMetricsFirstTokenLatencyMs(executionData.MetricsFirstTokenLatencyMs).
+			SetNillableMetricsReasoningDurationMs(executionData.MetricsReasoningDurationMs).
+			SetRequestURL(executionData.RequestURL).
+			SetPassThroughApplied(executionData.PassThroughApplied)
+		if len(executionData.ResponseBody) > 0 {
+			create.SetResponseBody(executionData.ResponseBody)
+		}
+		if executionData.ResponseChunks != nil {
+			create.SetResponseChunks(executionData.ResponseChunks)
+		}
+		if len(executionData.RequestHeaders) > 0 {
+			create.SetRequestHeaders(executionData.RequestHeaders)
+		}
+
+		created, err := create.Save(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to restore request execution %d: %w", executionData.ID, err)
+		}
+		idMap[executionData.ID] = created.ID
+	}
+
+	return idMap, nil
+}
+
+func requestExecutionDataForRestore(executionData *BackupRequestExecution, includeRequestLogs bool) *BackupRequestExecution {
+	if includeRequestLogs {
+		return executionData
+	}
+
+	metadata := *executionData
+	metadata.DetailsIncluded = false
+	metadata.ExternalID = ""
+	metadata.ReasoningEffort = nil
+	metadata.RequestBody = nil
+	metadata.ResponseBody = nil
+	metadata.ResponseChunks = nil
+	metadata.ErrorMessage = ""
+	metadata.ResponseStatusCode = nil
+	metadata.MetricsLatencyMs = nil
+	metadata.MetricsFirstTokenLatencyMs = nil
+	metadata.MetricsReasoningDurationMs = nil
+	metadata.RequestHeaders = nil
+	metadata.RequestURL = ""
+	metadata.PassThroughApplied = false
+
+	return &metadata
+}
+
+func requestExecutionFingerprint(
+	executionData *BackupRequestExecution,
+	requestID int,
+	projectID int,
+	channelID int,
+) (string, error) {
+	normalized := *executionData
+	normalized.ID = 0
+	normalized.RequestID = requestID
+	normalized.ProjectID = projectID
+	normalized.ChannelID = channelID
+	normalized.ProjectName = ""
+	normalized.ChannelName = ""
+	normalized.CreatedAt = normalized.CreatedAt.UTC()
+	normalized.UpdatedAt = normalized.UpdatedAt.UTC()
+	if normalized.ResponseChunks == nil {
+		normalized.ResponseChunks = []objects.JSONRawMessage{}
+	}
+
+	encoded, err := json.Marshal(normalized)
+	if err != nil {
+		return "", fmt.Errorf("marshal request execution fingerprint: %w", err)
+	}
+
+	return string(encoded), nil
+}
+
 func (svc *BackupService) restoreUsageLogs(
 	ctx context.Context,
 	db *ent.Client,
 	usageLogs []*BackupUsageLog,
 	requestIDMap map[int]int,
+	executionIDMap map[int]int,
 	resolver *usageRestoreResolver,
 ) error {
 	if len(usageLogs) == 0 {
 		return nil
-	}
-
-	if err := svc.ensureUsageLogRequests(ctx, db, usageLogs, requestIDMap, resolver); err != nil {
-		return err
 	}
 
 	requestIDs := make([]int, 0, len(requestIDMap))
@@ -1188,7 +1391,7 @@ func (svc *BackupService) restoreUsageLogs(
 		requestIDs = append(requestIDs, requestID)
 	}
 
-	existingLogFingerprints := map[string]int{}
+	existingLogsByFingerprint := map[string][]*ent.UsageLog{}
 	for start := 0; start < len(requestIDs); start += backupBatchSize {
 		end := min(start+backupBatchSize, len(requestIDs))
 		logs, err := db.UsageLog.Query().
@@ -1203,7 +1406,7 @@ func (svc *BackupService) restoreUsageLogs(
 			if err != nil {
 				return err
 			}
-			existingLogFingerprints[fingerprint]++
+			existingLogsByFingerprint[fingerprint] = append(existingLogsByFingerprint[fingerprint], usageLog)
 		}
 	}
 
@@ -1265,8 +1468,28 @@ func (svc *BackupService) restoreUsageLogs(
 		if err != nil {
 			return err
 		}
-		if existingLogFingerprints[fingerprint] > 0 {
-			existingLogFingerprints[fingerprint]--
+		executionID := executionIDMap[usageData.RequestExecutionID]
+		if usageData.RequestExecutionID != 0 && executionID == 0 {
+			log.Warn(ctx, "request execution not found for restoring usage log, restoring legacy usage relation",
+				log.Int("usage_log_id", usageData.ID),
+				log.Int("request_execution_id", usageData.RequestExecutionID),
+			)
+		}
+
+		if existingLogs := existingLogsByFingerprint[fingerprint]; len(existingLogs) > 0 {
+			existingUsageLog := existingLogs[0]
+			existingLogsByFingerprint[fingerprint] = existingLogs[1:]
+			if existingUsageLog.RequestExecutionID == 0 && executionID != 0 {
+				_, err := db.UsageLog.UpdateOneID(existingUsageLog.ID).
+					SetUpdatedAt(existingUsageLog.UpdatedAt).
+					Modify(func(update *sql.UpdateBuilder) {
+						update.Set(usagelog.FieldRequestExecutionID, executionID)
+					}).
+					Save(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to restore usage log %d execution relation: %w", usageData.ID, err)
+				}
+			}
 			log.Warn(ctx, "usage log already exists, skipping",
 				log.Int("usage_log_id", usageData.ID),
 				log.Int("request_id", usageData.RequestID),
@@ -1278,6 +1501,7 @@ func (svc *BackupService) restoreUsageLogs(
 			SetCreatedAt(usageData.CreatedAt).
 			SetUpdatedAt(usageData.UpdatedAt).
 			SetRequestID(requestID).
+			SetNillableRequestExecutionID(nilIfZero(executionID)).
 			SetNillableAPIKeyID(nilIfZero(apiKeyID)).
 			SetProjectID(projectID).
 			SetNillableChannelID(nilIfZero(channelID)).

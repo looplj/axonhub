@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/samber/lo"
@@ -19,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/intercept"
 	"github.com/looplj/axonhub/internal/ent/model"
 	requestent "github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -104,10 +106,123 @@ func TestReplaceImagesWithVisionEvidenceUsesLatestImagePosition(t *testing.T) {
 	require.Equal(t, visionImagePosition{message: 2, part: 1}, input.evidenceImage)
 
 	replaceImagesWithVisionEvidence(request, input.evidenceImage, "The badge is red.")
-	require.NotContains(t, messageText(request.Messages[0]), visionEvidenceStart)
-	require.Contains(t, messageText(request.Messages[2]), visionEvidenceStart)
-	require.NotContains(t, messageText(request.Messages[0]), "image_url")
-	require.NotContains(t, messageText(request.Messages[2]), "image_url")
+	require.NotContains(t, messageText(request.Messages[1]), visionEvidenceStart)
+	require.Contains(t, messageText(request.Messages[3]), visionEvidenceStart)
+	require.NotContains(t, messageText(request.Messages[1]), "image_url")
+	require.NotContains(t, messageText(request.Messages[3]), "image_url")
+}
+
+func TestReplaceImagesWithVisionEvidenceInjectsPolicyAndStripsMarkers(t *testing.T) {
+	request := &llm.Request{Messages: []llm.Message{
+		{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("You are a helpful assistant.")}},
+		{
+			Role: "user",
+			Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "text", Text: lo.ToPtr("What is in the top right?")},
+				{Type: "image_url", ImageURL: &llm.ImageURL{URL: base64TestImage("same-image")}},
+				{Type: "text", Text: lo.ToPtr("[Image: source: /Users/tester/error.png]")},
+				{Type: "text", Text: lo.ToPtr("Mentioning [Image: source: inline] inside prose is kept")},
+			}},
+		},
+	}}
+
+	input, err := collectVisionDelegationInput(request)
+	require.NoError(t, err)
+
+	replaceImagesWithVisionEvidence(request, input.evidenceImage, "The badge is red.")
+
+	serialized, err := json.Marshal(request)
+	require.NoError(t, err)
+	require.NotContains(t, string(serialized), "image_url")
+	require.NotContains(t, string(serialized), "/Users/tester/error.png")
+	require.NotContains(t, string(serialized), "untrusted visual evidence")
+	require.Contains(t, string(serialized), "inline] inside prose is kept")
+
+	require.Equal(t, "system", request.Messages[0].Role)
+	require.Contains(t, messageText(request.Messages[0]), "already been inspected by AxonHub")
+	require.Contains(t, messageText(request.Messages[0]), "AXONHUB_VISION_EVIDENCE")
+	require.Equal(t, "system", request.Messages[1].Role)
+	require.Equal(t, "You are a helpful assistant.", messageText(request.Messages[1]))
+}
+
+func TestStripImageSourceMarkerPreservesFollowingText(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "standalone marker",
+			input:    "[Image: source: /tmp/error.png]",
+			expected: "",
+		},
+		{
+			name:     "marker followed by a question",
+			input:    "[Image: source: /tmp/error.png]\nPlease describe the error",
+			expected: "Please describe the error",
+		},
+		{
+			name:     "marker and same line question",
+			input:    "[Image: source: /tmp/error.png] Please describe the error",
+			expected: "Please describe the error",
+		},
+		{
+			name:     "unclosed marker",
+			input:    "[Image: source: /tmp/error.png",
+			expected: "[Image: source: /tmp/error.png",
+		},
+		{
+			name:     "empty source is not a marker",
+			input:    "[Image: source: ]\nPlease describe the error",
+			expected: "[Image: source: ]\nPlease describe the error",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, stripImageSourceMarker(tt.input))
+		})
+	}
+}
+
+func TestVisionImageSourceMarkerCleanupHandlesScalarContent(t *testing.T) {
+	request := &llm.Request{Messages: []llm.Message{
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(
+			"[Image: source: /tmp/error.png]\nPlease describe the error",
+		)}},
+		{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(
+			"[Image: source: /tmp/standalone.png]",
+		)}},
+	}}
+
+	replaceImagesWithVisionEvidence(request, visionImagePosition{message: -1, part: -1}, "The screenshot shows error E102.")
+	require.Equal(t, "Please describe the error", messageText(request.Messages[1]))
+	require.Equal(t, "", messageText(request.Messages[2]))
+
+	serialized, err := json.Marshal(request)
+	require.NoError(t, err)
+	require.NotContains(t, string(serialized), "/tmp/error.png")
+	require.NotContains(t, string(serialized), "/tmp/standalone.png")
+}
+
+func TestRemoveVisionImagesCleansScalarSourceMarkers(t *testing.T) {
+	request := &llm.Request{Messages: []llm.Message{
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(
+			"[Image: source: /tmp/error.png]\nPlease describe the error",
+		)}},
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(
+			"[Image: source: /tmp/unclosed.png",
+		)}},
+	}}
+
+	require.True(t, removeVisionImages(request))
+	require.Equal(t, "Please describe the error", messageText(request.Messages[0]))
+	require.Equal(t, "[Image: source: /tmp/unclosed.png", messageText(request.Messages[1]))
+
+	serialized, err := json.Marshal(request)
+	require.NoError(t, err)
+	require.NotContains(t, string(serialized), "/tmp/error.png")
+	require.Contains(t, string(serialized), "/tmp/unclosed.png")
 }
 
 func TestVisionDelegationContextFiltersClientNoiseAndUsesPreviousAssistant(t *testing.T) {
@@ -263,8 +378,8 @@ func TestReplaceImagesWithVisionEvidenceKeepsLaterToolMessageValid(t *testing.T)
 	require.Len(t, input.images, 1)
 
 	replaceImagesWithVisionEvidence(request, input.evidenceImage, "The image shows a poster.")
-	require.Equal(t, "", lo.FromPtr(request.Messages[1].Content.Content))
-	require.Nil(t, request.Messages[1].Content.MultipleContent)
+	require.Equal(t, "", lo.FromPtr(request.Messages[2].Content.Content))
+	require.Nil(t, request.Messages[2].Content.MultipleContent)
 
 	serialized, err := json.Marshal(request)
 	require.NoError(t, err)
@@ -274,7 +389,7 @@ func TestReplaceImagesWithVisionEvidenceKeepsLaterToolMessageValid(t *testing.T)
 		} `json:"messages"`
 	}
 	require.NoError(t, json.Unmarshal(serialized, &payload))
-	require.Equal(t, "", payload.Messages[1].Content)
+	require.Equal(t, "", payload.Messages[2].Content)
 }
 
 func TestCollectVisionDelegationInputRejectsFileID(t *testing.T) {
@@ -371,6 +486,8 @@ func TestVisionDelegationPipelinePersistsSeparateExecutionsAndUsage(t *testing.T
 	require.NotContains(t, string(requests[0].Body), `"User-Agent"`)
 	require.NotContains(t, string(requests[1].Body), "image_url")
 	require.Contains(t, string(requests[1].Body), "AXONHUB_VISION_EVIDENCE")
+	require.Contains(t, string(requests[1].Body), "already been inspected by AxonHub")
+	require.NotContains(t, string(requests[1].Body), "untrusted visual evidence")
 
 	dbRequests, err := client.Request.Query().All(ctx)
 	require.NoError(t, err)
@@ -532,6 +649,190 @@ func TestVisionDelegationUsesEachModelsAssociationPriority(t *testing.T) {
 			t.Fatalf("unexpected execution purpose: %s", execution.Purpose)
 		}
 	}
+}
+
+func TestVisionDelegationSelectsPrimaryRouteAfterImageRewrite(t *testing.T) {
+	fixture := newVisionDelegationPipelineFixture(t, []visionExecutorResult{
+		{response: visionHTTPResponse(buildMockOpenAIResponse("vision-1", "vision-model", "The screenshot shows total 42.", 7, 3))},
+		{response: visionHTTPResponse(buildMockOpenAIResponse("primary-1", "text-model", "The total is 42.", 11, 5))},
+	}, &biz.RetryPolicy{Enabled: false})
+
+	textModel, err := fixture.client.Model.Query().
+		Where(model.ModelIDEQ("text-model")).
+		Only(fixture.ctx)
+	require.NoError(t, err)
+	settings := textModel.Settings
+	settings.Associations[0].When = &objects.ModelAssociationWhen{
+		Enabled: true,
+		Condition: &objects.Condition{
+			Type:     objects.ConditionTypeCondition,
+			Field:    objects.ModelAssociationConditionFieldHasImage,
+			Operator: "eq",
+			Value:    false,
+		},
+	}
+	_, err = textModel.Update().SetSettings(settings).Save(fixture.ctx)
+	require.NoError(t, err)
+
+	fixture.orchestrator.channelSelector = NewDefaultSelector(
+		fixture.orchestrator.ChannelService,
+		fixture.orchestrator.ModelService,
+		fixture.orchestrator.SystemService,
+	)
+
+	_, err = fixture.orchestrator.Process(fixture.ctx, buildVisionTestRequest(t))
+	require.NoError(t, err)
+
+	requests := fixture.executor.Requests()
+	require.Len(t, requests, 2)
+	require.Contains(t, string(requests[0].Body), "image_url")
+	require.NotContains(t, string(requests[1].Body), "image_url")
+	require.Contains(t, string(requests[1].Body), "AXONHUB_VISION_EVIDENCE")
+}
+
+func TestVisionDelegationRejectsImpossiblePrimaryRouteBeforeVisionCall(t *testing.T) {
+	fixture := newVisionDelegationPipelineFixture(t, nil, &biz.RetryPolicy{Enabled: false})
+
+	textModel, err := fixture.client.Model.Query().
+		Where(model.ModelIDEQ("text-model")).
+		Only(fixture.ctx)
+	require.NoError(t, err)
+	settings := textModel.Settings
+	settings.Associations[0].When = &objects.ModelAssociationWhen{
+		Enabled: true,
+		Condition: &objects.Condition{
+			Type:     objects.ConditionTypeCondition,
+			Field:    objects.ModelAssociationConditionFieldHasImage,
+			Operator: "eq",
+			Value:    true,
+		},
+	}
+	_, err = textModel.Update().SetSettings(settings).Save(fixture.ctx)
+	require.NoError(t, err)
+
+	fixture.orchestrator.channelSelector = NewDefaultSelector(
+		fixture.orchestrator.ChannelService,
+		fixture.orchestrator.ModelService,
+		fixture.orchestrator.SystemService,
+	)
+
+	_, err = fixture.orchestrator.Process(fixture.ctx, buildVisionTestRequest(t))
+	require.ErrorIs(t, err, biz.ErrInvalidModel)
+	require.Empty(t, fixture.executor.Requests(), "an impossible primary route must fail before paid vision delegation")
+
+	executionCount, err := fixture.client.RequestExecution.Query().Count(fixture.ctx)
+	require.NoError(t, err)
+	require.Zero(t, executionCount)
+	usageCount, err := fixture.client.UsageLog.Query().Count(fixture.ctx)
+	require.NoError(t, err)
+	require.Zero(t, usageCount)
+}
+
+func TestImageRequestReusesPreloadedSourceModelWithoutDelegation(t *testing.T) {
+	tests := []struct {
+		name        string
+		updateModel func(*objects.ModelSettings, *objects.ModelCard)
+	}{
+		{
+			name: "delegation disabled",
+			updateModel: func(settings *objects.ModelSettings, _ *objects.ModelCard) {
+				settings.VisionDelegation.Enabled = false
+			},
+		},
+		{
+			name: "native vision model",
+			updateModel: func(settings *objects.ModelSettings, card *objects.ModelCard) {
+				settings.VisionDelegation.Enabled = false
+				card.Vision = true
+				card.Modalities.Input = []string{"text", "image"}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixture := newVisionDelegationPipelineFixture(t, []visionExecutorResult{
+				{response: visionHTTPResponse(buildMockOpenAIResponse("primary-1", "text-model", "The total is 42.", 11, 5))},
+			}, &biz.RetryPolicy{Enabled: false})
+
+			textModel, err := fixture.client.Model.Query().
+				Where(model.ModelIDEQ("text-model")).
+				Only(fixture.ctx)
+			require.NoError(t, err)
+			settings := textModel.Settings
+			card := textModel.ModelCard
+			tt.updateModel(settings, card)
+			_, err = textModel.Update().
+				SetSettings(settings).
+				SetModelCard(card).
+				Save(fixture.ctx)
+			require.NoError(t, err)
+
+			fixture.orchestrator.channelSelector = NewDefaultSelector(
+				fixture.orchestrator.ChannelService,
+				fixture.orchestrator.ModelService,
+				fixture.orchestrator.SystemService,
+			)
+
+			var modelQueries atomic.Int64
+			fixture.client.Intercept(intercept.Func(func(_ context.Context, query intercept.Query) error {
+				if query.Type() == ent.TypeModel {
+					modelQueries.Add(1)
+				}
+				return nil
+			}))
+
+			_, err = fixture.orchestrator.Process(fixture.ctx, buildVisionTestRequest(t))
+			require.NoError(t, err)
+			require.EqualValues(t, 1, modelQueries.Load(), "image request must reuse the preloaded source model")
+
+			requests := fixture.executor.Requests()
+			require.Len(t, requests, 1)
+			require.Contains(t, string(requests[0].Body), "image_url")
+		})
+	}
+}
+
+func TestImageRequestLegacyChannelFallbackReusesNotFoundModelResolution(t *testing.T) {
+	fixture := newVisionDelegationPipelineFixture(t, []visionExecutorResult{
+		{response: visionHTTPResponse(buildMockOpenAIResponse("primary-1", "text-model", "The total is 42.", 11, 5))},
+	}, &biz.RetryPolicy{Enabled: false})
+
+	textModel, err := fixture.client.Model.Query().
+		Where(model.ModelIDEQ("text-model")).
+		Only(fixture.ctx)
+	require.NoError(t, err)
+	require.NoError(t, fixture.client.Model.DeleteOne(textModel).Exec(fixture.ctx))
+	require.NoError(t, fixture.orchestrator.SystemService.SetModelSettings(fixture.ctx, biz.SystemModelSettings{
+		FallbackToChannelsOnModelNotFound: true,
+	}))
+
+	fixture.orchestrator.channelSelector = NewDefaultSelector(
+		fixture.orchestrator.ChannelService,
+		fixture.orchestrator.ModelService,
+		fixture.orchestrator.SystemService,
+	)
+
+	var modelQueries atomic.Int64
+	fixture.client.Intercept(intercept.Func(func(_ context.Context, query intercept.Query) error {
+		if query.Type() == ent.TypeModel {
+			modelQueries.Add(1)
+		}
+		return nil
+	}))
+
+	_, err = fixture.orchestrator.Process(fixture.ctx, buildVisionTestRequest(t))
+	require.NoError(t, err)
+	require.EqualValues(t, 1, modelQueries.Load(), "legacy image fallback must reuse the NotFound model resolution")
+
+	requests := fixture.executor.Requests()
+	require.Len(t, requests, 1)
+	require.Contains(t, string(requests[0].Body), "image_url")
+
+	executions, err := fixture.client.RequestExecution.Query().All(fixture.ctx)
+	require.NoError(t, err)
+	require.Len(t, executions, 1)
+	require.Equal(t, requestexecution.PurposePrimary, executions[0].Purpose)
 }
 
 func TestVisionDelegationDisablesRequestBodyPassThrough(t *testing.T) {
@@ -797,6 +1098,20 @@ func TestVisionDelegationSupportsStreamingPrimaryRequest(t *testing.T) {
 	require.Len(t, requests, 2)
 	require.NotContains(t, string(requests[1].Body), "image_url")
 	require.Contains(t, string(requests[1].Body), "AXONHUB_VISION_EVIDENCE")
+
+	executions, err := fixture.client.RequestExecution.Query().All(fixture.ctx)
+	require.NoError(t, err)
+	require.Len(t, executions, 2)
+	for _, execution := range executions {
+		switch execution.Purpose {
+		case requestexecution.PurposeVisionDelegation:
+			require.False(t, execution.Stream)
+		case requestexecution.PurposePrimary:
+			require.True(t, execution.Stream)
+		default:
+			t.Fatalf("unexpected execution purpose: %s", execution.Purpose)
+		}
+	}
 }
 
 type visionDelegationPipelineFixture struct {

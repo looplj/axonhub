@@ -94,6 +94,10 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 	if purpose == "" {
 		purpose = requestexecution.PurposePrimary
 	}
+	executionStream := state.Request.Stream
+	if state.LlmRequest != nil && state.LlmRequest.Stream != nil {
+		executionStream = *state.LlmRequest.Stream
+	}
 	requestExec, err := state.RequestService.CreateRequestExecutionWithPurpose(
 		ctx,
 		channel,
@@ -103,6 +107,7 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		format,
 		state.PassThroughApplied,
 		purpose,
+		executionStream,
 	)
 	if err != nil {
 		return nil, err

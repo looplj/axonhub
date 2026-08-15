@@ -275,6 +275,7 @@ func (s *RequestService) CreateRequestExecution(
 		format,
 		passThroughApplied,
 		requestexecution.PurposePrimary,
+		request.Stream,
 	)
 }
 
@@ -287,6 +288,7 @@ func (s *RequestService) CreateRequestExecutionWithPurpose(
 	format llm.APIFormat,
 	passThroughApplied bool,
 	purpose requestexecution.Purpose,
+	stream bool,
 ) (*ent.RequestExecution, error) {
 	// Decide whether to store the channel request body
 	storeRequestBody := true
@@ -354,7 +356,7 @@ func (s *RequestService) CreateRequestExecutionWithPurpose(
 		SetPurpose(purpose).
 		SetRequestBody(requestBodyForDB).
 		SetStatus(requestexecution.StatusProcessing).
-		SetStream(request.Stream).
+		SetStream(stream).
 		SetRequestHeaders(requestHeadersBytes).
 		SetPassThroughApplied(passThroughApplied)
 

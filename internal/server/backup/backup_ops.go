@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -91,6 +92,9 @@ func (svc *BackupService) doBackupToWriter(ctx context.Context, opts BackupOptio
 		return err
 	}
 	if err := svc.streamUsageRequests(ctx, o, opts); err != nil {
+		return err
+	}
+	if err := svc.streamRequestExecutions(ctx, o, opts); err != nil {
 		return err
 	}
 	if err := svc.streamUsageLogs(ctx, o, opts); err != nil {
@@ -353,6 +357,38 @@ func (svc *BackupService) streamUsageLogs(ctx context.Context, o *objWriter, opt
 	)
 }
 
+func (svc *BackupService) streamRequestExecutions(ctx context.Context, o *objWriter, opts BackupOptions) error {
+	return streamArrayField(o, "request_executions", opts.IncludeRequestLogs || opts.IncludeUsageStats, true,
+		func(lastID int) ([]*ent.RequestExecution, int, error) {
+			query := svc.db.RequestExecution.Query().
+				Where(requestexecution.IDGT(lastID)).
+				Order(ent.Asc(requestexecution.FieldID)).
+				Limit(backupBatchSize).
+				WithRequest(func(query *ent.RequestQuery) {
+					query.WithProject()
+				}).
+				WithChannel()
+			if !opts.IncludeRequestLogs {
+				query = query.Where(requestexecution.HasUsageLogs())
+			}
+
+			rows, err := query.All(ctx)
+			if err != nil {
+				return nil, 0, err
+			}
+			nextID := 0
+			if len(rows) > 0 {
+				nextID = rows[len(rows)-1].ID
+			}
+			return rows, nextID, nil
+		},
+		func(execution *ent.RequestExecution) ([]byte, bool, error) {
+			b, err := json.Marshal(backupRequestExecution(execution, opts.IncludeRequestLogs))
+			return b, true, err
+		},
+	)
+}
+
 // objWriter writes a JSON object incrementally, tracking leading commas.
 type objWriter struct {
 	w         io.Writer
@@ -470,6 +506,51 @@ func backupUsageLog(ul *ent.UsageLog, apiKeyKeys map[int]string) *BackupUsageLog
 		data.APIKeyKey = apiKeyKeys[ul.APIKeyID]
 	}
 	data.UsageLog.Edges = ent.UsageLogEdges{}
+
+	return data
+}
+
+func backupRequestExecution(execution *ent.RequestExecution, includeDetails bool) *BackupRequestExecution {
+	projectName := ""
+	if execution.Edges.Request != nil && execution.Edges.Request.Edges.Project != nil {
+		projectName = execution.Edges.Request.Edges.Project.Name
+	}
+	channelName := ""
+	if execution.Edges.Channel != nil {
+		channelName = execution.Edges.Channel.Name
+	}
+
+	data := &BackupRequestExecution{
+		ID:          execution.ID,
+		CreatedAt:   execution.CreatedAt,
+		UpdatedAt:   execution.UpdatedAt,
+		ProjectID:   execution.ProjectID,
+		RequestID:   execution.RequestID,
+		ChannelID:   execution.ChannelID,
+		ModelID:     execution.ModelID,
+		Purpose:     execution.Purpose,
+		Format:      execution.Format,
+		Status:      execution.Status,
+		Stream:      execution.Stream,
+		ProjectName: projectName,
+		ChannelName: channelName,
+	}
+	if includeDetails {
+		data.DetailsIncluded = true
+		data.ExternalID = execution.ExternalID
+		data.ReasoningEffort = execution.ReasoningEffort
+		data.RequestBody = execution.RequestBody
+		data.ResponseBody = execution.ResponseBody
+		data.ResponseChunks = execution.ResponseChunks
+		data.ErrorMessage = execution.ErrorMessage
+		data.ResponseStatusCode = execution.ResponseStatusCode
+		data.MetricsLatencyMs = execution.MetricsLatencyMs
+		data.MetricsFirstTokenLatencyMs = execution.MetricsFirstTokenLatencyMs
+		data.MetricsReasoningDurationMs = execution.MetricsReasoningDurationMs
+		data.RequestHeaders = execution.RequestHeaders
+		data.RequestURL = execution.RequestURL
+		data.PassThroughApplied = execution.PassThroughApplied
+	}
 
 	return data
 }

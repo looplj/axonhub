@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
+	"entgo.io/ent/dialect/sql"
+	"github.com/samber/lo"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
@@ -807,9 +809,21 @@ func TestBackupService_Restore_MultipleUsageLogsPerRequest(t *testing.T) {
 		SetProjectID(proj.ID).
 		SetRequestID(req.ID).
 		SetChannelID(ch.ID).
+		SetExternalID("primary-external-secret").
 		SetModelID("gpt-4").
 		SetPurpose(requestexecution.PurposePrimary).
-		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetReasoningEffort("high").
+		SetRequestBody(objects.JSONRawMessage(`{"prompt":"primary-execution-secret"}`)).
+		SetResponseBody(objects.JSONRawMessage(`{"answer":"primary-response-secret"}`)).
+		SetResponseChunks([]objects.JSONRawMessage{objects.JSONRawMessage(`{"delta":"primary-chunk-secret"}`)}).
+		SetRequestHeaders(objects.JSONRawMessage(`{"X-Private":"primary-header-secret"}`)).
+		SetErrorMessage("primary-error-secret").
+		SetResponseStatusCode(502).
+		SetMetricsLatencyMs(1234).
+		SetMetricsFirstTokenLatencyMs(234).
+		SetMetricsReasoningDurationMs(345).
+		SetRequestURL("https://primary-url-secret.example/v1/chat/completions").
+		SetPassThroughApplied(true).
 		SetStatus(requestexecution.StatusCompleted).
 		Save(ctx)
 	require.NoError(t, err)
@@ -820,7 +834,7 @@ func TestBackupService_Restore_MultipleUsageLogsPerRequest(t *testing.T) {
 		SetChannelID(ch.ID).
 		SetModelID("vision-model").
 		SetPurpose(requestexecution.PurposeVisionDelegation).
-		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetRequestBody(objects.JSONRawMessage(`{"prompt":"vision-execution-secret"}`)).
 		SetStatus(requestexecution.StatusCompleted).
 		Save(ctx)
 	require.NoError(t, err)
@@ -862,14 +876,55 @@ func TestBackupService_Restore_MultipleUsageLogsPerRequest(t *testing.T) {
 		IncludeUsageStats: true,
 	})
 	require.NoError(t, err)
+	require.NotContains(t, string(data), "primary-execution-secret")
+	require.NotContains(t, string(data), "primary-response-secret")
+	require.NotContains(t, string(data), "primary-chunk-secret")
+	require.NotContains(t, string(data), "primary-header-secret")
+	require.NotContains(t, string(data), "primary-external-secret")
+	require.NotContains(t, string(data), "primary-error-secret")
+	require.NotContains(t, string(data), "primary-url-secret")
+	require.NotContains(t, string(data), "vision-execution-secret")
 
 	var backupData BackupData
 	require.NoError(t, json.Unmarshal(data, &backupData))
 	require.Len(t, backupData.UsageLogs, 2)
+	require.Len(t, backupData.RequestExecutions, 2)
+	for _, execution := range backupData.RequestExecutions {
+		require.False(t, execution.DetailsIncluded)
+		require.Empty(t, execution.RequestBody)
+		require.Empty(t, execution.ResponseBody)
+		require.Empty(t, execution.ResponseChunks)
+		require.Empty(t, execution.RequestHeaders)
+	}
 	require.ElementsMatch(t,
 		[]int{primaryExecution.ID, visionExecution.ID},
 		[]int{backupData.UsageLogs[0].RequestExecutionID, backupData.UsageLogs[1].RequestExecutionID},
 	)
+
+	requestLogData, err := service.Backup(ctx, BackupOptions{
+		IncludeUsageStats:  true,
+		IncludeRequestLogs: true,
+	})
+	require.NoError(t, err)
+	require.Contains(t, string(requestLogData), "primary-execution-secret")
+	require.Contains(t, string(requestLogData), "primary-response-secret")
+	require.Contains(t, string(requestLogData), "primary-chunk-secret")
+	require.Contains(t, string(requestLogData), "primary-header-secret")
+	require.Contains(t, string(requestLogData), "primary-external-secret")
+	require.Contains(t, string(requestLogData), "primary-error-secret")
+	require.Contains(t, string(requestLogData), "primary-url-secret")
+	require.Contains(t, string(requestLogData), "vision-execution-secret")
+	var requestLogBackupData BackupData
+	require.NoError(t, json.Unmarshal(requestLogData, &requestLogBackupData))
+	require.ElementsMatch(t,
+		[]requestexecution.Purpose{requestexecution.PurposePrimary, requestexecution.PurposeVisionDelegation},
+		lo.Map(requestLogBackupData.RequestExecutions, func(execution *BackupRequestExecution, _ int) requestexecution.Purpose {
+			return execution.Purpose
+		}),
+	)
+	for _, execution := range requestLogBackupData.RequestExecutions {
+		require.True(t, execution.DetailsIncluded)
+	}
 
 	_, err = client.UsageLog.Delete().Exec(ctx)
 	require.NoError(t, err)
@@ -880,7 +935,7 @@ func TestBackupService_Restore_MultipleUsageLogsPerRequest(t *testing.T) {
 
 	restore := func() {
 		t.Helper()
-		require.NoError(t, service.Restore(ctx, data, RestoreOptions{IncludeUsageStats: true}))
+		require.NoError(t, service.Restore(ctx, requestLogData, RestoreOptions{IncludeUsageStats: true}))
 
 		usageLogs, queryErr := client.UsageLog.Query().All(ctx)
 		require.NoError(t, queryErr)
@@ -894,9 +949,49 @@ func TestBackupService_Restore_MultipleUsageLogsPerRequest(t *testing.T) {
 		require.Equal(t, int64(50), usageByModel["vision-model"].TotalTokens)
 		require.Equal(t, 1.0, *usageByModel["gpt-4"].TotalCost)
 		require.Equal(t, 2.0, *usageByModel["vision-model"].TotalCost)
+
+		executions, queryErr := client.RequestExecution.Query().All(ctx)
+		require.NoError(t, queryErr)
+		require.Len(t, executions, 2)
+		executionPurposeByID := make(map[int]requestexecution.Purpose, len(executions))
+		for _, execution := range executions {
+			executionPurposeByID[execution.ID] = execution.Purpose
+			require.JSONEq(t, `{}`, string(execution.RequestBody))
+			require.Empty(t, execution.ResponseBody)
+			require.Empty(t, execution.ResponseChunks)
+			require.Empty(t, execution.RequestHeaders)
+			require.Empty(t, execution.ExternalID)
+			require.Nil(t, execution.ReasoningEffort)
+			require.Empty(t, execution.ErrorMessage)
+			require.Nil(t, execution.ResponseStatusCode)
+			require.Nil(t, execution.MetricsLatencyMs)
+			require.Nil(t, execution.MetricsFirstTokenLatencyMs)
+			require.Nil(t, execution.MetricsReasoningDurationMs)
+			require.Empty(t, execution.RequestURL)
+			require.False(t, execution.PassThroughApplied)
+		}
+		require.Equal(t, requestexecution.PurposePrimary, executionPurposeByID[usageByModel["gpt-4"].RequestExecutionID])
+		require.Equal(t, requestexecution.PurposeVisionDelegation, executionPurposeByID[usageByModel["vision-model"].RequestExecutionID])
 	}
 
 	restore()
+	usageLogs, err := client.UsageLog.Query().All(ctx)
+	require.NoError(t, err)
+	for _, usageLog := range usageLogs {
+		_, err = client.UsageLog.UpdateOneID(usageLog.ID).
+			SetUpdatedAt(usageLog.UpdatedAt).
+			Modify(func(update *sql.UpdateBuilder) {
+				update.SetNull(usagelog.FieldRequestExecutionID)
+			}).
+			Save(ctx)
+		require.NoError(t, err)
+	}
+	unlinkedUsageCount, err := client.UsageLog.Query().
+		Where(usagelog.RequestExecutionIDIsNil()).
+		Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 2, unlinkedUsageCount)
+
 	restore()
 }
 

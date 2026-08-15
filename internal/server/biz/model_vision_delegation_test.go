@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/llm"
 )
 
 func TestModelServiceVisionDelegationCandidatesAndValidation(t *testing.T) {
@@ -93,6 +94,78 @@ func TestModelServiceVisionDelegationCandidatesAndValidation(t *testing.T) {
 	require.NotNil(t, effective)
 	require.False(t, effective.SupportsVision())
 	require.Equal(t, []string{"text"}, effective.Modalities.Input)
+}
+
+func TestModelServiceVisionDelegationRouteConditionsMatchChildRequest(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	ch := createVisionDelegationTestChannel(t, ctx, client, "vision-model")
+	svc := &ModelService{AbstractService: &AbstractService{db: client}}
+	target := createVisionDelegationTestModel(
+		t, ctx, client, ch.ID, "vision-model", model.StatusEnabled,
+		&objects.ModelCard{Vision: true, Modalities: objects.ModelCardModalities{Input: []string{"text", "image"}}},
+		&objects.ModelSettings{},
+	)
+
+	tests := []struct {
+		name      string
+		condition objects.Condition
+		eligible  bool
+	}{
+		{
+			name: "streaming only",
+			condition: objects.Condition{Type: objects.ConditionTypeCondition,
+				Field: objects.ModelAssociationConditionFieldStream, Operator: "eq", Value: true},
+		},
+		{
+			name: "responses only",
+			condition: objects.Condition{Type: objects.ConditionTypeCondition,
+				Field: objects.ModelAssociationConditionFieldRequestFormat, Operator: "eq", Value: llm.APIFormatOpenAIResponse.String()},
+		},
+		{
+			name: "missing request header",
+			condition: objects.Condition{Type: objects.ConditionTypeCondition,
+				Field: objects.ModelAssociationConditionFieldRequestHeaderPrefix + "X-Vision-Only", Operator: "eq", Value: "yes"},
+		},
+		{
+			name: "matches generated child request",
+			condition: objects.Condition{
+				Type:  objects.ConditionTypeGroup,
+				Logic: "AND",
+				Conditions: []objects.Condition{
+					{Type: objects.ConditionTypeCondition, Field: objects.ModelAssociationConditionFieldStream, Operator: "eq", Value: false},
+					{Type: objects.ConditionTypeCondition, Field: objects.ModelAssociationConditionFieldRequestFormat, Operator: "eq", Value: llm.APIFormatOpenAIChatCompletion.String()},
+					{Type: objects.ConditionTypeCondition, Field: objects.ModelAssociationConditionFieldHasImage, Operator: "eq", Value: true},
+					{Type: objects.ConditionTypeCondition, Field: objects.ModelAssociationConditionFieldRequestHeaderPrefix + "Content-Type", Operator: "eq", Value: "application/json"},
+				},
+			},
+			eligible: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			settings := visionDelegationTestSettings(ch.ID, target.ModelID, "", false)
+			settings.Associations[0].When = &objects.ModelAssociationWhen{
+				Enabled:   true,
+				Condition: lo.ToPtr(tt.condition),
+			}
+			_, err := target.Update().SetSettings(settings).Save(ctx)
+			require.NoError(t, err)
+
+			candidates, err := svc.ListVisionDelegationCandidates(ctx, "source-model")
+			require.NoError(t, err)
+			if tt.eligible {
+				require.Equal(t, []string{"vision-model"}, lo.Map(candidates, func(candidate *ent.Model, _ int) string {
+					return candidate.ModelID
+				}))
+				return
+			}
+			require.Empty(t, candidates)
+		})
+	}
 }
 
 func TestModelServiceVisionDelegationLifecycle(t *testing.T) {

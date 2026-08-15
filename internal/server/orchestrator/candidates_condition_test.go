@@ -106,6 +106,64 @@ func TestMatchesAssociationWhen_ContentFeatures(t *testing.T) {
 	require.False(t, matchesAssociationWhen(0, false, "", requestContentFeatures{}, nil, now, when))
 }
 
+func TestCanMatchAssociationWhenAfterVisionDelegation(t *testing.T) {
+	now := time.Date(2026, 5, 25, 10, 0, 0, 0, time.Local)
+
+	t.Run("rejects known post-rewrite mismatch", func(t *testing.T) {
+		when := &objects.ModelAssociationWhen{
+			Enabled: true,
+			Condition: &objects.Condition{
+				Type:     objects.ConditionTypeCondition,
+				Field:    objects.ModelAssociationConditionFieldHasImage,
+				Operator: "eq",
+				Value:    true,
+			},
+		}
+
+		require.False(t, canMatchAssociationWhenAfterVisionDelegation(
+			false,
+			llm.APIFormatOpenAIChatCompletion.String(),
+			requestContentFeatures{},
+			nil,
+			now,
+			when,
+		))
+	})
+
+	t.Run("keeps prompt token conditions provisional", func(t *testing.T) {
+		when := &objects.ModelAssociationWhen{
+			Enabled: true,
+			Condition: &objects.Condition{
+				Type:  objects.ConditionTypeGroup,
+				Logic: "and",
+				Conditions: []objects.Condition{
+					{
+						Type:     objects.ConditionTypeCondition,
+						Field:    objects.ModelAssociationConditionFieldHasImage,
+						Operator: "eq",
+						Value:    false,
+					},
+					{
+						Type:     objects.ConditionTypeCondition,
+						Field:    objects.ModelAssociationConditionFieldPromptTokens,
+						Operator: "gt",
+						Value:    100000,
+					},
+				},
+			},
+		}
+
+		require.True(t, canMatchAssociationWhenAfterVisionDelegation(
+			false,
+			llm.APIFormatOpenAIChatCompletion.String(),
+			requestContentFeatures{},
+			nil,
+			now,
+			when,
+		))
+	})
+}
+
 func TestDetectRequestContentFeatures(t *testing.T) {
 	req := &llm.Request{
 		Messages: []llm.Message{

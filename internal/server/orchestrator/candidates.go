@@ -56,6 +56,31 @@ type CandidateSelector interface {
 	Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error)
 }
 
+type sourceModelResolution struct {
+	modelID string
+	model   *ent.Model
+	err     error
+}
+
+type sourceModelResolutionContextKey struct{}
+
+func withSourceModelResolution(ctx context.Context, resolution *sourceModelResolution) context.Context {
+	if resolution == nil {
+		return ctx
+	}
+
+	return context.WithValue(ctx, sourceModelResolutionContextKey{}, resolution)
+}
+
+func sourceModelResolutionFromContext(ctx context.Context, modelID string) (*sourceModelResolution, bool) {
+	resolution, _ := ctx.Value(sourceModelResolutionContextKey{}).(*sourceModelResolution)
+	if resolution == nil || resolution.modelID != modelID {
+		return nil, false
+	}
+
+	return resolution, true
+}
+
 // PreviousChannelProvider provides the most recently selected channel for
 // trace and thread routing scopes.
 type PreviousChannelProvider interface {
@@ -156,18 +181,28 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 }
 
 func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
-	model, err := s.ModelService.GetModelByModelID(ctx, req.Model, model.StatusEnabled)
+	var sourceModel *ent.Model
+	var err error
+	if resolution, resolved := sourceModelResolutionFromContext(ctx, req.Model); resolved {
+		sourceModel = resolution.model
+		err = resolution.err
+	} else {
+		sourceModel, err = s.ModelService.GetModelByModelID(ctx, req.Model, model.StatusEnabled)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to query AxonHub Model: %w", err)
 	}
+	if sourceModel == nil {
+		return nil, fmt.Errorf("failed to query AxonHub Model: resolved model is nil")
+	}
 
 	systemSettings := s.SystemService.ModelSettingsOrDefault(ctx)
-	developerAssociationCount, modelAssociationCount, developerInheritanceDisabled := effectiveAssociationSourceCounts(systemSettings, model)
-	associations := biz.EffectiveModelAssociations(systemSettings, model)
+	developerAssociationCount, modelAssociationCount, developerInheritanceDisabled := effectiveAssociationSourceCounts(systemSettings, sourceModel)
+	associations := biz.EffectiveModelAssociations(systemSettings, sourceModel)
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "computed effective model associations",
-			log.String("model", model.ModelID),
-			log.String("developer", model.Developer),
+			log.String("model", sourceModel.ModelID),
+			log.String("developer", sourceModel.Developer),
 			log.Int("developer_association_count", developerAssociationCount),
 			log.Int("model_association_count", modelAssociationCount),
 			log.Bool("developer_inheritance_disabled", developerInheritanceDisabled),
@@ -190,7 +225,7 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		)
 	}
 
-	resolvedCandidates, err := s.resolveAssociations(ctx, model, associations)
+	resolvedCandidates, err := s.resolveAssociations(ctx, sourceModel, associations)
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve associations: %w", err)
 	}
@@ -208,16 +243,16 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 
 	strategy := objects.RoutingPolicyDefault
 	traceStickyMode := objects.RoutingPolicyDefault
-	if model.Settings != nil {
-		strategy = objects.NormalizeRoutingPolicyValue(model.Settings.LoadBalancerStrategy)
-		traceStickyMode = objects.NormalizeRoutingPolicyValue(model.Settings.TraceStickyMode)
+	if sourceModel.Settings != nil {
+		strategy = objects.NormalizeRoutingPolicyValue(sourceModel.Settings.LoadBalancerStrategy)
+		traceStickyMode = objects.NormalizeRoutingPolicyValue(sourceModel.Settings.TraceStickyMode)
 	}
 	modelRoutingPolicy := &ModelRoutingPolicy{
 		LoadBalancerStrategy: strategy,
 		TraceStickyMode:      traceStickyMode,
 	}
 	for _, candidate := range candidates {
-		candidate.SourceModel = model
+		candidate.SourceModel = sourceModel
 		candidate.ModelRoutingPolicy = modelRoutingPolicy
 	}
 

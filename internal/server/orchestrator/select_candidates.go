@@ -6,7 +6,6 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
@@ -15,6 +14,32 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/pipeline"
 )
+
+// resolveVisionDelegationSourceModel resolves only image-bearing requests
+// before conditional route selection. Vision delegation needs the source model
+// settings, while the eventual primary route must be selected after images are
+// replaced with text evidence.
+func resolveVisionDelegationSourceModel(inbound *PersistentInboundTransformer) pipeline.Middleware {
+	return pipeline.OnLlmRequest("resolve-vision-delegation-source-model", func(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
+		state := inbound.state
+		if llmRequest == nil || state == nil || state.DelegationDepth > 0 || state.sourceModelResolution != nil ||
+			state.ModelService == nil || !detectRequestContentFeatures(llmRequest).hasImage {
+			return llmRequest, nil
+		}
+
+		sourceModel, err := state.ModelService.GetModelByModelID(ctx, llmRequest.Model, model.StatusEnabled)
+		state.sourceModelResolution = &sourceModelResolution{
+			modelID: llmRequest.Model,
+			model:   sourceModel,
+			err:     err,
+		}
+		if err == nil {
+			state.SourceModel = sourceModel
+		}
+
+		return llmRequest, nil
+	})
+}
 
 // selectCandidates creates a middleware that selects available channel model candidates for the model.
 // This is the second step in the inbound pipeline, moved from outbound transformer.
@@ -25,7 +50,6 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		if len(inbound.state.ChannelModelsCandidates) > 0 {
 			return llmRequest, nil
 		}
-
 		selector := inbound.state.CandidateSelector
 
 		// Project-level profile filtering (upper boundary)
@@ -65,6 +89,24 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		}
 
 		selector = WithStreamPolicySelector(selector)
+		if shouldDeferPrimaryCandidateSelection(inbound.state, llmRequest) {
+			// Reject routes that are already impossible after images are removed,
+			// before the paid vision request runs. Prompt-token conditions remain
+			// provisional because the delegated evidence length is not known yet.
+			preflightRequest := cloneVisionDelegationPrimaryRequestForPreflight(llmRequest)
+			preflightCtx := withVisionDelegationPreflight(
+				withSourceModelResolution(ctx, inbound.state.sourceModelResolution),
+			)
+			candidates, err := selector.Select(preflightCtx, preflightRequest)
+			if err != nil {
+				return nil, err
+			}
+			if len(candidates) == 0 {
+				return nil, fmt.Errorf("%w: %s", biz.ErrInvalidModel, llmRequest.Model)
+			}
+
+			return llmRequest, nil
+		}
 
 		quotaSelector := WithProviderQuotaSelector(selector, quotaProvider, systemService)
 		selector = quotaSelector
@@ -80,7 +122,8 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 			)
 		}
 
-		candidates, err := selector.Select(ctx, llmRequest)
+		selectionCtx := withSourceModelResolution(ctx, inbound.state.sourceModelResolution)
+		candidates, err := selector.Select(selectionCtx, llmRequest)
 		if err != nil {
 			return nil, err
 		}
@@ -120,16 +163,6 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		if inbound.state.SourceModel == nil {
 			inbound.state.SourceModel = candidates[0].SourceModel
 		}
-		if inbound.state.SourceModel == nil && inbound.state.DelegationDepth == 0 &&
-			inbound.state.ModelService != nil && detectRequestContentFeatures(llmRequest).hasImage {
-			sourceModel, err := inbound.state.ModelService.GetModelByModelID(ctx, llmRequest.Model, model.StatusEnabled)
-			if err == nil {
-				inbound.state.SourceModel = sourceModel
-			} else if !ent.IsNotFound(err) {
-				return nil, err
-			}
-		}
-
 		if settings.Enabled && settings.Mode == biz.QuotaEnforcementModeDePrioritize {
 			// In DePrioritize mode the quota selector doesn't filter candidates,
 			// so we must check quota status again here to determine if all
@@ -144,6 +177,27 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 
 		return llmRequest, nil
 	})
+}
+
+func shouldDeferPrimaryCandidateSelection(state *PersistenceState, request *llm.Request) bool {
+	return state != nil && state.DelegationDepth == 0 && state.SourceModel != nil &&
+		state.SourceModel.Settings != nil && state.SourceModel.Settings.VisionDelegation.Enabled &&
+		detectRequestContentFeatures(request).hasImage
+}
+
+func cloneVisionDelegationPrimaryRequestForPreflight(request *llm.Request) *llm.Request {
+	cloned := *request
+	cloned.Messages = append([]llm.Message(nil), request.Messages...)
+	for i := range cloned.Messages {
+		cloned.Messages[i].Content = request.Messages[i].Content
+		cloned.Messages[i].Content.MultipleContent = append(
+			[]llm.MessageContentPart(nil),
+			request.Messages[i].Content.MultipleContent...,
+		)
+	}
+	removeVisionImages(&cloned)
+
+	return &cloned
 }
 
 func areAllChannelsExhausted(ctx context.Context, candidates []*ChannelModelsCandidate, quotaProvider ProviderQuotaStatusProvider, llmRequest *llm.Request) bool {

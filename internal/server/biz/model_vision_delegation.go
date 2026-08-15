@@ -118,16 +118,72 @@ func (svc *ModelService) isModelRoutableForVisionDelegation(ctx context.Context,
 		})
 	}
 
-	connections := MatchConnections(
+	associations := lo.Filter(
 		EffectiveModelAssociations(svc.modelSettingsOrDefault(ctx), target),
-		channels,
+		func(association *objects.ModelAssociation, _ int) bool {
+			return matchesVisionDelegationChildRequest(association)
+		},
 	)
+	connections := MatchConnections(associations, channels)
 	if len(connections) == 0 {
 		return false, nil
 	}
 
 	return hasCapableEndpointForModel(target, connections) &&
 		len(llm.CapableAPIFormats(llm.RequestTypeChat)) > 0, nil
+}
+
+// matchesVisionDelegationChildRequest accepts conditional routes only when
+// their conditions are guaranteed by the generated child request. Prompt size,
+// time, and client-specific headers vary per request and therefore cannot be
+// the sole route for a globally configured delegation target.
+func matchesVisionDelegationChildRequest(association *objects.ModelAssociation) bool {
+	if association == nil || association.When == nil || !association.When.Enabled || association.When.Condition == nil {
+		return true
+	}
+
+	return visionDelegationConditionGuaranteed(*association.When.Condition)
+}
+
+func visionDelegationConditionGuaranteed(condition objects.Condition) bool {
+	if condition.Type == objects.ConditionTypeGroup || (condition.Type == "" && len(condition.Conditions) > 0) {
+		if len(condition.Conditions) == 0 {
+			return true
+		}
+		if strings.EqualFold(strings.TrimSpace(condition.Logic), "OR") {
+			return lo.SomeBy(condition.Conditions, visionDelegationConditionGuaranteed)
+		}
+		return lo.EveryBy(condition.Conditions, visionDelegationConditionGuaranteed)
+	}
+
+	field := strings.ToLower(strings.TrimSpace(condition.Field))
+	switch field {
+	case objects.ModelAssociationConditionFieldStream,
+		objects.ModelAssociationConditionFieldRequestFormat,
+		objects.ModelAssociationConditionFieldHasImage,
+		objects.ModelAssociationConditionFieldHasVideo,
+		objects.ModelAssociationConditionFieldHasDocument,
+		objects.ModelAssociationConditionFieldHasAudio:
+		// These values are fixed for every vision delegation child request.
+	case strings.ToLower(objects.ModelAssociationConditionFieldRequestHeaderPrefix + "Content-Type"):
+		// Content-Type is the only header AxonHub always supplies itself.
+	default:
+		return false
+	}
+
+	return objects.Evaluate(condition, map[string]any{
+		objects.ModelAssociationConditionFieldPromptTokens:  int64(0),
+		objects.ModelAssociationConditionFieldStream:        false,
+		objects.ModelAssociationConditionFieldRequestFormat: llm.APIFormatOpenAIChatCompletion.String(),
+		objects.ModelAssociationConditionFieldHasImage:      true,
+		objects.ModelAssociationConditionFieldHasVideo:      false,
+		objects.ModelAssociationConditionFieldHasDocument:   false,
+		objects.ModelAssociationConditionFieldHasAudio:      false,
+		objects.ModelAssociationConditionFieldRequestHeader: map[string]string{
+			"Content-Type": "application/json",
+			"content-type": "application/json",
+		},
+	})
 }
 
 // GetVisionDelegationTarget re-validates the delegation config against live

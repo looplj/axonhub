@@ -256,6 +256,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyAutoReasoningEffort(processor.SystemService),
 		checkApiKeyModelAccess(inbound),
 		applyModelMapping(inbound),
+		resolveVisionDelegationSourceModel(inbound),
+		// Non-delegated requests select normally here. Delegated image requests
+		// are deferred until the post-rewrite selection below.
 		selectCandidates(inbound, processor.quotaProvider, processor.SystemService),
 		injectPrompts(inbound),
 		protectPrompts(inbound),
@@ -265,6 +268,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyPassThroughStream(outbound, processor.SystemService),
 		persistRequest(inbound),
 		visionDelegation(processor, inbound),
+		// Vision delegation rewrites image requests into text evidence. Conditional
+		// associations must therefore be evaluated against the rewritten request.
+		selectCandidates(inbound, processor.quotaProvider, processor.SystemService),
 	)
 
 	// Add outbound middlewares (executed after outbound.TransformRequest)

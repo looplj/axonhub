@@ -6,6 +6,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -20,6 +21,7 @@ type BackupData struct {
 	ChannelModelPrices []*BackupChannelModelPrice `json:"channel_model_prices,omitempty"`
 	APIKeys            []*BackupAPIKey            `json:"api_keys,omitempty"`
 	UsageRequests      []*BackupUsageRequest      `json:"usage_requests,omitempty"`
+	RequestExecutions  []*BackupRequestExecution  `json:"request_executions,omitempty"`
 	UsageLogs          []*BackupUsageLog          `json:"usage_logs,omitempty"`
 }
 
@@ -136,6 +138,36 @@ type BackupUsageLog struct {
 	APIKeyKey   string `json:"api_key_key,omitempty"`
 }
 
+type BackupRequestExecution struct {
+	DetailsIncluded            bool                     `json:"details_included,omitempty"`
+	ID                         int                      `json:"id,omitempty"`
+	CreatedAt                  time.Time                `json:"created_at,omitzero"`
+	UpdatedAt                  time.Time                `json:"updated_at,omitzero"`
+	ProjectID                  int                      `json:"project_id,omitempty"`
+	RequestID                  int                      `json:"request_id,omitempty"`
+	ChannelID                  int                      `json:"channel_id,omitempty"`
+	ExternalID                 string                   `json:"external_id,omitempty"`
+	ModelID                    string                   `json:"model_id,omitempty"`
+	Purpose                    requestexecution.Purpose `json:"purpose,omitempty"`
+	Format                     string                   `json:"format,omitempty"`
+	ReasoningEffort            *string                  `json:"reasoning_effort,omitempty"`
+	RequestBody                objects.JSONRawMessage   `json:"request_body,omitempty"`
+	ResponseBody               objects.JSONRawMessage   `json:"response_body,omitempty"`
+	ResponseChunks             []objects.JSONRawMessage `json:"response_chunks,omitempty"`
+	ErrorMessage               string                   `json:"error_message,omitempty"`
+	ResponseStatusCode         *int                     `json:"response_status_code,omitempty"`
+	Status                     requestexecution.Status  `json:"status,omitempty"`
+	Stream                     bool                     `json:"stream,omitempty"`
+	MetricsLatencyMs           *int64                   `json:"metrics_latency_ms,omitempty"`
+	MetricsFirstTokenLatencyMs *int64                   `json:"metrics_first_token_latency_ms,omitempty"`
+	MetricsReasoningDurationMs *int64                   `json:"metrics_reasoning_duration_ms,omitempty"`
+	RequestHeaders             objects.JSONRawMessage   `json:"request_headers,omitempty"`
+	RequestURL                 string                   `json:"request_url,omitempty"`
+	PassThroughApplied         bool                     `json:"pass_through_applied,omitempty"`
+	ProjectName                string                   `json:"project_name,omitempty"`
+	ChannelName                string                   `json:"channel_name,omitempty"`
+}
+
 func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 	type usageLogData struct {
 		ID                                 int                `json:"id,omitempty"`
@@ -201,7 +233,8 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 }
 
 const (
-	BackupVersion   = "1.4"
+	BackupVersion   = "1.5"
+	BackupVersionV5 = "1.4"
 	BackupVersionV4 = "1.3"
 	BackupVersionV1 = "1.0"
 	BackupVersionV2 = "1.1"

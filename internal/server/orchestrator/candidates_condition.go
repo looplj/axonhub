@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"strings"
 	"time"
 	"unicode"
 
@@ -11,6 +12,17 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 )
+
+type visionDelegationPreflightContextKey struct{}
+
+func withVisionDelegationPreflight(ctx context.Context) context.Context {
+	return context.WithValue(ctx, visionDelegationPreflightContextKey{}, true)
+}
+
+func isVisionDelegationPreflight(ctx context.Context) bool {
+	preflight, _ := ctx.Value(visionDelegationPreflightContextKey{}).(bool)
+	return preflight
+}
 
 // filterResolvedCandidatesForRequest evaluates `When` only after association
 // resolution. This keeps the matching step focused on static association
@@ -47,7 +59,28 @@ func filterResolvedCandidatesForRequest(
 			continue
 		}
 
-		if !matchesAssociationWhen(promptTokens, stream, requestFormat, contentFeatures, requestHeaders, now, candidate.when) {
+		var matches bool
+		if isVisionDelegationPreflight(ctx) {
+			matches = canMatchAssociationWhenAfterVisionDelegation(
+				stream,
+				requestFormat,
+				contentFeatures,
+				requestHeaders,
+				now,
+				candidate.when,
+			)
+		} else {
+			matches = matchesAssociationWhen(
+				promptTokens,
+				stream,
+				requestFormat,
+				contentFeatures,
+				requestHeaders,
+				now,
+				candidate.when,
+			)
+		}
+		if !matches {
 			continue
 		}
 
@@ -123,7 +156,43 @@ func matchesAssociationWhen(
 		return true
 	}
 
-	if when.Condition != nil && !objects.Evaluate(*when.Condition, map[string]any{
+	if when.Condition != nil && !objects.Evaluate(
+		*when.Condition,
+		associationConditionData(promptTokens, stream, requestFormat, contentFeatures, requestHeaders, now),
+	) {
+		return false
+	}
+
+	return true
+}
+
+func canMatchAssociationWhenAfterVisionDelegation(
+	stream bool,
+	requestFormat string,
+	contentFeatures requestContentFeatures,
+	requestHeaders map[string]string,
+	now time.Time,
+	when *objects.ModelAssociationWhen,
+) bool {
+	if when == nil || !when.Enabled || when.Condition == nil {
+		return true
+	}
+
+	return conditionCanMatchWithUnknownPromptTokens(
+		*when.Condition,
+		associationConditionData(nil, stream, requestFormat, contentFeatures, requestHeaders, now),
+	)
+}
+
+func associationConditionData(
+	promptTokens any,
+	stream bool,
+	requestFormat string,
+	contentFeatures requestContentFeatures,
+	requestHeaders map[string]string,
+	now time.Time,
+) map[string]any {
+	return map[string]any{
 		objects.ModelAssociationConditionFieldPromptTokens:  promptTokens,
 		objects.ModelAssociationConditionFieldStream:        stream,
 		objects.ModelAssociationConditionFieldRequestFormat: requestFormat,
@@ -133,11 +202,46 @@ func matchesAssociationWhen(
 		objects.ModelAssociationConditionFieldHasAudio:      contentFeatures.hasAudio,
 		objects.ModelAssociationConditionFieldRequestHeader: requestHeaders,
 		"now": now,
-	}) {
+	}
+}
+
+func conditionCanMatchWithUnknownPromptTokens(condition objects.Condition, data map[string]any) bool {
+	return conditionNodeCanMatchWithUnknownPromptTokens(condition, data, true)
+}
+
+func conditionNodeCanMatchWithUnknownPromptTokens(condition objects.Condition, data map[string]any, root bool) bool {
+	isGroup := condition.Type == objects.ConditionTypeGroup
+	if root {
+		// Match objects.ToExpr compatibility: an empty or unknown root type is
+		// interpreted as a group, while empty nested types are leaf conditions.
+		isGroup = condition.Type != objects.ConditionTypeCondition
+	} else if condition.Type != "" &&
+		condition.Type != objects.ConditionTypeCondition &&
+		condition.Type != objects.ConditionTypeGroup {
 		return false
 	}
 
-	return true
+	if !isGroup {
+		if strings.TrimSpace(condition.Field) == objects.ModelAssociationConditionFieldPromptTokens {
+			return true
+		}
+
+		return objects.Evaluate(condition, data)
+	}
+
+	if len(condition.Conditions) == 0 {
+		return true
+	}
+
+	if strings.EqualFold(strings.TrimSpace(condition.Logic), "OR") {
+		return lo.SomeBy(condition.Conditions, func(child objects.Condition) bool {
+			return conditionNodeCanMatchWithUnknownPromptTokens(child, data, false)
+		})
+	}
+
+	return lo.EveryBy(condition.Conditions, func(child objects.Condition) bool {
+		return conditionNodeCanMatchWithUnknownPromptTokens(child, data, false)
+	})
 }
 
 func detectRequestContentFeatures(req *llm.Request) requestContentFeatures {

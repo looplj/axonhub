@@ -36,6 +36,9 @@ type PersistenceState struct {
 	RawRequest    *httpclient.Request
 	LlmRequest    *llm.Request
 	SourceModel   *ent.Model
+	// sourceModelResolution caches the image-request model lookup, including
+	// NotFound and other errors, so normal candidate selection never repeats it.
+	sourceModelResolution *sourceModelResolution
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.
