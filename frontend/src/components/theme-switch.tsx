@@ -1,8 +1,11 @@
 import { useEffect } from 'react';
+import { Type } from 'lucide-react';
 import { IconCheck, IconMoon, IconSun, IconPalette } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { useFont } from '@/context/font-context';
 import { useTheme } from '@/context/theme-context';
+import { sansFonts, serifFonts, monoFonts, fontStacks, fontLabels } from '@/config/fonts';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -17,6 +20,7 @@ import {
 
 export function ThemeSwitch() {
   const { theme, setTheme, colorScheme, setColorScheme } = useTheme();
+  const { sansFont, serifFont, monoFont, setSansFont, setSerifFont, setMonoFont } = useFont();
   const { t } = useTranslation();
 
   const colorSchemes = [
@@ -76,6 +80,54 @@ export function ThemeSwitch() {
                 <IconCheck size={14} className={cn('ml-auto', colorScheme !== scheme.name && 'hidden')} />
               </DropdownMenuItem>
             ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <Type size={14} className='mr-2' />
+            {t('theme.font')}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger inset>{t('theme.font.sans')}</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {sansFonts.map((f) => (
+                  <DropdownMenuItem key={f} onClick={() => setSansFont(f)} className='flex items-center justify-between'>
+                    <span style={f === 'system' || f === 'theme' ? undefined : { fontFamily: fontStacks[f] }}>
+  {f === 'system' ? t('theme.font.followSystem') : f === 'theme' ? t('theme.font.followTheme') : fontLabels[f]}
+</span>
+                    <IconCheck size={14} className={cn('ml-auto', sansFont !== f && 'hidden')} />
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger inset>{t('theme.font.serif')}</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {serifFonts.map((f) => (
+                  <DropdownMenuItem key={f} onClick={() => setSerifFont(f)} className='flex items-center justify-between'>
+                    <span style={f === 'system' || f === 'theme' ? undefined : { fontFamily: fontStacks[f] }}>
+  {f === 'system' ? t('theme.font.followSystem') : f === 'theme' ? t('theme.font.followTheme') : fontLabels[f]}
+</span>
+                    <IconCheck size={14} className={cn('ml-auto', serifFont !== f && 'hidden')} />
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger inset>{t('theme.font.mono')}</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {monoFonts.map((f) => (
+                  <DropdownMenuItem key={f} onClick={() => setMonoFont(f)} className='flex items-center justify-between'>
+                    <span style={f === 'system' || f === 'theme' ? undefined : { fontFamily: fontStacks[f] }}>
+  {f === 'system' ? t('theme.font.followSystem') : f === 'theme' ? t('theme.font.followTheme') : fontLabels[f]}
+</span>
+                    <IconCheck size={14} className={cn('ml-auto', monoFont !== f && 'hidden')} />
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
       </DropdownMenuContent>
