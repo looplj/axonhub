@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -143,6 +144,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		rawOriginator = llmReq.RawRequest.Headers.Get("Originator")
 		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
 		rawTurnMetadata = llmReq.RawRequest.Headers.Get(TurnMetadataHeader)
+
+		// Non-Codex inbound clients omit the Responses Lite signal. Fabricate it
+		// so the Codex upstream sees the same protocol shape as a real Codex
+		// client. This must be set on the raw request before the underlying
+		// Responses outbound runs: it reads this header to emit an explicit
+		// parallel_tool_calls=false body, matching what real Codex sends.
+		if strings.TrimSpace(rawHeaders.Get(ResponsesLiteHeader)) == "" {
+			rawHeaders.Set(ResponsesLiteHeader, "true")
+		}
 	}
 
 	creds, err := t.tokens.Get(ctx)
@@ -192,6 +202,22 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		if reqCopy.ReasoningSummary == nil || *reqCopy.ReasoningSummary == "" {
 			// Enable reasoning summary for Codex CLI requests.
 			reqCopy.ReasoningSummary = lo.ToPtr("auto")
+		}
+
+		// Responses Lite (signaled on the raw request above) rejects requests
+		// whose reasoning context is not "all_turns"; clients that never sent a
+		// reasoning block would otherwise fail upstream with HTTP 400. Only fill
+		// in a missing context — never override what the client explicitly sent.
+		if providerExt := reqCopy.ProviderExtensions; providerExt == nil || providerExt.OpenAIResponses == nil ||
+			providerExt.OpenAIResponses.Request == nil || providerExt.OpenAIResponses.Request.ReasoningContext == "" {
+			oaiExt := llm.EnsureOpenAIResponsesProviderExtensions(&reqCopy)
+			if oaiExt != nil {
+				if oaiExt.Request == nil {
+					oaiExt.Request = &llm.OpenAIResponsesRequestExtensions{ReasoningContext: "all_turns"}
+				} else {
+					oaiExt.Request.ReasoningContext = "all_turns"
+				}
+			}
 		}
 	}
 
@@ -250,6 +276,46 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		} else {
 			hreq.Headers.Set(SessionHeaderHyphen, uuid.NewString())
 		}
+	}
+
+	// Fabricate the remaining Codex identity headers for non-Codex inbound
+	// clients so the upstream always sees a complete Codex session shape.
+	sessionID := hreq.Headers.Get(SessionHeaderHyphen)
+	windowID := sessionID + ":0"
+	if hreq.Headers.Get(ThreadIDHeader) == "" {
+		// Codex clients send Thread-Id equal to Session-Id (both identify the
+		// conversation/thread); keep thread-scoped upstream behavior (e.g.
+		// prompt caching) consistent for non-Codex clients too.
+		hreq.Headers.Set(ThreadIDHeader, sessionID)
+	}
+	if hreq.Headers.Get(WindowIDHeader) == "" {
+		hreq.Headers.Set(WindowIDHeader, windowID)
+	}
+	if hreq.Headers.Get(TurnMetadataHeader) == "" {
+		installationID := ""
+		if accountID != "" {
+			// Deterministic per-account installation id derived from the
+			// ChatGPT account id.
+			installationID = uuid.NewSHA1(uuid.NameSpaceOID, []byte(accountID)).String()
+		}
+		turnMetadata, _ := json.Marshal(TurnMetadata{
+			InstallationID:      installationID,
+			SessionID:           sessionID,
+			ThreadID:            sessionID,
+			TurnID:              uuid.NewString(),
+			WindowID:            windowID,
+			RequestKind:         "turn",
+			ThreadSource:        "user",
+			Sandbox:             "none",
+			TurnStartedAtUnixMS: turnStartedAtUnixMS(sessionID),
+		})
+		hreq.Headers.Set(TurnMetadataHeader, string(turnMetadata))
+	}
+	if hreq.Headers.Get(ClientRequestIDHeader) == "" {
+		hreq.Headers.Set(ClientRequestIDHeader, uuid.NewString())
+	}
+	if hreq.Headers.Get(BetaFeaturesHeader) == "" {
+		hreq.Headers.Set(BetaFeaturesHeader, fabricatedBetaFeatures)
 	}
 
 	if accountID != "" {

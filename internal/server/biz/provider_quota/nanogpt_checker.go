@@ -116,12 +116,13 @@ func (c *NanoGPTQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	limits := buildNanoGPTLimitStatuses(response.DailyImages, response.DailyInputTokens, response.WeeklyInputTokens)
 
-	// Check for warning state: any window with percentUsed >= WarningThresholdRatio
-	if normalizedStatus == "available" {
+	// Escalate to the worst per-limit status (available < warning < exhausted).
+	// Only escalate from available/warning bases so that state-driven statuses
+	// (inactive→exhausted, unrecognized→unknown) are never overridden.
+	if normalizedStatus == "available" || normalizedStatus == "warning" {
 		for i := range limits {
-			if limits[i].Status == "warning" || limits[i].Status == "exhausted" {
-				normalizedStatus = "warning"
-				break
+			if quotaStatusRank(limits[i].Status) > quotaStatusRank(normalizedStatus) {
+				normalizedStatus = limits[i].Status
 			}
 		}
 	}

@@ -38,4 +38,8 @@ const (
 	Scopes      = "openid profile email offline_access"
 
 	codexDefaultVersion = "0.144.1"
+
+	// fabricatedBetaFeatures mirrors the X-Codex-Beta-Features value the current
+	// Codex CLI sends, used when a non-Codex inbound client omits the header.
+	fabricatedBetaFeatures = "remote_compaction_v2"
 )

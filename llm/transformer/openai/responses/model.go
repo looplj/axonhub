@@ -171,6 +171,7 @@ type Prompt struct {
 // Reasoning represents configuration options for reasoning models.
 type Reasoning struct {
 	// The reasoning context scope requested by internal Responses features.
+	// Responses Lite requires "all_turns" when this field is emitted.
 	Context string `json:"context,omitempty"`
 	// The effort level for reasoning. Any of "low", "medium", "high".
 	Effort string `json:"effort,omitempty"`

@@ -27,6 +27,13 @@ type Usage struct {
 	PromptTokensDetails     PromptTokensDetails     `json:"prompt_tokens_details"`
 	CompletionTokensDetails CompletionTokensDetails `json:"completion_tokens_details"`
 
+	// ReasoningTokens is a top-level reasoning token count emitted by some
+	// OpenAI-compatible providers (e.g. SGLang) that do not populate the nested
+	// completion_tokens_details. Merged into llm.Usage.CompletionTokensDetails by
+	// ToLLMUsage; omitempty ensures it is never emitted back to clients (UsageFromLLM
+	// does not set it).
+	ReasoningTokens int64 `json:"reasoning_tokens,omitempty"`
+
 	// CachedTokens is the number of tokens that were cached for Moonshot.
 	CachedTokens int64 `json:"cached_tokens,omitempty"`
 }
@@ -50,10 +57,20 @@ func (u *Usage) ToLLMUsage() *llm.Usage {
 		}
 	}
 
-	if u.CompletionTokensDetails != (CompletionTokensDetails{}) {
+	// Some OpenAI-compatible providers (e.g. SGLang) report reasoning tokens as a
+	// top-level `reasoning_tokens` field instead of the nested
+	// completion_tokens_details. Prefer the nested value (the OpenAI standard used by
+	// OpenAI/DeepSeek/Gemini), falling back to the top-level value only when the nested
+	// value is absent (zero).
+	reasoningTokens := u.CompletionTokensDetails.ReasoningTokens
+	if reasoningTokens == 0 {
+		reasoningTokens = u.ReasoningTokens
+	}
+
+	if u.CompletionTokensDetails != (CompletionTokensDetails{}) || reasoningTokens != 0 {
 		usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
 			AudioTokens:              u.CompletionTokensDetails.AudioTokens,
-			ReasoningTokens:          u.CompletionTokensDetails.ReasoningTokens,
+			ReasoningTokens:          reasoningTokens,
 			AcceptedPredictionTokens: u.CompletionTokensDetails.AcceptedPredictionTokens,
 			RejectedPredictionTokens: u.CompletionTokensDetails.RejectedPredictionTokens,
 		}

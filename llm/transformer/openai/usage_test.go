@@ -205,6 +205,80 @@ func TestUsage_ToLLMUsage(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "top-level reasoning tokens (sglang shape)",
+			usage: &Usage{
+				PromptTokens:     17680,
+				CompletionTokens: 266,
+				TotalTokens:      17946,
+				ReasoningTokens:  97,
+			},
+			expected: &llm.Usage{
+				PromptTokens:     17680,
+				CompletionTokens: 266,
+				TotalTokens:      17946,
+				CompletionTokensDetails: &llm.CompletionTokensDetails{
+					ReasoningTokens: 97,
+				},
+			},
+		},
+		{
+			name: "top-level reasoning tokens with cached prompt details (full sglang shape)",
+			usage: &Usage{
+				PromptTokens:     40607,
+				CompletionTokens: 237,
+				TotalTokens:      40844,
+				PromptTokensDetails: PromptTokensDetails{
+					CachedTokens: 38723,
+				},
+				ReasoningTokens: 97,
+			},
+			expected: &llm.Usage{
+				PromptTokens:     40607,
+				CompletionTokens: 237,
+				TotalTokens:      40844,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 38723,
+				},
+				CompletionTokensDetails: &llm.CompletionTokensDetails{
+					ReasoningTokens: 97,
+				},
+			},
+		},
+		{
+			name: "nested reasoning tokens take precedence over top-level",
+			usage: &Usage{
+				PromptTokens:     10,
+				CompletionTokens: 20,
+				TotalTokens:      30,
+				CompletionTokensDetails: CompletionTokensDetails{
+					ReasoningTokens: 10,
+				},
+				ReasoningTokens: 5,
+			},
+			expected: &llm.Usage{
+				PromptTokens:     10,
+				CompletionTokens: 20,
+				TotalTokens:      30,
+				CompletionTokensDetails: &llm.CompletionTokensDetails{
+					ReasoningTokens: 10,
+				},
+			},
+		},
+		{
+			name: "top-level zero reasoning tokens produces no details",
+			usage: &Usage{
+				PromptTokens:     10,
+				CompletionTokens: 20,
+				TotalTokens:      30,
+				ReasoningTokens:  0,
+			},
+			expected: &llm.Usage{
+				PromptTokens:     10,
+				CompletionTokens: 20,
+				TotalTokens:      30,
+			},
+		},
 	}
 
 	for _, tt := range tests {
