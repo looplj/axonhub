@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -615,6 +616,16 @@ func TestVisionDelegationMaxCompletionTokensByReasoningEffort(t *testing.T) {
 			require.Equal(t, tt.want, visionDelegationMaxCompletionTokens(tt.effort))
 		})
 	}
+}
+
+func TestVisionDelegationResponseTimeout(t *testing.T) {
+	require.Equal(t, visionDelegationDefaultTimeout, visionDelegationResponseTimeout(&biz.RetryPolicy{}))
+	require.Equal(t, visionDelegationDefaultTimeout, visionDelegationResponseTimeout(&biz.RetryPolicy{
+		NonStreamResponseTimeoutSeconds: -1,
+	}))
+	require.Equal(t, 12*time.Second, visionDelegationResponseTimeout(&biz.RetryPolicy{
+		NonStreamResponseTimeoutSeconds: 12,
+	}))
 }
 
 func TestVisionDelegationUsesEachModelsAssociationPriority(t *testing.T) {

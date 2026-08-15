@@ -423,6 +423,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		llmRequest = transformedRequest
 	}
 	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, outboundFormat)
+	if err := validateProviderManagedImageReferences(llmRequest, outboundFormat); err != nil {
+		return nil, err
+	}
 
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)
@@ -480,6 +483,17 @@ func filterResponseCustomToolMessagesForNonResponsesOutbound(
 
 func isResponsesFormat(format llm.APIFormat) bool {
 	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseCompact
+}
+
+func validateProviderManagedImageReferences(request *llm.Request, outboundFormat llm.APIFormat) error {
+	if request == nil || outboundFormat == llm.APIFormatOpenAIResponse || !llm.HasProviderManagedImageReferences(request.Messages) {
+		return nil
+	}
+
+	return fmt.Errorf(
+		"%w: provider-managed image file_id references require an OpenAI Responses outbound route",
+		transformer.ErrInvalidRequest,
+	)
 }
 
 func containsResponseCustomToolMessages(messages []llm.Message) bool {

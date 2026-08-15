@@ -1611,19 +1611,21 @@ func TestConvertItemToMessage_Reasoning(t *testing.T) {
 }
 
 func TestConvertInputImageFileIDPreservesUnsupportedReference(t *testing.T) {
-	item := &Item{Type: "input_image", FileID: lo.ToPtr("file_123")}
+	item := &Item{Type: "input_image", FileID: lo.ToPtr("file_123"), Detail: lo.ToPtr("high")}
 
 	message, err := convertItemToMessage(item)
 	require.NoError(t, err)
 	require.NotNil(t, message)
 	require.Len(t, message.Content.MultipleContent, 1)
 	require.Equal(t, "file_123", message.Content.MultipleContent[0].ImageURL.FileID)
+	require.Equal(t, "high", lo.FromPtr(message.Content.MultipleContent[0].ImageURL.Detail))
 
 	part, err := convertContentItemToPart(item)
 	require.NoError(t, err)
 	require.NotNil(t, part)
 	require.NotNil(t, part.ImageURL)
 	require.Equal(t, "file_123", part.ImageURL.FileID)
+	require.Equal(t, "high", lo.FromPtr(part.ImageURL.Detail))
 }
 
 func TestConvertInputToMessages_GroupsConsecutiveToolCalls(t *testing.T) {

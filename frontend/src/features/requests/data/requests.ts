@@ -114,34 +114,9 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
               }
               totalCount
             }
-            usageLogs(first: 100, orderBy: { field: CREATED_AT, direction: ASC }) {
-              edges {
-                node {
-                  id
-                  source
-                  promptTokens
-                  completionTokens
-                  completionAudioTokens
-                  completionReasoningTokens
-                  totalTokens
-                  promptCachedTokens
-                  promptWriteCachedTokens
-                  totalCost
-                  requestExecution {
-                    purpose
-                  }
-                  costItems {
-                    itemCode
-                    quantity
-                    subtotal
-                  }
-                }
-              }
-              totalCount
-            }
             primaryUsageLogs: usageLogs(
-              first: 1
-              orderBy: { field: CREATED_AT, direction: DESC }
+              first: 100
+              orderBy: { field: CREATED_AT, direction: ASC }
               where: {
                 or: [
                   { requestExecutionIDIsNil: true }

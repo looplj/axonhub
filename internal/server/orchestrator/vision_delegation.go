@@ -27,6 +27,7 @@ import (
 const (
 	visionDelegationMaxTokensWithoutReasoning = int64(4096)
 	visionDelegationMaxTokensWithReasoning    = int64(8192)
+	visionDelegationDefaultTimeout            = 60 * time.Second
 	visionEvidenceStart                       = "<AXONHUB_VISION_EVIDENCE>"
 	visionEvidenceEnd                         = "</AXONHUB_VISION_EVIDENCE>"
 	visionContextMaxTurns                     = 3
@@ -240,10 +241,7 @@ func (m *visionDelegationMiddleware) execute(
 			options = append(options, pipeline.WithEmptyResponseDetection())
 		}
 	}
-	options = append(options, pipeline.WithResponseTimeouts(
-		0,
-		time.Duration(retryPolicy.NonStreamResponseTimeoutSeconds)*time.Second,
-	))
+	options = append(options, pipeline.WithResponseTimeouts(0, visionDelegationResponseTimeout(retryPolicy)))
 
 	childHeaders := http.Header{
 		"Content-Type": []string{"application/json"},
@@ -264,6 +262,15 @@ func (m *visionDelegationMiddleware) execute(
 	}
 
 	return capture.response, nil
+}
+
+func visionDelegationResponseTimeout(retryPolicy *biz.RetryPolicy) time.Duration {
+	timeout := time.Duration(retryPolicy.NonStreamResponseTimeoutSeconds) * time.Second
+	if timeout <= 0 {
+		return visionDelegationDefaultTimeout
+	}
+
+	return timeout
 }
 
 func visionDelegationMaxCompletionTokens(reasoningEffort string) int64 {

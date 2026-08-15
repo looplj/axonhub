@@ -110,11 +110,7 @@ export function aggregateUsageByPurposeConnection(connection?: UsageLogCollectio
 // Cache hit rates describe the client-facing primary model. Vision delegation
 // is a separate internal request whose image tokens are not comparable to it.
 export function aggregatePrimaryUsageConnection(connection?: UsageLogCollection | null): UsageSummary | null {
-  const logs = usageLogsFromConnection(connection);
-  const { primary } = aggregateUsageByPurposeConnection(connection);
-  if (primary) return primary;
-
-  // Older usage logs have no execution relation. Keep them usable as primary
-  // usage, but never relabel a vision-only connection as a primary request.
-  return logs.some((log) => log?.requestExecution) ? null : aggregateUsageConnection(connection);
+  // Older usage logs have no execution relation and are already classified as
+  // primary, while a vision-only connection remains null.
+  return aggregateUsageByPurposeConnection(connection).primary;
 }

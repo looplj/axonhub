@@ -574,6 +574,20 @@ type ImageURL struct {
 	Detail *string `json:"detail,omitempty"`
 }
 
+// HasProviderManagedImageReferences reports whether any message contains an
+// image that can only be resolved by the provider that issued its file ID.
+func HasProviderManagedImageReferences(messages []Message) bool {
+	for _, message := range messages {
+		for _, part := range message.Content.MultipleContent {
+			if part.ImageURL != nil && strings.TrimSpace(part.ImageURL.FileID) != "" {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 // VideoURL represents a video URL.
 type VideoURL struct {
 	// URL is the URL of the video.

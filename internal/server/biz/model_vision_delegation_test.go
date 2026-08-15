@@ -253,6 +253,31 @@ func TestModelServiceUpdateModelDisablesDelegationWhenSourceBecomesNativeVision(
 	require.ErrorContains(t, err, "already supports image input natively")
 }
 
+func TestModelServiceUpdateModelAllowsUnrelatedChangeWithStaleVisionTarget(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	ch := createVisionDelegationTestChannel(t, ctx, client, "vision-model", "source-model")
+	target := createVisionDelegationTestModel(
+		t, ctx, client, ch.ID, "vision-model", model.StatusEnabled,
+		&objects.ModelCard{Vision: true}, &objects.ModelSettings{},
+	)
+	source := createVisionDelegationTestModel(
+		t, ctx, client, ch.ID, "source-model", model.StatusEnabled, &objects.ModelCard{},
+		visionDelegationTestSettings(ch.ID, "source-model", target.ModelID, true),
+	)
+	svc := &ModelService{AbstractService: &AbstractService{db: client}}
+
+	_, err := client.Channel.UpdateOneID(ch.ID).SetStatus(channel.StatusDisabled).Save(ctx)
+	require.NoError(t, err)
+
+	updated, err := svc.UpdateModel(ctx, source.ID, &ent.UpdateModelInput{Name: lo.ToPtr("Renamed source")})
+	require.NoError(t, err)
+	require.Equal(t, "Renamed source", updated.Name)
+	require.True(t, updated.Settings.VisionDelegation.Enabled)
+}
+
 func TestModelServiceVisionDelegationBulkLifecycle(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

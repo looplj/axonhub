@@ -521,8 +521,10 @@ func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.Upd
 			settingsChanged = true
 		}
 
-		if _, err := svc.validateVisionDelegation(txCtx, nextModelID, nextType, nextCard, nextSettings); err != nil {
-			return err
+		if settingsChanged || sourceCapabilityChanged || input.ModelID != nil {
+			if _, err := svc.validateVisionDelegation(txCtx, nextModelID, nextType, nextCard, nextSettings); err != nil {
+				return err
+			}
 		}
 
 		mut := svc.entFromContext(txCtx).Model.UpdateOneID(id).

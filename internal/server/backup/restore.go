@@ -2,6 +2,7 @@ package backup
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -878,8 +879,14 @@ func (svc *BackupService) restoreUsageData(
 	}
 
 	requestIDMap := map[int]int{}
+	if opts.IncludeRequestLogs && opts.IncludeUsageStats {
+		requestIDMap, err = svc.matchExistingUsageRequestIDs(ctx, db, usageLogs, resolver)
+		if err != nil {
+			return err
+		}
+	}
 	if opts.IncludeRequestLogs {
-		requestIDMap, err = svc.restoreUsageRequests(ctx, db, requestsData, resolver)
+		requestIDMap, err = svc.restoreUsageRequests(ctx, db, requestsData, requestIDMap, resolver)
 		if err != nil {
 			return err
 		}
@@ -914,9 +921,12 @@ func (svc *BackupService) restoreUsageRequests(
 	ctx context.Context,
 	db *ent.Client,
 	requestsData []*BackupUsageRequest,
+	idMap map[int]int,
 	resolver *usageRestoreResolver,
 ) (map[int]int, error) {
-	idMap := map[int]int{}
+	if idMap == nil {
+		idMap = map[int]int{}
+	}
 	if len(requestsData) == 0 {
 		return idMap, nil
 	}
@@ -933,6 +943,9 @@ func (svc *BackupService) restoreUsageRequests(
 
 		oldID := reqData.ID
 		if oldID == 0 {
+			continue
+		}
+		if _, ok := idMap[oldID]; ok {
 			continue
 		}
 
@@ -1003,6 +1016,86 @@ func (svc *BackupService) restoreUsageRequests(
 		}
 
 		idMap[oldID] = created.ID
+	}
+
+	return idMap, nil
+}
+
+func (svc *BackupService) matchExistingUsageRequestIDs(
+	ctx context.Context,
+	db *ent.Client,
+	usageLogs []*BackupUsageLog,
+	resolver *usageRestoreResolver,
+) (map[int]int, error) {
+	idMap := map[int]int{}
+	createdAt := lo.Uniq(lo.FilterMap(usageLogs, func(usageData *BackupUsageLog, _ int) (time.Time, bool) {
+		if usageData == nil || usageData.RequestID == 0 || usageData.CreatedAt.IsZero() {
+			return time.Time{}, false
+		}
+
+		return usageData.CreatedAt, true
+	}))
+	if len(createdAt) == 0 {
+		return idMap, nil
+	}
+
+	existingByFingerprint := map[string][]*ent.UsageLog{}
+	claimedRequestIDs := map[int]struct{}{}
+	for start := 0; start < len(createdAt); start += backupBatchSize {
+		end := min(start+backupBatchSize, len(createdAt))
+		existingLogs, err := db.UsageLog.Query().
+			Where(usagelog.CreatedAtIn(createdAt[start:end]...)).
+			All(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("query existing usage logs for request restore: %w", err)
+		}
+
+		for _, usageLog := range existingLogs {
+			fingerprint, err := usageLogRestoreIdentityFingerprint(usageLog)
+			if err != nil {
+				return nil, err
+			}
+			existingByFingerprint[fingerprint] = append(existingByFingerprint[fingerprint], usageLog)
+		}
+	}
+
+	for _, usageData := range usageLogs {
+		if usageData == nil || usageData.RequestID == 0 {
+			continue
+		}
+		if _, ok := idMap[usageData.RequestID]; ok {
+			continue
+		}
+
+		projectID, ok := resolver.resolveProjectID(usageData.ProjectID, usageData.ProjectName)
+		if !ok {
+			continue
+		}
+		channelID, _ := resolver.resolveChannelID(usageData.ChannelID, usageData.ChannelName)
+		apiKeyID, _ := resolver.resolveAPIKeyID(usageData.APIKeyKey)
+		fingerprint, err := backupUsageLogRestoreIdentityFingerprint(usageData, projectID, channelID, apiKeyID)
+		if err != nil {
+			return nil, err
+		}
+		existingLogs := existingByFingerprint[fingerprint]
+		var matched *ent.UsageLog
+		for len(existingLogs) > 0 {
+			candidate := existingLogs[0]
+			existingLogs = existingLogs[1:]
+			if _, claimed := claimedRequestIDs[candidate.RequestID]; claimed {
+				continue
+			}
+
+			matched = candidate
+			break
+		}
+		existingByFingerprint[fingerprint] = existingLogs
+		if matched == nil {
+			continue
+		}
+
+		idMap[usageData.RequestID] = matched.RequestID
+		claimedRequestIDs[matched.RequestID] = struct{}{}
 	}
 
 	return idMap, nil
@@ -1206,6 +1299,24 @@ func (svc *BackupService) restoreRequestExecutions(
 		false: {},
 		true:  {},
 	}
+	usedExecutionIDs := map[int]struct{}{}
+	takeExistingExecution := func(existingByFingerprint map[string][]int, fingerprint string) (int, bool) {
+		existingIDs := existingByFingerprint[fingerprint]
+		for len(existingIDs) > 0 {
+			existingID := existingIDs[0]
+			existingIDs = existingIDs[1:]
+			existingByFingerprint[fingerprint] = existingIDs
+			if _, used := usedExecutionIDs[existingID]; used {
+				continue
+			}
+
+			usedExecutionIDs[existingID] = struct{}{}
+
+			return existingID, true
+		}
+
+		return 0, false
+	}
 	for start := 0; start < len(requestIDs); start += backupBatchSize {
 		end := min(start+backupBatchSize, len(requestIDs))
 		executions, err := db.RequestExecution.Query().
@@ -1272,10 +1383,20 @@ func (svc *BackupService) restoreRequestExecutions(
 			return nil, err
 		}
 		existingByFingerprint := existingByDetails[executionData.DetailsIncluded]
-		if existingIDs := existingByFingerprint[fingerprint]; len(existingIDs) > 0 {
-			idMap[executionData.ID] = existingIDs[0]
-			existingByFingerprint[fingerprint] = existingIDs[1:]
+		if existingID, ok := takeExistingExecution(existingByFingerprint, fingerprint); ok {
+			idMap[executionData.ID] = existingID
 			continue
+		}
+		if executionData.DetailsIncluded {
+			metadataOnly := requestExecutionDataForRestore(executionData, false)
+			metadataFingerprint, err := requestExecutionFingerprint(metadataOnly, requestID, projectID, channelID)
+			if err != nil {
+				return nil, err
+			}
+			if existingID, ok := takeExistingExecution(existingByDetails[false], metadataFingerprint); ok {
+				idMap[executionData.ID] = existingID
+				continue
+			}
 		}
 
 		requestBody := executionData.RequestBody
@@ -1371,7 +1492,9 @@ func requestExecutionFingerprint(
 		return "", fmt.Errorf("marshal request execution fingerprint: %w", err)
 	}
 
-	return string(encoded), nil
+	sum := sha256.Sum256(encoded)
+
+	return string(sum[:]), nil
 }
 
 func (svc *BackupService) restoreUsageLogs(
@@ -1619,6 +1742,17 @@ func backupUsageLogFingerprint(usageData *BackupUsageLog, requestID, projectID, 
 	})
 }
 
+func usageLogRestoreIdentityFingerprint(usageData *ent.UsageLog) (string, error) {
+	normalized := *usageData
+	normalized.RequestID = 0
+
+	return usageLogFingerprint(&normalized)
+}
+
+func backupUsageLogRestoreIdentityFingerprint(usageData *BackupUsageLog, projectID, channelID, apiKeyID int) (string, error) {
+	return backupUsageLogFingerprint(usageData, 0, projectID, channelID, apiKeyID)
+}
+
 func marshalUsageLogFingerprint(data usageLogFingerprintData) (string, error) {
 	data.CreatedAt = data.CreatedAt.UTC()
 	data.UpdatedAt = data.UpdatedAt.UTC()
@@ -1631,7 +1765,9 @@ func marshalUsageLogFingerprint(data usageLogFingerprintData) (string, error) {
 		return "", fmt.Errorf("marshal usage log fingerprint: %w", err)
 	}
 
-	return string(b), nil
+	sum := sha256.Sum256(b)
+
+	return string(sum[:]), nil
 }
 
 func (svc *BackupService) ensureUsageLogRequests(

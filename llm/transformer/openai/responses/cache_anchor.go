@@ -60,7 +60,11 @@ func conversationAnchor(messages []llm.Message) string {
 			case part.Text != nil:
 				writeUnit(*part.Text)
 			case part.ImageURL != nil:
-				writeUnit(part.ImageURL.URL)
+				if part.ImageURL.FileID != "" {
+					writeUnit("file_id:" + part.ImageURL.FileID)
+				} else {
+					writeUnit(part.ImageURL.URL)
+				}
 			case part.VideoURL != nil:
 				writeUnit(part.VideoURL.URL)
 			case part.Document != nil:

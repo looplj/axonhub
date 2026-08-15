@@ -1362,3 +1362,25 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithMultipleModels(t *testin
 		require.False(t, outbound.CanRetry(httpErr))
 	})
 }
+
+func TestValidateProviderManagedImageReferences(t *testing.T) {
+	request := &llm.Request{Messages: []llm.Message{{
+		Role: "user",
+		Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+			Type:     "image_url",
+			ImageURL: &llm.ImageURL{FileID: "file_123"},
+		}}},
+	}}}
+
+	require.NoError(t, validateProviderManagedImageReferences(request, llm.APIFormatOpenAIResponse))
+	require.ErrorIs(
+		t,
+		validateProviderManagedImageReferences(request, llm.APIFormatOpenAIResponseCompact),
+		transformer.ErrInvalidRequest,
+	)
+	require.ErrorIs(
+		t,
+		validateProviderManagedImageReferences(request, llm.APIFormatAnthropicMessage),
+		transformer.ErrInvalidRequest,
+	)
+}

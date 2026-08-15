@@ -279,3 +279,20 @@ func TestStop_UnmarshalJSON_ClearsConflictingRepresentation(t *testing.T) {
 	require.Nil(t, stop.Stop)
 	require.Equal(t, []string{"a", "b"}, stop.MultipleStop)
 }
+
+func TestHasProviderManagedImageReferences(t *testing.T) {
+	require.False(t, HasProviderManagedImageReferences([]Message{{
+		Role: "user",
+		Content: MessageContent{MultipleContent: []MessageContentPart{{
+			Type:     "image_url",
+			ImageURL: &ImageURL{URL: "https://example.com/image.png"},
+		}}},
+	}}))
+	require.True(t, HasProviderManagedImageReferences([]Message{{
+		Role: "user",
+		Content: MessageContent{MultipleContent: []MessageContentPart{{
+			Type:     "image_url",
+			ImageURL: &ImageURL{FileID: "file_123"},
+		}}},
+	}}))
+}

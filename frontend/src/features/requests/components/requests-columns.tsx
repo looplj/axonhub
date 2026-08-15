@@ -19,12 +19,7 @@ import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } from '@/features/system/data/system';
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { type Request } from '../data';
-import {
-  aggregatePrimaryUsageConnection,
-  aggregateUsageByPurposeConnection,
-  aggregateUsageConnection,
-  type UsageSummary,
-} from '../data/usage-summary';
+import { aggregateUsageByPurposeConnection, aggregateUsageConnection, type UsageSummary } from '../data/usage-summary';
 import { executionDurationMs, sumExecutionDurations } from '../utils/execution-duration';
 import { calculateTokensPerSecond, getTokensPerSecondValue } from '../utils/tokens-per-second';
 import { getStatusColor } from './help';
@@ -82,6 +77,17 @@ function getRequestUsageByPurpose(request: Request) {
     primary: aggregateUsageConnection(request.primaryUsageLogs) ?? fallback.primary,
     visionDelegation: aggregateUsageConnection(request.visionUsageLogs) ?? fallback.visionDelegation,
   };
+}
+
+function getPrimaryRequestUsage(request: Request) {
+  return getRequestUsageByPurpose(request).primary;
+}
+
+function getRequestTotalCost(request: Request) {
+  const { primary, visionDelegation } = getRequestUsageByPurpose(request);
+  const costs = [primary?.totalCost, visionDelegation?.totalCost].filter((cost): cost is number => cost != null);
+
+  return costs.length > 0 ? costs.reduce((total, cost) => total + cost, 0) : null;
 }
 
 function VisionDelegationModelIndicator({ modelIDs, usage }: { modelIDs: string[]; usage: UsageSummary | null }) {
@@ -536,10 +542,10 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       : []),
     {
       id: 'tokens',
-      accessorFn: (row) => aggregatePrimaryUsageConnection(row.usageLogs)?.totalTokens ?? 0,
+      accessorFn: (row) => getPrimaryRequestUsage(row)?.totalTokens ?? 0,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.tokens')} />,
       cell: ({ row }) => {
-        const usage = aggregatePrimaryUsageConnection(row.original.usageLogs);
+        const usage = getPrimaryRequestUsage(row.original);
 
         return usage ? (
           <div className='space-y-0.5 text-xs'>
@@ -564,15 +570,14 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       enableSorting: true,
       enableHiding: true,
       sortingFn: (rowA, rowB) =>
-        (aggregatePrimaryUsageConnection(rowA.original.usageLogs)?.totalTokens ?? 0) -
-        (aggregatePrimaryUsageConnection(rowB.original.usageLogs)?.totalTokens ?? 0),
+        (getPrimaryRequestUsage(rowA.original)?.totalTokens ?? 0) - (getPrimaryRequestUsage(rowB.original)?.totalTokens ?? 0),
     },
     {
       id: 'readCache',
-      accessorFn: (row) => aggregatePrimaryUsageConnection(row.usageLogs)?.promptCachedTokens ?? 0,
+      accessorFn: (row) => getPrimaryRequestUsage(row)?.promptCachedTokens ?? 0,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.readCache')} />,
       cell: ({ row }) => {
-        const usage = aggregatePrimaryUsageConnection(row.original.usageLogs);
+        const usage = getPrimaryRequestUsage(row.original);
         const cachedTokens = usage?.promptCachedTokens ?? 0;
         const promptTokens = usage?.promptTokens ?? 0;
         const hitRate = promptTokens > 0 ? (cachedTokens / promptTokens) * 100 : 0;
@@ -594,17 +599,17 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       enableSorting: true,
       enableHiding: true,
       sortingFn: (rowA, rowB) => {
-        const a = aggregatePrimaryUsageConnection(rowA.original.usageLogs)?.promptCachedTokens ?? 0;
-        const b = aggregatePrimaryUsageConnection(rowB.original.usageLogs)?.promptCachedTokens ?? 0;
+        const a = getPrimaryRequestUsage(rowA.original)?.promptCachedTokens ?? 0;
+        const b = getPrimaryRequestUsage(rowB.original)?.promptCachedTokens ?? 0;
         return a - b;
       },
     },
     {
       id: 'writeCache',
-      accessorFn: (row) => aggregatePrimaryUsageConnection(row.usageLogs)?.promptWriteCachedTokens ?? 0,
+      accessorFn: (row) => getPrimaryRequestUsage(row)?.promptWriteCachedTokens ?? 0,
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.writeCache')} />,
       cell: ({ row }) => {
-        const usage = aggregatePrimaryUsageConnection(row.original.usageLogs);
+        const usage = getPrimaryRequestUsage(row.original);
 
         if (!usage) {
           return <div className='text-muted-foreground text-xs'>-</div>;
@@ -631,14 +636,14 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       enableSorting: true,
       enableHiding: true,
       sortingFn: (rowA, rowB) => {
-        const a = aggregatePrimaryUsageConnection(rowA.original.usageLogs)?.promptWriteCachedTokens ?? 0;
-        const b = aggregatePrimaryUsageConnection(rowB.original.usageLogs)?.promptWriteCachedTokens ?? 0;
+        const a = getPrimaryRequestUsage(rowA.original)?.promptWriteCachedTokens ?? 0;
+        const b = getPrimaryRequestUsage(rowB.original)?.promptWriteCachedTokens ?? 0;
         return a - b;
       },
     },
     {
       id: 'cost',
-      accessorFn: (row) => aggregateUsageConnection(row.usageLogs)?.totalCost ?? null,
+      accessorFn: getRequestTotalCost,
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title={t('requests.columns.cost')} className='w-full justify-center text-center' />
       ),

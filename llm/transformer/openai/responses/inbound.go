@@ -559,7 +559,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 					MultipleContent: []llm.MessageContentPart{
 						{
 							Type:     "image_url",
-							ImageURL: &llm.ImageURL{FileID: *item.FileID},
+							ImageURL: &llm.ImageURL{FileID: *item.FileID, Detail: item.Detail},
 						},
 					},
 				},
@@ -751,7 +751,7 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 			return &llm.MessageContentPart{
 				ID:       item.ID,
 				Type:     "image_url",
-				ImageURL: &llm.ImageURL{FileID: *item.FileID},
+				ImageURL: &llm.ImageURL{FileID: *item.FileID, Detail: item.Detail},
 			}, nil
 		}
 

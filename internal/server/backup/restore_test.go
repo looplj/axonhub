@@ -993,6 +993,19 @@ func TestBackupService_Restore_MultipleUsageLogsPerRequest(t *testing.T) {
 	require.Equal(t, 2, unlinkedUsageCount)
 
 	restore()
+	require.NoError(t, service.Restore(ctx, requestLogData, RestoreOptions{
+		IncludeUsageStats:  true,
+		IncludeRequestLogs: true,
+	}))
+	executionCount, err := client.RequestExecution.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 2, executionCount)
+	usageCount, err := client.UsageLog.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 2, usageCount)
+	requestCount, err := client.Request.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, requestCount)
 }
 
 func TestBackupService_Restore_UsageStatsWithRequestLogs(t *testing.T) {
