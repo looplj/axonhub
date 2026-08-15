@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"strconv"
+	"strings"
 
 	"github.com/looplj/axonhub/llm"
 )
@@ -60,7 +61,7 @@ func conversationAnchor(messages []llm.Message) string {
 			case part.Text != nil:
 				writeUnit(*part.Text)
 			case part.ImageURL != nil:
-				if part.ImageURL.FileID != "" {
+				if strings.TrimSpace(part.ImageURL.FileID) != "" {
 					writeUnit("file_id:" + part.ImageURL.FileID)
 				} else {
 					writeUnit(part.ImageURL.URL)
