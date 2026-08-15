@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { pageInfoSchema } from '@/gql/pagination';
 import { useTranslation } from 'react-i18next';
@@ -1025,6 +1025,9 @@ export function useQueryChannels(
     // 5s is light traffic; pause when the tab is hidden.
     refetchInterval: 5000,
     refetchIntervalInBackground: false,
+    // Keep showing the previous data while a refetch is in-flight or fails,
+    // so the component never renders with data = undefined and crashes.
+    placeholderData: keepPreviousData,
   });
 }
 
