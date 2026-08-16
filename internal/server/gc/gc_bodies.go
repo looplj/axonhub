@@ -2,6 +2,7 @@ package gc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -48,17 +49,14 @@ func (w *Worker) cleanupBodyPayloads(ctx context.Context, kind bodyPayloadKind, 
 	}
 
 	cutoff := time.Now().AddDate(0, 0, -cleanupDays)
-	primaryID := w.primaryStorageID(ctx)
 
-	reqCount, err := w.stripRequestPayloads(ctx, kind, cutoff, primaryID)
+	primaryID, err := w.primaryStorageID(ctx)
 	if err != nil {
 		return err
 	}
 
-	execCount, err := w.stripExecutionPayloads(ctx, kind, cutoff, primaryID)
-	if err != nil {
-		return err
-	}
+	reqCount, reqErr := w.stripRequestPayloads(ctx, kind, cutoff, primaryID)
+	execCount, execErr := w.stripExecutionPayloads(ctx, kind, cutoff, primaryID)
 
 	log.Debug(ctx, "Stripped stored payloads",
 		log.String("resource", string(kind)),
@@ -67,7 +65,7 @@ func (w *Worker) cleanupBodyPayloads(ctx context.Context, kind bodyPayloadKind, 
 		log.Time("cutoff_time", cutoff),
 	)
 
-	return nil
+	return errors.Join(reqErr, execErr)
 }
 
 func (w *Worker) previewBodyCleanup(ctx context.Context, resourceType string, days int, now time.Time) (GcCleanupPreviewItem, error) {
@@ -113,10 +111,12 @@ func (w *Worker) previewBodyCleanup(ctx context.Context, resourceType string, da
 func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind, cutoff time.Time, primaryID int) (int, error) {
 	batchSize := w.getBatchSize()
 	total := 0
+	failed := 0
+	skipIDs := make([]int, 0)
 	cache := make(map[int]*ent.DataStorage)
 
 	for {
-		reqs, err := w.Ent.Request.Query().
+		query := w.Ent.Request.Query().
 			Select(
 				request.FieldID,
 				request.FieldProjectID,
@@ -125,7 +125,12 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 			Where(
 				request.CreatedAtLT(cutoff),
 				request.Not(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained))),
-			).
+			)
+		if len(skipIDs) > 0 {
+			query = query.Where(request.IDNotIn(skipIDs...))
+		}
+
+		reqs, err := query.
 			Modify(func(s *sql.Selector) {
 				applyBodyPayloadPredicate(s, kind, primaryID, request.FieldRequestBody, request.FieldRequestHeaders, request.FieldResponseBody, request.FieldResponseChunks, request.FieldDataStorageID)
 			}).
@@ -137,6 +142,10 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 		}
 
 		if len(reqs) == 0 {
+			if failed > 0 {
+				return total, fmt.Errorf("external payload delete failed for %d request %s rows", failed, kind)
+			}
+
 			return total, nil
 		}
 
@@ -149,6 +158,9 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 					log.Int("request_id", req.ID),
 					log.String("resource", string(kind)),
 				)
+				skipIDs = append(skipIDs, req.ID)
+				failed++
+
 				continue
 			}
 
@@ -156,7 +168,7 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 		}
 
 		if len(ids) == 0 {
-			return total, fmt.Errorf("external payload delete failed for entire request %s batch (size %d)", kind, len(reqs))
+			continue
 		}
 
 		if err := w.clearRequestPayloadColumns(ctx, kind, ids); err != nil {
@@ -170,10 +182,12 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKind, cutoff time.Time, primaryID int) (int, error) {
 	batchSize := w.getBatchSize()
 	total := 0
+	failed := 0
+	skipIDs := make([]int, 0)
 	cache := make(map[int]*ent.DataStorage)
 
 	for {
-		execs, err := w.Ent.RequestExecution.Query().
+		query := w.Ent.RequestExecution.Query().
 			Select(
 				requestexecution.FieldID,
 				requestexecution.FieldProjectID,
@@ -185,7 +199,12 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 				requestexecution.Not(requestexecution.HasRequestWith(
 					request.HasTraceWith(trace.StatusEQ(trace.StatusRetained)),
 				)),
-			).
+			)
+		if len(skipIDs) > 0 {
+			query = query.Where(requestexecution.IDNotIn(skipIDs...))
+		}
+
+		execs, err := query.
 			Modify(func(s *sql.Selector) {
 				applyBodyPayloadPredicate(s, kind, primaryID, requestexecution.FieldRequestBody, requestexecution.FieldRequestHeaders, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks, requestexecution.FieldDataStorageID)
 			}).
@@ -197,6 +216,10 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 		}
 
 		if len(execs) == 0 {
+			if failed > 0 {
+				return total, fmt.Errorf("external payload delete failed for %d execution %s rows", failed, kind)
+			}
+
 			return total, nil
 		}
 
@@ -208,6 +231,9 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 					log.Int("execution_id", exec.ID),
 					log.String("resource", string(kind)),
 				)
+				skipIDs = append(skipIDs, exec.ID)
+				failed++
+
 				continue
 			}
 
@@ -215,7 +241,7 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 		}
 
 		if len(ids) == 0 {
-			return total, fmt.Errorf("external payload delete failed for entire execution %s batch (size %d)", kind, len(execs))
+			continue
 		}
 
 		if err := w.clearExecutionPayloadColumns(ctx, kind, ids); err != nil {
@@ -338,22 +364,21 @@ func (w *Worker) deleteExecutionExternalPayload(ctx context.Context, exec *ent.R
 	return nil
 }
 
-func (w *Worker) primaryStorageID(ctx context.Context) int {
+func (w *Worker) primaryStorageID(ctx context.Context) (int, error) {
 	if w.DataStorageService == nil {
-		return 0
+		return 0, nil
 	}
 
 	ds, err := w.DataStorageService.GetPrimaryDataStorage(ctx)
 	if err != nil {
-		log.Error(ctx, "Failed to get primary data storage for body cleanup", log.Cause(err))
-		return 0
+		return 0, fmt.Errorf("get primary data storage for body cleanup: %w", err)
 	}
 
 	if ds == nil {
-		return 0
+		return 0, nil
 	}
 
-	return ds.ID
+	return ds.ID, nil
 }
 
 func applyBodyPayloadPredicate(

@@ -483,6 +483,63 @@ func TestCleanupRequestBodies_ExternalDeleteFailureLeavesRowRetryable(t *testing
 	require.Equal(t, 1, item.EstimatedCount)
 }
 
+func TestCleanupRequestBodies_SkipsFailedDeleteAndContinues(t *testing.T) {
+	worker, ctx, fsStorage, baseDir := setupWorkerWithFSStorage(t)
+	client := worker.Ent
+
+	proj, err := client.Project.Create().
+		SetName("skip-and-continue").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	oldAt := time.Now().AddDate(0, 0, -10)
+	blocked, err := client.Request.Create().
+		SetProjectID(proj.ID).
+		SetCreatedAt(oldAt).
+		SetDataStorageID(fsStorage.ID).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetSource(request.SourceAPI).
+		SetStatus(request.StatusCompleted).
+		SetStream(false).
+		SetClientIP("127.0.0.1").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetRequestHeaders(objects.JSONRawMessage(`{"h":"1"}`)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	okReq, err := client.Request.Create().
+		SetProjectID(proj.ID).
+		SetCreatedAt(oldAt).
+		SetDataStorageID(fsStorage.ID).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetSource(request.SourceAPI).
+		SetStatus(request.StatusCompleted).
+		SetStream(false).
+		SetClientIP("127.0.0.1").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetRequestHeaders(objects.JSONRawMessage(`{"h":"2"}`)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	blockedKey := biz.GenerateRequestBodyKey(proj.ID, blocked.ID)
+	okKey := biz.GenerateRequestBodyKey(proj.ID, okReq.ID)
+	createDirForKey(t, baseDir, blockedKey)
+	require.NoError(t, os.WriteFile(filepath.Join(pathForKey(baseDir, blockedKey), "child"), []byte("x"), 0o644))
+	createFileForKey(t, baseDir, okKey)
+
+	err = worker.cleanupRequestBodies(ctx, 7)
+	require.Error(t, err)
+
+	blocked = client.Request.GetX(ctx, blocked.ID)
+	okReq = client.Request.GetX(ctx, okReq.ID)
+	require.JSONEq(t, `{"h":"1"}`, string(blocked.RequestHeaders))
+	require.Nil(t, okReq.RequestHeaders)
+	assertRemoved(t, baseDir, okKey)
+}
+
 func TestCleanupRequestBodies_PostgresImmutableJSON(t *testing.T) {
 	dsn := os.Getenv("AXONHUB_TEST_PG_DSN")
 	if dsn == "" {
