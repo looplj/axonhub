@@ -1,10 +1,13 @@
 package codex
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"mime"
 	"net/http"
 	"strings"
 	"sync"
@@ -30,7 +33,8 @@ const (
 )
 
 // OutboundTransformer implements transformer.Outbound for Codex proxy.
-// It always talks to the Codex Responses upstream (SSE only) and adapts requests accordingly.
+// It normally talks to the Codex Responses upstream over SSE and adapts requests accordingly.
+// Compatible relays that return a completed JSON response are also supported for non-stream callers.
 //
 //nolint:containedctx // It is used as a transformer.
 type OutboundTransformer struct {
@@ -426,31 +430,23 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 		return e.inner.Do(ctx, request)
 	}
 
-	stream, err := e.inner.DoStream(ctx, request)
+	// Execute the request once and inspect the completed body. Codex normally
+	// responds with SSE even for downstream non-stream requests, but compatible
+	// relays can return a completed Responses JSON document instead. Reissuing
+	// the request to change protocols could duplicate model execution.
+	response, err := e.inner.Do(ctx, request)
 	if err != nil {
 		return nil, err
 	}
-
-	defer func() {
-		_ = stream.Close()
-	}()
-
-	var chunks []*httpclient.StreamEvent
-
-	for stream.Next() {
-		ev := stream.Current()
-		if ev == nil {
-			continue
-		}
-
-		chunks = append(chunks, &httpclient.StreamEvent{
-			Type:        ev.Type,
-			LastEventID: ev.LastEventID,
-			Data:        append([]byte(nil), ev.Data...),
-		})
+	if response == nil {
+		return nil, errors.New("empty response")
+	}
+	if isJSONResponse(response) {
+		return response, nil
 	}
 
-	if err := stream.Err(); err != nil {
+	chunks, err := decodeSSEChunks(ctx, response.Body)
+	if err != nil {
 		return nil, err
 	}
 	if err := responses.TopLevelWebSocketError(chunks); err != nil {
@@ -470,6 +466,47 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 		Body:    body,
 		Request: request,
 	}, nil
+}
+
+func isJSONResponse(response *httpclient.Response) bool {
+	if response == nil {
+		return false
+	}
+
+	mediaType, _, err := mime.ParseMediaType(response.Headers.Get("Content-Type"))
+	if err != nil {
+		return false
+	}
+
+	mediaType = strings.ToLower(mediaType)
+
+	return mediaType == "application/json" || strings.HasSuffix(mediaType, "+json")
+}
+
+func decodeSSEChunks(ctx context.Context, body []byte) ([]*httpclient.StreamEvent, error) {
+	stream := httpclient.NewDefaultSSEDecoder(ctx, io.NopCloser(bytes.NewReader(body)))
+	defer func() {
+		_ = stream.Close()
+	}()
+
+	chunks := make([]*httpclient.StreamEvent, 0)
+	for stream.Next() {
+		ev := stream.Current()
+		if ev == nil {
+			continue
+		}
+
+		chunks = append(chunks, &httpclient.StreamEvent{
+			Type:        ev.Type,
+			LastEventID: ev.LastEventID,
+			Data:        append([]byte(nil), ev.Data...),
+		})
+	}
+	if err := stream.Err(); err != nil {
+		return nil, err
+	}
+
+	return chunks, nil
 }
 
 func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {

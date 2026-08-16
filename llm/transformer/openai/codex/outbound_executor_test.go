@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -372,6 +373,102 @@ func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T
 	assert.Equal(t, "gpt-5-codex", body["model"])
 }
 
+func TestCodexOutbound_CustomizeExecutorPassesThroughJSONForNonStreamRequests(t *testing.T) {
+	const upstreamBody = `{
+		"id":"resp_json_123",
+		"object":"response",
+		"created_at":1700000000,
+		"status":"completed",
+		"model":"gpt-5.6-luna",
+		"output":[{
+			"id":"msg_json_123",
+			"type":"message",
+			"status":"completed",
+			"role":"assistant",
+			"content":[{"type":"output_text","text":"OK"}]
+		}]
+	}`
+
+	tests := []struct {
+		name        string
+		contentType string
+	}{
+		{name: "application JSON with charset", contentType: "application/json; charset=utf-8"},
+		{name: "vendor JSON with charset", contentType: "application/vnd.compat+json; charset=utf-8"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			accessToken := testAccessTokenWithAccountID(t)
+
+			type capturedRequest struct {
+				accept string
+				stream bool
+			}
+
+			var requestCount atomic.Int32
+			capturedRequests := make(chan capturedRequest, 2)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestCount.Add(1)
+
+				var body struct {
+					Stream bool `json:"stream"`
+				}
+				_ = json.NewDecoder(r.Body).Decode(&body)
+				select {
+				case capturedRequests <- capturedRequest{accept: r.Header.Get("Accept"), stream: body.Stream}:
+				default:
+				}
+
+				w.Header().Set("Content-Type", tt.contentType)
+				_, _ = w.Write([]byte(upstreamBody))
+			}))
+			defer server.Close()
+
+			outbound, err := NewOutboundTransformer(Params{
+				BaseURL: server.URL,
+				TokenProvider: staticTokenGetter{
+					creds: &oauth.OAuthCredentials{
+						AccessToken: accessToken,
+						ExpiresAt:   time.Now().Add(time.Hour),
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			request, err := outbound.TransformRequest(ctx, &llm.Request{
+				Model:     "gpt-5.6-luna",
+				APIFormat: llm.APIFormatOpenAIResponse,
+				Stream:    lo.ToPtr(false),
+				Messages: []llm.Message{{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr("Only reply OK")},
+				}},
+			})
+			require.NoError(t, err)
+
+			executor := outbound.CustomizeExecutor(httpclient.NewHttpClientWithClient(server.Client()))
+			response, err := executor.Do(ctx, request)
+			require.NoError(t, err)
+			require.Equal(t, int32(1), requestCount.Load(), "JSON fallback must not reissue the model request")
+
+			captured := <-capturedRequests
+			assert.Equal(t, "text/event-stream", captured.accept)
+			assert.True(t, captured.stream, "Codex upstream requests remain stream-enabled")
+			assert.Equal(t, http.StatusOK, response.StatusCode)
+			assert.Equal(t, tt.contentType, response.Headers.Get("Content-Type"))
+			assert.JSONEq(t, upstreamBody, string(response.Body))
+
+			llmResponse, err := outbound.TransformResponse(ctx, response)
+			require.NoError(t, err)
+			require.Len(t, llmResponse.Choices, 1)
+			require.NotNil(t, llmResponse.Choices[0].Message.Content.Content)
+			assert.Equal(t, "OK", *llmResponse.Choices[0].Message.Content.Content)
+		})
+	}
+}
+
 func TestCodexOutbound_DoReturnsWebSocketErrorEvents(t *testing.T) {
 	ctx := context.Background()
 	accessToken := testAccessTokenWithAccountID(t)
@@ -406,11 +503,55 @@ type mockCodexExecutor struct {
 }
 
 func (m *mockCodexExecutor) Do(_ context.Context, _ *httpclient.Request) (*httpclient.Response, error) {
-	return nil, assert.AnError
+	return newCodexSSEResponse(m.streamEvents), nil
 }
 
 func (m *mockCodexExecutor) DoStream(_ context.Context, _ *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
 	return streams.SliceStream(m.streamEvents), nil
+}
+
+func newCodexSSEResponse(events []*httpclient.StreamEvent) *httpclient.Response {
+	var body strings.Builder
+	for _, event := range events {
+		if event == nil {
+			continue
+		}
+		if event.Type != "" {
+			body.WriteString("event: ")
+			body.WriteString(event.Type)
+			body.WriteByte('\n')
+		}
+		if event.LastEventID != "" {
+			body.WriteString("id: ")
+			body.WriteString(event.LastEventID)
+			body.WriteByte('\n')
+		}
+		// SSE requires a separate data field for each logical payload line.
+		for _, line := range strings.Split(string(event.Data), "\n") {
+			body.WriteString("data: ")
+			body.WriteString(strings.TrimSuffix(line, "\r"))
+			body.WriteByte('\n')
+		}
+		body.WriteByte('\n')
+	}
+
+	return &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Headers: http.Header{
+			"Content-Type": []string{"text/event-stream"},
+		},
+		Body: []byte(body.String()),
+	}
+}
+
+func TestNewCodexSSEResponseEncodesMultilineData(t *testing.T) {
+	response := newCodexSSEResponse([]*httpclient.StreamEvent{{
+		Type:        "response.created",
+		LastEventID: "event_123",
+		Data:        []byte("{\r\n  \"type\": \"response.created\"\n}"),
+	}})
+
+	assert.Equal(t, "event: response.created\nid: event_123\ndata: {\ndata:   \"type\": \"response.created\"\ndata: }\n\n", string(response.Body))
 }
 
 func TestCodexOutbound_DoesNotInjectCLIInstructions(t *testing.T) {
