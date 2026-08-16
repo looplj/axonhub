@@ -4,17 +4,18 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
-	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // streamState tracks state across streaming events.
 type streamState struct {
 	toolCallIndex int
+	responseID    string
 }
 
 // TransformStream transforms the HTTP stream response to the unified response format.
@@ -63,11 +64,15 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 		return nil, err
 	}
 
-	// Check if the response is valid.
-	// Gemini response empty event for some time, we should return error instead of continue to process.
-	if resp.ResponseID == "" {
-		return nil, transformer.ErrInvalidResponse
+	// Gemini does not guarantee responseId in every streaming chunk. Keep one
+	// stable ID for the whole stream so downstream clients can correlate chunks.
+	if state.responseID == "" {
+		state.responseID = resp.ResponseID
+		if state.responseID == "" {
+			state.responseID = "chatcmpl-" + uuid.NewString()
+		}
 	}
+	resp.ResponseID = state.responseID
 
 	// Convert to unified response format (streaming) with tool call index tracking
 	llmResp, nextIndex := convertGeminiToLLMResponseWithState(&resp, true, state.toolCallIndex)

@@ -365,6 +365,26 @@ func TestIsTerminalStreamEvent_SemanticCompletionInData(t *testing.T) {
 			want:  false,
 		},
 		{
+			name:  "gemini finish reason stop",
+			event: &httpclient.StreamEvent{Data: []byte(`{"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"world!"}]},"finishReason":"STOP"}]}`)},
+			want:  true,
+		},
+		{
+			name:  "gemini finish reason max tokens",
+			event: &httpclient.StreamEvent{Data: []byte(`{"candidates":[{"index":0,"finishReason":"MAX_TOKENS"}]}`)},
+			want:  true,
+		},
+		{
+			name:  "gemini chunk without finish reason",
+			event: &httpclient.StreamEvent{Data: []byte(`{"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"hello"}]}}]}`)},
+			want:  false,
+		},
+		{
+			name:  "gemini empty finish reason",
+			event: &httpclient.StreamEvent{Data: []byte(`{"candidates":[{"index":0,"finishReason":""}]}`)},
+			want:  false,
+		},
+		{
 			name:  "non-terminal responses event",
 			event: &httpclient.StreamEvent{Data: []byte(`{"type":"response.output_text.delta","delta":"done"}`)},
 			want:  false,

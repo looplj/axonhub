@@ -825,6 +825,26 @@ func TestWriteSSEStream_IncompleteStreamReportsErrorWithHeartbeat(t *testing.T) 
 	require.Contains(t, body, orchestrator.ErrStreamIncomplete.Error())
 }
 
+// Gemini generateContent streams terminate with candidates[].finishReason and
+// never send [DONE]. Treating that as incomplete appends a trailing error that
+// Gemini SDKs surface as StreamException.
+func TestWriteSSEStream_GeminiFinishReasonIsNotIncomplete(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"hello"}]}}]}`)},
+		{Data: []byte(`{"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"world!"}]},"finishReason":"STOP"}]}`)},
+	}
+
+	WriteSSEStream(c, streams.SliceStream(events))
+
+	body := w.Body.String()
+	require.NotContains(t, body, "event:error")
+	require.NotContains(t, body, orchestrator.ErrStreamIncomplete.Error())
+}
+
 // A stream that carries finish_reason but no [DONE] is already complete; clients
 // commonly close right after that chunk, so it must not be flagged as incomplete.
 func TestWriteSSEStream_FinishReasonWithoutDoneIsNotIncomplete(t *testing.T) {
