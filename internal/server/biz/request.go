@@ -72,6 +72,13 @@ func (s *RequestService) shouldUseExternalStorage(_ context.Context, ds *ent.Dat
 // _InvalidRequestBodyJSON returns a JSON object indicating invalid text.
 var _InvalidRequestBodyJSON = objects.JSONRawMessage(`{"message":"invalid text"}`)
 
+// External payload markers live in the DB when the real JSON is in object storage.
+// They must not match the GC strip placeholders (`{}` / `[]`).
+var (
+	ExternalResponseBodyMarker   = objects.JSONRawMessage(`{"_ext":1}`)
+	ExternalResponseChunksMarker = []objects.JSONRawMessage{objects.JSONRawMessage(`{"_ext":1}`)}
+)
+
 // GenerateRequestBodyKey generates the storage key for request body.
 func GenerateRequestBodyKey(projectID, requestID int) string {
 	return fmt.Sprintf("/%d/requests/%d/request_body.json", projectID, requestID)
@@ -481,6 +488,8 @@ func (s *RequestService) UpdateRequestCompleted(
 			if err != nil {
 				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
 				// Continue anyway
+			} else {
+				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
 			}
 		} else {
 			// Store in database
@@ -566,6 +575,8 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 			key := GenerateResponseBodyKey(req.ProjectID, requestID)
 			if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
 				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
+			} else {
+				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
 			}
 		} else {
 			upd = upd.SetResponseBody(responseBodyBytes)
@@ -666,6 +677,8 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 			if err != nil {
 				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
 				// Continue anyway
+			} else {
+				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
 			}
 		} else {
 			// Store in database
@@ -749,6 +762,8 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 			err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
 			if err != nil {
 				log.Error(ctx, "Failed to save execution response body to external storage", log.Cause(err))
+			} else {
+				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
 			}
 		} else {
 			// Store in database
@@ -960,6 +975,13 @@ func (s *RequestService) SaveRequestExecutionChunks(
 		if err != nil {
 			return fmt.Errorf("failed to save chunks to external storage: %w", err)
 		}
+
+		_, err = client.RequestExecution.UpdateOneID(executionID).
+			SetResponseChunks(ExternalResponseChunksMarker).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to mark execution chunks as external: %w", err)
+		}
 	} else {
 		// Store in database
 		_, err = client.RequestExecution.UpdateOneID(executionID).
@@ -1047,6 +1069,13 @@ func (s *RequestService) SaveRequestChunks(
 		err = s.DataStorageService.SaveData(ctx, dataStorage, key, allChunksBytes)
 		if err != nil {
 			return fmt.Errorf("failed to save chunks to external storage: %w", err)
+		}
+
+		_, err = client.Request.UpdateOneID(requestID).
+			SetResponseChunks(ExternalResponseChunksMarker).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to mark request chunks as external: %w", err)
 		}
 	} else {
 		// Store in database

@@ -83048,7 +83048,7 @@ func (ec *executionContext) unmarshalInputTriggerGcCleanupInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"requestsCleanupDays", "usageLogsCleanupDays"}
+	fieldsInOrder := [...]string{"requestsCleanupDays", "usageLogsCleanupDays", "requestBodiesCleanupDays", "responseBodiesCleanupDays", "responseChunksCleanupDays"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -83069,6 +83069,27 @@ func (ec *executionContext) unmarshalInputTriggerGcCleanupInput(ctx context.Cont
 				return it, err
 			}
 			it.UsageLogsCleanupDays = data
+		case "requestBodiesCleanupDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestBodiesCleanupDays"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestBodiesCleanupDays = data
+		case "responseBodiesCleanupDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseBodiesCleanupDays"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResponseBodiesCleanupDays = data
+		case "responseChunksCleanupDays":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("responseChunksCleanupDays"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ResponseChunksCleanupDays = data
 		}
 	}
 

@@ -291,6 +291,19 @@ type CleanupOption struct {
 }
 
 const (
+	// CleanupResourceRequests deletes request rows, executions, traces, and threads.
+	CleanupResourceRequests = "requests"
+	// CleanupResourceUsageLogs deletes usage log rows.
+	CleanupResourceUsageLogs = "usage_logs"
+	// CleanupResourceRequestBodies strips stored request bodies and headers only.
+	CleanupResourceRequestBodies = "request_bodies"
+	// CleanupResourceResponseBodies strips stored response bodies only.
+	CleanupResourceResponseBodies = "response_bodies"
+	// CleanupResourceResponseChunks strips stored stream chunks only.
+	CleanupResourceResponseChunks = "response_chunks"
+)
+
+const (
 	// LoadBalancerStrategyAdaptive is a dynamic load balancer strategy that adapts to the current load.
 	LoadBalancerStrategyAdaptive = "adaptive"
 
@@ -1024,6 +1037,8 @@ func (s *SystemService) StoragePolicy(ctx context.Context) (*StoragePolicy, erro
 	if !strings.Contains(value, "\"store_response_body\"") {
 		policy.StoreResponseBody = true
 	}
+
+	policy.CleanupOptions = mergeCleanupOptions(policy.CleanupOptions)
 
 	return &policy, nil
 }

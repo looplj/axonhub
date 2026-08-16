@@ -24,33 +24,138 @@ import {
   useStoragePolicy,
   useUpdateStoragePolicy,
   useTriggerGcCleanup,
-  usePreviewGcCleanup,
+  previewGcCleanup,
   CleanupOption,
   GcCleanupPreviewItem,
 } from '../data/system';
 
+const BODY_CLEANUP_TYPES = new Set(['request_bodies', 'response_bodies', 'response_chunks']);
+const BODY_CLEANUP_TYPE_ORDER = ['request_bodies', 'response_bodies', 'response_chunks'];
+
+type BodyPreviewGroup = {
+  key: string;
+  count: number;
+  cutoffTime: string;
+  types: string[];
+};
+
+function formatPreviewCount(count: number, locale?: string) {
+  return count.toLocaleString(locale || undefined);
+}
+
+function formatPreviewDate(cutoffTime: string, locale?: string) {
+  return new Date(cutoffTime).toLocaleDateString(locale || undefined);
+}
+
+function joinTypeLabels(labels: string[], locale?: string) {
+  try {
+    return new Intl.ListFormat(locale || undefined, { style: 'narrow', type: 'conjunction' }).format(labels);
+  } catch {
+    return labels.join(', ');
+  }
+}
+
+function groupBodyPreviewItems(items: GcCleanupPreviewItem[]): BodyPreviewGroup[] {
+  const groups = new Map<string, BodyPreviewGroup>();
+
+  for (const item of items) {
+    if (!BODY_CLEANUP_TYPES.has(item.resourceType)) {
+      continue;
+    }
+
+    // 三种载荷各自算 cutoff，时间戳会差几毫秒；按保留天数合并。
+    const key =
+      item.retentionDays > 0
+        ? `days:${item.retentionDays}`
+        : `day:${new Date(item.cutoffTime).toISOString().slice(0, 10)}`;
+    const existing = groups.get(key);
+    if (existing) {
+      if (!existing.types.includes(item.resourceType)) {
+        existing.types.push(item.resourceType);
+      }
+      if (item.estimatedCount > existing.count) {
+        existing.count = item.estimatedCount;
+      }
+      continue;
+    }
+
+    groups.set(key, {
+      key,
+      count: item.estimatedCount,
+      cutoffTime: item.cutoffTime,
+      types: [item.resourceType],
+    });
+  }
+
+  return Array.from(groups.values()).map((group) => ({
+    ...group,
+    types: BODY_CLEANUP_TYPE_ORDER.filter((type) => group.types.includes(type)),
+  }));
+}
+
+const DEFAULT_CLEANUP_OPTIONS: CleanupOption[] = [
+  { resourceType: 'requests', enabled: false, cleanupDays: 3 },
+  { resourceType: 'usage_logs', enabled: false, cleanupDays: 30 },
+  { resourceType: 'request_bodies', enabled: false, cleanupDays: 7 },
+  { resourceType: 'response_bodies', enabled: false, cleanupDays: 7 },
+  { resourceType: 'response_chunks', enabled: false, cleanupDays: 3 },
+];
+
+function ensureCleanupOptions(options: CleanupOption[]): CleanupOption[] {
+  const byType = new Map(options.map((option) => [option.resourceType, option]));
+  const merged = options.map((option) => ({ ...option }));
+
+  for (const def of DEFAULT_CLEANUP_OPTIONS) {
+    if (!byType.has(def.resourceType)) {
+      merged.push({ ...def });
+    }
+  }
+
+  return merged;
+}
+
+function upsertCleanupOption(
+  options: CleanupOption[],
+  resourceType: string,
+  patch: Partial<CleanupOption>
+): CleanupOption[] {
+  if (!options.some((option) => option.resourceType === resourceType)) {
+    return [...options, { resourceType, enabled: false, cleanupDays: 7, ...patch }];
+  }
+
+  return options.map((option) => (option.resourceType === resourceType ? { ...option, ...patch } : option));
+}
+
+function cleanupOption(options: CleanupOption[], resourceType: string): CleanupOption | undefined {
+  return options.find((option) => option.resourceType === resourceType);
+}
+
 export function StoragePolicySettings() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isLoading, setIsLoading } = useSystemContext();
 
   const { data: storagePolicy, isLoading: isLoadingStoragePolicy } = useStoragePolicy();
   const updateStoragePolicy = useUpdateStoragePolicy();
   const triggerGcCleanup = useTriggerGcCleanup();
-  const previewGcCleanup = usePreviewGcCleanup();
 
   const [storagePolicyState, setStoragePolicyState] = useState({
     storeChunks: storagePolicy?.storeChunks ?? false,
     livePreview: storagePolicy?.livePreview ?? false,
     storeRequestBody: storagePolicy?.storeRequestBody ?? true,
     storeResponseBody: storagePolicy?.storeResponseBody ?? true,
-    cleanupOptions: storagePolicy?.cleanupOptions ?? [],
+    cleanupOptions: ensureCleanupOptions(storagePolicy?.cleanupOptions ?? []),
   });
 
   const [manualRequestsDays, setManualRequestsDays] = useState(30);
   const [manualUsageLogsDays, setManualUsageLogsDays] = useState(7);
+  const [manualRequestBodiesDays, setManualRequestBodiesDays] = useState(7);
+  const [manualResponseBodiesDays, setManualResponseBodiesDays] = useState(7);
+  const [manualResponseChunksDays, setManualResponseChunksDays] = useState(3);
   const [previewItems, setPreviewItems] = useState<GcCleanupPreviewItem[]>([]);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewFailed, setPreviewFailed] = useState(false);
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewAbortRef = useRef<AbortController | null>(null);
 
   const dialogOpenRef = useRef(false);
 
@@ -61,69 +166,156 @@ export function StoragePolicySettings() {
         livePreview: storagePolicy.livePreview,
         storeRequestBody: storagePolicy.storeRequestBody,
         storeResponseBody: storagePolicy.storeResponseBody,
-        cleanupOptions: storagePolicy.cleanupOptions,
+        cleanupOptions: ensureCleanupOptions(storagePolicy.cleanupOptions),
       });
     }
   }, [storagePolicy]);
 
-  const fetchPreview = React.useCallback(async (reqDays: number, usageDays: number) => {
-    if (reqDays <= 0 && usageDays <= 0) {
+  const fetchPreview = React.useCallback(async (
+    reqDays: number,
+    usageDays: number,
+    requestBodyDays: number,
+    responseBodyDays: number,
+    chunkDays: number,
+  ) => {
+    if (reqDays <= 0 && usageDays <= 0 && requestBodyDays <= 0 && responseBodyDays <= 0 && chunkDays <= 0) {
       setPreviewItems([]);
+      setPreviewFailed(false);
       return;
     }
+    previewAbortRef.current?.abort();
+    const controller = new AbortController();
+    previewAbortRef.current = controller;
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 12_000);
     setIsPreviewLoading(true);
+    setPreviewFailed(false);
     try {
-      const items = await previewGcCleanup.mutateAsync({
-        requestsCleanupDays: reqDays,
-        usageLogsCleanupDays: usageDays,
-      });
+      const items = await previewGcCleanup(
+        {
+          requestsCleanupDays: reqDays,
+          usageLogsCleanupDays: usageDays,
+          requestBodiesCleanupDays: requestBodyDays,
+          responseBodiesCleanupDays: responseBodyDays,
+          responseChunksCleanupDays: chunkDays,
+        },
+        controller.signal
+      );
+      if (timedOut) {
+        setPreviewItems([]);
+        setPreviewFailed(true);
+        return;
+      }
+      if (controller.signal.aborted) {
+        return;
+      }
       setPreviewItems(items);
-    } catch {
+    } catch (error) {
+      const aborted =
+        controller.signal.aborted || (error instanceof DOMException && error.name === 'AbortError');
+      if (aborted && !timedOut) {
+        return;
+      }
       setPreviewItems([]);
+      setPreviewFailed(true);
     } finally {
-      setIsPreviewLoading(false);
+      window.clearTimeout(timeoutId);
+      if (previewAbortRef.current === controller) {
+        setIsPreviewLoading(false);
+      }
     }
-  }, [previewGcCleanup]);
+  }, []);
 
-  const schedulePreview = (reqDays: number, usageDays: number) => {
+  const schedulePreview = (
+    reqDays: number,
+    usageDays: number,
+    requestBodyDays: number,
+    responseBodyDays: number,
+    chunkDays: number,
+  ) => {
     if (previewTimerRef.current) {
       clearTimeout(previewTimerRef.current);
     }
     previewTimerRef.current = setTimeout(() => {
-      fetchPreview(reqDays, usageDays);
+      fetchPreview(reqDays, usageDays, requestBodyDays, responseBodyDays, chunkDays);
     }, 500);
   };
 
   const handleDialogOpenChange = (open: boolean) => {
     dialogOpenRef.current = open;
-    if (open) {
-      const requestsOption = storagePolicyState.cleanupOptions.find(o => o.resourceType === 'requests');
-      const usageLogsOption = storagePolicyState.cleanupOptions.find(o => o.resourceType === 'usage_logs');
-      const reqDays = requestsOption?.cleanupDays || 30;
-      const usageDays = usageLogsOption?.cleanupDays || 7;
+    if (!open) {
+      if (previewTimerRef.current) {
+        clearTimeout(previewTimerRef.current);
+      }
+      previewAbortRef.current?.abort();
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    {
+      const reqDays = cleanupOption(storagePolicyState.cleanupOptions, 'requests')?.cleanupDays || 30;
+      const usageDays = cleanupOption(storagePolicyState.cleanupOptions, 'usage_logs')?.cleanupDays || 7;
+      const requestBodyDays = cleanupOption(storagePolicyState.cleanupOptions, 'request_bodies')?.cleanupDays || 7;
+      const responseBodyDays = cleanupOption(storagePolicyState.cleanupOptions, 'response_bodies')?.cleanupDays || 7;
+      const chunkDays = cleanupOption(storagePolicyState.cleanupOptions, 'response_chunks')?.cleanupDays || 3;
       setManualRequestsDays(reqDays);
       setManualUsageLogsDays(usageDays);
+      setManualRequestBodiesDays(requestBodyDays);
+      setManualResponseBodiesDays(responseBodyDays);
+      setManualResponseChunksDays(chunkDays);
       setPreviewItems([]);
-      schedulePreview(reqDays, usageDays);
+      setPreviewFailed(false);
+      schedulePreview(reqDays, usageDays, requestBodyDays, responseBodyDays, chunkDays);
     }
   };
 
+  const clampDays = (value: number) => {
+    if (!Number.isFinite(value) || value <= 0) {
+      return 0;
+    }
+    return Math.min(365, Math.floor(value));
+  };
+
   const handleManualRequestsDaysChange = (value: number) => {
-    const days = Math.max(1, Math.min(365, value || 1));
+    const days = clampDays(value);
     setManualRequestsDays(days);
-    schedulePreview(days, manualUsageLogsDays);
+    schedulePreview(days, manualUsageLogsDays, manualRequestBodiesDays, manualResponseBodiesDays, manualResponseChunksDays);
   };
 
   const handleManualUsageLogsDaysChange = (value: number) => {
-    const days = Math.max(1, Math.min(365, value || 1));
+    const days = clampDays(value);
     setManualUsageLogsDays(days);
-    schedulePreview(manualRequestsDays, days);
+    schedulePreview(manualRequestsDays, days, manualRequestBodiesDays, manualResponseBodiesDays, manualResponseChunksDays);
+  };
+
+  const handleManualRequestBodiesDaysChange = (value: number) => {
+    const days = clampDays(value);
+    setManualRequestBodiesDays(days);
+    schedulePreview(manualRequestsDays, manualUsageLogsDays, days, manualResponseBodiesDays, manualResponseChunksDays);
+  };
+
+  const handleManualResponseBodiesDaysChange = (value: number) => {
+    const days = clampDays(value);
+    setManualResponseBodiesDays(days);
+    schedulePreview(manualRequestsDays, manualUsageLogsDays, manualRequestBodiesDays, days, manualResponseChunksDays);
+  };
+
+  const handleManualResponseChunksDaysChange = (value: number) => {
+    const days = clampDays(value);
+    setManualResponseChunksDays(days);
+    schedulePreview(manualRequestsDays, manualUsageLogsDays, manualRequestBodiesDays, manualResponseBodiesDays, days);
   };
 
   const handleManualCleanup = () => {
     triggerGcCleanup.mutate({
       requestsCleanupDays: manualRequestsDays,
       usageLogsCleanupDays: manualUsageLogsDays,
+      requestBodiesCleanupDays: manualRequestBodiesDays,
+      responseBodiesCleanupDays: manualResponseBodiesDays,
+      responseChunksCleanupDays: manualResponseChunksDays,
     });
   };
 
@@ -146,15 +338,12 @@ export function StoragePolicySettings() {
     }
   };
 
-  const handleCleanupOptionChange = (index: number, field: keyof CleanupOption, value: any) => {
-    const newOptions = [...storagePolicyState.cleanupOptions];
-    newOptions[index] = {
-      ...newOptions[index],
-      [field]: value,
-    };
+  const handleCleanupOptionChange = (resourceType: string, field: keyof CleanupOption, value: CleanupOption[keyof CleanupOption]) => {
     setStoragePolicyState({
       ...storagePolicyState,
-      cleanupOptions: newOptions,
+      cleanupOptions: upsertCleanupOption(storagePolicyState.cleanupOptions, resourceType, {
+        [field]: value,
+      }),
     });
   };
 
@@ -164,7 +353,8 @@ export function StoragePolicySettings() {
       storagePolicy.livePreview !== storagePolicyState.livePreview ||
       storagePolicy.storeRequestBody !== storagePolicyState.storeRequestBody ||
       storagePolicy.storeResponseBody !== storagePolicyState.storeResponseBody ||
-      JSON.stringify(storagePolicy.cleanupOptions) !== JSON.stringify(storagePolicyState.cleanupOptions));
+      JSON.stringify(ensureCleanupOptions(storagePolicy.cleanupOptions)) !==
+        JSON.stringify(storagePolicyState.cleanupOptions));
 
   if (isLoadingStoragePolicy) {
     return (
@@ -176,9 +366,36 @@ export function StoragePolicySettings() {
   }
 
   const resourceTypeLabel = (rt: string) => {
-    if (rt === 'requests') return t('system.storage.policy.resourceTypes.requests');
-    if (rt === 'usage_logs') return t('system.storage.policy.resourceTypes.usage_logs');
-    return rt;
+    const key = `system.storage.policy.resourceTypes.${rt}`;
+    const label = t(key);
+    return label === key ? rt : label;
+  };
+
+  const renderManualDaysRow = (
+    resourceType: string,
+    value: number,
+    onChange: (value: number) => void,
+  ) => (
+    <div className='flex items-center gap-4'>
+      <Label className='min-w-36 w-40 shrink-0'>{resourceTypeLabel(resourceType)}</Label>
+      <div className='flex items-center gap-2'>
+        <Input
+          type='number'
+          min='0'
+          max='365'
+          value={value}
+          onChange={(e) => onChange(parseInt(e.target.value, 10) || 0)}
+          className='w-20'
+        />
+        <span className='text-muted-foreground text-sm'>{t('system.storage.policy.days')}</span>
+      </div>
+    </div>
+  );
+
+  const cleanupOptionDescription = (resourceType: string) => {
+    const key = `system.storage.policy.resourceTypeDescriptions.${resourceType}`;
+    const description = t(key);
+    return description === key ? '' : description;
   };
 
   return (
@@ -204,42 +421,26 @@ export function StoragePolicySettings() {
                 {t('system.storage.policy.runCleanupNow')}
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className='max-h-[90vh] overflow-y-auto'>
               <AlertDialogHeader>
                 <AlertDialogTitle>{t('system.storage.policy.runCleanupManualTitle')}</AlertDialogTitle>
                 <AlertDialogDescription>
                   {t('system.storage.policy.runCleanupManualDescription')}
                 </AlertDialogDescription>
               </AlertDialogHeader>
-              <div className='space-y-4 py-4'>
-                <div className='flex items-center gap-4'>
-                  <Label className='w-32 shrink-0'>{t('system.storage.policy.resourceTypes.requests')}</Label>
-                  <div className='flex items-center gap-2'>
-                    <Input
-                      type='number'
-                      min='1'
-                      max='365'
-                      value={manualRequestsDays}
-                      onChange={(e) => handleManualRequestsDaysChange(parseInt(e.target.value) || 1)}
-                      className='w-20'
-                    />
-                    <span className='text-muted-foreground text-sm'>{t('system.storage.policy.days')}</span>
-                  </div>
+              <div className='space-y-5 py-4'>
+                <div className='space-y-3'>
+                  <div className='text-sm font-medium'>{t('system.storage.policy.runCleanupGroupDelete')}</div>
+                  {renderManualDaysRow('requests', manualRequestsDays, handleManualRequestsDaysChange)}
+                  {renderManualDaysRow('usage_logs', manualUsageLogsDays, handleManualUsageLogsDaysChange)}
                 </div>
-                <div className='flex items-center gap-4'>
-                  <Label className='w-32 shrink-0'>{t('system.storage.policy.resourceTypes.usage_logs')}</Label>
-                  <div className='flex items-center gap-2'>
-                    <Input
-                      type='number'
-                      min='1'
-                      max='365'
-                      value={manualUsageLogsDays}
-                      onChange={(e) => handleManualUsageLogsDaysChange(parseInt(e.target.value) || 1)}
-                      className='w-20'
-                    />
-                    <span className='text-muted-foreground text-sm'>{t('system.storage.policy.days')}</span>
-                  </div>
+                <div className='space-y-3'>
+                  <div className='text-sm font-medium'>{t('system.storage.policy.runCleanupGroupStrip')}</div>
+                  {renderManualDaysRow('request_bodies', manualRequestBodiesDays, handleManualRequestBodiesDaysChange)}
+                  {renderManualDaysRow('response_bodies', manualResponseBodiesDays, handleManualResponseBodiesDaysChange)}
+                  {renderManualDaysRow('response_chunks', manualResponseChunksDays, handleManualResponseChunksDaysChange)}
                 </div>
+                <div className='text-muted-foreground text-xs'>{t('system.storage.policy.runCleanupSkipHint')}</div>
                 <div className='rounded-lg border p-3'>
                   <div className='text-sm font-medium mb-2'>{t('system.storage.policy.runCleanupPreviewLabel')}</div>
                   {isPreviewLoading ? (
@@ -247,22 +448,66 @@ export function StoragePolicySettings() {
                       <Loader2 className='h-3 w-3 animate-spin' />
                       {t('system.storage.policy.runCleanupPreviewLoading')}
                     </div>
+                  ) : previewFailed ? (
+                    <div className='text-muted-foreground text-sm'>
+                      {t('system.storage.policy.runCleanupPreviewFailed')}
+                    </div>
                   ) : previewItems.length === 0 ? (
                     <div className='text-muted-foreground text-sm'>
                       {t('system.storage.policy.runCleanupPreviewEmpty')}
                     </div>
                   ) : (
-                    <ul className='space-y-1'>
-                      {previewItems.map((item) => (
-                        <li key={item.resourceType} className='text-sm'>
-                          {t('system.storage.policy.runCleanupPreviewItem', {
-                            count: item.estimatedCount,
-                            resourceType: resourceTypeLabel(item.resourceType),
-                            date: new Date(item.cutoffTime).toLocaleDateString(),
-                          })}
-                        </li>
-                      ))}
-                    </ul>
+                    <div className='space-y-3'>
+                      {previewItems.some((item) => !BODY_CLEANUP_TYPES.has(item.resourceType)) ? (
+                        <ul className='space-y-1'>
+                          {previewItems
+                            .filter((item) => !BODY_CLEANUP_TYPES.has(item.resourceType))
+                            .map((item) => (
+                              <li key={item.resourceType} className='text-sm'>
+                                {t('system.storage.policy.runCleanupPreviewItem', {
+                                  count: formatPreviewCount(item.estimatedCount, i18n.language),
+                                  resourceType: resourceTypeLabel(item.resourceType),
+                                  date: formatPreviewDate(item.cutoffTime, i18n.language),
+                                })}
+                              </li>
+                            ))}
+                        </ul>
+                      ) : null}
+                      {(() => {
+                        const bodyGroups = groupBodyPreviewItems(previewItems);
+                        if (bodyGroups.length === 0) {
+                          return null;
+                        }
+                        return (
+                          <div className='space-y-2'>
+                            <div className='text-sm font-medium'>
+                              {t('system.storage.policy.runCleanupPreviewScanLabel')}
+                            </div>
+                            {bodyGroups.map((group) => (
+                              <div key={group.key} className='space-y-1'>
+                                <div className='text-sm'>
+                                  {t('system.storage.policy.runCleanupPreviewBodyRange', {
+                                    count: formatPreviewCount(group.count, i18n.language),
+                                    date: formatPreviewDate(group.cutoffTime, i18n.language),
+                                  })}
+                                </div>
+                                <div className='text-sm'>
+                                  {t('system.storage.policy.runCleanupPreviewBodyTypes', {
+                                    types: joinTypeLabels(
+                                      group.types.map((type) => resourceTypeLabel(type)),
+                                      i18n.language
+                                    ),
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                            <div className='text-muted-foreground text-xs'>
+                              {t('system.storage.policy.runCleanupPreviewBodyHint')}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
                   )}
                 </div>
               </div>
@@ -270,7 +515,7 @@ export function StoragePolicySettings() {
                 <AlertDialogCancel>{t('system.storage.policy.runCleanupCancel')}</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={handleManualCleanup}
-                  disabled={isPreviewLoading || triggerGcCleanup.isPending}
+                  disabled={triggerGcCleanup.isPending}
                 >
                   {triggerGcCleanup.isPending ? (
                     <>
@@ -363,30 +608,37 @@ export function StoragePolicySettings() {
               <div className='text-lg font-medium'>{t('system.storage.policy.cleanupOptions')}</div>
               <div className='text-muted-foreground text-sm'>{t('system.storage.policy.cleanupDescription')}</div>
             </div>
-            {storagePolicyState.cleanupOptions.map((option, index) => (
+            {storagePolicyState.cleanupOptions.map((option) => (
               <div
                 key={option.resourceType}
                 className='flex flex-col gap-4 rounded-lg border p-4'
                 id={'storage-cleanup-option-' + option.resourceType}
               >
                 <div className='flex items-center justify-between'>
-                  <div className='font-medium'>{t(`system.storage.policy.resourceTypes.${option.resourceType}`)}</div>
+                  <div className='space-y-0.5'>
+                    <div className='font-medium'>{t(`system.storage.policy.resourceTypes.${option.resourceType}`)}</div>
+                    {cleanupOptionDescription(option.resourceType) ? (
+                      <div className='text-muted-foreground text-sm'>
+                        {cleanupOptionDescription(option.resourceType)}
+                      </div>
+                    ) : null}
+                  </div>
                   <Switch
                     checked={option.enabled}
-                    onCheckedChange={(checked) => handleCleanupOptionChange(index, 'enabled', checked)}
+                    onCheckedChange={(checked) => handleCleanupOptionChange(option.resourceType, 'enabled', checked)}
                     disabled={isLoading}
                   />
                 </div>
                 {option.enabled && (
                   <div className='flex items-center gap-2'>
-                    <Label htmlFor={`cleanup-days-${index}`}>{t('system.storage.policy.cleanupDays')}</Label>
+                    <Label htmlFor={`cleanup-days-${option.resourceType}`}>{t('system.storage.policy.cleanupDays')}</Label>
                     <Input
-                      id={`cleanup-days-${index}`}
+                      id={`cleanup-days-${option.resourceType}`}
                       type='number'
                       min='1'
                       max='365'
                       value={option.cleanupDays}
-                      onChange={(e) => handleCleanupOptionChange(index, 'cleanupDays', parseInt(e.target.value) || 1)}
+                      onChange={(e) => handleCleanupOptionChange(option.resourceType, 'cleanupDays', parseInt(e.target.value) || 1)}
                       className='w-24'
                       disabled={isLoading}
                     />

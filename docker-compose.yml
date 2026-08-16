@@ -16,6 +16,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: axonhub-postgres
+    shm_size: 512mb
     environment:
       POSTGRES_DB: axonhub
       POSTGRES_USER: axonhub

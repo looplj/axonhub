@@ -27,8 +27,11 @@ import (
 var defaultBatchSize = 500
 
 type TriggerGcCleanupInput struct {
-	RequestsCleanupDays  int `json:"requests_cleanup_days"`
-	UsageLogsCleanupDays int `json:"usage_logs_cleanup_days"`
+	RequestsCleanupDays       int `json:"requests_cleanup_days"`
+	UsageLogsCleanupDays      int `json:"usage_logs_cleanup_days"`
+	RequestBodiesCleanupDays  int `json:"request_bodies_cleanup_days"`
+	ResponseBodiesCleanupDays int `json:"response_bodies_cleanup_days"`
+	ResponseChunksCleanupDays int `json:"response_chunks_cleanup_days"`
 }
 
 type GcCleanupPreviewItem struct {
@@ -74,7 +77,7 @@ func NewWorker(params Params) *Worker {
 func (w *Worker) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
 	return s.Register(ctx, scheduler.TaskSpec{
 		Name:        "gc",
-		Description: "Garbage collection — cleanup old requests, traces, usage logs, and channel probes",
+		Description: "Garbage collection — cleanup old requests, stored bodies, traces, usage logs, and channel probes",
 		CronExpr:    w.Config.CRON,
 		Timezone:    "UTC",
 	}, w.runAutomaticCleanup)
@@ -136,7 +139,40 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool, manualDays map[str
 				}
 			}
 			switch option.ResourceType {
-			case "requests":
+			case biz.CleanupResourceRequestBodies:
+				err := w.cleanupRequestBodies(ctx, days)
+				if err != nil {
+					log.Error(ctx, "Failed to cleanup request bodies",
+						log.String("resource", option.ResourceType),
+						log.Cause(err))
+				} else {
+					log.Info(ctx, "Successfully cleaned up request bodies",
+						log.String("resource", option.ResourceType),
+						log.Int("cleanup_days", days))
+				}
+			case biz.CleanupResourceResponseBodies:
+				err := w.cleanupResponseBodies(ctx, days)
+				if err != nil {
+					log.Error(ctx, "Failed to cleanup response bodies",
+						log.String("resource", option.ResourceType),
+						log.Cause(err))
+				} else {
+					log.Info(ctx, "Successfully cleaned up response bodies",
+						log.String("resource", option.ResourceType),
+						log.Int("cleanup_days", days))
+				}
+			case biz.CleanupResourceResponseChunks:
+				err := w.cleanupResponseChunks(ctx, days)
+				if err != nil {
+					log.Error(ctx, "Failed to cleanup response chunks",
+						log.String("resource", option.ResourceType),
+						log.Cause(err))
+				} else {
+					log.Info(ctx, "Successfully cleaned up response chunks",
+						log.String("resource", option.ResourceType),
+						log.Int("cleanup_days", days))
+				}
+			case biz.CleanupResourceRequests:
 				err := w.cleanupRequests(ctx, days, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup requests",
@@ -169,7 +205,7 @@ func (w *Worker) runCleanup(ctx context.Context, manual bool, manualDays map[str
 						log.String("resource", "traces"),
 						log.Int("cleanup_days", days))
 				}
-			case "usage_logs":
+			case biz.CleanupResourceUsageLogs:
 				err := w.cleanupUsageLogs(ctx, days, manual)
 				if err != nil {
 					log.Error(ctx, "Failed to cleanup usage logs",
@@ -662,10 +698,19 @@ func (w *Worker) RunVacuumNow(ctx context.Context) error {
 func (w *Worker) RunCleanupNow(ctx context.Context, input TriggerGcCleanupInput) error {
 	manualDays := make(map[string]int)
 	if input.RequestsCleanupDays > 0 {
-		manualDays["requests"] = input.RequestsCleanupDays
+		manualDays[biz.CleanupResourceRequests] = input.RequestsCleanupDays
 	}
 	if input.UsageLogsCleanupDays > 0 {
-		manualDays["usage_logs"] = input.UsageLogsCleanupDays
+		manualDays[biz.CleanupResourceUsageLogs] = input.UsageLogsCleanupDays
+	}
+	if input.RequestBodiesCleanupDays > 0 {
+		manualDays[biz.CleanupResourceRequestBodies] = input.RequestBodiesCleanupDays
+	}
+	if input.ResponseBodiesCleanupDays > 0 {
+		manualDays[biz.CleanupResourceResponseBodies] = input.ResponseBodiesCleanupDays
+	}
+	if input.ResponseChunksCleanupDays > 0 {
+		manualDays[biz.CleanupResourceResponseChunks] = input.ResponseChunksCleanupDays
 	}
 	w.runCleanup(ctx, true, manualDays)
 	return nil
@@ -677,9 +722,10 @@ func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput
 	ctx = schematype.SkipSoftDelete(ctx)
 
 	var items []GcCleanupPreviewItem
+	now := time.Now()
 
 	if input.RequestsCleanupDays > 0 {
-		cutoff := time.Now().AddDate(0, 0, -input.RequestsCleanupDays)
+		cutoff := now.AddDate(0, 0, -input.RequestsCleanupDays)
 		count, err := w.Ent.Request.Query().Where(
 			request.CreatedAtLT(cutoff),
 			request.Not(request.HasTraceWith(trace.StatusEQ(trace.StatusRetained))),
@@ -688,7 +734,7 @@ func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput
 			return nil, fmt.Errorf("failed to count requests for preview: %w", err)
 		}
 		items = append(items, GcCleanupPreviewItem{
-			ResourceType:   "requests",
+			ResourceType:   biz.CleanupResourceRequests,
 			EstimatedCount: count,
 			CutoffTime:     cutoff,
 			RetentionDays:  input.RequestsCleanupDays,
@@ -696,7 +742,7 @@ func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput
 	}
 
 	if input.UsageLogsCleanupDays > 0 {
-		cutoff := time.Now().AddDate(0, 0, -input.UsageLogsCleanupDays)
+		cutoff := now.AddDate(0, 0, -input.UsageLogsCleanupDays)
 		count, err := w.Ent.UsageLog.Query().Where(
 			usagelog.CreatedAtLT(cutoff),
 			usagelog.Not(usagelog.HasRequestWith(
@@ -707,11 +753,42 @@ func (w *Worker) PreviewCleanup(ctx context.Context, input TriggerGcCleanupInput
 			return nil, fmt.Errorf("failed to count usage logs for preview: %w", err)
 		}
 		items = append(items, GcCleanupPreviewItem{
-			ResourceType:   "usage_logs",
+			ResourceType:   biz.CleanupResourceUsageLogs,
 			EstimatedCount: count,
 			CutoffTime:     cutoff,
 			RetentionDays:  input.UsageLogsCleanupDays,
 		})
+	}
+
+	bodySpecs := []struct {
+		resourceType string
+		days         int
+	}{
+		{biz.CleanupResourceRequestBodies, input.RequestBodiesCleanupDays},
+		{biz.CleanupResourceResponseBodies, input.ResponseBodiesCleanupDays},
+		{biz.CleanupResourceResponseChunks, input.ResponseChunksCleanupDays},
+	}
+	bodyWindows := make(map[int]GcCleanupPreviewItem, 3)
+
+	for _, spec := range bodySpecs {
+		if spec.days <= 0 {
+			continue
+		}
+
+		item, ok := bodyWindows[spec.days]
+		if !ok {
+			var err error
+
+			item, err = w.previewBodyCleanup(ctx, spec.resourceType, spec.days, now)
+			if err != nil {
+				return nil, err
+			}
+
+			bodyWindows[spec.days] = item
+		}
+
+		item.ResourceType = spec.resourceType
+		items = append(items, item)
 	}
 
 	return items, nil

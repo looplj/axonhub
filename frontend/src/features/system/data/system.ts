@@ -300,6 +300,9 @@ export interface CleanupOptionInput {
 export interface TriggerGcCleanupInput {
   requestsCleanupDays: number;
   usageLogsCleanupDays: number;
+  requestBodiesCleanupDays?: number;
+  responseBodiesCleanupDays?: number;
+  responseChunksCleanupDays?: number;
 }
 
 export interface GcCleanupPreviewItem {
@@ -549,6 +552,19 @@ export function usePreviewGcCleanup() {
       return data.previewGcCleanup;
     },
   });
+}
+
+export async function previewGcCleanup(
+  input: TriggerGcCleanupInput,
+  signal?: AbortSignal
+): Promise<GcCleanupPreviewItem[]> {
+  const data = await graphqlRequest<{ previewGcCleanup: GcCleanupPreviewItem[] }>(
+    PREVIEW_GC_CLEANUP_QUERY,
+    { input },
+    undefined,
+    { signal }
+  );
+  return data.previewGcCleanup;
 }
 
 export function useRetryPolicy() {

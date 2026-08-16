@@ -177,6 +177,16 @@ func setupWorkerWithFSStorage(t *testing.T) (*Worker, context.Context, *ent.Data
 	dirCopy := dir
 	settings := &objects.DataStorageSettings{Directory: &dirCopy}
 
+	_, err := client.DataStorage.Create().
+		SetName("primary").
+		SetDescription("primary database").
+		SetPrimary(true).
+		SetType(datastorage.TypeDatabase).
+		SetSettings(&objects.DataStorageSettings{}).
+		SetStatus(datastorage.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
 	dataStorage, err := client.DataStorage.Create().
 		SetName("fs-storage").
 		SetDescription("test fs storage").
@@ -188,6 +198,7 @@ func setupWorkerWithFSStorage(t *testing.T) (*Worker, context.Context, *ent.Data
 	require.NoError(t, err)
 
 	worker := &Worker{
+		SystemService:      systemService,
 		DataStorageService: dataStorageService,
 		Ent:                client,
 	}
