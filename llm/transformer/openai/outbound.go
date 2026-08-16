@@ -261,6 +261,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		if transformerMetadata == nil {
 			transformerMetadata = map[string]any{}
 		}
+		transformerMetadata[responsesChatStrictFinishMetadataKey] = true
 		if mappings := toolAdapter.mappings(); len(mappings) > 0 {
 			transformerMetadata[responsesChatToolMappingsMetadataKey] = mappings
 		}
@@ -374,7 +375,13 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 		}
 		return response, err
 	}))
-	return &responsesChatToolFlushStream{inner: mapped, restorer: restorer}, nil
+	var strictFinish bool
+	if req != nil {
+		strictFinish, _ = req.TransformerMetadata[responsesChatStrictFinishMetadataKey].(bool)
+	}
+	return &responsesChatToolFlushStream{
+		inner: mapped, restorer: restorer, strictFinish: strictFinish,
+	}, nil
 }
 
 // responsesChatToolFlushStream releases tool calls the restorer still buffers
@@ -382,11 +389,12 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 // release them. Without this, providers that omit finish_reason (or emit
 // [DONE] in its place) would silently drop every buffered call.
 type responsesChatToolFlushStream struct {
-	inner    streams.Stream[*llm.Response]
-	restorer *responsesChatToolStreamRestorer
-	buffer   []*llm.Response
-	current  *llm.Response
-	flushed  bool
+	inner        streams.Stream[*llm.Response]
+	restorer     *responsesChatToolStreamRestorer
+	buffer       []*llm.Response
+	current      *llm.Response
+	flushed      bool
+	strictFinish bool
 }
 
 func (s *responsesChatToolFlushStream) Next() bool {
@@ -397,7 +405,11 @@ func (s *responsesChatToolFlushStream) Next() bool {
 
 	if !s.inner.Next() {
 		s.current = nil
-		if !s.flushed && s.inner.Err() == nil {
+		if s.inner.Err() == nil && s.syntheticFinishIfNeeded() {
+			s.popBuffered()
+			return true
+		}
+		if !s.strictFinish && !s.flushed && s.inner.Err() == nil {
 			s.flushed = true
 			s.buffer = s.restorer.flushBuffered()
 			if len(s.buffer) > 0 {
@@ -412,11 +424,18 @@ func (s *responsesChatToolFlushStream) Next() bool {
 	// that stop at a terminal event still observe them.
 	if current := s.inner.Current(); !s.flushed &&
 		(current == llm.DoneResponse || (current != nil && current.Object == "[DONE]")) {
-		if flushed := s.restorer.flushBuffered(); len(flushed) > 0 {
-			s.flushed = true
-			s.buffer = append(flushed, current)
+		if s.syntheticFinishIfNeeded() {
+			s.buffer = append(s.buffer, current)
 			s.popBuffered()
 			return true
+		}
+		if !s.strictFinish {
+			if flushed := s.restorer.flushBuffered(); len(flushed) > 0 {
+				s.flushed = true
+				s.buffer = append(flushed, current)
+				s.popBuffered()
+				return true
+			}
 		}
 	}
 
@@ -427,6 +446,21 @@ func (s *responsesChatToolFlushStream) Next() bool {
 func (s *responsesChatToolFlushStream) popBuffered() {
 	s.current = s.buffer[0]
 	s.buffer = s.buffer[1:]
+}
+
+func (s *responsesChatToolFlushStream) syntheticFinishIfNeeded() bool {
+	if !s.strictFinish || s.flushed || s.restorer.sawFinish {
+		return false
+	}
+	finishReason := "error"
+	s.flushed = true
+	s.buffer = []*llm.Response{{
+		Object: "chat.completion.chunk",
+		Choices: []llm.Choice{{
+			Index: 0, Delta: &llm.Message{}, FinishReason: &finishReason,
+		}},
+	}}
+	return true
 }
 
 func (s *responsesChatToolFlushStream) Current() *llm.Response { return s.current }

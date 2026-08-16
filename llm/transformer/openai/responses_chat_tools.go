@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -16,11 +17,13 @@ const (
 	responsesChatToolMappingsMetadataKey = "openai_responses_chat_tool_mappings"
 	responsesChatToolWarningsMetadataKey = "openai_responses_chat_tool_warnings"
 	responsesChatToolCatalogMetadataKey  = "openai_responses_chat_tool_catalog"
+	responsesChatStrictFinishMetadataKey = "openai_responses_chat_strict_finish"
 )
 
 type responsesChatToolKind string
 
 const (
+	responsesChatToolFunction  responsesChatToolKind = "function"
 	responsesChatToolCustom    responsesChatToolKind = "custom"
 	responsesChatToolSearch    responsesChatToolKind = "tool_search"
 	responsesChatToolNamespace responsesChatToolKind = "namespace"
@@ -37,28 +40,56 @@ type responsesChatToolMapping struct {
 	HistoryOnly bool
 }
 
-type responsesChatToolAdapter struct {
-	byChatName        map[string]responsesChatToolMapping
-	byIdentity        map[string]responsesChatToolMapping
-	usedNames         map[string]struct{}
-	availableNames    map[string]struct{}
-	plainDefinitions  map[string]string
-	mappingSignatures map[string]string
-	emittedPlain      map[string]struct{}
-	err               error
-	warnings          []string
+type toolIdentity struct {
+	Kind      responsesChatToolKind
+	Name      string
+	Namespace string
 }
+
+type flattenedIdentityKey struct {
+	Kind responsesChatToolKind
+	Name string
+}
+
+type sourceIdentityKey struct {
+	SourceType string
+	Name       string
+}
+
+type responsesChatToolAdapter struct {
+	byChatName            map[string]responsesChatToolMapping
+	byIdentity            map[toolIdentity]responsesChatToolMapping
+	identitiesByChat      map[string][]toolIdentity
+	identitiesByFlattened map[flattenedIdentityKey][]toolIdentity
+	identitiesByNamespace map[string][]toolIdentity
+	identitiesBySource    map[sourceIdentityKey][]toolIdentity
+	identitiesByClient    map[string][]toolIdentity
+	usedNames             map[string]toolIdentity
+	availableNames        map[string]struct{}
+	unsupportedNamespaces map[string][]string
+	mappingSignatures     map[toolIdentity]string
+	emittedPlain          map[string]struct{}
+	err                   error
+	warnings              []string
+}
+
+var chatFunctionNamePattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
 
 // newResponsesChatToolAdapter indexes existing names and definitions before conversion.
 func newResponsesChatToolAdapter(tools []llm.Tool) *responsesChatToolAdapter {
 	a := &responsesChatToolAdapter{
-		byChatName:        make(map[string]responsesChatToolMapping),
-		byIdentity:        make(map[string]responsesChatToolMapping),
-		usedNames:         make(map[string]struct{}),
-		availableNames:    make(map[string]struct{}),
-		plainDefinitions:  make(map[string]string),
-		mappingSignatures: make(map[string]string),
-		emittedPlain:      make(map[string]struct{}),
+		byChatName:            make(map[string]responsesChatToolMapping),
+		byIdentity:            make(map[toolIdentity]responsesChatToolMapping),
+		identitiesByChat:      make(map[string][]toolIdentity),
+		identitiesByFlattened: make(map[flattenedIdentityKey][]toolIdentity),
+		identitiesByNamespace: make(map[string][]toolIdentity),
+		identitiesBySource:    make(map[sourceIdentityKey][]toolIdentity),
+		identitiesByClient:    make(map[string][]toolIdentity),
+		usedNames:             make(map[string]toolIdentity),
+		availableNames:        make(map[string]struct{}),
+		unsupportedNamespaces: make(map[string][]string),
+		mappingSignatures:     make(map[toolIdentity]string),
+		emittedPlain:          make(map[string]struct{}),
 	}
 	for _, tool := range tools {
 		if tool.Type == llm.ToolTypeFunction && tool.Function.Namespace == "" && tool.ResponsesSourceType == "" {
@@ -71,13 +102,37 @@ func newResponsesChatToolAdapter(tools []llm.Tool) *responsesChatToolAdapter {
 				a.addWarningf("invalid function tool %q was dropped: %v", tool.Function.Name, err)
 				continue
 			}
-			if previous, exists := a.plainDefinitions[tool.Function.Name]; exists && previous != signature {
-				a.addWarningf("tool_name_conflict: kept first definition of function %q", tool.Function.Name)
+			identity := toolIdentity{Kind: responsesChatToolFunction, Name: tool.Function.Name}
+			if previous, exists := a.mappingSignatures[identity]; exists && previous != signature {
+				a.setError(conflictingDefinitionError(identity))
 				continue
 			}
-			a.plainDefinitions[tool.Function.Name] = signature
-			a.usedNames[tool.Function.Name] = struct{}{}
+			if err := a.reserveExactName(tool.Function.Name, identity); err != nil {
+				a.setError(err)
+			}
+			a.mappingSignatures[identity] = signature
 		}
+	}
+	for _, tool := range tools {
+		if tool.Type != llm.ToolTypeResponsesCustomTool || tool.ResponseCustomTool == nil || tool.ResponseCustomTool.Name == "" {
+			continue
+		}
+		identity := customToolIdentity(tool.ResponseCustomTool.Name, tool.ResponseCustomTool.Namespace)
+		chatName := exactCustomChatName(tool.ResponseCustomTool.Name, tool.ResponseCustomTool.Namespace)
+		signature, err := json.Marshal(tool.ResponseCustomTool)
+		if err != nil {
+			a.setError(err)
+			continue
+		}
+		if previous, exists := a.mappingSignatures[identity]; exists && previous != string(signature) {
+			a.setError(conflictingDefinitionError(identity))
+			continue
+		}
+		if err := a.reserveExactName(chatName, identity); err != nil {
+			a.setError(err)
+			continue
+		}
+		a.mappingSignatures[identity] = string(signature)
 	}
 	return a
 }
@@ -90,9 +145,21 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 		case llm.ToolTypeFunction:
 			if tool.Function.Name == "" {
 				if tool.Function.Namespace != "" {
-					a.addWarningf("unsupported_tool_type: dropped namespace function tool without a name")
+					_, err := llm.NamespaceFunctionMemberName(tool.Function)
+					a.setError(err)
+				} else {
+					a.addWarningf("unsupported_tool_type: dropped function tool without a name")
 				}
 				continue
+			}
+			memberName := tool.Function.Name
+			if tool.Function.Namespace != "" {
+				var err error
+				memberName, err = llm.NamespaceFunctionMemberName(tool.Function)
+				if err != nil {
+					a.setError(err)
+					continue
+				}
 			}
 			normalizedFunction, err := normalizeChatFunctionDefinition(tool.Function)
 			if err != nil {
@@ -103,7 +170,8 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 			}
 			tool.Function = normalizedFunction
 			if tool.Function.DeferLoading {
-				a.addWarningf("defer_loading_degraded: function tool %q is immediately visible after conversion to Chat Completions", tool.Function.Name)
+				a.setError(fmt.Errorf("unsupported_function_feature: function tool %q uses defer_loading, which Chat Completions cannot represent", tool.Function.Name))
+				continue
 			}
 			signature, err := functionDefinitionSignature(tool.Function)
 			if err != nil {
@@ -114,19 +182,18 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 			}
 			chatTool := ToolFromLLM(tool)
 			if tool.Function.Namespace != "" {
-				name := strings.TrimPrefix(tool.Function.Name, tool.Function.Namespace+"__")
-				identity := mappingIdentity(responsesChatToolNamespace, name, tool.Function.Namespace)
+				identity := toolIdentity{Kind: responsesChatToolNamespace, Name: memberName, Namespace: tool.Function.Namespace}
 				mapping := responsesChatToolMapping{
-					Kind: responsesChatToolNamespace, Name: name, Namespace: tool.Function.Namespace,
+					Kind: responsesChatToolNamespace, Name: memberName, Namespace: tool.Function.Namespace,
 					SourceType: tool.ResponsesSourceType,
 				}
-				chatName, duplicate := a.registerMapping(identity, tool.Function.Name, "axonhub_namespace_tool", signature, mapping)
+				chatName, duplicate := a.registerStrictMapping(identity, namespaceChatName(memberName, tool.Function.Namespace), signature, mapping)
 				if duplicate {
 					continue
 				}
 				chatTool.Function.Name = chatName
 				if tool.ResponsesSourceType != "" {
-					a.addWarningf("client_tool_output_degraded: %s tool %q returns as a function_call after Chat conversion", tool.ResponsesSourceType, name)
+					a.addWarningf("client_tool_output_degraded: %s tool %q returns as a function_call after Chat conversion", tool.ResponsesSourceType, memberName)
 				}
 			} else if tool.ResponsesSourceType != "" {
 				identity := clientToolIdentity(tool.ResponsesSourceType, tool.Function.Name)
@@ -140,7 +207,8 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 				chatTool.Function.Name = chatName
 				a.addWarningf("client_tool_output_degraded: %s tool %q returns as a function_call after Chat conversion", tool.ResponsesSourceType, tool.Function.Name)
 			} else {
-				if selected, ok := a.plainDefinitions[tool.Function.Name]; !ok || selected != signature {
+				identity := toolIdentity{Kind: responsesChatToolFunction, Name: tool.Function.Name}
+				if selected, ok := a.mappingSignatures[identity]; !ok || selected != signature {
 					continue
 				}
 				if _, emitted := a.emittedPlain[tool.Function.Name]; emitted {
@@ -160,20 +228,27 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 				a.addWarningf("unsupported_tool_type: dropped custom tool without a name")
 				continue
 			}
-			identity := mappingIdentity(responsesChatToolCustom, tool.ResponseCustomTool.Name, "")
+			namespace := tool.ResponseCustomTool.Namespace
+			identity := customToolIdentity(tool.ResponseCustomTool.Name, namespace)
 			signature, err := json.Marshal(tool.ResponseCustomTool)
 			if err != nil {
 				a.addWarningf("invalid custom tool %q was dropped: %v", tool.ResponseCustomTool.Name, err)
 				continue
 			}
-			mapping := responsesChatToolMapping{Kind: responsesChatToolCustom, Name: tool.ResponseCustomTool.Name}
-			chatName, duplicate := a.registerMapping(identity, tool.ResponseCustomTool.Name, "axonhub_custom_tool", string(signature), mapping)
+			mapping := responsesChatToolMapping{
+				Kind: responsesChatToolCustom, Name: tool.ResponseCustomTool.Name, Namespace: namespace,
+			}
+			chatName, duplicate := a.registerStrictMapping(identity, exactCustomChatName(tool.ResponseCustomTool.Name, namespace), string(signature), mapping)
 			if duplicate {
 				continue
 			}
-			if format := tool.ResponseCustomTool.Format; format != nil &&
-				(strings.EqualFold(strings.TrimSpace(format.Type), "grammar") || format.Definition != "") {
-				a.addWarningf("grammar_constraint_degraded: custom tool %q grammar is advisory after conversion to Chat Completions", tool.ResponseCustomTool.Name)
+			if format := tool.ResponseCustomTool.Format; format != nil {
+				formatType := strings.TrimSpace(format.Type)
+				if formatType == "" {
+					formatType = "unspecified"
+				}
+				a.setError(fmt.Errorf("unsupported_custom_tool_format: custom tool %q format %q cannot be enforced by Chat Completions", tool.ResponseCustomTool.Name, formatType))
+				continue
 			}
 			description := responsesChatCustomToolDescription(tool.ResponseCustomTool)
 			result = append(result, Tool{
@@ -199,7 +274,7 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 			}
 			normalizedToolSearch := *tool.ResponseToolSearch
 			normalizedToolSearch.Parameters = parameters
-			identity := mappingIdentity(responsesChatToolSearch, "tool_search", "")
+			identity := toolIdentity{Kind: responsesChatToolSearch, Name: "tool_search"}
 			signature, err := json.Marshal(&normalizedToolSearch)
 			if err != nil {
 				a.addWarningf("invalid tool_search definition was dropped: %v", err)
@@ -224,6 +299,11 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 				a.addWarningf("unsupported_tool_type: dropped opaque Responses tool with missing definition")
 				continue
 			}
+			if namespace := tool.ResponseOpaqueTool.Namespace; namespace != "" {
+				a.unsupportedNamespaces[namespace] = append(
+					a.unsupportedNamespaces[namespace], tool.ResponseOpaqueTool.SourceType,
+				)
+			}
 			a.addWarningf("unsupported_tool_type: dropped Responses tool %q (%s) without a Chat lifecycle codec", tool.ResponseOpaqueTool.Name, tool.ResponseOpaqueTool.SourceType)
 
 		case llm.ToolTypeImageGeneration, llm.ToolTypeWebSearch, llm.ToolTypeGoogleSearch,
@@ -241,7 +321,7 @@ func (a *responsesChatToolAdapter) convertTools(tools []llm.Tool) []Tool {
 }
 
 // responsesChatCustomToolDescription explains the JSON function wrapper and
-// preserves original instructions while marking grammar as advisory.
+// preserves original instructions.
 func responsesChatCustomToolDescription(tool *llm.ResponseCustomTool) string {
 	const wrapperInstructions = "This Responses custom tool is represented as a Chat Completions function. " +
 		"Pass the exact raw custom-tool input as the string value of the `input` argument. " +
@@ -255,17 +335,6 @@ func responsesChatCustomToolDescription(tool *llm.ResponseCustomTool) string {
 	if original := strings.TrimSpace(tool.Description); original != "" {
 		description.WriteString("\n\nOriginal custom-tool instructions (apply to the `input` string):\n")
 		description.WriteString(original)
-	}
-	if format := tool.Format; format != nil && format.Definition != "" {
-		description.WriteString("\n\nChat Completions cannot enforce the original custom-tool grammar during sampling. " +
-			"Treat this grammar as required guidance for the `input` string:\n")
-		if syntax := strings.TrimSpace(format.Syntax); syntax != "" {
-			description.WriteString(syntax)
-			description.WriteString(" grammar:\n")
-		} else {
-			description.WriteString("grammar:\n")
-		}
-		description.WriteString(format.Definition)
 	}
 	return description.String()
 }
@@ -285,14 +354,20 @@ func (a *responsesChatToolAdapter) convertMessage(message llm.Message, reasoning
 		call.Index = index
 		switch {
 		case call.ResponseCustomToolCall != nil:
-			mapping, ok := a.findMapping(responsesChatToolCustom, call.ResponseCustomToolCall.Name, "")
+			customNamespace := call.ResponseCustomToolCall.Namespace
+			mapping, ok := a.findMapping(responsesChatToolCustom, call.ResponseCustomToolCall.Name, customNamespace)
 			if !ok {
-				mapping = a.registerHistoryMapping(
-					mappingIdentity(responsesChatToolCustom, call.ResponseCustomToolCall.Name, ""),
-					call.ResponseCustomToolCall.Name,
+				mapping, ok = a.registerHistoryMapping(
+					customToolIdentity(call.ResponseCustomToolCall.Name, customNamespace),
+					exactCustomChatName(call.ResponseCustomToolCall.Name, customNamespace),
 					"axonhub_custom_tool_history",
-					responsesChatToolMapping{Kind: responsesChatToolCustom, Name: call.ResponseCustomToolCall.Name},
+					responsesChatToolMapping{
+						Kind: responsesChatToolCustom, Name: call.ResponseCustomToolCall.Name, Namespace: customNamespace,
+					},
 				)
+				if !ok {
+					continue
+				}
 			}
 			arguments, _ := json.Marshal(map[string]string{"input": call.ResponseCustomToolCall.Input})
 			converted.ToolCalls = append(converted.ToolCalls, chatFunctionCall(call, a.specialCallID(call, call.ResponseCustomToolCall.CallID), mapping.ChatName, string(arguments)))
@@ -300,14 +375,17 @@ func (a *responsesChatToolAdapter) convertMessage(message llm.Message, reasoning
 		case call.ResponseToolSearchCall != nil:
 			mapping, ok := a.findMapping(responsesChatToolSearch, "tool_search", "")
 			if !ok {
-				mapping = a.registerHistoryMapping(
-					mappingIdentity(responsesChatToolSearch, "tool_search", ""),
+				mapping, ok = a.registerHistoryMapping(
+					toolIdentity{Kind: responsesChatToolSearch, Name: "tool_search"},
 					"tool_search",
 					"axonhub_tool_search_history",
 					responsesChatToolMapping{
 						Kind: responsesChatToolSearch, Name: "tool_search", Execution: call.ResponseToolSearchCall.Execution,
 					},
 				)
+				if !ok {
+					continue
+				}
 			}
 			arguments := sanitizeToolSearchArguments(call.ResponseToolSearchCall.Arguments)
 			converted.ToolCalls = append(converted.ToolCalls, chatFunctionCall(call, a.specialCallID(call, call.ResponseToolSearchCall.CallID), mapping.ChatName, arguments))
@@ -319,14 +397,17 @@ func (a *responsesChatToolAdapter) convertMessage(message llm.Message, reasoning
 				if mapping, ok := a.findMapping(responsesChatToolNamespace, call.Function.Name, call.Function.Namespace); ok {
 					name = mapping.ChatName
 				} else {
-					mapping = a.registerHistoryMapping(
-						mappingIdentity(responsesChatToolNamespace, call.Function.Name, call.Function.Namespace),
+					mapping, ok = a.registerHistoryMapping(
+						toolIdentity{Kind: responsesChatToolNamespace, Name: call.Function.Name, Namespace: call.Function.Namespace},
 						fullName,
 						"axonhub_namespace_tool_history",
 						responsesChatToolMapping{
 							Kind: responsesChatToolNamespace, Name: call.Function.Name, Namespace: call.Function.Namespace,
 						},
 					)
+					if !ok {
+						continue
+					}
 					name = mapping.ChatName
 				}
 			} else if mapping, ok := a.findClientHistoryMapping(name); ok {
@@ -379,12 +460,8 @@ func (a *responsesChatToolAdapter) convertToolChoice(choice *llm.ToolChoice) *To
 		}
 		name = mapping.ChatName
 	case choice.NamedToolChoice.Type == llm.ToolTypeFunction:
-		mapping, namespace := a.findNamespaceToolChoiceMapping(name)
+		mapping, namespace := a.findNamespaceFunctionChoiceMapping(name)
 		_, plain := a.emittedPlain[name]
-		if plain && namespace && mapping.ChatName != name {
-			a.setError(fmt.Errorf("tool_name_conflict: function tool choice %q is ambiguous between plain and namespace tools", name))
-			return nil
-		}
 		if namespace {
 			name = mapping.ChatName
 		} else if !plain {
@@ -623,11 +700,10 @@ func (a *responsesChatToolAdapter) filterAllowedTools(tools []Tool, choice *llm.
 		_, active := allowedNames[chatName]
 		mapping.HistoryOnly = !active
 		a.byChatName[chatName] = mapping
-		for identity, candidate := range a.byIdentity {
-			if candidate.ChatName == chatName {
-				candidate.HistoryOnly = !active
-				a.byIdentity[identity] = candidate
-			}
+		for _, identity := range a.identitiesByChat[chatName] {
+			candidate := a.byIdentity[identity]
+			candidate.HistoryOnly = !active
+			a.byIdentity[identity] = candidate
 		}
 	}
 	return filtered
@@ -636,9 +712,17 @@ func (a *responsesChatToolAdapter) filterAllowedTools(tools []Tool, choice *llm.
 // resolveAllowedTool maps one type-aware Responses identity to emitted Chat names.
 func (a *responsesChatToolAdapter) resolveAllowedTool(option llm.ToolOption) ([]string, bool) {
 	if option.Type == "namespace" {
+		if err := a.unsupportedNamespaceError(option.Name); err != nil {
+			a.setError(err)
+			return nil, false
+		}
 		matched := make([]string, 0)
-		for _, mapping := range a.byIdentity {
-			if mapping.Kind == responsesChatToolNamespace && mapping.Namespace == option.Name {
+		for _, identity := range a.identitiesByNamespace[option.Name] {
+			mapping, ok := a.byIdentity[identity]
+			if !ok {
+				continue
+			}
+			if isCallableNamespaceMember(mapping, option.Name) {
 				matched = append(matched, mapping.ChatName)
 			}
 		}
@@ -653,7 +737,7 @@ func (a *responsesChatToolAdapter) resolveAllowedTool(option llm.ToolOption) ([]
 		return []string{mapping.ChatName}, ok
 	}
 	if option.Type == llm.ToolTypeFunction {
-		mapping, namespace := a.findNamespaceToolChoiceMapping(option.Name)
+		mapping, namespace := a.findNamespaceFunctionChoiceMapping(option.Name)
 		_, plain := a.emittedPlain[option.Name]
 		if plain == namespace {
 			return nil, false
@@ -668,35 +752,122 @@ func (a *responsesChatToolAdapter) resolveAllowedTool(option llm.ToolOption) ([]
 }
 
 // reserveName returns a collision-free Chat function name.
-func (a *responsesChatToolAdapter) reserveName(preferred, fallback string) string {
+func (a *responsesChatToolAdapter) reserveName(preferred, fallback string, identity toolIdentity) string {
 	if preferred == "" {
 		preferred = fallback
 	}
-	if _, exists := a.usedNames[preferred]; !exists {
-		a.usedNames[preferred] = struct{}{}
-		return preferred
+	if err := validateChatFunctionName(preferred); err == nil {
+		if _, exists := a.usedNames[preferred]; !exists {
+			a.usedNames[preferred] = identity
+			return preferred
+		}
 	}
 	for i := 1; ; i++ {
 		candidate := fmt.Sprintf("%s_%d", fallback, i)
+		if err := validateChatFunctionName(candidate); err != nil {
+			a.setError(err)
+			return ""
+		}
 		if _, exists := a.usedNames[candidate]; !exists {
-			a.usedNames[candidate] = struct{}{}
+			a.usedNames[candidate] = identity
 			return candidate
 		}
 	}
 }
 
-// registerMapping records the reversible identity of a converted tool definition.
-func (a *responsesChatToolAdapter) registerMapping(identity, preferred, fallback, signature string, mapping responsesChatToolMapping) (string, bool) {
+func validateChatFunctionName(name string) error {
+	if !chatFunctionNamePattern.MatchString(name) {
+		return fmt.Errorf("invalid_tool_name: Chat function name %q must match %s", name, chatFunctionNamePattern.String())
+	}
+	return nil
+}
+
+// reserveExactName validates and assigns an identity-fixed Chat name.
+func (a *responsesChatToolAdapter) reserveExactName(name string, identity toolIdentity) error {
+	if err := validateChatFunctionName(name); err != nil {
+		return err
+	}
+	if owner, exists := a.usedNames[name]; exists {
+		if owner == identity {
+			return nil
+		}
+		return toolNameCollisionError(name, owner, identity)
+	}
+	a.usedNames[name] = identity
+	return nil
+}
+
+// registerStrictMapping records a tool whose Chat name is its protocol identity.
+func (a *responsesChatToolAdapter) registerStrictMapping(identity toolIdentity, chatName, signature string, mapping responsesChatToolMapping) (string, bool) {
 	if existing, ok := a.byIdentity[identity]; ok {
-		if existingSignature := a.mappingSignatures[identity]; existingSignature != signature {
-			a.addWarningf("tool_name_conflict: kept first definition of tool %q", mapping.Name)
+		if existingSignature := a.mappingSignatures[identity]; existingSignature != signature || existing.SourceType != mapping.SourceType {
+			a.setError(conflictingDefinitionError(identity))
+			return "", true
 		}
 		return existing.ChatName, true
 	}
-	chatName := a.reserveName(preferred, fallback)
+	if err := a.reserveExactName(chatName, identity); err != nil {
+		a.setError(err)
+		return "", true
+	}
 	mapping.ChatName = chatName
 	a.byIdentity[identity] = mapping
 	a.byChatName[chatName] = mapping
+	a.identitiesByChat[chatName] = append(a.identitiesByChat[chatName], identity)
+	a.indexIdentity(identity, mapping)
+	a.availableNames[chatName] = struct{}{}
+	a.mappingSignatures[identity] = signature
+	return chatName, false
+}
+
+func exactCustomChatName(name, namespace string) string {
+	return namespaceChatName(name, namespace)
+}
+
+func namespaceChatName(name, namespace string) string {
+	if namespace == "" {
+		return name
+	}
+	return namespace + "__" + name
+}
+
+func customToolIdentity(name, namespace string) toolIdentity {
+	return toolIdentity{Kind: responsesChatToolCustom, Name: name, Namespace: namespace}
+}
+
+func toolIdentityLabel(identity toolIdentity) string {
+	if identity.Namespace != "" {
+		return string(identity.Kind) + " " + identity.Namespace + "." + identity.Name
+	}
+	return string(identity.Kind) + " " + identity.Name
+}
+
+func toolNameCollisionError(name string, existing, requested toolIdentity) error {
+	return fmt.Errorf("tool_name_conflict: Chat name %q is required by %s and %s", name, toolIdentityLabel(existing), toolIdentityLabel(requested))
+}
+
+func conflictingDefinitionError(identity toolIdentity) error {
+	return fmt.Errorf("tool_definition_conflict: %s has multiple different definitions", toolIdentityLabel(identity))
+}
+
+// registerMapping records a reversible definition with a generated collision-free name.
+func (a *responsesChatToolAdapter) registerMapping(identity toolIdentity, preferred, fallback, signature string, mapping responsesChatToolMapping) (string, bool) {
+	if existing, ok := a.byIdentity[identity]; ok {
+		if existingSignature := a.mappingSignatures[identity]; existingSignature != signature {
+			a.setError(conflictingDefinitionError(identity))
+			return "", true
+		}
+		return existing.ChatName, true
+	}
+	chatName := a.reserveName(preferred, fallback, identity)
+	if chatName == "" {
+		return "", true
+	}
+	mapping.ChatName = chatName
+	a.byIdentity[identity] = mapping
+	a.byChatName[chatName] = mapping
+	a.identitiesByChat[chatName] = append(a.identitiesByChat[chatName], identity)
+	a.indexIdentity(identity, mapping)
 	a.availableNames[chatName] = struct{}{}
 	a.mappingSignatures[identity] = signature
 	return chatName, false
@@ -704,23 +875,46 @@ func (a *responsesChatToolAdapter) registerMapping(identity, preferred, fallback
 
 // registerHistoryMapping records a non-callable mapping used only to replay history.
 func (a *responsesChatToolAdapter) registerHistoryMapping(
-	identity, preferred, fallback string,
+	identity toolIdentity, preferred, fallback string,
 	mapping responsesChatToolMapping,
-) responsesChatToolMapping {
+) (responsesChatToolMapping, bool) {
 	if existing, ok := a.byIdentity[identity]; ok {
-		return existing
+		return existing, true
 	}
-	mapping.ChatName = a.reserveName(preferred, fallback)
+	mapping.ChatName = a.reserveName(preferred, fallback, identity)
+	if mapping.ChatName == "" {
+		return responsesChatToolMapping{}, false
+	}
 	mapping.HistoryOnly = true
 	a.byIdentity[identity] = mapping
 	a.byChatName[mapping.ChatName] = mapping
-	return mapping
+	a.identitiesByChat[mapping.ChatName] = append(a.identitiesByChat[mapping.ChatName], identity)
+	a.indexIdentity(identity, mapping)
+	return mapping, true
 }
 
 // findMapping looks up a converted tool by its Responses identity.
 func (a *responsesChatToolAdapter) findMapping(kind responsesChatToolKind, name, namespace string) (responsesChatToolMapping, bool) {
-	mapping, ok := a.byIdentity[mappingIdentity(kind, name, namespace)]
+	mapping, ok := a.byIdentity[toolIdentity{Kind: kind, Name: name, Namespace: namespace}]
 	return mapping, ok
+}
+
+func (a *responsesChatToolAdapter) indexIdentity(identity toolIdentity, mapping responsesChatToolMapping) {
+	flattened := namespaceChatName(identity.Name, identity.Namespace)
+	flattenedKey := flattenedIdentityKey{Kind: identity.Kind, Name: flattened}
+	a.identitiesByFlattened[flattenedKey] = append(a.identitiesByFlattened[flattenedKey], identity)
+	if mapping.Namespace != "" {
+		a.identitiesByNamespace[mapping.Namespace] = append(
+			a.identitiesByNamespace[mapping.Namespace], identity,
+		)
+	}
+	if mapping.SourceType != "" {
+		sourceKey := sourceIdentityKey{SourceType: mapping.SourceType, Name: mapping.Name}
+		a.identitiesBySource[sourceKey] = append(a.identitiesBySource[sourceKey], identity)
+	}
+	if identity.Kind == responsesChatToolClient {
+		a.identitiesByClient[identity.Name] = append(a.identitiesByClient[identity.Name], identity)
+	}
 }
 
 // findToolChoiceMapping resolves a named choice to one unambiguous converted tool.
@@ -729,25 +923,25 @@ func (a *responsesChatToolAdapter) findToolChoiceMapping(kind responsesChatToolK
 		return a.findMapping(kind, "tool_search", "")
 	}
 	if kind == responsesChatToolCustom {
-		return a.findMapping(kind, name, "")
+		return a.findFlattenedMapping(kind, name)
 	}
 	if kind == responsesChatToolNamespace {
-		return a.findNamespaceToolChoiceMapping(name)
+		return a.findNamespaceSelectorMapping(name)
 	}
 	return responsesChatToolMapping{}, false
 }
 
-// findNamespaceToolChoiceMapping resolves member or flattened namespace names.
-func (a *responsesChatToolAdapter) findNamespaceToolChoiceMapping(name string) (responsesChatToolMapping, bool) {
+// findFlattenedMapping resolves a canonical namespace__name identity.
+func (a *responsesChatToolAdapter) findFlattenedMapping(kind responsesChatToolKind, name string) (responsesChatToolMapping, bool) {
 	var found responsesChatToolMapping
 	matched := false
-	for _, mapping := range a.byIdentity {
-		if mapping.Kind != responsesChatToolNamespace ||
-			(mapping.ChatName != name && mapping.Name != name && mapping.Namespace+"__"+mapping.Name != name) {
+	for _, identity := range a.identitiesByFlattened[flattenedIdentityKey{Kind: kind, Name: name}] {
+		mapping, ok := a.byIdentity[identity]
+		if !ok || mapping.Kind != kind {
 			continue
 		}
 		if matched {
-			a.setError(fmt.Errorf("tool_name_conflict: namespace tool choice %q is ambiguous", name))
+			a.setError(fmt.Errorf("tool_name_conflict: %s tool choice %q is ambiguous", kind, name))
 			return responsesChatToolMapping{}, false
 		}
 		found = mapping
@@ -756,13 +950,68 @@ func (a *responsesChatToolAdapter) findNamespaceToolChoiceMapping(name string) (
 	return found, matched
 }
 
+// findNamespaceFunctionChoiceMapping resolves function/functions__name while
+// keeping a plain function and a namespace function strictly separate.
+func (a *responsesChatToolAdapter) findNamespaceFunctionChoiceMapping(name string) (responsesChatToolMapping, bool) {
+	if _, plain := a.emittedPlain[name]; plain {
+		return responsesChatToolMapping{}, false
+	}
+	return a.findFlattenedMapping(responsesChatToolNamespace, name)
+}
+
+// findNamespaceSelectorMapping maps a namespace selector to its sole member
+// for named tool choice. Chat cannot force a group when a namespace has more
+// than one callable member.
+func (a *responsesChatToolAdapter) findNamespaceSelectorMapping(namespace string) (responsesChatToolMapping, bool) {
+	if err := a.unsupportedNamespaceError(namespace); err != nil {
+		a.setError(err)
+		return responsesChatToolMapping{}, false
+	}
+	found := false
+	var result responsesChatToolMapping
+	for _, identity := range a.identitiesByNamespace[namespace] {
+		mapping, ok := a.byIdentity[identity]
+		if !ok {
+			continue
+		}
+		if !isCallableNamespaceMember(mapping, namespace) {
+			continue
+		}
+		if found {
+			a.setError(fmt.Errorf("unsupported_tool_choice: namespace %q has multiple callable tools and cannot map to one Chat named choice", namespace))
+			return responsesChatToolMapping{}, false
+		}
+		result = mapping
+		found = true
+	}
+	return result, found
+}
+
+func (a *responsesChatToolAdapter) unsupportedNamespaceError(namespace string) error {
+	unsupported, exists := a.unsupportedNamespaces[namespace]
+	if !exists {
+		return nil
+	}
+	return fmt.Errorf(
+		"unsupported_tool_choice: namespace %q contains %s tool(s) without a Chat lifecycle codec",
+		namespace, strings.Join(unsupported, ", "),
+	)
+}
+
+func isCallableNamespaceMember(mapping responsesChatToolMapping, namespace string) bool {
+	return mapping.Namespace == namespace && !mapping.HistoryOnly &&
+		(mapping.Kind == responsesChatToolNamespace || mapping.Kind == responsesChatToolCustom)
+}
+
 // findSourceTypeToolChoiceMapping resolves a promoted future client tool by
 // its original Responses type and name.
 func (a *responsesChatToolAdapter) findSourceTypeToolChoiceMapping(sourceType, name string) (responsesChatToolMapping, bool) {
 	var found responsesChatToolMapping
 	matched := false
-	for _, mapping := range a.byIdentity {
-		if mapping.SourceType != sourceType || mapping.Name != name {
+	key := sourceIdentityKey{SourceType: sourceType, Name: name}
+	for _, identity := range a.identitiesBySource[key] {
+		mapping, ok := a.byIdentity[identity]
+		if !ok || mapping.SourceType != sourceType || mapping.Name != name {
 			continue
 		}
 		if matched {
@@ -788,7 +1037,11 @@ func (a *responsesChatToolAdapter) findClientHistoryMapping(name string) (respon
 
 	var found responsesChatToolMapping
 	matched := false
-	for _, mapping := range a.byIdentity {
+	for _, identity := range a.identitiesByClient[name] {
+		mapping, ok := a.byIdentity[identity]
+		if !ok {
+			continue
+		}
 		if mapping.Kind != responsesChatToolClient || mapping.Name != name {
 			continue
 		}
@@ -825,13 +1078,8 @@ func (a *responsesChatToolAdapter) setError(err error) {
 	}
 }
 
-// mappingIdentity returns the stable internal key for a Responses tool identity.
-func mappingIdentity(kind responsesChatToolKind, name, namespace string) string {
-	return string(kind) + "\x00" + namespace + "\x00" + name
-}
-
-func clientToolIdentity(sourceType, name string) string {
-	return mappingIdentity(responsesChatToolClient, name, sourceType)
+func clientToolIdentity(sourceType, name string) toolIdentity {
+	return toolIdentity{Kind: responsesChatToolClient, Name: name, Namespace: sourceType}
 }
 
 // choiceMappingKind maps a Responses tool-choice type to its adapter category.
@@ -905,10 +1153,11 @@ func functionDefinitionSignature(function llm.Function) (string, error) {
 		}
 	}
 	normalized, err := json.Marshal(struct {
-		Description string `json:"description,omitempty"`
-		Parameters  any    `json:"parameters"`
-		Strict      *bool  `json:"strict,omitempty"`
-	}{Description: function.Description, Parameters: parameters, Strict: function.Strict})
+		Description  string `json:"description,omitempty"`
+		Parameters   any    `json:"parameters"`
+		Strict       *bool  `json:"strict,omitempty"`
+		DeferLoading bool   `json:"defer_loading,omitempty"`
+	}{Description: function.Description, Parameters: parameters, Strict: function.Strict, DeferLoading: function.DeferLoading})
 	if err != nil {
 		return "", err
 	}
@@ -954,12 +1203,18 @@ func restoreResponsesChatToolCalls(response *llm.Response, mappings map[string]r
 }
 
 type responsesChatToolStreamRestorer struct {
-	mappings map[string]responsesChatToolMapping
-	catalog  map[string]struct{}
-	byIndex  map[[2]int]responsesChatToolMapping
-	pending  map[[2]int]llm.ToolCall
-	ready    map[[2]int]llm.ToolCall
-	plain    map[[2]int]struct{}
+	sawFinish bool
+	mappings  map[string]responsesChatToolMapping
+	catalog   map[string]struct{}
+	prefixes  *chatNamePrefixTree
+	byIndex   map[[2]int]responsesChatToolMapping
+	pending   map[[2]int]llm.ToolCall
+	ready     map[[2]int]llm.ToolCall
+	plain     map[[2]int]struct{}
+}
+
+type chatNamePrefixTree struct {
+	children map[byte]*chatNamePrefixTree
 }
 
 // newResponsesChatToolStreamRestorer creates state for restoring fragmented Chat calls.
@@ -970,6 +1225,7 @@ func newResponsesChatToolStreamRestorer(
 	restorer := &responsesChatToolStreamRestorer{
 		mappings: mappings,
 		catalog:  map[string]struct{}{},
+		prefixes: &chatNamePrefixTree{children: map[byte]*chatNamePrefixTree{}},
 		byIndex:  map[[2]int]responsesChatToolMapping{},
 		pending:  map[[2]int]llm.ToolCall{},
 		ready:    map[[2]int]llm.ToolCall{},
@@ -978,14 +1234,47 @@ func newResponsesChatToolStreamRestorer(
 	for _, catalog := range catalogs {
 		for _, name := range catalog {
 			restorer.catalog[name] = struct{}{}
+			restorer.prefixes.insert(name)
+		}
+	}
+	for chatName, mapping := range mappings {
+		if !mapping.HistoryOnly {
+			restorer.prefixes.insert(chatName)
 		}
 	}
 	return restorer
 }
 
+func (tree *chatNamePrefixTree) insert(name string) {
+	current := tree
+	for i := 0; i < len(name); i++ {
+		if current.children == nil {
+			current.children = map[byte]*chatNamePrefixTree{}
+		}
+		child, exists := current.children[name[i]]
+		if !exists {
+			child = &chatNamePrefixTree{}
+			current.children[name[i]] = child
+		}
+		current = child
+	}
+}
+
+func (tree *chatNamePrefixTree) hasLongerName() bool {
+	return tree != nil && len(tree.children) > 0
+}
+
 // restore restores specialized calls and tracks their names across stream chunks.
 func (r *responsesChatToolStreamRestorer) restore(response *llm.Response) {
-	if response == nil || (len(r.mappings) == 0 && len(r.catalog) == 0) {
+	if response == nil {
+		return
+	}
+	for i := range response.Choices {
+		if response.Choices[i].FinishReason != nil {
+			r.sawFinish = true
+		}
+	}
+	if len(r.mappings) == 0 && len(r.catalog) == 0 {
 		return
 	}
 	for i := range response.Choices {
@@ -1206,17 +1495,14 @@ func (r *responsesChatToolStreamRestorer) isKnownName(name string) bool {
 
 // isPotentialKnownName reports whether a partial name can become a declared tool name.
 func (r *responsesChatToolStreamRestorer) isPotentialKnownName(name string) bool {
-	for knownName := range r.catalog {
-		if knownName != name && strings.HasPrefix(knownName, name) {
-			return true
+	current := r.prefixes
+	for i := 0; i < len(name); i++ {
+		current = current.children[name[i]]
+		if current == nil {
+			return false
 		}
 	}
-	for chatName, mapping := range r.mappings {
-		if !mapping.HistoryOnly && chatName != name && strings.HasPrefix(chatName, name) {
-			return true
-		}
-	}
-	return false
+	return current.hasLongerName()
 }
 
 // mergeResponsesChatToolCallFragments accumulates identity, name, and arguments deltas.
@@ -1263,7 +1549,9 @@ func restoreResponsesChatMessage(message *llm.Message, mappings map[string]respo
 				}
 			}
 			call.Type = llm.ToolTypeResponsesCustomTool
-			call.ResponseCustomToolCall = &llm.ResponseCustomToolCall{CallID: call.ID, Name: mapping.Name, Input: input}
+			call.ResponseCustomToolCall = &llm.ResponseCustomToolCall{
+				CallID: call.ID, Name: mapping.Name, Namespace: mapping.Namespace, Input: input,
+			}
 			if call.TransformerMetadata == nil {
 				call.TransformerMetadata = map[string]any{}
 			}
