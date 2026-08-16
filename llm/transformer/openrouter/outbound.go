@@ -89,7 +89,7 @@ func (t *OutboundTransformer) TransformRequest(
 	case llm.RequestTypeChat, "":
 		// continue
 	case llm.RequestTypeImage:
-		return t.buildImageGenerationRequest(llmReq)
+		return t.buildImageGenerationRequest(ctx, llmReq)
 	case llm.RequestTypeEmbedding,
 		llm.RequestTypeSpeech,
 		llm.RequestTypeTranscription,
@@ -136,10 +136,11 @@ func (t *OutboundTransformer) TransformRequest(
 	}, nil
 }
 
-// buildImageGenerationRequest builds the request for OpenRouter image generation.
-// OpenRouter uses the chat completions endpoint with modalities: ["image", "text"].
-// Supports image editing when llmReq.Image.Images is provided.
-func (t *OutboundTransformer) buildImageGenerationRequest(llmReq *llm.Request) (*httpclient.Request, error) {
+// buildImageGenerationRequest builds the request for OpenRouter's image router.
+// OpenRouter exposes image generation at /images rather than through chat
+// completions. Input images are sent as input_references, which supports the
+// same image_url content-part shape as the OpenAI-compatible APIs.
+func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq.Model == "" {
 		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
@@ -152,43 +153,35 @@ func (t *OutboundTransformer) buildImageGenerationRequest(llmReq *llm.Request) (
 		return nil, fmt.Errorf("%w: prompt is required for image generation", transformer.ErrInvalidRequest)
 	}
 
-	prompt := llmReq.Image.Prompt
+	if len(llmReq.Image.Images) > 16 {
+		return nil, fmt.Errorf("%w: at most 16 input references are supported", transformer.ErrInvalidRequest)
+	}
 
-	// Build message content parts
-	var contentParts []openai.MessageContentPart
+	if len(llmReq.Image.Mask) > 0 {
+		return nil, fmt.Errorf("%w: masks are not supported by OpenRouter image generation", transformer.ErrInvalidRequest)
+	}
 
-	// Add input images if provided (for image editing)
+	inputReferences := make([]openai.MessageContentPart, 0, len(llmReq.Image.Images))
 	for _, imgData := range llmReq.Image.Images {
-		base64Image := encodeImageToBase64(imgData)
-		contentParts = append(contentParts, openai.MessageContentPart{
+		inputReferences = append(inputReferences, openai.MessageContentPart{
 			Type: "image_url",
 			ImageURL: &openai.ImageURL{
-				URL: base64Image,
+				URL: encodeImageToBase64(imgData),
 			},
 		})
 	}
 
-	// Add the text prompt
-	contentParts = append(contentParts, openai.MessageContentPart{
-		Type: "text",
-		Text: &prompt,
-	})
-
-	// Build messages with the content parts
-	messages := []openai.Message{
-		{
-			Role: "user",
-			Content: openai.MessageContent{
-				MultipleContent: contentParts,
-			},
-		},
-	}
-
-	// Build the OpenAI request
-	req := &openai.Request{
-		Model:      llmReq.Model,
-		Messages:   messages,
-		Modalities: []string{"image", "text"},
+	req := &ImageGenerationRequest{
+		Model:             llmReq.Model,
+		Prompt:            llmReq.Image.Prompt,
+		N:                 llmReq.Image.N,
+		Size:              llmReq.Image.Size,
+		Quality:           llmReq.Image.Quality,
+		Background:        llmReq.Image.Background,
+		OutputFormat:      llmReq.Image.OutputFormat,
+		OutputCompression: llmReq.Image.OutputCompression,
+		Seed:              llmReq.Seed,
+		InputReferences:   inputReferences,
 	}
 
 	body, err := json.Marshal(req)
@@ -202,14 +195,14 @@ func (t *OutboundTransformer) buildImageGenerationRequest(llmReq *llm.Request) (
 	headers.Set("Accept", "application/json")
 
 	// Get API key from provider
-	apiKey := t.APIKeyProvider.Get(context.Background())
+	apiKey := t.APIKeyProvider.Get(ctx)
 
 	auth := &httpclient.AuthConfig{
 		Type:   httpclient.AuthTypeBearer,
 		APIKey: apiKey,
 	}
 
-	url := t.BaseURL + "/chat/completions"
+	url := t.BaseURL + "/images"
 
 	rawReq := &httpclient.Request{
 		Method:      http.MethodPost,
@@ -219,6 +212,7 @@ func (t *OutboundTransformer) buildImageGenerationRequest(llmReq *llm.Request) (
 		Auth:        auth,
 		ContentType: "application/json",
 		RequestType: llm.RequestTypeImage.String(),
+		APIFormat:   llm.APIFormatOpenAIImageGeneration.String(),
 	}
 
 	// Save model to TransformerMetadata for response transformation
@@ -313,8 +307,8 @@ func (t *OutboundTransformer) TransformResponse(
 	return chatResp.ToOpenAIResponse().ToLLMResponse(), nil
 }
 
-// transformImageGenerationResponse transforms OpenRouter image generation response to llm.Response.
-// OpenRouter returns images in message.images array with base64 data URLs.
+// transformImageGenerationResponse transforms the OpenRouter image-router
+// response to the unified image response model.
 func (t *OutboundTransformer) transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Response, error) {
 	// Check for HTTP error status codes
 	if httpResp.StatusCode >= 400 {
@@ -326,13 +320,6 @@ func (t *OutboundTransformer) transformImageGenerationResponse(httpResp *httpcli
 		return nil, fmt.Errorf("response body is empty")
 	}
 
-	var chatResp Response
-
-	err := json.Unmarshal(httpResp.Body, &chatResp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal image generation response: %w", err)
-	}
-
 	// Read model from request TransformerMetadata
 	model := "image-generation"
 
@@ -342,54 +329,43 @@ func (t *OutboundTransformer) transformImageGenerationResponse(httpResp *httpcli
 		}
 	}
 
-	// Build the base response
+	var imageResp ImageGenerationResponse
+	if err := json.Unmarshal(httpResp.Body, &imageResp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal image generation response: %w", err)
+	}
+
 	resp := &llm.Response{
-		ID:          chatResp.ID,
+		ID:          fmt.Sprintf("img-%d", imageResp.Created),
 		Object:      "chat.completion",
-		Created:     chatResp.Created,
+		Created:     imageResp.Created,
 		Model:       model,
 		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
 	}
 
-	// Convert usage information
-	if chatResp.Usage != nil {
-		resp.Usage = chatResp.Usage.ToLLMUsage()
+	if imageResp.Usage != nil {
+		resp.Usage = imageResp.Usage.ToLLMUsage()
 	}
 
-	// Build ImageResponse from the message images
 	imageResponse := &llm.ImageResponse{
-		Created: chatResp.Created,
-		Data:    make([]llm.ImageData, 0),
+		Created: imageResp.Created,
+		Data:    make([]llm.ImageData, 0, len(imageResp.Data)),
 	}
 
-	// Extract images from the response
-	for _, choice := range chatResp.Choices {
-		if choice.Message != nil && len(choice.Message.Images) > 0 {
-			for _, img := range choice.Message.Images {
-				if img.ImageURL != nil && img.ImageURL.URL != "" {
-					imageResponse.Data = append(imageResponse.Data, llm.ImageData{
-						B64JSON: extractBase64FromDataURL(img.ImageURL.URL),
-						URL:     img.ImageURL.URL,
-					})
-				}
-			}
-		}
-	}
+	// OpenRouter reports the encoding per image rather than once per response,
+	// while ImageResponse.OutputFormat is response-scoped. Take the first image
+	// that carries a usable media type instead of letting the last one win.
+	for _, image := range imageResp.Data {
+		data := llm.ImageData{B64JSON: image.B64JSON}
+		if image.B64JSON != "" {
+			data.URL = buildImageDataURL(image.MediaType, image.B64JSON)
 
-	// If no images found in Images field, check Content.MultipleContent
-	if len(imageResponse.Data) == 0 {
-		for _, choice := range chatResp.Choices {
-			if choice.Message != nil && len(choice.Message.Content.MultipleContent) > 0 {
-				for _, part := range choice.Message.Content.MultipleContent {
-					if part.Type == "image_url" && part.ImageURL != nil && part.ImageURL.URL != "" {
-						imageResponse.Data = append(imageResponse.Data, llm.ImageData{
-							B64JSON: extractBase64FromDataURL(part.ImageURL.URL),
-							URL:     part.ImageURL.URL,
-						})
-					}
-				}
+			if imageResponse.OutputFormat == "" {
+				imageResponse.OutputFormat = imageFormatFromMediaType(image.MediaType)
 			}
 		}
+
+		imageResponse.Data = append(imageResponse.Data, data)
 	}
 
 	resp.Image = imageResponse
@@ -397,17 +373,56 @@ func (t *OutboundTransformer) transformImageGenerationResponse(httpResp *httpcli
 	return resp, nil
 }
 
-// extractBase64FromDataURL extracts base64 data from a data URL.
-// e.g., "data:image/png;base64,iVBORw0KGgo..." -> "iVBORw0KGgo...".
-func extractBase64FromDataURL(dataURL string) string {
-	const prefix = "base64,"
-
-	_, after, ok := strings.Cut(dataURL, prefix)
-	if !ok {
-		return ""
+func (u *ImageGenerationUsage) ToLLMUsage() *llm.Usage {
+	if u == nil {
+		return nil
 	}
 
-	return after
+	usage := &llm.Usage{
+		PromptTokens:     u.PromptTokens,
+		CompletionTokens: u.CompletionTokens,
+		TotalTokens:      u.TotalTokens,
+	}
+
+	if u.PromptTokensDetails != nil {
+		usage.PromptTokensDetails = &llm.PromptTokensDetails{
+			ImageTokens:  u.PromptTokensDetails.ImageTokens,
+			CachedTokens: u.PromptTokensDetails.CachedTokens,
+		}
+	}
+
+	if u.CompletionTokensDetails != nil {
+		usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
+			ReasoningTokens: u.CompletionTokensDetails.ReasoningTokens,
+		}
+	}
+
+	return usage
+}
+
+func buildImageDataURL(mediaType, b64JSON string) string {
+	if strings.HasPrefix(b64JSON, "data:") {
+		return b64JSON
+	}
+
+	if mediaType == "" {
+		mediaType = "image/png"
+	}
+
+	return xurl.BuildDataURL(mediaType, b64JSON, true)
+}
+
+func imageFormatFromMediaType(mediaType string) string {
+	mediaType = strings.ToLower(strings.TrimSpace(mediaType))
+	if mediaType == "image/svg+xml" {
+		return "svg"
+	}
+
+	if format, ok := strings.CutPrefix(mediaType, "image/"); ok {
+		return format
+	}
+
+	return ""
 }
 
 func (t *OutboundTransformer) AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {

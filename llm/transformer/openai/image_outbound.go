@@ -191,21 +191,12 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 	// Convert raw image bytes to FormFiles
 
 	for i, data := range chatReq.Image.Images {
-		formFiles = append(formFiles, FormFile{
-			Filename:    fmt.Sprintf("image_%d.png", i+1),
-			ContentType: "image/png",
-			Data:        data,
-			Format:      "png",
-		})
+		formFiles = append(formFiles, newImageFormFile(fmt.Sprintf("image_%d", i+1), data))
 	}
 
 	if len(chatReq.Image.Mask) > 0 {
-		maskFile = &FormFile{
-			Filename:    "mask.png",
-			ContentType: "image/png",
-			Data:        chatReq.Image.Mask,
-			Format:      "png",
-		}
+		file := newImageFormFile("mask", chatReq.Image.Mask)
+		maskFile = &file
 	}
 
 	if len(formFiles) == 0 {
@@ -410,12 +401,7 @@ func (t *OutboundTransformer) buildImageVariationRequest(chatReq *llm.Request, a
 
 	// Convert raw image bytes to FormFiles
 	for i, data := range chatReq.Image.Images {
-		formFiles = append(formFiles, FormFile{
-			Filename:    fmt.Sprintf("image_%d.png", i+1),
-			ContentType: "image/png",
-			Data:        data,
-			Format:      "png",
-		})
+		formFiles = append(formFiles, newImageFormFile(fmt.Sprintf("image_%d", i+1), data))
 	}
 
 	if len(formFiles) == 0 {
@@ -530,6 +516,34 @@ type FormFile struct {
 	ContentType string `json:"content_type"`
 	Data        []byte `json:"data"`
 	Format      string `json:"format"` // image format like "png", "jpeg", etc.
+}
+
+func newImageFormFile(name string, data []byte) FormFile {
+	contentType := http.DetectContentType(data)
+	extension := "png"
+	format := "png"
+
+	switch contentType {
+	case "image/jpeg":
+		extension = "jpg"
+		format = "jpg"
+	case "image/gif":
+		extension = "gif"
+		format = "gif"
+	case "image/webp":
+		extension = "webp"
+		format = "webp"
+	case "image/png":
+	default:
+		contentType = "image/png"
+	}
+
+	return FormFile{
+		Filename:    fmt.Sprintf("%s.%s", name, extension),
+		ContentType: contentType,
+		Data:        data,
+		Format:      format,
+	}
 }
 
 // transformImageGenerationResponse transforms the OpenAI Image Generation/Edit API response
