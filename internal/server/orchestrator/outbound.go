@@ -422,7 +422,10 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 		llmRequest = transformedRequest
 	}
-	llmRequest = filterResponsesChatToolMessagesForOutbound(llmRequest, p.wrapped)
+	llmRequest, filterErr := filterResponsesChatToolMessagesForOutbound(llmRequest, p.wrapped)
+	if filterErr != nil {
+		return nil, filterErr
+	}
 
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)
@@ -463,28 +466,34 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 func filterResponsesChatToolMessagesForOutbound(
 	llmRequest *llm.Request,
 	outbound transformer.Outbound,
-) *llm.Request {
+) (*llm.Request, error) {
 	if llmRequest == nil {
-		return nil
+		return nil, nil
 	}
 
 	if !isResponsesFormat(llmRequest.APIFormat) || outbound == nil {
-		return llmRequest
+		return llmRequest, nil
+	}
+
+	capabilities := transformer.ResponsesRequestCapabilitiesOf(outbound, llmRequest)
+	if capabilities.NativeResponses {
+		return llmRequest, nil
+	}
+
+	if llmRequest.PreviousResponseID != nil {
+		return nil, fmt.Errorf(
+			"%w: previous_response_id requires a native Responses outbound because fallback channels cannot preserve Responses history",
+			transformer.ErrInvalidRequest,
+		)
 	}
 
 	// Truncated streams can leave clients replaying tool-call arguments that
-	// are not valid JSON. Repair them for every Responses-origin outbound
-	// (Chat and Responses-native alike) so strict providers do not reject the
-	// whole replayed history.
+	// are not valid JSON. Repair them only for Chat outbounds; native
+	// Responses replays preserve the original protocol history.
 	if sanitized, changed := shared.SanitizeChatToolArguments(llmRequest.Messages); changed {
 		cloned := *llmRequest
 		cloned.Messages = sanitized
 		llmRequest = &cloned
-	}
-
-	capabilities := responsesRequestCapabilities(outbound, llmRequest)
-	if capabilities.NativeResponses {
-		return llmRequest
 	}
 
 	// Interrupted turns leave empty output items in client history. Strict
@@ -497,27 +506,14 @@ func filterResponsesChatToolMessagesForOutbound(
 	}
 
 	if capabilities.ChatToolLifecycle {
-		return llmRequest
+		return llmRequest, nil
 	}
 
 	return shared.DowngradeResponsesChatToolLifecycle(llmRequest)
 }
 
-func responsesRequestCapabilities(outbound transformer.Outbound, request *llm.Request) transformer.ResponsesRequestCapabilities {
-	if outbound == nil {
-		return transformer.ResponsesRequestCapabilities{}
-	}
-	if isResponsesFormat(outbound.APIFormat()) {
-		return transformer.ResponsesRequestCapabilities{NativeResponses: true}
-	}
-	if capable, ok := outbound.(transformer.ResponsesRequestCapabilitiesProvider); ok {
-		return capable.ResponsesRequestCapabilities(request)
-	}
-	return transformer.ResponsesRequestCapabilities{}
-}
-
 func isResponsesFormat(format llm.APIFormat) bool {
-	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseCompact
+	return llm.IsOpenAIResponsesFormat(format)
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {

@@ -246,10 +246,11 @@ func convertAssistantMessage(msg llm.Message) []Item {
 			})
 		} else if tc.ResponseCustomToolCall != nil {
 			toolCallItems = append(toolCallItems, Item{
-				Type:   "custom_tool_call",
-				CallID: tc.ResponseCustomToolCall.CallID,
-				Name:   tc.ResponseCustomToolCall.Name,
-				Input:  lo.ToPtr(tc.ResponseCustomToolCall.Input),
+				Type:      "custom_tool_call",
+				CallID:    tc.ResponseCustomToolCall.CallID,
+				Name:      tc.ResponseCustomToolCall.Name,
+				Namespace: tc.ResponseCustomToolCall.Namespace,
+				Input:     lo.ToPtr(tc.ResponseCustomToolCall.Input),
 			})
 		} else {
 			toolCallItems = append(toolCallItems, Item{
@@ -316,8 +317,9 @@ func convertAssistantMessage(msg llm.Message) []Item {
 func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 	if itemType == "tool_search_output" {
 		tools := []Tool{}
-		if msg.Content.Content != nil {
-			content := strings.TrimSpace(*msg.Content.Content)
+		content := toolSearchOutputText(msg.Content)
+		if msg.Content.Content != nil || len(msg.Content.MultipleContent) > 0 {
+			content = strings.TrimSpace(content)
 			if !strings.HasPrefix(content, "[") {
 				slog.Warn("failed to decode tool_search_output tools",
 					slog.String("call_id", lo.FromPtr(msg.ToolCallID)),
@@ -384,6 +386,19 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 		CallID: lo.FromPtr(msg.ToolCallID),
 		Output: &output,
 	}
+}
+
+func toolSearchOutputText(content llm.MessageContent) string {
+	if content.Content != nil {
+		return *content.Content
+	}
+	var result strings.Builder
+	for _, part := range content.MultipleContent {
+		if part.Type == "text" && part.Text != nil {
+			result.WriteString(*part.Text)
+		}
+	}
+	return result.String()
 }
 
 func synchronizeToolSearchOutputMessages(
@@ -859,9 +874,10 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 				ID:   outputItem.CallID,
 				Type: llm.ToolTypeResponsesCustomTool,
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: outputItem.CallID,
-					Name:   outputItem.Name,
-					Input:  inputStr,
+					CallID:    outputItem.CallID,
+					Name:      outputItem.Name,
+					Namespace: outputItem.Namespace,
+					Input:     inputStr,
 				},
 			})
 		case "tool_search_call":

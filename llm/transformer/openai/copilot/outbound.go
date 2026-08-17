@@ -120,8 +120,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if usesResponsesAPI(llmReq.Model) {
 		return t.transformResponsesRequest(ctx, llmReq)
 	}
-	if llmReq.APIFormat == llm.APIFormatOpenAIResponse || llmReq.APIFormat == llm.APIFormatOpenAIResponseCompact {
-		llmReq = shared.DowngradeResponsesChatToolLifecycle(llmReq)
+	if llm.IsOpenAIResponsesFormat(llmReq.APIFormat) {
+		var err error
+		llmReq, err = shared.DowngradeResponsesChatToolLifecycle(llmReq)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if len(llmReq.Messages) == 0 {
 		return nil, errors.New("messages are required")
@@ -132,7 +136,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("failed to get copilot token: %w", err)
 	}
 
-	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldAll)
+	oaiReq, err := openai.RequestFromLLM(llmReq, openai.ReasoningFieldAll)
+	if err != nil {
+		return nil, err
+	}
 
 	body, err := json.Marshal(oaiReq)
 	if err != nil {

@@ -416,6 +416,64 @@ func TestOutboundTransformer_TransformRequest_ReplaysNamespaceTool(t *testing.T)
 	require.Equal(t, "get_weather", functionTool["name"])
 }
 
+func TestOutboundTransformer_TransformRequest_CombinesNonAdjacentNamespaceMembers(t *testing.T) {
+	llmReq := &llm.Request{Tools: []llm.Tool{
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "functions__one", Namespace: "functions", Parameters: []byte(`{"type":"object"}`)}},
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "mid", Parameters: []byte(`{"type":"object"}`)}},
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "functions__two", Namespace: "functions", Parameters: []byte(`{"type":"object"}`)}},
+	}}
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload struct {
+		Tools []Tool `json:"tools"`
+	}
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	require.Len(t, payload.Tools, 2)
+	require.Equal(t, "namespace", payload.Tools[0].Type)
+	require.Equal(t, "functions", payload.Tools[0].Name)
+	require.Len(t, payload.Tools[0].Tools, 2)
+	require.Equal(t, "one", payload.Tools[0].Tools[0].Name)
+	require.Equal(t, "two", payload.Tools[0].Tools[1].Name)
+	require.Equal(t, "function", payload.Tools[1].Type)
+	require.Equal(t, "mid", payload.Tools[1].Name)
+}
+
+func TestOutboundTransformer_TransformRequest_RejectsConflictingNamespaceDescriptions(t *testing.T) {
+	llmReq := &llm.Request{Tools: []llm.Tool{
+		{
+			Type: llm.ToolTypeFunction, Function: llm.Function{Name: "functions__one", Namespace: "functions"},
+			ResponsesNamespaceDescription: "first",
+		},
+		{
+			Type: llm.ToolTypeFunction, Function: llm.Function{Name: "functions__two", Namespace: "functions"},
+			ResponsesNamespaceDescription: "second",
+		},
+	}}
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.Nil(t, httpReq)
+	require.ErrorContains(t, err, `namespace_description_conflict: namespace "functions" has multiple descriptions`)
+}
+
+func TestOutboundTransformer_TransformRequest_RejectsNonCanonicalNamespaceFunctionName(t *testing.T) {
+	llmReq := &llm.Request{Tools: []llm.Tool{{
+		Type:     llm.ToolTypeFunction,
+		Function: llm.Function{Name: "exec", Namespace: "functions", Parameters: []byte(`{"type":"object"}`)},
+	}}}
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.Nil(t, httpReq)
+	require.ErrorContains(t, err, `invalid_namespace_tool: function "exec" in namespace "functions" must use flattened name "functions__<name>"`)
+}
+
 func TestOutboundTransformer_TransformRequest_ReplaysProviderRawInputItems(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{
@@ -1499,6 +1557,35 @@ func TestOutboundTransformer_TransformResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformResponse_PreservesCustomToolCallNamespace(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body: []byte(`{
+			"id": "resp_namespace_custom",
+			"object": "response",
+			"created_at": 1765086000,
+			"status": "completed",
+			"model": "gpt-5.5",
+			"output": [{
+				"type": "custom_tool_call",
+				"call_id": "call_exec",
+				"namespace": "functions",
+				"name": "exec",
+				"input": "ls"
+			}]
+		}`),
+	})
+	require.NoError(t, err)
+	require.Len(t, result.Choices, 1)
+	require.Len(t, result.Choices[0].Message.ToolCalls, 1)
+	customCall := result.Choices[0].Message.ToolCalls[0].ResponseCustomToolCall
+	require.NotNil(t, customCall)
+	require.Equal(t, "functions", customCall.Namespace)
 }
 
 func TestOutboundTransformer_TransformImageEditResponse(t *testing.T) {

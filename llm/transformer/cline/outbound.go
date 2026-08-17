@@ -60,10 +60,13 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 // Responses API requests are first downgraded from Responses-only lifecycle state
 // without enabling the generic adapter, whose metadata Cline cannot restore.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
-	if llmReq != nil && (llmReq.APIFormat == llm.APIFormatOpenAIResponse || llmReq.APIFormat == llm.APIFormatOpenAIResponseCompact) {
-		chatReq := *shared.DowngradeResponsesChatToolLifecycle(llmReq)
+	if llmReq != nil && llm.IsOpenAIResponsesFormat(llmReq.APIFormat) {
+		chatReq, err := shared.DowngradeResponsesChatToolLifecycle(llmReq)
+		if err != nil {
+			return nil, err
+		}
 		chatReq.APIFormat = llm.APIFormatOpenAIChatCompletion
-		llmReq = &chatReq
+		llmReq = chatReq
 	}
 
 	httpReq, err := t.Outbound.TransformRequest(ctx, llmReq)

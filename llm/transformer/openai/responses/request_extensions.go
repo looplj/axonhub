@@ -8,6 +8,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, rawBody []byte) {
@@ -23,7 +24,6 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
 		ReasoningContext: reasoningContext,
 		RawTools:         buildRawOnlyToolFragments(req.Tools, raw.Tools),
-		ToolSignatures:   buildRepresentedToolSignatures(req.Tools),
 		RawToolChoice:    rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
 		RawInputItems:    buildRawOnlyInputFragments(req.Input, raw.InputItems),
 		RawInputMessages: replayMessageSignatures(chatReq.Messages),
@@ -73,33 +73,6 @@ func parseRawRequestFragments(rawBody []byte) rawRequestFragments {
 	}
 }
 
-func buildRepresentedToolSignatures(tools []Tool) []string {
-	if len(tools) == 0 {
-		return nil
-	}
-
-	signatures := make([]string, 0, len(tools))
-	for _, tool := range tools {
-		if tool.Type == "namespace" {
-			for _, subTool := range tool.Tools {
-				if subTool.Type == "function" {
-					signatures = append(signatures, responseToolSignature(Tool{
-						Type: "function",
-						Name: namespaceFunctionName(tool.Name, subTool.Name),
-					}))
-				}
-			}
-			continue
-		}
-		if !isStructurallyRepresentedToolType(tool.Type) {
-			continue
-		}
-		signatures = append(signatures, responseToolSignature(tool))
-	}
-
-	return signatures
-}
-
 func buildRawOnlyToolFragments(tools []Tool, rawTools []json.RawMessage) []llm.OpenAIResponsesRawFragment {
 	if len(tools) == 0 {
 		return nil
@@ -107,7 +80,7 @@ func buildRawOnlyToolFragments(tools []Tool, rawTools []json.RawMessage) []llm.O
 
 	fragments := make([]llm.OpenAIResponsesRawFragment, 0, len(tools))
 	for i := range tools {
-		if i >= len(rawTools) || len(rawTools[i]) == 0 || (isStructurallyRepresentedToolType(tools[i].Type) && tools[i].Type != "tool_search") {
+		if i >= len(rawTools) || len(rawTools[i]) == 0 || (isStructurallyRepresentedToolType(tools[i].Type) && tools[i].Type != ToolTypeToolSearch) {
 			continue
 		}
 
@@ -125,16 +98,16 @@ func buildRawOnlyToolFragments(tools []Tool, rawTools []json.RawMessage) []llm.O
 
 // representedRawToolCount counts tool declarations represented by one preserved raw item.
 func representedRawToolCount(tool Tool) int {
-	if tool.Type == "tool_search" {
+	if tool.Type == ToolTypeToolSearch {
 		return 1
 	}
-	if tool.Type != "namespace" {
+	if tool.Type != ToolTypeNamespace {
 		return 0
 	}
 
 	count := 0
 	for _, subTool := range tool.Tools {
-		if subTool.Type == "function" {
+		if namespaceCallableToolType(subTool) {
 			count++
 		}
 	}
@@ -144,7 +117,7 @@ func representedRawToolCount(tool Tool) int {
 
 func isStructurallyRepresentedToolType(toolType string) bool {
 	switch toolType {
-	case "function", "image_generation", "web_search", "custom", "tool_search":
+	case llm.ToolTypeFunction, "image_generation", "web_search", ToolTypeCustom, ToolTypeToolSearch:
 		return true
 	default:
 		return false
@@ -153,7 +126,7 @@ func isStructurallyRepresentedToolType(toolType string) bool {
 
 func responseToolSignature(tool Tool) string {
 	switch tool.Type {
-	case "function", "custom":
+	case llm.ToolTypeFunction, ToolTypeCustom:
 		return tool.Type + ":" + tool.Name
 	default:
 		return tool.Type
@@ -165,88 +138,18 @@ func rawUnsupportedToolChoice(choice *ToolChoice, rawChoice json.RawMessage) jso
 		return nil
 	}
 
-	var mode string
-	if json.Unmarshal(rawChoice, &mode) == nil {
-		return nil
-	}
-
-	var rawObject map[string]json.RawMessage
-	if json.Unmarshal(rawChoice, &rawObject) != nil {
-		return cloneRaw(rawChoice)
-	}
-	if rawToolChoiceObjectFullyRepresented(choice, rawObject) {
-		return nil
+	classification := ClassifyRawToolChoice(rawChoice)
+	if classification.FullyRepresented {
+		var decodedRaw ToolChoice
+		if err := json.Unmarshal(rawChoice, &decodedRaw); err != nil {
+			return cloneRaw(rawChoice)
+		}
+		if toolChoiceSignature(&decodedRaw) == toolChoiceSignature(choice) {
+			return nil
+		}
 	}
 
 	return cloneRaw(rawChoice)
-}
-
-// rawToolChoiceObjectFullyRepresented reports whether the common ToolChoice IR
-// can reproduce every selector field without relying on the raw extension.
-func rawToolChoiceObjectFullyRepresented(choice *ToolChoice, rawObject map[string]json.RawMessage) bool {
-	if choice == nil || rawObject == nil {
-		return false
-	}
-
-	if choice.Type != nil && *choice.Type == "allowed_tools" {
-		if !rawObjectHasOnlyFields(rawObject, "type", "mode", "tools") {
-			return false
-		}
-		if _, ok := rawObject["type"]; !ok {
-			return false
-		}
-		rawTools, ok := rawObject["tools"]
-		if !ok {
-			return false
-		}
-		var tools []map[string]json.RawMessage
-		if json.Unmarshal(rawTools, &tools) != nil || tools == nil {
-			return false
-		}
-		for _, tool := range tools {
-			if !rawObjectHasOnlyFields(tool, "type", "name") {
-				return false
-			}
-			if _, hasType := tool["type"]; !hasType {
-				return false
-			}
-			if _, hasName := tool["name"]; !hasName {
-				return false
-			}
-		}
-		return true
-	}
-
-	if choice.Mode != nil && choice.Type == nil && choice.Name == nil && len(choice.Tools) == 0 {
-		return rawObjectHasOnlyFields(rawObject, "mode")
-	}
-
-	if choice.Mode == nil && choice.Type != nil && choice.Name != nil && len(choice.Tools) == 0 {
-		if !rawObjectHasOnlyFields(rawObject, "type", "name") {
-			return false
-		}
-		_, hasType := rawObject["type"]
-		_, hasName := rawObject["name"]
-		return hasType && hasName
-	}
-
-	return false
-}
-
-func rawObjectHasOnlyFields(object map[string]json.RawMessage, allowed ...string) bool {
-	if object == nil {
-		return false
-	}
-	allowedSet := make(map[string]struct{}, len(allowed))
-	for _, field := range allowed {
-		allowedSet[field] = struct{}{}
-	}
-	for field := range object {
-		if _, ok := allowedSet[field]; !ok {
-			return false
-		}
-	}
-	return true
 }
 
 func buildRawOnlyInputFragments(input Input, rawItems []json.RawMessage) []llm.OpenAIResponsesRawFragment {
@@ -315,7 +218,11 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 	// both raw merges share the same verdict.
 	replayRawInput := rawInputReplayMatchesCurrent(requestExt, llmReq.Messages, llmReq.Tools)
 
-	if tools, ok := mergeRawOnlyTools(obj["tools"], requestExt, llmReq.Tools, replayRawInput); ok {
+	tools, replayed, err := mergeRawOnlyTools(obj["tools"], requestExt, llmReq.Tools, replayRawInput)
+	if err != nil {
+		return nil, err
+	}
+	if replayed {
 		toolsRaw, err := json.Marshal(tools)
 		if err != nil {
 			return nil, err
@@ -396,29 +303,55 @@ func mergeRawOnlyInputItems(
 	return items, true
 }
 
+type rawToolGroup struct {
+	fragment   llm.OpenAIResponsesRawFragment
+	namespace  string
+	lossy      bool
+	signatures []string
+}
+
+type rawReplayPlan struct {
+	steps    []json.RawMessage
+	replayed bool
+}
+
 func mergeRawOnlyTools(
 	structuredRaw json.RawMessage,
 	requestExt *llm.OpenAIResponsesRequestExtensions,
 	currentTools []llm.Tool,
 	replayRawInput bool,
-) ([]json.RawMessage, bool) {
+) ([]json.RawMessage, bool, error) {
 	if requestExt == nil || len(requestExt.RawTools) == 0 {
-		return nil, false
+		return nil, false, nil
 	}
 
 	var structuredTools []json.RawMessage
 	if len(structuredRaw) > 0 {
 		if err := json.Unmarshal(structuredRaw, &structuredTools); err != nil {
-			return nil, false
+			return nil, false, err
 		}
 	}
-	type rawToolGroup struct {
-		fragment   llm.OpenAIResponsesRawFragment
-		signatures []string
-		used       bool
+
+	rawGroups := buildRawToolGroups(requestExt.RawTools)
+	plan, err := buildReplayPlan(currentTools, rawGroups, structuredTools, replayRawInput)
+	if err != nil {
+		return nil, false, err
 	}
-	groups := make([]rawToolGroup, 0, len(requestExt.RawTools))
-	for _, fragment := range requestExt.RawTools {
+	if plan == nil {
+		return nil, false, nil
+	}
+
+	tools := make([]json.RawMessage, 0, len(plan.steps))
+	for _, step := range plan.steps {
+		tools = append(tools, cloneRaw(step))
+	}
+
+	return tools, plan.replayed, nil
+}
+
+func buildRawToolGroups(fragments []llm.OpenAIResponsesRawFragment) []rawToolGroup {
+	groups := make([]rawToolGroup, 0, len(fragments))
+	for _, fragment := range fragments {
 		if len(fragment.Raw) == 0 {
 			continue
 		}
@@ -433,20 +366,63 @@ func mergeRawOnlyTools(
 		for i := range converted {
 			converted[i].ResponsesRawID = fmt.Sprintf("tools:%d", fragment.OriginalIndex)
 		}
-		groups = append(groups, rawToolGroup{fragment: fragment, signatures: replayToolSignatures(converted)})
+		namespace := ""
+		lossy := false
+		if rawTool.Type == ToolTypeNamespace {
+			namespace = rawTool.Name
+			for _, subTool := range rawTool.Tools {
+				if !namespaceCallableToolType(subTool) {
+					lossy = true
+					break
+				}
+			}
+		}
+		groups = append(groups, rawToolGroup{
+			fragment: fragment, namespace: namespace, lossy: lossy, signatures: replayToolSignatures(converted),
+		})
+	}
+	return groups
+}
+
+func buildReplayPlan(
+	currentTools []llm.Tool,
+	groups []rawToolGroup,
+	structuredTools []json.RawMessage,
+	replayRawInput bool,
+) (*rawReplayPlan, error) {
+	lossyNamespaces := make(map[string]struct{}, len(groups))
+	for _, group := range groups {
+		if group.lossy {
+			lossyNamespaces[group.namespace] = struct{}{}
+		}
+	}
+	currentUnsupportedNamespaces := make(map[string]struct{})
+	for _, tool := range currentTools {
+		if tool.Type == llm.ToolTypeResponsesOpaqueTool && tool.ResponseOpaqueTool != nil &&
+			tool.ResponseOpaqueTool.Namespace != "" {
+			currentUnsupportedNamespaces[tool.ResponseOpaqueTool.Namespace] = struct{}{}
+		}
 	}
 
 	currentSignatures := replayToolSignatures(currentTools)
-	tools := make([]json.RawMessage, 0, len(structuredTools)+len(groups))
+	plan := &rawReplayPlan{steps: make([]json.RawMessage, 0, len(structuredTools)+len(groups))}
+	usedGroups := make([]bool, len(groups))
 	structuredIndex := 0
-	replayed := false
+	activeNamespace := ""
 	for toolIndex := 0; toolIndex < len(currentTools); {
 		matchedGroup := -1
 		for groupIndex := range groups {
 			group := &groups[groupIndex]
 			end := toolIndex + len(group.signatures)
-			if group.used || end > len(currentSignatures) ||
+			if usedGroups[groupIndex] || end > len(currentSignatures) ||
 				!slices.Equal(currentSignatures[toolIndex:end], group.signatures) {
+				continue
+			}
+			// A raw namespace can match only the complete current group. A
+			// prefix match means an intermediate transform added a member;
+			// replaying the old fragment would silently drop that addition.
+			if group.namespace != "" && end < len(currentTools) &&
+				namespaceOfResponsesTool(currentTools[end]) == group.namespace {
 				continue
 			}
 			matchedGroup = groupIndex
@@ -454,37 +430,138 @@ func mergeRawOnlyTools(
 		}
 
 		if matchedGroup >= 0 {
-			group := &groups[matchedGroup]
-			group.used = true
-			tools = append(tools, cloneRaw(group.fragment.Raw))
-			for i := range len(group.signatures) {
-				if responsesToolEmitsStructured(currentTools[toolIndex+i], replayRawInput) {
+			group := groups[matchedGroup]
+			usedGroups[matchedGroup] = true
+			plan.steps = append(plan.steps, group.fragment.Raw)
+			if group.namespace != "" {
+				if namespaceGroupEmitsStructured(currentTools[toolIndex:toolIndex+len(group.signatures)], replayRawInput) &&
+					group.namespace != activeNamespace {
+					if !namespaceWrapperMatches(structuredTools, structuredIndex, group.namespace) {
+						return nil, nil
+					}
+					structuredIndex++
+					activeNamespace = group.namespace
+				}
+			} else {
+				for i := range len(group.signatures) {
+					if !responsesToolEmitsStructured(currentTools[toolIndex+i], replayRawInput) {
+						continue
+					}
+					if structuredIndex >= len(structuredTools) {
+						return nil, nil
+					}
 					structuredIndex++
 				}
+				activeNamespace = ""
 			}
 			if structuredIndex > len(structuredTools) {
-				return nil, false
+				return nil, nil
 			}
 			toolIndex += len(group.signatures)
-			replayed = true
+			plan.replayed = true
 			continue
 		}
 
-		if responsesToolEmitsStructured(currentTools[toolIndex], replayRawInput) {
-			if structuredIndex >= len(structuredTools) {
-				return nil, false
+		if namespace := namespaceOfResponsesTool(currentTools[toolIndex]); namespace != "" {
+			_, lossy := lossyNamespaces[namespace]
+			_, stillUnsupported := currentUnsupportedNamespaces[namespace]
+			if stillUnsupported &&
+				(lossy || namespaceGroupModified(groups, currentTools, currentSignatures, toolIndex, namespace)) {
+				return nil, fmt.Errorf(
+					"%w: unsupported_namespace_replay: namespace %q was modified and contains member type(s) without a structural Responses codec",
+					transformer.ErrInvalidRequest,
+					namespace,
+				)
 			}
-			tools = append(tools, cloneRaw(structuredTools[structuredIndex]))
-			structuredIndex++
+		}
+
+		if responsesToolEmitsStructured(currentTools[toolIndex], replayRawInput) {
+			if namespace := namespaceOfResponsesTool(currentTools[toolIndex]); namespace != "" {
+				if namespace == activeNamespace {
+					toolIndex++
+					continue
+				}
+				if !namespaceWrapperMatches(structuredTools, structuredIndex, namespace) {
+					return nil, nil
+				}
+				plan.steps = append(plan.steps, structuredTools[structuredIndex])
+				structuredIndex++
+				activeNamespace = namespace
+			} else {
+				if structuredIndex >= len(structuredTools) {
+					return nil, nil
+				}
+				plan.steps = append(plan.steps, structuredTools[structuredIndex])
+				structuredIndex++
+				activeNamespace = ""
+			}
 		}
 		toolIndex++
 	}
 
 	if structuredIndex != len(structuredTools) {
-		return nil, false
+		return nil, nil
 	}
 
-	return tools, replayed
+	return plan, nil
+}
+
+func namespaceGroupModified(
+	groups []rawToolGroup,
+	currentTools []llm.Tool,
+	currentSignatures []string,
+	toolIndex int,
+	namespace string,
+) bool {
+	for i := range groups {
+		if groups[i].namespace != namespace {
+			continue
+		}
+		end := toolIndex + len(groups[i].signatures)
+		complete := end <= len(currentSignatures) &&
+			slices.Equal(currentSignatures[toolIndex:end], groups[i].signatures) &&
+			(end == len(currentTools) || namespaceOfResponsesTool(currentTools[end]) != namespace)
+		return !complete
+	}
+	return false
+}
+
+func namespaceGroupEmitsStructured(tools []llm.Tool, replayRawInput bool) bool {
+	for _, tool := range tools {
+		if responsesToolEmitsStructured(tool, replayRawInput) {
+			return true
+		}
+	}
+	return false
+}
+
+func namespaceWrapperMatches(
+	structuredTools []json.RawMessage,
+	structuredIndex int,
+	namespace string,
+) bool {
+	if structuredIndex >= len(structuredTools) {
+		return false
+	}
+	var structuredTool Tool
+	if json.Unmarshal(structuredTools[structuredIndex], &structuredTool) != nil ||
+		structuredTool.Type != ToolTypeNamespace || structuredTool.Name != namespace {
+		return false
+	}
+	return true
+}
+
+func namespaceOfResponsesTool(tool llm.Tool) string {
+	switch {
+	case tool.Type == llm.ToolTypeFunction && tool.Function.Namespace != "":
+		return tool.Function.Namespace
+	case tool.Type == llm.ToolTypeResponsesCustomTool && tool.ResponseCustomTool != nil:
+		return tool.ResponseCustomTool.Namespace
+	case tool.Type == llm.ToolTypeResponsesOpaqueTool && tool.ResponseOpaqueTool != nil:
+		return tool.ResponseOpaqueTool.Namespace
+	default:
+		return ""
+	}
 }
 
 func responsesOriginToolEmitsTopLevel(tool llm.Tool, replayRawInput bool) bool {
@@ -535,14 +612,16 @@ func replayToolSignatures(tools []llm.Tool) []string {
 
 func replayToolSignature(tool llm.Tool) string {
 	data, err := json.Marshal(struct {
-		Tool         llm.Tool `json:"tool"`
-		Origin       string   `json:"origin,omitempty"`
-		SourceType   string   `json:"source_type,omitempty"`
-		RawID        string   `json:"raw_id,omitempty"`
-		OriginCallID string   `json:"origin_call_id,omitempty"`
+		Tool                 llm.Tool `json:"tool"`
+		Origin               string   `json:"origin,omitempty"`
+		SourceType           string   `json:"source_type,omitempty"`
+		RawID                string   `json:"raw_id,omitempty"`
+		OriginCallID         string   `json:"origin_call_id,omitempty"`
+		NamespaceDescription string   `json:"namespace_description,omitempty"`
 	}{
 		Tool: tool, Origin: tool.ResponsesOrigin, SourceType: tool.ResponsesSourceType,
 		RawID: tool.ResponsesRawID, OriginCallID: tool.ResponsesOriginCallID,
+		NamespaceDescription: tool.ResponsesNamespaceDescription,
 	})
 	if err != nil {
 		return "\x00invalid"
@@ -591,7 +670,7 @@ func toolChoiceSignature(choice *ToolChoice) string {
 		return ""
 	}
 
-	if choice.Type != nil && *choice.Type == "allowed_tools" {
+	if choice.Type != nil && *choice.Type == ToolChoiceTypeAllowedTools {
 		data, err := json.Marshal(choice)
 		if err != nil {
 			return ""

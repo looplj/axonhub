@@ -56,6 +56,54 @@ func TestInboundTransformer_PromotesAdditionalAndToolSearchTools(t *testing.T) {
 	require.JSONEq(t, `[{"type":"function","name":"send_message","parameters":{"type":"object","properties":{}}}]`, *request.Messages[1].Content.Content)
 }
 
+func TestInboundTransformer_PromotesNamespaceCustomTool(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":[{"type":"additional_tools","role":"developer","tools":[
+			{"type":"namespace","name":"functions","tools":[
+				{"type":"custom","name":"exec","description":"Run code","format":{"type":"grammar","syntax":"lark","definition":"start: SOURCE"}},
+				{"type":"function","name":"wait","parameters":{"type":"object","properties":{}}}
+			]}
+		]}]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, request.Tools, 2)
+
+	// A custom tool nested in a namespace must be promoted to the custom-tool
+	// IR (not dropped as opaque), matching top-level custom tool handling.
+	require.Equal(t, llm.ToolTypeResponsesCustomTool, request.Tools[0].Type)
+	require.NotNil(t, request.Tools[0].ResponseCustomTool)
+	require.Equal(t, "exec", request.Tools[0].ResponseCustomTool.Name)
+	require.Equal(t, "functions", request.Tools[0].ResponseCustomTool.Namespace)
+	require.Equal(t, "Run code", request.Tools[0].ResponseCustomTool.Description)
+	require.NotNil(t, request.Tools[0].ResponseCustomTool.Format)
+	require.Equal(t, "grammar", request.Tools[0].ResponseCustomTool.Format.Type)
+	require.Equal(t, "lark", request.Tools[0].ResponseCustomTool.Format.Syntax)
+	require.Equal(t, "start: SOURCE", request.Tools[0].ResponseCustomTool.Format.Definition)
+
+	// A function nested in the same namespace keeps the flattened name.
+	require.Equal(t, "function", request.Tools[1].Type)
+	require.Equal(t, "functions__wait", request.Tools[1].Function.Name)
+	require.Equal(t, "functions", request.Tools[1].Function.Namespace)
+}
+
+func TestInboundTransformer_RejectsDuplicateTopLevelNamespaces(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model":"gpt-5.5",
+		"input":"use tools",
+		"tools":[
+			{"type":"namespace","name":"functions","tools":[{"type":"function","name":"one","parameters":{"type":"object"}}]},
+			{"type":"function","name":"mid","parameters":{"type":"object"}},
+			{"type":"namespace","name":"functions","tools":[{"type":"function","name":"two","parameters":{"type":"object"}}]},
+			{"type":"future_server_tool","name":"future","future_option":{"mode":"keep"}}
+		]
+	}`)})
+	require.Nil(t, request)
+	require.ErrorContains(t, err, `duplicate_namespace: namespace "functions" appears in multiple tool declarations`)
+}
+
 func TestInboundTransformer_EncodesEmptyToolSearchOutputAsArray(t *testing.T) {
 	transformer := NewInboundTransformer()
 	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
@@ -959,6 +1007,54 @@ func TestInboundTransformer_TransformRequest_MergesRepeatedToolOutputs(t *testin
 	merged := flattenToolContent(t, result.Messages[2].Content)
 	require.Contains(t, merged, "Script completed")
 	require.Contains(t, merged, "notify 工具测试成功")
+}
+
+func TestInboundTransformer_PreservesNamespaceCustomAndFunctionToolCalls(t *testing.T) {
+	transformer := NewInboundTransformer()
+	request, err := transformer.TransformRequest(context.Background(), &httpclient.Request{Body: []byte(`{
+		"model": "gpt-5.5",
+		"input": [
+			{"type": "message", "role": "user", "content": "run tools"},
+			{"type": "function_call", "call_id": "call_lookup", "namespace": "functions", "name": "lookup", "arguments": "{}"},
+			{"type": "custom_tool_call", "call_id": "call_exec", "namespace": "functions", "name": "exec", "input": "ls"},
+			{"type": "message", "role": "user", "content": "done"}
+		]
+	}`)})
+	require.NoError(t, err)
+	require.Len(t, request.Messages[1].ToolCalls, 2)
+	require.Equal(t, "functions", request.Messages[1].ToolCalls[0].Function.Namespace)
+	require.Equal(t, "functions", request.Messages[1].ToolCalls[1].ResponseCustomToolCall.Namespace)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	httpRequest, err := outbound.TransformRequest(context.Background(), request)
+	require.NoError(t, err)
+
+	var payload struct {
+		Input []struct {
+			Type      string `json:"type"`
+			Name      string `json:"name"`
+			Namespace string `json:"namespace"`
+		} `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(httpRequest.Body, &payload))
+	calls := make([]struct {
+		Type      string `json:"type"`
+		Name      string `json:"name"`
+		Namespace string `json:"namespace"`
+	}, 0, 2)
+	for _, item := range payload.Input {
+		if item.Type == "function_call" || item.Type == "custom_tool_call" {
+			calls = append(calls, item)
+		}
+	}
+	require.Len(t, calls, 2)
+	require.Equal(t, "function_call", calls[0].Type)
+	require.Equal(t, "lookup", calls[0].Name)
+	require.Equal(t, "functions", calls[0].Namespace)
+	require.Equal(t, "custom_tool_call", calls[1].Type)
+	require.Equal(t, "exec", calls[1].Name)
+	require.Equal(t, "functions", calls[1].Namespace)
 }
 
 func TestInboundTransformer_TransformRequest_MergesRepeatedFunctionOutputs(t *testing.T) {

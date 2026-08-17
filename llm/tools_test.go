@@ -40,6 +40,46 @@ func TestToolChoiceNilAllowedToolsJSONRoundTrip(t *testing.T) {
 	require.Empty(t, decoded.AllowedTools)
 }
 
+func TestNamespaceFunctionNameHelpers(t *testing.T) {
+	require.Equal(t, "lookup", llm.JoinNamespaceFunctionName("", "lookup"))
+	require.Equal(t, "functions__lookup", llm.JoinNamespaceFunctionName("functions", "lookup"))
+	require.Equal(t, "a__b__c", llm.JoinNamespaceFunctionName("a__b", "c"))
+
+	member, err := llm.ValidateNamespaceFunctionName("functions", "functions__lookup")
+	require.NoError(t, err)
+	require.Equal(t, "lookup", member)
+
+	_, err = llm.ValidateNamespaceFunctionName("", "lookup")
+	require.ErrorContains(t, err, "namespace is required")
+	_, err = llm.ValidateNamespaceFunctionName("functions", "functions__")
+	require.ErrorContains(t, err, "must use flattened name")
+	_, err = llm.ValidateNamespaceFunctionName("functions", "other__lookup")
+	require.ErrorContains(t, err, "must use flattened name")
+
+	namespace, member, err := llm.SplitNamespaceFunctionName("functions__nested__lookup")
+	require.NoError(t, err)
+	require.Equal(t, "functions", namespace)
+	require.Equal(t, "nested__lookup", member)
+
+	_, _, err = llm.SplitNamespaceFunctionName("lookup")
+	require.ErrorContains(t, err, "must use flattened name")
+	_, _, err = llm.SplitNamespaceFunctionName("functions__")
+	require.ErrorContains(t, err, "must use flattened name")
+}
+
+func TestToolChoiceUnmarshalJSONRejectsNullAllowedTools(t *testing.T) {
+	auto := "auto"
+	choice := llm.ToolChoice{
+		ToolChoice:      &auto,
+		NamedToolChoice: &llm.NamedToolChoice{Type: "custom", Function: llm.ToolFunction{Name: "stale"}},
+	}
+	before := choice
+
+	err := json.Unmarshal([]byte(`{"mode":"auto","tools":null}`), &choice)
+	require.ErrorContains(t, err, "tools must not be null")
+	require.Equal(t, before, choice)
+}
+
 func TestToolChoiceUnmarshalJSONClearsPreviousVariant(t *testing.T) {
 	auto := "auto"
 	choice := llm.ToolChoice{

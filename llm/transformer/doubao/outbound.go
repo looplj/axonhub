@@ -138,8 +138,12 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
-	// Convert llm.Request to openai.Request first
-	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+	oaiReq, transformerMetadata, err := openai.RequestFromLLMWithResponsesTools(
+		llmReq, openai.ReasoningFieldContent,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create Doubao-specific request by adding request_id/user_id
 	doubaoReq := Request{
@@ -183,12 +187,13 @@ func (t *OutboundTransformer) TransformRequest(
 	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
-		Method:    http.MethodPost,
-		URL:       url,
-		Headers:   headers,
-		Body:      body,
-		Auth:      auth,
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		Method:              http.MethodPost,
+		URL:                 url,
+		Headers:             headers,
+		Body:                body,
+		Auth:                auth,
+		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
+		TransformerMetadata: transformerMetadata,
 	}, nil
 }
 

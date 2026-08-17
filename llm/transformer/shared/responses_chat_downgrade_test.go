@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 func TestDowngradeResponsesChatToolLifecycle_DoesNotRedirectNamespaceSelector(t *testing.T) {
@@ -26,7 +27,7 @@ func TestDowngradeResponsesChatToolLifecycle_DoesNotRedirectNamespaceSelector(t 
 		}},
 	}
 
-	got := DowngradeResponsesChatToolLifecycle(request)
+	got := requireDowngradeSuccess(t, request)
 	require.Len(t, got.Tools, 1)
 	require.Equal(t, "spawn_agent", got.Tools[0].Function.Name)
 	require.Nil(t, got.ToolChoice)
@@ -56,7 +57,7 @@ func TestDowngradeResponsesChatToolLifecycle_FiltersAmbiguousAllowedFunctions(t 
 		},
 	}
 
-	got := DowngradeResponsesChatToolLifecycle(request)
+	got := requireDowngradeSuccess(t, request)
 	require.Len(t, got.Tools, 1)
 	require.Equal(t, "lookup", got.Tools[0].Function.Name)
 	require.NotNil(t, got.ToolChoice)
@@ -65,7 +66,9 @@ func TestDowngradeResponsesChatToolLifecycle_FiltersAmbiguousAllowedFunctions(t 
 }
 
 func TestDowngradeResponsesChatToolLifecycle_ClearsEmptyRequiredSelection(t *testing.T) {
-	require.Nil(t, DowngradeResponsesChatToolLifecycle(nil))
+	got, err := DowngradeResponsesChatToolLifecycle(nil)
+	require.NoError(t, err)
+	require.Nil(t, got)
 
 	request := &llm.Request{
 		APIFormat:         llm.APIFormatOpenAIResponse,
@@ -77,7 +80,7 @@ func TestDowngradeResponsesChatToolLifecycle_ClearsEmptyRequiredSelection(t *tes
 		ToolChoice: &llm.ToolChoice{ToolChoice: lo.ToPtr("required")},
 	}
 
-	got := DowngradeResponsesChatToolLifecycle(request)
+	got = requireDowngradeSuccess(t, request)
 	require.Empty(t, got.Tools)
 	require.Nil(t, got.ToolChoice)
 	require.Nil(t, got.ParallelToolCalls)
@@ -128,7 +131,7 @@ func TestDowngradeResponsesChatToolLifecycle_FullRequestMatrixAndIdempotency(t *
 		ToolChoice: &llm.ToolChoice{ToolChoice: lo.ToPtr("auto")},
 	}
 
-	got := DowngradeResponsesChatToolLifecycle(request)
+	got := requireDowngradeSuccess(t, request)
 	require.Len(t, got.Messages, 2)
 	require.Len(t, got.Messages[0].ToolCalls, 1)
 	require.Equal(t, "call_plain", got.Messages[0].ToolCalls[0].ID)
@@ -141,7 +144,9 @@ func TestDowngradeResponsesChatToolLifecycle_FullRequestMatrixAndIdempotency(t *
 	require.Len(t, request.Tools, 6)
 	require.True(t, lo.FromPtr(request.ParallelToolCalls))
 
-	require.Equal(t, got, DowngradeResponsesChatToolLifecycle(got))
+	requal, err := DowngradeResponsesChatToolLifecycle(got)
+	require.NoError(t, err)
+	require.Equal(t, got, requal)
 }
 
 func TestDowngradeResponsesChatToolLifecycle_SelectorAndParallelMatrix(t *testing.T) {
@@ -207,7 +212,7 @@ func TestDowngradeResponsesChatToolLifecycle_SelectorAndParallelMatrix(t *testin
 					{Type: llm.ToolTypeResponsesCustomTool, ResponseCustomTool: &llm.ResponseCustomTool{Name: "apply_patch"}},
 				},
 			}
-			got := DowngradeResponsesChatToolLifecycle(request)
+			got := requireDowngradeSuccess(t, request)
 			toolNames := make([]string, 0, len(got.Tools))
 			for _, tool := range got.Tools {
 				toolNames = append(toolNames, tool.Function.Name)
@@ -226,4 +231,114 @@ func TestDowngradeResponsesChatToolLifecycle_SelectorAndParallelMatrix(t *testin
 			}
 		})
 	}
+}
+
+func TestDowngradeResponsesChatToolLifecycle_RemovesPairedSourceToolHistory(t *testing.T) {
+	request := &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Messages: []llm.Message{
+			{Role: "assistant", ToolCalls: []llm.ToolCall{
+				{
+					ID: "call_source", Type: llm.ToolTypeFunction,
+					Function: llm.FunctionCall{Name: "future_lookup", Arguments: `{"query":"axon"}`},
+				},
+				{
+					ID: "call_plain", Type: llm.ToolTypeFunction,
+					Function: llm.FunctionCall{Name: "lookup", Arguments: `{"id":"42"}`},
+				},
+			}},
+			{Role: "tool", ToolCallID: lo.ToPtr("call_source"), Content: llm.MessageContent{Content: lo.ToPtr("source output")}},
+			{Role: "tool", ToolCallID: lo.ToPtr("call_plain"), Content: llm.MessageContent{Content: lo.ToPtr("plain output")}},
+		},
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "lookup"}},
+			{
+				Type: llm.ToolTypeFunction, Function: llm.Function{Name: "future_lookup"},
+				ResponsesSourceType: "future_client_tool",
+			},
+		},
+	}
+
+	got := requireDowngradeSuccess(t, request)
+
+	require.Len(t, got.Messages, 2)
+	require.Len(t, got.Messages[0].ToolCalls, 1)
+	require.Equal(t, "call_plain", got.Messages[0].ToolCalls[0].ID)
+	require.Equal(t, "call_plain", lo.FromPtr(got.Messages[1].ToolCallID))
+	require.Len(t, got.Tools, 1)
+	require.Equal(t, "lookup", got.Tools[0].Function.Name)
+	require.Len(t, request.Messages, 3)
+	require.Len(t, request.Tools, 2)
+}
+
+func TestDowngradeResponsesChatToolLifecycle_FailsClosedOnSourceNameAmbiguity(t *testing.T) {
+	messages := []llm.Message{
+		{Role: "assistant", ToolCalls: []llm.ToolCall{{
+			ID: "call_source", Type: llm.ToolTypeFunction,
+			Function: llm.FunctionCall{Name: "future_lookup", Arguments: `{}`},
+		}}},
+		{Role: "tool", ToolCallID: lo.ToPtr("call_source"), Content: llm.MessageContent{Content: lo.ToPtr("source output")}},
+	}
+
+	t.Run("conflicts with retained plain function", func(t *testing.T) {
+		request := &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			Messages:  messages,
+			Tools: []llm.Tool{
+				{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "future_lookup"}},
+				{
+					Type: llm.ToolTypeFunction, Function: llm.Function{Name: "future_lookup"},
+					ResponsesSourceType: "future_client_tool",
+				},
+			},
+		}
+
+		got, err := DowngradeResponsesChatToolLifecycle(request)
+		require.Nil(t, got)
+		require.ErrorContains(t, err, "conflicts with retained function")
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	})
+
+	t.Run("duplicate source definitions", func(t *testing.T) {
+		request := &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			Tools: []llm.Tool{
+				{
+					Type: llm.ToolTypeFunction, Function: llm.Function{Name: "future_lookup"},
+					ResponsesSourceType: "future_client_tool_a",
+				},
+				{
+					Type: llm.ToolTypeFunction, Function: llm.Function{Name: "future_lookup"},
+					ResponsesSourceType: "future_client_tool_b",
+				},
+			},
+		}
+
+		got, err := DowngradeResponsesChatToolLifecycle(request)
+		require.Nil(t, got)
+		require.ErrorContains(t, err, "duplicate removed definition")
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	})
+
+	t.Run("invalid namespace definition", func(t *testing.T) {
+		request := &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponse,
+			Tools: []llm.Tool{{
+				Type:     llm.ToolTypeFunction,
+				Function: llm.Function{Name: "lookup", Namespace: "functions"},
+			}},
+		}
+
+		got, err := DowngradeResponsesChatToolLifecycle(request)
+		require.Nil(t, got)
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+		require.ErrorContains(t, err, "invalid_namespace_tool")
+	})
+}
+
+func requireDowngradeSuccess(t *testing.T, request *llm.Request) *llm.Request {
+	t.Helper()
+	got, err := DowngradeResponsesChatToolLifecycle(request)
+	require.NoError(t, err)
+	return got
 }

@@ -191,6 +191,17 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_ResponsesCapabilitiesExcludeCompactAPIFormat(t *testing.T) {
+	transformer := &OutboundTransformer{}
+	assert.True(t, transformer.ResponsesRequestCapabilities(&llm.Request{}).ChatToolLifecycle)
+	assert.False(t, transformer.ResponsesRequestCapabilities(&llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponseCompact,
+	}).ChatToolLifecycle)
+	assert.False(t, transformer.ResponsesRequestCapabilities(&llm.Request{
+		RequestType: llm.RequestTypeCompact,
+	}).ChatToolLifecycle)
+}
+
 func TestOutboundTransformer_NativeChatBypassesResponsesToolAdapter(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
 	assert.NoError(t, err)
@@ -222,7 +233,7 @@ func TestOutboundTransformer_NativeChatBypassesResponsesToolAdapter(t *testing.T
 	assert.Len(t, converted.Tools, 1)
 	assert.JSONEq(t, `{"properties":{"query":{"type":"string"}}}`, string(converted.Tools[0].Function.Parameters))
 	assert.Equal(t, map[string]any{"existing": "kept"}, request.TransformerMetadata)
-	_, hasMappings := request.TransformerMetadata[responsesChatToolMappingsMetadataKey]
+	_, hasMappings := request.TransformerMetadata[ResponsesChatToolMappingsMetadataKey]
 	assert.False(t, hasMappings)
 	_, hasWarnings := request.TransformerMetadata[responsesChatToolWarningsMetadataKey]
 	assert.False(t, hasWarnings)

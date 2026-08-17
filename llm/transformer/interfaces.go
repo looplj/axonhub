@@ -81,13 +81,22 @@ type ResponsesRequestCapabilitiesProvider interface {
 }
 
 // ResponsesRequestCapabilitiesOf delegates to t's
-// ResponsesRequestCapabilitiesProvider implementation when t provides one,
-// and returns the zero value otherwise. Wrapper transformers that embed
-// another Outbound should pass the embedded transformer so capability
-// reporting is forwarded without duplicating the delegation logic.
+// ResponsesRequestCapabilitiesProvider implementation when t provides one.
+// Otherwise, Responses API formats imply native Responses support. Wrapper
+// transformers that embed another Outbound should pass the embedded
+// transformer so capability reporting is forwarded without duplicating the
+// delegation logic.
 func ResponsesRequestCapabilitiesOf(t Outbound, req *llm.Request) ResponsesRequestCapabilities {
+	if t == nil {
+		return ResponsesRequestCapabilities{}
+	}
+
 	if capable, ok := t.(ResponsesRequestCapabilitiesProvider); ok {
 		return capable.ResponsesRequestCapabilities(req)
+	}
+
+	if llm.IsOpenAIResponsesFormat(t.APIFormat()) {
+		return ResponsesRequestCapabilities{NativeResponses: true}
 	}
 
 	return ResponsesRequestCapabilities{}

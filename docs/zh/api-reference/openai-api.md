@@ -60,7 +60,7 @@ AxonHub 提供对 OpenAI Responses API 的部分支持。该 API 为单轮交互
 - `POST /v1/responses` - 生成响应
 
 **能力：**
-- ✅ 支持 `previous_response_id` 透传，可用于同一上游 channel 上的连续 Responses 对话复用
+- ✅ 支持 `previous_response_id` 透传，但仅限请求路由到原生 Responses 上游；路由到 Chat 或其他兼容上游时返回 `400 invalid_request_error`
 - ✅ 基本响应生成完全可用
 - ✅ 支持流式响应
 
@@ -84,7 +84,7 @@ client := openai.NewClient(
 
 ctx := context.Background()
 
-// 生成响应（支持同一上游 channel 的 previous_response_id 透传）
+// 生成响应（仅原生 Responses 上游支持 previous_response_id 透传）
 params := responses.ResponseNewParams{
     Model: shared.ResponsesModel("gpt-4o"),
     PreviousResponseID: openai.String("resp_prev_123"),

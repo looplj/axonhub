@@ -1320,6 +1320,35 @@ func TestOutboundTransformer_TransformStream_ToolSearchCallLifecycle(t *testing.
 	require.Equal(t, llm.DoneResponse, actual[5])
 }
 
+func TestOutboundTransformer_TransformStream_PreservesCustomToolCallNamespace(t *testing.T) {
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_custom_ns","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"custom_ns","type":"custom_tool_call","status":"in_progress","call_id":"call_exec","namespace":"functions","name":"exec","input":""}}`)},
+		{Type: "response.custom_tool_call_input.delta", Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"custom_ns","output_index":0,"delta":"ls"}`)},
+		{Type: "response.custom_tool_call_input.done", Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"custom_ns","output_index":0,"input":"ls"}`)},
+		{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"custom_ns","type":"custom_tool_call","status":"completed","call_id":"call_exec","namespace":"functions","name":"exec","input":"ls"}}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_custom_ns","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	stream := newResponsesOutboundStream(streams.AppendStream(streams.SliceStream(events), lo.ToPtr(llm.DoneStreamEvent)))
+	actual, err := streams.All(streams.NoNil(stream))
+	require.NoError(t, err)
+	require.NotEmpty(t, actual)
+
+	for _, response := range actual {
+		if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil {
+			continue
+		}
+		for _, call := range response.Choices[0].Delta.ToolCalls {
+			if call.ResponseCustomToolCall != nil {
+				require.Equal(t, "functions", call.ResponseCustomToolCall.Namespace)
+			}
+		}
+	}
+	require.NotNil(t, stream.state.toolCalls["call_exec"])
+	require.Equal(t, "functions", stream.state.toolCalls["call_exec"].ResponseCustomToolCall.Namespace)
+}
+
 func TestOutboundTransformer_TransformStream_ToolSearchArgumentsProvidedOnlyInDone(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
@@ -1403,8 +1432,37 @@ func TestOutboundTransformer_TransformStream_CompletedWithUsageCarriesEchoFields
 	raw, ok := completedChunk.TransformerMetadata[responsesEchoFieldsTransformerMetadataKey]
 	require.True(t, ok, "completed chunk must carry echo metadata on the usage path")
 
-	echo, ok := raw.(*Response)
+	echo, ok := raw.(json.RawMessage)
 	require.True(t, ok)
-	require.NotNil(t, echo.Conversation)
-	require.Equal(t, "conv_echo", echo.Conversation.ID)
+	var decoded Response
+	require.NoError(t, json.Unmarshal(echo, &decoded))
+	require.NotNil(t, decoded.Conversation)
+	require.Equal(t, "conv_echo", decoded.Conversation.ID)
+}
+
+func TestEchoFieldsSurviveTransformerMetadataJSONRoundTrip(t *testing.T) {
+	echo := &Response{ID: "resp_echo", Conversation: &ResponseConversation{ID: "conv_echo"}}
+	encoded, err := json.Marshal(echo)
+	require.NoError(t, err)
+
+	metadata := map[string]any{
+		responsesEchoFieldsTransformerMetadataKey: json.RawMessage(encoded),
+	}
+	serialized, err := json.Marshal(metadata)
+	require.NoError(t, err)
+	var decoded map[string]any
+	require.NoError(t, json.Unmarshal(serialized, &decoded))
+
+	stream := &responsesInboundStream{}
+	stream.captureEchoFields(decoded)
+	require.NotNil(t, stream.echoResponse)
+	require.Equal(t, "resp_echo", stream.echoResponse.ID)
+	require.NotNil(t, stream.echoResponse.Conversation)
+	require.Equal(t, "conv_echo", stream.echoResponse.Conversation.ID)
+}
+
+func TestEqualJSONValuesTreatsEquivalentNumbersAsEqual(t *testing.T) {
+	require.True(t, equalJSONValues(`{"value":1}`, `{"value":1.0}`))
+	require.True(t, equalJSONValues(`[1e2]`, `[100.0]`))
+	require.False(t, equalJSONValues(`{"value":1}`, `{"value":2}`))
 }

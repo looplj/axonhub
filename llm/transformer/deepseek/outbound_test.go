@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/responseschat"
 )
 
 func TestOutboundTransformer_ResponsesRequestCapabilities(t *testing.T) {
@@ -23,6 +24,13 @@ func TestOutboundTransformer_ResponsesRequestCapabilities(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, provider.ResponsesRequestCapabilities(&llm.Request{}).ChatToolLifecycle)
 	require.False(t, provider.ResponsesRequestCapabilities(&llm.Request{RequestType: llm.RequestTypeCompact}).ChatToolLifecycle)
+}
+
+func TestOutboundTransformer_ResponsesToolLifecycle(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.deepseek.com/v1", "test-api-key")
+	require.NoError(t, err)
+
+	responseschat.RequireToolLifecycle(t, outbound, "deepseek-chat")
 }
 
 func TestOutboundTransformer_TransformRequest_ResponseFormat(t *testing.T) {

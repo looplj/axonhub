@@ -501,6 +501,23 @@ func TestConvertToolSearchOutputNullContentDegradesWithWarning(t *testing.T) {
 	require.Contains(t, logs.String(), "call_search_null")
 }
 
+func TestConvertToolSearchOutputJoinsMultipleTextParts(t *testing.T) {
+	result := convertToolMessageWithType(llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_search_parts"),
+		Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{Type: "text", Text: lo.ToPtr(`[{"type":"function"`)},
+			{Type: "text", Text: lo.ToPtr(`,"name":"lookup"}]`)},
+		}},
+	}, "tool_search_output")
+
+	require.Equal(t, "tool_search_output", result.Type)
+	require.NotNil(t, result.Tools)
+	require.Len(t, result.Tools, 1)
+	require.Equal(t, "function", result.Tools[0].Type)
+	require.Equal(t, "lookup", result.Tools[0].Name)
+}
+
 // The wire shape matters as much as the struct: a tool result carrying an image
 // has to serialise as an output array of content parts, not as a string.
 func TestConvertToolMessageImageSerializesAsOutputArray(t *testing.T) {

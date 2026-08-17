@@ -175,7 +175,7 @@ func TestRequestFromLLMWithConfig_ReasoningFieldContent(t *testing.T) {
 		},
 	}
 
-	req := RequestFromLLM(llmReq, ReasoningFieldContent)
+	req := requireRequestFromLLM(t, llmReq, ReasoningFieldContent)
 
 	assert.Equal(t, "test-model", req.Model)
 	assert.Len(t, req.Messages, 2)
@@ -205,7 +205,7 @@ func TestRequestFromLLMWithConfig_ReasoningFieldReasoning(t *testing.T) {
 		},
 	}
 
-	req := RequestFromLLM(llmReq, ReasoningFieldReasoning)
+	req := requireRequestFromLLM(t, llmReq, ReasoningFieldReasoning)
 
 	assert.Len(t, req.Messages, 1)
 
@@ -228,7 +228,7 @@ func TestRequestFromLLMWithConfig_ReasoningFieldNone(t *testing.T) {
 		},
 	}
 
-	req := RequestFromLLM(llmReq, ReasoningFieldNone)
+	req := requireRequestFromLLM(t, llmReq, ReasoningFieldNone)
 
 	assert.Len(t, req.Messages, 1)
 

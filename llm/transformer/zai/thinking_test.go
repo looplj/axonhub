@@ -3,6 +3,8 @@ package zai
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
@@ -130,8 +132,10 @@ func TestZAIRequestWithoutThinking(t *testing.T) {
 		},
 	}
 
+	oaiReq, err := openai.RequestFromLLM(chatReq, openai.ReasoningFieldContent)
+	require.NoError(t, err)
 	zaiReq := Request{
-		Request: *openai.RequestFromLLM(chatReq, openai.ReasoningFieldContent),
+		Request: *oaiReq,
 		UserID:  "test-user",
 	}
 

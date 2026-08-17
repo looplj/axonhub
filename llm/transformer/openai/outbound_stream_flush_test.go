@@ -21,7 +21,7 @@ func TestOutboundTransformer_TransformStream_FlushesBufferedToolCallsBeforeDone(
 
 	req := &httpclient.Request{
 		TransformerMetadata: map[string]any{
-			responsesChatToolCatalogMetadataKey: []string{"Task", "TaskOutput"},
+			ResponsesChatToolCatalogMetadataKey: []string{"Task", "TaskOutput"},
 		},
 	}
 

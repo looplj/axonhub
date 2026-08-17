@@ -62,13 +62,16 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 // TransformRequest safely downgrades Responses-only lifecycle state without
 // enabling the generic adapter, whose metadata NanoGPT cannot restore.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
-	if req == nil || (req.APIFormat != llm.APIFormatOpenAIResponse && req.APIFormat != llm.APIFormatOpenAIResponseCompact) {
+	if req == nil || !llm.IsOpenAIResponsesFormat(req.APIFormat) {
 		return t.Outbound.TransformRequest(ctx, req)
 	}
 
-	chatReq := *shared.DowngradeResponsesChatToolLifecycle(req)
+	chatReq, err := shared.DowngradeResponsesChatToolLifecycle(req)
+	if err != nil {
+		return nil, err
+	}
 	chatReq.APIFormat = llm.APIFormatOpenAIChatCompletion
-	return t.Outbound.TransformRequest(ctx, &chatReq)
+	return t.Outbound.TransformRequest(ctx, chatReq)
 }
 
 // TransformResponse transforms the HTTP response to llm.Response.

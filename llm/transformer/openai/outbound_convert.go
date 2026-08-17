@@ -2,6 +2,7 @@ package openai
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/samber/lo"
@@ -11,16 +12,20 @@ import (
 )
 
 // RequestFromLLM creates OpenAI Request from unified llm.Request with reasoning field configuration.
-func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
+func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) (*Request, error) {
 	if r == nil {
-		return nil
+		return nil, nil
 	}
 	// The plain codec cannot represent Responses-only tool lifecycle state.
 	// Wrapper transformers call this codec directly, so downgrade here to keep
 	// specialized calls from being serialized as invalid Chat history entries
 	// (empty names/arguments) that strict providers reject.
 	if isResponsesAPIFormat(r.APIFormat) {
-		r = shared.DowngradeResponsesChatToolLifecycle(r)
+		var err error
+		r, err = shared.DowngradeResponsesChatToolLifecycle(r)
+		if err != nil {
+			return nil, fmt.Errorf("failed to downgrade Responses tool lifecycle: %w", err)
+		}
 	}
 	req := requestFromLLMBase(r)
 	req.Messages = lo.Map(r.Messages, func(m llm.Message, _ int) Message {
@@ -50,7 +55,45 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 	if len(req.Tools) == 0 {
 		req.ParallelToolCalls = nil
 	}
-	return req
+	return req, nil
+}
+
+// RequestFromLLMWithResponsesTools converts a request while retaining metadata
+// needed to restore Responses-only tool calls. Provider-specific Chat codecs use
+// this path when they advertise Responses chat-tool lifecycle support.
+func RequestFromLLMWithResponsesTools(
+	r *llm.Request,
+	reasoningField ReasoningField,
+) (*Request, map[string]any, error) {
+	if r == nil {
+		return nil, nil, nil
+	}
+	if !isResponsesAPIFormat(r.APIFormat) {
+		req, err := RequestFromLLM(r, reasoningField)
+		return req, nil, err
+	}
+
+	req, adapter, err := requestFromLLMWithResponsesToolAdapter(r, reasoningField)
+	if err != nil {
+		return nil, nil, err
+	}
+	if adapter == nil {
+		return req, nil, nil
+	}
+
+	metadata := make(map[string]any, len(r.TransformerMetadata)+4)
+	maps.Copy(metadata, r.TransformerMetadata)
+	metadata[responsesChatStrictFinishMetadataKey] = true
+	if mappings := adapter.mappings(); len(mappings) > 0 {
+		metadata[ResponsesChatToolMappingsMetadataKey] = mappings
+	}
+	if catalog := adapter.catalog(); len(catalog) > 0 {
+		metadata[ResponsesChatToolCatalogMetadataKey] = catalog
+	}
+	if len(adapter.warnings) > 0 {
+		metadata[responsesChatToolWarningsMetadataKey] = append([]string(nil), adapter.warnings...)
+	}
+	return req, metadata, nil
 }
 
 // requestFromLLMBase converts fields shared by plain and Responses-adapted Chat requests.

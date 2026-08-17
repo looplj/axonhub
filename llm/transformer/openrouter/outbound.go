@@ -111,7 +111,17 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
-	body, err := json.Marshal(openai.RequestFromLLM(llmReq, openai.ReasoningFieldReasoning))
+	// The OpenAI transformer owns reversible Responses-to-Chat tool mappings.
+	// Its metadata must survive this provider-specific Chat codec.
+	if llm.IsOpenAIResponsesFormat(llmReq.APIFormat) {
+		return t.Outbound.TransformRequest(ctx, llmReq)
+	}
+
+	oaiReq, err := openai.RequestFromLLM(llmReq, openai.ReasoningFieldReasoning)
+	if err != nil {
+		return nil, err
+	}
+	body, err := json.Marshal(oaiReq)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to transform request: %w", transformer.ErrInvalidRequest, err)
 	}
@@ -297,6 +307,9 @@ func (t *OutboundTransformer) TransformResponse(
 			llm.RequestTypeTranslation.String():
 			return t.Outbound.TransformResponse(ctx, httpResp)
 		}
+		if openai.HasResponsesChatToolMappings(httpResp.Request) {
+			return t.Outbound.TransformResponse(ctx, httpResp)
+		}
 	}
 
 	// Check for HTTP error status codes
@@ -437,6 +450,9 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 		case string(llm.APIFormatOpenAISpeech),
 			string(llm.APIFormatOpenAITranscription),
 			string(llm.APIFormatOpenAITranslation):
+			return t.Outbound.TransformStream(ctx, req, stream)
+		}
+		if openai.HasResponsesChatToolMappings(req) {
 			return t.Outbound.TransformStream(ctx, req, stream)
 		}
 	}

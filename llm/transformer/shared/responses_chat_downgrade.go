@@ -1,32 +1,62 @@
 package shared
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer"
 )
 
 // DowngradeResponsesChatToolLifecycle removes Responses-only tool lifecycle
 // state that a provider-specific Chat codec cannot encode and restore.
-func DowngradeResponsesChatToolLifecycle(request *llm.Request) *llm.Request {
+func DowngradeResponsesChatToolLifecycle(request *llm.Request) (*llm.Request, error) {
 	if request == nil {
-		return nil
+		return nil, nil
 	}
 
+	removedSourceTools := make(map[string]struct{})
+	retainedFunctionNames := make(map[string]struct{})
 	cloned := *request
-	cloned.Messages = FilterOutResponsesChatToolLifecycleMessages(request.Messages)
 	removedFunctionNames := make(map[string]struct{})
 	cloned.Tools = make([]llm.Tool, 0, len(request.Tools))
 	for _, tool := range request.Tools {
 		if requiresResponsesChatToolLifecycle(tool) {
-			if tool.Function.Namespace != "" {
+			if tool.ResponsesSourceType != "" {
+				name := tool.Function.Name
+				if name == "" {
+					return nil, fmt.Errorf("%w: invalid responses source tool: function name is required", transformer.ErrInvalidRequest)
+				}
+				if _, duplicate := removedSourceTools[name]; duplicate {
+					return nil, fmt.Errorf("%w: ambiguous responses source tool %q: duplicate removed definition", transformer.ErrInvalidRequest, name)
+				}
+				removedSourceTools[name] = struct{}{}
+				removedFunctionNames[name] = struct{}{}
+			} else if tool.Function.Namespace != "" {
 				removedFunctionNames[tool.Function.Name] = struct{}{}
-				removedFunctionNames[strings.TrimPrefix(tool.Function.Name, tool.Function.Namespace+"__")] = struct{}{}
+				memberName, err := llm.NamespaceFunctionMemberName(tool.Function)
+				if err != nil {
+					return nil, fmt.Errorf("%w: %w", transformer.ErrInvalidRequest, err)
+				}
+				removedFunctionNames[memberName] = struct{}{}
 			}
 			continue
 		}
+		if tool.Type == llm.ToolTypeFunction {
+			retainedFunctionNames[tool.Function.Name] = struct{}{}
+		}
 		cloned.Tools = append(cloned.Tools, tool)
 	}
+	for name := range removedSourceTools {
+		if _, conflict := retainedFunctionNames[name]; conflict {
+			return nil, fmt.Errorf("%w: ambiguous responses source tool %q: conflicts with retained function", transformer.ErrInvalidRequest, name)
+		}
+	}
+	cloned.Messages = filterOutToolLifecycleMessages(request.Messages, func(toolCall llm.ToolCall) bool {
+		_, removedSourceCall := removedSourceTools[toolCall.Function.Name]
+		return requiresResponsesChatToolLifecycleCall(toolCall) ||
+			(toolCall.Type == llm.ToolTypeFunction && toolCall.Function.Namespace == "" &&
+				toolCall.Function.Name != "" && removedSourceCall)
+	})
 	cloned.Tools, cloned.ToolChoice = filterResponsesToolChoiceForPlainFunctions(
 		cloned.Tools,
 		request.ToolChoice,
@@ -36,7 +66,15 @@ func DowngradeResponsesChatToolLifecycle(request *llm.Request) *llm.Request {
 		cloned.ParallelToolCalls = nil
 	}
 
-	return &cloned
+	return &cloned, nil
+}
+
+func requiresResponsesChatToolLifecycleCall(toolCall llm.ToolCall) bool {
+	return toolCall.Type == llm.ToolTypeResponsesCustomTool ||
+		toolCall.ResponseCustomToolCall != nil ||
+		toolCall.Type == llm.ToolTypeResponsesToolSearch ||
+		toolCall.ResponseToolSearchCall != nil ||
+		toolCall.Function.Namespace != ""
 }
 
 func requiresResponsesChatToolLifecycle(tool llm.Tool) bool {

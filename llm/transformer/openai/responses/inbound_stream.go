@@ -320,7 +320,7 @@ func (s *responsesInboundStream) Next() bool {
 		if choice.FinishReason != nil && !s.hasFinished {
 			s.hasFinished = true
 			s.finishReason = *choice.FinishReason
-			abnormalFinish := isAbnormalResponsesFinishReason(s.finishReason)
+			abnormalFinish := IsAbnormalChatFinishReason(s.finishReason)
 
 			// Map the Chat Completions finish_reason onto the Responses status so
 			// the final response.completed event reports abnormal termination
@@ -374,15 +374,6 @@ func (s *responsesInboundStream) Next() bool {
 
 	// Continue to the next event
 	return s.Next()
-}
-
-func isAbnormalResponsesFinishReason(reason string) bool {
-	switch reason {
-	case "length", "content_filter", "error", "cancelled", "canceled":
-		return true
-	default:
-		return false
-	}
 }
 
 // enqueueTerminalResponse maps Chat finish reasons onto the terminal Responses
@@ -454,6 +445,26 @@ func (s *responsesInboundStream) captureEchoFields(metadata map[string]any) {
 	}
 	if echo, ok := raw.(*Response); ok {
 		s.echoResponse = echo
+		return
+	}
+	switch value := raw.(type) {
+	case json.RawMessage:
+		s.decodeEchoFields([]byte(value))
+	case []byte:
+		s.decodeEchoFields(value)
+	case string:
+		s.decodeEchoFields([]byte(value))
+	case map[string]any:
+		if encoded, err := json.Marshal(value); err == nil {
+			s.decodeEchoFields(encoded)
+		}
+	}
+}
+
+func (s *responsesInboundStream) decodeEchoFields(data []byte) {
+	var echo Response
+	if json.Unmarshal(data, &echo) == nil {
+		s.echoResponse = &echo
 	}
 }
 
@@ -866,7 +877,10 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 
 	var customCall *llm.ResponseCustomToolCall
 	if tc.ResponseCustomToolCall != nil {
-		customCall = &llm.ResponseCustomToolCall{CallID: tc.ResponseCustomToolCall.CallID, Name: tc.ResponseCustomToolCall.Name}
+		customCall = &llm.ResponseCustomToolCall{
+			CallID: tc.ResponseCustomToolCall.CallID, Name: tc.ResponseCustomToolCall.Name,
+			Namespace: tc.ResponseCustomToolCall.Namespace,
+		}
 	}
 	var toolSearchCall *llm.ResponseToolSearchCall
 	if tc.ResponseToolSearchCall != nil {
@@ -921,12 +935,13 @@ func (s *responsesInboundStream) startToolCallItem(toolCallIndex int) error {
 		}
 	case tc.ResponseCustomToolCall != nil:
 		item := &Item{
-			ID:     itemID,
-			Type:   "custom_tool_call",
-			Status: lo.ToPtr("in_progress"),
-			CallID: tc.ResponseCustomToolCall.CallID,
-			Name:   tc.ResponseCustomToolCall.Name,
-			Input:  lo.ToPtr(""),
+			ID:        itemID,
+			Type:      "custom_tool_call",
+			Status:    lo.ToPtr("in_progress"),
+			CallID:    tc.ResponseCustomToolCall.CallID,
+			Name:      tc.ResponseCustomToolCall.Name,
+			Namespace: tc.ResponseCustomToolCall.Namespace,
+			Input:     lo.ToPtr(""),
 		}
 
 		err := s.enqueueEvent(&StreamEvent{
@@ -1338,12 +1353,13 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 			}
 
 			item := Item{
-				ID:     itemID,
-				Type:   "custom_tool_call",
-				Status: lo.ToPtr("completed"),
-				CallID: tc.ResponseCustomToolCall.CallID,
-				Name:   tc.ResponseCustomToolCall.Name,
-				Input:  lo.ToPtr(fullInput),
+				ID:        itemID,
+				Type:      "custom_tool_call",
+				Status:    lo.ToPtr("completed"),
+				CallID:    tc.ResponseCustomToolCall.CallID,
+				Name:      tc.ResponseCustomToolCall.Name,
+				Namespace: tc.ResponseCustomToolCall.Namespace,
+				Input:     lo.ToPtr(fullInput),
 			}
 
 			err = s.enqueueEvent(&StreamEvent{

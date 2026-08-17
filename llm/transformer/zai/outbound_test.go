@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/transformer/responseschat"
 )
 
 func TestOutboundTransformer_ResponsesRequestCapabilities(t *testing.T) {
@@ -22,6 +23,13 @@ func TestOutboundTransformer_ResponsesRequestCapabilities(t *testing.T) {
 	require.True(t, ok)
 	require.True(t, provider.ResponsesRequestCapabilities(&llm.Request{}).ChatToolLifecycle)
 	require.False(t, provider.ResponsesRequestCapabilities(&llm.Request{RequestType: llm.RequestTypeCompact}).ChatToolLifecycle)
+}
+
+func TestOutboundTransformer_ResponsesToolLifecycle(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.zai.com/v4", "test-api-key")
+	require.NoError(t, err)
+
+	responseschat.RequireToolLifecycle(t, outbound, "glm-4.6")
 }
 
 func TestOutboundTransformer_TransformRequest_URL(t *testing.T) {

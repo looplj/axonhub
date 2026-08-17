@@ -15,6 +15,14 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 )
 
+// Wire tool and selector type names used by the Responses API.
+const (
+	ToolTypeCustom             = "custom"
+	ToolTypeNamespace          = "namespace"
+	ToolTypeToolSearch         = "tool_search"
+	ToolChoiceTypeAllowedTools = "allowed_tools"
+)
+
 // ImageGeneration is a permissive structure to carry image generation tool
 // parameters. It mirrors the OpenRouter/OpenAI Responses API fields we care
 // about, but is intentionally loose to allow forward-compatibility.

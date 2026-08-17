@@ -333,7 +333,10 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert llm.Request to openai.Request
-	oaiReq := openai.RequestFromLLM(&req, openai.ReasoningFieldContent)
+	oaiReq, err := openai.RequestFromLLM(&req, openai.ReasoningFieldContent)
+	if err != nil {
+		return nil, err
+	}
 	fillGeminiThoughtSignatureForGeminiOpenAIRequest(&req, oaiReq)
 
 	geminiReq := Request{Request: *oaiReq}
