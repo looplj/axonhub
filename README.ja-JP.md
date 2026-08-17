@@ -402,15 +402,19 @@ AXONHUB_LOG_LEVEL=info
 git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
-# 環境変数を設定
-export AXONHUB_DB_DIALECT="tidb"
-export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
+# ローカル環境ファイルを作成（イメージの digest とパスワードを置き換えてください）
+umask 077
+cat > .env <<'EOF'
+DB_PASSWORD=replace-with-a-long-random-password
+AXONHUB_IMAGE=looplj/axonhub@sha256:replace-with-axonhub-digest
+POSTGRES_IMAGE=postgres@sha256:replace-with-postgres-digest
+EOF
 
 # サービスを開始
-docker-compose up -d
+docker compose --env-file .env up -d
 
 # ステータスを確認
-docker-compose ps
+docker compose ps
 ```
 
 #### Helm Kubernetesデプロイ
