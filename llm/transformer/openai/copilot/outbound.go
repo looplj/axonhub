@@ -632,9 +632,14 @@ func (t *OutboundTransformer) transformResponsesRequest(ctx context.Context, llm
 }
 
 // usesResponsesAPI checks if the model uses the responses API.
-// GPT-5+ (except gpt-5-mini) uses /responses, everything else uses /chat/completions.
+// GPT-5+ (except gpt-5-mini) and Grok models use /responses; everything else uses /chat/completions.
 func usesResponsesAPI(model string) bool {
 	normalizedModel := strings.ToLower(model)
+
+	// Copilot Grok models do not support /chat/completions.
+	if strings.HasPrefix(normalizedModel, "grok-") {
+		return true
+	}
 
 	// Use package-level compiled regex
 	match := modelVersionRegex.FindStringSubmatch(normalizedModel)
