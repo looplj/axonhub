@@ -157,6 +157,26 @@ func TestUsesResponsesAPI(t *testing.T) {
 			model:    "claude-3-5-sonnet",
 			expected: false,
 		},
+		{
+			name:     "grok-4.6 uses responses API",
+			model:    "grok-4.6",
+			expected: true,
+		},
+		{
+			name:     "grok-4.5 uses responses API",
+			model:    "grok-4.5",
+			expected: true,
+		},
+		{
+			name:     "Grok-4.6 uses responses API",
+			model:    "Grok-4.6",
+			expected: true,
+		},
+		{
+			name:     "non-grok non-gpt-5 model does not use responses API",
+			model:    "o4-mini",
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -309,6 +329,25 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			},
 			request: &llm.Request{
 				Model: "gpt-5.2-codex",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello, Copilot!")},
+					},
+				},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, req *httpclient.Request) {
+				assert.Equal(t, DefaultCopilotBaseURL+"/v1/responses", req.URL)
+			},
+		},
+		{
+			name: "grok-4.6 uses responses API endpoint",
+			params: OutboundTransformerParams{
+				TokenProvider: &mockTokenProvider{token: mockToken},
+			},
+			request: &llm.Request{
+				Model: "grok-4.6",
 				Messages: []llm.Message{
 					{
 						Role:    "user",
