@@ -155,8 +155,10 @@ func TestResponsesChatToolFlushStream_SyntheticFinishCoversOnlyUnfinishedChoices
 			continue
 		}
 		require.Len(t, response.Choices, 1)
-		require.Equal(t, "error", *response.Choices[0].FinishReason)
-		unfinishedIndexes = append(unfinishedIndexes, response.Choices[0].Index)
+		if response.Choices[0].FinishReason != nil {
+			require.Equal(t, "stop", *response.Choices[0].FinishReason)
+			unfinishedIndexes = append(unfinishedIndexes, response.Choices[0].Index)
+		}
 	}
 	require.NoError(t, stream.Err())
 	require.True(t, sawDone)

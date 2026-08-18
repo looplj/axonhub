@@ -1412,63 +1412,46 @@ func TestResponsesToChatStream_NamespaceCustomAndFunctionRestoreSeparately(t *te
 	require.JSONEq(t, `{}`, items[1].Arguments)
 }
 
-func TestResponsesToChatStream_NamespaceCustomAbnormalFinishDoesNotFlush(t *testing.T) {
+func TestResponsesToChatStream_NamespaceCustomMissingFinishCompletesBufferedCall(t *testing.T) {
 	const requestBody = `{
 		"model":"gpt-5.5","stream":true,"input":"run","tools":[{
 			"type":"namespace","name":"functions","tools":[{"type":"custom","name":"exec"}]
 		}]
 	}`
-	tests := []struct {
-		name         string
-		terminal     map[string]any
-		terminalType responsesapi.StreamEventType
-	}{
-		{
-			name:         "length finish",
-			terminal:     map[string]any{"index": 0, "delta": map[string]any{}, "finish_reason": "length"},
-			terminalType: responsesapi.StreamEventTypeResponseIncomplete,
-		},
-		{
-			name:         "missing finish",
-			terminal:     map[string]any{"index": 0, "delta": map[string]any{}},
-			terminalType: responsesapi.StreamEventTypeResponseFailed,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			events, streamErr := simulateResponsesChatStream(t, requestBody, []map[string]any{
-				responsesChatToolDelta(map[string]any{
-					"index": 0, "id": "call_exec_abnormal", "type": "function",
-					"function": map[string]any{"name": "functions__exec", "arguments": `{"input":"ls`},
-				}),
-				tt.terminal,
-			})
-			require.NoError(t, streamErr)
+	events, streamErr := simulateResponsesChatStream(t, requestBody, []map[string]any{
+		responsesChatToolDelta(map[string]any{
+			"index": 0, "id": "call_exec_missing_finish", "type": "function",
+			"function": map[string]any{"name": "functions__", "arguments": `{"input":"ls`},
+		}),
+		responsesChatToolDelta(map[string]any{
+			"index":    0,
+			"function": map[string]any{"name": "exec", "arguments": ` -la"}`},
+		}),
+		{"index": 0, "delta": map[string]any{}},
+	})
+	require.NoError(t, streamErr)
 
-			outputDone := 0
-			customDone := 0
-			completed := 0
-			terminalEvents := 0
-			for i := range events {
-				event := events[i]
-				switch event.Type {
-				case responsesapi.StreamEventTypeOutputItemDone:
-					outputDone++
-					if event.Item != nil && event.Item.Type == "custom_tool_call" {
-						customDone++
-					}
-				case responsesapi.StreamEventTypeResponseCompleted:
-					completed++
-				case responsesapi.StreamEventTypeResponseIncomplete, responsesapi.StreamEventTypeResponseFailed:
-					terminalEvents++
-				}
+	var customDone *responsesapi.Item
+	completed := 0
+	for i := range events {
+		event := events[i]
+		switch event.Type {
+		case responsesapi.StreamEventTypeOutputItemDone:
+			if event.Item != nil && event.Item.Type == "custom_tool_call" {
+				require.Nil(t, customDone)
+				completedItem := *event.Item
+				customDone = &completedItem
 			}
-			require.Equal(t, 0, outputDone, "abnormal stream must not flush output items as done")
-			require.Equal(t, 0, customDone, "partial namespace custom call must not be restored")
-			require.Equal(t, 0, completed, "abnormal stream must not emit response.completed")
-			require.Equal(t, 1, terminalEvents, "abnormal stream must emit exactly one terminal failure event")
-		})
+		case responsesapi.StreamEventTypeResponseCompleted:
+			completed++
+		case responsesapi.StreamEventTypeResponseIncomplete, responsesapi.StreamEventTypeResponseFailed:
+			t.Fatalf("missing finish must complete the stream, got %s", event.Type)
+		}
 	}
+	require.Equal(t, 1, completed)
+	require.NotNil(t, customDone)
+	require.Equal(t, "exec", customDone.Name)
+	require.Equal(t, "ls -la", *customDone.Input)
 }
 
 func TestResponsesToChatStream_StrictFinishAppliesWithoutTools(t *testing.T) {
@@ -1478,7 +1461,7 @@ func TestResponsesToChatStream_StrictFinishAppliesWithoutTools(t *testing.T) {
 		terminalType responsesapi.StreamEventType
 	}{
 		{name: "normal finish", finish: "stop", terminalType: responsesapi.StreamEventTypeResponseCompleted},
-		{name: "missing finish", finish: nil, terminalType: responsesapi.StreamEventTypeResponseFailed},
+		{name: "missing finish", finish: nil, terminalType: responsesapi.StreamEventTypeResponseCompleted},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

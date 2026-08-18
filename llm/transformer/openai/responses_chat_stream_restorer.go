@@ -159,8 +159,13 @@ func (s *responsesChatToolFlushStream) syntheticFinishIfNeeded() bool {
 		return false
 	}
 
+	// A missing Chat finish marker is ambiguous, but several OpenAI-compatible
+	// providers omit it after a complete stream. Treat the stream as successful
+	// and release buffered calls before the synthetic terminal marker so they are
+	// not lost when downstream consumers stop at response.completed.
+	s.buffer = append(s.buffer, s.restorer.flushBuffered()...)
 	for _, choiceIndex := range choiceIndexes {
-		finishReason := "error"
+		finishReason := "stop"
 		s.buffer = append(s.buffer, &llm.Response{
 			Object: "chat.completion.chunk",
 			Choices: []llm.Choice{{
