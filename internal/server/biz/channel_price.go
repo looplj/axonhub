@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 )
 
@@ -197,7 +198,7 @@ func (svc *ChannelService) applyChannelModelPriceTemplates(
 	templates []channelModelPriceTemplate,
 ) (bool, error) {
 	changed := false
-	now := time.Now()
+	now := xtime.UTCNow()
 	for _, template := range templates {
 		created, err := svc.createChannelModelPriceIfMissing(ctx, channelID, template, now)
 		if err != nil {
@@ -401,7 +402,7 @@ func (svc *ChannelService) SaveChannelModelPrices(
 
 	var (
 		results []*ent.ChannelModelPrice
-		now     = time.Now()
+		now     = xtime.UTCNow()
 	)
 
 	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
