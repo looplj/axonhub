@@ -3982,11 +3982,224 @@
     },
     "meta": {
       "id": "meta",
-      "api": "https://api.llama.com/compat/v1/",
+      "api": "https://api.meta.ai/v1",
       "name": "Meta",
-      "doc": "https://llama.developer.meta.com/docs/models",
+      "doc": "https://dev.meta.ai/docs",
       "display_name": "Meta",
       "models": [
+        {
+          "id": "muse-glimmer-30b",
+          "name": "Muse Glimmer 30B",
+          "description": "Muse Glimmer is a 30-billion-parameter open-weight multimodal model from Meta Superintelligence Labs, distilled from Muse Spark for always-on local agents, tool use, coding, and image understanding.",
+          "family": "muse",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high",
+                "xhigh"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2026-01",
+          "release_date": "2026-08-10",
+          "last_updated": "2026-08-10",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "display_name": "Muse Glimmer 30B",
+          "type": "chat"
+        },
+        {
+          "id": "muse-spark-1.2",
+          "name": "Muse Spark 1.2",
+          "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
+          "family": "muse",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-08-05",
+          "last_updated": "2026-08-05",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf",
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1048576,
+            "output": 131072
+          },
+          "cost": {
+            "input": 1.25,
+            "output": 4.25,
+            "cache_read": 0.15
+          },
+          "display_name": "Muse Spark 1.2",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
+        },
+        {
+          "id": "muse-spark-1.2-contributor",
+          "name": "Muse Spark 1.2 Contributor",
+          "description": "Muse Spark 1.2 is a coding-focused update to Muse Spark 1.1 with improvements in code generation, complex debugging, codebase understanding, and end-to-end developer workflows.",
+          "family": "muse",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-08-05",
+          "last_updated": "2026-08-05",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf",
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1048576,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0.1,
+            "output": 0.2,
+            "cache_read": 0.002
+          },
+          "display_name": "Muse Spark 1.2 Contributor",
+          "type": "chat"
+        },
+        {
+          "id": "muse-spark-1.1",
+          "name": "Muse Spark 1.1",
+          "description": "Muse Spark is a natively multimodal reasoning model with support for tool-use, visual chain of thought, and multi-agent orchestration.",
+          "family": "muse",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-04-08",
+          "last_updated": "2026-07-09",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 32000
+          },
+          "cost": {
+            "input": 1.25,
+            "output": 4.25,
+            "cache_read": 0.15
+          },
+          "display_name": "Muse Spark 1.1",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true
+            }
+          }
+        },
         {
           "id": "llama-4-scout-17b-16e-instruct-fp8",
           "name": "Llama-4-Scout-17B-16E-Instruct-FP8",

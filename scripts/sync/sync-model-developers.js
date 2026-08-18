@@ -285,22 +285,37 @@ function filterProviders(data, allowedIds) {
 		}
 	}
 
-	// Map llama channel's llama models to meta developer
-	if (allowedIds.includes("meta") && data.providers.llama) {
-		const llamaProvider = data.providers.llama;
-		const llamaModels = (llamaProvider.models || []).filter((m) =>
-			m.id?.toLowerCase().startsWith("llama"),
-		);
-		if (llamaModels.length > 0) {
+	// Build meta developer from upstream meta provider (Meta Model API,
+	// carries the Muse lineup) plus llama channel's llama models
+	if (allowedIds.includes("meta")) {
+		const metaModels = new Map();
+		const upstreamMeta = data.providers.meta || null;
+
+		if (upstreamMeta) {
+			for (const model of upstreamMeta.models || []) {
+				metaModels.set(model.id, deepClone(model));
+			}
+		}
+
+		if (data.providers.llama) {
+			for (const model of data.providers.llama.models || []) {
+				if (!model.id?.toLowerCase().startsWith("llama")) continue;
+				if (!metaModels.has(model.id)) {
+					metaModels.set(model.id, deepClone(model));
+				}
+			}
+		}
+
+		if (metaModels.size > 0) {
 			filtered.meta = {
-				...llamaProvider,
+				...(upstreamMeta || data.providers.llama || {}),
 				id: "meta",
 				name: "Meta",
 				display_name: "Meta",
-				models: llamaModels,
+				models: Array.from(metaModels.values()),
 			};
 			console.log(
-				`Mapped ${llamaModels.length} llama models to meta developer`,
+				`Merged ${metaModels.size} models (muse + llama) into meta developer`,
 			);
 		}
 	}

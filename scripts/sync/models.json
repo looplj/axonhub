@@ -1011,6 +1011,56 @@
       "vision": true
     }
   ],
+  "meta": [
+    {
+      "id": "muse-glimmer-30b",
+      "name": "Muse Glimmer 30B",
+      "description": "Muse Glimmer is a 30-billion-parameter open-weight multimodal model from Meta Superintelligence Labs, distilled from Muse Spark for always-on local agents, tool use, coding, and image understanding.",
+      "family": "muse",
+      "attachment": true,
+      "reasoning": {
+        "supported": true,
+        "default": true
+      },
+      "reasoning_options": [
+        {
+          "type": "effort",
+          "values": [
+            "low",
+            "medium",
+            "high",
+            "xhigh"
+          ]
+        }
+      ],
+      "tool_call": true,
+      "structured_output": true,
+      "temperature": true,
+      "knowledge": "2026-01",
+      "release_date": "2026-08-10",
+      "last_updated": "2026-08-10",
+      "modalities": {
+        "input": [
+          "text",
+          "image"
+        ],
+        "output": [
+          "text"
+        ]
+      },
+      "open_weights": true,
+      "limit": {
+        "context": 131072,
+        "output": 131072
+      },
+      "cost": {
+        "input": 0,
+        "output": 0
+      },
+      "display_name": "Muse Glimmer 30B",
+      "type": "chat"
+    }
+  ],
   "thinkingmachines": {
     "id": "thinkingmachines",
     "name": "Thinking Machines",
