@@ -34,7 +34,7 @@ services:
       - /var/run/postgresql:rw,noexec,nosuid,nodev,size=16m
     security_opt:
       - no-new-privileges:true
-    shm_size: 256m
+    shm_size: 512m
     restart: unless-stopped
     stop_grace_period: 30s
     logging:
