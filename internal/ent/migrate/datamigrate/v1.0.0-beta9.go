@@ -86,13 +86,16 @@ func (v *V1_0_0_Beta9) purgeProviderQuota(ctx context.Context, client *ent.Clien
 func (v *V1_0_0_Beta9) stripMonotonicUpdatedAt(ctx context.Context, client *ent.Client, dialectName string) error {
 	var stmt string
 	switch dialectName {
-	case dialect.Postgres:
-		stmt = `UPDATE channels SET updated_at = split_part(updated_at, ' m=', 1) WHERE updated_at LIKE '% m=%'`
 	case dialect.SQLite:
 		stmt = `UPDATE channels SET updated_at = substr(updated_at, 1, instr(updated_at, ' m=') - 1) WHERE updated_at LIKE '% m=%'`
+	case dialect.Postgres:
+		// PostgreSQL stores updated_at as a typed timestamptz value, so the
+		// legacy SQLite-only " m=+..." string suffix can never exist there.
+		log.Info(ctx, "Skipping channel updated_at monotonic cleanup on PostgreSQL")
+		return nil
 	default:
-		// MySQL/MariaDB and other dialects are not in scope for this cleanup;
-		// the "m=" suffix only ever originates from the default driver format.
+		// SQLite is the only dialect known to have persisted the driver's
+		// time.Time.String() output with a monotonic suffix.
 		log.Info(ctx, "Unsupported dialect, skipping channel updated_at monotonic cleanup",
 			log.String("dialect", dialectName))
 		return nil
