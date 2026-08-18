@@ -335,6 +335,18 @@ func TestPrepareModelsEndpoint(t *testing.T) {
 			expectedURL: "https://custom.api.com/custom/path/models",
 		},
 		{
+			name:        "OpenAI secure WebSocket endpoint",
+			channelType: channel.TypeOpenai,
+			baseURL:     "wss://api.openai.com/v1#",
+			expectedURL: "https://api.openai.com/v1/models",
+		},
+		{
+			name:        "OpenAI WebSocket endpoint",
+			channelType: channel.TypeOpenai,
+			baseURL:     "ws://api.example.com/v1",
+			expectedURL: "http://api.example.com/v1/models",
+		},
+		{
 			name:        "Deepseek",
 			channelType: channel.TypeDeepseek,
 			baseURL:     "https://api.deepseek.com",
