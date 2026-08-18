@@ -28,7 +28,7 @@ func TestBuildTestRequestUsesConfiguredPrompts(t *testing.T) {
 
 // TestBuildTestRequestUsesPingForResponsesWebSocket verifies WebSocket tests use a minimal compatible payload.
 func TestBuildTestRequestUsesPingForResponsesWebSocket(t *testing.T) {
-	req := buildChannelTestRequest("test-model", true, "system prompt", "user prompt", true)
+	req := buildChannelTestRequest("test-model", false, "system prompt", "user prompt", true)
 
 	require.Equal(t, "test-model", req.Model)
 	require.Len(t, req.Messages, 1)

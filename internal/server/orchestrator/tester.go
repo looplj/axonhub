@@ -97,6 +97,7 @@ func buildChannelTestRequest(model string, useStream bool, systemPrompt string, 
 			Content: llm.MessageContent{Content: lo.ToPtr(responsesWebSocketTestPrompt)},
 		}}
 		req.MaxCompletionTokens = nil
+		req.Stream = lo.ToPtr(true)
 	}
 
 	return req
