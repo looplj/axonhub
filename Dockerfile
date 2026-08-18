@@ -46,9 +46,15 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 FROM alpine
 
 RUN apk add --no-cache ca-certificates tzdata
+RUN addgroup -S -g 65532 axonhub \
+    && adduser -S -D -H -u 65532 -G axonhub axonhub
 
 WORKDIR /app
-COPY --from=backend-builder /build/axonhub /app/axonhub
+COPY --from=backend-builder --chown=axonhub:axonhub /build/axonhub /app/axonhub
+
+# The service does not need root privileges at runtime. Keep this in the image
+# as well as in Compose so the protection is preserved for other deployments.
+USER 65532:65532
 
 EXPOSE 8090
 ENTRYPOINT ["/app/axonhub"]

@@ -40,8 +40,10 @@ log:
 
 ### 3. 启动服务
 
+请先按[安全考虑](#安全考虑)创建 `.env` 文件。Compose 会强制要求显式提供镜像引用和 `DB_PASSWORD`，不会提供可变的镜像标签或弱密码默认值。
+
 ```bash
-docker-compose up -d
+docker compose --env-file .env up -d
 ```
 
 ### 4. 验证部署
@@ -65,11 +67,11 @@ version: '3.8'
 
 services:
   axonhub:
-    image: looplj/axonhub:latest
+    image: ${AXONHUB_IMAGE:?AXONHUB_IMAGE must be set}
     ports:
-      - "8090:8090"
+      - "127.0.0.1:8090:8090"
     volumes:
-      - ./config.yml:/app/config.yml
+      - ./config.yml:/app/config.yml:ro
       - axonhub_data:/app/data
     environment:
       - AXONHUB_SERVER_PORT=8090
@@ -88,17 +90,17 @@ version: '3.8'
 
 services:
   axonhub:
-    image: looplj/axonhub:latest
+    image: ${AXONHUB_IMAGE:?AXONHUB_IMAGE must be set}
     ports:
-      - "8090:8090"
+      - "127.0.0.1:8090:8090"
     volumes:
-      - ./config.yml:/app/config.yml
+      - ./config.yml:/app/config.yml:ro
       - axonhub_data:/app/data
       - ./logs:/app/logs
     environment:
       - AXONHUB_SERVER_PORT=8090
       - AXONHUB_DB_DIALECT=postgres
-      - AXONHUB_DB_DSN=postgres://axonhub:password@postgres:5432/axonhub
+      - AXONHUB_DB_DSN=postgres://axonhub:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/axonhub
       - AXONHUB_LOG_LEVEL=warn
       - AXONHUB_LOG_OUTPUT=file
       - AXONHUB_LOG_FILE_PATH=/app/logs/axonhub.log
@@ -111,7 +113,7 @@ services:
     environment:
       - POSTGRES_DB=axonhub
       - POSTGRES_USER=axonhub
-      - POSTGRES_PASSWORD=password
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?DB_PASSWORD must be set}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
@@ -180,6 +182,28 @@ AXONHUB_LOG_OUTPUT="stdio"
 
 ## 安全考虑
 
+仓库中的 `docker-compose.yml` 已启用以下安全默认值：
+
+- PostgreSQL 仅能通过 Compose 私有网络访问，不再发布到宿主机端口。
+- AxonHub 默认只绑定 `127.0.0.1`；如果需要由反向代理或外部监听，请显式设置 `AXONHUB_BIND_ADDRESS`。
+- `DB_PASSWORD` 为必填项，不再提供内置弱密码。
+- 应用以非 root 用户运行，丢弃 Linux capabilities，启用 `no-new-privileges`、只读根文件系统、受限 `/tmp` tmpfs、PID/资源限制和容器日志轮转。
+- 应用和数据库使用隔离网络，数据库无法访问上游 AI 服务。
+
+启动前创建权限受限的本地 `.env` 文件：
+
+```bash
+umask 077
+cat > .env <<'EOF'
+DB_PASSWORD=替换为足够长的随机密码
+# 请将两个占位符替换为实际发布镜像的 digest。
+AXONHUB_IMAGE=looplj/axonhub@sha256:replace-with-axonhub-digest
+POSTGRES_IMAGE=postgres@sha256:replace-with-postgres-digest
+EOF
+```
+
+请将 `AXONHUB_IMAGE` 和 `POSTGRES_IMAGE` 的占位符替换为 digest 固定的镜像引用后再启动。`.env` 不应提交到版本库，并应按部署流程轮换 `DB_PASSWORD`。
+
 ### 网络安全
 
 ```yaml
@@ -196,7 +220,7 @@ networks:
 
 ### 密钥管理
 
-使用 Docker secrets 或环境文件：
+Compose 需要使用数据库密码构造 AxonHub 的 PostgreSQL DSN，因此通过本地环境注入 `DB_PASSWORD`，而不是把密码写入 YAML。对于 Swarm/Kubernetes 或其他密钥管理系统，请在部署时注入，不要将密钥存入仓库：
 
 ```bash
 # .env 文件
@@ -204,10 +228,9 @@ DB_PASSWORD=your-secure-password
 API_KEY_SECRET=your-api-key-secret
 ```
 
-```yaml
-axonhub:
-  env_file:
-    - .env
+```bash
+chmod 600 .env
+docker compose --env-file .env up -d
 ```
 
 ## 监控和日志
@@ -257,7 +280,7 @@ axonhub:
 ```yaml
 services:
   axonhub:
-    image: looplj/axonhub:latest
+    image: ${AXONHUB_IMAGE:?AXONHUB_IMAGE must be set}
     deploy:
       replicas: 3
     networks:

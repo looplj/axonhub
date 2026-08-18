@@ -10,51 +10,86 @@
 #
 # 3. 简单部署 - 如果不需要复杂配置，可以注释掉 config 的 volumes 配置
 #    仅使用环境变量进行基本配置即可运行
+#
+# 安全部署建议：
+# - 必须设置 DB_PASSWORD，不再提供弱默认密码
+# - 必须显式设置 AXONHUB_IMAGE 和 POSTGRES_IMAGE；生产环境使用不可变 digest
+# - 默认只绑定到宿主机回环地址；需要公网访问时请显式设置 AXONHUB_BIND_ADDRESS
 
 services:
   # PostgreSQL 数据库
   postgres:
-    image: postgres:16-alpine
-    container_name: axonhub-postgres
-    shm_size: 512mb
+    image: ${POSTGRES_IMAGE:?POSTGRES_IMAGE must be set (prefer an immutable digest)}
     environment:
       POSTGRES_DB: axonhub
       POSTGRES_USER: axonhub
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-axonhub_password}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
     networks:
-      - axonhub-network
+      - axonhub-backend
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+      - /var/run/postgresql:rw,noexec,nosuid,nodev,size=16m
+    security_opt:
+      - no-new-privileges:true
+    shm_size: 512m
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U axonhub"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   # AxonHub 主服务
   axonhub:
-    image: looplj/axonhub:latest
-    container_name: axonhub-app
+    image: ${AXONHUB_IMAGE:?AXONHUB_IMAGE must be set (prefer an immutable digest)}
     environment:
       # 数据库配置可以通过环境变量设置，优先级高于配置文件
       AXONHUB_DB_DIALECT: postgres
-      AXONHUB_DB_DSN: postgres://axonhub:${DB_PASSWORD:-axonhub_password}@postgres:5432/axonhub?sslmode=disable
+      AXONHUB_DB_DSN: "postgres://axonhub:${DB_PASSWORD:?DB_PASSWORD must be set}@postgres:5432/axonhub?sslmode=disable"
     ports:
-      - "8090:8090"
+      - "${AXONHUB_BIND_ADDRESS:-127.0.0.1}:${AXONHUB_HOST_PORT:-8090}:8090"
     volumes:
       # 配置文件挂载 - 用于复杂配置，如缓存、日志、监控等
       # 参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
       - ./config.yml:/app/config.yml:ro
       # - axonhub_data:/data
     networks:
-      - axonhub-network
+      - axonhub-backend
+      - axonhub-egress
     depends_on:
       postgres:
         condition: service_healthy
+    user: "65532:65532"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "${AXONHUB_CPU_LIMIT:-2.0}"
+          memory: ${AXONHUB_MEMORY_LIMIT:-1G}
+          pids: 256
     restart: unless-stopped
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
     healthcheck:
       test:
         [
@@ -72,22 +107,33 @@ services:
 
   # SQLite 配置示例 (取消注释以使用 SQLite)
   # 注意: 此服务与上面的 'axonhub' 服务冲突。请只启用其中一个。
-  # 先执行 
+  # 先执行（目录需允许容器内的 65532 用户写入）
   # mkdir data
-  # chmod 777 data
+  # chmod 750 data
+  # chown 65532:65532 data
   # axonhub-sqlite:
-  #   image: looplj/axonhub:latest
+  #   image: ${AXONHUB_IMAGE:?AXONHUB_IMAGE must be set (prefer an immutable digest)}
   #   container_name: axonhub-sqlite-app
   #   environment:
   #     AXONHUB_DB_DIALECT: sqlite3
   #     AXONHUB_DB_DSN: file:/data/axonhub.db?cache=shared&_fk=1&_pragma=journal_mode(WAL)
   #   ports:
-  #     - "8090:8090"
+  #     - "${AXONHUB_BIND_ADDRESS:-127.0.0.1}:${AXONHUB_HOST_PORT:-8090}:8090"
   #   volumes:
   #     # 配置文件挂载 - 用于复杂配置
   #     # 参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
   #     - ./config.yml:/app/config.yml:ro
   #     - ./data:/data
+  #   user: "65532:65532"
+  #   read_only: true
+  #   tmpfs:
+  #     - /tmp:rw,noexec,nosuid,nodev,size=64m
+  #   cap_drop:
+  #     - ALL
+  #   security_opt:
+  #     - no-new-privileges:true
+  #   networks:
+  #     - axonhub-backend
   #   restart: unless-stopped
   #   healthcheck:
   #     test:
@@ -107,22 +153,20 @@ services:
   # MySQL 配置示例 (取消注释以使用 MySQL)
   # 注意: 此服务与上面的 'axonhub' 服务冲突。请只启用其中一个。
   # mysql:
-  #   image: mysql:8.0
+  #   image: ${MYSQL_IMAGE:-mysql:8.0}
   #   container_name: axonhub-mysql
   #   environment:
-  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-axonhub_root_password}
+  #     MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD must be set}
   #     MYSQL_DATABASE: axonhub
   #     MYSQL_USER: axonhub
-  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD:-axonhub_password}
+  #     MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}
   #   volumes:
   #     - mysql_data:/var/lib/mysql
-  #   ports:
-  #     - "3306:3306"
   #   networks:
-  #     - axonhub-network
+  #     - axonhub-backend
   #   restart: unless-stopped
   #   healthcheck:
-  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-axonhub_root_password}"]
+  #     test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
   #     interval: 10s
   #     timeout: 5s
   #     retries: 5
@@ -130,21 +174,30 @@ services:
   # # AxonHub 主服务 (MySQL 版本)
   # # 注意: 取消注释此服务时，请注释掉上面的 PostgreSQL 版本 axonhub 服务
   # axonhub-mysql:
-  #   image: looplj/axonhub:latest
+  #   image: ${AXONHUB_IMAGE:?AXONHUB_IMAGE must be set (prefer an immutable digest)}
   #   container_name: axonhub-mysql-app
   #   environment:
   #     AXONHUB_DB_DIALECT: mysql
   #     # DSN 格式参考: ${MYSQL_USER}:${MYSQL_PASSWORD}@tcp(mysql:3306)/${MYSQL_DATABASE}?charset=utf8mb4&parseTime=True&loc=Local
-  #     AXONHUB_DB_DSN: axonhub:${MYSQL_PASSWORD:-axonhub_password}@tcp(mysql:3306)/axonhub?charset=utf8mb4&parseTime=True&loc=Local
+  #     AXONHUB_DB_DSN: axonhub:${MYSQL_PASSWORD:?MYSQL_PASSWORD must be set}@tcp(mysql:3306)/axonhub?charset=utf8mb4&parseTime=True&loc=Local
   #   ports:
-  #     - "8090:8090"
+  #     - "${AXONHUB_BIND_ADDRESS:-127.0.0.1}:${AXONHUB_HOST_PORT:-8090}:8090"
   #   volumes:
   #     # 配置文件挂载 - 用于复杂配置
   #     # 参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
   #     - ./config.yml:/app/config.yml:ro
   #     # - axonhub_data:/data
+  #   user: "65532:65532"
+  #   read_only: true
+  #   tmpfs:
+  #     - /tmp:rw,noexec,nosuid,nodev,size=64m
+  #   cap_drop:
+  #     - ALL
+  #   security_opt:
+  #     - no-new-privileges:true
   #   networks:
-  #     - axonhub-network
+  #     - axonhub-backend
+  #     - axonhub-egress
   #   depends_on:
   #     mysql:
   #       condition: service_healthy
@@ -169,5 +222,9 @@ volumes:
   mysql_data:
 
 networks:
-  axonhub-network:
+  # Database traffic is private to the Compose project. The app also joins
+  # axonhub-egress so it can reach configured upstream AI providers.
+  axonhub-backend:
+    internal: true
+  axonhub-egress:
     driver: bridge

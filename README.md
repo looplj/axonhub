@@ -386,15 +386,19 @@ AXONHUB_LOG_LEVEL=info
 git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
-# 设置环境变量
-export AXONHUB_DB_DIALECT="tidb"
-export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
+# 创建本地环境文件（请替换镜像 digest 和密码）
+umask 077
+cat > .env <<'EOF'
+DB_PASSWORD=replace-with-a-long-random-password
+AXONHUB_IMAGE=looplj/axonhub@sha256:replace-with-axonhub-digest
+POSTGRES_IMAGE=postgres@sha256:replace-with-postgres-digest
+EOF
 
 # 启动服务
-docker-compose up -d
+docker compose --env-file .env up -d
 
 # 查看状态
-docker-compose ps
+docker compose ps
 ```
 
 #### Helm Kubernetes 部署 | Helm Kubernetes Deployment

@@ -264,6 +264,58 @@ func TestOutboundTransformer_TransformStream(t *testing.T) {
 	require.Equal(t, ", world!", *results[1].Choices[0].Delta.Content.Content)
 }
 
+func TestOutboundTransformer_TransformStream_AllowsMissingResponseID(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	events := []*httpclient.StreamEvent{
+		{
+			Data: mustMarshal(&GenerateContentResponse{
+				ModelVersion: "gemini-2.5-flash",
+				Candidates: []*Candidate{{
+					Index: 0,
+					Content: &Content{
+						Role:  "model",
+						Parts: []*Part{{Text: "第一段"}},
+					},
+				}},
+			}),
+		},
+		{
+			Data: mustMarshal(&GenerateContentResponse{
+				ModelVersion: "gemini-2.5-flash",
+				Candidates: []*Candidate{{
+					Index: 0,
+					Content: &Content{
+						Role:  "model",
+						Parts: []*Part{{Text: "第二段"}},
+					},
+					FinishReason: "STOP",
+				}},
+			}),
+		},
+	}
+
+	stream, err := transformer.TransformStream(context.Background(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	var responses []*llm.Response
+	for stream.Next() {
+		if response := stream.Current(); response != nil && response.Object != "[DONE]" {
+			responses = append(responses, response)
+		}
+	}
+
+	require.NoError(t, stream.Err())
+	require.Len(t, responses, 2)
+	require.NotEmpty(t, responses[0].ID)
+	require.Equal(t, responses[0].ID, responses[1].ID)
+}
+
 func TestOutboundTransformer_TransformStream_ToolCallIndexAccumulation(t *testing.T) {
 	transformer := &OutboundTransformer{
 		config: Config{

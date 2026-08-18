@@ -398,15 +398,19 @@ For detailed configuration instructions, please refer to [configuration document
 git clone https://github.com/looplj/axonhub.git
 cd axonhub
 
-# Set environment variables
-export AXONHUB_DB_DIALECT="tidb"
-export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
+# Create a local environment file (replace image digests and password)
+umask 077
+cat > .env <<'EOF'
+DB_PASSWORD=replace-with-a-long-random-password
+AXONHUB_IMAGE=looplj/axonhub@sha256:replace-with-axonhub-digest
+POSTGRES_IMAGE=postgres@sha256:replace-with-postgres-digest
+EOF
 
 # Start services
-docker-compose up -d
+docker compose --env-file .env up -d
 
 # Check status
-docker-compose ps
+docker compose ps
 ```
 
 #### Helm Kubernetes Deployment
