@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestBuildTestRequestUsesConfiguredPrompts verifies the channel test request remains minimal.
 func TestBuildTestRequestUsesConfiguredPrompts(t *testing.T) {
 	req := buildChannelTestRequest("test-model", true, "system prompt", "user prompt")
 
