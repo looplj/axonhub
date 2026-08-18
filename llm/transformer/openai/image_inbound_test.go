@@ -3,6 +3,7 @@ package openai
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
@@ -62,6 +63,170 @@ func TestImageInboundTransformer_TransformRequest_Generation_JSON(t *testing.T) 
 	assert.Equal(t, "https://api.openai.com/v1/images/generations", outReq.URL)
 	assert.Contains(t, string(outReq.Body), `"response_format":"url"`)
 	assert.Contains(t, string(outReq.Body), `"n":2`)
+}
+
+func TestImageInboundTransformer_TransformRequest_Generation_WithSingleImage(t *testing.T) {
+	inbound := NewImageGenerationInboundTransformer()
+
+	// 1x1 red pixel PNG
+	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"prompt": "make this image brighter",
+		"model":  "gpt-image-1",
+		"image":  dataURL,
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/generations",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+
+	require.NotNil(t, llmReq.Image)
+	require.Len(t, llmReq.Image.Images, 1)
+	assert.Equal(t, pngBytes, llmReq.Image.Images[0])
+}
+
+func TestImageInboundTransformer_TransformRequest_Generation_WithMultipleImages(t *testing.T) {
+	inbound := NewImageGenerationInboundTransformer()
+
+	pngBytes1 := []byte{0x89, 0x50, 0x4E, 0x47}
+	pngBytes2 := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D}
+	dataURL1 := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes1)
+	dataURL2 := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes2)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"prompt": "combine these images",
+		"model":  "gpt-image-1",
+		"image":  []string{dataURL1, dataURL2},
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/generations",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+
+	require.NotNil(t, llmReq.Image)
+	require.Len(t, llmReq.Image.Images, 2)
+	assert.Equal(t, pngBytes1, llmReq.Image.Images[0])
+	assert.Equal(t, pngBytes2, llmReq.Image.Images[1])
+}
+
+func TestImageInboundTransformer_TransformRequest_Generation_WithInvalidImageField(t *testing.T) {
+	inbound := NewImageGenerationInboundTransformer()
+
+	reqBody := []byte(`{
+		"prompt":"a cat",
+		"model":"gpt-image-1",
+		"image":123
+	}`)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/generations",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	_, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "image field must be a string or array of strings")
+}
+
+func TestImageInboundTransformer_TransformRequest_Generation_WithNonDataURLImage(t *testing.T) {
+	inbound := NewImageGenerationInboundTransformer()
+
+	reqBody := []byte(`{
+		"prompt":"a cat",
+		"model":"gpt-image-1",
+		"image":"https://example.com/image.png"
+	}`)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/generations",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	_, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "image must be a data URL")
+}
+
+func TestImageInboundTransformer_TransformRequest_Generation_WithNonBase64DataURL(t *testing.T) {
+	inbound := NewImageGenerationInboundTransformer()
+
+	reqBody := []byte(`{
+		"prompt":"a cat",
+		"model":"gpt-image-1",
+		"image":"data:image/png,raw-not-base64"
+	}`)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/generations",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	_, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "must be base64-encoded")
+}
+
+func TestImageInboundTransformer_Generation_RoundTrip_WithImage(t *testing.T) {
+	inbound := NewImageGenerationInboundTransformer()
+
+	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"prompt": "make this brighter",
+		"model":  "gpt-image-1",
+		"image":  dataURL,
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/generations",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+
+	outReq, err := ot.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	assert.Equal(t, "https://api.openai.com/v1/images/generations", outReq.URL)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(outReq.Body, &body))
+
+	imageField, ok := body["image"].(string)
+	require.True(t, ok, "image should be forwarded as a string in the outbound request")
+	assert.Contains(t, imageField, "data:image/png;base64,")
 }
 
 func TestImageInboundTransformer_TransformRequest_Edit_Multipart_WithMask(t *testing.T) {
