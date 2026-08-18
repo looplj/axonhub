@@ -233,7 +233,7 @@ func (svc *ChannelOverrideTemplateService) ApplyTemplate(
 	}
 
 	if svc.channelService != nil {
-		svc.channelService.asyncReloadChannels()
+		svc.channelService.reloadChannelsAfterCommit(ctx)
 	}
 
 	return updated, nil
@@ -290,7 +290,7 @@ func (svc *ChannelOverrideTemplateService) ClearTemplates(
 	}
 
 	if svc.channelService != nil {
-		svc.channelService.asyncReloadChannels()
+		svc.channelService.reloadChannelsAfterCommit(ctx)
 	}
 
 	return updated, nil
