@@ -70,6 +70,7 @@ type TestChannelRequest struct {
 	ModelID   *string
 }
 
+// buildChannelTestRequest creates the minimal request used by channel tests.
 func buildChannelTestRequest(model string, useStream bool, systemPrompt string, userPrompt string) *llm.Request {
 	return &llm.Request{
 		Model: model,
