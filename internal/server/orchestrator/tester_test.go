@@ -15,6 +15,6 @@ func TestBuildTestRequestUsesConfiguredPrompts(t *testing.T) {
 	require.Equal(t, "system prompt", *req.Messages[0].Content.Content)
 	require.Equal(t, "user", req.Messages[1].Role)
 	require.Equal(t, "user prompt", *req.Messages[1].Content.Content)
-	require.Equal(t, int64(256), *req.MaxCompletionTokens)
+	require.Nil(t, req.MaxCompletionTokens)
 	require.True(t, *req.Stream)
 }

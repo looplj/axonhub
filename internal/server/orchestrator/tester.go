@@ -83,8 +83,7 @@ func buildChannelTestRequest(model string, useStream bool, systemPrompt string, 
 				Content: llm.MessageContent{Content: lo.ToPtr(userPrompt)},
 			},
 		},
-		MaxCompletionTokens: lo.ToPtr(int64(256)),
-		Stream:              lo.ToPtr(useStream),
+		Stream: lo.ToPtr(useStream),
 	}
 }
 
