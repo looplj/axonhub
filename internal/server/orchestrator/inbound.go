@@ -119,15 +119,26 @@ func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 		return true
 	}
 
-	choices := gjson.GetBytes(event.Data, "choices")
-	if !choices.IsArray() {
+	// OpenAI chat completions: choices[].finish_reason
+	if hasNonEmptyJSONStringField(event.Data, "choices", "finish_reason") {
+		return true
+	}
+
+	// Gemini generateContent streams have no [DONE] sentinel. Completion is
+	// signaled by candidates[].finishReason (e.g. STOP, MAX_TOKENS, SAFETY).
+	return hasNonEmptyJSONStringField(event.Data, "candidates", "finishReason")
+}
+
+func hasNonEmptyJSONStringField(data []byte, arrayPath, field string) bool {
+	arr := gjson.GetBytes(data, arrayPath)
+	if !arr.IsArray() {
 		return false
 	}
 
 	completed := false
-	choices.ForEach(func(_, choice gjson.Result) bool {
-		finishReason := choice.Get("finish_reason")
-		completed = finishReason.Type == gjson.String && finishReason.String() != ""
+	arr.ForEach(func(_, item gjson.Result) bool {
+		value := item.Get(field)
+		completed = value.Type == gjson.String && value.String() != ""
 
 		return !completed
 	})
