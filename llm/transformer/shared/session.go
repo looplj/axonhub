@@ -10,6 +10,13 @@ type sessionContextKey struct{}
 // sessionScopeContextKey is the key used to namespace client-provided session IDs.
 type sessionScopeContextKey struct{}
 
+// responsesWebSocketContextKey marks requests received through the downstream
+// Responses WebSocket endpoint.
+type responsesWebSocketContextKey struct{}
+
+// responsesAPIContextKey marks requests using the OpenAI Responses API.
+type responsesAPIContextKey struct{}
+
 // WithSessionID sets the session ID in the context.
 // This is essential for features that require cross-request state, such as:
 // 1. Prompt Caching: Providers like Anthropic use session/trace IDs to optimize cache hits.
@@ -33,4 +40,28 @@ func WithSessionScope(ctx context.Context, scope string) context.Context {
 func GetSessionScope(ctx context.Context) (string, bool) {
 	scope, ok := ctx.Value(sessionScopeContextKey{}).(string)
 	return scope, ok
+}
+
+// WithResponsesWebSocket marks a request as originating from the downstream
+// Responses WebSocket endpoint.
+func WithResponsesWebSocket(ctx context.Context) context.Context {
+	return context.WithValue(WithResponsesAPI(ctx), responsesWebSocketContextKey{}, true)
+}
+
+// IsResponsesWebSocket reports whether a request originated from the
+// downstream Responses WebSocket endpoint.
+func IsResponsesWebSocket(ctx context.Context) bool {
+	enabled, _ := ctx.Value(responsesWebSocketContextKey{}).(bool)
+	return enabled
+}
+
+// WithResponsesAPI marks a request as using the OpenAI Responses API.
+func WithResponsesAPI(ctx context.Context) context.Context {
+	return context.WithValue(ctx, responsesAPIContextKey{}, true)
+}
+
+// IsResponsesAPI reports whether a request uses the OpenAI Responses API.
+func IsResponsesAPI(ctx context.Context) bool {
+	enabled, _ := ctx.Value(responsesAPIContextKey{}).(bool)
+	return enabled
 }

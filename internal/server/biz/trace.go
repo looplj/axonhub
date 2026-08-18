@@ -1504,7 +1504,7 @@ func getInboundTransformer(format llm.APIFormat) (transformer.Inbound, error) {
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
 		return openai.NewInboundTransformer(), nil
-	case llm.APIFormatOpenAIResponse:
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket:
 		return responses.NewInboundTransformer(), nil
 	case llm.APIFormatAnthropicMessage:
 		return anthropic.NewInboundTransformer(), nil
@@ -1526,7 +1526,7 @@ func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) 
 		}
 
 		return openai.NewOutboundTransformerWithConfig(config)
-	case llm.APIFormatOpenAIResponse:
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket:
 		return responses.NewOutboundTransformer("https://api.openai.com/v1", "dummy")
 	case llm.APIFormatAnthropicMessage:
 		config := &anthropic.Config{

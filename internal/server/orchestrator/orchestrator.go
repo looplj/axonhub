@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline/stream"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func NewChatCompletionOrchestrator(
@@ -98,6 +99,7 @@ func NewChatCompletionOrchestrator(
 		modelCircuitBreaker:        modelCircuitBreaker,
 		quotaProvider:              quotaProvider,
 		proxy:                      nil,
+		responsesSessions:          newResponsesSessionStore(requestService.LoadCompletedResponsesSession),
 	}
 }
 
@@ -140,6 +142,8 @@ type ChatCompletionOrchestrator struct {
 	// proxy is the proxy configuration for testing
 	// If set, it will override the channel's default proxy configuration
 	proxy *httpclient.ProxyConfig
+
+	responsesSessions *responsesSessionStore
 }
 
 func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector CandidateSelector) *ChatCompletionOrchestrator {
@@ -169,6 +173,14 @@ type ChatCompletionResult struct {
 }
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
+	var preparedResponsesBody []byte
+	if shared.IsResponsesAPI(ctx) && request != nil && processor.responsesSessions != nil {
+		var sessionID string
+		preparedResponsesBody, sessionID = processor.responsesSessions.prepare(ctx, request.Body)
+		request.Body = preparedResponsesBody
+		ctx = shared.WithSessionID(ctx, sessionID)
+	}
+
 	// API key providers cannot return a derived context, so install the shared
 	// request container before provider selection mutates it.
 	ctx = contexts.EnsureContainer(ctx)
@@ -269,6 +281,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// This allows override headers to modify the User-Agent if configured.
 		applyUserAgentPassThrough(outbound, processor.SystemService),
 		applyOverrideRequestHeaders(outbound),
+		// Remove transport-incompatible fields after pass-through and overrides,
+		// so persistence and execution observe the same provider request.
+		finalizeTransportRequest(outbound),
 
 		// Unified performance tracking middleware.
 		withPerformanceRecording(outbound),
@@ -341,10 +356,16 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	// Return result based on stream type
 	if result.Stream {
+		if preparedResponsesBody != nil {
+			result.EventStream = processor.responsesSessions.wrapStream(ctx, preparedResponsesBody, result.EventStream)
+		}
 		return ChatCompletionResult{
 			ChatCompletion:       nil,
 			ChatCompletionStream: result.EventStream,
 		}, nil
+	}
+	if preparedResponsesBody != nil && result.Response != nil {
+		processor.responsesSessions.record(ctx, preparedResponsesBody, result.Response.Body)
 	}
 
 	return ChatCompletionResult{

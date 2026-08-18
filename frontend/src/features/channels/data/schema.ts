@@ -4,6 +4,7 @@ import { pageInfoSchema } from '@/gql/pagination';
 export const apiFormatSchema = z.enum([
   'openai/chat_completions',
   'openai/responses',
+  'openai/responses-ws',
   'openai/image_generation',
   'openai/image_edit',
   'openai/image_variation',
