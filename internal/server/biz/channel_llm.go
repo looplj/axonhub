@@ -40,6 +40,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/copilot"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/opencode"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
 	"github.com/looplj/axonhub/llm/transformer/xai"
 	xaisubscription "github.com/looplj/axonhub/llm/transformer/xai/subscription"
@@ -949,6 +950,23 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		ch.Outbound = transformer
 
 		return ch, nil
+	case channel.TypeOpencodeGo:
+		var reasoningEffortMapping []llm.ReasoningEffortMapping
+		if c.Settings != nil {
+			reasoningEffortMapping = c.Settings.TransformOptions.ReasoningEffortMapping
+		}
+		transformer, err := opencode.NewOutboundTransformerWithConfig(&opencode.Config{
+			BaseURL:                c.BaseURL,
+			APIKeyProvider:         getAPIKeyProvider(ch),
+			ReasoningEffortMapping: reasoningEffortMapping,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
 	case channel.TypeCodex, channel.TypeFenno:
 		transport := primaryEndpointTransport(c, llm.APIFormatOpenAIResponse.String())
 		transformer, err := svc.buildCodexOutbound(c, ch, c.BaseURL, transport, httpClient)
@@ -1021,7 +1039,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 	case channel.TypeOpenai, channel.TypeAtlascloud, channel.TypeDeepinfra, channel.TypeQiniu, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub,
-		channel.TypeOpencodeGo, channel.TypeEvolink, channel.TypeGroq:
+		channel.TypeEvolink, channel.TypeGroq:
 		var reasoningEffortMapping []llm.ReasoningEffortMapping
 		if c.Settings != nil {
 			reasoningEffortMapping = c.Settings.TransformOptions.ReasoningEffortMapping
