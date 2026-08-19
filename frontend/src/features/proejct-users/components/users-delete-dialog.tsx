@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { IconAlertTriangle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { formatUserName } from '@/lib/utils';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,7 +23,7 @@ export function UsersDeleteDialog({ open, onOpenChange, currentRow }: Props) {
   const [confirmText, setConfirmText] = useState('');
   const removeUser = useRemoveUserFromProject();
 
-  const fullName = `${currentRow.firstName} ${currentRow.lastName}`;
+  const fullName = formatUserName(currentRow.firstName, currentRow.lastName);
 
   const handleRemove = async () => {
     if (confirmText.trim() !== fullName) return;

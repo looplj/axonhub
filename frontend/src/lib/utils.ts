@@ -17,3 +17,20 @@ export const extractNumberIDAsNumber = (id: string) => {
 export const buildGUID = (type: string, id: string) => {
   return `gid://axonhub/${type}/${id}`;
 };
+
+const cjkCharacterPattern = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+
+export function isCJKName(...names: Array<string | null | undefined>) {
+  return names.some((name) => !!name && cjkCharacterPattern.test(name));
+}
+
+export function formatUserName(firstName?: string | null, lastName?: string | null) {
+  const first = firstName?.trim() ?? '';
+  const last = lastName?.trim() ?? '';
+
+  if (first && last) {
+    return isCJKName(first, last) ? `${last}${first}` : `${first} ${last}`;
+  }
+
+  return first || last;
+}

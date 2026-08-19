@@ -3,7 +3,7 @@ import { ColumnDef, Table, Row } from '@tanstack/react-table';
 import { Copy, Eye, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { cn, extractNumberID } from '@/lib/utils';
+import { cn, extractNumberID, formatUserName } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
@@ -151,7 +151,7 @@ export const createColumns = (
           header: ({ column }) => <DataTableColumnHeader column={column} title={t('apikeys.columns.creator')} />,
           cell: ({ row }) => {
             const creator = row.original.user;
-            const displayName = creator ? `${creator.firstName} ${creator.lastName}` : t('apikeys.user.deleted');
+            const displayName = creator ? formatUserName(creator.firstName, creator.lastName) : t('apikeys.user.deleted');
             return <LongText className='text-muted-foreground max-w-24'>{displayName}</LongText>;
           },
           filterFn: (row, _id, value) => {

@@ -18,11 +18,12 @@ import { Command } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
 import { useRoutePermissions } from '@/hooks/useRoutePermissions';
+import { formatUserName, isCJKName } from '@/lib/utils';
 import { useMe } from '@/features/auth/data/auth';
 import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types';
 
 export function useSidebarData(): SidebarData {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const { user: authUser } = useAuthStore((state) => state.auth);
   const { data: meData } = useMe();
   const { filterNavGroups } = useRoutePermissions();
@@ -33,8 +34,7 @@ export function useSidebarData(): SidebarData {
   // Generate user initials for avatar
   const getInitials = (firstName?: string, lastName?: string, email?: string) => {
     if (firstName && lastName) {
-      const isZh = i18n.language?.startsWith('zh');
-      const [first, second] = isZh ? [lastName, firstName] : [firstName, lastName];
+      const [first, second] = isCJKName(firstName, lastName) ? [lastName, firstName] : [firstName, lastName];
       return `${first.charAt(0)}${second.charAt(0)}`.toUpperCase();
     }
     if (firstName) {
@@ -49,8 +49,7 @@ export function useSidebarData(): SidebarData {
   // Generate user display name
   const getDisplayName = (firstName?: string, lastName?: string, email?: string) => {
     if (firstName && lastName) {
-      const isZh = i18n.language?.startsWith('zh');
-      return isZh ? `${lastName} ${firstName}` : `${firstName} ${lastName}`;
+      return formatUserName(firstName, lastName);
     }
     if (firstName) {
       return firstName;

@@ -26,6 +26,7 @@ func TestProjectOwnerCanReadMemberPersonalKeyRequests(t *testing.T) {
 	owner := client.User.Create().SetEmail("owner@example.com").SetPassword("password").SaveX(setupCtx)
 	creator := client.User.Create().SetEmail("creator@example.com").SetPassword("password").SaveX(setupCtx)
 	member := client.User.Create().SetEmail("member@example.com").SetPassword("password").SaveX(setupCtx)
+	client.User.Create().SetEmail("outside@example.com").SetPassword("password").SaveX(setupCtx)
 
 	client.UserProject.Create().SetUserID(owner.ID).SetProjectID(project.ID).SetIsOwner(true).SaveX(setupCtx)
 	client.UserProject.Create().SetUserID(creator.ID).SetProjectID(project.ID).SetScopes([]string{string(scopes.ScopeReadRequests)}).SaveX(setupCtx)
@@ -65,6 +66,25 @@ func TestProjectOwnerCanReadMemberPersonalKeyRequests(t *testing.T) {
 		usageLogCount, err := client.UsageLog.Query().Count(ctx)
 		return requestCount, usageLogCount, err
 	}
+	projectOwner := loadUser(owner.ID)
+	ownerCtx := ent.NewContext(context.Background(), client)
+	ownerCtx = contexts.WithProjectID(contexts.WithUser(ownerCtx, projectOwner), project.ID)
+
+	memberCount, err := client.User.Query().Count(ownerCtx)
+	require.NoError(t, err)
+	require.Equal(t, 3, memberCount)
+
+	personalKeyCount, err := client.APIKey.Query().Count(ownerCtx)
+	require.NoError(t, err)
+	require.Equal(t, 1, personalKeyCount)
+	loadedCreator, err := personalKey.QueryUser().Only(ownerCtx)
+	require.NoError(t, err)
+	require.Equal(t, creator.ID, loadedCreator.ID)
+
+	memberCtx := ent.NewContext(context.Background(), client)
+	memberCtx = contexts.WithProjectID(contexts.WithUser(memberCtx, loadUser(member.ID)), project.ID)
+	_, err = client.User.Query().Count(memberCtx)
+	require.Error(t, err)
 
 	tests := []struct {
 		name              string
@@ -72,7 +92,7 @@ func TestProjectOwnerCanReadMemberPersonalKeyRequests(t *testing.T) {
 		wantRequestCount  int
 		wantUsageLogCount int
 	}{
-		{name: "project owner", user: loadUser(owner.ID), wantRequestCount: 1, wantUsageLogCount: 1},
+		{name: "project owner", user: projectOwner, wantRequestCount: 1, wantUsageLogCount: 1},
 		{name: "personal key creator", user: loadUser(creator.ID), wantRequestCount: 1, wantUsageLogCount: 1},
 		{name: "regular member", user: loadUser(member.ID), wantRequestCount: 0, wantUsageLogCount: 0},
 	}
