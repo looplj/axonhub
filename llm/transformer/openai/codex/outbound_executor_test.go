@@ -359,7 +359,7 @@ func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T
 			{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"id":"msg_test_456","type":"message","status":"completed","role":"assistant"}}`)},
 			{Type: "response.completed", Data: []byte(`{"type":"response.completed","sequence_number":6,"response":{"id":"resp_test_123","object":"response","created_at":1700000000,"model":"gpt-5-codex","status":"completed","output":[]}}`)},
 		},
-	})
+	}
 	executor := outbound.CustomizeExecutor(mock)
 
 	response, err := executor.Do(ctx, request)
