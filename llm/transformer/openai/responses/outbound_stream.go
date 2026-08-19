@@ -646,11 +646,15 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 		if streamEvent.Item.Type == "tool_search_call" {
 			if tc, ok := s.state.toolCalls[streamEvent.Item.CallID]; ok && tc.ResponseToolSearchCall != nil {
+				executionChanged := false
 				if streamEvent.Item.Execution != "" {
+					executionChanged = tc.ResponseToolSearchCall.Execution != streamEvent.Item.Execution
 					tc.ResponseToolSearchCall.Execution = streamEvent.Item.Execution
 				}
+				missingArgs := ""
 				if streamEvent.Item.Arguments != "" {
-					missingArgs, err := toolSearchMissingArguments(
+					var err error
+					missingArgs, err = toolSearchMissingArguments(
 						streamEvent.Item.CallID,
 						tc.ResponseToolSearchCall.Arguments,
 						streamEvent.Item.Arguments,
@@ -659,27 +663,27 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 						return err
 					}
 					tc.ResponseToolSearchCall.Arguments = streamEvent.Item.Arguments
-					if missingArgs == "" {
-						return nil
-					}
-
-					toolCallIdx := s.state.toolCallIndex[streamEvent.Item.CallID]
-					resp.Choices = []llm.Choice{{
-						Index: 0,
-						Delta: &llm.Message{
-							ToolCalls: []llm.ToolCall{{
-								Index: toolCallIdx,
-								Type:  llm.ToolTypeResponsesToolSearch,
-								ResponseToolSearchCall: &llm.ResponseToolSearchCall{
-									CallID:    streamEvent.Item.CallID,
-									Execution: tc.ResponseToolSearchCall.Execution,
-									Arguments: missingArgs,
-								},
-							}},
-						},
-					}}
-					break
 				}
+				if !executionChanged && missingArgs == "" {
+					return nil
+				}
+
+				toolCallIdx := s.state.toolCallIndex[streamEvent.Item.CallID]
+				resp.Choices = []llm.Choice{{
+					Index: 0,
+					Delta: &llm.Message{
+						ToolCalls: []llm.ToolCall{{
+							Index: toolCallIdx,
+							Type:  llm.ToolTypeResponsesToolSearch,
+							ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+								CallID:    streamEvent.Item.CallID,
+								Execution: tc.ResponseToolSearchCall.Execution,
+								Arguments: missingArgs,
+							},
+						}},
+					},
+				}}
+				break
 			}
 			return nil // Tool call was emitted by item.added and argument deltas.
 		}

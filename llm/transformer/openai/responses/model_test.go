@@ -693,6 +693,12 @@ func TestToolChoiceMarshalJSON_PreservesEmptyAllowedTools(t *testing.T) {
 			tools:    []ToolOption{},
 			expected: `{"type":"allowed_tools","mode":"required","tools":[]}`,
 		},
+		{
+			name:     "type-only tool option omits name",
+			mode:     lo.ToPtr("required"),
+			tools:    []ToolOption{{Type: "image_generation"}},
+			expected: `{"type":"allowed_tools","mode":"required","tools":[{"type":"image_generation"}]}`,
+		},
 	}
 
 	for _, tc := range cases {
