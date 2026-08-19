@@ -51,21 +51,24 @@ var allowedImageTypes = []string{
 }
 
 // ImageGenerationRequest represents the request structure for image generation API.
+// The Image field accepts a data URL string or an array of data URL strings for
+// image-to-image generation (supported by gpt-image-1).
 type ImageGenerationRequest struct {
-	Prompt            string `json:"prompt"`
-	Model             string `json:"model"`
-	N                 *int64 `json:"n,omitempty"`
-	Quality           string `json:"quality,omitempty"`
-	ResponseFormat    string `json:"response_format,omitempty"`
-	Size              string `json:"size,omitempty"`
-	Style             string `json:"style,omitempty"`
-	User              string `json:"user,omitempty"`
-	Background        string `json:"background,omitempty"`
-	OutputFormat      string `json:"output_format,omitempty"`
-	OutputCompression *int64 `json:"output_compression,omitempty"`
-	Moderation        string `json:"moderation,omitempty"`
-	PartialImages     *int64 `json:"partial_images,omitempty"`
-	Stream            bool   `json:"stream,omitempty"`
+	Prompt            string          `json:"prompt"`
+	Model             string          `json:"model"`
+	N                 *int64          `json:"n,omitempty"`
+	Quality           string          `json:"quality,omitempty"`
+	ResponseFormat    string          `json:"response_format,omitempty"`
+	Size              string          `json:"size,omitempty"`
+	Style             string          `json:"style,omitempty"`
+	User              string          `json:"user,omitempty"`
+	Background        string          `json:"background,omitempty"`
+	OutputFormat      string          `json:"output_format,omitempty"`
+	OutputCompression *int64          `json:"output_compression,omitempty"`
+	Moderation        string          `json:"moderation,omitempty"`
+	PartialImages     *int64          `json:"partial_images,omitempty"`
+	Stream            bool            `json:"stream,omitempty"`
+	Image             json.RawMessage `json:"image,omitempty"`
 }
 
 type ImageInboundTransformer struct {
@@ -221,8 +224,14 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 		return nil, fmt.Errorf("%w: prompt is required", transformer.ErrInvalidRequest)
 	}
 
+	images, err := parseGenerationImageField(genReq.Image)
+	if err != nil {
+		return nil, err
+	}
+
 	imageReq := &llm.ImageRequest{
 		Prompt:            genReq.Prompt,
+		Images:            images,
 		N:                 genReq.N,
 		Size:              genReq.Size,
 		Quality:           genReq.Quality,
@@ -545,4 +554,63 @@ func parseOptionalInt64(s string) *int64 {
 	}
 
 	return &v
+}
+
+// parseGenerationImageField parses the "image" field from a JSON image generation
+// request body. The field can be a single data URL string or an array of data URL
+// strings. The returned [][]byte contains the decoded raw image bytes.
+func parseGenerationImageField(raw json.RawMessage) ([][]byte, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+
+	var single string
+	if err := json.Unmarshal(raw, &single); err == nil {
+		data, err := decodeDataURLToBytes(single)
+		if err != nil {
+			return nil, err
+		}
+
+		return [][]byte{data}, nil
+	}
+
+	var many []string
+	if err := json.Unmarshal(raw, &many); err != nil {
+		return nil, fmt.Errorf("%w: image field must be a string or array of strings", transformer.ErrInvalidRequest)
+	}
+
+	images := make([][]byte, 0, len(many))
+	for _, url := range many {
+		data, err := decodeDataURLToBytes(url)
+		if err != nil {
+			return nil, err
+		}
+
+		images = append(images, data)
+	}
+
+	return images, nil
+}
+
+// decodeDataURLToBytes decodes a data URL (data:image/png;base64,...) to raw bytes.
+func decodeDataURLToBytes(dataURL string) ([]byte, error) {
+	if !xurl.IsDataURL(dataURL) {
+		return nil, fmt.Errorf("%w: image must be a data URL", transformer.ErrInvalidRequest)
+	}
+
+	parsed := xurl.ParseDataURL(dataURL)
+	if parsed == nil {
+		return nil, fmt.Errorf("%w: invalid data URL format", transformer.ErrInvalidRequest)
+	}
+
+	if !parsed.IsBase64 {
+		return nil, fmt.Errorf("%w: image data URL must be base64-encoded", transformer.ErrInvalidRequest)
+	}
+
+	data, err := base64.StdEncoding.DecodeString(parsed.Data)
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to decode base64 image data", transformer.ErrInvalidRequest)
+	}
+
+	return data, nil
 }

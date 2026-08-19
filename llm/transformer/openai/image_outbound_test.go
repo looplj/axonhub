@@ -154,6 +154,103 @@ func TestBuildImageGenerateRequest_WithParameters(t *testing.T) {
 	assert.Equal(t, "transparent", body["background"])
 }
 
+func TestBuildImageGenerateRequest_WithSingleImage(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+
+	// 1x1 red pixel PNG
+	imageData, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==")
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gpt-image-1",
+		Image: &llm.ImageRequest{
+			Prompt: "Make this image brighter",
+			Images: [][]byte{imageData},
+		},
+	}
+
+	httpReq, err := ot.buildImageGenerateRequest(req, "test-key")
+	require.NoError(t, err)
+
+	var body map[string]any
+	err = json.Unmarshal(httpReq.Body, &body)
+	require.NoError(t, err)
+
+	assert.Equal(t, "Make this image brighter", body["prompt"])
+	assert.Equal(t, "gpt-image-1", body["model"])
+
+	// image should be a single data URL string
+	imageField, ok := body["image"].(string)
+	require.True(t, ok, "image field should be a string for single image")
+	assert.Contains(t, imageField, "data:image/png;base64,")
+}
+
+func TestBuildImageGenerateRequest_WithMultipleImages(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+
+	imageData1, err := base64.StdEncoding.DecodeString("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==")
+	require.NoError(t, err)
+
+	imageData2 := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+
+	req := &llm.Request{
+		Model: "gpt-image-1",
+		Image: &llm.ImageRequest{
+			Prompt: "Combine these images",
+			Images: [][]byte{imageData1, imageData2},
+		},
+	}
+
+	httpReq, err := ot.buildImageGenerateRequest(req, "test-key")
+	require.NoError(t, err)
+
+	var body map[string]any
+	err = json.Unmarshal(httpReq.Body, &body)
+	require.NoError(t, err)
+
+	// image should be an array for multiple images
+	imageField, ok := body["image"].([]any)
+	require.True(t, ok, "image field should be an array for multiple images")
+	assert.Len(t, imageField, 2)
+
+	for _, img := range imageField {
+		str, ok := img.(string)
+		require.True(t, ok)
+		assert.Contains(t, str, "data:image/")
+	}
+}
+
+func TestBuildImageGenerateRequest_WithoutImage(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+
+	req := &llm.Request{
+		Model: "dall-e-3",
+		Image: &llm.ImageRequest{
+			Prompt: "A beautiful sunset",
+		},
+	}
+
+	httpReq, err := ot.buildImageGenerateRequest(req, "test-key")
+	require.NoError(t, err)
+
+	var body map[string]any
+	err = json.Unmarshal(httpReq.Body, &body)
+	require.NoError(t, err)
+
+	// image field should not be present when no input images
+	_, hasImage := body["image"]
+	assert.False(t, hasImage, "image field should not be present when no input images")
+}
+
 func TestBuildImageGenerateRequest_GPTImageModelOmitsResponseFormat(t *testing.T) {
 	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	require.NoError(t, err)
