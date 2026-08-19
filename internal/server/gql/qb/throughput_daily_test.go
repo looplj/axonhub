@@ -303,7 +303,7 @@ func TestBuildDailyThroughputQuery_TokPerSecondCalculation(t *testing.T) {
 			name: "ROW_NUMBER mode has correct tok/s calculation",
 			mode: ThroughputModeRowNumber,
 			wantContains: []string{
-				"completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)",
+				"completion_tokens",
 				"* 1000.0",
 				"metrics_first_token_latency_ms",
 				"metrics_latency_ms - se.metrics_first_token_latency_ms",
@@ -313,7 +313,7 @@ func TestBuildDailyThroughputQuery_TokPerSecondCalculation(t *testing.T) {
 			name: "MAX_ID mode has correct tok/s calculation",
 			mode: ThroughputModeMaxID,
 			wantContains: []string{
-				"completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)",
+				"completion_tokens",
 				"* 1000.0",
 				"metrics_first_token_latency_ms",
 			},

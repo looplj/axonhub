@@ -119,7 +119,7 @@ WITH successful_execs AS (
 )
 SELECT
     ` + config.SelectColumns + `
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
+    SUM(ul.completion_tokens) as tokens_count,
     SUM(se.metrics_latency_ms) as latency_ms,
     COUNT(DISTINCT se.request_id) as request_count,
     CASE
@@ -128,7 +128,7 @@ SELECT
                       THEN 0
                       ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
                  ELSE se.metrics_latency_ms END) > 0
-        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
+        THEN SUM(ul.completion_tokens) * 1000.0
              / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
                    THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
                         THEN 0
@@ -154,7 +154,7 @@ func buildMaxIDQuery(placeholder string, config QueryFragmentConfig, limit int) 
 	return `
 SELECT
     ` + config.SelectColumns + `
-    SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,
+    SUM(ul.completion_tokens) as tokens_count,
     SUM(se.metrics_latency_ms) as latency_ms,
     COUNT(DISTINCT se.request_id) as request_count,
     CASE
@@ -163,7 +163,7 @@ SELECT
                       THEN 0
                       ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
                  ELSE se.metrics_latency_ms END) > 0
-        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
+        THEN SUM(ul.completion_tokens) * 1000.0
              / SUM(CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
                    THEN CASE WHEN se.metrics_first_token_latency_ms >= se.metrics_latency_ms
                         THEN 0
@@ -281,7 +281,7 @@ LEFT JOIN (
     SELECT
         request_id,
         channel_id,
-        SUM(COALESCE(completion_tokens, 0) + COALESCE(completion_reasoning_tokens, 0) + COALESCE(completion_audio_tokens, 0)) as total_completion_tokens
+        SUM(COALESCE(completion_tokens, 0)) as total_completion_tokens
     FROM usage_logs
     WHERE created_at >= %s
     GROUP BY request_id, channel_id

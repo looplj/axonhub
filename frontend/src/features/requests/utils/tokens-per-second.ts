@@ -24,11 +24,8 @@ export function getTokensPerSecondValue(request: Request): number | null {
     return null;
   }
 
-  // Sum all completion token types (matching fastest performers logic)
-  const completionTokens =
-    (usageLog.completionTokens || 0) +
-    (usageLog.completionReasoningTokens || 0) +
-    (usageLog.completionAudioTokens || 0);
+  // Use completion tokens only (reasoning tokens are not included in throughput calculation)
+  const completionTokens = usageLog.completionTokens || 0;
 
   if (completionTokens === 0) {
     return null;

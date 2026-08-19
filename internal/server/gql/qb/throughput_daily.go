@@ -145,7 +145,7 @@ func throughputCalculationSQL(seTable string) string {
 	core := throughputCoreSQL(seTable)
 	return fmt.Sprintf(`CASE
         WHEN SUM(%s) > 0
-        THEN SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) * 1000.0
+        THEN SUM(ul.completion_tokens) * 1000.0
              / SUM(%s)
         ELSE 0
     END`, core, core)
@@ -172,7 +172,7 @@ func buildDailyRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, 
 		"        " + dateExpr + " as date,\n" +
 		"        " + config.IDColumn + " as id,\n" +
 		"        " + config.NameColumn + ",\n" +
-		"        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
+		"        SUM(ul.completion_tokens) as tokens_count,\n" +
 		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
 		"        " + throughputSQL + " as throughput,\n" +
 		"        ROW_NUMBER() OVER (PARTITION BY " + dateExpr + " ORDER BY " + throughputSQL + " DESC) as daily_rn\n" +
@@ -197,7 +197,7 @@ func buildDailyMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, limi
 		"        " + dateExpr + " as date,\n" +
 		"        " + config.IDColumn + " as id,\n" +
 		"        " + config.NameColumn + ",\n" +
-		"        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
+		"        SUM(ul.completion_tokens) as tokens_count,\n" +
 		"        COUNT(DISTINCT se.request_id) as request_count,\n" +
 		"        " + throughputSQL + " as throughput,\n" +
 		"        ROW_NUMBER() OVER (PARTITION BY " + dateExpr + " ORDER BY " + throughputSQL + " DESC) as daily_rn\n" +
@@ -278,7 +278,7 @@ func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQuery
 		"    SELECT\n" +
 		"        exec_date as date,\n" +
 		"        se." + getIDColumnName(queryType) + " as id,\n" +
-		"        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
+		"        SUM(ul.completion_tokens) as tokens_count,\n" +
 		"        SUM(se.metrics_latency_ms) as latency_ms,\n" +
 		"        SUM(CASE\n" +
 		"            WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
@@ -330,7 +330,7 @@ func buildDailyPerformanceStatsMaxIDQuery(dateExpr string, config DailyQueryFrag
 		"    SELECT\n" +
 		"        exec_date as date,\n" +
 		"        se." + getIDColumnName(queryType) + " as id,\n" +
-		"        SUM(ul.completion_tokens + COALESCE(ul.completion_reasoning_tokens, 0) + COALESCE(ul.completion_audio_tokens, 0)) as tokens_count,\n" +
+		"        SUM(ul.completion_tokens) as tokens_count,\n" +
 		"        SUM(se.metrics_latency_ms) as latency_ms,\n" +
 		"        SUM(CASE\n" +
 		"            WHEN se.metrics_first_token_latency_ms IS NOT NULL AND se.metrics_first_token_latency_ms > 0\n" +
