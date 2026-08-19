@@ -3,12 +3,17 @@ package datamigrate_test
 import (
 	"context"
 	"database/sql"
+	sqldriver "database/sql/driver"
+	"errors"
+	"fmt"
 	"testing"
 
+	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/migrate/datamigrate"
@@ -235,4 +240,43 @@ func TestV1_0_0_Beta9_StripsMonotonicSuffixIsIdempotent(t *testing.T) {
 	require.NoError(t, datamigrate.NewV1_0_0_Beta9().Migrate(ctx, client))
 	require.Equal(t, 1, updatedAtMatches(t, driver, ch.ID, cleanedUpdatedAt))
 	require.Equal(t, 0, updatedAtMatches(t, driver, ch.ID, dirtyUpdatedAt))
+}
+
+type recordingDriver struct {
+	dialect     string
+	execQueries []string
+}
+
+func (d *recordingDriver) Dialect() string { return d.dialect }
+
+func (d *recordingDriver) Close() error { return nil }
+
+func (d *recordingDriver) Tx(context.Context) (dialect.Tx, error) {
+	return nil, errors.New("unexpected tx")
+}
+
+func (d *recordingDriver) Query(context.Context, string, any, any) error {
+	return errors.New("unexpected query")
+}
+
+func (d *recordingDriver) Exec(_ context.Context, query string, _ any, v any) error {
+	d.execQueries = append(d.execQueries, query)
+	result, ok := v.(*sql.Result)
+	if !ok {
+		return fmt.Errorf("expected *sql.Result, got %T", v)
+	}
+	*result = sqldriver.RowsAffected(0)
+	return nil
+}
+
+func TestV1_0_0_Beta9_PostgresSkipsMonotonicUpdatedAtCleanup(t *testing.T) {
+	drv := &recordingDriver{dialect: dialect.Postgres}
+	client := ent.NewClient(ent.Driver(drv))
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	require.NoError(t, datamigrate.NewV1_0_0_Beta9().Migrate(ctx, client))
+	require.Equal(t, []string{
+		`UPDATE channels SET settings = settings #- '{providerQuota}' WHERE settings ? 'providerQuota'`,
+	}, drv.execQueries)
 }
