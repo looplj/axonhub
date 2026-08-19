@@ -647,6 +647,8 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 		useRawURL = true
 	}
 
+	baseURL = httpModelsBaseURL(baseURL)
+
 	switch {
 	case channelType.IsAnthropic() || channelType == channel.TypeClaudecode:
 		headers.Set("Anthropic-Version", "2023-06-01")
@@ -708,6 +710,24 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 
 		return baseURL + "/v1/models", headers
 	}
+}
+
+// httpModelsBaseURL converts a channel's WebSocket endpoint to the matching
+// HTTP endpoint used by the provider's model listing API.
+func httpModelsBaseURL(baseURL string) string {
+	parsed, err := url.Parse(baseURL)
+	if err != nil {
+		return baseURL
+	}
+
+	switch parsed.Scheme {
+	case "ws":
+		parsed.Scheme = "http"
+	case "wss":
+		parsed.Scheme = "https"
+	}
+
+	return parsed.String()
 }
 
 type GeminiModelResponse struct {
