@@ -6,6 +6,7 @@ import { graphqlRequest } from '@/gql/graphql';
 import { UPDATE_USER_MUTATION } from '@/gql/users';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { formatUserName } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -67,7 +68,7 @@ export function UsersChangePasswordDialog({ currentRow, open, onOpenChange }: Pr
             {t('users.dialogs.changePassword.description', {
               firstName: currentRow?.firstName || '',
               lastName: currentRow?.lastName || '',
-              name: `${currentRow?.firstName} ${currentRow?.lastName}`,
+              name: formatUserName(currentRow?.firstName, currentRow?.lastName),
               email: currentRow?.email || '',
             })}
           </DialogDescription>

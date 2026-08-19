@@ -16,9 +16,10 @@ import (
 
 // UserProjectScopeReadRequestsRule is a query rule that restricts users' access to Request and UsageLog records.
 // It ensures that project-level users can only see:
-// 1. Requests / UsageLogs that do not have an API key (e.g., playground requests).
-// 2. Requests / UsageLogs that were made using a non-personal API key.
-// 3. Requests / UsageLogs that were made using a personal API key created by the user themselves.
+//  1. Requests / UsageLogs that do not have an API key (e.g., playground requests).
+//  2. Requests / UsageLogs that were made using a non-personal API key.
+//  3. Requests / UsageLogs that were made using a personal API key created by the user themselves,
+//     unless the user is a project owner.
 func UserProjectScopeReadRequestsRule(requiredScope ScopeSlug) privacy.QueryRule {
 	return privacy.FilterFunc(func(ctx context.Context, q privacy.Filter) error {
 		// Check if project ID is in context
@@ -44,30 +45,33 @@ func UserProjectScopeReadRequestsRule(requiredScope ScopeSlug) privacy.QueryRule
 			return privacy.Skipf("Not a project-owned query")
 		}
 
-		// Apply personal API key log visibility filter
-		switch q := q.(type) {
-		case *ent.RequestFilter:
-			q.Where(entql.Or(
-				entql.FieldNil(request.FieldAPIKeyID),
-				entql.HasEdgeWith("api_key", sqlgraph.WrapFunc(func(s *sql.Selector) {
-					apikey.Or(
-						apikey.TypeNEQ(apikey.TypePersonal),
-						apikey.UserID(currentUser.ID),
-					)(s)
-				})),
-			))
-		case *ent.UsageLogFilter:
-			q.WhereHasRequestWith(
-				request.Or(
-					request.APIKeyIDIsNil(),
-					request.HasAPIKeyWith(
+		// Personal key requests are private to their creator for regular project
+		// members, while project owners can audit all requests in the project.
+		if !userIsProjectOwner(currentUser, projectID) {
+			switch q := q.(type) {
+			case *ent.RequestFilter:
+				q.Where(entql.Or(
+					entql.FieldNil(request.FieldAPIKeyID),
+					entql.HasEdgeWith("api_key", sqlgraph.WrapFunc(func(s *sql.Selector) {
 						apikey.Or(
 							apikey.TypeNEQ(apikey.TypePersonal),
 							apikey.UserID(currentUser.ID),
+						)(s)
+					})),
+				))
+			case *ent.UsageLogFilter:
+				q.WhereHasRequestWith(
+					request.Or(
+						request.APIKeyIDIsNil(),
+						request.HasAPIKeyWith(
+							apikey.Or(
+								apikey.TypeNEQ(apikey.TypePersonal),
+								apikey.UserID(currentUser.ID),
+							),
 						),
 					),
-				),
-			)
+				)
+			}
 		}
 
 		return privacy.Allowf("User %d can query requests in project %d with personal key filtering", currentUser.ID, projectID)

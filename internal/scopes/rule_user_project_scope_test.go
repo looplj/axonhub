@@ -664,3 +664,45 @@ func TestUserHasProjectScope(t *testing.T) {
 		})
 	}
 }
+
+func TestUserIsProjectOwner(t *testing.T) {
+	tests := []struct {
+		name      string
+		user      *ent.User
+		projectID int
+		expected  bool
+	}{
+		{
+			name:      "system owner",
+			user:      &ent.User{IsOwner: true},
+			projectID: 100,
+			expected:  true,
+		},
+		{
+			name:      "project owner",
+			user:      &ent.User{Edges: ent.UserEdges{ProjectUsers: []*ent.UserProject{{ProjectID: 100, IsOwner: true}}}},
+			projectID: 100,
+			expected:  true,
+		},
+		{
+			name:      "owner of another project",
+			user:      &ent.User{Edges: ent.UserEdges{ProjectUsers: []*ent.UserProject{{ProjectID: 200, IsOwner: true}}}},
+			projectID: 100,
+			expected:  false,
+		},
+		{
+			name:      "regular project member",
+			user:      &ent.User{Edges: ent.UserEdges{ProjectUsers: []*ent.UserProject{{ProjectID: 100}}}},
+			projectID: 100,
+			expected:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := userIsProjectOwner(tt.user, tt.projectID); got != tt.expected {
+				t.Fatalf("userIsProjectOwner() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/privacy"
+	"github.com/looplj/axonhub/internal/ent/userproject"
 )
 
 type ProjectOwnedFilter interface {
@@ -48,6 +49,48 @@ func userHasProjectScope(user *ent.User, projectID int, requiredScope ScopeSlug)
 	}
 
 	return false
+}
+
+// userIsProjectOwner reports whether a user owns the given project or the system.
+func userIsProjectOwner(user *ent.User, projectID int) bool {
+	if user.IsOwner {
+		return true
+	}
+
+	for _, membership := range user.Edges.ProjectUsers {
+		if membership.ProjectID == projectID && membership.IsOwner {
+			return true
+		}
+	}
+
+	return false
+}
+
+// ProjectOwnerReadUsersRule allows project owners to view users belonging to their current project.
+func ProjectOwnerReadUsersRule() privacy.QueryRule {
+	return privacy.FilterFunc(func(ctx context.Context, q privacy.Filter) error {
+		projectID, hasProjectID := contexts.GetProjectID(ctx)
+		if !hasProjectID {
+			return privacy.Skipf("Project ID not found in context")
+		}
+
+		currentUser, err := getUserFromContext(ctx)
+		if err != nil {
+			return privacy.Skipf("User not found in context")
+		}
+
+		if !userIsProjectOwner(currentUser, projectID) {
+			return privacy.Skipf("User %d is not an owner of project %d", currentUser.ID, projectID)
+		}
+
+		userFilter, ok := q.(*ent.UserFilter)
+		if !ok {
+			return privacy.Skipf("Not a user query")
+		}
+
+		userFilter.WhereHasProjectUsersWith(userproject.ProjectID(projectID))
+		return privacy.Allowf("Project owner %d can query users in project %d", currentUser.ID, projectID)
+	})
 }
 
 // UserProjectScopeReadRule allows users to query projects they are members of.

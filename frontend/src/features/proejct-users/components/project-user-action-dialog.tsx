@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { canEditUserPermissions } from '@/lib/permission-utils';
+import { formatUserName } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -235,7 +236,7 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
                           ) : (
                             availableUsers.map((user) => (
                               <SelectItem key={user.id} value={user.id}>
-                                {user.firstName} {user.lastName} ({user.email})
+                                {formatUserName(user.firstName, user.lastName)} ({user.email})
                               </SelectItem>
                             ))
                           )}

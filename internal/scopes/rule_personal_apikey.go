@@ -16,8 +16,8 @@ type PersonalKeyProjectFilter interface {
 	Where(entql.P)
 }
 
-// UserPersonalAPIKeyReadRule allows users to view API keys within their project,
-// with the additional restriction that personal keys are only visible to their creator.
+// UserPersonalAPIKeyReadRule allows users to view API keys within their project.
+// Personal keys are visible to their creator and project owners.
 // It replaces UserProjectScopeReadRule for the APIKey schema.
 func UserPersonalAPIKeyReadRule(requiredScope ScopeSlug) privacy.QueryRule {
 	return privacy.FilterFunc(func(ctx context.Context, q privacy.Filter) error {
@@ -43,11 +43,12 @@ func UserPersonalAPIKeyReadRule(requiredScope ScopeSlug) privacy.QueryRule {
 
 		pf.WhereProjectID(entql.IntEQ(projectID))
 
-		// Personal keys are only visible to their creator, regardless of the user's role
-		pf.Where(entql.Or(
-			entql.FieldNEQ("type", "personal"),
-			entql.FieldEQ("user_id", currentUser.ID),
-		))
+		if !userIsProjectOwner(currentUser, projectID) {
+			pf.Where(entql.Or(
+				entql.FieldNEQ("type", "personal"),
+				entql.FieldEQ("user_id", currentUser.ID),
+			))
+		}
 
 		return privacy.Allowf("User %d can query project %d with scope %s", currentUser.ID, projectID, requiredScope)
 	})
