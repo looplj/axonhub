@@ -1394,6 +1394,45 @@ func TestOutboundTransformer_TransformStream_ToolSearchArgumentsProvidedOnlyInDo
 	require.JSONEq(t, `{"query":"agents"}`, arguments.String())
 }
 
+func TestOutboundTransformer_TransformStream_ToolSearchArgumentsProvidedOnlyInOutputItemDone(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	callID := "call_search_output_item_done"
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp_ts_item_done","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ts_item_done","type":"tool_search_call","status":"in_progress","call_id":"call_search_output_item_done","execution":"client","arguments":""}}`)},
+		{Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ts_item_done","type":"tool_search_call","status":"completed","call_id":"call_search_output_item_done","execution":"client","arguments":{"query":"agents"}}}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp_ts_item_done","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+
+	var arguments strings.Builder
+	argumentChunks := 0
+	for _, response := range responses {
+		if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil {
+			continue
+		}
+		for _, toolCall := range response.Choices[0].Delta.ToolCalls {
+			if toolCall.ResponseToolSearchCall == nil || toolCall.ResponseToolSearchCall.Arguments == "" {
+				continue
+			}
+			argumentChunks++
+			require.Equal(t, callID, toolCall.ResponseToolSearchCall.CallID)
+			require.Equal(t, "client", toolCall.ResponseToolSearchCall.Execution)
+			arguments.WriteString(toolCall.ResponseToolSearchCall.Arguments)
+		}
+	}
+
+	require.Equal(t, 1, argumentChunks)
+	require.JSONEq(t, `{"query":"agents"}`, arguments.String())
+}
+
 func TestOutboundTransformer_TransformStream_CompletedWithUsageCarriesEchoFields(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

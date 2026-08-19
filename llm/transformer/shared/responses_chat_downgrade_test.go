@@ -1,7 +1,9 @@
 package shared
 
 import (
+	"reflect"
 	"testing"
+	"unsafe"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -271,6 +273,64 @@ func TestDowngradeResponsesChatToolLifecycle_RemovesPairedSourceToolHistory(t *t
 	require.Len(t, request.Tools, 2)
 }
 
+func TestDowngradeResponsesChatToolLifecycle_RemovesSourceAndNamespaceNames(t *testing.T) {
+	request := &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "lookup"}},
+			{
+				Type:                llm.ToolTypeFunction,
+				Function:            llm.Function{Name: "future__lookup", Namespace: "future"},
+				ResponsesSourceType: "future_client_tool",
+			},
+		},
+		ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{
+			Type: llm.ToolTypeFunction, Function: llm.ToolFunction{Name: "lookup"},
+		}},
+	}
+
+	got := requireDowngradeSuccess(t, request)
+	require.Len(t, got.Tools, 1)
+	require.Equal(t, "lookup", got.Tools[0].Function.Name)
+	require.Nil(t, got.ToolChoice)
+}
+
+func TestDeepCopyRequest_CopiesHiddenAndNestedState(t *testing.T) {
+	request := &llm.Request{
+		TransformerMetadata: map[string]any{
+			"nested": map[string]any{"enabled": true},
+		},
+		Tools: []llm.Tool{{
+			Type:                llm.ToolTypeFunction,
+			Function:            llm.Function{Name: "lookup", Parameters: []byte(`{"type":"object"}`)},
+			ResponsesSourceType: "future_client_tool",
+		}},
+		ToolChoice: &llm.ToolChoice{AllowedToolsSet: true},
+		ProviderExtensions: &llm.ProviderExtensions{
+			OpenAIResponses: &llm.OpenAIResponsesProviderExtensions{
+				Request: &llm.OpenAIResponsesRequestExtensions{
+					RawTools: []llm.OpenAIResponsesRawFragment{{Type: "raw_tool"}},
+				},
+			},
+		},
+	}
+
+	cloned := deepCopyRequest(request)
+	require.NotSame(t, request, cloned)
+
+	request.Tools[0].Function.Name = "changed"
+	request.Tools[0].ResponsesSourceType = "changed"
+	request.ToolChoice.AllowedToolsSet = false
+	request.TransformerMetadata["nested"].(map[string]any)["enabled"] = false
+	request.ProviderExtensions.OpenAIResponses.Request.RawTools[0].Type = "changed"
+
+	require.Equal(t, "lookup", cloned.Tools[0].Function.Name)
+	require.Equal(t, "future_client_tool", cloned.Tools[0].ResponsesSourceType)
+	require.True(t, cloned.ToolChoice.AllowedToolsSet)
+	require.True(t, cloned.TransformerMetadata["nested"].(map[string]any)["enabled"].(bool))
+	require.Equal(t, "raw_tool", cloned.ProviderExtensions.OpenAIResponses.Request.RawTools[0].Type)
+}
+
 func TestDowngradeResponsesChatToolLifecycle_FailsClosedOnSourceNameAmbiguity(t *testing.T) {
 	messages := []llm.Message{
 		{Role: "assistant", ToolCalls: []llm.ToolCall{{
@@ -338,7 +398,80 @@ func TestDowngradeResponsesChatToolLifecycle_FailsClosedOnSourceNameAmbiguity(t 
 
 func requireDowngradeSuccess(t *testing.T, request *llm.Request) *llm.Request {
 	t.Helper()
+	before := deepCopyRequest(request)
+
 	got, err := DowngradeResponsesChatToolLifecycle(request)
 	require.NoError(t, err)
+
+	require.Equal(t, *before, *request)
 	return got
+}
+
+func deepCopyRequest(request *llm.Request) *llm.Request {
+	if request == nil {
+		return nil
+	}
+	return deepCopyValue(reflect.ValueOf(request)).Interface().(*llm.Request)
+}
+
+func deepCopyValue(value reflect.Value) reflect.Value {
+	switch value.Kind() {
+	case reflect.Pointer:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := reflect.New(value.Type().Elem())
+		cloned.Elem().Set(deepCopyValue(value.Elem()))
+		return cloned
+	case reflect.Slice:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := reflect.MakeSlice(value.Type(), value.Len(), value.Len())
+		for i := range value.Len() {
+			cloned.Index(i).Set(deepCopyValue(value.Index(i)))
+		}
+		return cloned
+	case reflect.Array:
+		cloned := reflect.New(value.Type()).Elem()
+		for i := range value.Len() {
+			cloned.Index(i).Set(deepCopyValue(value.Index(i)))
+		}
+		return cloned
+	case reflect.Map:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		cloned := reflect.MakeMapWithSize(value.Type(), value.Len())
+		iterator := value.MapRange()
+		for iterator.Next() {
+			cloned.SetMapIndex(deepCopyValue(iterator.Key()), deepCopyValue(iterator.Value()))
+		}
+		return cloned
+	case reflect.Interface:
+		if value.IsNil() {
+			return reflect.Zero(value.Type())
+		}
+		return deepCopyValue(value.Elem())
+	case reflect.Struct:
+		return deepCopyStruct(value)
+	default:
+		return value
+	}
+}
+
+func deepCopyStruct(value reflect.Value) reflect.Value {
+	cloned := reflect.New(value.Type()).Elem()
+	for i := range value.NumField() {
+		field := value.Type().Field(i)
+		sourceField := value.Field(i)
+		if sourceField.CanAddr() && !sourceField.CanInterface() {
+			source := reflect.NewAt(field.Type, unsafe.Pointer(sourceField.UnsafeAddr())).Elem()
+			destination := reflect.NewAt(field.Type, unsafe.Pointer(cloned.Field(i).UnsafeAddr())).Elem()
+			destination.Set(deepCopyValue(source))
+			continue
+		}
+		cloned.Field(i).Set(deepCopyValue(sourceField))
+	}
+	return cloned
 }

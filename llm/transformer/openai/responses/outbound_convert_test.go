@@ -501,6 +501,24 @@ func TestConvertToolSearchOutputNullContentDegradesWithWarning(t *testing.T) {
 	require.Contains(t, logs.String(), "call_search_null")
 }
 
+func TestConvertToolSearchOutputEmptyContentSkipsWarning(t *testing.T) {
+	var logs bytes.Buffer
+	previousLogger := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(&logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(previousLogger) })
+
+	result := convertToolMessageWithType(llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr("call_search_empty"),
+		Content:    llm.MessageContent{Content: lo.ToPtr("   ")},
+	}, "tool_search_output")
+
+	require.Equal(t, "tool_search_output", result.Type)
+	require.NotNil(t, result.Tools)
+	require.Empty(t, result.Tools)
+	require.NotContains(t, logs.String(), "failed to decode tool_search_output tools")
+}
+
 func TestConvertToolSearchOutputJoinsMultipleTextParts(t *testing.T) {
 	result := convertToolMessageWithType(llm.Message{
 		Role:       "tool",

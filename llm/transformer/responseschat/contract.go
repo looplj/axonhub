@@ -1,10 +1,12 @@
 // Package responseschat contains reusable provider acceptance helpers for the
-// Responses-to-Chat tool lifecycle.
+// Responses-to-Chat tool lifecycle. It imports test-only packages and must
+// only be imported by test code.
 package responseschat
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -93,7 +95,7 @@ func requireLifecycleWire(t *testing.T, httpRequest *httpclient.Request) {
 func requireNonStreamRestoration(t *testing.T, outbound Outbound, httpRequest *httpclient.Request, model string) {
 	t.Helper()
 
-	responseBody := []byte("{\"id\":\"chatcmpl_1\",\"object\":\"chat.completion\",\"model\":\"" + model + "\",\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"tool_calls\":[{\"id\":\"call_lookup\",\"type\":\"function\",\"function\":{\"name\":\"functions__lookup\",\"arguments\":\"{\\\"query\\\":\\\"axon\\\"}\"}},{\"id\":\"call_patch\",\"type\":\"function\",\"function\":{\"name\":\"apply_patch\",\"arguments\":\"{\\\"input\\\":\\\"patch\\\"}\"}}]},\"finish_reason\":\"tool_calls\"}]}")
+	responseBody := []byte(fmt.Sprintf(`{"id":"chatcmpl_1","object":"chat.completion","model":"%s","choices":[{"index":0,"message":{"role":"assistant","tool_calls":[{"id":"call_lookup","type":"function","function":{"name":"functions__lookup","arguments":"{\"query\":\"axon\"}"}},{"id":"call_patch","type":"function","function":{"name":"apply_patch","arguments":"{\"input\":\"patch\"}"}}]},"finish_reason":"tool_calls"}]}`, model))
 	response, err := outbound.TransformResponse(t.Context(), &httpclient.Response{
 		StatusCode: http.StatusOK,
 		Request:    httpRequest,

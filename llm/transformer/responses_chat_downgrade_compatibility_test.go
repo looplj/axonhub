@@ -14,6 +14,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/cline"
 	"github.com/looplj/axonhub/llm/transformer/nanogpt"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/copilot"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
@@ -147,5 +148,5 @@ func assertSourceToolLifecycleDowngradedForCompatibilityTest(t *testing.T, reque
 	require.Equal(t, "plain_1", *payload.Messages[2].ToolCallID)
 	require.Len(t, payload.Tools, 1)
 	require.Equal(t, "lookup", payload.Tools[0].Function.Name)
-	require.NotContains(t, request.TransformerMetadata, "openai_responses_chat_tool_mappings")
+	require.NotContains(t, request.TransformerMetadata, openai.ResponsesChatToolMappingsMetadataKey)
 }

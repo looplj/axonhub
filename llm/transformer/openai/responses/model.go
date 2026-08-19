@@ -677,7 +677,7 @@ func (item Item) MarshalJSON() ([]byte, error) {
 
 	if item.Type == "tool_search_call" {
 		arguments := json.RawMessage(item.Arguments)
-		if len(arguments) == 0 || !json.Valid(arguments) {
+		if !isJSONObject(arguments) {
 			arguments = json.RawMessage(`{}`)
 		}
 		type toolSearchCallItem struct {
@@ -982,6 +982,15 @@ func (r *Response) UnmarshalJSON(data []byte) error {
 	r.CreatedAt = createdAt
 
 	return nil
+}
+
+func isJSONObject(value json.RawMessage) bool {
+	if len(value) == 0 {
+		return false
+	}
+
+	var object map[string]json.RawMessage
+	return json.Unmarshal(value, &object) == nil && object != nil
 }
 
 // parseCreatedAtSeconds converts a JSON created_at number lexeme to an int64

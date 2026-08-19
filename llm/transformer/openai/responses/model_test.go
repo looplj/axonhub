@@ -279,6 +279,33 @@ func TestItemUnmarshalJSON_AcceptsObjectArguments(t *testing.T) {
 	require.Equal(t, `{"query":"image generation","limit":10}`, item.Arguments)
 }
 
+func TestItemMarshalJSON_ToolSearchCallRequiresObjectArguments(t *testing.T) {
+	tests := []struct {
+		name      string
+		arguments string
+		expected  string
+	}{
+		{name: "null becomes empty object", arguments: "null", expected: `{}`},
+		{name: "array becomes empty object", arguments: `["query"]`, expected: `{}`},
+		{name: "object is preserved", arguments: `{"query":"agents"}`, expected: `{"query":"agents"}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			item := Item{Type: "tool_search_call", CallID: "call_search", Arguments: tt.arguments}
+
+			data, err := json.Marshal(item)
+			require.NoError(t, err)
+
+			var payload struct {
+				Arguments json.RawMessage `json:"arguments"`
+			}
+			require.NoError(t, json.Unmarshal(data, &payload))
+			require.JSONEq(t, tt.expected, string(payload.Arguments))
+		})
+	}
+}
+
 func TestItemUnmarshalJSON_AcceptsStringArguments(t *testing.T) {
 	var item Item
 	err := json.Unmarshal([]byte(`{

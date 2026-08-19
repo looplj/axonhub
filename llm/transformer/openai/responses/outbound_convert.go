@@ -320,7 +320,9 @@ func convertToolMessageWithType(msg llm.Message, itemType string) Item {
 		content := toolSearchOutputText(msg.Content)
 		if msg.Content.Content != nil || len(msg.Content.MultipleContent) > 0 {
 			content = strings.TrimSpace(content)
-			if !strings.HasPrefix(content, "[") {
+			if content == "" {
+				// An absent search result is valid and needs no warning.
+			} else if !strings.HasPrefix(content, "[") {
 				slog.Warn("failed to decode tool_search_output tools",
 					slog.String("call_id", lo.FromPtr(msg.ToolCallID)),
 					slog.String("error", "expected a JSON array"))

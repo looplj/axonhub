@@ -31,7 +31,8 @@ func DowngradeResponsesChatToolLifecycle(request *llm.Request) (*llm.Request, er
 				}
 				removedSourceTools[name] = struct{}{}
 				removedFunctionNames[name] = struct{}{}
-			} else if tool.Function.Namespace != "" {
+			}
+			if tool.Function.Namespace != "" {
 				removedFunctionNames[tool.Function.Name] = struct{}{}
 				memberName, err := llm.NamespaceFunctionMemberName(tool.Function)
 				if err != nil {

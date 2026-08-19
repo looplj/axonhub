@@ -108,9 +108,14 @@ func (s *responsesOutboundStream) attachEchoFields(resp *llm.Response) {
 	if resp.TransformerMetadata == nil {
 		resp.TransformerMetadata = map[string]any{}
 	}
-	if encoded, err := json.Marshal(s.state.echoResponse); err == nil {
-		resp.TransformerMetadata[responsesEchoFieldsTransformerMetadataKey] = json.RawMessage(encoded)
+	encoded, err := json.Marshal(s.state.echoResponse)
+	if err != nil {
+		slog.Warn("failed to serialize Responses echo fields",
+			slog.String("response_id", s.state.echoResponse.ID),
+			slog.Any("error", err))
+		return
 	}
+	resp.TransformerMetadata[responsesEchoFieldsTransformerMetadataKey] = json.RawMessage(encoded)
 }
 
 func (s *responsesOutboundStream) Next() bool {
@@ -442,19 +447,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			// event. Preserve arguments already emitted through delta events and
 			// forward only the missing suffix so downstream Responses streams
 			// receive the full value once.
-			forwardedArgs := tc.ResponseToolSearchCall.Arguments
-			missingArgs := ""
-
-			switch {
-			case forwardedArgs == "":
-				missingArgs = finalArgs
-			case strings.HasPrefix(finalArgs, forwardedArgs):
-				missingArgs = strings.TrimPrefix(finalArgs, forwardedArgs)
-			case equalJSONValues(forwardedArgs, finalArgs):
-				// The complete arguments were already forwarded through deltas.
-				missingArgs = ""
-			default:
-				return fmt.Errorf("tool search call arguments mismatch for call_id %q", callID)
+			missingArgs, err := toolSearchMissingArguments(callID, tc.ResponseToolSearchCall.Arguments, finalArgs)
+			if err != nil {
+				return err
 			}
 
 			tc.ResponseToolSearchCall.Arguments = finalArgs
@@ -655,7 +650,35 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 					tc.ResponseToolSearchCall.Execution = streamEvent.Item.Execution
 				}
 				if streamEvent.Item.Arguments != "" {
+					missingArgs, err := toolSearchMissingArguments(
+						streamEvent.Item.CallID,
+						tc.ResponseToolSearchCall.Arguments,
+						streamEvent.Item.Arguments,
+					)
+					if err != nil {
+						return err
+					}
 					tc.ResponseToolSearchCall.Arguments = streamEvent.Item.Arguments
+					if missingArgs == "" {
+						return nil
+					}
+
+					toolCallIdx := s.state.toolCallIndex[streamEvent.Item.CallID]
+					resp.Choices = []llm.Choice{{
+						Index: 0,
+						Delta: &llm.Message{
+							ToolCalls: []llm.ToolCall{{
+								Index: toolCallIdx,
+								Type:  llm.ToolTypeResponsesToolSearch,
+								ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+									CallID:    streamEvent.Item.CallID,
+									Execution: tc.ResponseToolSearchCall.Execution,
+									Arguments: missingArgs,
+								},
+							}},
+						},
+					}}
+					break
 				}
 			}
 			return nil // Tool call was emitted by item.added and argument deltas.
@@ -931,6 +954,19 @@ func equalJSONValues(left, right string) bool {
 	}
 
 	return equalDecodedJSONValues(leftValue, rightValue)
+}
+
+func toolSearchMissingArguments(callID, forwardedArgs, finalArgs string) (string, error) {
+	switch {
+	case forwardedArgs == "":
+		return finalArgs, nil
+	case strings.HasPrefix(finalArgs, forwardedArgs):
+		return strings.TrimPrefix(finalArgs, forwardedArgs), nil
+	case equalJSONValues(forwardedArgs, finalArgs):
+		return "", nil
+	default:
+		return "", fmt.Errorf("tool search call arguments mismatch for call_id %q", callID)
+	}
 }
 
 func equalDecodedJSONValues(left, right any) bool {

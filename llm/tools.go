@@ -106,7 +106,7 @@ func NamespaceFunctionMemberName(function Function) (string, error) {
 // namespace and member and returns the member name.
 func ValidateNamespaceFunctionName(namespace, name string) (string, error) {
 	if namespace == "" {
-		return "", fmt.Errorf("invalid_namespace_tool: namespace is required")
+		return "", errors.New("invalid_namespace_tool: namespace is required")
 	}
 	member := strings.TrimPrefix(name, namespace+namespaceFunctionSeparator)
 	if name == "" || member == name || member == "" {

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"maps"
 	"net/http"
 	"strings"
 
@@ -262,20 +261,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("failed to build platform URL: %w", err)
 	}
 
-	transformerMetadata := maps.Clone(llmReq.TransformerMetadata)
+	transformerMetadata := responsesChatToolMetadata(llmReq.TransformerMetadata, toolAdapter)
 	if toolAdapter != nil {
-		if transformerMetadata == nil {
-			transformerMetadata = map[string]any{}
-		}
-		transformerMetadata[responsesChatStrictFinishMetadataKey] = true
-		if mappings := toolAdapter.mappings(); len(mappings) > 0 {
-			transformerMetadata[ResponsesChatToolMappingsMetadataKey] = mappings
-		}
-		if catalog := toolAdapter.catalog(); len(catalog) > 0 {
-			transformerMetadata[ResponsesChatToolCatalogMetadataKey] = catalog
-		}
 		if len(toolAdapter.warnings) > 0 {
-			transformerMetadata[responsesChatToolWarningsMetadataKey] = append([]string(nil), toolAdapter.warnings...)
 			slog.WarnContext(ctx, "Responses request degraded during Chat Completions conversion",
 				slog.String("model", llmReq.Model),
 				slog.Any("warnings", toolAdapter.warnings))

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -807,6 +808,22 @@ func TestResponsesChatToolAdapter_RejectsNonCanonicalNamespaceFunctionName(t *te
 	chatRequest, _, err := requestFromLLMWithResponsesToolAdapter(request, ReasoningFieldNone)
 	require.Nil(t, chatRequest)
 	require.ErrorContains(t, err, `invalid_namespace_tool: function "exec" in namespace "functions" must use flattened name "functions__<name>"`)
+}
+
+func TestRequestFromLLMWithResponsesTools_WrapsAdapterErrors(t *testing.T) {
+	request := &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Tools: []llm.Tool{{
+			Type:     llm.ToolTypeFunction,
+			Function: llm.Function{Name: "exec", Namespace: "functions"},
+		}},
+	}
+
+	chatRequest, metadata, err := RequestFromLLMWithResponsesTools(request, ReasoningFieldNone)
+	require.Nil(t, chatRequest)
+	require.Nil(t, metadata)
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	require.ErrorContains(t, err, "invalid_namespace_tool")
 }
 
 func TestResponsesChatToolAdapter_RejectsInvalidNamespaceFunctionChatName(t *testing.T) {
