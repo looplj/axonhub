@@ -20,10 +20,12 @@ export const buildGUID = (type: string, id: string) => {
 
 const cjkCharacterPattern = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 
+// isCJKName reports whether any name contains a CJK script character.
 export function isCJKName(...names: Array<string | null | undefined>) {
   return names.some((name) => !!name && cjkCharacterPattern.test(name));
 }
 
+// formatUserName returns CJK names as surname followed by given name and other names in Western order.
 export function formatUserName(firstName?: string | null, lastName?: string | null) {
   const first = firstName?.trim() ?? '';
   const last = lastName?.trim() ?? '';

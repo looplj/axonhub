@@ -51,6 +51,7 @@ func userHasProjectScope(user *ent.User, projectID int, requiredScope ScopeSlug)
 	return false
 }
 
+// userIsProjectOwner reports whether a user owns the given project or the system.
 func userIsProjectOwner(user *ent.User, projectID int) bool {
 	if user.IsOwner {
 		return true
