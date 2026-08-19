@@ -349,7 +349,7 @@ func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T
 	require.NoError(t, err)
 
 	request := buildCodexStreamRequest(t, ctx, outbound, false)
-	executor := outbound.CustomizeExecutor(&mockCodexExecutor{
+	mock := &mockCodexExecutor{
 		streamEvents: []*httpclient.StreamEvent{
 			{Type: "response.created", Data: []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_test_123","object":"response","created_at":1700000000,"model":"gpt-5-codex","status":"in_progress","output":[]}}`)},
 			{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"msg_test_456","type":"message","status":"in_progress","role":"assistant"}}`)},
@@ -360,9 +360,11 @@ func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T
 			{Type: "response.completed", Data: []byte(`{"type":"response.completed","sequence_number":6,"response":{"id":"resp_test_123","object":"response","created_at":1700000000,"model":"gpt-5-codex","status":"completed","output":[]}}`)},
 		},
 	})
+	executor := outbound.CustomizeExecutor(mock)
 
 	response, err := executor.Do(ctx, request)
 	require.NoError(t, err)
+	require.Zero(t, mock.doCalls.Load(), "official Codex must stream and never call Do()")
 	require.Equal(t, http.StatusOK, response.StatusCode)
 	require.Equal(t, "application/json", response.Headers.Get("Content-Type"))
 
@@ -469,6 +471,51 @@ func TestCodexOutbound_CustomizeExecutorPassesThroughJSONForNonStreamRequests(t 
 	}
 }
 
+func TestCodexOutbound_CustomizeExecutorAggregatesRelaySSEForNonStreamRequests(t *testing.T) {
+	ctx := context.Background()
+	accessToken := testAccessTokenWithAccountID(t)
+
+	// A compatible relay (non-official upstream) may still respond with SSE for
+	// the stream-enabled upstream request. It must be decoded and aggregated
+	// into a completed Responses JSON body with a single upstream execution.
+	outbound, err := NewOutboundTransformer(Params{
+		BaseURL: "https://relay.example.com/v1",
+		TokenProvider: staticTokenGetter{
+			creds: &oauth.OAuthCredentials{
+				AccessToken: accessToken,
+				ExpiresAt:   time.Now().Add(time.Hour),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	request := buildCodexStreamRequest(t, ctx, outbound, false)
+	mock := &mockCodexExecutor{
+		streamEvents: []*httpclient.StreamEvent{
+			{Type: "response.created", Data: []byte(`{"type":"response.created","sequence_number":0,"response":{"id":"resp_relay_123","object":"response","created_at":1700000000,"model":"gpt-5-codex","status":"in_progress","output":[]}}`)},
+			{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","sequence_number":1,"output_index":0,"item":{"id":"msg_relay_456","type":"message","status":"in_progress","role":"assistant"}}`)},
+			{Type: "response.content_part.added", Data: []byte(`{"type":"response.content_part.added","sequence_number":2,"item_id":"msg_relay_456","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}`)},
+			{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","sequence_number":3,"item_id":"msg_relay_456","output_index":0,"content_index":0,"delta":"Hello"}`)},
+			{Type: "response.output_text.done", Data: []byte(`{"type":"response.output_text.done","sequence_number":4,"item_id":"msg_relay_456","output_index":0,"content_index":0,"text":"Hello"}`)},
+			{Type: "response.output_item.done", Data: []byte(`{"type":"response.output_item.done","sequence_number":5,"output_index":0,"item":{"id":"msg_relay_456","type":"message","status":"completed","role":"assistant"}}`)},
+			{Type: "response.completed", Data: []byte(`{"type":"response.completed","sequence_number":6,"response":{"id":"resp_relay_123","object":"response","created_at":1700000000,"model":"gpt-5-codex","status":"completed","output":[]}}`)},
+		},
+	}
+	executor := outbound.CustomizeExecutor(mock)
+
+	response, err := executor.Do(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), mock.doCalls.Load(), "relay SSE must be executed exactly once")
+	require.Equal(t, http.StatusOK, response.StatusCode)
+	require.Equal(t, "application/json", response.Headers.Get("Content-Type"))
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(response.Body, &body))
+	assert.Equal(t, "resp_relay_123", body["id"])
+	assert.Equal(t, "completed", body["status"])
+	assert.Equal(t, "gpt-5-codex", body["model"])
+}
+
 func TestCodexOutbound_DoReturnsWebSocketErrorEvents(t *testing.T) {
 	ctx := context.Background()
 	accessToken := testAccessTokenWithAccountID(t)
@@ -500,9 +547,11 @@ var _ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
 
 type mockCodexExecutor struct {
 	streamEvents []*httpclient.StreamEvent
+	doCalls      atomic.Int32
 }
 
 func (m *mockCodexExecutor) Do(_ context.Context, _ *httpclient.Request) (*httpclient.Response, error) {
+	m.doCalls.Add(1)
 	return newCodexSSEResponse(m.streamEvents), nil
 }
 
