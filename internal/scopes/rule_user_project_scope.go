@@ -50,6 +50,20 @@ func userHasProjectScope(user *ent.User, projectID int, requiredScope ScopeSlug)
 	return false
 }
 
+func userIsProjectOwner(user *ent.User, projectID int) bool {
+	if user.IsOwner {
+		return true
+	}
+
+	for _, membership := range user.Edges.ProjectUsers {
+		if membership.ProjectID == projectID && membership.IsOwner {
+			return true
+		}
+	}
+
+	return false
+}
+
 // UserProjectScopeReadRule allows users to query projects they are members of.
 // It checks:
 // 1. If user has global scope permission -> Allow all
