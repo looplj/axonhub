@@ -592,7 +592,7 @@ export function RequestConversationViewer({ body, format, className }: RequestCo
       <div className='grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr]'>
         {/* Sidebar jump */}
         <div className='hidden lg:block'>
-          <div className='border-border bg-muted/20 sticky top-[72px] max-h-[calc(100vh-100px)] overflow-y-auto rounded-lg border p-2.5'>
+          <div className='border-border bg-muted/20 sticky top-[72px] max-h-[calc(100vh-72px-120px-16px)] overflow-y-auto rounded-lg border p-2.5'>
             {sidebarGroups.map((g) => (
               <div key={g.role} className='mb-1.5'>
                 <div className='text-muted-foreground px-1.5 py-0.5 font-mono text-[10.5px] tracking-wider uppercase'>
