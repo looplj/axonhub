@@ -985,7 +985,7 @@ func (svc *ChannelService) UpdateChannelStatus(ctx context.Context, id int, stat
 		return nil, fmt.Errorf("failed to update channel status: %w", err)
 	}
 
-	svc.asyncReloadChannels()
+	svc.reloadChannelsAfterCommit(ctx)
 
 	return channel, nil
 }
@@ -1034,7 +1034,7 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 		return nil, fmt.Errorf("failed to update channel endpoints: %w", err)
 	}
 
-	svc.asyncReloadChannels()
+	svc.reloadChannelsAfterCommit(ctx)
 
 	return ch, nil
 }
@@ -1046,7 +1046,7 @@ func (svc *ChannelService) DeleteChannel(ctx context.Context, id int) error {
 	}
 
 	svc.forgetLimiter(id)
-	svc.asyncReloadChannels()
+	svc.reloadChannelsAfterCommit(ctx)
 
 	return nil
 }
