@@ -22,11 +22,11 @@ func (t *OutboundTransformer) transformAlphaSearchRequest(ctx context.Context, l
 	}
 	apiKey := t.config.APIKeyProvider.Get(ctx)
 	return &httpclient.Request{
-		Method: http.MethodPost,
-		URL:    t.buildAlphaSearchURL(),
-		Headers: http.Header{"Content-Type": []string{"application/json"}, "Accept": []string{"application/json"}},
-		Body: body,
-		Auth: &httpclient.AuthConfig{Type: "bearer", APIKey: apiKey},
+		Method:      http.MethodPost,
+		URL:         t.buildAlphaSearchURL(),
+		Headers:     http.Header{"Content-Type": []string{"application/json"}, "Accept": []string{"application/json"}},
+		Body:        body,
+		Auth:        &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: apiKey},
 		RequestType: llm.RequestTypeAlphaSearch.String(),
 		APIFormat:   llm.APIFormatOpenAIAlphaSearch.String(),
 	}, nil

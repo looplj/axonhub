@@ -253,6 +253,12 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("http response is nil")
 	}
 
+	// Alpha Search owns its error conversion because the upstream response body
+	// can contain provider-specific details that the generic status check drops.
+	if httpResp.Request != nil && httpResp.Request.APIFormat == string(llm.APIFormatOpenAIAlphaSearch) {
+		return t.transformAlphaSearchResponse(ctx, httpResp)
+	}
+
 	// Check for HTTP error status codes
 	if httpResp.StatusCode >= 400 {
 		return nil, fmt.Errorf("HTTP error %d", httpResp.StatusCode)
@@ -274,8 +280,6 @@ func (t *OutboundTransformer) TransformResponse(
 			return t.transformEmbeddingResponse(ctx, httpResp)
 		case string(llm.APIFormatOpenAIModeration):
 			return t.transformModerationResponse(ctx, httpResp)
-		case string(llm.APIFormatOpenAIAlphaSearch):
-			return t.transformAlphaSearchResponse(ctx, httpResp)
 		case string(llm.APIFormatOpenAIVideo):
 			return transformVideoResponse(httpResp)
 		case string(llm.APIFormatOpenAISpeech):

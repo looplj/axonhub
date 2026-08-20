@@ -26,6 +26,7 @@ func TestAlphaSearchInboundAndOutbound(t *testing.T) {
 	require.Equal(t, raw, request.AlphaSearch.Body)
 
 	outbound, err := NewOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
 		BaseURL:        "https://cpa.example/v1",
 		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
 	})
@@ -52,4 +53,28 @@ func TestAlphaSearchInboundRequiresModel(t *testing.T) {
 		Body: []byte(`{"commands":{"search_query":[]}}`),
 	})
 	require.Error(t, err)
+}
+
+func TestAlphaSearchOutboundTransformsUpstreamError(t *testing.T) {
+	outbound, err := NewOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://cpa.example/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	require.NoError(t, err)
+
+	_, err = outbound.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: http.StatusTooManyRequests,
+		Body:       []byte(`{"error":{"message":"search rate limit","type":"rate_limit_error","code":"rate_limit"}}`),
+		Request: &httpclient.Request{
+			APIFormat: llm.APIFormatOpenAIAlphaSearch.String(),
+		},
+	})
+
+	var responseErr *llm.ResponseError
+	require.ErrorAs(t, err, &responseErr)
+	require.Equal(t, http.StatusTooManyRequests, responseErr.StatusCode)
+	require.Equal(t, "search rate limit", responseErr.Detail.Message)
+	require.Equal(t, "rate_limit_error", responseErr.Detail.Type)
+	require.Equal(t, "rate_limit", responseErr.Detail.Code)
 }
