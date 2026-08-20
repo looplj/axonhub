@@ -246,7 +246,7 @@ export function RequestsTable({
     () => JSON.stringify({ queryWhere: queryWhere ?? null, autoRefreshResumeKey }),
     [queryWhere, autoRefreshResumeKey]
   );
-  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize, animationResetKey);
+  const displayedData = useAnimatedList(data, showRefresh && autoRefreshInterval !== null, pageSize, animationResetKey);
 
   const columnFilters = useMemo<ColumnFiltersState>(() => {
     const filters: ColumnFiltersState = [];
