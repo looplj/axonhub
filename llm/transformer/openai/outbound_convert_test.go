@@ -212,6 +212,10 @@ func TestResponsesChatToolAdapter_DropsEmptyAssistantHistoryMessages(t *testing.
 		chatRequest.Messages[3].Role,
 	})
 	require.Equal(t, "kept reasoning", lo.FromPtr(chatRequest.Messages[1].ReasoningContent))
+	// Reasoning-only assistant messages must still serialize an explicit content
+	// field; stricter OpenAI-compatible upstreams reject a missing content key.
+	require.NotNil(t, chatRequest.Messages[1].Content.Content)
+	require.Equal(t, "", *chatRequest.Messages[1].Content.Content)
 	require.Len(t, chatRequest.Messages[2].ToolCalls, 1)
 	require.Contains(t, adapter.warnings, "empty_assistant_message: dropped 3 history message(s) with no Chat-compatible payload")
 }
