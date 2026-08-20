@@ -93,6 +93,22 @@ test('xAI subscription is exposed as an OAuth Responses channel', () => {
   );
 });
 
+test('OpenCode Go exposes Chat Completions and Responses on one channel type', () => {
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const providersConfig = read('features/channels/data/config_providers.ts');
+
+  assert.match(
+    channelsConfig,
+    /opencode_go:\s*{[\s\S]*apiFormat:\s*OPENAI_CHAT_COMPLETIONS[\s\S]*apiFormats:\s*\[OPENAI_CHAT_COMPLETIONS,\s*OPENAI_RESPONSES\]/,
+    'OpenCode Go should declare both OpenAI protocols as supported formats'
+  );
+  assert.match(
+    providersConfig,
+    /opencode_go:\s*{[\s\S]*channelTypes:\s*\[\s*'opencode_go',\s*'opencode_go_anthropic'\s*\]/,
+    'OpenCode Go should keep one provider with its Anthropic variant'
+  );
+});
+
 test('channel proxy connection reuse setting is submitted, echoed, and localized', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsData = read('features/channels/data/channels.ts');

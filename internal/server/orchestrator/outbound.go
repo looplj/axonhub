@@ -371,6 +371,33 @@ func selectOutboundForCandidate(candidate *ChannelModelsCandidate) transformer.O
 	return candidate.Channel.Outbound
 }
 
+// requestAPIFormatResolver is implemented by composite outbounds whose
+// upstream protocol depends on the request, such as OpenCode Go. Candidate
+// APIFormat describes the endpoint accepted for the inbound request, while
+// this resolver describes the protocol actually used by the selected model.
+type requestAPIFormatResolver interface {
+	APIFormatForRequest(*llm.Request) llm.APIFormat
+}
+
+func resolveOutboundAPIFormat(outbound transformer.Outbound, candidateAPIFormat string, req *llm.Request) llm.APIFormat {
+	if outbound == nil {
+		return ""
+	}
+
+	format := outbound.APIFormat()
+	if candidateAPIFormat != "" {
+		format = llm.APIFormat(candidateAPIFormat)
+	}
+
+	if resolver, ok := outbound.(requestAPIFormatResolver); ok {
+		if resolved := resolver.APIFormatForRequest(req); resolved != "" {
+			format = resolved
+		}
+	}
+
+	return format
+}
+
 // APIFormat returns the API format of the transformer.
 func (p *PersistentOutboundTransformer) APIFormat() llm.APIFormat {
 	return p.wrapped.APIFormat()
@@ -408,13 +435,9 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	llmRequest.Model = entry.ActualModel
 
-	outboundFormat := p.wrapped.APIFormat()
-	if candidate.APIFormat != "" {
-		outboundFormat = llm.APIFormat(candidate.APIFormat)
-	}
-
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
+	outboundFormat := resolveOutboundAPIFormat(p.wrapped, candidate.APIFormat, llmRequest)
 	for _, middleware := range p.outboundLlmRequestMiddlewares {
 		transformedRequest, err := middleware.OnOutboundLlmRequest(ctx, llmRequest, outboundFormat)
 		if err != nil {

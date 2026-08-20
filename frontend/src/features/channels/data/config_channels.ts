@@ -58,8 +58,11 @@ export interface ChannelConfig {
   /** Default models available for quick selection */
   defaultModels: string[];
 
-  /** API protocol format used when calling this channel */
+  /** Default API protocol format used when calling this channel */
   apiFormat: ApiFormat;
+
+  /** API protocol formats supported by this channel type, including apiFormat */
+  apiFormats?: ApiFormat[];
 
   /** Badge color classes for the channel type */
   color: string;
@@ -712,6 +715,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     baseURL: 'https://opencode.ai/zen/go',
     defaultModels: ['glm-5.1', 'glm-5', 'kimi-k2.5', 'kimi-k2.6', 'deepseek-v4-pro', 'deepseek-v4-flash', 'mimo-v2.5', 'mimo-v2.5-pro'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
+    apiFormats: [OPENAI_CHAT_COMPLETIONS, OPENAI_RESPONSES],
     color: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     icon: OpenCode,
   },

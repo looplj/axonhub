@@ -37,6 +37,15 @@ type mockTransformer struct {
 	includeEffort      bool
 }
 
+type requestFormatMockTransformer struct {
+	mockTransformer
+	resolvedFormat llm.APIFormat
+}
+
+func (m *requestFormatMockTransformer) APIFormatForRequest(*llm.Request) llm.APIFormat {
+	return m.resolvedFormat
+}
+
 func (m *mockTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
 	payload := map[string]any{
 		"model":       req.Model,
@@ -1166,6 +1175,63 @@ func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 		got := filterResponseCustomToolMessagesForNonResponsesOutbound(&nonResponsesReq, llm.APIFormatOpenAIChatCompletion)
 		require.Same(t, &nonResponsesReq, got)
 	})
+}
+
+func TestResolveOutboundAPIFormat_PrefersRequestResolvedFormat(t *testing.T) {
+	outbound := &requestFormatMockTransformer{
+		mockTransformer: mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
+		resolvedFormat:  llm.APIFormatOpenAIChatCompletion,
+	}
+
+	got := resolveOutboundAPIFormat(outbound, llm.APIFormatOpenAIResponse.String(), &llm.Request{Model: "glm-5.3"})
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, got)
+}
+
+func TestPersistentOutboundTransformer_FiltersResponsesCustomToolsForModelRoutedOpenCode(t *testing.T) {
+	outbound := &requestFormatMockTransformer{
+		mockTransformer: mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
+		resolvedFormat:  llm.APIFormatOpenAIChatCompletion,
+	}
+	channel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 1, Name: "opencode-go", Settings: nil},
+		Outbound: outbound,
+	}
+	processor := &PersistentOutboundTransformer{
+		wrapped: outbound,
+		state: &PersistenceState{
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{
+				Channel:   channel,
+				Models:    []biz.ChannelModelEntry{{ActualModel: "glm-5.3"}},
+				APIFormat: llm.APIFormatOpenAIResponse.String(),
+			}},
+		},
+	}
+
+	customCallID := "custom-1"
+	request := &llm.Request{
+		APIFormat: llm.APIFormatOpenAIResponse,
+		Model:     "glm-5.3",
+		Messages: []llm.Message{
+			{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{{
+					ID:                     customCallID,
+					Type:                   llm.ToolTypeResponsesCustomTool,
+					ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: customCallID, Name: "apply_patch", Input: "patch"},
+				}},
+			},
+			{
+				Role:       "tool",
+				ToolCallID: &customCallID,
+				Content:    llm.MessageContent{Content: lo.ToPtr("result")},
+			},
+		},
+	}
+
+	httpRequest, err := processor.TransformRequest(context.Background(), request)
+	require.NoError(t, err)
+	require.NotContains(t, string(httpRequest.Body), "responses_custom_tool")
+	require.NotContains(t, string(httpRequest.Body), "apply_patch")
 }
 
 // ========== 429 Retry-After Tests ==========

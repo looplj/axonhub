@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -21,6 +22,62 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
+
+func TestOpenCodeChannel_ResponsesEndpointUsesModelRoutedOutbound(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	entChannel := client.Channel.Create().
+		SetName("OpenCode Go Model Routed Channel").
+		SetType(channel.TypeOpencodeGo).
+		SetBaseURL("https://opencode.ai/zen/go").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{
+			"glm-5.2",
+			"deepseek-v4-pro",
+			"minimax-m3",
+			"grok-4.5",
+			"gpt-5.6-luna",
+			"muse-spark-1.2-contributor",
+		}).
+		SetDefaultTestModel("glm-5.2").
+		SaveX(ctx)
+
+	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+
+	responsesOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIResponse.String())
+	require.NoError(t, err)
+	require.Same(t, built.Outbound, responsesOutbound, "OpenCode Responses endpoint must retain model-based routing")
+
+	tests := []struct {
+		model string
+		path  string
+	}{
+		{model: "glm-5.2", path: "/v1/chat/completions"},
+		{model: "deepseek-v4-pro", path: "/v1/chat/completions"},
+		{model: "minimax-m3", path: "/v1/messages"},
+		{model: "grok-4.5", path: "/v1/responses"},
+		{model: "gpt-5.6-luna", path: "/v1/responses"},
+		{model: "muse-spark-1.2-contributor", path: "/v1/responses"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			httpReq, err := responsesOutbound.TransformRequest(ctx, &llm.Request{
+				APIFormat: llm.APIFormatOpenAIResponse,
+				Model:     tt.model,
+				Messages: []llm.Message{{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+				}},
+			})
+			require.NoError(t, err)
+			require.Contains(t, httpReq.URL, tt.path)
+		})
+	}
+}
 
 func TestOpenAICompatibleChannel_BuildChannelWithOutbounds(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")

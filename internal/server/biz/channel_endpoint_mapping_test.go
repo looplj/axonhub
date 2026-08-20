@@ -107,6 +107,14 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
+			name: "opencode_go exposes chat and responses",
+			typ:  channel.TypeOpencodeGo,
+			expected: []string{
+				llm.APIFormatOpenAIChatCompletion.String(),
+				llm.APIFormatOpenAIResponse.String(),
+			},
+		},
+		{
 			name: "xai api key exposes chat and responses",
 			typ:  channel.TypeXai,
 			expected: []string{

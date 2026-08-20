@@ -316,7 +316,8 @@ export const getChannelTypeForApiFormat = (provider: string, apiFormat: ApiForma
 
   for (const channelType of providerConfig.channelTypes) {
     const channelConfig = CHANNEL_CONFIGS[channelType];
-    if (channelConfig?.apiFormat === apiFormat) {
+    const supportedFormats = channelConfig?.apiFormats ?? (channelConfig ? [channelConfig.apiFormat] : []);
+    if (supportedFormats.includes(apiFormat)) {
       return channelType;
     }
   }
@@ -333,8 +334,11 @@ export const getApiFormatsForProvider = (provider: string): ApiFormat[] => {
   const formats: ApiFormat[] = [];
   for (const channelType of providerConfig.channelTypes) {
     const channelConfig = CHANNEL_CONFIGS[channelType];
-    if (channelConfig?.apiFormat && !formats.includes(channelConfig.apiFormat)) {
-      formats.push(channelConfig.apiFormat);
+    const supportedFormats = channelConfig?.apiFormats ?? (channelConfig ? [channelConfig.apiFormat] : []);
+    for (const format of supportedFormats) {
+      if (!formats.includes(format)) {
+        formats.push(format);
+      }
     }
   }
   return formats;

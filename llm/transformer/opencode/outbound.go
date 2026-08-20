@@ -28,7 +28,7 @@ const (
 	// routeDeepseek routes DeepSeek models through the DeepSeek transformer,
 	// which handles its thinking/reasoning_content conventions.
 	routeDeepseek route = "deepseek"
-	// routeResponses routes Grok/GPT models through the OpenAI Responses API (/v1/responses).
+	// routeResponses routes Grok/GPT/Muse models through the OpenAI Responses API (/v1/responses).
 	routeResponses route = "responses"
 	// routeAnthropic routes MiniMax/Qwen models through the Anthropic messages endpoint (/v1/messages).
 	routeAnthropic route = "anthropic"
@@ -132,13 +132,28 @@ func routeForModel(model string) route {
 	switch {
 	case strings.HasPrefix(model, "deepseek"):
 		return routeDeepseek
-	case strings.HasPrefix(model, "grok"), strings.HasPrefix(model, "gpt"):
+	case strings.HasPrefix(model, "grok"),
+		strings.HasPrefix(model, "gpt"),
+		strings.HasPrefix(model, "muse"):
 		return routeResponses
-	case strings.HasPrefix(model, "minimax"), strings.HasPrefix(model, "qwen3"):
+	case strings.HasPrefix(model, "minimax"),
+		strings.HasPrefix(model, "qwen3"):
 		return routeAnthropic
 	default:
 		return routeChat
 	}
+}
+
+// APIFormatForRequest returns the protocol used by OpenCode Go for the
+// request's actual model. The channel exposes both Chat Completions and
+// Responses endpoints, but OpenCode selects the upstream protocol by model
+// family rather than by the inbound request format.
+func (t *OutboundTransformer) APIFormatForRequest(req *llm.Request) llm.APIFormat {
+	if req == nil {
+		return t.APIFormat()
+	}
+
+	return t.sub(routeForModel(req.Model)).APIFormat()
 }
 
 func (t *OutboundTransformer) sub(r route) transformer.Outbound {

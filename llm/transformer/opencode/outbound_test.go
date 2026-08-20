@@ -40,25 +40,65 @@ func TestRouteForModel(t *testing.T) {
 		// DeepSeek family → DeepSeek transformer
 		{"deepseek-v4-pro", routeDeepseek},
 		{"deepseek-v4-flash", routeDeepseek},
-		// Grok/GPT family → OpenAI Responses API
+		// Grok/GPT/Muse family → OpenAI Responses API
 		{"grok-4.5", routeResponses},
 		{"gpt-5.6-luna", routeResponses},
+		{"gpt-6-preview", routeResponses},
+		{"muse-spark-1.2-contributor", routeResponses},
+		{"muse-spark-2.0", routeResponses},
+		// OpenCode Go models using the OpenAI-compatible chat endpoint
+		{"glm-5.3", routeChat},
+		{"glm-5.1", routeChat},
+		{"kimi-k2.7-code", routeChat},
+		{"kimi-k2.6", routeChat},
+		{"mimo-v2.5-pro", routeChat},
+		{"hy3", routeChat},
 		// MiniMax/Qwen family → Anthropic messages
 		{"minimax-m3", routeAnthropic},
 		{"minimax-m2.7", routeAnthropic},
+		{"minimax-m2.5", routeAnthropic},
 		{"qwen3.8-max", routeAnthropic},
+		{"qwen3.7-max", routeAnthropic},
 		{"qwen3.7-plus", routeAnthropic},
+		{"qwen3.6-plus", routeAnthropic},
+		{"qwen3.9-max", routeAnthropic},
 		// Everything else → OpenAI chat completions
 		{"glm-5.2", routeChat},
 		{"kimi-k3", routeChat},
 		{"mimo-v2.5", routeChat},
-		{"hy3", routeChat},
 		{"unknown-model", routeChat},
+		{"gpt-unknown", routeResponses},
+		{"muse-unknown", routeResponses},
+		{"qwen3-unknown", routeAnthropic},
+		// Model IDs are matched exactly; do not normalize case or whitespace.
+		{"GPT-5", routeChat},
+		{" gpt-5", routeChat},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
 			assert.Equal(t, tt.want, routeForModel(tt.model))
+		})
+	}
+}
+
+func TestOutboundTransformer_APIFormatForRequest(t *testing.T) {
+	tr := newTestTransformer(t)
+
+	tests := []struct {
+		model  string
+		format llm.APIFormat
+	}{
+		{model: "glm-5.3", format: llm.APIFormatOpenAIChatCompletion},
+		{model: "deepseek-v4-pro", format: llm.APIFormatOpenAIChatCompletion},
+		{model: "minimax-m3", format: llm.APIFormatAnthropicMessage},
+		{model: "gpt-5.6-luna", format: llm.APIFormatOpenAIResponse},
+		{model: "muse-spark-1.2-contributor", format: llm.APIFormatOpenAIResponse},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.model, func(t *testing.T) {
+			assert.Equal(t, tt.format, tr.APIFormatForRequest(&llm.Request{Model: tt.model}))
 		})
 	}
 }
@@ -87,6 +127,11 @@ func TestOutboundTransformer_TransformRequest_RoutesByModel(t *testing.T) {
 			expectedURL: "https://opencode.ai/zen/go/v1/responses",
 		},
 		{
+			name:        "future gpt model routes to Responses API",
+			model:       "gpt-6-preview",
+			expectedURL: "https://opencode.ai/zen/go/v1/responses",
+		},
+		{
 			name:        "minimax routes to Anthropic messages",
 			model:       "minimax-m3",
 			expectedURL: "https://opencode.ai/zen/go/v1/messages",
@@ -95,6 +140,16 @@ func TestOutboundTransformer_TransformRequest_RoutesByModel(t *testing.T) {
 			name:        "qwen routes to Anthropic messages",
 			model:       "qwen3.8-max",
 			expectedURL: "https://opencode.ai/zen/go/v1/messages",
+		},
+		{
+			name:        "muse-spark routes to Responses API",
+			model:       "muse-spark-1.2-contributor",
+			expectedURL: "https://opencode.ai/zen/go/v1/responses",
+		},
+		{
+			name:        "future muse model routes to Responses API",
+			model:       "muse-spark-2.0",
+			expectedURL: "https://opencode.ai/zen/go/v1/responses",
 		},
 		{
 			name:        "glm routes to OpenAI chat completions",

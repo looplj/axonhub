@@ -197,7 +197,10 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeAntigravity:      {{APIFormat: llm.APIFormatGeminiContents.String()}},
 	channel.TypeNanogpt:          openAIFullDefaultEndpoints,
 	channel.TypeNanogptResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
-	channel.TypeOpencodeGo:       openAIChatOnlyDefaultEndpoints,
+	channel.TypeOpencodeGo: {
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+	},
 	channel.TypeOllama:           {{APIFormat: llm.APIFormatOllamaChat.String()}},
 	channel.TypeOllamaAnthropic:  {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeEvolink:          openAICompatibleDefaultEndpoints,
