@@ -126,7 +126,9 @@ func TestCodexOutbound_NonCodexInboundDefaults(t *testing.T) {
 	assert.Equal(t, sessionID, finalReq.Header.Get("Conversation_id"))
 	assert.Equal(t, windowID, finalReq.Header.Get("X-Codex-Window-Id"))
 	assert.Equal(t, fabricatedBetaFeatures, finalReq.Header.Get("X-Codex-Beta-Features"))
-	assert.Equal(t, "true", finalReq.Header.Get("X-Openai-Internal-Codex-Responses-Lite"))
+	// Responses Lite is a private protocol mode and must not be fabricated for
+	// ordinary OpenAI-compatible clients.
+	assert.Empty(t, finalReq.Header.Get("X-Openai-Internal-Codex-Responses-Lite"))
 
 	// X-Client-Request-Id and the turn id are per-request UUIDs.
 	clientRequestID := finalReq.Header.Get("X-Client-Request-Id")
