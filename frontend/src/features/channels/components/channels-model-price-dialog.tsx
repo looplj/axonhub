@@ -33,6 +33,12 @@ const priceItemCodes = ['prompt_tokens', 'completion_tokens', 'prompt_cached_tok
 const pricingModes = ['flat_fee', 'usage_per_unit', 'usage_tiered', 'usage_volume'] as const;
 const promptWriteCacheVariantCodes = ['five_min', 'one_hour'] as const;
 
+// Default exchange rate applied when filling prices from the model library.
+// Library prices are in USD/MTok; 7.14 (exactly 50/7) matches the official
+// CNY prices (deepseek-chat 0.14/0.28/0.0028 -> CNY 1 / 2 / 0.02).
+// Not persisted: the dialog resets to the default on every open.
+const DEFAULT_EXCHANGE_RATE = 7.14;
+
 const createPriceFormSchema = (t: (key: string) => string) =>
   z
     .object({
@@ -440,7 +446,11 @@ function findProviderModelById(providersData: ProvidersData, modelId: string, pr
   return null;
 }
 
-function buildItemsFromProviderModel(model: ProviderModel, multiplier: number = 1): PriceFormData['prices'][number]['price']['items'] {
+function buildItemsFromProviderModel(
+  model: ProviderModel,
+  multiplier: number = 1,
+  exchangeRate: number = 1
+): PriceFormData['prices'][number]['price']['items'] {
   const items: PriceFormData['prices'][number]['price']['items'] = [];
   const cost = model.cost;
 
@@ -449,7 +459,7 @@ function buildItemsFromProviderModel(model: ProviderModel, multiplier: number = 
       itemCode,
       pricing: {
         mode: 'usage_per_unit',
-        usagePerUnit: (value * multiplier).toFixed(4),
+        usagePerUnit: (value * multiplier * exchangeRate).toFixed(4),
       },
     });
   };
@@ -472,7 +482,8 @@ function buildItemsFromProviderModel(model: ProviderModel, multiplier: number = 
 function mergeItemsWithProviderCost(
   currentItems: PriceFormData['prices'][number]['price']['items'],
   model: ProviderModel,
-  multiplier: number = 1
+  multiplier: number = 1,
+  exchangeRate: number = 1
 ): PriceFormData['prices'][number]['price']['items'] {
   const byCode = new Map<(typeof priceItemCodes)[number], PriceFormData['prices'][number]['price']['items'][number]>();
   currentItems.forEach((item) => {
@@ -486,7 +497,7 @@ function mergeItemsWithProviderCost(
         ...existing,
         pricing: {
           mode: 'usage_per_unit',
-          usagePerUnit: (value * multiplier).toFixed(4),
+          usagePerUnit: (value * multiplier * exchangeRate).toFixed(4),
           flatFee: '',
           usageTiered: null,
         },
@@ -495,7 +506,7 @@ function mergeItemsWithProviderCost(
     }
     byCode.set(itemCode, {
       itemCode,
-      pricing: { mode: 'usage_per_unit', usagePerUnit: (value * multiplier).toFixed(4) },
+      pricing: { mode: 'usage_per_unit', usagePerUnit: (value * multiplier * exchangeRate).toFixed(4) },
     });
   };
 
@@ -727,6 +738,7 @@ export function ChannelsModelPriceDialog() {
   const [selectedProviderId, setSelectedProviderId] = useState<string>('');
   const [selectedModelId, setSelectedModelId] = useState<string>('');
   const [multiplier, setMultiplier] = useState<number>(1);
+  const [exchangeRate, setExchangeRate] = useState<number>(DEFAULT_EXCHANGE_RATE);
 
   useEffect(() => {
     if (!isOpen || !providersData) return;
@@ -734,6 +746,7 @@ export function ChannelsModelPriceDialog() {
     setSelectedProviderId(next);
     setSelectedModelId('');
     setMultiplier(1);
+    setExchangeRate(DEFAULT_EXCHANGE_RATE);
   }, [defaultProviderId, isOpen, providersData]);
 
   const providerModels = useMemo(() => {
@@ -1008,10 +1021,10 @@ export function ChannelsModelPriceDialog() {
   const applyProviderModelToIndex = useCallback(
     (priceIndex: number, providerModel: ProviderModel) => {
       const currentItems = getValues(`prices.${priceIndex}.price.items`) || [];
-      const merged = mergeItemsWithProviderCost(currentItems, providerModel, multiplier);
+      const merged = mergeItemsWithProviderCost(currentItems, providerModel, multiplier, exchangeRate);
       setValue(`prices.${priceIndex}.price.items`, merged, { shouldDirty: true, shouldValidate: true });
     },
-    [getValues, setValue, multiplier]
+    [getValues, setValue, multiplier, exchangeRate]
   );
 
   const applyProviderModelById = useCallback(
@@ -1035,11 +1048,11 @@ export function ChannelsModelPriceDialog() {
       pendingScrollToNewCardRef.current = true;
       append({
         modelId,
-        price: { items: buildItemsFromProviderModel(found.model, multiplier) },
+        price: { items: buildItemsFromProviderModel(found.model, multiplier, exchangeRate) },
       });
       toast.success(t('price.apply.added', { modelId }));
     },
-    [append, applyProviderModelToIndex, getValues, providersData, t, multiplier]
+    [append, applyProviderModelToIndex, getValues, providersData, t, multiplier, exchangeRate]
   );
 
   const onModelSelected = useCallback(
@@ -1200,6 +1213,17 @@ export function ChannelsModelPriceDialog() {
                       min='0'
                     />
                   </div>
+                  <div className='min-w-0'>
+                    <FormLabel className='text-sm'>{t('price.apply.exchangeRate')}</FormLabel>
+                    <Input
+                      type='number'
+                      value={exchangeRate}
+                      onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
+                      className='h-8'
+                      step='0.01'
+                      min='0'
+                    />
+                  </div>
                   <div className='flex gap-2'>
                     <Button
                       type='button'
@@ -1229,7 +1253,7 @@ export function ChannelsModelPriceDialog() {
                           if (existingModelIds.has(modelId)) return;
                           append({
                             modelId,
-                            price: { items: buildItemsFromProviderModel(found.model, multiplier) },
+                            price: { items: buildItemsFromProviderModel(found.model, multiplier, exchangeRate) },
                           });
                           added += 1;
                         });
