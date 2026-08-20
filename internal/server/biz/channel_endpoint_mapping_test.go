@@ -135,9 +135,9 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
-			name:     "fenno exposes codex responses and alpha search",
+			name:     "fenno defaults to responses only",
 			typ:      channel.TypeFenno,
-			expected: []string{llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIAlphaSearch.String()},
+			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
 			name:     "jina exposes rerank and embedding",

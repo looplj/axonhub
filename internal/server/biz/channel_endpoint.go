@@ -130,7 +130,6 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	},
 	channel.TypeFenno: {
 		{APIFormat: llm.APIFormatOpenAIResponse.String()},
-		{APIFormat: llm.APIFormatOpenAIAlphaSearch.String()},
 	},
 	channel.TypeVercel:       openAICompatibleDefaultEndpoints,
 	channel.TypeAnthropic:    {{APIFormat: llm.APIFormatAnthropicMessage.String()}},

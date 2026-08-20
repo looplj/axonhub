@@ -406,7 +406,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			Transport:      transport,
 		})
 	case llm.APIFormatOpenAIAlphaSearch.String():
-		if c.Type == channel.TypeCodex || c.Type == channel.TypeFenno {
+		if c.Type == channel.TypeCodex {
 			return svc.buildCodexOutbound(c, ch, baseURL, endpointTransport(ep), ch.HTTPClient)
 		}
 
