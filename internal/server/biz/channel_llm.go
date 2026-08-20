@@ -214,8 +214,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
-		if (ep.APIFormat != llm.APIFormatOpenAIAlphaSearch.String() || c.Type != channel.TypeOpenaiResponses) &&
-			(c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String()) {
+		if c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String() {
 			outbounds[ep.APIFormat] = ch.Outbound
 			continue
 		}

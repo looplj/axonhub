@@ -236,7 +236,7 @@ AxonHub 可透明转发 Codex/CPA 兼容的 Alpha Search 端点，不解析上�
 **端点：**
 - `POST /v1/alpha/search`
 
-请求必须包含 `model`，以便 AxonHub 选择渠道。除模型映射会修改顶层 `model` 外，其余 JSON（包括 `commands.search_query`）原样转发；上游响应也原样返回。该端点不属于公开 OpenAI API，只应为确实实现了 `/alpha/search` 的上游（例如 CPA）配置 `openai/alpha_search` endpoint。Codex 和 Fenno 渠道默认包含该端点。
+请求必须包含 `model`，以便 AxonHub 选择渠道。除模型映射会修改顶层 `model` 外，其余 JSON（包括 `commands.search_query`）原样转发；上游响应也原样返回。该端点不属于公开 OpenAI API，只应为确实实现了 `/alpha/search` 的上游（例如 CPA）配置 `openai/alpha_search` endpoint。Codex 和 Fenno 渠道默认包含该端点；OpenAI 和 OpenAI Responses 渠道需要显式加入。
 
 ## 嵌入 API
 

@@ -54,14 +54,6 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
-			name: "openai responses exposes alpha search",
-			typ:  channel.TypeOpenaiResponses,
-			expected: []string{
-				llm.APIFormatOpenAIResponse.String(),
-				llm.APIFormatOpenAIAlphaSearch.String(),
-			},
-		},
-		{
 			name: "qiniu anthropic exposes anthropic messages",
 			typ:  channel.TypeQiniuAnthropic,
 			expected: []string{

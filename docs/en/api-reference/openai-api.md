@@ -236,7 +236,7 @@ AxonHub can proxy the Codex/CPA-compatible alpha search endpoint without interpr
 **Endpoint:**
 - `POST /v1/alpha/search`
 
-The request must include a `model` so AxonHub can select a channel. The remaining JSON, including `commands.search_query`, is forwarded unchanged apart from the mapped top-level `model`. The upstream response is returned unchanged. This endpoint is not part of the public OpenAI API; configure an `openai/alpha_search` channel endpoint only for an upstream that implements `/alpha/search` (for example CPA). Codex and Fenno channels include it by default.
+The request must include a `model` so AxonHub can select a channel. The remaining JSON, including `commands.search_query`, is forwarded unchanged apart from the mapped top-level `model`. The upstream response is returned unchanged. This endpoint is not part of the public OpenAI API; configure an `openai/alpha_search` channel endpoint only for an upstream that implements `/alpha/search` (for example CPA). Codex and Fenno channels include it by default; OpenAI and OpenAI Responses channels must opt in explicitly.
 
 ## Embedding API
 
