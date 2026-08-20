@@ -87,7 +87,7 @@ export function ThreadsTable({
     () => JSON.stringify({ dateRange, threadIdFilter, statusFilter, autoRefreshResumeKey }),
     [dateRange, threadIdFilter, statusFilter, autoRefreshResumeKey]
   );
-  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize, animationResetKey);
+  const displayedData = useAnimatedList(data, showRefresh && autoRefreshInterval !== null, pageSize, animationResetKey);
 
   const table = useReactTable({
     data: displayedData,

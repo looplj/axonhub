@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { ChevronDown, RefreshCw } from 'lucide-react';
+import { ChevronDown, RefreshCw, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { AUTO_REFRESH_INTERVALS, type AutoRefreshInterval, type EnabledAutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
@@ -62,21 +62,48 @@ export function AutoRefreshControl({ interval, onIntervalChange, onRefresh, disa
     onIntervalChange(nextInterval);
   };
 
+  const handlePrimaryAction = () => {
+    if (interval !== null) {
+      onIntervalChange(null);
+      return;
+    }
+
+    void handleRefresh();
+  };
+
   return (
     <div className={cn('inline-flex shrink-0', className)}>
       <Button
         type='button'
         variant='outline'
         size='sm'
-        onClick={handleRefresh}
+        onClick={handlePrimaryAction}
         disabled={disabled || isRefreshing}
         aria-busy={isRefreshing}
-        aria-label={t('common.refresh')}
+        aria-label={interval === null ? t('common.refresh') : t('common.closeAutoRefresh')}
         data-testid='manual-refresh-button'
-        className='active:bg-accent active:text-accent-foreground dark:active:bg-accent h-8 rounded-r-none border-r-0'
+        className={cn(
+          'active:bg-accent active:text-accent-foreground dark:active:bg-accent group h-8 rounded-r-none border-r-0',
+          interval !== null && 'w-[4.75rem]'
+        )}
       >
-        <RefreshCw className={cn('mr-2 h-4 w-4', (interval !== null || isRefreshing) && 'animate-spin')} />
-        <span className='pointer-events-none select-none'>{interval === null ? t('common.refresh') : formatInterval(interval)}</span>
+        {interval === null ? (
+          <>
+            <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+            <span className='pointer-events-none select-none'>{t('common.refresh')}</span>
+          </>
+        ) : (
+          <>
+            <RefreshCw className='h-4 w-4 animate-spin group-hover:hidden group-focus-visible:hidden' />
+            <X className='hidden h-4 w-4 group-hover:block group-focus-visible:block' />
+            <span className='pointer-events-none select-none group-hover:hidden group-focus-visible:hidden'>
+              {formatInterval(interval)}
+            </span>
+            <span className='pointer-events-none hidden select-none group-hover:inline group-focus-visible:inline'>
+              {t('common.close')}
+            </span>
+          </>
+        )}
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>

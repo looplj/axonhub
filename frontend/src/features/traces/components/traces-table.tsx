@@ -88,7 +88,7 @@ export function TracesTable({
     () => JSON.stringify({ dateRange, traceIdFilter, statusFilter, autoRefreshResumeKey }),
     [dateRange, traceIdFilter, statusFilter, autoRefreshResumeKey]
   );
-  const displayedData = useAnimatedList(data, autoRefreshInterval !== null, pageSize, animationResetKey);
+  const displayedData = useAnimatedList(data, showRefresh && autoRefreshInterval !== null, pageSize, animationResetKey);
 
   const table = useReactTable({
     data: displayedData,
