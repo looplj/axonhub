@@ -130,17 +130,30 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 // routeForModel returns the sub-transformer route for an OpenCode Go model ID.
 func routeForModel(model string) route {
 	switch {
-	case strings.HasPrefix(model, "deepseek"):
+	case hasModelFamilyPrefix(model, "deepseek"):
 		return routeDeepseek
-	case strings.HasPrefix(model, "grok"),
-		strings.HasPrefix(model, "gpt"),
-		strings.HasPrefix(model, "muse"):
+	case hasModelFamilyPrefix(model, "grok"),
+		hasModelFamilyPrefix(model, "gpt"),
+		hasModelFamilyPrefix(model, "muse"):
 		return routeResponses
-	case strings.HasPrefix(model, "minimax"),
-		strings.HasPrefix(model, "qwen3"):
+	case hasModelFamilyPrefix(model, "minimax"),
+		hasModelFamilyPrefix(model, "qwen3"):
 		return routeAnthropic
 	default:
 		return routeChat
+	}
+}
+
+func hasModelFamilyPrefix(model, family string) bool {
+	if !strings.HasPrefix(model, family) || len(model) == len(family) {
+		return false
+	}
+
+	switch model[len(family)] {
+	case '-', '.':
+		return true
+	default:
+		return false
 	}
 }
 

@@ -39,6 +39,7 @@ type mockTransformer struct {
 
 type requestFormatMockTransformer struct {
 	mockTransformer
+
 	resolvedFormat llm.APIFormat
 }
 
@@ -1178,55 +1179,61 @@ func TestFilterResponseCustomToolMessagesForNonResponsesOutbound(t *testing.T) {
 }
 
 func TestResolveOutboundAPIFormat_PrefersRequestResolvedFormat(t *testing.T) {
-	outbound := &requestFormatMockTransformer{
-		mockTransformer: mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
-		resolvedFormat:  llm.APIFormatOpenAIChatCompletion,
-	}
+	outbound := new(requestFormatMockTransformer)
+	outbound.mockTransformer.apiFormat = llm.APIFormatOpenAIChatCompletion
+	outbound.resolvedFormat = llm.APIFormatOpenAIChatCompletion
+	request := new(llm.Request)
+	request.Model = "glm-5.3"
 
-	got := resolveOutboundAPIFormat(outbound, llm.APIFormatOpenAIResponse.String(), &llm.Request{Model: "glm-5.3"})
+	got := resolveOutboundAPIFormat(outbound, llm.APIFormatOpenAIResponse.String(), request)
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion, got)
 }
 
 func TestPersistentOutboundTransformer_FiltersResponsesCustomToolsForModelRoutedOpenCode(t *testing.T) {
-	outbound := &requestFormatMockTransformer{
-		mockTransformer: mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion},
-		resolvedFormat:  llm.APIFormatOpenAIChatCompletion,
-	}
-	channel := &biz.Channel{
-		Channel:  &ent.Channel{ID: 1, Name: "opencode-go", Settings: nil},
-		Outbound: outbound,
-	}
-	processor := &PersistentOutboundTransformer{
-		wrapped: outbound,
-		state: &PersistenceState{
-			ChannelModelsCandidates: []*ChannelModelsCandidate{{
-				Channel:   channel,
-				Models:    []biz.ChannelModelEntry{{ActualModel: "glm-5.3"}},
-				APIFormat: llm.APIFormatOpenAIResponse.String(),
-			}},
-		},
-	}
+	outbound := new(requestFormatMockTransformer)
+	outbound.mockTransformer.apiFormat = llm.APIFormatOpenAIChatCompletion
+	outbound.resolvedFormat = llm.APIFormatOpenAIChatCompletion
+	channelEntity := new(ent.Channel)
+	channelEntity.ID = 1
+	channelEntity.Name = "opencode-go"
+	channel := new(biz.Channel)
+	channel.Channel = channelEntity
+	channel.Outbound = outbound
+	var model biz.ChannelModelEntry
+	model.ActualModel = "glm-5.3"
+	candidate := new(ChannelModelsCandidate)
+	candidate.Channel = channel
+	candidate.Models = []biz.ChannelModelEntry{model}
+	candidate.APIFormat = llm.APIFormatOpenAIResponse.String()
+	state := new(PersistenceState)
+	state.ChannelModelsCandidates = []*ChannelModelsCandidate{candidate}
+	processor := new(PersistentOutboundTransformer)
+	processor.wrapped = outbound
+	processor.state = state
 
 	customCallID := "custom-1"
-	request := &llm.Request{
-		APIFormat: llm.APIFormatOpenAIResponse,
-		Model:     "glm-5.3",
-		Messages: []llm.Message{
-			{
-				Role: "assistant",
-				ToolCalls: []llm.ToolCall{{
-					ID:                     customCallID,
-					Type:                   llm.ToolTypeResponsesCustomTool,
-					ResponseCustomToolCall: &llm.ResponseCustomToolCall{CallID: customCallID, Name: "apply_patch", Input: "patch"},
-				}},
-			},
-			{
-				Role:       "tool",
-				ToolCallID: &customCallID,
-				Content:    llm.MessageContent{Content: lo.ToPtr("result")},
-			},
-		},
-	}
+	customTool := new(llm.ResponseCustomToolCall)
+	customTool.CallID = customCallID
+	customTool.Name = "apply_patch"
+	customTool.Input = "patch"
+	var toolCall llm.ToolCall
+	toolCall.ID = customCallID
+	toolCall.Type = llm.ToolTypeResponsesCustomTool
+	toolCall.ResponseCustomToolCall = customTool
+	var assistantMessage llm.Message
+	assistantMessage.Role = "assistant"
+	assistantMessage.ToolCalls = []llm.ToolCall{toolCall}
+	toolContent := "result"
+	var toolMessageContent llm.MessageContent
+	toolMessageContent.Content = &toolContent
+	var toolMessage llm.Message
+	toolMessage.Role = "tool"
+	toolMessage.ToolCallID = &customCallID
+	toolMessage.Content = toolMessageContent
+	request := new(llm.Request)
+	request.APIFormat = llm.APIFormatOpenAIResponse
+	request.Model = "glm-5.3"
+	request.Messages = []llm.Message{assistantMessage, toolMessage}
 
 	httpRequest, err := processor.TransformRequest(context.Background(), request)
 	require.NoError(t, err)

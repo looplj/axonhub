@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -28,11 +27,13 @@ func TestOpenCodeChannel_ResponsesEndpointUsesModelRoutedOutbound(t *testing.T) 
 	defer client.Close()
 
 	ctx := authz.WithTestBypass(context.Background())
+	var credentials objects.ChannelCredentials
+	credentials.APIKey = "test-key"
 	entChannel := client.Channel.Create().
 		SetName("OpenCode Go Model Routed Channel").
 		SetType(channel.TypeOpencodeGo).
 		SetBaseURL("https://opencode.ai/zen/go").
-		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetCredentials(credentials).
 		SetSupportedModels([]string{
 			"glm-5.2",
 			"deepseek-v4-pro",
@@ -65,14 +66,18 @@ func TestOpenCodeChannel_ResponsesEndpointUsesModelRoutedOutbound(t *testing.T) 
 
 	for _, tt := range tests {
 		t.Run(tt.model, func(t *testing.T) {
-			httpReq, err := responsesOutbound.TransformRequest(ctx, &llm.Request{
-				APIFormat: llm.APIFormatOpenAIResponse,
-				Model:     tt.model,
-				Messages: []llm.Message{{
-					Role:    "user",
-					Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
-				}},
-			})
+			content := "Hello"
+			var messageContent llm.MessageContent
+			messageContent.Content = &content
+			var message llm.Message
+			message.Role = "user"
+			message.Content = messageContent
+			var request llm.Request
+			request.APIFormat = llm.APIFormatOpenAIResponse
+			request.Model = tt.model
+			request.Messages = []llm.Message{message}
+
+			httpReq, err := responsesOutbound.TransformRequest(ctx, &request)
 			require.NoError(t, err)
 			require.Contains(t, httpReq.URL, tt.path)
 		})

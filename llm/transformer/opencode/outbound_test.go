@@ -70,6 +70,13 @@ func TestRouteForModel(t *testing.T) {
 		{"gpt-unknown", routeResponses},
 		{"muse-unknown", routeResponses},
 		{"qwen3-unknown", routeAnthropic},
+		// The model family must end at a delimiter; similar names stay on Chat.
+		{"deepseekfoo-v1", routeChat},
+		{"grokfoo-v1", routeChat},
+		{"gptfoo-v1", routeChat},
+		{"museum-v1", routeChat},
+		{"minimaxfoo-v1", routeChat},
+		{"qwen3foo-v1", routeChat},
 		// Model IDs are matched exactly; do not normalize case or whitespace.
 		{"GPT-5", routeChat},
 		{" gpt-5", routeChat},
