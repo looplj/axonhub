@@ -709,15 +709,15 @@ func TestCodexOutbound_AppliesReasoningDefaultsWhenMissing(t *testing.T) {
 	assert.Equal(t, true, body["parallel_tool_calls"])
 	assert.Equal(t, []any{"reasoning.encrypted_content"}, body["include"])
 	assert.Equal(t, "auto", reasoning["summary"])
-	assert.Equal(t, "all_turns", reasoning["context"])
+	assert.Empty(t, reasoning["context"])
 	assert.NotContains(t, body, "metadata")
 }
 
-func TestCodexOutbound_FillsMissingReasoningContextForResponsesLite(t *testing.T) {
+func TestCodexOutbound_ResponsesLiteIsExplicitAndOfficialOnly(t *testing.T) {
 	ctx := context.Background()
-	outbound := newTestCodexOutbound(t)
 
-	t.Run("plain chat request gets all_turns context", func(t *testing.T) {
+	t.Run("plain request does not fabricate Lite or reasoning context", func(t *testing.T) {
+		outbound := newTestCodexOutbound(t)
 		hreq, err := outbound.TransformRequest(ctx, &llm.Request{
 			Model: "gpt-5-codex",
 			Messages: []llm.Message{{
@@ -728,23 +728,58 @@ func TestCodexOutbound_FillsMissingReasoningContextForResponsesLite(t *testing.T
 		})
 		require.NoError(t, err)
 
+		assert.Empty(t, hreq.Headers.Get(responses.ResponsesLiteHeader))
 		body := decodeCodexRequestBody(t, hreq)
 		reasoning, ok := body["reasoning"].(map[string]any)
-		require.True(t, ok, "reasoning block must be emitted for Responses Lite")
-		assert.Equal(t, "all_turns", reasoning["context"])
+		if ok {
+			assert.Empty(t, reasoning["context"])
+		}
 	})
 
-	t.Run("client-sent reasoning without context gets all_turns", func(t *testing.T) {
+	t.Run("official backend preserves client-selected Lite semantics", func(t *testing.T) {
+		outbound := newTestCodexOutbound(t)
 		headers := make(http.Header)
 		headers.Set("Content-Type", "application/json")
 		headers.Set(responses.ResponsesLiteHeader, "true")
 		inboundRequest := &httpclient.Request{
 			Headers: headers,
 			Body: []byte(`{
-				"model": "gpt-5.6-sol",
+				"model": "gpt-5.3-codex-spark",
 				"input": "Hello",
 				"stream": true,
-				"reasoning": {"effort": "xhigh"}
+				"parallel_tool_calls": false,
+				"reasoning": {"effort": "high", "context": "current_turn"}
+			}`),
+		}
+
+		llmRequest, err := responses.NewInboundTransformer().TransformRequest(ctx, inboundRequest)
+		require.NoError(t, err)
+		llmRequest.RawRequest = inboundRequest
+
+		outboundRequest, err := outbound.TransformRequest(ctx, llmRequest)
+		require.NoError(t, err)
+		outboundRequest = httpclient.MergeInboundRequest(outboundRequest, inboundRequest)
+
+		assert.Equal(t, "true", outboundRequest.Headers.Get(responses.ResponsesLiteHeader))
+		body := decodeCodexRequestBody(t, outboundRequest)
+		assert.Equal(t, false, body["parallel_tool_calls"])
+		reasoning, ok := body["reasoning"].(map[string]any)
+		require.True(t, ok)
+		assert.Equal(t, "current_turn", reasoning["context"])
+	})
+
+	t.Run("relay removes Lite without rewriting client reasoning", func(t *testing.T) {
+		outbound := newTestCodexOutboundForBaseURL(t, "https://relay.example/v1")
+		headers := make(http.Header)
+		headers.Set("Content-Type", "application/json")
+		headers.Set(responses.ResponsesLiteHeader, "true")
+		inboundRequest := &httpclient.Request{
+			Headers: headers,
+			Body: []byte(`{
+				"model": "gpt-5.3-codex-spark",
+				"input": "Hello",
+				"stream": true,
+				"reasoning": {"context": "current_turn"}
 			}`),
 		}
 
@@ -755,24 +790,11 @@ func TestCodexOutbound_FillsMissingReasoningContextForResponsesLite(t *testing.T
 		outboundRequest, err := outbound.TransformRequest(ctx, llmRequest)
 		require.NoError(t, err)
 
+		assert.Empty(t, outboundRequest.Headers.Get(responses.ResponsesLiteHeader))
 		body := decodeCodexRequestBody(t, outboundRequest)
 		reasoning, ok := body["reasoning"].(map[string]any)
 		require.True(t, ok)
-		assert.Equal(t, "all_turns", reasoning["context"])
-		assert.Equal(t, "xhigh", reasoning["effort"])
-	})
-
-	t.Run("image requests do not get a fabricated reasoning context", func(t *testing.T) {
-		req, err := outbound.TransformRequest(ctx, &llm.Request{
-			Model:       "gpt-image-2",
-			RequestType: llm.RequestTypeImage,
-			APIFormat:   llm.APIFormatOpenAIImageGeneration,
-			RawRequest:  &httpclient.Request{Headers: http.Header{}},
-			Image:       &llm.ImageRequest{Prompt: "a cat"},
-		})
-		require.NoError(t, err)
-
-		assert.NotContains(t, string(req.Body), `"context"`)
+		assert.Equal(t, "current_turn", reasoning["context"])
 	})
 }
 
@@ -848,10 +870,16 @@ func TestCodexOutbound_PreservesResponsesLiteRequirements(t *testing.T) {
 func newTestCodexOutbound(t *testing.T) *OutboundTransformer {
 	t.Helper()
 
+	return newTestCodexOutboundForBaseURL(t, "https://chatgpt.com/backend-api/codex#")
+}
+
+func newTestCodexOutboundForBaseURL(t *testing.T, baseURL string) *OutboundTransformer {
+	t.Helper()
+
 	accessToken := testAccessTokenWithAccountID(t)
 
 	outbound, err := NewOutboundTransformer(Params{
-		BaseURL: "https://chatgpt.com/backend-api/codex#",
+		BaseURL: baseURL,
 		TokenProvider: staticTokenGetter{
 			creds: &oauth.OAuthCredentials{
 				AccessToken: accessToken,

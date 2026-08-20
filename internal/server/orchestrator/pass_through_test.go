@@ -1475,6 +1475,7 @@ func TestApplyPassThroughRequestHeaders(t *testing.T) {
 		require.Equal(t, inboundHeaders.Values(header), processed.Headers.Values(header), header)
 	}
 	require.Equal(t, "Bearer provider-secret", processed.Headers.Get("Authorization"))
+	require.Empty(t, processed.Headers.Get("X-OpenAI-Internal-Codex-Responses-Lite"))
 	require.Empty(t, processed.Headers.Get("Cookie"))
 	require.Empty(t, processed.Headers.Get("Host"))
 	require.Empty(t, processed.Headers.Get("Content-Length"))

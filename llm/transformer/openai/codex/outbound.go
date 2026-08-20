@@ -168,13 +168,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
 		rawTurnMetadata = llmReq.RawRequest.Headers.Get(TurnMetadataHeader)
 
-		// Non-Codex inbound clients omit the Responses Lite signal. Fabricate it
-		// so the Codex upstream sees the same protocol shape as a real Codex
-		// client. This must be set on the raw request before the underlying
-		// Responses outbound runs: it reads this header to emit an explicit
-		// parallel_tool_calls=false body, matching what real Codex sends.
-		if strings.TrimSpace(rawHeaders.Get(ResponsesLiteHeader)) == "" {
-			rawHeaders.Set(ResponsesLiteHeader, "true")
+		// Responses Lite selects a private Codex protocol mode. It is not
+		// identity metadata: never fabricate it for OpenAI-compatible clients.
+		// A client-selected Lite request is retained only for the official Codex
+		// backend; relays are not assumed to implement the same private protocol.
+		if !t.isOfficialCodex() || !strings.EqualFold(strings.TrimSpace(rawHeaders.Get(ResponsesLiteHeader)), "true") {
+			rawHeaders.Del(ResponsesLiteHeader)
 		}
 	}
 
@@ -227,21 +226,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			reqCopy.ReasoningSummary = lo.ToPtr("auto")
 		}
 
-		// Responses Lite (signaled on the raw request above) rejects requests
-		// whose reasoning context is not "all_turns"; clients that never sent a
-		// reasoning block would otherwise fail upstream with HTTP 400. Only fill
-		// in a missing context — never override what the client explicitly sent.
-		if providerExt := reqCopy.ProviderExtensions; providerExt == nil || providerExt.OpenAIResponses == nil ||
-			providerExt.OpenAIResponses.Request == nil || providerExt.OpenAIResponses.Request.ReasoningContext == "" {
-			oaiExt := llm.EnsureOpenAIResponsesProviderExtensions(&reqCopy)
-			if oaiExt != nil {
-				if oaiExt.Request == nil {
-					oaiExt.Request = &llm.OpenAIResponsesRequestExtensions{ReasoningContext: "all_turns"}
-				} else {
-					oaiExt.Request.ReasoningContext = "all_turns"
-				}
-			}
-		}
 	}
 
 	// Codex Responses rejects token limit fields, so strip them out.
