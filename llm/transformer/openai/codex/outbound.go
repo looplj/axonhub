@@ -41,6 +41,7 @@ const (
 type OutboundTransformer struct {
 	tokens    oauth.TokenGetter
 	transport string
+	baseURL   string
 
 	// official reports whether the configured upstream is the official Codex
 	// backend (chatgpt.com). Official endpoints always stream SSE, so they keep
@@ -109,6 +110,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	return &OutboundTransformer{
 		tokens:            params.TokenProvider,
 		transport:         params.Transport,
+		baseURL:           strings.TrimSuffix(baseURL, "##"),
 		official:          isOfficialCodexBaseURL(baseURL),
 		responsesOutbound: ro,
 	}, nil
@@ -147,6 +149,9 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
 		return nil, errors.New("request is nil")
+	}
+	if llmReq.RequestType == llm.RequestTypeAlphaSearch {
+		return t.transformAlphaSearchRequest(ctx, llmReq)
 	}
 
 	rawSessionID := ""
@@ -343,6 +348,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 }
 
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
+	if httpResp != nil && httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeAlphaSearch.String() {
+		return t.transformAlphaSearchResponse(ctx, httpResp)
+	}
 	if httpResp != nil && httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeImage.String() {
 		if httpResp.StatusCode >= 400 {
 			return nil, fmt.Errorf("codex image HTTP error %d: %s", httpResp.StatusCode, httpResp.Body)

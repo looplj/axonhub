@@ -214,7 +214,8 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
-		if c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String() {
+		if (ep.APIFormat != llm.APIFormatOpenAIAlphaSearch.String() || c.Type != channel.TypeOpenaiResponses) &&
+			(c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String()) {
 			outbounds[ep.APIFormat] = ch.Outbound
 			continue
 		}
@@ -404,6 +405,17 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			APIKeyProvider: apiKeyProvider(),
 			EndpointPath:   ep.Path,
 			Transport:      transport,
+		})
+	case llm.APIFormatOpenAIAlphaSearch.String():
+		if c.Type == channel.TypeCodex || c.Type == channel.TypeFenno {
+			return svc.buildCodexOutbound(c, ch, baseURL, endpointTransport(ep), ch.HTTPClient)
+		}
+
+		return openai.NewOutboundTransformerWithConfig(&openai.Config{
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIEmbedding.String(),
 		llm.APIFormatOpenAIModeration.String(),

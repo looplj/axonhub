@@ -313,6 +313,7 @@
   "channels.dialogs.fields.apiFormat.formats.openai/responses_websocket": "OpenAI (Responses WebSocket)",
   "channels.dialogs.fields.apiFormat.formats.openai/embeddings": "OpenAI (Embeddings)",
   "channels.dialogs.fields.apiFormat.formats.openai/moderations": "OpenAI (内容审核)",
+  "channels.dialogs.fields.apiFormat.formats.openai/alpha_search": "Codex（Alpha Search）",
   "channels.dialogs.fields.apiFormat.formats.openai/image_generation": "OpenAI (图像生成)",
   "channels.dialogs.fields.apiFormat.formats.openai/image_edit": "OpenAI (图像编辑)",
   "channels.dialogs.fields.apiFormat.formats.openai/image_variation": "OpenAI (图像变体)",

@@ -163,6 +163,8 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return t.transformEmbeddingRequest(ctx, llmReq)
 	case llm.RequestTypeModeration:
 		return t.transformModerationRequest(ctx, llmReq)
+	case llm.RequestTypeAlphaSearch:
+		return t.transformAlphaSearchRequest(ctx, llmReq)
 	case llm.RequestTypeImage:
 		return t.buildImageGenerationAPIRequest(ctx, llmReq)
 	case llm.RequestTypeVideo:
@@ -272,6 +274,8 @@ func (t *OutboundTransformer) TransformResponse(
 			return t.transformEmbeddingResponse(ctx, httpResp)
 		case string(llm.APIFormatOpenAIModeration):
 			return t.transformModerationResponse(ctx, httpResp)
+		case string(llm.APIFormatOpenAIAlphaSearch):
+			return t.transformAlphaSearchResponse(ctx, httpResp)
 		case string(llm.APIFormatOpenAIVideo):
 			return transformVideoResponse(httpResp)
 		case string(llm.APIFormatOpenAISpeech):

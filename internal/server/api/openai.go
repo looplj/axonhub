@@ -57,6 +57,7 @@ type OpenAIHandlers struct {
 	CompactHandlers            *ChatCompletionHandlers
 	EmbeddingHandlers          *ChatCompletionHandlers
 	ModerationHandlers         *ChatCompletionHandlers
+	AlphaSearchHandlers        *ChatCompletionHandlers
 	ImageGenerationHandlers    *ChatCompletionHandlers
 	ImageEditHandlers          *ChatCompletionHandlers
 	ImageVariationHandlers     *ChatCompletionHandlers
@@ -170,6 +171,23 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RequestService,
 				params.HttpClient,
 				openai.NewModerationInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		AlphaSearchHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				openai.NewAlphaSearchInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
@@ -347,6 +365,11 @@ func (handlers *OpenAIHandlers) CreateEmbedding(c *gin.Context) {
 // CreateModeration handles POST /v1/moderations.
 func (handlers *OpenAIHandlers) CreateModeration(c *gin.Context) {
 	handlers.ModerationHandlers.ChatCompletion(c)
+}
+
+// CreateAlphaSearch handles POST /v1/alpha/search.
+func (handlers *OpenAIHandlers) CreateAlphaSearch(c *gin.Context) {
+	handlers.AlphaSearchHandlers.ChatCompletion(c)
 }
 
 // CreateSpeech handles POST /v1/audio/speech (text-to-speech). The response is binary audio.

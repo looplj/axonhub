@@ -25,6 +25,7 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAITranscription.String():   {},
 	llm.APIFormatOpenAITranslation.String():     {},
 	llm.APIFormatOpenAIModeration.String():      {},
+	llm.APIFormatOpenAIAlphaSearch.String():    {},
 	llm.APIFormatAnthropicMessage.String():      {},
 	llm.APIFormatGeminiContents.String():        {},
 	llm.APIFormatGeminiEmbedding.String():       {},
@@ -116,17 +117,24 @@ var openAIChatOnlyDefaultEndpoints = []objects.ChannelEndpoint{
 // and are not modeled here.
 var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeOpenai:          openAIFullDefaultEndpoints,
-	channel.TypeOpenaiResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
+	channel.TypeOpenaiResponses: {
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAIAlphaSearch.String()},
+	},
 	channel.TypeAtlascloud:      openAICompatibleDefaultEndpoints,
 	channel.TypeQiniu:           {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
 	channel.TypeQiniuAnthropic:  {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeCline:           openAIChatOnlyDefaultEndpoints,
 	channel.TypeCodex: {
 		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAIAlphaSearch.String()},
 		{APIFormat: llm.APIFormatOpenAIImageGeneration.String()},
 		{APIFormat: llm.APIFormatOpenAIImageEdit.String()},
 	},
-	channel.TypeFenno:        {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
+	channel.TypeFenno: {
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAIAlphaSearch.String()},
+	},
 	channel.TypeVercel:       openAICompatibleDefaultEndpoints,
 	channel.TypeAnthropic:    {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeAnthropicAWS: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
