@@ -26,7 +26,7 @@ export function planAnimatedListUpdate(
   const snapshotsMatch = previousIds.length === incomingIds.length && previousIds.every((id, index) => id === incomingIds[index]);
 
   if (snapshotsMatch) {
-    const shouldReplace = nextQueue.length > maxSequentialAnimatedItems || (nextQueue.length > 0 && incomingIds.length < pageSize);
+    const shouldReplace = nextQueue.length > maxSequentialAnimatedItems || (nextQueue.length > 0 && incomingIds.length !== pageSize);
     return {
       shouldReplace,
       queuedIds: shouldReplace ? [] : nextQueue,
@@ -42,7 +42,7 @@ export function planAnimatedListUpdate(
 
   // Only a small prefix inserted ahead of the previous snapshot is a live update.
   // Pagination, deletion, reordering, and unrelated result sets replace the snapshot.
-  if (overlapIndex <= 0 || incomingIds.length < pageSize) {
+  if (overlapIndex <= 0 || incomingIds.length !== pageSize) {
     return { shouldReplace: true, queuedIds: [] };
   }
 

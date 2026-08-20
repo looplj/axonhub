@@ -56,6 +56,11 @@ test('replaces growing or changing snapshots that do not fill the page', () => {
   assert.equal(planAnimatedListUpdate(['a', 'b', 'c'], ['new', 'a', 'b'], [], 10).shouldReplace, true);
 });
 
+test('replaces an oversized stale snapshot after the page size changes', () => {
+  assert.equal(planAnimatedListUpdate(['a', 'b', 'c'], ['new', 'a', 'b'], [], 2).shouldReplace, true);
+  assert.equal(planAnimatedListUpdate(['new', 'a', 'b'], ['new', 'a', 'b'], ['new'], 2).shouldReplace, true);
+});
+
 test('keeps only queued items that still exist in an unchanged snapshot', () => {
   assert.deepEqual(planAnimatedListUpdate(['new', 'current'], ['new', 'current'], ['stale', 'new', 'new']), {
     shouldReplace: false,
