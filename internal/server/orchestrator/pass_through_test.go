@@ -1446,7 +1446,7 @@ func TestApplyPassThroughRequestHeaders(t *testing.T) {
 		"X-Codex-Beta-Features":                  {"js_repl"},
 		"Session-Id":                             {"session-123"},
 		"Originator":                             {"codex_desktop_rs"},
-		"X-OpenAI-Internal-Codex-Responses-Lite": {"true"},
+		"X-Openai-Internal-Codex-Responses-Lite": {"true"},
 		"Thread-Id":                              {"thread-123"},
 		"Authorization":                          {"Bearer inbound-secret"},
 		"Cookie":                                 {"session=inbound-secret"},
@@ -1475,6 +1475,7 @@ func TestApplyPassThroughRequestHeaders(t *testing.T) {
 		require.Equal(t, inboundHeaders.Values(header), processed.Headers.Values(header), header)
 	}
 	require.Equal(t, "Bearer provider-secret", processed.Headers.Get("Authorization"))
+	require.Empty(t, processed.Headers.Get("X-Openai-Internal-Codex-Responses-Lite"))
 	require.Empty(t, processed.Headers.Get("Cookie"))
 	require.Empty(t, processed.Headers.Get("Host"))
 	require.Empty(t, processed.Headers.Get("Content-Length"))
