@@ -122,6 +122,10 @@ func hasResponseContent(resp *llm.Response) bool {
 		return true
 	}
 
+	if resp.AlphaSearch != nil && len(resp.AlphaSearch.Body) > 0 {
+		return true
+	}
+
 	if resp.Completion != nil {
 		for _, choice := range resp.Completion.Choices {
 			if choice.Text != "" {

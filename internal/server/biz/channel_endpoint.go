@@ -25,7 +25,7 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAITranscription.String():   {},
 	llm.APIFormatOpenAITranslation.String():     {},
 	llm.APIFormatOpenAIModeration.String():      {},
-	llm.APIFormatOpenAIAlphaSearch.String():    {},
+	llm.APIFormatOpenAIAlphaSearch.String():     {},
 	llm.APIFormatAnthropicMessage.String():      {},
 	llm.APIFormatGeminiContents.String():        {},
 	llm.APIFormatGeminiEmbedding.String():       {},

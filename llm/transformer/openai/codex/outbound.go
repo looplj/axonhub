@@ -437,7 +437,10 @@ type codexExecutor struct {
 }
 
 func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
-	if request.RequestType == string(llm.RequestTypeCompact) {
+	// Compact and alpha search are non-streaming endpoints; proxy them
+	// through the real HTTP client instead of the SSE stream path.
+	if request.RequestType == string(llm.RequestTypeCompact) ||
+		request.RequestType == llm.RequestTypeAlphaSearch.String() {
 		return e.inner.Do(ctx, request)
 	}
 

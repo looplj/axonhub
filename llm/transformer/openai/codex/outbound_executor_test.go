@@ -375,6 +375,29 @@ func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T
 	assert.Equal(t, "gpt-5-codex", body["model"])
 }
 
+func TestCodexOutbound_CustomizeExecutorAlphaSearchUsesNonStreamingDo(t *testing.T) {
+	ctx := context.Background()
+	outbound, err := NewOutboundTransformer(Params{
+		BaseURL: "https://chatgpt.com/backend-api/codex#",
+		TokenProvider: staticTokenGetter{creds: &oauth.OAuthCredentials{
+			AccessToken: testAccessTokenWithAccountID(t),
+			ExpiresAt:   time.Now().Add(time.Hour),
+		}},
+	})
+	require.NoError(t, err)
+
+	request := &httpclient.Request{RequestType: llm.RequestTypeAlphaSearch.String()}
+	mock := &mockCodexExecutor{streamEvents: []*httpclient.StreamEvent{{
+		Data: []byte(`{"ok":true}`),
+	}}}
+	executor := outbound.CustomizeExecutor(mock)
+
+	response, err := executor.Do(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), mock.doCalls.Load(), "alpha search must use the non-streaming HTTP path")
+	require.Equal(t, "text/event-stream", response.Headers.Get("Content-Type"))
+}
+
 func TestCodexOutbound_CustomizeExecutorPassesThroughJSONForNonStreamRequests(t *testing.T) {
 	const upstreamBody = `{
 		"id":"resp_json_123",
