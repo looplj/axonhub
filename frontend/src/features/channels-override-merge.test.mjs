@@ -51,7 +51,7 @@ test('scalar body override replacement removes existing duplicates', () => {
   );
 });
 
-test('last template scalar body override at the same path wins', () => {
+test('template scalar body overrides at the same path remain ordered', () => {
   assert.deepEqual(
     mergeOverrideOperations(
       [{ op: 'set', path: 'temperature', value: '0.5' }],
@@ -62,9 +62,27 @@ test('last template scalar body override at the same path wins', () => {
     ),
     [
       { op: 'set', path: 'temperature', value: '0.5' },
+      { op: 'set_if_absent', path: 'max_output_tokens', value: '32000' },
       { op: 'set', path: 'max_output_tokens', value: '16000' },
     ]
   );
+});
+
+test('template preserves conditional scalar body overrides at the same path', () => {
+  const sessionFallback = {
+    op: 'set_if_absent',
+    path: 'client_metadata.x-codex-window-id',
+    value: '{{index .RequestHeader "X-Claude-Code-Session-Id"}}:0',
+    condition: '{{ne (index .RequestHeader "X-Claude-Code-Session-Id") ""}}',
+  };
+  const interactionFallback = {
+    op: 'set_if_absent',
+    path: 'client_metadata.x-codex-window-id',
+    value: '{{index .RequestHeader "X-Interaction-Id"}}:0',
+    condition: '{{ne (index .RequestHeader "X-Interaction-Id") ""}}',
+  };
+
+  assert.deepEqual(mergeOverrideOperations([], [sessionFallback, interactionFallback]), [sessionFallback, interactionFallback]);
 });
 
 test('set_if_absent is exposed as a localized body-only operation', () => {

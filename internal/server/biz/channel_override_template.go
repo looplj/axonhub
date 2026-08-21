@@ -330,47 +330,40 @@ func getBodyOverrideOperations(settings *objects.ChannelSettings) []objects.Over
 }
 
 // MergeOverrideOperations merges existing body operations with template operations.
-// - For set/set_if_absent/delete ops, matching is by Path. Template overrides existing.
+// - For set/set_if_absent/delete ops, template paths replace matching existing operations.
+// - Template operations remain ordered because multiple conditions at the same path are meaningful.
 // - For rename/copy and array_* ops, they are always appended (multiple of the same path are meaningful).
 // - Existing ops not mentioned in the template are preserved.
 func MergeOverrideOperations(existing, template []objects.OverrideOperation) []objects.OverrideOperation {
 	result := make([]objects.OverrideOperation, 0, len(existing)+len(template))
-	result = append(result, existing...)
+	templateOpsByPath := make(map[string][]objects.OverrideOperation, len(template))
+	for _, op := range template {
+		if isReplacingBodyOverrideOperation(op.Op) {
+			templateOpsByPath[op.Path] = append(templateOpsByPath[op.Path], op)
+		}
+	}
+
+	emittedTemplatePaths := make(map[string]struct{}, len(templateOpsByPath))
+	for _, op := range existing {
+		if isReplacingBodyOverrideOperation(op.Op) {
+			if replacements, ok := templateOpsByPath[op.Path]; ok {
+				if _, emitted := emittedTemplatePaths[op.Path]; !emitted {
+					result = append(result, replacements...)
+					emittedTemplatePaths[op.Path] = struct{}{}
+				}
+				continue
+			}
+		}
+		result = append(result, op)
+	}
 
 	for _, op := range template {
-		if !isReplacingBodyOverrideOperation(op.Op) {
-			result = append(result, op)
-			continue
-		}
-
-		result = replaceBodyOverrideOperation(result, op)
-	}
-
-	return result
-}
-
-func replaceBodyOverrideOperation(result []objects.OverrideOperation, replacement objects.OverrideOperation) []objects.OverrideOperation {
-	found := false
-	writeIndex := 0
-
-	for _, op := range result {
-		if isReplacingBodyOverrideOperation(op.Op) && op.Path == replacement.Path {
-			if !found {
-				result[writeIndex] = replacement
-				writeIndex++
-				found = true
+		if isReplacingBodyOverrideOperation(op.Op) {
+			if _, emitted := emittedTemplatePaths[op.Path]; emitted {
+				continue
 			}
-
-			continue
 		}
-
-		result[writeIndex] = op
-		writeIndex++
-	}
-
-	result = result[:writeIndex]
-	if !found {
-		result = append(result, replacement)
+		result = append(result, op)
 	}
 
 	return result
