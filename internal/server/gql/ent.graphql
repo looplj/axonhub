@@ -1313,6 +1313,7 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   burncloud
   modelscope
   bailian
+  bailian_responses
   bailian_anthropic
   moonshot_coding
   jina
