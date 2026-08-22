@@ -43,6 +43,23 @@
         Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new coding plan promotion</a> for more budget-friendly API access.
       </p>
     </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/DUq59H" target="_blank">
+        <img src="https://www.infistar.cc/logo.png" alt="无限星河 Infistar.cc" height="50"/>
+        <br/>
+        <strong>无限星河 Infistar.cc</strong>
+      </a>
+      <p align="left">
+        <strong>AxonHub × Infistar.cc 无限星河 | High-Availability Full-Model API · Empowering the Next Generation of AI Gateways and Multi-Channel Routing</strong><br/><br/>
+        Thank you to Infistar.cc 无限星河 for sponsoring this project!
+      </p>
+      <p align="left">
+        ⚡ Enterprise-grade high concurrency and stable scheduling: Prices as low as 10% of official rates, transparent model multipliers, and millisecond-level response times that fit AxonHub's intelligent routing and failover mechanisms perfectly. High-availability channels and redundant multi-node backups help eliminate rate limits, 429s, and disconnections;<br/>
+        🧠 Comprehensive support for top models: Deeply adapted for ChatGPT, Claude, Gemini, Kimi, GLM, DeepSeek, and the full range of mainstream models, with native support for Claude Code, Codex, OpenCode, and other AI programming and Agent development tools.<br/>
+        🎨 Multimodal and cutting-edge ecosystem access: Beyond text conversations and code generation, it provides one-stop access to mainstream image generation, video, Embedding, and Rerank models, allowing a single upstream channel to meet the gateway's multimodal distribution needs.<br/>
+        🎁 Exclusive benefits for AxonHub users: Register through the <a href="https://lj.s.gy/DUq59H" target="_blank">exclusive link</a> to receive [exclusive gifted credits / first recharge offer], ready to use immediately with zero-barrier gateway testing!
+      </p>
+    </td>
   </tr>
 </table>
 

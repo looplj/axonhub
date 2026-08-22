@@ -43,6 +43,23 @@
         Atlas Cloud の <a href="https://lj.s.gy/jknt2V" target="_blank">新しいコーディングプラン特典</a> で、よりお得な API アクセスをご利用ください。
       </p>
     </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/DUq59H" target="_blank">
+        <img src="https://www.infistar.cc/logo.png" alt="無限星河 Infistar.cc" height="50"/>
+        <br/>
+        <strong>無限星河 Infistar.cc</strong>
+      </a>
+      <p align="left">
+        <strong>AxonHub × Infistar.cc 無限星河｜高可用な全モデル API · 次世代 AI ゲートウェイとマルチチャネルルーティングを支援</strong><br/><br/>
+        Infistar.cc 無限星河による本プロジェクトへのご支援に感謝します！
+      </p>
+      <p align="left">
+        ⚡ エンタープライズ級の高い同時実行性能と安定したスケジューリング：公式価格の 1 割から利用でき、モデル倍率も公開・透明です。ミリ秒級の応答で AxonHub のインテリジェントルーティングとフェイルオーバーに最適化されています。高可用性チャネルとマルチノード冗長バックアップにより、レート制限、429、接続切断の問題を解消します；<br/>
+        🧠 トップモデルを全面サポート：ChatGPT、Claude、Gemini、Kimi、GLM、DeepSeek など主要モデル全般に対応し、Claude Code、Codex、OpenCode などの AI プログラミングおよび Agent 開発ツールもネイティブサポートします。<br/>
+        🎨 マルチモーダルと最先端エコシステムへの接続：テキスト対話やコード生成だけでなく、主要な画像生成、動画、Embedding、Rerank モデルにもワンストップで接続でき、1 つの上流チャネルでゲートウェイのマルチモーダル配信ニーズに対応します。<br/>
+        🎁 AxonHub ユーザー限定特典：<a href="https://lj.s.gy/DUq59H" target="_blank">専用リンク</a>から登録すると、[専用付与クレジット / 初回チャージ特典]を受け取れます。すぐに利用でき、ゲートウェイのテストにも簡単に接続できます！
+      </p>
+    </td>
   </tr>
 </table>
 
@@ -100,14 +117,6 @@
 </table>
 
 ---
-
-## 💖 サポート
-
-| プロバイダー | プラン | 説明 | リンク |
-|-------------|--------|------|--------|
-| Zhipu AI | GLM CODING PLAN | GLM Coding Plan にご招待いただけます！Claude Code、Clineなど10以上のトップコーディングツールを完全サポート — 月$3から。今すぐサブスクリプションで期間限定特典をゲット！ | [English](https://z.ai/subscribe?ic=OKAF5UFZOM) / [中文](https://www.bigmodel.cn/glm-coding?ic=WIDLV0OOTJ) |
-| Volcengine | CODING PLAN | Ark Coding Plan はDoubao、GLM、DeepSeek、Kimiなどのモデルをサポート。無制限のツールと互換性あり。今すぐサブスクリプションで追加10%オフ — 月$1.2から。購入が多いほどお得に！ | [リンク](https://volcengine.com/L/1Q-HZr5Uvk8/) / コード：LXKDZK3W |
-| Cursor | PRO PLAN | 初月のCursor Pro、Pro+、Ultraを50%オフでお申し込み。 | [招待リンク](https://cursor.com/referral?code=GV0YKBQ692X1) |
 
 ---
 
