@@ -49,6 +49,11 @@
         <br/>
         <strong>無限星河 Infistar.cc</strong>
       </a>
+      <p align="center">
+        <a href="https://lj.s.gy/DUq59H" target="_blank">
+          <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 無限星河" width="100%"/>
+        </a>
+      </p>
       <p align="left">
         <strong>AxonHub × Infistar.cc 無限星河｜高可用な全モデル API · 次世代 AI ゲートウェイとマルチチャネルルーティングを支援</strong><br/><br/>
         Infistar.cc 無限星河による本プロジェクトへのご支援に感謝します！

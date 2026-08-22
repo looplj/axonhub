@@ -49,6 +49,11 @@
         <br/>
         <strong>无限星河 Infistar.cc</strong>
       </a>
+      <p align="center">
+        <a href="https://lj.s.gy/DUq59H" target="_blank">
+          <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 无限星河" width="100%"/>
+        </a>
+      </p>
       <p align="left">
         <strong>AxonHub × Infistar.cc 无限星河 | High-Availability Full-Model API · Empowering the Next Generation of AI Gateways and Multi-Channel Routing</strong><br/><br/>
         Thank you to Infistar.cc 无限星河 for sponsoring this project!

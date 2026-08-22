@@ -49,6 +49,11 @@
         <br/>
         <strong>无限星河 Infistar.cc</strong>
       </a>
+      <p align="center">
+        <a href="https://lj.s.gy/DUq59H" target="_blank">
+          <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 无限星河" width="100%"/>
+        </a>
+      </p>
       <p align="left">
         <strong>AxonHub × Infistar.cc 无限星河｜高可用全模型 API · 赋能下一代 AI 网关与多渠道调度</strong><br/><br/>
         感谢 Infistar.cc 无限星河 赞助本项目！
