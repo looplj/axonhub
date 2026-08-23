@@ -205,6 +205,7 @@ func (t *CompletionInboundTransformer) transformStreamChunk(llmResp *llm.Respons
 		Object:  llmResp.Object,
 		Created: llmResp.Created,
 		Model:   llmResp.Model,
+		Choices: []CompletionChoice{},
 	}
 
 	if llmResp.Completion != nil {

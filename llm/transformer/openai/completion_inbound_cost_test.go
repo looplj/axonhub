@@ -64,4 +64,7 @@ func TestCompletionInboundTransformer_TransformStreamChunk_UsageOnlyIncludesCost
 	require.NoError(t, json.Unmarshal(event.Data, &completionResp))
 	require.NotNil(t, completionResp.Usage.Cost)
 	require.InDelta(t, 0.000005, *completionResp.Usage.Cost, 1e-12)
+	require.NotNil(t, completionResp.Choices)
+	require.Empty(t, completionResp.Choices)
+	require.Contains(t, string(event.Data), `"choices":[]`)
 }
