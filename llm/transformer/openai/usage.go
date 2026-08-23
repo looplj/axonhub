@@ -51,7 +51,6 @@ func (u *Usage) ToLLMUsage() *llm.Usage {
 		PromptTokens:     u.PromptTokens,
 		CompletionTokens: u.CompletionTokens,
 		TotalTokens:      u.TotalTokens,
-		Cost:             u.Cost,
 	}
 
 	if u.PromptTokensDetails != (PromptTokensDetails{}) {

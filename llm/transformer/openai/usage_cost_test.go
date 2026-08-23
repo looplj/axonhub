@@ -37,14 +37,31 @@ func TestUsage_CostJSON(t *testing.T) {
 		require.InDelta(t, 0.000005, *decoded.Cost, 1e-12)
 	})
 
-	t.Run("round trip through UsageFromLLM", func(t *testing.T) {
+	t.Run("UsageFromLLM preserves cost for client responses", func(t *testing.T) {
 		usage := &llm.Usage{
 			PromptTokens:     100,
 			CompletionTokens: 50,
 			TotalTokens:      150,
 			Cost:             lo.ToPtr(0.000005),
 		}
-		require.Equal(t, usage, UsageFromLLM(usage).ToLLMUsage())
+		converted := UsageFromLLM(usage)
+		require.NotNil(t, converted.Cost)
+		require.InDelta(t, 0.000005, *converted.Cost, 1e-12)
+	})
+
+	t.Run("ToLLMUsage drops upstream cost", func(t *testing.T) {
+		var decoded Usage
+		require.NoError(t, json.Unmarshal([]byte(`{
+			"prompt_tokens": 10,
+			"completion_tokens": 20,
+			"total_tokens": 30,
+			"cost": 0
+		}`), &decoded))
+		require.NotNil(t, decoded.Cost)
+
+		usage := decoded.ToLLMUsage()
+		require.NotNil(t, usage)
+		require.Nil(t, usage.Cost)
 	})
 }
 
