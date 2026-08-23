@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowUp, ChevronDown, ChevronsDownUp, ChevronsUpDown, FileText, Layers, Search, Wrench } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -20,7 +20,7 @@ const ROLE_LABELS: Record<string, string> = {
   system: 'system',
   user: 'user',
   assistant: 'assistant',
-  tool: 'tool 结果',
+  tool: 'tool',
 };
 
 const ROLE_PILL_CLASSES: Record<string, string> = {
@@ -57,6 +57,12 @@ function prettyJsonBlock(value: unknown): string {
   }
 }
 
+function fmtToolChoice(value: unknown): ReactNode {
+  if (value === undefined || value === null) return '—';
+  if (typeof value === 'string') return value;
+  return <small className='font-mono text-[10.5px]'>{prettyJsonBlock(value)}</small>;
+}
+
 function matchesSearch(m: ConversationMessage, q: string): boolean {
   if (!q) return true;
   const hay: string[] = [];
@@ -66,8 +72,9 @@ function matchesSearch(m: ConversationMessage, q: string): boolean {
   return hay.join('\n').toLowerCase().includes(q);
 }
 
-/** Toggleable long-text block with "展开全部" / "收起". */
+/** Toggleable long-text block with "expand all" / "collapse". */
 function CollapseBlock({ text, expandAll, className }: { text: string; expandAll: boolean; className?: string }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const showFull = expandAll || expanded;
   const isLong = text.length > CHAR_LIMIT;
@@ -85,7 +92,7 @@ function CollapseBlock({ text, expandAll, className }: { text: string; expandAll
           onClick={() => setExpanded((v) => !v)}
           className='text-muted-foreground hover:text-foreground mt-1 flex w-full cursor-pointer items-center justify-center gap-1 rounded-md border bg-muted/40 px-2 py-1 text-xs transition-colors'
         >
-          {expanded ? '收起 ▲' : `展开全部（共 ${fmtNum(text.length)} 字符）▼`}
+          {expanded ? `${t('requests.conversation.collapse')} ▲` : `${t('requests.conversation.expandAllChars', { count: fmtNum(text.length) })} ▼`}
         </button>
       )}
     </div>
@@ -145,6 +152,7 @@ interface ToolCallCardProps {
 }
 
 function ToolCallCard({ call, resultIndex, showArgs, jumpTo }: ToolCallCardProps) {
+  const { t } = useTranslation();
   const [argsOpen, setArgsOpen] = useState(false);
   return (
     <div className='border-purple-500/40 bg-muted/30 border-l-4 rounded-md border p-2.5 pl-3'>
@@ -157,7 +165,7 @@ function ToolCallCard({ call, resultIndex, showArgs, jumpTo }: ToolCallCardProps
             onClick={() => jumpTo(resultIndex)}
             className='text-muted-foreground hover:text-foreground ml-auto cursor-pointer text-[11px] underline decoration-dotted underline-offset-2'
           >
-            结果 → #{resultIndex}
+            {t('requests.conversation.toolResultJump', { index: resultIndex })}
           </button>
         )}
       </div>
@@ -168,7 +176,7 @@ function ToolCallCard({ call, resultIndex, showArgs, jumpTo }: ToolCallCardProps
             onClick={() => setArgsOpen((v) => !v)}
             className='text-muted-foreground hover:text-foreground mt-1.5 cursor-pointer text-[11px] font-medium'
           >
-            {argsOpen ? '收起参数 ▲' : '查看参数 JSON ▼'}
+            {argsOpen ? `${t('requests.conversation.collapse')} ▲` : `${t('requests.conversation.viewArgsJson')} ▼`}
           </button>
           {argsOpen && (
             <pre className='bg-muted/40 border-border mt-1 overflow-x-auto rounded-md border p-2 font-mono text-[11.5px] text-muted-foreground'>
@@ -188,6 +196,7 @@ interface ToolResultCardProps {
 }
 
 function ToolResultCard({ callIndex, content, jumpTo }: ToolResultCardProps) {
+  const { t } = useTranslation();
   return (
     <div className='border-orange-500/40 bg-muted/30 border-l-4 rounded-md border p-2.5 pl-3'>
       <div className='mb-1 flex flex-wrap items-center gap-2'>
@@ -197,7 +206,7 @@ function ToolResultCard({ callIndex, content, jumpTo }: ToolResultCardProps) {
             type='button'
             onClick={() => jumpTo(callIndex)}
             className='text-muted-foreground hover:text-foreground cursor-pointer font-mono text-[11px] underline decoration-dotted underline-offset-2'
-            title='跳转到工具调用'
+            title={t('requests.conversation.jumpToToolCall')}
           >
             {callIndex} ↑
           </button>
@@ -260,7 +269,7 @@ function MessageCard({
         <div className='border-amber-500/40 bg-amber-500/5 rounded-md border border-dashed p-2.5'>
           <div className='mb-1 text-[11px] font-semibold tracking-wider text-amber-600 dark:text-amber-400'>◆ REASONING</div>
           <details className='group'>
-            <summary className='text-muted-foreground cursor-pointer text-[11.5px] underline decoration-dotted underline-offset-2'>展开思考过程</summary>
+            <summary className='text-muted-foreground cursor-pointer text-[11.5px] underline decoration-dotted underline-offset-2'>{t('requests.conversation.expandReasoning')}</summary>
             <CollapseBlock text={message.reasoning} expandAll={expandAll} className='mt-1.5' />
           </details>
         </div>
@@ -571,7 +580,7 @@ export function RequestConversationViewer({ body, format, className }: RequestCo
         <Stat label={t('requests.conversation.statToolCalls')} value={fmtNum(totalToolCalls)} />
         <Stat label='max_tokens' value={data.maxTokens != null ? fmtNum(data.maxTokens) : '—'} />
         <Stat label='stream' value={String(data.stream ?? '—')} />
-        <Stat label='tool_choice' value={String(data.toolChoice ?? '—')} />
+        <Stat label='tool_choice' value={fmtToolChoice(data.toolChoice)} />
         <Stat label={t('requests.conversation.statChars')} value={fmtNum(totalChars)} />
         <Stat label='≈Tokens' value={fmtNum(Math.round(totalChars / 3.5))} />
         <Stat
