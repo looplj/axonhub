@@ -147,6 +147,7 @@ func (t *EmbeddingInboundTransformer) TransformResponse(
 			embResp.Usage = EmbeddingUsage{
 				PromptTokens: llmResp.Usage.PromptTokens,
 				TotalTokens:  llmResp.Usage.TotalTokens,
+				Cost:         llmResp.Usage.Cost,
 			}
 		}
 

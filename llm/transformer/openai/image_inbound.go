@@ -147,6 +147,7 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 			InputTokens:  llmResp.Usage.PromptTokens,
 			OutputTokens: llmResp.Usage.CompletionTokens,
 			TotalTokens:  llmResp.Usage.TotalTokens,
+			Cost:         llmResp.Usage.Cost,
 		}
 		if llmResp.Usage.PromptTokensDetails != nil {
 			oaiResp.Usage.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{

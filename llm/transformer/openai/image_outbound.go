@@ -660,6 +660,7 @@ type ImagesResponseUsage struct {
 	TotalTokens         int64                                   `json:"total_tokens"`
 	InputTokensDetails  *ImagesResponseUsageInputTokensDetails  `json:"input_tokens_details,omitempty"`
 	OutputTokensDetails *ImagesResponseUsageOutputTokensDetails `json:"output_tokens_details,omitempty"`
+	Cost                *float64                                `json:"cost,omitempty"`
 }
 
 // ImagesResponseUsageInputTokensDetails represents detailed input token information.

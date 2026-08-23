@@ -120,7 +120,16 @@ AxonHub 支持三种定价模式：
 
 ### API 响应 (`usage.cost`)
 
-OpenAI 兼容的 `POST /v1/chat/completions` 和 `POST /v1/completions` 在配置了对应渠道模型价格时，会在 `usage.cost` 中返回 AxonHub 计算的费用：
+系统设置中的 **注入 usage.cost** 默认开启。开启且配置了对应渠道模型价格时，AxonHub 会把按渠道价格计算的费用写入客户端 usage 对象。该值是 AxonHub 自己的计算结果，不是上游账单。关闭此设置后，客户端 usage 保持上游原样。
+
+支持的响应字段：
+
+- OpenAI Chat Completions / Completions / Responses / Compact：`usage.cost`
+- OpenAI Embeddings / Image Generation / Video：`usage.cost`
+- Anthropic Messages：`usage.cost`（含流式 `message_delta` 的 usage）
+- Gemini `generateContent`：`usageMetadata.cost`（AxonHub 扩展字段，官方 Gemini 响应没有该字段）
+- Jina Embeddings / Rerank：`usage.cost`
+- AI SDK text：`usage.cost`
 
 ```json
 {
@@ -133,7 +142,7 @@ OpenAI 兼容的 `POST /v1/chat/completions` 和 `POST /v1/completions` 在配�
 }
 ```
 
-流式响应会把 `usage.cost` 放在带有 `usage` 的那一帧（通常是 `[DONE]` 前最后一块，且需要 `stream_options.include_usage`）。未配置价格或响应没有 usage 时省略该字段。Pass-through 响应会原样返回上游 body，不会注入 AxonHub 的费用。
+流式响应会把 `usage.cost` 放在带有 `usage` 的那一帧（通常是 `[DONE]` 前最后一块，且需要 `stream_options.include_usage`）。未配置价格、响应没有 usage，或关闭了费用注入时省略该字段。Pass-through 响应会原样返回上游 body，不会注入 AxonHub 的费用。`POST /v1/audio/speech` 等二进制接口没有 JSON usage，也不会返回费用。
 
 ## 查看成本
 

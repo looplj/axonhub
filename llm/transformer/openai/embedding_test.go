@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -520,6 +521,36 @@ func TestEmbeddingInboundTransformer_TransformResponse(t *testing.T) {
 		require.Equal(t, "list", returnedEmbResp.Object)
 		require.Equal(t, "text-embedding-ada-002", returnedEmbResp.Model)
 		require.Len(t, returnedEmbResp.Data, 1)
+	})
+
+	t.Run("includes usage cost", func(t *testing.T) {
+		llmResp := &llm.Response{
+			Object: "list",
+			Model:  "text-embedding-ada-002",
+			Embedding: &llm.EmbeddingResponse{
+				Object: "list",
+				Data: []llm.EmbeddingData{
+					{
+						Object:    "embedding",
+						Index:     0,
+						Embedding: llm.Embedding{Embedding: []float64{0.1, 0.2, 0.3}},
+					},
+				},
+			},
+			Usage: &llm.Usage{
+				PromptTokens: 5,
+				TotalTokens:  5,
+				Cost:         lo.ToPtr(0.000005),
+			},
+		}
+
+		httpResp, err := transformer.TransformResponse(context.Background(), llmResp)
+		require.NoError(t, err)
+
+		var returnedEmbResp EmbeddingResponse
+		require.NoError(t, json.Unmarshal(httpResp.Body, &returnedEmbResp))
+		require.NotNil(t, returnedEmbResp.Usage.Cost)
+		require.InDelta(t, 0.000005, *returnedEmbResp.Usage.Cost, 1e-12)
 	})
 
 	t.Run("valid response without usage", func(t *testing.T) {

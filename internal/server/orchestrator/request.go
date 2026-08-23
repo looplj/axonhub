@@ -94,14 +94,19 @@ func (m *persistRequestMiddleware) injectUsageCost(ctx context.Context, resp *ll
 	}
 
 	state := m.inbound.state
-	if state == nil || state.UsageLogService == nil || state.Request == nil || state.RequestExec == nil {
+	if state == nil || state.UsageLogService == nil || state.RequestExec == nil {
 		return
 	}
 
-	switch state.Request.Format {
-	case string(llm.APIFormatOpenAIChatCompletion), string(llm.APIFormatOpenAICompletion):
-	default:
-		return
+	if state.SystemService != nil {
+		enabled, err := state.SystemService.InjectUsageCostEnabled(ctx)
+		if err != nil {
+			log.Warn(ctx, "failed to get inject usage cost setting", log.Cause(err))
+		}
+
+		if !enabled {
+			return
+		}
 	}
 
 	state.UsageLogService.InjectUsageCost(ctx, state.RequestExec.ChannelID, state.RequestExec.ModelID, resp.Usage)

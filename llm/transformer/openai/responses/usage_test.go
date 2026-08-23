@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -61,4 +62,21 @@ func TestUsageCacheWriteTokensRoundTrip(t *testing.T) {
 			"total_tokens": 120
 		}`, string(body))
 	})
+}
+
+func TestConvertLLMUsageToResponsesUsage_IncludesCost(t *testing.T) {
+	t.Parallel()
+
+	responsesUsage := ConvertLLMUsageToResponsesUsage(&llm.Usage{
+		PromptTokens:     100,
+		CompletionTokens: 20,
+		TotalTokens:      120,
+		Cost:             lo.ToPtr(0.000005),
+	})
+	require.NotNil(t, responsesUsage.Cost)
+	require.InDelta(t, 0.000005, *responsesUsage.Cost, 1e-12)
+
+	body, err := json.Marshal(responsesUsage)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `"cost":0.000005`)
 }

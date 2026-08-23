@@ -195,6 +195,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		APIKey:              apiKey,
 		RequestService:      processor.RequestService,
 		UsageLogService:     processor.UsageLogService,
+		SystemService:       processor.SystemService,
 		ChannelService:      processor.ChannelService,
 		PromptProvider:      processor.PromptProvider,
 		PromptProtecter:     processor.PromptProtecter,

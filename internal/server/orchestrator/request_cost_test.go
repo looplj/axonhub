@@ -82,6 +82,7 @@ func setupUsageCostMiddleware(t *testing.T, format, modelID string) (*persistReq
 			ModelID:   modelID,
 		},
 		UsageLogService: biz.NewUsageLogService(client, systemService, channelService),
+		SystemService:   systemService,
 	}
 
 	return &persistRequestMiddleware{
@@ -108,7 +109,7 @@ func TestPersistRequestMiddleware_InjectsChatUsageCost(t *testing.T) {
 	require.InDelta(t, 0.000005, *result.Usage.Cost, 1e-12)
 }
 
-func TestPersistRequestMiddleware_DoesNotInjectCostForOtherFormats(t *testing.T) {
+func TestPersistRequestMiddleware_InjectsEmbeddingUsageCost(t *testing.T) {
 	t.Parallel()
 
 	middleware, ctx, _ := setupUsageCostMiddleware(t, string(llm.APIFormatOpenAIEmbedding), "m1")
@@ -123,7 +124,29 @@ func TestPersistRequestMiddleware_DoesNotInjectCostForOtherFormats(t *testing.T)
 	})
 	require.NoError(t, err)
 	require.NotNil(t, result.Usage)
-	require.Nil(t, result.Usage.Cost)
+	require.NotNil(t, result.Usage.Cost)
+	require.InDelta(t, 0.000005, *result.Usage.Cost, 1e-12)
+}
+
+func TestPersistRequestMiddleware_SkipsInjectionWhenDisabled(t *testing.T) {
+	t.Parallel()
+
+	middleware, ctx, _ := setupUsageCostMiddleware(t, string(llm.APIFormatOpenAIChatCompletion), "m1")
+	require.NoError(t, middleware.inbound.state.SystemService.SetInjectUsageCostEnabled(ctx, false))
+
+	result, err := middleware.OnOutboundLlmResponse(ctx, &llm.Response{
+		ID: "resp-1",
+		Usage: &llm.Usage{
+			PromptTokens:     100,
+			CompletionTokens: 200,
+			TotalTokens:      300,
+			Cost:             lo.ToPtr(9.99),
+		},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result.Usage)
+	require.NotNil(t, result.Usage.Cost)
+	require.InDelta(t, 9.99, *result.Usage.Cost, 1e-12)
 }
 
 func TestPersistRequestMiddleware_InjectsStreamUsageCost(t *testing.T) {

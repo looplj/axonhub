@@ -120,7 +120,16 @@ For Anthropic models, you can configure TTL variants for cache writes:
 
 ### API Response (`usage.cost`)
 
-OpenAI-compatible `POST /v1/chat/completions` and `POST /v1/completions` responses include AxonHub's calculated cost on `usage.cost` when a matching channel model price is configured:
+When **Inject usage.cost** is enabled in system settings (the default) and a matching channel model price is configured, AxonHub writes the calculated cost onto the client-facing usage object. The value is AxonHub's channel-price calculation, not an upstream provider bill. Disable the setting to leave provider usage unchanged.
+
+Supported response fields:
+
+- OpenAI Chat Completions / Completions / Responses / Compact: `usage.cost`
+- OpenAI Embeddings / Image Generation / Video: `usage.cost`
+- Anthropic Messages: `usage.cost` (including the streaming `message_delta` usage object)
+- Gemini `generateContent`: `usageMetadata.cost` (AxonHub extension; official Gemini responses do not include this field)
+- Jina Embeddings / Rerank: `usage.cost`
+- AI SDK text: `usage.cost`
 
 ```json
 {
@@ -133,7 +142,7 @@ OpenAI-compatible `POST /v1/chat/completions` and `POST /v1/completions` respons
 }
 ```
 
-Streaming responses include `usage.cost` on the same chunk that carries `usage` (typically the last chunk before `[DONE]`, when `stream_options.include_usage` is enabled). The field is omitted when no price is configured or the response has no usage. Pass-through responses keep the upstream body unchanged and do not inject AxonHub's cost.
+Streaming responses include `usage.cost` on the same chunk that carries `usage` (typically the last chunk before `[DONE]`, when `stream_options.include_usage` is enabled). The field is omitted when no price is configured, the response has no usage, or usage-cost injection is disabled. Pass-through responses keep the upstream body unchanged and do not inject AxonHub's cost. Binary endpoints such as `POST /v1/audio/speech` have no JSON usage object and do not return cost.
 
 ## Viewing Costs
 

@@ -245,8 +245,9 @@ type OpenAIVideoError struct {
 }
 
 type OpenAIVideoUsage struct {
-	CompletionTokens int64 `json:"completion_tokens,omitempty"`
-	TotalTokens      int64 `json:"total_tokens,omitempty"`
+	CompletionTokens int64    `json:"completion_tokens,omitempty"`
+	TotalTokens      int64    `json:"total_tokens,omitempty"`
+	Cost             *float64 `json:"cost,omitempty"`
 }
 
 type OpenAIVideoObject struct {
@@ -322,6 +323,7 @@ func (t *VideoInboundTransformer) TransformResponse(ctx context.Context, llmResp
 		oai.Usage = &OpenAIVideoUsage{
 			CompletionTokens: llmResp.Usage.CompletionTokens,
 			TotalTokens:      llmResp.Usage.TotalTokens,
+			Cost:             llmResp.Usage.Cost,
 		}
 	}
 

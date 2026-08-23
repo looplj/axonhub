@@ -812,8 +812,7 @@ type Usage struct {
 	CompletionModalityTokenDetails []ModalityTokenCount `json:"completion_modality_token_details,omitempty"`
 
 	// Cost is the request cost calculated by AxonHub from channel model prices.
-	// Omitted when no matching price is configured. OpenAI-compatible chat and
-	// completions responses expose this as usage.cost.
+	// Omitted when no matching price is configured or usage-cost injection is disabled.
 	Cost *float64 `json:"cost,omitempty"`
 }
 
