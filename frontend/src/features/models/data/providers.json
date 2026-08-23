@@ -1408,6 +1408,89 @@
       "display_name": "DeepSeek",
       "models": [
         {
+          "id": "deepseek-v4-flash-vision-exp",
+          "name": "DeepSeek V4 Flash Vision Exp",
+          "description": "Experimental vision-enabled DeepSeek V4 Flash model",
+          "family": "deepseek-flash",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "high",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-08-21",
+          "last_updated": "2026-08-21",
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 384000
+          },
+          "status": "beta",
+          "cost": {
+            "input": 0.14,
+            "output": 0.28,
+            "reasoning": 0.28,
+            "cache_read": 0.0028
+          },
+          "display_name": "DeepSeek V4 Flash Vision Exp",
+          "metadata": {
+            "lifecycle": "preview"
+          },
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "default_enabled": true,
+              "mode": "effort",
+              "effort": "high",
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary",
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "effort_options": [
+                "low",
+                "high",
+                "max"
+              ],
+              "notes": [
+                "The DeepSeek API maps xhigh to high for V4 Flash; effort_options lists distinct model-effective levels."
+              ]
+            }
+          },
+          "type": "chat",
+          "knowledge": "2025-05",
+          "experimental": true,
+          "vision": true
+        },
+        {
           "id": "deepseek-v4-pro",
           "name": "DeepSeek V4 Pro",
           "description": "DeepSeek V4 Pro snapshot with million-token context and support for thinking and non-thinking modes",
@@ -1436,7 +1519,7 @@
           "structured_output": true,
           "temperature": true,
           "release_date": "2026-08-12",
-          "last_updated": "2026-08-12",
+          "last_updated": "2026-08-22",
           "modalities": {
             "input": [
               "text"
@@ -1445,7 +1528,7 @@
               "text"
             ]
           },
-          "open_weights": false,
+          "open_weights": true,
           "limit": {
             "context": 1000000,
             "output": 384000
@@ -1457,7 +1540,6 @@
             "cache_read": 0.003625
           },
           "display_name": "DeepSeek V4 Pro",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -1478,7 +1560,8 @@
                 "The DeepSeek API maps low to high and xhigh to max for V4 Pro; effort_options lists distinct model-effective levels."
               ]
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "deepseek-v4-flash",
@@ -1532,7 +1615,6 @@
             "cache_read": 0.0028
           },
           "display_name": "DeepSeek V4 Flash",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -1554,7 +1636,8 @@
                 "The DeepSeek API maps xhigh to high for V4 Flash; effort_options lists distinct model-effective levels."
               ]
             }
-          }
+          },
+          "type": "chat"
         },
         {
           "id": "deepseek-chat",
@@ -1630,7 +1713,6 @@
             "cache_read": 0.0028
           },
           "display_name": "DeepSeek Reasoner",
-          "type": "chat",
           "extra_capabilities": {
             "reasoning": {
               "supported": true,
@@ -1641,7 +1723,8 @@
                 "thinking_blocks"
               ]
             }
-          }
+          },
+          "type": "chat"
         }
       ]
     },
@@ -1651,6 +1734,58 @@
       "doc": "https://ai.google.dev/gemini-api/docs/models",
       "display_name": "google",
       "models": [
+        {
+          "id": "gemini-flash-latest",
+          "name": "Gemini Flash Latest",
+          "description": "High-efficiency Gemini model for agentic workflows, coding, and multimodal reasoning",
+          "family": "gemini-flash",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2026-03",
+          "release_date": "2026-08-13",
+          "last_updated": "2026-08-13",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "cost": {
+            "input": 0.75,
+            "output": 3.75,
+            "cache_read": 0.075,
+            "input_audio": 0.75
+          },
+          "display_name": "Gemini Flash Latest",
+          "type": "chat"
+        },
         {
           "id": "gemini-3.7-flash",
           "name": "Gemini 3.7 Flash",
@@ -1720,6 +1855,58 @@
               ]
             }
           },
+          "type": "chat"
+        },
+        {
+          "id": "gemini-flash-lite-latest",
+          "name": "Gemini Flash-Lite Latest",
+          "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
+          "family": "gemini-flash-lite",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "minimal",
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "knowledge": "2026-03",
+          "release_date": "2026-07-21",
+          "last_updated": "2026-07-21",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1048576,
+            "output": 65536
+          },
+          "cost": {
+            "input": 0.3,
+            "output": 2.5,
+            "cache_read": 0.03
+          },
+          "display_name": "Gemini Flash-Lite Latest",
           "type": "chat"
         },
         {
@@ -1824,10 +2011,10 @@
             "output": 65536
           },
           "cost": {
-            "input": 1.5,
-            "output": 7.5,
-            "cache_read": 0.15,
-            "input_audio": 1.5
+            "input": 0.75,
+            "output": 3.75,
+            "cache_read": 0.075,
+            "input_audio": 0.75
           },
           "display_name": "Gemini 3.6 Flash",
           "extra_capabilities": {
@@ -2094,59 +2281,6 @@
           "type": "image-generation"
         },
         {
-          "id": "gemini-flash-latest",
-          "name": "Gemini Flash Latest",
-          "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
-          "family": "gemini-flash",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "reasoning_options": [
-            {
-              "type": "effort",
-              "values": [
-                "minimal",
-                "low",
-                "medium",
-                "high"
-              ]
-            }
-          ],
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2026-05-19",
-          "last_updated": "2026-05-19",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "video",
-              "audio",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "cost": {
-            "input": 1.5,
-            "output": 9,
-            "cache_read": 0.15,
-            "input_audio": 1.5
-          },
-          "display_name": "Gemini Flash Latest",
-          "type": "chat"
-        },
-        {
           "id": "gemini-3.5-flash",
           "name": "Gemini 3.5 Flash",
           "description": "Fast Gemini model balancing multimodal reasoning, tool use, and cost",
@@ -2216,59 +2350,6 @@
               ]
             }
           },
-          "type": "chat"
-        },
-        {
-          "id": "gemini-flash-lite-latest",
-          "name": "Gemini Flash-Lite Latest",
-          "description": "Low-latency Gemini model for high-volume multimodal and agent workloads",
-          "family": "gemini-flash-lite",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "reasoning_options": [
-            {
-              "type": "effort",
-              "values": [
-                "minimal",
-                "low",
-                "medium",
-                "high"
-              ]
-            }
-          ],
-          "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "knowledge": "2025-01",
-          "release_date": "2026-05-07",
-          "last_updated": "2026-05-07",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "video",
-              "audio",
-              "pdf"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": false,
-          "limit": {
-            "context": 1048576,
-            "output": 65536
-          },
-          "cost": {
-            "input": 0.25,
-            "output": 1.5,
-            "cache_read": 0.025,
-            "input_audio": 0.5
-          },
-          "display_name": "Gemini Flash-Lite Latest",
           "type": "chat"
         },
         {
@@ -9697,22 +9778,6 @@
             "context": 500000,
             "output": 500000
           },
-          "experimental": {
-            "modes": {
-              "fast": {
-                "cost": {
-                  "input": 4,
-                  "output": 12,
-                  "cache_read": 1
-                },
-                "provider": {
-                  "body": {
-                    "service_tier": "priority"
-                  }
-                }
-              }
-            }
-          },
           "cost": {
             "input": 2,
             "output": 6,
@@ -9740,6 +9805,38 @@
               "supported": true
             }
           },
+          "type": "chat"
+        },
+        {
+          "id": "grok-imagine-image-2.0",
+          "name": "Grok Imagine Image 2.0",
+          "description": "Image model for prompt-driven generation, editing, and visual design workflows",
+          "family": "grok",
+          "attachment": true,
+          "reasoning": {
+            "supported": false
+          },
+          "tool_call": false,
+          "temperature": false,
+          "release_date": "2026-08-07",
+          "last_updated": "2026-08-07",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "image",
+              "pdf"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 8000,
+            "output": 8192
+          },
+          "display_name": "Grok Imagine Image 2.0",
           "type": "chat"
         },
         {
@@ -17901,7 +17998,7 @@
       "name": "ByteDance",
       "display_name": "ByteDance",
       "doc": "https://www.volcengine.com/docs/82379/1330310?lang=zh",
-      "updated_at": "2026-08-14T07:45:20Z",
+      "updated_at": "2026-08-17T05:54:22Z",
       "metadata": {
         "source": "volcengine-docs",
         "doc_detail_url": "https://www.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh"
@@ -17917,7 +18014,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -17964,7 +18061,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18011,7 +18108,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18057,7 +18154,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18100,7 +18197,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18141,7 +18238,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18184,7 +18281,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18243,7 +18340,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18302,7 +18399,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18360,7 +18457,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18418,7 +18515,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18478,7 +18575,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18536,7 +18633,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18593,7 +18690,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18652,7 +18749,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18710,7 +18807,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18769,7 +18866,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18826,7 +18923,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18883,7 +18980,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18941,7 +19038,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18997,7 +19094,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19047,7 +19144,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19104,7 +19201,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19161,7 +19258,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19217,7 +19314,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19259,7 +19356,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19299,7 +19396,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19339,7 +19436,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19379,7 +19476,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19416,7 +19513,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19453,7 +19550,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19490,7 +19587,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19527,7 +19624,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19564,7 +19661,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19601,7 +19698,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19638,7 +19735,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-14T07:45:20Z",
+          "last_updated": "2026-08-17T05:54:22Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -20173,17 +20270,17 @@
         },
         {
           "id": "kat-coder-pro",
-          "name": "Kat Coder Pro",
-          "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
+          "name": "kat-coder-pro",
+          "description": "KAT-Coder-Pro V2 by KwaiKAT is a non-reasoning model optimized for agentic coding. It delivers strong performance on reasoning-style tasks while requiring significantly fewer output tokens than peer models. With the 1210 release, it achieved a score of 64 on the Artificial Analysis Intelligence Index, placing it in the global Top 10 and ranking first among all non-reasoning models.",
+          "family": "kat-coder",
           "attachment": false,
           "reasoning": {
             "supported": false
           },
           "tool_call": true,
-          "structured_output": true,
-          "temperature": true,
-          "release_date": "2026-01-05",
-          "last_updated": "2026-01-05",
+          "structured_output": false,
+          "release_date": "2026-03-27",
+          "last_updated": "2026-03-27",
           "modalities": {
             "input": [
               "text"
@@ -20192,19 +20289,19 @@
               "text"
             ]
           },
-          "open_weights": true,
+          "open_weights": false,
           "limit": {
             "context": 256000,
-            "output": 128000
+            "output": 256000
           },
           "cost": {
-            "input": 0.3,
-            "output": 1.2,
+            "input": 0.27,
+            "output": 1.08,
             "cache_read": 0.06
           },
-          "display_name": "Kat Coder Pro",
+          "display_name": "kat-coder-pro",
           "type": "chat",
-          "family": "kat-coder"
+          "temperature": true
         },
         {
           "id": "kat-coder-pro-v1",
