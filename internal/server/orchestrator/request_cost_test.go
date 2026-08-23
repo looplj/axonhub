@@ -1,3 +1,4 @@
+//nolint:exhaustruct_v5 // Test fixtures only populate fields under assertion.
 package orchestrator
 
 import (
