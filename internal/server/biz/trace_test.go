@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xfile"
+	"github.com/looplj/axonhub/llm"
 )
 
 func setupTestTraceService(t *testing.T, client *ent.Client) (*TraceService, *ent.Client) {
@@ -382,6 +383,95 @@ func TestTraceService_GetRequestTrace(t *testing.T) {
 	require.Equal(t, int64(10), *traceRoot.Metadata.InputTokens)
 	require.NotNil(t, traceRoot.Metadata.OutputTokens)
 	require.Equal(t, int64(20), *traceRoot.Metadata.OutputTokens)
+}
+
+func TestTraceService_ImageGenerationTrace(t *testing.T) {
+	traceService, client := setupTestTraceService(t, nil)
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	projectEntity, err := client.Project.Create().
+		SetName("image-generation-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	traceEntity, err := client.Trace.Create().
+		SetTraceID("trace-image-generation").
+		SetProjectID(projectEntity.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	requestBody := []byte(`{
+		"model": "gpt-image-1",
+		"prompt": "A watercolor fox in a moonlit forest"
+	}`)
+	responseBody := []byte(`{
+		"created": 1730000000,
+		"data": [{"b64_json": "image-data"}],
+		"usage": {
+			"input_tokens": 12,
+			"output_tokens": 34,
+			"total_tokens": 46
+		}
+	}`)
+
+	req, err := client.Request.Create().
+		SetProjectID(projectEntity.ID).
+		SetTraceID(traceEntity.ID).
+		SetModelID("gpt-image-1").
+		SetFormat(llm.APIFormatOpenAIImageGeneration.String()).
+		SetRequestBody(requestBody).
+		SetResponseBody(responseBody).
+		SetStatus("completed").
+		SetStream(false).
+		Save(ctx)
+	require.NoError(t, err)
+
+	firstUserQuery, err := traceService.FirstUserQuery(ctx, traceEntity.ID)
+	require.NoError(t, err)
+	require.NotNil(t, firstUserQuery)
+	require.Equal(t, "A watercolor fox in a moonlit forest", *firstUserQuery)
+
+	traceRoot, err := traceService.GetRootSegment(ctx, traceEntity.ID)
+	require.NoError(t, err)
+	require.NotNil(t, traceRoot)
+	require.Equal(t, req.ID, traceRoot.ID)
+
+	promptSpan := findSpanByType(traceRoot.RequestSpans, "user_query")
+	require.NotNil(t, promptSpan)
+	require.NotNil(t, promptSpan.Value)
+	require.NotNil(t, promptSpan.Value.UserQuery)
+	require.Equal(t, "A watercolor fox in a moonlit forest", promptSpan.Value.UserQuery.Text)
+	require.Empty(t, traceRoot.ResponseSpans)
+
+	require.NotNil(t, traceRoot.Metadata)
+	require.NotNil(t, traceRoot.Metadata.InputTokens)
+	require.Equal(t, int64(12), *traceRoot.Metadata.InputTokens)
+	require.NotNil(t, traceRoot.Metadata.OutputTokens)
+	require.Equal(t, int64(34), *traceRoot.Metadata.OutputTokens)
+	require.NotNil(t, traceRoot.Metadata.TotalTokens)
+	require.Equal(t, int64(46), *traceRoot.Metadata.TotalTokens)
+}
+
+func TestGetOutboundTransformer_ImageFormats(t *testing.T) {
+	for _, format := range []llm.APIFormat{
+		llm.APIFormatOpenAIImageGeneration,
+		llm.APIFormatOpenAIImageEdit,
+		llm.APIFormatOpenAIImageVariation,
+	} {
+		t.Run(format.String(), func(t *testing.T) {
+			outbound, err := getOutboundTransformer(format)
+			require.NoError(t, err)
+			require.NotNil(t, outbound)
+		})
+	}
+
+	_, err := getOutboundTransformer(llm.APIFormat("unsupported/format"))
+	require.EqualError(t, err, "unsupported format for outbound transformation: unsupported/format")
 }
 
 func TestTraceService_GetRequestTrace_WithToolCalls(t *testing.T) {
