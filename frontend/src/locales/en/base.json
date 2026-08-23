@@ -7,7 +7,7 @@
   "sidebar.items.models": "Models",
   "sidebar.items.promptProtectionRules": "Prompt Protection",
   "sidebar.items.prompts": "Prompts",
-  "sidebar.items.dataStorages": "Data Storages",
+  "sidebar.items.dataStorages": "Payload Storages",
   "sidebar.items.users": "Users",
   "sidebar.items.roles": "Roles",
   "sidebar.items.requests": "Requests",
