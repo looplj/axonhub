@@ -184,11 +184,12 @@ func completionResponseToLLM(compResp *CompletionResponse) *llm.Response {
 		},
 	}
 
-	if compResp.Usage.PromptTokens > 0 || compResp.Usage.TotalTokens > 0 {
+	if compResp.Usage.PromptTokens > 0 || compResp.Usage.TotalTokens > 0 || compResp.Usage.Cost != nil {
 		llmResp.Usage = &llm.Usage{
 			PromptTokens:     compResp.Usage.PromptTokens,
 			CompletionTokens: compResp.Usage.CompletionTokens,
 			TotalTokens:      compResp.Usage.TotalTokens,
+			Cost:             compResp.Usage.Cost,
 		}
 	}
 

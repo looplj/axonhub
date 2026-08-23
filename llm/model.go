@@ -810,6 +810,11 @@ type Usage struct {
 	// Output only. A detailed breakdown of the token count for each modality in the candidates.
 	// For gemini models only.
 	CompletionModalityTokenDetails []ModalityTokenCount `json:"completion_modality_token_details,omitempty"`
+
+	// Cost is the request cost calculated by AxonHub from channel model prices.
+	// Omitted when no matching price is configured. OpenAI-compatible chat and
+	// completions responses expose this as usage.cost.
+	Cost *float64 `json:"cost,omitempty"`
 }
 
 func (u *Usage) GetCompletionTokens() *int64 {

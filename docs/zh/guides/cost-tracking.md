@@ -118,6 +118,23 @@ AxonHub 支持三种定价模式：
    - 每次价格变更都会创建新的版本记录
    - 使用日志通过 `cost_price_reference_id` 关联到具体价格版本
 
+### API 响应 (`usage.cost`)
+
+OpenAI 兼容的 `POST /v1/chat/completions` 和 `POST /v1/completions` 在配置了对应渠道模型价格时，会在 `usage.cost` 中返回 AxonHub 计算的费用：
+
+```json
+{
+  "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 50,
+    "total_tokens": 150,
+    "cost": 0.000005
+  }
+}
+```
+
+流式响应会把 `usage.cost` 放在带有 `usage` 的那一帧（通常是 `[DONE]` 前最后一块，且需要 `stream_options.include_usage`）。未配置价格或响应没有 usage 时省略该字段。Pass-through 响应会原样返回上游 body，不会注入 AxonHub 的费用。
+
 ## 查看成本
 
 ### 使用日志

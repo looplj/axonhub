@@ -56,11 +56,12 @@ func AggregateCompletionStreamChunks(ctx context.Context, chunks []*httpclient.S
 			}
 		}
 
-		if compResp.Usage.PromptTokens > 0 || compResp.Usage.TotalTokens > 0 {
+		if compResp.Usage.PromptTokens > 0 || compResp.Usage.TotalTokens > 0 || compResp.Usage.Cost != nil {
 			usage = &llm.Usage{
 				PromptTokens:     compResp.Usage.PromptTokens,
 				CompletionTokens: compResp.Usage.CompletionTokens,
 				TotalTokens:      compResp.Usage.TotalTokens,
+				Cost:             compResp.Usage.Cost,
 			}
 		}
 	}

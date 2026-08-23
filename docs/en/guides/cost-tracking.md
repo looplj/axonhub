@@ -118,6 +118,23 @@ For Anthropic models, you can configure TTL variants for cache writes:
    - Each price change creates a new version record
    - Usage logs reference the specific price version via `cost_price_reference_id`
 
+### API Response (`usage.cost`)
+
+OpenAI-compatible `POST /v1/chat/completions` and `POST /v1/completions` responses include AxonHub's calculated cost on `usage.cost` when a matching channel model price is configured:
+
+```json
+{
+  "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 50,
+    "total_tokens": 150,
+    "cost": 0.000005
+  }
+}
+```
+
+Streaming responses include `usage.cost` on the same chunk that carries `usage` (typically the last chunk before `[DONE]`, when `stream_options.include_usage` is enabled). The field is omitted when no price is configured or the response has no usage. Pass-through responses keep the upstream body unchanged and do not inject AxonHub's cost.
+
 ## Viewing Costs
 
 ### Usage Logs
