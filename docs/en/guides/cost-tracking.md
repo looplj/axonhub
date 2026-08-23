@@ -120,7 +120,7 @@ For Anthropic models, you can configure TTL variants for cache writes:
 
 ### API Response (`usage.cost`)
 
-When **Inject usage.cost** is enabled in system settings (the default) and a matching channel model price is configured, AxonHub writes the calculated cost onto the client-facing usage object. The value is AxonHub's channel-price calculation, not an upstream provider bill. Disable the setting to leave provider usage unchanged.
+When **Inject usage.cost** is enabled in system settings and a matching channel model price is configured, AxonHub writes the calculated cost onto the client-facing usage object. The setting is off by default. The value is AxonHub's channel-price calculation, not an upstream provider bill. Leave the setting disabled to keep provider usage unchanged.
 
 Supported response fields:
 

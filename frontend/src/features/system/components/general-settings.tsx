@@ -40,7 +40,7 @@ export function GeneralSettings() {
 
   const { data: usageCostSettings, isLoading: isLoadingUsageCostSettings } = useUsageCostInjectionSettings();
   const updateUsageCostSettings = useUpdateUsageCostInjectionSettings();
-  const [usageCostInjectionEnabled, setUsageCostInjectionEnabled] = useState(true);
+  const [usageCostInjectionEnabled, setUsageCostInjectionEnabled] = useState(false);
 
   const [currencyCode, setCurrencyCode] = useState('USD');
   const [timezone, setTimezone] = useState('UTC');

@@ -102,6 +102,7 @@ func (m *persistRequestMiddleware) injectUsageCost(ctx context.Context, resp *ll
 		enabled, err := state.SystemService.InjectUsageCostEnabled(ctx)
 		if err != nil {
 			log.Warn(ctx, "failed to get inject usage cost setting", log.Cause(err))
+			return
 		}
 
 		if !enabled {

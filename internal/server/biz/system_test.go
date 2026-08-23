@@ -1359,17 +1359,17 @@ func TestSystemService_InjectUsageCostEnabled(t *testing.T) {
 
 	got, err := service.InjectUsageCostEnabled(ctx)
 	require.NoError(t, err)
-	require.True(t, got)
-
-	require.NoError(t, service.SetInjectUsageCostEnabled(ctx, false))
-	got, err = service.InjectUsageCostEnabled(ctx)
-	require.NoError(t, err)
 	require.False(t, got)
 
 	require.NoError(t, service.SetInjectUsageCostEnabled(ctx, true))
 	got, err = service.InjectUsageCostEnabled(ctx)
 	require.NoError(t, err)
 	require.True(t, got)
+
+	require.NoError(t, service.SetInjectUsageCostEnabled(ctx, false))
+	got, err = service.InjectUsageCostEnabled(ctx)
+	require.NoError(t, err)
+	require.False(t, got)
 }
 
 func TestNormalizeRetryPolicy_LoadBalancerStrategy(t *testing.T) {

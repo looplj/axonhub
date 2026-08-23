@@ -66,6 +66,7 @@ func setupUsageCostMiddleware(t *testing.T, format, modelID string) (*persistReq
 	require.NoError(t, err)
 	channelService.PreloadModelPricesForTest(ctx, built)
 	channelService.SetEnabledChannelsForTest([]*biz.Channel{built})
+	require.NoError(t, systemService.SetInjectUsageCostEnabled(ctx, true))
 
 	state := &PersistenceState{
 		Request: &ent.Request{
