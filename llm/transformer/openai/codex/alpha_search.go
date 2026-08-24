@@ -113,7 +113,7 @@ func (t *OutboundTransformer) transformAlphaSearchRequest(ctx context.Context, l
 	baseURL := strings.TrimRight(t.baseURL, "#/")
 	return &httpclient.Request{
 		Method:      http.MethodPost,
-		URL:         baseURL + "/alpha/search",
+		URL:         baseURL + t.alphaSearchPath,
 		Headers:     headers,
 		Body:        body,
 		Auth:        &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: creds.AccessToken},
