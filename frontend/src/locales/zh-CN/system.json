@@ -59,7 +59,7 @@
   "system.storage.policy.title": "存储策略",
   "system.storage.policy.description": "选择哪些请求和响应内容会被保存，以及保留多久",
   "system.storage.policy.storeChunks.label": "存储流式响应块",
-  "system.storage.policy.storeChunks.description": "持久保存流式响应的每一个原始事件，事后可逐帧回放。存储开销最大——一次流式回复可能产生成百上千个事件。除非需要调试流式行为，建议保持关闭。",
+  "system.storage.policy.storeChunks.description": "开启后，流式响应的原始事件块会在流结束后保存到默认数据存储（未配置时为数据库），可在请求详情中逐帧回放。一次流式回复可能产生成百上千个事件，存储开销最大，除非需要调试流式行为，建议保持关闭。",
   "system.storage.policy.livePreview.label": "实时预览",
   "system.storage.policy.livePreview.description": "请求进行中时，在请求详情页实时观看打字机式的流式输出。仅存于内存，不做任何持久化，请求结束或服务重启后即消失。",
   "system.storage.policy.storeRequestBody.label": "存储请求体",

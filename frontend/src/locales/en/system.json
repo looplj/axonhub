@@ -59,7 +59,7 @@
   "system.storage.policy.title": "Storage Policy",
   "system.storage.policy.description": "Choose what request and response content is saved to storage, and how long it is kept",
   "system.storage.policy.storeChunks.label": "Store Response Chunks",
-  "system.storage.policy.storeChunks.description": "Persist every raw event of a streaming response so you can replay it frame by frame later. Highest storage cost — a single streamed reply can produce hundreds of events. Keep off unless you need to debug streaming behavior.",
+  "system.storage.policy.storeChunks.description": "When enabled, raw stream chunks are saved to the default data storage (or the database when none is configured) after the stream ends, so you can replay them frame by frame in request details. A single streamed reply can produce hundreds of events — the highest storage cost. Keep off unless you need to debug streaming behavior.",
   "system.storage.policy.livePreview.label": "Live Preview",
   "system.storage.policy.livePreview.description": "Show streaming output in real time on the request detail page while the request is still running. Memory only — nothing is saved, and it disappears when the request finishes or the server restarts.",
   "system.storage.policy.storeRequestBody.label": "Store Request Body",
