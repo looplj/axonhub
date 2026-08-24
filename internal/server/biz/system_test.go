@@ -1350,7 +1350,7 @@ func TestSystemService_UserAgentPassThrough_WithCache(t *testing.T) {
 }
 
 func TestSystemService_InjectUsageCostEnabled(t *testing.T) {
-	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory}) //nolint:exhaustruct_v5
 	defer client.Close()
 
 	ctx := context.Background()
