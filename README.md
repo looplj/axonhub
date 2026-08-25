@@ -55,15 +55,15 @@
         </a>
       </div>
       <div align="left">
-       <strong>AxonHub × Infistar.cc 无限星河｜高可用全模型 API · 赋能下一代 AI 网关</strong>
+       <strong>AxonHub × Infistar.cc 无限星河｜高可用全模型 API</strong>
       </div>
       <div align="left">
-        ⚡ 高并发稳定调度｜官方 1 折起 · 透明倍率 · 多节点冗余 · 智能路由 · 故障转移<br/>
-        🧠 全系模型支持｜ChatGPT · Claude · Gemini · Kimi · GLM · DeepSeek<br/>
-        🎨 全模态接入｜文本 · 图像 · 视频 · Embedding / Rerank · 一站式分发
+        ⚡ 企业级高并发稳定调度｜官方 1 折起 · 透明倍率 · 多节点冗余<br/>
+        🧠 全系模型支持｜ChatGPT · Claude · Gemini · DeepSeek<br/>
+        🎨 全模态接入｜文本 · 图像 · 视频 · Embedding / Rerank
       </div>
       <div align="left">
-        AxonHub 用户通过<a href="https://lj.s.gy/DUq59H" target="_blank">专属链接</a>注册，可享专属赠送额度或首充特惠。
+        AxonHub 用户通过<a href="https://lj.s.gy/DUq59H" target="_blank">专属链接</a>注册，可享专属特惠。
       </div>
     </td>
   </tr>
