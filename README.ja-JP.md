@@ -49,21 +49,22 @@
         <br/>
         <strong>無限星河 Infistar.cc</strong>
       </a>
-      <p align="center">
+      <div align="center">
         <a href="https://lj.s.gy/DUq59H" target="_blank">
           <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 無限星河" width="100%"/>
         </a>
-      </p>
-      <p align="left">
-        <strong>AxonHub × Infistar.cc 無限星河｜高可用な全モデル API · 次世代 AI ゲートウェイとマルチチャネルルーティングを支援</strong><br/><br/>
-        Infistar.cc 無限星河による本プロジェクトへのご支援に感謝します！
-      </p>
-      <p align="left">
-        ⚡ エンタープライズ級の高い同時実行性能と安定したスケジューリング：公式価格の 1 割から利用でき、モデル倍率も公開・透明です。ミリ秒級の応答で AxonHub のインテリジェントルーティングとフェイルオーバーに最適化されています。高可用性チャネルとマルチノード冗長バックアップにより、レート制限、429、接続切断の問題を解消します；<br/>
-        🧠 トップモデルを全面サポート：ChatGPT、Claude、Gemini、Kimi、GLM、DeepSeek など主要モデル全般に対応し、Claude Code、Codex、OpenCode などの AI プログラミングおよび Agent 開発ツールもネイティブサポートします。<br/>
-        🎨 マルチモーダルと最先端エコシステムへの接続：テキスト対話やコード生成だけでなく、主要な画像生成、動画、Embedding、Rerank モデルにもワンストップで接続でき、1 つの上流チャネルでゲートウェイのマルチモーダル配信ニーズに対応します。<br/>
-        🎁 AxonHub ユーザー限定特典：<a href="https://lj.s.gy/DUq59H" target="_blank">専用リンク</a>から登録すると、[専用付与クレジット / 初回チャージ特典]を受け取れます。すぐに利用でき、ゲートウェイのテストにも簡単に接続できます！
-      </p>
+      </div>
+      <div align="left">
+        <strong>AxonHub × Infistar.cc 無限星河｜高可用 AI API</strong>
+      </div>
+      <div align="left">
+        ⚡ 安定ルーティング｜公式 1 割 · 透明料金 · フェイルオーバー<br/>
+        🧠 主要モデル｜ChatGPT · Claude · Gemini · Kimi · GLM · DeepSeek<br/>
+        🎨 マルチモーダル｜テキスト · 画像 · 動画 · Embedding / Rerank
+      </div>
+      <div align="left">
+        AxonHub ユーザーは<a href="https://lj.s.gy/DUq59H" target="_blank">専用リンク</a>から特典を利用できます。
+      </div>
     </td>
   </tr>
 </table>
