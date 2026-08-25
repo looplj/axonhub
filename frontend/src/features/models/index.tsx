@@ -16,6 +16,7 @@ import { ModelsOnboardingFlow } from './components/models-onboarding-flow';
 import { ModelsTable } from './components/models-table';
 import ModelsProvider, { useModels } from './context/models-context';
 import { useQueryAllModels } from './data/models';
+import { ModelsCatalogStatus } from './components/models-catalog-status';
 import { useDevelopersData } from './data/providers';
 
 function ModelsContent() {
@@ -168,6 +169,9 @@ export default function ModelsManagement() {
           <div className='min-w-0'>
             <h2 className='text-xl font-bold tracking-tight'>{t('models.title')}</h2>
             <p className='text-muted-foreground text-sm'>{t('models.description')}</p>
+            <div className='mt-1'>
+              <ModelsCatalogStatus />
+            </div>
           </div>
           <ActionButtons />
         </div>
