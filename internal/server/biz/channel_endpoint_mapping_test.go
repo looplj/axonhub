@@ -107,6 +107,11 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
+			name:     "bailian responses defaults to responses",
+			typ:      channel.TypeBailianResponses,
+			expected: []string{llm.APIFormatOpenAIResponse.String()},
+		},
+		{
 			name: "xai api key exposes chat and responses",
 			typ:  channel.TypeXai,
 			expected: []string{

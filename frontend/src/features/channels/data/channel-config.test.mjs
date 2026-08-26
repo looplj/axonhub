@@ -57,6 +57,67 @@ test('Fenno exposes a third-party Codex channel', () => {
   assert.ok(providersConfig.indexOf('qiniu:') < providersConfig.indexOf('fenno:'));
 });
 
+test('Bailian exposes native Responses with the documented Beijing models', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const providersConfig = read('features/channels/data/config_providers.ts');
+
+  assert.match(schema, /channelTypeSchema[\s\S]*'bailian_responses'/);
+  assert.match(
+    channelsConfig,
+    /bailian_responses:\s*{[\s\S]*baseURL:\s*'https:\/\/dashscope\.aliyuncs\.com\/compatible-mode\/v1'[\s\S]*apiFormat:\s*OPENAI_RESPONSES/
+  );
+  assert.match(providersConfig, /bailian:\s*{[\s\S]*channelTypes:\s*\[\s*'bailian',\s*'bailian_anthropic',\s*'bailian_responses'\s*\]/);
+
+  const configBlock = channelsConfig.match(/bailian_responses:\s*{([\s\S]*?)\n  },\n  bailian_anthropic:/)?.[1] ?? '';
+  const modelsBlock = configBlock.match(/defaultModels:\s*\[([\s\S]*?)\]/)?.[1] ?? '';
+  const models = [...modelsBlock.matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  assert.deepEqual(models, [
+    'qwen3.8-max',
+    'qwen3.7-max',
+    'qwen3.7-max-2026-05-20',
+    'qwen3.7-max-2026-06-08',
+    'qwen3-max',
+    'qwen3-max-2026-01-23',
+    'qwen3.7-plus',
+    'qwen3.7-plus-2026-05-26',
+    'qwen3.6-plus',
+    'qwen3.6-plus-2026-04-02',
+    'qwen3.5-plus',
+    'qwen3.5-plus-2026-04-20',
+    'qwen3.5-plus-2026-02-15',
+    'qwen3.7-flash',
+    'qwen3.7-flash-2026-07-15',
+    'qwen3.6-flash',
+    'qwen3.6-flash-2026-04-16',
+    'qwen3.5-flash',
+    'qwen3.5-flash-2026-02-23',
+    'qwen3.8-2.4t-a95b',
+    'qwen3.8-27b',
+    'qwen3.6-35b-a3b',
+    'qwen3.5-397b-a17b',
+    'qwen3.5-122b-a10b',
+    'qwen3.5-27b',
+    'qwen3.5-35b-a3b',
+    'qwen-plus',
+    'qwen-flash',
+    'qwen3-coder-plus',
+    'qwen3-coder-flash',
+    'qwen3.5-ocr',
+    'qwen-plus-character',
+    'qwen-flash-character',
+    'deepseek-v4-pro',
+    'deepseek-v4-pro-0813',
+    'deepseek-v4-flash',
+    'deepseek-v4-flash-0731',
+    'glm-5.2',
+  ]);
+
+  const en = parseLocale('en');
+  const zh = parseLocale('zh-CN');
+  assert.equal(en['channels.types.bailian_responses'], 'Bailian (Responses)');
+  assert.equal(zh['channels.types.bailian_responses'], '百炼 (Responses)');
+});
 
 test('Cline has localized channel and provider labels', () => {
   for (const locale of ['en', 'zh-CN']) {

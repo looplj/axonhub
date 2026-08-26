@@ -219,7 +219,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'bailian',
     icon: Bailian,
     color: 'bg-green-100 text-green-800 border-green-200',
-    channelTypes: ['bailian', 'bailian_anthropic'],
+    channelTypes: ['bailian', 'bailian_anthropic', 'bailian_responses'],
   },
   openrouter: {
     provider: 'openrouter',
