@@ -1578,15 +1578,46 @@ func TestOutboundPersistentStream_ResponsesCleanEOFWithOutputIsCompleted(t *test
 	// Bailian/DashScope compatible-mode closes cleanly after deltas: no
 	// response.completed, no [DONE], no usage.
 	chunks := []*httpclient.StreamEvent{
-		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_clean_eof","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
-		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant"}}`)},
-		{Type: "response.content_part.added", Data: []byte(`{"type":"response.content_part.added","item_id":"msg_1","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}`)},
-		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"你好"}`)},
+		{Type: "response.created", LastEventID: "", Size: 0, Data: []byte(`{"type":"response.created","response":{"id":"resp_clean_eof","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", LastEventID: "", Size: 0, Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant"}}`)},
+		{Type: "response.content_part.added", LastEventID: "", Size: 0, Data: []byte(`{"type":"response.content_part.added","item_id":"msg_1","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}`)},
+		{Type: "response.output_text.delta", LastEventID: "", Size: 0, Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"你好"}`)},
 	}
 	transformer, err := responses.NewOutboundTransformer("https://api.example.com/v1", "test-api-key")
 	require.NoError(t, err)
 
-	state := &PersistenceState{}
+	state := &PersistenceState{
+		APIKey:                  nil,
+		RequestService:          nil,
+		UsageLogService:         nil,
+		ChannelService:          nil,
+		PromptProvider:          nil,
+		PromptProtecter:         nil,
+		RetryPolicyProvider:     nil,
+		CandidateSelector:       nil,
+		LoadBalancers:           nil,
+		RoutingPolicy:           EffectiveRoutingPolicy{LoadBalancerStrategy: "", TraceStickyMode: ""},
+		ModelMapper:             nil,
+		Proxy:                   nil,
+		OriginalModel:           "",
+		RawRequest:              nil,
+		LlmRequest:              nil,
+		OriginalRequestStream:   nil,
+		Request:                 nil,
+		RequestExec:             nil,
+		ChannelModelsCandidates: nil,
+		CurrentCandidateIndex:   0,
+		CurrentCandidate:        nil,
+		CurrentModelIndex:       0,
+		Perf:                    nil,
+		StreamCompleted:         false,
+		RawProviderResponse:     nil,
+		RawProviderRequest:      nil,
+		RawStreamCh:             nil,
+		RawStreamErrRef:         nil,
+		RawStreamCancel:         nil,
+		PassThroughApplied:      false,
+	}
 	persistentStream := NewOutboundPersistentStream(ctx, streams.SliceStream(chunks), req, exec, requestService, usageLogService, transformer, nil, state)
 	for persistentStream.Next() {
 		_ = persistentStream.Current()
