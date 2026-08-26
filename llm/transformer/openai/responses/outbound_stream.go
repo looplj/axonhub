@@ -48,14 +48,6 @@ type responsesOutboundStream struct {
 	// provider `[DONE]` marker is valid only after this becomes true.
 	responseCompleted bool
 	doneEmitted       bool
-
-	// sawProviderDone records that the upstream emitted a bare `[DONE]`
-	// transport marker. Some OpenAI-compatible Responses implementations (e.g.
-	// Bailian/DashScope compatible-mode) close the SSE stream with `[DONE]`
-	// after delivering content and usage, without a semantic
-	// response.completed event; treat that as a normal completion when output
-	// was produced.
-	sawProviderDone bool
 }
 
 // outboundStreamState holds the state for a streaming session.
@@ -115,12 +107,12 @@ func (s *responsesOutboundStream) Next() bool {
 		if s.err == nil && s.stream.Err() == nil {
 			if !s.responseCompleted {
 				// Some OpenAI-compatible Responses upstreams (e.g.
-				// Bailian/DashScope compatible-mode) close the SSE stream with
-				// a bare `[DONE]` marker after delivering content and usage,
-				// without emitting response.completed. When output was produced
-				// and the source ended cleanly, synthesize the terminal event
-				// instead of reporting an incomplete stream so strict clients do
-				// not treat a complete generation as truncated.
+				// Bailian/DashScope compatible-mode) close the SSE stream
+				// cleanly after delivering content and usage, without emitting
+				// response.completed. When output was produced and the source
+				// ended cleanly (no transport error), synthesize the terminal
+				// event instead of reporting an incomplete stream so strict
+				// clients do not treat a complete generation as truncated.
 				if s.canSynthesizeCompletion() {
 					s.synthesizeCompletion()
 
@@ -162,8 +154,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	// error may only become visible when the source is advanced to exhaustion.
 	// Clean EOF without a semantic terminal is classified by Next().
 	if string(event.Data) == "[DONE]" {
-		s.sawProviderDone = true
-
 		return nil
 	}
 
@@ -850,12 +840,17 @@ func (s *responsesOutboundStream) Close() error {
 
 // canSynthesizeCompletion reports whether a clean EOF without a semantic
 // terminal event should still be treated as a successful completion. This is
-// true only when the upstream explicitly signaled the end of the stream with a
-// bare [DONE] marker and produced meaningful output (text, reasoning, or tool
-// calls). Genuinely truncated streams that end without either a terminal event
-// or meaningful output still surface ErrStreamIncomplete.
+// true when the source ended without a transport error and the upstream
+// produced meaningful output (text, reasoning, tool calls, or usage) under a
+// known response ID. Some OpenAI-compatible Responses upstreams (e.g.
+// Bailian/DashScope compatible-mode) close the SSE stream cleanly without a
+// semantic terminal event or even a bare [DONE] marker; treating that as a
+// completed generation avoids surfacing a spurious truncation error to strict
+// clients. Genuinely truncated streams that end without meaningful output, or
+// without a response identity to attach the output to, still surface
+// ErrStreamIncomplete.
 func (s *responsesOutboundStream) canSynthesizeCompletion() bool {
-	if !s.sawProviderDone {
+	if s.state.responseID == "" {
 		return false
 	}
 

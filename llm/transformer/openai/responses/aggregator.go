@@ -235,7 +235,78 @@ func AggregateStreamChunks(_ context.Context, chunks []*httpclient.StreamEvent) 
 		meta.Usage = agg.usage.ToUsage()
 	}
 
+	// A Responses stream that delivered real output and did not end in an
+	// explicit abnormal terminal state (failed/cancelled/incomplete) is a
+	// complete generation even when the upstream closes cleanly without
+	// emitting response.completed (e.g. Bailian/DashScope compatible-mode
+	// relays). Mark it Completed so the orchestrator's aggregation fallback
+	// treats the stream as finished instead of reporting ErrStreamIncomplete.
+	// Empty streams and explicit abnormal terminations stay incomplete.
+	if !agg.hasAbnormalTerminalStatus() && responseHasOutput(resp) {
+		meta.Completed = true
+	}
+
 	return body, meta, nil
+}
+
+// hasAbnormalTerminalStatus reports whether the aggregated response ended in an
+// explicit abnormal terminal state rather than a normal (or unstated)
+// completion.
+func (a *streamAggregator) hasAbnormalTerminalStatus() bool {
+	switch a.status {
+	case "failed", "cancelled", "canceled", "incomplete":
+		return true
+	default:
+		return false
+	}
+}
+
+// responseHasOutput reports whether the built response carries substantive
+// output (text, reasoning, tool-call arguments, generated image result, etc.).
+func responseHasOutput(resp *Response) bool {
+	if resp == nil {
+		return false
+	}
+
+	for _, item := range resp.Output {
+		switch item.Type {
+		case "message":
+			if item.Content != nil {
+				for _, part := range item.Content.Items {
+					if part.Text != nil && *part.Text != "" {
+						return true
+					}
+				}
+			}
+		case "function_call":
+			if item.Arguments != "" {
+				return true
+			}
+		case "custom_tool_call":
+			if item.Input != nil && *item.Input != "" {
+				return true
+			}
+		case "reasoning":
+			if item.Content != nil {
+				for _, part := range item.Content.Items {
+					if part.Text != nil && *part.Text != "" {
+						return true
+					}
+				}
+			}
+			for _, s := range item.Summary {
+				if s.Text != "" {
+					return true
+				}
+			}
+		case "image_generation_call":
+			if item.Result != nil && *item.Result != "" {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 //nolint:gocognit,maintidx // Event processing is inherently complex.

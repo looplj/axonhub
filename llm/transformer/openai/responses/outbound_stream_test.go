@@ -1444,3 +1444,34 @@ func TestOutboundTransformer_TransformStream_ToolCallsDoneWithoutSemanticTermina
 	}
 	require.Equal(t, 1, finishResponses)
 }
+
+func TestOutboundTransformer_TransformStream_CleanEOFWithOutputSynthesizesCompletion(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	// Bailian/DashScope compatible-mode relays close the SSE stream cleanly
+	// after delivering content, without response.completed and without a bare
+	// [DONE] marker. The outbound stream must synthesize the terminal finish
+	// chunk so downstream clients do not see the generation as truncated.
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_clean_eof","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant"}}`)},
+		{Type: "response.content_part.added", Data: []byte(`{"type":"response.content_part.added","item_id":"msg_1","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}`)},
+		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"你好"}`)},
+	}
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+	require.Equal(t, 1, countDoneResponses(responses))
+
+	finishResponses := 0
+	for _, response := range responses {
+		if response != nil && len(response.Choices) > 0 && response.Choices[0].FinishReason != nil {
+			finishResponses++
+			require.Equal(t, "stop", lo.FromPtr(response.Choices[0].FinishReason))
+		}
+	}
+	require.Equal(t, 1, finishResponses)
+}
