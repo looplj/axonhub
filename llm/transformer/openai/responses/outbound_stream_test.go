@@ -1330,5 +1330,117 @@ func TestOutboundTransformer_TransformStream_PreservesOfficialWebSocketError(t *
 			require.Equal(t, "invalid websocket request", responseErr.Detail.Message)
 			require.Equal(t, "input", responseErr.Detail.Param)
 		})
+	}func TestOutboundTransformer_TransformStream_DoneWithoutSemanticTerminalSynthesizesCompletion(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	// Bailian/DashScope compatible-mode closes the SSE stream with a bare
+	// [DONE] marker after delivering content and usage, without emitting
+	// response.completed. The stream must be treated as a normal completion.
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_done_synth","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"hello"}`)},
+		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":" world"}`)},
+		{Data: []byte("[DONE]")},
 	}
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+	require.Equal(t, 1, countDoneResponses(responses))
+
+	// A finish chunk with stop must be synthesized.
+	finishResponses := 0
+	for _, response := range responses {
+		if response != nil && len(response.Choices) > 0 && response.Choices[0].FinishReason != nil {
+			finishResponses++
+			require.Equal(t, "stop", lo.FromPtr(response.Choices[0].FinishReason))
+		}
+	}
+	require.Equal(t, 1, finishResponses)
+}
+
+func TestOutboundTransformer_TransformStream_DoneWithUsageWithoutSemanticTerminalSynthesizesCompletion(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	// Some weak providers also deliver a usage chunk before the [DONE] marker;
+	// the synthesized completion must carry that usage.
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_done_usage","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"hello"}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_done_usage","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"completed","output":[],"usage":{"input_tokens":2,"output_tokens":1,"total_tokens":3}}}`)},
+		{Data: []byte("[DONE]")},
+	}
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+	require.Equal(t, 1, countDoneResponses(responses))
+
+	// Both finish_reason and usage chunks must be present.
+	finishResponses := 0
+	usageSeen := false
+	for _, response := range responses {
+		if response == nil {
+			continue
+		}
+		if len(response.Choices) > 0 && response.Choices[0].FinishReason != nil {
+			finishResponses++
+		}
+		if response.Usage != nil && response.Usage.TotalTokens == 3 {
+			usageSeen = true
+		}
+	}
+	require.Equal(t, 1, finishResponses)
+	require.True(t, usageSeen)
+}
+
+func TestOutboundTransformer_TransformStream_DoneWithoutOutputStillIncomplete(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	// A bare [DONE] with no meaningful output must not be promoted to a
+	// successful completion - it remains an incomplete stream.
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_empty","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Data: []byte("[DONE]")},
+	}
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.ErrorIs(t, err, ErrStreamIncomplete)
+	require.Equal(t, 0, countDoneResponses(responses))
+}
+
+func TestOutboundTransformer_TransformStream_ToolCallsDoneWithoutSemanticTerminalSynthesizesToolCalls(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	// Tool-call streams closed by a bare [DONE] must synthesize
+	// finish_reason=tool_calls rather than failing the request.
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_tool_done","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_1","type":"function_call","call_id":"call_1","name":"get_weather","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_1","output_index":0,"delta":"{\"city\":\"beijing\"}"}`)},
+		{Data: []byte("[DONE]")},
+	}
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.NoError(t, err)
+	require.Equal(t, 1, countDoneResponses(responses))
+
+	finishResponses := 0
+	for _, response := range responses {
+		if response != nil && len(response.Choices) > 0 && response.Choices[0].FinishReason != nil {
+			finishResponses++
+			require.Equal(t, "tool_calls", lo.FromPtr(response.Choices[0].FinishReason))
+		}
+	}
+	require.Equal(t, 1, finishResponses)
 }

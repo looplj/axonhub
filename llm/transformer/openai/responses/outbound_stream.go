@@ -48,6 +48,14 @@ type responsesOutboundStream struct {
 	// provider `[DONE]` marker is valid only after this becomes true.
 	responseCompleted bool
 	doneEmitted       bool
+
+	// sawProviderDone records that the upstream emitted a bare `[DONE]`
+	// transport marker. Some OpenAI-compatible Responses implementations (e.g.
+	// Bailian/DashScope compatible-mode) close the SSE stream with `[DONE]`
+	// after delivering content and usage, without a semantic
+	// response.completed event; treat that as a normal completion when output
+	// was produced.
+	sawProviderDone bool
 }
 
 // outboundStreamState holds the state for a streaming session.
@@ -106,6 +114,18 @@ func (s *responsesOutboundStream) Next() bool {
 	if !s.stream.Next() {
 		if s.err == nil && s.stream.Err() == nil {
 			if !s.responseCompleted {
+				// Some OpenAI-compatible Responses upstreams (e.g.
+				// Bailian/DashScope compatible-mode) close the SSE stream with
+				// a bare `[DONE]` marker after delivering content and usage,
+				// without emitting response.completed. When output was produced
+				// and the source ended cleanly, synthesize the terminal event
+				// instead of reporting an incomplete stream so strict clients do
+				// not treat a complete generation as truncated.
+				if s.canSynthesizeCompletion() {
+					s.synthesizeCompletion()
+
+					return true
+				}
 				s.err = ErrStreamIncomplete
 			} else if !s.doneEmitted {
 				s.doneEmitted = true
@@ -142,6 +162,8 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	// error may only become visible when the source is advanced to exhaustion.
 	// Clean EOF without a semantic terminal is classified by Next().
 	if string(event.Data) == "[DONE]" {
+		s.sawProviderDone = true
+
 		return nil
 	}
 
@@ -824,6 +846,71 @@ func (s *responsesOutboundStream) Err() error {
 
 func (s *responsesOutboundStream) Close() error {
 	return s.stream.Close()
+}
+
+// canSynthesizeCompletion reports whether a clean EOF without a semantic
+// terminal event should still be treated as a successful completion. This is
+// true only when the upstream explicitly signaled the end of the stream with a
+// bare [DONE] marker and produced meaningful output (text, reasoning, or tool
+// calls). Genuinely truncated streams that end without either a terminal event
+// or meaningful output still surface ErrStreamIncomplete.
+func (s *responsesOutboundStream) canSynthesizeCompletion() bool {
+	if !s.sawProviderDone {
+		return false
+	}
+
+	return s.state.textContent.Len() > 0 ||
+		s.state.reasoningContent.Len() > 0 ||
+		len(s.state.toolCalls) > 0 ||
+		s.state.usage != nil
+}
+
+// synthesizeCompletion emits the terminal finish chunk and usage (if any) the
+// way response.completed would, then marks the stream done. Callers invoke it
+// only after canSynthesizeCompletion returned true, i.e. the upstream already
+// delivered content and closed cleanly with a [DONE] marker.
+func (s *responsesOutboundStream) synthesizeCompletion() {
+	s.responseCompleted = true
+
+	finishReason := "stop"
+	if len(s.state.toolCalls) > 0 {
+		finishReason = "tool_calls"
+	}
+
+	finishChunk := &llm.Response{
+		Object:             "chat.completion.chunk",
+		ID:                 s.state.responseID,
+		Model:              s.state.responseModel,
+		Created:            s.state.created,
+		PreviousResponseID: s.state.previousResponseID,
+		Choices: []llm.Choice{
+			{
+				Index:        0,
+				Delta:        &llm.Message{},
+				FinishReason: &finishReason,
+			},
+		},
+	}
+	if len(s.state.transformerMetadata) > 0 && !s.state.transformerMetadataEmitted {
+		finishChunk.TransformerMetadata = s.state.transformerMetadata
+		s.state.transformerMetadataEmitted = true
+	}
+	s.enqueue(finishChunk)
+
+	if s.state.usage != nil {
+		s.enqueue(&llm.Response{
+			Object:             "chat.completion.chunk",
+			ID:                 s.state.responseID,
+			Model:              s.state.responseModel,
+			Created:            s.state.created,
+			PreviousResponseID: s.state.previousResponseID,
+			Choices:            []llm.Choice{},
+			Usage:              s.state.usage,
+		})
+	}
+
+	s.doneEmitted = true
+	s.enqueue(llm.DoneResponse)
 }
 
 // AggregateStreamChunks aggregates OpenAI Responses API streaming chunks into a complete response.
