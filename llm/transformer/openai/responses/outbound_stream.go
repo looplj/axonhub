@@ -854,10 +854,13 @@ func (s *responsesOutboundStream) canSynthesizeCompletion() bool {
 		return false
 	}
 
+	// A bare usage blob is not evidence of a complete generation. A stream
+	// truncated before any content (e.g. only a response.id + usage) must be
+	// surfaced as ErrStreamIncomplete rather than promoted to an empty
+	// "completed" response, which would hide the truncation from the client.
 	return s.state.textContent.Len() > 0 ||
 		s.state.reasoningContent.Len() > 0 ||
-		len(s.state.toolCalls) > 0 ||
-		s.state.usage != nil
+		len(s.state.toolCalls) > 0
 }
 
 // synthesizeCompletion emits the terminal finish chunk and usage (if any) the

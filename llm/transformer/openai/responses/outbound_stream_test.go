@@ -1475,3 +1475,31 @@ func TestOutboundTransformer_TransformStream_CleanEOFWithOutputSynthesizesComple
 	}
 	require.Equal(t, 1, finishResponses)
 }
+
+func TestOutboundTransformer_TransformStream_UsageWithoutContentStillIncomplete(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	// A clean EOF with only a response.id + usage (no content, no terminal
+	// event) must not be promoted to an empty "completed" response. A bare
+	// usage blob hides truncation; only actual output proves a complete
+	// generation.
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_usage_only","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[],"usage":{"input_tokens":2,"output_tokens":1,"total_tokens":3}}}`)},
+	}
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.ErrorIs(t, err, ErrStreamIncomplete)
+	require.Equal(t, 0, countDoneResponses(responses))
+
+	// No finish chunk must be synthesized for an empty (usage-only) stream.
+	for _, response := range responses {
+		if response != nil && len(response.Choices) > 0 && response.Choices[0].FinishReason != nil {
+			t.Fatalf("unexpected synthesized finish_reason for usage-only stream")
+		}
+	}
+}
+
+
