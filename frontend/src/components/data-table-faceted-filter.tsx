@@ -42,7 +42,6 @@ export function DataTableFacetedFilter<TData, TValue>({
   onLoadMore,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const { t } = useTranslation();
-  const loadingMoreRef = React.useRef(false);
 
   const facets = column?.getFacetedUniqueValues() || new Map();
   const filterValue = column?.getFilterValue();
@@ -90,28 +89,7 @@ export function DataTableFacetedFilter<TData, TValue>({
             value={onSearchValueChange ? (searchValue ?? '') : undefined}
             onValueChange={onSearchValueChange}
           />
-          <CommandList
-            onScroll={(event) => {
-              const list = event.currentTarget;
-              if (
-                onLoadMore &&
-                hasMore &&
-                !isLoadingMore &&
-                !loadingMoreRef.current &&
-                list.scrollHeight - list.scrollTop - list.clientHeight < 32
-              ) {
-                loadingMoreRef.current = true;
-                try {
-                  void Promise.resolve(onLoadMore()).finally(() => {
-                    loadingMoreRef.current = false;
-                  });
-                } catch (error) {
-                  loadingMoreRef.current = false;
-                  throw error;
-                }
-              }
-            }}
-          >
+          <CommandList hasMore={hasMore} isLoadingMore={isLoadingMore} onLoadMore={onLoadMore}>
             {!onSearchValueChange && <CommandEmpty>{t('common.noResultsFound')}</CommandEmpty>}
             {onSearchValueChange && options.length === 0 ? (
               <div className='py-6 text-center text-sm'>{isLoading ? t('common.loading') : t('common.noResultsFound')}</div>

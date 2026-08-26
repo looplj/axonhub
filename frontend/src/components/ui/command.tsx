@@ -58,11 +58,36 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
   );
 }
 
-function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
+type CommandListProps = React.ComponentProps<typeof CommandPrimitive.List> & {
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void | Promise<unknown>;
+};
+
+function CommandList({ className, onScroll, hasMore = false, isLoadingMore = false, onLoadMore, ...props }: CommandListProps) {
+  const loadingMoreRef = React.useRef(false);
+
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    onScroll?.(event);
+    const list = event.currentTarget;
+    if (onLoadMore && hasMore && !isLoadingMore && !loadingMoreRef.current && list.scrollHeight - list.scrollTop - list.clientHeight < 32) {
+      loadingMoreRef.current = true;
+      try {
+        void Promise.resolve(onLoadMore()).finally(() => {
+          loadingMoreRef.current = false;
+        });
+      } catch (error) {
+        loadingMoreRef.current = false;
+        throw error;
+      }
+    }
+  };
+
   return (
     <CommandPrimitive.List
       data-slot='command-list'
       className={cn('max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto', className)}
+      onScroll={onLoadMore ? handleScroll : onScroll}
       {...props}
     />
   );

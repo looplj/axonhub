@@ -18,6 +18,11 @@ interface AnalyticsFacetedFilterProps {
   selectedValues: string[];
   onSelectedValuesChange: (values: string[]) => void;
   isLoading?: boolean;
+  searchValue?: string;
+  onSearchValueChange?: (value: string) => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void | Promise<unknown>;
 }
 
 /** Renders a searchable faceted filter controlled by the analytics filter store. */
@@ -27,6 +32,11 @@ export function AnalyticsFacetedFilter({
   selectedValues,
   onSelectedValuesChange,
   isLoading = false,
+  searchValue,
+  onSearchValueChange,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
 }: AnalyticsFacetedFilterProps) {
   const { t } = useTranslation();
   const selectedValueSet = new Set(selectedValues);
@@ -50,7 +60,11 @@ export function AnalyticsFacetedFilter({
   };
 
   return (
-    <Popover>
+    <Popover
+      onOpenChange={(open) => {
+        if (!open) onSearchValueChange?.('');
+      }}
+    >
       <div className='bg-background dark:bg-input/30 dark:border-input flex h-8 w-fit items-center rounded-md border border-dashed shadow-xs'>
         <PopoverTrigger asChild>
           <Button variant='ghost' size='sm' className='h-full rounded-md border-0 shadow-none'>
@@ -86,38 +100,47 @@ export function AnalyticsFacetedFilter({
         )}
       </div>
       <PopoverContent className='w-[200px] p-0' align='start'>
-        <Command>
-          <CommandInput placeholder={title} />
-          <CommandList>
-            <CommandEmpty>{isLoading ? t('common.loading') : t('common.noResultsFound')}</CommandEmpty>
-            <CommandGroup>
-              {orderedOptions.map((option) => {
-                const isSelected = selectedValueSet.has(option.value);
-                return (
-                  <CommandItem
-                    key={option.value}
-                    onSelect={() =>
-                      onSelectedValuesChange(
-                        isSelected
-                          ? selectedValues.filter((selectedValue) => selectedValue !== option.value)
-                          : [...selectedValues, option.value]
-                      )
-                    }
-                  >
-                    <div
-                      className={cn(
-                        'border-primary flex h-4 w-4 items-center justify-center rounded-sm border',
-                        isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                      )}
+        <Command shouldFilter={onSearchValueChange ? false : undefined}>
+          <CommandInput
+            placeholder={title}
+            value={onSearchValueChange ? (searchValue ?? '') : undefined}
+            onValueChange={onSearchValueChange}
+          />
+          <CommandList hasMore={hasMore} isLoadingMore={isLoadingMore} onLoadMore={onLoadMore}>
+            {!onSearchValueChange && <CommandEmpty>{isLoading ? t('common.loading') : t('common.noResultsFound')}</CommandEmpty>}
+            {onSearchValueChange && orderedOptions.length === 0 ? (
+              <div className='py-6 text-center text-sm'>{isLoading ? t('common.loading') : t('common.noResultsFound')}</div>
+            ) : (
+              <CommandGroup>
+                {orderedOptions.map((option) => {
+                  const isSelected = selectedValueSet.has(option.value);
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      onSelect={() =>
+                        onSelectedValuesChange(
+                          isSelected
+                            ? selectedValues.filter((selectedValue) => selectedValue !== option.value)
+                            : [...selectedValues, option.value]
+                        )
+                      }
                     >
-                      <CheckIcon className='h-4 w-4' />
-                    </div>
-                    {option.icon && <option.icon className='text-muted-foreground h-4 w-4' />}
-                    <span>{option.label}</span>
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
+                      <div
+                        className={cn(
+                          'border-primary flex h-4 w-4 items-center justify-center rounded-sm border',
+                          isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                        )}
+                      >
+                        <CheckIcon className='h-4 w-4' />
+                      </div>
+                      {option.icon && <option.icon className='text-muted-foreground h-4 w-4' />}
+                      <span>{option.label}</span>
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
+            {isLoadingMore && <div className='py-2 text-center text-sm'>{t('common.loading')}</div>}
             {selectedValueSet.size > 0 && (
               <>
                 <CommandSeparator />
