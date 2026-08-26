@@ -1084,6 +1084,33 @@ type webSocketStream struct {
 	terminal bool
 }
 
+// isWebSocketTransportClosed reports whether err indicates the peer closed the
+// connection, either via a WebSocket close frame or an abrupt transport close
+// (TCP reset / abort). The OS error strings differ between platforms: Linux
+// reports "connection reset by peer", while Windows reports "an established
+// connection was aborted by the software in your host machine".
+func isWebSocketTransportClosed(err error) bool {
+	if err == nil {
+		return false
+	}
+	if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	for _, s := range []string{
+		"use of closed network connection",
+		"connection reset by peer",
+		"established connection was aborted",
+		"broken pipe",
+		"eof",
+	} {
+		if strings.Contains(msg, s) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *webSocketStream) Next() bool {
 	if s.contextCancelled() {
 		return false
@@ -1094,7 +1121,7 @@ func (s *webSocketStream) Next() bool {
 
 	_, msg, err := s.lease.conn.ReadMessage()
 	if err != nil {
-		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
+		if isWebSocketTransportClosed(err) {
 			if ctxErr := s.ctx.Err(); ctxErr != nil {
 				s.setErr(ctxErr)
 			} else if !s.hasSeenEvent() {
