@@ -78,8 +78,8 @@ function isOpenaiType(t: string): t is 'openai' | 'openai_responses' {
   return t === 'openai' || t === 'openai_responses';
 }
 
-function isOpenCodeGoType(t: string): t is 'opencode_go' | 'opencode_go_anthropic' {
-  return t === 'opencode_go' || t === 'opencode_go_anthropic';
+function isOpenCodeGoType(t: string): t is 'opencode_go' | 'opencode_go_anthropic' | 'opencode_go_responses' {
+  return t === 'opencode_go' || t === 'opencode_go_anthropic' || t === 'opencode_go_responses';
 }
 
 function isMinimaxType(t: string): t is 'minimax' | 'minimax_anthropic' {

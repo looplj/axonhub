@@ -51,6 +51,7 @@ var providerQuotaChannelTypes = []channel.Type{
 	channel.TypeOpenaiResponses,
 	channel.TypeOpencodeGo,
 	channel.TypeOpencodeGoAnthropic,
+	channel.TypeOpencodeGoResponses,
 	channel.TypeMoonshotCoding,
 	channel.TypeMinimax,
 	channel.TypeMinimaxAnthropic,
@@ -921,7 +922,7 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "cline"
 	case channel.TypeOpenai, channel.TypeOpenaiResponses:
 		return provider_quota.DetectProviderFromURL(ch.BaseURL)
-	case channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic:
+	case channel.TypeOpencodeGo, channel.TypeOpencodeGoAnthropic, channel.TypeOpencodeGoResponses:
 		return "opencode_go"
 	case channel.TypeMoonshotCoding:
 		return "kimi_code"

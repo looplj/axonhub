@@ -93,6 +93,42 @@ test('xAI subscription is exposed as an OAuth Responses channel', () => {
   );
 });
 
+test('OpenCode Go exposes an OpenAI Responses channel variant', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const providersConfig = read('features/channels/data/config_providers.ts');
+
+  assert.match(
+    schema,
+    /channelTypeSchema[\s\S]*'opencode_go'[\s\S]*'opencode_go_anthropic'[\s\S]*'opencode_go_responses'/,
+    'channelTypeSchema should accept opencode_go_responses alongside its siblings'
+  );
+  assert.match(
+    channelsConfig,
+    /opencode_go_responses:\s*{[\s\S]*channelType:\s*'opencode_go_responses'/,
+    'CHANNEL_CONFIGS should define opencode_go_responses'
+  );
+  assert.match(
+    channelsConfig,
+    /opencode_go_responses:\s*{[\s\S]*baseURL:\s*'https:\/\/opencode\.ai\/zen\/go'[\s\S]*apiFormat:\s*OPENAI_RESPONSES/,
+    'OpenCode Go Responses should use the zen/go base URL and Responses format'
+  );
+  assert.match(
+    channelsConfig,
+    /CHANNEL_TYPE_TO_PROVIDER[\s\S]*opencode_go_responses:\s*'opencode_go'/,
+    'opencode_go_responses should map to the opencode_go provider'
+  );
+  assert.match(
+    providersConfig,
+    /opencode_go:\s*{[\s\S]*channelTypes:\s*\[\s*'opencode_go',\s*'opencode_go_anthropic',\s*'opencode_go_responses'\s*\]/,
+    'PROVIDER_CONFIGS should list the Responses variant under opencode_go'
+  );
+  for (const locale of ['en', 'zh-CN']) {
+    const messages = parseLocale(locale);
+    assert.equal(messages['channels.types.opencode_go_responses'], 'OpenCode Go (Responses)');
+  }
+});
+
 test('channel proxy connection reuse setting is submitted, echoed, and localized', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsData = read('features/channels/data/channels.ts');

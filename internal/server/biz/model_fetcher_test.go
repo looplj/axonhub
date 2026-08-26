@@ -305,6 +305,18 @@ func TestPrepareModelsEndpoint(t *testing.T) {
 			expectedURL: "https://opencode.ai/zen/go/v1/models",
 		},
 		{
+			name:        "OpencodeGoResponses with /v1 suffix",
+			channelType: channel.TypeOpencodeGoResponses,
+			baseURL:     "https://opencode.ai/zen/go/v1",
+			expectedURL: "https://opencode.ai/zen/go/v1/models",
+		},
+		{
+			name:        "OpencodeGoResponses without /v1 suffix",
+			channelType: channel.TypeOpencodeGoResponses,
+			baseURL:     "https://opencode.ai/zen/go",
+			expectedURL: "https://opencode.ai/zen/go/v1/models",
+		},
+		{
 			name:        "Gemini with /v1 suffix",
 			channelType: channel.TypeGemini,
 			baseURL:     "https://generativelanguage.googleapis.com/v1",

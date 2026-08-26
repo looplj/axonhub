@@ -556,7 +556,7 @@ export type ProviderQuotaChannel = {
       };
     }
   | {
-      type: 'opencode_go' | 'opencode_go_anthropic';
+      type: 'opencode_go' | 'opencode_go_anthropic' | 'opencode_go_responses';
       quotaStatus: {
         quotaData: ProviderOpenCodeGoQuotaData;
       };
@@ -714,10 +714,10 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderNanoGPTQuotaData },
     };
   }
-  if (node.type === 'opencode_go' || node.type === 'opencode_go_anthropic') {
+  if (node.type === 'opencode_go' || node.type === 'opencode_go_anthropic' || node.type === 'opencode_go_responses') {
     return {
       ...base,
-      type: node.type as 'opencode_go' | 'opencode_go_anthropic',
+      type: node.type as 'opencode_go' | 'opencode_go_anthropic' | 'opencode_go_responses',
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderOpenCodeGoQuotaData },
     };
   }

@@ -407,5 +407,6 @@ func TestOpenCodeGo_SupportsChannel(t *testing.T) {
 
 	require.True(t, checker.SupportsChannel(&ent.Channel{Type: channel.TypeOpencodeGo}))
 	require.True(t, checker.SupportsChannel(&ent.Channel{Type: channel.TypeOpencodeGoAnthropic}))
+	require.True(t, checker.SupportsChannel(&ent.Channel{Type: channel.TypeOpencodeGoResponses}))
 	require.False(t, checker.SupportsChannel(&ent.Channel{Type: channel.TypeOpenai}))
 }
