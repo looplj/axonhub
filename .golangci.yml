@@ -52,6 +52,7 @@ linters:
     - depguard
     - lll
     - exhaustruct
+    - exhaustruct_v5
     - gochecknoinits
     - dupl
     - tagalign
@@ -231,6 +232,7 @@ linters:
           - unused
           - deadcode
           - exhaustruct
+          - exhaustruct_v5
           - funlen
           - maintidx
           - cyclop
