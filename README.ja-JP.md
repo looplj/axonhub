@@ -27,16 +27,20 @@
 <table width="100%">
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/8j0i6J" target="_blank">
+      <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
         <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
         <strong>APIKEY.FUN</strong>
       </a>
+      <div align="center">
+        <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
+          <img src="docs/sponsors/api-key.fun.banner.png" alt="APIKEY.FUN banner" width="100%"/>
+        </a>
+      </div>
       <div align="left">
-        APIKEY.FUN による本プロジェクトへのご支援に感謝します！<br/>
         APIKEY.FUN は、企業や個人開発者に安定・高効率・低コストな AI モデル API 接続を提供する、専門的なエンタープライズ向け AI API 中継サービスです。<br/>
         Claude、OpenAI、Gemini などの人気モデルに対応し、料金は公式価格の 7% からご利用いただけます。<br/>
-        AxonHub ユーザーが<a href="https://lj.s.gy/8j0i6J" target="_blank">専用リンクから登録</a>すると、チャージ料金が永久に最大 5% 割引になります。
+        AxonHub ユーザーが<a href="https://apikey.fun/register?aff=axonhub" target="_blank">専用リンクから登録</a>すると、チャージ料金が永久に最大 5% 割引になります。
       </div>
     </td>
     <td width="50%" align="center" valign="top">

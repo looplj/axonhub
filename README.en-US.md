@@ -27,16 +27,20 @@
 <table width="100%">
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/8j0i6J" target="_blank">
+      <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
         <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
         <strong>APIKEY.FUN</strong>
       </a>
+      <div align="center">
+        <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
+          <img src="docs/sponsors/api-key.fun.banner.png" alt="APIKEY.FUN banner" width="100%"/>
+        </a>
+      </div>
       <div align="left">
-        Thanks to APIKEY.FUN for sponsoring this project!<br/>
         APIKEY.FUN is a professional enterprise-grade AI API relay service committed to providing enterprises and individual developers with stable, efficient, and cost-effective access to AI model APIs.<br/>
         The platform supports popular models including Claude, OpenAI, and Gemini, with prices as low as 7% of the official price.<br/>
-        AxonHub users who <a href="https://lj.s.gy/8j0i6J" target="_blank">register through the exclusive link</a> can enjoy a permanent discount of up to 5% on recharges.
+        AxonHub users who <a href="https://apikey.fun/register?aff=axonhub" target="_blank">register through the exclusive link</a> can enjoy a permanent discount of up to 5% on recharges.
       </div>
     </td>
     <td width="50%" align="center" valign="top">

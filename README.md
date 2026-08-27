@@ -27,16 +27,20 @@
 <table width="100%">
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/8j0i6J" target="_blank">
+      <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
         <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
         <strong>APIKEY.FUN</strong>
       </a>
+      <div align="center">
+        <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
+          <img src="docs/sponsors/api-key.fun.banner.png" alt="APIKEY.FUN banner" width="100%"/>
+        </a>
+      </div>
       <div align="left">
-        感谢 APIKEY.FUN 赞助本项目！<br/>
         APIKEY.FUN 是一家专业的企业级 AI 中转站，致力于为企业和个人开发者提供稳定、高效、低成本的 AI 模型 API 接入服务。<br/>
         平台支持 Claude、OpenAI、Gemini 等主流热门模型，价格低至官方原价的 7%。<br/>
-        AxonHub 用户通过<a href="https://lj.s.gy/8j0i6J" target="_blank">专属链接注册</a>，还可享受最高充值永久 95 折专属优惠。
+        AxonHub 用户通过<a href="https://apikey.fun/register?aff=axonhub" target="_blank">专属链接注册</a>，还可享受最高充值永久 95 折专属优惠。
       </div>
     </td>
     <td width="50%" align="center" valign="top">
