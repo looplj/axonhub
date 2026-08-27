@@ -124,6 +124,7 @@ var Module = fx.Module("biz",
 			OnStart: func(ctx context.Context) error {
 				return svc.RegisterScheduledTasks(ctx, s)
 			},
+			OnStop: nil,
 		})
 	}),
 )
