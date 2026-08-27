@@ -51,30 +51,43 @@ export function mergeOverrideHeaders(existing: OverrideOperation[], template: Ov
 
 /**
  * Merges override body operations with template body operations.
- * - For `set`, `set_if_absent`, and `delete` ops: match by `path`, template overrides existing
+ * - For `set`, `set_if_absent`, and `delete` ops: template paths replace matching existing ops
+ * - Template ops are preserved in order because multiple conditions at the same path are meaningful
  * - For `rename`, `copy`, and array ops: always appended from template
  * - Existing ops not matched by template are preserved
  */
 export function mergeOverrideOperations(existing: OverrideOperation[], template: OverrideOperation[]): OverrideOperation[] {
-  const result: OverrideOperation[] = [...existing];
+  const templateOpsByPath = new Map<string, OverrideOperation[]>();
+  for (const op of template) {
+    if (isReplacingBodyOverrideOperation(op)) {
+      const replacements = templateOpsByPath.get(op.path) || [];
+      replacements.push(op);
+      templateOpsByPath.set(op.path, replacements);
+    }
+  }
+
+  const result: OverrideOperation[] = [];
+  const emittedTemplatePaths = new Set<string>();
+
+  for (const existingOp of existing) {
+    if (isReplacingBodyOverrideOperation(existingOp)) {
+      const replacements = templateOpsByPath.get(existingOp.path);
+      if (replacements) {
+        if (!emittedTemplatePaths.has(existingOp.path)) {
+          result.push(...replacements);
+          emittedTemplatePaths.add(existingOp.path);
+        }
+        continue;
+      }
+    }
+    result.push(existingOp);
+  }
 
   for (const templateOp of template) {
-    if (!isReplacingBodyOverrideOperation(templateOp)) {
-      result.push(templateOp);
+    if (isReplacingBodyOverrideOperation(templateOp) && emittedTemplatePaths.has(templateOp.path)) {
       continue;
     }
-
-    const existingIndex = result.findIndex((op) => isReplacingBodyOverrideOperation(op) && op.path === templateOp.path);
-    if (existingIndex >= 0) {
-      result[existingIndex] = templateOp;
-      for (let i = result.length - 1; i > existingIndex; i--) {
-        if (isReplacingBodyOverrideOperation(result[i]) && result[i].path === templateOp.path) {
-          result.splice(i, 1);
-        }
-      }
-    } else {
-      result.push(templateOp);
-    }
+    result.push(templateOp);
   }
 
   return result;

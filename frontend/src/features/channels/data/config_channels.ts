@@ -928,6 +928,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   opencode_go: 'opencode_go',
   opencode_go_anthropic: 'opencode_go',
   ollama: 'ollama',
+  ollama_anthropic: 'ollama',
   evolink: 'evolink',
   evolink_anthropic: 'evolink',
   groq: 'groq',

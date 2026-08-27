@@ -143,6 +143,11 @@ func TestMergeOverrideOperations(t *testing.T) {
 	setIfAbsentOp := func(path, value string) objects.OverrideOperation {
 		return objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: path, Value: value}
 	}
+	setIfAbsentConditionalOp := func(path, value, condition string) objects.OverrideOperation {
+		op := setIfAbsentOp(path, value)
+		op.Condition = condition
+		return op
+	}
 	deleteOp := func(path string) objects.OverrideOperation {
 		return objects.OverrideOperation{Op: objects.OverrideOpDelete, Path: path}
 	}
@@ -195,10 +200,42 @@ func TestMergeOverrideOperations(t *testing.T) {
 			},
 		},
 		{
-			name:     "last template scalar operation at the same path wins",
+			name:     "template scalar operations at the same path remain ordered",
 			existing: []objects.OverrideOperation{setOp("temperature", "0.5")},
 			template: []objects.OverrideOperation{setIfAbsentOp("max_output_tokens", "32000"), setOp("max_output_tokens", "16000")},
-			expected: []objects.OverrideOperation{setOp("temperature", "0.5"), setOp("max_output_tokens", "16000")},
+			expected: []objects.OverrideOperation{
+				setOp("temperature", "0.5"),
+				setIfAbsentOp("max_output_tokens", "32000"),
+				setOp("max_output_tokens", "16000"),
+			},
+		},
+		{
+			name:     "template preserves conditional scalar operations at the same path",
+			existing: nil,
+			template: []objects.OverrideOperation{
+				setIfAbsentConditionalOp(
+					"client_metadata.x-codex-window-id",
+					`{{index .RequestHeader "X-Claude-Code-Session-Id"}}:0`,
+					`{{ne (index .RequestHeader "X-Claude-Code-Session-Id") ""}}`,
+				),
+				setIfAbsentConditionalOp(
+					"client_metadata.x-codex-window-id",
+					`{{index .RequestHeader "X-Interaction-Id"}}:0`,
+					`{{ne (index .RequestHeader "X-Interaction-Id") ""}}`,
+				),
+			},
+			expected: []objects.OverrideOperation{
+				setIfAbsentConditionalOp(
+					"client_metadata.x-codex-window-id",
+					`{{index .RequestHeader "X-Claude-Code-Session-Id"}}:0`,
+					`{{ne (index .RequestHeader "X-Claude-Code-Session-Id") ""}}`,
+				),
+				setIfAbsentConditionalOp(
+					"client_metadata.x-codex-window-id",
+					`{{index .RequestHeader "X-Interaction-Id"}}:0`,
+					`{{ne (index .RequestHeader "X-Interaction-Id") ""}}`,
+				),
+			},
 		},
 	}
 

@@ -27,21 +27,21 @@
 <table width="100%">
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/oZl7Vd" target="_blank">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/atlas-cloud-logomark-white.svg"/>
-          <source media="(prefers-color-scheme: light)" srcset="docs/sponsors/atlas-cloud-logomark-black.svg"/>
-          <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="50"/>
-        </picture>
+      <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
+        <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
-        <strong>Atlas Cloud</strong>
+        <strong>APIKEY.FUN</strong>
       </a>
-      <p align="left">
-        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
-      </p>
-      <p align="left">
-        Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new coding plan promotion</a> for more budget-friendly API access.
-      </p>
+      <div align="center">
+        <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
+          <img src="docs/sponsors/api-key.fun.banner.png" alt="APIKEY.FUN banner" width="100%"/>
+        </a>
+      </div>
+      <div align="left">
+        APIKEY.FUN is a professional enterprise-grade AI API relay service committed to providing enterprises and individual developers with stable, efficient, and cost-effective access to AI model APIs.<br/>
+        The platform supports popular models including Claude, OpenAI, and Gemini, with prices as low as 7% of the official price.<br/>
+        AxonHub users who <a href="https://apikey.fun/register?aff=axonhub" target="_blank">register through the exclusive link</a> can enjoy a permanent discount of up to 5% on recharges.
+      </div>
     </td>
     <td width="50%" align="center" valign="top">
       <a href="https://lj.s.gy/DUq59H" target="_blank">
@@ -49,21 +49,22 @@
         <br/>
         <strong>无限星河 Infistar.cc</strong>
       </a>
-      <p align="center">
+      <div align="center">
         <a href="https://lj.s.gy/DUq59H" target="_blank">
           <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 无限星河" width="100%"/>
         </a>
-      </p>
-      <p align="left">
-        <strong>AxonHub × Infistar.cc 无限星河 | High-Availability Full-Model API · Empowering the Next Generation of AI Gateways and Multi-Channel Routing</strong><br/><br/>
-        Thank you to Infistar.cc 无限星河 for sponsoring this project!
-      </p>
-      <p align="left">
-        ⚡ Enterprise-grade high concurrency and stable scheduling: Prices as low as 10% of official rates, transparent model multipliers, and millisecond-level response times that fit AxonHub's intelligent routing and failover mechanisms perfectly. High-availability channels and redundant multi-node backups help eliminate rate limits, 429s, and disconnections;<br/>
-        🧠 Comprehensive support for top models: Deeply adapted for ChatGPT, Claude, Gemini, Kimi, GLM, DeepSeek, and the full range of mainstream models, with native support for Claude Code, Codex, OpenCode, and other AI programming and Agent development tools.<br/>
-        🎨 Multimodal and cutting-edge ecosystem access: Beyond text conversations and code generation, it provides one-stop access to mainstream image generation, video, Embedding, and Rerank models, allowing a single upstream channel to meet the gateway's multimodal distribution needs.<br/>
-        🎁 Exclusive benefits for AxonHub users: Register through the <a href="https://lj.s.gy/DUq59H" target="_blank">exclusive link</a> to receive [exclusive gifted credits / first recharge offer], ready to use immediately with zero-barrier gateway testing!
-      </p>
+      </div>
+      <div align="left">
+        <strong>AxonHub × Infistar.cc | High-Availability AI API</strong>
+      </div>
+      <div align="left">
+        ⚡ Stable routing | 10% rates · Transparent · Failover<br/>
+        🧠 Top models | ChatGPT · Claude · Gemini · Kimi · GLM · DeepSeek<br/>
+        🎨 Multimodal | Text · Image · Video · Embedding / Rerank
+      </div>
+      <div align="left">
+        AxonHub users: bonus credits via the <a href="https://lj.s.gy/DUq59H" target="_blank">exclusive link</a>.
+      </div>
     </td>
   </tr>
 </table>

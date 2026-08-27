@@ -546,7 +546,8 @@ func TestConvertLLMToGeminiRequest_VideoURL(t *testing.T) {
 						{
 							Type: "video_url",
 							VideoURL: &llm.VideoURL{
-								URL: "https://example.com/example.mp4",
+								URL:      "https://example.com/example.mp4",
+								MIMEType: "video/quicktime",
 							},
 						},
 					},
@@ -560,7 +561,47 @@ func TestConvertLLMToGeminiRequest_VideoURL(t *testing.T) {
 	require.Len(t, result.Contents[0].Parts, 1)
 	require.NotNil(t, result.Contents[0].Parts[0].FileData)
 	require.Equal(t, "https://example.com/example.mp4", result.Contents[0].Parts[0].FileData.FileURI)
-	require.Equal(t, "video/*", result.Contents[0].Parts[0].FileData.MIMEType)
+	require.Equal(t, "video/quicktime", result.Contents[0].Parts[0].FileData.MIMEType)
+}
+
+func TestConvertLLMToGeminiRequest_VideoURLWithoutKnownMIME(t *testing.T) {
+	req := &llm.Request{
+		Messages: []llm.Message{{
+			Role: "user",
+			Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+				Type:     "video_url",
+				VideoURL: &llm.VideoURL{URL: "https://assets.example.com/video/input"},
+			}}},
+		}},
+	}
+
+	result := convertLLMToGeminiRequest(req)
+	require.Len(t, result.Contents, 1)
+	require.Len(t, result.Contents[0].Parts, 1)
+	require.NotNil(t, result.Contents[0].Parts[0].FileData)
+	require.Empty(t, result.Contents[0].Parts[0].FileData.MIMEType)
+}
+
+func TestConvertLLMToGeminiRequest_RemoteAudio(t *testing.T) {
+	req := &llm.Request{
+		Messages: []llm.Message{{
+			Role: "user",
+			Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+				Type: "input_audio",
+				InputAudio: &llm.InputAudio{
+					URL:      "https://assets.example.com/audio/input.mp3",
+					MIMEType: "audio/mpeg",
+				},
+			}}},
+		}},
+	}
+
+	result := convertLLMToGeminiRequest(req)
+	require.Len(t, result.Contents, 1)
+	require.Len(t, result.Contents[0].Parts, 1)
+	require.NotNil(t, result.Contents[0].Parts[0].FileData)
+	require.Equal(t, "https://assets.example.com/audio/input.mp3", result.Contents[0].Parts[0].FileData.FileURI)
+	require.Equal(t, "audio/mpeg", result.Contents[0].Parts[0].FileData.MIMEType)
 }
 
 func TestConvertLLMToGeminiRequest_ResponseFormat(t *testing.T) {

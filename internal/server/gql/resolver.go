@@ -53,6 +53,7 @@ type Resolver struct {
 	TestChannelOrchestrator        *orchestrator.TestChannelOrchestrator
 	gcWorker                       *gc.Worker
 	videoWorker                    *video_storage.Worker
+	catalogService                 *biz.CatalogService
 }
 
 // NewSchema creates a graphql executable schema.
@@ -86,6 +87,7 @@ func NewSchema(
 	httpClient *httpclient.HttpClient,
 	gcWorker *gc.Worker,
 	videoWorker *video_storage.Worker,
+	catalogService *biz.CatalogService,
 ) graphql.ExecutableSchema {
 	modelFetcher := biz.NewModelFetcher(httpClient, channelService)
 
@@ -120,6 +122,7 @@ func NewSchema(
 			TestChannelOrchestrator:        orchestrator.NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, promptProtectionRuleService, httpClient),
 			gcWorker:                       gcWorker,
 			videoWorker:                    videoWorker,
+			catalogService:                 catalogService,
 		},
 	})
 }

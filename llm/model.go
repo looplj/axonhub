@@ -263,6 +263,9 @@ type Request struct {
 	// Moderation is the standalone /v1/moderations request payload.
 	Moderation *ModerationRequest `json:"moderation_request,omitempty"`
 
+	// AlphaSearch is the raw Codex/CPA /v1/alpha/search request payload.
+	AlphaSearch *AlphaSearchRequest `json:"alpha_search_request,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
@@ -574,6 +577,9 @@ type ImageURL struct {
 type VideoURL struct {
 	// URL is the URL of the video.
 	URL string `json:"url"`
+
+	// MIMEType is the MIME type of the video when provided by the source protocol.
+	MIMEType string `json:"mime_type,omitempty"`
 }
 
 // DocumentURL represents a document URL (PDF, Word, etc.)
@@ -594,6 +600,12 @@ type InputAudio struct {
 
 	// Base64 encoded audio data.
 	Data string `json:"data"`
+
+	// URL is the URL of remote audio data.
+	URL string `json:"url,omitempty"`
+
+	// MIMEType is the MIME type of the audio when provided by the source protocol.
+	MIMEType string `json:"mime_type,omitempty"`
 }
 
 // CompactContent represents compact content from OpenAI Responses API compaction.
@@ -721,6 +733,9 @@ type Response struct {
 
 	// Moderation is the standalone /v1/moderations response payload.
 	Moderation *ModerationResponse `json:"moderation,omitempty"`
+
+	// AlphaSearch is the raw Codex/CPA /v1/alpha/search response payload.
+	AlphaSearch *AlphaSearchResponse `json:"alpha_search_response,omitempty"`
 
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.

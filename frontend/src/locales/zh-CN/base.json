@@ -7,7 +7,7 @@
   "sidebar.items.models": "模型",
   "sidebar.items.promptProtectionRules": "提示保护",
   "sidebar.items.prompts": "提示词",
-  "sidebar.items.dataStorages": "数据存储",
+  "sidebar.items.dataStorages": "载荷存储",
   "sidebar.items.users": "用户",
   "sidebar.items.roles": "角色",
   "sidebar.items.requests": "请求",

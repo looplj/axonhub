@@ -134,6 +134,9 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 
 		endpoints := ch.ResolveEndpoints()
 		apiFormat := SelectAPIFormat(endpoints, req)
+		if req.RequestType == llm.RequestTypeAlphaSearch && apiFormat == "" {
+			continue
+		}
 
 		candidates = append(candidates, &ChannelModelsCandidate{
 			Channel:   ch,
