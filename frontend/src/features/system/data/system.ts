@@ -1832,3 +1832,66 @@ export function useUpdateProviderQuotaCollectionSettings() {
     },
   });
 }
+
+const CATALOG_SETTINGS_QUERY = `
+  query CatalogSettings {
+    catalogSettings {
+      upstreamURL
+      refreshSeconds
+    }
+  }
+`;
+
+const UPDATE_CATALOG_SETTINGS_MUTATION = `
+  mutation UpdateCatalogSettings($input: UpdateCatalogSettingsInput!) {
+    updateCatalogSettings(input: $input)
+  }
+`;
+
+export interface CatalogSettings {
+  upstreamURL: string;
+  refreshSeconds: number;
+}
+
+export interface UpdateCatalogSettingsInput {
+  upstreamURL?: string;
+  refreshSeconds?: number;
+}
+
+export function useCatalogSettings() {
+  const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
+
+  return useQuery({
+    queryKey: ['catalogSettings'],
+    enabled: hasSystemScope('read_settings'),
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ catalogSettings: CatalogSettings }>(CATALOG_SETTINGS_QUERY);
+        return data.catalogSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateCatalogSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateCatalogSettingsInput) => {
+      const data = await graphqlRequest<{ updateCatalogSettings: boolean }>(UPDATE_CATALOG_SETTINGS_MUTATION, { input });
+      return data.updateCatalogSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['catalogSettings'] });
+      queryClient.invalidateQueries({ queryKey: ['providers-catalog'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}

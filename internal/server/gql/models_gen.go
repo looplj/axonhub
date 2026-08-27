@@ -397,6 +397,13 @@ type ProviderQuotaCollectionProviderInput struct {
 	Enabled  bool   `json:"enabled"`
 }
 
+type ProvidersCatalog struct {
+	Data      objects.JSONRawMessage `json:"data"`
+	FetchedAt *time.Time             `json:"fetchedAt,omitempty"`
+	Source    string                 `json:"source"`
+	Filtered  bool                   `json:"filtered"`
+}
+
 type QueryModelsInput struct {
 	StatusIn                []channel.Status `json:"statusIn,omitempty"`
 	IncludeMapping          *bool            `json:"includeMapping,omitempty"`
@@ -577,6 +584,11 @@ type UpdateBrandSettingsInput struct {
 	BrandName *string `json:"brandName,omitempty"`
 	BrandLogo *string `json:"brandLogo,omitempty"`
 	Title     *string `json:"title,omitempty"`
+}
+
+type UpdateCatalogSettingsInput struct {
+	UpstreamURL    *string `json:"upstreamURL,omitempty"`
+	RefreshSeconds *int    `json:"refreshSeconds,omitempty"`
 }
 
 type UpdateDefaultDataStorageInput struct {
