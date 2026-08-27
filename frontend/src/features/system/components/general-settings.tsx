@@ -19,6 +19,7 @@ import {
   useUpdatePassThroughSettings,
 } from '../data/system';
 import { GMTTimeZoneOptions } from '../data/timezones';
+import { CatalogSettings } from './catalog-settings';
 
 export function GeneralSettings() {
   const { t } = useTranslation();
@@ -189,6 +190,8 @@ export function GeneralSettings() {
           </div>
         </CardContent>
       </Card>
+
+      <CatalogSettings />
 
       {hasChanges && (
         <div className='flex justify-end'>
