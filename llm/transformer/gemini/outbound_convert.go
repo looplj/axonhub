@@ -380,7 +380,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 					}
 				}
 			case "input_audio":
-				if part.InputAudio != nil && part.InputAudio.Data != "" {
+				if part.InputAudio != nil && (part.InputAudio.Data != "" || part.InputAudio.URL != "") {
 					geminiPart := convertAudioToGeminiPart(part.InputAudio)
 					if geminiPart != nil {
 						parts = append(parts, geminiPart)

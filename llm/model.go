@@ -577,6 +577,9 @@ type ImageURL struct {
 type VideoURL struct {
 	// URL is the URL of the video.
 	URL string `json:"url"`
+
+	// MIMEType is the MIME type of the video when provided by the source protocol.
+	MIMEType string `json:"mime_type,omitempty"`
 }
 
 // DocumentURL represents a document URL (PDF, Word, etc.)
@@ -597,6 +600,12 @@ type InputAudio struct {
 
 	// Base64 encoded audio data.
 	Data string `json:"data"`
+
+	// URL is the URL of remote audio data.
+	URL string `json:"url,omitempty"`
+
+	// MIMEType is the MIME type of the audio when provided by the source protocol.
+	MIMEType string `json:"mime_type,omitempty"`
 }
 
 // CompactContent represents compact content from OpenAI Responses API compaction.
