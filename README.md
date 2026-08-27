@@ -27,21 +27,17 @@
 <table width="100%">
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/oZl7Vd" target="_blank">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/atlas-cloud-logomark-white.svg"/>
-          <source media="(prefers-color-scheme: light)" srcset="docs/sponsors/atlas-cloud-logomark-black.svg"/>
-          <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="50"/>
-        </picture>
+      <a href="https://lj.s.gy/8j0i6J" target="_blank">
+        <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
-        <strong>Atlas Cloud</strong>
+        <strong>APIKEY.FUN</strong>
       </a>
-      <p align="left">
-        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> 是一个全模态 AI 推理平台，为开发者提供统一的 AI API 来访问视频生成、图像生成和 LLM API。无需管理多个供应商集成，只需连接一次即可统一访问 300+ 精选模型，涵盖所有模态。
-      </p>
-      <p align="left">
-        查看 Atlas Cloud 的 <a href="https://lj.s.gy/jknt2V" target="_blank">全新 Coding plan 促销</a>，获取更经济实惠的 API 访问方案。
-      </p>
+      <div align="left">
+        感谢 APIKEY.FUN 赞助本项目！<br/>
+        APIKEY.FUN 是一家专业的企业级 AI 中转站，致力于为企业和个人开发者提供稳定、高效、低成本的 AI 模型 API 接入服务。<br/>
+        平台支持 Claude、OpenAI、Gemini 等主流热门模型，价格低至官方原价的 7%。<br/>
+        AxonHub 用户通过<a href="https://lj.s.gy/8j0i6J" target="_blank">专属链接注册</a>，还可享受最高充值永久 95 折专属优惠。
+      </div>
     </td>
     <td width="50%" align="center" valign="top">
       <a href="https://lj.s.gy/DUq59H" target="_blank">

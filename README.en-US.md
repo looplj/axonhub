@@ -27,21 +27,17 @@
 <table width="100%">
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/oZl7Vd" target="_blank">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/atlas-cloud-logomark-white.svg"/>
-          <source media="(prefers-color-scheme: light)" srcset="docs/sponsors/atlas-cloud-logomark-black.svg"/>
-          <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="50"/>
-        </picture>
+      <a href="https://lj.s.gy/8j0i6J" target="_blank">
+        <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
-        <strong>Atlas Cloud</strong>
+        <strong>APIKEY.FUN</strong>
       </a>
-      <p align="left">
-        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> is a full-modal AI inference platform that gives developers a single AI API to access video generation, image generation, and LLM APIs. Instead of managing multiple vendor integrations, you connect once and get unified access to 300+ curated models across all modalities.
-      </p>
-      <p align="left">
-        Check out Atlas Cloud's <a href="https://lj.s.gy/jknt2V" target="_blank">new coding plan promotion</a> for more budget-friendly API access.
-      </p>
+      <div align="left">
+        Thanks to APIKEY.FUN for sponsoring this project!<br/>
+        APIKEY.FUN is a professional enterprise-grade AI API relay service committed to providing enterprises and individual developers with stable, efficient, and cost-effective access to AI model APIs.<br/>
+        The platform supports popular models including Claude, OpenAI, and Gemini, with prices as low as 7% of the official price.<br/>
+        AxonHub users who <a href="https://lj.s.gy/8j0i6J" target="_blank">register through the exclusive link</a> can enjoy a permanent discount of up to 5% on recharges.
+      </div>
     </td>
     <td width="50%" align="center" valign="top">
       <a href="https://lj.s.gy/DUq59H" target="_blank">

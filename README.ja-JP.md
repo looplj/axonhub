@@ -27,21 +27,17 @@
 <table width="100%">
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="https://lj.s.gy/oZl7Vd" target="_blank">
-        <picture>
-          <source media="(prefers-color-scheme: dark)" srcset="docs/sponsors/atlas-cloud-logomark-white.svg"/>
-          <source media="(prefers-color-scheme: light)" srcset="docs/sponsors/atlas-cloud-logomark-black.svg"/>
-          <img src="docs/sponsors/atlas-cloud-logomark-black.svg" alt="Atlas Cloud" height="50"/>
-        </picture>
+      <a href="https://lj.s.gy/8j0i6J" target="_blank">
+        <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
         <br/>
-        <strong>Atlas Cloud</strong>
+        <strong>APIKEY.FUN</strong>
       </a>
-      <p align="left">
-        <a href="https://lj.s.gy/oZl7Vd" target="_blank">Atlas Cloud</a> は、開発者に動画生成、画像生成、LLM API へアクセスできる単一の AI API を提供するフルモーダル AI 推論プラットフォームです。複数のベンダー統合を管理する代わりに、一度接続するだけで全モーダルにわたる 300 以上の厳選されたモデルへ統一アクセスできます。
-      </p>
-      <p align="left">
-        Atlas Cloud の <a href="https://lj.s.gy/jknt2V" target="_blank">新しいコーディングプラン特典</a> で、よりお得な API アクセスをご利用ください。
-      </p>
+      <div align="left">
+        APIKEY.FUN による本プロジェクトへのご支援に感謝します！<br/>
+        APIKEY.FUN は、企業や個人開発者に安定・高効率・低コストな AI モデル API 接続を提供する、専門的なエンタープライズ向け AI API 中継サービスです。<br/>
+        Claude、OpenAI、Gemini などの人気モデルに対応し、料金は公式価格の 7% からご利用いただけます。<br/>
+        AxonHub ユーザーが<a href="https://lj.s.gy/8j0i6J" target="_blank">専用リンクから登録</a>すると、チャージ料金が永久に最大 5% 割引になります。
+      </div>
     </td>
     <td width="50%" align="center" valign="top">
       <a href="https://lj.s.gy/DUq59H" target="_blank">
