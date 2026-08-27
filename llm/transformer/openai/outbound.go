@@ -198,7 +198,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	// Convert to OpenAI Request format (this strips helper fields)
-	oaiReq := RequestFromLLM(llmReq, reasoningField)
+	oaiReq := RequestFromLLM(ctx, llmReq, reasoningField)
 	// Apply per-channel reasoning_effort mapping for non-standard OpenAI-compatible providers.
 	// Entries in the map replace the effort value; values not in the map pass through unchanged.
 	// e.g. ollama channel with {"xhigh": "max"} converts Anthropic's internal "xhigh" back to "max".

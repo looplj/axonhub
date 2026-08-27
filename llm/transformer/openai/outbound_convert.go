@@ -1,13 +1,18 @@
 package openai
 
 import (
+	"context"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
-// RequestFromLLM creates OpenAI Request from unified llm.Request with reasoning field configuration.
-func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
+// RequestFromLLM creates an OpenAI Request from unified llm.Request with reasoning
+// field configuration. When the request has no explicit prompt cache key, ctx's
+// session ID is used as a fallback when available.
+func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField ReasoningField) *Request {
 	if r == nil {
 		return nil
 	}
@@ -35,6 +40,12 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		Stream:              r.Stream,
 		ParallelToolCalls:   r.ParallelToolCalls,
 		Verbosity:           r.Verbosity,
+	}
+
+	if ctx != nil && lo.FromPtr(req.PromptCacheKey) == "" {
+		if sessionID, ok := shared.GetSessionID(ctx); ok && sessionID != "" {
+			req.PromptCacheKey = lo.ToPtr(sessionID)
+		}
 	}
 
 	// Convert messages
