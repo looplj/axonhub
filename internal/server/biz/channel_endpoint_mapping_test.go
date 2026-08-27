@@ -125,16 +125,17 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
-			name: "codex exposes responses plus image generation and edit",
+			name: "codex exposes responses, alpha search, plus image generation and edit",
 			typ:  channel.TypeCodex,
 			expected: []string{
 				llm.APIFormatOpenAIResponse.String(),
+				llm.APIFormatOpenAIAlphaSearch.String(),
 				llm.APIFormatOpenAIImageGeneration.String(),
 				llm.APIFormatOpenAIImageEdit.String(),
 			},
 		},
 		{
-			name:     "fenno exposes codex responses",
+			name:     "fenno defaults to responses only",
 			typ:      channel.TypeFenno,
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
@@ -329,6 +330,7 @@ func TestSupportedAPIFormats_UsesLLMAPIFormatValues(t *testing.T) {
 		llm.APIFormatOpenAITranscription.String(),
 		llm.APIFormatOpenAITranslation.String(),
 		llm.APIFormatOpenAIModeration.String(),
+		llm.APIFormatOpenAIAlphaSearch.String(),
 		llm.APIFormatAnthropicMessage.String(),
 		llm.APIFormatGeminiContents.String(),
 		llm.APIFormatGeminiEmbedding.String(),

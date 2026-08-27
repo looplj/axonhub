@@ -375,6 +375,53 @@ func TestCodexOutbound_CustomizeExecutorAggregatesNonStreamRequests(t *testing.T
 	assert.Equal(t, "gpt-5-codex", body["model"])
 }
 
+func TestCodexOutbound_CustomizeExecutorAlphaSearchUsesNonStreamingDo(t *testing.T) {
+	ctx := context.Background()
+	outbound, err := NewOutboundTransformer(Params{
+		BaseURL: "https://chatgpt.com/backend-api/codex#",
+		TokenProvider: staticTokenGetter{creds: &oauth.OAuthCredentials{
+			AccessToken: testAccessTokenWithAccountID(t),
+			ExpiresAt:   time.Now().Add(time.Hour),
+		}},
+	})
+	require.NoError(t, err)
+
+	request := &httpclient.Request{RequestType: llm.RequestTypeAlphaSearch.String()}
+	mock := &mockCodexExecutor{streamEvents: []*httpclient.StreamEvent{{
+		Data: []byte(`{"ok":true}`),
+	}}}
+	executor := outbound.CustomizeExecutor(mock)
+
+	response, err := executor.Do(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), mock.doCalls.Load(), "alpha search must use the non-streaming HTTP path")
+	require.Equal(t, "text/event-stream", response.Headers.Get("Content-Type"))
+}
+
+func TestCodexOutbound_CustomizeExecutorAlphaSearchBypassesWebSocketTransport(t *testing.T) {
+	ctx := context.Background()
+	outbound, err := NewOutboundTransformer(Params{
+		BaseURL:   "https://chatgpt.com/backend-api/codex#",
+		Transport: responses.TransportWebSocket,
+		TokenProvider: staticTokenGetter{creds: &oauth.OAuthCredentials{
+			AccessToken: testAccessTokenWithAccountID(t),
+			ExpiresAt:   time.Now().Add(time.Hour),
+		}},
+	})
+	require.NoError(t, err)
+
+	request := &httpclient.Request{RequestType: llm.RequestTypeAlphaSearch.String()}
+	mock := &mockCodexExecutor{streamEvents: []*httpclient.StreamEvent{{
+		Data: []byte(`{"ok":true}`),
+	}}}
+	executor := outbound.CustomizeExecutor(mock)
+
+	_, err = executor.Do(ctx, request)
+	require.NoError(t, err)
+	require.Equal(t, int32(1), mock.doCalls.Load(), "alpha search must use the original HTTP executor")
+	require.Zero(t, mock.doStreamCalls.Load(), "alpha search must not enter the Responses WebSocket protocol")
+}
+
 func TestCodexOutbound_CustomizeExecutorPassesThroughJSONForNonStreamRequests(t *testing.T) {
 	const upstreamBody = `{
 		"id":"resp_json_123",
@@ -546,8 +593,9 @@ func TestCodexOutbound_DoReturnsWebSocketErrorEvents(t *testing.T) {
 var _ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
 
 type mockCodexExecutor struct {
-	streamEvents []*httpclient.StreamEvent
-	doCalls      atomic.Int32
+	streamEvents  []*httpclient.StreamEvent
+	doCalls       atomic.Int32
+	doStreamCalls atomic.Int32
 }
 
 func (m *mockCodexExecutor) Do(_ context.Context, _ *httpclient.Request) (*httpclient.Response, error) {
@@ -556,6 +604,7 @@ func (m *mockCodexExecutor) Do(_ context.Context, _ *httpclient.Request) (*httpc
 }
 
 func (m *mockCodexExecutor) DoStream(_ context.Context, _ *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+	m.doStreamCalls.Add(1)
 	return streams.SliceStream(m.streamEvents), nil
 }
 

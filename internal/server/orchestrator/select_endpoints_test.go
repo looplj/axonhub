@@ -83,3 +83,14 @@ func TestSelectAPIFormat_Compact(t *testing.T) {
 		APIFormat:   llm.APIFormatOpenAIResponseCompact,
 	}))
 }
+
+func TestSelectAPIFormat_AlphaSearchRequiresExplicitEndpoint(t *testing.T) {
+	endpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+	}
+
+	require.Empty(t, SelectAPIFormat(endpoints, &llm.Request{
+		RequestType: llm.RequestTypeAlphaSearch,
+		APIFormat:   llm.APIFormatOpenAIAlphaSearch,
+	}))
+}

@@ -29,7 +29,7 @@ func filterResolvedCandidatesForRequest(
 	})
 	if !hasConditionalCandidates {
 		candidates := aggregateChannelModelCandidates(resolvedCandidates)
-		populateAPIFormat(candidates, req)
+		candidates = populateAPIFormat(candidates, req)
 
 		return candidates
 	}
@@ -63,24 +63,37 @@ func filterResolvedCandidatesForRequest(
 		)
 	}
 
-	populateAPIFormat(candidates, req)
+	candidates = populateAPIFormat(candidates, req)
 
 	return candidates
 }
 
-func populateAPIFormat(candidates []*ChannelModelsCandidate, req *llm.Request) {
+func populateAPIFormat(candidates []*ChannelModelsCandidate, req *llm.Request) []*ChannelModelsCandidate {
+	filtered := make([]*ChannelModelsCandidate, 0, len(candidates))
 	for _, c := range candidates {
 		if c == nil || c.Channel == nil {
 			continue
 		}
 
-		if c.APIFormat != "" {
+		endpoints := c.Channel.ResolveEndpoints()
+		if c.APIFormat == "" {
+			c.APIFormat = SelectAPIFormat(endpoints, req)
+		}
+
+		if req.RequestType == llm.RequestTypeAlphaSearch && !hasAPIFormat(endpoints, llm.APIFormatOpenAIAlphaSearch.String()) {
 			continue
 		}
 
-		endpoints := c.Channel.ResolveEndpoints()
-		c.APIFormat = SelectAPIFormat(endpoints, req)
+		filtered = append(filtered, c)
 	}
+
+	return filtered
+}
+
+func hasAPIFormat(endpoints []objects.ChannelEndpoint, apiFormat string) bool {
+	return lo.ContainsBy(endpoints, func(endpoint objects.ChannelEndpoint) bool {
+		return endpoint.APIFormat == apiFormat
+	})
 }
 
 func reqStream(req *llm.Request) bool {

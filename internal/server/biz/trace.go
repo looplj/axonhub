@@ -659,6 +659,8 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 			requestSpans = append(requestSpans, extractSpansFromImageRequestBody(req.RequestBody, fmt.Sprintf("request-%d", req.ID))...)
 		} else if isModerationFormat(apiFormat) {
 			requestSpans = append(requestSpans, extractSpansFromModerationRequestBody(req.RequestBody, fmt.Sprintf("request-%d", req.ID))...)
+		} else if isAlphaSearchFormat(apiFormat) {
+			// Alpha search is an opaque provider payload; it is not message-shaped.
 		} else {
 			httpReq := &httpclient.Request{
 				Body: req.RequestBody,
@@ -703,6 +705,8 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 			segment.Metadata = extractMetadataFromUsage(usage)
 		} else if isModerationFormat(apiFormat) {
 			responseSpans = append(responseSpans, extractSpansFromModerationResponseBody(req.ResponseBody, fmt.Sprintf("response-%d", req.ID))...)
+		} else if isAlphaSearchFormat(apiFormat) {
+			// Alpha search responses are provider-defined JSON and have no usage/messages.
 		} else {
 			outbound, err := getOutboundTransformer(apiFormat)
 			if err != nil {
@@ -750,6 +754,10 @@ func isImageFormat(format llm.APIFormat) bool {
 
 func isModerationFormat(format llm.APIFormat) bool {
 	return format == llm.APIFormatOpenAIModeration
+}
+
+func isAlphaSearchFormat(format llm.APIFormat) bool {
+	return format == llm.APIFormatOpenAIAlphaSearch
 }
 
 // extractSpansFromModerationRequestBody extracts display spans from a /v1/moderations request body.

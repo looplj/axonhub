@@ -229,6 +229,15 @@ Multimodal input (text + image) is also supported:
 - OpenAI and several OpenAI-compatible channel types include `openai/moderations` in their default endpoint set. Channels that do not support upstream `/moderations` may return provider errors; remove or override the endpoint if needed.
 - When body pass-through is enabled and inbound/outbound formats match, model mapping still patches the top-level `model` field for moderations requests.
 
+## Codex Alpha Search API
+
+AxonHub can proxy the Codex/CPA-compatible alpha search endpoint without interpreting the provider-specific search payload.
+
+**Endpoint:**
+- `POST /v1/alpha/search`
+
+The request must include a `model` so AxonHub can select a channel. The remaining JSON, including `commands.search_query`, is forwarded unchanged apart from the mapped top-level `model`. The upstream response is returned unchanged. This endpoint is not part of the public OpenAI API; configure an `openai/alpha_search` channel endpoint only for an upstream that implements `/alpha/search` (for example CPA). The built-in Codex channel includes it by default; all other channels, including Fenno, OpenAI, and OpenAI Responses, must opt in explicitly.
+
 ## Embedding API
 
 AxonHub provides comprehensive support for text and multimodal embedding generation through OpenAI-compatible API.

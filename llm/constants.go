@@ -19,6 +19,8 @@ const (
 	RequestTypeTranslation RequestType = "translation"
 	// RequestTypeModeration is the content moderation request type, maps to /v1/moderations.
 	RequestTypeModeration RequestType = "moderation"
+	// RequestTypeAlphaSearch is the Codex/CPA alpha search request type, maps to /v1/alpha/search.
+	RequestTypeAlphaSearch RequestType = "alpha_search"
 )
 
 func (r RequestType) String() string {
@@ -42,6 +44,7 @@ const (
 	APIFormatOpenAITranscription APIFormat = "openai/audio_transcriptions"
 	APIFormatOpenAITranslation   APIFormat = "openai/audio_translations"
 	APIFormatOpenAIModeration    APIFormat = "openai/moderations"
+	APIFormatOpenAIAlphaSearch   APIFormat = "openai/alpha_search"
 	APIFormatGeminiContents      APIFormat = "gemini/contents"
 	APIFormatAnthropicMessage    APIFormat = "anthropic/messages"
 	APIFormatAiSDKText           APIFormat = "aisdk/text"

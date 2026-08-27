@@ -18,6 +18,10 @@ func TestCapableAPIFormats(t *testing.T) {
 	require.Contains(t, embedding, APIFormatOpenAIEmbedding.String())
 	require.NotContains(t, embedding, APIFormatOpenAIChatCompletion.String())
 
+	alphaSearch := CapableAPIFormats(RequestTypeAlphaSearch)
+	require.Contains(t, alphaSearch, APIFormatOpenAIAlphaSearch.String())
+	require.NotContains(t, alphaSearch, APIFormatOpenAIResponse.String())
+
 	require.Nil(t, CapableAPIFormats(RequestType("unknown")))
 }
 

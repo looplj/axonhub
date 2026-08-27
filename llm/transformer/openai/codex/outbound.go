@@ -39,8 +39,10 @@ const (
 //
 //nolint:containedctx // It is used as a transformer.
 type OutboundTransformer struct {
-	tokens    oauth.TokenGetter
-	transport string
+	tokens          oauth.TokenGetter
+	transport       string
+	baseURL         string
+	alphaSearchPath string
 
 	// official reports whether the configured upstream is the official Codex
 	// backend (chatgpt.com). Official endpoints always stream SSE, so they keep
@@ -67,9 +69,10 @@ var responsesBlockedPassThroughFields = []string{
 }
 
 type Params struct {
-	TokenProvider oauth.TokenGetter
-	BaseURL       string
-	Transport     string
+	TokenProvider   oauth.TokenGetter
+	BaseURL         string
+	Transport       string
+	AlphaSearchPath string
 }
 
 // isOfficialCodexBaseURL reports whether baseURL points at the official Codex
@@ -94,6 +97,10 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	if baseURL == "" || baseURL == "https://api.openai.com/v1" {
 		baseURL = codexBaseURL
 	}
+	alphaSearchPath := params.AlphaSearchPath
+	if alphaSearchPath == "" {
+		alphaSearchPath = "/alpha/search"
+	}
 
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
 	// Use a dummy config and then override URL/auth.
@@ -109,6 +116,8 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	return &OutboundTransformer{
 		tokens:            params.TokenProvider,
 		transport:         params.Transport,
+		baseURL:           strings.TrimSuffix(baseURL, "##"),
+		alphaSearchPath:   alphaSearchPath,
 		official:          isOfficialCodexBaseURL(baseURL),
 		responsesOutbound: ro,
 	}, nil
@@ -147,6 +156,9 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
 		return nil, errors.New("request is nil")
+	}
+	if llmReq.RequestType == llm.RequestTypeAlphaSearch {
+		return t.transformAlphaSearchRequest(ctx, llmReq)
 	}
 
 	rawSessionID := ""
@@ -343,6 +355,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 }
 
 func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *httpclient.Response) (*llm.Response, error) {
+	if httpResp != nil && httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeAlphaSearch.String() {
+		return t.transformAlphaSearchResponse(ctx, httpResp)
+	}
 	if httpResp != nil && httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeImage.String() {
 		if httpResp.StatusCode >= 400 {
 			return nil, fmt.Errorf("codex image HTTP error %d: %s", httpResp.StatusCode, httpResp.Body)
@@ -379,8 +394,9 @@ func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipe
 	}
 
 	return &codexExecutor{
-		inner:       inner,
-		transformer: t,
+		inner:        inner,
+		httpExecutor: executor,
+		transformer:  t,
 	}
 }
 
@@ -424,13 +440,17 @@ func (t *OutboundTransformer) Stop() {
 }
 
 type codexExecutor struct {
-	inner       pipeline.Executor
-	transformer *OutboundTransformer
+	inner        pipeline.Executor
+	httpExecutor pipeline.Executor
+	transformer  *OutboundTransformer
 }
 
 func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
-	if request.RequestType == string(llm.RequestTypeCompact) {
-		return e.inner.Do(ctx, request)
+	// Compact and alpha search are non-streaming endpoints; proxy them
+	// through the real HTTP client instead of the SSE stream path.
+	if request.RequestType == string(llm.RequestTypeCompact) ||
+		request.RequestType == llm.RequestTypeAlphaSearch.String() {
+		return e.httpExecutor.Do(ctx, request)
 	}
 
 	// The official Codex backend always streams SSE, so keep the historical

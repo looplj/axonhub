@@ -229,6 +229,15 @@ AxonHub 通过独立端点提供 OpenAI 兼容的内容审核（Moderations）�
 - OpenAI 及部分 OpenAI 兼容渠道类型默认包含 `openai/moderations` 端点。若上游不支持 `/moderations`，可能返回上游错误；可按需移除或覆盖该端点。
 - 开启请求体透传且入站/出站 format 一致时，moderations 请求仍会修补顶层 `model` 字段以支持模型映射。
 
+## Codex Alpha Search API
+
+AxonHub 可透明转发 Codex/CPA 兼容的 Alpha Search 端点，不解析上游自定义的搜索请求和响应结构。
+
+**端点：**
+- `POST /v1/alpha/search`
+
+请求必须包含 `model`，以便 AxonHub 选择渠道。除模型映射会修改顶层 `model` 外，其余 JSON（包括 `commands.search_query`）原样转发；上游响应也原样返回。该端点不属于公开 OpenAI API，只应为确实实现了 `/alpha/search` 的上游（例如 CPA）配置 `openai/alpha_search` endpoint。只有内置 Codex 渠道默认包含该端点；其他渠道（包括 Fenno、OpenAI 和 OpenAI Responses）都需要显式加入。
+
 ## 嵌入 API
 
 AxonHub 通过 OpenAI 兼容 API 提供全面的文本和多模态嵌入生成支持。

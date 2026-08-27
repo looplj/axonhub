@@ -31,6 +31,10 @@ func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) stri
 				return ep.APIFormat
 			}
 		}
+
+		if req.RequestType == llm.RequestTypeAlphaSearch {
+			return ""
+		}
 	}
 
 	return endpoints[0].APIFormat
