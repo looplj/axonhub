@@ -217,11 +217,13 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 	persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
+	failure := ClassifyUpstreamTransportError(err)
+
 	updateErr := state.RequestService.UpdateRequestExecutionFailed(
 		persistCtx,
 		state.RequestExec.ID,
-		ExtractErrorMessage(err),
-		ExtractErrorInfo(err),
+		ExtractErrorMessage(failure),
+		ExtractErrorInfo(failure),
 	)
 	if updateErr != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(updateErr))
@@ -232,6 +234,13 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 func ExtractErrorInfo(err error) *biz.ExecutionErrorInfo {
 	httpErr, ok := xerrors.As[*httpclient.Error](err)
 	if !ok {
+		// Classified errors (e.g. upstream transport failures) carry their own status code.
+		if respErr, ok := xerrors.As[*llm.ResponseError](err); ok && respErr.StatusCode != 0 {
+			statusCode := respErr.StatusCode
+
+			return &biz.ExecutionErrorInfo{StatusCode: &statusCode}
+		}
+
 		return nil
 	}
 
@@ -244,6 +253,12 @@ func ExtractErrorInfo(err error) *biz.ExecutionErrorInfo {
 func ExtractErrorMessage(err error) string {
 	httpErr, ok := xerrors.As[*httpclient.Error](err)
 	if !ok {
+		// Prefer the structured message over ResponseError.Error(), which also
+		// concatenates the status text, code and type.
+		if respErr, ok := xerrors.As[*llm.ResponseError](err); ok && respErr.Detail.Message != "" {
+			return respErr.Detail.Message
+		}
+
 		return err.Error()
 	}
 

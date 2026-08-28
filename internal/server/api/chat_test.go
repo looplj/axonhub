@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -896,4 +899,141 @@ func TestWriteSSEStream_MessageStopIsNotIncomplete(t *testing.T) {
 
 	body := w.Body.String()
 	require.NotContains(t, body, "event:error")
+}
+
+// parseSSEErrorEvent extracts the JSON payload of the first "error" SSE event.
+func parseSSEErrorEvent(t *testing.T, body string) map[string]any {
+	t.Helper()
+
+	lines := strings.Split(body, "\n")
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "event:error") {
+			continue
+		}
+
+		require.Less(t, i+1, len(lines), "error event should have a data line")
+
+		var parsed map[string]any
+
+		require.NoError(t, json.Unmarshal([]byte(strings.TrimPrefix(lines[i+1], "data:")), &parsed))
+
+		return parsed
+	}
+
+	require.FailNow(t, "no error event found", body)
+
+	return nil
+}
+
+func TestFormatStreamError_FallsBackToContextRequestID(t *testing.T) {
+	ctx := contexts.WithRequestID(context.Background(), "req_gateway_1")
+
+	data, err := json.Marshal(FormatStreamError(ctx, errors.New("boom")))
+	require.NoError(t, err)
+
+	var parsed map[string]any
+	require.NoError(t, json.Unmarshal(data, &parsed))
+	assert.Equal(t, "req_gateway_1", parsed["request_id"])
+
+	// An upstream request id still wins over the gateway one.
+	respErr := &llm.ResponseError{Detail: llm.ErrorDetail{Message: "m", RequestID: "req_upstream"}}
+
+	data, err = json.Marshal(FormatStreamError(ctx, respErr))
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(data, &parsed))
+	assert.Equal(t, "req_upstream", parsed["request_id"])
+
+	// No id anywhere keeps the field empty instead of failing.
+	data, err = json.Marshal(FormatStreamError(context.Background(), errors.New("boom")))
+	require.NoError(t, err)
+	require.NoError(t, json.Unmarshal(data, &parsed))
+	assert.Equal(t, "", parsed["request_id"])
+}
+
+// An upstream that drops the connection after content was delivered must surface as a
+// classified upstream error (stable code, 502 semantics), not as a bare "unexpected EOF".
+func TestWriteSSEStream_TransportErrorIsClassified(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil).
+		WithContext(contexts.WithRequestID(context.Background(), "req_gateway_2"))
+
+	stream := &errorAfterStream{
+		items: []*httpclient.StreamEvent{
+			{Data: []byte(`{"id":"1","choices":[{"delta":{"content":"He"}}]}`)},
+		},
+		err: fmt.Errorf("read body: %w", io.ErrUnexpectedEOF),
+	}
+
+	WriteSSEStream(c, stream)
+
+	parsed := parseSSEErrorEvent(t, w.Body.String())
+	errorField := parsed["error"].(map[string]any)
+	assert.Equal(t, orchestrator.ErrTypeUpstreamError, errorField["type"])
+	assert.Equal(t, orchestrator.ErrCodeUpstreamStreamInterrupted, errorField["code"])
+	assert.Contains(t, errorField["message"], "unexpected EOF")
+	assert.Equal(t, "req_gateway_2", parsed["request_id"])
+}
+
+func TestWriteSSEStream_IncompleteStreamErrorIsClassified(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"1","choices":[{"delta":{"content":"Hi"}}]}`)},
+	}
+
+	WriteSSEStream(c, streams.SliceStream(events))
+
+	parsed := parseSSEErrorEvent(t, w.Body.String())
+	errorField := parsed["error"].(map[string]any)
+	assert.Equal(t, orchestrator.ErrCodeUpstreamStreamInterrupted, errorField["code"])
+	assert.Contains(t, errorField["message"], orchestrator.ErrStreamIncomplete.Error())
+}
+
+// Hidden/custom policies rewrite the message but must keep the classification so
+// clients can still tell an interrupted stream from other upstream failures.
+func TestUpstreamErrorStream_HiddenModeKeepsTransportErrorCode(t *testing.T) {
+	ctx, systemService := setupUpstreamErrorPolicyTest(t, biz.UpstreamErrorPolicy{
+		Mode: biz.UpstreamErrorModeHidden,
+	})
+
+	inner := &errorAfterStream{err: io.ErrUnexpectedEOF}
+	stream := newUpstreamErrorStream(ctx, inner, systemService)
+	require.False(t, stream.Next())
+
+	err := stream.Err()
+
+	respErr := &llm.ResponseError{}
+	require.True(t, errors.As(err, &respErr))
+	assert.Equal(t, http.StatusBadGateway, respErr.StatusCode)
+	assert.Equal(t, orchestrator.ErrTypeUpstreamError, respErr.Detail.Type)
+	assert.Equal(t, orchestrator.ErrCodeUpstreamStreamInterrupted, respErr.Detail.Code)
+	assert.Equal(t, biz.DefaultUpstreamErrorMessage, respErr.Detail.Message)
+	assert.NotContains(t, respErr.Detail.Message, "unexpected EOF")
+}
+
+func TestUpstreamErrorStream_PassthroughClassifiesTransportError(t *testing.T) {
+	ctx, systemService := setupUpstreamErrorPolicyTest(t, biz.UpstreamErrorPolicy{
+		Mode: biz.UpstreamErrorModePassthrough,
+	})
+
+	inner := &errorAfterStream{err: llm.ErrStreamIncomplete}
+	stream := newUpstreamErrorStream(ctx, inner, systemService)
+	require.False(t, stream.Next())
+
+	err := stream.Err()
+	require.True(t, errors.Is(err, llm.ErrStreamIncomplete))
+
+	respErr := &llm.ResponseError{}
+	require.True(t, errors.As(err, &respErr))
+	assert.Equal(t, orchestrator.ErrCodeUpstreamStreamInterrupted, respErr.Detail.Code)
+	assert.Contains(t, respErr.Detail.Message, llm.ErrStreamIncomplete.Error())
+
+	// Non-transport errors are passed through untouched.
+	plain := errors.New("boom")
+	stream = newUpstreamErrorStream(ctx, &errorAfterStream{err: plain}, systemService)
+	require.False(t, stream.Next())
+	assert.Equal(t, plain, stream.Err())
 }

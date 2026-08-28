@@ -877,6 +877,15 @@ type PromptTokensDetails struct {
 type ResponseError struct {
 	StatusCode int         `json:"-"`
 	Detail     ErrorDetail `json:"error"`
+
+	// Cause keeps the underlying error (for example a transport failure) so callers
+	// can still match it with errors.Is / errors.As after classification.
+	Cause error `json:"-"`
+}
+
+// Unwrap exposes the underlying cause, if any.
+func (e ResponseError) Unwrap() error {
+	return e.Cause
 }
 
 func (e ResponseError) Error() string {
