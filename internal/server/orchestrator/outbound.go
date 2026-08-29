@@ -16,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
-	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -371,6 +370,42 @@ func selectOutboundForCandidate(candidate *ChannelModelsCandidate) transformer.O
 	return candidate.Channel.Outbound
 }
 
+// refreshCandidateAPIFormat synchronizes the candidate-level protocol with the
+// model currently being attempted. Candidates selected through the model
+// association path carry a per-model format table; the fallback computation is
+// kept for candidates constructed by older callers and tests.
+func (p *PersistentOutboundTransformer) refreshCandidateAPIFormat(
+	ctx context.Context,
+	candidate *ChannelModelsCandidate,
+	modelIndex int,
+	req *llm.Request,
+) {
+	if candidate == nil || candidate.Channel == nil || modelIndex < 0 || modelIndex >= len(candidate.Models) {
+		return
+	}
+
+	if len(candidate.modelAPIFormats) == len(candidate.Models) {
+		candidate.APIFormat = candidate.modelAPIFormats[modelIndex]
+		return
+	}
+
+	// Preserve an explicitly populated format when no per-model table is
+	// available. This covers legacy/specified selectors that already selected
+	// their endpoint before entering the persistent transformer.
+	if candidate.APIFormat != "" || req == nil {
+		return
+	}
+
+	requestModel := req.Model
+	if p != nil && p.state != nil && p.state.OriginalModel != "" {
+		requestModel = p.state.OriginalModel
+	}
+
+	entry := candidate.Models[modelIndex]
+	endpoints := applyForcedAPIFormats(ctx, candidate.Channel, []biz.ChannelModelEntry{entry}, requestModel, candidate.Channel.ResolveEndpoints())
+	candidate.APIFormat = SelectAPIFormat(endpoints, req)
+}
+
 // APIFormat returns the API format of the transformer.
 func (p *PersistentOutboundTransformer) APIFormat() llm.APIFormat {
 	return p.wrapped.APIFormat()
@@ -396,6 +431,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	p.state.CurrentCandidate = candidate
 	p.state.StreamCompleted = false
+	p.refreshCandidateAPIFormat(ctx, candidate, p.state.CurrentModelIndex, llmRequest)
 
 	p.wrapped = selectOutboundForCandidate(candidate)
 
@@ -415,6 +451,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
+	llmRequest = applyReasoningEffortMapping(llmRequest, candidate.Channel.Settings)
 	for _, middleware := range p.outboundLlmRequestMiddlewares {
 		transformedRequest, err := middleware.OnOutboundLlmRequest(ctx, llmRequest, outboundFormat)
 		if err != nil {
@@ -440,8 +477,6 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 	}
 
-	isClaudeCodeClient := cc.IsClaudeCodeRequest(llmRequest)
-	originalReasoningEffort := llmRequest.ReasoningEffort
 	httpRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, err
@@ -451,13 +486,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		outboundFormat = llm.APIFormat(httpRequest.APIFormat)
 	}
 
-	return applyClaudeCodeOpenAIReasoningEffortMapping(
-		httpRequest,
-		candidate.Channel.Settings,
-		outboundFormat,
-		isClaudeCodeClient,
-		originalReasoningEffort,
-	)
+	return httpRequest, nil
 }
 
 func filterResponseCustomToolMessagesForNonResponsesOutbound(
@@ -594,6 +623,7 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
+	p.refreshCandidateAPIFormat(ctx, candidate, p.state.CurrentModelIndex, p.state.LlmRequest)
 	p.wrapped = selectOutboundForCandidate(candidate)
 
 	if log.DebugEnabled(ctx) {
@@ -688,6 +718,7 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	if p.state.CurrentModelIndex+1 < len(candidate.Models) {
 		// Increase the model index to the next model.
 		p.state.CurrentModelIndex++
+		p.refreshCandidateAPIFormat(ctx, candidate, p.state.CurrentModelIndex, p.state.LlmRequest)
 		p.wrapped = selectOutboundForCandidate(candidate)
 
 		if log.DebugEnabled(ctx) {

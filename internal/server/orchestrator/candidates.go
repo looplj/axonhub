@@ -25,11 +25,15 @@ import (
 
 // ChannelModelsCandidate represents a resolved channel and its matched model entries.
 type ChannelModelsCandidate struct {
-	Channel            *biz.Channel
-	Priority           int
-	Models             []biz.ChannelModelEntry
-	APIFormat          string // selected endpoint API format for this candidate
-	TraceSticky        bool   // selected from the last successful trace or thread channel
+	Channel   *biz.Channel
+	Priority  int
+	Models    []biz.ChannelModelEntry
+	APIFormat string // selected endpoint API format for this candidate
+	// modelAPIFormats stores the selected endpoint format for each model entry.
+	// Models are retried in order, so the candidate-level APIFormat is updated
+	// from this slice whenever the current model changes.
+	modelAPIFormats    []string
+	TraceSticky        bool // selected from the last successful trace or thread channel
 	ModelRoutingPolicy *ModelRoutingPolicy
 }
 
@@ -132,7 +136,7 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 			continue
 		}
 
-		endpoints := ch.ResolveEndpoints()
+		endpoints := applyForcedAPIFormats(ctx, ch, []biz.ChannelModelEntry{entry}, req.Model, ch.ResolveEndpoints())
 		apiFormat := SelectAPIFormat(endpoints, req)
 		if req.RequestType == llm.RequestTypeAlphaSearch && apiFormat == "" {
 			continue
@@ -996,7 +1000,7 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
 	}
 
-	endpoints := channel.ResolveEndpoints()
+	endpoints := applyForcedAPIFormats(ctx, channel, []biz.ChannelModelEntry{entry}, req.Model, channel.ResolveEndpoints())
 	apiFormat := SelectAPIFormat(endpoints, req)
 
 	candidate := &ChannelModelsCandidate{

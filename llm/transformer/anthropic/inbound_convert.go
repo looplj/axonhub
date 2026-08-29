@@ -339,6 +339,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	if anthropicReq.Thinking != nil {
 		switch anthropicReq.Thinking.Type {
 		case "enabled":
+			// budget_tokens is the client's native expression here: mark it so the
+			// outbound transformer round-trips the budget verbatim instead of
+			// re-deriving a thinking config from the derived effort level.
+			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "enabled"
 			chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(anthropicReq.Thinking.BudgetTokens)
 			chatReq.ReasoningBudget = lo.ToPtr(anthropicReq.Thinking.BudgetTokens)
 
@@ -365,14 +369,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	// Convert output_config
 	if anthropicReq.OutputConfig != nil && anthropicReq.OutputConfig.Effort != "" {
 		chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort] = anthropicReq.OutputConfig.Effort
-		// Map output_config effort to reasoning_effort so other outbound transformers can use it.
-		// Anthropic "max" has no direct equivalent in other providers; map to "xhigh"
-		// so downstream transformers can handle it explicitly.
-		if anthropicReq.OutputConfig.Effort == "max" {
-			chatReq.ReasoningEffort = "xhigh"
-		} else {
-			chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
-		}
+		// The client sent an explicit effort level: pass it through verbatim (including
+		// "max") so converted protocols see the exact requested level. The original
+		// value is preserved in TransformerMetadata for native round-trips.
+		chatReq.ReasoningEffort = anthropicReq.OutputConfig.Effort
 	}
 
 	return chatReq, nil

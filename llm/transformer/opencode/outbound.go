@@ -45,10 +45,6 @@ type Config struct {
 
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
-
-	// ReasoningEffortMapping maps inbound reasoning_effort values to outbound
-	// ones for the OpenAI chat sub-transformer.
-	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoning_effort_mapping,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for OpenCode Go.
@@ -85,10 +81,9 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	}
 
 	chatT, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-		PlatformType:           openai.PlatformOpenAI,
-		BaseURL:                config.BaseURL,
-		APIKeyProvider:         config.APIKeyProvider,
-		ReasoningEffortMapping: config.ReasoningEffortMapping,
+		PlatformType:   openai.PlatformOpenAI,
+		BaseURL:        config.BaseURL,
+		APIKeyProvider: config.APIKeyProvider,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invalid OpenCode chat transformer configuration: %w", err)

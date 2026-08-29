@@ -1,5 +1,38 @@
 package llm
 
+// Unified reasoning effort levels carried by llm.Request.ReasoningEffort.
+// These are protocol-independent labels; each outbound transformer maps them to
+// its native representation (OpenAI reasoning_effort, Anthropic thinking/output_config,
+// etc.). Values not in this list pass through transformers unchanged.
+const (
+	ReasoningEffortNone    = "none"
+	ReasoningEffortMinimal = "minimal"
+	ReasoningEffortLow     = "low"
+	ReasoningEffortMedium  = "medium"
+	ReasoningEffortHigh    = "high"
+	ReasoningEffortXHigh   = "xhigh"
+	ReasoningEffortMax     = "max"
+)
+
+// ApplyReasoningEffortMapping replaces an effort value according to a per-channel
+// mapping. The first entry whose From matches wins; values not in the list (or an
+// empty/nil list) pass through unchanged. Applied centrally by the orchestrator on
+// the unified request before the outbound transformer runs, so it affects every
+// outbound protocol uniformly.
+func ApplyReasoningEffortMapping(effort string, mappings []ReasoningEffortMapping) string {
+	if len(mappings) == 0 || effort == "" {
+		return effort
+	}
+
+	for _, m := range mappings {
+		if m.From == effort {
+			return m.To
+		}
+	}
+
+	return effort
+}
+
 // ReasoningEffortMapping is a single reasoning_effort value mapping entry.
 // From is the inbound effort value (e.g. "xhigh"); To is the outbound value
 // (e.g. "max") sent to the upstream provider.

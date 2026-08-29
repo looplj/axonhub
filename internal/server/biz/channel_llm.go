@@ -966,14 +966,9 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 		return ch, nil
 	case channel.TypeOpencodeGo:
-		var reasoningEffortMapping []llm.ReasoningEffortMapping
-		if c.Settings != nil {
-			reasoningEffortMapping = c.Settings.TransformOptions.ReasoningEffortMapping
-		}
 		transformer, err := opencode.NewOutboundTransformerWithConfig(&opencode.Config{
-			BaseURL:                c.BaseURL,
-			APIKeyProvider:         getAPIKeyProvider(ch),
-			ReasoningEffortMapping: reasoningEffortMapping,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -1055,15 +1050,10 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub,
 		channel.TypeEvolink, channel.TypeGroq:
-		var reasoningEffortMapping []llm.ReasoningEffortMapping
-		if c.Settings != nil {
-			reasoningEffortMapping = c.Settings.TransformOptions.ReasoningEffortMapping
-		}
 		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
-			PlatformType:           openai.PlatformOpenAI,
-			BaseURL:                c.BaseURL,
-			APIKeyProvider:         getAPIKeyProvider(ch),
-			ReasoningEffortMapping: reasoningEffortMapping,
+			PlatformType:   openai.PlatformOpenAI,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)

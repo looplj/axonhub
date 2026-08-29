@@ -178,7 +178,10 @@ type Request struct {
 	// Any of "text", "audio", "image".
 	Modalities []string `json:"modalities,omitempty"`
 
-	// Controls effort on reasoning for reasoning models. It can be set to "none", "low", "medium", or "high".
+	// Controls effort on reasoning for reasoning models. Unified levels: "none",
+	// "minimal", "low", "medium", "high", "xhigh", "max" (see llm/reasoning.go).
+	// Outbound transformers map these to their native representation; unknown
+	// values pass through verbatim so unsupported levels surface upstream errors.
 	ReasoningEffort string `json:"reasoning_effort,omitempty"`
 
 	// Reasoning budget for reasoning models.

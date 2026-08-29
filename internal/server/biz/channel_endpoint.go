@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
@@ -77,6 +78,103 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
 
 func supportsWebSocketTransport(apiFormat string) bool {
 	return apiFormat == llm.APIFormatOpenAIResponse.String() || apiFormat == llm.APIFormatOpenAIResponseCompact.String()
+}
+
+// ValidateModelProtocols validates the channel settings' per-model protocol overrides.
+// Each entry requires a non-empty model (unique within the channel), at least one
+// api_format, and every api_format on an enabled entry must already be available
+// on the channel — i.e. present in the type's default endpoints or the
+// user-configured endpoints. Disabled entries are retained for later re-enable.
+func ValidateModelProtocols(settings *objects.ChannelSettings, channelType channel.Type, endpoints []objects.ChannelEndpoint) error {
+	if settings == nil || len(settings.ModelProtocols) == 0 {
+		return nil
+	}
+
+	available := make(map[string]struct{})
+	for _, ep := range DefaultEndpointsForChannelType(channelType) {
+		available[ep.APIFormat] = struct{}{}
+	}
+
+	for _, ep := range endpoints {
+		available[ep.APIFormat] = struct{}{}
+	}
+
+	seen := make(map[string]struct{}, len(settings.ModelProtocols))
+	for i, mp := range settings.ModelProtocols {
+		if mp.Model == "" {
+			return fmt.Errorf("modelProtocols[%d]: model is required", i)
+		}
+
+		if _, dup := seen[mp.Model]; dup {
+			return fmt.Errorf("modelProtocols[%d]: duplicate model %q", i, mp.Model)
+		}
+
+		seen[mp.Model] = struct{}{}
+
+		if len(mp.APIFormats) == 0 {
+			return fmt.Errorf("modelProtocols[%d] (%s): at least one api_format is required", i, mp.Model)
+		}
+
+		// Disabled overrides are retained so they can be re-enabled when a model is
+		// added back, but they no longer need to track endpoint changes while off.
+		if !mp.IsEnabled() {
+			continue
+		}
+
+		for _, format := range mp.APIFormats {
+			if _, ok := available[format]; !ok {
+				return fmt.Errorf("modelProtocols[%d] (%s): api_format %q is not configured on this channel", i, mp.Model, format)
+			}
+		}
+	}
+
+	return nil
+}
+
+// DisableRemovedModelProtocolOverrides marks overrides for models that are no
+// longer exposed by the channel as disabled. Entries are retained to preserve
+// the user's protocol choices if the model is added again later.
+//
+// The model list includes direct channel models and all derived request names
+// (prefixes, auto-trimmed names, and mappings), matching runtime model lookup.
+// It returns true when settings were changed.
+func DisableRemovedModelProtocolOverrides(settings *objects.ChannelSettings, supportedModels []string) bool {
+	if settings == nil || len(settings.ModelProtocols) == 0 {
+		return false
+	}
+
+	probe := &Channel{Channel: &ent.Channel{
+		SupportedModels: supportedModels,
+		Settings:        settings,
+	}}
+	entries := probe.GetModelEntries()
+	available := make(map[string]struct{}, len(entries))
+	for model := range entries {
+		available[model] = struct{}{}
+	}
+	// Hidden-original/mapped settings only affect exposure. Direct models remain
+	// valid override targets because runtime matching also considers actual names.
+	for _, model := range supportedModels {
+		available[model] = struct{}{}
+		if settings.LowercaseModelID {
+			available[strings.ToLower(model)] = struct{}{}
+		}
+	}
+
+	changed := false
+	for i := range settings.ModelProtocols {
+		protocol := &settings.ModelProtocols[i]
+		_, present := available[protocol.Model]
+		if !present {
+			if protocol.Enabled == nil || *protocol.Enabled {
+				disabled := false
+				protocol.Enabled = &disabled
+				changed = true
+			}
+		}
+	}
+
+	return changed
 }
 
 var openAICompatibleDefaultEndpoints = []objects.ChannelEndpoint{
@@ -282,6 +380,23 @@ func (c *Channel) ResolveEndpoints() []objects.ChannelEndpoint {
 	}
 
 	return mergeEndpoints(DefaultEndpointsForChannelType(c.Type), c.Endpoints)
+}
+
+// ForcedAPIFormats returns the api formats force-specified for the given request
+// model via ChannelSettings.ModelProtocols, or nil when the model has no override.
+// Results are in configured priority order.
+func (c *Channel) ForcedAPIFormats(model string) []string {
+	if c == nil || c.Channel == nil || c.Settings == nil || model == "" {
+		return nil
+	}
+
+	for _, mp := range c.Settings.ModelProtocols {
+		if mp.Model == model && mp.IsEnabled() {
+			return mp.APIFormats
+		}
+	}
+
+	return nil
 }
 
 func (c *Channel) platformTypeForGeminiEndpoint() string {

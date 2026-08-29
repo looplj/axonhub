@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -29,7 +30,7 @@ func filterResolvedCandidatesForRequest(
 	})
 	if !hasConditionalCandidates {
 		candidates := aggregateChannelModelCandidates(resolvedCandidates)
-		candidates = populateAPIFormat(candidates, req)
+		candidates = populateAPIFormat(ctx, candidates, req)
 
 		return candidates
 	}
@@ -63,24 +64,43 @@ func filterResolvedCandidatesForRequest(
 		)
 	}
 
-	candidates = populateAPIFormat(candidates, req)
+	candidates = populateAPIFormat(ctx, candidates, req)
 
 	return candidates
 }
 
-func populateAPIFormat(candidates []*ChannelModelsCandidate, req *llm.Request) []*ChannelModelsCandidate {
+func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate, req *llm.Request) []*ChannelModelsCandidate {
 	filtered := make([]*ChannelModelsCandidate, 0, len(candidates))
 	for _, c := range candidates {
 		if c == nil || c.Channel == nil {
 			continue
 		}
 
-		endpoints := c.Channel.ResolveEndpoints()
-		if c.APIFormat == "" {
+		// A candidate may contain several models that are retried in order. Apply
+		// protocol overrides to one model at a time; applying them to the whole
+		// slice would merge unrelated model overrides and select the wrong
+		// protocol for the first attempt.
+		baseEndpoints := c.Channel.ResolveEndpoints()
+		alphaSupported := false
+		if len(c.Models) > 0 {
+			c.modelAPIFormats = make([]string, len(c.Models))
+			for i, entry := range c.Models {
+				endpoints := applyForcedAPIFormats(ctx, c.Channel, []biz.ChannelModelEntry{entry}, req.Model, baseEndpoints)
+				c.modelAPIFormats[i] = SelectAPIFormat(endpoints, req)
+				if hasAPIFormat(endpoints, llm.APIFormatOpenAIAlphaSearch.String()) {
+					alphaSupported = true
+				}
+			}
+
+			c.APIFormat = c.modelAPIFormats[0]
+		} else {
+			c.modelAPIFormats = nil
+			endpoints := applyForcedAPIFormats(ctx, c.Channel, c.Models, req.Model, baseEndpoints)
 			c.APIFormat = SelectAPIFormat(endpoints, req)
+			alphaSupported = hasAPIFormat(endpoints, llm.APIFormatOpenAIAlphaSearch.String())
 		}
 
-		if req.RequestType == llm.RequestTypeAlphaSearch && !hasAPIFormat(endpoints, llm.APIFormatOpenAIAlphaSearch.String()) {
+		if req.RequestType == llm.RequestTypeAlphaSearch && !alphaSupported {
 			continue
 		}
 

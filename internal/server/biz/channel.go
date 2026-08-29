@@ -538,6 +538,8 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	if input.Settings != nil {
+		DisableRemovedModelProtocolOverrides(input.Settings, input.SupportedModels)
+
 		if input.Settings.BodyOverrideOperations != nil {
 			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
 				return nil, fmt.Errorf("invalid body override operations: %w", err)
@@ -560,6 +562,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 
 		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
 			return nil, err
+		}
+
+		if err := ValidateModelProtocols(input.Settings, input.Type, input.Endpoints); err != nil {
+			return nil, fmt.Errorf("invalid model protocols: %w", err)
 		}
 	}
 
@@ -820,6 +826,27 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 	}
 
+	// Keep protocol overrides in sync with an explicitly replaced channel model
+	// list. When settings are omitted, load the existing settings only if this
+	// update actually removes an active override; unrelated model edits should not
+	// rewrite the settings JSON.
+	if input.SupportedModels != nil {
+		settings := input.Settings
+		if settings == nil {
+			existing, err := svc.entFromContext(ctx).Channel.Query().
+				Where(channel.IDEQ(id)).
+				Select(channel.FieldSettings).
+				Only(ctx)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load channel settings for model protocol sync: %w", err)
+			}
+			settings = existing.Settings
+		}
+		if DisableRemovedModelProtocolOverrides(settings, input.SupportedModels) && input.Settings == nil {
+			input.Settings = settings
+		}
+	}
+
 	if input.Settings != nil {
 		// Always normalize and validate override settings.
 		if input.Settings.BodyOverrideOperations != nil {
@@ -844,6 +871,48 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
 			return nil, err
+		}
+	}
+
+	// Per-model protocol overrides must always reference the effective endpoint
+	// surface. They can arrive together with the settings, or already be stored in
+	// settings while this update only changes endpoints / channel type.
+	protocolSettings := input.Settings
+	if protocolSettings == nil && (input.Endpoints != nil || input.Type != nil) {
+		existing, err := svc.entFromContext(ctx).Channel.Query().
+			Where(channel.IDEQ(id)).
+			Select(channel.FieldSettings).
+			Only(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load channel for model protocol validation: %w", err)
+		}
+
+		protocolSettings = existing.Settings
+	}
+
+	if protocolSettings != nil && len(protocolSettings.ModelProtocols) > 0 {
+		// Validation needs the effective channel type and endpoint surface: the
+		// update may change either of them alongside the settings.
+		existing, err := svc.entFromContext(ctx).Channel.Query().
+			Where(channel.IDEQ(id)).
+			Select(channel.FieldType, channel.FieldEndpoints).
+			Only(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load channel for model protocol validation: %w", err)
+		}
+
+		channelType := existing.Type
+		if input.Type != nil {
+			channelType = *input.Type
+		}
+
+		endpoints := existing.Endpoints
+		if input.Endpoints != nil {
+			endpoints = input.Endpoints
+		}
+
+		if err := ValidateModelProtocols(protocolSettings, channelType, endpoints); err != nil {
+			return nil, fmt.Errorf("invalid model protocols: %w", err)
 		}
 	}
 
@@ -1025,6 +1094,12 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 	}
 	if ch.Type == channel.TypeXaiSubscription {
 		return nil, errors.New("xAI subscription channels do not support custom endpoints")
+	}
+
+	// Endpoint changes can invalidate per-model protocol overrides that reference
+	// removed api formats.
+	if err := ValidateModelProtocols(ch.Settings, ch.Type, input.Endpoints); err != nil {
+		return nil, fmt.Errorf("invalid endpoints for configured model protocols: %w", err)
 	}
 
 	ch, err = svc.entFromContext(ctx).Channel.UpdateOne(ch).

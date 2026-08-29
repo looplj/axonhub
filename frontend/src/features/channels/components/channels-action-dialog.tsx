@@ -456,6 +456,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       form.setValue('credentials.apiKey', credentials);
     },
   });
+  const { reset: resetCodexOAuth } = codexOAuth;
+  const { reset: resetClaudecodeOAuth } = claudecodeOAuth;
+  const { reset: resetXaiOAuth } = xaiOAuth;
+  const { reset: resetAntigravityOAuth } = antigravityOAuth;
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -514,14 +518,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   useEffect(() => {
     if (!open) {
       hasAutoSetDuplicateNameRef.current = false;
-      codexOAuth.reset();
-      claudecodeOAuth.reset();
-      antigravityOAuth.reset();
-      xaiOAuth.reset();
+      resetCodexOAuth();
+      resetClaudecodeOAuth();
+      resetAntigravityOAuth();
+      resetXaiOAuth();
       setCodexAuthJSONText('');
       setXaiSSOToken('');
     }
-  }, [open, codexOAuth.reset, claudecodeOAuth.reset, antigravityOAuth.reset, xaiOAuth.reset]);
+  }, [open, resetCodexOAuth, resetClaudecodeOAuth, resetAntigravityOAuth, resetXaiOAuth]);
 
   useEffect(() => {
     if (!open) {
@@ -1067,16 +1071,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (isEdit || isDuplicate) return;
 
     if (!isCodexType) {
-      codexOAuth.reset();
+      resetCodexOAuth();
     }
     if (selectedProvider !== 'claudecode') {
-      claudecodeOAuth.reset();
+      resetClaudecodeOAuth();
     }
     if (selectedProvider !== 'antigravity') {
-      antigravityOAuth.reset();
+      resetAntigravityOAuth();
     }
     if (selectedProvider !== 'xai_subscription') {
-      xaiOAuth.reset();
+      resetXaiOAuth();
       setXaiSSOToken('');
     }
 
@@ -1109,10 +1113,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     selectedProvider,
     authMode,
     form,
-    codexOAuth.reset,
-    claudecodeOAuth.reset,
-    antigravityOAuth.reset,
-    xaiOAuth.reset,
+    resetCodexOAuth,
+    resetClaudecodeOAuth,
+    resetAntigravityOAuth,
+    resetXaiOAuth,
     responsesTransport,
   ]);
 
@@ -2733,7 +2737,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -2761,7 +2765,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.retryableErrorPatterns.label')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
