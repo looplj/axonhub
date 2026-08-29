@@ -150,14 +150,14 @@ const createPriceFormSchema = (t: (key: string) => string) =>
       const validatePricing = (pricing: PricingLike | null | undefined, pathPrefix: Array<string | number>) => {
         const requiredMsg = t('price.validation.priceRequired');
         const { mode, flatFee, usagePerUnit, usageTiered } = pricing || {};
-        if (mode === 'flat_fee' && !flatFee) {
+        if (mode === 'flat_fee' && !flatFee?.trim()) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: requiredMsg,
             path: [...pathPrefix, 'flatFee'],
           });
         }
-        if (mode === 'usage_per_unit' && !usagePerUnit) {
+        if (mode === 'usage_per_unit' && !usagePerUnit?.trim()) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: requiredMsg,
@@ -176,7 +176,7 @@ const createPriceFormSchema = (t: (key: string) => string) =>
 
           const lastTierIndex = tiers.length - 1;
           tiers.forEach((tier: UsageTier, tierIndex: number) => {
-            if (!tier.pricePerUnit) {
+            if (!tier.pricePerUnit?.trim()) {
               ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: requiredMsg,
@@ -298,6 +298,13 @@ const createPriceFormSchema = (t: (key: string) => string) =>
       });
     });
 type PriceFormData = z.infer<ReturnType<typeof createPriceFormSchema>>;
+
+function trimPriceValue(value: string | number | null | undefined): string | number | null {
+  if (value == null) return null;
+  if (typeof value === 'number') return value;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
 
 type ChannelModelPrices = NonNullable<ReturnType<typeof useChannelModelPrices>['data']>;
 
@@ -779,13 +786,13 @@ export function ChannelsModelPriceDialog() {
               itemCode: item.itemCode as PriceItemCode,
               pricing: {
                 mode: item.pricing.mode as PricingMode,
-                flatFee: item.pricing.flatFee || null,
-                usagePerUnit: item.pricing.usagePerUnit || null,
+                flatFee: trimPriceValue(item.pricing.flatFee),
+                usagePerUnit: trimPriceValue(item.pricing.usagePerUnit),
                 usageTiered: item.pricing.usageTiered
                   ? {
                       tiers: item.pricing.usageTiered.tiers.map((t) => ({
                         upTo: t.upTo,
-                        pricePerUnit: t.pricePerUnit,
+                        pricePerUnit: t.pricePerUnit.trim(),
                       })),
                     }
                   : null,
@@ -795,13 +802,13 @@ export function ChannelsModelPriceDialog() {
                   variantCode: v.variantCode,
                   pricing: {
                     mode: v.pricing.mode as PricingMode,
-                    flatFee: v.pricing.flatFee || null,
-                    usagePerUnit: v.pricing.usagePerUnit || null,
+                    flatFee: trimPriceValue(v.pricing.flatFee),
+                    usagePerUnit: trimPriceValue(v.pricing.usagePerUnit),
                     usageTiered: v.pricing.usageTiered
                       ? {
                           tiers: v.pricing.usageTiered.tiers.map((t) => ({
                             upTo: t.upTo,
-                            pricePerUnit: t.pricePerUnit,
+                            pricePerUnit: t.pricePerUnit.trim(),
                           })),
                         }
                       : null,
@@ -832,7 +839,7 @@ export function ChannelsModelPriceDialog() {
                           ? {
                               tiers: item.pricing.usageTiered.tiers.map((t) => ({
                                 upTo: t.upTo,
-                                pricePerUnit: t.pricePerUnit,
+                                pricePerUnit: t.pricePerUnit.trim(),
                               })),
                             }
                           : null,
