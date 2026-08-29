@@ -789,6 +789,9 @@ func (s *sliceEventStream) Close() error {
 	return nil
 }
 
+// TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling
+// verifies that aggregated Responses chunks and terminal events produce the
+// correct request execution completion status.
 func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t *testing.T) {
 	ctx := context.Background()
 	ctx = authz.WithTestBypass(ctx)
@@ -857,6 +860,63 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 
 		// Incomplete streams must still persist buffered chunks for debugging.
 		require.Len(t, dbExec.ResponseChunks, 1, "failed execution should keep response_chunks in DB")
+	})
+	t.Run("response failure terminal is not completed", func(t *testing.T) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := ent.NewContext(ctx, client)
+		project := createTestProject(t, ctx, client)
+		ch := createTestChannel(t, ctx, client)
+		_, requestService, _, usageLogService := setupTestServices(t, client)
+
+		req, err := client.Request.Create().
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetStatus(request.StatusPending).
+			SetRequestBody([]byte(`{"stream":true}`)).
+			Save(ctx)
+		require.NoError(t, err)
+
+		exec, err := client.RequestExecution.Create().
+			SetRequestID(req.ID).
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-4.1").
+			SetRequestBody([]byte(`{"stream":true}`)).
+			SetFormat("openai/responses").
+			SetStatus(requestexecution.StatusPending).
+			SetStream(true).
+			Save(ctx)
+		require.NoError(t, err)
+
+		stream := &sliceEventStream{
+			events: []*httpclient.StreamEvent{{
+				Type: "response.failed",
+				Data: []byte(`{"type":"response.failed","response":{"id":"resp_failed","status":"failed"}}`),
+			}},
+		}
+		transformer := &mockTransformer{
+			apiFormat:          llm.APIFormatOpenAIResponse,
+			aggregatedResponse: []byte(`{"id":"resp_failed","status":"completed"}`),
+			aggregatedMeta: llm.ResponseMeta{
+				ID:    "resp_failed",
+				Usage: &llm.Usage{CompletionTokens: 1},
+			},
+		}
+		state := &PersistenceState{}
+
+		persistentStream := NewOutboundPersistentStream(ctx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
+		require.True(t, persistentStream.Next())
+		_ = persistentStream.Current()
+		require.False(t, state.StreamCompleted)
+		require.NoError(t, persistentStream.Close())
+
+		dbExec, err := client.RequestExecution.Get(ctx, exec.ID)
+		require.NoError(t, err)
+		require.Equal(t, requestexecution.StatusFailed, dbExec.Status)
+		require.NotEqual(t, requestexecution.StatusCompleted, dbExec.Status)
 	})
 
 	t.Run("aggregated completed response without terminal event is completed", func(t *testing.T) {

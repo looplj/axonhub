@@ -27,16 +27,17 @@ var ErrStreamIncomplete = errors.New("stream ended without terminal event or com
 //
 //nolint:containedctx // Checked.
 type InboundPersistentStream struct {
-	ctx            context.Context
-	stream         streams.Stream[*httpclient.StreamEvent]
-	request        *ent.Request
-	requestExec    *ent.RequestExecution
-	requestService *biz.RequestService
-	transformer    transformer.Inbound
-	perf           *biz.PerformanceRecord
-	responseChunks []*httpclient.StreamEvent
-	closed         bool
-	state          *PersistenceState
+	ctx               context.Context
+	stream            streams.Stream[*httpclient.StreamEvent]
+	request           *ent.Request
+	requestExec       *ent.RequestExecution
+	requestService    *biz.RequestService
+	transformer       transformer.Inbound
+	perf              *biz.PerformanceRecord
+	responseChunks    []*httpclient.StreamEvent
+	terminalEventSeen bool
+	closed            bool
+	state             *PersistenceState
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*InboundPersistentStream)(nil)
@@ -71,24 +72,28 @@ func (ts *InboundPersistentStream) Next() bool {
 	return ts.stream.Next()
 }
 
+// Current returns the current stream event and buffers it for persistence. It
+// marks the stream completed when a successful terminal event is observed.
 func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
 		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
 		// summary to avoid buffering the full audio payload in memory.
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
-		if IsTerminalStreamEvent(event) {
-			ts.state.StreamCompleted = true
+		if IsTerminalStreamEvent(event) && !ts.terminalEventSeen {
+			ts.terminalEventSeen = true
+			if isSuccessfulTerminalStreamEvent(event) {
+				ts.state.StreamCompleted = true
+			}
 		}
 	}
 
 	return event
 }
 
-// IsTerminalStreamEvent checks both SSE metadata and JSON data for a successful
-// protocol-level or semantic completion marker. The SSE writers use it to decide
-// whether the client actually received a completion marker, so this must stay the
-// single source of truth for "the stream ended properly".
+// IsTerminalStreamEvent checks both SSE metadata and JSON data for a protocol
+// level terminal marker. The SSE writers use it to decide whether the client
+// actually received a terminal marker.
 func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 	if event == nil {
 		return false
@@ -96,8 +101,11 @@ func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 
 	// For chat completions, check for [DONE] event
 	if bytes.Equal(event.Data, llm.DoneStreamEvent.Data) ||
-		// For Responses API, check for response.completed event
+		// For Responses API, check for terminal response events
 		event.Type == "response.completed" ||
+		event.Type == "response.failed" ||
+		event.Type == "response.incomplete" ||
+		event.Type == "response.cancelled" ||
 		// For Anthropic Messages API, check for message_stop event
 		event.Type == "message_stop" ||
 		// For OpenAI audio APIs (TTS sse / STT stream) which have no [DONE] sentinel:
@@ -115,7 +123,7 @@ func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 	// the trailing [DONE] marker is read by the server.
 	eventType := gjson.GetBytes(event.Data, "type").String()
 	switch eventType {
-	case "response.completed", "message_stop", "speech.audio.done", "transcript.text.done":
+	case "response.completed", "response.failed", "response.incomplete", "response.cancelled", "message_stop", "speech.audio.done", "transcript.text.done":
 		return true
 	}
 
@@ -127,6 +135,35 @@ func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 	// Gemini generateContent streams have no [DONE] sentinel. Completion is
 	// signaled by candidates[].finishReason (e.g. STOP, MAX_TOKENS, SAFETY).
 	return hasNonEmptyJSONStringField(event.Data, "candidates", "finishReason")
+}
+
+// isSuccessfulTerminalStreamEvent distinguishes successful completion markers
+// from Responses failure, incomplete, and cancellation terminals. The broader
+// IsTerminalStreamEvent predicate remains available to SSE finalization.
+func isSuccessfulTerminalStreamEvent(event *httpclient.StreamEvent) bool {
+	if event == nil || !IsTerminalStreamEvent(event) {
+		return false
+	}
+
+	switch event.Type {
+	case "response.failed", "response.incomplete", "response.cancelled":
+		return false
+	}
+
+	eventType := gjson.GetBytes(event.Data, "type").String()
+	switch eventType {
+	case "response.failed", "response.incomplete", "response.cancelled":
+		return false
+	}
+
+	if event.Type == "response.completed" || eventType == "response.completed" {
+		switch gjson.GetBytes(event.Data, "response.status").String() {
+		case "failed", "incomplete", "cancelled", "canceled":
+			return false
+		}
+	}
+
+	return true
 }
 
 func hasNonEmptyJSONStringField(data []byte, arrayPath, field string) bool {
@@ -150,6 +187,9 @@ func (ts *InboundPersistentStream) Err() error {
 	return ts.stream.Err()
 }
 
+// Close finalizes the stream and persists the request outcome. A successful
+// terminal or aggregated response is recorded as completed; an incomplete or
+// errored stream is recorded as failed.
 func (ts *InboundPersistentStream) Close() error {
 	if ts.closed {
 		return nil
@@ -163,7 +203,7 @@ func (ts *InboundPersistentStream) Close() error {
 	streamErr := ts.stream.Err()
 	ctxErr := ctx.Err()
 
-	// If we received the [DONE] event, treat the stream as successfully completed
+	// If we received a successful terminal event, treat the stream as completed
 	// even if there's a context cancellation error. This handles the case where
 	// the client disconnects immediately after receiving the last chunk.
 	if ts.state.StreamCompleted {
@@ -197,7 +237,7 @@ func (ts *InboundPersistentStream) Close() error {
 	var meta llm.ResponseMeta
 	var aggErr error
 
-	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
+	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted && !ts.terminalEventSeen {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
 		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && isCompletedAggregated(meta) {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
