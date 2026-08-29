@@ -343,3 +343,33 @@ func TestPopulateAPIFormat_SelectsProtocolPerRetryModel(t *testing.T) {
 		llm.APIFormatOpenAIResponse.String(),
 	}, candidate.modelAPIFormats)
 }
+
+func TestPopulateAPIFormat_AlphaSearchDropsModelsWithoutAlphaEndpoint(t *testing.T) {
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID:   1,
+		Name: "codex-multi-model",
+		Type: channel.TypeCodex,
+		Settings: &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+			{Model: "model-a", APIFormats: []string{llm.APIFormatOpenAIResponse.String()}},
+			{Model: "model-b", APIFormats: []string{llm.APIFormatOpenAIAlphaSearch.String()}},
+		}},
+	}}
+	candidate := &ChannelModelsCandidate{
+		Channel: ch,
+		Models: []biz.ChannelModelEntry{
+			{RequestModel: "model-a", ActualModel: "model-a"},
+			{RequestModel: "model-b", ActualModel: "model-b"},
+		},
+	}
+
+	result := populateAPIFormat(context.Background(), []*ChannelModelsCandidate{candidate}, &llm.Request{
+		Model:       "requested-model",
+		RequestType: llm.RequestTypeAlphaSearch,
+		APIFormat:   llm.APIFormatOpenAIAlphaSearch,
+	})
+
+	require.Len(t, result, 1)
+	require.Equal(t, []biz.ChannelModelEntry{{RequestModel: "model-b", ActualModel: "model-b"}}, candidate.Models)
+	require.Equal(t, []string{llm.APIFormatOpenAIAlphaSearch.String()}, candidate.modelAPIFormats)
+	require.Equal(t, llm.APIFormatOpenAIAlphaSearch.String(), candidate.APIFormat)
+}

@@ -107,25 +107,22 @@ func TestChannel_ForcedAPIFormats(t *testing.T) {
 	require.Nil(t, (&Channel{}).ForcedAPIFormats("grok-4"))
 }
 
-func TestDisableRemovedModelProtocolOverrides(t *testing.T) {
-	enabled := true
-	disabled := false
+func TestRemoveRemovedModelProtocolOverrides(t *testing.T) {
 	settings := &objects.ChannelSettings{
 		ExtraModelPrefix: "provider",
 		ModelMappings:    []objects.ModelMapping{{From: "alias", To: "gpt-4"}},
 		ModelProtocols: []objects.ModelProtocol{
-			{Model: "gpt-4", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}, Enabled: &enabled},
-			{Model: "alias", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}, Enabled: &enabled},
-			{Model: "removed", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}, Enabled: &enabled},
-			{Model: "already-off", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}, Enabled: &disabled},
+			{Model: "gpt-4", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}},
+			{Model: "alias", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}},
+			{Model: "removed", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}},
 		},
 	}
 
-	require.True(t, DisableRemovedModelProtocolOverrides(settings, []string{"gpt-4"}))
-	require.True(t, settings.ModelProtocols[0].IsEnabled())
-	require.True(t, settings.ModelProtocols[1].IsEnabled())
-	require.False(t, settings.ModelProtocols[2].IsEnabled())
-	require.False(t, settings.ModelProtocols[3].IsEnabled())
+	require.True(t, RemoveRemovedModelProtocolOverrides(settings, []string{"gpt-4"}))
+	require.Equal(t, []string{"gpt-4", "alias"}, lo.Map(settings.ModelProtocols, func(protocol objects.ModelProtocol, _ int) string {
+		return protocol.Model
+	}))
+	require.False(t, RemoveRemovedModelProtocolOverrides(settings, []string{"gpt-4"}))
 }
 
 // TestUpdateChannel_ModelProtocolsValidatedWithoutResentSettings covers updates that
@@ -155,7 +152,7 @@ func TestUpdateChannel_ModelProtocolsValidatedWithoutResentSettings(t *testing.T
 		Save(ctx)
 	require.NoError(t, err)
 
-	t.Run("removing a supported model without resending settings disables its override", func(t *testing.T) {
+	t.Run("removing a supported model without resending settings removes its override", func(t *testing.T) {
 		enabled := true
 		modelChannel, err := client.Channel.Create().
 			SetName("zai-model-sync").
@@ -172,8 +169,7 @@ func TestUpdateChannel_ModelProtocolsValidatedWithoutResentSettings(t *testing.T
 
 		updated, err := svc.UpdateChannel(ctx, modelChannel.ID, &ent.UpdateChannelInput{SupportedModels: []string{}})
 		require.NoError(t, err)
-		require.Len(t, updated.Settings.ModelProtocols, 1)
-		require.False(t, updated.Settings.ModelProtocols[0].IsEnabled())
+		require.Empty(t, updated.Settings.ModelProtocols)
 	})
 
 	t.Run("removing the referenced endpoint without resending settings is rejected", func(t *testing.T) {
@@ -219,7 +215,7 @@ func TestUpdateChannel_ModelProtocolsValidatedWithoutResentSettings(t *testing.T
 		require.Empty(t, updated.Endpoints)
 	})
 
-	t.Run("removing a supported model disables its protocol override", func(t *testing.T) {
+	t.Run("removing a supported model removes its protocol override", func(t *testing.T) {
 		enabled := true
 		updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
 			SupportedModels: []string{},
@@ -228,7 +224,6 @@ func TestUpdateChannel_ModelProtocolsValidatedWithoutResentSettings(t *testing.T
 			}},
 		})
 		require.NoError(t, err)
-		require.Len(t, updated.Settings.ModelProtocols, 1)
-		require.False(t, updated.Settings.ModelProtocols[0].IsEnabled())
+		require.Empty(t, updated.Settings.ModelProtocols)
 	})
 }

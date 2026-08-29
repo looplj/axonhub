@@ -135,7 +135,7 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	addedModels := lo.Without(mergedModels, ch.SupportedModels...)
 	removedModels := lo.Without(ch.SupportedModels, mergedModels...)
 	modelsChanged := len(addedModels) > 0 || len(removedModels) > 0
-	modelProtocolsChanged := modelsChanged && DisableRemovedModelProtocolOverrides(ch.Settings, mergedModels)
+	modelProtocolsChanged := modelsChanged && RemoveRemovedModelProtocolOverrides(ch.Settings, mergedModels)
 	var updatedCh *ent.Channel
 	changed := false
 

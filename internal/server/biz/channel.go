@@ -14,6 +14,7 @@ import (
 	"github.com/aptible/supercronic/cronexpr"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
@@ -23,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
+	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -538,7 +540,7 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	if input.Settings != nil {
-		DisableRemovedModelProtocolOverrides(input.Settings, input.SupportedModels)
+		RemoveRemovedModelProtocolOverrides(input.Settings, input.SupportedModels)
 
 		if input.Settings.BodyOverrideOperations != nil {
 			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
@@ -826,23 +828,25 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 	}
 
-	// Keep protocol overrides in sync with an explicitly replaced channel model
-	// list. When settings are omitted, load the existing settings only if this
-	// update actually removes an active override; unrelated model edits should not
-	// rewrite the settings JSON.
+	// Synchronize overrides even for callers that have write_channels without
+	// read_channels. The scoped decision permits only this internal read required
+	// to preserve the write invariant; it does not expose channel data to callers.
 	if input.SupportedModels != nil {
 		settings := input.Settings
 		if settings == nil {
-			existing, err := svc.entFromContext(ctx).Channel.Query().
-				Where(channel.IDEQ(id)).
-				Select(channel.FieldSettings).
-				Only(ctx)
+			existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+				return svc.entFromContext(queryCtx).Channel.Query().
+					Where(channel.IDEQ(id)).
+					Select(channel.FieldSettings).
+					Only(queryCtx)
+			})
 			if err != nil {
 				return nil, fmt.Errorf("failed to load channel settings for model protocol sync: %w", err)
 			}
 			settings = existing.Settings
 		}
-		if DisableRemovedModelProtocolOverrides(settings, input.SupportedModels) && input.Settings == nil {
+
+		if settings != nil && RemoveRemovedModelProtocolOverrides(settings, input.SupportedModels) && input.Settings == nil {
 			input.Settings = settings
 		}
 	}
@@ -879,10 +883,12 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	// settings while this update only changes endpoints / channel type.
 	protocolSettings := input.Settings
 	if protocolSettings == nil && (input.Endpoints != nil || input.Type != nil) {
-		existing, err := svc.entFromContext(ctx).Channel.Query().
-			Where(channel.IDEQ(id)).
-			Select(channel.FieldSettings).
-			Only(ctx)
+		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+			return svc.entFromContext(queryCtx).Channel.Query().
+				Where(channel.IDEQ(id)).
+				Select(channel.FieldSettings).
+				Only(queryCtx)
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to load channel for model protocol validation: %w", err)
 		}
@@ -893,10 +899,12 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	if protocolSettings != nil && len(protocolSettings.ModelProtocols) > 0 {
 		// Validation needs the effective channel type and endpoint surface: the
 		// update may change either of them alongside the settings.
-		existing, err := svc.entFromContext(ctx).Channel.Query().
-			Where(channel.IDEQ(id)).
-			Select(channel.FieldType, channel.FieldEndpoints).
-			Only(ctx)
+		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+			return svc.entFromContext(queryCtx).Channel.Query().
+				Where(channel.IDEQ(id)).
+				Select(channel.FieldType, channel.FieldEndpoints).
+				Only(queryCtx)
+		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to load channel for model protocol validation: %w", err)
 		}

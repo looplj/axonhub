@@ -84,7 +84,8 @@ func supportsWebSocketTransport(apiFormat string) bool {
 // Each entry requires a non-empty model (unique within the channel), at least one
 // api_format, and every api_format on an enabled entry must already be available
 // on the channel — i.e. present in the type's default endpoints or the
-// user-configured endpoints. Disabled entries are retained for later re-enable.
+// user-configured endpoints. A manually disabled entry for a model that still
+// exists may keep its protocol choices while inactive.
 func ValidateModelProtocols(settings *objects.ChannelSettings, channelType channel.Type, endpoints []objects.ChannelEndpoint) error {
 	if settings == nil || len(settings.ModelProtocols) == 0 {
 		return nil
@@ -115,8 +116,8 @@ func ValidateModelProtocols(settings *objects.ChannelSettings, channelType chann
 			return fmt.Errorf("modelProtocols[%d] (%s): at least one api_format is required", i, mp.Model)
 		}
 
-		// Disabled overrides are retained so they can be re-enabled when a model is
-		// added back, but they no longer need to track endpoint changes while off.
+		// Manually disabled overrides no longer need to track endpoint changes while
+		// off. Overrides for removed models are deleted by model-list normalization.
 		if !mp.IsEnabled() {
 			continue
 		}
@@ -131,24 +132,42 @@ func ValidateModelProtocols(settings *objects.ChannelSettings, channelType chann
 	return nil
 }
 
-// DisableRemovedModelProtocolOverrides marks overrides for models that are no
-// longer exposed by the channel as disabled. Entries are retained to preserve
-// the user's protocol choices if the model is added again later.
-//
-// The model list includes direct channel models and all derived request names
-// (prefixes, auto-trimmed names, and mappings), matching runtime model lookup.
-// It returns true when settings were changed.
-func DisableRemovedModelProtocolOverrides(settings *objects.ChannelSettings, supportedModels []string) bool {
+// RemoveRemovedModelProtocolOverrides deletes overrides for models that are no
+// longer exposed by the channel. Once a model disappears, its protocol override
+// disappears with it instead of remaining as an inactive stale record. The model
+// list includes direct models and derived request names (prefixes, auto-trimmed
+// names, and mappings), matching runtime model lookup.
+func RemoveRemovedModelProtocolOverrides(settings *objects.ChannelSettings, supportedModels []string) bool {
 	if settings == nil || len(settings.ModelProtocols) == 0 {
 		return false
 	}
 
+	available := modelProtocolAvailableModels(settings, supportedModels)
+	kept := make([]objects.ModelProtocol, 0, len(settings.ModelProtocols))
+	changed := false
+	for _, protocol := range settings.ModelProtocols {
+		if _, present := available[protocol.Model]; present {
+			kept = append(kept, protocol)
+			continue
+		}
+
+		changed = true
+	}
+
+	if changed {
+		settings.ModelProtocols = kept
+	}
+
+	return changed
+}
+
+func modelProtocolAvailableModels(settings *objects.ChannelSettings, supportedModels []string) map[string]struct{} {
 	probe := &Channel{Channel: &ent.Channel{
 		SupportedModels: supportedModels,
 		Settings:        settings,
 	}}
 	entries := probe.GetModelEntries()
-	available := make(map[string]struct{}, len(entries))
+	available := make(map[string]struct{}, len(entries)+len(supportedModels))
 	for model := range entries {
 		available[model] = struct{}{}
 	}
@@ -161,20 +180,7 @@ func DisableRemovedModelProtocolOverrides(settings *objects.ChannelSettings, sup
 		}
 	}
 
-	changed := false
-	for i := range settings.ModelProtocols {
-		protocol := &settings.ModelProtocols[i]
-		_, present := available[protocol.Model]
-		if !present {
-			if protocol.Enabled == nil || *protocol.Enabled {
-				disabled := false
-				protocol.Enabled = &disabled
-				changed = true
-			}
-		}
-	}
-
-	return changed
+	return available
 }
 
 var openAICompatibleDefaultEndpoints = []objects.ChannelEndpoint{

@@ -81,26 +81,40 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 		// slice would merge unrelated model overrides and select the wrong
 		// protocol for the first attempt.
 		baseEndpoints := c.Channel.ResolveEndpoints()
-		alphaSupported := false
 		if len(c.Models) > 0 {
-			c.modelAPIFormats = make([]string, len(c.Models))
-			for i, entry := range c.Models {
+			selectedModels := make([]biz.ChannelModelEntry, 0, len(c.Models))
+			selectedFormats := make([]string, 0, len(c.Models))
+			for _, entry := range c.Models {
 				endpoints := applyForcedAPIFormats(ctx, c.Channel, []biz.ChannelModelEntry{entry}, req.Model, baseEndpoints)
-				c.modelAPIFormats[i] = SelectAPIFormat(endpoints, req)
-				if hasAPIFormat(endpoints, llm.APIFormatOpenAIAlphaSearch.String()) {
-					alphaSupported = true
+				format := SelectAPIFormat(endpoints, req)
+				// Alpha Search has no generic fallback. A model whose forced protocol
+				// list cannot serve Alpha Search must not remain as the first retry
+				// entry, otherwise an empty candidate format falls back to the channel's
+				// primary (usually chat) outbound.
+				if req.RequestType == llm.RequestTypeAlphaSearch && format == "" {
+					continue
 				}
+
+				selectedModels = append(selectedModels, entry)
+				selectedFormats = append(selectedFormats, format)
 			}
 
-			c.APIFormat = c.modelAPIFormats[0]
+			if len(selectedModels) == 0 {
+				continue
+			}
+
+			if req.RequestType == llm.RequestTypeAlphaSearch {
+				c.Models = selectedModels
+			}
+			c.modelAPIFormats = selectedFormats
+			c.APIFormat = selectedFormats[0]
 		} else {
 			c.modelAPIFormats = nil
 			endpoints := applyForcedAPIFormats(ctx, c.Channel, c.Models, req.Model, baseEndpoints)
 			c.APIFormat = SelectAPIFormat(endpoints, req)
-			alphaSupported = hasAPIFormat(endpoints, llm.APIFormatOpenAIAlphaSearch.String())
 		}
 
-		if req.RequestType == llm.RequestTypeAlphaSearch && !alphaSupported {
+		if req.RequestType == llm.RequestTypeAlphaSearch && c.APIFormat == "" {
 			continue
 		}
 
@@ -108,12 +122,6 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 	}
 
 	return filtered
-}
-
-func hasAPIFormat(endpoints []objects.ChannelEndpoint, apiFormat string) bool {
-	return lo.ContainsBy(endpoints, func(endpoint objects.ChannelEndpoint) bool {
-		return endpoint.APIFormat == apiFormat
-	})
 }
 
 func reqStream(req *llm.Request) bool {

@@ -237,7 +237,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const handleRequestRemoveEndpoint = useCallback(
     (apiFormat: string) => {
       const remainsAvailable = defaultEndpoints.some((ep) => ep.apiFormat === apiFormat);
-      if (!remainsAvailable && modelProtocols.some((mp) => mp.apiFormats.includes(apiFormat))) {
+      if (!remainsAvailable && modelProtocols.some((mp) => mp.enabled !== false && mp.apiFormats.includes(apiFormat))) {
         setBlockedEndpointRemoval(apiFormat);
         return;
       }
