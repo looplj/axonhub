@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { useFieldArray, useForm, useWatch, type Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { IconPlus, IconTrash, IconCopy } from '@tabler/icons-react';
+import { IconCopy, IconDownload, IconPlus, IconTrash, IconUpload } from '@tabler/icons-react';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -21,7 +21,13 @@ import { useProvidersData } from '@/features/models/data/providers';
 import { useGeneralSettings } from '@/features/system/data/system';
 import { useChannels } from '../context/channels-context';
 import { useChannelModelPrices, useSaveChannelModelPrices } from '../data/channels';
-import { PricingMode, PriceItemCode } from '../data/schema';
+import {
+  PricingMode,
+  PriceItemCode,
+  saveChannelModelPriceInputSchema,
+  type ModelPrice,
+  type SaveChannelModelPriceInput,
+} from '../data/schema';
 
 const priceItemCodes = ['prompt_tokens', 'completion_tokens', 'prompt_cached_tokens', 'prompt_write_cached_tokens'] as const;
 const pricingModes = ['flat_fee', 'usage_per_unit', 'usage_tiered', 'usage_volume'] as const;
@@ -314,75 +320,88 @@ function buildAvailableModelsByIndex(prices: Array<PriceFormData['prices'][numbe
   });
 }
 
-function mapServerPricesToFormData(currentPrices: ChannelModelPrices): PriceFormData {
+function mapPriceToForm(price: ModelPrice): PriceFormData['prices'][number]['price'] {
   return {
-    prices: currentPrices.map((p) => ({
-      modelId: p.modelID,
-      price: {
-        items: p.price.items.map((item) => ({
-          itemCode: item.itemCode,
+    items: price.items.map((item) => ({
+      itemCode: item.itemCode,
+      pricing: {
+        mode: item.pricing.mode,
+        flatFee: item.pricing.flatFee?.toString() || '',
+        usagePerUnit: item.pricing.usagePerUnit?.toString() || '',
+        usageTiered: item.pricing.usageTiered
+          ? {
+              tiers: item.pricing.usageTiered.tiers.map((t) => ({
+                upTo: t.upTo,
+                pricePerUnit: t.pricePerUnit.toString(),
+              })),
+            }
+          : null,
+      },
+      promptWriteCacheVariants:
+        item.promptWriteCacheVariants?.map((v) => ({
+          variantCode: v.variantCode,
           pricing: {
-            mode: item.pricing.mode,
-            flatFee: item.pricing.flatFee?.toString() || '',
-            usagePerUnit: item.pricing.usagePerUnit?.toString() || '',
-            usageTiered: item.pricing.usageTiered
+            mode: v.pricing.mode,
+            flatFee: v.pricing.flatFee?.toString() || '',
+            usagePerUnit: v.pricing.usagePerUnit?.toString() || '',
+            usageTiered: v.pricing.usageTiered
               ? {
-                  tiers: item.pricing.usageTiered.tiers.map((t) => ({
+                  tiers: v.pricing.usageTiered.tiers.map((t) => ({
                     upTo: t.upTo,
                     pricePerUnit: t.pricePerUnit.toString(),
                   })),
                 }
               : null,
           },
-          promptWriteCacheVariants:
-            item.promptWriteCacheVariants?.map((v) => ({
-              variantCode: v.variantCode,
+        })) || [],
+    })),
+    schedule: price.schedule
+      ? {
+          timezone: price.schedule.timezone,
+          overrides: price.schedule.overrides.map((o) => ({
+            name: o.name,
+            priority: o.priority,
+            when: {
+              dailyTime: o.when.dailyTime || null,
+              weekdays: o.when.weekdays || null,
+              dateRange: o.when.dateRange || null,
+            },
+            items: o.items.map((item) => ({
+              itemCode: item.itemCode,
               pricing: {
-                mode: v.pricing.mode,
-                flatFee: v.pricing.flatFee?.toString() || '',
-                usagePerUnit: v.pricing.usagePerUnit?.toString() || '',
-                usageTiered: v.pricing.usageTiered
+                mode: item.pricing.mode,
+                flatFee: item.pricing.flatFee?.toString() || '',
+                usagePerUnit: item.pricing.usagePerUnit?.toString() || '',
+                usageTiered: item.pricing.usageTiered
                   ? {
-                      tiers: v.pricing.usageTiered.tiers.map((t) => ({
+                      tiers: item.pricing.usageTiered.tiers.map((t) => ({
                         upTo: t.upTo,
                         pricePerUnit: t.pricePerUnit.toString(),
                       })),
                     }
                   : null,
               },
-            })) || [],
-        })),
-        schedule: p.price.schedule
-          ? {
-              timezone: p.price.schedule.timezone,
-              overrides: p.price.schedule.overrides.map((o) => ({
-                name: o.name,
-                priority: o.priority,
-                when: {
-                  dailyTime: o.when.dailyTime || null,
-                  weekdays: o.when.weekdays || null,
-                  dateRange: o.when.dateRange || null,
-                },
-                items: o.items.map((item) => ({
-                  itemCode: item.itemCode,
-                  pricing: {
-                    mode: item.pricing.mode,
-                    flatFee: item.pricing.flatFee?.toString() || '',
-                    usagePerUnit: item.pricing.usagePerUnit?.toString() || '',
-                    usageTiered: item.pricing.usageTiered
-                      ? {
-                          tiers: item.pricing.usageTiered.tiers.map((t) => ({
-                            upTo: t.upTo,
-                            pricePerUnit: t.pricePerUnit.toString(),
-                          })),
-                        }
-                      : null,
-                  },
-                })),
-              })),
-            }
-          : null,
-      },
+            })),
+          })),
+        }
+      : null,
+  };
+}
+
+function mapServerPricesToFormData(currentPrices: ChannelModelPrices): PriceFormData {
+  return {
+    prices: currentPrices.map((p) => ({
+      modelId: p.modelID,
+      price: mapPriceToForm(p.price),
+    })),
+  };
+}
+
+function mapSaveInputsToFormData(inputs: SaveChannelModelPriceInput[]): PriceFormData {
+  return {
+    prices: inputs.map((p) => ({
+      modelId: p.modelId,
+      price: mapPriceToForm(p.price),
     })),
   };
 }
@@ -727,10 +746,112 @@ export function ChannelsModelPriceDialog() {
     }
   }, [isOpen, currentPrices, reset]);
 
+  // Tracks the channel/dialog the import was started in, so a stale async file
+  // read can be discarded if the user switches channels or closes the dialog
+  // before it resolves (the dialog is a single shared instance).
+  const importSessionRef = useRef({ channelId: '', open: false });
+  useEffect(() => {
+    importSessionRef.current = { channelId: currentRow?.id ?? '', open: isOpen };
+  }, [currentRow, isOpen]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleClose = useCallback(() => {
+    // Synchronously invalidate any in-flight import. Without this, a pending
+    // file read could resolve after the dialog is closed but before the effect
+    // above records the closed state, and slip past the session guard.
+    importSessionRef.current = { channelId: '', open: false };
     setOpen(null);
     reset();
   }, [setOpen, reset]);
+
+  const handleExport = useCallback(() => {
+    if (!currentRow || !currentPrices || currentPrices.length === 0) {
+      toast.error(t('price.export.empty'));
+      return;
+    }
+
+    const payload = currentPrices.map((p) => ({
+      modelId: p.modelID,
+      price: p.price,
+    }));
+    const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const safeName = currentRow.name.trim().replace(/[^\p{L}\p{N}._-]+/gu, '-').replace(/^-+|-+$/g, '') || 'channel';
+    anchor.href = url;
+    anchor.download = `${safeName}-model-prices.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+    toast.success(t('price.export.success', { name: currentRow.name }));
+  }, [currentPrices, currentRow, t]);
+
+  const handleImportFile = useCallback(
+    async (file: File | undefined) => {
+      if (!file) return;
+
+      // Capture the session object before the async file read, and compare by
+      // reference afterwards: any close/reopen/channel switch replaces the
+      // object (even with identical values), which invalidates stale imports.
+      const startedSession = importSessionRef.current;
+      if (!startedSession.open || !startedSession.channelId) return;
+      if (file.size > 1024 * 1024) {
+        toast.error(t('price.import.fileTooLarge'));
+        return;
+      }
+
+      let raw: string;
+      try {
+        raw = await file.text();
+      } catch {
+        toast.error(t('price.import.invalidFile'));
+        return;
+      }
+
+      // Discard the import if the dialog closed, reopened, or the channel
+      // switched while the file was being read, so stale data never lands in
+      // another channel or a fresh session.
+      if (importSessionRef.current !== startedSession) return;
+
+      let parsed: SaveChannelModelPriceInput[];
+      try {
+        parsed = z.array(saveChannelModelPriceInputSchema).min(1).parse(JSON.parse(raw));
+      } catch {
+        toast.error(t('price.import.invalidFile'));
+        return;
+      }
+
+      // Reject duplicate model IDs up front: the backend refuses them at save time.
+      const seen = new Set<string>();
+      for (const p of parsed) {
+        if (seen.has(p.modelId)) {
+          toast.error(t('price.import.duplicateModel', { modelId: p.modelId }));
+          return;
+        }
+        seen.add(p.modelId);
+      }
+
+      // Skip models the channel does not support, so no unusable pricing records can be persisted.
+      const supported = new Set(currentRow?.supportedModels || []);
+      const filtered = parsed.filter((p) => supported.has(p.modelId));
+      const skipped = parsed.length - filtered.length;
+      if (filtered.length === 0) {
+        toast.error(t('price.import.noSupportedModels'));
+        return;
+      }
+
+      reset(mapSaveInputsToFormData(filtered));
+      rowVirtualizer.scrollToIndex(0, { align: 'start' });
+      if (skipped > 0) {
+        toast.success(t('price.import.successSkipped', { count: filtered.length, skipped }));
+      } else {
+        toast.success(t('price.import.success', { count: filtered.length }));
+      }
+    },
+    [currentRow, reset, rowVirtualizer, t]
+  );
 
   const onSubmitError = useCallback(
     (errors: Record<string, any>) => {
@@ -1164,10 +1285,37 @@ export function ChannelsModelPriceDialog() {
             </div>
 
             <DialogFooter className='mt-6 shrink-0 gap-2 sm:justify-between'>
-              <Button type='button' variant='outline' onClick={addPrice}>
-                <IconPlus className='mr-2 h-4 w-4' />
-                {t('price.addPrice')}
-              </Button>
+              <div className='flex flex-wrap items-center gap-2'>
+                <Button type='button' variant='outline' onClick={addPrice}>
+                  <IconPlus className='mr-2 h-4 w-4' />
+                  {t('price.addPrice')}
+                </Button>
+                <Button type='button' variant='outline' onClick={handleExport} disabled={!currentPrices}>
+                  <IconDownload className='mr-2 h-4 w-4' />
+                  {t('price.export.button')}
+                </Button>
+                <Button
+                  type='button'
+                  variant='outline'
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={!currentPrices}
+                  title={!currentPrices ? t('price.import.disabledLoading') : undefined}
+                >
+                  <IconUpload className='mr-2 h-4 w-4' />
+                  {t('price.import.button')}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  className='hidden'
+                  type='file'
+                  accept='.json,application/json'
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = '';
+                    void handleImportFile(file);
+                  }}
+                />
+              </div>
               <div className='flex gap-2'>
                 <Button type='button' variant='ghost' onClick={handleClose}>
                   {t('common.buttons.cancel')}
