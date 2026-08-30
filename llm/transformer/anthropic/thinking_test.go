@@ -893,6 +893,27 @@ func TestOutputConfig_Outbound(t *testing.T) {
 			},
 		},
 		{
+			name: "TransformerMetadata output_config_effort=none is ignored",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyOutputConfigEffort: llm.ReasoningEffortNone,
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.Nil(t, anthropicReq.OutputConfig)
+				require.Nil(t, anthropicReq.Thinking)
+			},
+		},
+		{
 			name: "without output_config metadata -> OutputConfig nil",
 			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",

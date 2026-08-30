@@ -540,7 +540,14 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	if input.Settings != nil {
-		RemoveRemovedModelProtocolOverrides(input.Settings, input.SupportedModels)
+		// A new channel may intentionally be created before its model list is
+		// populated (for example by a bulk configuration flow). An empty list is
+		// therefore not evidence that every submitted override is stale. Keep the
+		// overrides until the channel has an actual model list; updates retain the
+		// existing cleanup behavior below.
+		if len(input.SupportedModels) > 0 {
+			RemoveRemovedModelProtocolOverrides(input.Settings, input.SupportedModels)
+		}
 
 		if input.Settings.BodyOverrideOperations != nil {
 			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {

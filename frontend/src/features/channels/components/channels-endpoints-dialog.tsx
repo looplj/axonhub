@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { AlertCircle, Check, ChevronDown, Pencil, Plus, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,7 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
-import { useUpdateChannel } from '../data/channels';
+import { useUpdateChannelSettings } from '../data/channels';
 import {
   Channel,
   ChannelEndpoint,
@@ -30,7 +31,6 @@ import {
   configurableChannelEndpointApiFormats,
   configurableChannelEndpointApiFormatSchema,
 } from '../data/schema';
-import { mergeChannelSettingsForUpdate } from '../utils/merge';
 
 interface Props {
   channel: Channel;
@@ -148,8 +148,9 @@ function EndpointTable({
 
 export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) {
   const { t } = useTranslation();
-  const updateChannel = useUpdateChannel();
+  const updateChannelSettings = useUpdateChannelSettings();
   const [dialogContentElement, setDialogContentElement] = useState<HTMLDivElement | null>(null);
+  const wasOpenRef = useRef(false);
 
   const defaultEndpoints = useMemo(() => channel.defaultEndpoints ?? [], [channel.defaultEndpoints]);
 
@@ -175,18 +176,22 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   }, [editingProtocolModel, modelProtocols, supportedModelOptions]);
 
   useEffect(() => {
-    if (open) {
-      setEndpoints(channel.endpoints ?? []);
-      setNewApiFormat('');
-      setNewPath('');
-      setNewBaseURL('');
-      setModelProtocols(channel.settings?.modelProtocols ?? []);
-      setNewProtocolModel('');
-      setNewProtocolFormats([]);
-      setEditingProtocolModel(null);
-      setBlockedEndpointRemoval(null);
-      setError(null);
+    const justOpened = open && !wasOpenRef.current;
+    wasOpenRef.current = open;
+    if (!justOpened) {
+      return;
     }
+
+    setEndpoints(channel.endpoints ?? []);
+    setNewApiFormat('');
+    setNewPath('');
+    setNewBaseURL('');
+    setModelProtocols(channel.settings?.modelProtocols ?? []);
+    setNewProtocolModel('');
+    setNewProtocolFormats([]);
+    setEditingProtocolModel(null);
+    setBlockedEndpointRemoval(null);
+    setError(null);
   }, [open, channel.endpoints, channel.settings]);
 
   const usedApiFormats = useMemo(() => new Set(endpoints.map((ep) => ep.apiFormat)), [endpoints]);
@@ -361,7 +366,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
       // stale state (e.g. deleting an endpoint together with the override that
       // references it would be rejected) and a later failure would leave the
       // earlier change half-applied.
-      await updateChannel.mutateAsync({
+      await updateChannelSettings.mutateAsync({
         id: channel.id,
         input: {
           endpoints: endpoints.map((ep) => ({
@@ -370,15 +375,16 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
             baseURL: ep.baseURL || undefined,
             transport: ep.transport || undefined,
           })),
-          settings: mergeChannelSettingsForUpdate(channel.settings, { modelProtocols }),
         },
+        patch: { modelProtocols },
       });
 
+      toast.success(t('channels.messages.updateSuccess'));
       onOpenChange(false);
     } catch {
       // error handled by hook
     }
-  }, [channel, defaultEndpoints, endpoints, modelProtocols, onOpenChange, updateChannel, t]);
+  }, [channel, defaultEndpoints, endpoints, modelProtocols, onOpenChange, updateChannelSettings, t]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -653,8 +659,8 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
           <Button variant='outline' onClick={() => onOpenChange(false)}>
             {t('common.buttons.cancel')}
           </Button>
-          <Button onClick={handleSave} disabled={updateChannel.isPending}>
-            {updateChannel.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
+          <Button onClick={handleSave} disabled={updateChannelSettings.isPending}>
+            {updateChannelSettings.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

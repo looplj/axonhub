@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -384,32 +385,17 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			})
 		}
 
-		// Channel families with provider-specific chat transformers keep their own
-		// URL conventions (zai v4, doubao v3) and parameter handling on custom
-		// endpoints too — including the *_anthropic variants of those providers,
-		// whose default (messages) endpoint says nothing about their chat API.
-		// The generic OpenAI transformer assumes a /v1 API and would produce
-		// broken URLs for them.
-		switch c.Type {
-		case channel.TypeZai, channel.TypeZhipu, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
-			return zai.NewOutboundTransformerWithConfig(&zai.Config{
-				BaseURL:        baseURL,
-				EndpointPath:   ep.Path,
-				APIKeyProvider: apiKeyProvider(),
-			})
-		case channel.TypeXiaomi, channel.TypeXiaomiAnthropic:
-			return zai.NewOutboundTransformerWithConfig(&zai.Config{
-				BaseURL:        baseURL,
-				Version:        "v1",
-				EndpointPath:   ep.Path,
-				APIKeyProvider: apiKeyProvider(),
-			})
-		case channel.TypeDoubao, channel.TypeVolcengine, channel.TypeDoubaoAnthropic, channel.TypeVolcengineAnthropic:
-			return doubao.NewOutboundTransformerWithConfig(&doubao.Config{
-				BaseURL:        baseURL,
-				EndpointPath:   ep.Path,
-				APIKeyProvider: apiKeyProvider(),
-			})
+		// Empty paths on existing custom endpoints historically used the generic
+		// OpenAI transformer, which appends /v1. There is no persisted flag that
+		// distinguishes those records from newer family endpoints, so only opt into
+		// a family transformer when the base URL explicitly carries its provider
+		// version. An explicit path is unambiguous and always uses the family
+		// transformer. This preserves old /v1 routes while retaining family-specific
+		// request handling for new /v4 and /v3 endpoints.
+		if ep.Path != "" || providerChatEndpointUsesFamilyVersion(c.Type, baseURL) {
+			if outbound, ok, err := newProviderChatOutbound(c.Type, ch, baseURL, ep.Path); ok {
+				return outbound, err
+			}
 		}
 
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
@@ -503,6 +489,78 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	}
 }
 
+func newProviderChatOutbound(
+	channelType channel.Type,
+	ch *Channel,
+	baseURL string,
+	endpointPath string,
+) (transformer.Outbound, bool, error) {
+	apiKeyProvider := getAPIKeyProvider(ch)
+
+	switch channelType {
+	case channel.TypeZai, channel.TypeZhipu, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
+		outbound, err := zai.NewOutboundTransformerWithConfig(&zai.Config{
+			BaseURL:        baseURL,
+			EndpointPath:   endpointPath,
+			APIKeyProvider: apiKeyProvider,
+		})
+		return outbound, true, err
+	case channel.TypeXiaomi, channel.TypeXiaomiAnthropic:
+		outbound, err := zai.NewOutboundTransformerWithConfig(&zai.Config{
+			BaseURL:        baseURL,
+			Version:        "v1",
+			EndpointPath:   endpointPath,
+			APIKeyProvider: apiKeyProvider,
+		})
+		return outbound, true, err
+	case channel.TypeDoubao, channel.TypeVolcengine, channel.TypeDoubaoAnthropic, channel.TypeVolcengineAnthropic:
+		outbound, err := doubao.NewOutboundTransformerWithConfig(&doubao.Config{
+			BaseURL:        baseURL,
+			EndpointPath:   endpointPath,
+			APIKeyProvider: apiKeyProvider,
+		})
+		return outbound, true, err
+	default:
+		return nil, false, nil
+	}
+}
+
+func providerChatEndpointUsesFamilyVersion(channelType channel.Type, baseURL string) bool {
+	if channelType == channel.TypeXiaomi || channelType == channel.TypeXiaomiAnthropic {
+		// Xiaomi uses v1, so the family and generic transformers have the same
+		// route convention. Keep its provider-specific request handling.
+		return true
+	}
+
+	version := ""
+	switch channelType {
+	case channel.TypeZai, channel.TypeZhipu, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
+		version = "v4"
+	case channel.TypeDoubao, channel.TypeVolcengine, channel.TypeDoubaoAnthropic, channel.TypeVolcengineAnthropic:
+		version = "v3"
+	default:
+		return false
+	}
+
+	return urlPathContainsSegment(baseURL, version)
+}
+
+func urlPathContainsSegment(rawURL, segment string) bool {
+	rawURL = strings.TrimSuffix(rawURL, "##")
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+
+	for _, pathSegment := range strings.Split(strings.Trim(parsed.Path, "/"), "/") {
+		if pathSegment == segment {
+			return true
+		}
+	}
+
+	return false
+}
+
 //nolint:maintidx // Checked.
 func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOverride ...string) (*Channel, error) {
 	// Validate credentials early so we can fail fast without constructing HTTP clients/transformers.
@@ -547,10 +605,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 	switch c.Type {
 	case channel.TypeDoubao, channel.TypeVolcengine:
-		transformer, err := doubao.NewOutboundTransformerWithConfig(&doubao.Config{
-			BaseURL:        c.BaseURL,
-			APIKeyProvider: getAPIKeyProvider(ch),
-		})
+		transformer, _, err := newProviderChatOutbound(c.Type, ch, c.BaseURL, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}
@@ -631,10 +686,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 		return ch, nil
 	case channel.TypeZai, channel.TypeZhipu:
-		transformer, err := zai.NewOutboundTransformerWithConfig(&zai.Config{
-			BaseURL:        c.BaseURL,
-			APIKeyProvider: getAPIKeyProvider(ch),
-		})
+		transformer, _, err := newProviderChatOutbound(c.Type, ch, c.BaseURL, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}
@@ -643,11 +695,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 		return ch, nil
 	case channel.TypeXiaomi:
-		transformer, err := zai.NewOutboundTransformerWithConfig(&zai.Config{
-			BaseURL:        c.BaseURL,
-			APIKeyProvider: getAPIKeyProvider(ch),
-			Version:        "v1",
-		})
+		transformer, _, err := newProviderChatOutbound(c.Type, ch, c.BaseURL, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}

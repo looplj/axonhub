@@ -125,6 +125,29 @@ func TestRemoveRemovedModelProtocolOverrides(t *testing.T) {
 	require.False(t, RemoveRemovedModelProtocolOverrides(settings, []string{"gpt-4"}))
 }
 
+func TestCreateChannel_PreservesModelProtocolsWithEmptySupportedModels(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:channel_model_protocols_create?mode=memory&_fk=0")
+	t.Cleanup(func() { client.Close() })
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := NewChannelServiceForTest(client)
+	settings := &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+		{Model: "gpt-4", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}},
+	}}
+
+	created, err := svc.createChannel(ctx, ent.CreateChannelInput{
+		Type:             channel.TypeOpenai,
+		Name:             "openai-empty-model-list",
+		BaseURL:          lo.ToPtr("https://api.example.com"),
+		Credentials:      objects.ChannelCredentials{APIKey: "test-key"},
+		SupportedModels:  []string{},
+		DefaultTestModel: "gpt-4",
+		Settings:         settings,
+	})
+	require.NoError(t, err)
+	require.Equal(t, settings.ModelProtocols, created.Settings.ModelProtocols)
+}
+
 // TestUpdateChannel_ModelProtocolsValidatedWithoutResentSettings covers updates that
 // change the endpoint surface (endpoints or channel type) without resending settings:
 // overrides already stored in settings must still reference formats that survive the

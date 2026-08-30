@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -36,7 +37,7 @@ func TestBuildChannelWithOutbounds_FamilyRoutingOnCustomChatEndpoints(t *testing
 			Messages: []llm.Message{
 				{
 					Role:    "user",
-					Content: llm.MessageContent{Content: ptr("Hello")},
+					Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
 				},
 			},
 		}
@@ -100,6 +101,15 @@ func TestBuildChannelWithOutbounds_FamilyRoutingOnCustomChatEndpoints(t *testing
 		require.NotContains(t, body, "metadata")
 	})
 
+	t.Run("legacy family endpoint without version keeps the generic v1 route", func(t *testing.T) {
+		url, _ := transformChatEndpoint(t, channel.TypeZhipuAnthropic, objects.ChannelEndpoint{
+			APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
+			BaseURL:   "https://legacy-proxy.example.com/api",
+		})
+
+		require.Equal(t, "https://legacy-proxy.example.com/api/v1/chat/completions", url)
+	})
+
 	t.Run("generic openai channels keep the generic transformer", func(t *testing.T) {
 		url, _ := transformChatEndpoint(t, channel.TypeOpenai, objects.ChannelEndpoint{
 			APIFormat: llm.APIFormatOpenAIChatCompletion.String(),
@@ -109,8 +119,4 @@ func TestBuildChannelWithOutbounds_FamilyRoutingOnCustomChatEndpoints(t *testing
 		// Generic openai normalization appends /v1, which is correct for v1 APIs.
 		require.Equal(t, "https://api.example.com/v1/chat/completions", url)
 	})
-}
-
-func ptr(s string) *string {
-	return &s
 }
