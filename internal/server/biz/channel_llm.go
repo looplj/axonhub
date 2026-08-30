@@ -384,6 +384,34 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			})
 		}
 
+		// Channel families with provider-specific chat transformers keep their own
+		// URL conventions (zai v4, doubao v3) and parameter handling on custom
+		// endpoints too — including the *_anthropic variants of those providers,
+		// whose default (messages) endpoint says nothing about their chat API.
+		// The generic OpenAI transformer assumes a /v1 API and would produce
+		// broken URLs for them.
+		switch c.Type {
+		case channel.TypeZai, channel.TypeZhipu, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
+			return zai.NewOutboundTransformerWithConfig(&zai.Config{
+				BaseURL:        baseURL,
+				EndpointPath:   ep.Path,
+				APIKeyProvider: apiKeyProvider(),
+			})
+		case channel.TypeXiaomi, channel.TypeXiaomiAnthropic:
+			return zai.NewOutboundTransformerWithConfig(&zai.Config{
+				BaseURL:        baseURL,
+				Version:        "v1",
+				EndpointPath:   ep.Path,
+				APIKeyProvider: apiKeyProvider(),
+			})
+		case channel.TypeDoubao, channel.TypeVolcengine, channel.TypeDoubaoAnthropic, channel.TypeVolcengineAnthropic:
+			return doubao.NewOutboundTransformerWithConfig(&doubao.Config{
+				BaseURL:        baseURL,
+				EndpointPath:   ep.Path,
+				APIKeyProvider: apiKeyProvider(),
+			})
+		}
+
 		return openai.NewOutboundTransformerWithConfig(&openai.Config{
 			PlatformType:   openai.PlatformOpenAI,
 			BaseURL:        baseURL,

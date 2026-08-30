@@ -8,6 +8,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -378,4 +379,155 @@ func TestOutboundTransformer_TransformRequest_ResponseFormat(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestOutboundTransformer_TransformRequest_URLOverrides covers the endpoint-level
+// URL conventions that must match the generic OpenAI transformer: custom endpoint
+// paths and the "##" raw-URL suffix. Custom chat endpoints on zhipu/zai family
+// channels are routed to this transformer, so a bare base URL like
+// https://open.bigmodel.cn/api/coding/paas/v4 must keep working.
+func TestOutboundTransformer_TransformRequest_URLOverrides(t *testing.T) {
+	newRequest := func() *llm.Request {
+		return &llm.Request{
+			Model: "glm-5.3-flash",
+			Messages: []llm.Message{
+				{
+					Role: "user",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("Hello, world!"),
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name         string
+		baseURL      string
+		endpointPath string
+		expectedURL  string
+	}{
+		{
+			name:        "coding plan base URL without path appends /chat/completions only",
+			baseURL:     "https://open.bigmodel.cn/api/coding/paas/v4",
+			expectedURL: "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions",
+		},
+		{
+			name:        "base URL without version gets /v4 appended",
+			baseURL:     "https://open.bigmodel.cn/api/coding/paas",
+			expectedURL: "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions",
+		},
+		{
+			name:         "endpoint path replaces the default path and skips version normalization",
+			baseURL:      "https://open.bigmodel.cn/api/coding/paas/v4",
+			endpointPath: "/chat/completions",
+			expectedURL:  "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions",
+		},
+		{
+			name:        "## suffix uses the base URL as raw request URL",
+			baseURL:     "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions##",
+			expectedURL: "https://open.bigmodel.cn/api/coding/paas/v4/chat/completions",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformer, err := NewOutboundTransformerWithConfig(&Config{
+				BaseURL:        tt.baseURL,
+				EndpointPath:   tt.endpointPath,
+				APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+			})
+			assert.NoError(t, err)
+
+			httpReq, err := transformer.TransformRequest(context.Background(), newRequest())
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedURL, httpReq.URL)
+		})
+	}
+}
+
+// TestOutboundTransformer_TransformRequest_StripsMetadata asserts the zai request
+// body carries no metadata field (GLM coding plan rejects it with error 1210);
+// user_id/request_id are extracted to their dedicated top-level fields instead.
+func TestOutboundTransformer_TransformRequest_StripsMetadata(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://open.bigmodel.cn/api/coding/paas/v4",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+	})
+	assert.NoError(t, err)
+
+	httpReq, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model: "glm-5.3-flash",
+		Metadata: map[string]string{
+			"user_id": "user-123",
+		},
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+	})
+	assert.NoError(t, err)
+
+	var body map[string]any
+	assert.NoError(t, json.Unmarshal(httpReq.Body, &body))
+	assert.NotContains(t, body, "metadata")
+	assert.Equal(t, "user-123", body["user_id"])
+}
+
+// TestOutboundTransformer_TransformRequest_UserIDLength asserts the GLM user_id
+// constraint (6-128 chars, error 1214): Claude Code's long JSON-blob user_id is
+// truncated, short values are dropped entirely.
+func TestOutboundTransformer_TransformRequest_UserIDLength(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://open.bigmodel.cn/api/coding/paas/v4",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+	})
+	assert.NoError(t, err)
+
+	buildRequest := func(userID string) *llm.Request {
+		return &llm.Request{
+			Model:    "glm-5.3-flash",
+			Metadata: map[string]string{"user_id": userID},
+			Messages: []llm.Message{
+				{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+				},
+			},
+		}
+	}
+
+	t.Run("long user_id is truncated to 128 chars", func(t *testing.T) {
+		long := `{"device_id":"334251bf6b147d22d006e2e9cb990169a3ba5e77fecb52a03473e32eb1afe62e","account_uuid":"","session_id":"db0eef37-75a9-4288-8098-0557997cd879"}`
+		require.Len(t, []rune(long), 150)
+
+		httpReq, err := transformer.TransformRequest(context.Background(), buildRequest(long))
+		assert.NoError(t, err)
+
+		var body map[string]any
+		assert.NoError(t, json.Unmarshal(httpReq.Body, &body))
+		assert.Len(t, body["user_id"], 128)
+	})
+
+	t.Run("short user_id is omitted", func(t *testing.T) {
+		httpReq, err := transformer.TransformRequest(context.Background(), buildRequest("abc"))
+		assert.NoError(t, err)
+
+		var body map[string]any
+		assert.NoError(t, json.Unmarshal(httpReq.Body, &body))
+		assert.NotContains(t, body, "user_id")
+	})
+
+	t.Run("normal user_id passes through", func(t *testing.T) {
+		httpReq, err := transformer.TransformRequest(context.Background(), buildRequest("user-123456"))
+		assert.NoError(t, err)
+
+		var body map[string]any
+		assert.NoError(t, json.Unmarshal(httpReq.Body, &body))
+		assert.Equal(t, "user-123456", body["user_id"])
+	})
 }

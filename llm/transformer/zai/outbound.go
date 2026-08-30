@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -22,6 +23,10 @@ type Config struct {
 	BaseURL        string              `json:"base_url,omitempty"` // Custom base URL (optional)
 	APIKeyProvider auth.APIKeyProvider `json:"-"`                  // API key provider
 	Version        string              `json:"version,omitempty"`  // API version (default: "v4")
+	// EndpointPath replaces the default "/chat/completions" path. When set, the
+	// base URL is kept as-is without version normalization (same convention as
+	// the OpenAI transformer).
+	EndpointPath string `json:"endpoint_path,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for Zai format.
@@ -30,7 +35,16 @@ type OutboundTransformer struct {
 
 	BaseURL        string
 	APIKeyProvider auth.APIKeyProvider
+	endpointPath   string
+	rawURL         bool
 }
+
+// GLM/z.ai accept user_id values of 6-128 characters (error 1214); the field is
+// omitted when the client-supplied value is shorter.
+const (
+	minUserIDLength = 6
+	maxUserIDLength = 128
+)
 
 // NewOutboundTransformer creates a new Zai OutboundTransformer with legacy parameters.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
@@ -60,11 +74,29 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	if version == "" {
 		version = "v4"
 	}
-	baseURL := transformer.NormalizeBaseURL(config.BaseURL, version)
+
+	// "##" suffix marks a raw full request URL (same convention as the OpenAI
+	// transformer); strip it here so it never leaks into the request URL.
+	rawURL := strings.HasSuffix(config.BaseURL, "##")
+	if rawURL {
+		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
+	}
+
+	var baseURL string
+	switch {
+	case rawURL:
+		baseURL = strings.TrimRight(config.BaseURL, "/")
+	case config.EndpointPath != "":
+		baseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+	default:
+		baseURL = transformer.NormalizeBaseURL(config.BaseURL, version)
+	}
 
 	return &OutboundTransformer{
 		BaseURL:        baseURL,
 		APIKeyProvider: config.APIKeyProvider,
+		endpointPath:   config.EndpointPath,
+		rawURL:         rawURL,
 		Outbound:       t,
 	}, nil
 }
@@ -134,6 +166,16 @@ func (t *OutboundTransformer) TransformRequest(
 		zaiReq.RequestID = llmReq.Metadata["request_id"]
 	}
 
+	// GLM/z.ai validate user_id as 6-128 characters (error 1214). Clients like
+	// Claude Code send a long JSON blob (device_id/session_id) here; send only
+	// values the upstream accepts — truncate long ones, drop short ones. An
+	// empty value omits the field entirely (json omitempty).
+	if runes := []rune(zaiReq.UserID); len(runes) > maxUserIDLength {
+		zaiReq.UserID = string(runes[:maxUserIDLength])
+	} else if len(runes) < minUserIDLength {
+		zaiReq.UserID = ""
+	}
+
 	if zaiReq.RequestID == "" {
 		sessionID, _ := shared.GetSessionID(ctx)
 		zaiReq.RequestID = sessionID
@@ -181,7 +223,15 @@ func (t *OutboundTransformer) TransformRequest(
 		APIKey: apiKey,
 	}
 
-	url := t.BaseURL + "/chat/completions"
+	url := t.BaseURL
+	switch {
+	case t.rawURL:
+		// Base URL is already the full request URL.
+	case t.endpointPath != "":
+		url += t.endpointPath
+	default:
+		url += "/chat/completions"
+	}
 
 	return &httpclient.Request{
 		Method:    http.MethodPost,
