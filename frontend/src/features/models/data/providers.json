@@ -1638,93 +1638,6 @@
             }
           },
           "type": "chat"
-        },
-        {
-          "id": "deepseek-chat",
-          "name": "DeepSeek Chat",
-          "description": "DeepSeek chat model for instruction following, coding, and analysis",
-          "family": "deepseek",
-          "attachment": true,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2025-09",
-          "release_date": "2025-12-01",
-          "last_updated": "2026-02-28",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 1000000,
-            "output": 384000
-          },
-          "cost": {
-            "input": 0.14,
-            "output": 0.28,
-            "cache_read": 0.0028
-          },
-          "display_name": "DeepSeek Chat",
-          "type": "chat"
-        },
-        {
-          "id": "deepseek-reasoner",
-          "name": "DeepSeek Reasoner",
-          "description": "DeepSeek reasoning model for multi-step analysis, math, coding, and tools",
-          "family": "deepseek-thinking",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "reasoning_options": [],
-          "tool_call": true,
-          "interleaved": {
-            "field": "reasoning_content"
-          },
-          "temperature": true,
-          "knowledge": "2025-09",
-          "release_date": "2025-12-01",
-          "last_updated": "2026-02-28",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 1000000,
-            "output": 384000
-          },
-          "cost": {
-            "input": 0.14,
-            "output": 0.28,
-            "reasoning": 0.28,
-            "cache_read": 0.0028
-          },
-          "display_name": "DeepSeek Reasoner",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "interleaved": true,
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thinking_blocks"
-              ]
-            }
-          },
-          "type": "chat"
         }
       ]
     },
@@ -6019,6 +5932,131 @@
       "display_name": "Z.AI",
       "models": [
         {
+          "id": "glm-5.3-flash",
+          "name": "GLM-5.3-Flash",
+          "description": "Native multimodal GLM model for efficient coding and long-horizon agent tasks",
+          "family": "glm",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "high",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-08-26",
+          "last_updated": "2026-08-26",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0.075,
+            "output": 0.25,
+            "cache_read": 0.015,
+            "cache_write": 0
+          },
+          "display_name": "GLM-5.3-Flash",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary"
+            }
+          }
+        },
+        {
+          "id": "glm-5.3",
+          "name": "GLM-5.3",
+          "description": "Flagship GLM model for long-horizon coding, agents, and complex project delivery",
+          "family": "glm",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "high",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-08-14",
+          "last_updated": "2026-08-14",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 131072
+          },
+          "cost": {
+            "input": 1.4,
+            "output": 4.4,
+            "cache_read": 0.26,
+            "cache_write": 0
+          },
+          "display_name": "GLM-5.3",
+          "type": "chat",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary"
+            }
+          }
+        },
+        {
           "id": "glm-5.2",
           "name": "GLM-5.2",
           "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
@@ -6762,10 +6800,10 @@
             "modes": {
               "fast": {
                 "cost": {
-                  "input": 10,
-                  "output": 60,
-                  "cache_read": 1,
-                  "cache_write": 12.5
+                  "input": 8,
+                  "output": 40,
+                  "cache_read": 0.8,
+                  "cache_write": 10
                 },
                 "provider": {
                   "body": {
@@ -6785,16 +6823,16 @@
             }
           },
           "cost": {
-            "input": 5,
-            "output": 30,
-            "cache_read": 0.5,
-            "cache_write": 6.25,
+            "input": 4,
+            "output": 20,
+            "cache_read": 0.4,
+            "cache_write": 5,
             "tiers": [
               {
-                "input": 10,
-                "output": 45,
-                "cache_read": 1,
-                "cache_write": 12.5,
+                "input": 8,
+                "output": 30,
+                "cache_read": 0.8,
+                "cache_write": 10,
                 "tier": {
                   "type": "context",
                   "size": 272000
@@ -6802,10 +6840,10 @@
               }
             ],
             "context_over_200k": {
-              "input": 10,
-              "output": 45,
-              "cache_read": 1,
-              "cache_write": 12.5
+              "input": 8,
+              "output": 30,
+              "cache_read": 0.8,
+              "cache_write": 10
             }
           },
           "display_name": "GPT-5.6 Sol",
@@ -6883,10 +6921,10 @@
             "modes": {
               "fast": {
                 "cost": {
-                  "input": 10,
-                  "output": 60,
-                  "cache_read": 1,
-                  "cache_write": 12.5
+                  "input": 8,
+                  "output": 40,
+                  "cache_read": 0.8,
+                  "cache_write": 10
                 },
                 "provider": {
                   "body": {
@@ -6906,16 +6944,16 @@
             }
           },
           "cost": {
-            "input": 5,
-            "output": 30,
-            "cache_read": 0.5,
-            "cache_write": 6.25,
+            "input": 4,
+            "output": 20,
+            "cache_read": 0.4,
+            "cache_write": 5,
             "tiers": [
               {
-                "input": 10,
-                "output": 45,
-                "cache_read": 1,
-                "cache_write": 12.5,
+                "input": 8,
+                "output": 30,
+                "cache_read": 0.8,
+                "cache_write": 10,
                 "tier": {
                   "type": "context",
                   "size": 272000
@@ -6923,10 +6961,10 @@
               }
             ],
             "context_over_200k": {
-              "input": 10,
-              "output": 45,
-              "cache_read": 1,
-              "cache_write": 12.5
+              "input": 8,
+              "output": 30,
+              "cache_read": 0.8,
+              "cache_write": 10
             }
           },
           "display_name": "GPT-5.6",
@@ -7496,7 +7534,7 @@
           ],
           "tool_call": true,
           "structured_output": true,
-          "temperature": false,
+          "temperature": true,
           "knowledge": "2025-08-31",
           "release_date": "2026-03-17",
           "last_updated": "2026-03-17",
@@ -7585,7 +7623,7 @@
           ],
           "tool_call": true,
           "structured_output": true,
-          "temperature": false,
+          "temperature": true,
           "knowledge": "2025-08-31",
           "release_date": "2026-03-17",
           "last_updated": "2026-03-17",
@@ -7740,7 +7778,7 @@
           ],
           "tool_call": true,
           "structured_output": true,
-          "temperature": false,
+          "temperature": true,
           "knowledge": "2025-08-31",
           "release_date": "2026-03-05",
           "last_updated": "2026-03-05",
@@ -7883,7 +7921,7 @@
           ],
           "tool_call": true,
           "structured_output": true,
-          "temperature": false,
+          "temperature": true,
           "knowledge": "2025-08-31",
           "release_date": "2026-02-05",
           "last_updated": "2026-02-05",
@@ -8061,7 +8099,7 @@
           ],
           "tool_call": true,
           "structured_output": true,
-          "temperature": false,
+          "temperature": true,
           "knowledge": "2025-08-31",
           "release_date": "2025-12-11",
           "last_updated": "2025-12-11",
@@ -8279,7 +8317,7 @@
           ],
           "tool_call": true,
           "structured_output": true,
-          "temperature": false,
+          "temperature": true,
           "knowledge": "2024-09-30",
           "release_date": "2025-11-13",
           "last_updated": "2025-11-13",
@@ -11373,6 +11411,75 @@
       "display_name": "alibaba",
       "models": [
         {
+          "id": "qwen3.8-flash",
+          "name": "Qwen3.8 Flash",
+          "description": "Qwen vision-language model for visual reasoning, documents, and agent tasks",
+          "family": "qwen",
+          "attachment": true,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "xhigh"
+              ]
+            },
+            {
+              "type": "budget_tokens",
+              "max": 262144
+            }
+          ],
+          "tool_call": true,
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "structured_output": true,
+          "release_date": "2026-08-26",
+          "last_updated": "2026-08-26",
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": false,
+          "limit": {
+            "context": 1000000,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0.15,
+            "output": 0.47,
+            "cache_read": 0.016,
+            "cache_write": 0.2
+          },
+          "display_name": "Qwen3.8 Flash",
+          "extra_capabilities": {
+            "reasoning": {
+              "supported": true,
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "visibility": "summary"
+            }
+          },
+          "type": "chat"
+        },
+        {
           "id": "qwen3.8-max",
           "name": "Qwen3.8 Max",
           "description": "2.4-trillion-parameter MoE flagship for coding, professional work, multimodal understanding, and long-horizon agentic workflows",
@@ -12847,7 +12954,25 @@
           },
           "cost": {
             "input": 0.45,
-            "output": 2.25
+            "output": 2.25,
+            "tiers": [
+              {
+                "input": 0.75,
+                "output": 3.75,
+                "tier": {
+                  "type": "context",
+                  "size": 32000
+                }
+              },
+              {
+                "input": 1.2,
+                "output": 6,
+                "tier": {
+                  "type": "context",
+                  "size": 128000
+                }
+              }
+            ]
           },
           "display_name": "Qwen3-Coder 30B-A3B Instruct",
           "type": "chat"
@@ -13167,7 +13292,25 @@
           },
           "cost": {
             "input": 1.5,
-            "output": 7.5
+            "output": 7.5,
+            "tiers": [
+              {
+                "input": 2.7,
+                "output": 13.5,
+                "tier": {
+                  "type": "context",
+                  "size": 32000
+                }
+              },
+              {
+                "input": 4.5,
+                "output": 22.5,
+                "tier": {
+                  "type": "context",
+                  "size": 128000
+                }
+              }
+            ]
           },
           "display_name": "Qwen3-Coder 480B-A35B Instruct",
           "type": "chat"
@@ -15126,6 +15269,52 @@
       "display_name": "Mistral",
       "models": [
         {
+          "id": "zai-glm-5-2",
+          "name": "GLM-5.2",
+          "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+          "family": "glm",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "high",
+                "max"
+              ]
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-06-13",
+          "last_updated": "2026-06-13",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 1000000,
+            "output": 131072
+          },
+          "status": "beta",
+          "cost": {
+            "input": 1.4,
+            "output": 4.4,
+            "cache_read": 0.14
+          },
+          "display_name": "GLM-5.2",
+          "type": "chat"
+        },
+        {
           "id": "mistral-medium-2604",
           "name": "Mistral Medium 3.5",
           "description": "Balanced Mistral model for enterprise assistants, multilingual work, and tools",
@@ -16849,8 +17038,8 @@
           },
           "open_weights": true,
           "limit": {
-            "context": 1000000,
-            "output": 128000
+            "context": 1048576,
+            "output": 512000
           },
           "cost": {
             "input": 0.3,
@@ -17128,8 +17317,8 @@
           },
           "open_weights": true,
           "limit": {
-            "context": 196608,
-            "output": 128000
+            "context": 204800,
+            "output": 131072
           },
           "cost": {
             "input": 0.3,
@@ -17150,6 +17339,47 @@
       "name": "IBM",
       "display_name": "IBM",
       "models": [
+        {
+          "id": "ibm-granite/granite-4.2-8b",
+          "name": "Granite 4.2 8B",
+          "description": "Granite 4.2 8B is an instruct model capable of enhanced tool calling, instruction following, and chat capabilities.",
+          "family": "granite",
+          "attachment": false,
+          "reasoning": {
+            "supported": true,
+            "default": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "tool_call": true,
+          "structured_output": true,
+          "temperature": true,
+          "release_date": "2026-08-24",
+          "last_updated": "2026-08-24",
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "open_weights": true,
+          "limit": {
+            "context": 131072,
+            "output": 131072
+          },
+          "cost": {
+            "input": 0.1,
+            "output": 0.15,
+            "cache_read": 0.05
+          },
+          "display_name": "Granite 4.2 8B",
+          "type": "chat"
+        },
         {
           "id": "ibm-granite/granite-4.1-8b",
           "name": "Granite 4.1 8B",
@@ -17210,7 +17440,7 @@
           "open_weights": false,
           "limit": {
             "context": 131000,
-            "output": 131000
+            "output": 117900
           },
           "cost": {
             "input": 0.017,
@@ -17998,7 +18228,7 @@
       "name": "ByteDance",
       "display_name": "ByteDance",
       "doc": "https://www.volcengine.com/docs/82379/1330310?lang=zh",
-      "updated_at": "2026-08-17T05:54:22Z",
+      "updated_at": "2026-08-24T13:58:51Z",
       "metadata": {
         "source": "volcengine-docs",
         "doc_detail_url": "https://www.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh"
@@ -18014,7 +18244,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18061,7 +18291,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18108,7 +18338,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18154,7 +18384,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18197,7 +18427,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18238,7 +18468,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18281,7 +18511,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18340,7 +18570,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18399,7 +18629,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18457,7 +18687,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18515,7 +18745,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18575,7 +18805,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18633,7 +18863,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18690,7 +18920,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18749,7 +18979,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18807,7 +19037,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18866,7 +19096,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18923,7 +19153,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18980,7 +19210,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19038,7 +19268,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19094,7 +19324,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19144,7 +19374,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19201,7 +19431,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19258,7 +19488,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19314,7 +19544,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19356,7 +19586,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19396,7 +19626,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19436,7 +19666,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19476,7 +19706,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19513,7 +19743,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19550,7 +19780,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19587,7 +19817,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19624,7 +19854,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19661,7 +19891,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19698,7 +19928,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19735,7 +19965,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-08-17T05:54:22Z",
+          "last_updated": "2026-08-24T13:58:51Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19870,8 +20100,7 @@
             {
               "type": "effort",
               "values": [
-                "low",
-                "medium",
+                "none",
                 "high"
               ]
             }
@@ -20295,8 +20524,8 @@
             "output": 256000
           },
           "cost": {
-            "input": 0.27,
-            "output": 1.08,
+            "input": 0.3,
+            "output": 1.2,
             "cache_read": 0.06
           },
           "display_name": "kat-coder-pro",
