@@ -25,6 +25,7 @@ import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useQueryModels } from '@/features/models/data/models';
 import { usePermissions } from '@/hooks/usePermissions';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
 
 type PlaygroundModelSource = 'channel' | 'model_gateway';
@@ -515,7 +516,16 @@ export default function Playground() {
                                 <Action onClick={() => regenerate()} label={t('playground.chat.retry')}>
                                   <RefreshCcw className='size-3' />
                                 </Action>
-                                <Action onClick={() => navigator.clipboard.writeText(textContent)} label={t('copy')}>
+                                <Action
+                                  onClick={async () => {
+                                    try {
+                                      await copyTextToClipboard(textContent);
+                                    } catch {
+                                      toast.error(t('common.errors.copyFailed'));
+                                    }
+                                  }}
+                                  label={t('copy')}
+                                >
                                   <Copy className='size-3' />
                                 </Action>
                               </Actions>

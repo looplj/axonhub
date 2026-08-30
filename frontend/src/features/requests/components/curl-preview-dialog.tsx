@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Terminal, Copy, Check, CopyX } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -19,7 +20,7 @@ export function CurlPreviewDialog({ open, onOpenChange, curlCommand, title }: Cu
 
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(curlCommand);
+      await copyTextToClipboard(curlCommand);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -37,7 +38,7 @@ export function CurlPreviewDialog({ open, onOpenChange, curlCommand, title }: Cu
       // 3. 清理对象开头多余的逗号: { , "a": 1} -> {"a": 1}
       modified = modified.replace(/{\s*,/g, '{');
       
-      await navigator.clipboard.writeText(modified);
+      await copyTextToClipboard(modified);
       setNonStreamCopied(true);
       setTimeout(() => setNonStreamCopied(false), 2000);
     } catch (err) {
