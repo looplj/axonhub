@@ -22,10 +22,21 @@ import (
 
 const invalidEncryptedContentCode = "invalid_encrypted_content"
 
+const crossResourceItemErrorFragment = "created under a different azure openai resource"
+
+type encryptedContentFailure uint8
+
+const (
+	encryptedContentFailureNone encryptedContentFailure = iota
+	encryptedContentFailureInvalid
+	encryptedContentFailureCrossResource
+)
+
 // encryptedContentRetryExecutor retries a Responses request once after an
 // upstream reports that an account-bound encrypted item cannot be verified.
-// The retry uses the same underlying executor and only removes opaque encrypted
-// fields from the request body.
+// The retry uses the same underlying executor and removes opaque encrypted
+// fields plus resource-bound item IDs when the provider reports a resource
+// mismatch.
 type encryptedContentRetryExecutor struct {
 	inner pipeline.Executor
 }
@@ -78,7 +89,7 @@ func (e *encryptedContentRetryExecutor) DoStream(ctx context.Context, request *h
 
 // PrepareEncryptedContentRetryRequest returns a request copy with opaque,
 // account-bound encrypted content removed when response/err identifies a 400
-// invalid_encrypted_content failure. The request's
+// invalid_encrypted_content or cross-resource item failure. The request's
 // RetryInvalidEncryptedContent flag must be enabled. Callers should issue at
 // most one retry with the returned request.
 func PrepareEncryptedContentRetryRequest(
@@ -90,11 +101,19 @@ func PrepareEncryptedContentRetryRequest(
 		return nil, false
 	}
 
-	if responseStatusCode(response, err) != http.StatusBadRequest || !isInvalidEncryptedContentError(err, response) {
+	if responseStatusCode(response, err) != http.StatusBadRequest {
 		return nil, false
 	}
 
-	strippedBody, stripped := stripEncryptedReasoningContent(request.Body)
+	failure := detectEncryptedContentFailure(err, response)
+	if failure == encryptedContentFailureNone {
+		return nil, false
+	}
+
+	strippedBody, stripped := stripAccountBoundResponseItems(
+		request.Body,
+		failure == encryptedContentFailureCrossResource,
+	)
 	if !stripped {
 		return nil, false
 	}
@@ -184,17 +203,23 @@ func responseErrorBody(response *httpclient.Response, err error) []byte {
 	return nil
 }
 
-// isInvalidEncryptedContentError accepts the regular OpenAI error envelope
-// and gateway envelopes that put a JSON error object inside message.
-func isInvalidEncryptedContentError(err error, response *httpclient.Response) bool {
+// detectEncryptedContentFailure accepts the regular OpenAI error envelope and
+// gateway envelopes that put a JSON error object inside message. Azure can
+// report the same account-bound item failure without a provider error code,
+// using a "different Azure OpenAI resource" message instead.
+func detectEncryptedContentFailure(err error, response *httpclient.Response) encryptedContentFailure {
 	body := responseErrorBody(response, err)
 	if len(bytes.TrimSpace(body)) == 0 {
-		return false
+		return encryptedContentFailureNone
 	}
 
 	// Walk the small number of envelopes used by Responses gateways. ModelHub
 	// commonly returns {"code":-4201,"message":"<JSON error>"}.
 	originalBody := body
+	if strings.Contains(strings.ToLower(string(originalBody)), crossResourceItemErrorFragment) {
+		return encryptedContentFailureCrossResource
+	}
+
 	hasGatewayCode := false
 	for depth := 0; depth < 4; depth++ {
 		if gjson.GetBytes(body, "code").Int() == -4201 {
@@ -203,7 +228,7 @@ func isInvalidEncryptedContentError(err error, response *httpclient.Response) bo
 
 		for _, path := range []string{"error.code", "message.error.code", "code"} {
 			if strings.EqualFold(strings.TrimSpace(gjson.GetBytes(body, path).String()), invalidEncryptedContentCode) {
-				return true
+				return encryptedContentFailureInvalid
 			}
 		}
 
@@ -220,14 +245,19 @@ func isInvalidEncryptedContentError(err error, response *httpclient.Response) bo
 
 	// A few gateways preserve only their numeric error code at the outer layer
 	// and leave the provider code in plain text. Keep this fallback narrow.
-	return hasGatewayCode && strings.Contains(string(originalBody), invalidEncryptedContentCode)
+	if hasGatewayCode && strings.Contains(string(originalBody), invalidEncryptedContentCode) {
+		return encryptedContentFailureInvalid
+	}
+
+	return encryptedContentFailureNone
 }
 
-// stripEncryptedReasoningContent removes account-bound encrypted blobs while
-// retaining visible messages and reasoning summaries. The supported wire
-// shapes are a reasoning item's encrypted_content field and encrypted_content
-// variants nested in function_call_output.output.
-func stripEncryptedReasoningContent(body []byte) ([]byte, bool) {
+// stripAccountBoundResponseItems removes account-bound encrypted blobs while
+// retaining visible messages, reasoning summaries, and tool call linkage. A
+// cross-resource failure also requires removing server-generated item IDs;
+// call_id is intentionally preserved because it links function calls to their
+// outputs and is not an item lookup key.
+func stripAccountBoundResponseItems(body []byte, stripItemIDs bool) ([]byte, bool) {
 	if len(body) == 0 || !gjson.ValidBytes(body) {
 		return body, false
 	}
@@ -241,13 +271,21 @@ func stripEncryptedReasoningContent(body []byte) ([]byte, bool) {
 	stripped := false
 
 	for i, item := range input.Array() {
-		if strings.EqualFold(item.Get("type").String(), "reasoning") {
-			encrypted := item.Get("encrypted_content")
-			if encrypted.Exists() && encrypted.Type != gjson.Null {
-				if next, err := sjson.DeleteBytes(out, fmt.Sprintf("input.%d.encrypted_content", i)); err == nil {
+		if stripItemIDs {
+			id := item.Get("id")
+			if id.Exists() && id.Type != gjson.Null {
+				if next, err := sjson.DeleteBytes(out, fmt.Sprintf("input.%d.id", i)); err == nil {
 					out = next
 					stripped = true
 				}
+			}
+		}
+
+		encrypted := item.Get("encrypted_content")
+		if encrypted.Exists() && encrypted.Type != gjson.Null {
+			if next, err := sjson.DeleteBytes(out, fmt.Sprintf("input.%d.encrypted_content", i)); err == nil {
+				out = next
+				stripped = true
 			}
 		}
 

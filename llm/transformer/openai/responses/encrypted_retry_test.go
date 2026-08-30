@@ -24,7 +24,7 @@ func TestIsInvalidEncryptedContentError(t *testing.T) {
 		StatusCode: http.StatusBadRequest,
 		Body:       []byte(`{"error":{"code":"invalid_encrypted_content"}}`),
 	}
-	require.True(t, isInvalidEncryptedContentError(native, nil))
+	require.Equal(t, encryptedContentFailureInvalid, detectEncryptedContentFailure(native, nil))
 
 	// Some gateways put the provider JSON in a string-valued top-level message.
 	wrapper := map[string]any{
@@ -33,18 +33,25 @@ func TestIsInvalidEncryptedContentError(t *testing.T) {
 	}
 	wrapperBody, err := json.Marshal(wrapper)
 	require.NoError(t, err)
-	require.True(t, isInvalidEncryptedContentError(&httpclient.Error{
+	require.Equal(t, encryptedContentFailureInvalid, detectEncryptedContentFailure(&httpclient.Error{
 		StatusCode: http.StatusBadRequest,
 		Body:       wrapperBody,
 	}, nil))
-	require.True(t, isInvalidEncryptedContentError(&httpclient.Error{
+	require.Equal(t, encryptedContentFailureInvalid, detectEncryptedContentFailure(&httpclient.Error{
 		StatusCode: http.StatusBadRequest,
 		Body:       []byte(`{"code":-4201,"message":"invalid_encrypted_content: could not be verified"}`),
 	}, nil))
 
-	require.False(t, isInvalidEncryptedContentError(&httpclient.Error{
+	require.Equal(t, encryptedContentFailureNone, detectEncryptedContentFailure(&httpclient.Error{
 		StatusCode: http.StatusBadRequest,
 		Body:       []byte(`{"error":{"code":"invalid_request_error"}}`),
+	}, nil))
+}
+
+func TestDetectEncryptedContentFailureCrossResource(t *testing.T) {
+	require.Equal(t, encryptedContentFailureCrossResource, detectEncryptedContentFailure(&httpclient.Error{
+		StatusCode: http.StatusBadRequest,
+		Body:       []byte(`{"code":-4201,"message":"{\"error\":{\"message\":\"The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it.\",\"type\":\"invalid_request_error\",\"code\":null}}"}`),
 	}, nil))
 }
 
@@ -62,7 +69,7 @@ func TestStripEncryptedReasoningContent(t *testing.T) {
 		]
 	}`)
 
-	stripped, ok := stripEncryptedReasoningContent(input)
+	stripped, ok := stripAccountBoundResponseItems(input, false)
 	require.True(t, ok)
 	require.Equal(t, input, []byte(`{
 		"model":"gpt-5.6",
@@ -77,6 +84,7 @@ func TestStripEncryptedReasoningContent(t *testing.T) {
 		]
 	}`), "strip must not mutate the original request")
 	require.False(t, gjson.GetBytes(stripped, "input.1.encrypted_content").Exists())
+	require.Equal(t, "rs_1", gjson.GetBytes(stripped, "input.1.id").String())
 	require.Equal(t, "visible summary", gjson.GetBytes(stripped, "input.1.summary.0.text").String())
 	require.Equal(t, "keep me", gjson.GetBytes(stripped, "input.0.content.0.text").String())
 	require.Equal(t, float64(2), gjson.GetBytes(stripped, "input.2.output.#").Float())
@@ -94,10 +102,43 @@ func TestStripEncryptedReasoningContentNoOp(t *testing.T) {
 	}
 
 	for _, input := range cases {
-		stripped, ok := stripEncryptedReasoningContent(input)
+		stripped, ok := stripAccountBoundResponseItems(input, false)
 		require.False(t, ok)
 		require.Equal(t, input, stripped)
 	}
+}
+
+func TestPrepareEncryptedContentRetryRequestCrossResource(t *testing.T) {
+	request := &httpclient.Request{
+		Method:                       http.MethodPost,
+		APIFormat:                    llm.APIFormatOpenAIResponse.String(),
+		RetryInvalidEncryptedContent: true,
+		Body: []byte(`{"input":[
+			{"id":"msg_1","type":"message","role":"user","content":[{"type":"input_text","text":"keep me"}]},
+			{"id":"rs_1","type":"reasoning","summary":[{"type":"summary_text","text":"keep summary"}],"encrypted_content":"gAAAA_reasoning"},
+			{"id":"fc_1","type":"function_call","call_id":"call_1","name":"tool","arguments":"{}"},
+			{"id":"fco_1","type":"function_call_output","call_id":"call_1","output":[{"type":"encrypted_content","encrypted_content":"gAAAA_output"},{"type":"input_text","text":"keep output"}]}
+		]}`),
+	}
+	err := &httpclient.Error{
+		StatusCode: http.StatusBadRequest,
+		Body:       []byte(`{"error":{"message":"The requested item was created under a different Azure OpenAI resource. Use the same resource that created the item to access it.","code":null}}`),
+	}
+
+	retry, ok := PrepareEncryptedContentRetryRequest(request, nil, err)
+	require.True(t, ok)
+	require.Equal(t, "rs_1", gjson.GetBytes(request.Body, "input.1.id").String())
+	require.Equal(t, "gAAAA_reasoning", gjson.GetBytes(request.Body, "input.1.encrypted_content").String())
+	require.NotContains(t, string(retry.Body), "gAAAA")
+	require.False(t, gjson.GetBytes(retry.Body, "input.0.id").Exists())
+	require.False(t, gjson.GetBytes(retry.Body, "input.1.id").Exists())
+	require.False(t, gjson.GetBytes(retry.Body, "input.2.id").Exists())
+	require.False(t, gjson.GetBytes(retry.Body, "input.3.id").Exists())
+	require.Equal(t, "keep me", gjson.GetBytes(retry.Body, "input.0.content.0.text").String())
+	require.Equal(t, "keep summary", gjson.GetBytes(retry.Body, "input.1.summary.0.text").String())
+	require.Equal(t, "call_1", gjson.GetBytes(retry.Body, "input.2.call_id").String())
+	require.Equal(t, "call_1", gjson.GetBytes(retry.Body, "input.3.call_id").String())
+	require.Equal(t, "keep output", gjson.GetBytes(retry.Body, "input.3.output.0.text").String())
 }
 
 func TestPrepareEncryptedContentRetryRequest(t *testing.T) {
