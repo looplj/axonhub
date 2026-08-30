@@ -552,13 +552,7 @@ func urlPathContainsSegment(rawURL, segment string) bool {
 		return false
 	}
 
-	for _, pathSegment := range strings.Split(strings.Trim(parsed.Path, "/"), "/") {
-		if pathSegment == segment {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(strings.Split(strings.Trim(parsed.Path, "/"), "/"), segment)
 }
 
 //nolint:maintidx // Checked.
