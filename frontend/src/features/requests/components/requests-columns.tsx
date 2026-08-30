@@ -148,10 +148,15 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const inboundFormat = request.format;
         const outboundFormat = executions[0]?.format;
         const passThroughApplied = executions.some((execution) => execution.passThroughApplied);
-        const outboundProtocolMatches = Boolean(outboundFormat && inboundFormat && outboundFormat === inboundFormat);
-        const outboundProtocolTooltip = outboundFormat
-          ? t('requests.tooltips.outboundProtocol', { protocol: outboundFormat })
-          : t('requests.tooltips.outboundProtocolUnknown');
+        // Orange is reserved for a confirmed mismatch: a missing format on either
+        // side is "unknown" and stays muted.
+        const formatsComparable = Boolean(inboundFormat && outboundFormat);
+        const outboundProtocolMatches = formatsComparable && outboundFormat === inboundFormat;
+        const outboundProtocolTooltip = !formatsComparable
+          ? t('requests.tooltips.outboundProtocolUnknown')
+          : outboundProtocolMatches
+            ? t('requests.tooltips.outboundProtocolMatching', { protocol: outboundFormat })
+            : t('requests.tooltips.outboundProtocolConverted', { protocol: outboundFormat });
 
         const modelLabel =
           executionModelIds.length > 0 ? (
@@ -191,7 +196,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                 <TooltipTrigger asChild>
                   <span
                     className={`inline-flex h-5 w-5 items-center justify-center ${
-                      !outboundFormat
+                      !formatsComparable
                         ? 'text-muted-foreground/45'
                         : outboundProtocolMatches
                           ? 'text-emerald-700 dark:text-emerald-300'
