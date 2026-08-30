@@ -178,6 +178,8 @@
   "system.retry.nonStreamResponseTimeoutSeconds.description": "Maximum seconds to wait for a non-streaming response to complete (0-600s). Set to 0 to disable.",
   "system.retry.emptyResponseDetection.label": "Empty Response Detection",
   "system.retry.emptyResponseDetection.description": "When enabled, the system pre-reads stream events to detect empty responses (no content generated). If detected, the empty response is treated as a failed attempt for subsequent retry handling.",
+  "system.retry.invalidEncryptedContent.label": "Retry Invalid Encrypted Content",
+  "system.retry.invalidEncryptedContent.description": "When enabled, and global retry is enabled, Responses requests that fail because encrypted reasoning content cannot be verified will remove the opaque fields and retry once on the same upstream.",
   "system.retry.upstreamErrorPolicy.label": "Upstream Error Display",
   "system.retry.upstreamErrorPolicy.description": "Control whether API users see raw provider errors. Request traces still keep the original error for administrators.",
   "system.retry.upstreamErrorPolicy.placeholder": "Select display mode",

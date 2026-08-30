@@ -53,6 +53,11 @@ type Request struct {
 	// This supports any type of value for flexibility.
 	TransformerMetadata map[string]any `json:"-"`
 
+	// RetryInvalidEncryptedContent controls the Responses API encrypted-content
+	// recovery for this request. The pipeline sets it from the system retry
+	// policy; a zero value disables the recovery for direct executor callers.
+	RetryInvalidEncryptedContent bool `json:"-"`
+
 	// SkipInboundQueryMerge when set to true, prevents query parameters from the original
 	// inbound request from being merged into this request during MergeInboundRequest.
 	SkipInboundQueryMerge bool `json:"-"`

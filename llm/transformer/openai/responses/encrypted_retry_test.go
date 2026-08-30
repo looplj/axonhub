@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"sync"
 	"testing"
 
@@ -101,10 +102,16 @@ func TestStripEncryptedReasoningContentNoOp(t *testing.T) {
 
 func TestPrepareEncryptedContentRetryRequest(t *testing.T) {
 	request := &httpclient.Request{
-		Method:    http.MethodPost,
-		APIFormat: llm.APIFormatOpenAIResponse.String(),
-		Body:      []byte(`{"input":[{"type":"reasoning","encrypted_content":"gAAAA"}]}`),
-		JSONBody:  []byte(`{"input":[{"type":"reasoning","encrypted_content":"gAAAA"}]}`),
+		Method:                       http.MethodPost,
+		APIFormat:                    llm.APIFormatOpenAIResponse.String(),
+		RetryInvalidEncryptedContent: true,
+		Headers:                      make(http.Header),
+		Query:                        make(url.Values),
+		Metadata:                     map[string]string{"existing": "value"},
+		TransformerMetadata:          map[string]any{"existing": true},
+		Auth:                         &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body:                         []byte(`{"input":[{"type":"reasoning","encrypted_content":"gAAAA"}]}`),
+		JSONBody:                     []byte(`{"input":[{"type":"reasoning","encrypted_content":"gAAAA"}]}`),
 	}
 	err := &httpclient.Error{
 		StatusCode: http.StatusBadRequest,
@@ -118,11 +125,44 @@ func TestPrepareEncryptedContentRetryRequest(t *testing.T) {
 	require.NotContains(t, string(retry.Body), "gAAAA")
 	require.NotContains(t, string(retry.JSONBody), "gAAAA")
 
+	retry.Headers.Set("X-Retry-Only", "true")
+	retry.Query.Set("retry_only", "true")
+	retry.Metadata["retry_only"] = "true"
+	retry.TransformerMetadata["retry_only"] = true
+	retry.Auth.APIKey = "retry-only"
+	require.Empty(t, request.Headers.Get("X-Retry-Only"))
+	require.Empty(t, request.Query.Get("retry_only"))
+	require.Empty(t, request.Metadata["retry_only"])
+	require.Nil(t, request.TransformerMetadata["retry_only"])
+	require.Equal(t, "test-key", request.Auth.APIKey)
+
+	disabled := *request
+	disabled.RetryInvalidEncryptedContent = false
+	_, ok = PrepareEncryptedContentRetryRequest(&disabled, nil, err)
+	require.False(t, ok)
+
 	_, ok = PrepareEncryptedContentRetryRequest(request, nil, &httpclient.Error{
 		StatusCode: http.StatusBadRequest,
 		Body:       []byte(`{"error":{"code":"rate_limit_exceeded"}}`),
 	})
 	require.False(t, ok)
+}
+
+func TestEncryptedContentRetryExecutorDoesNotRetryWhenDisabled(t *testing.T) {
+	stub := &encryptedRetryExecutorStub{
+		streamErrs: []error{&httpclient.Error{
+			StatusCode: http.StatusBadRequest,
+			Body:       []byte(`{"error":{"code":"invalid_encrypted_content"}}`),
+		}},
+	}
+
+	executor := NewEncryptedContentRetryExecutor(stub)
+	_, err := executor.DoStream(context.Background(), &httpclient.Request{
+		APIFormat: llm.APIFormatOpenAIResponse.String(),
+		Body:      []byte(`{"input":[{"type":"reasoning","encrypted_content":"gAAAA"}]}`),
+	})
+	require.Error(t, err)
+	require.Len(t, stub.streamRequests, 1)
 }
 
 func TestEncryptedContentRetryExecutorRetriesStreamingRequest(t *testing.T) {
@@ -142,9 +182,10 @@ func TestEncryptedContentRetryExecutorRetriesStreamingRequest(t *testing.T) {
 
 	executor := NewEncryptedContentRetryExecutor(stub)
 	stream, err := executor.DoStream(context.Background(), &httpclient.Request{
-		Method:    http.MethodPost,
-		APIFormat: llm.APIFormatOpenAIResponse.String(),
-		Body:      firstBody,
+		Method:                       http.MethodPost,
+		APIFormat:                    llm.APIFormatOpenAIResponse.String(),
+		RetryInvalidEncryptedContent: true,
+		Body:                         firstBody,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, stream)
@@ -171,10 +212,11 @@ func TestEncryptedContentRetryExecutorRetriesNonStreamingRequest(t *testing.T) {
 
 	executor := NewEncryptedContentRetryExecutor(stub)
 	response, err := executor.Do(context.Background(), &httpclient.Request{
-		Method:      http.MethodPost,
-		RequestType: llm.RequestTypeChat.String(),
-		APIFormat:   llm.APIFormatOpenAIResponse.String(),
-		Body:        []byte(`{"input":[{"type":"reasoning","encrypted_content":"gAAAA"}]}`),
+		Method:                       http.MethodPost,
+		RequestType:                  llm.RequestTypeChat.String(),
+		APIFormat:                    llm.APIFormatOpenAIResponse.String(),
+		RetryInvalidEncryptedContent: true,
+		Body:                         []byte(`{"input":[{"type":"reasoning","encrypted_content":"gAAAA"}]}`),
 	})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, response.StatusCode)

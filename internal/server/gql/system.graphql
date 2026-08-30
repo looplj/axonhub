@@ -129,6 +129,7 @@ type RetryPolicy {
   enabled: Boolean!
   autoDisableChannel: AutoDisableChannel!
   emptyResponseDetection: Boolean!
+  retryInvalidEncryptedContent: Boolean!
   upstreamErrorPolicy: UpstreamErrorPolicy!
 }
 
@@ -163,6 +164,7 @@ input UpdateRetryPolicyInput {
   enabled: Boolean
   autoDisableChannel: AutoDisableChannelInput
   emptyResponseDetection: Boolean
+  retryInvalidEncryptedContent: Boolean
   upstreamErrorPolicy: UpstreamErrorPolicyInput
 }
 

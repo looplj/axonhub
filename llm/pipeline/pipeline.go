@@ -81,6 +81,14 @@ func WithResponseTimeouts(streamFirstEventTimeout, nonStreamTimeout time.Duratio
 	}
 }
 
+// WithInvalidEncryptedContentRetry controls the one-shot Responses API
+// recovery for account-bound encrypted reasoning content.
+func WithInvalidEncryptedContentRetry(enabled bool) Option {
+	return func(p *pipeline) {
+		p.retryInvalidEncryptedContent = enabled
+	}
+}
+
 // Factory creates pipeline instances.
 type Factory struct {
 	Executor Executor
@@ -103,6 +111,9 @@ func (f *Factory) Pipeline(
 		Executor: f.Executor,
 		Inbound:  inbound,
 		Outbound: outbound,
+		// Preserve the pre-option behavior for callers that build a pipeline
+		// directly; AxonHub's system policy can explicitly override this.
+		retryInvalidEncryptedContent: true,
 	}
 
 	// Apply options
@@ -115,16 +126,17 @@ func (f *Factory) Pipeline(
 
 // pipeline implements the main pipeline logic with retry capabilities.
 type pipeline struct {
-	Executor                Executor
-	Inbound                 transformer.Inbound
-	Outbound                transformer.Outbound
-	middlewares             []Middleware
-	maxChannelRetries       int
-	maxSameChannelRetries   int
-	retryDelay              time.Duration
-	emptyResponseDetection  bool
-	streamFirstEventTimeout time.Duration
-	nonStreamTimeout        time.Duration
+	Executor                     Executor
+	Inbound                      transformer.Inbound
+	Outbound                     transformer.Outbound
+	middlewares                  []Middleware
+	maxChannelRetries            int
+	maxSameChannelRetries        int
+	retryDelay                   time.Duration
+	emptyResponseDetection       bool
+	streamFirstEventTimeout      time.Duration
+	nonStreamTimeout             time.Duration
+	retryInvalidEncryptedContent bool
 }
 
 type Result struct {
@@ -380,6 +392,7 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 
 		return nil, fmt.Errorf("failed to apply raw request middlewares: %w", err)
 	}
+	httpReq.RetryInvalidEncryptedContent = p.retryInvalidEncryptedContent
 
 	executor := p.Executor
 	if c, ok := p.Outbound.(ChannelCustomizedExecutor); ok {

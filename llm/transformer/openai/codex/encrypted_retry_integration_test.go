@@ -18,9 +18,10 @@ func TestCodexExecutorRetriesInvalidEncryptedContent(t *testing.T) {
 	stub := &codexEncryptedRetryStub{}
 	executor := &codexExecutor{inner: stub, httpExecutor: stub}
 	request := &httpclient.Request{
-		Method:    http.MethodPost,
-		APIFormat: llm.APIFormatOpenAIResponse.String(),
-		Body:      []byte(`{"input":[{"type":"reasoning","encrypted_content":"gAAAA"}]}`),
+		Method:                       http.MethodPost,
+		APIFormat:                    llm.APIFormatOpenAIResponse.String(),
+		RetryInvalidEncryptedContent: true,
+		Body:                         []byte(`{"input":[{"type":"reasoning","encrypted_content":"gAAAA"}]}`),
 	}
 
 	stream, err := executor.DoStream(context.Background(), request)

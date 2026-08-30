@@ -5,7 +5,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
+	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -75,14 +78,15 @@ func (e *encryptedContentRetryExecutor) DoStream(ctx context.Context, request *h
 
 // PrepareEncryptedContentRetryRequest returns a request copy with opaque,
 // account-bound encrypted content removed when response/err identifies a 400
-// invalid_encrypted_content failure. Callers should issue at most one retry
-// with the returned request.
+// invalid_encrypted_content failure. The request's
+// RetryInvalidEncryptedContent flag must be enabled. Callers should issue at
+// most one retry with the returned request.
 func PrepareEncryptedContentRetryRequest(
 	request *httpclient.Request,
 	response *httpclient.Response,
 	err error,
 ) (*httpclient.Request, bool) {
-	if request == nil || !isResponsesRequest(request) {
+	if request == nil || !request.RetryInvalidEncryptedContent || !isResponsesRequest(request) {
 		return nil, false
 	}
 
@@ -95,13 +99,41 @@ func PrepareEncryptedContentRetryRequest(
 		return nil, false
 	}
 
-	retryRequest := *request
+	retryRequest := cloneRequest(request)
 	retryRequest.Body = strippedBody
 	if len(request.JSONBody) > 0 {
 		retryRequest.JSONBody = append([]byte(nil), strippedBody...)
 	}
 
-	return &retryRequest, true
+	return retryRequest, true
+}
+
+// cloneRequest makes a request copy suitable for a second executor attempt.
+// Request contains maps and pointers that must not be shared with the first
+// attempt: HTTP request construction and provider executors may mutate them.
+func cloneRequest(request *httpclient.Request) *httpclient.Request {
+	if request == nil {
+		return nil
+	}
+
+	cloned := *request
+	cloned.Headers = request.Headers.Clone()
+	if request.Query != nil {
+		cloned.Query = make(url.Values, len(request.Query))
+		for key, values := range request.Query {
+			cloned.Query[key] = slices.Clone(values)
+		}
+	}
+	cloned.Body = slices.Clone(request.Body)
+	cloned.JSONBody = slices.Clone(request.JSONBody)
+	cloned.Metadata = maps.Clone(request.Metadata)
+	cloned.TransformerMetadata = maps.Clone(request.TransformerMetadata)
+	if request.Auth != nil {
+		auth := *request.Auth
+		cloned.Auth = &auth
+	}
+
+	return &cloned
 }
 
 func isResponsesRequest(request *httpclient.Request) bool {
