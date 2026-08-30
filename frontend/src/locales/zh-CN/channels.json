@@ -572,6 +572,7 @@
   "channels.dialogs.bulkOrdering.saveButton": "保存排序",
   "channels.dialogs.bulkOrdering.orderingWeight": "权重",
   "channels.dialogs.bulkOrdering.noChannels": "没有可用于排序的渠道",
+  "channels.dialogs.bulkOrdering.errors.invalidWeight": "权重必须是 {{min}} 到 {{max}} 之间的整数。",
   "channels.dialogs.bulkArchive.title": "批量归档渠道",
   "channels.dialogs.bulkArchive.description": "确定要归档所选 {{count}} 条渠道吗？归档的渠道默认不会出现在列表中。",
   "channels.dialogs.bulkArchive.warning": "此操作会将所有选中的渠道从常规视图中隐藏。你仍然可以通过筛选归档状态来查看它们。",
