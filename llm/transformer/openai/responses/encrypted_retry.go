@@ -35,8 +35,8 @@ const (
 // encryptedContentRetryExecutor retries a Responses request once after an
 // upstream reports that an account-bound encrypted item cannot be verified.
 // The retry uses the same underlying executor and removes opaque encrypted
-// fields plus resource-bound item IDs when the provider reports a resource
-// mismatch.
+// fields plus resource-bound item and call IDs when the provider reports a
+// resource mismatch.
 type encryptedContentRetryExecutor struct {
 	inner pipeline.Executor
 }
@@ -254,10 +254,10 @@ func detectEncryptedContentFailure(err error, response *httpclient.Response) enc
 
 // stripAccountBoundResponseItems removes account-bound encrypted blobs while
 // retaining visible messages, reasoning summaries, and tool call linkage. A
-// cross-resource failure also requires removing server-generated item IDs;
-// call_id is intentionally preserved because it links function calls to their
-// outputs and is not an item lookup key.
-func stripAccountBoundResponseItems(body []byte, stripItemIDs bool) ([]byte, bool) {
+// cross-resource failure also requires replacing server-generated item IDs and
+// call IDs. Each call_id is remapped consistently so function calls remain
+// linked to their outputs without retaining an upstream resource reference.
+func stripAccountBoundResponseItems(body []byte, stripResourceReferences bool) ([]byte, bool) {
 	if len(body) == 0 || !gjson.ValidBytes(body) {
 		return body, false
 	}
@@ -269,12 +269,26 @@ func stripAccountBoundResponseItems(body []byte, stripItemIDs bool) ([]byte, boo
 
 	out := body
 	stripped := false
+	callIDMap := make(map[string]string)
 
 	for i, item := range input.Array() {
-		if stripItemIDs {
+		if stripResourceReferences {
 			id := item.Get("id")
 			if id.Exists() && id.Type != gjson.Null {
 				if next, err := sjson.DeleteBytes(out, fmt.Sprintf("input.%d.id", i)); err == nil {
+					out = next
+					stripped = true
+				}
+			}
+
+			callID := strings.TrimSpace(item.Get("call_id").String())
+			if callID != "" {
+				replacement, ok := callIDMap[callID]
+				if !ok {
+					replacement = fmt.Sprintf("call_recovered_%d", len(callIDMap)+1)
+					callIDMap[callID] = replacement
+				}
+				if next, err := sjson.SetBytes(out, fmt.Sprintf("input.%d.call_id", i), replacement); err == nil {
 					out = next
 					stripped = true
 				}

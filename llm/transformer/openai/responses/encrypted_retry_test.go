@@ -136,8 +136,10 @@ func TestPrepareEncryptedContentRetryRequestCrossResource(t *testing.T) {
 	require.False(t, gjson.GetBytes(retry.Body, "input.3.id").Exists())
 	require.Equal(t, "keep me", gjson.GetBytes(retry.Body, "input.0.content.0.text").String())
 	require.Equal(t, "keep summary", gjson.GetBytes(retry.Body, "input.1.summary.0.text").String())
-	require.Equal(t, "call_1", gjson.GetBytes(retry.Body, "input.2.call_id").String())
-	require.Equal(t, "call_1", gjson.GetBytes(retry.Body, "input.3.call_id").String())
+	recoveredCallID := gjson.GetBytes(retry.Body, "input.2.call_id").String()
+	require.Equal(t, "call_recovered_1", recoveredCallID)
+	require.NotEqual(t, "call_1", recoveredCallID)
+	require.Equal(t, recoveredCallID, gjson.GetBytes(retry.Body, "input.3.call_id").String())
 	require.Equal(t, "keep output", gjson.GetBytes(retry.Body, "input.3.output.0.text").String())
 }
 
