@@ -28,6 +28,7 @@ const (
 	responsesWebSocketIdleTimeout      = 5 * time.Minute
 	responsesWebSocketPingInterval     = responsesWebSocketIdleTimeout / 2
 	responsesWebSocketPingWriteTimeout = 10 * time.Second
+	responsesWebSocketWriteTimeout     = 10 * time.Second
 )
 
 type responsesWebSocketProcessFunc func(context.Context, *httpclient.Request) (orchestrator.ChatCompletionResult, error)
@@ -375,14 +376,14 @@ func writeResponsesWebSocketWarmup(conn *websocket.Conn, warmup *responsesWebSoc
 		response["previous_response_id"] = warmup.PreviousResponseID
 	}
 
-	if err := conn.WriteJSON(gin.H{
+	if err := writeResponsesWebSocketJSON(conn, gin.H{
 		"type":            "response.created",
 		"sequence_number": 0,
 		"response":        response,
 	}); err != nil {
 		return err
 	}
-	if err := conn.WriteJSON(gin.H{
+	if err := writeResponsesWebSocketJSON(conn, gin.H{
 		"type":            "response.in_progress",
 		"sequence_number": 1,
 		"response":        response,
@@ -391,7 +392,7 @@ func writeResponsesWebSocketWarmup(conn *websocket.Conn, warmup *responsesWebSoc
 	}
 
 	response["status"] = "completed"
-	return conn.WriteJSON(gin.H{
+	return writeResponsesWebSocketJSON(conn, gin.H{
 		"type":            "response.completed",
 		"sequence_number": 2,
 		"response":        response,
@@ -432,7 +433,7 @@ func writeResponsesWebSocketResult(
 			if orchestrator.IsTerminalStreamEvent(event) {
 				terminalSeen = true
 			}
-			if err := conn.WriteMessage(websocket.TextMessage, event.Data); err != nil {
+			if err := writeResponsesWebSocketMessage(conn, websocket.TextMessage, event.Data); err != nil {
 				return err
 			}
 		}
@@ -451,7 +452,7 @@ func writeResponsesWebSocketResult(
 		}
 		response = result.ChatCompletion.Body
 
-		return conn.WriteJSON(gin.H{
+		return writeResponsesWebSocketJSON(conn, gin.H{
 			"type":            "response.completed",
 			"sequence_number": 0,
 			"response":        response,
@@ -518,9 +519,25 @@ func writeResponsesWebSocketError(conn *websocket.Conn, httpErr *httpclient.Erro
 		}
 	}
 
-	return conn.WriteJSON(gin.H{
+	return writeResponsesWebSocketJSON(conn, gin.H{
 		"type":   "error",
 		"status": status,
 		"error":  detail,
 	})
+}
+
+func writeResponsesWebSocketMessage(conn *websocket.Conn, messageType int, data []byte) error {
+	if err := conn.SetWriteDeadline(time.Now().Add(responsesWebSocketWriteTimeout)); err != nil {
+		return err
+	}
+
+	return conn.WriteMessage(messageType, data)
+}
+
+func writeResponsesWebSocketJSON(conn *websocket.Conn, value any) error {
+	if err := conn.SetWriteDeadline(time.Now().Add(responsesWebSocketWriteTimeout)); err != nil {
+		return err
+	}
+
+	return conn.WriteJSON(value)
 }
