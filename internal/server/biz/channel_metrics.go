@@ -564,7 +564,14 @@ type PerformanceRecord struct {
 // Calculate calculates performance metrics from collected data.
 // It enforces minimum latency to prevent extreme TPS calculations.
 func (m *PerformanceRecord) Calculate() (firstTokenLatencyMs int64, requestLatencyMs int64, tokensPerSecond float64) {
-	totalDuration := m.EndTime.Sub(m.StartTime)
+	endTime := m.EndTime
+	if endTime.IsZero() {
+		// Streaming metrics can be calculated while the stream is being
+		// finalized, before a terminal event has marked the record complete.
+		endTime = time.Now()
+	}
+
+	totalDuration := endTime.Sub(m.StartTime)
 	requestLatencyMs = totalDuration.Milliseconds()
 
 	// Calculate first token latency
