@@ -1,16 +1,20 @@
 package llm
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 )
 
-// Tool represents a function tool.
+// Tool represents a callable or provider-native model tool.
 type Tool struct {
 	// Type is the type of the tool.
-	// Any of "function", "image_generation", "web_search", or "google" (for Google-specific tools).
+	// Common values include "function", provider-native search/generation types,
+	// and the Responses-specific "responses_custom_tool",
+	// "responses_tool_search", and "responses_opaque_tool" variants.
 	Type string `json:"type"`
 
 	// Function is the function definition, will be used when Type is "function".
@@ -27,23 +31,102 @@ type Tool struct {
 	Google *GoogleTools `json:"google,omitempty"`
 
 	// ResponseCustomTool is the custom tool definition for OpenAI Responses API.
-	// Will be used when Type is "custom".
+	// Will be used when Type is "responses_custom_tool".
 	ResponseCustomTool *ResponseCustomTool `json:"response_custom_tool,omitempty"`
 
-	// CacheControl is used for provider-specific cache control (e.g., Anthropic).
-	// This field is not serialized in JSON.
+	// ResponseToolSearch is the client-executed tool search definition for OpenAI Responses API.
+	// Will be used when Type is "responses_tool_search".
+	ResponseToolSearch *ResponseToolSearch `json:"response_tool_search,omitempty"`
+
+	// ResponseOpaqueTool identifies a Responses tool that is retained for
+	// same-protocol replay but cannot be translated without an executor/codec.
+	// Will be used when Type is "responses_opaque_tool".
+	ResponseOpaqueTool *ResponseOpaqueTool `json:"response_opaque_tool,omitempty"`
+
+	// CacheControl is serialized in the unified LLM JSON; provider transformers
+	// decide whether to emit it upstream.
 	CacheControl *CacheControl `json:"cache_control,omitempty"`
+
+	// ResponsesOrigin marks tools whose original Responses declaration is replayed
+	// from a raw top-level or position-sensitive input fragment.
+	ResponsesOrigin string `json:"-"`
+
+	// ResponsesSourceType retains the original type of a client-executed,
+	// function-like Responses tool after it is promoted to the common function IR.
+	ResponsesSourceType string `json:"-"`
+
+	// ResponsesRawID identifies the exact raw declaration that produced this tool.
+	// It prevents duplicate declarations with equal common-IR fields from being
+	// confused during same-protocol replay.
+	ResponsesRawID string `json:"-"`
+
+	// ResponsesOriginCallID associates tools promoted from a tool_search_output
+	// item with the call whose output declared them.
+	ResponsesOriginCallID string `json:"-"`
+
+	// ResponsesNamespaceDescription preserves the description of the Responses
+	// namespace wrapper that contained this flattened member tool.
+	ResponsesNamespaceDescription string `json:"-"`
 }
 
 // Function represents a function definition.
 type Function struct {
-	Name        string          `json:"name"`
+	Name string `json:"name"`
+	// Namespace is populated when a Responses namespace function is flattened for other APIs.
+	Namespace   string          `json:"namespace,omitempty"`
 	Description string          `json:"description,omitempty"`
 	Parameters  json.RawMessage `json:"parameters,omitempty"`
 	// ParametersJsonSchema is the newer Gemini format that supports full JSON Schema Draft 2020-12
 	// including const, enum, and other advanced features. This field is mutually exclusive with Parameters.
 	ParametersJsonSchema json.RawMessage `json:"parametersJsonSchema,omitempty"`
 	Strict               *bool           `json:"strict,omitempty"`
+	// DeferLoading marks a Responses function as discoverable through tool search
+	// instead of exposing it in the model's initial callable catalog.
+	DeferLoading bool `json:"defer_loading,omitempty"`
+}
+
+const namespaceFunctionSeparator = "__"
+
+// JoinNamespaceFunctionName returns the protocol's flattened namespace tool
+// name. An empty namespace denotes a plain function and is returned unchanged.
+func JoinNamespaceFunctionName(namespace, name string) string {
+	if namespace == "" {
+		return name
+	}
+	return namespace + namespaceFunctionSeparator + name
+}
+
+// NamespaceFunctionMemberName validates a flattened function name and returns
+// the name without its namespace prefix.
+func NamespaceFunctionMemberName(function Function) (string, error) {
+	return ValidateNamespaceFunctionName(function.Namespace, function.Name)
+}
+
+// ValidateNamespaceFunctionName checks that name is the exact flattening of
+// namespace and member and returns the member name.
+func ValidateNamespaceFunctionName(namespace, name string) (string, error) {
+	if namespace == "" {
+		return "", errors.New("invalid_namespace_tool: namespace is required")
+	}
+	member := strings.TrimPrefix(name, namespace+namespaceFunctionSeparator)
+	if name == "" || member == name || member == "" {
+		prefix := namespace + namespaceFunctionSeparator
+		return "", fmt.Errorf(
+			"invalid_namespace_tool: function %q in namespace %q must use flattened name %q",
+			name, namespace, prefix+"<name>",
+		)
+	}
+	return member, nil
+}
+
+// SplitNamespaceFunctionName splits a flattened name at its first namespace
+// separator. Names without a separator are invalid namespace functions.
+func SplitNamespaceFunctionName(name string) (namespace, member string, err error) {
+	namespace, member, found := strings.Cut(name, namespaceFunctionSeparator)
+	if !found || namespace == "" || member == "" {
+		return "", "", fmt.Errorf("invalid_namespace_tool: function %q must use flattened name <namespace>__<name>", name)
+	}
+	return namespace, member, nil
 }
 
 // FunctionCall represents a function call (deprecated).
@@ -65,14 +148,20 @@ type FunctionCall struct {
 type ToolCall struct {
 	ID string `json:"id,omitempty"`
 
-	// The type of the tool. Currently, only `function` is supported.
+	// Type identifies a function call or a Responses-specific custom/tool-search call.
+	// Supported common-model values are "function", "responses_custom_tool",
+	// and "responses_tool_search".
 	Type string `json:"type,omitempty"`
 
 	Function FunctionCall `json:"function"`
 
 	// ResponseCustomToolCall holds the custom tool call data for OpenAI Responses API.
-	// Will be used when Type is "custom".
+	// Will be used when Type is "responses_custom_tool".
 	ResponseCustomToolCall *ResponseCustomToolCall `json:"response_custom_tool_call,omitempty"`
+
+	// ResponseToolSearchCall holds a client-executed Responses tool search call.
+	// Will be used when Type is "responses_tool_search".
+	ResponseToolSearchCall *ResponseToolSearchCall `json:"response_tool_search_call,omitempty"`
 
 	// Index is the index of the tool call in the list of tool calls.
 	// Cannot use omitempty, as an index of 0 would be omitted, which can break consumers.
@@ -95,6 +184,13 @@ type ToolFunction struct {
 type ToolChoice struct {
 	ToolChoice      *string          `json:"tool_choice,omitempty"`
 	NamedToolChoice *NamedToolChoice `json:"named_tool_choice,omitempty"`
+	AllowedTools    []ToolOption     `json:"allowed_tools,omitempty"`
+	AllowedToolsSet bool             `json:"-"`
+}
+
+type ToolOption struct {
+	Type string `json:"type"`
+	Name string `json:"name,omitempty"`
 }
 
 type NamedToolChoice struct {
@@ -103,6 +199,17 @@ type NamedToolChoice struct {
 }
 
 func (t ToolChoice) MarshalJSON() ([]byte, error) {
+	if t.AllowedToolsSet {
+		type allowedToolChoice struct {
+			Mode  *string      `json:"mode,omitempty"`
+			Tools []ToolOption `json:"tools"`
+		}
+		tools := t.AllowedTools
+		if tools == nil {
+			tools = []ToolOption{}
+		}
+		return json.Marshal(allowedToolChoice{Mode: t.ToolChoice, Tools: tools})
+	}
 	if t.ToolChoice != nil {
 		return json.Marshal(t.ToolChoice)
 	}
@@ -115,7 +222,25 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 
 	err := json.Unmarshal(data, &str)
 	if err == nil {
-		t.ToolChoice = &str
+		*t = ToolChoice{ToolChoice: &str}
+		return nil
+	}
+
+	var allowed struct {
+		Mode  *string         `json:"mode,omitempty"`
+		Tools json.RawMessage `json:"tools"`
+	}
+	if err := json.Unmarshal(data, &allowed); err == nil && len(allowed.Tools) > 0 {
+		if bytes.Equal(bytes.TrimSpace(allowed.Tools), []byte("null")) {
+			return errors.New("invalid tool choice: tools must not be null")
+		}
+		var toolOptions []ToolOption
+		if err := json.Unmarshal(allowed.Tools, &toolOptions); err != nil {
+			return fmt.Errorf("invalid tool choice tools: %w", err)
+		}
+		*t = ToolChoice{
+			ToolChoice: allowed.Mode, AllowedTools: toolOptions, AllowedToolsSet: true,
+		}
 		return nil
 	}
 
@@ -123,7 +248,7 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 
 	err = json.Unmarshal(data, &named)
 	if err == nil {
-		t.NamedToolChoice = &named
+		*t = ToolChoice{NamedToolChoice: &named}
 		return nil
 	}
 
@@ -249,6 +374,9 @@ type WebSearchToolUserLocation struct {
 type ResponseCustomTool struct {
 	// Name is the name of the custom tool.
 	Name string `json:"name"`
+	// Namespace is an internal identity for custom tools declared inside a
+	// Responses namespace. Custom-tool calls do not serialize this field.
+	Namespace string `json:"-"`
 	// Description is the description of the custom tool.
 	Description string `json:"description,omitempty"`
 	// Format defines the grammar-based format for the custom tool's input.
@@ -272,6 +400,32 @@ type ResponseCustomToolCall struct {
 	CallID string `json:"call_id"`
 	// Name is the name of the custom tool being called.
 	Name string `json:"name"`
+	// Namespace is the namespace that owns the custom tool being called.
+	Namespace string `json:"namespace,omitempty"`
 	// Input is the freeform input for the custom tool call generated by the model.
 	Input string `json:"input"`
+}
+
+// ResponseToolSearch represents a client-executed Responses tool search definition.
+type ResponseToolSearch struct {
+	Execution   string          `json:"execution,omitempty"`
+	Description string          `json:"description,omitempty"`
+	Parameters  json.RawMessage `json:"parameters,omitempty"`
+}
+
+// ResponseToolSearchCall represents a client-executed Responses tool search call.
+type ResponseToolSearchCall struct {
+	CallID    string `json:"call_id"`
+	Execution string `json:"execution,omitempty"`
+	Arguments string `json:"arguments"`
+}
+
+// ResponseOpaqueTool describes an unsupported Responses tool without
+// inventing Chat execution semantics for it.
+type ResponseOpaqueTool struct {
+	SourceType  string `json:"source_type"`
+	Name        string `json:"name,omitempty"`
+	Namespace   string `json:"namespace,omitempty"`
+	Execution   string `json:"execution,omitempty"`
+	Description string `json:"description,omitempty"`
 }

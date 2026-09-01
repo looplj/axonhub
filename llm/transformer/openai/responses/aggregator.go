@@ -48,6 +48,7 @@ type aggregatedItem struct {
 	CallID           string
 	Name             string
 	Namespace        string
+	Execution        string
 	Arguments        *strings.Builder
 	EncryptedContent *string
 
@@ -274,6 +275,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			item.CallID = ev.Item.CallID
 			item.Name = ev.Item.Name
 			item.Namespace = ev.Item.Namespace
+			item.Execution = ev.Item.Execution
 			item.Arguments.WriteString(ev.Item.Arguments)
 			item.EncryptedContent = ev.Item.EncryptedContent
 			item.Input = ev.Item.Input
@@ -527,6 +529,18 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			}
 
 			if item != nil {
+				if ev.Item.CallID != "" {
+					item.CallID = ev.Item.CallID
+				}
+				if ev.Item.Name != "" {
+					item.Name = ev.Item.Name
+				}
+				if ev.Item.Namespace != "" {
+					item.Namespace = ev.Item.Namespace
+				}
+				if ev.Item.Execution != "" {
+					item.Execution = ev.Item.Execution
+				}
 				if ev.Item.Status != nil {
 					item.Status = *ev.Item.Status
 				}
@@ -596,7 +610,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 	case StreamEventTypeResponseCancelled:
 		a.applyResponseSnapshot(ev.Response)
 		if ev.Response == nil || ev.Response.Status == nil {
-			a.status = "canceled"
+			a.status = "cancelled"
 		}
 
 	case StreamEventTypeResponseIncomplete:
@@ -701,6 +715,16 @@ func (a *streamAggregator) buildResponse() *Response {
 					CallID: item.CallID,
 					Name:   item.Name,
 					Input:  item.Input,
+				})
+
+			case "tool_search_call":
+				output = append(output, Item{
+					ID:        item.ID,
+					Type:      item.Type,
+					Status:    lo.ToPtr(item.Status),
+					CallID:    item.CallID,
+					Execution: item.Execution,
+					Arguments: item.Arguments.String(),
 				})
 
 			case "reasoning":

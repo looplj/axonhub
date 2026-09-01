@@ -175,7 +175,7 @@ func TestRequestFromLLMWithConfig_ReasoningFieldContent(t *testing.T) {
 		},
 	}
 
-	req := RequestFromLLM(llmReq, ReasoningFieldContent)
+	req := requireRequestFromLLM(t, llmReq, ReasoningFieldContent)
 
 	assert.Equal(t, "test-model", req.Model)
 	assert.Len(t, req.Messages, 2)
@@ -205,7 +205,7 @@ func TestRequestFromLLMWithConfig_ReasoningFieldReasoning(t *testing.T) {
 		},
 	}
 
-	req := RequestFromLLM(llmReq, ReasoningFieldReasoning)
+	req := requireRequestFromLLM(t, llmReq, ReasoningFieldReasoning)
 
 	assert.Len(t, req.Messages, 1)
 
@@ -228,7 +228,7 @@ func TestRequestFromLLMWithConfig_ReasoningFieldNone(t *testing.T) {
 		},
 	}
 
-	req := RequestFromLLM(llmReq, ReasoningFieldNone)
+	req := requireRequestFromLLM(t, llmReq, ReasoningFieldNone)
 
 	assert.Len(t, req.Messages, 1)
 
@@ -271,4 +271,37 @@ func TestOutboundTransformer_TransformRequest_DefaultReasoningFieldContent(t *te
 	require.NotNil(t, assistantMsg.ReasoningContent, "ReasoningContent should be preserved by default (ReasoningFieldContent)")
 	assert.Equal(t, reasoningText, *assistantMsg.ReasoningContent)
 	assert.Nil(t, assistantMsg.Reasoning, "Reasoning field should be nil when defaulting to ReasoningFieldContent")
+}
+
+func TestOutboundTransformer_TransformRequest_ReasoningOnlyAssistantKeepsContentField(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		PlatformType:   PlatformOpenAI,
+		BaseURL:        "https://api.openai.com/v1",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	if err != nil {
+		t.Fatalf("Failed to create transformer: %v", err)
+	}
+
+	req, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model: "test-model",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
+			{Role: "assistant", ReasoningContent: lo.ToPtr("thinking")},
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("continue")}},
+		},
+	})
+	assert.NoError(t, err)
+
+	var raw struct {
+		Messages []map[string]json.RawMessage `json:"messages"`
+	}
+	require.NoError(t, json.Unmarshal(req.Body, &raw))
+	require.Len(t, raw.Messages, 3)
+
+	// Stricter OpenAI-compatible upstreams reject a missing messages.content
+	// key, so reasoning-only assistant turns must serialize content explicitly.
+	content, hasContent := raw.Messages[1]["content"]
+	require.True(t, hasContent, "reasoning-only assistant message must keep the content key on the wire")
+	assert.Equal(t, `""`, string(content))
 }

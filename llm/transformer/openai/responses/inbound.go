@@ -262,12 +262,34 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	chatReq.Messages = messages
 
 	if len(req.Tools) > 0 {
-		tools, err := convertToolsToLLM(req.Tools)
+		if err := validateUniqueTopLevelNamespaces(req.Tools); err != nil {
+			return nil, err
+		}
+		tools, err := convertToolsToLLMWithRawIDs(req.Tools, "tools")
 		if err != nil {
 			return nil, err
 		}
 
 		chatReq.Tools = tools
+	}
+
+	// additional_tools and client tool_search_output are position-sensitive in
+	// Responses. Promote their definitions for non-Responses downstreams while
+	// retaining their origin so Responses replay does not duplicate them at top level.
+	for itemIndex, item := range req.Input.Items {
+		if item.Type != "additional_tools" && item.Type != "tool_search_output" {
+			continue
+		}
+
+		tools, err := convertToolsToLLMWithRawIDs(item.Tools, fmt.Sprintf("input:%d", itemIndex))
+		if err != nil {
+			return nil, err
+		}
+		for i := range tools {
+			tools[i].ResponsesOrigin = item.Type
+			tools[i].ResponsesOriginCallID = item.CallID
+		}
+		chatReq.Tools = append(chatReq.Tools, tools...)
 	}
 
 	// Convert text format to response format
@@ -302,6 +324,23 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	return chatReq, nil
 }
 
+func validateUniqueTopLevelNamespaces(tools []Tool) error {
+	seen := make(map[string]struct{}, len(tools))
+	for _, tool := range tools {
+		if tool.Type != "namespace" || tool.Name == "" {
+			continue
+		}
+		if _, exists := seen[tool.Name]; exists {
+			return fmt.Errorf(
+				"%w: duplicate_namespace: namespace %q appears in multiple tool declarations",
+				transformer.ErrInvalidRequest, tool.Name,
+			)
+		}
+		seen[tool.Name] = struct{}{}
+	}
+	return nil
+}
+
 // convertToolChoiceToLLM converts Responses API ToolChoice to llm.ToolChoice.
 func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 	if src == nil {
@@ -310,7 +349,14 @@ func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 
 	result := &llm.ToolChoice{}
 
-	if src.Mode != nil {
+	if src.Type != nil && *src.Type == "allowed_tools" {
+		result.ToolChoice = src.Mode
+		result.AllowedToolsSet = true
+		result.AllowedTools = make([]llm.ToolOption, 0, len(src.Tools))
+		for _, tool := range src.Tools {
+			result.AllowedTools = append(result.AllowedTools, llm.ToolOption{Type: tool.Type, Name: tool.Name})
+		}
+	} else if src.Mode != nil {
 		result.ToolChoice = src.Mode
 	} else if src.Type != nil {
 		result.NamedToolChoice = &llm.NamedToolChoice{
@@ -325,7 +371,8 @@ func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 }
 
 // convertInputToMessages converts Responses API input to llm.Message slice.
-// It handles merging consecutive tool calls that belong to the same assistant turn.
+// It merges reasoning with its following output and consecutive tool calls
+// that belong to the same assistant turn.
 func convertInputToMessages(input *Input) ([]llm.Message, error) {
 	if input == nil {
 		return nil, nil
@@ -366,27 +413,43 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 			continue
 		}
 
-		if item.Type == "function_call" || item.Type == "custom_tool_call" {
+		// Responses represents each tool call in an assistant turn as a separate output item,
+		// while Chat Completions requires one assistant message containing all
+		// calls before their tool result messages.
+		if isToolCallItemType(item.Type) {
 			msg := llm.Message{Role: "assistant"}
-
-			for i < len(input.Items) {
-				callItem := &input.Items[i]
-				if callItem.Type != "function_call" && callItem.Type != "custom_tool_call" {
-					break
-				}
-
-				callMsg, err := convertItemToMessage(callItem)
+			for i < len(input.Items) && isToolCallItemType(input.Items[i].Type) {
+				callMessage, err := convertItemToMessage(&input.Items[i])
 				if err != nil {
 					return nil, err
 				}
-				if callMsg != nil {
-					msg.ToolCalls = append(msg.ToolCalls, callMsg.ToolCalls...)
+				if callMessage != nil {
+					for _, call := range callMessage.ToolCalls {
+						call.Index = len(msg.ToolCalls)
+						msg.ToolCalls = append(msg.ToolCalls, call)
+					}
 				}
 				i++
 			}
+			if len(msg.ToolCalls) > 0 {
+				messages = append(messages, msg)
+			}
+			continue
+		}
 
-			messages = append(messages, msg)
-
+		// Responses allows a single tool call to emit multiple output items
+		// sharing one call_id (e.g. codex exec yield/notify). Chat Completions
+		// requires exactly one tool message per tool_call_id, so merge
+		// consecutive outputs for the same call_id into one tool message.
+		if isToolOutputItemType(item.Type) {
+			merged, consumed, err := mergeToolOutputItems(input.Items, i)
+			if err != nil {
+				return nil, err
+			}
+			for _, mergedMessage := range merged {
+				messages = append(messages, *mergedMessage)
+			}
+			i += consumed
 			continue
 		}
 
@@ -404,6 +467,123 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 	}
 
 	return messages, nil
+}
+
+func isToolCallItemType(itemType string) bool {
+	switch itemType {
+	case "function_call", "custom_tool_call", "tool_search_call":
+		return true
+	default:
+		return false
+	}
+}
+
+// isToolOutputItemType reports whether an input item carries the result of a
+// tool call. Responses permits several such items sharing one call_id (codex
+// exec yield/notify); Chat Completions requires exactly one tool message per
+// tool_call_id.
+func isToolOutputItemType(itemType string) bool {
+	switch itemType {
+	case "function_call_output", "custom_tool_call_output", "tool_search_output":
+		return true
+	default:
+		return false
+	}
+}
+
+// mergeToolOutputItems converts the consecutive tool-output run starting at
+// startIdx into Chat Completions tool messages. Items sharing one call_id are
+// merged into a single message even when other call_ids interleave between
+// them (A, B, A); non-tool-output items terminate the run. Returns one
+// message per call_id in first-appearance order plus the items consumed.
+func mergeToolOutputItems(items []Item, startIdx int) ([]*llm.Message, int, error) {
+	if startIdx >= len(items) {
+		return nil, 0, nil
+	}
+
+	type toolOutputAccumulator struct {
+		parts    []llm.MessageContentPart
+		toolName string
+	}
+
+	order := make([]string, 0)
+	byCallID := make(map[string]*toolOutputAccumulator)
+	consumed := 0
+	for idx := startIdx; idx < len(items); idx++ {
+		it := &items[idx]
+		if !isToolOutputItemType(it.Type) {
+			break
+		}
+		outMsg, err := convertItemToMessage(it)
+		if err != nil {
+			return nil, consumed, err
+		}
+		consumed++
+		if outMsg != nil {
+			acc, ok := byCallID[it.CallID]
+			if !ok {
+				acc = &toolOutputAccumulator{}
+				byCallID[it.CallID] = acc
+				order = append(order, it.CallID)
+			}
+			if outMsg.ToolCallName != nil && acc.toolName == "" {
+				acc.toolName = *outMsg.ToolCallName
+			}
+			acc.parts = appendMessageContentParts(acc.parts, outMsg.Content)
+		}
+	}
+	if consumed == 0 {
+		return nil, 0, nil
+	}
+
+	messages := make([]*llm.Message, 0, len(order))
+	for _, callID := range order {
+		acc := byCallID[callID]
+		messages = append(messages, toolOutputMessage(callID, acc.toolName, acc.parts))
+	}
+	return messages, consumed, nil
+}
+
+// toolOutputMessage builds one Chat Completions tool message from merged parts.
+func toolOutputMessage(callID, toolName string, parts []llm.MessageContentPart) *llm.Message {
+	msg := &llm.Message{
+		Role:       "tool",
+		ToolCallID: lo.ToPtr(callID),
+	}
+	if toolName != "" {
+		msg.ToolCallName = lo.ToPtr(toolName)
+	}
+	switch len(parts) {
+	case 0:
+		// All outputs were empty; emit an empty tool message so the tool_call_id
+		// still has a corresponding tool response for Chat providers.
+		empty := ""
+		msg.Content = llm.MessageContent{Content: &empty}
+	case 1:
+		if parts[0].Type == "text" && parts[0].Text != nil {
+			msg.Content = llm.MessageContent{Content: parts[0].Text}
+		} else {
+			msg.Content = llm.MessageContent{MultipleContent: parts}
+		}
+	default:
+		msg.Content = llm.MessageContent{MultipleContent: parts}
+	}
+	return msg
+}
+
+// appendMessageContentParts flattens content into its constituent parts and
+// appends them to dst.
+func appendMessageContentParts(dst []llm.MessageContentPart, content llm.MessageContent) []llm.MessageContentPart {
+	if len(content.MultipleContent) > 0 {
+		return append(dst, content.MultipleContent...)
+	}
+	if content.Content != nil && *content.Content != "" {
+		return append(dst, llm.MessageContentPart{
+			Type: "text",
+			Text: content.Content,
+		})
+	}
+	return dst
 }
 
 // convertReasoningWithFollowing converts a reasoning item and merges it with subsequent
@@ -456,8 +636,9 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 		case "function_call":
 			// Merge function_call into the same assistant message
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: "function",
+				ID:    nextItem.CallID,
+				Type:  "function",
+				Index: len(msg.ToolCalls),
 				Function: llm.FunctionCall{
 					Name:      nextItem.Name,
 					Namespace: nextItem.Namespace,
@@ -474,12 +655,27 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 			}
 
 			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
-				ID:   nextItem.CallID,
-				Type: llm.ToolTypeResponsesCustomTool,
+				ID:    nextItem.CallID,
+				Type:  llm.ToolTypeResponsesCustomTool,
+				Index: len(msg.ToolCalls),
 				ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-					CallID: nextItem.CallID,
-					Name:   nextItem.Name,
-					Input:  inputStr,
+					CallID:    nextItem.CallID,
+					Name:      nextItem.Name,
+					Namespace: nextItem.Namespace,
+					Input:     inputStr,
+				},
+			})
+			consumed++
+
+		case "tool_search_call":
+			msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
+				ID:    nextItem.CallID,
+				Type:  llm.ToolTypeResponsesToolSearch,
+				Index: len(msg.ToolCalls),
+				ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+					CallID:    nextItem.CallID,
+					Execution: nextItem.Execution,
+					Arguments: nextItem.Arguments,
 				},
 			})
 			consumed++
@@ -491,7 +687,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, in
 				if nextItem.Content != nil && len(nextItem.Content.Items) > 0 && nextItem.isOutputMessageContent() {
 					msg.Content = convertContentItemsToMessageContent(nextItem.GetContentItems())
 				} else if nextItem.Content != nil {
-					msg.Content = convertToMessageContent(*nextItem.Content)
+					msg.Content = convertToMessageContent(*nextItem.Content, nextItem.Type)
 				} else if nextItem.Text != nil {
 					msg.Content = llm.MessageContent{Content: nextItem.Text}
 				}
@@ -528,7 +724,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		if item.Content != nil && len(item.Content.Items) > 0 && item.isOutputMessageContent() {
 			msg.Content = convertContentItemsToMessageContent(item.GetContentItems())
 		} else if item.Content != nil {
-			msg.Content = convertToMessageContent(*item.Content)
+			msg.Content = convertToMessageContent(*item.Content, item.Type)
 		} else if item.Text != nil {
 			msg.Content = llm.MessageContent{Content: item.Text}
 		}
@@ -586,12 +782,27 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 					ID:   item.CallID,
 					Type: llm.ToolTypeResponsesCustomTool,
 					ResponseCustomToolCall: &llm.ResponseCustomToolCall{
-						CallID: item.CallID,
-						Name:   item.Name,
-						Input:  inputStr,
+						CallID:    item.CallID,
+						Name:      item.Name,
+						Namespace: item.Namespace,
+						Input:     inputStr,
 					},
 				},
 			},
+		}, nil
+
+	case "tool_search_call":
+		return &llm.Message{
+			Role: "assistant",
+			ToolCalls: []llm.ToolCall{{
+				ID:   item.CallID,
+				Type: llm.ToolTypeResponsesToolSearch,
+				ResponseToolSearchCall: &llm.ResponseToolSearchCall{
+					CallID:    item.CallID,
+					Execution: item.Execution,
+					Arguments: item.Arguments,
+				},
+			}},
 		}, nil
 
 	case "function_call_output":
@@ -602,7 +813,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		msg := &llm.Message{
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
-			Content:    convertToMessageContent(*item.Output),
+			Content:    convertToMessageContent(*item.Output, item.Type),
 		}
 		if item.Name != "" {
 			msg.ToolCallName = lo.ToPtr(item.Name)
@@ -618,12 +829,44 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		msg := &llm.Message{
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
-			Content:    convertToMessageContent(*item.Output),
+			Content:    convertToMessageContent(*item.Output, item.Type),
 		}
 		if item.Name != "" {
 			msg.ToolCallName = lo.ToPtr(item.Name)
 		}
 
+		return msg, nil
+
+	case "tool_search_output":
+		tools := item.Tools
+		if tools == nil {
+			tools = []Tool{}
+		}
+		content, err := json.Marshal(tools)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal tool_search_output tools: %w", err)
+		}
+		return &llm.Message{
+			Role:       "tool",
+			ToolCallID: lo.ToPtr(item.CallID),
+			Content:    llm.MessageContent{Content: lo.ToPtr(string(content))},
+		}, nil
+
+	case "agent_message":
+		// codex multi-agent dispatch: a message from another agent (author) to
+		// this agent (recipient). The task instruction lives in content parts,
+		// including encrypted_content parts that codex uses to carry plaintext
+		// inter-agent payloads. Treat it as a user-role message so downstream
+		// providers receive the dispatched task.
+		msg := &llm.Message{
+			ID:   item.ID,
+			Role: "user",
+		}
+		if item.Content != nil {
+			msg.Content = convertToMessageContent(*item.Content, item.Type)
+		} else if item.Text != nil {
+			msg.Content = llm.MessageContent{Content: item.Text}
+		}
 		return msg, nil
 
 	case "reasoning":
@@ -640,8 +883,8 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 	}
 }
 
-func convertToMessageContent(content Input) llm.MessageContent {
-	items := convertToMessageContentParts(content)
+func convertToMessageContent(content Input, ownerType string) llm.MessageContent {
+	items := convertToMessageContentParts(content, ownerType)
 	// If only one text item, return simple Content
 	if len(items) == 1 && (items[0].Type == "text" || items[0].Type == "input_text") && items[0].Text != nil {
 		return llm.MessageContent{
@@ -682,7 +925,7 @@ func convertContentItemsToMessageContent(items []ContentItem) llm.MessageContent
 }
 
 // convertToMessageContentParts converts content items to []llm.MessageContentPart.
-func convertToMessageContentParts(input Input) []llm.MessageContentPart {
+func convertToMessageContentParts(input Input, ownerType string) []llm.MessageContentPart {
 	if input.Text != nil {
 		return []llm.MessageContentPart{
 			{
@@ -694,7 +937,7 @@ func convertToMessageContentParts(input Input) []llm.MessageContentPart {
 
 	parts := make([]llm.MessageContentPart, 0, len(input.Items))
 	for i := range input.Items {
-		part, err := convertContentItemToPart(&input.Items[i])
+		part, err := convertContentItemToPart(&input.Items[i], ownerType)
 		if err != nil || part == nil {
 			continue
 		}
@@ -706,7 +949,7 @@ func convertToMessageContentParts(input Input) []llm.MessageContentPart {
 }
 
 // convertContentItemToPart converts a content item to llm.MessageContentPart.
-func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
+func convertContentItemToPart(item *Item, ownerType string) (*llm.MessageContentPart, error) {
 	if item == nil {
 		return nil, nil
 	}
@@ -737,6 +980,22 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 
 		return nil, nil
 
+	case "encrypted_content":
+		// codex agent_message content parts use encrypted_content to carry
+		// plaintext inter-agent payloads (e.g. dispatched task instructions).
+		// OpenAI reasoning item-level encrypted_content is handled separately
+		// in convertReasoningWithFollowing and never reaches this path.
+		// Content parts of other owning item types must not surface opaque
+		// encrypted values as user-visible text.
+		if ownerType == "agent_message" && item.EncryptedContent != nil && *item.EncryptedContent != "" {
+			return &llm.MessageContentPart{
+				ID:   item.ID,
+				Type: "text",
+				Text: item.EncryptedContent,
+			}, nil
+		}
+		return nil, nil
+
 	case "compaction", "compaction_summary":
 		return compactionContentPartFromItem(item, item.Type), nil
 
@@ -745,117 +1004,213 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 	}
 }
 
-// convertToolsToLLM converts Responses API tools to llm.Tool slice.
-func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
+func convertToolsToLLMWithRawIDs(tools []Tool, prefix string) ([]llm.Tool, error) {
 	result := make([]llm.Tool, 0, len(tools))
-
-	for _, tool := range tools {
-		switch tool.Type {
-		case "function":
-			params, err := json.Marshal(tool.Parameters)
-			if err != nil {
-				return nil, fmt.Errorf("failed to marshal function parameters: %w", err)
-			}
-
-			result = append(result, llm.Tool{
-				Type: "function",
-				Function: llm.Function{
-					Name:        tool.Name,
-					Description: tool.Description,
-					Parameters:  params,
-					Strict:      tool.Strict,
-				},
-			})
-
-		case "image_generation":
-			result = append(result, llm.Tool{
-				Type: llm.ToolTypeImageGeneration,
-				ImageGeneration: &llm.ImageGeneration{
-					Background:        tool.Background,
-					InputFidelity:     tool.InputFidelity,
-					Moderation:        tool.Moderation,
-					OutputCompression: tool.OutputCompression,
-					OutputFormat:      tool.OutputFormat,
-					PartialImages:     tool.PartialImages,
-					Quality:           tool.Quality,
-					Size:              tool.Size,
-				},
-			})
-
-		case "web_search":
-			webSearch := &llm.WebSearch{}
-			if tool.Filters != nil {
-				webSearch.AllowedDomains = append(webSearch.AllowedDomains, tool.Filters.AllowedDomains...)
-			}
-			if tool.UserLocation != nil {
-				locationType := tool.UserLocation.Type
-				if locationType == "" {
-					locationType = "approximate"
-				}
-				webSearch.UserLocation = llm.WebSearchToolUserLocation{
-					Type:     locationType,
-					City:     tool.UserLocation.City,
-					Country:  tool.UserLocation.Country,
-					Region:   tool.UserLocation.Region,
-					Timezone: tool.UserLocation.Timezone,
-				}
-			}
-			result = append(result, llm.Tool{
-				Type:      llm.ToolTypeWebSearch,
-				WebSearch: webSearch,
-			})
-
-		case "custom":
-			customTool := &llm.ResponseCustomTool{
-				Name:        tool.Name,
-				Description: tool.Description,
-			}
-			if tool.Format != nil {
-				customTool.Format = &llm.ResponseCustomToolFormat{
-					Type:       tool.Format.Type,
-					Syntax:     tool.Format.Syntax,
-					Definition: tool.Format.Definition,
-				}
-			}
-
-			result = append(result, llm.Tool{
-				Type:               llm.ToolTypeResponsesCustomTool,
-				ResponseCustomTool: customTool,
-			})
-
-		case "namespace":
-			for _, subTool := range tool.Tools {
-				if subTool.Type != "function" {
-					continue
-				}
-
-				params, err := json.Marshal(subTool.Parameters)
-				if err != nil {
-					return nil, fmt.Errorf("failed to marshal namespace tool parameters: %w", err)
-				}
-
-				result = append(result, llm.Tool{
-					Type: "function",
-					Function: llm.Function{
-						Name:        namespaceFunctionName(tool.Name, subTool.Name),
-						Description: subTool.Description,
-						Parameters:  params,
-						Strict:      subTool.Strict,
-					},
-				})
-			}
-
-		default:
-			// Skip unsupported tool types
-			continue
+	for declarationIndex, tool := range tools {
+		converted, err := convertToolsToLLM([]Tool{tool})
+		if err != nil {
+			return nil, err
 		}
+		needsRawID := prefix != "tools" || !isStructurallyRepresentedToolType(tool.Type) || tool.Type == "tool_search"
+		if needsRawID {
+			rawID := fmt.Sprintf("%s:%d", prefix, declarationIndex)
+			for i := range converted {
+				converted[i].ResponsesRawID = rawID
+			}
+		}
+		result = append(result, converted...)
 	}
-
 	return result, nil
 }
 
-func namespaceFunctionName(namespaceName, functionName string) string {
-	return namespaceName + "__" + functionName
+// convertToolsToLLM converts Responses API tools to llm.Tool slice.
+func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
+	result := make([]llm.Tool, 0, len(tools))
+	for _, tool := range tools {
+		converted, err := convertToolDeclaration(tool, "")
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, converted...)
+	}
+	return result, nil
+}
+
+// convertToolDeclaration dispatches one Responses tool declaration through a
+// single shared type table, whether the declaration is top-level or nested in
+// a namespace. Namespace membership only changes the naming of name-carrying
+// client callables; it never gates which tool types convert. Declarations with
+// no client-callable meaning inside a namespace (hosted tools, nested
+// namespaces) degrade to opaque tools preserved for same-protocol replay.
+func convertToolDeclaration(tool Tool, namespace string) ([]llm.Tool, error) {
+	if namespace != "" && !namespaceCallableToolType(tool) {
+		return []llm.Tool{opaqueResponsesTool(tool, "raw_tool", namespace)}, nil
+	}
+
+	switch tool.Type {
+	case "function":
+		params, err := json.Marshal(tool.Parameters)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal function parameters: %w", err)
+		}
+		function := llm.Function{
+			Name:         tool.Name,
+			Description:  tool.Description,
+			Parameters:   params,
+			Strict:       tool.Strict,
+			DeferLoading: tool.DeferLoading,
+		}
+		if namespace != "" {
+			function.Name = llm.JoinNamespaceFunctionName(namespace, tool.Name)
+			function.Namespace = namespace
+		}
+		return []llm.Tool{{Type: "function", Function: function}}, nil
+
+	case "image_generation":
+		return []llm.Tool{{
+			Type: llm.ToolTypeImageGeneration,
+			ImageGeneration: &llm.ImageGeneration{
+				Background:        tool.Background,
+				InputFidelity:     tool.InputFidelity,
+				Moderation:        tool.Moderation,
+				OutputCompression: tool.OutputCompression,
+				OutputFormat:      tool.OutputFormat,
+				PartialImages:     tool.PartialImages,
+				Quality:           tool.Quality,
+				Size:              tool.Size,
+			},
+		}}, nil
+
+	case "web_search":
+		webSearch := &llm.WebSearch{}
+		if tool.Filters != nil {
+			webSearch.AllowedDomains = append(webSearch.AllowedDomains, tool.Filters.AllowedDomains...)
+		}
+		if tool.UserLocation != nil {
+			locationType := tool.UserLocation.Type
+			if locationType == "" {
+				locationType = "approximate"
+			}
+			webSearch.UserLocation = llm.WebSearchToolUserLocation{
+				Type:     locationType,
+				City:     tool.UserLocation.City,
+				Country:  tool.UserLocation.Country,
+				Region:   tool.UserLocation.Region,
+				Timezone: tool.UserLocation.Timezone,
+			}
+		}
+		return []llm.Tool{{Type: llm.ToolTypeWebSearch, WebSearch: webSearch}}, nil
+
+	case "custom":
+		return []llm.Tool{customToolFromDeclaration(tool, namespace)}, nil
+
+	case "tool_search":
+		params, err := json.Marshal(tool.Parameters)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal tool search parameters: %w", err)
+		}
+		return []llm.Tool{{
+			Type: llm.ToolTypeResponsesToolSearch,
+			ResponseToolSearch: &llm.ResponseToolSearch{
+				Execution:   tool.Execution,
+				Description: tool.Description,
+				Parameters:  params,
+			},
+		}}, nil
+
+	case "namespace":
+		result := make([]llm.Tool, 0, len(tool.Tools))
+		for _, subTool := range tool.Tools {
+			converted, err := convertToolDeclaration(subTool, tool.Name)
+			if err != nil {
+				return nil, err
+			}
+			for i := range converted {
+				converted[i].ResponsesNamespaceDescription = tool.Description
+			}
+			result = append(result, converted...)
+		}
+		return result, nil
+
+	default:
+		if !isGenericClientFunctionLike(tool) {
+			return []llm.Tool{opaqueResponsesTool(tool, "raw_tool", namespace)}, nil
+		}
+		params, err := json.Marshal(tool.Parameters)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal %s tool parameters: %w", tool.Type, err)
+		}
+		converted := llm.Tool{
+			Type: "function",
+			Function: llm.Function{
+				Name: tool.Name, Description: tool.Description,
+				Parameters: params, Strict: tool.Strict, DeferLoading: tool.DeferLoading,
+			},
+			ResponsesOrigin:     "raw_tool",
+			ResponsesSourceType: tool.Type,
+		}
+		if namespace != "" {
+			converted.Function.Name = llm.JoinNamespaceFunctionName(namespace, tool.Name)
+			converted.Function.Namespace = namespace
+		}
+		return []llm.Tool{converted}, nil
+	}
+}
+
+// isGenericClientFunctionLike reports whether an unknown client tool can use function semantics.
+func isGenericClientFunctionLike(tool Tool) bool {
+	return isFunctionLike(tool) && tool.Execution == "client"
+}
+
+// namespaceCallableToolType reports whether a declaration has client-callable
+// meaning inside a namespace: named client callables convert with a namespace
+// name, while hosted tools and nested namespaces do not belong to a client
+// tool container and stay opaque for same-protocol replay.
+func namespaceCallableToolType(tool Tool) bool {
+	switch tool.Type {
+	case "function", "custom":
+		return true
+	default:
+		return isGenericClientFunctionLike(tool)
+	}
+}
+
+// isFunctionLike reports whether a Responses declaration has a function schema.
+func isFunctionLike(tool Tool) bool {
+	return tool.Name != "" && tool.Parameters != nil
+}
+
+// customToolFromDeclaration converts a Responses custom tool declaration,
+// whether top-level or nested in a namespace, into the common custom-tool IR.
+func customToolFromDeclaration(tool Tool, namespace string) llm.Tool {
+	customTool := &llm.ResponseCustomTool{
+		Name:        tool.Name,
+		Namespace:   namespace,
+		Description: tool.Description,
+	}
+	if tool.Format != nil {
+		customTool.Format = &llm.ResponseCustomToolFormat{
+			Type:       tool.Format.Type,
+			Syntax:     tool.Format.Syntax,
+			Definition: tool.Format.Definition,
+		}
+	}
+	return llm.Tool{
+		Type:               llm.ToolTypeResponsesCustomTool,
+		ResponseCustomTool: customTool,
+	}
+}
+
+// opaqueResponsesTool preserves an unsupported declaration for same-protocol replay.
+func opaqueResponsesTool(tool Tool, origin, namespace string) llm.Tool {
+	return llm.Tool{
+		Type: llm.ToolTypeResponsesOpaqueTool,
+		ResponseOpaqueTool: &llm.ResponseOpaqueTool{
+			SourceType: tool.Type, Name: tool.Name, Namespace: namespace, Execution: tool.Execution,
+			Description: tool.Description,
+		},
+		ResponsesOrigin: origin,
+	}
 }
 
 func getResponseWebSearchCallsFromMetadata(metadata map[string]any) []Item {
@@ -984,15 +1339,28 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 
 		// Handle tool calls (function calls and custom tool calls)
 		if len(message.ToolCalls) > 0 {
+			toolCallStatus := "completed"
+			if choice.FinishReason != nil && IsAbnormalChatFinishReason(*choice.FinishReason) {
+				toolCallStatus = "in_progress"
+			}
 			for _, toolCall := range message.ToolCalls {
-				if toolCall.ResponseCustomToolCall != nil {
+				if toolCall.ResponseToolSearchCall != nil {
 					resp.Output = append(resp.Output, Item{
-						ID:     toolCall.ID,
-						Type:   "custom_tool_call",
-						CallID: toolCall.ResponseCustomToolCall.CallID,
-						Name:   toolCall.ResponseCustomToolCall.Name,
-						Input:  lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
-						Status: lo.ToPtr("completed"),
+						ID: toolCall.ID, Type: "tool_search_call",
+						CallID:    toolCall.ResponseToolSearchCall.CallID,
+						Execution: toolCall.ResponseToolSearchCall.Execution,
+						Arguments: toolCall.ResponseToolSearchCall.Arguments,
+						Status:    lo.ToPtr(toolCallStatus),
+					})
+				} else if toolCall.ResponseCustomToolCall != nil {
+					resp.Output = append(resp.Output, Item{
+						ID:        toolCall.ID,
+						Type:      "custom_tool_call",
+						CallID:    toolCall.ResponseCustomToolCall.CallID,
+						Name:      toolCall.ResponseCustomToolCall.Name,
+						Namespace: toolCall.ResponseCustomToolCall.Namespace,
+						Input:     lo.ToPtr(toolCall.ResponseCustomToolCall.Input),
+						Status:    lo.ToPtr(toolCallStatus),
 					})
 				} else {
 					resp.Output = append(resp.Output, Item{
@@ -1002,7 +1370,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						Name:      toolCall.Function.Name,
 						Namespace: toolCall.Function.Namespace,
 						Arguments: toolCall.Function.Arguments,
-						Status:    lo.ToPtr("completed"),
+						Status:    lo.ToPtr(toolCallStatus),
 					})
 				}
 			}
@@ -1079,12 +1447,22 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 			switch *choice.FinishReason {
 			case "stop":
 				resp.Status = lo.ToPtr("completed")
+				resp.IncompleteDetails = nil
 			case "length":
 				resp.Status = lo.ToPtr("incomplete")
+				resp.IncompleteDetails = &ResponseIncompleteDetails{Reason: "max_output_tokens"}
+			case "content_filter":
+				resp.Status = lo.ToPtr("incomplete")
+				resp.IncompleteDetails = &ResponseIncompleteDetails{Reason: "content_filter"}
 			case "tool_calls":
 				resp.Status = lo.ToPtr("completed")
+				resp.IncompleteDetails = nil
 			case "error":
 				resp.Status = lo.ToPtr("failed")
+				resp.IncompleteDetails = nil
+			case "cancelled", "canceled":
+				resp.Status = lo.ToPtr("cancelled")
+				resp.IncompleteDetails = nil
 			}
 		}
 	}

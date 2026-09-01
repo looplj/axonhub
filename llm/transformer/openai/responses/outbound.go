@@ -197,6 +197,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("chat request is nil")
 	}
 
+	requestCopy := *llmReq
+	requestCopy.TransformerMetadata = maps.Clone(llmReq.TransformerMetadata)
+	llmReq = &requestCopy
+
 	originalRequestType := llmReq.RequestType
 	isImageRequest := originalRequestType == llm.RequestTypeImage
 
@@ -225,8 +229,17 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	apiKey := t.config.APIKeyProvider.Get(ctx)
 
 	var tools []Tool
+	namespaceMembers := make(map[string][]Tool)
+	requestExt := openAIResponsesRequestExtensions(llmReq)
+	replayRawInput := rawInputReplayMatchesCurrent(requestExt, llmReq.Messages, llmReq.Tools)
+	if err := validateUniqueNamespaceGroups(llmReq.Tools, replayRawInput, requestExt); err != nil {
+		return nil, err
+	}
 	// Convert tools to Responses API format
 	for _, item := range llmReq.Tools {
+		if !responsesOriginToolEmitsTopLevel(item, replayRawInput) {
+			continue
+		}
 		switch item.Type {
 		case llm.ToolTypeImageGeneration:
 			tool := convertImageGenerationToTool(item)
@@ -241,20 +254,63 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			tools = append(tools, tool)
 		case llm.ToolTypeResponsesCustomTool:
 			tool := convertCustomToTool(item)
-			tools = append(tools, tool)
+			namespace := ""
+			if item.ResponseCustomTool != nil {
+				namespace = item.ResponseCustomTool.Namespace
+			}
+			if namespace != "" {
+				rememberNamespaceMember(namespace, item.ResponsesNamespaceDescription, tool, namespaceMembers, &tools)
+			} else {
+				tools = append(tools, tool)
+			}
+		case llm.ToolTypeResponsesToolSearch:
+			if item.ResponseToolSearch == nil {
+				continue
+			}
+			parameters := map[string]any{}
+			if len(item.ResponseToolSearch.Parameters) > 0 {
+				if err := json.Unmarshal(item.ResponseToolSearch.Parameters, &parameters); err != nil {
+					return nil, fmt.Errorf("failed to decode tool search parameters: %w", err)
+				}
+			}
+			tools = append(tools, Tool{
+				Type: "tool_search", Execution: item.ResponseToolSearch.Execution,
+				Description: item.ResponseToolSearch.Description, Parameters: parameters,
+			})
 		case "function":
 			tool := convertFunctionToTool(item)
-			tools = append(tools, tool)
+			if namespace := item.Function.Namespace; namespace != "" {
+				memberName, err := llm.NamespaceFunctionMemberName(item.Function)
+				if err != nil {
+					return nil, fmt.Errorf("%w: %w", transformer.ErrInvalidRequest, err)
+				}
+				tool.Name = memberName
+				if sourceType := item.ResponsesSourceType; sourceType != "" {
+					tool.Type = sourceType
+				}
+				rememberNamespaceMember(namespace, item.ResponsesNamespaceDescription, tool, namespaceMembers, &tools)
+			} else {
+				tools = append(tools, tool)
+			}
 		default:
 			// Skip unsupported tool types
 			continue
 		}
 	}
+	for i := range tools {
+		if tools[i].Type == "namespace" {
+			tools[i].Tools = namespaceMembers[tools[i].Name]
+		}
+	}
+	payloadMessages, err := synchronizeToolSearchOutputMessages(llmReq.Messages, llmReq.Tools, requestExt)
+	if err != nil {
+		return nil, fmt.Errorf("failed to synchronize tool search output definitions: %w", err)
+	}
 
 	payload := Request{
 		Model:                llmReq.Model,
-		Input:                convertInputFromMessages(llmReq.Messages, llmReq.TransformOptions),
-		Instructions:         convertInstructionsFromMessages(llmReq.Messages),
+		Input:                convertInputFromMessages(payloadMessages, llmReq.TransformOptions),
+		Instructions:         convertInstructionsFromMessages(payloadMessages),
 		Tools:                tools,
 		ParallelToolCalls:    llmReq.ParallelToolCalls,
 		Stream:               llmReq.Stream,
@@ -338,6 +394,62 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	return httpReq, nil
+}
+
+func rememberNamespaceMember(namespace, description string, member Tool, members map[string][]Tool, tools *[]Tool) {
+	if _, exists := members[namespace]; !exists {
+		*tools = append(*tools, Tool{
+			Type: "namespace", Name: namespace, Description: description,
+		})
+	}
+	members[namespace] = append(members[namespace], member)
+}
+
+func validateUniqueNamespaceGroups(
+	tools []llm.Tool,
+	replayRawInput bool,
+	requestExt *llm.OpenAIResponsesRequestExtensions,
+) error {
+	rawSeen := make(map[string]struct{})
+	descriptions := make(map[string]string)
+	if requestExt != nil {
+		for _, fragment := range requestExt.RawTools {
+			if len(fragment.Raw) == 0 {
+				continue
+			}
+			var rawTool Tool
+			if json.Unmarshal(fragment.Raw, &rawTool) != nil || rawTool.Type != "namespace" || rawTool.Name == "" {
+				continue
+			}
+			if _, exists := rawSeen[rawTool.Name]; exists {
+				return fmt.Errorf(
+					"%w: duplicate_namespace: namespace %q appears in multiple tool declarations",
+					transformer.ErrInvalidRequest, rawTool.Name,
+				)
+			}
+			rawSeen[rawTool.Name] = struct{}{}
+		}
+	}
+	for _, tool := range tools {
+		if !responsesOriginToolEmitsTopLevel(tool, replayRawInput) {
+			continue
+		}
+		namespace := namespaceOfResponsesTool(tool)
+		if namespace == "" {
+			continue
+		}
+		description := tool.ResponsesNamespaceDescription
+		previous, exists := descriptions[namespace]
+		if !exists {
+			descriptions[namespace] = description
+		} else if previous != description {
+			return fmt.Errorf(
+				"%w: namespace_description_conflict: namespace %q has multiple descriptions",
+				transformer.ErrInvalidRequest, namespace,
+			)
+		}
+	}
+	return nil
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.

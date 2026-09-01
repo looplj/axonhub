@@ -66,6 +66,42 @@ type PassThroughBodyPolicy interface {
 	AllowPassThroughBody(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool
 }
 
+// ResponsesRequestCapabilities describes how one outbound will handle a
+// specific Responses-origin request. Some providers choose their upstream
+// protocol from the resolved model, so APIFormat alone is not sufficient.
+type ResponsesRequestCapabilities struct {
+	NativeResponses   bool
+	ChatToolLifecycle bool
+}
+
+// ResponsesRequestCapabilitiesProvider exposes request-aware Responses
+// handling without expanding the core Outbound interface.
+type ResponsesRequestCapabilitiesProvider interface {
+	ResponsesRequestCapabilities(*llm.Request) ResponsesRequestCapabilities
+}
+
+// ResponsesRequestCapabilitiesOf delegates to t's
+// ResponsesRequestCapabilitiesProvider implementation when t provides one.
+// Otherwise, Responses API formats imply native Responses support. Wrapper
+// transformers that embed another Outbound should pass the embedded
+// transformer so capability reporting is forwarded without duplicating the
+// delegation logic.
+func ResponsesRequestCapabilitiesOf(t Outbound, req *llm.Request) ResponsesRequestCapabilities {
+	if t == nil {
+		return ResponsesRequestCapabilities{}
+	}
+
+	if capable, ok := t.(ResponsesRequestCapabilitiesProvider); ok {
+		return capable.ResponsesRequestCapabilities(req)
+	}
+
+	if llm.IsOpenAIResponsesFormat(t.APIFormat()) {
+		return ResponsesRequestCapabilities{NativeResponses: true}
+	}
+
+	return ResponsesRequestCapabilities{}
+}
+
 // VideoTaskOutbound is an optional extension interface for outbound transformers that support
 // video task query/delete operations (async task model).
 type VideoTaskOutbound interface {

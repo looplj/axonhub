@@ -21,6 +21,12 @@ type OutboundTransformer struct {
 	transformer.Outbound
 }
 
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
+
+func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
+	return transformer.ResponsesRequestCapabilitiesOf(t.Outbound, req)
+}
+
 // NewOutboundTransformer creates a new Longcat OutboundTransformer.
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	return NewOutboundTransformerWithConfig(&Config{
@@ -60,6 +66,10 @@ func (t *OutboundTransformer) TransformRequest(
 	if chatReq == nil {
 		return nil, fmt.Errorf("chat completion request is nil")
 	}
+
+	requestCopy := *chatReq
+	requestCopy.Messages = append([]llm.Message(nil), chatReq.Messages...)
+	chatReq = &requestCopy
 
 	// Ensure all messages have non-nil content
 	for i := range chatReq.Messages {

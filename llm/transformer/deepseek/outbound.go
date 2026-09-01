@@ -30,6 +30,12 @@ type OutboundTransformer struct {
 	completion     transformer.Outbound
 }
 
+var _ transformer.ResponsesRequestCapabilitiesProvider = (*OutboundTransformer)(nil)
+
+func (t *OutboundTransformer) ResponsesRequestCapabilities(req *llm.Request) transformer.ResponsesRequestCapabilities {
+	return transformer.ResponsesRequestCapabilitiesOf(t.Outbound, req)
+}
+
 func NewOutboundTransformer(baseURL, apiKey string) (transformer.Outbound, error) {
 	config := &Config{
 		BaseURL:        baseURL,
@@ -100,7 +106,12 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
-	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+	oaiReq, transformerMetadata, err := openai.RequestFromLLMWithResponsesTools(
+		llmReq, openai.ReasoningFieldContent,
+	)
+	if err != nil {
+		return nil, err
+	}
 
 	if oaiReq.ResponseFormat != nil && oaiReq.ResponseFormat.Type == "json_schema" {
 		oaiReq.ResponseFormat.Type = "json_object"
@@ -150,12 +161,13 @@ func (t *OutboundTransformer) TransformRequest(
 	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
-		Method:    http.MethodPost,
-		URL:       url,
-		Headers:   headers,
-		Body:      body,
-		Auth:      auth,
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		Method:              http.MethodPost,
+		URL:                 url,
+		Headers:             headers,
+		Body:                body,
+		Auth:                auth,
+		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
+		TransformerMetadata: transformerMetadata,
 	}, nil
 }
 

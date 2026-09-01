@@ -38,6 +38,24 @@ func To[T any](v []byte) (T, error) {
 	return t, nil
 }
 
+// ObjectHasOnlyFields reports whether object is non-nil and contains only the
+// allowed JSON fields. It does not require every allowed field to be present.
+func ObjectHasOnlyFields(object map[string]json.RawMessage, allowed ...string) bool {
+	if object == nil {
+		return false
+	}
+	allowedFields := make(map[string]struct{}, len(allowed))
+	for _, field := range allowed {
+		allowedFields[field] = struct{}{}
+	}
+	for field := range object {
+		if _, ok := allowedFields[field]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func IsNull(v json.RawMessage) bool {
 	return len(v) == 0 || bytes.Equal(v, NullJSON)
 }
