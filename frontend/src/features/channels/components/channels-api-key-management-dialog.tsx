@@ -13,6 +13,7 @@ import {
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -436,7 +437,7 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
                       const result = getKeyResult(key);
                       const handleCopy = async () => {
                         try {
-                          await navigator.clipboard.writeText(key);
+                          await copyTextToClipboard(key);
                           toast.success(t('channels.dialogs.keyManagement.copySuccess'));
                         } catch {
                           toast.error(t('common.errors.copyFailed'));

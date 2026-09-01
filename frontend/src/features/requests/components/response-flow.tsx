@@ -7,6 +7,7 @@ import { Message, MessageContent } from '@/components/ai-elements/message';
 import { Tool, ToolHeader, ToolContent } from '@/components/ai-elements/tool';
 import { CodeBlock } from '@/components/ai-elements/code-block';
 import { Badge } from '@/components/ui/badge';
+import { copyTextToClipboard } from '@/lib/clipboard';
 
 import { parseResponse } from '../utils/response-parser';
 
@@ -90,11 +91,15 @@ export function ResponseFlow({ chunks, body, isLive, reasoningDurationMs }: Resp
                         <button
                           type='button'
                           className='text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-colors cursor-pointer'
-                          onClick={() => {
+                          onClick={async () => {
                             const text = typeof tc.function?.arguments === 'string'
                               ? tc.function.arguments
                               : JSON.stringify(parseJson(tc.function?.arguments || '{}'), null, 2);
-                            navigator.clipboard.writeText(text);
+                            try {
+                              await copyTextToClipboard(text);
+                            } catch (error) {
+                              console.error('Failed to copy tool parameters:', error);
+                            }
                           }}
                         >
                           <CopyIcon className='size-3' />

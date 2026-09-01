@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { ChevronLeftIcon, ChevronRightIcon, DoubleArrowLeftIcon, DoubleArrowRightIcon } from '@radix-ui/react-icons';
 import { Layers, Copy, Check, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -35,7 +36,7 @@ export function ChunksDialog({ open, onOpenChange, chunks, title, isLive }: Chun
 
   const handleCopyAll = async () => {
     try {
-      await navigator.clipboard.writeText(JSON.stringify(chunks, null, 2));
+      await copyTextToClipboard(JSON.stringify(chunks, null, 2));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
