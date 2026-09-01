@@ -1,6 +1,7 @@
 package openai
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -70,14 +71,14 @@ func TestRequestFromLLM(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := RequestFromLLM(tt.llmReq, ReasoningFieldNone)
+			result := RequestFromLLM(context.Background(), tt.llmReq, ReasoningFieldNone)
 			tt.validate(t, result)
 		})
 	}
 }
 
 func TestRequestFromLLM_FiltersResponsesCustomTools(t *testing.T) {
-	req := RequestFromLLM(&llm.Request{
+	req := RequestFromLLM(context.Background(), &llm.Request{
 		Model:    "gpt-4o",
 		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
 		Tools: []llm.Tool{
@@ -155,7 +156,7 @@ func TestMessageContentFromLLM_IgnoresCompactionParts(t *testing.T) {
 }
 
 func TestRequestFromLLM_IgnoresCompactionPartsInMessages(t *testing.T) {
-	req := RequestFromLLM(&llm.Request{
+	req := RequestFromLLM(context.Background(), &llm.Request{
 		Model: "gpt-4o",
 		Messages: []llm.Message{
 			{
@@ -501,7 +502,7 @@ func TestResponse_ToLLMResponse_WithCitations(t *testing.T) {
 }
 
 func TestRequestFromLLM_KeepsGoogleThoughtSignatureInRequestModel(t *testing.T) {
-	req := RequestFromLLM(&llm.Request{
+	req := RequestFromLLM(context.Background(), &llm.Request{
 		Model: "gemini-3-pro",
 		Messages: []llm.Message{
 			{
@@ -619,7 +620,7 @@ func TestApplyReasoningEffortMapping(t *testing.T) {
 // reasoning_effort: mapping is the OutboundTransformer's responsibility (driven by
 // Config.ReasoningEffortMapping), not the package-level converter's.
 func TestRequestFromLLM_PreservesReasoningEffort(t *testing.T) {
-	req := RequestFromLLM(&llm.Request{
+	req := RequestFromLLM(context.Background(), &llm.Request{
 		Model:           "gpt-4",
 		ReasoningEffort: "xhigh",
 		Messages: []llm.Message{
@@ -757,7 +758,7 @@ func TestMessageContentPartFromLLM_NormalizesTextPartTypes(t *testing.T) {
 // Multi-part content is the path where Responses text types actually reach an
 // upstream: a lone text part is collapsed into a plain string before this point.
 func TestRequestFromLLM_NormalizesTextPartTypesInMessages(t *testing.T) {
-	req := RequestFromLLM(&llm.Request{
+	req := RequestFromLLM(context.Background(), &llm.Request{
 		Model: "gpt-4o",
 		Messages: []llm.Message{
 			{
