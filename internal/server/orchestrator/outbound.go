@@ -88,6 +88,7 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 		// response.completed; for Anthropic Messages API this is message_stop.
 		if IsTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
+			ts.markPerformanceCompleted()
 		}
 	}
 
@@ -154,6 +155,8 @@ func (ts *OutboundPersistentStream) Close() error {
 		if aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			ts.state.StreamCompleted = true
+			ts.markPerformanceCompleted()
+			enqueueCompletedPerformance(ts.ctx, ts.state)
 		}
 	} else {
 		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
@@ -219,6 +222,14 @@ func (ts *OutboundPersistentStream) Close() error {
 	}
 
 	return ts.stream.Close()
+}
+
+func (ts *OutboundPersistentStream) markPerformanceCompleted() {
+	if ts.perf == nil || ts.perf.RequestCompleted {
+		return
+	}
+
+	ts.perf.MarkSuccess()
 }
 
 func (ts *OutboundPersistentStream) logFinalizationDecision(ctx context.Context, decision string, streamErr error, ctxErr error, aggregatedCompleted bool, aggregatedErr error) {

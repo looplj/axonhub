@@ -94,7 +94,7 @@ replace github.com/tmaxmax/go-sse => github.com/wtj-0527/go-sse v0.0.0-202608110
 replace github.com/gin-contrib/sse => github.com/looplj/sse v0.0.0-20260223020440-b463add2d52f
 
 require (
-	ariga.io/atlas v0.38.0 // indirect
+	ariga.io/atlas v0.38.0
 	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.17.0 // indirect
