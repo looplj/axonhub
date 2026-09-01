@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { IconTrash, IconRefresh } from '@tabler/icons-react';
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
-import { MessageSquare, RefreshCcw, Copy } from 'lucide-react';
+import { DefaultChatTransport, type ChatStatus, type FileUIPart } from 'ai';
+import { ImagePlus, MessageSquare, RefreshCcw, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
@@ -18,7 +18,16 @@ import { Actions, Action } from '@/components/ai-elements/actions';
 import { Conversation, ConversationContent, ConversationEmptyState, ConversationScrollButton } from '@/components/ai-elements/conversation';
 import { Loader } from '@/components/ai-elements/loader';
 import { Message, MessageContent } from '@/components/ai-elements/message';
-import { PromptInput, PromptInputTextarea, PromptInputSubmit } from '@/components/ai-elements/prompt-input';
+import {
+  PromptInput,
+  PromptInputTextarea,
+  PromptInputSubmit,
+  PromptInputButton,
+  PromptInputHeader,
+  PromptInputAttachments,
+  PromptInputAttachment,
+  usePromptInputAttachments,
+} from '@/components/ai-elements/prompt-input';
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning';
 import { Response as UIResponse } from '@/components/ai-elements/response';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
@@ -29,6 +38,58 @@ import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
 
 type PlaygroundModelSource = 'channel' | 'model_gateway';
+
+function PlaygroundImageButton() {
+  const { t } = useTranslation();
+  const attachments = usePromptInputAttachments();
+
+  return (
+    <PromptInputButton
+      aria-label={t('playground.chat.addImage')}
+      className='absolute bottom-3 left-3 z-10'
+      title={t('playground.chat.addImage')}
+      onClick={() => attachments.openFileDialog()}
+    >
+      <ImagePlus className='size-4' />
+    </PromptInputButton>
+  );
+}
+
+function PlaygroundAttachments() {
+  const attachments = usePromptInputAttachments();
+
+  if (attachments.files.length === 0) {
+    return null;
+  }
+
+  return (
+    <PromptInputHeader>
+      <PromptInputAttachments>
+        {(attachment) => <PromptInputAttachment data={attachment} />}
+      </PromptInputAttachments>
+    </PromptInputHeader>
+  );
+}
+
+function PlaygroundSubmit({ input, status, onStop }: { input: string; status: ChatStatus; onStop: () => void }) {
+  const attachments = usePromptInputAttachments();
+  const hasInput = input.trim().length > 0 || attachments.files.length > 0;
+
+  return (
+    <PromptInputSubmit
+      status={status}
+      disabled={status === 'ready' ? !hasInput : false}
+      className='absolute right-3 bottom-3'
+      onClick={(e) => {
+        // When not ready (submitted/streaming/error), treat click as cancel
+        if (status !== 'ready') {
+          e.preventDefault();
+          onStop();
+        }
+      }}
+    />
+  );
+}
 
 export default function Playground() {
   const { t } = useTranslation();
@@ -184,12 +245,17 @@ export default function Playground() {
 
   // Handle form submission
   const handleSubmit = useCallback(
-    (message: { text?: string }, e: React.FormEvent) => {
+    (message: { text?: string; files?: FileUIPart[] }, e: React.FormEvent): Promise<void> | void => {
       e.preventDefault();
-      // block submit while a request is in-flight
-      if (isLoading) return;
-      if (message.text?.trim()) {
-        sendMessage({ text: message.text });
+      // block submit while a request is in-flight; reject so PromptInput
+      // keeps the still-attached files instead of clearing them
+      if (isLoading) {
+        return Promise.reject(new Error('request in-flight'));
+      }
+      const text = message.text?.trim() ?? '';
+      const files = message.files ?? [];
+      if (text || files.length > 0) {
+        sendMessage({ text, files });
         setInput('');
       }
     },
@@ -509,6 +575,27 @@ export default function Playground() {
                                   </Reasoning>
                                 );
                               }
+                              if (part.type === 'file' && part.url) {
+                                const isImage = part.mediaType?.startsWith('image/');
+                                return isImage ? (
+                                  <img
+                                    key={index}
+                                    alt={part.filename || 'attachment'}
+                                    className='rounded-md border object-contain'
+                                    src={part.url}
+                                  />
+                                ) : (
+                                  <a
+                                    key={index}
+                                    className='text-primary underline'
+                                    href={part.url}
+                                    rel='noreferrer'
+                                    target='_blank'
+                                  >
+                                    {part.filename || 'attachment'}
+                                  </a>
+                                );
+                              }
                               return null;
                             })}
                             {isLastAssistant && textContent ? (
@@ -541,26 +628,22 @@ export default function Playground() {
               <ConversationScrollButton />
             </Conversation>
 
-            <PromptInput onSubmit={handleSubmit} className='relative mt-4 w-full'>
+            <PromptInput
+              onSubmit={handleSubmit}
+              accept='image/*'
+              multiple
+              className='relative mt-4 w-full'
+              onError={({ code, message }) => toast.error(message)}
+            >
+              <PlaygroundAttachments />
               <PromptInputTextarea
                 value={input}
                 placeholder={t('playground.chat.typeMessage')}
                 onChange={(e) => setInput(e.currentTarget.value)}
-                className='pr-16'
+                className='pl-12 pr-16'
               />
-              <PromptInputSubmit
-                status={status}
-                disabled={status === 'ready' ? !input.trim() : false}
-                // className='absolute right-2 top-1/2 -translate-y-1/2'
-                className='absolute right-3 bottom-3'
-                onClick={(e) => {
-                  // When not ready (submitted/streaming/error), treat click as cancel
-                  if (status !== 'ready') {
-                    e.preventDefault();
-                    stop();
-                  }
-                }}
-              />
+              <PlaygroundImageButton />
+              <PlaygroundSubmit input={input} status={status} onStop={stop} />
             </PromptInput>
           </div>
         </div>
