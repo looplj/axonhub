@@ -3,6 +3,7 @@ package responses
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -488,6 +489,55 @@ func TestInboundTransformer_TransformStream_EmitsUpstreamErrorEvents(t *testing.
 	}
 }
 
+// TestInboundTransformer_TransformStream_DoesNotEmitFailureAfterCompleted
+// verifies that a transport error after response.completed is not emitted as a
+// conflicting response.failed event.
+func TestInboundTransformer_TransformStream_DoesNotEmitFailureAfterCompleted(t *testing.T) {
+	transformedStream, err := NewInboundTransformer().TransformStream(t.Context(), &errorResponseStream{
+		items: []*llm.Response{
+			{
+				Object:  "chat.completion.chunk",
+				ID:      "resp_completed_before_error",
+				Created: 1700000000,
+				Model:   "gpt-5",
+				Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Role: "assistant"}}},
+			},
+			{
+				Object:  "chat.completion.chunk",
+				ID:      "resp_completed_before_error",
+				Created: 1700000000,
+				Model:   "gpt-5",
+				Choices: []llm.Choice{{
+					Index:        0,
+					Delta:        &llm.Message{},
+					FinishReason: lo.ToPtr("stop"),
+				}},
+			},
+			{
+				Object:  "chat.completion.chunk",
+				ID:      "resp_completed_before_error",
+				Created: 1700000000,
+				Model:   "gpt-5",
+				Usage:   &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+			},
+		},
+		err: errors.New("unexpected EOF"),
+	})
+	require.NoError(t, err)
+
+	var eventTypes []StreamEventType
+	for transformedStream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(transformedStream.Current().Data, &event))
+		eventTypes = append(eventTypes, event.Type)
+	}
+
+	require.NoError(t, transformedStream.Err())
+	require.Contains(t, eventTypes, StreamEventTypeResponseCompleted)
+	require.NotContains(t, eventTypes, StreamEventTypeResponseFailed)
+	require.NotContains(t, eventTypes, StreamEventTypeError)
+}
+
 type errorResponseStream struct {
 	items []*llm.Response
 	index int
@@ -528,10 +578,10 @@ func (s *errorResponseStream) Close() error {
 // reported as a successful completion downstream.
 func TestInboundTransformer_TransformStream_MapsFinishReasonToCompletedStatus(t *testing.T) {
 	tests := []struct {
-		name                 string
-		finishReason         string
-		expectedStatus       string
-		expectedIncomplete   *ResponseIncompleteDetails
+		name               string
+		finishReason       string
+		expectedStatus     string
+		expectedIncomplete *ResponseIncompleteDetails
 	}{
 		{name: "length maps to incomplete", finishReason: "length", expectedStatus: "incomplete", expectedIncomplete: &ResponseIncompleteDetails{Reason: "max_output_tokens"}},
 		{name: "content_filter maps to incomplete", finishReason: "content_filter", expectedStatus: "incomplete", expectedIncomplete: &ResponseIncompleteDetails{Reason: "content_filter"}},
@@ -643,4 +693,25 @@ func TestInboundTransformer_TransformStream_UsageBeforeFinishReasonKeepsMappedSt
 	require.Equal(t, "incomplete", *completed.Status)
 	require.NotNil(t, completed.IncompleteDetails)
 	require.Equal(t, "max_output_tokens", completed.IncompleteDetails.Reason)
+}
+
+// TestClassifyStreamError_UnexpectedEOF verifies that truncated upstream
+// connections (io.ErrUnexpectedEOF and io.EOF) map to the upstream_eof code.
+func TestClassifyStreamError_UnexpectedEOF(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		wantCode string
+	}{
+		{name: "unexpected EOF", err: io.ErrUnexpectedEOF, wantCode: "upstream_eof"},
+		{name: "clean EOF", err: io.EOF, wantCode: "upstream_eof"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code, message := classifyStreamError(tt.err)
+			require.Equal(t, tt.wantCode, code)
+			require.Equal(t, "upstream connection closed unexpectedly", message)
+		})
+	}
 }

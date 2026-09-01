@@ -229,6 +229,101 @@ func TestInboundPersistentStream_Close_WithTerminalEvent(t *testing.T) {
 	assert.True(t, mockStream.closed, "Stream should be closed")
 }
 
+// TestInboundPersistentStream_Close_ResponsesFailureTerminalDoesNotComplete
+// verifies that failed, incomplete, and cancelled Responses terminals do not
+// mark the request completed.
+func TestInboundPersistentStream_Close_ResponsesFailureTerminalDoesNotComplete(t *testing.T) {
+	tests := []struct {
+		name      string
+		eventType string
+		data      string
+	}{
+		{
+			name:      "response.failed event field",
+			eventType: "response.failed",
+			data:      `{"type":"response.failed","response":{"status":"failed"}}`,
+		},
+		{
+			name:      "response.incomplete event field",
+			eventType: "response.incomplete",
+			data:      `{"type":"response.incomplete","response":{"status":"incomplete"}}`,
+		},
+		{
+			name: "response.cancelled JSON type",
+			data: `{"type":"response.cancelled","response":{"status":"cancelled"}}`,
+		},
+		{
+			name:      "response.completed with failed status",
+			eventType: "response.completed",
+			data:      `{"type":"response.completed","response":{"status":"failed"}}`,
+		},
+		{
+			name: "response.completed with incomplete status",
+			data: `{"type":"response.completed","response":{"status":"incomplete"}}`,
+		},
+		{
+			name:      "response.completed with cancelled status",
+			eventType: "response.completed",
+			data:      `{"type":"response.completed","response":{"status":"cancelled"}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			defer client.Close()
+
+			ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+			project := createTestProject(t, ctx, client)
+			channel := createTestChannel(t, ctx, client)
+			requestService := createTestRequestService(t, client)
+
+			req, err := client.Request.Create().
+				SetProjectID(project.ID).
+				SetChannelID(channel.ID).
+				SetModelID("gpt-5").
+				SetStatus(request.StatusProcessing).
+				SetRequestBody([]byte(`{"stream":true}`)).
+				SetStream(true).
+				Save(ctx)
+			require.NoError(t, err)
+
+			state := &PersistenceState{}
+			mockStream := &mockStream{events: []*httpclient.StreamEvent{{
+				Type: tt.eventType,
+				Data: []byte(tt.data),
+			}}}
+			mockTransformer := &mockInboundTransformer{
+				aggregateResponseBody: []byte(`{"id":"resp_terminal_failure"}`),
+				aggregateMeta: llm.ResponseMeta{
+					ID:    "resp_terminal_failure",
+					Usage: &llm.Usage{CompletionTokens: 1},
+				},
+			}
+			stream := NewInboundPersistentStream(
+				ctx,
+				mockStream,
+				req,
+				nil,
+				requestService,
+				mockTransformer,
+				nil,
+				state,
+			)
+
+			require.True(t, stream.Next())
+			require.NotNil(t, stream.Current())
+			require.True(t, IsTerminalStreamEvent(mockStream.events[0]))
+			require.False(t, state.StreamCompleted)
+			require.NoError(t, stream.Close())
+
+			dbReq, err := client.Request.Get(ctx, req.ID)
+			require.NoError(t, err)
+			require.NotEqual(t, request.StatusCompleted, dbReq.Status)
+		})
+	}
+}
+
 // TestInboundPersistentStream_Close_WithAggregationError tests the error path:
 // aggregation fails but fallback behavior still works (persistResponseChunks called in final block).
 func TestInboundPersistentStream_Close_WithAggregationError(t *testing.T) {

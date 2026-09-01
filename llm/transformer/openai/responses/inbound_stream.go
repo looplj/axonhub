@@ -114,11 +114,22 @@ func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
 	return nil
 }
 
+// Next advances the downstream stream to the next event. It stops returning
+// events after response.completed so a late transport error cannot become a
+// conflicting response.failed event.
+//
 //nolint:maintidx,gocognit // It is complex and hard to split.
 func (s *responsesInboundStream) Next() bool {
 	// If we have events in the queue, return them first
 	if s.queueIndex < len(s.eventQueue) {
 		return true
+	}
+
+	// A completed terminal event ends the downstream response. Do not read the
+	// source again, because a late transport error would otherwise become a
+	// conflicting response.failed event.
+	if s.responseCompleted {
+		return false
 	}
 
 	// Clear the queue and reset index for new events
@@ -1210,6 +1221,8 @@ func (s *responsesInboundStream) emitStreamErrorEvent(err error) error {
 	return nil
 }
 
+// classifyStreamError maps an error to a stable code and human-readable
+// message used in Responses error events.
 func classifyStreamError(err error) (code, message string) {
 	code = "stream_error"
 	message = err.Error()
@@ -1220,6 +1233,15 @@ func classifyStreamError(err error) (code, message string) {
 		return code, message
 	}
 
+	// io.ErrUnexpectedEOF means the upstream body was truncated mid-chunk
+	// (connection cut before the terminal chunk) — a transport disconnect,
+	// not a provider-level failure. Classify it so response.failed events
+	// carry a stable, filterable code instead of the raw Go error text.
+	if errors.Is(err, io.ErrUnexpectedEOF) {
+		code = "upstream_eof"
+		message = "upstream connection closed unexpectedly"
+		return code, message
+	}
 	if errors.Is(err, context.Canceled) {
 		code = "client_cancel"
 		message = "client disconnected"
@@ -1285,6 +1307,8 @@ func (s *responsesInboundStream) Current() *httpclient.StreamEvent {
 	return nil
 }
 
+// Err returns the stream error. Errors already emitted as an error event or
+// observed after response.completed are suppressed to avoid double emission.
 func (s *responsesInboundStream) Err() error {
 	// If we've already emitted an error event to the client, return nil
 	// to avoid double error emission by the SSE writer
@@ -1294,6 +1318,12 @@ func (s *responsesInboundStream) Err() error {
 
 	if s.err != nil {
 		return s.err
+	}
+
+	// A transport error observed after response.completed is outside the
+	// completed response and must not turn the downstream stream into an error.
+	if s.responseCompleted {
+		return nil
 	}
 
 	return s.source.Err()

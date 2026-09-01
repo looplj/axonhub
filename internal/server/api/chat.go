@@ -345,6 +345,16 @@ func writeSSEStreamEnd(
 			if !errors.Is(streamErr, context.Canceled) {
 				log.Warn(ctx, "Stream error after client disconnected", log.Cause(streamErr))
 			}
+		} else if terminalSeen {
+			// A terminal event (response.completed / response.failed / message_stop /
+			// [DONE]) was already delivered to the client. Appending a bare `error`
+			// event after it breaks OpenAI SDK clients: the SDK treats any data frame
+			// with an `error` field as fatal and throws mid-iteration, even though the
+			// response already reached a terminal state (observed as "unexpected EOF"
+			// with pi over /v1/responses). Log for observability; the terminal event
+			// already told the client how the response ended.
+			log.Warn(ctx, "Stream error after terminal event was delivered, suppressing trailing error event",
+				log.Cause(streamErr))
 		} else {
 			log.Error(ctx, "Error in stream", log.Cause(streamErr))
 			c.SSEvent("error", formatErr(ctx, streamErr))
