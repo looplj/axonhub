@@ -149,6 +149,43 @@ func TestCreateChannel_PreservesModelProtocolsWithEmptySupportedModels(t *testin
 	require.Equal(t, settings.ModelProtocols, created.Settings.ModelProtocols)
 }
 
+func TestChannelService_DuplicateChannelInheritsCustomEndpointsForModelProtocols(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:channel_model_protocols_duplicate?mode=memory&_fk=0")
+	t.Cleanup(func() { client.Close() })
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc := NewChannelServiceForTest(client)
+	customEndpoints := []objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}}
+	modelProtocols := &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+		{Model: "minimax-m3", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}},
+	}}
+
+	source, err := client.Channel.Create().
+		SetName("minimax-anthropic-source").
+		SetType(channel.TypeMinimaxAnthropic).
+		SetBaseURL("https://api.minimaxi.com/anthropic").
+		SetCredentials(objects.ChannelCredentials{APIKey: "source-key"}).
+		SetSupportedModels([]string{"minimax-m3"}).
+		SetDefaultTestModel("minimax-m3").
+		SetEndpoints(customEndpoints).
+		SetSettings(modelProtocols).
+		Save(ctx)
+	require.NoError(t, err)
+
+	duplicated, err := svc.DuplicateChannel(ctx, source.ID, ent.CreateChannelInput{
+		Type:             channel.TypeMinimaxAnthropic,
+		BaseURL:          lo.ToPtr("https://api.minimaxi.com/anthropic"),
+		Name:             "minimax-anthropic-copy",
+		Credentials:      objects.ChannelCredentials{APIKey: "copy-key"},
+		SupportedModels:  []string{"minimax-m3"},
+		DefaultTestModel: "minimax-m3",
+		Settings:         modelProtocols,
+	})
+	require.NoError(t, err)
+	require.Equal(t, customEndpoints, duplicated.Endpoints)
+	require.Equal(t, modelProtocols.ModelProtocols, duplicated.Settings.ModelProtocols)
+}
+
 // TestUpdateChannel_ModelProtocolsValidatedWithoutResentSettings covers updates that
 // change the endpoint surface (endpoints or channel type) without resending settings:
 // overrides already stored in settings must still reference formats that survive the
