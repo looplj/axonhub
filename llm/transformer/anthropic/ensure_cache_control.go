@@ -18,21 +18,64 @@ func optimizeCacheControl(req *MessageRequest) {
 	// 统一归一化：将 Content 字符串形式转为 MultipleContent 数组，
 	// 后续所有函数只处理数组格式，消除隐式结构改写副作用。
 	normalizeMessageContents(req)
-	clearCacheControls(req)
 
+	// 客户端在消息上声明的 cache_control 是其缓存前缀键的一部分，位置必须
+	// 逐字节稳定：缓存命中要求断点前的内容与断点位置完全一致。原实现固定把
+	// 第二锚点放在"距末尾约 20 块"的窗口边界，对话增长后锚点随之后移，
+	// 前缀 hash 失效 -> 每次请求全量缓存重写（cache_read 恒为 0）。
+	// 因此：消息上已有断点时原样保留，仅在总数超限时从最早的消息断点裁剪；
+	// 消息上没有任何断点时，保持原有自动注入策略不变。
 	structural := ensureStructuralCacheControls(req)
 
-	remaining := maxCacheControlBreakpoints - structural
-	if remaining <= 0 {
-		return
+	if countMessageBreakpoints(req) > 0 {
+		trimMessageBreakpointsToLimit(req, maxCacheControlBreakpoints)
+	} else if remaining := maxCacheControlBreakpoints - structural; remaining > 0 {
+		refs := collectMessageBlockRefs(req)
+		messageAnchors := min(desiredMessageCacheAnchors(len(refs)), remaining)
+		injectPlannedMessageCacheControls(refs, messageAnchors)
 	}
-
-	refs := collectMessageBlockRefs(req)
-	messageAnchors := min(desiredMessageCacheAnchors(len(refs)), remaining)
-	injectPlannedMessageCacheControls(refs, messageAnchors)
 
 	// 最终安全检查：确保 thinking 和空 text 块上不会被意外注入 cache_control。
 	sanitizeUnsupportedCacheControls(req)
+}
+
+// countMessageBreakpoints 统计 messages 上已存在的 cache_control 断点数（不含 tools/system）。
+func countMessageBreakpoints(req *MessageRequest) int {
+	count := 0
+
+	for i := range req.Messages {
+		for j := range req.Messages[i].Content.MultipleContent {
+			if req.Messages[i].Content.MultipleContent[j].CacheControl != nil {
+				count++
+			}
+		}
+	}
+
+	return count
+}
+
+// trimMessageBreakpointsToLimit 在断点总数超过 Anthropic 上限（4）时，
+// 从最早的消息断点开始裁剪：最早断点覆盖的前缀最短，去掉它对其余
+// 断点的缓存前缀无影响，且保留的较新断点更靠近会话末尾。
+func trimMessageBreakpointsToLimit(req *MessageRequest, limit int) {
+	for countCacheControls(req) > limit {
+		if !removeEarliestMessageBreakpoint(req) {
+			return
+		}
+	}
+}
+
+func removeEarliestMessageBreakpoint(req *MessageRequest) bool {
+	for i := range req.Messages {
+		for j := range req.Messages[i].Content.MultipleContent {
+			if req.Messages[i].Content.MultipleContent[j].CacheControl != nil {
+				req.Messages[i].Content.MultipleContent[j].CacheControl = nil
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // normalizeMessageContents 将 Messages 中的纯字符串 Content 统一归一化为 MultipleContent 数组格式。
@@ -57,7 +100,9 @@ func normalizeMessageContents(req *MessageRequest) {
 func ensureStructuralCacheControls(req *MessageRequest) int {
 	count := 0
 
-	if len(req.Tools) > 0 {
+	// 区块内已有客户端断点时不再补齐，尊重客户端的锚点选择，
+	// 也避免把总数推过 4 个上限后被迫裁剪消息断点。
+	if len(req.Tools) > 0 && !anyToolHasCacheControl(req) {
 		req.Tools[len(req.Tools)-1].CacheControl = &CacheControl{Type: "ephemeral"}
 		count++
 	}
@@ -67,9 +112,11 @@ func ensureStructuralCacheControls(req *MessageRequest) int {
 	}
 
 	if len(req.System.MultiplePrompts) > 0 {
-		last := len(req.System.MultiplePrompts) - 1
-		req.System.MultiplePrompts[last].CacheControl = &CacheControl{Type: "ephemeral"}
-		count++
+		if !anySystemPromptHasCacheControl(req) {
+			last := len(req.System.MultiplePrompts) - 1
+			req.System.MultiplePrompts[last].CacheControl = &CacheControl{Type: "ephemeral"}
+			count++
+		}
 
 		return count
 	}
@@ -88,6 +135,26 @@ func ensureStructuralCacheControls(req *MessageRequest) int {
 	}
 
 	return count
+}
+
+func anyToolHasCacheControl(req *MessageRequest) bool {
+	for i := range req.Tools {
+		if req.Tools[i].CacheControl != nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+func anySystemPromptHasCacheControl(req *MessageRequest) bool {
+	for i := range req.System.MultiplePrompts {
+		if req.System.MultiplePrompts[i].CacheControl != nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 // sanitizeUnsupportedCacheControls 清理不允许设置 cache_control 的内容块。
