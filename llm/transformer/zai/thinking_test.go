@@ -1,6 +1,7 @@
 package zai
 
 import (
+	"context"
 	"testing"
 
 	"github.com/looplj/axonhub/llm"
@@ -131,7 +132,7 @@ func TestZAIRequestWithoutThinking(t *testing.T) {
 	}
 
 	zaiReq := Request{
-		Request: *openai.RequestFromLLM(chatReq, openai.ReasoningFieldContent),
+		Request: *openai.RequestFromLLM(context.Background(), chatReq, openai.ReasoningFieldContent),
 		UserID:  "test-user",
 	}
 

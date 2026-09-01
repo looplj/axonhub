@@ -163,7 +163,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert llm.Request to openai.Request first
-	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+	oaiReq := openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldContent)
 
 	// Create Doubao-specific request by adding request_id/user_id
 	doubaoReq := Request{

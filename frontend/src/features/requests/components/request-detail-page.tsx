@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { getTokenFromStorage } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberID } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -350,8 +351,7 @@ export default function RequestDetailPage() {
 
   const copyRequestID = async () => {
     try {
-      if (!navigator.clipboard) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(request?.id ?? requestId);
+      await copyTextToClipboard(request?.id ?? requestId);
       toast.success(t('requests.actions.copied'));
     } catch {
       toast.error(t('common.errors.copyFailed'));

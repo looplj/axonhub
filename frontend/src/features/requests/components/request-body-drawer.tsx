@@ -14,6 +14,7 @@ import {
   Terminal,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberID, cn } from '@/lib/utils';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { useSelectedProjectId } from '@/stores/projectStore';
@@ -152,13 +153,20 @@ export function RequestBodyDrawer({
   const [curlCommand, setCurlCommand] = useState('');
 
   const copyBody = useCallback(
-    (data: any) => {
+    async (data: any) => {
+      let text: string;
       try {
-        navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+        text = JSON.stringify(data, null, 2);
       } catch {
-        navigator.clipboard.writeText(String(data));
+        text = String(data);
       }
-      toast.success(t('requests.actions.copy'));
+
+      try {
+        await copyTextToClipboard(text);
+        toast.success(t('requests.actions.copy'));
+      } catch {
+        toast.error(t('common.errors.copyFailed'));
+      }
     },
     [t]
   );

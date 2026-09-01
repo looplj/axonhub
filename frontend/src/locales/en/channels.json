@@ -575,6 +575,7 @@
   "channels.dialogs.bulkOrdering.saveButton": "Save Order",
   "channels.dialogs.bulkOrdering.orderingWeight": "Weight",
   "channels.dialogs.bulkOrdering.noChannels": "No channels available for ordering",
+  "channels.dialogs.bulkOrdering.errors.invalidWeight": "Weight must be an integer from {{min}} to {{max}}.",
   "channels.dialogs.bulkArchive.title": "Bulk Archive Channels",
   "channels.dialogs.bulkArchive.description": "Are you sure you want to archive {{count}} selected channels? Archived channels are hidden from the default list.",
   "channels.dialogs.bulkArchive.warning": "This action will hide all selected channels from regular views. You can still find them by filtering by archived status.",

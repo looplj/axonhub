@@ -6,6 +6,7 @@ import { IconCheck, IconCopy, IconMailPlus } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { apiRequest } from '@/lib/api-client';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberIDAsNumber } from '@/lib/utils';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useRoles } from '@/features/project-roles/data/roles';
@@ -85,7 +86,7 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
 
   const copyInviteLink = async () => {
     try {
-      await navigator.clipboard.writeText(inviteLink);
+      await copyTextToClipboard(inviteLink);
       setIsCopied(true);
       toast.success(t('users.messages.invitationCopied'));
     } catch {
