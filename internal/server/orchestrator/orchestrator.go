@@ -213,6 +213,12 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	}
 
 	var pipelineOpts []pipeline.Option
+	// This recovery is a Responses-specific exception to the normal retry
+	// policy. Pass the system toggle into each request so executor decorators
+	// can honor it without sharing mutable transformer state.
+	pipelineOpts = append(pipelineOpts, pipeline.WithInvalidEncryptedContentRetry(
+		retryPolicy.Enabled && retryPolicy.RetryInvalidEncryptedContent,
+	))
 
 	// Only apply retry if policy is enabled
 	if retryPolicy.Enabled {

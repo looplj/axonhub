@@ -446,6 +446,15 @@ type codexExecutor struct {
 }
 
 func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
+	response, err := e.doOnce(ctx, request)
+	if retryRequest, ok := responses.PrepareEncryptedContentRetryRequest(request, response, err); ok {
+		return e.doOnce(ctx, retryRequest)
+	}
+
+	return response, err
+}
+
+func (e *codexExecutor) doOnce(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
 	// Compact and alpha search are non-streaming endpoints; proxy them
 	// through the real HTTP client instead of the SSE stream path.
 	if request.RequestType == string(llm.RequestTypeCompact) ||
@@ -596,5 +605,14 @@ func decodeSSEChunks(ctx context.Context, body []byte) ([]*httpclient.StreamEven
 }
 
 func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
-	return e.inner.DoStream(ctx, request)
+	stream, err := e.inner.DoStream(ctx, request)
+	if retryRequest, ok := responses.PrepareEncryptedContentRetryRequest(request, nil, err); ok {
+		if stream != nil {
+			_ = stream.Close()
+		}
+
+		return e.inner.DoStream(ctx, retryRequest)
+	}
+
+	return stream, err
 }

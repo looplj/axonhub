@@ -28,8 +28,8 @@ var (
 
 // Config holds all configuration for the OpenAI Responses outbound transformer.
 const (
-	TransportHTTP       = "http"
-	TransportWebSocket  = "websocket"
+	TransportHTTP      = "http"
+	TransportWebSocket = "websocket"
 	// ResponsesLiteHeader is the Codex Responses Lite signal. It uses the
 	// canonical spelling ("Openai"): http.Header canonicalizes keys, so lookups
 	// match whatever case a Codex client sends.
@@ -96,8 +96,15 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 }
 
 func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
-	if t == nil || t.config == nil || t.config.Transport != TransportWebSocket {
+	if t == nil || t.config == nil {
 		return executor
+	}
+
+	if t.config.Transport != TransportWebSocket {
+		// Responses reasoning blobs are signed by the serving account. If
+		// affinity drifts between turns, recover the request before the
+		// pipeline gives up or switches channels.
+		return NewEncryptedContentRetryExecutor(executor)
 	}
 
 	if !ExecutorComparable(executor) {

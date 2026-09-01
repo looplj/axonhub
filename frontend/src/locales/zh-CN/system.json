@@ -178,6 +178,8 @@
   "system.retry.nonStreamResponseTimeoutSeconds.description": "等待非流式响应完成的最长秒数 (0-600s)。设为 0 时关闭。",
   "system.retry.emptyResponseDetection.label": "空回检测",
   "system.retry.emptyResponseDetection.description": "启用后，系统会预读流式响应事件来检测空回（未生成任何内容）。如果检测到空回，会将其视为一次失败尝试，供后续重试处理使用。",
+  "system.retry.invalidEncryptedContent.label": "重试加密内容校验失败",
+  "system.retry.invalidEncryptedContent.description": "启用此项且系统总重试已开启时，Responses 请求因加密 reasoning 内容无法校验而失败，会移除这些不透明字段，并在同一上游重试一次。",
   "system.retry.upstreamErrorPolicy.label": "上游错误展示",
   "system.retry.upstreamErrorPolicy.description": "控制 API 用户是否能看到原始服务商报错。请求追踪仍会保留原始错误，方便管理员排查。",
   "system.retry.upstreamErrorPolicy.placeholder": "选择展示模式",

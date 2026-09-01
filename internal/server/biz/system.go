@@ -368,6 +368,12 @@ type RetryPolicy struct {
 	// contains meaningful content, and marks empty responses as failed attempts for retry handling.
 	EmptyResponseDetection bool `json:"empty_response_detection"`
 
+	// RetryInvalidEncryptedContent controls the one-shot recovery for Responses
+	// requests whose account-bound encrypted reasoning content cannot be verified.
+	// It defaults to true for backward compatibility and can be disabled from
+	// the system retry settings.
+	RetryInvalidEncryptedContent bool `json:"retry_invalid_encrypted_content"`
+
 	// UpstreamErrorPolicy controls how provider errors are exposed to API users.
 	UpstreamErrorPolicy UpstreamErrorPolicy `json:"upstream_error_policy"`
 }
@@ -1091,6 +1097,18 @@ func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
 	var policy RetryPolicy
 	if err := json.Unmarshal([]byte(value), &policy); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal retry policy: %w", err)
+	}
+	// Policies written before this option existed should retain the behavior
+	// that was active when the Responses recovery was introduced. A pointer
+	// probe distinguishes an omitted field from an explicit false value.
+	var stored struct {
+		RetryInvalidEncryptedContent *bool `json:"retry_invalid_encrypted_content"`
+	}
+	if err := json.Unmarshal([]byte(value), &stored); err != nil {
+		return nil, fmt.Errorf("failed to inspect retry policy: %w", err)
+	}
+	if stored.RetryInvalidEncryptedContent == nil {
+		policy.RetryInvalidEncryptedContent = defaultRetryPolicy.RetryInvalidEncryptedContent
 	}
 
 	normalizeRetryPolicy(&policy)

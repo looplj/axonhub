@@ -36,6 +36,7 @@ export function RetrySettings() {
       enabled: false,
       statuses: [],
     },
+    retryInvalidEncryptedContent: true,
   });
 
   useEffect(() => {
@@ -58,6 +59,7 @@ export function RetrySettings() {
           enabled: retryPolicy.autoDisableChannel?.enabled || false,
           statuses: retryPolicy.autoDisableChannel?.statuses || [],
         },
+        retryInvalidEncryptedContent: retryPolicy.retryInvalidEncryptedContent,
       });
     }
   }, [retryPolicy]);
@@ -340,6 +342,24 @@ export function RetrySettings() {
                   id='empty-response-detection'
                   checked={formData.emptyResponseDetection || false}
                   onCheckedChange={(checked) => handleInputChange('emptyResponseDetection', checked)}
+                />
+              </div>
+
+              {/* Invalid encrypted content recovery */}
+              <div className='flex items-center justify-between'>
+                <div className='space-y-0.5'>
+                  <Label htmlFor='retry-invalid-encrypted-content' className='text-base'>
+                    {t('system.retry.invalidEncryptedContent.label')}
+                  </Label>
+                  <div className='text-muted-foreground text-sm'>
+                    {t('system.retry.invalidEncryptedContent.description')}
+                  </div>
+                </div>
+                <Switch
+                  id='retry-invalid-encrypted-content'
+                  data-testid='retry-invalid-encrypted-content'
+                  checked={formData.retryInvalidEncryptedContent ?? true}
+                  onCheckedChange={(checked) => handleInputChange('retryInvalidEncryptedContent', checked)}
                 />
               </div>
 

@@ -1375,3 +1375,35 @@ func TestNormalizeRetryPolicy_LoadBalancerStrategy(t *testing.T) {
 		}
 	})
 }
+
+func TestSystemService_RetryPolicy_InvalidEncryptedContentSetting(t *testing.T) {
+	service, client := setupTestSystemService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+
+	// A missing policy uses the default, which keeps the recovery enabled for
+	// installations upgrading from the pre-toggle behavior.
+	policy, err := service.RetryPolicy(ctx)
+	require.NoError(t, err)
+	require.True(t, policy.RetryInvalidEncryptedContent)
+
+	// Existing stored policies without the field are backfilled to the same
+	// default, while an explicit false value remains disabled.
+	_, err = client.System.Create().
+		SetKey(SystemKeyRetryPolicy).
+		SetValue(`{"enabled":true}`).
+		Save(ctx)
+	require.NoError(t, err)
+
+	policy, err = service.RetryPolicy(ctx)
+	require.NoError(t, err)
+	require.True(t, policy.RetryInvalidEncryptedContent)
+
+	policy.RetryInvalidEncryptedContent = false
+	require.NoError(t, service.SetRetryPolicy(ctx, policy))
+
+	policy, err = service.RetryPolicy(ctx)
+	require.NoError(t, err)
+	require.False(t, policy.RetryInvalidEncryptedContent)
+}

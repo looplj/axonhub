@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -242,6 +243,35 @@ func TestWithRetry(t *testing.T) {
 	require.Equal(t, 100*time.Millisecond, p.retryDelay)
 }
 
+func TestWithInvalidEncryptedContentRetry(t *testing.T) {
+	p := &pipeline{}
+
+	WithInvalidEncryptedContentRetry(true)(p)
+	require.True(t, p.retryInvalidEncryptedContent)
+
+	WithInvalidEncryptedContentRetry(false)(p)
+	require.False(t, p.retryInvalidEncryptedContent)
+}
+
+func TestInvalidEncryptedContentRetryOptionPropagatesToRequest(t *testing.T) {
+	for _, enabled := range []bool{true, false} {
+		t.Run(fmt.Sprintf("enabled=%t", enabled), func(t *testing.T) {
+			executor := &requestCaptureExecutor{}
+			outbound := &testCustomExecutorOutbound{customExecutor: executor}
+			pipe := NewFactory(executor).Pipeline(
+				&testInbound{},
+				outbound,
+				WithInvalidEncryptedContentRetry(enabled),
+			)
+
+			_, err := pipe.Process(context.Background(), &httpclient.Request{})
+			require.NoError(t, err)
+			require.NotNil(t, executor.request)
+			require.Equal(t, enabled, executor.request.RetryInvalidEncryptedContent)
+		})
+	}
+}
+
 func TestWithDecorators(t *testing.T) {
 	p := &pipeline{}
 
@@ -266,6 +296,22 @@ func TestFactory_NewFactory(t *testing.T) {
 type testExecutor struct {
 	callCount int
 }
+
+type requestCaptureExecutor struct {
+	request *httpclient.Request
+}
+
+func (e *requestCaptureExecutor) Do(_ context.Context, request *httpclient.Request) (*httpclient.Response, error) {
+	e.request = request
+	return &httpclient.Response{}, nil
+}
+
+func (e *requestCaptureExecutor) DoStream(_ context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
+	e.request = request
+	return streams.SliceStream([]*httpclient.StreamEvent{}), nil
+}
+
+var _ Executor = (*requestCaptureExecutor)(nil)
 
 func (t *testExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
 	t.callCount++

@@ -103,6 +103,7 @@ const RETRY_POLICY_QUERY = `
       traceStickyMode
       enabled
       emptyResponseDetection
+      retryInvalidEncryptedContent
       upstreamErrorPolicy {
         mode
         customMessage
@@ -358,6 +359,7 @@ export interface RetryPolicy {
   enabled: boolean;
   autoDisableChannel: AutoDisableChannel;
   emptyResponseDetection: boolean;
+  retryInvalidEncryptedContent: boolean;
   upstreamErrorPolicy: UpstreamErrorPolicy;
 }
 
@@ -387,6 +389,7 @@ export interface RetryPolicyInput {
   enabled?: boolean;
   autoDisableChannel?: AutoDisableChannelInput;
   emptyResponseDetection?: boolean;
+  retryInvalidEncryptedContent?: boolean;
   upstreamErrorPolicy?: Partial<UpstreamErrorPolicy>;
 }
 

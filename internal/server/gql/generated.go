@@ -1579,6 +1579,7 @@ type ComplexityRoot struct {
 		MaxSingleChannelRetries         func(childComplexity int) int
 		NonStreamResponseTimeoutSeconds func(childComplexity int) int
 		RetryDelayMs                    func(childComplexity int) int
+		RetryInvalidEncryptedContent    func(childComplexity int) int
 		StreamFirstEventTimeoutSeconds  func(childComplexity int) int
 		TraceStickyMode                 func(childComplexity int) int
 		UpstreamErrorPolicy             func(childComplexity int) int
@@ -9424,6 +9425,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RetryPolicy.RetryDelayMs(childComplexity), true
+	case "RetryPolicy.retryInvalidEncryptedContent":
+		if e.complexity.RetryPolicy.RetryInvalidEncryptedContent == nil {
+			break
+		}
+
+		return e.complexity.RetryPolicy.RetryInvalidEncryptedContent(childComplexity), true
 	case "RetryPolicy.streamFirstEventTimeoutSeconds":
 		if e.complexity.RetryPolicy.StreamFirstEventTimeoutSeconds == nil {
 			break
@@ -46018,6 +46025,8 @@ func (ec *executionContext) fieldContext_Query_retryPolicy(_ context.Context, fi
 				return ec.fieldContext_RetryPolicy_autoDisableChannel(ctx, field)
 			case "emptyResponseDetection":
 				return ec.fieldContext_RetryPolicy_emptyResponseDetection(ctx, field)
+			case "retryInvalidEncryptedContent":
+				return ec.fieldContext_RetryPolicy_retryInvalidEncryptedContent(ctx, field)
 			case "upstreamErrorPolicy":
 				return ec.fieldContext_RetryPolicy_upstreamErrorPolicy(ctx, field)
 			}
@@ -50861,6 +50870,35 @@ func (ec *executionContext) _RetryPolicy_emptyResponseDetection(ctx context.Cont
 }
 
 func (ec *executionContext) fieldContext_RetryPolicy_emptyResponseDetection(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RetryPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RetryPolicy_retryInvalidEncryptedContent(ctx context.Context, field graphql.CollectedField, obj *biz.RetryPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RetryPolicy_retryInvalidEncryptedContent,
+		func(ctx context.Context) (any, error) {
+			return obj.RetryInvalidEncryptedContent, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RetryPolicy_retryInvalidEncryptedContent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RetryPolicy",
 		Field:      field,
@@ -85203,7 +85241,7 @@ func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"maxChannelRetries", "maxSingleChannelRetries", "retryDelayMs", "streamFirstEventTimeoutSeconds", "nonStreamResponseTimeoutSeconds", "loadBalancerStrategy", "traceStickyMode", "enabled", "autoDisableChannel", "emptyResponseDetection", "upstreamErrorPolicy"}
+	fieldsInOrder := [...]string{"maxChannelRetries", "maxSingleChannelRetries", "retryDelayMs", "streamFirstEventTimeoutSeconds", "nonStreamResponseTimeoutSeconds", "loadBalancerStrategy", "traceStickyMode", "enabled", "autoDisableChannel", "emptyResponseDetection", "retryInvalidEncryptedContent", "upstreamErrorPolicy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -85280,6 +85318,13 @@ func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Con
 				return it, err
 			}
 			it.EmptyResponseDetection = data
+		case "retryInvalidEncryptedContent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryInvalidEncryptedContent"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RetryInvalidEncryptedContent = data
 		case "upstreamErrorPolicy":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upstreamErrorPolicy"))
 			data, err := ec.unmarshalOUpstreamErrorPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpstreamErrorPolicy(ctx, v)
@@ -104196,6 +104241,11 @@ func (ec *executionContext) _RetryPolicy(ctx context.Context, sel ast.SelectionS
 			}
 		case "emptyResponseDetection":
 			out.Values[i] = ec._RetryPolicy_emptyResponseDetection(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "retryInvalidEncryptedContent":
+			out.Values[i] = ec._RetryPolicy_retryInvalidEncryptedContent(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
