@@ -162,10 +162,10 @@ func RemoveRemovedModelProtocolOverrides(settings *objects.ChannelSettings, supp
 }
 
 func modelProtocolAvailableModels(settings *objects.ChannelSettings, supportedModels []string) map[string]struct{} {
-	probe := &Channel{Channel: &ent.Channel{
-		SupportedModels: supportedModels,
-		Settings:        settings,
-	}}
+	probe := new(Channel)
+	probe.Channel = new(ent.Channel)
+	probe.Channel.SupportedModels = supportedModels
+	probe.Channel.Settings = settings
 	entries := probe.GetModelEntries()
 	available := make(map[string]struct{}, len(entries)+len(supportedModels))
 	for model := range entries {

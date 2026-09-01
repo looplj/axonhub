@@ -501,6 +501,7 @@ func newProviderChatOutbound(
 	case channel.TypeZai, channel.TypeZhipu, channel.TypeZhipuAnthropic, channel.TypeZaiAnthropic:
 		outbound, err := zai.NewOutboundTransformerWithConfig(&zai.Config{
 			BaseURL:        baseURL,
+			Version:        "v4",
 			EndpointPath:   endpointPath,
 			APIKeyProvider: apiKeyProvider,
 		})
