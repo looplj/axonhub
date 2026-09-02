@@ -941,46 +941,47 @@ export function ModelsAssociationDialog() {
           <DialogTitle className='text-lg sm:text-xl'>
             {isDeveloperMode ? t('models.dialogs.developerAssociation.title') : t('models.dialogs.association.title')}
           </DialogTitle>
-          <DialogDescription className='text-sm sm:text-base'>
-            {isDeveloperMode
-              ? t('models.dialogs.developerAssociation.description', { name: developerLabel })
-              : t('models.dialogs.association.description', { name: currentRow?.name })}
-          </DialogDescription>
-          <Alert className='mt-3 py-2.5'>
-            <IconInfoCircle className='h-4 w-4' />
-            <AlertDescription className='text-xs sm:text-sm'>
-              {isDeveloperMode
-                ? t('models.dialogs.developerAssociation.inheritanceHelp', { name: developerLabel })
-                : t('models.dialogs.association.inheritanceHelp')}
-            </AlertDescription>
-          </Alert>
-          {!isDeveloperMode && (
-            <div className='mt-3 flex items-start justify-between gap-4 rounded-lg border px-4 py-3'>
-              <div className='space-y-1'>
-                <div className='text-sm font-medium'>{t('models.dialogs.association.disableDeveloperInheritance.label')}</div>
-                <p className='text-muted-foreground text-xs sm:text-sm'>
-                  {t('models.dialogs.association.disableDeveloperInheritance.description')}
-                </p>
-              </div>
-              <Switch
-                checked={disableDeveloperSettingsInheritance}
-                onCheckedChange={(checked) =>
-                  form.setValue('disableDeveloperSettingsInheritance', checked, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  })
-                }
-                className='mt-0.5 shrink-0'
-              />
-            </div>
-          )}
         </DialogHeader>
 
-        <div className='flex min-h-0 flex-1 flex-col gap-6 sm:flex-row'>
+        <div className='flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto sm:flex-row sm:overflow-hidden'>
           {/* Left Side - Association Rules */}
-          <div className='flex min-h-0 flex-1 flex-col sm:flex-[2]'>
-            {/* Scrollable Rules Section */}
-            <div className='flex-1 overflow-y-auto py-4'>
+          <div className='flex min-w-0 flex-col sm:min-h-0 sm:flex-[2]'>
+            <DialogDescription className='shrink-0 text-sm sm:text-base'>
+              {isDeveloperMode
+                ? t('models.dialogs.developerAssociation.description', { name: developerLabel })
+                : t('models.dialogs.association.description', { name: currentRow?.name })}
+            </DialogDescription>
+            <Alert className='mt-3 shrink-0 py-2.5'>
+              <IconInfoCircle className='h-4 w-4' />
+              <AlertDescription className='text-xs sm:text-sm'>
+                {isDeveloperMode
+                  ? t('models.dialogs.developerAssociation.inheritanceHelp', { name: developerLabel })
+                  : t('models.dialogs.association.inheritanceHelp')}
+              </AlertDescription>
+            </Alert>
+            {!isDeveloperMode && (
+              <div className='mt-3 flex shrink-0 items-start justify-between gap-4 rounded-lg border px-4 py-3'>
+                <div className='space-y-1'>
+                  <div className='text-sm font-medium'>{t('models.dialogs.association.disableDeveloperInheritance.label')}</div>
+                  <p className='text-muted-foreground text-xs sm:text-sm'>
+                    {t('models.dialogs.association.disableDeveloperInheritance.description')}
+                  </p>
+                </div>
+                <Switch
+                  checked={disableDeveloperSettingsInheritance}
+                  onCheckedChange={(checked) =>
+                    form.setValue('disableDeveloperSettingsInheritance', checked, {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                  className='mt-0.5 shrink-0'
+                />
+              </div>
+            )}
+
+            {/* Rules Section - scrolls internally on desktop; part of the single body scroll on mobile */}
+            <div className='flex-1 overflow-y-auto py-4 sm:min-h-0'>
               <Form {...form}>
                 <form id='association-form' onSubmit={form.handleSubmit(onSubmit)} className='space-y-3'>
                   {!isDeveloperMode && (
@@ -996,7 +997,7 @@ export function ModelsAssociationDialog() {
 
                           return (
                             <FormItem className='space-y-0'>
-                              <div className='flex items-center justify-between gap-3'>
+                              <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3'>
                                 <div className='flex items-center gap-1.5'>
                                   <FormLabel className='text-sm font-medium'>{t('models.fields.loadBalancerStrategy')}</FormLabel>
                                   <Tooltip>
@@ -1011,7 +1012,7 @@ export function ModelsAssociationDialog() {
                                 </div>
                                 <FormControl>
                                   <Select value={field.value} onValueChange={field.onChange}>
-                                    <SelectTrigger className='w-[140px] shrink-0'>
+                                    <SelectTrigger className='w-full sm:w-[140px] sm:shrink-0'>
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1041,7 +1042,7 @@ export function ModelsAssociationDialog() {
 
                           return (
                             <FormItem className='space-y-0'>
-                              <div className='flex items-center justify-between gap-3'>
+                              <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3'>
                                 <div className='flex items-center gap-1.5'>
                                   <FormLabel className='text-sm font-medium'>{t('models.fields.traceStickyMode')}</FormLabel>
                                   <Tooltip>
@@ -1056,7 +1057,7 @@ export function ModelsAssociationDialog() {
                                 </div>
                                 <FormControl>
                                   <Select value={field.value} onValueChange={field.onChange}>
-                                    <SelectTrigger className='w-[160px] shrink-0'>
+                                    <SelectTrigger className='w-full sm:w-[160px] sm:shrink-0'>
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1121,7 +1122,7 @@ export function ModelsAssociationDialog() {
           </div>
 
             {/* Right Side - Preview */}
-          <div className='flex min-h-0 flex-1 flex-col border-t sm:border-t-0 sm:border-l pt-4 sm:pt-0 sm:pl-6'>
+          <div className='flex min-w-0 flex-col border-t pt-4 sm:min-h-0 sm:flex-1 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6'>
             <div className='shrink-0 space-y-2 pb-4'>
               <h3 className='text-sm font-semibold'>{t('models.dialogs.association.preview')}</h3>
               <p className='text-muted-foreground text-xs'>
@@ -1134,7 +1135,7 @@ export function ModelsAssociationDialog() {
                 className='h-9 sm:h-8'
               />
             </div>
-            <div className='flex-1 overflow-y-auto'>
+            <div className='flex-1 overflow-y-auto sm:min-h-0'>
               <ChannelModelsList
                 channels={filteredConnections}
                 emptyMessage={

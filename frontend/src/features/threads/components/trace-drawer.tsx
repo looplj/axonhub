@@ -66,9 +66,9 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side='right' className={cn('w-full p-0 transition-all duration-300', isFullscreen ? 'sm:max-w-none' : 'sm:max-w-[900px] lg:max-w-[1100px]')}>
+      <SheetContent side='right' className={cn('flex w-full flex-col p-0 transition-all duration-300', isFullscreen ? 'sm:max-w-none' : 'sm:max-w-[900px] lg:max-w-[1100px]')}>
         <SheetHeader className={cn(
-          'border-b border-border/50 bg-gradient-to-r from-background via-background to-muted/20 px-6 py-4',
+          'shrink-0 border-b border-border/50 bg-gradient-to-r from-background via-background to-muted/20 px-6 py-4',
           isFullscreen && 'fixed top-0 left-0 right-0 z-50'
         )}>
           <div className='flex items-center justify-between'>
@@ -138,7 +138,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
         </SheetHeader>
 
         {isLoading ? (
-          <div className='flex h-[calc(100vh-80px)] items-center justify-center bg-gradient-to-b from-background to-muted/20'>
+          <div className='flex min-h-0 flex-1 items-center justify-center bg-gradient-to-b from-background to-muted/20'>
             <div className='space-y-4 text-center'>
               <div className='relative mx-auto h-12 w-12'>
                 <div className='absolute inset-0 rounded-full border-2 border-primary/10' />
@@ -150,8 +150,8 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
           </div>
         ) : effectiveRootSegment ? (
           <div className={cn(
-            'flex bg-gradient-to-br from-background via-background to-muted/10',
-            isFullscreen ? 'fixed inset-0 z-40 pt-16' : 'h-[calc(100vh-80px)]'
+            'min-h-0 flex-1 flex bg-gradient-to-br from-background via-background to-muted/10',
+            isFullscreen ? 'fixed inset-0 z-40 pt-16' : ''
           )}>
             {/* Left: Timeline */}
             <div className={cn(
@@ -182,7 +182,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
 
             {/* Right: Span Detail */}
             <div className={cn(
-              'border-border/50 bg-card/50 shrink-0 overflow-y-auto border-l backdrop-blur-sm transition-all duration-300',
+              'min-h-0 border-border/50 bg-card/50 shrink-0 overflow-y-auto border-l backdrop-blur-sm transition-all duration-300',
               isFullscreen ? 'w-[420px]' : 'w-[380px] lg:w-[420px]'
             )}>
               <SpanSection selectedTrace={selectedTrace} selectedSpan={selectedSpan} selectedSpanType={selectedSpanType} />
@@ -190,8 +190,8 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
           </div>
         ) : (
           <div className={cn(
-            'flex items-center justify-center bg-gradient-to-b from-background to-muted/20',
-            isFullscreen ? 'fixed inset-0 z-40 pt-16' : 'h-[calc(100vh-80px)]'
+            'min-h-0 flex-1 flex items-center justify-center bg-gradient-to-b from-background to-muted/20',
+            isFullscreen ? 'fixed inset-0 z-40 pt-16' : ''
           )}>
             <div className='space-y-4 text-center'>
               <div className='relative mx-auto h-16 w-16'>
