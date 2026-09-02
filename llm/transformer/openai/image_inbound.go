@@ -254,12 +254,12 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 		AspectRatio:       genReq.AspectRatio,
 		Width:             genReq.Width,
 		Height:            genReq.Height,
-		Seed:              genReq.Seed,
 		PromptOptimizer:   genReq.PromptOptimizer,
 	}
 
 	llmReq := &llm.Request{
 		Model:       model,
+		Seed:        genReq.Seed,
 		Modalities:  []string{"image"},
 		Stream:      lo.ToPtr(false),
 		RawRequest:  httpReq,
