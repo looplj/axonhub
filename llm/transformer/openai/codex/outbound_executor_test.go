@@ -273,6 +273,38 @@ func TestCodexOutbound_ImageEditRequestUsesResponsesImageTool(t *testing.T) {
 	require.Equal(t, "You are a helpful assistant that can generate images based on user requests. Must use the image generation tool.", payload.Instructions)
 }
 
+func TestCodexOutbound_TransformRequestStripsUserField(t *testing.T) {
+	ctx := context.Background()
+
+	outbound, err := NewOutboundTransformer(Params{
+		BaseURL: "https://chatgpt.com/backend-api/codex#",
+		TokenProvider: staticTokenGetter{
+			creds: &oauth.OAuthCredentials{
+				AccessToken: testAccessTokenWithAccountID(t),
+				ExpiresAt:   time.Now().Add(time.Hour),
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	req, err := outbound.TransformRequest(ctx, &llm.Request{
+		Model:     "gpt-5.6-luna",
+		APIFormat: llm.APIFormatOpenAIChatCompletion,
+		Stream:    lo.ToPtr(true),
+		User:      lo.ToPtr("user-123"),
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+		}},
+	})
+	require.NoError(t, err)
+
+	var payload map[string]json.RawMessage
+	require.NoError(t, json.Unmarshal(req.Body, &payload))
+	_, hasUser := payload["user"]
+	assert.False(t, hasUser, "Codex backend rejects the user field with a 400 Bad Request; it must not be sent upstream")
+}
+
 func TestCodexOutbound_TransformImageResponse(t *testing.T) {
 	upstream := &responses.Response{
 		ID:        "resp_image",
