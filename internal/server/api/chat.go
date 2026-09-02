@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm"
@@ -347,14 +348,14 @@ func writeSSEStreamEnd(
 			}
 		} else {
 			log.Error(ctx, "Error in stream", log.Cause(streamErr))
-			c.SSEvent("error", formatErr(ctx, streamErr))
+			c.SSEvent("error", formatErr(ctx, orchestrator.ClassifyUpstreamTransportError(streamErr)))
 		}
 	case errors.Is(ctx.Err(), context.Canceled):
 		*clientDisconnected = true
 	case !terminalSeen:
 		log.Error(ctx, "Stream ended without terminal event, reporting incomplete stream to client",
 			log.Cause(orchestrator.ErrStreamIncomplete))
-		c.SSEvent("error", formatErr(ctx, orchestrator.ErrStreamIncomplete))
+		c.SSEvent("error", formatErr(ctx, orchestrator.ClassifyUpstreamTransportError(orchestrator.ErrStreamIncomplete)))
 	}
 
 	c.Writer.Flush()
@@ -440,7 +441,9 @@ func WriteBinaryStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 				} else {
 					log.Error(ctx, "Error in binary stream", log.Cause(err))
 					if !headersWritten {
-						c.JSON(streamErrorStatus(err), FormatStreamError(ctx, err))
+						failure := orchestrator.ClassifyUpstreamTransportError(err)
+						c.JSON(streamErrorStatus(failure), FormatStreamError(ctx, failure))
+
 						return
 					}
 				}
@@ -517,7 +520,9 @@ func streamErrorStatus(err error) int {
 }
 
 // FormatStreamError formats a stream error into an OpenAI-compatible JSON error object.
-func FormatStreamError(_ context.Context, err error) any {
+// When the error carries no upstream request id, the gateway's own request id from ctx
+// is used so clients can always correlate an error event with the request log.
+func FormatStreamError(ctx context.Context, err error) any {
 	errType := "server_error"
 	errCode := ""
 	requestID := ""
@@ -548,7 +553,7 @@ func FormatStreamError(_ context.Context, err error) any {
 				"type":    errType,
 				"code":    errCode,
 			},
-			"request_id": requestID,
+			"request_id": streamErrorRequestID(ctx, requestID),
 		}
 	}
 
@@ -573,8 +578,22 @@ func FormatStreamError(_ context.Context, err error) any {
 			"type":    errType,
 			"code":    errCode,
 		},
-		"request_id": requestID,
+		"request_id": streamErrorRequestID(ctx, requestID),
 	}
+}
+
+// streamErrorRequestID returns the upstream request id when present, otherwise the
+// gateway request id stored in ctx (the value echoed in the AH-Request-Id header).
+func streamErrorRequestID(ctx context.Context, requestID string) string {
+	if requestID != "" || ctx == nil {
+		return requestID
+	}
+
+	if id, ok := contexts.GetRequestID(ctx); ok {
+		return id
+	}
+
+	return ""
 }
 
 func wrapQuotaExhaustedAsResponseError(err error) error {
