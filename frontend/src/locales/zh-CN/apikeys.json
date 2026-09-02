@@ -18,6 +18,7 @@
   "apikeys.type.personal": "个人",
   "apikeys.type.noauth": "免认证",
   "apikeys.tabs.all": "全部",
+  "apikeys.tabs.mine": "我的",
   "apikeys.status.enabled": "已启用",
   "apikeys.status.disabled": "已禁用",
   "apikeys.status.archived": "已归档",
