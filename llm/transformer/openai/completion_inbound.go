@@ -151,11 +151,7 @@ func (t *CompletionInboundTransformer) TransformResponse(
 		}
 
 		if llmResp.Usage != nil {
-			resp.Usage = CompletionUsage{
-				PromptTokens:     llmResp.Usage.PromptTokens,
-				CompletionTokens: llmResp.Usage.CompletionTokens,
-				TotalTokens:      llmResp.Usage.TotalTokens,
-			}
+			resp.Usage = completionUsageFromLLM(llmResp.Usage)
 		}
 
 		var err error
@@ -200,7 +196,7 @@ func (t *CompletionInboundTransformer) transformStreamChunk(llmResp *llm.Respons
 		}, nil
 	}
 
-	if llmResp.Completion == nil {
+	if llmResp.Completion == nil && llmResp.Usage == nil {
 		return nil, nil
 	}
 
@@ -209,24 +205,23 @@ func (t *CompletionInboundTransformer) transformStreamChunk(llmResp *llm.Respons
 		Object:  llmResp.Object,
 		Created: llmResp.Created,
 		Model:   llmResp.Model,
-		Choices: make([]CompletionChoice, len(llmResp.Completion.Choices)),
+		Choices: []CompletionChoice{},
 	}
 
-	for i, c := range llmResp.Completion.Choices {
-		resp.Choices[i] = CompletionChoice{
-			Text:         c.Text,
-			Index:        c.Index,
-			Logprobs:     c.Logprobs,
-			FinishReason: c.FinishReason,
+	if llmResp.Completion != nil {
+		resp.Choices = make([]CompletionChoice, len(llmResp.Completion.Choices))
+		for i, c := range llmResp.Completion.Choices {
+			resp.Choices[i] = CompletionChoice{
+				Text:         c.Text,
+				Index:        c.Index,
+				Logprobs:     c.Logprobs,
+				FinishReason: c.FinishReason,
+			}
 		}
 	}
 
 	if llmResp.Usage != nil {
-		resp.Usage = CompletionUsage{
-			PromptTokens:     llmResp.Usage.PromptTokens,
-			CompletionTokens: llmResp.Usage.CompletionTokens,
-			TotalTokens:      llmResp.Usage.TotalTokens,
-		}
+		resp.Usage = completionUsageFromLLM(llmResp.Usage)
 	}
 
 	eventData, err := json.Marshal(resp)

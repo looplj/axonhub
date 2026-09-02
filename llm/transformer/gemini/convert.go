@@ -516,6 +516,7 @@ func convertToGeminiUsage(chatUsage *llm.Usage) *UsageMetadata {
 		CachedContentTokenCount: 0,
 		ThoughtsTokenCount:      0,
 		CandidatesTokensDetails: nil,
+		Cost:                    chatUsage.Cost,
 	}
 
 	if chatUsage.PromptTokensDetails != nil {

@@ -112,6 +112,10 @@ const (
 	//nolint:gosec // Not a secret.
 	SystemKeyPassThrough = "system_pass_through"
 
+	// SystemKeyInjectUsageCost is the key used to store whether AxonHub injects
+	// calculated cost onto client-facing usage.cost. Default is false.
+	SystemKeyInjectUsageCost = "system_inject_usage_cost"
+
 	// SystemKeyQuotaEnforcementSettings is the key used to store the quota enforcement settings.
 	// The value is JSON-encoded QuotaEnforcementSettings struct.
 	SystemKeyQuotaEnforcementSettings = "quota_enforcement_settings"
@@ -1801,6 +1805,32 @@ func (s *SystemService) SetPassThrough(ctx context.Context, enabled bool) error 
 	}
 
 	return s.setSystemValue(ctx, SystemKeyPassThrough, strValue)
+}
+
+// InjectUsageCostEnabled reports whether AxonHub should write calculated cost
+// onto client-facing usage.cost. Missing values default to false.
+func (s *SystemService) InjectUsageCostEnabled(ctx context.Context) (bool, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyInjectUsageCost)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("failed to get inject usage cost: %w", err)
+	}
+
+	return value == "true", nil
+}
+
+// SetInjectUsageCostEnabled sets whether AxonHub injects calculated cost onto
+// client-facing usage.cost.
+func (s *SystemService) SetInjectUsageCostEnabled(ctx context.Context, enabled bool) error {
+	strValue := "false"
+	if enabled {
+		strValue = "true"
+	}
+
+	return s.setSystemValue(ctx, SystemKeyInjectUsageCost, strValue)
 }
 
 // QuotaEnforcementSettings retrieves the quota enforcement settings.

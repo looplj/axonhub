@@ -115,6 +115,7 @@ func (t *RerankInboundTransformer) TransformResponse(
 		jinaResp.Usage = &RerankUsage{
 			PromptTokens: int(llmResp.Usage.PromptTokens),
 			TotalTokens:  int(llmResp.Usage.TotalTokens),
+			Cost:         llmResp.Usage.Cost,
 		}
 	}
 

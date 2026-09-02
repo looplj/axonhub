@@ -16,7 +16,8 @@ type Usage struct {
 	OutputTokenDetails struct {
 		ReasoningTokens int64 `json:"reasoning_tokens"`
 	} `json:"output_tokens_details"`
-	TotalTokens int64 `json:"total_tokens"`
+	TotalTokens int64    `json:"total_tokens"`
+	Cost        *float64 `json:"cost,omitempty"`
 }
 
 func (u *Usage) ToUsage() *llm.Usage {
@@ -44,6 +45,7 @@ func ConvertLLMUsageToResponsesUsage(usage *llm.Usage) *Usage {
 		InputTokens:  usage.PromptTokens,
 		OutputTokens: usage.CompletionTokens,
 		TotalTokens:  usage.TotalTokens,
+		Cost:         usage.Cost,
 	}
 
 	if usage.PromptTokensDetails != nil {

@@ -118,6 +118,51 @@ For Anthropic models, you can configure TTL variants for cache writes:
    - Each price change creates a new version record
    - Usage logs reference the specific price version via `cost_price_reference_id`
 
+### API Response (`usage.cost`)
+
+Whether a cost appears on the client response is controlled by the **Inject usage.cost** setting in system settings, which is off by default. When the setting is on and the channel has a price configured for the model, AxonHub calculates the request cost from the channel model price and writes it to `usage.cost` on the client response.
+
+A few notes:
+
+- The number is AxonHub's own calculation from the channel model price, not the upstream provider's bill.
+- `usage.cost` or `cost_details` returned by the upstream is dropped and never forwarded to the client (except on pass-through requests).
+- With the setting off, clients do not see `cost` on the normal request path.
+- `cost` is omitted when no price is configured, the response has no `usage`, or the setting is off.
+
+#### Pass-through and binary endpoints
+
+Pass-through requests return the upstream body as-is, including any `cost` the upstream included. AxonHub does not calculate or modify it. Binary endpoints such as `POST /v1/audio/speech` return audio data with no JSON `usage`, so no cost is returned either.
+
+#### Supported response fields
+
+- OpenAI Chat Completions / Completions / Responses / Compact: `usage.cost`
+- OpenAI Embeddings / Image Generation / Video: `usage.cost`
+- Anthropic Messages: `usage.cost` (in `message_delta` when streaming)
+- Gemini `generateContent`: `usageMetadata.cost` (AxonHub extension; official Gemini responses do not include this field)
+- Jina Embeddings / Rerank: `usage.cost`
+- AI SDK text: `usage.cost`
+
+```json
+{
+  "usage": {
+    "prompt_tokens": 100,
+    "completion_tokens": 50,
+    "total_tokens": 150,
+    "cost": 0.000005
+  }
+}
+```
+
+#### Streaming responses
+
+Where `usage.cost` appears in a streaming response depends on the protocol:
+
+- OpenAI Chat Completions / Completions: `cost` is on the chunk that carries `usage`, typically the last chunk before `[DONE]`; the client must send `stream_options.include_usage`.
+- OpenAI Responses: `usage.cost` is on the `response.completed` event.
+- Anthropic Messages: `usage.cost` is in the `usage` of `message_delta`, and the stream ends with `message_stop`.
+- Gemini `generateContent`: `usageMetadata.cost` is in `usageMetadata`, and the stream ends with `candidates[].finishReason`.
+- AI SDK text: `usage.cost` is in the `usage` of the `e: finish` event.
+
 ## Viewing Costs
 
 ### Usage Logs
