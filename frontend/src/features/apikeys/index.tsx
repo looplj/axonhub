@@ -16,7 +16,7 @@ import ApiKeysProvider from './context/apikeys-context';
 import { useApiKeys } from './data/apikeys';
 import { ApiKeyType } from './data/schema';
 
-type ApiKeyTabKey = ApiKeyType | 'all';
+type ApiKeyTabKey = ApiKeyType | 'all' | 'mine';
 
 const DEFAULT_SORTING: SortingState = [{ id: 'createdAt', desc: true }];
 const SORTABLE_COLUMN_IDS = new Set(['name', 'createdAt', 'updatedAt']);
@@ -51,7 +51,7 @@ function loadSorting(): SortingState {
 
 function ApiKeysContent() {
   const { t } = useTranslation();
-  const { apiKeyPermissions, hasSystemScope } = usePermissions();
+  const { user, apiKeyPermissions, userPermissions } = usePermissions();
   const { startCursor, endCursor, cursorHistory, pageSize, setCursors, setPageSize, resetCursor, paginationArgs } =
     usePaginationSearch({
       defaultPageSize: 20,
@@ -98,7 +98,9 @@ function ApiKeysContent() {
       ];
     }
     
-    if (activeTab !== 'all') {
+    if (activeTab === 'mine') {
+      where.userID = user?.id;
+    } else if (activeTab !== 'all') {
       where.typeIn = [activeTab];
     }
     if (statusFilter.length > 0) {
@@ -176,6 +178,21 @@ function ApiKeysContent() {
     setPageSize(newPageSize);
   };
 
+  const handleTabChange = (value: string) => {
+    const nextTab = value as ApiKeyTabKey;
+    setActiveTab(nextTab);
+    if (nextTab === 'mine') {
+      setUserFilter([]);
+    }
+  };
+
+  const handleUserFilterChange = (value: string[]) => {
+    if (activeTab === 'mine' && value.length > 0) {
+      setActiveTab('all');
+    }
+    setUserFilter(value);
+  };
+
   const handleSortingChange = (updater: SortingState | ((previous: SortingState) => SortingState)) => {
     if (hasPaginationCursor) {
       setSortingCursorResetPending(true);
@@ -192,7 +209,7 @@ function ApiKeysContent() {
     resetCursor();
   };
 
-  const canViewCreators = hasSystemScope('read_users');
+  const canViewCreators = userPermissions.canRead;
 
   const columns = React.useMemo(
     () => createColumns(t, apiKeyPermissions.canWrite, canViewCreators),
@@ -201,10 +218,13 @@ function ApiKeysContent() {
 
   return (
     <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeyTabKey)} className='w-full'>
-        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-4 rounded-2xl border'>
+      <Tabs value={activeTab} onValueChange={handleTabChange} className='w-full'>
+        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-5 rounded-2xl border'>
           <TabsTrigger value='all' data-value='all'>
             {t('apikeys.tabs.all')}
+          </TabsTrigger>
+          <TabsTrigger value='mine' data-value='mine'>
+            {t('apikeys.tabs.mine')}
           </TabsTrigger>
           <TabsTrigger value='user' data-value='user'>
             {t('apikeys.type.user')}
@@ -235,7 +255,7 @@ function ApiKeysContent() {
           onPageSizeChange={handlePageSizeChange}
           onSearchFilterChange={setSearchFilter}
           onStatusFilterChange={setStatusFilter}
-          onUserFilterChange={setUserFilter}
+          onUserFilterChange={handleUserFilterChange}
           onDateRangeChange={setDateRange}
           onSortingChange={handleSortingChange}
           onResetFilters={handleResetFilters}
