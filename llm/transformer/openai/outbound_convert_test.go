@@ -611,14 +611,14 @@ func TestApplyReasoningEffortMapping(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, applyReasoningEffortMapping(tt.effort, tt.mapping))
+			require.Equal(t, tt.want, llm.ApplyReasoningEffortMapping(tt.effort, tt.mapping))
 		})
 	}
 }
 
 // TestRequestFromLLM_PreservesReasoningEffort ensures RequestFromLLM does NOT map
-// reasoning_effort: mapping is the OutboundTransformer's responsibility (driven by
-// Config.ReasoningEffortMapping), not the package-level converter's.
+// reasoning_effort: per-channel mapping is applied by the orchestrator on the
+// unified request before the outbound transformer runs, not in this converter.
 func TestRequestFromLLM_PreservesReasoningEffort(t *testing.T) {
 	req := RequestFromLLM(context.Background(), &llm.Request{
 		Model:           "gpt-4",

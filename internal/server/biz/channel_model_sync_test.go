@@ -1,3 +1,4 @@
+//nolint:exhaustruct_v5 // Test fixtures intentionally set only fields relevant to each scenario.
 package biz
 
 import (
@@ -21,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/cline"
 )
@@ -273,6 +275,45 @@ func TestChannelService_ModelSyncIgnoresProviderOnlyOrderChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"model-a", "model-b"}, second.SupportedModels)
 	require.Equal(t, 1, notifier.notifyCount)
+}
+
+func TestChannelService_ModelSyncRemovesProtocolsForRemovedModels(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"current-model"}]}`))
+	}))
+	defer server.Close()
+
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Remove stale model protocol").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"removed-model", "current-model"}).
+		SetDefaultTestModel("current-model").
+		SetSettings(&objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+			{Model: "removed-model", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}},
+			{Model: "current-model", APIFormats: []string{llm.APIFormatOpenAIChatCompletion.String()}},
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	updated, err := svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.Equal(t, []string{"current-model"}, updated.SupportedModels)
+	require.Len(t, updated.Settings.ModelProtocols, 1)
+	require.Equal(t, "current-model", updated.Settings.ModelProtocols[0].Model)
+
+	persisted, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Len(t, persisted.Settings.ModelProtocols, 1)
+	require.Equal(t, "current-model", persisted.Settings.ModelProtocols[0].Model)
 }
 
 func TestChannelService_PeriodicModelSyncNotifiesOnceForChangedBatch(t *testing.T) {

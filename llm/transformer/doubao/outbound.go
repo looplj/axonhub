@@ -24,6 +24,10 @@ type Config struct {
 	// API configuration
 	BaseURL        string              `json:"base_url,omitempty"` // Custom base URL (optional)
 	APIKeyProvider auth.APIKeyProvider `json:"-"`                  // API key provider
+	// EndpointPath replaces the default "/chat/completions" path. When set, the
+	// base URL is kept as-is without version normalization (same convention as
+	// the OpenAI transformer).
+	EndpointPath string `json:"endpoint_path,omitempty"`
 }
 
 // OutboundTransformer implements transformer.Outbound for Doubao format.
@@ -32,7 +36,16 @@ type OutboundTransformer struct {
 
 	BaseURL        string
 	APIKeyProvider auth.APIKeyProvider
+	endpointPath   string
+	rawURL         bool
 }
+
+// Ark accepts user_id values of 6-128 characters; the field is omitted when the
+// client-supplied value is shorter.
+const (
+	minUserIDLength = 6
+	maxUserIDLength = 128
+)
 
 // NewOutboundTransformer creates a new Doubao OutboundTransformer with legacy parameters.
 // Deprecated: Use NewOutboundTransformerWithConfig instead.
@@ -63,7 +76,22 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, fmt.Errorf("API key provider is required for Doubao transformer")
 	}
 
-	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v3")
+	// "##" suffix marks a raw full request URL (same convention as the OpenAI
+	// transformer); strip it here so it never leaks into the request URL.
+	rawURL := strings.HasSuffix(config.BaseURL, "##")
+	if rawURL {
+		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
+	}
+
+	var baseURL string
+	switch {
+	case rawURL:
+		baseURL = strings.TrimRight(config.BaseURL, "/")
+	case config.EndpointPath != "":
+		baseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+	default:
+		baseURL = transformer.NormalizeBaseURL(config.BaseURL, "v3")
+	}
 
 	oaiConfig := &openai.Config{
 		PlatformType:   openai.PlatformOpenAI,
@@ -81,6 +109,8 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		Outbound:       outbound,
 		BaseURL:        baseURL,
 		APIKeyProvider: config.APIKeyProvider,
+		endpointPath:   config.EndpointPath,
+		rawURL:         rawURL,
 	}, nil
 }
 
@@ -145,6 +175,16 @@ func (t *OutboundTransformer) TransformRequest(
 	if llmReq.Metadata != nil {
 		doubaoReq.UserID = llmReq.Metadata["user_id"]
 		doubaoReq.RequestID = llmReq.Metadata["request_id"]
+
+		// Ark validates user_id as 6-128 characters (same constraint family as
+		// GLM's error 1214). Clients like Claude Code send a long JSON blob
+		// (device_id/session_id) here; truncate long values, drop short ones.
+		// An empty value omits the field entirely (json omitempty).
+		if runes := []rune(doubaoReq.UserID); len(runes) > maxUserIDLength {
+			doubaoReq.UserID = string(runes[:maxUserIDLength])
+		} else if len(runes) < minUserIDLength {
+			doubaoReq.UserID = ""
+		}
 	}
 
 	// Generate request ID if not provided
@@ -174,7 +214,15 @@ func (t *OutboundTransformer) TransformRequest(
 		APIKey: apiKey,
 	}
 
-	url := t.BaseURL + "/chat/completions"
+	url := t.BaseURL
+	switch {
+	case t.rawURL:
+		// Base URL is already the full request URL.
+	case t.endpointPath != "":
+		url += t.endpointPath
+	default:
+		url += "/chat/completions"
+	}
 
 	return &httpclient.Request{
 		Method:    http.MethodPost,

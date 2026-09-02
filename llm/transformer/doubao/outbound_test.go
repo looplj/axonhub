@@ -584,3 +584,111 @@ func mustMarshal(v any) []byte {
 
 	return data
 }
+
+// TestOutboundTransformer_TransformRequest_URLOverrides covers the endpoint-level
+// URL conventions that must match the generic OpenAI transformer: custom endpoint
+// paths and the "##" raw-URL suffix. Custom chat endpoints on doubao/volcengine
+// channels are routed to this transformer, so a bare base URL like
+// https://ark.cn-beijing.volces.com/api/v3 must keep working.
+func TestOutboundTransformer_TransformRequest_URLOverrides(t *testing.T) {
+	newRequest := func() *llm.Request {
+		return &llm.Request{
+			Model: "doubao-seed-2-0",
+			Messages: []llm.Message{
+				{
+					Role: "user",
+					Content: llm.MessageContent{
+						Content: lo.ToPtr("Hello"),
+					},
+				},
+			},
+		}
+	}
+
+	tests := []struct {
+		name         string
+		baseURL      string
+		endpointPath string
+		expectedURL  string
+	}{
+		{
+			name:        "ark base URL without path appends /chat/completions only",
+			baseURL:     "https://ark.cn-beijing.volces.com/api/v3",
+			expectedURL: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+		},
+		{
+			name:        "base URL without version gets /v3 appended",
+			baseURL:     "https://ark.cn-beijing.volces.com/api",
+			expectedURL: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+		},
+		{
+			name:         "endpoint path replaces the default path and skips version normalization",
+			baseURL:      "https://ark.cn-beijing.volces.com/api/v3",
+			endpointPath: "/chat/completions",
+			expectedURL:  "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+		},
+		{
+			name:        "## suffix uses the base URL as raw request URL",
+			baseURL:     "https://ark.cn-beijing.volces.com/api/v3/chat/completions##",
+			expectedURL: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformer, err := NewOutboundTransformerWithConfig(&Config{
+				BaseURL:        tt.baseURL,
+				EndpointPath:   tt.endpointPath,
+				APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+			})
+			assert.NoError(t, err)
+
+			httpReq, err := transformer.TransformRequest(context.Background(), newRequest())
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedURL, httpReq.URL)
+		})
+	}
+}
+
+// TestOutboundTransformer_TransformRequest_UserIDLength asserts the Ark user_id
+// constraint (6-128 chars): long client values are truncated, short ones dropped.
+func TestOutboundTransformer_TransformRequest_UserIDLength(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://ark.cn-beijing.volces.com/api/v3",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+	})
+	assert.NoError(t, err)
+
+	buildRequest := func(userID string) *llm.Request {
+		return &llm.Request{
+			Model:    "doubao-seed-2-0",
+			Metadata: map[string]string{"user_id": userID},
+			Messages: []llm.Message{
+				{
+					Role:    "user",
+					Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+				},
+			},
+		}
+	}
+
+	t.Run("long user_id is truncated to 128 chars", func(t *testing.T) {
+		long := `{"device_id":"334251bf6b147d22d006e2e9cb990169a3ba5e77fecb52a03473e32eb1afe62e","account_uuid":"","session_id":"db0eef37-75a9-4288-8098-0557997cd879"}`
+
+		httpReq, err := transformer.TransformRequest(context.Background(), buildRequest(long))
+		assert.NoError(t, err)
+
+		var body map[string]any
+		assert.NoError(t, json.Unmarshal(httpReq.Body, &body))
+		assert.Len(t, body["user_id"], 128)
+	})
+
+	t.Run("short user_id is omitted", func(t *testing.T) {
+		httpReq, err := transformer.TransformRequest(context.Background(), buildRequest("abc"))
+		assert.NoError(t, err)
+
+		var body map[string]any
+		assert.NoError(t, json.Unmarshal(httpReq.Body, &body))
+		assert.NotContains(t, body, "user_id")
+	})
+}

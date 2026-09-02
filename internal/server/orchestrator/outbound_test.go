@@ -1,3 +1,4 @@
+//nolint:exhaustruct_v5 // Test fixtures intentionally set only fields relevant to each scenario.
 package orchestrator
 
 import (
@@ -76,7 +77,7 @@ func (m *mockTransformer) TransformRequest(ctx context.Context, req *llm.Request
 	}, nil
 }
 
-func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatibility(t *testing.T) {
+func TestPersistentOutboundTransformer_TransformRequest_ReasoningEffortMapping(t *testing.T) {
 	tests := []struct {
 		name           string
 		channelType    entchannel.Type
@@ -99,10 +100,10 @@ func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatib
 			wantSecondRole: "user",
 		},
 		{
-			name:           "non Claude Code DeepSeek keeps transformer behavior",
+			name:           "non Claude Code client gets the channel mapping too",
 			channelType:    entchannel.TypeDeepseek,
 			userAgent:      "codex_cli_rs/1.0",
-			wantEffort:     "xhigh",
+			wantEffort:     "max",
 			wantSecondRole: "system",
 		},
 	}
@@ -433,6 +434,51 @@ func TestPersistentOutboundTransformer_PrepareForRetry_UsesCandidateAPIFormatOut
 	require.NoError(t, err)
 	require.Equal(t, 1, processor.state.CurrentModelIndex)
 	require.Same(t, embeddingOutbound, processor.wrapped)
+}
+
+func TestPersistentOutboundTransformer_PrepareForRetry_RefreshesModelAPIFormat(t *testing.T) {
+	ctx := context.Background()
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID:   1,
+		Name: "multi-model",
+		Endpoints: []objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+			{APIFormat: llm.APIFormatOpenAIResponse.String()},
+			{APIFormat: llm.APIFormatAnthropicMessage.String()},
+		},
+		Settings: &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+			{Model: "model-a", APIFormats: []string{llm.APIFormatAnthropicMessage.String()}},
+			{Model: "model-b", APIFormats: []string{llm.APIFormatOpenAIResponse.String()}},
+		}},
+	}}
+	req := &llm.Request{
+		Model:       "requested-model",
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIChatCompletion,
+	}
+	candidate := &ChannelModelsCandidate{
+		Channel: ch,
+		Models: []biz.ChannelModelEntry{
+			{RequestModel: "model-a", ActualModel: "model-a"},
+			{RequestModel: "model-b", ActualModel: "model-b"},
+		},
+	}
+	populateAPIFormat(ctx, []*ChannelModelsCandidate{candidate}, req)
+
+	processor := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate:  candidate,
+			CurrentModelIndex: 0,
+			OriginalModel:     req.Model,
+			LlmRequest:        req,
+			RequestExec:       &ent.RequestExecution{ID: 1},
+		},
+	}
+
+	require.Equal(t, llm.APIFormatAnthropicMessage.String(), candidate.APIFormat)
+	require.NoError(t, processor.PrepareForRetry(ctx))
+	require.Equal(t, 1, processor.state.CurrentModelIndex)
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), candidate.APIFormat)
 }
 
 func TestPersistentOutboundTransformer_NextChannel_UsesCandidateAPIFormatOutbound(t *testing.T) {

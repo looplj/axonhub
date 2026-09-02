@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
-import { IconArrowsJoin2, IconRoute } from '@tabler/icons-react';
+import { IconArrowsExchange, IconArrowsJoin2, IconRoute } from '@tabler/icons-react';
 import { Ban, FileText } from 'lucide-react';
 import { zhCN, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
@@ -145,7 +145,18 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
           (id) => id && id !== originalModelId
         );
         const reasoningEffort = executions[0]?.reasoningEffort ?? request.reasoningEffort;
+        const inboundFormat = request.format;
+        const outboundFormat = executions[0]?.format;
         const passThroughApplied = executions.some((execution) => execution.passThroughApplied);
+        // Orange is reserved for a confirmed mismatch: a missing format on either
+        // side is "unknown" and stays muted.
+        const formatsComparable = Boolean(inboundFormat && outboundFormat);
+        const outboundProtocolMatches = formatsComparable && outboundFormat === inboundFormat;
+        const outboundProtocolTooltip = !formatsComparable
+          ? t('requests.tooltips.outboundProtocolUnknown')
+          : outboundProtocolMatches
+            ? t('requests.tooltips.outboundProtocolMatching', { protocol: outboundFormat })
+            : t('requests.tooltips.outboundProtocolConverted', { protocol: outboundFormat });
 
         const modelLabel =
           executionModelIds.length > 0 ? (
@@ -181,6 +192,25 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                   {reasoningEffort}
                 </Badge>
               )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`inline-flex h-5 w-5 items-center justify-center ${
+                      !formatsComparable
+                        ? 'text-muted-foreground/45'
+                        : outboundProtocolMatches
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : 'text-orange-700 dark:text-orange-300'
+                    }`}
+                    tabIndex={0}
+                    role='img'
+                    aria-label={outboundProtocolTooltip}
+                  >
+                    <IconArrowsExchange className='h-3.5 w-3.5' />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{outboundProtocolTooltip}</TooltipContent>
+              </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span

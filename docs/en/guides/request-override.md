@@ -16,7 +16,7 @@ AxonHub uses Go templates for dynamic value rendering. You can access the follow
 | :--- | :--- | :--- |
 | `.RequestModel` | The original model name from the client's request. | `{{.RequestModel}}` |
 | `.Model` | The model name currently set in the request (after model mapping). | `{{.Model}}` |
-| `.ReasoningEffort` | The `reasoning_effort` value (none, low, medium, high). | `{{.ReasoningEffort}}` |
+| `.ReasoningEffort` | The unified reasoning effort value (none, minimal, low, medium, high, xhigh, max). | `{{.ReasoningEffort}}` |
 | `.Metadata` | Custom metadata map passed in the request. | `{{index .Metadata "user_id"}}` |
 | `.RequestHeader` | Filtered inbound client headers. Supports canonical/lowercase lookup and returns the first value. | `{{index .RequestHeader "X-Trace-Id"}}` |
 | `.PromptCacheKey` | The `prompt_cache_key` from the inbound request. It is an empty string when omitted. | `{{.PromptCacheKey}}` |

@@ -1,6 +1,8 @@
+//nolint:exhaustruct_v5 // Test fixtures intentionally set only fields relevant to each scenario.
 package orchestrator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,7 +17,7 @@ func TestPopulateAPIFormatFiltersAlphaSearchUnsupportedChannels(t *testing.T) {
 	unsupported := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{Type: channel.TypeOpenai}}}
 	supported := &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{Type: channel.TypeCodex}}}
 
-	candidates := populateAPIFormat([]*ChannelModelsCandidate{unsupported, supported}, &llm.Request{
+	candidates := populateAPIFormat(context.Background(), []*ChannelModelsCandidate{unsupported, supported}, &llm.Request{
 		RequestType: llm.RequestTypeAlphaSearch,
 		APIFormat:   llm.APIFormatOpenAIAlphaSearch,
 	})
