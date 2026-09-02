@@ -776,14 +776,14 @@ func (s *OIDCService) Callback(ctx context.Context, providerIdentifier, code, st
 }
 
 type oidcClaims struct {
-	Sub               string   `json:"sub"`
-	Email             string   `json:"email"`
-	EmailVerified     bool     `json:"email_verified"`
-	Name              string   `json:"name"`
-	GivenName         string   `json:"given_name"`
-	FamilyName        string   `json:"family_name"`
-	PreferredUsername string   `json:"preferred_username"`
-	Picture           string   `json:"picture"`
+	Sub               string   `json:"sub" mapstructure:"sub"`
+	Email             string   `json:"email" mapstructure:"email"`
+	EmailVerified     bool     `json:"email_verified" mapstructure:"email_verified"`
+	Name              string   `json:"name" mapstructure:"name"`
+	GivenName         string   `json:"given_name" mapstructure:"given_name"`
+	FamilyName        string   `json:"family_name" mapstructure:"family_name"`
+	PreferredUsername string   `json:"preferred_username" mapstructure:"preferred_username"`
+	Picture           string   `json:"picture" mapstructure:"picture"`
 	Groups            []string `json:"-"` // Filled manually from GroupClaim
 }
 
