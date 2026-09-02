@@ -17,7 +17,22 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
+
+func TestPersistedRequestAPIFormat(t *testing.T) {
+	require.Equal(t, llm.APIFormatOpenAIResponse, persistedRequestAPIFormat(context.Background(), llm.APIFormatOpenAIResponse))
+	require.Equal(
+		t,
+		llm.APIFormatOpenAIResponseWebSocket,
+		persistedRequestAPIFormat(shared.WithResponsesWebSocket(context.Background()), llm.APIFormatOpenAIResponse),
+	)
+	require.Equal(
+		t,
+		llm.APIFormatOpenAIResponseCompact,
+		persistedRequestAPIFormat(shared.WithResponsesWebSocket(context.Background()), llm.APIFormatOpenAIResponseCompact),
+	)
+}
 
 func TestPersistRequestMiddleware_OnOutboundLlmResponse_NilRequest(t *testing.T) {
 	state := &PersistenceState{

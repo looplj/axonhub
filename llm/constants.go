@@ -30,15 +30,19 @@ func (r RequestType) String() string {
 type APIFormat string
 
 const (
-	APIFormatOpenAIChatCompletion  APIFormat = "openai/chat_completions"
-	APIFormatOpenAICompletion      APIFormat = "openai/completions"
-	APIFormatOpenAIResponse        APIFormat = "openai/responses"
-	APIFormatOpenAIResponseCompact APIFormat = "openai/responses_compact"
-	APIFormatOpenAIImageGeneration APIFormat = "openai/image_generation"
-	APIFormatOpenAIImageEdit       APIFormat = "openai/image_edit"
-	APIFormatOpenAIImageVariation  APIFormat = "openai/image_variation"
-	APIFormatOpenAIEmbedding       APIFormat = "openai/embeddings"
-	APIFormatOpenAIVideo           APIFormat = "openai/video"
+	APIFormatOpenAIChatCompletion APIFormat = "openai/chat_completions"
+	APIFormatOpenAICompletion     APIFormat = "openai/completions"
+	APIFormatOpenAIResponse       APIFormat = "openai/responses"
+	// APIFormatOpenAIResponseWebSocket identifies a downstream Responses
+	// WebSocket request in persisted request/trace metadata. Upstream channel
+	// selection continues to use APIFormatOpenAIResponse with websocket transport.
+	APIFormatOpenAIResponseWebSocket APIFormat = "openai/responses-ws"
+	APIFormatOpenAIResponseCompact   APIFormat = "openai/responses_compact"
+	APIFormatOpenAIImageGeneration   APIFormat = "openai/image_generation"
+	APIFormatOpenAIImageEdit         APIFormat = "openai/image_edit"
+	APIFormatOpenAIImageVariation    APIFormat = "openai/image_variation"
+	APIFormatOpenAIEmbedding         APIFormat = "openai/embeddings"
+	APIFormatOpenAIVideo             APIFormat = "openai/video"
 
 	APIFormatOpenAISpeech        APIFormat = "openai/audio_speech"
 	APIFormatOpenAITranscription APIFormat = "openai/audio_transcriptions"

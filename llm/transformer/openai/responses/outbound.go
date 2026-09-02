@@ -22,14 +22,15 @@ import (
 )
 
 var (
-	_ transformer.Outbound               = (*OutboundTransformer)(nil)
-	_ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
+	_ transformer.Outbound                  = (*OutboundTransformer)(nil)
+	_ transformer.TransportRequestFinalizer = (*OutboundTransformer)(nil)
+	_ pipeline.ChannelCustomizedExecutor    = (*OutboundTransformer)(nil)
 )
 
 // Config holds all configuration for the OpenAI Responses outbound transformer.
 const (
-	TransportHTTP       = "http"
-	TransportWebSocket  = "websocket"
+	TransportHTTP      = "http"
+	TransportWebSocket = "websocket"
 	// ResponsesLiteHeader is the Codex Responses Lite signal. It uses the
 	// canonical spelling ("Openai"): http.Header canonicalizes keys, so lookups
 	// match whatever case a Codex client sends.
@@ -96,8 +97,11 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 }
 
 func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
-	if t == nil || t.config == nil || t.config.Transport != TransportWebSocket {
+	if t == nil || t.config == nil {
 		return executor
+	}
+	if t.config.Transport != TransportWebSocket {
+		return &httpTransportExecutor{inner: executor, finalize: t.FinalizeTransportRequest}
 	}
 
 	if !ExecutorComparable(executor) {
@@ -118,6 +122,14 @@ func (t *OutboundTransformer) CustomizeExecutor(executor pipeline.Executor) pipe
 	t.webSocketExecutors[executor] = webSocketExecutor
 
 	return webSocketExecutor
+}
+
+func (t *OutboundTransformer) FinalizeTransportRequest(request *httpclient.Request) *httpclient.Request {
+	if t == nil || t.config == nil || t.config.Transport == TransportWebSocket {
+		return request
+	}
+
+	return PrepareHTTPTransportRequest(request, false)
 }
 
 func (t *OutboundTransformer) Stop() {

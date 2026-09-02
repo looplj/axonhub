@@ -1351,6 +1351,59 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 	return xjson.EmptyJSONRawMessage, nil
 }
 
+// LoadCompletedResponsesSession loads the original request and final response
+// for a Responses API continuation. The lookup is explicitly scoped to the
+// authenticated API key and project because provider response IDs are supplied
+// by the client.
+func (s *RequestService) LoadCompletedResponsesSession(
+	ctx context.Context,
+	responseID string,
+) (requestBody, responseBody []byte, found bool, err error) {
+	responseID = strings.TrimSpace(responseID)
+	apiKey, ok := contexts.GetAPIKey(ctx)
+	if responseID == "" || !ok || apiKey == nil {
+		return nil, nil, false, nil
+	}
+
+	query := s.entFromContext(ctx).Request.Query().Where(
+		request.ExternalIDEQ(responseID),
+		request.APIKeyIDEQ(apiKey.ID),
+		request.FormatIn(
+			string(llm.APIFormatOpenAIResponse),
+			string(llm.APIFormatOpenAIResponseWebSocket),
+		),
+		request.StatusEQ(request.StatusCompleted),
+	)
+	if projectID, ok := contexts.GetProjectID(ctx); ok {
+		query = query.Where(request.ProjectIDEQ(projectID))
+	}
+
+	req, err := query.Order(ent.Desc(request.FieldCreatedAt)).First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil, false, nil
+		}
+		return nil, nil, false, fmt.Errorf("failed to find completed Responses request: %w", err)
+	}
+
+	storedRequest, err := s.LoadRequestBody(ctx, req)
+	if err != nil {
+		return nil, nil, false, fmt.Errorf("failed to load Responses request body: %w", err)
+	}
+	storedResponse, err := s.LoadResponseBody(ctx, req)
+	if err != nil {
+		return nil, nil, false, fmt.Errorf("failed to load Responses response body: %w", err)
+	}
+	if bytes.Equal(storedRequest, xjson.EmptyJSONRawMessage) ||
+		bytes.Equal(storedResponse, xjson.EmptyJSONRawMessage) ||
+		!json.Valid(storedRequest) ||
+		!json.Valid(storedResponse) {
+		return nil, nil, false, nil
+	}
+
+	return append([]byte(nil), storedRequest...), append([]byte(nil), storedResponse...), true, nil
+}
+
 func isFinishedStreamStatus(status request.Status) bool {
 	switch status {
 	case request.StatusCompleted, request.StatusFailed, request.StatusCanceled:
