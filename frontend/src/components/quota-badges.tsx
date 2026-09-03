@@ -504,6 +504,12 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
 
     return format(date, 'yyyy-MM-dd HH:mm');
   };
+
+  const formatQuotaResetTime = (value?: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? value : format(date, 'yyyy-MM-dd HH:mm');
+  };
   const quotaData = quota.quotaData;
   return (
     <div className='space-y-3 border-b py-3 first:pt-1 last:border-0 last:pb-1'>
@@ -738,6 +744,18 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
           {(() => {
             const qd = channel.quotaStatus.quotaData;
             if (!qd) return null;
+            const availableResets = qd._resets?.resets ?? [];
+            const availableResetCount = availableResets.length;
+            const nextExpiringReset = availableResets
+              .filter((reset) => reset.expiresAt && !Number.isNaN(new Date(reset.expiresAt).getTime()))
+              .sort((a, b) => new Date(a.expiresAt!).getTime() - new Date(b.expiresAt!).getTime())[0];
+            const latestGrantedReset = availableResets
+              .filter((reset) => reset.grantedAt && !Number.isNaN(new Date(reset.grantedAt).getTime()))
+              .sort((a, b) => new Date(b.grantedAt!).getTime() - new Date(a.grantedAt!).getTime())[0];
+            const resetTime = nextExpiringReset?.expiresAt ?? latestGrantedReset?.grantedAt;
+            const hasResetInfo = qd._resets?.supported === true && !qd._resets.error;
+            const canAttemptReset =
+              qd._resets?.supported === true && (Boolean(qd._resets.error) || availableResetCount > 0);
             return (
               <>
                 {qd.rate_limit?.primary_window && (
@@ -835,14 +853,39 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                   </div>
                 )}
 
-                {(status === 'exhausted' || status === 'warning') && (
-                  <div className='border-border/60 flex items-center justify-end gap-2 border-t border-dashed pt-3'>
-                    <Button size='sm' variant='outline' className='h-7 text-xs' disabled={isResetting} onClick={handleResetCodexQuota}>
-                      {isResetting ? <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' /> : <Zap className='mr-1.5 h-3.5 w-3.5' />}
-                      {t('quota.codex.resetNow')}
-                    </Button>
+                <div className='border-border/60 space-y-2 border-t border-dashed pt-3'>
+                  <div className='flex items-center justify-between text-xs'>
+                    <span className='text-muted-foreground font-medium'>{t('quota.codex.availableResets')}</span>
+                    <span className='text-foreground font-medium'>
+                      {hasResetInfo
+                        ? t('quota.codex.availableResetsCount', { count: availableResetCount })
+                        : t('quota.label.unavailable')}
+                    </span>
                   </div>
-                )}
+                  {resetTime && (
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>
+                        {nextExpiringReset ? t('quota.codex.expiresAt') : t('quota.codex.grantedAt')}
+                      </span>
+                      <span className='text-foreground font-medium'>{formatQuotaResetTime(resetTime)}</span>
+                    </div>
+                  )}
+                  {(status === 'exhausted' || status === 'warning') && (
+                    <div className='flex items-center justify-end pt-1'>
+                      <Button
+                        size='sm'
+                        variant='outline'
+                        className='h-7 text-xs'
+                        disabled={isResetting || !canAttemptReset}
+                        title={!canAttemptReset ? t('quota.codex.noResetCredits') : undefined}
+                        onClick={handleResetCodexQuota}
+                      >
+                        {isResetting ? <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' /> : <Zap className='mr-1.5 h-3.5 w-3.5' />}
+                        {t('quota.codex.resetNow')}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </>
             );
           })()}
