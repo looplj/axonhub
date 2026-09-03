@@ -70,8 +70,9 @@ server:
     trace_header: "AH-Trace-Id" # 追踪 ID 请求头名称
     extra_trace_headers: []     # 额外的追踪请求头
     response_trace_headers: []  # 回写最终追踪 ID 的响应头列表，空列表时关闭
-    claude_code_trace_enabled: false # 启用 Claude Code 追踪提取
-    codex_trace_enabled: false # 启用 Codex 追踪提取
+    claude_code_trace_enabled: true # 启用 Claude Code 追踪提取
+    codex_trace_enabled: true # 启用 Codex 追踪提取
+    opencode_trace_enabled: true # 启用 OpenCode 追踪提取
   debug: false                  # 启用调试模式
   disable_ssl_verify: false     # 禁用上游请求的 SSL 证书校验（自签名证书）
 ```
@@ -90,6 +91,7 @@ server:
 - `AXONHUB_SERVER_TRACE_RESPONSE_TRACE_HEADERS`
 - `AXONHUB_SERVER_TRACE_CLAUDE_CODE_TRACE_ENABLED`
 - `AXONHUB_SERVER_TRACE_CODEX_TRACE_ENABLED`
+- `AXONHUB_SERVER_TRACE_OPENCODE_TRACE_ENABLED`
 - `AXONHUB_SERVER_DEBUG`
 - `AXONHUB_SERVER_DISABLE_SSL_VERIFY`
 

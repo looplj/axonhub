@@ -1033,7 +1033,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
 		}
 
-		ch.Outbound = transformer
+		ch.Outbound = opencode.WithSessionHeader(transformer)
 
 		return ch, nil
 	case channel.TypeOpencodeGo:
