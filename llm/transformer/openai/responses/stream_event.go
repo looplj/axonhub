@@ -66,6 +66,8 @@ type StreamEvent struct {
 	// Common fields
 	Type           StreamEventType `json:"type"`
 	SequenceNumber int             `json:"sequence_number"`
+	Status         int             `json:"status,omitempty"`
+	Error          *Error          `json:"error,omitempty"`
 
 	// For response.* events
 	Response *Response `json:"response,omitempty"`

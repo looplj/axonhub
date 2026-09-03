@@ -56,6 +56,13 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			expectError: true,
 		},
 		{
+			name: "stream_id is websocket only",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{"model":"gpt-4o","input":"Hello","stream_id":"main"}`),
+			},
+			expectError: true,
+		},
+		{
 			name: "simple text input",
 			httpReq: &httpclient.Request{
 				Body: []byte(`{
@@ -551,6 +558,25 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestInboundTransformer_TransformRequest_RejectsHTTPStreamIDWithParam(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	_, err := trans.TransformRequest(t.Context(), &httpclient.Request{
+		Body: []byte(`{"model":"gpt-4o","input":"Hello","stream_id":"main"}`),
+	})
+	require.Error(t, err)
+
+	httpErr := trans.TransformError(t.Context(), err)
+	require.Equal(t, http.StatusBadRequest, httpErr.StatusCode)
+	require.JSONEq(t, `{
+		"error":{
+			"message":"Unsupported parameter: stream_id",
+			"type":"invalid_request_error",
+			"param":"stream_id"
+		}
+	}`, string(httpErr.Body))
 }
 
 func TestInboundTransformer_TransformRequest_PreservesWebSearchTools(t *testing.T) {

@@ -702,12 +702,29 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeError:
+		detail := llm.ErrorDetail{
+			Code:    streamEvent.Code,
+			Message: streamEvent.Message,
+			Type:    string(streamEvent.Type),
+			Param:   lo.FromPtr(streamEvent.Param),
+		}
+		if streamEvent.Error != nil {
+			if streamEvent.Error.Type != "" {
+				detail.Type = streamEvent.Error.Type
+			}
+			if streamEvent.Error.Code != "" {
+				detail.Code = streamEvent.Error.Code
+			}
+			if streamEvent.Error.Message != "" {
+				detail.Message = streamEvent.Error.Message
+			}
+			if streamEvent.Error.Param != "" {
+				detail.Param = streamEvent.Error.Param
+			}
+		}
 		return &llm.ResponseError{
-			Detail: llm.ErrorDetail{
-				Code:    streamEvent.Code,
-				Message: streamEvent.Message,
-				Param:   lo.FromPtr(streamEvent.Param),
-			},
+			StatusCode: streamEvent.Status,
+			Detail:     detail,
 		}
 
 	case StreamEventTypeImageGenerationPartialImage,

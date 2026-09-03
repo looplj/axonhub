@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -42,6 +43,16 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 
 	if len(httpReq.Body) == 0 {
 		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
+	}
+	if gjson.GetBytes(httpReq.Body, "stream_id").Exists() {
+		return nil, &llm.ResponseError{
+			StatusCode: http.StatusBadRequest,
+			Detail: llm.ErrorDetail{
+				Message: "Unsupported parameter: stream_id",
+				Type:    "invalid_request_error",
+				Param:   "stream_id",
+			},
+		}
 	}
 
 	// Check content type
@@ -95,6 +106,7 @@ type ResponseErrorDetail struct {
 	Message string `json:"message"`
 	Type    string `json:"type"`
 	Code    string `json:"code,omitempty"`
+	Param   string `json:"param,omitempty"`
 }
 
 // TransformError transforms LLM error response to HTTP error response in Responses API format.
@@ -121,6 +133,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 				Message: llmErr.Detail.Message,
 				Type:    llmErr.Detail.Type,
 				Code:    llmErr.Detail.Code,
+				Param:   llmErr.Detail.Param,
 			},
 		}
 
