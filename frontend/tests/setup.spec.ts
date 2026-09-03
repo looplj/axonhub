@@ -1,4 +1,3 @@
-import { faker } from '@faker-js/faker'
 import { test, expect } from '@playwright/test'
 import { signInAsAdmin } from './auth.utils'
 

@@ -597,38 +597,75 @@ func (svc *ProviderQuotaService) ManualCheck(ctx context.Context) {
 	svc.runQuotaCheckForce(ctx)
 }
 
-// ResetChannelQuotaNow attempts to redeem a banked reset credit for the given codex channel.
+// ListResets returns the reset capability and available resets for a channel.
+// Providers that do not implement Resetter report Supported=false without an
+// error so callers can treat resetting as an optional capability.
+func (svc *ProviderQuotaService) ListResets(ctx context.Context, channelID int) (provider_quota.ResetList, error) {
+	ch, err := svc.db.Channel.Query().Where(channel.IDEQ(channelID)).Only(ctx)
+	if err != nil {
+		return provider_quota.ResetList{}, fmt.Errorf("failed to load channel: %w", err)
+	}
+
+	providerType := svc.getProviderType(ch)
+	checker, ok := svc.checkers[providerType]
+	if !ok {
+		return provider_quota.ResetList{Supported: false}, nil
+	}
+
+	resetter, ok := checker.(provider_quota.Resetter)
+	if !ok {
+		return provider_quota.ResetList{Supported: false}, nil
+	}
+
+	if enabled, err := svc.SystemService.IsProviderQuotaCollectionEnabled(ctx, providerType); err != nil {
+		return provider_quota.ResetList{}, fmt.Errorf("failed to read provider quota collection settings: %w", err)
+	} else if !enabled {
+		return provider_quota.ResetList{}, fmt.Errorf("provider quota collection is disabled for %s", providerType)
+	}
+
+	if !hasCredentialsForProvider(ch) {
+		return provider_quota.ResetList{}, fmt.Errorf("channel has no credentials")
+	}
+
+	resets, err := resetter.ListResets(ctx, ch)
+	resets.Supported = true
+	if err != nil {
+		return resets, fmt.Errorf("failed to list %s quota resets: %w", providerType, err)
+	}
+
+	return resets, nil
+}
+
+// ResetChannelQuotaNow attempts to redeem a provider-managed reset for a channel.
 func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, channelID int) error {
 	ch, err := svc.db.Channel.Query().Where(channel.IDEQ(channelID)).Only(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to load channel: %w", err)
 	}
 
-	if ch.Type != channel.TypeCodex {
-		return fmt.Errorf("reset is only supported for codex channels")
+	providerType := svc.getProviderType(ch)
+	checker, ok := svc.checkers[providerType]
+	if !ok {
+		return fmt.Errorf("%w for provider %q", provider_quota.ErrResetUnsupported, providerType)
 	}
-	if enabled, err := svc.SystemService.IsProviderQuotaCollectionEnabled(ctx, "codex"); err != nil {
+
+	resetter, ok := checker.(provider_quota.Resetter)
+	if !ok {
+		return fmt.Errorf("%w for provider %q", provider_quota.ErrResetUnsupported, providerType)
+	}
+
+	if enabled, err := svc.SystemService.IsProviderQuotaCollectionEnabled(ctx, providerType); err != nil {
 		return fmt.Errorf("failed to read provider quota collection settings: %w", err)
 	} else if !enabled {
-		return fmt.Errorf("provider quota collection is disabled for codex")
+		return fmt.Errorf("provider quota collection is disabled for %s", providerType)
 	}
 
 	if !hasCredentialsForProvider(ch) {
 		return fmt.Errorf("channel has no credentials")
 	}
 
-	checker, ok := svc.checkers["codex"]
-	if !ok {
-		return fmt.Errorf("no quota checker registered for codex")
-	}
-
-	codexChecker, ok := checker.(*provider_quota.CodexQuotaChecker)
-	if !ok {
-		return fmt.Errorf("invalid codex quota checker type")
-	}
-
-	if _, err := codexChecker.ResetNow(ctx, ch); err != nil {
-		return fmt.Errorf("failed to reset codex quota: %w", err)
+	if err := resetter.Reset(ctx, ch); err != nil {
+		return fmt.Errorf("failed to reset %s quota: %w", providerType, err)
 	}
 
 	// Refresh the quota status immediately so the UI reflects the reset.
@@ -755,6 +792,21 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 		svc.saveQuotaError(ctx, ch, providerType, err, now)
 		return
 	}
+
+	resetList := provider_quota.ResetList{Supported: false}
+	if resetter, ok := checker.(provider_quota.Resetter); ok {
+		resetList.Supported = true
+		resetList, err = resetter.ListResets(ctx, ch)
+		resetList.Supported = true
+		if err != nil {
+			resetList.Error = err.Error()
+			log.Warn(ctx, "Failed to list provider quota resets",
+				log.Int("channel_id", ch.ID),
+				log.String("provider", providerType),
+				log.Cause(err))
+		}
+	}
+	quotaData.Resets = &resetList
 
 	// Save quota status
 	svc.fillPeriodQuotas(ctx, ch.ID, &quotaData, now)
@@ -964,6 +1016,9 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 
 func (svc *ProviderQuotaService) mergeLimitsIntoQuotaData(quotaData provider_quota.QuotaData) map[string]any {
 	data := lo.Assign(map[string]any{}, quotaData.RawData)
+	if quotaData.Resets != nil {
+		data["_resets"] = quotaData.Resets
+	}
 
 	if len(quotaData.Limits) > 0 {
 		limitMaps := make([]map[string]any, 0, len(quotaData.Limits))

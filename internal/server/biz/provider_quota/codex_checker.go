@@ -61,45 +61,56 @@ type CodexQuotaChecker struct {
 	httpClient *httpclient.HttpClient
 }
 
+const codexResetStatusAvailable = "available"
+
+var _ Resetter = (*CodexQuotaChecker)(nil)
+
 func NewCodexQuotaChecker(httpClient *httpclient.HttpClient) *CodexQuotaChecker {
 	return &CodexQuotaChecker{
 		httpClient: httpClient,
 	}
 }
 
-func (c *CodexQuotaChecker) CanResetNow(ctx context.Context, ch *ent.Channel) (bool, error) {
-	resp, err := c.listResetCredits(ctx, ch)
+func (c *CodexQuotaChecker) Reset(ctx context.Context, ch *ent.Channel) error {
+	resets, err := c.ListResets(ctx, ch)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	for _, credit := range resp.Credits {
-		if credit.Status == "available" {
-			return true, nil
-		}
+	if len(resets.Resets) == 0 {
+		return fmt.Errorf("no available codex reset credit")
 	}
 
-	return false, nil
+	_, err = c.consumeResetCredit(ctx, ch, resets.Resets[0].ID)
+	return err
 }
 
-func (c *CodexQuotaChecker) ResetNow(ctx context.Context, ch *ent.Channel) (*CodexResetConsumeResponse, error) {
-	credits, err := c.listResetCredits(ctx, ch)
+func (c *CodexQuotaChecker) ListResets(ctx context.Context, ch *ent.Channel) (ResetList, error) {
+	response, err := c.listResetCredits(ctx, ch)
 	if err != nil {
-		return nil, err
+		return ResetList{Supported: true}, err
 	}
 
-	var target *CodexResetCredit
-	for i := range credits.Credits {
-		if credits.Credits[i].Status == "available" {
-			target = &credits.Credits[i]
-			break
+	resets := make([]Reset, 0, len(response.Credits))
+	for _, credit := range response.Credits {
+		if credit.Status != codexResetStatusAvailable {
+			continue
 		}
-	}
-	if target == nil {
-		return nil, fmt.Errorf("no available codex reset credit")
+
+		resets = append(resets, Reset{
+			ID:        credit.ID,
+			Status:    credit.Status,
+			Type:      credit.ResetType,
+			GrantedAt: parseCodexResetTime(credit.GrantedAt),
+			ExpiresAt: parseCodexResetTime(credit.ExpiresAt),
+			Title:     credit.Title,
+		})
 	}
 
-	return c.consumeResetCredit(ctx, ch, target.ID)
+	return ResetList{
+		Supported: true,
+		Resets:    resets,
+	}, nil
 }
 
 func (c *CodexQuotaChecker) listResetCredits(ctx context.Context, ch *ent.Channel) (*CodexResetCreditsResponse, error) {
@@ -132,6 +143,19 @@ func (c *CodexQuotaChecker) listResetCredits(ctx context.Context, ch *ent.Channe
 	}
 
 	return &result, nil
+}
+
+func parseCodexResetTime(value string) *time.Time {
+	if value == "" {
+		return nil
+	}
+
+	parsed, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		return nil
+	}
+
+	return &parsed
 }
 
 func (c *CodexQuotaChecker) consumeResetCredit(ctx context.Context, ch *ent.Channel, creditID string) (*CodexResetConsumeResponse, error) {

@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"testing"
 
@@ -28,6 +29,24 @@ func (c *countingQuotaChecker) CheckQuota(context.Context, *ent.Channel) (provid
 
 func (c *countingQuotaChecker) SupportsChannel(*ent.Channel) bool {
 	return true
+}
+
+type countingQuotaResetter struct {
+	countingQuotaChecker
+
+	listCalls  atomic.Int32
+	resetCalls atomic.Int32
+	resets     provider_quota.ResetList
+}
+
+func (c *countingQuotaResetter) ListResets(context.Context, *ent.Channel) (provider_quota.ResetList, error) {
+	c.listCalls.Add(1)
+	return c.resets, nil
+}
+
+func (c *countingQuotaResetter) Reset(context.Context, *ent.Channel) error {
+	c.resetCalls.Add(1)
+	return nil
 }
 
 func setupProviderQuotaCollectionService(t *testing.T) (*ProviderQuotaService, *SystemService, context.Context, *ent.Client) {
@@ -158,7 +177,9 @@ func TestProviderQuotaService_ResetChannelQuotaNow_CollectionDisabledForCodex(t 
 	service, systemService, ctx, client := setupProviderQuotaCollectionService(t)
 	defer client.Close()
 
-	codexChecker := &countingQuotaChecker{providerType: "codex"}
+	codexChecker := &countingQuotaResetter{
+		countingQuotaChecker: countingQuotaChecker{providerType: "codex"},
+	}
 	service.checkers["codex"] = codexChecker
 	channelEntity := createProviderQuotaCollectionChannel(t, ctx, client, "Codex", channel.TypeCodex)
 	require.NoError(t, client.Channel.UpdateOne(channelEntity).
@@ -172,4 +193,55 @@ func TestProviderQuotaService_ResetChannelQuotaNow_CollectionDisabledForCodex(t 
 
 	require.ErrorContains(t, err, "provider quota collection is disabled for codex")
 	require.Zero(t, codexChecker.calls.Load())
+	require.Zero(t, codexChecker.resetCalls.Load())
+}
+
+func TestProviderQuotaService_ListResets_ReturnsUnsupportedForCheckerWithoutResetter(t *testing.T) {
+	service, _, ctx, client := setupProviderQuotaCollectionService(t)
+	defer client.Close()
+
+	service.checkers["minimax"] = &countingQuotaChecker{providerType: "minimax"}
+	channelEntity := createProviderQuotaCollectionChannel(t, ctx, client, "MiniMax", channel.TypeMinimax)
+
+	resets, err := service.ListResets(ctx, channelEntity.ID)
+
+	require.NoError(t, err)
+	require.False(t, resets.Supported)
+	require.Empty(t, resets.Resets)
+}
+
+func TestProviderQuotaService_ResetChannelQuotaNow_ReturnsUnsupportedForCheckerWithoutResetter(t *testing.T) {
+	service, _, ctx, client := setupProviderQuotaCollectionService(t)
+	defer client.Close()
+
+	service.checkers["minimax"] = &countingQuotaChecker{providerType: "minimax"}
+	channelEntity := createProviderQuotaCollectionChannel(t, ctx, client, "MiniMax", channel.TypeMinimax)
+
+	err := service.ResetChannelQuotaNow(ctx, channelEntity.ID)
+
+	require.Error(t, err)
+	require.True(t, errors.Is(err, provider_quota.ErrResetUnsupported))
+}
+
+func TestProviderQuotaService_ListResets_UsesOptionalResetter(t *testing.T) {
+	service, _, ctx, client := setupProviderQuotaCollectionService(t)
+	defer client.Close()
+
+	resetter := &countingQuotaResetter{
+		countingQuotaChecker: countingQuotaChecker{providerType: "minimax"},
+		resets: provider_quota.ResetList{
+			Resets: []provider_quota.Reset{
+				{ID: "reset-1", Status: "available"},
+			},
+		},
+	}
+	service.checkers["minimax"] = resetter
+	channelEntity := createProviderQuotaCollectionChannel(t, ctx, client, "MiniMax", channel.TypeMinimax)
+
+	resets, err := service.ListResets(ctx, channelEntity.ID)
+
+	require.NoError(t, err)
+	require.True(t, resets.Supported)
+	require.Len(t, resets.Resets, 1)
+	require.EqualValues(t, 1, resetter.listCalls.Load())
 }
