@@ -72,6 +72,21 @@ func TestInboundStream_FinalizesOnCleanExhaustionWithoutFinishReason(t *testing.
 			expectedStopReason: "tool_use",
 		},
 		{
+			name: "tool call with empty arguments",
+			delta: &llm.Message{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{{
+					Index: 0,
+					ID:    "call_empty",
+					Type:  "function",
+					Function: llm.FunctionCall{
+						Name: "list",
+					},
+				}},
+			},
+			expectedStopReason: "tool_use",
+		},
+		{
 			name: "server tool call",
 			delta: &llm.Message{
 				Role: "assistant",
@@ -158,14 +173,239 @@ func TestInboundStream_FinalizesOnCleanExhaustionWithoutFinishReason(t *testing.
 			require.Equal(t, "message_delta", terminalEvents[1].Type)
 			require.NotNil(t, terminalEvents[1].Delta)
 			require.Equal(t, tt.expectedStopReason, *terminalEvents[1].Delta.StopReason)
+			require.NotNil(t, terminalEvents[1].Usage)
 			if tt.usage == nil {
-				require.Nil(t, terminalEvents[1].Usage)
+				require.Zero(t, terminalEvents[1].Usage.OutputTokens)
 			} else {
-				require.NotNil(t, terminalEvents[1].Usage)
 				require.Equal(t, int64(7), terminalEvents[1].Usage.OutputTokens)
 			}
 			require.Equal(t, "message_stop", terminalEvents[2].Type)
 		})
+	}
+}
+
+func TestInboundStream_RejectsIncompleteToolArgumentsOnCleanExhaustion(t *testing.T) {
+	tests := []struct {
+		name      string
+		arguments string
+	}{
+		{name: "truncated object", arguments: `{"content":"unfinished`},
+		{name: "null", arguments: `null`},
+		{name: "array", arguments: `[]`},
+		{name: "string", arguments: `"value"`},
+		{name: "number", arguments: `1`},
+		{name: "boolean", arguments: `true`},
+		{name: "whitespace", arguments: ` `},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			transformer := NewInboundTransformer()
+			input := []*llm.Response{{
+				ID:     "msg_incomplete_tool",
+				Object: "chat.completion.chunk",
+				Model:  "test-model",
+				Choices: []llm.Choice{{
+					Index: 0,
+					Delta: &llm.Message{
+						Role: "assistant",
+						ToolCalls: []llm.ToolCall{{
+							Index: 0,
+							ID:    "call_incomplete",
+							Type:  "function",
+							Function: llm.FunctionCall{
+								Name:      "write",
+								Arguments: tt.arguments,
+							},
+						}},
+					},
+				}},
+			}}
+
+			stream, err := transformer.TransformStream(t.Context(), streams.SliceStream(input))
+			require.NoError(t, err)
+
+			var events []StreamEvent
+			for stream.Next() {
+				var event StreamEvent
+				require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+				events = append(events, event)
+			}
+
+			require.ErrorContains(t, stream.Err(), "invalid tool call arguments")
+			require.Zero(t, countStreamEvents(events, "content_block_stop"))
+			require.Zero(t, countStreamEvents(events, "message_delta"))
+			require.Zero(t, countStreamEvents(events, "message_stop"))
+		})
+	}
+}
+
+func TestInboundStream_PreservesExplicitFinishReasonWithMalformedToolArguments(t *testing.T) {
+	transformer := NewInboundTransformer()
+	finishReason := "tool_calls"
+	input := []*llm.Response{
+		{
+			ID:     "msg_incomplete_tool",
+			Object: "chat.completion.chunk",
+			Model:  "test-model",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{{
+						Index: 0,
+						ID:    "call_incomplete",
+						Type:  "function",
+						Function: llm.FunctionCall{
+							Name:      "write",
+							Arguments: `{"content":"unfinished`,
+						},
+					}},
+				},
+			}},
+		},
+		{
+			ID:     "msg_incomplete_tool",
+			Object: "chat.completion.chunk",
+			Model:  "test-model",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &finishReason,
+			}},
+			Usage: &llm.Usage{CompletionTokens: 10},
+		},
+	}
+
+	stream, err := transformer.TransformStream(t.Context(), streams.SliceStream(input))
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		events = append(events, event)
+	}
+
+	require.NoError(t, stream.Err())
+	require.Equal(t, 1, countStreamEvents(events, "content_block_stop"))
+	require.Equal(t, 1, countStreamEvents(events, "message_delta"))
+	require.Equal(t, 1, countStreamEvents(events, "message_stop"))
+	for _, event := range events {
+		if event.Type == "message_delta" {
+			require.NotNil(t, event.Delta)
+			require.NotNil(t, event.Delta.StopReason)
+			require.Equal(t, "tool_use", *event.Delta.StopReason)
+			require.NotNil(t, event.Usage)
+			require.Equal(t, int64(10), event.Usage.OutputTokens)
+		}
+	}
+}
+
+func TestInboundStream_RejectsInvalidEarlierReadArgumentsOnCleanExhaustion(t *testing.T) {
+	transformer := NewInboundTransformer()
+	input := []*llm.Response{{
+		ID:     "msg_multiple_tools",
+		Object: "chat.completion.chunk",
+		Model:  "test-model",
+		Choices: []llm.Choice{{
+			Index: 0,
+			Delta: &llm.Message{
+				Role: "assistant",
+				ToolCalls: []llm.ToolCall{
+					{
+						Index: 0,
+						ID:    "call_invalid",
+						Type:  "function",
+						Function: llm.FunctionCall{
+							Name:      "Read",
+							Arguments: `{"content":"unfinished`,
+						},
+					},
+					{
+						Index: 1,
+						ID:    "call_valid",
+						Type:  "function",
+						Function: llm.FunctionCall{
+							Name:      "bash",
+							Arguments: `{"command":"true"}`,
+						},
+					},
+				},
+			},
+		}},
+	}}
+
+	stream, err := transformer.TransformStream(t.Context(), streams.SliceStream(input))
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		events = append(events, event)
+	}
+
+	require.ErrorContains(t, stream.Err(), "invalid tool call arguments")
+	require.Zero(t, countStreamEvents(events, "message_delta"))
+	require.Zero(t, countStreamEvents(events, "message_stop"))
+}
+
+func TestInboundStream_PreservesExplicitFinishReasonWithoutUsage(t *testing.T) {
+	transformer := NewInboundTransformer()
+	finishReason := "tool_calls"
+	input := []*llm.Response{
+		{
+			ID:     "msg_incomplete_tool",
+			Object: "chat.completion.chunk",
+			Model:  "test-model",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{{
+						Index: 0,
+						ID:    "call_incomplete",
+						Type:  "function",
+						Function: llm.FunctionCall{
+							Name:      "write",
+							Arguments: `{"content":"unfinished`,
+						},
+					}},
+				},
+			}},
+		},
+		{
+			ID:     "msg_incomplete_tool",
+			Object: "chat.completion.chunk",
+			Model:  "test-model",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &finishReason,
+			}},
+		},
+	}
+
+	stream, err := transformer.TransformStream(t.Context(), streams.SliceStream(input))
+	require.NoError(t, err)
+
+	var events []StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		events = append(events, event)
+	}
+
+	require.NoError(t, stream.Err())
+	require.Equal(t, 1, countStreamEvents(events, "message_delta"))
+	require.Equal(t, 1, countStreamEvents(events, "message_stop"))
+	for _, event := range events {
+		if event.Type == "message_delta" {
+			require.NotNil(t, event.Delta)
+			require.NotNil(t, event.Delta.StopReason)
+			require.Equal(t, "tool_use", *event.Delta.StopReason)
+			require.NotNil(t, event.Usage)
+			require.Zero(t, event.Usage.OutputTokens)
+		}
 	}
 }
 

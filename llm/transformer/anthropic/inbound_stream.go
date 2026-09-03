@@ -152,8 +152,6 @@ func (s *anthropicInboundStream) emitBufferedReadToolArguments(toolCallIndex int
 		return fmt.Errorf("failed to enqueue buffered Read input_json_delta event: %w", err)
 	}
 
-	toolCall.Function.Arguments = ""
-
 	return nil
 }
 
@@ -186,6 +184,21 @@ func (s *anthropicInboundStream) closeToolBlock() error {
 	}
 
 	s.contentIndex += 1
+
+	return nil
+}
+
+func (s *anthropicInboundStream) validateToolArguments() error {
+	for index, toolCall := range s.toolCalls {
+		if toolCall == nil || toolCall.Function.Arguments == "" {
+			continue
+		}
+
+		var input map[string]json.RawMessage
+		if err := json.Unmarshal([]byte(toolCall.Function.Arguments), &input); err != nil || input == nil {
+			return fmt.Errorf("invalid tool call arguments for tool call index %d", index)
+		}
+	}
 
 	return nil
 }
@@ -455,9 +468,14 @@ func (s *anthropicInboundStream) closeOpenContentBlocks() error {
 }
 
 func (s *anthropicInboundStream) enqueueTerminalEvents() error {
+	usage := s.pendingUsage
+	if usage == nil {
+		usage = &Usage{}
+	}
+
 	streamEvent := StreamEvent{
 		Type:  "message_delta",
-		Usage: s.pendingUsage,
+		Usage: usage,
 	}
 
 	if s.stopReason != nil {
@@ -515,6 +533,12 @@ func (s *anthropicInboundStream) Next() bool {
 	if !s.source.Next() {
 		if s.source.Err() != nil || !s.hasStarted || s.messageStoped {
 			return false
+		}
+		if !s.hasFinished {
+			if err := s.validateToolArguments(); err != nil {
+				s.err = fmt.Errorf("failed to validate tool arguments at stream end: %w", err)
+				return false
+			}
 		}
 
 		if err := s.closeOpenContentBlocks(); err != nil {
