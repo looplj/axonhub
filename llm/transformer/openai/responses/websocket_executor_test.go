@@ -1428,6 +1428,17 @@ func TestNormalizeWebSocketEventFlattensNestedError(t *testing.T) {
 	require.Equal(t, "model", payload["param"])
 }
 
+func TestNormalizeWebSocketEventPreservesFlattenedFields(t *testing.T) {
+	raw := []byte(`{"type":"error","status":400,"code":"invalid_value","message":"flat message","error":{"type":"invalid_request_error","message":"nested message"}}`)
+
+	normalized := normalizeWebSocketEvent(raw)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(normalized, &payload))
+	require.Equal(t, "invalid_value", payload["code"])
+	require.Equal(t, "flat message", payload["message"])
+}
+
 func TestToWebSocketURL(t *testing.T) {
 	got, err := toWebSocketURL("https://api.openai.com/v1/responses")
 	require.NoError(t, err)

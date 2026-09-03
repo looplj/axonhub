@@ -1284,13 +1284,19 @@ func normalizeWebSocketEvent(raw []byte) []byte {
 	if !ok {
 		return append([]byte(nil), raw...)
 	}
-	if value, ok := errorValue["code"]; ok {
-		payload["code"] = value
-	} else if value, ok := errorValue["type"]; ok {
-		payload["code"] = value
+	if jsonValueIsEmpty(payload["code"]) {
+		if value, ok := errorValue["code"]; ok {
+			payload["code"] = value
+		} else if value, ok := errorValue["type"]; ok {
+			payload["code"] = value
+		}
 	}
 	for _, key := range []string{"message", "param"} {
-		if value, ok := errorValue[key]; ok {
+		if jsonValueIsEmpty(payload[key]) {
+			value, ok := errorValue[key]
+			if !ok {
+				continue
+			}
 			payload[key] = value
 		}
 	}
@@ -1299,4 +1305,12 @@ func normalizeWebSocketEvent(raw []byte) []byte {
 		return append([]byte(nil), raw...)
 	}
 	return body
+}
+
+func jsonValueIsEmpty(value any) bool {
+	if value == nil {
+		return true
+	}
+	text, ok := value.(string)
+	return ok && text == ""
 }
