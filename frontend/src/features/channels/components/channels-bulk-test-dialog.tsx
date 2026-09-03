@@ -87,7 +87,7 @@ export function ChannelsBulkTestDialog() {
   const recoverableChannels = useMemo(() => {
     return selectedChannels.filter((channel) => {
       const result = results[channel.id];
-      return result?.status === 'success' && (channel.status === 'disabled' || !!channel.errorMessage);
+      return result?.status === 'success' && (channel.status === 'disabled' || channel.errorMessage != null);
     });
   }, [results, selectedChannels]);
 
