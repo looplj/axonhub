@@ -210,7 +210,7 @@ func TestEnsureCacheControl_WithinLimit_NoModification(t *testing.T) {
 		assert.Equal(t, 2, countCacheControls(req))
 	})
 
-	t.Run("客户端设了 4 个断点时会按策略重排并去重", func(t *testing.T) {
+	t.Run("客户端设了 4 个断点（上限内）时原样保留", func(t *testing.T) {
 		req := &MessageRequest{
 			Tools: []Tool{
 				{Name: "t1", CacheControl: &CacheControl{Type: "ephemeral"}},
@@ -234,7 +234,14 @@ func TestEnsureCacheControl_WithinLimit_NoModification(t *testing.T) {
 		}
 
 		optimizeCacheControl(req)
-		assert.Equal(t, 3, countCacheControls(req))
+
+		// 客户端 4 个断点在上限内，原样保留不重排：
+		// 重排会移动断点位置，使已缓存的前缀失效（cache_read 归零）。
+		assert.Equal(t, 4, countCacheControls(req))
+		assert.NotNil(t, req.Tools[0].CacheControl)
+		assert.NotNil(t, req.System.MultiplePrompts[0].CacheControl)
+		assert.NotNil(t, req.Messages[0].Content.MultipleContent[0].CacheControl)
+		assert.NotNil(t, req.Messages[0].Content.MultipleContent[1].CacheControl)
 	})
 }
 
@@ -252,7 +259,7 @@ func TestEnsureCacheControl_ExistingBreakpoints_KeepAsIs(t *testing.T) {
 }
 
 func TestEnsureCacheControl_ExceedsLimit_TrimToLastFour(t *testing.T) {
-	t.Run("5 个断点会自动裁剪为最近 4 个", func(t *testing.T) {
+	t.Run("5 个断点裁剪最早的消息断点到 4 个上限", func(t *testing.T) {
 		req := &MessageRequest{
 			Tools: []Tool{
 				{Name: "tool_a", CacheControl: &CacheControl{Type: "ephemeral"}},
@@ -288,21 +295,22 @@ func TestEnsureCacheControl_ExceedsLimit_TrimToLastFour(t *testing.T) {
 
 		optimizeCacheControl(req)
 
-		// strict 模式按新策略重建：结构锚点 + 会话末尾消息锚点。
-		assert.Nil(t, req.Tools[0].CacheControl)
+		// 客户端断点原样保留，仅从最早的消息断点裁剪到 4 个上限：
+		// 裁掉 turn1-a（最早、前缀最短），其余断点位置不变。
+		assert.NotNil(t, req.Tools[0].CacheControl)
 		assert.NotNil(t, req.Tools[1].CacheControl)
 
-		assert.Nil(t, req.System.MultiplePrompts[0].CacheControl)
-		assert.NotNil(t, req.System.MultiplePrompts[1].CacheControl)
+		assert.NotNil(t, req.System.MultiplePrompts[0].CacheControl)
+		assert.Nil(t, req.System.MultiplePrompts[1].CacheControl)
 
 		assert.Nil(t, req.Messages[0].Content.MultipleContent[0].CacheControl)
 		assert.Nil(t, req.Messages[0].Content.MultipleContent[1].CacheControl)
 		assert.NotNil(t, req.Messages[2].Content.MultipleContent[0].CacheControl)
 
-		assert.Equal(t, 3, countCacheControls(req))
+		assert.Equal(t, 4, countCacheControls(req))
 	})
 
-	t.Run("6 个断点也会自动裁剪为最近 4 个", func(t *testing.T) {
+	t.Run("6 个断点裁剪最早的消息断点到 4 个上限", func(t *testing.T) {
 		req := &MessageRequest{
 			Tools: []Tool{
 				{Name: "tool_a", CacheControl: &CacheControl{Type: "ephemeral"}},
@@ -330,15 +338,17 @@ func TestEnsureCacheControl_ExceedsLimit_TrimToLastFour(t *testing.T) {
 		}
 
 		optimizeCacheControl(req)
-		assert.Equal(t, 3, countCacheControls(req))
-		assert.Nil(t, req.Tools[0].CacheControl)
+
+		// 裁掉两个最早的消息断点（turn1、turn1-b），结构锚点全保留。
+		assert.Equal(t, 4, countCacheControls(req))
+		assert.NotNil(t, req.Tools[0].CacheControl)
 		assert.NotNil(t, req.Tools[1].CacheControl)
-		assert.Nil(t, req.System.MultiplePrompts[0].CacheControl)
+		assert.NotNil(t, req.System.MultiplePrompts[0].CacheControl)
 		assert.NotNil(t, req.System.MultiplePrompts[1].CacheControl)
 		assert.Nil(t, req.Messages[0].Content.MultipleContent[0].CacheControl)
 		assert.Nil(t, req.Messages[0].Content.MultipleContent[1].CacheControl)
 		require.Len(t, req.Messages[2].Content.MultipleContent, 1)
-		assert.NotNil(t, req.Messages[2].Content.MultipleContent[0].CacheControl)
+		assert.Nil(t, req.Messages[2].Content.MultipleContent[0].CacheControl)
 	})
 }
 
@@ -558,7 +568,7 @@ func TestEnsureCacheControl_StructuralAnchors(t *testing.T) {
 		assert.Nil(t, req.Tools[0].CacheControl)
 	})
 
-	t.Run("满额消息断点场景仍优先保留 tools/system 锚点", func(t *testing.T) {
+	t.Run("满额消息断点场景不会生成 tools/system 锚点", func(t *testing.T) {
 		req := &MessageRequest{
 			Tools:  []Tool{{Name: "bash"}, {Name: "edit"}},
 			System: &SystemPrompt{Prompt: lo.ToPtr("You are helpful")},
@@ -577,11 +587,10 @@ func TestEnsureCacheControl_StructuralAnchors(t *testing.T) {
 
 		optimizeCacheControl(req)
 
-		assert.NotNil(t, req.Tools[1].CacheControl)
+		assert.Nil(t, req.Tools[1].CacheControl)
 		require.NotNil(t, req.System)
-		require.Len(t, req.System.MultiplePrompts, 1)
-		assert.NotNil(t, req.System.MultiplePrompts[0].CacheControl)
-		assert.LessOrEqual(t, countCacheControls(req), 4)
+		assert.Empty(t, req.System.MultiplePrompts)
+		assert.Equal(t, maxCacheControlBreakpoints, countCacheControls(req))
 	})
 }
 
@@ -977,6 +986,13 @@ func TestEnsureCacheControl_OpenCodePluginScenario(t *testing.T) {
 		}
 
 		optimizeCacheControl(req)
-		assert.Equal(t, 3, countCacheControls(req))
+
+		// 客户端断点在 4 个上限内时原样保留，不重排：
+		// 重排会移动断点位置，使已缓存的前缀失效（cache_read 归零）。
+		assert.Equal(t, 4, countCacheControls(req))
+		assert.NotNil(t, req.Tools[1].CacheControl)
+		assert.NotNil(t, req.System.MultiplePrompts[1].CacheControl)
+		assert.NotNil(t, req.Messages[0].Content.MultipleContent[0].CacheControl)
+		assert.NotNil(t, req.Messages[2].Content.MultipleContent[0].CacheControl)
 	})
 }

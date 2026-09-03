@@ -1,5 +1,10 @@
 package anthropic
 
+import (
+	"bytes"
+	"encoding/json"
+)
+
 // maxCacheControlBreakpoints is the maximum number of cache_control breakpoints allowed by Anthropic.
 // See https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching.
 const (
@@ -7,32 +12,101 @@ const (
 	adaptiveCacheControlBlockWindow = 20
 )
 
-// optimizeCacheControl 统一自动修复 cache_control：
-//   - strict mode：先清空全部断点，再按固定规划重建，避免历史断点造成抖动
-//   - 强制结构锚点：tools(last) + system(last)
-//   - 消息锚点策略：短内容 1 个、长内容 2 个（受 4 个上限约束）
-//   - 消息首选“最后一条消息的最后一个可缓存块”，更贴近官方示例
-//   - 第 2 个消息锚点优先落在“距离末尾约 20 块”的窗口边界
-//   - thinking 与空 text 不允许打点
+const (
+	cacheControlSectionTools = iota
+	cacheControlSectionSystem
+	cacheControlSectionMessages
+)
+
 func optimizeCacheControl(req *MessageRequest) {
-	// 统一归一化：将 Content 字符串形式转为 MultipleContent 数组，
-	// 后续所有函数只处理数组格式，消除隐式结构改写副作用。
 	normalizeMessageContents(req)
-	clearCacheControls(req)
+	sanitizeUnsupportedCacheControls(req)
+	trimCacheControlsToLimit(req, maxCacheControlBreakpoints)
 
-	structural := ensureStructuralCacheControls(req)
-
-	remaining := maxCacheControlBreakpoints - structural
+	remaining := maxCacheControlBreakpoints - countCacheControls(req)
 	if remaining <= 0 {
 		return
 	}
 
+	ensureStructuralCacheControls(req, remaining)
+	if countMessageBreakpoints(req) > 0 {
+		return
+	}
+
+	remaining = maxCacheControlBreakpoints - countCacheControls(req)
 	refs := collectMessageBlockRefs(req)
 	messageAnchors := min(desiredMessageCacheAnchors(len(refs)), remaining)
 	injectPlannedMessageCacheControls(refs, messageAnchors)
+}
 
-	// 最终安全检查：确保 thinking 和空 text 块上不会被意外注入 cache_control。
-	sanitizeUnsupportedCacheControls(req)
+// countMessageBreakpoints 统计 messages 上已存在的 cache_control 断点数（不含 tools/system）。
+func countMessageBreakpoints(req *MessageRequest) int {
+	count := 0
+
+	for i := range req.Messages {
+		count += countContentCacheControls(&req.Messages[i].Content)
+	}
+
+	return count
+}
+
+// trimCacheControlsToLimit trims message breakpoints first to preserve the
+// existing policy, then deterministically trims structural-only overflow.
+func trimCacheControlsToLimit(req *MessageRequest, limit int) {
+	for countCacheControls(req) > limit {
+		if !removeEarliestMessageBreakpoint(req) && !removeEarliestStructuralBreakpoint(req) {
+			return
+		}
+	}
+}
+
+func removeEarliestMessageBreakpoint(req *MessageRequest) bool {
+	for i := range req.Messages {
+		if removeEarliestContentBreakpoint(&req.Messages[i].Content) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func removeEarliestContentBreakpoint(content *MessageContent) bool {
+	if len(content.Raw) > 0 {
+		return removeEarliestRawCacheControl(content)
+	}
+
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if block.CacheControl != nil {
+			block.CacheControl = nil
+			return true
+		}
+		if block.Content != nil && removeEarliestContentBreakpoint(block.Content) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func removeEarliestStructuralBreakpoint(req *MessageRequest) bool {
+	for i := range req.Tools {
+		if req.Tools[i].CacheControl != nil {
+			req.Tools[i].CacheControl = nil
+			return true
+		}
+	}
+
+	if req.System != nil {
+		for i := range req.System.MultiplePrompts {
+			if req.System.MultiplePrompts[i].CacheControl != nil {
+				req.System.MultiplePrompts[i].CacheControl = nil
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 // normalizeMessageContents 将 Messages 中的纯字符串 Content 统一归一化为 MultipleContent 数组格式。
@@ -51,27 +125,26 @@ func normalizeMessageContents(req *MessageRequest) {
 	}
 }
 
-// ensureStructuralCacheControls 确保 tools 和 system 的最后一个元素有 cache_control，
-// 返回实际注入的结构锚点数量。
-// 这些位置内容稳定、每次请求重复发送，是 Anthropic 推荐的缓存锚点。
-func ensureStructuralCacheControls(req *MessageRequest) int {
-	count := 0
-
-	if len(req.Tools) > 0 {
+// ensureStructuralCacheControls fills tools and system within the global
+// budget. Generated 5m anchors are never placed before a client 1h anchor.
+func ensureStructuralCacheControls(req *MessageRequest, remaining int) {
+	oneHourSection := lastOneHourCacheControlSection(req)
+	if remaining > 0 && oneHourSection <= cacheControlSectionTools && len(req.Tools) > 0 && !anyToolHasCacheControl(req) {
 		req.Tools[len(req.Tools)-1].CacheControl = &CacheControl{Type: "ephemeral"}
-		count++
+		remaining--
 	}
 
-	if req.System == nil {
-		return count
+	if remaining <= 0 || oneHourSection > cacheControlSectionSystem || req.System == nil {
+		return
 	}
 
 	if len(req.System.MultiplePrompts) > 0 {
-		last := len(req.System.MultiplePrompts) - 1
-		req.System.MultiplePrompts[last].CacheControl = &CacheControl{Type: "ephemeral"}
-		count++
+		if !anySystemPromptHasCacheControl(req) {
+			last := len(req.System.MultiplePrompts) - 1
+			req.System.MultiplePrompts[last].CacheControl = &CacheControl{Type: "ephemeral"}
+		}
 
-		return count
+		return
 	}
 
 	// system 是字符串形式时归一化为 MultiplePrompts 数组格式，
@@ -84,10 +157,52 @@ func ensureStructuralCacheControls(req *MessageRequest) int {
 			Text:         text,
 			CacheControl: &CacheControl{Type: "ephemeral"},
 		}}
-		count++
+	}
+}
+
+func anyToolHasCacheControl(req *MessageRequest) bool {
+	for i := range req.Tools {
+		if req.Tools[i].CacheControl != nil {
+			return true
+		}
 	}
 
-	return count
+	return false
+}
+
+func anySystemPromptHasCacheControl(req *MessageRequest) bool {
+	for i := range req.System.MultiplePrompts {
+		if req.System.MultiplePrompts[i].CacheControl != nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+func lastOneHourCacheControlSection(req *MessageRequest) int {
+	section := -1
+	for i := range req.Tools {
+		if req.Tools[i].CacheControl != nil && req.Tools[i].CacheControl.TTL == "1h" {
+			section = cacheControlSectionTools
+		}
+	}
+
+	if req.System != nil {
+		for i := range req.System.MultiplePrompts {
+			if req.System.MultiplePrompts[i].CacheControl != nil && req.System.MultiplePrompts[i].CacheControl.TTL == "1h" {
+				section = cacheControlSectionSystem
+			}
+		}
+	}
+
+	for i := range req.Messages {
+		if contentHasOneHourCacheControl(&req.Messages[i].Content) {
+			return cacheControlSectionMessages
+		}
+	}
+
+	return section
 }
 
 // sanitizeUnsupportedCacheControls 清理不允许设置 cache_control 的内容块。
@@ -95,11 +210,22 @@ func ensureStructuralCacheControls(req *MessageRequest) int {
 // 在 strict mode 下用作最终安全检查，防止注入逻辑意外命中不可缓存块。
 func sanitizeUnsupportedCacheControls(req *MessageRequest) {
 	for i := range req.Messages {
-		for j := range req.Messages[i].Content.MultipleContent {
-			block := &req.Messages[i].Content.MultipleContent[j]
-			if !isCacheableMessageBlock(*block) && block.CacheControl != nil {
-				block.CacheControl = nil
-			}
+		sanitizeContentCacheControls(&req.Messages[i].Content)
+	}
+}
+
+func sanitizeContentCacheControls(content *MessageContent) {
+	if len(content.Raw) > 0 {
+		return
+	}
+
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if !isCacheableMessageBlock(*block) && block.CacheControl != nil {
+			block.CacheControl = nil
+		}
+		if block.Content != nil {
+			sanitizeContentCacheControls(block.Content)
 		}
 	}
 }
@@ -172,36 +298,28 @@ func collectMessageBlockRefs(req *MessageRequest) []**CacheControl {
 	refs := make([]**CacheControl, 0)
 
 	for i := range req.Messages {
-		for j := range req.Messages[i].Content.MultipleContent {
-			if !isCacheableMessageBlock(req.Messages[i].Content.MultipleContent[j]) {
-				continue
-			}
-
-			refs = append(refs, &req.Messages[i].Content.MultipleContent[j].CacheControl)
-		}
+		refs = appendCacheControlRefs(refs, &req.Messages[i].Content)
 	}
 
 	return refs
 }
 
-// clearCacheControls removes all cache_control breakpoints from tools/system/messages.
-func clearCacheControls(req *MessageRequest) {
-	for i := range req.Tools {
-		req.Tools[i].CacheControl = nil
+func appendCacheControlRefs(refs []**CacheControl, content *MessageContent) []**CacheControl {
+	if len(content.Raw) > 0 {
+		return refs
 	}
 
-	if req.System != nil {
-		for i := range req.System.MultiplePrompts {
-			req.System.MultiplePrompts[i].CacheControl = nil
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if isCacheableMessageBlock(*block) {
+			refs = append(refs, &block.CacheControl)
+		}
+		if block.Content != nil {
+			refs = appendCacheControlRefs(refs, block.Content)
 		}
 	}
 
-	for i := range req.Messages {
-		msg := &req.Messages[i]
-		for j := range msg.Content.MultipleContent {
-			msg.Content.MultipleContent[j].CacheControl = nil
-		}
-	}
+	return refs
 }
 
 // countCacheControls counts all cache_control breakpoints in tools/system/messages.
@@ -226,15 +344,140 @@ func countCacheControls(req *MessageRequest) int {
 
 	// Count message content blocks.
 	for i := range req.Messages {
-		msg := &req.Messages[i]
-		for j := range msg.Content.MultipleContent {
-			if isCacheableMessageBlock(msg.Content.MultipleContent[j]) && msg.Content.MultipleContent[j].CacheControl != nil {
+		count += countContentCacheControls(&req.Messages[i].Content)
+	}
+
+	return count
+}
+
+func countContentCacheControls(content *MessageContent) int {
+	if len(content.Raw) > 0 {
+		value, err := decodeRawContent(content.Raw)
+		if err != nil {
+			return 0
+		}
+
+		count := 0
+		walkRawContent(value, func(block map[string]any) bool {
+			if block["cache_control"] != nil {
 				count++
 			}
+			return false
+		})
+
+		return count
+	}
+
+	count := 0
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if isCacheableMessageBlock(*block) && block.CacheControl != nil {
+			count++
+		}
+		if block.Content != nil {
+			count += countContentCacheControls(block.Content)
 		}
 	}
 
 	return count
+}
+
+func contentHasOneHourCacheControl(content *MessageContent) bool {
+	if len(content.Raw) > 0 {
+		value, err := decodeRawContent(content.Raw)
+		if err != nil {
+			return false
+		}
+
+		found := false
+		walkRawContent(value, func(block map[string]any) bool {
+			control, ok := block["cache_control"].(map[string]any)
+			if ok && control["ttl"] == "1h" {
+				found = true
+				return true
+			}
+			return false
+		})
+
+		return found
+	}
+
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if block.CacheControl != nil && block.CacheControl.TTL == "1h" {
+			return true
+		}
+		if block.Content != nil && contentHasOneHourCacheControl(block.Content) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func removeEarliestRawCacheControl(content *MessageContent) bool {
+	value, err := decodeRawContent(content.Raw)
+	if err != nil {
+		return false
+	}
+
+	removed := walkRawContent(value, func(block map[string]any) bool {
+		if block["cache_control"] == nil {
+			return false
+		}
+		delete(block, "cache_control")
+		return true
+	})
+	if !removed {
+		return false
+	}
+
+	updated, err := json.Marshal(value)
+	if err != nil {
+		return false
+	}
+
+	var blocks []MessageContentBlock
+	if err := json.Unmarshal(updated, &blocks); err != nil {
+		return false
+	}
+
+	content.Raw = updated
+	content.MultipleContent = blocks
+
+	return true
+}
+
+func decodeRawContent(raw json.RawMessage) (any, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func walkRawContent(value any, visit func(map[string]any) bool) bool {
+	switch value := value.(type) {
+	case []any:
+		for _, item := range value {
+			if walkRawContent(item, visit) {
+				return true
+			}
+		}
+	case map[string]any:
+		if visit(value) {
+			return true
+		}
+		if nested, ok := value["content"]; ok {
+			return walkRawContent(nested, visit)
+		}
+	}
+
+	return false
 }
 
 func isCacheableMessageBlock(block MessageContentBlock) bool {
