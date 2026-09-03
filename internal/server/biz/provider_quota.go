@@ -44,6 +44,7 @@ const (
 var providerQuotaChannelTypes = []channel.Type{
 	channel.TypeClaudecode,
 	channel.TypeCodex,
+	channel.TypeAntigravity,
 	channel.TypeXaiSubscription,
 	channel.TypeGithubCopilot,
 	channel.TypeNanogpt,
@@ -388,6 +389,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
+	svc.registerAntigravitySupport()
 	svc.registerXAISubscriptionSupport()
 	svc.registerGithubCopilotSupport()
 	svc.registerNanoGPTSupport()
@@ -425,6 +427,10 @@ func (svc *ProviderQuotaService) registerCommandCodeSupport() {
 
 func (svc *ProviderQuotaService) registerCodexSupport() {
 	svc.checkers["codex"] = provider_quota.NewCodexQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerAntigravitySupport() {
+	svc.checkers["antigravity"] = provider_quota.NewAntigravityQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerXAISubscriptionSupport() {
@@ -1011,6 +1017,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "claudecode"
 	case channel.TypeCodex:
 		return "codex"
+	case channel.TypeAntigravity:
+		return "antigravity"
 	case channel.TypeXaiSubscription:
 		return "xai_subscription"
 	case channel.TypeGithubCopilot:

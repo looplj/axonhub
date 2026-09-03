@@ -93,6 +93,36 @@ test('xAI subscription is exposed as an OAuth Responses channel', () => {
   );
 });
 
+test('channel table shows provider quota only for OAuth channel types', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsData = read('features/channels/data/channels.ts');
+  const channelColumns = read('features/channels/components/channels-columns.tsx');
+
+  assert.match(schema, /providerQuotaStatus:\s*providerQuotaStatusSchema\.optional\(\)\.nullable\(\)/);
+  assert.match(
+    channelsData,
+    /providerQuotaStatus\s*\{[\s\S]*status[\s\S]*quotaData[\s\S]*providerType[\s\S]*\}/,
+    'channel list query should load the persisted provider quota status'
+  );
+  const oauthTypes = channelColumns.match(/const OAUTH_CHANNEL_TYPES\s*=\s*new Set<Channel\['type'\]>\(\[([\s\S]*?)\]\);/)?.[1];
+  assert.ok(oauthTypes, 'OAuth channel type Set declaration should exist');
+  for (const type of ['codex', 'claudecode', 'antigravity', 'github_copilot', 'xai_subscription']) {
+    assert.match(oauthTypes, new RegExp(`'${type}'`));
+  }
+  assert.match(channelColumns, /100\s*-\s*usageRatio\s*\*\s*100/, 'the table should display remaining quota percentage');
+  assert.match(channelColumns, /QUOTA_VISIBLE_LIMIT\s*=\s*5/, 'quota cells should initially show at most five rows');
+  assert.match(channelColumns, /isExpanded\s*\?\s*limits\s*:\s*limits\.slice\(0,\s*QUOTA_VISIBLE_LIMIT\)/);
+  assert.match(channelColumns, /channels\.quota\.expand/);
+  assert.match(channelColumns, /channels\.quota\.collapse/);
+  assert.doesNotMatch(channelColumns, /limit\.window\s*=\s*labels\[index\]/, 'xAI windows must not be labeled by array position');
+  assert.match(channelColumns, /Math\.abs\(limit\.usageRatio\s*-\s*usageRatio\)/, 'legacy xAI limits should match raw billing usage');
+  assert.match(
+    channelColumns,
+    /if\s*\(!OAUTH_CHANNEL_TYPES\.has\(channel\.type\)\)[\s\S]*?>-<\/span>/,
+    'non-OAuth channels should display a dash'
+  );
+});
+
 test('channel proxy connection reuse setting is submitted, echoed, and localized', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsData = read('features/channels/data/channels.ts');

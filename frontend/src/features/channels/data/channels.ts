@@ -986,6 +986,13 @@ const QUERY_CHANNELS_QUERY = `
             capacity
             queueSize
           }
+          providerQuotaStatus {
+            status
+            nextResetAt
+            ready
+            quotaData
+            providerType
+          }
         }
         cursor
       }

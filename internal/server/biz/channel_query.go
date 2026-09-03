@@ -26,7 +26,7 @@ type QueryChannelsInput struct {
 func (svc *ChannelService) QueryChannels(ctx context.Context, input QueryChannelsInput) (*ent.ChannelConnection, error) {
 	// Build the base query
 	var (
-		query = svc.entFromContext(ctx).Channel.Query()
+		query = svc.entFromContext(ctx).Channel.Query().WithProviderQuotaStatus()
 		err   error
 	)
 

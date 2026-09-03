@@ -54,6 +54,123 @@ import { ChannelsStatusDialog } from './channels-status-dialog';
 const WEIGHT_PRECISION = 4;
 const MIN_WEIGHT = 0;
 const MAX_WEIGHT = 100;
+const QUOTA_VISIBLE_LIMIT = 5;
+
+const OAUTH_CHANNEL_TYPES = new Set<Channel['type']>(['codex', 'claudecode', 'antigravity', 'github_copilot', 'xai_subscription']);
+
+type QuotaLimit = {
+  window?: string;
+  usageRatio?: number;
+  status?: string;
+};
+
+function getQuotaLimits(channel: Channel): QuotaLimit[] {
+  const quotaStatus = channel.providerQuotaStatus;
+  if (!quotaStatus) return [];
+
+  const data = quotaStatus.quotaData as Record<string, unknown>;
+  const limits = Array.isArray(data._limits)
+    ? data._limits.filter((limit): limit is Record<string, unknown> => typeof limit === 'object' && limit !== null)
+    : [];
+  const normalized = limits.map((limit) => ({
+    window: typeof limit.window === 'string' ? limit.window : undefined,
+    usageRatio: typeof limit.usageRatio === 'number' ? limit.usageRatio : undefined,
+    status: typeof limit.status === 'string' ? limit.status : undefined,
+  }));
+
+  // Older persisted xAI statuses have unlabeled normalized limits. Match each
+  // one to the raw billing window by its usage value instead of array position,
+  // because either the weekly or monthly response may be absent.
+  if (channel.type === 'xai_subscription') {
+    const billing = data.billing as Record<string, unknown> | undefined;
+    for (const [key, label] of [
+      ['weekly', 'weekly'],
+      ['monthly', 'monthly'],
+    ] as const) {
+      const window = billing?.[key] as Record<string, unknown> | undefined;
+      if (typeof window?.usage_percent !== 'number' || normalized.some((limit) => limit.window === label)) {
+        continue;
+      }
+      const usageRatio = window.usage_percent / 100;
+      const unlabeled = normalized.find(
+        (limit) => !limit.window && limit.usageRatio != null && Math.abs(limit.usageRatio - usageRatio) < 0.000001
+      );
+      if (unlabeled) {
+        unlabeled.window = label;
+      } else {
+        normalized.push({ window: label, usageRatio, status: quotaStatus.status });
+      }
+    }
+  }
+
+  if (channel.type === 'claudecode' && normalized.length === 0) {
+    const windows = data.windows as Record<string, unknown> | undefined;
+    for (const label of ['5h', '7d']) {
+      const window = windows?.[label] as Record<string, unknown> | undefined;
+      if (typeof window?.utilization !== 'number') continue;
+      normalized.push({ window: label, usageRatio: window.utilization, status: quotaStatus.status });
+    }
+  }
+
+  if (channel.type === 'antigravity' && normalized.length === 0) {
+    const models = data.models as Record<string, unknown> | undefined;
+    for (const [modelID, value] of Object.entries(models ?? {})) {
+      if (typeof value !== 'object' || value === null) continue;
+      const model = value as Record<string, unknown>;
+      if (typeof model.remainingPercentage !== 'number') continue;
+      normalized.push({
+        window: typeof model.displayName === 'string' && model.displayName ? model.displayName : modelID,
+        usageRatio: 1 - model.remainingPercentage / 100,
+        status: typeof model.status === 'string' ? model.status : undefined,
+      });
+    }
+  }
+
+  // Codex exposes a secondary window in rate_limit while its normalized
+  // provider limit currently contains only the primary window.
+  if (channel.type === 'codex') {
+    const rateLimit = data.rate_limit as Record<string, unknown> | undefined;
+    for (const [key, label] of [
+      ['primary_window', '5h'],
+      ['secondary_window', '7d'],
+    ] as const) {
+      const window = rateLimit?.[key] as Record<string, unknown> | undefined;
+      if (typeof window?.used_percent !== 'number') continue;
+      const alreadyIncluded = normalized.some(
+        (limit) => limit.window === label || (key === 'primary_window' && limit.window === 'primary')
+      );
+      if (!alreadyIncluded) {
+        normalized.push({
+          window: label,
+          usageRatio: window.used_percent / 100,
+          status: quotaStatus.status,
+        });
+      }
+    }
+  }
+
+  if (channel.type === 'antigravity') {
+    normalized.sort((a, b) => (b.usageRatio ?? 0) - (a.usageRatio ?? 0));
+  }
+
+  return normalized.filter((limit) => limit.usageRatio != null || limit.status === 'exhausted');
+}
+
+function quotaWindowLabel(window: string | undefined): string {
+  if (!window) return '';
+  if (window === 'primary') return '5h';
+  if (window === 'secondary') return '7d';
+  if (window === 'daily') return '1d';
+  if (window === 'weekly') return '7d';
+  if (window === 'monthly') return '30d';
+  return window;
+}
+
+const quotaColor = (remaining: number) => {
+  if (remaining <= 20) return 'text-red-500';
+  if (remaining <= 50) return 'text-yellow-500';
+  return 'text-green-600 dark:text-green-500';
+};
 
 const formatWeight = (value: number) => Number(value.toFixed(WEIGHT_PRECISION));
 const clampWeight = (value: number) => formatWeight(Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, value)));
@@ -420,6 +537,102 @@ const ProviderCell = memo(({ row }: { row: Row<Channel> }) => {
 
 ProviderCell.displayName = 'ProviderCell';
 
+const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
+  const { t } = useTranslation();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const channel = row.original;
+
+  if (!OAUTH_CHANNEL_TYPES.has(channel.type)) {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  if (!channel.providerQuotaStatus) {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>{t('quota.label.unavailable')}</span>
+      </div>
+    );
+  }
+
+  const limits = getQuotaLimits(channel);
+  if (limits.length === 0) {
+    const error = (channel.providerQuotaStatus.quotaData as { error?: unknown }).error;
+    const content = (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>{t('quota.label.unavailable')}</span>
+      </div>
+    );
+    if (typeof error !== 'string' || error.length === 0) return content;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{content}</TooltipTrigger>
+        <TooltipContent className='max-w-72 text-xs'>{error}</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  const visibleLimits = isExpanded ? limits : limits.slice(0, QUOTA_VISIBLE_LIMIT);
+  const hiddenCount = limits.length - QUOTA_VISIBLE_LIMIT;
+  const content = (
+    <div className='flex min-w-80 flex-col items-stretch gap-1.5 text-[11px]'>
+      {visibleLimits.map((limit, index) => {
+        const usageRatio = limit.status === 'exhausted' ? 1 : (limit.usageRatio ?? 1);
+        const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
+        const label = quotaWindowLabel(limit.window) || t('quota.label.quota');
+        return (
+          <div key={`${label}-${index}`} className='flex items-center justify-end gap-2'>
+            <span className='text-muted-foreground min-w-24 whitespace-nowrap text-left'>{label}</span>
+            <div className='bg-muted h-1.5 w-24 shrink-0 overflow-hidden rounded-full'>
+              <div
+                className={`h-full ${remaining <= 20 ? 'bg-red-500' : remaining <= 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                style={{ width: `${remaining}%` }}
+              />
+            </div>
+            <span className={`w-8 text-right font-medium ${quotaColor(remaining)}`}>{remaining}%</span>
+          </div>
+        );
+      })}
+      {hiddenCount > 0 && (
+        <button
+          type='button'
+          className='text-primary hover:text-primary/80 mt-0.5 self-end text-xs font-medium hover:underline'
+          aria-expanded={isExpanded}
+          onClick={(event) => {
+            event.stopPropagation();
+            setIsExpanded((expanded) => !expanded);
+          }}
+        >
+          {isExpanded ? t('channels.quota.collapse') : t('channels.quota.expand', { count: hiddenCount })}
+        </button>
+      )}
+    </div>
+  );
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{content}</TooltipTrigger>
+      <TooltipContent className='space-y-1'>
+        <div className='font-medium'>{t(`quota.status.${channel.providerQuotaStatus.status}`)}</div>
+        {limits.map((limit, index) => {
+          const usageRatio = limit.status === 'exhausted' ? 1 : (limit.usageRatio ?? 1);
+          const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
+          return (
+            <div key={`${limit.window}-${index}`} className='text-xs'>
+              {quotaWindowLabel(limit.window) || t('quota.label.quota')}: {remaining}%
+            </div>
+          );
+        })}
+      </TooltipContent>
+    </Tooltip>
+  );
+});
+
+QuotaCell.displayName = 'QuotaCell';
+
 const TagsCell = memo(({ row }: { row: Row<Channel> }) => {
   const tags = (row.getValue('tags') as string[]) || [];
   if (tags.length === 0) {
@@ -724,6 +937,17 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       },
       enableSorting: true,
       enableHiding: false,
+    },
+    {
+      id: 'quota',
+      accessorFn: (row) => row.providerQuotaStatus?.status ?? '',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.quota')} className='justify-center' />,
+      cell: QuotaCell,
+      meta: {
+        className: 'w-96 min-w-96 text-center',
+      },
+      enableSorting: false,
+      enableHiding: true,
     },
 
     {
