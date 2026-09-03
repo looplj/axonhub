@@ -173,10 +173,10 @@ func TestInboundStream_FinalizesOnCleanExhaustionWithoutFinishReason(t *testing.
 			require.Equal(t, "message_delta", terminalEvents[1].Type)
 			require.NotNil(t, terminalEvents[1].Delta)
 			require.Equal(t, tt.expectedStopReason, *terminalEvents[1].Delta.StopReason)
+			require.NotNil(t, terminalEvents[1].Usage)
 			if tt.usage == nil {
-				require.Nil(t, terminalEvents[1].Usage)
+				require.Zero(t, terminalEvents[1].Usage.OutputTokens)
 			} else {
-				require.NotNil(t, terminalEvents[1].Usage)
 				require.Equal(t, int64(7), terminalEvents[1].Usage.OutputTokens)
 			}
 			require.Equal(t, "message_stop", terminalEvents[2].Type)

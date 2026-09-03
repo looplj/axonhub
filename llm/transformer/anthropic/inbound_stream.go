@@ -468,9 +468,14 @@ func (s *anthropicInboundStream) closeOpenContentBlocks() error {
 }
 
 func (s *anthropicInboundStream) enqueueTerminalEvents() error {
+	usage := s.pendingUsage
+	if usage == nil {
+		usage = &Usage{}
+	}
+
 	streamEvent := StreamEvent{
 		Type:  "message_delta",
-		Usage: s.pendingUsage,
+		Usage: usage,
 	}
 
 	if s.stopReason != nil {
