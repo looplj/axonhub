@@ -116,6 +116,14 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			return
 		}
 
+		// Tool endpoints such as embeddings carry a trace ID header from generic API
+		// clients but are not conversation turns, so they never get a persisted trace.
+		if isNonMessageEndpoint(c.Request.URL.Path) {
+			c.Next()
+
+			return
+		}
+
 		// The trace middleware can resolve a more specific ID from fallback headers
 		// or request bodies. Keep the request context in sync with that final value.
 		c.Request = c.Request.WithContext(tracing.WithTraceID(c.Request.Context(), traceID))
@@ -233,4 +241,18 @@ func tryExtractTraceIDFromCodexRequest(c *gin.Context) string {
 	log.Debug(c.Request.Context(), "Extracted trace ID from "+traceSource, log.String("trace_id", traceID))
 
 	return traceID
+}
+
+// isNonMessageEndpoint reports whether the request targets an endpoint whose
+// payload is not message-shaped (e.g. /v1/embeddings). Such requests may carry
+// a trace ID header from generic API clients, but must not create a persisted
+// trace: they are tool calls rather than conversation turns and have no
+// displayable content in the trace UI.
+func isNonMessageEndpoint(path string) bool {
+	if strings.HasSuffix(path, "/embeddings") {
+		return true
+	}
+
+	// Gemini serves embeddings through model actions instead of an /embeddings path.
+	return strings.Contains(path, ":embedContent") || strings.Contains(path, ":batchEmbedContents")
 }
