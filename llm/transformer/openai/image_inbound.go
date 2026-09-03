@@ -260,6 +260,13 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 }
 
 func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Request) (*llm.Request, error) {
+	// Some providers (e.g. sensenova) accept image edits as application/json with
+	// base64 data URLs instead of multipart/form-data.
+	contentType := strings.ToLower(httpReq.Headers.Get("Content-Type"))
+	if strings.Contains(contentType, "application/json") {
+		return t.transformEditJSONRequest(httpReq)
+	}
+
 	formData, err := parseMultipartRequest(httpReq)
 	if err != nil {
 		return nil, err
@@ -315,6 +322,95 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 		OutputCompression: parseOptionalInt64(formData.Fields["output_compression"]),
 		InputFidelity:     strings.TrimSpace(formData.Fields["input_fidelity"]),
 		PartialImages:     parseOptionalInt64(formData.Fields["partial_images"]),
+	}
+
+	llmReq := &llm.Request{
+		Model:       model,
+		Modalities:  []string{"image"},
+		Stream:      lo.ToPtr(false),
+		RawRequest:  httpReq,
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   t.apiFormat,
+		Image:       imageReq,
+	}
+
+	return llmReq, nil
+}
+
+// ImageEditJSONRequest represents an application/json body for the image edit API.
+// The Image field accepts a single data URL string or an array of data URL strings;
+// Mask accepts a data URL string.
+type ImageEditJSONRequest struct {
+	Prompt            string          `json:"prompt"`
+	Model             string          `json:"model"`
+	Image             json.RawMessage `json:"image,omitempty"`
+	Mask              string          `json:"mask,omitempty"`
+	N                 *int64          `json:"n,omitempty"`
+	Size              string          `json:"size,omitempty"`
+	Quality           string          `json:"quality,omitempty"`
+	ResponseFormat    string          `json:"response_format,omitempty"`
+	User              string          `json:"user,omitempty"`
+	Background        string          `json:"background,omitempty"`
+	OutputFormat      string          `json:"output_format,omitempty"`
+	OutputCompression *int64          `json:"output_compression,omitempty"`
+	InputFidelity     string          `json:"input_fidelity,omitempty"`
+	PartialImages     *int64          `json:"partial_images,omitempty"`
+	Stream            bool            `json:"stream,omitempty"`
+}
+
+func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.Request) (*llm.Request, error) {
+	var editReq ImageEditJSONRequest
+
+	if err := json.Unmarshal(httpReq.Body, &editReq); err != nil {
+		return nil, fmt.Errorf("%w: failed to decode image edit request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	if editReq.Stream {
+		return nil, fmt.Errorf("%w: image edit does not support streaming", transformer.ErrInvalidRequest)
+	}
+
+	prompt := strings.TrimSpace(editReq.Prompt)
+	if prompt == "" {
+		return nil, fmt.Errorf("%w: prompt is required for image edits", transformer.ErrInvalidRequest)
+	}
+
+	model := strings.TrimSpace(editReq.Model)
+	if model == "" {
+		model = "dall-e-2"
+	}
+
+	images, err := parseGenerationImageField(editReq.Image)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(images) == 0 {
+		return nil, fmt.Errorf("%w: at least one image is required for edits", transformer.ErrInvalidRequest)
+	}
+
+	var mask []byte
+
+	if maskDataURL := strings.TrimSpace(editReq.Mask); maskDataURL != "" {
+		mask, err = decodeDataURLToBytes(maskDataURL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	imageReq := &llm.ImageRequest{
+		Prompt:            prompt,
+		Images:            images,
+		Mask:              mask,
+		N:                 editReq.N,
+		Size:              strings.TrimSpace(editReq.Size),
+		Quality:           strings.TrimSpace(editReq.Quality),
+		ResponseFormat:    strings.TrimSpace(editReq.ResponseFormat),
+		User:              strings.TrimSpace(editReq.User),
+		Background:        strings.TrimSpace(editReq.Background),
+		OutputFormat:      strings.TrimSpace(editReq.OutputFormat),
+		OutputCompression: editReq.OutputCompression,
+		InputFidelity:     strings.TrimSpace(editReq.InputFidelity),
+		PartialImages:     editReq.PartialImages,
 	}
 
 	llmReq := &llm.Request{

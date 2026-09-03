@@ -2072,6 +2072,57 @@ func TestApplyPassThroughBodySkipsMultipartVideo(t *testing.T) {
 	require.Equal(t, outboundBody, processed.Body)
 }
 
+func TestApplyPassThroughBodyAppliesJSONImageEdit(t *testing.T) {
+	ctx := context.Background()
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "pass-through-json-image-edit",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+	}
+
+	inboundBody := []byte(`{"model":"my-edit-alias","prompt":"make it blue","image":"data:image/png;base64,aGk="}`)
+	outboundBody := []byte("--new-boundary\r\nContent-Disposition: form-data; name=\"prompt\"\r\n\r\nmake it blue\r\n--new-boundary--\r\n")
+
+	outbound := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest: &llm.Request{
+				Model:     "sensenova-u1.5-lite",
+				APIFormat: llm.APIFormatOpenAIImageEdit,
+				RawRequest: &httpclient.Request{
+					APIFormat: string(llm.APIFormatOpenAIImageEdit),
+					Headers:   http.Header{"Content-Type": []string{"application/json"}},
+					Body:      inboundBody,
+				},
+			},
+		},
+	}
+
+	request := &httpclient.Request{
+		APIFormat:   string(llm.APIFormatOpenAIImageEdit),
+		Headers:     http.Header{"Content-Type": []string{"multipart/form-data; boundary=new-boundary"}},
+		ContentType: "multipart/form-data; boundary=new-boundary",
+		Body:        outboundBody,
+	}
+
+	processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(ctx, request)
+	require.NoError(t, err)
+	require.True(t, outbound.state.PassThroughApplied)
+
+	// The raw JSON body replaces the rebuilt multipart body, with the mapped model patched in.
+	require.Equal(t, "sensenova-u1.5-lite", gjson.GetBytes(processed.Body, "model").String())
+	require.Equal(t, "make it blue", gjson.GetBytes(processed.Body, "prompt").String())
+
+	// Content-Type must match the replayed JSON body instead of the rebuilt multipart one.
+	require.Equal(t, "application/json", processed.Headers.Get("Content-Type"))
+	require.Equal(t, "application/json", processed.ContentType)
+}
+
 func TestApplyPassThroughBodyAppliesSpeechModelPatch(t *testing.T) {
 	ctx := context.Background()
 

@@ -428,6 +428,207 @@ func TestImageInboundTransformer_TransformRequest_Edit_Multipart_AcceptsImageAbo
 	assert.Len(t, llmReq.Image.Images[0], len(imageData))
 }
 
+func TestImageInboundTransformer_TransformRequest_Edit_JSON(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"prompt":          "make it blue",
+		"model":           "sensenova-u1.5-lite",
+		"image":           dataURL,
+		"size":            "1024x1024",
+		"n":               2,
+		"response_format": "b64_json",
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+
+	assert.Equal(t, llm.RequestTypeImage, llmReq.RequestType)
+	assert.Equal(t, llm.APIFormatOpenAIImageEdit, llmReq.APIFormat)
+	assert.Equal(t, "sensenova-u1.5-lite", llmReq.Model)
+	assert.Contains(t, llmReq.Modalities, "image")
+	require.NotNil(t, llmReq.Stream)
+	assert.False(t, *llmReq.Stream)
+	require.NotNil(t, llmReq.Image)
+	assert.Equal(t, "make it blue", llmReq.Image.Prompt)
+	assert.Equal(t, "1024x1024", llmReq.Image.Size)
+	assert.Equal(t, lo.ToPtr(int64(2)), llmReq.Image.N)
+	assert.Equal(t, "b64_json", llmReq.Image.ResponseFormat)
+	require.Len(t, llmReq.Image.Images, 1)
+	assert.Equal(t, pngBytes, llmReq.Image.Images[0])
+}
+
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_MultipleImagesAndMask(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	pngBytes1 := []byte{0x89, 0x50, 0x4E, 0x47}
+	pngBytes2 := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D}
+	maskBytes := []byte{0x89, 0x4D, 0x53, 0x4B}
+	dataURL1 := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes1)
+	dataURL2 := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes2)
+	maskURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(maskBytes)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"prompt": "combine these images",
+		"model":  "gpt-image-1",
+		"image":  []string{dataURL1, dataURL2},
+		"mask":   maskURL,
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+
+	require.NotNil(t, llmReq.Image)
+	require.Len(t, llmReq.Image.Images, 2)
+	assert.Equal(t, pngBytes1, llmReq.Image.Images[0])
+	assert.Equal(t, pngBytes2, llmReq.Image.Images[1])
+	assert.Equal(t, maskBytes, llmReq.Image.Mask)
+}
+
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_RequiresPrompt(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47}
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"model": "sensenova-u1.5-lite",
+		"image": dataURL,
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	_, err = inbound.TransformRequest(context.Background(), httpReq)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "prompt is required")
+}
+
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_RequiresImage(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	reqBody := []byte(`{"prompt":"make it blue","model":"sensenova-u1.5-lite"}`)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	_, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "at least one image is required")
+}
+
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsStream(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47}
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"prompt": "make it blue",
+		"model":  "sensenova-u1.5-lite",
+		"image":  dataURL,
+		"stream": true,
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	_, err = inbound.TransformRequest(context.Background(), httpReq)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "does not support streaming")
+}
+
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsNonDataURLImage(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	reqBody := []byte(`{
+		"prompt":"make it blue",
+		"model":"sensenova-u1.5-lite",
+		"image":"https://example.com/image.png"
+	}`)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	_, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "image must be a data URL")
+}
+
+func TestImageInboundTransformer_Edit_JSON_RoundTrip_ToMultipartOutbound(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
+
+	reqBody, err := json.Marshal(map[string]any{
+		"prompt": "make this brighter",
+		"model":  "dall-e-2",
+		"image":  dataURL,
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	ot := tr.(*OutboundTransformer)
+
+	outReq, err := ot.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	assert.Equal(t, "https://api.openai.com/v1/images/edits", outReq.URL)
+	assert.Contains(t, outReq.Headers.Get("Content-Type"), "multipart/form-data")
+	assert.Contains(t, string(outReq.Body), `name="image"`)
+	assert.Contains(t, string(outReq.Body), `name="prompt"`)
+}
+
 func TestImageInboundTransformer_TransformResponse_ToImagesResponse(t *testing.T) {
 	inbound := NewImageGenerationInboundTransformer()
 
