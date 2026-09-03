@@ -203,6 +203,14 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 	}
 
 	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
+		if httpErr == nil {
+			return &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Status:     http.StatusText(http.StatusInternalServerError),
+				Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: "An unexpected error occurred", Type: "unexpected_error"}}),
+			}
+		}
+
 		return normalizeHTTPErrorStatus(httpErr)
 	}
 
@@ -217,7 +225,9 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 
 	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
 		statusCode := llmErr.StatusCode
-		if statusCode < http.StatusBadRequest || statusCode > 599 {
+		if statusCode == 0 && llmErr.Detail.Code == "context_length_exceeded" {
+			statusCode = http.StatusBadRequest
+		} else if statusCode < http.StatusBadRequest || statusCode > 599 {
 			statusCode = http.StatusBadGateway
 		}
 
