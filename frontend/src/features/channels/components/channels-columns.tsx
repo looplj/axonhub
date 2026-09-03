@@ -95,7 +95,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const { channelPermissions } = usePermissions();
   const testChannel = useTestChannel();
   const isArchived = channel.status === 'archived';
-  const hasError = !!channel.errorMessage;
+  const hasError = channel.errorMessage != null;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
 
   const handleDefaultTest = async () => {
@@ -341,7 +341,7 @@ function getProxyURLSummary(proxyURL: string): { label: string; detail?: string 
 const NameCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
   const channel = row.original;
-  const hasError = !!channel.errorMessage;
+  const hasError = channel.errorMessage != null;
   const disabledKeysCount = channel.disabledAPIKeys?.length ?? 0;
   const hasDisabledKeys = disabledKeysCount > 0;
   const websiteURL = getChannelWebsiteURL(channel.baseURL);
