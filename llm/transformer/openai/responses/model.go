@@ -103,7 +103,7 @@ type Request struct {
 	Temperature *float64 `json:"temperature,omitempty"`
 
 	// Input can be a string prompt or an array of input items.
-	Input Input `json:"input"`
+	Input Input `json:"input,omitzero"`
 	// Tools includes the function/image_generation/web_search/custom tools.
 	Tools []Tool `json:"tools,omitzero"`
 	// Parallel tool calls preference.

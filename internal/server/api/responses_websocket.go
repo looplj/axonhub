@@ -10,6 +10,7 @@ import (
 	"maps"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,9 @@ const (
 	responsesWebSocketPingInterval     = responsesWebSocketIdleTimeout / 2
 	responsesWebSocketPingWriteTimeout = 10 * time.Second
 	responsesWebSocketWriteTimeout     = 10 * time.Second
+	responsesWebSocketMaxActive        = 16
+	responsesWebSocketMaxPending       = 64
+	responsesWebSocketMaxNamedStreams  = 32
 )
 
 type responsesWebSocketProcessFunc func(context.Context, *httpclient.Request) (orchestrator.ChatCompletionResult, error)
@@ -36,8 +40,6 @@ type responsesWebSocketProcessFunc func(context.Context, *httpclient.Request) (o
 type responsesWebSocketErrorFunc func(context.Context, error) *httpclient.Error
 
 // serveResponsesWebSocket implements the downstream Responses WebSocket mode.
-// Each response.create message is processed synchronously, which preserves the
-// protocol's single in-flight response per connection rule.
 func serveResponsesWebSocket(
 	c *gin.Context,
 	requestTimeout time.Duration,
@@ -49,7 +51,8 @@ func serveResponsesWebSocket(
 		return
 	}
 
-	ctx := shared.WithResponsesWebSocket(c.Request.Context())
+	ctx, cancelSession := context.WithCancel(shared.WithResponsesWebSocket(c.Request.Context()))
+	defer cancelSession()
 	if _, ok := shared.GetSessionID(ctx); !ok {
 		ctx = shared.WithSessionID(ctx, "responses-ws-"+uuid.NewString())
 	}
@@ -63,6 +66,7 @@ func serveResponsesWebSocket(
 		return
 	}
 	defer conn.Close()
+	writer := &responsesWebSocketWriter{conn: conn}
 
 	conn.SetReadLimit(responsesWebSocketMaxMessageSize)
 	if err := conn.SetReadDeadline(time.Now().Add(responsesWebSocketIdleTimeout)); err != nil {
@@ -77,7 +81,8 @@ func serveResponsesWebSocket(
 	defer close(pingDone)
 	go runResponsesWebSocketPings(ctx, conn, pingDone)
 
-	session := new(responsesWebSocketSession)
+	dispatcher := newResponsesWebSocketDispatcher(ctx, cancelSession, conn, writer, c.Request, requestTimeout, process, transformError)
+	defer dispatcher.wait()
 	for {
 		messageType, message, readErr := conn.ReadMessage()
 		if readErr != nil {
@@ -93,54 +98,194 @@ func serveResponsesWebSocket(
 		}
 
 		if messageType != websocket.TextMessage {
-			if err := writeResponsesWebSocketError(conn, invalidResponsesWebSocketRequest("response.create must be sent as a text message", "")); err != nil {
+			if err := writeResponsesWebSocketError(writer, invalidResponsesWebSocketRequest("response.create must be sent as a text message", ""), ""); err != nil {
 				return
 			}
 			continue
 		}
 
-		request, warmup, requestErr := session.prepareRequest(c.Request, message)
-		if requestErr != nil {
-			if err := writeResponsesWebSocketError(conn, requestErr); err != nil {
-				return
-			}
-			continue
-		}
-		if warmup != nil {
-			if err := writeResponsesWebSocketWarmup(conn, warmup); err != nil {
+		streamID, envelopeErr := responsesWebSocketEnvelopeStreamID(message)
+		if envelopeErr != nil {
+			if err := writeResponsesWebSocketError(writer, envelopeErr, ""); err != nil {
 				return
 			}
 			continue
 		}
 
-		requestCtx := ctx
-		cancel := func() {}
-		if requestTimeout > 0 {
-			requestCtx, cancel = context.WithTimeout(ctx, requestTimeout)
+		lane, laneErr := dispatcher.lane(streamID)
+		if laneErr != nil {
+			if err := writeResponsesWebSocketError(writer, laneErr, streamID); err != nil {
+				return
+			}
+			continue
 		}
-		if request.RawRequest != nil {
-			request.RawRequest = request.RawRequest.WithContext(requestCtx)
-		}
-
-		result, processErr := process(requestCtx, request)
-		if processErr != nil {
-			httpErr := transformResponsesWebSocketError(requestCtx, processErr, transformError)
-			cancel()
-			if err := writeResponsesWebSocketError(conn, httpErr); err != nil {
+		if !dispatcher.reserve() {
+			if err := writeResponsesWebSocketError(writer, responsesWebSocketQueueLimitError(), streamID); err != nil {
 				return
 			}
 			continue
 		}
 
-		writeErr := writeResponsesWebSocketResult(requestCtx, conn, result, transformError)
-		cancel()
-		if writeErr != nil {
-			if !errors.Is(writeErr, context.Canceled) && ctx.Err() == nil {
-				log.Warn(ctx, "Failed to write Responses WebSocket result", log.Cause(writeErr))
+		dispatcher.dispatch(lane, streamID, append([]byte(nil), message...))
+	}
+}
+
+type responsesWebSocketWriter struct {
+	conn *websocket.Conn
+	mu   sync.Mutex
+}
+
+type responsesWebSocketLane struct {
+	session responsesWebSocketSession
+	tail    <-chan struct{}
+}
+
+type responsesWebSocketDispatcher struct {
+	ctx            context.Context
+	cancel         context.CancelFunc
+	conn           *websocket.Conn
+	writer         *responsesWebSocketWriter
+	rawRequest     *http.Request
+	requestTimeout time.Duration
+	process        responsesWebSocketProcessFunc
+	transformError responsesWebSocketErrorFunc
+	active         chan struct{}
+	pending        chan struct{}
+	lanes          map[string]*responsesWebSocketLane
+	namedStreams   int
+	wg             sync.WaitGroup
+	closeOnce      sync.Once
+}
+
+func newResponsesWebSocketDispatcher(
+	ctx context.Context,
+	cancel context.CancelFunc,
+	conn *websocket.Conn,
+	writer *responsesWebSocketWriter,
+	rawRequest *http.Request,
+	requestTimeout time.Duration,
+	process responsesWebSocketProcessFunc,
+	transformError responsesWebSocketErrorFunc,
+) *responsesWebSocketDispatcher {
+	return &responsesWebSocketDispatcher{
+		ctx:            ctx,
+		cancel:         cancel,
+		conn:           conn,
+		writer:         writer,
+		rawRequest:     rawRequest,
+		requestTimeout: requestTimeout,
+		process:        process,
+		transformError: transformError,
+		active:         make(chan struct{}, responsesWebSocketMaxActive),
+		pending:        make(chan struct{}, responsesWebSocketMaxPending),
+		lanes:          make(map[string]*responsesWebSocketLane),
+	}
+}
+
+func (d *responsesWebSocketDispatcher) reserve() bool {
+	select {
+	case d.pending <- struct{}{}:
+		return true
+	default:
+		return false
+	}
+}
+
+func (d *responsesWebSocketDispatcher) lane(streamID string) (*responsesWebSocketLane, *httpclient.Error) {
+	if lane := d.lanes[streamID]; lane != nil {
+		return lane, nil
+	}
+	if streamID != "" && d.namedStreams >= responsesWebSocketMaxNamedStreams {
+		return nil, responsesWebSocketRequestError(
+			"This WebSocket connection has reached its maximum number of distinct stream IDs (32). Reuse an existing stream_id or open a new WebSocket connection.",
+			"stream_id",
+			"websocket_stream_limit_reached",
+		)
+	}
+
+	ready := make(chan struct{})
+	close(ready)
+	lane := &responsesWebSocketLane{tail: ready}
+	d.lanes[streamID] = lane
+	if streamID != "" {
+		d.namedStreams++
+	}
+
+	return lane, nil
+}
+
+func (d *responsesWebSocketDispatcher) dispatch(lane *responsesWebSocketLane, streamID string, message []byte) {
+	previous := lane.tail
+	done := make(chan struct{})
+	lane.tail = done
+	d.wg.Go(func() {
+		defer func() { <-d.pending }()
+		defer close(done)
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				log.Error(d.ctx, "Panic while processing Responses WebSocket request", log.Any("panic", recovered))
+				d.closeOnce.Do(func() {
+					d.cancel()
+					_ = d.conn.Close()
+				})
 			}
+		}()
+
+		select {
+		case <-previous:
+		case <-d.ctx.Done():
 			return
 		}
+		select {
+		case d.active <- struct{}{}:
+			defer func() { <-d.active }()
+		case <-d.ctx.Done():
+			return
+		}
+
+		if err := d.processMessage(&lane.session, streamID, message); err != nil {
+			if !errors.Is(err, context.Canceled) && d.ctx.Err() == nil {
+				log.Warn(d.ctx, "Failed to write Responses WebSocket result", log.Cause(err))
+			}
+			d.closeOnce.Do(func() {
+				d.cancel()
+				_ = d.conn.Close()
+			})
+		}
+	})
+}
+
+func (d *responsesWebSocketDispatcher) processMessage(session *responsesWebSocketSession, streamID string, message []byte) error {
+	request, warmup, requestErr := session.prepareRequest(d.rawRequest, message)
+	if requestErr != nil {
+		return writeResponsesWebSocketError(d.writer, requestErr, streamID)
 	}
+	if warmup != nil {
+		return writeResponsesWebSocketWarmup(d.writer, warmup, streamID)
+	}
+
+	requestCtx := d.ctx
+	cancel := func() {}
+	if d.requestTimeout > 0 {
+		requestCtx, cancel = context.WithTimeout(d.ctx, d.requestTimeout)
+	}
+	defer cancel()
+	if request.RawRequest != nil {
+		request.RawRequest = request.RawRequest.WithContext(requestCtx)
+	}
+
+	result, processErr := d.process(requestCtx, request)
+	if processErr != nil {
+		httpErr := transformResponsesWebSocketError(requestCtx, processErr, d.transformError)
+		return writeResponsesWebSocketError(d.writer, httpErr, streamID)
+	}
+
+	return writeResponsesWebSocketResult(requestCtx, d.writer, result, d.transformError, streamID)
+}
+
+func (d *responsesWebSocketDispatcher) wait() {
+	d.cancel()
+	d.wg.Wait()
 }
 
 func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done <-chan struct{}) {
@@ -166,6 +311,47 @@ func runResponsesWebSocketPings(ctx context.Context, conn *websocket.Conn, done 
 			return
 		}
 	}
+}
+
+func responsesWebSocketEnvelopeStreamID(message []byte) (string, *httpclient.Error) {
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(message, &payload); err != nil || payload == nil {
+		return "", invalidResponsesWebSocketRequest("invalid response.create JSON payload", "")
+	}
+
+	var eventType string
+	if rawType, ok := payload["type"]; !ok || json.Unmarshal(rawType, &eventType) != nil || eventType != responseCreateWebSocketEventType {
+		return "", invalidResponsesWebSocketRequest("expected a response.create event", "type")
+	}
+
+	rawStreamID, ok := payload["stream_id"]
+	if !ok {
+		return "", nil
+	}
+	var streamID string
+	if json.Unmarshal(rawStreamID, &streamID) != nil || !validResponsesWebSocketStreamID(streamID) {
+		return "", responsesWebSocketRequestError(
+			"The 'stream_id' field must be a non-empty string with at most 256 characters and may only contain letters, numbers, underscores, hyphens, and periods.",
+			"stream_id",
+			"invalid_stream_id",
+		)
+	}
+
+	return streamID, nil
+}
+
+func validResponsesWebSocketStreamID(streamID string) bool {
+	if streamID == "" || len(streamID) > 256 {
+		return false
+	}
+	for _, char := range streamID {
+		if char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z' || char >= '0' && char <= '9' || char == '_' || char == '-' || char == '.' {
+			continue
+		}
+		return false
+	}
+
+	return true
 }
 
 type responsesWebSocketSession struct {
@@ -199,8 +385,8 @@ func (s *responsesWebSocketSession) prepareRequest(
 			return nil, nil, invalidResponsesWebSocketRequest("generate must be a boolean", "generate")
 		}
 	}
-	displayControls := make(map[string]json.RawMessage, 2)
-	for _, key := range []string{"generate", "background"} {
+	displayControls := make(map[string]json.RawMessage, 3)
+	for _, key := range []string{"generate", "background", "stream_id"} {
 		if value, ok := payload[key]; ok {
 			displayControls[key] = append(json.RawMessage(nil), value...)
 		}
@@ -209,6 +395,7 @@ func (s *responsesWebSocketSession) prepareRequest(
 	delete(payload, "type")
 	delete(payload, "generate")
 	delete(payload, "background")
+	delete(payload, "stream_id")
 
 	previousResponseID := responseWebSocketStringField(payload, "previous_response_id")
 	if s.warmupID != "" && previousResponseID == s.warmupID {
@@ -358,7 +545,7 @@ func responseWebSocketStringField(payload map[string]json.RawMessage, key string
 	return value
 }
 
-func writeResponsesWebSocketWarmup(conn *websocket.Conn, warmup *responsesWebSocketWarmup) error {
+func writeResponsesWebSocketWarmup(writer *responsesWebSocketWriter, warmup *responsesWebSocketWarmup, streamID string) error {
 	if warmup == nil {
 		return nil
 	}
@@ -376,27 +563,27 @@ func writeResponsesWebSocketWarmup(conn *websocket.Conn, warmup *responsesWebSoc
 		response["previous_response_id"] = warmup.PreviousResponseID
 	}
 
-	if err := writeResponsesWebSocketJSON(conn, gin.H{
+	if err := writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
 		"type":            "response.created",
 		"sequence_number": 0,
 		"response":        response,
-	}); err != nil {
+	})); err != nil {
 		return err
 	}
-	if err := writeResponsesWebSocketJSON(conn, gin.H{
+	if err := writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
 		"type":            "response.in_progress",
 		"sequence_number": 1,
 		"response":        response,
-	}); err != nil {
+	})); err != nil {
 		return err
 	}
 
 	response["status"] = "completed"
-	return writeResponsesWebSocketJSON(conn, gin.H{
+	return writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
 		"type":            "response.completed",
 		"sequence_number": 2,
 		"response":        response,
-	})
+	}))
 }
 
 func responseWebSocketRequestHeaders(headers http.Header) http.Header {
@@ -416,9 +603,10 @@ func responseWebSocketRequestHeaders(headers http.Header) http.Header {
 
 func writeResponsesWebSocketResult(
 	ctx context.Context,
-	conn *websocket.Conn,
+	writer *responsesWebSocketWriter,
 	result orchestrator.ChatCompletionResult,
 	transformError responsesWebSocketErrorFunc,
+	streamID string,
 ) error {
 	if result.ChatCompletionStream != nil {
 		stream := result.ChatCompletionStream
@@ -433,13 +621,17 @@ func writeResponsesWebSocketResult(
 			if orchestrator.IsTerminalStreamEvent(event) {
 				terminalSeen = true
 			}
-			if err := writeResponsesWebSocketMessage(conn, websocket.TextMessage, event.Data); err != nil {
+			data, err := withResponsesWebSocketStreamID(event.Data, streamID)
+			if err != nil {
+				return err
+			}
+			if err := writeResponsesWebSocketMessage(writer, websocket.TextMessage, data); err != nil {
 				return err
 			}
 		}
 
 		if err := stream.Err(); err != nil && !terminalSeen {
-			return writeResponsesWebSocketError(conn, transformResponsesWebSocketError(ctx, err, transformError))
+			return writeResponsesWebSocketError(writer, transformResponsesWebSocketError(ctx, err, transformError), streamID)
 		}
 
 		return nil
@@ -448,18 +640,18 @@ func writeResponsesWebSocketResult(
 	if result.ChatCompletion != nil {
 		var response json.RawMessage
 		if !json.Valid(result.ChatCompletion.Body) {
-			return writeResponsesWebSocketError(conn, invalidResponsesWebSocketRequest("invalid Responses result", ""))
+			return writeResponsesWebSocketError(writer, invalidResponsesWebSocketRequest("invalid Responses result", ""), streamID)
 		}
 		response = result.ChatCompletion.Body
 
-		return writeResponsesWebSocketJSON(conn, gin.H{
+		return writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
 			"type":            "response.completed",
 			"sequence_number": 0,
 			"response":        response,
-		})
+		}))
 	}
 
-	return writeResponsesWebSocketError(conn, invalidResponsesWebSocketRequest("Responses request returned no result", ""))
+	return writeResponsesWebSocketError(writer, invalidResponsesWebSocketRequest("Responses request returned no result", ""), streamID)
 }
 
 func transformResponsesWebSocketError(ctx context.Context, err error, transformError responsesWebSocketErrorFunc) *httpclient.Error {
@@ -480,10 +672,14 @@ func transformResponsesWebSocketError(ctx context.Context, err error, transformE
 }
 
 func invalidResponsesWebSocketRequest(message, param string) *httpclient.Error {
+	return responsesWebSocketRequestError(message, param, "invalid_request_error")
+}
+
+func responsesWebSocketRequestError(message, param, code string) *httpclient.Error {
 	detail := gin.H{
 		"message": message,
 		"type":    "invalid_request_error",
-		"code":    "invalid_request_error",
+		"code":    code,
 	}
 	if param != "" {
 		detail["param"] = param
@@ -500,7 +696,19 @@ func invalidResponsesWebSocketRequest(message, param string) *httpclient.Error {
 	}
 }
 
-func writeResponsesWebSocketError(conn *websocket.Conn, httpErr *httpclient.Error) error {
+func responsesWebSocketQueueLimitError() *httpclient.Error {
+	httpErr := responsesWebSocketRequestError(
+		"This WebSocket connection has reached its pending response limit (64). Wait for an active response to finish before sending more response.create events.",
+		"",
+		"websocket_queue_limit_reached",
+	)
+	httpErr.StatusCode = http.StatusTooManyRequests
+	httpErr.Status = http.StatusText(http.StatusTooManyRequests)
+
+	return httpErr
+}
+
+func writeResponsesWebSocketError(writer *responsesWebSocketWriter, httpErr *httpclient.Error, streamID string) error {
 	status := http.StatusInternalServerError
 	if httpErr != nil && httpErr.StatusCode != 0 {
 		status = httpErr.StatusCode
@@ -519,25 +727,55 @@ func writeResponsesWebSocketError(conn *websocket.Conn, httpErr *httpclient.Erro
 		}
 	}
 
-	return writeResponsesWebSocketJSON(conn, gin.H{
+	return writeResponsesWebSocketJSON(writer, responsesWebSocketEvent(streamID, gin.H{
 		"type":   "error",
 		"status": status,
 		"error":  detail,
-	})
+	}))
 }
 
-func writeResponsesWebSocketMessage(conn *websocket.Conn, messageType int, data []byte) error {
-	if err := conn.SetWriteDeadline(time.Now().Add(responsesWebSocketWriteTimeout)); err != nil {
+func responsesWebSocketEvent(streamID string, event gin.H) gin.H {
+	if streamID != "" {
+		event["stream_id"] = streamID
+	}
+
+	return event
+}
+
+func withResponsesWebSocketStreamID(data []byte, streamID string) ([]byte, error) {
+	if streamID == "" {
+		return data, nil
+	}
+
+	var event map[string]json.RawMessage
+	if err := json.Unmarshal(data, &event); err != nil {
+		return nil, fmt.Errorf("failed to decode Responses WebSocket event: %w", err)
+	}
+	encodedStreamID, err := json.Marshal(streamID)
+	if err != nil {
+		return nil, err
+	}
+	event["stream_id"] = encodedStreamID
+
+	return json.Marshal(event)
+}
+
+func writeResponsesWebSocketMessage(writer *responsesWebSocketWriter, messageType int, data []byte) error {
+	writer.mu.Lock()
+	defer writer.mu.Unlock()
+
+	if err := writer.conn.SetWriteDeadline(time.Now().Add(responsesWebSocketWriteTimeout)); err != nil {
 		return err
 	}
 
-	return conn.WriteMessage(messageType, data)
+	return writer.conn.WriteMessage(messageType, data)
 }
 
-func writeResponsesWebSocketJSON(conn *websocket.Conn, value any) error {
-	if err := conn.SetWriteDeadline(time.Now().Add(responsesWebSocketWriteTimeout)); err != nil {
+func writeResponsesWebSocketJSON(writer *responsesWebSocketWriter, value any) error {
+	data, err := json.Marshal(value)
+	if err != nil {
 		return err
 	}
 
-	return conn.WriteJSON(value)
+	return writeResponsesWebSocketMessage(writer, websocket.TextMessage, data)
 }

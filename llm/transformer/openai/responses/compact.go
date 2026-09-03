@@ -9,7 +9,7 @@ import (
 // CompactAPIRequest is the request body for POST /v1/responses/compact.
 type CompactAPIRequest struct {
 	Model        string `json:"model"`
-	Input        Input  `json:"input"`
+	Input        Input  `json:"input,omitzero"`
 	Instructions string `json:"instructions,omitempty"`
 	// PreviousResponseID string `json:"previous_response_id,omitempty"` // Not supported yet.
 	PromptCacheKey string `json:"prompt_cache_key,omitempty"`
