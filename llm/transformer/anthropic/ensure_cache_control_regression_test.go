@@ -1,6 +1,7 @@
 package anthropic
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
@@ -162,4 +163,44 @@ func TestOptimizeCacheControl_preservesClientAnchorsAsConversationGrows(t *testi
 	require.NotNil(t, second.Messages[2].Content.MultipleContent[0].CacheControl)
 	require.Nil(t, second.Messages[3].Content.MultipleContent[0].CacheControl)
 	require.Nil(t, second.Messages[4].Content.MultipleContent[0].CacheControl)
+}
+
+func TestOptimizeCacheControl_countsNestedRawBreakpoints(t *testing.T) {
+	var content MessageContent
+	require.NoError(t, json.Unmarshal([]byte(`[
+		{"type":"tool_result","tool_use_id":"tool-1","content":[
+			{"type":"text","text":"cached result","cache_control":{"type":"ephemeral","ttl":"1h"}},
+			{"type":"text","text":"more result","cache_control":{"type":"ephemeral"}}
+		]},
+		{"type":"text","text":"client tail","cache_control":{"type":"ephemeral"}}
+	]`), &content))
+	req := &MessageRequest{
+		Tools:    []Tool{{Name: "tool", CacheControl: &CacheControl{Type: "ephemeral"}}},
+		Messages: []MessageParam{{Role: "user", Content: content}},
+	}
+
+	optimizeCacheControl(req)
+
+	require.Equal(t, maxCacheControlBreakpoints, countCacheControls(req))
+	require.JSONEq(t, string(content.Raw), string(req.Messages[0].Content.Raw))
+}
+
+func TestOptimizeCacheControl_doesNotInjectBeforeNestedRawOneHourBreakpoint(t *testing.T) {
+	var content MessageContent
+	require.NoError(t, json.Unmarshal([]byte(`[
+		{"type":"tool_result","tool_use_id":"tool-1","content":[
+			{"type":"text","text":"cached result","cache_control":{"type":"ephemeral","ttl":"1h"}}
+		]}
+	]`), &content))
+	req := &MessageRequest{
+		Tools:    []Tool{{Name: "tool"}},
+		System:   &SystemPrompt{MultiplePrompts: []SystemPromptPart{{Type: "text", Text: "system"}}},
+		Messages: []MessageParam{{Role: "user", Content: content}},
+	}
+
+	optimizeCacheControl(req)
+
+	require.Nil(t, req.Tools[0].CacheControl)
+	require.Nil(t, req.System.MultiplePrompts[0].CacheControl)
+	require.Equal(t, 1, countCacheControls(req))
 }

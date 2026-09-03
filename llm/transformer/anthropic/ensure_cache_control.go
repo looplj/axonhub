@@ -39,11 +39,7 @@ func countMessageBreakpoints(req *MessageRequest) int {
 	count := 0
 
 	for i := range req.Messages {
-		for j := range req.Messages[i].Content.MultipleContent {
-			if req.Messages[i].Content.MultipleContent[j].CacheControl != nil {
-				count++
-			}
-		}
+		count += countContentCacheControls(&req.Messages[i].Content)
 	}
 
 	return count
@@ -61,11 +57,29 @@ func trimCacheControlsToLimit(req *MessageRequest, limit int) {
 
 func removeEarliestMessageBreakpoint(req *MessageRequest) bool {
 	for i := range req.Messages {
-		for j := range req.Messages[i].Content.MultipleContent {
-			if req.Messages[i].Content.MultipleContent[j].CacheControl != nil {
-				req.Messages[i].Content.MultipleContent[j].CacheControl = nil
-				return true
-			}
+		if removeEarliestContentBreakpoint(&req.Messages[i].Content) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func removeEarliestContentBreakpoint(content *MessageContent) bool {
+	// Raw content is emitted verbatim. Mutating its structured mirror would make
+	// the budget appear valid without changing the serialized request.
+	if len(content.Raw) > 0 {
+		return false
+	}
+
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if block.CacheControl != nil {
+			block.CacheControl = nil
+			return true
+		}
+		if block.Content != nil && removeEarliestContentBreakpoint(block.Content) {
+			return true
 		}
 	}
 
@@ -180,11 +194,8 @@ func lastOneHourCacheControlSection(req *MessageRequest) int {
 	}
 
 	for i := range req.Messages {
-		for j := range req.Messages[i].Content.MultipleContent {
-			control := req.Messages[i].Content.MultipleContent[j].CacheControl
-			if control != nil && control.TTL == "1h" {
-				return cacheControlSectionMessages
-			}
+		if contentHasOneHourCacheControl(&req.Messages[i].Content) {
+			return cacheControlSectionMessages
 		}
 	}
 
@@ -196,11 +207,22 @@ func lastOneHourCacheControlSection(req *MessageRequest) int {
 // 在 strict mode 下用作最终安全检查，防止注入逻辑意外命中不可缓存块。
 func sanitizeUnsupportedCacheControls(req *MessageRequest) {
 	for i := range req.Messages {
-		for j := range req.Messages[i].Content.MultipleContent {
-			block := &req.Messages[i].Content.MultipleContent[j]
-			if !isCacheableMessageBlock(*block) && block.CacheControl != nil {
-				block.CacheControl = nil
-			}
+		sanitizeContentCacheControls(&req.Messages[i].Content)
+	}
+}
+
+func sanitizeContentCacheControls(content *MessageContent) {
+	if len(content.Raw) > 0 {
+		return
+	}
+
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if !isCacheableMessageBlock(*block) && block.CacheControl != nil {
+			block.CacheControl = nil
+		}
+		if block.Content != nil {
+			sanitizeContentCacheControls(block.Content)
 		}
 	}
 }
@@ -273,12 +295,24 @@ func collectMessageBlockRefs(req *MessageRequest) []**CacheControl {
 	refs := make([]**CacheControl, 0)
 
 	for i := range req.Messages {
-		for j := range req.Messages[i].Content.MultipleContent {
-			if !isCacheableMessageBlock(req.Messages[i].Content.MultipleContent[j]) {
-				continue
-			}
+		refs = appendCacheControlRefs(refs, &req.Messages[i].Content)
+	}
 
-			refs = append(refs, &req.Messages[i].Content.MultipleContent[j].CacheControl)
+	return refs
+}
+
+func appendCacheControlRefs(refs []**CacheControl, content *MessageContent) []**CacheControl {
+	if len(content.Raw) > 0 {
+		return refs
+	}
+
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if isCacheableMessageBlock(*block) {
+			refs = append(refs, &block.CacheControl)
+		}
+		if block.Content != nil {
+			refs = appendCacheControlRefs(refs, block.Content)
 		}
 	}
 
@@ -307,15 +341,39 @@ func countCacheControls(req *MessageRequest) int {
 
 	// Count message content blocks.
 	for i := range req.Messages {
-		msg := &req.Messages[i]
-		for j := range msg.Content.MultipleContent {
-			if isCacheableMessageBlock(msg.Content.MultipleContent[j]) && msg.Content.MultipleContent[j].CacheControl != nil {
-				count++
-			}
+		count += countContentCacheControls(&req.Messages[i].Content)
+	}
+
+	return count
+}
+
+func countContentCacheControls(content *MessageContent) int {
+	count := 0
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if isCacheableMessageBlock(*block) && block.CacheControl != nil {
+			count++
+		}
+		if block.Content != nil {
+			count += countContentCacheControls(block.Content)
 		}
 	}
 
 	return count
+}
+
+func contentHasOneHourCacheControl(content *MessageContent) bool {
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if block.CacheControl != nil && block.CacheControl.TTL == "1h" {
+			return true
+		}
+		if block.Content != nil && contentHasOneHourCacheControl(block.Content) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func isCacheableMessageBlock(block MessageContentBlock) bool {
