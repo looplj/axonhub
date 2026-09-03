@@ -359,6 +359,12 @@ type ImageEditJSONRequest struct {
 }
 
 func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.Request) (*llm.Request, error) {
+	// Mirror the multipart path's guard: ReadHTTPRequest reads the body without a
+	// limit, and base64 payloads amplify memory further once decoded.
+	if len(httpReq.Body) > maxImageBodySize {
+		return nil, fmt.Errorf("%w: request body too large", transformer.ErrInvalidRequest)
+	}
+
 	var editReq ImageEditJSONRequest
 
 	if err := json.Unmarshal(httpReq.Body, &editReq); err != nil {
@@ -386,6 +392,10 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 
 	if len(images) == 0 {
 		return nil, fmt.Errorf("%w: at least one image is required for edits", transformer.ErrInvalidRequest)
+	}
+
+	if len(images) > maxImageCount {
+		return nil, fmt.Errorf("%w: too many images", transformer.ErrInvalidRequest)
 	}
 
 	var mask []byte

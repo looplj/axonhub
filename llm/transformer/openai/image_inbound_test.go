@@ -16,6 +16,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	transformer "github.com/looplj/axonhub/llm/transformer"
 )
 
 func TestImageInboundTransformer_TransformRequest_Generation_JSON(t *testing.T) {
@@ -590,6 +591,53 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsNonDataURLIma
 	_, err := inbound.TransformRequest(context.Background(), httpReq)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "image must be a data URL")
+}
+
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_BodyTooLarge(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    make([]byte, maxImageBodySize+1),
+	}
+
+	_, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	assert.Contains(t, err.Error(), "request body too large")
+}
+
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_TooManyImages(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+
+	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47}
+	dataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(pngBytes)
+
+	images := make([]string, maxImageCount+1)
+	for i := range images {
+		images[i] = dataURL
+	}
+
+	reqBody, err := json.Marshal(map[string]any{
+		"prompt": "make it blue",
+		"model":  "sensenova-u1.5-lite",
+		"image":  images,
+	})
+	require.NoError(t, err)
+
+	httpReq := &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	}
+
+	_, err = inbound.TransformRequest(context.Background(), httpReq)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	assert.Contains(t, err.Error(), "too many images")
 }
 
 func TestImageInboundTransformer_Edit_JSON_RoundTrip_ToMultipartOutbound(t *testing.T) {

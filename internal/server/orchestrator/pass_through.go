@@ -217,6 +217,8 @@ func passThroughBodySupported(llmReq *llm.Request) bool {
 		llm.APIFormatOpenAIImageVariation:
 		return false
 	case llm.APIFormatOpenAIImageEdit:
+		// Only the image edit inbound accepts JSON today; for the other formats this
+		// branch is unreachable because their inbounds still require multipart.
 		if llmReq.RawRequest == nil {
 			return false
 		}
