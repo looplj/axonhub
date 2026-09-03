@@ -148,6 +148,21 @@ func TestMessageContentPartFileRoundTrip(t *testing.T) {
 	require.Equal(t, part.Document.URL, roundTrip.Document.URL)
 }
 
+func TestMessageContentPartFromLLMDoesNotMapRegularFileURLToFileData(t *testing.T) {
+	part := MessageContentPartFromLLM(llm.MessageContentPart{
+		Type: "document",
+		Document: &llm.DocumentURL{
+			URL:      "https://example.com/report.pdf",
+			MIMEType: "application/pdf",
+		},
+	})
+
+	require.Equal(t, "file", part.Type)
+	require.NotNil(t, part.File)
+	require.Empty(t, part.File.FileData)
+	require.Empty(t, part.File.FileID)
+}
+
 func TestMessageContentFromLLM_IgnoresCompactionParts(t *testing.T) {
 	content := MessageContentFromLLM(llm.MessageContent{
 		MultipleContent: []llm.MessageContentPart{

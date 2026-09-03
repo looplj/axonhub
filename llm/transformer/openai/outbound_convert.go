@@ -2,10 +2,13 @@ package openai
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -268,9 +271,11 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 	if p.Document != nil {
 		part.Type = "file"
 		part.File = &File{
-			FileData: p.Document.URL,
 			FileID:   p.Document.FileID,
 			Filename: p.Document.Filename,
+		}
+		if strings.HasPrefix(p.Document.URL, "data:") {
+			part.File.FileData = p.Document.URL
 		}
 		if part.File.Filename == "" && p.Document.MIMEType == "application/pdf" {
 			part.File.Filename = "document.pdf"
@@ -278,6 +283,21 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 	}
 
 	return part
+}
+
+func validateChatDocumentParts(messages []llm.Message) error {
+	for _, message := range messages {
+		for _, part := range message.Content.MultipleContent {
+			if part.Type != "document" || part.Document == nil {
+				continue
+			}
+			if part.Document.FileID == "" && part.Document.URL != "" && !strings.HasPrefix(part.Document.URL, "data:") {
+				return fmt.Errorf("%w: OpenAI Chat file inputs require file_id or a data URL in file_data", transformer.ErrInvalidRequest)
+			}
+		}
+	}
+
+	return nil
 }
 
 // normalizeContentPartType maps Responses-only text part types onto the plain

@@ -192,6 +192,24 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_RejectsRegularChatFileURL(t *testing.T) {
+	transformerInterface, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	_, err = transformerInterface.TransformRequest(context.Background(), &llm.Request{
+		Model: "gpt-5.6",
+		Messages: []llm.Message{{
+			Role: "user",
+			Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+				Type:     "document",
+				Document: &llm.DocumentURL{URL: "https://example.com/report.pdf"},
+			}}},
+		}},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "require file_id or a data URL")
+}
+
 func TestOutboundTransformer_TransformRequest_PromptCacheKeyFallback(t *testing.T) {
 	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-api-key")
 	require.NoError(t, err)

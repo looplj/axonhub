@@ -176,6 +176,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
+	if err := validateChatDocumentParts(llmReq.Messages); err != nil {
+		return nil, err
+	}
 
 	// Determine which reasoning field to use, default to ReasoningFieldContent.
 	// reasoning_content is the standard field used by most providers (OpenAI o-series,
