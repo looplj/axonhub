@@ -648,6 +648,16 @@ func TestDecodeDataURLToBytes_RejectsOversizedImage(t *testing.T) {
 	assert.Contains(t, err.Error(), "image file too large")
 }
 
+func TestDecodeDataURLToBytes_RejectsOversizedImageBeforeDecode(t *testing.T) {
+	originalMaxFileSize := maxImageFileSize
+	maxImageFileSize = 3
+	t.Cleanup(func() { maxImageFileSize = originalMaxFileSize })
+
+	_, err := decodeDataURLToBytes("data:image/png;base64,AAAAAA==")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "image file too large")
+}
+
 func TestImageInboundTransformer_TransformRequest_Edit_JSON_TooManyImages(t *testing.T) {
 	inbound := NewImageEditInboundTransformer()
 

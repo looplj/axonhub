@@ -722,6 +722,9 @@ func decodeDataURLToBytes(dataURL string) ([]byte, error) {
 	if !isAllowedImageType(parsed.MediaType) {
 		return nil, fmt.Errorf("%w: unsupported image content type %q", transformer.ErrInvalidRequest, parsed.MediaType)
 	}
+	if len(parsed.Data) > base64.StdEncoding.EncodedLen(maxImageFileSize) {
+		return nil, fmt.Errorf("%w: image file too large", transformer.ErrInvalidRequest)
+	}
 
 	data, err := base64.StdEncoding.DecodeString(parsed.Data)
 	if err != nil {
