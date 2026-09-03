@@ -25,6 +25,18 @@ func TestInboundTransformer_TransformError_WrappedTypedNilReturnsInternalServerE
 	require.JSONEq(t, `{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`, string(result.Body))
 }
 
+func TestInboundTransformer_TransformError_WrappedTypedNilResponseErrorReturnsInternalServerError(t *testing.T) {
+	transformer := NewInboundTransformer()
+	var typedNil *llm.ResponseError
+	wrapped := fmt.Errorf("wrap: %w", typedNil)
+
+	result := transformer.TransformError(context.Background(), wrapped)
+
+	require.Equal(t, http.StatusInternalServerError, result.StatusCode)
+	require.Equal(t, http.StatusText(http.StatusInternalServerError), result.Status)
+	require.JSONEq(t, `{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`, string(result.Body))
+}
+
 func TestInboundTransformer_TransformError_StatuslessContextLengthExceededReturnsBadRequest(t *testing.T) {
 	transformer := NewInboundTransformer()
 	detail := llm.ErrorDetail{

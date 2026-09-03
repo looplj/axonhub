@@ -194,6 +194,15 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
+	llmErr, isLLMError := errors.AsType[*llm.ResponseError](rawErr)
+	if isLLMError && llmErr == nil {
+		return &httpclient.Error{
+			StatusCode: http.StatusInternalServerError,
+			Status:     http.StatusText(http.StatusInternalServerError),
+			Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: "An unexpected error occurred", Type: "unexpected_error"}}),
+		}
+	}
+
 	if errors.Is(rawErr, transformer.ErrInvalidModel) {
 		return &httpclient.Error{
 			StatusCode: http.StatusUnprocessableEntity,
@@ -223,7 +232,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		}
 	}
 
-	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
+	if isLLMError {
 		statusCode := llmErr.StatusCode
 		if statusCode == 0 && llmErr.Detail.Code == "context_length_exceeded" {
 			statusCode = http.StatusBadRequest
