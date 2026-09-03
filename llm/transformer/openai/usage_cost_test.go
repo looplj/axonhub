@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestUsage_CostJSON(t *testing.T) {
@@ -63,6 +64,61 @@ func TestUsage_CostJSON(t *testing.T) {
 		require.NotNil(t, usage)
 		require.Nil(t, usage.Cost)
 	})
+
+	t.Run("object-shaped upstream cost is ignored", func(t *testing.T) {
+		var decoded Usage
+		require.NoError(t, json.Unmarshal([]byte(`{
+			"prompt_tokens": 15102,
+			"completion_tokens": 282,
+			"total_tokens": 15384,
+			"cost": {
+				"usd": 0.00701712,
+				"hypercredits": 0.1403424
+			}
+		}`), &decoded))
+		require.Nil(t, decoded.Cost)
+		require.Equal(t, int64(15102), decoded.PromptTokens)
+		require.Equal(t, int64(282), decoded.CompletionTokens)
+		require.Equal(t, int64(15384), decoded.TotalTokens)
+	})
+}
+
+func TestAggregateStreamChunks_ObjectShapedUsageCost(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{
+			"id": "chatcmpl-test",
+			"object": "chat.completion.chunk",
+			"model": "test-model",
+			"choices": [{
+				"index": 0,
+				"delta": {"content": "ok"},
+				"finish_reason": "stop"
+			}]
+		}`)},
+		{Data: []byte(`{
+			"id": "chatcmpl-test",
+			"object": "chat.completion.chunk",
+			"model": "test-model",
+			"choices": [],
+			"usage": {
+				"prompt_tokens": 15102,
+				"completion_tokens": 282,
+				"total_tokens": 15384,
+				"cost": {
+					"usd": 0.00701712,
+					"hypercredits": 0.1403424
+				}
+			}
+		}`)},
+	}
+
+	_, meta, err := AggregateStreamChunks(t.Context(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+	require.NotNil(t, meta.Usage)
+	require.Equal(t, int64(15102), meta.Usage.PromptTokens)
+	require.Equal(t, int64(282), meta.Usage.CompletionTokens)
+	require.Equal(t, int64(15384), meta.Usage.TotalTokens)
+	require.Nil(t, meta.Usage.Cost)
 }
 
 func TestCompletionUsage_CostJSON(t *testing.T) {
