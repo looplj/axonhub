@@ -28,7 +28,7 @@ func (v *V0_4_0) Version() string {
 // Migrate performs the version 0.4.0 data migration.
 // Creates a primary data storage if it doesn't exist.
 func (v *V0_4_0) Migrate(ctx context.Context, client *ent.Client) (err error) {
-	ctx = authz.WithSystemBypass(context.Background(), "database-migrate")
+	ctx = authz.WithSystemBypass(ctx, "database-migrate")
 
 	// Check if a primary data storage already exists
 	exists, err := client.DataStorage.Query().
