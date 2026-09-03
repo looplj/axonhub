@@ -20,7 +20,7 @@ Load balancing follows a hierarchical process: first by **Association Priority**
 | **1** | **Association Priority** | 0-N (Lower is better) | Hard grouping defined in model associations |
 | **2** | **Trace Aware** | 0-1000 points | Same session priority, ensures conversation continuity |
 | **3** | **Error Aware** | 0-200 points | Based on success rate and error history |
-| **4** | **Weight Round Robin** | 10-150 points | Proportional distribution based on weight and history |
+| **4** | **Weight Round Robin** | 0-150 points | Proportional distribution based on weight and sliding-window load |
 | **5** | **Latency Aware** | 0-80 points | Streaming requests use FTTL + TPS, non-streaming requests use end-to-end latency |
 | **6** | **Rate Limit Aware** | -10000-100 points | Respects RPM/TPM/concurrency limits and 429 Retry-After |
 
@@ -98,10 +98,10 @@ response = client.chat.completions.create(
 - **Recovery**: Failed channels automatically recover priority over time as the time-decay penalty decreases.
 
 ### Weight Round Robin Strategy
-- **Purpose**: Proportional distribution based on weight and historical load.
-- **Algorithm**: Normalizes historical request counts by channel weight. Higher weight channels can handle more requests before their score drops.
-- **Scoring**: `150 * exp(-normalized_request_count / 150)`
-- **Range**: 10-150 points
+- **Purpose**: Proportional distribution based on weight and sliding-window load.
+- **Algorithm**: Normalizes request counts from the sliding window by channel weight. Higher effective weights let channels handle more requests before their score decreases; a configured weight of 0 or less uses the default effective weight of 100, preserving the scoring scale relative to health and latency signals.
+- **Scoring**: `150 / (1 + normalized_request_count / 150)`
+- **Range**: Greater than 0 and at most 150 points. The score remains decreasing without a request-count cap or minimum-score clamp.
 
 ### Latency Aware Strategy
 - **Purpose**: Prioritize channels using latency signals that match actual user experience

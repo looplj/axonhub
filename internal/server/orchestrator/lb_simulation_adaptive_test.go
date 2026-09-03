@@ -180,8 +180,6 @@ func TestAdaptiveLoadBalancer_Simulation_Healthy_DistributionByWeight(t *testing
 	const totalRequests = 1000
 
 	wrr := NewWeightRoundRobinStrategy(metrics)
-	wrr.requestCountCap = int64(totalRequests) // Use large enough cap for simulation
-	wrr.minScore = 0.0                         // Allow scores to drop below default floor for better distribution in simulation
 
 	strategies := []LoadBalanceStrategy{
 		NewErrorAwareStrategy(metrics),
@@ -253,6 +251,62 @@ func TestAdaptiveLoadBalancer_Simulation_HighLatencyCanOverrideWeight(t *testing
 	// Channel 0: 200 + 150 + 5.33 ≈ 355
 	// Channel 1: 200 + 150 + 77.33 ≈ 427  → channel 1 should win
 	require.NotEqual(t, candidates[0].Channel.ID, sorted[0].Channel.ID)
+}
+
+func TestAdaptiveLoadBalancer_DefaultWeightsRespectHealthAndLatency(t *testing.T) {
+	tests := []struct {
+		name      string
+		configure func(*biz.AggregatedMetrics)
+	}{
+		{
+			name: "healthy channel outranks a recent failure",
+			configure: func(metrics *biz.AggregatedMetrics) {
+				now := time.Now()
+				metrics.LastFailureAt = &now
+				metrics.ConsecutiveFailures = 1
+			},
+		},
+		{
+			name: "fast channel outranks a slow channel",
+			configure: func(metrics *biz.AggregatedMetrics) {
+				metrics.NonStreamingLatencyEWMA = 2800
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			lowTraffic := &biz.AggregatedMetrics{
+				NonStreamingLatencyEWMA: 100,
+				NonStreamingSampleCount: 1,
+			}
+			lowTraffic.RequestCount = 1
+			tt.configure(lowTraffic)
+
+			busy := &biz.AggregatedMetrics{
+				NonStreamingLatencyEWMA: 100,
+				NonStreamingSampleCount: 20,
+			}
+			busy.RequestCount = 20
+
+			metrics := &mockMetricsProvider{metrics: map[int]*biz.AggregatedMetrics{
+				1: lowTraffic,
+				2: busy,
+			}}
+			candidates := buildSimulationCandidates([]int{0, 0})
+			lb := NewLoadBalancer(&mockSystemService{retryPolicy: &biz.RetryPolicy{Enabled: false}}, nil,
+				NewErrorAwareStrategy(metrics),
+				NewWeightRoundRobinStrategy(metrics),
+				NewLatencyAwareStrategy(metrics),
+			)
+
+			// Default weights must not amplify the load difference enough to
+			// override the health or latency advantage of the busier channel.
+			sorted := lb.Sort(context.Background(), candidates, "gpt-4", false)
+			require.Len(t, sorted, 1)
+			require.Equal(t, 2, sorted[0].Channel.ID)
+		})
+	}
 }
 
 func TestAdaptiveLoadBalancer_Simulation_ErrorMigrationAndRecovery(t *testing.T) {
