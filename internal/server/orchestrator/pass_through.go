@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"mime"
 	"net/http"
 	"strings"
 	"sync"
@@ -223,7 +224,8 @@ func passThroughBodySupported(llmReq *llm.Request) bool {
 			return false
 		}
 
-		return strings.Contains(strings.ToLower(llmReq.RawRequest.Headers.Get("Content-Type")), "application/json")
+		mediaType, _, err := mime.ParseMediaType(llmReq.RawRequest.Headers.Get("Content-Type"))
+		return err == nil && strings.EqualFold(mediaType, "application/json")
 	case llm.APIFormatOpenAIVideo:
 		if llmReq.RawRequest == nil {
 			return false

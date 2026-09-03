@@ -2123,6 +2123,31 @@ func TestApplyPassThroughBodyAppliesJSONImageEdit(t *testing.T) {
 	require.Equal(t, "application/json", processed.ContentType)
 }
 
+func TestPassThroughBodySupported_ImageEditContentType(t *testing.T) {
+	tests := []struct {
+		name        string
+		contentType string
+		supported   bool
+	}{
+		{name: "json", contentType: "application/json", supported: true},
+		{name: "json with charset", contentType: "application/json; charset=utf-8", supported: true},
+		{name: "json patch", contentType: "application/json-patch+json", supported: false},
+		{name: "invalid", contentType: "application/json; charset", supported: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := &llm.Request{
+				APIFormat: llm.APIFormatOpenAIImageEdit,
+				RawRequest: &httpclient.Request{
+					Headers: http.Header{"Content-Type": []string{tt.contentType}},
+				},
+			}
+			require.Equal(t, tt.supported, passThroughBodySupported(req))
+		})
+	}
+}
+
 func TestApplyPassThroughBodyAppliesSpeechModelPatch(t *testing.T) {
 	ctx := context.Background()
 

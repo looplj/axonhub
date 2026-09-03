@@ -28,10 +28,10 @@ import (
 const (
 	defaultMaxImageFileSize = 50 * 1024 * 1024
 	maxImageCount           = 16
-	maxImageBodySize        = defaultMaxImageFileSize*maxImageCount + 16*1024*1024
 )
 
 var maxImageFileSize = initMaxImageFileSize()
+var maxImageBodySize = maxImageFileSize*maxImageCount + 16*1024*1024
 
 func initMaxImageFileSize() int {
 	if v := os.Getenv("AXONHUB_MAX_IMAGE_FILE_SIZE"); v != "" {
@@ -262,8 +262,11 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Request) (*llm.Request, error) {
 	// Some providers (e.g. sensenova) accept image edits as application/json with
 	// base64 data URLs instead of multipart/form-data.
-	contentType := strings.ToLower(httpReq.Headers.Get("Content-Type"))
-	if strings.Contains(contentType, "application/json") {
+	mediaType, _, err := mime.ParseMediaType(httpReq.Headers.Get("Content-Type"))
+	if err != nil {
+		return nil, fmt.Errorf("%w: invalid content-type", transformer.ErrInvalidRequest)
+	}
+	if strings.EqualFold(mediaType, "application/json") {
 		return t.transformEditJSONRequest(httpReq)
 	}
 
@@ -685,6 +688,9 @@ func parseGenerationImageField(raw json.RawMessage) ([][]byte, error) {
 	if err := json.Unmarshal(raw, &many); err != nil {
 		return nil, fmt.Errorf("%w: image field must be a string or array of strings", transformer.ErrInvalidRequest)
 	}
+	if len(many) > maxImageCount {
+		return nil, fmt.Errorf("%w: too many images", transformer.ErrInvalidRequest)
+	}
 
 	images := make([][]byte, 0, len(many))
 	for _, url := range many {
@@ -713,10 +719,16 @@ func decodeDataURLToBytes(dataURL string) ([]byte, error) {
 	if !parsed.IsBase64 {
 		return nil, fmt.Errorf("%w: image data URL must be base64-encoded", transformer.ErrInvalidRequest)
 	}
+	if !isAllowedImageType(parsed.MediaType) {
+		return nil, fmt.Errorf("%w: unsupported image content type %q", transformer.ErrInvalidRequest, parsed.MediaType)
+	}
 
 	data, err := base64.StdEncoding.DecodeString(parsed.Data)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decode base64 image data", transformer.ErrInvalidRequest)
+	}
+	if len(data) > maxImageFileSize {
+		return nil, fmt.Errorf("%w: image file too large", transformer.ErrInvalidRequest)
 	}
 
 	return data, nil

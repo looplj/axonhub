@@ -595,6 +595,9 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsNonDataURLIma
 
 func TestImageInboundTransformer_TransformRequest_Edit_JSON_BodyTooLarge(t *testing.T) {
 	inbound := NewImageEditInboundTransformer()
+	originalMaxBodySize := maxImageBodySize
+	maxImageBodySize = 32
+	t.Cleanup(func() { maxImageBodySize = originalMaxBodySize })
 
 	httpReq := &httpclient.Request{
 		Method:  http.MethodPost,
@@ -607,6 +610,42 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON_BodyTooLarge(t *test
 	require.Error(t, err)
 	assert.ErrorIs(t, err, transformer.ErrInvalidRequest)
 	assert.Contains(t, err.Error(), "request body too large")
+}
+
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsTooManyImagesBeforeDecoding(t *testing.T) {
+	inbound := NewImageEditInboundTransformer()
+	images := make([]string, maxImageCount+1)
+	for i := range images {
+		images[i] = "not-a-data-url"
+	}
+	reqBody, err := json.Marshal(map[string]any{"prompt": "edit", "image": images})
+	require.NoError(t, err)
+
+	_, err = inbound.TransformRequest(context.Background(), &httpclient.Request{
+		Method:  http.MethodPost,
+		URL:     "http://localhost/v1/images/edits",
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    reqBody,
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "too many images")
+}
+
+func TestDecodeDataURLToBytes_RejectsUnsupportedImageType(t *testing.T) {
+	_, err := decodeDataURLToBytes("data:text/plain;base64,aGVsbG8=")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported image content type")
+}
+
+func TestDecodeDataURLToBytes_RejectsOversizedImage(t *testing.T) {
+	originalMaxFileSize := maxImageFileSize
+	maxImageFileSize = 4
+	t.Cleanup(func() { maxImageFileSize = originalMaxFileSize })
+
+	png := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
+	_, err := decodeDataURLToBytes("data:image/png;base64," + base64.StdEncoding.EncodeToString(png))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "image file too large")
 }
 
 func TestImageInboundTransformer_TransformRequest_Edit_JSON_TooManyImages(t *testing.T) {
