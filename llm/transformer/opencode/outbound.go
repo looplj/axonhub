@@ -3,7 +3,10 @@ package opencode
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -14,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/deepseek"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // route identifies which upstream protocol an OpenCode Go model family speaks.
@@ -56,6 +60,21 @@ type OutboundTransformer struct {
 	deepseek  transformer.Outbound
 	responses transformer.Outbound
 	anthropic transformer.Outbound
+}
+
+// sessionHeaderOutbound adds the OpenCode Go session header to a protocol-specific
+// outbound transformer. It is used by the legacy Anthropic-only channel.
+type sessionHeaderOutbound struct {
+	transformer.Outbound
+}
+
+// WithSessionHeader decorates an outbound transformer with OpenCode Go session affinity.
+func WithSessionHeader(outbound transformer.Outbound) transformer.Outbound {
+	if outbound == nil {
+		return nil
+	}
+
+	return &sessionHeaderOutbound{Outbound: outbound}
 }
 
 // NewOutboundTransformer creates a new OpenCode Go OutboundTransformer with legacy parameters.
@@ -186,8 +205,48 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		httpReq.TransformerMetadata = map[string]any{}
 	}
 	httpReq.TransformerMetadata[routeMetadataKey] = string(r)
+	setSessionHeader(ctx, llmReq, httpReq)
 
 	return httpReq, nil
+}
+
+func (t *sessionHeaderOutbound) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
+	httpReq, err := t.Outbound.TransformRequest(ctx, llmReq)
+	if err != nil {
+		return nil, err
+	}
+
+	setSessionHeader(ctx, llmReq, httpReq)
+
+	return httpReq, nil
+}
+
+func setSessionHeader(ctx context.Context, llmReq *llm.Request, httpReq *httpclient.Request) {
+	if httpReq == nil {
+		return
+	}
+
+	if httpReq.Headers == nil {
+		httpReq.Headers = make(http.Header)
+	}
+
+	httpReq.Headers.Set(SessionHeader, resolveSessionID(ctx, llmReq))
+}
+
+func resolveSessionID(ctx context.Context, llmReq *llm.Request) string {
+	if llmReq != nil && llmReq.RawRequest != nil {
+		if sessionID := GetSessionIDFromHeaders(llmReq.RawRequest.Headers); sessionID != "" {
+			return sessionID
+		}
+	}
+
+	if sessionID, ok := shared.GetSessionID(ctx); ok {
+		if sessionID = strings.TrimSpace(sessionID); sessionID != "" {
+			return sessionID
+		}
+	}
+
+	return uuid.NewString()
 }
 
 // TransformResponse dispatches to the sub-transformer recorded on the request.

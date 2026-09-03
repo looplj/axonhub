@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/tracing"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
+	"github.com/looplj/axonhub/llm/transformer/opencode"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -206,9 +207,9 @@ func tryExtractTraceIDFromClaudeCodeRequest(c *gin.Context, config tracing.Confi
 	return traceID, nil
 }
 
-// tryExtractTraceIDFromOpenCodeRequest extracts the trace ID from the OpenCode session affinity header.
+// tryExtractTraceIDFromOpenCodeRequest extracts the trace ID from OpenCode session headers.
 func tryExtractTraceIDFromOpenCodeRequest(c *gin.Context) string {
-	traceID := c.GetHeader("x-session-affinity")
+	traceID := opencode.GetSessionIDFromHeaders(c.Request.Header)
 	if traceID == "" {
 		return ""
 	}

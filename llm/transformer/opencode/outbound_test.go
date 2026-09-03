@@ -14,7 +14,9 @@ import (
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/deepseek"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func newTestTransformer(t *testing.T) *OutboundTransformer {
@@ -105,7 +107,8 @@ func TestOutboundTransformer_TransformRequest_RoutesByModel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			httpReq, err := tr.TransformRequest(context.Background(), &llm.Request{
+			ctx := shared.WithSessionID(context.Background(), "session-123")
+			httpReq, err := tr.TransformRequest(ctx, &llm.Request{
 				Model: tt.model,
 				Messages: []llm.Message{
 					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
@@ -114,6 +117,7 @@ func TestOutboundTransformer_TransformRequest_RoutesByModel(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedURL, httpReq.URL)
 			assert.Equal(t, http.MethodPost, httpReq.Method)
+			assert.Equal(t, "session-123", httpReq.Headers.Get(SessionHeader))
 
 			// The route must be recorded for response routing.
 			require.NotNil(t, httpReq.TransformerMetadata)
@@ -122,6 +126,92 @@ func TestOutboundTransformer_TransformRequest_RoutesByModel(t *testing.T) {
 			assert.Equal(t, string(routeForModel(tt.model)), r)
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformRequest_SessionHeaderPrecedence(t *testing.T) {
+	tr := newTestTransformer(t)
+
+	tests := []struct {
+		name       string
+		ctx        context.Context
+		headers    http.Header
+		expectedID string
+	}{
+		{
+			name:       "explicit OpenCode session header",
+			ctx:        shared.WithSessionID(context.Background(), "context-session"),
+			headers:    http.Header{SessionHeader: []string{"explicit-session"}},
+			expectedID: "explicit-session",
+		},
+		{
+			name:       "OpenCode session affinity header",
+			ctx:        shared.WithSessionID(context.Background(), "context-session"),
+			headers:    http.Header{SessionAffinityHeader: []string{"affinity-session"}},
+			expectedID: "affinity-session",
+		},
+		{
+			name:       "OpenCode session ID header",
+			ctx:        shared.WithSessionID(context.Background(), "context-session"),
+			headers:    http.Header{SessionIDHeader: []string{"session-id"}},
+			expectedID: "session-id",
+		},
+		{
+			name:       "shared session context",
+			ctx:        shared.WithSessionID(context.Background(), "context-session"),
+			expectedID: "context-session",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := &llm.Request{
+				Model: "glm-5.2",
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+				},
+			}
+			if tt.headers != nil {
+				request.RawRequest = &httpclient.Request{Headers: tt.headers}
+			}
+
+			httpReq, err := tr.TransformRequest(tt.ctx, request)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedID, httpReq.Headers.Get(SessionHeader))
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformRequest_GeneratesSessionHeader(t *testing.T) {
+	tr := newTestTransformer(t)
+
+	httpReq, err := tr.TransformRequest(context.Background(), &llm.Request{
+		Model: "glm-5.2",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	})
+	require.NoError(t, err)
+	assert.NotEmpty(t, httpReq.Headers.Get(SessionHeader))
+}
+
+func TestWithSessionHeader_AnthropicOutbound(t *testing.T) {
+	base, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+		Type:           anthropic.PlatformDirect,
+		BaseURL:        "https://opencode.ai/zen/go",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-api-key"),
+	})
+	require.NoError(t, err)
+
+	tr := WithSessionHeader(base)
+	ctx := shared.WithSessionID(context.Background(), "legacy-anthropic-session")
+	httpReq, err := tr.TransformRequest(ctx, &llm.Request{
+		Model: "minimax-m3",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "legacy-anthropic-session", httpReq.Headers.Get(SessionHeader))
 }
 
 func TestOutboundTransformer_TransformRequest_DeepSeekThinking(t *testing.T) {

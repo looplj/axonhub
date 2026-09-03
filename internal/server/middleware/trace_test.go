@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/tracing"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
+	"github.com/looplj/axonhub/llm/transformer/opencode"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -374,6 +375,50 @@ func TestWithTrace_OpenCodeDisabled(t *testing.T) {
 
 	require.Equal(t, http.StatusOK, w.Code)
 	require.False(t, hasTrace)
+}
+
+func TestTryExtractTraceIDFromOpenCodeRequest(t *testing.T) {
+	tests := []struct {
+		name     string
+		headers  http.Header
+		expected string
+	}{
+		{
+			name:     "OpenCode session header",
+			headers:  http.Header{opencode.SessionHeader: []string{"opencode-session"}},
+			expected: "opencode-session",
+		},
+		{
+			name:     "session ID header",
+			headers:  http.Header{opencode.SessionIDHeader: []string{"session-id"}},
+			expected: "session-id",
+		},
+		{
+			name:     "legacy session affinity header",
+			headers:  http.Header{opencode.SessionAffinityHeader: []string{"affinity-session"}},
+			expected: "affinity-session",
+		},
+		{
+			name: "current header takes priority",
+			headers: http.Header{
+				opencode.SessionHeader:         []string{"opencode-session"},
+				opencode.SessionIDHeader:       []string{"session-id"},
+				opencode.SessionAffinityHeader: []string{"affinity-session"},
+			},
+			expected: "opencode-session",
+		},
+		{name: "missing header", headers: http.Header{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+			c.Request.Header = tt.headers
+
+			require.Equal(t, tt.expected, tryExtractTraceIDFromOpenCodeRequest(c))
+		})
+	}
 }
 
 func TestWithTrace_OpenCodeHeaderSetsTrace(t *testing.T) {
