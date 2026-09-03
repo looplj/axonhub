@@ -568,7 +568,7 @@ func TestEnsureCacheControl_StructuralAnchors(t *testing.T) {
 		assert.Nil(t, req.Tools[0].CacheControl)
 	})
 
-	t.Run("满额消息断点场景仍优先保留 tools/system 锚点", func(t *testing.T) {
+	t.Run("满额消息断点场景不会生成 tools/system 锚点", func(t *testing.T) {
 		req := &MessageRequest{
 			Tools:  []Tool{{Name: "bash"}, {Name: "edit"}},
 			System: &SystemPrompt{Prompt: lo.ToPtr("You are helpful")},
@@ -587,11 +587,10 @@ func TestEnsureCacheControl_StructuralAnchors(t *testing.T) {
 
 		optimizeCacheControl(req)
 
-		assert.NotNil(t, req.Tools[1].CacheControl)
+		assert.Nil(t, req.Tools[1].CacheControl)
 		require.NotNil(t, req.System)
-		require.Len(t, req.System.MultiplePrompts, 1)
-		assert.NotNil(t, req.System.MultiplePrompts[0].CacheControl)
-		assert.LessOrEqual(t, countCacheControls(req), 4)
+		assert.Empty(t, req.System.MultiplePrompts)
+		assert.Equal(t, maxCacheControlBreakpoints, countCacheControls(req))
 	})
 }
 
