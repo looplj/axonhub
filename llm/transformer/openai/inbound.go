@@ -202,7 +202,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 	}
 
 	if httpErr, ok := errors.AsType[*httpclient.Error](rawErr); ok {
-		return httpErr
+		return normalizeHTTPErrorStatus(httpErr)
 	}
 
 	// Handle validation errors
@@ -215,9 +215,14 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 	}
 
 	if llmErr, ok := errors.AsType[*llm.ResponseError](rawErr); ok {
+		statusCode := llmErr.StatusCode
+		if statusCode < http.StatusBadRequest || statusCode > 599 {
+			statusCode = http.StatusBadGateway
+		}
+
 		return &httpclient.Error{
-			StatusCode: llmErr.StatusCode,
-			Status:     http.StatusText(llmErr.StatusCode),
+			StatusCode: statusCode,
+			Status:     http.StatusText(statusCode),
 			Body:       xjson.MustMarshal(&OpenAIError{Detail: llmErr.Detail}),
 		}
 	}
@@ -227,4 +232,16 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 		Status:     http.StatusText(http.StatusInternalServerError),
 		Body:       xjson.MustMarshal(&OpenAIError{Detail: llm.ErrorDetail{Message: rawErr.Error(), Type: "internal_server_error"}}),
 	}
+}
+
+func normalizeHTTPErrorStatus(httpErr *httpclient.Error) *httpclient.Error {
+	if httpErr.StatusCode >= http.StatusBadRequest && httpErr.StatusCode <= 599 {
+		return httpErr
+	}
+
+	normalized := *httpErr
+	normalized.StatusCode = http.StatusBadGateway
+	normalized.Status = http.StatusText(http.StatusBadGateway)
+
+	return &normalized
 }

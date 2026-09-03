@@ -738,6 +738,29 @@ func TestInboundTransformer_TransformError(t *testing.T) {
 				Body:       []byte(`{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`),
 			},
 		},
+		{
+			name: "response error without status code",
+			err: &llm.ResponseError{
+				Detail: llm.ErrorDetail{
+					Message: "provider temporarily unavailable",
+					Type:    "provider_unavailable",
+				},
+			},
+			expectedError: &httpclient.Error{
+				StatusCode: http.StatusBadGateway,
+				Body:       []byte(`{"error":{"message":"provider temporarily unavailable","type":"provider_unavailable"}}`),
+			},
+		},
+		{
+			name: "http error without status code",
+			err: &httpclient.Error{
+				Body: []byte(`{"error":{"message":"provider temporarily unavailable","type":"provider_unavailable"}}`),
+			},
+			expectedError: &httpclient.Error{
+				StatusCode: http.StatusBadGateway,
+				Body:       []byte(`{"error":{"message":"provider temporarily unavailable","type":"provider_unavailable"}}`),
+			},
+		},
 	}
 
 	for _, tt := range tests {
