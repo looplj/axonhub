@@ -155,6 +155,27 @@ func TestResponsesSessionStoreRecordsCompletedStream(t *testing.T) {
 	)
 }
 
+func TestResponsesSessionStreamPreservesEveryEventForConsumer(t *testing.T) {
+	// Given
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created"}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added"}`)},
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed"}`)},
+	}
+	store := newResponsesSessionStore()
+	ctx := shared.WithSessionScope(shared.WithResponsesAPI(context.Background()), "api-key:1")
+	stream := store.wrapStream(ctx, []byte(`{"model":"gpt-5","input":"one"}`), streams.SliceStream(events))
+
+	// When
+	var received []*httpclient.StreamEvent
+	for stream.Next() {
+		received = append(received, stream.Current())
+	}
+
+	// Then
+	require.Equal(t, events, received)
+}
+
 func TestResponsesSessionStoreRecordsBeforeStreamClose(t *testing.T) {
 	store := newResponsesSessionStore()
 	ctx := shared.WithSessionScope(shared.WithResponsesAPI(context.Background()), "api-key:1")
