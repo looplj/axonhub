@@ -166,14 +166,15 @@ func TestOptimizeCacheControl_preservesClientAnchorsAsConversationGrows(t *testi
 }
 
 func TestOptimizeCacheControl_countsNestedRawBreakpoints(t *testing.T) {
-	var content MessageContent
-	require.NoError(t, json.Unmarshal([]byte(`[
+	raw := json.RawMessage(`[
 		{"type":"tool_result","tool_use_id":"tool-1","content":[
 			{"type":"text","text":"cached result","cache_control":{"type":"ephemeral","ttl":"1h"}},
 			{"type":"text","text":"more result","cache_control":{"type":"ephemeral"}}
 		]},
 		{"type":"text","text":"client tail","cache_control":{"type":"ephemeral"}}
-	]`), &content))
+	]`)
+	var content MessageContent
+	content.SetRaw(raw)
 	req := &MessageRequest{
 		Tools:    []Tool{{Name: "tool", CacheControl: &CacheControl{Type: "ephemeral"}}},
 		Messages: []MessageParam{{Role: "user", Content: content}},
@@ -182,16 +183,16 @@ func TestOptimizeCacheControl_countsNestedRawBreakpoints(t *testing.T) {
 	optimizeCacheControl(req)
 
 	require.Equal(t, maxCacheControlBreakpoints, countCacheControls(req))
-	require.JSONEq(t, string(content.Raw), string(req.Messages[0].Content.Raw))
+	require.Equal(t, raw, req.Messages[0].Content.Raw)
 }
 
 func TestOptimizeCacheControl_doesNotInjectBeforeNestedRawOneHourBreakpoint(t *testing.T) {
 	var content MessageContent
-	require.NoError(t, json.Unmarshal([]byte(`[
+	content.SetRaw(json.RawMessage(`[
 		{"type":"tool_result","tool_use_id":"tool-1","content":[
 			{"type":"text","text":"cached result","cache_control":{"type":"ephemeral","ttl":"1h"}}
 		]}
-	]`), &content))
+	]`))
 	req := &MessageRequest{
 		Tools:    []Tool{{Name: "tool"}},
 		System:   &SystemPrompt{MultiplePrompts: []SystemPromptPart{{Type: "text", Text: "system"}}},
@@ -203,4 +204,26 @@ func TestOptimizeCacheControl_doesNotInjectBeforeNestedRawOneHourBreakpoint(t *t
 	require.Nil(t, req.Tools[0].CacheControl)
 	require.Nil(t, req.System.MultiplePrompts[0].CacheControl)
 	require.Equal(t, 1, countCacheControls(req))
+}
+
+func TestOptimizeCacheControl_trimsRawBreakpointsToLimit(t *testing.T) {
+	var content MessageContent
+	content.SetRaw(json.RawMessage(`[
+		{"type":"text","text":"one","cache_control":{"type":"ephemeral"}},
+		{"type":"text","text":"two","cache_control":{"type":"ephemeral"}},
+		{"type":"text","text":"three","cache_control":{"type":"ephemeral"}},
+		{"type":"text","text":"four","cache_control":{"type":"ephemeral"}},
+		{"type":"text","text":"five","cache_control":{"type":"ephemeral"}}
+	]`))
+	req := &MessageRequest{Messages: []MessageParam{{Role: "user", Content: content}}}
+
+	optimizeCacheControl(req)
+
+	require.Equal(t, maxCacheControlBreakpoints, countCacheControls(req))
+	serialized, err := json.Marshal(req.Messages[0].Content)
+	require.NoError(t, err)
+	var blocks []map[string]any
+	require.NoError(t, json.Unmarshal(serialized, &blocks))
+	require.NotContains(t, blocks[0], "cache_control")
+	require.Contains(t, blocks[4], "cache_control")
 }

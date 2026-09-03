@@ -1,5 +1,10 @@
 package anthropic
 
+import (
+	"bytes"
+	"encoding/json"
+)
+
 // maxCacheControlBreakpoints is the maximum number of cache_control breakpoints allowed by Anthropic.
 // See https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching.
 const (
@@ -66,10 +71,8 @@ func removeEarliestMessageBreakpoint(req *MessageRequest) bool {
 }
 
 func removeEarliestContentBreakpoint(content *MessageContent) bool {
-	// Raw content is emitted verbatim. Mutating its structured mirror would make
-	// the budget appear valid without changing the serialized request.
 	if len(content.Raw) > 0 {
-		return false
+		return removeEarliestRawCacheControl(content)
 	}
 
 	for i := range content.MultipleContent {
@@ -348,6 +351,23 @@ func countCacheControls(req *MessageRequest) int {
 }
 
 func countContentCacheControls(content *MessageContent) int {
+	if len(content.Raw) > 0 {
+		value, err := decodeRawContent(content.Raw)
+		if err != nil {
+			return 0
+		}
+
+		count := 0
+		walkRawContent(value, func(block map[string]any) bool {
+			if block["cache_control"] != nil {
+				count++
+			}
+			return false
+		})
+
+		return count
+	}
+
 	count := 0
 	for i := range content.MultipleContent {
 		block := &content.MultipleContent[i]
@@ -363,6 +383,25 @@ func countContentCacheControls(content *MessageContent) int {
 }
 
 func contentHasOneHourCacheControl(content *MessageContent) bool {
+	if len(content.Raw) > 0 {
+		value, err := decodeRawContent(content.Raw)
+		if err != nil {
+			return false
+		}
+
+		found := false
+		walkRawContent(value, func(block map[string]any) bool {
+			control, ok := block["cache_control"].(map[string]any)
+			if ok && control["ttl"] == "1h" {
+				found = true
+				return true
+			}
+			return false
+		})
+
+		return found
+	}
+
 	for i := range content.MultipleContent {
 		block := &content.MultipleContent[i]
 		if block.CacheControl != nil && block.CacheControl.TTL == "1h" {
@@ -370,6 +409,71 @@ func contentHasOneHourCacheControl(content *MessageContent) bool {
 		}
 		if block.Content != nil && contentHasOneHourCacheControl(block.Content) {
 			return true
+		}
+	}
+
+	return false
+}
+
+func removeEarliestRawCacheControl(content *MessageContent) bool {
+	value, err := decodeRawContent(content.Raw)
+	if err != nil {
+		return false
+	}
+
+	removed := walkRawContent(value, func(block map[string]any) bool {
+		if block["cache_control"] == nil {
+			return false
+		}
+		delete(block, "cache_control")
+		return true
+	})
+	if !removed {
+		return false
+	}
+
+	updated, err := json.Marshal(value)
+	if err != nil {
+		return false
+	}
+
+	var blocks []MessageContentBlock
+	if err := json.Unmarshal(updated, &blocks); err != nil {
+		return false
+	}
+
+	content.Raw = updated
+	content.MultipleContent = blocks
+
+	return true
+}
+
+func decodeRawContent(raw json.RawMessage) (any, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func walkRawContent(value any, visit func(map[string]any) bool) bool {
+	switch value := value.(type) {
+	case []any:
+		for _, item := range value {
+			if walkRawContent(item, visit) {
+				return true
+			}
+		}
+	case map[string]any:
+		if visit(value) {
+			return true
+		}
+		if nested, ok := value["content"]; ok {
+			return walkRawContent(nested, visit)
 		}
 	}
 
