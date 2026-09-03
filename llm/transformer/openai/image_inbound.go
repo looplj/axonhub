@@ -28,10 +28,10 @@ import (
 const (
 	defaultMaxImageFileSize = 50 * 1024 * 1024
 	maxImageCount           = 16
-	maxImageBodySize        = defaultMaxImageFileSize*maxImageCount + 16*1024*1024
 )
 
 var maxImageFileSize = initMaxImageFileSize()
+var maxImageBodySize = maxImageFileSize*maxImageCount + 16*1024*1024
 
 func initMaxImageFileSize() int {
 	if v := os.Getenv("AXONHUB_MAX_IMAGE_FILE_SIZE"); v != "" {
@@ -260,6 +260,16 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 }
 
 func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Request) (*llm.Request, error) {
+	// Some providers (e.g. sensenova) accept image edits as application/json with
+	// base64 data URLs instead of multipart/form-data.
+	mediaType, _, err := mime.ParseMediaType(httpReq.Headers.Get("Content-Type"))
+	if err != nil {
+		return nil, fmt.Errorf("%w: invalid content-type", transformer.ErrInvalidRequest)
+	}
+	if strings.EqualFold(mediaType, "application/json") {
+		return t.transformEditJSONRequest(httpReq)
+	}
+
 	formData, err := parseMultipartRequest(httpReq)
 	if err != nil {
 		return nil, err
@@ -315,6 +325,105 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 		OutputCompression: parseOptionalInt64(formData.Fields["output_compression"]),
 		InputFidelity:     strings.TrimSpace(formData.Fields["input_fidelity"]),
 		PartialImages:     parseOptionalInt64(formData.Fields["partial_images"]),
+	}
+
+	llmReq := &llm.Request{
+		Model:       model,
+		Modalities:  []string{"image"},
+		Stream:      lo.ToPtr(false),
+		RawRequest:  httpReq,
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   t.apiFormat,
+		Image:       imageReq,
+	}
+
+	return llmReq, nil
+}
+
+// ImageEditJSONRequest represents an application/json body for the image edit API.
+// The Image field accepts a single data URL string or an array of data URL strings;
+// Mask accepts a data URL string.
+type ImageEditJSONRequest struct {
+	Prompt            string          `json:"prompt"`
+	Model             string          `json:"model"`
+	Image             json.RawMessage `json:"image,omitempty"`
+	Mask              string          `json:"mask,omitempty"`
+	N                 *int64          `json:"n,omitempty"`
+	Size              string          `json:"size,omitempty"`
+	Quality           string          `json:"quality,omitempty"`
+	ResponseFormat    string          `json:"response_format,omitempty"`
+	User              string          `json:"user,omitempty"`
+	Background        string          `json:"background,omitempty"`
+	OutputFormat      string          `json:"output_format,omitempty"`
+	OutputCompression *int64          `json:"output_compression,omitempty"`
+	InputFidelity     string          `json:"input_fidelity,omitempty"`
+	PartialImages     *int64          `json:"partial_images,omitempty"`
+	Stream            bool            `json:"stream,omitempty"`
+}
+
+func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.Request) (*llm.Request, error) {
+	// Mirror the multipart path's guard: ReadHTTPRequest reads the body without a
+	// limit, and base64 payloads amplify memory further once decoded.
+	if len(httpReq.Body) > maxImageBodySize {
+		return nil, fmt.Errorf("%w: request body too large", transformer.ErrInvalidRequest)
+	}
+
+	var editReq ImageEditJSONRequest
+
+	if err := json.Unmarshal(httpReq.Body, &editReq); err != nil {
+		return nil, fmt.Errorf("%w: failed to decode image edit request: %w", transformer.ErrInvalidRequest, err)
+	}
+
+	if editReq.Stream {
+		return nil, fmt.Errorf("%w: image edit does not support streaming", transformer.ErrInvalidRequest)
+	}
+
+	prompt := strings.TrimSpace(editReq.Prompt)
+	if prompt == "" {
+		return nil, fmt.Errorf("%w: prompt is required for image edits", transformer.ErrInvalidRequest)
+	}
+
+	model := strings.TrimSpace(editReq.Model)
+	if model == "" {
+		model = "dall-e-2"
+	}
+
+	images, err := parseGenerationImageField(editReq.Image)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(images) == 0 {
+		return nil, fmt.Errorf("%w: at least one image is required for edits", transformer.ErrInvalidRequest)
+	}
+
+	if len(images) > maxImageCount {
+		return nil, fmt.Errorf("%w: too many images", transformer.ErrInvalidRequest)
+	}
+
+	var mask []byte
+
+	if maskDataURL := strings.TrimSpace(editReq.Mask); maskDataURL != "" {
+		mask, err = decodeDataURLToBytes(maskDataURL)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	imageReq := &llm.ImageRequest{
+		Prompt:            prompt,
+		Images:            images,
+		Mask:              mask,
+		N:                 editReq.N,
+		Size:              strings.TrimSpace(editReq.Size),
+		Quality:           strings.TrimSpace(editReq.Quality),
+		ResponseFormat:    strings.TrimSpace(editReq.ResponseFormat),
+		User:              strings.TrimSpace(editReq.User),
+		Background:        strings.TrimSpace(editReq.Background),
+		OutputFormat:      strings.TrimSpace(editReq.OutputFormat),
+		OutputCompression: editReq.OutputCompression,
+		InputFidelity:     strings.TrimSpace(editReq.InputFidelity),
+		PartialImages:     editReq.PartialImages,
 	}
 
 	llmReq := &llm.Request{
@@ -579,6 +688,9 @@ func parseGenerationImageField(raw json.RawMessage) ([][]byte, error) {
 	if err := json.Unmarshal(raw, &many); err != nil {
 		return nil, fmt.Errorf("%w: image field must be a string or array of strings", transformer.ErrInvalidRequest)
 	}
+	if len(many) > maxImageCount {
+		return nil, fmt.Errorf("%w: too many images", transformer.ErrInvalidRequest)
+	}
 
 	images := make([][]byte, 0, len(many))
 	for _, url := range many {
@@ -607,10 +719,19 @@ func decodeDataURLToBytes(dataURL string) ([]byte, error) {
 	if !parsed.IsBase64 {
 		return nil, fmt.Errorf("%w: image data URL must be base64-encoded", transformer.ErrInvalidRequest)
 	}
+	if !isAllowedImageType(parsed.MediaType) {
+		return nil, fmt.Errorf("%w: unsupported image content type %q", transformer.ErrInvalidRequest, parsed.MediaType)
+	}
+	if len(parsed.Data) > base64.StdEncoding.EncodedLen(maxImageFileSize) {
+		return nil, fmt.Errorf("%w: image file too large", transformer.ErrInvalidRequest)
+	}
 
 	data, err := base64.StdEncoding.DecodeString(parsed.Data)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to decode base64 image data", transformer.ErrInvalidRequest)
+	}
+	if len(data) > maxImageFileSize {
+		return nil, fmt.Errorf("%w: image file too large", transformer.ErrInvalidRequest)
 	}
 
 	return data, nil
