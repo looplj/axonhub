@@ -215,10 +215,9 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 		if ctx.Err() != nil {
 			eventsAfterCancel++
 			if eventsAfterCancel > maxStreamEventsAfterCancel {
-				clientDisconnected = true
-
 				log.Warn(ctx, "Stream still producing after cancellation, aborting drain",
 					log.Int("events_after_cancel", eventsAfterCancel))
+				writeSSEStreamEnd(c, ctx, ctx.Err(), formatErr, terminalSeen, &clientDisconnected)
 
 				return
 			}
@@ -301,9 +300,9 @@ func writeSSEStreamWithHeartbeat(
 			if ctx.Err() != nil {
 				eventsAfterCancel++
 				if eventsAfterCancel > maxStreamEventsAfterCancel {
-					clientDisconnected = true
 					log.Warn(ctx, "Stream still producing after cancellation, aborting drain",
 						log.Int("events_after_cancel", eventsAfterCancel))
+					writeSSEStreamEnd(c, ctx, ctx.Err(), formatErr, terminalSeen, &clientDisconnected)
 					return
 				}
 			}

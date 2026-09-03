@@ -213,6 +213,7 @@ func (w *heartbeatFailingResponseWriter) WriteString(data string) (int, error) {
 
 type flushFailingResponseWriter struct {
 	*httptest.ResponseRecorder
+
 	err error
 }
 
@@ -222,6 +223,7 @@ func (w *flushFailingResponseWriter) FlushError() error {
 
 type deadlineTrackingResponseWriter struct {
 	gin.ResponseWriter
+
 	deadlines      []time.Time
 	operations     []string
 	deadlineActive bool
@@ -507,6 +509,44 @@ func TestWriteSSEStream_CanceledContextStillDrainsBufferedEvents(t *testing.T) {
 	assert.Contains(t, body, `{"id":"1","choices":[{"delta":{"content":"Hi"}}]}`)
 	assert.Contains(t, body, `[DONE]`)
 	assert.NotContains(t, body, `"error"`)
+}
+
+func TestWriteSSEStream_DeadlineReportsErrorAtDrainLimit(t *testing.T) {
+	tests := []struct {
+		name      string
+		keepAlive SSEKeepAliveConfig
+	}{
+		{name: "without heartbeat"},
+		{
+			name: "with heartbeat",
+			keepAlive: SSEKeepAliveConfig{
+				Enabled:  true,
+				Interval: time.Hour,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			ctx, cancel := context.WithTimeout(context.Background(), 0)
+			defer cancel()
+			c.Request = httptest.NewRequestWithContext(ctx, http.MethodGet, "/", nil)
+
+			events := make([]*httpclient.StreamEvent, maxStreamEventsAfterCancel+1)
+			for i := range events {
+				events[i] = &httpclient.StreamEvent{Data: []byte(`{"id":"draining"}`)}
+			}
+			stream := &trackingStream{items: events}
+
+			writeSSEStream(c, stream, FormatStreamError, tt.keepAlive, sseHeartbeatOpenAI)
+
+			parsed := parseSSEErrorEvent(t, w.Body.String())
+			errorField := parsed["error"].(map[string]any)
+			assert.Contains(t, errorField["message"], context.DeadlineExceeded.Error())
+		})
+	}
 }
 
 func TestWriteSSEStream_ErrorFormatsAsJSON(t *testing.T) {
