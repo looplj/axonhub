@@ -241,6 +241,15 @@ func (p MessageContentPart) ToLLMPart() llm.MessageContentPart {
 		}
 	}
 
+	if p.File != nil {
+		part.Type = "document"
+		part.Document = &llm.DocumentURL{
+			URL:      p.File.FileData,
+			FileID:   p.File.FileID,
+			Filename: p.File.Filename,
+		}
+	}
+
 	return part
 }
 

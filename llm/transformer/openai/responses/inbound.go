@@ -567,6 +567,8 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 
 		return nil, nil
+	case "input_file":
+		return responseInputFileMessage(item), nil
 
 	case "function_call":
 		// Function call from assistant - convert to tool call
@@ -750,11 +752,45 @@ func convertContentItemToPart(item *Item) (*llm.MessageContentPart, error) {
 
 		return nil, nil
 
+	case "input_file":
+		message := responseInputFileMessage(item)
+		if message == nil || len(message.Content.MultipleContent) == 0 {
+			return nil, nil
+		}
+		return &message.Content.MultipleContent[0], nil
+
 	case "compaction", "compaction_summary":
 		return compactionContentPartFromItem(item, item.Type), nil
 
 	default:
 		return nil, nil
+	}
+}
+
+func responseInputFileMessage(item *Item) *llm.Message {
+	document := &llm.DocumentURL{
+		FileID:   lo.FromPtr(item.FileID),
+		Filename: lo.FromPtr(item.Filename),
+	}
+	if item.FileData != nil {
+		document.URL = *item.FileData
+	} else if item.FileURL != nil {
+		document.URL = *item.FileURL
+	}
+	if parsed := xurl.ParseDataURL(document.URL); parsed != nil {
+		document.MIMEType = parsed.MediaType
+	}
+	if document.URL == "" && document.FileID == "" {
+		return nil
+	}
+
+	return &llm.Message{
+		Role: lo.Ternary(item.Role != "", item.Role, "user"),
+		Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{{
+			ID:       item.ID,
+			Type:     "document",
+			Document: document,
+		}}},
 	}
 }
 

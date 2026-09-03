@@ -97,15 +97,9 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 
 		// Convert ResponseSchema/ResponseJsonSchema to ResponseFormat json_schema
 		if len(gc.ResponseJsonSchema) > 0 {
-			chatReq.ResponseFormat = &llm.ResponseFormat{
-				Type:       "json_schema",
-				JSONSchema: gc.ResponseJsonSchema,
-			}
+			chatReq.ResponseFormat = geminiJSONSchemaResponseFormat(gc.ResponseJsonSchema)
 		} else if len(gc.ResponseSchema) > 0 {
-			chatReq.ResponseFormat = &llm.ResponseFormat{
-				Type:       "json_schema",
-				JSONSchema: gc.ResponseSchema,
-			}
+			chatReq.ResponseFormat = geminiJSONSchemaResponseFormat(gc.ResponseSchema)
 		} else if gc.ResponseMIMEType == "application/json" {
 			// If only ResponseMIMEType is set to JSON, use json_object
 			chatReq.ResponseFormat = &llm.ResponseFormat{
@@ -131,14 +125,11 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 
 	// Convert contents to messages
 	for i, content := range geminiReq.Contents {
-		msg, err := convertGeminiContentToLLMMessage(content, geminiReq.Contents[:i])
+		converted, err := convertGeminiContentToLLMMessages(content, geminiReq.Contents[:i])
 		if err != nil {
 			return nil, err
 		}
-
-		if msg != nil {
-			messages = append(messages, *msg)
-		}
+		messages = append(messages, converted...)
 	}
 
 	chatReq.Messages = messages
@@ -253,6 +244,84 @@ func convertGeminiToLLMRequest(geminiReq *GenerateContentRequest) (*llm.Request,
 	}
 
 	return chatReq, nil
+}
+
+func convertGeminiContentToLLMMessages(content *Content, previousContents []*Content) ([]llm.Message, error) {
+	if content == nil {
+		return nil, nil
+	}
+
+	hasFunctionResponse := false
+	for _, part := range content.Parts {
+		if part != nil && part.FunctionResponse != nil {
+			hasFunctionResponse = true
+			break
+		}
+	}
+	if !hasFunctionResponse || len(content.Parts) == 1 {
+		msg, err := convertGeminiContentToLLMMessage(content, previousContents)
+		if err != nil || msg == nil {
+			return nil, err
+		}
+		return []llm.Message{*msg}, nil
+	}
+
+	messages := make([]llm.Message, 0, len(content.Parts))
+	regularParts := make([]*Part, 0, len(content.Parts))
+	flushRegularParts := func() error {
+		if len(regularParts) == 0 {
+			return nil
+		}
+		msg, err := convertGeminiContentToLLMMessage(&Content{Role: content.Role, Parts: regularParts}, previousContents)
+		if err != nil {
+			return err
+		}
+		if msg != nil {
+			messages = append(messages, *msg)
+		}
+		regularParts = nil
+		return nil
+	}
+
+	for _, part := range content.Parts {
+		if part == nil {
+			continue
+		}
+		if part.FunctionResponse == nil {
+			regularParts = append(regularParts, part)
+			continue
+		}
+		if err := flushRegularParts(); err != nil {
+			return nil, err
+		}
+		msg, err := convertGeminiContentToLLMMessage(&Content{Role: content.Role, Parts: []*Part{part}}, previousContents)
+		if err != nil {
+			return nil, err
+		}
+		if msg != nil {
+			messages = append(messages, *msg)
+		}
+	}
+	if err := flushRegularParts(); err != nil {
+		return nil, err
+	}
+
+	return messages, nil
+}
+
+func geminiJSONSchemaResponseFormat(schema json.RawMessage) *llm.ResponseFormat {
+	wrapper, _ := json.Marshal(struct {
+		Name   string          `json:"name"`
+		Schema json.RawMessage `json:"schema"`
+	}{
+		Name:   "gemini_response",
+		Schema: schema,
+	})
+
+	return &llm.ResponseFormat{
+		Type:       "json_schema",
+		JSONSchema: wrapper,
+	}
 }
 
 func convertGeminiThinkingConfigToGeminiOpenAIExtraBody(thinkingConfig *ThinkingConfig) (json.RawMessage, error) {

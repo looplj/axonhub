@@ -374,6 +374,9 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	} else {
 		ep.BaseURL = baseURL
 	}
+	if endpointTransport(ep) == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
+		return nil, fmt.Errorf("websocket transport only supports api_format %q", llm.APIFormatOpenAIResponse.String())
+	}
 
 	switch ep.APIFormat {
 	case llm.APIFormatOpenAIChatCompletion.String():

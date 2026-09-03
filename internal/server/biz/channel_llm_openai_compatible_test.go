@@ -144,6 +144,27 @@ func TestOpenAIResponsesEndpoint_InheritsWebSocketTransportFromBaseURL(t *testin
 	require.True(t, ok)
 }
 
+func TestOpenAIResponsesCompactEndpoint_RejectsInheritedWebSocketTransport(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:compact_websocket?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	entChannel := client.Channel.Create().
+		SetName("Responses Compact WebSocket Channel").
+		SetType(channel.TypeOpenaiResponses).
+		SetBaseURL("wss://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-5"}).
+		SetDefaultTestModel("gpt-5").
+		SetEndpoints([]objects.ChannelEndpoint{{
+			APIFormat: llm.APIFormatOpenAIResponseCompact.String(),
+		}}).
+		SaveX(ctx)
+
+	_, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entChannel)
+	require.ErrorContains(t, err, "websocket transport only supports api_format \"openai/responses\"")
+}
+
 func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

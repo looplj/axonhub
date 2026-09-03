@@ -775,6 +775,30 @@ func TestInboundTransformer_TransformRequest_GroupsConsecutiveFunctionCalls(t *t
 	require.Equal(t, "call_b", lo.FromPtr(result.Messages[3].ToolCallID))
 }
 
+func TestInboundTransformer_TransformRequest_PreservesInputFiles(t *testing.T) {
+	trans := NewInboundTransformer()
+	result, err := trans.TransformRequest(t.Context(), &httpclient.Request{
+		Body: []byte(`{
+			"model":"gpt-5.6",
+			"input":[{"role":"user","content":[
+				{"type":"input_file","filename":"inline.pdf","file_data":"data:application/pdf;base64,JVBERi0xLjQK"},
+				{"type":"input_file","filename":"remote.pdf","file_url":"https://example.com/remote.pdf"},
+				{"type":"input_file","file_id":"file_123"}
+			]}]
+		}`),
+	})
+
+	require.NoError(t, err)
+	require.Len(t, result.Messages, 1)
+	require.Len(t, result.Messages[0].Content.MultipleContent, 3)
+	require.Equal(t, "data:application/pdf;base64,JVBERi0xLjQK", result.Messages[0].Content.MultipleContent[0].Document.URL)
+	require.Equal(t, "application/pdf", result.Messages[0].Content.MultipleContent[0].Document.MIMEType)
+	require.Equal(t, "inline.pdf", result.Messages[0].Content.MultipleContent[0].Document.Filename)
+	require.Equal(t, "https://example.com/remote.pdf", result.Messages[0].Content.MultipleContent[1].Document.URL)
+	require.Equal(t, "remote.pdf", result.Messages[0].Content.MultipleContent[1].Document.Filename)
+	require.Equal(t, "file_123", result.Messages[0].Content.MultipleContent[2].Document.FileID)
+}
+
 func TestInboundTransformer_TransformResponse(t *testing.T) {
 	trans := NewInboundTransformer()
 

@@ -382,6 +382,39 @@ func TestConvertToolMessage(t *testing.T) {
 	}
 }
 
+func TestConvertUserMessagePreservesInputFiles(t *testing.T) {
+	input := convertInputFromMessages([]llm.Message{{
+		Role: "user",
+		Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{
+				Type: "document",
+				Document: &llm.DocumentURL{
+					URL:      "data:application/pdf;base64,JVBERi0xLjQK",
+					MIMEType: "application/pdf",
+				},
+			},
+			{
+				Type:     "document",
+				Document: &llm.DocumentURL{URL: "https://example.com/report.pdf", Filename: "report.pdf"},
+			},
+			{
+				Type:     "document",
+				Document: &llm.DocumentURL{FileID: "file_123"},
+			},
+		}},
+	}}, llm.TransformOptions{})
+
+	require.Len(t, input.Items, 1)
+	require.NotNil(t, input.Items[0].Content)
+	require.Len(t, input.Items[0].Content.Items, 3)
+	require.Equal(t, "input_file", input.Items[0].Content.Items[0].Type)
+	require.Equal(t, "document.pdf", lo.FromPtr(input.Items[0].Content.Items[0].Filename))
+	require.Equal(t, "data:application/pdf;base64,JVBERi0xLjQK", lo.FromPtr(input.Items[0].Content.Items[0].FileData))
+	require.Equal(t, "https://example.com/report.pdf", lo.FromPtr(input.Items[0].Content.Items[1].FileURL))
+	require.Equal(t, "report.pdf", lo.FromPtr(input.Items[0].Content.Items[1].Filename))
+	require.Equal(t, "file_123", lo.FromPtr(input.Items[0].Content.Items[2].FileID))
+}
+
 // The wire shape matters as much as the struct: a tool result carrying an image
 // has to serialise as an output array of content parts, not as a string.
 func TestConvertToolMessageImageSerializesAsOutputArray(t *testing.T) {

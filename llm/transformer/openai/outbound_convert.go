@@ -265,6 +265,18 @@ func MessageContentPartFromLLM(p llm.MessageContentPart) MessageContentPart {
 		}
 	}
 
+	if p.Document != nil {
+		part.Type = "file"
+		part.File = &File{
+			FileData: p.Document.URL,
+			FileID:   p.Document.FileID,
+			Filename: p.Document.Filename,
+		}
+		if part.File.Filename == "" && p.Document.MIMEType == "application/pdf" {
+			part.File.Filename = "document.pdf"
+		}
+	}
+
 	return part
 }
 
