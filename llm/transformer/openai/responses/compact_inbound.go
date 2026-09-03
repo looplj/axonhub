@@ -72,6 +72,7 @@ func (t *CompactInboundTransformer) TransformRequest(ctx context.Context, httpRe
 			PromptCacheKey: req.PromptCacheKey,
 		},
 	}
+	attachOpenAIResponsesRawRequestFields(llmReq, httpReq.Body, rawCompactRequestFields)
 
 	return llmReq, nil
 }

@@ -33,7 +33,7 @@ func (t *OutboundTransformer) transformCompactRequest(
 		PromptCacheKey: llmReq.Compact.PromptCacheKey,
 	}
 
-	body, err := json.Marshal(payload)
+	body, err := marshalCompactRequestPayload(payload, llmReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal compact request: %w", err)
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/tidwall/sjson"
@@ -104,7 +105,7 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 		// Multipart bodies cannot be reused: the outbound transformer rebuilds the
 		// multipart payload with a new boundary in Content-Type, so replaying the inbound
 		// bytes would mismatch the header, and form fields cannot be patched via sjson.
-		if !passThroughBodySupported(llmReq.APIFormat) {
+		if !passThroughBodySupported(llmReq) {
 			return request, nil
 		}
 
@@ -192,29 +193,38 @@ func mergePassThroughRequestBody(rawBody []byte, apiFormat llm.APIFormat, model 
 }
 
 // passThroughBodySupported reports whether the raw inbound body can safely replace the
-// outbound request body. Multipart formats are excluded.
-func passThroughBodySupported(apiFormat llm.APIFormat) bool {
-	//nolint:exhaustive // only multipart formats are excluded.
-	switch apiFormat {
+// outbound request body. Multipart formats that require model rewriting are excluded.
+func passThroughBodySupported(llmReq *llm.Request) bool {
+	//nolint:exhaustive // only multipart formats are excluded or content-type checked.
+	switch llmReq.APIFormat {
 	case llm.APIFormatOpenAITranscription,
 		llm.APIFormatOpenAITranslation,
 		llm.APIFormatOpenAIImageEdit,
 		llm.APIFormatOpenAIImageVariation:
 		return false
+	case llm.APIFormatOpenAIVideo:
+		if llmReq.RawRequest == nil {
+			return false
+		}
+
+		return !strings.HasPrefix(strings.ToLower(llmReq.RawRequest.Headers.Get("Content-Type")), "multipart/")
 	default:
 		return true
 	}
 }
 
 func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
-	//nolint:exhaustive // ohter format do not need model field.
+	//nolint:exhaustive // other formats do not need a model field.
 	switch apiFormat {
 	case llm.APIFormatOpenAIChatCompletion,
+		llm.APIFormatOpenAICompletion,
 		llm.APIFormatOpenAIResponse,
 		llm.APIFormatOpenAIResponseCompact,
 		llm.APIFormatOpenAIEmbedding,
 		llm.APIFormatOpenAIModeration,
 		llm.APIFormatOpenAIAlphaSearch,
+		llm.APIFormatOpenAIImageGeneration,
+		llm.APIFormatOpenAIVideo,
 		llm.APIFormatJinaEmbedding,
 		llm.APIFormatJinaRerank,
 		llm.APIFormatAnthropicMessage,

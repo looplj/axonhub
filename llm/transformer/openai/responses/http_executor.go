@@ -28,8 +28,7 @@ func (e *httpTransportExecutor) DoStream(ctx context.Context, request *httpclien
 
 // PrepareHTTPTransportRequest removes WebSocket-v2-only request metadata before
 // an HTTP/SSE attempt. Generic Responses HTTP requests retain a normal
-// previous_response_id unless the WebSocket beta marker proves it came from a
-// WebSocket continuation. Codex callers can force removal because their HTTP
+// previous_response_id. Codex callers can force removal because their HTTP
 // endpoint does not support that field.
 func PrepareHTTPTransportRequest(request *httpclient.Request, stripPreviousResponseID bool) *httpclient.Request {
 	if request == nil {
@@ -37,10 +36,6 @@ func PrepareHTTPTransportRequest(request *httpclient.Request, stripPreviousRespo
 	}
 
 	headers, webSocketBetaRemoved := withoutWebSocketBeta(request.Headers)
-	if webSocketBetaRemoved {
-		stripPreviousResponseID = true
-	}
-
 	body := request.Body
 	bodyChanged := false
 	if stripPreviousResponseID {

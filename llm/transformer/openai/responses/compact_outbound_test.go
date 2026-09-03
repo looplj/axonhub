@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
@@ -135,6 +136,28 @@ func TestOutboundTransformer_TransformCompactRequest_AccountIdentity(t *testing.
 	require.NoError(t, err)
 	require.NotNil(t, httpReq)
 	require.Nil(t, httpReq.Metadata)
+}
+
+func TestCompactTransformRequest_PreservesOfficialOptionalFields(t *testing.T) {
+	inbound := NewCompactInboundTransformer()
+	outbound, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	body := []byte(`{"model":"gpt-5.6","previous_response_id":"resp_123","prompt_cache_options":{"mode":"implicit","ttl":"30m"},"prompt_cache_retention":"in_memory","service_tier":"auto"}`)
+	llmRequest, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+
+	outboundRequest, err := outbound.TransformRequest(t.Context(), llmRequest)
+	require.NoError(t, err)
+	require.False(t, gjson.GetBytes(outboundRequest.Body, "input").Exists())
+	require.Equal(t, "resp_123", gjson.GetBytes(outboundRequest.Body, "previous_response_id").String())
+	require.Equal(t, "implicit", gjson.GetBytes(outboundRequest.Body, "prompt_cache_options.mode").String())
+	require.Equal(t, "30m", gjson.GetBytes(outboundRequest.Body, "prompt_cache_options.ttl").String())
+	require.Equal(t, "in_memory", gjson.GetBytes(outboundRequest.Body, "prompt_cache_retention").String())
+	require.Equal(t, "auto", gjson.GetBytes(outboundRequest.Body, "service_tier").String())
 }
 
 func TestOutboundTransformer_TransformCompactResponse(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -83,6 +84,260 @@ func TestResponsesWebSocketProcessesSequentialResponseCreateEvents(t *testing.T)
 	require.Equal(t, "resp_1", gjson.GetBytes(second.Body, "previous_response_id").String())
 	require.Equal(t, "response.create", gjson.GetBytes(second.JSONBody, "type").String())
 	require.False(t, gjson.GetBytes(second.JSONBody, "stream").Exists())
+}
+
+func TestResponsesWebSocketStreamIDIsClientOnlyAndReturnedOnEveryEvent(t *testing.T) {
+	requests := make(chan *httpclient.Request, 1)
+	process := func(_ context.Context, request *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		requests <- request
+		return orchestrator.ChatCompletionResult{
+			ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{
+				{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_lane"}}`)},
+				{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_lane","status":"completed"}}`)},
+			}),
+		}, nil
+	}
+
+	server := newResponsesWebSocketTestServer(t, process, nil)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.Close()
+
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"lane.alpha-1","model":"gpt-test","input":"hello"}`)))
+	for _, eventType := range []string{"response.created", "response.completed"} {
+		_, event, err := conn.ReadMessage()
+		require.NoError(t, err)
+		require.Equal(t, eventType, gjson.GetBytes(event, "type").String())
+		require.Equal(t, "lane.alpha-1", gjson.GetBytes(event, "stream_id").String())
+	}
+
+	request := <-requests
+	require.False(t, gjson.GetBytes(request.Body, "stream_id").Exists())
+	require.Equal(t, "lane.alpha-1", gjson.GetBytes(request.JSONBody, "stream_id").String())
+}
+
+func TestResponsesWebSocketRunsDifferentStreamsConcurrentlyAndSameStreamFIFO(t *testing.T) {
+	startedA1 := make(chan struct{})
+	startedA2 := make(chan struct{})
+	startedB := make(chan struct{})
+	releaseA1 := make(chan struct{})
+	released := false
+	defer func() {
+		if !released {
+			close(releaseA1)
+		}
+	}()
+
+	process := func(_ context.Context, request *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		input := gjson.GetBytes(request.Body, "input").String()
+		switch input {
+		case "a1":
+			close(startedA1)
+			<-releaseA1
+		case "a2":
+			close(startedA2)
+		case "b1":
+			close(startedB)
+		}
+
+		return orchestrator.ChatCompletionResult{
+			ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{{
+				Type: "response.completed",
+				Data: []byte(`{"type":"response.completed","response":{"id":"resp_` + input + `","status":"completed"}}`),
+			}}),
+		}, nil
+	}
+
+	server := newResponsesWebSocketTestServer(t, process, nil)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.Close()
+
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"lane-a","model":"gpt-test","input":"a1"}`)))
+	select {
+	case <-startedA1:
+	case <-time.After(time.Second):
+		t.Fatal("first lane-a request did not start")
+	}
+
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"lane-a","model":"gpt-test","input":"a2"}`)))
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"lane-b","model":"gpt-test","input":"b1"}`)))
+	select {
+	case <-startedB:
+	case <-time.After(time.Second):
+		t.Fatal("lane-b request did not run concurrently")
+	}
+	select {
+	case <-startedA2:
+		t.Fatal("second lane-a request started before the first completed")
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	_, eventB, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "lane-b", gjson.GetBytes(eventB, "stream_id").String())
+	require.Equal(t, "resp_b1", gjson.GetBytes(eventB, "response.id").String())
+
+	close(releaseA1)
+	released = true
+	select {
+	case <-startedA2:
+	case <-time.After(time.Second):
+		t.Fatal("second lane-a request did not start after the first completed")
+	}
+
+	for _, responseID := range []string{"resp_a1", "resp_a2"} {
+		_, event, err := conn.ReadMessage()
+		require.NoError(t, err)
+		require.Equal(t, "lane-a", gjson.GetBytes(event, "stream_id").String())
+		require.Equal(t, responseID, gjson.GetBytes(event, "response.id").String())
+	}
+}
+
+func TestResponsesWebSocketValidatesAndLimitsNamedStreams(t *testing.T) {
+	server := newResponsesWebSocketTestServer(t, nil, nil)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.Close()
+
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"bad/lane","model":"gpt-test","generate":false}`)))
+	_, invalidEvent, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "error", gjson.GetBytes(invalidEvent, "type").String())
+	require.Equal(t, "invalid_stream_id", gjson.GetBytes(invalidEvent, "error.code").String())
+	require.False(t, gjson.GetBytes(invalidEvent, "stream_id").Exists())
+
+	for i := range responsesWebSocketMaxNamedStreams {
+		message := fmt.Sprintf(`{"type":"response.create","stream_id":"lane-%d","model":"gpt-test","generate":false}`, i)
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(message)))
+	}
+
+	completed := make(map[string]struct{}, responsesWebSocketMaxNamedStreams)
+	for range responsesWebSocketMaxNamedStreams * 3 {
+		_, event, err := conn.ReadMessage()
+		require.NoError(t, err)
+		if gjson.GetBytes(event, "type").String() == "response.completed" {
+			completed[gjson.GetBytes(event, "stream_id").String()] = struct{}{}
+		}
+	}
+	require.Len(t, completed, responsesWebSocketMaxNamedStreams)
+
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"lane-over-limit","model":"gpt-test","generate":false}`)))
+	_, limitEvent, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "error", gjson.GetBytes(limitEvent, "type").String())
+	require.Equal(t, "websocket_stream_limit_reached", gjson.GetBytes(limitEvent, "error.code").String())
+	require.Equal(t, "lane-over-limit", gjson.GetBytes(limitEvent, "stream_id").String())
+}
+
+func TestResponsesWebSocketLimitsActiveResponsesPerConnection(t *testing.T) {
+	started := make(chan string, responsesWebSocketMaxActive+1)
+	release := make(chan struct{})
+	released := false
+	defer func() {
+		if !released {
+			close(release)
+		}
+	}()
+
+	process := func(_ context.Context, request *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		input := gjson.GetBytes(request.Body, "input").String()
+		started <- input
+		<-release
+		return orchestrator.ChatCompletionResult{
+			ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{{
+				Type: "response.completed",
+				Data: []byte(`{"type":"response.completed","response":{"id":"resp_` + input + `","status":"completed"}}`),
+			}}),
+		}, nil
+	}
+
+	server := newResponsesWebSocketTestServer(t, process, nil)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.Close()
+
+	for i := range responsesWebSocketMaxActive + 1 {
+		message := fmt.Sprintf(`{"type":"response.create","stream_id":"active-%d","model":"gpt-test","input":"%d"}`, i, i)
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(message)))
+	}
+	for range responsesWebSocketMaxActive {
+		select {
+		case <-started:
+		case <-time.After(time.Second):
+			t.Fatal("expected active response did not start")
+		}
+	}
+	select {
+	case value := <-started:
+		t.Fatalf("response %s exceeded the active response limit", value)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	release <- struct{}{}
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("queued response did not start after a slot became available")
+	}
+	close(release)
+	released = true
+
+	for range responsesWebSocketMaxActive + 1 {
+		_, event, err := conn.ReadMessage()
+		require.NoError(t, err)
+		require.Equal(t, "response.completed", gjson.GetBytes(event, "type").String())
+	}
+}
+
+func TestResponsesWebSocketBoundsPendingResponsesPerConnection(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	released := false
+	defer func() {
+		if !released {
+			close(release)
+		}
+	}()
+
+	process := func(_ context.Context, _ *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		select {
+		case <-started:
+		default:
+			close(started)
+		}
+		<-release
+		return orchestrator.ChatCompletionResult{
+			ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{{
+				Type: "response.completed",
+				Data: []byte(`{"type":"response.completed","response":{"id":"resp_pending","status":"completed"}}`),
+			}}),
+		}, nil
+	}
+
+	server := newResponsesWebSocketTestServer(t, process, nil)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.Close()
+
+	for i := range responsesWebSocketMaxPending + 1 {
+		message := fmt.Sprintf(`{"type":"response.create","model":"gpt-test","input":"%d"}`, i)
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(message)))
+	}
+	select {
+	case <-started:
+	case <-time.After(time.Second):
+		t.Fatal("first pending response did not start")
+	}
+
+	_, limitEvent, err := conn.ReadMessage()
+	require.NoError(t, err)
+	require.Equal(t, "error", gjson.GetBytes(limitEvent, "type").String())
+	require.Equal(t, int64(http.StatusTooManyRequests), gjson.GetBytes(limitEvent, "status").Int())
+	require.Equal(t, "websocket_queue_limit_reached", gjson.GetBytes(limitEvent, "error.code").String())
+
+	close(release)
+	released = true
+	for range responsesWebSocketMaxPending {
+		_, event, err := conn.ReadMessage()
+		require.NoError(t, err)
+		require.Equal(t, "response.completed", gjson.GetBytes(event, "type").String())
+	}
 }
 
 func TestResponsesWebSocketStreamsHTTPSSEResponseIncrementally(t *testing.T) {
@@ -205,18 +460,20 @@ func TestResponsesWebSocketWritesProtocolAndProcessingErrorsWithoutClosingConnec
 	require.Equal(t, int64(http.StatusBadRequest), gjson.GetBytes(invalidEvent, "status").Int())
 	require.Equal(t, "type", gjson.GetBytes(invalidEvent, "error.param").String())
 
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"fail","input":"hello"}`)))
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"lane-errors","model":"fail","input":"hello"}`)))
 	_, processError, err := conn.ReadMessage()
 	require.NoError(t, err)
 	require.Equal(t, "error", gjson.GetBytes(processError, "type").String())
 	require.Equal(t, int64(http.StatusBadGateway), gjson.GetBytes(processError, "status").Int())
 	require.Equal(t, "provider_unavailable", gjson.GetBytes(processError, "error.code").String())
+	require.Equal(t, "lane-errors", gjson.GetBytes(processError, "stream_id").String())
 
-	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","model":"ok","input":"hello"}`)))
+	require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"lane-errors","model":"ok","input":"hello"}`)))
 	_, completed, err := conn.ReadMessage()
 	require.NoError(t, err)
 	require.Equal(t, "response.completed", gjson.GetBytes(completed, "type").String())
 	require.Equal(t, "resp_ok", gjson.GetBytes(completed, "response.id").String())
+	require.Equal(t, "lane-errors", gjson.GetBytes(completed, "stream_id").String())
 }
 
 func TestResponsesWebSocketWarmupReturnsIDAndMergesContinuation(t *testing.T) {
@@ -273,6 +530,57 @@ func TestResponsesWebSocketWarmupReturnsIDAndMergesContinuation(t *testing.T) {
 	require.Len(t, gjson.GetBytes(continuationRequest.Body, "input").Array(), 2)
 	require.Equal(t, "hello", gjson.GetBytes(continuationRequest.Body, "input.0.content").String())
 	require.Equal(t, "function_call_output", gjson.GetBytes(continuationRequest.Body, "input.1.type").String())
+}
+
+func TestResponsesWebSocketWarmupsAreIsolatedByStream(t *testing.T) {
+	requests := make(chan *httpclient.Request, 2)
+	process := func(_ context.Context, request *httpclient.Request) (orchestrator.ChatCompletionResult, error) {
+		requests <- request
+		return orchestrator.ChatCompletionResult{
+			ChatCompletionStream: streams.SliceStream([]*httpclient.StreamEvent{{
+				Type: "response.completed",
+				Data: []byte(`{"type":"response.completed","response":{"id":"resp_generated","status":"completed"}}`),
+			}}),
+		}, nil
+	}
+
+	server := newResponsesWebSocketTestServer(t, process, nil)
+	conn := dialResponsesWebSocket(t, server.URL, nil)
+	defer conn.Close()
+
+	warmupIDs := make(map[string]string, 2)
+	for _, streamID := range []string{"lane-a", "lane-b"} {
+		message := fmt.Sprintf(`{"type":"response.create","stream_id":%q,"model":"gpt-test","generate":false,"input":%q}`, streamID, streamID+"-base")
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(message)))
+		for i := range 3 {
+			_, event, err := conn.ReadMessage()
+			require.NoError(t, err)
+			require.Equal(t, streamID, gjson.GetBytes(event, "stream_id").String())
+			if i == 0 {
+				warmupIDs[streamID] = gjson.GetBytes(event, "response.id").String()
+			}
+		}
+	}
+
+	for _, streamID := range []string{"lane-a", "lane-b"} {
+		message := fmt.Sprintf(`{"type":"response.create","stream_id":%q,"model":"gpt-test","previous_response_id":%q,"input":%q}`, streamID, warmupIDs[streamID], streamID+"-next")
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(message)))
+		_, event, err := conn.ReadMessage()
+		require.NoError(t, err)
+		require.Equal(t, streamID, gjson.GetBytes(event, "stream_id").String())
+	}
+
+	seen := make(map[string][]string, 2)
+	for range 2 {
+		request := <-requests
+		items := gjson.GetBytes(request.Body, "input").Array()
+		require.Len(t, items, 2)
+		base := items[0].Get("content").String()
+		streamID := strings.TrimSuffix(base, "-base")
+		seen[streamID] = []string{base, items[1].Get("content").String()}
+	}
+	require.Equal(t, []string{"lane-a-base", "lane-a-next"}, seen["lane-a"])
+	require.Equal(t, []string{"lane-b-base", "lane-b-next"}, seen["lane-b"])
 }
 
 func TestResponsesWebSocketRejectsOversizedMessages(t *testing.T) {
