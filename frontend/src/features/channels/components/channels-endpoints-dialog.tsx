@@ -399,7 +399,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent ref={setDialogContentElement} className='flex h-[90vh] max-h-[700px] w-full max-w-full flex-col sm:max-w-4xl'>
+      <DialogContent ref={setDialogContentElement} className='flex h-[90vh] max-h-[700px] w-full max-w-full flex-col overflow-hidden sm:max-w-4xl'>
         <DialogHeader className='shrink-0'>
           <DialogTitle>{t('channels.endpoints.title')}</DialogTitle>
           <DialogDescription>{channel.name}</DialogDescription>
