@@ -709,6 +709,7 @@ func mustMarshal(v any) []byte {
 
 func TestInboundTransformer_TransformError(t *testing.T) {
 	transformer := NewInboundTransformer()
+	var nilHTTPError *httpclient.Error
 
 	tests := []struct {
 		name          string
@@ -733,6 +734,14 @@ func TestInboundTransformer_TransformError(t *testing.T) {
 		{
 			name: "nil error",
 			err:  nil,
+			expectedError: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Body:       []byte(`{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`),
+			},
+		},
+		{
+			name: "typed nil http error",
+			err:  nilHTTPError,
 			expectedError: &httpclient.Error{
 				StatusCode: http.StatusInternalServerError,
 				Body:       []byte(`{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`),

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
@@ -185,7 +186,7 @@ func (t *InboundTransformer) AggregateStreamChunks(
 
 // TransformError transforms LLM error response to HTTP error response.
 func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
-	if rawErr == nil {
+	if rawErr == nil || (reflect.ValueOf(rawErr).Kind() == reflect.Ptr && reflect.ValueOf(rawErr).IsNil()) {
 		return &httpclient.Error{
 			StatusCode: http.StatusInternalServerError,
 			Status:     http.StatusText(http.StatusInternalServerError),
@@ -234,6 +235,7 @@ func (t *InboundTransformer) TransformError(ctx context.Context, rawErr error) *
 	}
 }
 
+// normalizeHTTPErrorStatus maps invalid error statuses to an upstream failure.
 func normalizeHTTPErrorStatus(httpErr *httpclient.Error) *httpclient.Error {
 	if httpErr.StatusCode >= http.StatusBadRequest && httpErr.StatusCode <= 599 {
 		return httpErr
