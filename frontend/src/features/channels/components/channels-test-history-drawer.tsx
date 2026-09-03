@@ -123,7 +123,7 @@ export function ChannelsTestHistoryDrawer({ open, onOpenChange, channel }: Props
               <p className='text-muted-foreground text-sm'>{channel.name}</p>
             </SheetHeader>
 
-            <ScrollArea className='flex-1'>
+            <ScrollArea className='min-h-0 flex-1'>
               <div className='p-4'>
                 {isLoading ? (
                   <div className='space-y-3'>

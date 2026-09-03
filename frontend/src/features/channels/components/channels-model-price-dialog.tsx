@@ -1251,7 +1251,7 @@ export function ChannelsModelPriceDialog() {
                 </div>
               </CardContent>
             </Card>
-            <div ref={priceListRef} className='min-h-40 min-w-0 w-full flex-1 overflow-y-auto overflow-x-hidden pt-4 pr-4 md:min-h-0'>
+            <div ref={priceListRef} className='min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-4 pr-4'>
               {fields.length === 0 && !isLoading && (
                 <div className='text-muted-foreground flex flex-col items-center justify-center py-12'>
                   <p>{t('price.noPrices')}</p>
