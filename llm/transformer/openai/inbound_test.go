@@ -709,6 +709,7 @@ func mustMarshal(v any) []byte {
 
 func TestInboundTransformer_TransformError(t *testing.T) {
 	transformer := NewInboundTransformer()
+	var nilHTTPError *httpclient.Error
 
 	tests := []struct {
 		name          string
@@ -736,6 +737,37 @@ func TestInboundTransformer_TransformError(t *testing.T) {
 			expectedError: &httpclient.Error{
 				StatusCode: http.StatusInternalServerError,
 				Body:       []byte(`{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`),
+			},
+		},
+		{
+			name: "typed nil http error",
+			err:  nilHTTPError,
+			expectedError: &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Body:       []byte(`{"error":{"message":"An unexpected error occurred","type":"unexpected_error"}}`),
+			},
+		},
+		{
+			name: "response error without status code",
+			err: &llm.ResponseError{
+				Detail: llm.ErrorDetail{
+					Message: "provider temporarily unavailable",
+					Type:    "provider_unavailable",
+				},
+			},
+			expectedError: &httpclient.Error{
+				StatusCode: http.StatusBadGateway,
+				Body:       []byte(`{"error":{"message":"provider temporarily unavailable","type":"provider_unavailable"}}`),
+			},
+		},
+		{
+			name: "http error without status code",
+			err: &httpclient.Error{
+				Body: []byte(`{"error":{"message":"provider temporarily unavailable","type":"provider_unavailable"}}`),
+			},
+			expectedError: &httpclient.Error{
+				StatusCode: http.StatusBadGateway,
+				Body:       []byte(`{"error":{"message":"provider temporarily unavailable","type":"provider_unavailable"}}`),
 			},
 		},
 	}
