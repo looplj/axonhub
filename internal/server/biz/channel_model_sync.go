@@ -135,16 +135,20 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	addedModels := lo.Without(mergedModels, ch.SupportedModels...)
 	removedModels := lo.Without(ch.SupportedModels, mergedModels...)
 	modelsChanged := len(addedModels) > 0 || len(removedModels) > 0
+	modelProtocolsChanged := modelsChanged && RemoveRemovedModelProtocolOverrides(ch.Settings, mergedModels)
 	var updatedCh *ent.Channel
 	changed := false
 
 	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		updatedCh = ch
 		if modelsChanged {
-			channel, err := svc.entFromContext(ctx).Channel.
+			update := svc.entFromContext(ctx).Channel.
 				UpdateOneID(ch.ID).
-				SetSupportedModels(mergedModels).
-				Save(ctx)
+				SetSupportedModels(mergedModels)
+			if modelProtocolsChanged {
+				update.SetSettings(ch.Settings)
+			}
+			channel, err := update.Save(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to update channel supported models: %w", err)
 			}
@@ -157,7 +161,7 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 			return err
 		}
 
-		changed = modelsChanged || pricesChanged
+		changed = modelsChanged || modelProtocolsChanged || pricesChanged
 
 		return nil
 	})

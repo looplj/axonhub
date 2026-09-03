@@ -8,6 +8,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -31,7 +32,7 @@ import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigra
 import {
   useCreateChannel,
   useDuplicateChannel,
-  useUpdateChannel,
+  useUpdateChannelSettings,
   useFetchModels,
   useAllChannelNames,
   useAllChannelTags,
@@ -78,10 +79,10 @@ const MAX_MODELS_DISPLAY = 2;
 
 const duplicateNameRegex = /^(.*) \((\d+)\)$/;
 
-type ApiFormatOption = ApiFormat | 'openai/responses:websocket';
+type ApiFormatOption = ApiFormat;
 type ResponsesTransport = 'http' | 'websocket';
 
-const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses:websocket';
+const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses-ws';
 // A single trailing # suppresses automatic version suffix appending while still
 // allowing the Responses transformer to append /responses. Do not replace these
 // defaults with ## unless the upstream URL should be used fully raw.
@@ -324,7 +325,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const initialRow: Channel | undefined = currentRow || duplicateFromRow;
   const createChannel = useCreateChannel();
   const duplicateChannel = useDuplicateChannel();
-  const updateChannel = useUpdateChannel();
+  const updateChannelSettings = useUpdateChannelSettings();
   const fetchModels = useFetchModels();
   const syncChannelModels = useSyncChannelModels();
   const { data: allChannelNames = [], isSuccess: allChannelNamesLoaded } = useAllChannelNames({ enabled: open && isDuplicate });
@@ -456,6 +457,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       form.setValue('credentials.apiKey', credentials);
     },
   });
+  const { reset: resetCodexOAuth } = codexOAuth;
+  const { reset: resetClaudecodeOAuth } = claudecodeOAuth;
+  const { reset: resetXaiOAuth } = xaiOAuth;
+  const { reset: resetAntigravityOAuth } = antigravityOAuth;
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -514,14 +519,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   useEffect(() => {
     if (!open) {
       hasAutoSetDuplicateNameRef.current = false;
-      codexOAuth.reset();
-      claudecodeOAuth.reset();
-      antigravityOAuth.reset();
-      xaiOAuth.reset();
+      resetCodexOAuth();
+      resetClaudecodeOAuth();
+      resetAntigravityOAuth();
+      resetXaiOAuth();
       setCodexAuthJSONText('');
       setXaiSSOToken('');
     }
-  }, [open, codexOAuth.reset, claudecodeOAuth.reset, antigravityOAuth.reset, xaiOAuth.reset]);
+  }, [open, resetCodexOAuth, resetClaudecodeOAuth, resetAntigravityOAuth, resetXaiOAuth]);
 
   useEffect(() => {
     if (!open) {
@@ -743,7 +748,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const apiKeys = form.watch('credentials.apiKeys');
   const apiKeysCount = useMemo(() => (apiKeys || []).filter((k) => k.trim().length > 0).length, [apiKeys]);
-  const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannel.isPending;
+  const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannelSettings.isPending;
 
   const { data: disabledKeys = [], isFetching: isFetchingDisabledKeys } = useChannelDisabledAPIKeys(currentRow?.id || '', {
     enabled: isEdit && !!currentRow?.id && showApiKeysPanel,
@@ -1067,16 +1072,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (isEdit || isDuplicate) return;
 
     if (!isCodexType) {
-      codexOAuth.reset();
+      resetCodexOAuth();
     }
     if (selectedProvider !== 'claudecode') {
-      claudecodeOAuth.reset();
+      resetClaudecodeOAuth();
     }
     if (selectedProvider !== 'antigravity') {
-      antigravityOAuth.reset();
+      resetAntigravityOAuth();
     }
     if (selectedProvider !== 'xai_subscription') {
-      xaiOAuth.reset();
+      resetXaiOAuth();
       setXaiSSOToken('');
     }
 
@@ -1109,10 +1114,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     selectedProvider,
     authMode,
     form,
-    codexOAuth.reset,
-    claudecodeOAuth.reset,
-    antigravityOAuth.reset,
-    xaiOAuth.reset,
+    resetCodexOAuth,
+    resetClaudecodeOAuth,
+    resetAntigravityOAuth,
+    resetXaiOAuth,
     responsesTransport,
   ]);
 
@@ -1282,18 +1287,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
-        const nextSettings = mergeChannelSettingsForUpdate(settingsForSubmit, {
+        const settingsPatch = {
           passThroughUserAgent,
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
-        });
+        };
 
         const updateInput = {
           ...dataWithModels,
-          settings: nextSettings,
           ...(isOAuthChannel ? { type: currentRow.type } : {}),
         } as z.infer<typeof updateChannelInputSchema>;
+        delete updateInput.settings;
 
         const apiKey = values.credentials?.apiKey || '';
         const hasApiKey = apiKey.trim().length > 0;
@@ -1311,10 +1316,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           delete updateInput.credentials;
         }
 
-        await updateChannel.mutateAsync({
+        await updateChannelSettings.mutateAsync({
           id: currentRow.id,
           input: updateInput,
+          patch: settingsPatch,
         });
+        toast.success(t('channels.messages.updateSuccess'));
       } else {
         const proxyConfig = {
           type: proxyType as 'disabled' | 'environment' | 'url',
@@ -2363,11 +2370,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                           variant='ghost'
                                           size='sm'
                                           className='h-7 w-7 p-0'
-                                          onClick={() => {
+                                          onClick={async () => {
                                             const keys = field.value || [];
                                             if (keys.length > 0) {
-                                              navigator.clipboard.writeText(keys.join('\n'));
-                                              toast.success(t('channels.messages.credentialsCopied'));
+                                              try {
+                                                await copyTextToClipboard(keys.join('\n'));
+                                                toast.success(t('channels.messages.credentialsCopied'));
+                                              } catch {
+                                                toast.error(t('common.errors.copyFailed'));
+                                              }
                                             }
                                           }}
                                         >
@@ -2564,7 +2575,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         size='sm'
                                         variant='outline'
                                         onClick={handleSyncNow}
-                                        disabled={syncChannelModels.isPending || updateChannel.isPending}
+                                        disabled={syncChannelModels.isPending || updateChannelSettings.isPending}
                                       >
                                         <Play className={`mr-1 h-3 w-3 ${syncChannelModels.isPending ? 'animate-spin' : ''}`} />
                                         {syncChannelModels.isPending
@@ -2733,7 +2744,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -2761,7 +2772,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.retryableErrorPatterns.label')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>

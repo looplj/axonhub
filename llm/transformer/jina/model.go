@@ -30,8 +30,9 @@ type RerankDocument struct {
 }
 
 type RerankUsage struct {
-	PromptTokens int `json:"prompt_tokens"`
-	TotalTokens  int `json:"total_tokens"`
+	PromptTokens int      `json:"prompt_tokens"`
+	TotalTokens  int      `json:"total_tokens"`
+	Cost         *float64 `json:"cost,omitempty"`
 }
 
 type EmbeddingRequest struct {
@@ -57,6 +58,7 @@ type EmbeddingData struct {
 }
 
 type EmbeddingUsage struct {
-	PromptTokens int64 `json:"prompt_tokens"`
-	TotalTokens  int64 `json:"total_tokens"`
+	PromptTokens int64    `json:"prompt_tokens"`
+	TotalTokens  int64    `json:"total_tokens"`
+	Cost         *float64 `json:"cost,omitempty"`
 }

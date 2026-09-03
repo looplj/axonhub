@@ -112,14 +112,41 @@ type TransformOptions struct {
 	// ReplaceDeveloperRoleWithSystem replaces developer role with system in messages for Bailian compatibility.
 	ReplaceDeveloperRoleWithSystem bool `json:"replaceDeveloperRoleWithSystem"`
 
-	// ReasoningEffortMapping maps inbound reasoning_effort values to outbound ones for
-	// non-standard OpenAI-compatible providers. The first entry whose From matches the
-	// effort value wins; values not in the list pass through unchanged.
-	// e.g. [{"from":"xhigh","to":"max"}] converts Anthropic's internal "xhigh" (mapped
-	// from "max") back to "max" for providers that only recognize "max".
-	// Consumed by the OpenAI-shared outbound transformer. Other transformers ignore it
-	// for now. Strong-typed to mirror ModelMapping; see llm.ReasoningEffortMapping.
+	// ReasoningEffortMapping maps inbound reasoning_effort values to outbound ones
+	// for non-standard providers. The first entry whose From matches the effort value
+	// wins; values not in the list pass through unchanged.
+	// e.g. [{"from":"xhigh","to":"max"}] converts the unified "xhigh" level to "max"
+	// for providers that only recognize "max".
+	// Applied centrally by the orchestrator on the unified request before the outbound
+	// transformer runs, so it affects every outbound protocol (chat completions,
+	// responses, anthropic messages) for all clients. Strong-typed to mirror
+	// ModelMapping; see llm.ReasoningEffortMapping.
 	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoningEffortMapping,omitempty"`
+}
+
+// ModelProtocol force-specifies the outbound API protocols available for one model
+// of a channel. The channel must already have an endpoint configured for each
+// listed api_format (validated on save). When a request for the model arrives:
+// if the client's protocol is in the list, that endpoint is used directly (no
+// conversion); otherwise the first configured protocol is used and the request is
+// converted through the unified pipeline.
+type ModelProtocol struct {
+	// Model is the channel-facing model name (exact match against the request model).
+	Model string `json:"model"`
+
+	// APIFormats are the allowed outbound api_format values, in priority order.
+	APIFormats []string `json:"apiFormats"`
+
+	// Enabled controls whether this override participates in endpoint selection.
+	// A nil value is treated as enabled for backwards compatibility with entries
+	// written before the flag was introduced.
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+// IsEnabled reports whether this model protocol override is active. Missing
+// enabled values in older persisted settings intentionally default to true.
+func (m ModelProtocol) IsEnabled() bool {
+	return m.Enabled == nil || *m.Enabled
 }
 
 type ChannelSettings struct {
@@ -208,6 +235,12 @@ type ChannelSettings struct {
 	// trigger retry for this channel. When Regex is false, Pattern is matched as a
 	// case-sensitive substring of the error text.
 	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
+
+	// ModelProtocols force-specifies the outbound protocols for specific models of
+	// this channel. Each entry's apiFormats must reference api_formats the channel
+	// already has endpoints for. When set for a model, endpoint selection is
+	// restricted to those formats; otherwise all channel endpoints are eligible.
+	ModelProtocols []ModelProtocol `json:"modelProtocols,omitempty"`
 }
 
 type RetryableErrorPattern struct {

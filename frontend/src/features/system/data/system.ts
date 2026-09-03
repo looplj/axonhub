@@ -1690,6 +1690,63 @@ export function useUpdatePassThroughSettings() {
   });
 }
 
+const USAGE_COST_INJECTION_SETTINGS_QUERY = `
+  query UsageCostInjectionSettings {
+    usageCostInjectionSettings {
+      enabled
+    }
+  }
+`;
+
+const UPDATE_USAGE_COST_INJECTION_SETTINGS_MUTATION = `
+  mutation UpdateUsageCostInjectionSettings($input: UpdateUsageCostInjectionSettingsInput!) {
+    updateUsageCostInjectionSettings(input: $input)
+  }
+`;
+
+export interface UsageCostInjectionSettings {
+  enabled: boolean;
+}
+
+export interface UpdateUsageCostInjectionSettingsInput {
+  enabled: boolean;
+}
+
+export function useUsageCostInjectionSettings() {
+  const { handleError } = useErrorHandler();
+
+  return useQuery({
+    queryKey: ['usageCostInjectionSettings'],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ usageCostInjectionSettings: UsageCostInjectionSettings }>(USAGE_COST_INJECTION_SETTINGS_QUERY);
+        return data.usageCostInjectionSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateUsageCostInjectionSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateUsageCostInjectionSettingsInput) => {
+      const data = await graphqlRequest<{ updateUsageCostInjectionSettings: boolean }>(UPDATE_USAGE_COST_INJECTION_SETTINGS_MUTATION, { input });
+      return data.updateUsageCostInjectionSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['usageCostInjectionSettings'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
 const QUOTA_ENFORCEMENT_SETTINGS_QUERY = `
   query QuotaEnforcementSettings {
     quotaEnforcementSettings {

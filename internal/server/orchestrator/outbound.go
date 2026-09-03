@@ -16,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
-	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -88,6 +87,7 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 		// response.completed; for Anthropic Messages API this is message_stop.
 		if IsTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
+			ts.markPerformanceCompleted()
 		}
 	}
 
@@ -133,11 +133,7 @@ func (ts *OutboundPersistentStream) Close() error {
 
 		ts.persistFailureChunks(persistCtx)
 
-		if ts.requestExec != nil {
-			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, streamErr); err != nil {
-				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
-			}
-		}
+		ts.persistExecutionFailure(persistCtx, streamErr)
 
 		return ts.stream.Close()
 	}
@@ -154,6 +150,8 @@ func (ts *OutboundPersistentStream) Close() error {
 		if aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			ts.state.StreamCompleted = true
+			ts.markPerformanceCompleted()
+			enqueueCompletedPerformance(ts.ctx, ts.state)
 		}
 	} else {
 		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
@@ -176,11 +174,7 @@ func (ts *OutboundPersistentStream) Close() error {
 			errToReport = ErrStreamIncomplete
 		}
 
-		if ts.requestExec != nil {
-			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, errToReport); err != nil {
-				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
-			}
-		}
+		ts.persistExecutionFailure(persistCtx, errToReport)
 
 		return ts.stream.Close()
 	}
@@ -195,11 +189,7 @@ func (ts *OutboundPersistentStream) Close() error {
 		ts.persistFailureChunks(persistCtx)
 
 		errToReport := ErrStreamIncomplete
-		if ts.requestExec != nil {
-			if err := ts.RequestService.UpdateRequestExecutionStatusFromError(persistCtx, ts.requestExec.ID, errToReport); err != nil {
-				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(err))
-			}
-		}
+		ts.persistExecutionFailure(persistCtx, errToReport)
 
 		return ts.stream.Close()
 	}
@@ -219,6 +209,14 @@ func (ts *OutboundPersistentStream) Close() error {
 	}
 
 	return ts.stream.Close()
+}
+
+func (ts *OutboundPersistentStream) markPerformanceCompleted() {
+	if ts.perf == nil || ts.perf.RequestCompleted {
+		return
+	}
+
+	ts.perf.MarkSuccess()
 }
 
 func (ts *OutboundPersistentStream) logFinalizationDecision(ctx context.Context, decision string, streamErr error, ctxErr error, aggregatedCompleted bool, aggregatedErr error) {
@@ -276,6 +274,42 @@ func (ts *OutboundPersistentStream) persistFailureChunks(ctx context.Context) {
 
 	if err := ts.RequestService.SaveRequestExecutionChunks(ctx, ts.requestExec.ID, ts.responseChunks); err != nil {
 		log.Warn(ctx, "Failed to save request execution chunks after stream failure", log.Cause(err))
+	}
+}
+
+// failureLatencyMetrics captures the latency metrics collected before the stream failed,
+// so a failed execution still records its time-to-first-token and total latency.
+func (ts *OutboundPersistentStream) failureLatencyMetrics() *biz.LatencyMetrics {
+	if ts.perf == nil || ts.perf.StartTime.IsZero() {
+		return nil
+	}
+
+	endTime := ts.perf.EndTime
+	if endTime.IsZero() {
+		endTime = time.Now()
+	}
+
+	latencyMs := biz.ClampLatency(endTime.Sub(ts.perf.StartTime).Milliseconds())
+	metrics := &biz.LatencyMetrics{LatencyMs: &latencyMs}
+
+	if ts.perf.Stream && ts.perf.FirstTokenTime != nil {
+		firstTokenLatencyMs := biz.ClampLatency(ts.perf.FirstTokenTime.Sub(ts.perf.StartTime).Milliseconds())
+		metrics.FirstTokenLatencyMs = &firstTokenLatencyMs
+	}
+
+	return metrics
+}
+
+// persistExecutionFailure marks the execution failed (or canceled) with a classified
+// error and the latency metrics captured before the failure.
+func (ts *OutboundPersistentStream) persistExecutionFailure(ctx context.Context, rawErr error) {
+	if ts.requestExec == nil {
+		return
+	}
+
+	err := persistRequestExecutionFailure(ctx, ts.RequestService, ts.requestExec.ID, rawErr, ts.failureLatencyMetrics())
+	if err != nil {
+		log.Warn(ctx, "Failed to update request execution status from error", log.Cause(err))
 	}
 }
 
@@ -371,6 +405,42 @@ func selectOutboundForCandidate(candidate *ChannelModelsCandidate) transformer.O
 	return candidate.Channel.Outbound
 }
 
+// refreshCandidateAPIFormat synchronizes the candidate-level protocol with the
+// model currently being attempted. Candidates selected through the model
+// association path carry a per-model format table; the fallback computation is
+// kept for candidates constructed by older callers and tests.
+func (p *PersistentOutboundTransformer) refreshCandidateAPIFormat(
+	ctx context.Context,
+	candidate *ChannelModelsCandidate,
+	modelIndex int,
+	req *llm.Request,
+) {
+	if candidate == nil || candidate.Channel == nil || modelIndex < 0 || modelIndex >= len(candidate.Models) {
+		return
+	}
+
+	if len(candidate.modelAPIFormats) == len(candidate.Models) {
+		candidate.APIFormat = candidate.modelAPIFormats[modelIndex]
+		return
+	}
+
+	// Preserve an explicitly populated format when no per-model table is
+	// available. This covers legacy/specified selectors that already selected
+	// their endpoint before entering the persistent transformer.
+	if candidate.APIFormat != "" || req == nil {
+		return
+	}
+
+	requestModel := req.Model
+	if p != nil && p.state != nil && p.state.OriginalModel != "" {
+		requestModel = p.state.OriginalModel
+	}
+
+	entry := candidate.Models[modelIndex]
+	endpoints := applyForcedAPIFormats(ctx, candidate.Channel, []biz.ChannelModelEntry{entry}, requestModel, candidate.Channel.ResolveEndpoints())
+	candidate.APIFormat = SelectAPIFormat(endpoints, req)
+}
+
 // APIFormat returns the API format of the transformer.
 func (p *PersistentOutboundTransformer) APIFormat() llm.APIFormat {
 	return p.wrapped.APIFormat()
@@ -396,6 +466,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	p.state.CurrentCandidate = candidate
 	p.state.StreamCompleted = false
+	p.refreshCandidateAPIFormat(ctx, candidate, p.state.CurrentModelIndex, llmRequest)
 
 	p.wrapped = selectOutboundForCandidate(candidate)
 
@@ -415,6 +486,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
+	llmRequest = applyReasoningEffortMapping(llmRequest, candidate.Channel.Settings)
 	for _, middleware := range p.outboundLlmRequestMiddlewares {
 		transformedRequest, err := middleware.OnOutboundLlmRequest(ctx, llmRequest, outboundFormat)
 		if err != nil {
@@ -440,8 +512,6 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 	}
 
-	isClaudeCodeClient := cc.IsClaudeCodeRequest(llmRequest)
-	originalReasoningEffort := llmRequest.ReasoningEffort
 	httpRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, err
@@ -451,13 +521,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		outboundFormat = llm.APIFormat(httpRequest.APIFormat)
 	}
 
-	return applyClaudeCodeOpenAIReasoningEffortMapping(
-		httpRequest,
-		candidate.Channel.Settings,
-		outboundFormat,
-		isClaudeCodeClient,
-		originalReasoningEffort,
-	)
+	return httpRequest, nil
 }
 
 func filterResponseCustomToolMessagesForNonResponsesOutbound(
@@ -594,6 +658,7 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
+	p.refreshCandidateAPIFormat(ctx, candidate, p.state.CurrentModelIndex, p.state.LlmRequest)
 	p.wrapped = selectOutboundForCandidate(candidate)
 
 	if log.DebugEnabled(ctx) {
@@ -688,6 +753,7 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	if p.state.CurrentModelIndex+1 < len(candidate.Models) {
 		// Increase the model index to the next model.
 		p.state.CurrentModelIndex++
+		p.refreshCandidateAPIFormat(ctx, candidate, p.state.CurrentModelIndex, p.state.LlmRequest)
 		p.wrapped = selectOutboundForCandidate(candidate)
 
 		if log.DebugEnabled(ctx) {
@@ -756,4 +822,19 @@ func (p *PersistentOutboundTransformer) CustomizeExecutor(executor pipeline.Exec
 	}
 
 	return customizedExecutor
+}
+
+func finalizeTransportRequest(p *PersistentOutboundTransformer) pipeline.Middleware {
+	return pipeline.OnRawRequest("finalize_transport_request", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+		if p == nil || p.wrapped == nil {
+			return request, nil
+		}
+
+		finalizer, ok := p.wrapped.(transformer.TransportRequestFinalizer)
+		if !ok {
+			return request, nil
+		}
+
+		return finalizer.FinalizeTransportRequest(request), nil
+	})
 }

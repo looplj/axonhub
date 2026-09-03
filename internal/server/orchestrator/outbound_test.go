@@ -1,11 +1,14 @@
+//nolint:exhaustruct_v5 // Test fixtures intentionally set only fields relevant to each scenario.
 package orchestrator
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -37,6 +40,19 @@ type mockTransformer struct {
 	includeEffort      bool
 }
 
+type mockTransportFinalizer struct {
+	*mockTransformer
+
+	marker string
+}
+
+func (m *mockTransportFinalizer) FinalizeTransportRequest(request *httpclient.Request) *httpclient.Request {
+	cloned := *request
+	cloned.Headers = request.Headers.Clone()
+	cloned.Headers.Set("X-Test-Transport", m.marker)
+	return &cloned
+}
+
 func (m *mockTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
 	payload := map[string]any{
 		"model":       req.Model,
@@ -61,7 +77,7 @@ func (m *mockTransformer) TransformRequest(ctx context.Context, req *llm.Request
 	}, nil
 }
 
-func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatibility(t *testing.T) {
+func TestPersistentOutboundTransformer_TransformRequest_ReasoningEffortMapping(t *testing.T) {
 	tests := []struct {
 		name           string
 		channelType    entchannel.Type
@@ -84,10 +100,10 @@ func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatib
 			wantSecondRole: "user",
 		},
 		{
-			name:           "non Claude Code DeepSeek keeps transformer behavior",
+			name:           "non Claude Code client gets the channel mapping too",
 			channelType:    entchannel.TypeDeepseek,
 			userAgent:      "codex_cli_rs/1.0",
-			wantEffort:     "xhigh",
+			wantEffort:     "max",
 			wantSecondRole: "system",
 		},
 	}
@@ -420,6 +436,51 @@ func TestPersistentOutboundTransformer_PrepareForRetry_UsesCandidateAPIFormatOut
 	require.Same(t, embeddingOutbound, processor.wrapped)
 }
 
+func TestPersistentOutboundTransformer_PrepareForRetry_RefreshesModelAPIFormat(t *testing.T) {
+	ctx := context.Background()
+	ch := &biz.Channel{Channel: &ent.Channel{
+		ID:   1,
+		Name: "multi-model",
+		Endpoints: []objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+			{APIFormat: llm.APIFormatOpenAIResponse.String()},
+			{APIFormat: llm.APIFormatAnthropicMessage.String()},
+		},
+		Settings: &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+			{Model: "model-a", APIFormats: []string{llm.APIFormatAnthropicMessage.String()}},
+			{Model: "model-b", APIFormats: []string{llm.APIFormatOpenAIResponse.String()}},
+		}},
+	}}
+	req := &llm.Request{
+		Model:       "requested-model",
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIChatCompletion,
+	}
+	candidate := &ChannelModelsCandidate{
+		Channel: ch,
+		Models: []biz.ChannelModelEntry{
+			{RequestModel: "model-a", ActualModel: "model-a"},
+			{RequestModel: "model-b", ActualModel: "model-b"},
+		},
+	}
+	populateAPIFormat(ctx, []*ChannelModelsCandidate{candidate}, req)
+
+	processor := &PersistentOutboundTransformer{
+		state: &PersistenceState{
+			CurrentCandidate:  candidate,
+			CurrentModelIndex: 0,
+			OriginalModel:     req.Model,
+			LlmRequest:        req,
+			RequestExec:       &ent.RequestExecution{ID: 1},
+		},
+	}
+
+	require.Equal(t, llm.APIFormatAnthropicMessage.String(), candidate.APIFormat)
+	require.NoError(t, processor.PrepareForRetry(ctx))
+	require.Equal(t, 1, processor.state.CurrentModelIndex)
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), candidate.APIFormat)
+}
+
 func TestPersistentOutboundTransformer_NextChannel_UsesCandidateAPIFormatOutbound(t *testing.T) {
 	ctx := context.Background()
 
@@ -466,6 +527,60 @@ func TestPersistentOutboundTransformer_NextChannel_UsesCandidateAPIFormatOutboun
 	require.Equal(t, 1, processor.state.CurrentCandidateIndex)
 	require.Same(t, embeddingChannel, processor.state.CurrentCandidate.Channel)
 	require.Same(t, embeddingOutbound, processor.wrapped)
+}
+
+func TestFinalizeTransportRequestUsesSwitchedCandidate(t *testing.T) {
+	firstOutbound := new(mockTransportFinalizer)
+	firstOutbound.mockTransformer = new(mockTransformer)
+	firstOutbound.marker = "websocket"
+	secondOutbound := new(mockTransportFinalizer)
+	secondOutbound.mockTransformer = new(mockTransformer)
+	secondOutbound.marker = "http"
+
+	firstEntChannel := new(ent.Channel)
+	firstEntChannel.ID = 1
+	firstEntChannel.Name = "websocket"
+	firstChannel := new(biz.Channel)
+	firstChannel.Channel = firstEntChannel
+	firstChannel.Outbound = firstOutbound
+	var firstModel biz.ChannelModelEntry
+	firstModel.RequestModel = "gpt-5"
+	firstModel.ActualModel = "gpt-5"
+	firstCandidate := new(ChannelModelsCandidate)
+	firstCandidate.Channel = firstChannel
+	firstCandidate.Models = []biz.ChannelModelEntry{firstModel}
+
+	secondEntChannel := new(ent.Channel)
+	secondEntChannel.ID = 2
+	secondEntChannel.Name = "http"
+	secondChannel := new(biz.Channel)
+	secondChannel.Channel = secondEntChannel
+	secondChannel.Outbound = secondOutbound
+	var secondModel biz.ChannelModelEntry
+	secondModel.RequestModel = "gpt-5"
+	secondModel.ActualModel = "gpt-5"
+	secondCandidate := new(ChannelModelsCandidate)
+	secondCandidate.Channel = secondChannel
+	secondCandidate.Models = []biz.ChannelModelEntry{secondModel}
+
+	state := new(PersistenceState)
+	state.CurrentCandidateIndex = 0
+	state.ChannelModelsCandidates = []*ChannelModelsCandidate{firstCandidate, secondCandidate}
+	processor := new(PersistentOutboundTransformer)
+	processor.wrapped = firstOutbound
+	processor.state = state
+	middleware := finalizeTransportRequest(processor)
+	request := new(httpclient.Request)
+	request.Headers = make(http.Header)
+
+	first, err := middleware.OnOutboundRawRequest(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, "websocket", first.Headers.Get("X-Test-Transport"))
+
+	require.NoError(t, processor.NextChannel(context.Background()))
+	second, err := middleware.OnOutboundRawRequest(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, "http", second.Headers.Get("X-Test-Transport"))
 }
 
 func TestSelectOutboundForCandidate(t *testing.T) {
@@ -1361,4 +1476,70 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithMultipleModels(t *testin
 		// Should skip retry even though there are more models
 		require.False(t, outbound.CanRetry(httpErr))
 	})
+}
+
+// A transport failure after content was delivered must keep the latency metrics that
+// were already captured and persist a classified error, so operators can tell "stalled
+// before the first byte" from "cut after N tokens" and the status code is not lost.
+func TestOutboundPersistentStream_Close_TransportErrorKeepsMetricsAndClassifiesError(t *testing.T) {
+	ctx := authz.WithTestBypass(context.Background())
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx = ent.NewContext(ctx, client)
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	_, requestService, _, usageLogService := setupTestServices(t, client)
+
+	req, err := client.Request.Create().
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-4.1").
+		SetStatus(request.StatusPending).
+		SetRequestBody([]byte(`{"stream":true}`)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	exec, err := client.RequestExecution.Create().
+		SetRequestID(req.ID).
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-4.1").
+		SetRequestBody([]byte(`{"stream":true}`)).
+		SetFormat("openai/chat_completions").
+		SetStatus(requestexecution.StatusPending).
+		SetStream(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	stream := &sliceEventStream{
+		events: []*httpclient.StreamEvent{
+			{Data: []byte(`{"id":"1","choices":[{"delta":{"content":"He"}}]}`)},
+		},
+		err: fmt.Errorf("read body: %w", io.ErrUnexpectedEOF),
+	}
+
+	start := time.Now().Add(-1500 * time.Millisecond)
+	firstToken := start.Add(400 * time.Millisecond)
+	perf := &biz.PerformanceRecord{StartTime: start, FirstTokenTime: &firstToken, Stream: true}
+	transformer := &mockTransformer{apiFormat: llm.APIFormatOpenAIResponse}
+
+	persistentStream := NewOutboundPersistentStream(ctx, stream, req, exec, requestService, usageLogService, transformer, perf, &PersistenceState{})
+	for persistentStream.Next() {
+		_ = persistentStream.Current()
+	}
+	require.NoError(t, persistentStream.Close())
+
+	dbExec, err := client.RequestExecution.Get(ctx, exec.ID)
+	require.NoError(t, err)
+	require.Equal(t, requestexecution.StatusFailed, dbExec.Status)
+	require.Contains(t, dbExec.ErrorMessage, "Upstream provider closed the connection before the response completed")
+	require.Contains(t, dbExec.ErrorMessage, "unexpected EOF")
+	require.NotNil(t, dbExec.ResponseStatusCode)
+	require.Equal(t, http.StatusBadGateway, *dbExec.ResponseStatusCode)
+	require.NotNil(t, dbExec.MetricsFirstTokenLatencyMs)
+	require.Equal(t, int64(400), *dbExec.MetricsFirstTokenLatencyMs)
+	require.NotNil(t, dbExec.MetricsLatencyMs)
+	require.GreaterOrEqual(t, *dbExec.MetricsLatencyMs, int64(1500))
 }

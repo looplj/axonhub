@@ -36,6 +36,10 @@ type Usage struct {
 
 	// CachedTokens is the number of tokens that were cached for Moonshot.
 	CachedTokens int64 `json:"cached_tokens,omitempty"`
+
+	// Cost is the request cost calculated by AxonHub from channel model prices.
+	// Omitted when no matching price is configured.
+	Cost *float64 `json:"cost,omitempty"`
 }
 
 func (u *Usage) ToLLMUsage() *llm.Usage {
@@ -97,6 +101,7 @@ func UsageFromLLM(u *llm.Usage) *Usage {
 		PromptTokens:     u.PromptTokens,
 		CompletionTokens: u.CompletionTokens,
 		TotalTokens:      u.TotalTokens,
+		Cost:             u.Cost,
 	}
 
 	if u.PromptTokensDetails != nil {

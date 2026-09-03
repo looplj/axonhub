@@ -100,7 +100,7 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
-	oaiReq := openai.RequestFromLLM(llmReq, openai.ReasoningFieldContent)
+	oaiReq := openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldContent)
 
 	if oaiReq.ResponseFormat != nil && oaiReq.ResponseFormat.Type == "json_schema" {
 		oaiReq.ResponseFormat.Type = "json_object"

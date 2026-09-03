@@ -70,6 +70,18 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 	return nil, nil, ""
 }
 
+// InjectUsageCost writes AxonHub-calculated cost onto usage when a matching
+// channel model price is cached. usage is left unchanged when it is nil.
+// When no matching price is available, usage.Cost is set to nil.
+func (s *UsageLogService) InjectUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage) {
+	if usage == nil {
+		return
+	}
+
+	_, totalCost, _ := s.computeUsageCost(ctx, channelID, modelID, usage)
+	usage.Cost = totalCost
+}
+
 // NewUsageLogService creates a new UsageLogService.
 func NewUsageLogService(ent *ent.Client, systemService *SystemService, channelService *ChannelService) *UsageLogService {
 	return &UsageLogService{

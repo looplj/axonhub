@@ -40,7 +40,21 @@ type CompletionChoice struct {
 }
 
 type CompletionUsage struct {
-	PromptTokens     int64 `json:"prompt_tokens"`
-	CompletionTokens int64 `json:"completion_tokens"`
-	TotalTokens      int64 `json:"total_tokens"`
+	PromptTokens     int64    `json:"prompt_tokens"`
+	CompletionTokens int64    `json:"completion_tokens"`
+	TotalTokens      int64    `json:"total_tokens"`
+	Cost             *float64 `json:"cost,omitempty"`
+}
+
+func completionUsageFromLLM(u *llm.Usage) CompletionUsage {
+	if u == nil {
+		return CompletionUsage{}
+	}
+
+	return CompletionUsage{
+		PromptTokens:     u.PromptTokens,
+		CompletionTokens: u.CompletionTokens,
+		TotalTokens:      u.TotalTokens,
+		Cost:             u.Cost,
+	}
 }

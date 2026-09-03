@@ -1,3 +1,4 @@
+//nolint:exhaustruct_v5 // Test fixtures intentionally set only fields relevant to each scenario.
 package orchestrator
 
 import (
@@ -5,11 +6,10 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
 func TestApplyTransformOptions_ReplaceDeveloperRoleWithSystem(t *testing.T) {
@@ -95,7 +95,7 @@ func TestApplyTransformOptions_ForceArrayInputs(t *testing.T) {
 	require.Equal(t, lo.ToPtr(true), result.TransformOptions.ArrayInputs)
 }
 
-func TestApplyClaudeCodeOpenAIReasoningEffortMapping(t *testing.T) {
+func TestApplyReasoningEffortMapping(t *testing.T) {
 	settings := &objects.ChannelSettings{TransformOptions: objects.TransformOptions{
 		ReasoningEffortMapping: []llm.ReasoningEffortMapping{
 			{From: "xhigh", To: "max"},
@@ -103,132 +103,100 @@ func TestApplyClaudeCodeOpenAIReasoningEffortMapping(t *testing.T) {
 		},
 	}}
 
-	tests := []struct {
-		name             string
-		format           llm.APIFormat
-		claudeCodeClient bool
-		originalEffort   string
-		body             string
-		path             string
-		expectedEffort   string
-		expectClone      bool
-	}{
-		{
-			name:             "maps unmapped Chat Completions body",
-			format:           llm.APIFormatOpenAIChatCompletion,
-			claudeCodeClient: true,
-			originalEffort:   "xhigh",
-			body:             `{"model":"test","reasoning_effort":"xhigh"}`,
-			path:             "reasoning_effort",
-			expectedEffort:   "max",
-			expectClone:      true,
-		},
-		{
-			name:             "maps unmapped Responses body",
-			format:           llm.APIFormatOpenAIResponse,
-			claudeCodeClient: true,
-			originalEffort:   "xhigh",
-			body:             `{"model":"test","reasoning":{"effort":"xhigh"}}`,
-			path:             "reasoning.effort",
-			expectedEffort:   "max",
-			expectClone:      true,
-		},
-		{
-			name:             "maps unmapped compact Responses body",
-			format:           llm.APIFormatOpenAIResponseCompact,
-			claudeCodeClient: true,
-			originalEffort:   "xhigh",
-			body:             `{"model":"test","reasoning":{"effort":"xhigh"}}`,
-			path:             "reasoning.effort",
-			expectedEffort:   "max",
-			expectClone:      true,
-		},
-		{
-			name:             "does not apply a second mapping",
-			format:           llm.APIFormatOpenAIChatCompletion,
-			claudeCodeClient: true,
-			originalEffort:   "xhigh",
-			body:             `{"model":"test","reasoning_effort":"max"}`,
-			path:             "reasoning_effort",
-			expectedEffort:   "max",
-		},
-		{
-			name:             "does not restore provider-cleared effort",
-			format:           llm.APIFormatOpenAIChatCompletion,
-			claudeCodeClient: true,
-			originalEffort:   "xhigh",
-			body:             `{"model":"test"}`,
-			path:             "reasoning_effort",
-		},
-		{
-			name:           "non Claude Code client keeps original behavior",
-			format:         llm.APIFormatOpenAIChatCompletion,
-			originalEffort: "xhigh",
-			body:           `{"model":"test","reasoning_effort":"xhigh"}`,
-			path:           "reasoning_effort",
-			expectedEffort: "xhigh",
-		},
-		{
-			name:             "Anthropic outbound keeps original behavior",
-			format:           llm.APIFormatAnthropicMessage,
-			claudeCodeClient: true,
-			originalEffort:   "xhigh",
-			body:             `{"model":"test","output_config":{"effort":"max"}}`,
-			path:             "output_config.effort",
-			expectedEffort:   "max",
-		},
-	}
+	t.Run("maps the unified request effort", func(t *testing.T) {
+		req := &llm.Request{Model: "test-model", ReasoningEffort: "xhigh"}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			httpRequest := &httpclient.Request{Body: []byte(tt.body)}
+		result := applyReasoningEffortMapping(req, settings)
 
-			result, err := applyClaudeCodeOpenAIReasoningEffortMapping(
-				httpRequest,
-				settings,
-				tt.format,
-				tt.claudeCodeClient,
-				tt.originalEffort,
-			)
-			require.NoError(t, err)
-
-			if tt.expectClone {
-				require.NotSame(t, httpRequest, result)
-			} else {
-				require.Same(t, httpRequest, result)
-			}
-			require.Equal(t, tt.expectedEffort, gjson.GetBytes(result.Body, tt.path).String())
-		})
-	}
-
-	t.Run("empty mapping keeps original behavior", func(t *testing.T) {
-		httpRequest := &httpclient.Request{Body: []byte(`{"model":"test","reasoning_effort":"xhigh"}`)}
-		result, err := applyClaudeCodeOpenAIReasoningEffortMapping(
-			httpRequest,
-			&objects.ChannelSettings{},
-			llm.APIFormatOpenAIChatCompletion,
-			true,
-			"xhigh",
-		)
-		require.NoError(t, err)
-		require.Same(t, httpRequest, result)
-		require.Equal(t, "xhigh", gjson.GetBytes(result.Body, "reasoning_effort").String())
+		require.NotSame(t, req, result)
+		require.Equal(t, "max", result.ReasoningEffort)
 	})
 
-	t.Run("mapped effort updates the stored JSON body", func(t *testing.T) {
-		body := []byte(`{"model":"test","reasoning_effort":"xhigh"}`)
-		httpRequest := &httpclient.Request{Body: body, JSONBody: body}
+	t.Run("first matching entry wins", func(t *testing.T) {
+		req := &llm.Request{Model: "test-model", ReasoningEffort: "max"}
 
-		result, err := applyClaudeCodeOpenAIReasoningEffortMapping(
-			httpRequest,
-			settings,
-			llm.APIFormatOpenAIChatCompletion,
-			true,
-			"xhigh",
-		)
-		require.NoError(t, err)
-		require.Equal(t, "max", gjson.GetBytes(result.Body, "reasoning_effort").String())
-		require.Equal(t, "max", gjson.GetBytes(result.JSONBody, "reasoning_effort").String())
+		result := applyReasoningEffortMapping(req, settings)
+
+		require.Equal(t, "high", result.ReasoningEffort)
+	})
+
+	t.Run("unmapped effort keeps the same request", func(t *testing.T) {
+		req := &llm.Request{Model: "test-model", ReasoningEffort: "low"}
+
+		result := applyReasoningEffortMapping(req, settings)
+
+		require.Same(t, req, result)
+	})
+
+	t.Run("empty effort keeps the same request", func(t *testing.T) {
+		req := &llm.Request{Model: "test-model"}
+
+		result := applyReasoningEffortMapping(req, settings)
+
+		require.Same(t, req, result)
+	})
+
+	t.Run("empty mapping keeps the original request", func(t *testing.T) {
+		req := &llm.Request{Model: "test-model", ReasoningEffort: "xhigh"}
+
+		result := applyReasoningEffortMapping(req, &objects.ChannelSettings{})
+
+		require.Same(t, req, result)
+	})
+
+	t.Run("nil settings keeps the original request", func(t *testing.T) {
+		req := &llm.Request{Model: "test-model", ReasoningEffort: "xhigh"}
+
+		result := applyReasoningEffortMapping(req, nil)
+
+		require.Same(t, req, result)
+	})
+
+	t.Run("syncs the anthropic output_config effort metadata", func(t *testing.T) {
+		req := &llm.Request{
+			Model:           "test-model",
+			ReasoningEffort: "max",
+			TransformerMetadata: map[string]any{
+				anthropic.TransformerMetadataKeyOutputConfigEffort: "max",
+				anthropic.TransformerMetadataKeyThinkingType:       "adaptive",
+			},
+		}
+
+		result := applyReasoningEffortMapping(req, settings)
+
+		require.Equal(t, "high", result.ReasoningEffort)
+		// The outbound transformer rebuilds output_config.effort from this marker;
+		// keeping the original "max" would bypass the mapping entirely.
+		require.Equal(t, "high", result.TransformerMetadata[anthropic.TransformerMetadataKeyOutputConfigEffort])
+		require.Equal(t, "adaptive", result.TransformerMetadata[anthropic.TransformerMetadataKeyThinkingType])
+	})
+
+	t.Run("mapping does not mutate the original request metadata", func(t *testing.T) {
+		metadata := map[string]any{
+			anthropic.TransformerMetadataKeyOutputConfigEffort: "max",
+		}
+		req := &llm.Request{
+			Model:               "test-model",
+			ReasoningEffort:     "max",
+			TransformerMetadata: metadata,
+		}
+
+		result := applyReasoningEffortMapping(req, settings)
+
+		require.Equal(t, "high", result.ReasoningEffort)
+		require.Equal(t, "high", result.TransformerMetadata[anthropic.TransformerMetadataKeyOutputConfigEffort])
+		// The shallow request copy shares the map with the original request; the
+		// sync must clone before writing.
+		require.Equal(t, "max", req.TransformerMetadata[anthropic.TransformerMetadataKeyOutputConfigEffort])
+	})
+
+	t.Run("no anthropic metadata marker keeps metadata untouched", func(t *testing.T) {
+		req := &llm.Request{Model: "test-model", ReasoningEffort: "xhigh"}
+
+		result := applyReasoningEffortMapping(req, settings)
+
+		require.Equal(t, "max", result.ReasoningEffort)
+		require.Nil(t, result.TransformerMetadata)
 	})
 }
 

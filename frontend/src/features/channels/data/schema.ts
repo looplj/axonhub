@@ -4,6 +4,7 @@ import { pageInfoSchema } from '@/gql/pagination';
 export const apiFormatSchema = z.enum([
   'openai/chat_completions',
   'openai/responses',
+  'openai/responses-ws',
   'openai/image_generation',
   'openai/image_edit',
   'openai/image_variation',
@@ -278,6 +279,19 @@ export const retryableErrorPatternSchema = z.object({
 });
 export type RetryableErrorPattern = z.infer<typeof retryableErrorPatternSchema>;
 
+// Per-model outbound protocol override: forces the api formats a model may use.
+// Every listed api_format must already be configured as a channel endpoint.
+export const modelProtocolSchema = z.object({
+  model: z.string().min(1),
+  apiFormats: z.array(z.string().min(1)).min(1),
+  // Older channels do not persist this flag; those overrides remain active.
+  enabled: z
+    .boolean()
+    .nullish()
+    .transform((value) => value ?? true),
+});
+export type ModelProtocol = z.infer<typeof modelProtocolSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -295,6 +309,7 @@ export const channelSettingsSchema = z.object({
   rateLimit: channelRateLimitSchema.optional().nullable(),
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
+  modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
 });
 
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;

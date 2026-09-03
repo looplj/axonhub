@@ -208,6 +208,70 @@ https://custom-gateway.example.com/api##
 # 实际请求: /api（不会加版本号和端点路径）
 ```
 
+## 多协议端点与模型协议覆盖
+
+一个渠道可以同时配置多个出站端点（Endpoint），覆盖 chat、responses、messages 等协议，使不同客户端以原生协议直连。
+
+### 端点配置
+
+在渠道的 **端点** 对话框中管理：
+
+- 每个 endpoint 由 `api_format`、可选 `base_url`（留空继承渠道 Base URL）和可选 `path`（替换该协议的默认路径，配置后跳过版本号追加）组成。
+- 各渠道类型自带默认端点（如智谱提供 `openai/chat_completions`、`zhipu_anthropic` 提供 `anthropic/messages`），自定义端点可补充其他格式或覆盖同名格式。
+
+### 模型协议覆盖（ModelProtocols）
+
+在 **模型协议覆盖** 区块为单个模型强制可用的出站协议：
+
+```json
+{ "model": "glm-5.3-flash", "apiFormats": ["openai/responses", "openai/chat_completions"], "enabled": true }
+```
+
+- `apiFormats` 按配置顺序表达优先级；客户端入站协议在列表中时优先直连，否则使用列表中的第一个协议并经统一转换管线转换。
+- 启用的覆盖只能引用渠道已具备的 `api_format`（默认端点或自定义端点），保存时校验；模型被移出渠道支持列表时自动清理对应覆盖。
+- 端点与协议覆盖在同一次保存中原子提交。
+
+**示例**（GLM Coding Plan 渠道，三个端点 + 覆盖）：
+
+| endpoint | api_format | base_url |
+|---|---|---|
+| 1 | `openai/chat_completions` | `https://open.bigmodel.cn/api/coding/paas/v4` |
+| 2 | `openai/responses` | `https://open.bigmodel.cn/api/v1` |
+| 3 | `anthropic/messages` | 继承渠道 Base URL（`https://open.bigmodel.cn/api/anthropic`） |
+
+| 客户端 | 入站协议 | 选中出站协议 | 是否转换 |
+|---|---|---|---|
+| Claude Code | `anthropic/messages` | `anthropic/messages` | 否 |
+| Codex | `openai/responses` | `openai/responses` | 否 |
+| OpenAI SDK | `openai/chat_completions` | `openai/chat_completions` | 否 |
+| Codex（覆盖仅含 chat 时） | `openai/responses` | `openai/chat_completions` | 是 |
+
+### Provider 家族路由
+
+自定义 chat 端点按渠道家族选择原生 transformer，而非通用 OpenAI transformer（通用 transformer 按 `/v1` 约定拼接 URL，对非 `/v1` 上游会产生错误地址）：
+
+| 渠道类型 | Transformer | URL 版本 |
+|---|---|---|
+| zhipu / zai（含 `*_anthropic`） | zai | v4 |
+| xiaomi（含 `xiaomi_anthropic`） | zai | v1 |
+| doubao / volcengine（含 `*_anthropic`） | doubao | v3 |
+
+家族 transformer 同时应用 provider 方言处理：剥离 `metadata`、按 6–128 字符约束裁剪 `user_id`、将 `reasoning_effort` 转换为 `thinking.type`。
+
+## 思考等级（Reasoning Effort）
+
+统一思考等级取值：`none`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max`。
+
+### 渠道级映射（ReasoningEffortMapping）
+
+在渠道 **转换选项** 中配置 `{from, to}` 列表，第一个命中的 `from` 生效。映射在 outbound 转换前统一应用，对所有客户端与所有出站协议（chat / responses / messages）生效，并同步覆盖 Anthropic 元数据中的原生 effort。
+
+### 协议转换规则
+
+- Anthropic messages：优先保留客户端原生表达（`adaptive` / `budget_tokens` 原样回环）；显式 effort 原样透传（含 `max`、`xhigh`）；`minimal` 归一为 `low`（唯一自动互转）。
+- OpenAI chat / responses：`reasoning_effort` / `reasoning.effort` 原样透传。
+- 上游不支持某等级时，原始报错直接透传给客户端；不兼容等级可通过渠道映射兜底。
+
 ## 常见问题
 
 ### Q: 测试连接失败怎么办？

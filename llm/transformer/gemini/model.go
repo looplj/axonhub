@@ -465,6 +465,10 @@ type UsageMetadata struct {
 
 	// Output only. A detailed breakdown of the token count for each modality in the prompt.
 	PromptTokensDetails []*ModalityTokenCount `json:"promptTokensDetails,omitempty"`
+
+	// Cost is the request cost calculated by AxonHub from channel model prices.
+	// This is an AxonHub extension; official Gemini responses do not include it.
+	Cost *float64 `json:"cost,omitempty"`
 }
 
 type ModalityTokenCount struct {

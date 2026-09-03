@@ -10,10 +10,12 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestOutboundTransformer_TransformRequest(t *testing.T) {
@@ -188,6 +190,53 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformRequest_PromptCacheKeyFallback(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://api.openai.com/v1", "test-api-key")
+	require.NoError(t, err)
+
+	request := &llm.Request{
+		Model: "gpt-4",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	}
+
+	t.Run("uses session ID when key is absent", func(t *testing.T) {
+		ctx := shared.WithSessionID(t.Context(), "session-123")
+		httpReq, err := tr.TransformRequest(ctx, request)
+		require.NoError(t, err)
+
+		var payload Request
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		require.NotNil(t, payload.PromptCacheKey)
+		assert.Equal(t, "session-123", *payload.PromptCacheKey)
+	})
+
+	t.Run("keeps explicit key", func(t *testing.T) {
+		explicit := "explicit-key"
+		explicitRequest := *request
+		explicitRequest.PromptCacheKey = &explicit
+
+		ctx := shared.WithSessionID(t.Context(), "session-123")
+		httpReq, err := tr.TransformRequest(ctx, &explicitRequest)
+		require.NoError(t, err)
+
+		var payload Request
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		require.NotNil(t, payload.PromptCacheKey)
+		assert.Equal(t, explicit, *payload.PromptCacheKey)
+	})
+
+	t.Run("does not invent key without session", func(t *testing.T) {
+		httpReq, err := tr.TransformRequest(t.Context(), request)
+		require.NoError(t, err)
+
+		var payload Request
+		require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+		assert.Nil(t, payload.PromptCacheKey)
+	})
 }
 
 func TestOutboundTransformer_TransformRequest_StripsUnsupportedToolCallExtraContentForOpenAI(t *testing.T) {

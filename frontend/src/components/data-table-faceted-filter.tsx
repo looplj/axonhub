@@ -19,6 +19,12 @@ interface DataTableFacetedFilterProps<TData, TValue> {
   }[];
   singleSelect?: boolean;
   footer?: React.ReactNode;
+  searchValue?: string;
+  onSearchValueChange?: (value: string) => void;
+  isLoading?: boolean;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void | Promise<unknown>;
 }
 
 /** Renders the searchable faceted filter backed by a TanStack Table column. */
@@ -28,6 +34,12 @@ export function DataTableFacetedFilter<TData, TValue>({
   options = [],
   singleSelect = false,
   footer,
+  searchValue,
+  onSearchValueChange,
+  isLoading = false,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
 }: DataTableFacetedFilterProps<TData, TValue>) {
   const { t } = useTranslation();
 
@@ -36,7 +48,11 @@ export function DataTableFacetedFilter<TData, TValue>({
   const selectedValues = singleSelect ? new Set(filterValue ? [filterValue as string] : []) : new Set((filterValue || []) as string[]);
 
   return (
-    <Popover>
+    <Popover
+      onOpenChange={(open) => {
+        if (!open) onSearchValueChange?.('');
+      }}
+    >
       <PopoverTrigger asChild>
         <Button variant='outline' size='sm' className='h-8 border-dashed'>
           <PlusCircledIcon className='h-4 w-4' />
@@ -67,49 +83,60 @@ export function DataTableFacetedFilter<TData, TValue>({
         </Button>
       </PopoverTrigger>
       <PopoverContent className='w-[200px] p-0' align='start'>
-        <Command>
-          <CommandInput placeholder={title} />
-          <CommandList>
-            <CommandEmpty>{t('common.noResultsFound')}</CommandEmpty>
-            <CommandGroup>
-              {options?.map((option) => {
-                const isSelected = selectedValues.has(option.value);
-                return (
-                  <CommandItem
-                    key={option.value}
-                    onSelect={() => {
-                      if (singleSelect) {
-                        // Single select mode: set value directly or clear if already selected
-                        column?.setFilterValue(isSelected ? undefined : option.value);
-                      } else {
-                        // Multi select mode: toggle selection
-                        if (isSelected) {
-                          selectedValues.delete(option.value);
+        <Command shouldFilter={onSearchValueChange ? false : undefined}>
+          <CommandInput
+            placeholder={title}
+            value={onSearchValueChange ? (searchValue ?? '') : undefined}
+            onValueChange={onSearchValueChange}
+          />
+          <CommandList hasMore={hasMore} isLoadingMore={isLoadingMore} onLoadMore={onLoadMore}>
+            {!onSearchValueChange && <CommandEmpty>{t('common.noResultsFound')}</CommandEmpty>}
+            {onSearchValueChange && options.length === 0 ? (
+              <div className='py-6 text-center text-sm'>{isLoading ? t('common.loading') : t('common.noResultsFound')}</div>
+            ) : (
+              <CommandGroup>
+                {options?.map((option) => {
+                  const isSelected = selectedValues.has(option.value);
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      onSelect={() => {
+                        if (singleSelect) {
+                          // Single select mode: set value directly or clear if already selected
+                          column?.setFilterValue(isSelected ? undefined : option.value);
                         } else {
-                          selectedValues.add(option.value);
+                          // Multi select mode: toggle selection
+                          if (isSelected) {
+                            selectedValues.delete(option.value);
+                          } else {
+                            selectedValues.add(option.value);
+                          }
+                          const filterValues = Array.from(selectedValues);
+                          column?.setFilterValue(filterValues?.length ? filterValues : undefined);
                         }
-                        const filterValues = Array.from(selectedValues);
-                        column?.setFilterValue(filterValues?.length ? filterValues : undefined);
-                      }
-                    }}
-                  >
-                    <div
-                      className={cn(
-                        'border-primary flex h-4 w-4 items-center justify-center rounded-sm border',
-                        isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
-                      )}
+                      }}
                     >
-                      <CheckIcon className={cn('h-4 w-4')} />
-                    </div>
-                    {option.icon && <option.icon className='text-muted-foreground h-4 w-4' />}
-                    <span>{option.label}</span>
-                    {facets?.has(option.value) && (
-                      <span className='ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs'>{facets.get(option.value)}</span>
-                    )}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
+                      <div
+                        className={cn(
+                          'border-primary flex h-4 w-4 items-center justify-center rounded-sm border',
+                          isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50 [&_svg]:invisible'
+                        )}
+                      >
+                        <CheckIcon className={cn('h-4 w-4')} />
+                      </div>
+                      {option.icon && <option.icon className='text-muted-foreground h-4 w-4' />}
+                      <span>{option.label}</span>
+                      {facets?.has(option.value) && (
+                        <span className='ml-auto flex h-4 w-4 items-center justify-center font-mono text-xs'>
+                          {facets.get(option.value)}
+                        </span>
+                      )}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
+            {isLoadingMore && <div className='py-2 text-center text-sm'>{t('common.loading')}</div>}
             {footer && (
               <>
                 <CommandSeparator />

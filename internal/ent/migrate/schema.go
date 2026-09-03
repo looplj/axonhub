@@ -616,6 +616,11 @@ var (
 				Columns: []*schema.Column{RequestsColumns[26], RequestsColumns[1]},
 			},
 			{
+				Name:    "requests_by_external_id_api_key_id_status_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{RequestsColumns[11], RequestsColumns[22], RequestsColumns[12], RequestsColumns[1]},
+			},
+			{
 				Name:    "requests_by_created_at",
 				Unique:  false,
 				Columns: []*schema.Column{RequestsColumns[1]},

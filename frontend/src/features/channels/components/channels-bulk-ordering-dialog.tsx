@@ -5,6 +5,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, ArrowUpToLine, ArrowDownToLine } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { useAllChannelSummarys, useBulkUpdateChannelOrdering } from '../data/channels';
 import { ChannelSummary } from '../data/schema';
+import { parseOrderingWeightInput } from '../utils/ordering-weight';
 
 const WEIGHT_PRECISION = 0;
 const MIN_WEIGHT = 0;
@@ -65,14 +67,21 @@ const ChannelOrderingItemComponent = memo(function ChannelOrderingItemComponent(
   }, [orderingWeight]);
 
   const handleWeightBlur = () => {
-    if (localWeight.trim() === '') {
+    const value = parseOrderingWeightInput(localWeight, MIN_WEIGHT, MAX_WEIGHT);
+
+    if (value === null) {
       setLocalWeight(orderingWeight.toString());
+      toast.error(
+        t('channels.dialogs.bulkOrdering.errors.invalidWeight', {
+          min: MIN_WEIGHT,
+          max: MAX_WEIGHT,
+        })
+      );
       return;
     }
 
-    const val = Number(localWeight);
-    if (!Number.isNaN(val) && val !== orderingWeight) {
-      onWeightChange(channel.id, val);
+    if (value !== orderingWeight) {
+      onWeightChange(channel.id, value);
     } else {
       setLocalWeight(orderingWeight.toString());
     }
@@ -157,8 +166,8 @@ const ChannelOrderingItemComponent = memo(function ChannelOrderingItemComponent(
           <span className='text-muted-foreground text-[10px]'>{t('channels.dialogs.bulkOrdering.orderingWeight')}</span>
           <Input
             type='number'
-            inputMode='decimal'
-            step='any'
+            inputMode='numeric'
+            step={1}
             min={MIN_WEIGHT}
             max={MAX_WEIGHT}
             className='h-6 w-16 px-1 text-center text-xs'

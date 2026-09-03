@@ -5,6 +5,7 @@ import { zhCN, enUS } from 'date-fns/locale';
 import { Copy, Clock, Key, Database, FileText, Layers, Download, Terminal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberID } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -119,9 +120,13 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
     return result.trim();
   }, [request, parsedResponse]);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast.success(t('requests.actions.copy'));
+  const copyToClipboard = async (text: string) => {
+    try {
+      await copyTextToClipboard(text);
+      toast.success(t('requests.actions.copy'));
+    } catch {
+      toast.error(t('common.errors.copyFailed'));
+    }
   };
 
   const downloadFile = (content: string, filename: string) => {
@@ -824,7 +829,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                 {t('requests.columns.firstTokenLatency')}
                               </span>
                               <p className='text-muted-foreground font-mono text-sm'>
-                                {execution.status === 'completed' && execution.metricsFirstTokenLatencyMs != null ? formatLatency(execution.metricsFirstTokenLatencyMs) : '-'}
+                                {(execution.status === 'completed' || execution.status === 'failed') && execution.metricsFirstTokenLatencyMs != null ? formatLatency(execution.metricsFirstTokenLatencyMs) : '-'}
                               </p>
                             </div>
                           </div>

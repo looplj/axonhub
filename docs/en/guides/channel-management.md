@@ -210,6 +210,70 @@ https://custom-gateway.example.com/api##
 # Actual request: /api (no version or endpoint added)
 ```
 
+## Multi-Protocol Endpoints and Model Protocol Overrides
+
+A single channel can host multiple outbound endpoints covering chat, responses, messages and other protocols, so different clients connect with their native protocol.
+
+### Endpoint Configuration
+
+Manage endpoints in the channel **Endpoints** dialog:
+
+- Each endpoint consists of `api_format`, an optional `base_url` (inherits the channel Base URL when empty), and an optional `path` (replaces the protocol's default path; version appending is skipped when set).
+- Each channel type ships with built-in default endpoints (e.g. zhipu provides `openai/chat_completions`, `zhipu_anthropic` provides `anthropic/messages`); custom endpoints can add other formats or override same-named ones.
+
+### Model Protocol Overrides (ModelProtocols)
+
+Force the available outbound protocols for a single model in the **Model Protocol Overrides** block:
+
+```json
+{ "model": "glm-5.3-flash", "apiFormats": ["openai/responses", "openai/chat_completions"], "enabled": true }
+```
+
+- `apiFormats` expresses priority in configuration order; when the client's inbound protocol is in the list it connects directly, otherwise the first listed protocol is used through the unified conversion pipeline.
+- Enabled overrides may only reference `api_format`s the channel already provides (default or custom endpoints), validated on save; overrides are cleaned up automatically when a model is removed from the channel's supported list.
+- Endpoints and protocol overrides are committed atomically in a single save.
+
+**Example** (GLM Coding Plan channel, three endpoints + override):
+
+| endpoint | api_format | base_url |
+|---|---|---|
+| 1 | `openai/chat_completions` | `https://open.bigmodel.cn/api/coding/paas/v4` |
+| 2 | `openai/responses` | `https://open.bigmodel.cn/api/v1` |
+| 3 | `anthropic/messages` | inherits channel Base URL (`https://open.bigmodel.cn/api/anthropic`) |
+
+| Client | Inbound protocol | Selected outbound | Converted? |
+|---|---|---|---|
+| Claude Code | `anthropic/messages` | `anthropic/messages` | No |
+| Codex | `openai/responses` | `openai/responses` | No |
+| OpenAI SDK | `openai/chat_completions` | `openai/chat_completions` | No |
+| Codex (override limited to chat) | `openai/responses` | `openai/chat_completions` | Yes |
+
+### Provider Family Routing
+
+Custom chat endpoints select the channel family's native transformer instead of the generic OpenAI one (the generic transformer assumes `/v1` and produces wrong URLs for non-`/v1` upstreams):
+
+| Channel types | Transformer | URL version |
+|---|---|---|
+| zhipu / zai (incl. `*_anthropic`) | zai | v4 |
+| xiaomi (incl. `xiaomi_anthropic`) | zai | v1 |
+| doubao / volcengine (incl. `*_anthropic`) | doubao | v3 |
+
+Family transformers also apply provider dialect handling: strip `metadata`, clamp `user_id` to 6–128 characters, and convert `reasoning_effort` to `thinking.type`.
+
+## Reasoning Effort
+
+Unified effort values: `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`.
+
+### Channel Mapping (ReasoningEffortMapping)
+
+Configure `{from, to}` entries in the channel **Transform Options**; the first matching `from` wins. The mapping is applied once before outbound conversion and affects every client and every outbound protocol (chat / responses / messages), including the native effort marker in Anthropic metadata.
+
+### Conversion Rules
+
+- Anthropic messages: the client's native expression wins (`adaptive` / `budget_tokens` round-trip verbatim); explicit effort passes through unchanged (including `max` and `xhigh`); `minimal` is normalized to `low` (the only automatic conversion).
+- OpenAI chat / responses: `reasoning_effort` / `reasoning.effort` pass through unchanged.
+- If the upstream rejects a level, its original error is forwarded to the client; incompatible levels can be remapped via the channel mapping.
+
 ## FAQ
 
 ### Q: Connection test failed?

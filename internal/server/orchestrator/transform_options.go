@@ -1,16 +1,14 @@
 package orchestrator
 
 import (
-	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/samber/lo"
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
-	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
 // applyTransformOptions applies channel transform options to create a new llm.Request.
@@ -45,69 +43,38 @@ func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSet
 	return &newReq
 }
 
-// applyClaudeCodeOpenAIReasoningEffortMapping is a common fallback for dedicated
-// OpenAI-compatible transformers that do not consume the channel mapping themselves.
-// Existing transformer-level mapping remains authoritative: if the final outbound value
-// already differs from the original unified value, this function leaves it unchanged.
-func applyClaudeCodeOpenAIReasoningEffortMapping(
-	httpRequest *httpclient.Request,
-	channelSettings *objects.ChannelSettings,
-	outboundFormat llm.APIFormat,
-	isClaudeCodeClient bool,
-	originalReasoningEffort string,
-) (*httpclient.Request, error) {
-	if httpRequest == nil || channelSettings == nil || !isClaudeCodeClient || originalReasoningEffort == "" {
-		return httpRequest, nil
+// applyReasoningEffortMapping applies the channel's reasoning effort mapping to the
+// unified request before the outbound transformer runs, so the mapping affects every
+// outbound protocol (chat completions, responses, messages) uniformly, regardless of
+// which client the request came from.
+func applyReasoningEffortMapping(req *llm.Request, channelSettings *objects.ChannelSettings) *llm.Request {
+	if req == nil || channelSettings == nil {
+		return req
 	}
 
-	mappings := channelSettings.TransformOptions.ReasoningEffortMapping
-	if len(mappings) == 0 {
-		return httpRequest, nil
+	mapped := llm.ApplyReasoningEffortMapping(req.ReasoningEffort, channelSettings.TransformOptions.ReasoningEffortMapping)
+	if mapped == req.ReasoningEffort {
+		return req
 	}
 
-	path := ""
-	//nolint:exhaustive // Only OpenAI text protocols expose a reasoning effort field.
-	switch outboundFormat {
-	case llm.APIFormatOpenAIChatCompletion:
-		path = "reasoning_effort"
-	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact:
-		path = "reasoning.effort"
-	default:
-		return httpRequest, nil
+	newReq := *req
+
+	// The Anthropic inbound records the client's native output_config.effort in
+	// TransformerMetadata and the outbound transformer rebuilds the upstream request
+	// from that marker, so it must follow the mapped value or the mapping would never
+	// reach messages-protocol channels. Clone the map first: the shallow request copy
+	// still shares it with the original request.
+	if _, ok := newReq.TransformerMetadata[anthropic.TransformerMetadataKeyOutputConfigEffort]; ok {
+		metadata := make(map[string]any, len(newReq.TransformerMetadata))
+		maps.Copy(metadata, newReq.TransformerMetadata)
+
+		metadata[anthropic.TransformerMetadataKeyOutputConfigEffort] = mapped
+		newReq.TransformerMetadata = metadata
 	}
 
-	finalEffort := gjson.GetBytes(httpRequest.Body, path)
-	if finalEffort.Type != gjson.String || finalEffort.String() != originalReasoningEffort {
-		return httpRequest, nil
-	}
+	newReq.ReasoningEffort = mapped
 
-	mappedEffort := originalReasoningEffort
-	for _, mapping := range mappings {
-		if mapping.From == originalReasoningEffort {
-			mappedEffort = mapping.To
-			break
-		}
-	}
-	if mappedEffort == originalReasoningEffort {
-		return httpRequest, nil
-	}
-
-	body, err := sjson.SetBytes(httpRequest.Body, path, mappedEffort)
-	if err != nil {
-		return nil, fmt.Errorf("failed to apply Claude Code reasoning effort mapping: %w", err)
-	}
-
-	cloned := *httpRequest
-	cloned.Body = body
-
-	if jsonEffort := gjson.GetBytes(httpRequest.JSONBody, path); jsonEffort.Type == gjson.String && jsonEffort.String() == originalReasoningEffort {
-		cloned.JSONBody, err = sjson.SetBytes(httpRequest.JSONBody, path, mappedEffort)
-		if err != nil {
-			return nil, fmt.Errorf("failed to apply Claude Code reasoning effort mapping to log body: %w", err)
-		}
-	}
-
-	return &cloned, nil
+	return &newReq
 }
 
 // replaceDeveloperRoleWithSystem replaces developer role with system in messages.

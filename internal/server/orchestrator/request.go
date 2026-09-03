@@ -14,6 +14,8 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 type persistRequestMiddleware struct {
@@ -42,7 +44,7 @@ func (m *persistRequestMiddleware) OnInboundLlmRequest(ctx context.Context, llmR
 		ctx,
 		llmRequest,
 		m.inbound.state.RawRequest,
-		llmRequest.APIFormat,
+		persistedRequestAPIFormat(ctx, llmRequest.APIFormat),
 	)
 	if err != nil {
 		return nil, err
@@ -51,6 +53,16 @@ func (m *persistRequestMiddleware) OnInboundLlmRequest(ctx context.Context, llmR
 	m.inbound.state.Request = request
 
 	return llmRequest, nil
+}
+
+// persistedRequestAPIFormat distinguishes the downstream WebSocket protocol in
+// request metadata without changing the Responses API format used by endpoint
+// selection and transformers.
+func persistedRequestAPIFormat(ctx context.Context, format llm.APIFormat) llm.APIFormat {
+	if shared.IsResponsesWebSocket(ctx) && format == llm.APIFormatOpenAIResponse {
+		return llm.APIFormatOpenAIResponseWebSocket
+	}
+	return format
 }
 
 func (m *persistRequestMiddleware) OnOutboundLlmResponse(ctx context.Context, llmResp *llm.Response) (*llm.Response, error) {
@@ -68,6 +80,7 @@ func (m *persistRequestMiddleware) OnOutboundLlmResponse(ctx context.Context, ll
 
 	// Determine usage to log - unified in Response.Usage for all request types.
 	usageToLog := llmResp.Usage
+	m.injectUsageCost(ctx, llmResp)
 
 	_, err := state.UsageLogService.CreateUsageLogFromRequest(persistCtx, state.Request, state.RequestExec, usageToLog)
 	if err != nil {
@@ -75,6 +88,64 @@ func (m *persistRequestMiddleware) OnOutboundLlmResponse(ctx context.Context, ll
 	}
 
 	return llmResp, nil
+}
+
+func (m *persistRequestMiddleware) OnOutboundLlmStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error) {
+	return &usageCostStream{
+		stream: stream,
+		inject: func(resp *llm.Response) {
+			m.injectUsageCost(ctx, resp)
+		},
+	}, nil
+}
+
+func (m *persistRequestMiddleware) injectUsageCost(ctx context.Context, resp *llm.Response) {
+	if resp == nil || resp.Usage == nil {
+		return
+	}
+
+	state := m.inbound.state
+	if state == nil || state.UsageLogService == nil || state.RequestExec == nil {
+		return
+	}
+
+	if state.SystemService != nil {
+		enabled, err := state.SystemService.InjectUsageCostEnabled(ctx)
+		if err != nil {
+			log.Warn(ctx, "failed to get inject usage cost setting", log.Cause(err))
+			return
+		}
+
+		if !enabled {
+			return
+		}
+	}
+
+	state.UsageLogService.InjectUsageCost(ctx, state.RequestExec.ChannelID, state.RequestExec.ModelID, resp.Usage)
+}
+
+type usageCostStream struct {
+	stream streams.Stream[*llm.Response]
+	inject func(*llm.Response)
+}
+
+func (s *usageCostStream) Next() bool {
+	return s.stream.Next()
+}
+
+func (s *usageCostStream) Current() *llm.Response {
+	resp := s.stream.Current()
+	s.inject(resp)
+
+	return resp
+}
+
+func (s *usageCostStream) Err() error {
+	return s.stream.Err()
+}
+
+func (s *usageCostStream) Close() error {
+	return s.stream.Close()
 }
 
 func (m *persistRequestMiddleware) OnInboundRawResponse(ctx context.Context, httpResp *httpclient.Response) (*httpclient.Response, error) {

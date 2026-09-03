@@ -18,6 +18,8 @@ import (
 
 func transformOrchestratorError(ctx context.Context, err error, orch *orchestrator.ChatCompletionOrchestrator) *httpclient.Error {
 	err = wrapQuotaExhaustedAsResponseError(err)
+	err = orchestrator.ClassifyUpstreamTransportError(err)
+
 	if orch != nil {
 		err = applyUpstreamErrorPolicy(ctx, err, orch.SystemService)
 		return orch.Inbound.TransformError(ctx, err)
@@ -126,6 +128,12 @@ func (s *upstreamErrorStream) Err() error {
 	err := s.stream.Err()
 	if err == nil {
 		return nil
+	}
+
+	// Classify transport-level interruptions before the policy runs so the stable
+	// code and 502 semantics survive a hidden/custom message rewrite.
+	if orchestrator.IsUpstreamTransportError(err) {
+		err = orchestrator.ClassifyUpstreamTransportError(pipeline.WrapUpstreamError(err))
 	}
 
 	policy := s.systemService.RetryPolicyOrDefault(s.ctx).UpstreamErrorPolicy

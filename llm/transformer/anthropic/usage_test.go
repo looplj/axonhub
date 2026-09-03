@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
@@ -381,6 +382,19 @@ func Test_convertToAnthropicUsage(t *testing.T) {
 			want: &Usage{
 				InputTokens:  100,
 				OutputTokens: 50,
+			},
+		},
+		{
+			name: "includes cost",
+			llmUsage: &llm.Usage{
+				PromptTokens:     100,
+				CompletionTokens: 50,
+				Cost:             lo.ToPtr(0.000005),
+			},
+			want: &Usage{
+				InputTokens:  100,
+				OutputTokens: 50,
+				Cost:         lo.ToPtr(0.000005),
 			},
 		},
 	}

@@ -152,6 +152,10 @@ func TestConvertToChatCompletionResponse_WithThinkingAndRedactedThinking(t *test
 }
 
 func TestReasoningEffortToThinking(t *testing.T) {
+	// Legacy platforms have no output_config.effort support, so an effort level can
+	// only be expressed via the budget table.
+	legacyConfig := &Config{Type: PlatformDoubao}
+
 	tests := []struct {
 		name            string
 		reasoningEffort string
@@ -164,21 +168,21 @@ func TestReasoningEffortToThinking(t *testing.T) {
 			reasoningEffort: "low",
 			expectedType:    "enabled",
 			expectedBudget:  5000,
-			config:          nil,
+			config:          legacyConfig,
 		},
 		{
 			name:            "medium reasoning effort",
 			reasoningEffort: "medium",
 			expectedType:    "enabled",
 			expectedBudget:  15000,
-			config:          nil,
+			config:          legacyConfig,
 		},
 		{
 			name:            "high reasoning effort",
 			reasoningEffort: "high",
 			expectedType:    "enabled",
 			expectedBudget:  30000,
-			config:          nil,
+			config:          legacyConfig,
 		},
 		{
 			name:            "custom mapping",
@@ -186,6 +190,7 @@ func TestReasoningEffortToThinking(t *testing.T) {
 			expectedType:    "enabled",
 			expectedBudget:  50000,
 			config: &Config{
+				Type: PlatformDoubao,
 				ReasoningEffortToBudget: map[string]int64{
 					"low":    3000,
 					"medium": 10000,
@@ -198,7 +203,14 @@ func TestReasoningEffortToThinking(t *testing.T) {
 			reasoningEffort: "unknown",
 			expectedType:    "enabled",
 			expectedBudget:  15000,
-			config:          nil,
+			config:          legacyConfig,
+		},
+		{
+			name:            "minimal reasoning effort falls back to low budget",
+			reasoningEffort: "minimal",
+			expectedType:    "enabled",
+			expectedBudget:  5000,
+			config:          legacyConfig,
 		},
 	}
 
@@ -227,6 +239,96 @@ func TestReasoningEffortToThinking(t *testing.T) {
 	}
 }
 
+// TestReasoningEffortToOutputConfig verifies that converted requests with an explicit
+// effort level use output_config.effort (+ adaptive thinking) on platforms that
+// support it, instead of converting the level into a budget.
+func TestReasoningEffortToOutputConfig(t *testing.T) {
+	tests := []struct {
+		name            string
+		reasoningEffort string
+		expectedEffort  string
+	}{
+		{name: "low", reasoningEffort: "low", expectedEffort: "low"},
+		{name: "medium", reasoningEffort: "medium", expectedEffort: "medium"},
+		{name: "high", reasoningEffort: "high", expectedEffort: "high"},
+		{name: "xhigh passes through", reasoningEffort: "xhigh", expectedEffort: "xhigh"},
+		{name: "max passes through", reasoningEffort: "max", expectedEffort: "max"},
+		{name: "minimal normalizes to low", reasoningEffort: "minimal", expectedEffort: "low"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			chatReq := &llm.Request{
+				Model:           "claude-sonnet-4-5",
+				ReasoningEffort: tt.reasoningEffort,
+			}
+
+			anthropicReq := convertToAnthropicRequestWithConfig(chatReq, nil)
+
+			require.NotNil(t, anthropicReq.OutputConfig)
+			require.Equal(t, tt.expectedEffort, anthropicReq.OutputConfig.Effort)
+			require.NotNil(t, anthropicReq.Thinking)
+			require.Equal(t, "adaptive", anthropicReq.Thinking.Type)
+			require.Zero(t, anthropicReq.Thinking.BudgetTokens)
+		})
+	}
+}
+
+// TestNativeBudgetRoundTrip verifies that a native Messages client using the classic
+// thinking.enabled + budget_tokens form round-trips its budget verbatim on an
+// Anthropic outbound, even though the inbound transformer also derived an effort
+// level — the explicit native expression wins over any level-to-budget conversion.
+func TestNativeBudgetRoundTrip(t *testing.T) {
+	chatReq := &llm.Request{
+		Model:           "claude-sonnet-4-5",
+		ReasoningEffort: "high", // derived from budget by the inbound transformer
+		ReasoningBudget: lo.ToPtr(int64(42000)),
+		TransformerMetadata: map[string]any{
+			TransformerMetadataKeyThinkingType: "enabled",
+		},
+	}
+
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, nil)
+
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+	require.Equal(t, int64(42000), anthropicReq.Thinking.BudgetTokens)
+	require.Nil(t, anthropicReq.OutputConfig)
+}
+
+func TestNativeBudgetRoundTrip_DeepSeekUsesOutputConfig(t *testing.T) {
+	chatReq := &llm.Request{
+		Model:           "deepseek-chat",
+		ReasoningEffort: "high", // derived from the native budget by inbound conversion
+		ReasoningBudget: lo.ToPtr(int64(42000)),
+		TransformerMetadata: map[string]any{
+			TransformerMetadataKeyThinkingType: "enabled",
+		},
+	}
+
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, &Config{Type: PlatformDeepSeek})
+
+	require.NotNil(t, anthropicReq.OutputConfig)
+	require.Equal(t, "high", anthropicReq.OutputConfig.Effort)
+	require.Nil(t, anthropicReq.Thinking)
+}
+
+// TestConvertedBudgetOnlyRequest verifies that a converted request without an effort
+// level but with an explicit budget passes the budget through verbatim.
+func TestConvertedBudgetOnlyRequest(t *testing.T) {
+	chatReq := &llm.Request{
+		Model:           "claude-sonnet-4-5",
+		ReasoningBudget: lo.ToPtr(int64(12345)),
+	}
+
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, nil)
+
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+	require.Equal(t, int64(12345), anthropicReq.Thinking.BudgetTokens)
+	require.Nil(t, anthropicReq.OutputConfig)
+}
+
 func TestNoReasoningEffort(t *testing.T) {
 	chatReq := &llm.Request{
 		Model: "claude-3-sonnet-20240229",
@@ -240,6 +342,10 @@ func TestNoReasoningEffort(t *testing.T) {
 }
 
 func TestReasoningBudgetPriority(t *testing.T) {
+	// Legacy platform: a budget is the only possible representation, so the explicit
+	// ReasoningBudget must win over the effort→budget table.
+	legacyConfig := &Config{Type: PlatformDoubao}
+
 	tests := []struct {
 		name            string
 		reasoningEffort string
@@ -252,6 +358,7 @@ func TestReasoningBudgetPriority(t *testing.T) {
 			reasoningEffort: "medium",
 			reasoningBudget: lo.ToPtr(int64(25000)),
 			config: &Config{
+				Type: PlatformDoubao,
 				ReasoningEffortToBudget: map[string]int64{
 					"medium": 15000,
 				},
@@ -262,7 +369,7 @@ func TestReasoningBudgetPriority(t *testing.T) {
 			name:            "reasoning budget takes priority over default mapping",
 			reasoningEffort: "high",
 			reasoningBudget: lo.ToPtr(int64(35000)),
-			config:          nil,
+			config:          legacyConfig,
 			expectedBudget:  35000,
 		},
 		{
@@ -270,6 +377,7 @@ func TestReasoningBudgetPriority(t *testing.T) {
 			reasoningEffort: "low",
 			reasoningBudget: nil,
 			config: &Config{
+				Type: PlatformDoubao,
 				ReasoningEffortToBudget: map[string]int64{
 					"low": 3000,
 				},
@@ -280,7 +388,7 @@ func TestReasoningBudgetPriority(t *testing.T) {
 			name:            "fallback to default mapping when reasoning budget is nil and no config",
 			reasoningEffort: "medium",
 			reasoningBudget: nil,
-			config:          nil,
+			config:          legacyConfig,
 			expectedBudget:  15000,
 		},
 	}
@@ -521,7 +629,8 @@ func TestThinkingBudgetToReasoningEffort(t *testing.T) {
 		{"medium budget", 15000, "medium"},
 		{"medium budget boundary", 15001, "high"},
 		{"high budget", 30000, "high"},
-		{"very high budget", 100000, "high"},
+		{"high budget boundary", 30001, "xhigh"},
+		{"very high budget", 100000, "xhigh"},
 	}
 
 	for _, tt := range tests {
@@ -784,6 +893,27 @@ func TestOutputConfig_Outbound(t *testing.T) {
 			},
 		},
 		{
+			name: "TransformerMetadata output_config_effort=none is ignored",
+			chatReq: &llm.Request{
+				Model:     "claude-3-sonnet-20240229",
+				MaxTokens: lo.ToPtr(int64(4096)),
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyOutputConfigEffort: llm.ReasoningEffortNone,
+				},
+			},
+			validate: func(t *testing.T, anthropicReq *MessageRequest) {
+				t.Helper()
+				require.Nil(t, anthropicReq.OutputConfig)
+				require.Nil(t, anthropicReq.Thinking)
+			},
+		},
+		{
 			name: "without output_config metadata -> OutputConfig nil",
 			chatReq: &llm.Request{
 				Model:     "claude-3-sonnet-20240229",
@@ -868,7 +998,7 @@ func TestOutputConfig_Inbound(t *testing.T) {
 			},
 		},
 		{
-			name: "OutputConfig effort=max -> TransformerMetadata output_config_effort=max and ReasoningEffort=xhigh",
+			name: "OutputConfig effort=max -> TransformerMetadata output_config_effort=max and ReasoningEffort=max",
 			anthropicReq: &MessageRequest{
 				Model:     "claude-3-sonnet-20240229",
 				MaxTokens: 4096,
@@ -884,7 +1014,7 @@ func TestOutputConfig_Inbound(t *testing.T) {
 				t.Helper()
 				require.NotNil(t, chatReq.TransformerMetadata)
 				require.Equal(t, "max", chatReq.TransformerMetadata[TransformerMetadataKeyOutputConfigEffort])
-				require.Equal(t, "xhigh", chatReq.ReasoningEffort)
+				require.Equal(t, "max", chatReq.ReasoningEffort)
 			},
 		},
 		{

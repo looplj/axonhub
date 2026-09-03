@@ -17,6 +17,7 @@
   "playground.chat.startConversation": "Start a conversation",
   "playground.chat.typeMessageBelow": "Type your message below to begin",
   "playground.chat.typeMessage": "Type a message...",
+  "playground.chat.addImage": "Add image",
   "playground.chat.noMessages": "No messages to retry",
   "playground.errors.noChannelsAvailable": "No channels available",
   "playground.errors.noModelsAvailable": "No models available",

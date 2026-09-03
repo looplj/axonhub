@@ -15,6 +15,7 @@ export interface CurlGeneratorOptions {
 const API_FORMAT_PATHS: Record<ApiFormat, string> = {
   'openai/chat_completions': '/v1/chat/completions',
   'openai/responses': '/v1/responses',
+  'openai/responses-ws': '/v1/responses',
   'openai/image_generation': '/v1/images/generations',
   'openai/image_edit': '/v1/images/edits',
   'openai/image_variation': '/v1/images/variations',
@@ -67,7 +68,10 @@ function resolveExecutionURL(options: CurlGeneratorOptions, apiFormat?: ApiForma
   const apiPath = getApiPath(apiFormat, body, channelType);
 
   if (options.baseUrl) {
-    const cleanBaseUrl = options.baseUrl.replace(/\/+$/, '');
+    const baseUrlWithoutMarker = options.baseUrl.endsWith('#')
+      ? options.baseUrl.slice(0, -1)
+      : options.baseUrl;
+    const cleanBaseUrl = baseUrlWithoutMarker.replace(/\/+$/, '');
     // Avoid path duplication: if baseUrl ends with a prefix of apiPath, strip the overlap.
     let combinedPath = apiPath;
     for (let i = 1; i <= apiPath.length; i++) {
@@ -88,6 +92,10 @@ export function generateCurlCommand(options: CurlGeneratorOptions): string {
   const parsedBody = typeof body === 'string' ? safeJsonParse(body) : body;
   const resolvedApiFormat = inferApiFormat(apiFormat || getApiFormatFromChannelType(channelType), parsedBody);
   const url = resolveExecutionURL({ baseUrl, requestURL }, resolvedApiFormat, parsedBody, channelType);
+
+  if (resolvedApiFormat === 'openai/responses-ws') {
+    return generateResponsesWebSocketCommand(headers, parsedBody, url);
+  }
 
   const curlParts = [`curl '${url}'`];
 
@@ -135,6 +143,46 @@ export function generateCurlCommand(options: CurlGeneratorOptions): string {
   }
 
   return curlParts.join(' \\\n');
+}
+
+function generateResponsesWebSocketCommand(headers: Record<string, any> | undefined, body: unknown, url: string): string {
+  const websocketURL = toWebSocketURL(url);
+  const commandParts = [`npx wscat -c '${escapeShellValue(websocketURL)}'`];
+
+  if (headers && typeof headers === 'object') {
+    const skipHeaders = [
+      'content-length',
+      'host',
+      'connection',
+      'upgrade',
+      'accept-encoding',
+      'transfer-encoding',
+      'sec-websocket-key',
+      'sec-websocket-version',
+      'sec-websocket-extensions',
+    ];
+    Object.entries(headers).forEach(([key, value]) => {
+      if (!skipHeaders.includes(key.toLowerCase()) && value) {
+        commandParts.push(`  -H '${escapeShellValue(`${key}: ${String(value)}`)}'`);
+      }
+    });
+  }
+
+  const payload = isRecord(body) ? { ...body } : { input: body };
+  delete payload.stream;
+  if (!payload.type) {
+    payload.type = 'response.create';
+  }
+  const bodyValue = JSON.stringify(payload ?? {}) ?? '{}';
+  commandParts.push(`  -x '${escapeShellValue(bodyValue)}'`);
+
+  return commandParts.join(' \\\n');
+}
+
+function toWebSocketURL(url: string): string {
+  if (url.startsWith('https://')) return `wss://${url.slice('https://'.length)}`;
+  if (url.startsWith('http://')) return `ws://${url.slice('http://'.length)}`;
+  return url;
 }
 
 function safeJsonParse(value: string): unknown {

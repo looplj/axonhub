@@ -1,9 +1,13 @@
 import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
+import { z } from 'zod';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTranslation } from 'react-i18next';
-import { z } from 'zod';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
+import { useQueryModels } from '@/gql/models';
+import { useTranslation } from 'react-i18next';
+import { useSelectedProjectId } from '@/stores/projectStore';
+import { extractNumberIDAsNumber, buildGUID } from '@/lib/utils';
+import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -11,13 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { AutoComplete } from '@/components/auto-complete';
-import { useQueryModels } from '@/gql/models';
-import { useApiKeys } from '@/features/apikeys/data/apikeys';
+import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { useApiKeyOptions, useApiKeyOptionsByIDs } from '@/features/apikeys/data/apikeys';
 import { usePrompts } from '../context/prompts-context';
 import { useCreatePrompt, useUpdatePrompt } from '../data/prompts';
 import { CreatePromptInput, UpdatePromptInput } from '../data/schema';
-import { useSelectedProjectId } from '@/stores/projectStore';
-import { extractNumberIDAsNumber, buildGUID } from '@/lib/utils';
 
 const conditionSchema = z.object({
   type: z.enum(['model_id', 'model_pattern', 'api_key']),
@@ -56,12 +58,12 @@ interface ModelAutoCompleteWrapperProps {
   portalContainer: HTMLDivElement | null;
 }
 
-function ModelAutoCompleteWrapper({ field, modelOptions,  portalContainer }: ModelAutoCompleteWrapperProps) {
+function ModelAutoCompleteWrapper({ field, modelOptions, portalContainer }: ModelAutoCompleteWrapperProps) {
   const { t } = useTranslation();
   const [searchValue, setSearchValue] = useState('');
 
   useEffect(() => {
-    const selectedOption = modelOptions.find(opt => opt.value === field.value);
+    const selectedOption = modelOptions.find((opt) => opt.value === field.value);
     setSearchValue(selectedOption?.label || field.value || '');
   }, [field.value, modelOptions]);
 
@@ -78,6 +80,63 @@ function ModelAutoCompleteWrapper({ field, modelOptions,  portalContainer }: Mod
     />
   );
 }
+interface APIKeyAutoCompleteWrapperProps {
+  field: { value: string; onChange: (value: string) => void };
+  portalContainer: HTMLDivElement | null;
+}
+
+function APIKeyAutoCompleteWrapper({ field, portalContainer }: APIKeyAutoCompleteWrapperProps) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+  const debouncedSearchValue = useDebounce(searchValue, 300);
+  const {
+    data: apiKeysData,
+    isFetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useApiKeyOptions({
+    search: debouncedSearchValue,
+    includeArchived: true,
+    enabled: open,
+  });
+  const { data: selectedApiKeyData } = useApiKeyOptionsByIDs(field.value ? [field.value] : undefined, {
+    enabled: !!field.value,
+  });
+
+  const apiKeyOptions = useMemo(() => {
+    const options = new Map<string, { value: string; label: string }>();
+    for (const edge of selectedApiKeyData?.edges ?? []) {
+      options.set(edge.node.id, { value: edge.node.id, label: edge.node.name });
+    }
+    for (const page of apiKeysData?.pages ?? []) {
+      for (const edge of page.edges) {
+        options.set(edge.node.id, { value: edge.node.id, label: edge.node.name });
+      }
+    }
+    return Array.from(options.values());
+  }, [apiKeysData, selectedApiKeyData]);
+
+  return (
+    <AutoCompleteSelect
+      selectedValue={field.value || ''}
+      onSelectedValueChange={field.onChange}
+      items={apiKeyOptions}
+      isLoading={isFetching && !apiKeysData}
+      emptyMessage={t('common.noData')}
+      placeholder={t('prompts.fields.apiKeyPlaceholder')}
+      portalContainer={portalContainer}
+      inputClassName='h-10 text-xs'
+      searchValue={searchValue}
+      onSearchValueChange={setSearchValue}
+      hasMore={!!hasNextPage}
+      isLoadingMore={isFetchingNextPage}
+      onLoadMore={fetchNextPage}
+      onOpenChange={setOpen}
+    />
+  );
+}
 
 interface ConditionGroupProps {
   groupIndex: number;
@@ -85,11 +144,10 @@ interface ConditionGroupProps {
   onRemoveGroup: () => void;
   t: any;
   modelOptions: Array<{ value: string; label: string }>;
-  apiKeyOptions: Array<{ value: string; label: string }>;
   dialogContentRef: React.RefObject<HTMLDivElement | null>;
 }
 
-function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, apiKeyOptions, dialogContentRef }: ConditionGroupProps) {
+function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, dialogContentRef }: ConditionGroupProps) {
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: `conditionGroups.${groupIndex}.conditions`,
@@ -105,19 +163,13 @@ function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, apiK
   });
 
   return (
-    <div className='rounded-lg border bg-muted/30 p-3'>
+    <div className='bg-muted/30 rounded-lg border p-3'>
       <div className='mb-2 flex items-center justify-between'>
-        <span className='text-xs font-medium text-muted-foreground'>
+        <span className='text-muted-foreground text-xs font-medium'>
           {t('prompts.conditions.group')} {groupIndex + 1}
         </span>
         <div className='flex gap-1'>
-          <Button
-            type='button'
-            variant='ghost'
-            size='sm'
-            onClick={handleAddCondition}
-            className='h-7 px-2 text-xs'
-          >
+          <Button type='button' variant='ghost' size='sm' onClick={handleAddCondition} className='h-7 px-2 text-xs'>
             <IconPlus className='mr-1 h-3 w-3' />
             {t('prompts.conditions.add')}
           </Button>
@@ -126,7 +178,7 @@ function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, apiK
             variant='ghost'
             size='sm'
             onClick={onRemoveGroup}
-            className='h-7 px-2 text-xs text-muted-foreground hover:text-destructive'
+            className='text-muted-foreground hover:text-destructive h-7 px-2 text-xs'
           >
             <IconTrash className='h-3 w-3' />
           </Button>
@@ -136,12 +188,12 @@ function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, apiK
         {fields.map((field, conditionIndex) => (
           <div key={field.id}>
             {conditionIndex > 0 && (
-              <div className='relative mb-3 mt-1'>
+              <div className='relative mt-1 mb-3'>
                 <div className='absolute inset-0 flex items-center' aria-hidden='true'>
                   <div className='w-full border-t border-dashed'></div>
                 </div>
                 <div className='relative flex justify-center'>
-                  <span className='bg-muted/50 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground'>
+                  <span className='bg-muted/50 text-muted-foreground px-2 text-[10px] font-semibold tracking-wider uppercase'>
                     {t('prompts.conditions.or')}
                   </span>
                 </div>
@@ -149,73 +201,57 @@ function ConditionGroup({ groupIndex, form, onRemoveGroup, t, modelOptions, apiK
             )}
             <div className='grid grid-cols-[10rem_1fr_2.5rem] items-center gap-2'>
               <FormField
-                 control={form.control}
-                 name={`conditionGroups.${groupIndex}.conditions.${conditionIndex}.type`}
-                 render={({ field }) => (
-                   <FormItem className='space-y-0'>
-                     <Select onValueChange={(value) => {
-                       field.onChange(value);
-                       form.setValue(`conditionGroups.${groupIndex}.conditions.${conditionIndex}.value`, '');
-                     }} value={field.value}>
-                       <FormControl>
-                         <SelectTrigger className='h-10 w-full text-xs'>
-                           <SelectValue />
-                         </SelectTrigger>
-                       </FormControl>
-                       <SelectContent>
-                         <SelectItem value='model_id'>{t('prompts.conditionTypes.model_id')}</SelectItem>
-                         <SelectItem value='model_pattern'>{t('prompts.conditionTypes.model_pattern')}</SelectItem>
-                         <SelectItem value='api_key'>{t('prompts.conditionTypes.api_key')}</SelectItem>
-                       </SelectContent>
-                     </Select>
-                   </FormItem>
-                 )}
-               />
-               <FormField
-                 control={form.control}
-                 name={`conditionGroups.${groupIndex}.conditions.${conditionIndex}.value`}
-                 render={({ field }) => (
-                   <FormItem className='space-y-0'>
-                     <FormControl>
-                       {conditions?.[conditionIndex]?.type === 'model_id' ? (
-                         <ModelAutoCompleteWrapper
-                           field={field}
-                           modelOptions={modelOptions}
-                           portalContainer={dialogContentRef.current}
-                         />
-                       ) : conditions?.[conditionIndex]?.type === 'api_key' ? (
-                         <Select onValueChange={field.onChange} value={field.value}>
-                           <SelectTrigger className='h-10 w-full text-xs'>
-                             <SelectValue placeholder={t('prompts.fields.apiKeyPlaceholder')} />
-                           </SelectTrigger>
-                           <SelectContent>
-                             {apiKeyOptions.map((option) => (
-                               <SelectItem key={option.value} value={option.value}>
-                                 {option.label}
-                               </SelectItem>
-                             ))}
-                           </SelectContent>
-                         </Select>
-                       ) : (
-                         <Input
-                           {...field}
-                           placeholder={t('prompts.fields.conditionValuePlaceholder')}
-                           className='h-10 text-xs'
-                         />
-                       )}
-                     </FormControl>
-                   </FormItem>
-                 )}
-               />
-               <Button
-                 type='button'
-                 variant='ghost'
-                 size='icon'
-                 onClick={() => remove(conditionIndex)}
-                 className='h-10 w-10 text-muted-foreground hover:text-destructive'
-               >
-                 <IconTrash className='h-4 w-4' />
-               </Button>
+                control={form.control}
+                name={`conditionGroups.${groupIndex}.conditions.${conditionIndex}.type`}
+                render={({ field }) => (
+                  <FormItem className='space-y-0'>
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        form.setValue(`conditionGroups.${groupIndex}.conditions.${conditionIndex}.value`, '');
+                      }}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className='h-10 w-full text-xs'>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value='model_id'>{t('prompts.conditionTypes.model_id')}</SelectItem>
+                        <SelectItem value='model_pattern'>{t('prompts.conditionTypes.model_pattern')}</SelectItem>
+                        <SelectItem value='api_key'>{t('prompts.conditionTypes.api_key')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`conditionGroups.${groupIndex}.conditions.${conditionIndex}.value`}
+                render={({ field }) => (
+                  <FormItem className='space-y-0'>
+                    <FormControl>
+                      {conditions?.[conditionIndex]?.type === 'model_id' ? (
+                        <ModelAutoCompleteWrapper field={field} modelOptions={modelOptions} portalContainer={dialogContentRef.current} />
+                      ) : conditions?.[conditionIndex]?.type === 'api_key' ? (
+                        <APIKeyAutoCompleteWrapper field={field} portalContainer={dialogContentRef.current} />
+                      ) : (
+                        <Input {...field} placeholder={t('prompts.fields.conditionValuePlaceholder')} className='h-10 text-xs' />
+                      )}
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon'
+                onClick={() => remove(conditionIndex)}
+                className='text-muted-foreground hover:text-destructive h-10 w-10'
+              >
+                <IconTrash className='h-4 w-4' />
+              </Button>
             </div>
           </div>
         ))}
@@ -231,7 +267,6 @@ export function PromptsActionDialog() {
   const updatePrompt = useUpdatePrompt();
   const selectedProjectId = useSelectedProjectId();
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
-  const { data: apiKeysData } = useApiKeys({ first: 100 });
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
   const isEdit = open === 'edit';
@@ -244,14 +279,6 @@ export function PromptsActionDialog() {
       label: model.id,
     }));
   }, [availableModels]);
-
-  const apiKeyOptions = useMemo(() => {
-    if (!apiKeysData?.edges) return [];
-    return apiKeysData.edges.map((edge) => ({
-      value: String(edge.node.id),
-      label: edge.node.name || `API Key #${edge.node.id}`,
-    }));
-  }, [apiKeysData]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(isEdit ? updatePromptSchema : createPromptSchema) as any,
@@ -266,7 +293,11 @@ export function PromptsActionDialog() {
     },
   });
 
-  const { fields: groupFields, append: appendGroup, remove: removeGroup } = useFieldArray({
+  const {
+    fields: groupFields,
+    append: appendGroup,
+    remove: removeGroup,
+  } = useFieldArray({
     control: form.control,
     name: 'conditionGroups',
   });
@@ -283,23 +314,25 @@ export function PromptsActionDialog() {
 
   useEffect(() => {
     if (isEdit && currentRow) {
-      const conditionGroups = currentRow.settings?.conditions?.map((composite: any) => ({
-        conditions: composite.conditions?.map((condition: any) => {
-          let value = '';
-          if (condition.type === 'model_id' && condition.modelId) {
-            value = condition.modelId;
-          } else if (condition.type === 'model_pattern' && condition.modelPattern) {
-            value = condition.modelPattern;
-          } else if (condition.type === 'api_key' && condition.apiKeyId != null) {
-            // apiKeyId 是数字，需要转换为完整的 GUID 格式以匹配下拉选项
-            value = buildGUID('APIKey', String(condition.apiKeyId));
-          }
-          return {
-            type: condition.type,
-            value,
-          };
-        }) || []
-      })) || [];
+      const conditionGroups =
+        currentRow.settings?.conditions?.map((composite: any) => ({
+          conditions:
+            composite.conditions?.map((condition: any) => {
+              let value = '';
+              if (condition.type === 'model_id' && condition.modelId) {
+                value = condition.modelId;
+              } else if (condition.type === 'model_pattern' && condition.modelPattern) {
+                value = condition.modelPattern;
+              } else if (condition.type === 'api_key' && condition.apiKeyId != null) {
+                // apiKeyId 是数字，需要转换为完整的 GUID 格式以匹配下拉选项
+                value = buildGUID('APIKey', String(condition.apiKeyId));
+              }
+              return {
+                type: condition.type,
+                value,
+              };
+            }) || [],
+        })) || [];
       form.reset({
         name: currentRow.name,
         description: currentRow.description || '',
@@ -326,18 +359,19 @@ export function PromptsActionDialog() {
     async (data: FormData) => {
       if (!selectedProjectId) return;
 
-      const conditions = data.conditionGroups?.map(group => ({
-        conditions: group.conditions.map((condition) => {
-          if (condition.type === 'model_id') {
-            return { type: condition.type, modelId: condition.value };
-          } else if (condition.type === 'model_pattern') {
-            return { type: condition.type, modelPattern: condition.value };
-          } else {
-            const apiKeyId = extractNumberIDAsNumber(condition.value);
-            return { type: condition.type, apiKeyId };
-          }
-        })
-      })) || [];
+      const conditions =
+        data.conditionGroups?.map((group) => ({
+          conditions: group.conditions.map((condition) => {
+            if (condition.type === 'model_id') {
+              return { type: condition.type, modelId: condition.value };
+            } else if (condition.type === 'model_pattern') {
+              return { type: condition.type, modelPattern: condition.value };
+            } else {
+              const apiKeyId = extractNumberIDAsNumber(condition.value);
+              return { type: condition.type, apiKeyId };
+            }
+          }),
+        })) || [];
 
       if (isEdit && currentRow) {
         const input: UpdatePromptInput = {
@@ -387,42 +421,40 @@ export function PromptsActionDialog() {
       <DialogContent className='flex h-[85vh] max-h-[85vh] flex-col overflow-hidden sm:max-w-6xl' ref={dialogContentRef}>
         <DialogHeader className='flex-shrink-0'>
           <DialogTitle>{isEdit ? t('prompts.dialogs.edit.title') : t('prompts.dialogs.create.title')}</DialogTitle>
-          <DialogDescription>
-            {isEdit ? t('prompts.dialogs.edit.description') : t('prompts.dialogs.create.description')}
-          </DialogDescription>
+          <DialogDescription>{isEdit ? t('prompts.dialogs.edit.description') : t('prompts.dialogs.create.description')}</DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className='flex flex-1 flex-col overflow-hidden'>
             <div className='flex flex-1 gap-6 overflow-hidden pb-4'>
               <div className='w-1/3 flex-shrink-0 space-y-4 overflow-y-auto pr-2'>
-            <FormField
-              control={form.control}
-              name='name'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('prompts.fields.name')}</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name='name'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('prompts.fields.name')}</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            <FormField
-              control={form.control}
-              name='description'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('prompts.fields.description')}</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name='description'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('prompts.fields.description')}</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
@@ -433,36 +465,34 @@ export function PromptsActionDialog() {
                       <FormControl>
                         <Input {...field} type='number' />
                       </FormControl>
-                      <FormDescription>
-                        {t('prompts.fields.orderHelp')}
-                      </FormDescription>
+                      <FormDescription>{t('prompts.fields.orderHelp')}</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-            <FormField
-              control={form.control}
-              name='role'
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('prompts.fields.role')}</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('prompts.fields.rolePlaceholder')} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value='system'>system</SelectItem>
-                      <SelectItem value='user'>user</SelectItem>
-                      <SelectItem value='assistant'>assistant</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                <FormField
+                  control={form.control}
+                  name='role'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('prompts.fields.role')}</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('prompts.fields.rolePlaceholder')} />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value='system'>system</SelectItem>
+                          <SelectItem value='user'>user</SelectItem>
+                          <SelectItem value='assistant'>assistant</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 <FormField
                   control={form.control}
@@ -482,9 +512,7 @@ export function PromptsActionDialog() {
                         </SelectContent>
                       </Select>
                       <FormDescription>
-                        {field.value === 'prepend'
-                          ? t('prompts.fields.actionTypeHelpPrepend')
-                          : t('prompts.fields.actionTypeHelpAppend')}
+                        {field.value === 'prepend' ? t('prompts.fields.actionTypeHelpPrepend') : t('prompts.fields.actionTypeHelpAppend')}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -500,11 +528,7 @@ export function PromptsActionDialog() {
                     <FormItem className='flex min-h-0 flex-1 flex-col'>
                       <FormLabel>{t('prompts.fields.content')}</FormLabel>
                       <FormControl className='flex-1'>
-                        <Textarea
-                          {...field}
-                          placeholder={t('prompts.fields.contentPlaceholder')}
-                          className='h-full min-h-0 resize-none'
-                        />
+                        <Textarea {...field} placeholder={t('prompts.fields.contentPlaceholder')} className='h-full min-h-0 resize-none' />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -515,7 +539,7 @@ export function PromptsActionDialog() {
                   <div className='flex-shrink-0 p-4 pb-2'>
                     <div className='flex items-center justify-between'>
                       <div className='space-y-1'>
-                        <h3 className='text-sm font-medium leading-none'>{t('prompts.conditions.title')}</h3>
+                        <h3 className='text-sm leading-none font-medium'>{t('prompts.conditions.title')}</h3>
                         <p className='text-muted-foreground text-xs'>{t('prompts.conditions.description')}</p>
                       </div>
                       <Button type='button' variant='outline' size='sm' onClick={handleAddGroup} className='h-8'>
@@ -526,7 +550,7 @@ export function PromptsActionDialog() {
                   </div>
                   <div className='flex-1 overflow-y-auto px-4 pb-4'>
                     {groupFields.length === 0 ? (
-                      <div className='text-muted-foreground rounded-lg border border-dashed bg-muted/20 p-8 text-center text-sm'>
+                      <div className='text-muted-foreground bg-muted/20 rounded-lg border border-dashed p-8 text-center text-sm'>
                         {t('prompts.conditions.empty')}
                       </div>
                     ) : (
@@ -536,10 +560,10 @@ export function PromptsActionDialog() {
                             {groupIndex > 0 && (
                               <div className='relative py-2'>
                                 <div className='absolute inset-0 flex items-center' aria-hidden='true'>
-                                  <div className='w-full border-t border-muted-foreground/20'></div>
+                                  <div className='border-muted-foreground/20 w-full border-t'></div>
                                 </div>
                                 <div className='relative flex justify-center'>
-                                  <span className='bg-background px-3 text-xs font-bold uppercase tracking-widest text-primary'>
+                                  <span className='bg-background text-primary px-3 text-xs font-bold tracking-widest uppercase'>
                                     {t('prompts.conditions.and')}
                                   </span>
                                 </div>
@@ -551,7 +575,6 @@ export function PromptsActionDialog() {
                               onRemoveGroup={() => removeGroup(groupIndex)}
                               t={t}
                               modelOptions={modelOptions}
-                              apiKeyOptions={apiKeyOptions}
                               dialogContentRef={dialogContentRef}
                             />
                           </div>

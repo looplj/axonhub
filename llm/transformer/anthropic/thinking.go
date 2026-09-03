@@ -1,5 +1,7 @@
 package anthropic
 
+import "github.com/looplj/axonhub/llm"
+
 func supportsAdaptiveThinking(config *Config) bool {
 	if config == nil {
 		return true
@@ -32,24 +34,46 @@ func supportsOutputConfig(config *Config) bool {
 }
 
 // thinkingBudgetToReasoningEffort converts thinking budget tokens to reasoning effort string.
+// This is only used when a native budget_tokens request must be expressed in a
+// protocol that has no budget field (e.g. OpenAI reasoning_effort); the original
+// budget always travels in llm.Request.ReasoningBudget. Levels are monotonic so
+// larger budgets never flatten into a lower tier.
 func thinkingBudgetToReasoningEffort(budgetTokens int64) string {
-	// Map budget tokens to reasoning effort based on the same logic used in outbound
-	if budgetTokens <= 5000 {
-		return "low"
-	} else if budgetTokens <= 15000 {
-		return "medium"
-	} else {
-		return "high"
+	switch {
+	case budgetTokens <= 5000:
+		return llm.ReasoningEffortLow
+	case budgetTokens <= 15000:
+		return llm.ReasoningEffortMedium
+	case budgetTokens <= 30000:
+		return llm.ReasoningEffortHigh
+	default:
+		return llm.ReasoningEffortXHigh
 	}
 }
 
+// normalizeAnthropicEffort maps a unified effort level onto the levels accepted by
+// output_config.effort. "minimal" is an OpenAI-only level with no Anthropic
+// equivalent; the closest (and the mapping mandated by the effort table) is "low".
+// All other levels, including "xhigh" and "max", pass through unchanged.
+func normalizeAnthropicEffort(effort string) string {
+	if effort == llm.ReasoningEffortMinimal {
+		return llm.ReasoningEffortLow
+	}
+
+	return effort
+}
+
 // getDefaultReasoningEffortMapping returns the default mapping from ReasoningEffort to thinking budget tokens.
+// Only used as the compatibility fallback for platforms without output_config.effort
+// support, where a budget is the only way to express an effort level. Channels can
+// override individual entries via Config.ReasoningEffortToBudget.
 var defaultReasoningEffortMapping = map[string]int64{
-	"low":    5000,
-	"medium": 15000,
-	"high":   30000,
-	"xhigh":  30000,
-	"max":    30000,
+	llm.ReasoningEffortMinimal: 5000,
+	llm.ReasoningEffortLow:     5000,
+	llm.ReasoningEffortMedium:  15000,
+	llm.ReasoningEffortHigh:    30000,
+	llm.ReasoningEffortXHigh:   30000,
+	llm.ReasoningEffortMax:     30000,
 }
 
 // getThinkingBudgetTokensWithConfig returns the thinking budget tokens for a given reasoning effort with config.

@@ -57,9 +57,10 @@ type OutboundTransformer struct {
 }
 
 var (
-	_ transformer.Outbound               = (*OutboundTransformer)(nil)
-	_ transformer.PassThroughBodyPolicy  = (*OutboundTransformer)(nil)
-	_ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
+	_ transformer.Outbound                  = (*OutboundTransformer)(nil)
+	_ transformer.PassThroughBodyPolicy     = (*OutboundTransformer)(nil)
+	_ transformer.TransportRequestFinalizer = (*OutboundTransformer)(nil)
+	_ pipeline.ChannelCustomizedExecutor    = (*OutboundTransformer)(nil)
 )
 
 var responsesBlockedPassThroughFields = []string{
@@ -446,6 +447,7 @@ type codexExecutor struct {
 }
 
 func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
+	request = e.requestForTransport(request)
 	// Compact and alpha search are non-streaming endpoints; proxy them
 	// through the real HTTP client instead of the SSE stream path.
 	if request.RequestType == string(llm.RequestTypeCompact) ||
@@ -469,7 +471,7 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 // upstream SSE stream and aggregate the events into a completed Responses
 // JSON body.
 func (e *codexExecutor) doStreamAndAggregate(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
-	stream, err := e.inner.DoStream(ctx, request)
+	stream, err := e.executor(ctx).DoStream(ctx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -596,5 +598,28 @@ func decodeSSEChunks(ctx context.Context, body []byte) ([]*httpclient.StreamEven
 }
 
 func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
-	return e.inner.DoStream(ctx, request)
+	return e.executor(ctx).DoStream(ctx, e.requestForTransport(request))
+}
+
+func (e *codexExecutor) executor(_ context.Context) pipeline.Executor {
+	if e == nil {
+		return nil
+	}
+	return e.inner
+}
+
+func (e *codexExecutor) requestForTransport(request *httpclient.Request) *httpclient.Request {
+	if e == nil || e.transformer == nil {
+		return request
+	}
+
+	return e.transformer.FinalizeTransportRequest(request)
+}
+
+func (t *OutboundTransformer) FinalizeTransportRequest(request *httpclient.Request) *httpclient.Request {
+	if t == nil || t.transport == responses.TransportWebSocket {
+		return request
+	}
+
+	return responses.PrepareHTTPTransportRequest(request, true)
 }

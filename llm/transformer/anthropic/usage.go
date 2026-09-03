@@ -25,6 +25,9 @@ type Usage struct {
 
 	// For moonshot anthropic endpoint, it uses cached tokens instead of cache read input tokens.
 	CachedTokens int64 `json:"cached_tokens,omitempty"`
+
+	// Cost is the request cost calculated by AxonHub from channel model prices.
+	Cost *float64 `json:"cost,omitempty"`
 }
 
 type CacheCreation struct {
@@ -92,6 +95,7 @@ func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 	usage := &Usage{
 		InputTokens:  llmUsage.PromptTokens,
 		OutputTokens: llmUsage.CompletionTokens,
+		Cost:         llmUsage.Cost,
 	}
 
 	// Map detailed token information from unified model to Anthropic format

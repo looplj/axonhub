@@ -1,13 +1,18 @@
 package openai
 
 import (
+	"context"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
-// RequestFromLLM creates OpenAI Request from unified llm.Request with reasoning field configuration.
-func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
+// RequestFromLLM creates an OpenAI Request from unified llm.Request with reasoning
+// field configuration. When the request has no explicit prompt cache key, ctx's
+// session ID is used as a fallback when available.
+func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField ReasoningField) *Request {
 	if r == nil {
 		return nil
 	}
@@ -35,6 +40,12 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 		Stream:              r.Stream,
 		ParallelToolCalls:   r.ParallelToolCalls,
 		Verbosity:           r.Verbosity,
+	}
+
+	if ctx != nil && lo.FromPtr(req.PromptCacheKey) == "" {
+		if sessionID, ok := shared.GetSessionID(ctx); ok && sessionID != "" {
+			req.PromptCacheKey = lo.ToPtr(sessionID)
+		}
 	}
 
 	// Convert messages
@@ -92,23 +103,6 @@ func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) *Request {
 	}
 
 	return req
-}
-
-// applyReasoningEffortMapping replaces reasoning_effort according to a per-channel mapping.
-// The first entry whose From matches the effort value wins; values not in the list (or an
-// empty/nil list) pass through unchanged. This lets non-standard OpenAI-compatible providers
-// (ollama, opencode, evolink, self-hosted gateways) opt in to conversions like xhigh→max
-// without affecting standard OpenAI channels. Applied in OutboundTransformer.TransformRequest.
-func applyReasoningEffortMapping(effort string, mappings []llm.ReasoningEffortMapping) string {
-	if len(mappings) == 0 || effort == "" {
-		return effort
-	}
-	for _, m := range mappings {
-		if m.From == effort {
-			return m.To
-		}
-	}
-	return effort
 }
 
 // MessageFromLLM creates OpenAI Message from unified llm.Message.

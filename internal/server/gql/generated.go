@@ -568,6 +568,7 @@ type ComplexityRoot struct {
 		HideOriginalModels       func(childComplexity int) int
 		LowercaseModelID         func(childComplexity int) int
 		ModelMappings            func(childComplexity int) int
+		ModelProtocols           func(childComplexity int) int
 		PassThroughBody          func(childComplexity int) int
 		PassThroughUserAgent     func(childComplexity int) int
 		Proxy                    func(childComplexity int) int
@@ -925,6 +926,12 @@ type ComplexityRoot struct {
 		PromptWriteCacheVariants func(childComplexity int) int
 	}
 
+	ModelProtocol struct {
+		APIFormats func(childComplexity int) int
+		Enabled    func(childComplexity int) int
+		Model      func(childComplexity int) int
+	}
+
 	ModelSettings struct {
 		Associations                        func(childComplexity int) int
 		DisableDeveloperSettingsInheritance func(childComplexity int) int
@@ -1059,6 +1066,7 @@ type ComplexityRoot struct {
 		UpdateSystemChannelSettings           func(childComplexity int, input biz.UpdateSystemChannelSettings) int
 		UpdateSystemGeneralSettings           func(childComplexity int, input biz.SystemGeneralSettings) int
 		UpdateSystemModelSettings             func(childComplexity int, input biz.SystemModelSettings) int
+		UpdateUsageCostInjectionSettings      func(childComplexity int, input UpdateUsageCostInjectionSettingsInput) int
 		UpdateUser                            func(childComplexity int, id objects.GUID, input ent.UpdateUserInput) int
 		UpdateUserAgentPassThroughSettings    func(childComplexity int, input UpdateUserAgentPassThroughSettingsInput) int
 		UpdateUserStatus                      func(childComplexity int, id objects.GUID, status user.Status) int
@@ -1421,6 +1429,7 @@ type ComplexityRoot struct {
 		TokenStatsByModel               func(childComplexity int, timeWindow *string) int
 		TopRequestsProjects             func(childComplexity int) int
 		Traces                          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.TraceOrder, where *ent.TraceWhereInput) int
+		UsageCostInjectionSettings      func(childComplexity int) int
 		UsageLogs                       func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
 		UsageStatsByUser                func(childComplexity int, timeWindow *string) int
 		UserAgentPassThroughSettings    func(childComplexity int) int
@@ -1941,6 +1950,10 @@ type ComplexityRoot struct {
 		Mode          func(childComplexity int) int
 	}
 
+	UsageCostInjectionSettings struct {
+		Enabled func(childComplexity int) int
+	}
+
 	UsageLog struct {
 		APIKeyID                           func(childComplexity int) int
 		Channel                            func(childComplexity int) int
@@ -2281,6 +2294,7 @@ type MutationResolver interface {
 	DeleteProxyPreset(ctx context.Context, url string) (bool, error)
 	UpdateUserAgentPassThroughSettings(ctx context.Context, input UpdateUserAgentPassThroughSettingsInput) (bool, error)
 	UpdatePassThroughSettings(ctx context.Context, input UpdatePassThroughSettingsInput) (bool, error)
+	UpdateUsageCostInjectionSettings(ctx context.Context, input UpdateUsageCostInjectionSettingsInput) (bool, error)
 	UpdateCatalogSettings(ctx context.Context, input UpdateCatalogSettingsInput) (bool, error)
 	RefreshProvidersCatalog(ctx context.Context) (*ProvidersCatalog, error)
 	ClearCache(ctx context.Context, input ClearCacheInput) (*ClearCachePayload, error)
@@ -2411,6 +2425,7 @@ type QueryResolver interface {
 	ProxyPresets(ctx context.Context) ([]*biz.ProxyPreset, error)
 	UserAgentPassThroughSettings(ctx context.Context) (*UserAgentPassThroughSettings, error)
 	PassThroughSettings(ctx context.Context) (*PassThroughSettings, error)
+	UsageCostInjectionSettings(ctx context.Context) (*UsageCostInjectionSettings, error)
 	GetCacheDiagnostics(ctx context.Context, input *GetCacheDiagnosticsInput) (*GetCacheDiagnosticsPayload, error)
 	FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error)
 	QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error)
@@ -4335,6 +4350,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.ModelMappings(childComplexity), true
+	case "ChannelSettings.modelProtocols":
+		if e.complexity.ChannelSettings.ModelProtocols == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.ModelProtocols(childComplexity), true
 	case "ChannelSettings.passThroughBody":
 		if e.complexity.ChannelSettings.PassThroughBody == nil {
 			break
@@ -5591,6 +5612,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelPriceItem.PromptWriteCacheVariants(childComplexity), true
+
+	case "ModelProtocol.apiFormats":
+		if e.complexity.ModelProtocol.APIFormats == nil {
+			break
+		}
+
+		return e.complexity.ModelProtocol.APIFormats(childComplexity), true
+	case "ModelProtocol.enabled":
+		if e.complexity.ModelProtocol.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ModelProtocol.Enabled(childComplexity), true
+	case "ModelProtocol.model":
+		if e.complexity.ModelProtocol.Model == nil {
+			break
+		}
+
+		return e.complexity.ModelProtocol.Model(childComplexity), true
 
 	case "ModelSettings.associations":
 		if e.complexity.ModelSettings.Associations == nil {
@@ -6931,6 +6971,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.UpdateSystemModelSettings(childComplexity, args["input"].(biz.SystemModelSettings)), true
+	case "Mutation.updateUsageCostInjectionSettings":
+		if e.complexity.Mutation.UpdateUsageCostInjectionSettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateUsageCostInjectionSettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateUsageCostInjectionSettings(childComplexity, args["input"].(UpdateUsageCostInjectionSettingsInput)), true
 	case "Mutation.updateUser":
 		if e.complexity.Mutation.UpdateUser == nil {
 			break
@@ -8723,6 +8774,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Traces(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.TraceOrder), args["where"].(*ent.TraceWhereInput)), true
+	case "Query.usageCostInjectionSettings":
+		if e.complexity.Query.UsageCostInjectionSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.UsageCostInjectionSettings(childComplexity), true
 	case "Query.usageLogs":
 		if e.complexity.Query.UsageLogs == nil {
 			break
@@ -10733,6 +10790,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.UpstreamErrorPolicy.Mode(childComplexity), true
 
+	case "UsageCostInjectionSettings.enabled":
+		if e.complexity.UsageCostInjectionSettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.UsageCostInjectionSettings.Enabled(childComplexity), true
+
 	case "UsageLog.apiKeyID":
 		if e.complexity.UsageLog.APIKeyID == nil {
 			break
@@ -11629,6 +11693,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputModelOrder,
 		ec.unmarshalInputModelPriceInput,
 		ec.unmarshalInputModelPriceItemInput,
+		ec.unmarshalInputModelProtocolInput,
 		ec.unmarshalInputModelSettingsInput,
 		ec.unmarshalInputModelWhereInput,
 		ec.unmarshalInputOAuthCredentialsInput,
@@ -11724,6 +11789,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateSystemModelSettingsInput,
 		ec.unmarshalInputUpdateThreadInput,
 		ec.unmarshalInputUpdateTraceInput,
+		ec.unmarshalInputUpdateUsageCostInjectionSettingsInput,
 		ec.unmarshalInputUpdateUsageLogInput,
 		ec.unmarshalInputUpdateUserAgentPassThroughSettingsInput,
 		ec.unmarshalInputUpdateUserInput,
@@ -13500,6 +13566,17 @@ func (ec *executionContext) field_Mutation_updateSystemModelSettings_args(ctx co
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateSystemModelSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐSystemModelSettings)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateUsageCostInjectionSettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateUsageCostInjectionSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateUsageCostInjectionSettingsInput)
 	if err != nil {
 		return nil, err
 	}
@@ -20506,6 +20583,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_retryableStatusCodes(ctx, field)
 			case "retryableErrorPatterns":
 				return ec.fieldContext_ChannelSettings_retryableErrorPatterns(ctx, field)
+			case "modelProtocols":
+				return ec.fieldContext_ChannelSettings_modelProtocols(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSettings", field.Name)
 		},
@@ -25151,6 +25230,43 @@ func (ec *executionContext) fieldContext_ChannelSettings_retryableErrorPatterns(
 				return ec.fieldContext_RetryableErrorPattern_regex(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RetryableErrorPattern", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_modelProtocols(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_modelProtocols,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelProtocols, nil
+		},
+		nil,
+		ec.marshalOModelProtocol2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelProtocolᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_modelProtocols(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "model":
+				return ec.fieldContext_ModelProtocol_model(ctx, field)
+			case "apiFormats":
+				return ec.fieldContext_ModelProtocol_apiFormats(ctx, field)
+			case "enabled":
+				return ec.fieldContext_ModelProtocol_enabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelProtocol", field.Name)
 		},
 	}
 	return fc, nil
@@ -31274,6 +31390,93 @@ func (ec *executionContext) fieldContext_ModelPriceItem_promptWriteCacheVariants
 	return fc, nil
 }
 
+func (ec *executionContext) _ModelProtocol_model(ctx context.Context, field graphql.CollectedField, obj *objects.ModelProtocol) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelProtocol_model,
+		func(ctx context.Context) (any, error) {
+			return obj.Model, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelProtocol_model(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelProtocol",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelProtocol_apiFormats(ctx context.Context, field graphql.CollectedField, obj *objects.ModelProtocol) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelProtocol_apiFormats,
+		func(ctx context.Context) (any, error) {
+			return obj.APIFormats, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelProtocol_apiFormats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelProtocol",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelProtocol_enabled(ctx context.Context, field graphql.CollectedField, obj *objects.ModelProtocol) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelProtocol_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelProtocol_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelProtocol",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ModelSettings_disableDeveloperSettingsInheritance(ctx context.Context, field graphql.CollectedField, obj *objects.ModelSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36464,6 +36667,47 @@ func (ec *executionContext) fieldContext_Mutation_updatePassThroughSettings(ctx 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updatePassThroughSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateUsageCostInjectionSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateUsageCostInjectionSettings,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().UpdateUsageCostInjectionSettings(ctx, fc.Args["input"].(UpdateUsageCostInjectionSettingsInput))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateUsageCostInjectionSettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateUsageCostInjectionSettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -46589,6 +46833,39 @@ func (ec *executionContext) fieldContext_Query_passThroughSettings(_ context.Con
 				return ec.fieldContext_PassThroughSettings_enabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PassThroughSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_usageCostInjectionSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_usageCostInjectionSettings,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().UsageCostInjectionSettings(ctx)
+		},
+		nil,
+		ec.marshalNUsageCostInjectionSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUsageCostInjectionSettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_usageCostInjectionSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_UsageCostInjectionSettings_enabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UsageCostInjectionSettings", field.Name)
 		},
 	}
 	return fc, nil
@@ -57502,6 +57779,35 @@ func (ec *executionContext) fieldContext_UpstreamErrorPolicy_customMessage(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _UsageCostInjectionSettings_enabled(ctx context.Context, field graphql.CollectedField, obj *UsageCostInjectionSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UsageCostInjectionSettings_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UsageCostInjectionSettings_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UsageCostInjectionSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UsageLog_id(ctx context.Context, field graphql.CollectedField, obj *ent.UsageLog) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -68026,7 +68332,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68138,6 +68444,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.RetryableErrorPatterns = data
+		case "modelProtocols":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelProtocols"))
+			data, err := ec.unmarshalOModelProtocolInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelProtocolᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelProtocols = data
 		}
 	}
 
@@ -72626,6 +72939,47 @@ func (ec *executionContext) unmarshalInputModelPriceItemInput(ctx context.Contex
 				return it, err
 			}
 			it.PromptWriteCacheVariants = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputModelProtocolInput(ctx context.Context, obj any) (objects.ModelProtocol, error) {
+	var it objects.ModelProtocol
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"model", "apiFormats", "enabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "model":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("model"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Model = data
+		case "apiFormats":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiFormats"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIFormats = data
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
 		}
 	}
 
@@ -85730,6 +86084,33 @@ func (ec *executionContext) unmarshalInputUpdateTraceInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateUsageCostInjectionSettingsInput(ctx context.Context, obj any) (UpdateUsageCostInjectionSettingsInput, error) {
+	var it UpdateUsageCostInjectionSettingsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Context, obj any) (ent.UpdateUsageLogInput, error) {
 	var it ent.UpdateUsageLogInput
 	asMap := map[string]any{}
@@ -94186,6 +94567,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_retryableStatusCodes(ctx, field, obj)
 		case "retryableErrorPatterns":
 			out.Values[i] = ec._ChannelSettings_retryableErrorPatterns(ctx, field, obj)
+		case "modelProtocols":
+			out.Values[i] = ec._ChannelSettings_modelProtocols(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -96963,6 +97346,52 @@ func (ec *executionContext) _ModelPriceItem(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var modelProtocolImplementors = []string{"ModelProtocol"}
+
+func (ec *executionContext) _ModelProtocol(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelProtocol) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelProtocolImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelProtocol")
+		case "model":
+			out.Values[i] = ec._ModelProtocol_model(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "apiFormats":
+			out.Values[i] = ec._ModelProtocol_apiFormats(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._ModelProtocol_enabled(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var modelSettingsImplementors = []string{"ModelSettings"}
 
 func (ec *executionContext) _ModelSettings(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelSettings) graphql.Marshaler {
@@ -97728,6 +98157,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updatePassThroughSettings":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updatePassThroughSettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateUsageCostInjectionSettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateUsageCostInjectionSettings(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -102161,6 +102597,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_passThroughSettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "usageCostInjectionSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_usageCostInjectionSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -107599,6 +108057,45 @@ func (ec *executionContext) _UpstreamErrorPolicy(ctx context.Context, sel ast.Se
 			}
 		case "customMessage":
 			out.Values[i] = ec._UpstreamErrorPolicy_customMessage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var usageCostInjectionSettingsImplementors = []string{"UsageCostInjectionSettings"}
+
+func (ec *executionContext) _UsageCostInjectionSettings(ctx context.Context, sel ast.SelectionSet, obj *UsageCostInjectionSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, usageCostInjectionSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UsageCostInjectionSettings")
+		case "enabled":
+			out.Values[i] = ec._UsageCostInjectionSettings_enabled(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -113173,6 +113670,15 @@ func (ec *executionContext) unmarshalNModelPriceItemInput2ᚕgithubᚗcomᚋloop
 	return res, nil
 }
 
+func (ec *executionContext) marshalNModelProtocol2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelProtocol(ctx context.Context, sel ast.SelectionSet, v objects.ModelProtocol) graphql.Marshaler {
+	return ec._ModelProtocol(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNModelProtocolInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelProtocol(ctx context.Context, v any) (objects.ModelProtocol, error) {
+	res, err := ec.unmarshalInputModelProtocolInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNModelSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelSettings(ctx context.Context, sel ast.SelectionSet, v *objects.ModelSettings) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -115760,6 +116266,11 @@ func (ec *executionContext) unmarshalNUpdateSystemModelSettingsInput2githubᚗco
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateUsageCostInjectionSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateUsageCostInjectionSettingsInput(ctx context.Context, v any) (UpdateUsageCostInjectionSettingsInput, error) {
+	res, err := ec.unmarshalInputUpdateUsageCostInjectionSettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNUpdateUserAgentPassThroughSettingsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUpdateUserAgentPassThroughSettingsInput(ctx context.Context, v any) (UpdateUserAgentPassThroughSettingsInput, error) {
 	res, err := ec.unmarshalInputUpdateUserAgentPassThroughSettingsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -115793,6 +116304,20 @@ func (ec *executionContext) marshalNUpload2githubᚗcomᚋ99designsᚋgqlgenᚋg
 
 func (ec *executionContext) marshalNUpstreamErrorPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐUpstreamErrorPolicy(ctx context.Context, sel ast.SelectionSet, v biz.UpstreamErrorPolicy) graphql.Marshaler {
 	return ec._UpstreamErrorPolicy(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUsageCostInjectionSettings2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUsageCostInjectionSettings(ctx context.Context, sel ast.SelectionSet, v UsageCostInjectionSettings) graphql.Marshaler {
+	return ec._UsageCostInjectionSettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNUsageCostInjectionSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐUsageCostInjectionSettings(ctx context.Context, sel ast.SelectionSet, v *UsageCostInjectionSettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._UsageCostInjectionSettings(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNUsageLogConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐUsageLogConnection(ctx context.Context, sel ast.SelectionSet, v ent.UsageLogConnection) graphql.Marshaler {
@@ -119412,6 +119937,71 @@ func (ec *executionContext) unmarshalOModelOrder2ᚖgithubᚗcomᚋloopljᚋaxon
 	}
 	res, err := ec.unmarshalInputModelOrder(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOModelProtocol2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelProtocolᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ModelProtocol) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModelProtocol2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelProtocol(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOModelProtocolInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelProtocolᚄ(ctx context.Context, v any) ([]objects.ModelProtocol, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.ModelProtocol, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNModelProtocolInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelProtocol(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOModelSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelSettings(ctx context.Context, v any) (*objects.ModelSettings, error) {
