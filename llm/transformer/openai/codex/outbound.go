@@ -247,6 +247,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	reqCopy.Metadata = nil
 
+	// The Codex backend rejects the `user` field with a 400 Bad Request, so
+	// strip it out as well. Chat Completions clients may set `user`, and the
+	// shared Responses outbound would otherwise forward it upstream.
+	reqCopy.User = nil
+
 	reqCopy.TransformOptions.ArrayInputs = lo.ToPtr(true)
 
 	hreq, err := t.responsesOutbound.TransformRequest(ctx, &reqCopy)
