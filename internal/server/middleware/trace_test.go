@@ -1452,7 +1452,8 @@ func TestWithTrace_WritesResponseAliasesForExplicitTraceWithoutProject(t *testin
 
 func TestWithTrace_SkipsPersistedTraceForEmbeddingEndpoint(t *testing.T) {
 	config := tracing.Config{
-		TraceHeader: "AH-Trace-Id",
+		TraceHeader:          "AH-Trace-Id",
+		ResponseTraceHeaders: []string{"AH-Trace-Id"},
 	}
 
 	router, client, traceService := setupTestTraceMiddleware(t)
@@ -1479,6 +1480,10 @@ func TestWithTrace_SkipsPersistedTraceForEmbeddingEndpoint(t *testing.T) {
 	router.POST("/v1/embeddings", func(c *gin.Context) {
 		_, ok := contexts.GetTrace(c.Request.Context())
 		require.False(t, ok, "embeddings requests must not carry a persisted trace")
+
+		traceID, ok := tracing.GetTraceID(c.Request.Context())
+		require.True(t, ok)
+		require.Equal(t, "client-trace-123", traceID)
 		c.Status(http.StatusOK)
 	})
 
@@ -1489,6 +1494,7 @@ func TestWithTrace_SkipsPersistedTraceForEmbeddingEndpoint(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "client-trace-123", w.Header().Get("Ah-Trace-Id"))
 	traceCount, err := client.Trace.Query().Count(ctx)
 	require.NoError(t, err)
 	require.Zero(t, traceCount, "embedding requests must not create persisted traces")

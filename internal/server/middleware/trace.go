@@ -116,14 +116,6 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 			return
 		}
 
-		// Tool endpoints such as embeddings carry a trace ID header from generic API
-		// clients but are not conversation turns, so they never get a persisted trace.
-		if isNonMessageEndpoint(c.Request.URL.Path) {
-			c.Next()
-
-			return
-		}
-
 		// The trace middleware can resolve a more specific ID from fallback headers
 		// or request bodies. Keep the request context in sync with that final value.
 		c.Request = c.Request.WithContext(tracing.WithTraceID(c.Request.Context(), traceID))
@@ -138,6 +130,15 @@ func WithTrace(config tracing.Config, traceService *biz.TraceService) gin.Handle
 		projectID, ok := contexts.GetProjectID(c.Request.Context())
 		if !ok {
 			c.Next()
+			return
+		}
+
+		// Tool endpoints such as embeddings carry a trace ID header from generic API
+		// clients but are not conversation turns: keep the resolved trace ID and
+		// response headers for client correlation, but never persist a trace for them.
+		if isNonMessageEndpoint(c.Request.URL.Path) {
+			c.Next()
+
 			return
 		}
 
