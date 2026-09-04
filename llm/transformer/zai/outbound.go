@@ -181,7 +181,7 @@ func resolveZaiThinking(model, reasoningEffort string) (*Thinking, *string) {
 	effort := reasoningEffort
 
 	if !supportsNativeReasoningEffort(model) {
-		// GLM-4.x and older: thinking on/off only.
+		// GLM models before 5.2 (4.x, 5.0/5.1, and unknown/non-GLM fallback): thinking on/off only.
 		if effort == "none" {
 			return &Thinking{Type: "disabled"}, nil
 		}
@@ -258,7 +258,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	// GLM/z.ai validate user_id as 6-128 characters (error 1214). Clients like
 	// Claude Code send a long JSON blob (device_id/session_id) here; send only
-	// values the upstream accepts — truncate long ones, drop short ones. An
+	// values the upstream accepts 鈥?truncate long ones, drop short ones. An
 	// empty value omits the field entirely (json omitempty).
 	if runes := []rune(zaiReq.UserID); len(runes) > maxUserIDLength {
 		zaiReq.UserID = string(runes[:maxUserIDLength])
