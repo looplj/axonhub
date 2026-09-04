@@ -2,6 +2,10 @@ package biz
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -406,6 +410,75 @@ func TestChannelService_DisableAllAPIKeysDisablesChannel(t *testing.T) {
 	require.Equal(t, channel.StatusDisabled, updatedCh.Status)
 	require.Len(t, updatedCh.DisabledAPIKeys, 2)
 	require.NotNil(t, updatedCh.ErrorMessage)
+}
+
+func TestChannelService_DisableAllAPIKeysNotifiesWebhook(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	type webhookRequest struct {
+		body string
+		err  error
+	}
+	notifications := make(chan webhookRequest, 2)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		notifications <- webhookRequest{body: string(body), err: err}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	cfg := WebhookNotifierConfig{
+		Targets: []WebhookTarget{
+			{
+				Name:      "default",
+				Enabled:   true,
+				URL:       server.URL,
+				TimeoutMs: 1000,
+				Body:      `{"event":"{{.Event}}","channel_id":{{.Channel.ID}},"channel_name":"{{.Channel.Name}}","provider":"{{.Channel.Provider}}","base_url":"{{.Channel.BaseURL}}","status":"{{.Channel.Status}}","status_code":{{.Trigger.StatusCode}},"reason":"{{.Trigger.Reason}}"}`,
+			},
+		},
+		Subscriptions: []WebhookSubscription{
+			{Event: EventChannelAutoDisabled, TargetNames: []string{"default"}},
+		},
+	}
+
+	svc := newTestChannelService(client)
+	svc.SystemService = newTestSystemServiceWithWebhookConfig(t, client, cfg)
+	svc.WebhookNotifier = NewWebhookNotifier(svc.SystemService, httpclient.NewHttpClient())
+
+	ch := createTestChannelWithAPIKeys(t, client, ctx, "test-channel-webhook", []string{"key1", "key2"})
+
+	require.NoError(t, svc.DisableAPIKey(ctx, ch.ID, "key1", 500, "first key failed"))
+
+	select {
+	case notification := <-notifications:
+		t.Fatalf("received webhook before channel was disabled: %s", notification.body)
+	case <-time.After(100 * time.Millisecond):
+	}
+
+	require.NoError(t, svc.DisableAPIKey(ctx, ch.ID, "key2", 500, "second key failed"))
+
+	select {
+	case notification := <-notifications:
+		require.NoError(t, notification.err)
+		require.JSONEq(t, fmt.Sprintf(`{
+			"event": "channel.auto_disabled",
+			"channel_id": %d,
+			"channel_name": "test-channel-webhook",
+			"provider": "openai",
+			"base_url": "https://api.openai.com",
+			"status": "disabled",
+			"status_code": 500,
+			"reason": "All API keys disabled (last error: 500)"
+		}`, ch.ID), notification.body)
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for channel auto-disabled webhook")
+	}
 }
 
 func TestChannelService_SuccessClearsErrorCounts(t *testing.T) {
