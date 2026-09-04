@@ -1504,3 +1504,29 @@ func TestOutboundTransformer_TransformStream_UsageWithoutContentStillIncomplete(
 		}
 	}
 }
+
+func TestOutboundTransformer_TransformStream_ToolCallWithoutArgumentsStillIncomplete(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	// A stream that only creates a tool call item but never delivers any
+	// arguments/input has no meaningful output. It must stay incomplete instead
+	// of being promoted to a tool_calls completion with empty arguments.
+	events := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_empty_tool","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_empty","type":"function_call","call_id":"call_empty","name":"get_weather","arguments":""}}`)},
+	}
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	responses, err := streams.All(stream)
+	require.ErrorIs(t, err, ErrStreamIncomplete)
+	require.Equal(t, 0, countDoneResponses(responses))
+
+	// No finish chunk must be synthesized for an empty tool-call stream.
+	for _, response := range responses {
+		if response != nil && len(response.Choices) > 0 && response.Choices[0].FinishReason != nil {
+			t.Fatalf("unexpected synthesized finish_reason for empty tool-call stream")
+		}
+	}
+}

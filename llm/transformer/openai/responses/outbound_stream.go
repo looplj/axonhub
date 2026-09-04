@@ -838,6 +838,19 @@ func (s *responsesOutboundStream) Close() error {
 	return s.stream.Close()
 }
 
+// hasToolCallOutput reports whether any tracked tool call carries actual
+// arguments/input. A stream that closes after only creating a tool call item
+// (with no arguments delivered) has no meaningful output yet and must stay
+// incomplete.
+func (s *responsesOutboundStream) hasToolCallOutput() bool {
+	for _, tc := range s.state.toolCalls {
+		if tc.Function.Arguments != "" || (tc.ResponseCustomToolCall != nil && tc.ResponseCustomToolCall.Input != "") {
+			return true
+		}
+	}
+	return false
+}
+
 // canSynthesizeCompletion reports whether a clean EOF without a semantic
 // terminal event should still be treated as a successful completion. This is
 // true when the source ended without a transport error and the upstream
@@ -860,7 +873,7 @@ func (s *responsesOutboundStream) canSynthesizeCompletion() bool {
 	// "completed" response, which would hide the truncation from the client.
 	return s.state.textContent.Len() > 0 ||
 		s.state.reasoningContent.Len() > 0 ||
-		len(s.state.toolCalls) > 0
+		s.hasToolCallOutput()
 }
 
 // synthesizeCompletion emits the terminal finish chunk and usage (if any) the
@@ -871,7 +884,7 @@ func (s *responsesOutboundStream) synthesizeCompletion() {
 	s.responseCompleted = true
 
 	finishReason := "stop"
-	if len(s.state.toolCalls) > 0 {
+	if s.hasToolCallOutput() {
 		finishReason = "tool_calls"
 	}
 
