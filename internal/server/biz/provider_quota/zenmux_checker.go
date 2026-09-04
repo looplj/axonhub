@@ -75,6 +75,7 @@ func (c *ZenmuxQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Q
 	if ch.Settings != nil && ch.Settings.Proxy != nil {
 		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
 	}
+	hc = hc.WithRejectHTTPSDowngrade()
 
 	response, err := hc.Do(ctx, request)
 	if err != nil {

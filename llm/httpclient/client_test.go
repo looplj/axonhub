@@ -418,6 +418,15 @@ func TestNewHttpClient_WithInsecureSkipVerify_PreservesDefaultTransportSettings(
 	require.True(t, tr.TLSClientConfig.InsecureSkipVerify)
 }
 
+func TestNewHttpClientWithProxy_RejectsHTTPSDowngrade(t *testing.T) {
+	client := NewHttpClientWithProxy(nil, WithInsecureSkipVerify(true), WithRejectHTTPSDowngrade(true))
+	previous := httptest.NewRequest(http.MethodGet, "https://example.com", nil)
+	next := httptest.NewRequest(http.MethodGet, "http://example.com", nil)
+	err := client.GetNativeClient().CheckRedirect(next, []*http.Request{previous})
+
+	require.ErrorContains(t, err, "refusing HTTPS to HTTP redirect")
+}
+
 type proxyConnectionIDContextKey struct{}
 
 func TestNewHttpClientWithProxy_ConnectionReuse(t *testing.T) {
