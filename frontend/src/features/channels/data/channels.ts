@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { pageInfoSchema } from '@/gql/pagination';
+import { shouldNotifyChannelQueryError } from './channel-query-error';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
@@ -1063,7 +1064,7 @@ export function useQueryChannels(
   });
 
   useEffect(() => {
-    if (query.error && query.data === undefined) {
+    if (shouldNotifyChannelQueryError(query.error, query.data !== undefined, query.isPlaceholderData)) {
       handleError(query.error, t('common.errors.internalServerError'));
     }
   }, [handleError, query.data, query.error, t]);
