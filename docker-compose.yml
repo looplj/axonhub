@@ -2,11 +2,10 @@
 #
 # CONFIGURATION OPTIONS:
 # 1. 环境变量 - 适用于敏感配置 (如数据库DSN、密码等)，优先级高于配置文件
-#    参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md#configuration-priority
 #
 # 2. 配置文件 - 适用于复杂配置 (如缓存、日志、监控等)
 #    创建 config.yml 文件并取消 volumes 配置的注释
-#    配置参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
+#    部署说明: https://github.com/looplj/axonhub-skills/blob/main/deploy-axonhub/SKILL.md
 #
 # 3. 简单部署 - 如果不需要复杂配置，可以注释掉 config 的 volumes 配置
 #    仅使用环境变量进行基本配置即可运行
@@ -59,7 +58,6 @@ services:
       - "${AXONHUB_BIND_ADDRESS:-127.0.0.1}:${AXONHUB_HOST_PORT:-8090}:8090"
     volumes:
       # 配置文件挂载 - 用于复杂配置，如缓存、日志、监控等
-      # 参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
       - ./config.yml:/app/config.yml:ro
       # - axonhub_data:/data
     networks:
@@ -121,7 +119,6 @@ services:
   #     - "${AXONHUB_BIND_ADDRESS:-127.0.0.1}:${AXONHUB_HOST_PORT:-8090}:8090"
   #   volumes:
   #     # 配置文件挂载 - 用于复杂配置
-  #     # 参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
   #     - ./config.yml:/app/config.yml:ro
   #     - ./data:/data
   #   user: "65532:65532"
@@ -184,7 +181,6 @@ services:
   #     - "${AXONHUB_BIND_ADDRESS:-127.0.0.1}:${AXONHUB_HOST_PORT:-8090}:8090"
   #   volumes:
   #     # 配置文件挂载 - 用于复杂配置
-  #     # 参考: https://github.com/looplj/axonhub/blob/main/docs/deployment/configuration.md
   #     - ./config.yml:/app/config.yml:ro
   #     # - axonhub_data:/data
   #   user: "65532:65532"

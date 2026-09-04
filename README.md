@@ -275,280 +275,70 @@
 ---
 
 
-## 🚀 快速开始 | Quick Start
+## 🚀 部署指南 | Deployment Guide
 
-### 30 秒本地启动 | 30-Second Local Start
+让你的 Agent 读取并遵循 [`deploy-axonhub`](https://github.com/looplj/axonhub-skills/blob/main/deploy-axonhub/SKILL.md) 来部署 AxonHub。
 
-```bash
-# 下载并解压（以 macOS ARM64 为例）
-curl -sSL https://github.com/looplj/axonhub/releases/latest/download/axonhub_darwin_arm64.tar.gz | tar xz
-cd axonhub_*
+---
 
-# 使用 SQLite 运行（默认）
-./axonhub
+## ⚡ 快速开始 | Quick Start
 
-# 打开 http://localhost:8090
-# 首次运行：按照初始化向导设置系统（创建管理员账号，密码至少需要 6 位）
-```
+部署完成后：
 
-就这样！现在配置你的第一个 AI 渠道，开始通过 AxonHub 调用模型。
-
-### 零代码迁移示例 | Zero-Code Migration Example
-
-**你的现有代码无需任何改动。** 只需将 SDK 指向 AxonHub：
+1. **初始化系统**
+   - 打开 Agent 返回的 AxonHub 访问地址。
+   - 按照初始化向导创建管理员账号。
+2. **添加渠道**
+   - 在 **Channels（渠道）** 中添加 AI 提供商及其 API Key。
+   - 配置支持的模型，测试连接并启用渠道。
+3. **创建 API Key**
+   - 在 **API Keys（API 密钥）** 中创建供客户端使用的 AxonHub API Key。
+4. **发起第一个请求**
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="http://localhost:8090/v1",  # 指向 AxonHub
-    api_key="your-axonhub-api-key"        # 使用 AxonHub API 密钥
+    base_url="http://localhost:8090/v1",
+    api_key="your-axonhub-api-key"
 )
 
-# 用 OpenAI SDK 调用 Claude！
 response = client.chat.completions.create(
-    model="claude-3-5-sonnet",  # 或 gpt-4、gemini-pro、deepseek-chat...
-    messages=[{"role": "user", "content": "Hello!"}]
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello, AxonHub!"}]
 )
+
+print(response.choices[0].message.content)
 ```
 
-切换模型只需改一行：`model="gpt-4"` → `model="claude-3-5-sonnet"`。无需改动 SDK。
+更多配置和 API 示例请查看[完整文档索引](docs/zh/index.md)。
 
 ---
-
-## 🚀 部署指南 | Deployment Guide
-
-### 💻 个人电脑部署 | Personal Computer Deployment
-
-适合个人开发者和小团队使用，无需复杂配置。
-
-#### 快速下载运行 | Quick Download & Run
-
-1. **下载最新版本** 从 [GitHub Releases](https://github.com/looplj/axonhub/releases)
-   - 选择适合您操作系统的版本：
-
-2. **解压并运行**
-   ```bash
-   # 解压下载的文件
-   unzip axonhub_*.zip
-   cd axonhub_*
-
-   # 添加执行权限 (仅限 Linux/macOS)
-   chmod +x axonhub
-
-   # 直接运行 - 默认使用 SQLite 数据库
-   # 安装 AxonHub 到系统
-   ./install.sh
-
-   # 启动 AxonHub 服务
-   ./start.sh
-
-   # 停止 AxonHub 服务
-   ./stop.sh
-   ```
-
-3. **访问应用**
-   ```
-   http://localhost:8090
-   ```
-
----
-
-### 🖥️ 服务器部署 | Server Deployment
-
-适用于生产环境、高可用性和企业级部署。
-
-#### 数据库支持 | Database Support
-
-AxonHub 支持多种数据库，满足不同规模的部署需求：
-
-| 数据库 | 支持版本 | 推荐场景 | 自动迁移 | 链接 |
-|--------|----------|----------|----------|------|
-| **SQLite** | 3.0+ | 开发环境、小型部署 | ✅ 支持 | [SQLite](https://www.sqlite.org/index.html) |
-| **TiDB Cloud** | Starter | Serverless, Free tier, Auto Scale | ✅ 支持 | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-starter/) |
-| **TiDB Cloud** | Dedicated | 分布式部署、大规模 | ✅ 支持 | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-dedicated/) |
-| **TiDB** | V8.0+ | 分布式部署、大规模 | ✅ 支持 | [TiDB](https://tidb.io/) |
-| **Neon DB** | - | Serverless, Free tier, Auto Scale | ✅ 支持 | [Neon DB](https://neon.com/) |
-| **PostgreSQL** | 15+ | 生产环境、中大型部署 | ✅ 支持 | [PostgreSQL](https://www.postgresql.org/) |
-| **MySQL** | 8.0+ | 生产环境、中大型部署 | ✅ 支持 | [MySQL](https://www.mysql.com/) |
-
-#### 配置文件 | Configuration
-
-AxonHub 使用 YAML 配置文件，支持环境变量覆盖：
-
-```yaml
-# config.yml
-server:
-  port: 8090
-  name: "AxonHub"
-  debug: false
-
-db:
-  dialect: "tidb"
-  dsn: "<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
-
-log:
-  level: "info"
-  encoding: "json"
-```
-
-环境变量：
-```bash
-AXONHUB_SERVER_PORT=8090
-AXONHUB_DB_DIALECT="tidb"
-AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
-AXONHUB_LOG_LEVEL=info
-```
-
-详细配置说明请参考 [配置文档](config.example.yml)。
-
-#### Docker Compose 部署
-
-```bash
-# 克隆项目
-git clone https://github.com/looplj/axonhub.git
-cd axonhub
-
-# 创建本地环境文件（请替换镜像 digest 和密码）
-umask 077
-cat > .env <<'EOF'
-DB_PASSWORD=replace-with-a-long-random-password
-AXONHUB_IMAGE=looplj/axonhub@sha256:replace-with-axonhub-digest
-POSTGRES_IMAGE=postgres@sha256:replace-with-postgres-digest
-EOF
-
-# 启动服务
-docker compose --env-file .env up -d
-
-# 查看状态
-docker compose ps
-```
-
-#### Helm Kubernetes 部署 | Helm Kubernetes Deployment
-
-使用官方 Helm Chart 在 Kubernetes 上部署 AxonHub：
-
-```bash
-# Quick installation
-git clone https://github.com/looplj/axonhub.git
-cd axonhub
-helm install axonhub ./deploy/helm
-
-# Production deployment
-helm install axonhub ./deploy/helm -f ./deploy/helm/values-production.yaml
-
-# Access AxonHub
-kubectl port-forward svc/axonhub 8090:8090
-# Visit http://localhost:8090
-```
-
-**关键配置选项：**
-
-| 参数 | 描述 | 默认 |
-|-----------|-------------|---------|
-| `axonhub.replicaCount` | 副本数 | `1` |
-| `axonhub.dbPassword` | 数据库密码 | `axonhub_password` |
-| `postgresql.enabled` | 是否启用内嵌 PostgreSQL | `true` |
-| `ingress.enabled` | 是否启用 Ingress | `false` |
-| `persistence.enabled` | 是否启用持久化存储 | `false` |
-
-有关详细配置和故障排查，请参阅 [Helm Chart 文档](deploy/helm/README.md)。
-
-#### 虚拟机部署 | Virtual Machine Deployment
-
-下载最新版本从 [GitHub Releases](https://github.com/looplj/axonhub/releases)
-
-```bash
-# 克隆项目
-git clone https://github.com/looplj/axonhub.git
-cd axonhub
-
-# 设置环境变量
-export AXONHUB_DB_DIALECT="tidb"
-export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
-
-# 安装
-sudo ./install.sh
-
-# 配置文件检查
-axonhub config check
-
-# 使用管理脚本管理 AxonHub
-
-# 启动
-./start.sh
-
-# 停止
-./stop.sh
-```
-
----
-
-## 📖 使用指南 | Usage Guide
-
-### 1. 初始化设置 | Initial Setup
-
-1. **访问管理界面**
-   ```
-   http://localhost:8090
-   ```
-
-2. **配置 AI 提供商**
-   - 在管理界面中添加 API 密钥
-   - 测试连接确保配置正确
-
-3. **创建用户和角色**
-   - 设置权限管理
-   - 分配适当的访问权限
-
-### 2. Channel 配置 | Channel Configuration
-
-在管理界面中配置 AI 提供商渠道。关于渠道配置的详细信息，包括模型映射、参数覆盖和故障排除，请参阅 [渠道配置指南](docs/zh/guides/channel-management.md)。
-
-### 3. 模型管理 | Model Management
-
-AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模型映射到特定渠道和模型实现。这使您能够：
-
-- **统一模型接口** - 使用抽象模型 ID（如 `gpt-4`、`claude-3-opus`）替代渠道特定的名称
-- **智能渠道选择** - 基于关联规则和负载均衡自动将请求路由到最优渠道
-- **灵活的映射策略** - 支持精确的渠道-模型匹配、正则表达式模式和基于标签的选择
-- **基于优先级的回退** - 配置多个具有优先级的关联以实现自动故障转移
-
-关于模型管理的全面信息，包括关联类型、配置示例和最佳实践，请参阅 [模型管理指南](docs/zh/guides/model-management.md)。
-
-### 4. 创建 API Key | Create API Keys
-
-创建 API 密钥以验证您的应用程序与 AxonHub 的连接。每个 API 密钥可以配置多个配置文件（Profile），用于定义：
-
-- **模型映射** - 使用精确匹配或正则表达式模式将用户请求的模型转换为实际可用的模型
-- **渠道限制** - 通过渠道 ID 或标签限制 API 密钥可以使用的渠道
-- **模型访问控制** - 控制特定配置文件可以访问的模型
-- **配置文件切换** - 通过激活不同的配置文件即时更改行为
-
-关于 API 密钥配置文件的详细信息，包括配置示例、验证规则和最佳实践，请参阅 [API 密钥配置文件指南](docs/zh/guides/api-key-profiles.md)。
-
-### 5. AI 编程工具集成 | AI Coding Tools Integration
-
-关于如何在 OpenCode、Claude Code 与 Claude Codex 中配置与 AxonHub 的集成、排查常见问题以及结合模型配置文件工作流的最佳实践，请参阅专门的集成指南：
-- [OpenCode 集成指南](docs/zh/guides/opencode-integration.md)
-- [Claude Code 集成指南](docs/zh/guides/claude-code-integration.md)
-- [Codex 集成指南](docs/zh/guides/codex-integration.md)
-
-这些文档提供了环境变量示例、Codex 配置模板、模型配置文件说明以及工作流示例，帮助您快速完成接入。
-
----
-
-### 6. 使用 SDK | SDK Usage
-
-详细的 SDK 使用示例和代码示例，请参阅 API 文档：
-- [OpenAI API](docs/zh/api-reference/openai-api.md)
-- [Anthropic API](docs/zh/api-reference/anthropic-api.md)
-- [Gemini API](docs/zh/api-reference/gemini-api.md)
-
 
 ## 🛠️ 开发指南
 
 详细的开发说明、架构设计和贡献指南，请查看 [docs/zh/development/development.md](docs/zh/development/development.md)。
+
+---
+
+## 👥 团队 | Team
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/looplj">
+        <img src="https://github.com/looplj.png?size=100" width="100" alt="looplj"/><br/>
+        <sub><b>looplj</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/llc1123">
+        <img src="https://github.com/llc1123.png?size=100" width="100" alt="llc1123"/><br/>
+        <sub><b>llc1123</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -568,6 +358,7 @@ AxonHub 提供灵活的模型管理系统，支持通过模型关联将抽象模
 ## 📄 许可证 | License
 
 本项目采用多种许可证授权（Apache-2.0 和 LGPL-3.0）。详见 [LICENSE](LICENSE) 文件了解详细的项目授权说明与条款。
+
 ---
 
 <div align="center">

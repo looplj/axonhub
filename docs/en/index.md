@@ -46,13 +46,6 @@ Welcome to the AxonHub documentation center! This index will help you quickly fi
 | [Embedding API](api-reference/embedding-api.md) | Vector embedding interface documentation |
 | [Rerank API](api-reference/rerank-api.md) | Reranking interface documentation |
 
-### 🚀 Deployment Guides
-
-| Document | Description |
-|----------|-------------|
-| [Docker Deployment](deployment/docker.md) | Deploy using Docker and Docker Compose |
-| [Configuration](deployment/configuration.md) | Detailed configuration options |
-
 ### 🛠️ Development
 
 | Document | Description |
