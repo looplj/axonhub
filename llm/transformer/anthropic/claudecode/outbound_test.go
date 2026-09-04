@@ -183,14 +183,14 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		assert.NotNil(t, ParseUserID(userID))
 	})
 
-	t.Run("does not add billing cch when not official", func(t *testing.T) {
+	t.Run("preserves billing message when middleware is not applied", func(t *testing.T) {
 		transformer, err := NewOutboundTransformer(Params{
 			TokenProvider: newMockTokenProvider("test-api-key"),
 			IsOfficial:    false,
 		})
 		require.NoError(t, err)
 
-		billingMsg := "x-anthropic-billing-header: cc_version=2.1.37.fbe; cc_entrypoint=cli;"
+		billingMsg := "x-anthropic-billing-header: cc_version=2.1.37.fbe; cc_entrypoint=cli; cch=38a80;"
 		req := &llm.Request{
 			Model: "claude-sonnet-4-5",
 			Messages: []llm.Message{
@@ -203,25 +203,27 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
 
-		// The billing system message should not contain cch (it's stripped by pipeline middleware).
 		system := gjson.GetBytes(httpReq.Body, "system")
 		require.True(t, system.Exists())
 
+		foundBilling := false
 		for _, item := range system.Array() {
 			if strings.Contains(item.Get("text").String(), "x-anthropic-billing-header") {
-				assert.NotContains(t, item.Get("text").String(), "cch=")
+				foundBilling = true
+				assert.Contains(t, item.Get("text").String(), "cch=38a80;")
 			}
 		}
+		assert.True(t, foundBilling)
 	})
 
-	t.Run("restores billing cch when official and stripped", func(t *testing.T) {
+	t.Run("preserves billing cch when official", func(t *testing.T) {
 		transformer, err := NewOutboundTransformer(Params{
 			TokenProvider: newMockTokenProvider("test-api-key"),
 			IsOfficial:    true,
 		})
 		require.NoError(t, err)
 
-		billingMsg := "x-anthropic-billing-header: cc_version=2.1.42.c31; cc_entrypoint=cli;"
+		billingMsg := "x-anthropic-billing-header: cc_version=2.1.42.c31; cc_entrypoint=cli; cch=38a80;"
 		req := &llm.Request{
 			Model: "claude-sonnet-4-5",
 			Messages: []llm.Message{
@@ -229,15 +231,11 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
 			},
 			MaxTokens: lo.ToPtr(int64(1024)),
-			TransformerMetadata: map[string]any{
-				"claudecode_billing_cch": "38a80",
-			},
 		}
 
 		httpReq, err := transformer.TransformRequest(ctx, req)
 		require.NoError(t, err)
 
-		// The billing system message should include the restored cch.
 		system := gjson.GetBytes(httpReq.Body, "system")
 		require.True(t, system.Exists())
 
@@ -250,7 +248,7 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 			}
 		}
 
-		assert.True(t, foundCCH, "billing system message should restore cch for official channels")
+		assert.True(t, foundCCH, "official channels should preserve the original billing cch")
 	})
 
 	t.Run("disables thinking when tool_choice forces tool use", func(t *testing.T) {
@@ -286,6 +284,30 @@ func TestClaudeCodeTransformer_TransformRequest(t *testing.T) {
 		thinking := gjson.GetBytes(httpReq.Body, "thinking")
 		assert.False(t, thinking.Exists())
 	})
+}
+
+func TestRemoveBillingSystemMessages(t *testing.T) {
+	billing := "  X-Anthropic-Billing-Header: cc_version=2.1.42;"
+	keep := "keep"
+	userBilling := "x-anthropic-billing-header: user text"
+	req := &llm.Request{Messages: []llm.Message{
+		{Role: "system", Content: llm.MessageContent{Content: &billing}},
+		{Role: "user", Content: llm.MessageContent{Content: &userBilling}},
+		{Role: "system", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{Type: "text", Text: &billing},
+			{Type: "text", Text: &keep},
+		}}},
+	}}
+
+	result := RemoveBillingSystemMessages(req)
+
+	require.NotSame(t, req, result)
+	require.Len(t, result.Messages, 2)
+	require.Equal(t, "user", result.Messages[0].Role)
+	require.Len(t, result.Messages[1].Content.MultipleContent, 1)
+	require.Equal(t, keep, *result.Messages[1].Content.MultipleContent[0].Text)
+	require.Len(t, req.Messages, 3, "the shared inbound request must not be mutated")
+	require.Len(t, req.Messages[2].Content.MultipleContent, 2)
 }
 
 func TestClaudeCodeTransformer_TransformResponse(t *testing.T) {

@@ -133,9 +133,6 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 	reqCopy = *disableThinkingIfToolChoiceForcedStructured(&reqCopy)
 
 	reqCopy = *injectClaudeCodeSystemMessageStructured(&reqCopy)
-	if t.isOfficial {
-		reqCopy = *ensureBillingSystemMessageCCH(&reqCopy)
-	}
 
 	reqCopy = injectFakeUserIDStructured(ctx, reqCopy, t.accountIdentity)
 	if t.isOfficial && !keepClientUA {
