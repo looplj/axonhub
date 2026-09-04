@@ -574,6 +574,75 @@ func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status a
 	return apiKey, nil
 }
 
+func (s *APIKeyService) updatePersonalAPIKeyStatusByUser(
+	ctx context.Context,
+	userID int,
+	fromStatuses []apikey.Status,
+	toStatus apikey.Status,
+	action string,
+) error {
+	ctx = authz.WithSystemBypass(ctx, "update-user-personal-api-key-status")
+	client := s.entFromContext(ctx)
+	predicate := apikey.And(
+		apikey.UserIDEQ(userID),
+		apikey.TypeEQ(apikey.TypePersonal),
+		apikey.StatusIn(fromStatuses...),
+	)
+
+	apiKeys, err := client.APIKey.Query().
+		Where(predicate).
+		All(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query user personal API keys: %w", err)
+	}
+
+	if len(apiKeys) == 0 {
+		return nil
+	}
+
+	_, err = client.APIKey.Update().
+		Where(predicate).
+		SetStatus(toStatus).
+		Save(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to %s user personal API keys: %w", action, err)
+	}
+
+	keys := lo.Map(apiKeys, func(apiKey *ent.APIKey, _ int) string { return apiKey.Key })
+	runAfterCommit(ctx, func(ctx context.Context) {
+		for _, key := range keys {
+			s.APIKeyCache.Invalidate(buildAPIKeyCacheKey(key))
+		}
+		s.invalidateAPIKeyCaches(ctx, keys...)
+	})
+
+	return nil
+}
+
+// archivePersonalAPIKeysByUser archives all non-archived personal API keys
+// created by a user.
+func (s *APIKeyService) archivePersonalAPIKeysByUser(ctx context.Context, userID int) error {
+	return s.updatePersonalAPIKeyStatusByUser(
+		ctx,
+		userID,
+		[]apikey.Status{apikey.StatusEnabled, apikey.StatusDisabled},
+		apikey.StatusArchived,
+		"archive",
+	)
+}
+
+// disablePersonalAPIKeysByUser disables all enabled personal API keys created
+// by a user.
+func (s *APIKeyService) disablePersonalAPIKeysByUser(ctx context.Context, userID int) error {
+	return s.updatePersonalAPIKeyStatusByUser(
+		ctx,
+		userID,
+		[]apikey.Status{apikey.StatusEnabled},
+		apikey.StatusDisabled,
+		"disable",
+	)
+}
+
 // UpdateAPIKeyProfiles updates the profiles of an API key.
 func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profiles objects.APIKeyProfiles) (*ent.APIKey, error) {
 	client := s.entFromContext(ctx)

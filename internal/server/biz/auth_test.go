@@ -112,6 +112,7 @@ func setupTestAuthService(t *testing.T, cacheConfig xcache.Config) (*AuthService
 		ProjectService: projectService,
 		KeyPrefix:      "ah",
 	})
+	userService.apiKeyService = apiKeyService
 
 	authService := &AuthService{
 		SystemService: systemService,

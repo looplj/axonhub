@@ -23,14 +23,16 @@ import (
 type UserServiceParams struct {
 	fx.In
 
-	CacheConfig xcache.Config
-	Ent         *ent.Client
+	CacheConfig   xcache.Config
+	Ent           *ent.Client
+	APIKeyService *APIKeyService
 }
 
 type UserService struct {
 	*AbstractService
 
 	UserCache           xcache.Cache[ent.User]
+	apiKeyService       *APIKeyService
 	permissionValidator *PermissionValidator
 }
 
@@ -40,6 +42,7 @@ func NewUserService(params UserServiceParams) *UserService {
 			db: params.Ent,
 		},
 		UserCache:           xcache.NewFromConfig[ent.User](params.CacheConfig),
+		apiKeyService:       params.APIKeyService,
 		permissionValidator: NewPermissionValidator(),
 	}
 }
@@ -208,19 +211,36 @@ func (s *UserService) UpdateOwnProfile(ctx context.Context, input ent.UpdateUser
 
 // UpdateUserStatus updates the status of a user.
 func (s *UserService) UpdateUserStatus(ctx context.Context, id int, status user.Status) (*ent.User, error) {
-	client := s.entFromContext(ctx)
+	var updatedUser *ent.User
 
-	user, err := client.User.UpdateOneID(id).
-		SetStatus(status).
-		Save(ctx)
+	err := s.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := s.entFromContext(ctx)
+
+		result, err := client.User.UpdateOneID(id).
+			SetStatus(status).
+			Save(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to update user status: %w", err)
+		}
+		updatedUser = result
+
+		if status == user.StatusDeactivated {
+			if err := s.apiKeyService.disablePersonalAPIKeysByUser(ctx, id); err != nil {
+				return fmt.Errorf("failed to disable user personal API keys: %w", err)
+			}
+		}
+
+		runAfterCommit(ctx, func(ctx context.Context) {
+			s.invalidateUserCache(ctx, id)
+		})
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to update user status: %w", err)
+		return nil, err
 	}
 
-	// Invalidate cache
-	s.invalidateUserCache(ctx, id)
-
-	return user, nil
+	return updatedUser, nil
 }
 
 // GetUserByID gets a user by ID with caching.
@@ -564,8 +584,9 @@ func (s *UserService) UpdateProjectUser(ctx context.Context, userID, projectID i
 // 2. Checks if user is owner (cannot delete owner)
 // 3. Removes user from all projects (UserProject)
 // 4. Removes all user roles (UserRole)
-// 5. Soft deletes the user
-// 6. Invalidates user cache.
+// 5. Archives the user's personal API keys
+// 6. Soft deletes the user
+// 7. Invalidates user cache.
 func (s *UserService) DeleteUser(ctx context.Context, id int) error {
 	// Validate permissions before deleting
 	if err := s.permissionValidator.CanDeleteUser(ctx, id); err != nil {
@@ -602,13 +623,18 @@ func (s *UserService) DeleteUser(ctx context.Context, id int) error {
 			return fmt.Errorf("failed to delete user roles: %w", err)
 		}
 
-		// 3. Soft delete the user
+		// 3. Archive the user's personal API keys
+		if err = s.apiKeyService.archivePersonalAPIKeysByUser(ctx, id); err != nil {
+			return fmt.Errorf("failed to archive user personal API keys: %w", err)
+		}
+
+		// 4. Soft delete the user
 		err = client.User.DeleteOneID(id).Exec(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to delete user: %w", err)
 		}
 
-		// 4. Invalidate user cache
+		// 5. Invalidate user cache
 		s.invalidateUserCache(ctx, id)
 
 		return nil
