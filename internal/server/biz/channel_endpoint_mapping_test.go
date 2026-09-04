@@ -176,6 +176,16 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 				llm.APIFormatSeedanceVideo.String(),
 			},
 		},
+		{
+			name:     "commandcode defaults to openai chat completions",
+			typ:      channel.TypeCommandcode,
+			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},
+		},
+		{
+			name:     "commandcode anthropic defaults to anthropic messages",
+			typ:      channel.TypeCommandcodeAnthropic,
+			expected: []string{llm.APIFormatAnthropicMessage.String()},
+		},
 	}
 
 	for _, tt := range tests {

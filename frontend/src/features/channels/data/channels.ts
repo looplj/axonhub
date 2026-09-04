@@ -123,6 +123,11 @@ const CREATE_CHANNEL_MUTATION = `
           apiFormats
           enabled
         }
+        providerQuota {
+          commandCode {
+            authCookie
+          }
+        }
       }
       orderingWeight
       remark
@@ -196,6 +201,11 @@ const DUPLICATE_CHANNEL_MUTATION = `
           model
           apiFormats
           enabled
+        }
+        providerQuota {
+          commandCode {
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -271,6 +281,11 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           apiFormats
           enabled
         }
+        providerQuota {
+          commandCode {
+            authCookie
+          }
+        }
       }
       orderingWeight
       remark
@@ -344,6 +359,11 @@ const UPDATE_CHANNEL_MUTATION = `
           model
           apiFormats
           enabled
+        }
+        providerQuota {
+          commandCode {
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -533,6 +553,11 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             model
             apiFormats
             enabled
+          }
+          providerQuota {
+            commandCode {
+              authCookie
+            }
           }
         }
       }
@@ -764,6 +789,11 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             apiFormats
             enabled
           }
+          providerQuota {
+            commandCode {
+              authCookie
+            }
+          }
         }
       }
     }
@@ -821,11 +851,14 @@ const ALL_CHANNEL_TAGS_QUERY = `
   }
 `;
 
-const QUERY_CHANNELS_QUERY = `
-  query QueryChannels($input: QueryChannelInput!) {
-    queryChannels(input: $input) {
-      edges {
-        node {
+export type ChannelListColumnVisibility = Record<string, boolean>;
+
+export const DEFAULT_CHANNEL_COLUMN_VISIBILITY: ChannelListColumnVisibility = {
+  tags: false,
+  proxy: false,
+};
+
+const CHANNEL_QUERY_FULL_NODE_SELECTION = `
           id
           createdAt
           updatedAt
@@ -922,6 +955,11 @@ const QUERY_CHANNELS_QUERY = `
               apiFormats
               enabled
             }
+            providerQuota {
+              commandCode {
+                authCookie
+              }
+            }
           }
           orderingWeight
           errorMessage
@@ -951,6 +989,103 @@ const QUERY_CHANNELS_QUERY = `
             capacity
             queueSize
           }
+          providerQuotaStatus {
+            status
+            nextResetAt
+            ready
+            quotaData
+            providerType
+          }
+`;
+
+const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
+          id
+          createdAt
+          updatedAt
+          type
+          baseURL
+          name
+          status
+          defaultTestModel
+          errorMessage
+          disabledAPIKeys {
+            key
+            disabledAt
+            errorCode
+            reason
+            expiresAt
+          }
+`;
+
+const CHANNEL_QUERY_SUPPORTED_MODELS_SELECTION = `
+          supportedModels
+`;
+
+const CHANNEL_QUERY_TAGS_SELECTION = `
+          tags
+`;
+
+const CHANNEL_QUERY_PROXY_SELECTION = `
+          settings {
+            proxy {
+              type
+              url
+              username
+              password
+              disableConnectionReuse
+            }
+          }
+`;
+
+const CHANNEL_QUERY_ORDERING_WEIGHT_SELECTION = `
+          orderingWeight
+`;
+
+const CHANNEL_QUERY_HEALTH_SELECTION = `
+          liveLimiterStats {
+            inFlight
+            waiting
+            capacity
+            queueSize
+          }
+`;
+
+const CHANNEL_QUERY_QUOTA_SELECTION = `
+          providerQuotaStatus {
+            status
+            nextResetAt
+            ready
+            quotaData
+            providerType
+          }
+`;
+
+function isChannelColumnVisible(columnVisibility: ChannelListColumnVisibility | undefined, columnID: string): boolean {
+  return columnVisibility?.[columnID] !== false;
+}
+
+export function buildQueryChannelsQuery(
+  columnVisibility?: ChannelListColumnVisibility,
+  options?: { full?: boolean }
+): string {
+  const nodeSelection = options?.full
+    ? CHANNEL_QUERY_FULL_NODE_SELECTION
+    : [
+        CHANNEL_QUERY_LIST_NODE_BASE_SELECTION,
+        isChannelColumnVisible(columnVisibility, 'supportedModels') ? CHANNEL_QUERY_SUPPORTED_MODELS_SELECTION : '',
+        isChannelColumnVisible(columnVisibility, 'tags') ? CHANNEL_QUERY_TAGS_SELECTION : '',
+        isChannelColumnVisible(columnVisibility, 'proxy') ? CHANNEL_QUERY_PROXY_SELECTION : '',
+        isChannelColumnVisible(columnVisibility, 'orderingWeight') ? CHANNEL_QUERY_ORDERING_WEIGHT_SELECTION : '',
+        isChannelColumnVisible(columnVisibility, 'health') ? CHANNEL_QUERY_HEALTH_SELECTION : '',
+        isChannelColumnVisible(columnVisibility, 'quota') ? CHANNEL_QUERY_QUOTA_SELECTION : '',
+      ].join('');
+
+  return `
+  query QueryChannels($input: QueryChannelInput!) {
+    queryChannels(input: $input) {
+      edges {
+        node {
+${nodeSelection}
         }
         cursor
       }
@@ -964,6 +1099,10 @@ const QUERY_CHANNELS_QUERY = `
     }
   }
 `;
+}
+
+// Retain a full-field document for callers that do not have column state yet.
+const QUERY_CHANNELS_QUERY = buildQueryChannelsQuery(undefined, { full: true });
 
 export function useChannelModelPrices(channelId: string) {
   const { handleError } = useErrorHandler();
@@ -1028,6 +1167,7 @@ export function useQueryChannels(
     };
     hasTag?: string;
     model?: string;
+    columnVisibility?: ChannelListColumnVisibility;
   },
   options?: {
     disableAutoFetch?: boolean;
@@ -1035,8 +1175,11 @@ export function useQueryChannels(
 ) {
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
+  const { columnVisibility, ...queryInput } = variables ?? {};
+  const query = buildQueryChannelsQuery(columnVisibility);
+  const columnVisibilityKey = JSON.stringify(columnVisibility ?? {});
 
-  const query = useQuery({
+  const result = useQuery({
     enabled: !options?.disableAutoFetch,
     queryKey: [
       'channels',
@@ -1049,9 +1192,10 @@ export function useQueryChannels(
       variables?.last,
       variables?.after,
       variables?.before,
+      columnVisibilityKey,
     ],
     queryFn: async () => {
-      const data = await graphqlRequest<{ queryChannels: ChannelConnection }>(QUERY_CHANNELS_QUERY, { input: variables });
+      const data = await graphqlRequest<{ queryChannels: ChannelConnection }>(query, { input: queryInput });
       return channelConnectionSchema.parse(data?.queryChannels);
     },
     // Poll so the live limiter snapshot (in-flight / queue) stays roughly fresh.
@@ -1064,12 +1208,21 @@ export function useQueryChannels(
   });
 
   useEffect(() => {
-    if (shouldNotifyChannelQueryError(query.error, query.data !== undefined, query.isPlaceholderData)) {
-      handleError(query.error, t('common.errors.internalServerError'));
+    if (shouldNotifyChannelQueryError(result.error, result.data !== undefined, result.isPlaceholderData)) {
+      handleError(result.error, t('common.errors.internalServerError'));
     }
-  }, [handleError, query.data, query.error, query.isPlaceholderData, t]);
+  }, [handleError, result.data, result.error, result.isPlaceholderData, t]);
 
-  return query;
+  return result;
+}
+
+export function useChannelDetails(channelID?: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['channel', channelID],
+    queryFn: () => fetchLatestChannel(channelID as string),
+    enabled: Boolean(channelID) && (options?.enabled ?? true),
+    staleTime: 0,
+  });
 }
 
 export function useAllChannelNames(options?: { enabled?: boolean }) {
@@ -1280,6 +1433,7 @@ export function useUpdateChannelSettings() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['channel', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
     },
     onError: (error) => {
       handleError(error, { context: t('channels.dialogs.edit.title') });

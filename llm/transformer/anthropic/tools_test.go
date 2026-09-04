@@ -213,3 +213,23 @@ func TestFilterOutAnthropicNativeTools(t *testing.T) {
 		})
 	}
 }
+func TestSupportsAnthropicNativeTools(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *Config
+		want   bool
+	}{
+		{name: "nil config", config: nil, want: true},
+		{name: "direct", config: &Config{Type: PlatformDirect}, want: true},
+		{name: "bedrock", config: &Config{Type: PlatformBedrock}, want: true},
+		{name: "claude code", config: &Config{Type: PlatformClaudeCode}, want: true},
+		{name: "command code", config: &Config{Type: PlatformCommandCode}, want: false},
+		{name: "vertex", config: &Config{Type: PlatformVertex}, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, supportsAnthropicNativeTools(tt.config))
+		})
+	}
+}

@@ -80,6 +80,16 @@ func (r *channelResolver) Policies(ctx context.Context, obj *ent.Channel) (*obje
 	return &obj.Policies, nil
 }
 
+// Settings is the resolver for the settings field.
+//
+// The nested providerQuota field is scope-gated by
+// channelSettingsResolver.ProviderQuota; everything else resolves unchanged,
+// matching the pre-forceResolver behavior for read-only channel list / project
+// summary / system-bypass paths.
+func (r *channelResolver) Settings(ctx context.Context, obj *ent.Channel) (*objects.ChannelSettings, error) {
+	return obj.Settings, nil
+}
+
 // ProviderQuotaStatus is the resolver for the providerQuotaStatus field.
 // It returns null (not an error) when no quota status exists for the channel.
 func (r *channelResolver) ProviderQuotaStatus(ctx context.Context, obj *ent.Channel) (*ent.ProviderQuotaStatus, error) {

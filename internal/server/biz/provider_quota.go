@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -30,6 +31,9 @@ const maxConcurrentQuotaChecks = 8
 // retried at a slow cadence instead of on every check interval. This mirrors the
 // model circuit breaker's probe backoff (see model_circuit_breaker.go).
 const (
+	quotaErrorCodeCheckFailed        = "check_failed"
+	quotaErrorCodeMissingCredentials = "missing_credentials"
+
 	// maxQuotaErrorBackoffMultiplier caps the backoff growth at 8x the base
 	// interval, matching the circuit breaker's probe backoff cap.
 	maxQuotaErrorBackoffMultiplier = 8
@@ -40,9 +44,18 @@ const (
 	maxQuotaErrorBackoffSteps = 4
 )
 
+func quotaErrorCode(err error) string {
+	if err != nil && err.Error() == "channel has no credentials" {
+		return quotaErrorCodeMissingCredentials
+	}
+
+	return quotaErrorCodeCheckFailed
+}
+
 var providerQuotaChannelTypes = []channel.Type{
 	channel.TypeClaudecode,
 	channel.TypeCodex,
+	channel.TypeAntigravity,
 	channel.TypeXaiSubscription,
 	channel.TypeGithubCopilot,
 	channel.TypeNanogpt,
@@ -61,6 +74,8 @@ var providerQuotaChannelTypes = []channel.Type{
 	channel.TypeMinimaxAnthropic,
 	channel.TypeZhipu,
 	channel.TypeZhipuAnthropic,
+	channel.TypeCommandcode,
+	channel.TypeCommandcodeAnthropic,
 }
 
 // quotaErrorBackoff returns the next-check delay after `failures` consecutive
@@ -385,6 +400,7 @@ func NewProviderQuotaService(params ProviderQuotaServiceParams) *ProviderQuotaSe
 func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerClaudeCodeSupport()
 	svc.registerCodexSupport()
+	svc.registerAntigravitySupport()
 	svc.registerXAISubscriptionSupport()
 	svc.registerGithubCopilotSupport()
 	svc.registerNanoGPTSupport()
@@ -399,6 +415,7 @@ func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerMinimaxSupport()
 	svc.registerZhipuSupport()
 	svc.registerCharmHyperSupport()
+	svc.registerCommandCodeSupport()
 }
 
 func (svc *ProviderQuotaService) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
@@ -415,8 +432,16 @@ func (svc *ProviderQuotaService) registerClaudeCodeSupport() {
 	svc.checkers["claudecode"] = provider_quota.NewClaudeCodeQuotaChecker(svc.httpClient)
 }
 
+func (svc *ProviderQuotaService) registerCommandCodeSupport() {
+	svc.checkers["commandcode"] = provider_quota.NewCommandCodeQuotaChecker(svc.httpClient)
+}
+
 func (svc *ProviderQuotaService) registerCodexSupport() {
 	svc.checkers["codex"] = provider_quota.NewCodexQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerAntigravitySupport() {
+	svc.checkers["antigravity"] = provider_quota.NewAntigravityQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerXAISubscriptionSupport() {
@@ -590,6 +615,12 @@ func (svc *ProviderQuotaService) InvalidateChannelQuota(ctx context.Context, cha
 	svc.mu.Lock()
 	defer svc.mu.Unlock()
 
+	return svc.invalidateChannelQuotaLocked(ctx, channelID)
+}
+
+// invalidateChannelQuotaLocked removes persisted and cached quota state while
+// svc.mu is already held by the quota collection loop.
+func (svc *ProviderQuotaService) invalidateChannelQuotaLocked(ctx context.Context, channelID int) error {
 	defer svc.quotaCache.Delete(channelID)
 
 	_, err := svc.db.ProviderQuotaStatus.Delete().
@@ -765,6 +796,9 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	}
 }
 
+// checkChannelQuota runs under svc.mu, held by both scheduled and manual checks.
+// That lets credential failures remove persisted and cached status atomically
+// with the rest of the quota collection state.
 func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group quotaCheckGroup, now time.Time) {
 	ch := group.channels[0]
 	providerType := svc.getProviderType(ch)
@@ -780,6 +814,12 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 	}
 
 	if !hasCredentialsForProvider(ch) {
+		if err := svc.invalidateChannelQuotaLocked(ctx, ch.ID); err != nil {
+			log.Error(ctx, "Failed to invalidate provider quota after credentials disappeared",
+				log.Int("channel_id", ch.ID),
+				log.String("provider", providerType),
+				log.Cause(err))
+		}
 		log.Debug(ctx, "channel does not support check quota", log.Int("channel_id", ch.ID), log.String("channel_name", ch.Name))
 		return
 	}
@@ -896,15 +936,21 @@ func (svc *ProviderQuotaService) saveQuotaError(
 ) {
 	pt := providerquotastatus.ProviderType(providerType)
 	nextCheck := now.Add(quotaErrorBackoff(svc.getCheckInterval(), failures))
+	errorCode := quotaErrorCode(quotaErr)
 
 	if ch.Edges.ProviderQuotaStatus != nil {
 		existing := ch.Edges.ProviderQuotaStatus
-		if existing.ProviderType != pt {
+		providerChanged := existing.ProviderType != pt
+		invalidCredentials := errors.Is(quotaErr, provider_quota.ErrInvalidCredentials)
+		if providerChanged || invalidCredentials {
+			nextCheck := now.Add(quotaErrorBackoff(svc.getCheckInterval(), 1))
 			quotaData := map[string]any{
-				"error":       quotaErr.Error(),
-				"error_count": failures,
+				"error_code":  errorCode,
+				"error_count": 1,
 			}
 
+			// A provider change or invalid credentials makes the previous
+			// status and limits untrustworthy, so persist only the error.
 			err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
 				SetProviderType(pt).
 				SetAccountKey(accountKey).
@@ -915,7 +961,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 				SetNextCheckAt(nextCheck).
 				Exec(ctx)
 			if err != nil {
-				log.Error(ctx, "Failed to reset quota status for changed provider",
+				log.Error(ctx, "Failed to reset quota status after quota check error",
 					log.Int("channel_id", ch.ID),
 					log.String("previous_provider", existing.ProviderType.String()),
 					log.String("provider", providerType),
@@ -933,9 +979,10 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		}
 
 		merged := lo.Assign(existingData, map[string]any{
-			"error":       quotaErr.Error(),
+			"error_code":  errorCode,
 			"error_count": failures,
 		})
+		delete(merged, "error")
 
 		err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
 			SetAccountKey(accountKey).
@@ -962,7 +1009,7 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		SetStatus(providerquotastatus.StatusUnknown).
 		SetReady(false).
 		SetQuotaData(map[string]any{
-			"error":       quotaErr.Error(),
+			"error_code":  errorCode,
 			"error_count": failures,
 		}).
 		SetNextCheckAt(nextCheck).
@@ -983,6 +1030,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "claudecode"
 	case channel.TypeCodex:
 		return "codex"
+	case channel.TypeAntigravity:
+		return "antigravity"
 	case channel.TypeXaiSubscription:
 		return "xai_subscription"
 	case channel.TypeGithubCopilot:
@@ -1003,6 +1052,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "minimax"
 	case channel.TypeZhipu, channel.TypeZhipuAnthropic:
 		return "zhipu"
+	case channel.TypeCommandcode, channel.TypeCommandcodeAnthropic:
+		return "commandcode"
 	default:
 		return ""
 	}
@@ -1036,6 +1087,17 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 			}
 		}
 		return false
+	}
+
+	if isCommandCodeChannelType(ch.Type) {
+		// Command Code quota collection is authenticated with the account
+		// session cookie, never the inference API key.
+		if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.CommandCode == nil {
+			return false
+		}
+
+		_, err := provider_quota.NormalizeCommandCodeCookie(ch.Settings.ProviderQuota.CommandCode.AuthCookie)
+		return err == nil
 	}
 
 	return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey) ||

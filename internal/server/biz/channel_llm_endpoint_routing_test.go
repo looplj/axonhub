@@ -14,6 +14,10 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/opencode"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // TestBuildChannelWithOutbounds_FamilyRoutingOnCustomChatEndpoints asserts that
@@ -120,4 +124,50 @@ func TestBuildChannelWithOutbounds_FamilyRoutingOnCustomChatEndpoints(t *testing
 		// Generic openai normalization appends /v1, which is correct for v1 APIs.
 		require.Equal(t, "https://api.example.com/v1/chat/completions", url)
 	})
+}
+
+func TestBuildChannelWithOutbounds_OpenCodeCustomEndpointsCarrySessionHeader(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:opencode_endpoint_session?mode=memory&_fk=0")
+	t.Cleanup(func() { client.Close() })
+
+	svc := NewChannelServiceForTest(client)
+	ctx := shared.WithSessionID(context.Background(), "session-123")
+	c := &ent.Channel{
+		ID:          1,
+		Name:        "OpenCode",
+		Type:        channel.TypeOpencodeGo,
+		BaseURL:     "https://upstream.example.com",
+		Credentials: objects.ChannelCredentials{APIKey: "test-key"},
+		Endpoints: []objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+			{APIFormat: llm.APIFormatOpenAIResponse.String()},
+			{APIFormat: llm.APIFormatAnthropicMessage.String()},
+		},
+	}
+
+	ch, err := svc.buildChannelWithOutbounds(c)
+	require.NoError(t, err)
+
+	for _, apiFormat := range []string{
+		llm.APIFormatOpenAIChatCompletion.String(),
+		llm.APIFormatOpenAIResponse.String(),
+		llm.APIFormatAnthropicMessage.String(),
+	} {
+		outbound := ch.Outbounds[apiFormat]
+		require.NotNil(t, outbound)
+
+		httpReq, err := outbound.TransformRequest(ctx, &llm.Request{
+			Model: "test-model",
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, "session-123", httpReq.Headers.Get(opencode.SessionHeader))
+	}
+
+	responsesOutbound := ch.Outbounds[llm.APIFormatOpenAIResponse.String()]
+	require.Implements(t, (*pipeline.ChannelCustomizedExecutor)(nil), responsesOutbound)
+	require.Implements(t, (*transformer.TransportRequestFinalizer)(nil), responsesOutbound)
+	require.Implements(t, (*stoppableOutbound)(nil), responsesOutbound)
 }

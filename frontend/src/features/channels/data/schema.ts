@@ -128,6 +128,8 @@ export const channelTypeSchema = z.enum([
   'zenmux_responses',
   'zenmux_anthropic',
   'zenmux_gemini',
+  'commandcode',
+  'commandcode_anthropic',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 
@@ -295,6 +297,20 @@ export const modelProtocolSchema = z.object({
 });
 export type ModelProtocol = z.infer<typeof modelProtocolSchema>;
 
+// Provider quota collection settings stored inside channel settings. Mirrors the
+// GraphQL `CommandCodeQuotaSettings` / `ChannelProviderQuotaSettings` types; it
+// is used for the Command Code billing-quota cookie, kept separate from API
+// credentials.
+export const commandCodeQuotaSettingsSchema = z.object({
+  authCookie: z.string().optional().nullable(),
+});
+export type CommandCodeQuotaSettings = z.infer<typeof commandCodeQuotaSettingsSchema>;
+
+export const channelProviderQuotaSettingsSchema = z.object({
+  commandCode: commandCodeQuotaSettingsSchema.optional().nullable(),
+});
+export type ChannelProviderQuotaSettings = z.infer<typeof channelProviderQuotaSettingsSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -313,6 +329,7 @@ export const channelSettingsSchema = z.object({
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
+  providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
 });
 
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;
@@ -355,6 +372,15 @@ export const channelCredentialsSchema = z.object({
 });
 export type ChannelCredentials = z.infer<typeof channelCredentialsSchema>;
 
+export const providerQuotaStatusSchema = z.object({
+  status: z.enum(['available', 'warning', 'exhausted', 'unknown']),
+  nextResetAt: z.string().optional().nullable(),
+  ready: z.boolean(),
+  quotaData: z.record(z.string(), z.unknown()),
+  providerType: z.string(),
+});
+export type ProviderQuotaStatus = z.infer<typeof providerQuotaStatusSchema>;
+
 // Disabled API Key
 export const disabledAPIKeySchema = z.object({
   key: z.string(),
@@ -381,8 +407,9 @@ export const channelSchema = z.object({
   status: channelStatusSchema,
   policies: channelPoliciesSchema.optional().nullable(),
   credentials: channelCredentialsSchema.optional().nullable(),
+  providerQuotaStatus: providerQuotaStatusSchema.optional().nullable(),
   disabledAPIKeys: z.array(disabledAPIKeySchema).optional().nullable(),
-  supportedModels: z.array(z.string()),
+  supportedModels: z.array(z.string()).default([]),
   autoSyncSupportedModels: z.boolean().default(false),
   autoSyncModelPattern: z.string().optional().default(''),
   manualModels: z.array(z.string()).optional().default([]).nullable(),

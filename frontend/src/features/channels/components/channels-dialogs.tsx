@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useChannels } from '../context/channels-context';
 import { ChannelsActionDialog } from './channels-action-dialog';
 import { ChannelsArchiveDialog } from './channels-archive-dialog';
@@ -26,9 +27,28 @@ import { ChannelsRateLimitDialog } from './channels-rate-limit-dialog';
 import { ChannelsTransformOptionsDialog } from './channels-transform-options-dialog';
 import { ChannelsEndpointsDialog } from './channels-endpoints-dialog';
 import { ChannelsSystemSettingsDialog } from './channels-system-settings-dialog';
+import { useChannelDetails } from '../data/channels';
 
 export function ChannelsDialogs() {
-  const { open, setOpen, currentRow, setCurrentRow, selectedChannels } = useChannels();
+  const { open, setOpen, currentRow: partialCurrentRow, setCurrentRow, selectedChannels } = useChannels();
+  const detailsQuery = useChannelDetails(partialCurrentRow?.id, {
+    enabled: Boolean(partialCurrentRow && open),
+  });
+
+  useEffect(() => {
+    if (detailsQuery.data && partialCurrentRow?.id === detailsQuery.data.id && partialCurrentRow !== detailsQuery.data) {
+      setCurrentRow(detailsQuery.data);
+    }
+  }, [detailsQuery.data, partialCurrentRow, setCurrentRow]);
+
+  // List rows intentionally contain only fields required by visible columns.
+  // Delay row-scoped dialogs until the full snapshot has been loaded so hiding
+  // a column never removes data from edit/configuration dialogs.
+  const currentRow =
+    partialCurrentRow &&
+    (!open || detailsQuery.isError || detailsQuery.data === partialCurrentRow)
+      ? (detailsQuery.data ?? partialCurrentRow)
+      : null;
   return (
     <>
       <ChannelsSystemSettingsDialog />

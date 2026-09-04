@@ -61,6 +61,7 @@ export type ProviderQuotaResetList = {
 type ProviderQuotaDataCommon = {
   plan_type?: string;
   error?: string;
+  error_code?: string;
   _resets?: ProviderQuotaResetList;
 };
 
@@ -253,6 +254,7 @@ export type ProviderOpenCodeGoQuotaData = ProviderQuotaDataCommon & {
   };
 };
 
+
 export type KimiCodeUsageRow = {
   label: string;
   used: number;
@@ -427,6 +429,29 @@ export function isClineActivePassQuotaData(qd: ProviderClineQuotaData): qd is Pr
 export function isClineUnavailablePassQuotaData(qd: ProviderClineQuotaData): qd is ProviderClineUnavailablePassQuotaData {
   return 'pass_state' in qd && qd.pass_state === 'unavailable';
 }
+
+export type CommandCodeQuotaWindow = {
+  used_usd?: number;
+  cap_usd?: number;
+  usage_percent?: number;
+  reset_time?: string;
+};
+
+export type ProviderCommandCodeQuotaData = ProviderQuotaDataCommon & {
+  plan_id?: string;
+  plan_label?: string;
+  subscription_status?: string;
+  current_period_end?: string;
+  credits?: {
+    monthly_remaining_usd?: number;
+    monthly_limit_usd?: number;
+    purchased_credits_usd?: number;
+  };
+  windows?: {
+    five_hour?: CommandCodeQuotaWindow;
+    weekly?: CommandCodeQuotaWindow;
+  };
+};
 
 /**
  * A single limit window as normalized by the backend and stashed under
@@ -678,6 +703,12 @@ export type ProviderQuotaChannel = {
         quotaData: ProviderQuotaDataCommon;
       };
     }
+  | {
+      type: 'commandcode' | 'commandcode_anthropic';
+      quotaStatus: {
+        quotaData: ProviderCommandCodeQuotaData;
+      };
+    }
 );
 
 type ProviderQuotaStatusNode = {
@@ -859,6 +890,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
     };
   }
 
+  if (node.type === 'commandcode' || node.type === 'commandcode_anthropic') {
+    return {
+      ...base,
+      type: node.type as 'commandcode' | 'commandcode_anthropic',
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCommandCodeQuotaData },
+    };
+  }
   return {
     ...base,
     type: node.type as ProviderQuotaChannel['type'],
@@ -886,10 +924,10 @@ export function useProviderQuotaStatuses() {
     .filter(hasProviderQuotaStatus)
     .filter((c) => {
       // Skip channels that have no credentials configured, since they cannot be
-      // checked and only add noise to the quota popover. Other errors are still
-      // shown so admins can spot credential/permission issues.
-      const quotaData = c.providerQuotaStatus.quotaData as { error?: string } | undefined;
-      return quotaData?.error !== 'channel has no credentials';
+      // checked and only add noise to the quota popover. Other failures remain
+      // available with their generic status for administrators to inspect.
+      const quotaData = c.providerQuotaStatus.quotaData as { error?: string; error_code?: string } | undefined;
+      return quotaData?.error_code !== 'missing_credentials' && quotaData?.error !== 'channel has no credentials';
     })
     .map(parseChannelNode);
 

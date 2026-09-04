@@ -163,7 +163,8 @@ func TestProviderQuotaService_SaveQuotaError_ResetsChangedProviderIdentity(t *te
 	require.False(t, persisted.Ready)
 	require.Nil(t, persisted.NextResetAt)
 	require.EqualValues(t, 1, persisted.QuotaData["error_count"])
-	require.Equal(t, "synthetic quota unavailable", persisted.QuotaData["error"])
+	require.Equal(t, "check_failed", persisted.QuotaData["error_code"])
+	require.NotContains(t, persisted.QuotaData, "error")
 	require.NotContains(t, persisted.QuotaData, "_limits")
 
 	cachedValue, ok := service.quotaCache.Load(channelEntity.ID)

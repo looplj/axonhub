@@ -11,8 +11,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-const claudeCodeBillingCCHMetadataKey = "claudecode_billing_cch"
-
 // injectFakeUserIDStructured generates and injects a fake user ID into the request metadata.
 func injectFakeUserIDStructured(ctx context.Context, llmReq llm.Request, accountIdentity string) llm.Request {
 	if llmReq.Metadata == nil {
@@ -148,117 +146,68 @@ func mergeBetasIntoHeader(baseBetas string, extraBetas []string) string {
 // billingHeaderPrefix is the prefix used to identify billing header system messages.
 const billingHeaderPrefix = "x-anthropic-billing-header:"
 
-// removeBillingSystemMessages removes system messages that contain the
+// RemoveBillingSystemMessages removes system messages that contain the
 // x-anthropic-billing-header pattern. These messages are injected by the
-// Claude Code CLI to report billing metadata. For non-official (non-OAuth)
-// channels, these messages should be stripped to avoid leaking client info.
-func removeBillingSystemMessages(llmReq *llm.Request) *llm.Request {
-	if len(llmReq.Messages) == 0 {
-		return llmReq
-	}
-
-	filtered := make([]llm.Message, 0, len(llmReq.Messages))
-
-	for _, msg := range llmReq.Messages {
-		if msg.Role == "system" && msg.Content.Content != nil &&
-			strings.HasPrefix(strings.TrimSpace(*msg.Content.Content), billingHeaderPrefix) {
-			continue
-		}
-
-		filtered = append(filtered, msg)
-	}
-
-	llmReq.Messages = filtered
-
-	return llmReq
-}
-
-func ensureBillingSystemMessageCCH(llmReq *llm.Request) *llm.Request {
+// Claude Code CLI to report billing metadata. The returned request is a copy
+// when content is removed so retries do not mutate the shared request.
+func RemoveBillingSystemMessages(llmReq *llm.Request) *llm.Request {
 	if llmReq == nil || len(llmReq.Messages) == 0 {
 		return llmReq
 	}
 
-	cch := ""
+	filtered := make([]llm.Message, 0, len(llmReq.Messages))
+	changed := false
 
-	if llmReq.TransformerMetadata != nil {
-		if v, ok := llmReq.TransformerMetadata[claudeCodeBillingCCHMetadataKey]; ok {
-			if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
-				cch = strings.TrimSpace(s)
-			}
+	for _, msg := range llmReq.Messages {
+		if !strings.EqualFold(msg.Role, "system") {
+			filtered = append(filtered, msg)
+
+			continue
 		}
+
+		if len(msg.Content.MultipleContent) == 0 {
+			if msg.Content.Content == nil || !isBillingHeaderText(*msg.Content.Content) {
+				filtered = append(filtered, msg)
+
+				continue
+			}
+
+			changed = true
+
+			continue
+		}
+
+		parts := make([]llm.MessageContentPart, 0, len(msg.Content.MultipleContent))
+		for _, part := range msg.Content.MultipleContent {
+			if strings.EqualFold(part.Type, "text") && part.Text != nil && isBillingHeaderText(*part.Text) {
+				changed = true
+
+				continue
+			}
+
+			parts = append(parts, part)
+		}
+
+		if len(parts) == 0 {
+			continue
+		}
+
+		msg.Content.MultipleContent = parts
+		filtered = append(filtered, msg)
 	}
 
-	if cch == "" {
+	if !changed {
 		return llmReq
 	}
 
-	for i := range llmReq.Messages {
-		msg := &llmReq.Messages[i]
-		if msg.Role != "system" {
-			continue
-		}
+	result := *llmReq
+	result.Messages = filtered
 
-		if msg.Content.Content != nil {
-			updated, changed := ensureBillingHeaderCCHInText(*msg.Content.Content, cch)
-			if changed {
-				*msg.Content.Content = updated
-			}
-		}
-
-		if len(msg.Content.MultipleContent) > 0 {
-			for j := range msg.Content.MultipleContent {
-				part := &msg.Content.MultipleContent[j]
-				if part.Type != "text" || part.Text == nil {
-					continue
-				}
-
-				updated, changed := ensureBillingHeaderCCHInText(*part.Text, cch)
-				if changed {
-					*part.Text = updated
-				}
-			}
-		}
-	}
-
-	return llmReq
+	return &result
 }
 
-func ensureBillingHeaderCCHInText(text string, cch string) (string, bool) {
-	trimmed := strings.TrimSpace(text)
-	if trimmed == "" {
-		return text, false
-	}
-
-	lower := strings.ToLower(trimmed)
-	if !strings.HasPrefix(lower, billingHeaderPrefix) {
-		return text, false
-	}
-
-	rest := strings.TrimSpace(trimmed[len(billingHeaderPrefix):])
-	if rest == "" {
-		return text, false
-	}
-
-	parts := strings.SplitSeq(rest, ";")
-	for p := range parts {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-
-		if strings.HasPrefix(strings.ToLower(p), "cch=") {
-			return text, false
-		}
-	}
-
-	out := strings.TrimSpace(trimmed)
-	if !strings.HasSuffix(out, ";") {
-		out += ";"
-	}
-
-	out += " cch=" + strings.TrimSpace(cch) + ";"
-
-	return out, true
+func isBillingHeaderText(text string) bool {
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(text)), billingHeaderPrefix)
 }
 
 // injectClaudeCodeSystemMessageStructured prepends the Claude Code system message.
