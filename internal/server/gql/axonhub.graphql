@@ -251,7 +251,6 @@ type ChannelCredentials {
   apiKeys: [String!]
   gcp: GCPCredential
   oauth: OAuthCredentials
-  managementApiKey: String
 }
 
 type DisabledAPIKey {

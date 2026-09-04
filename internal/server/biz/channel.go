@@ -988,7 +988,18 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 
 		if input.Credentials != nil {
-			mut.SetCredentials(*input.Credentials)
+			credentials := *input.Credentials
+			if credentials.ManagementAPIKey == "" {
+				existing, err := db.Channel.Query().
+					Where(channel.IDEQ(id)).
+					Select(channel.FieldCredentials).
+					Only(ctx)
+				if err != nil {
+					return fmt.Errorf("failed to load existing channel credentials: %w", err)
+				}
+				credentials.ManagementAPIKey = existing.Credentials.ManagementAPIKey
+			}
+			mut.SetCredentials(credentials)
 		}
 
 		if input.Remark != nil {

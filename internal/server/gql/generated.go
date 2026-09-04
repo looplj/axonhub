@@ -389,11 +389,10 @@ type ComplexityRoot struct {
 	}
 
 	ChannelCredentials struct {
-		APIKey           func(childComplexity int) int
-		APIKeys          func(childComplexity int) int
-		GCP              func(childComplexity int) int
-		ManagementAPIKey func(childComplexity int) int
-		OAuth            func(childComplexity int) int
+		APIKey  func(childComplexity int) int
+		APIKeys func(childComplexity int) int
+		GCP     func(childComplexity int) int
+		OAuth   func(childComplexity int) int
 	}
 
 	ChannelEdge struct {
@@ -3704,12 +3703,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelCredentials.GCP(childComplexity), true
-	case "ChannelCredentials.managementApiKey":
-		if e.complexity.ChannelCredentials.ManagementAPIKey == nil {
-			break
-		}
-
-		return e.complexity.ChannelCredentials.ManagementAPIKey(childComplexity), true
 	case "ChannelCredentials.oauth":
 		if e.complexity.ChannelCredentials.OAuth == nil {
 			break
@@ -21167,8 +21160,6 @@ func (ec *executionContext) fieldContext_Channel_credentials(_ context.Context, 
 				return ec.fieldContext_ChannelCredentials_gcp(ctx, field)
 			case "oauth":
 				return ec.fieldContext_ChannelCredentials_oauth(ctx, field)
-			case "managementApiKey":
-				return ec.fieldContext_ChannelCredentials_managementApiKey(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelCredentials", field.Name)
 		},
@@ -21492,35 +21483,6 @@ func (ec *executionContext) fieldContext_ChannelCredentials_oauth(_ context.Cont
 				return ec.fieldContext_OAuthCredentials_scopes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OAuthCredentials", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _ChannelCredentials_managementApiKey(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_ChannelCredentials_managementApiKey,
-		func(ctx context.Context) (any, error) {
-			return obj.ManagementAPIKey, nil
-		},
-		nil,
-		ec.marshalOString2string,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_ChannelCredentials_managementApiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "ChannelCredentials",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -92960,8 +92922,6 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ChannelCredentials_gcp(ctx, field, obj)
 		case "oauth":
 			out.Values[i] = ec._ChannelCredentials_oauth(ctx, field, obj)
-		case "managementApiKey":
-			out.Values[i] = ec._ChannelCredentials_managementApiKey(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
