@@ -142,16 +142,18 @@ func mergeSystemMessages(msgs []Message) []Message {
 		}
 	}
 
-	if systemCount < 2 {
+	if systemCount == 0 {
 		return msgs
 	}
 
 	merged := make([]Message, 0, len(msgs)-systemCount+1)
-	for i, m := range msgs {
-		if i == firstSystem {
-			m.Content = MessageContent{Content: lo.ToPtr(systemText.String())}
-			merged = append(merged, m)
-		} else if m.Role != "system" {
+	mergedSystem := msgs[firstSystem]
+	if systemCount > 1 {
+		mergedSystem.Content = MessageContent{Content: lo.ToPtr(systemText.String())}
+	}
+	merged = append(merged, mergedSystem)
+	for _, m := range msgs {
+		if m.Role != "system" {
 			merged = append(merged, m)
 		}
 	}
