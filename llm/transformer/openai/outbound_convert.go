@@ -56,6 +56,13 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 		return MessageFromLLMWithConfig(m, reasoningField)
 	})
 
+	// Chat Completions accepts a single system message; strict OpenAI-compatible
+	// upstreams (notably domestic model gateways) reject the multiples that
+	// Claude Code produces when it sends the system prompt as an array. Merge
+	// them, mirroring the Responses outbound which folds system messages into a
+	// single `instructions` string.
+	req.Messages = mergeSystemMessages(req.Messages)
+
 	// Convert Stop
 	if r.Stop != nil {
 		req.Stop = &Stop{
@@ -106,6 +113,64 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 	}
 
 	return req
+}
+
+// mergeSystemMessages collapses all system-role messages into one at the
+// position of the first, dropping the rest. The Chat Completions spec allows
+// a single system message, and strict OpenAI-compatible upstreams reject
+// extras with "System message must be at the beginning".
+func mergeSystemMessages(msgs []Message) []Message {
+	var (
+		systemCount int
+		firstSystem = -1
+		systemText  strings.Builder
+	)
+
+	for i, m := range msgs {
+		if m.Role != "system" {
+			continue
+		}
+		if firstSystem == -1 {
+			firstSystem = i
+		}
+		systemCount++
+		for _, text := range messageTextParts(m) {
+			if systemText.Len() > 0 {
+				systemText.WriteString("\n\n")
+			}
+			systemText.WriteString(text)
+		}
+	}
+
+	if systemCount < 2 {
+		return msgs
+	}
+
+	merged := make([]Message, 0, len(msgs)-systemCount+1)
+	for i, m := range msgs {
+		if i == firstSystem {
+			m.Content = MessageContent{Content: lo.ToPtr(systemText.String())}
+			merged = append(merged, m)
+		} else if m.Role != "system" {
+			merged = append(merged, m)
+		}
+	}
+	return merged
+}
+
+// messageTextParts extracts the text segments of a message from its string or
+// part-based content.
+func messageTextParts(m Message) []string {
+	var parts []string
+	if m.Content.Content != nil {
+		parts = append(parts, *m.Content.Content)
+	}
+	for _, p := range m.Content.MultipleContent {
+		if p.Type == "text" && p.Text != nil {
+			parts = append(parts, *p.Text)
+		}
+	}
+	return parts
 }
 
 // MessageFromLLM creates OpenAI Message from unified llm.Message.

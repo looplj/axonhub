@@ -817,3 +817,39 @@ func TestRequestFromLLM_NormalizesTextPartTypesInMessages(t *testing.T) {
 	require.Equal(t, "text", req.Messages[0].Content.MultipleContent[0].Type)
 	require.Equal(t, "image_url", req.Messages[0].Content.MultipleContent[1].Type)
 }
+
+func TestRequestFromLLM_MergesMultipleSystemMessages(t *testing.T) {
+	req := RequestFromLLM(context.Background(), &llm.Request{
+		Model: "qwen-max",
+		Messages: []llm.Message{
+			{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("You are a coding agent.")}},
+			{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("Use rg for searches.")}},
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+			{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("Keep answers short.")}},
+		},
+	}, ReasoningFieldNone)
+
+	require.NotNil(t, req)
+	require.Len(t, req.Messages, 2)
+	require.Equal(t, "system", req.Messages[0].Role)
+	require.Equal(t,
+		"You are a coding agent.\n\nUse rg for searches.\n\nKeep answers short.",
+		*req.Messages[0].Content.Content)
+	require.Equal(t, "user", req.Messages[1].Role)
+	require.Equal(t, "Hello", *req.Messages[1].Content.Content)
+}
+
+func TestRequestFromLLM_KeepsSingleSystemMessage(t *testing.T) {
+	req := RequestFromLLM(context.Background(), &llm.Request{
+		Model: "qwen-max",
+		Messages: []llm.Message{
+			{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr("You are a coding agent.")}},
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	}, ReasoningFieldNone)
+
+	require.NotNil(t, req)
+	require.Len(t, req.Messages, 2)
+	require.Equal(t, "system", req.Messages[0].Role)
+	require.Equal(t, "You are a coding agent.", *req.Messages[0].Content.Content)
+}
