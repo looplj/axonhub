@@ -241,6 +241,9 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		if err != nil {
 			return nil, fmt.Errorf("failed to build outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
 		}
+		if c.Type == channel.TypeOpencodeGo || c.Type == channel.TypeOpencodeGoAnthropic {
+			out = opencode.WithSessionHeader(out)
+		}
 		outbounds[ep.APIFormat] = out
 	}
 
