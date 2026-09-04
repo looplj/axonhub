@@ -39,6 +39,8 @@ type ProviderQuotaStatus struct {
 	Ready bool `json:"ready,omitempty"`
 	// Timestamp for next scheduled quota check
 	NextCheckAt time.Time `json:"next_check_at,omitempty"`
+	// Quota account identity shared by channels drawing from the same provider account (e.g. the same ZenMux management key). Empty means the channel has its own quota account. Never stores the raw credential.
+	AccountKey string `json:"account_key,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ProviderQuotaStatusQuery when eager-loading is set.
 	Edges        ProviderQuotaStatusEdges `json:"edges"`
@@ -78,7 +80,7 @@ func (*ProviderQuotaStatus) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case providerquotastatus.FieldID, providerquotastatus.FieldDeletedAt, providerquotastatus.FieldChannelID:
 			values[i] = new(sql.NullInt64)
-		case providerquotastatus.FieldProviderType, providerquotastatus.FieldStatus:
+		case providerquotastatus.FieldProviderType, providerquotastatus.FieldStatus, providerquotastatus.FieldAccountKey:
 			values[i] = new(sql.NullString)
 		case providerquotastatus.FieldCreatedAt, providerquotastatus.FieldUpdatedAt, providerquotastatus.FieldNextResetAt, providerquotastatus.FieldNextCheckAt:
 			values[i] = new(sql.NullTime)
@@ -166,6 +168,12 @@ func (_m *ProviderQuotaStatus) assignValues(columns []string, values []any) erro
 			} else if value.Valid {
 				_m.NextCheckAt = value.Time
 			}
+		case providerquotastatus.FieldAccountKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field account_key", values[i])
+			} else if value.Valid {
+				_m.AccountKey = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -238,6 +246,9 @@ func (_m *ProviderQuotaStatus) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("next_check_at=")
 	builder.WriteString(_m.NextCheckAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("account_key=")
+	builder.WriteString(_m.AccountKey)
 	builder.WriteByte(')')
 	return builder.String()
 }

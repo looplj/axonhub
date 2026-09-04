@@ -626,6 +626,10 @@ func init() {
 	providerquotastatusDescReady := providerquotastatusFields[5].Descriptor()
 	// providerquotastatus.DefaultReady holds the default value on creation for the ready field.
 	providerquotastatus.DefaultReady = providerquotastatusDescReady.Default.(bool)
+	// providerquotastatusDescAccountKey is the schema descriptor for account_key field.
+	providerquotastatusDescAccountKey := providerquotastatusFields[7].Descriptor()
+	// providerquotastatus.DefaultAccountKey holds the default value on creation for the account_key field.
+	providerquotastatus.DefaultAccountKey = providerquotastatusDescAccountKey.Default.(string)
 	requestMixin := schema.Request{}.Mixin()
 	request.Policy = privacy.NewPolicies(schema.Request{})
 	request.Hooks[0] = func(next ent.Mutator) ent.Mutator {

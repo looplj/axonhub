@@ -3390,6 +3390,11 @@ func (_q *ProviderQuotaStatusQuery) collectField(ctx context.Context, oneNode bo
 				selectedFields = append(selectedFields, providerquotastatus.FieldNextCheckAt)
 				fieldSeen[providerquotastatus.FieldNextCheckAt] = struct{}{}
 			}
+		case "accountKey":
+			if _, ok := fieldSeen[providerquotastatus.FieldAccountKey]; !ok {
+				selectedFields = append(selectedFields, providerquotastatus.FieldAccountKey)
+				fieldSeen[providerquotastatus.FieldAccountKey] = struct{}{}
+			}
 		case "id":
 		case "__typename":
 		default:

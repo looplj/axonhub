@@ -99,7 +99,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "atlascloud", "cline", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "qiniu", "fireworks", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xiaomi", "xiaomi_anthropic", "xai", "xai_responses", "xai_subscription", "ppio", "siliconflow", "volcengine", "volcengine_anthropic", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "aihubmix_anthropic", "burncloud", "modelscope", "bailian", "bailian_anthropic", "moonshot_coding", "jina", "github", "github_copilot", "claudecode", "cerebras", "antigravity", "nanogpt", "nanogpt_responses", "opencode_go", "opencode_go_anthropic", "ollama", "ollama_anthropic", "evolink", "evolink_anthropic", "groq", "qiniu_anthropic", "fenno"}},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "atlascloud", "cline", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "qiniu", "fireworks", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xiaomi", "xiaomi_anthropic", "xai", "xai_responses", "xai_subscription", "ppio", "siliconflow", "volcengine", "volcengine_anthropic", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "aihubmix_anthropic", "burncloud", "modelscope", "bailian", "bailian_anthropic", "moonshot_coding", "jina", "github", "github_copilot", "claudecode", "cerebras", "antigravity", "nanogpt", "nanogpt_responses", "opencode_go", "opencode_go_anthropic", "ollama", "ollama_anthropic", "evolink", "evolink_anthropic", "groq", "qiniu_anthropic", "fenno", "zenmux", "zenmux_responses", "zenmux_anthropic", "zenmux_gemini"}},
 		{Name: "base_url", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
@@ -493,12 +493,13 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "provider_type", Type: field.TypeEnum, Enums: []string{"claudecode", "codex", "xai_subscription", "github_copilot", "nanogpt", "cline", "wafer", "synthetic", "neuralwatt", "apertis", "opencode_go", "kimi_code", "minimax", "zhipu", "charm_hyper"}},
+		{Name: "provider_type", Type: field.TypeEnum, Enums: []string{"claudecode", "codex", "xai_subscription", "github_copilot", "nanogpt", "cline", "wafer", "synthetic", "neuralwatt", "apertis", "opencode_go", "kimi_code", "minimax", "zhipu", "charm_hyper", "zenmux"}},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"available", "warning", "exhausted", "unknown"}},
 		{Name: "quota_data", Type: field.TypeJSON},
 		{Name: "next_reset_at", Type: field.TypeTime, Nullable: true},
 		{Name: "ready", Type: field.TypeBool, Default: true},
 		{Name: "next_check_at", Type: field.TypeTime},
+		{Name: "account_key", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "channel_id", Type: field.TypeInt, Unique: true},
 	}
 	// ProviderQuotaStatusTable holds the schema information for the "provider_quota_status" table.
@@ -509,7 +510,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "provider_quota_status_channels_provider_quota_status",
-				Columns:    []*schema.Column{ProviderQuotaStatusColumns[10]},
+				Columns:    []*schema.Column{ProviderQuotaStatusColumns[11]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -518,12 +519,17 @@ var (
 			{
 				Name:    "providerquotastatus_channel_id",
 				Unique:  true,
-				Columns: []*schema.Column{ProviderQuotaStatusColumns[10]},
+				Columns: []*schema.Column{ProviderQuotaStatusColumns[11]},
 			},
 			{
 				Name:    "providerquotastatus_next_check_at",
 				Unique:  false,
 				Columns: []*schema.Column{ProviderQuotaStatusColumns[9]},
+			},
+			{
+				Name:    "providerquotastatus_account_key",
+				Unique:  false,
+				Columns: []*schema.Column{ProviderQuotaStatusColumns[10]},
 			},
 		},
 	}

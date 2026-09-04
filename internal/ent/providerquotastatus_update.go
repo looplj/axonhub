@@ -138,6 +138,26 @@ func (_u *ProviderQuotaStatusUpdate) SetNillableNextCheckAt(v *time.Time) *Provi
 	return _u
 }
 
+// SetAccountKey sets the "account_key" field.
+func (_u *ProviderQuotaStatusUpdate) SetAccountKey(v string) *ProviderQuotaStatusUpdate {
+	_u.mutation.SetAccountKey(v)
+	return _u
+}
+
+// SetNillableAccountKey sets the "account_key" field if the given value is not nil.
+func (_u *ProviderQuotaStatusUpdate) SetNillableAccountKey(v *string) *ProviderQuotaStatusUpdate {
+	if v != nil {
+		_u.SetAccountKey(*v)
+	}
+	return _u
+}
+
+// ClearAccountKey clears the value of the "account_key" field.
+func (_u *ProviderQuotaStatusUpdate) ClearAccountKey() *ProviderQuotaStatusUpdate {
+	_u.mutation.ClearAccountKey()
+	return _u
+}
+
 // Mutation returns the ProviderQuotaStatusMutation object of the builder.
 func (_u *ProviderQuotaStatusUpdate) Mutation() *ProviderQuotaStatusMutation {
 	return _u.mutation
@@ -250,6 +270,12 @@ func (_u *ProviderQuotaStatusUpdate) sqlSave(ctx context.Context) (_node int, er
 	}
 	if value, ok := _u.mutation.NextCheckAt(); ok {
 		_spec.SetField(providerquotastatus.FieldNextCheckAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.AccountKey(); ok {
+		_spec.SetField(providerquotastatus.FieldAccountKey, field.TypeString, value)
+	}
+	if _u.mutation.AccountKeyCleared() {
+		_spec.ClearField(providerquotastatus.FieldAccountKey, field.TypeString)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
@@ -379,6 +405,26 @@ func (_u *ProviderQuotaStatusUpdateOne) SetNillableNextCheckAt(v *time.Time) *Pr
 	if v != nil {
 		_u.SetNextCheckAt(*v)
 	}
+	return _u
+}
+
+// SetAccountKey sets the "account_key" field.
+func (_u *ProviderQuotaStatusUpdateOne) SetAccountKey(v string) *ProviderQuotaStatusUpdateOne {
+	_u.mutation.SetAccountKey(v)
+	return _u
+}
+
+// SetNillableAccountKey sets the "account_key" field if the given value is not nil.
+func (_u *ProviderQuotaStatusUpdateOne) SetNillableAccountKey(v *string) *ProviderQuotaStatusUpdateOne {
+	if v != nil {
+		_u.SetAccountKey(*v)
+	}
+	return _u
+}
+
+// ClearAccountKey clears the value of the "account_key" field.
+func (_u *ProviderQuotaStatusUpdateOne) ClearAccountKey() *ProviderQuotaStatusUpdateOne {
+	_u.mutation.ClearAccountKey()
 	return _u
 }
 
@@ -524,6 +570,12 @@ func (_u *ProviderQuotaStatusUpdateOne) sqlSave(ctx context.Context) (_node *Pro
 	}
 	if value, ok := _u.mutation.NextCheckAt(); ok {
 		_spec.SetField(providerquotastatus.FieldNextCheckAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.AccountKey(); ok {
+		_spec.SetField(providerquotastatus.FieldAccountKey, field.TypeString, value)
+	}
+	if _u.mutation.AccountKeyCleared() {
+		_spec.ClearField(providerquotastatus.FieldAccountKey, field.TypeString)
 	}
 	_spec.AddModifiers(_u.modifiers...)
 	_node = &ProviderQuotaStatus{config: _u.config}

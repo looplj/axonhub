@@ -15317,6 +15317,7 @@ type ProviderQuotaStatusMutation struct {
 	next_reset_at  *time.Time
 	ready          *bool
 	next_check_at  *time.Time
+	account_key    *string
 	clearedFields  map[string]struct{}
 	channel        *int
 	clearedchannel bool
@@ -15816,6 +15817,55 @@ func (m *ProviderQuotaStatusMutation) ResetNextCheckAt() {
 	m.next_check_at = nil
 }
 
+// SetAccountKey sets the "account_key" field.
+func (m *ProviderQuotaStatusMutation) SetAccountKey(s string) {
+	m.account_key = &s
+}
+
+// AccountKey returns the value of the "account_key" field in the mutation.
+func (m *ProviderQuotaStatusMutation) AccountKey() (r string, exists bool) {
+	v := m.account_key
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAccountKey returns the old "account_key" field's value of the ProviderQuotaStatus entity.
+// If the ProviderQuotaStatus object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProviderQuotaStatusMutation) OldAccountKey(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAccountKey is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAccountKey requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAccountKey: %w", err)
+	}
+	return oldValue.AccountKey, nil
+}
+
+// ClearAccountKey clears the value of the "account_key" field.
+func (m *ProviderQuotaStatusMutation) ClearAccountKey() {
+	m.account_key = nil
+	m.clearedFields[providerquotastatus.FieldAccountKey] = struct{}{}
+}
+
+// AccountKeyCleared returns if the "account_key" field was cleared in this mutation.
+func (m *ProviderQuotaStatusMutation) AccountKeyCleared() bool {
+	_, ok := m.clearedFields[providerquotastatus.FieldAccountKey]
+	return ok
+}
+
+// ResetAccountKey resets all changes to the "account_key" field.
+func (m *ProviderQuotaStatusMutation) ResetAccountKey() {
+	m.account_key = nil
+	delete(m.clearedFields, providerquotastatus.FieldAccountKey)
+}
+
 // ClearChannel clears the "channel" edge to the Channel entity.
 func (m *ProviderQuotaStatusMutation) ClearChannel() {
 	m.clearedchannel = true
@@ -15877,7 +15927,7 @@ func (m *ProviderQuotaStatusMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProviderQuotaStatusMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, providerquotastatus.FieldCreatedAt)
 	}
@@ -15908,6 +15958,9 @@ func (m *ProviderQuotaStatusMutation) Fields() []string {
 	if m.next_check_at != nil {
 		fields = append(fields, providerquotastatus.FieldNextCheckAt)
 	}
+	if m.account_key != nil {
+		fields = append(fields, providerquotastatus.FieldAccountKey)
+	}
 	return fields
 }
 
@@ -15936,6 +15989,8 @@ func (m *ProviderQuotaStatusMutation) Field(name string) (ent.Value, bool) {
 		return m.Ready()
 	case providerquotastatus.FieldNextCheckAt:
 		return m.NextCheckAt()
+	case providerquotastatus.FieldAccountKey:
+		return m.AccountKey()
 	}
 	return nil, false
 }
@@ -15965,6 +16020,8 @@ func (m *ProviderQuotaStatusMutation) OldField(ctx context.Context, name string)
 		return m.OldReady(ctx)
 	case providerquotastatus.FieldNextCheckAt:
 		return m.OldNextCheckAt(ctx)
+	case providerquotastatus.FieldAccountKey:
+		return m.OldAccountKey(ctx)
 	}
 	return nil, fmt.Errorf("unknown ProviderQuotaStatus field %s", name)
 }
@@ -16044,6 +16101,13 @@ func (m *ProviderQuotaStatusMutation) SetField(name string, value ent.Value) err
 		}
 		m.SetNextCheckAt(v)
 		return nil
+	case providerquotastatus.FieldAccountKey:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAccountKey(v)
+		return nil
 	}
 	return fmt.Errorf("unknown ProviderQuotaStatus field %s", name)
 }
@@ -16092,6 +16156,9 @@ func (m *ProviderQuotaStatusMutation) ClearedFields() []string {
 	if m.FieldCleared(providerquotastatus.FieldNextResetAt) {
 		fields = append(fields, providerquotastatus.FieldNextResetAt)
 	}
+	if m.FieldCleared(providerquotastatus.FieldAccountKey) {
+		fields = append(fields, providerquotastatus.FieldAccountKey)
+	}
 	return fields
 }
 
@@ -16108,6 +16175,9 @@ func (m *ProviderQuotaStatusMutation) ClearField(name string) error {
 	switch name {
 	case providerquotastatus.FieldNextResetAt:
 		m.ClearNextResetAt()
+		return nil
+	case providerquotastatus.FieldAccountKey:
+		m.ClearAccountKey()
 		return nil
 	}
 	return fmt.Errorf("unknown ProviderQuotaStatus nullable field %s", name)
@@ -16146,6 +16216,9 @@ func (m *ProviderQuotaStatusMutation) ResetField(name string) error {
 		return nil
 	case providerquotastatus.FieldNextCheckAt:
 		m.ResetNextCheckAt()
+		return nil
+	case providerquotastatus.FieldAccountKey:
+		m.ResetAccountKey()
 		return nil
 	}
 	return fmt.Errorf("unknown ProviderQuotaStatus field %s", name)
