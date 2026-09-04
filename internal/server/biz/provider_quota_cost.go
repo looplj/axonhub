@@ -25,6 +25,14 @@ func (svc *ProviderQuotaService) fillPeriodQuotas(
 	quotaData *provider_quota.QuotaData,
 	now time.Time,
 ) {
+	if quotaData.ProviderType == "zenmux" {
+		for i := range quotaData.Limits {
+			quotaData.Limits[i].PeriodCost = nil
+			quotaData.Limits[i].PeriodQuota = nil
+		}
+		return
+	}
+
 	// Providers repeat the same period start across limits (Claude Code reports
 	// a 5h and a 7d window, Cline three windows), so the cost of each distinct
 	// period is only queried once.
