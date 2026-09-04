@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
@@ -62,10 +63,17 @@ type OutboundTransformer struct {
 	anthropic transformer.Outbound
 }
 
-// sessionHeaderOutbound adds the OpenCode Go session header to a protocol-specific
-// outbound transformer. It is used by the legacy Anthropic-only channel.
+// sessionHeaderOutbound adds OpenCode session affinity to an outbound.
 type sessionHeaderOutbound struct {
 	transformer.Outbound
+}
+
+// sessionHeaderCustomizedOutbound preserves customized executor behavior for
+// outbounds such as OpenAI Responses while adding OpenCode session affinity.
+type sessionHeaderCustomizedOutbound struct {
+	*sessionHeaderOutbound
+
+	customizer pipeline.ChannelCustomizedExecutor
 }
 
 // WithSessionHeader decorates an outbound transformer with OpenCode Go session affinity.
@@ -74,7 +82,15 @@ func WithSessionHeader(outbound transformer.Outbound) transformer.Outbound {
 		return nil
 	}
 
-	return &sessionHeaderOutbound{Outbound: outbound}
+	wrapped := &sessionHeaderOutbound{Outbound: outbound}
+	if customizer, ok := outbound.(pipeline.ChannelCustomizedExecutor); ok {
+		return &sessionHeaderCustomizedOutbound{
+			sessionHeaderOutbound: wrapped,
+			customizer:            customizer,
+		}
+	}
+
+	return wrapped
 }
 
 // NewOutboundTransformer creates a new OpenCode Go OutboundTransformer with legacy parameters.
@@ -219,6 +235,27 @@ func (t *sessionHeaderOutbound) TransformRequest(ctx context.Context, llmReq *ll
 	setSessionHeader(ctx, llmReq, httpReq)
 
 	return httpReq, nil
+}
+
+// CustomizeExecutor forwards executor customization to the wrapped outbound.
+func (t *sessionHeaderCustomizedOutbound) CustomizeExecutor(executor pipeline.Executor) pipeline.Executor {
+	return t.customizer.CustomizeExecutor(executor)
+}
+
+// FinalizeTransportRequest forwards transport cleanup when supported.
+func (t *sessionHeaderCustomizedOutbound) FinalizeTransportRequest(request *httpclient.Request) *httpclient.Request {
+	if finalizer, ok := t.Outbound.(transformer.TransportRequestFinalizer); ok {
+		return finalizer.FinalizeTransportRequest(request)
+	}
+
+	return request
+}
+
+// Stop releases resources owned by the wrapped outbound when supported.
+func (t *sessionHeaderCustomizedOutbound) Stop() {
+	if stoppable, ok := t.Outbound.(interface{ Stop() }); ok {
+		stoppable.Stop()
+	}
 }
 
 func setSessionHeader(ctx context.Context, llmReq *llm.Request, httpReq *httpclient.Request) {
