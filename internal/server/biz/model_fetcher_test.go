@@ -1039,13 +1039,11 @@ func TestFetchCopilotModels(t *testing.T) {
 	}
 }
 
-
-
 func TestFetchModelsCommandCodeSingleBearerRequest(t *testing.T) {
 	for _, channelType := range []channel.Type{channel.TypeCommandcode, channel.TypeCommandcodeAnthropic} {
 		t.Run(channelType.String(), func(t *testing.T) {
 			var calls atomic.Int32
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				calls.Add(1)
 				if r.Header.Get("Authorization") != "Bearer test-key" {
 					t.Errorf("expected Authorization: Bearer test-key, got %q", r.Header.Get("Authorization"))
@@ -1057,7 +1055,7 @@ func TestFetchModelsCommandCodeSingleBearerRequest(t *testing.T) {
 					t.Errorf("expected /v1/models, got %q", r.URL.Path)
 				}
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"data":[{"id":"claude-sonnet-4-5"},{"id":"claude-opus-4-1"}]}`))
+				_, _ = w.Write([]byte(`{"data":[{"id":"claude-sonnet-4-5"},{"id":"gpt-5-codex"},{"id":"deepseek-v3"}]}`))
 			}))
 			defer server.Close()
 
@@ -1068,25 +1066,26 @@ func TestFetchModelsCommandCodeSingleBearerRequest(t *testing.T) {
 				BaseURL:     server.URL + "/v1",
 				APIKey:      &key,
 			})
-			if err != nil {
-				t.Fatalf("FetchModels() error: %v", err)
+			require.NoError(t, err)
+			require.Nil(t, result.Error)
+			require.Equal(t, int32(1), calls.Load())
+
+			expectedIDs := []string{"gpt-5-codex", "deepseek-v3"}
+			if channelType == channel.TypeCommandcodeAnthropic {
+				expectedIDs = []string{"claude-sonnet-4-5"}
 			}
-			if result.Error != nil {
-				t.Fatalf("FetchModels() unexpected error result: %s", *result.Error)
+			gotIDs := make([]string, len(result.Models))
+			for i, model := range result.Models {
+				gotIDs[i] = model.ID
 			}
-			if calls.Load() != 1 {
-				t.Fatalf("expected exactly 1 request (no X-Api-Key retry), got %d", calls.Load())
-			}
-			if len(result.Models) != 2 || result.Models[0].ID != "claude-sonnet-4-5" {
-				t.Fatalf("unexpected models: %+v", result.Models)
-			}
+			require.Equal(t, expectedIDs, gotIDs)
 		})
 	}
 }
 
 func TestFetchModelsCommandCodeBaseWithoutV1AppendsV1(t *testing.T) {
 	var calls atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
 		if r.URL.Path != "/v1/models" {
 			t.Errorf("expected /v1/models, got %q", r.URL.Path)
@@ -1112,4 +1111,26 @@ func TestFetchModelsCommandCodeBaseWithoutV1AppendsV1(t *testing.T) {
 	if calls.Load() != 1 {
 		t.Fatalf("expected exactly 1 request, got %d", calls.Load())
 	}
+}
+
+func TestFetchModelsCommandCodeRejectsHTTP(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls.Add(1)
+	}))
+	defer server.Close()
+
+	key := "test-key"
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+	result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{
+		ChannelType: channel.TypeCommandcode.String(),
+		BaseURL:     server.URL,
+		APIKey:      &key,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, result.Error)
+	if result.Error != nil {
+		require.Contains(t, *result.Error, "HTTPS")
+	}
+	require.Zero(t, calls.Load())
 }

@@ -543,6 +543,16 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		input.BaseURL = &officialBaseURL
 		input.Endpoints = nil
 	}
+	if isCommandCodeChannelType(input.Type) {
+		baseURL := ""
+		if input.BaseURL != nil {
+			baseURL = *input.BaseURL
+		}
+		if err := validateCommandCodeBaseURL(baseURL); err != nil {
+			return nil, err
+		}
+	}
+
 	if err := NormalizeAPIKeyAutoDisableRules(input.Policies); err != nil {
 		return nil, err
 	}
@@ -808,35 +818,40 @@ func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
 // UpdateChannel updates an existing channel with the provided input.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id))
-	// Resolve the effective channel type so Command Code quota cookie handling
-	// below can distinguish "Command Code type" from "switching away".
-	var effectiveType *channel.Type
-	if input.Type != nil {
-		effectiveType = input.Type
-	} else {
-		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
-			return svc.entFromContext(queryCtx).Channel.Query().
-				Where(channel.IDEQ(id)).
-				Select(channel.FieldType).
-				Only(queryCtx)
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to load channel type for quota settings handling: %w", err)
-		}
-		effectiveType = &existing.Type
+	// Snapshot the provider identity before normalizing Command Code settings.
+	// Settings-only updates need this snapshot to reject a concurrent type
+	// change that could otherwise leave a quota cookie on the wrong channel.
+	existingIdentity, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+		return svc.entFromContext(queryCtx).Channel.Query().
+			Where(channel.IDEQ(id)).
+			Select(channel.FieldType, channel.FieldBaseURL, channel.FieldUpdatedAt).
+			Only(queryCtx)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to load channel provider identity: %w", err)
 	}
+
+	effectiveType := existingIdentity.Type
+	if input.Type != nil {
+		effectiveType = *input.Type
+	}
+
+	commandCodeQuotaSettings := input.Settings != nil &&
+		(isCommandCodeChannelType(effectiveType) ||
+			(input.Settings.ProviderQuota != nil && input.Settings.ProviderQuota.CommandCode != nil))
+	guardProviderIdentity := input.Type != nil || input.BaseURL != nil || commandCodeQuotaSettings
 
 	// A cleared Command Code quota cookie must invalidate the old persisted
 	// status, regardless of whether the client sent null or an empty object.
 	quotaCookieCleared := false
 
 	if input.Settings != nil {
-		if isCommandCodeChannelType(*effectiveType) && (input.Settings.ProviderQuota == nil || commandCodeQuotaCookieIsBlank(input.Settings)) {
+		if isCommandCodeChannelType(effectiveType) && (input.Settings.ProviderQuota == nil || commandCodeQuotaCookieIsBlank(input.Settings)) {
 			input.Settings = clearCommandCodeQuotaSettings(input.Settings)
 			quotaCookieCleared = true
 		}
 
-		sanitizedSettings, err := normalizeCommandCodeQuotaCookieSettings(input.Settings, *effectiveType)
+		sanitizedSettings, err := normalizeCommandCodeQuotaCookieSettings(input.Settings, effectiveType)
 		if err != nil {
 			return nil, err
 		}
@@ -860,6 +875,15 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		if existing {
 			input.BaseURL = &officialBaseURL
 			input.Endpoints = []objects.ChannelEndpoint{}
+		}
+	}
+	effectiveBaseURL := existingIdentity.BaseURL
+	if input.BaseURL != nil {
+		effectiveBaseURL = *input.BaseURL
+	}
+	if isCommandCodeChannelType(effectiveType) {
+		if err := validateCommandCodeBaseURL(effectiveBaseURL); err != nil {
+			return nil, err
 		}
 	}
 
@@ -986,21 +1010,11 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	providerIdentityChanged := false
 	clearStaleQuotaSettings := input.Settings == nil && input.Type != nil &&
 		!isCommandCodeChannelType(*input.Type)
-	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
+	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
 
-		var existingIdentity *ent.Channel
-		if input.Type != nil || input.BaseURL != nil {
-			var err error
-			existingIdentity, err = db.Channel.Query().
-				Where(channel.IDEQ(id)).
-				Select(channel.FieldType, channel.FieldBaseURL, channel.FieldUpdatedAt).
-				Only(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to load channel provider identity: %w", err)
-			}
-		}
-
+		// Only identity changes and Command Code quota-related settings need
+		// optimistic locking; unrelated channel edits retain their prior behavior.
 		mut := db.Channel.UpdateOneID(id).
 			SetNillableType(input.Type).
 			SetNillableBaseURL(input.BaseURL).
@@ -1008,9 +1022,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			SetNillableDefaultTestModel(input.DefaultTestModel).
 			SetNillableOrderingWeight(input.OrderingWeight).
 			SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels)
-		if existingIdentity != nil {
-			// Reject a stale provider edit if any concurrent channel update changed
-			// the row after the identity snapshot was read.
+		if guardProviderIdentity {
 			mut.Where(channel.UpdatedAtEQ(existingIdentity.UpdatedAt))
 		}
 
@@ -1089,12 +1101,12 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 		channel, err := mut.Save(ctx)
 		if err != nil {
-			if existingIdentity != nil && ent.IsNotFound(err) {
+			if ent.IsNotFound(err) {
 				return fmt.Errorf("channel was updated concurrently; retry the operation")
 			}
 			return fmt.Errorf("failed to update channel: %w", err)
 		}
-		if existingIdentity != nil {
+		if guardProviderIdentity {
 			providerIdentityChanged = channel.Type != existingIdentity.Type ||
 				channel.BaseURL != existingIdentity.BaseURL
 		}
@@ -1234,7 +1246,6 @@ func (c *Channel) IsAPIKeyDisabled(key string) bool {
 	_, ok := c.cachedDisabledKeySet[key]
 	return ok
 }
-
 
 // normalizeCommandCodeQuotaCookieSettings is the biz-local gateway to the
 // shared Command Code cookie normalizer (provider_quota package). It keeps

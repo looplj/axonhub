@@ -18,7 +18,6 @@ import (
 // TestCommandCodeOutboundRouting locks in the Command Code outbound contract:
 //   - commandcode            -> OpenAI chat completions at baseURL + "/chat/completions", Authorization: Bearer
 //   - commandcode_anthropic  -> Anthropic messages at baseURL + "/messages", Authorization: Bearer
-//   - endpoint never depends on the requested model id
 //   - ordinary anthropic direct channels keep X-API-Key
 func TestCommandCodeOutboundRouting(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:channel_llm_commandcode?mode=memory&_fk=0")
@@ -54,14 +53,14 @@ func TestCommandCodeOutboundRouting(t *testing.T) {
 		outbound := ch.Outbounds[llm.APIFormatOpenAIChatCompletion.String()]
 		require.NotNil(t, outbound)
 
-		httpReq, err := outbound.TransformRequest(ctx, newRequest("claude-sonnet-4-5"))
+		httpReq, err := outbound.TransformRequest(ctx, newRequest("gpt-5-codex"))
 		require.NoError(t, err)
 		require.Equal(t, "https://api.commandcode.ai/provider/v1/chat/completions", httpReq.URL)
 		require.Equal(t, "sk-test", httpReq.Auth.APIKey)
 		require.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
 	})
 
-	t.Run("commandcode chat endpoint is model independent", func(t *testing.T) {
+	t.Run("commandcode chat accepts OpenAI-format models", func(t *testing.T) {
 		c := &ent.Channel{
 			ID:          2,
 			Name:        "cc2",
@@ -74,7 +73,7 @@ func TestCommandCodeOutboundRouting(t *testing.T) {
 		outbound := ch.Outbounds[llm.APIFormatOpenAIChatCompletion.String()]
 		require.NotNil(t, outbound)
 
-		for _, model := range []string{"claude-opus-4-1", "gpt-5-codex", "deepseek-v3"} {
+		for _, model := range []string{"gpt-5-codex", "deepseek-v3"} {
 			httpReq, err := outbound.TransformRequest(ctx, newRequest(model))
 			require.NoError(t, err)
 			require.Equal(t, "https://api.commandcode.ai/provider/v1/chat/completions", httpReq.URL)
@@ -159,6 +158,47 @@ func TestCommandCodeOutboundRouting(t *testing.T) {
 			require.Error(t, err)
 			require.Contains(t, err.Error(), "missing api key")
 		}
+	})
+	t.Run("explicit API key override can use a disabled configured key", func(t *testing.T) {
+		c := &ent.Channel{
+			ID:              7,
+			Name:            "cc-disabled-key",
+			Type:            channel.TypeCommandcode,
+			BaseURL:         base,
+			Credentials:     objects.ChannelCredentials{APIKeys: []string{"disabled-key"}},
+			DisabledAPIKeys: []objects.DisabledAPIKey{{Key: "disabled-key"}},
+		}
+
+		_, err := svc.buildChannelWithOutbounds(c, "disabled-key")
+		require.NoError(t, err)
+	})
+	t.Run("blank API key override does not replace an enabled key", func(t *testing.T) {
+		c := &ent.Channel{
+			ID:          9,
+			Name:        "cc-blank-override",
+			Type:        channel.TypeCommandcode,
+			BaseURL:     base,
+			Credentials: objects.ChannelCredentials{APIKey: "stored-key"},
+		}
+
+		ch, err := svc.buildChannelWithOutbounds(c, "  ")
+		require.NoError(t, err)
+		httpReq, err := ch.Outbounds[llm.APIFormatOpenAIChatCompletion.String()].TransformRequest(ctx, newRequest("gpt-5-codex"))
+		require.NoError(t, err)
+		require.Equal(t, "stored-key", httpReq.Auth.APIKey)
+	})
+
+	t.Run("insecure base URL is rejected", func(t *testing.T) {
+		c := &ent.Channel{
+			ID:          8,
+			Name:        "cc-insecure",
+			Type:        channel.TypeCommandcode,
+			BaseURL:     "http://api.commandcode.ai/provider/v1",
+			Credentials: objects.ChannelCredentials{APIKey: "sk-test"},
+		}
+
+		_, err := svc.buildChannelWithOutbounds(c)
+		require.ErrorContains(t, err, "HTTPS")
 	})
 }
 

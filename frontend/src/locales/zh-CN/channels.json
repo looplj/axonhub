@@ -307,7 +307,7 @@
   "channels.dialogs.github_copilot.messages.credentialsStored": "此渠道已存储 OAuth 凭证",
   "channels.dialogs.fields.commandCodeQuota.authCookie.label": "Web Cookie",
   "channels.dialogs.fields.commandCodeQuota.authCookie.placeholder": "__Secure-commandcode_prod_.session_token=...; __Secure-commandcode_prod_.session_data=...",
-  "channels.dialogs.fields.commandCodeQuota.authCookie.description": "访问 Command Code 的usage页面，复制 Cookie 请求头。可以粘贴整段 Cookie，只会保留 session_token/data。",
+  "channels.dialogs.fields.commandCodeQuota.authCookie.description": "访问 Command Code 的用量页面，复制 Cookie 请求头。可以粘贴整段 Cookie，只会保留 session_token/data。",
   "channels.dialogs.fields.name.label": "渠道名称",
   "channels.dialogs.fields.name.placeholder": "我的渠道",
   "channels.dialogs.fields.apiFormat.label": "API 格式",

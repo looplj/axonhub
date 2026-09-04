@@ -33,6 +33,16 @@ func TestNormalizeCommandCodeCookie(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "__Secure-commandcode_prod_.session_token=tok; commandcode_prod_.session_data=data", got)
 	})
+	t.Run("ignores unknown cookies before validating their values", func(t *testing.T) {
+		got, err := NormalizeCommandCodeCookie("__Secure-commandcode_prod_.session_token=tok; unused=")
+		require.NoError(t, err)
+		require.Equal(t, "__Secure-commandcode_prod_.session_token=tok", got)
+	})
+	t.Run("ignores unknown cookies without a value", func(t *testing.T) {
+		got, err := NormalizeCommandCodeCookie("__Secure-commandcode_prod_.session_token=tok; unused")
+		require.NoError(t, err)
+		require.Equal(t, "__Secure-commandcode_prod_.session_token=tok", got)
+	})
 
 	t.Run("host prefixed session token is kept", func(t *testing.T) {
 		got, err := NormalizeCommandCodeCookie("__Host-commandcode_prod_.session_token=abc")
@@ -277,8 +287,6 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 	return r.body.Write(b)
 }
 func (r *responseRecorder) WriteHeader(status int) { r.status = status }
-
-
 
 func TestCommandCodeResetVariants(t *testing.T) {
 	// window reset seconds (2000000000), milliseconds (1767225600000), RFC3339

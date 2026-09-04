@@ -416,6 +416,32 @@ func TestChannelService_CreateChannel(t *testing.T) {
 		})
 	}
 }
+func TestChannelService_CommandCodeRequiresHTTPS(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	_, err := svc.CreateChannel(ctx, ent.CreateChannelInput{
+		Type:        channel.TypeCommandcode,
+		Name:        "Command Code insecure",
+		BaseURL:     lo.ToPtr("http://api.commandcode.ai/provider/v1"),
+		Credentials: objects.ChannelCredentials{APIKey: "test-key"},
+	})
+	require.ErrorContains(t, err, "HTTPS")
+
+	created, err := svc.CreateChannel(ctx, ent.CreateChannelInput{
+		Type:        channel.TypeCommandcode,
+		Name:        "Command Code secure",
+		BaseURL:     lo.ToPtr("https://api.commandcode.ai/provider/v1"),
+		Credentials: objects.ChannelCredentials{APIKey: "test-key"},
+	})
+	require.NoError(t, err)
+
+	_, err = svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
+		BaseURL: lo.ToPtr("http://api.commandcode.ai/provider/v1"),
+	})
+	require.ErrorContains(t, err, "HTTPS")
+}
 
 func TestChannelService_UpdateChannel(t *testing.T) {
 	svc, client := setupTestChannelService(t)

@@ -17,7 +17,7 @@ import (
 
 const (
 	commandCodeProviderType        = "commandcode"
-	commandCodeCreditsURL          = "https://api.commandcode.ai/internal/billing/credits"
+	commandCodeCreditsURL          = "https://api.commandcode.ai/internal/billing/credits" //nolint:gosec // Public endpoint URL, not a credential.
 	commandCodeSubscriptionsURL    = "https://api.commandcode.ai/internal/billing/subscriptions"
 	commandCodeQuotaUserAgent      = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 	commandCodeMaxResetEpochMillis = 1e15
@@ -38,9 +38,9 @@ var commandCodeCookieNames = map[string]struct{}{
 // commandCodePlanAllowance is the local monthly allowance table used to add a
 // trusted monthly denominator.
 type commandCodePlanAllowance struct {
-	MonthlyUSD float64
+	MonthlyUSD  float64
 	FiveHourUSD float64
-	WeeklyUSD  float64
+	WeeklyUSD   float64
 }
 
 // Team Pro has no stable plan id; it is matched by label.
@@ -115,8 +115,7 @@ func commandCodeGet(ctx context.Context, hc *httpclient.HttpClient, url, cookie 
 
 	resp, err := hc.Do(ctx, request)
 	if err != nil {
-		var httpErr *httpclient.Error
-		if errors.As(err, &httpErr) {
+		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
 			if httpErr.StatusCode == http.StatusUnauthorized || httpErr.StatusCode == http.StatusForbidden {
 				return nil, fmt.Errorf("%w: Command Code billing API returned %d (expired session cookie?)", ErrInvalidCredentials, httpErr.StatusCode)
 			}
@@ -165,7 +164,7 @@ func NormalizeCommandCodeCookie(raw string) (string, error) {
 	var kept []string
 	seenToken := false
 
-	for _, part := range strings.Split(cleaned, ";") {
+	for part := range strings.SplitSeq(cleaned, ";") {
 		part = strings.TrimSpace(part)
 		if part == "" {
 			continue
@@ -173,9 +172,18 @@ func NormalizeCommandCodeCookie(raw string) (string, error) {
 
 		name, value, ok := strings.Cut(part, "=")
 		name = strings.TrimSpace(name)
-		if !ok || name == "" {
+		if name == "" {
 			return "", errors.New("invalid cookie segment: expected name=value")
 		}
+
+		lower := strings.ToLower(name)
+		if _, ok := commandCodeCookieNames[lower]; !ok {
+			continue
+		}
+		if !ok {
+			return "", errors.New("invalid cookie segment: expected name=value")
+		}
+
 		// A name must be a valid RFC 6265 token: no separators, whitespace or
 		// control characters.
 		for _, r := range name {
@@ -192,11 +200,6 @@ func NormalizeCommandCodeCookie(raw string) (string, error) {
 			if r <= 0x20 || r == 0x7f {
 				return "", fmt.Errorf("cookie %q has an invalid value", name)
 			}
-		}
-
-		lower := strings.ToLower(name)
-		if _, ok := commandCodeCookieNames[lower]; !ok {
-			continue
 		}
 
 		if strings.HasSuffix(lower, ".session_token") {
@@ -373,12 +376,12 @@ func parseCommandCodeCredits(creditsBody, subscriptionsBody []byte) (QuotaData, 
 }
 
 type commandCodeWindow struct {
-	usedUSD   float64
-	capUSD    float64
-	usagePct  float64
-	resetAt   *time.Time
-	hasCap    bool
-	hasUsage  bool
+	usedUSD  float64
+	capUSD   float64
+	usagePct float64
+	resetAt  *time.Time
+	hasCap   bool
+	hasUsage bool
 }
 
 func parseCommandCodeWindow(obj map[string]any, keys ...string) *commandCodeWindow {
