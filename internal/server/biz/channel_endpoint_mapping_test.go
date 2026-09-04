@@ -246,11 +246,20 @@ func TestValidateEndpoints(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("websocket compact responses endpoint passes validation", func(t *testing.T) {
+	t.Run("websocket compact responses endpoint returns error", func(t *testing.T) {
 		err := ValidateEndpoints([]objects.ChannelEndpoint{
 			{APIFormat: llm.APIFormatOpenAIResponseCompact.String(), Transport: objects.ChannelEndpointTransportWebSocket},
 		})
-		require.NoError(t, err)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "websocket transport only supports")
+	})
+
+	t.Run("websocket compact responses base url returns error", func(t *testing.T) {
+		err := ValidateEndpoints([]objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIResponseCompact.String(), BaseURL: "wss://api.openai.com/v1"},
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "websocket transport only supports")
 	})
 
 	t.Run("valid endpoints pass validation", func(t *testing.T) {

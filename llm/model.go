@@ -589,6 +589,10 @@ type VideoURL struct {
 type DocumentURL struct {
 	// URL is the URL of the document (data URL or regular URL).
 	URL string `json:"url"`
+	// FileID is the provider file identifier when the document was uploaded separately.
+	FileID string `json:"file_id,omitempty"`
+	// Filename is the document name used for inline file data.
+	Filename string `json:"filename,omitempty"`
 
 	// MIMEType is the MIME type of the document.
 	// e.g. "application/pdf", "application/msword"

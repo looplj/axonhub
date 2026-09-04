@@ -1264,3 +1264,71 @@ func TestOutboundTransformer_TransformStream_CreatedAtCompatibility(t *testing.T
 		})
 	}
 }
+
+func TestOutboundTransformer_TransformStream_PreservesOfficialWebSocketError(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name     string
+		data     string
+		wantType string
+	}{
+		{
+			name:     "official nested error",
+			wantType: "invalid_request_error",
+			data: `{
+				"type":"error",
+				"status":400,
+				"error":{
+					"type":"invalid_request_error",
+					"code":"invalid_value",
+					"message":"invalid websocket request",
+					"param":"input"
+				}
+			}`,
+		},
+		{
+			name:     "partial nested error retains flattened fields",
+			wantType: "invalid_request_error",
+			data: `{
+				"type":"error",
+				"status":400,
+				"code":"invalid_value",
+				"message":"invalid websocket request",
+				"param":"input",
+				"error":{"type":"invalid_request_error"}
+			}`,
+		},
+		{
+			name:     "legacy flattened error has a type",
+			wantType: "error",
+			data: `{
+				"type":"error",
+				"status":400,
+				"code":"invalid_value",
+				"message":"invalid websocket request",
+				"param":"input"
+			}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{{
+				Type: "error",
+				Data: []byte(tt.data),
+			}}))
+			require.NoError(t, err)
+			require.False(t, stream.Next())
+
+			var responseErr *llm.ResponseError
+			require.ErrorAs(t, stream.Err(), &responseErr)
+			require.Equal(t, 400, responseErr.StatusCode)
+			require.Equal(t, tt.wantType, responseErr.Detail.Type)
+			require.Equal(t, "invalid_value", responseErr.Detail.Code)
+			require.Equal(t, "invalid websocket request", responseErr.Detail.Message)
+			require.Equal(t, "input", responseErr.Detail.Param)
+		})
+	}
+}

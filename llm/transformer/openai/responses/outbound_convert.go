@@ -175,6 +175,10 @@ func convertUserMessage(msg llm.Message) Item {
 						Detail:   p.ImageURL.Detail,
 					})
 				}
+			case "document":
+				if p.Document != nil {
+					contentItems = append(contentItems, responseInputFile(p.Document))
+				}
 			case "compaction", "compaction_summary":
 				if p.Compact != nil {
 					contentItems = append(contentItems, compactionItemFromPart(p, p.Type))
@@ -188,6 +192,29 @@ func convertUserMessage(msg llm.Message) Item {
 		Role:    msg.Role,
 		Content: &Input{Items: contentItems},
 	}
+}
+
+func responseInputFile(document *llm.DocumentURL) Item {
+	item := Item{
+		Type: "input_file",
+	}
+	if document.FileID != "" {
+		item.FileID = &document.FileID
+	}
+	if document.Filename != "" {
+		item.Filename = &document.Filename
+	} else if document.MIMEType == "application/pdf" {
+		item.Filename = lo.ToPtr("document.pdf")
+	}
+	if document.URL != "" {
+		if strings.HasPrefix(document.URL, "data:") {
+			item.FileData = &document.URL
+		} else {
+			item.FileURL = &document.URL
+		}
+	}
+
+	return item
 }
 
 // convertAssistantMessage converts an assistant message to Responses API Item(s) format.

@@ -445,8 +445,38 @@ func TestConvertGeminiToLLMRequest_ResponseFormat(t *testing.T) {
 				require.NotNil(t, result.ResponseFormat)
 				require.Equal(t, "json_schema", result.ResponseFormat.Type)
 				require.NotNil(t, result.ResponseFormat.JSONSchema)
-				require.Contains(t, string(result.ResponseFormat.JSONSchema), "name")
-				require.Contains(t, string(result.ResponseFormat.JSONSchema), "age")
+
+				var wrapper struct {
+					Name   string          `json:"name"`
+					Schema json.RawMessage `json:"schema"`
+				}
+				require.NoError(t, json.Unmarshal(result.ResponseFormat.JSONSchema, &wrapper))
+				require.Equal(t, "gemini_response", wrapper.Name)
+				require.JSONEq(t, `{"type":"object","properties":{"name":{"type":"string"},"age":{"type":"integer"}}}`, string(wrapper.Schema))
+			},
+		},
+		{
+			name: "request with ResponseJsonSchema adds OpenAI schema name",
+			input: &GenerateContentRequest{
+				Contents: []*Content{{
+					Role:  "user",
+					Parts: []*Part{{Text: "Generate JSON"}},
+				}},
+				GenerationConfig: &GenerationConfig{
+					ResponseJsonSchema: json.RawMessage(`{"type":"object","properties":{"answer":{"type":"string"}}}`),
+				},
+			},
+			validate: func(t *testing.T, result *llm.Request) {
+				t.Helper()
+				require.NotNil(t, result.ResponseFormat)
+
+				var wrapper struct {
+					Name   string          `json:"name"`
+					Schema json.RawMessage `json:"schema"`
+				}
+				require.NoError(t, json.Unmarshal(result.ResponseFormat.JSONSchema, &wrapper))
+				require.Equal(t, "gemini_response", wrapper.Name)
+				require.JSONEq(t, `{"type":"object","properties":{"answer":{"type":"string"}}}`, string(wrapper.Schema))
 			},
 		},
 		{
@@ -975,6 +1005,39 @@ func TestConvertGeminiContentToLLMMessage(t *testing.T) {
 			tt.validate(t, result)
 		})
 	}
+}
+
+func TestConvertGeminiContentToLLMMessages_MultipleFunctionResponses(t *testing.T) {
+	messages, err := convertGeminiContentToLLMMessages(&Content{
+		Role: "user",
+		Parts: []*Part{
+			{Text: "Tool results:"},
+			{FunctionResponse: &FunctionResponse{
+				ID:       "call_alpha",
+				Name:     "tool_alpha",
+				Response: map[string]any{"value": 1},
+			}},
+			{FunctionResponse: &FunctionResponse{
+				ID:       "call_beta",
+				Name:     "tool_beta",
+				Response: map[string]any{"value": 2},
+			}},
+			{Text: "Continue."},
+		},
+	}, nil)
+	require.NoError(t, err)
+	require.Len(t, messages, 4)
+
+	require.Equal(t, "user", messages[0].Role)
+	require.Equal(t, "Tool results:", lo.FromPtr(messages[0].Content.Content))
+	require.Equal(t, "tool", messages[1].Role)
+	require.Equal(t, "call_alpha", lo.FromPtr(messages[1].ToolCallID))
+	require.JSONEq(t, `{"value":1}`, lo.FromPtr(messages[1].Content.Content))
+	require.Equal(t, "tool", messages[2].Role)
+	require.Equal(t, "call_beta", lo.FromPtr(messages[2].ToolCallID))
+	require.JSONEq(t, `{"value":2}`, lo.FromPtr(messages[2].Content.Content))
+	require.Equal(t, "user", messages[3].Role)
+	require.Equal(t, "Continue.", lo.FromPtr(messages[3].Content.Content))
 }
 
 func TestConvertGeminiContentToLLMMessage_ThoughtSignature(t *testing.T) {

@@ -58,8 +58,8 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
 			return fmt.Errorf("endpoint[%d]: unsupported transport %q", i, ep.Transport)
 		}
 
-		if ep.Transport == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
-			return fmt.Errorf("endpoint[%d]: websocket transport only supports api_format %q or %q", i, llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIResponseCompact.String())
+		if endpointTransport(ep) == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
+			return fmt.Errorf("endpoint[%d]: websocket transport only supports api_format %q", i, llm.APIFormatOpenAIResponse.String())
 		}
 
 		if ep.Path != "" {
@@ -77,7 +77,7 @@ func ValidateEndpoints(endpoints []objects.ChannelEndpoint) error {
 }
 
 func supportsWebSocketTransport(apiFormat string) bool {
-	return apiFormat == llm.APIFormatOpenAIResponse.String() || apiFormat == llm.APIFormatOpenAIResponseCompact.String()
+	return apiFormat == llm.APIFormatOpenAIResponse.String()
 }
 
 // ValidateModelProtocols validates the channel settings' per-model protocol overrides.

@@ -125,6 +125,44 @@ func TestMessageContentPartAudioRoundTrip(t *testing.T) {
 	require.Equal(t, "audio-base64", roundTrip.InputAudio.Data)
 }
 
+func TestMessageContentPartFileRoundTrip(t *testing.T) {
+	part := llm.MessageContentPart{
+		Type: "document",
+		Document: &llm.DocumentURL{
+			URL:      "data:application/pdf;base64,JVBERi0xLjQK",
+			MIMEType: "application/pdf",
+			Filename: "report.pdf",
+		},
+	}
+
+	oaiPart := MessageContentPartFromLLM(part)
+	require.Equal(t, "file", oaiPart.Type)
+	require.NotNil(t, oaiPart.File)
+	require.Equal(t, "report.pdf", oaiPart.File.Filename)
+	require.Equal(t, part.Document.URL, oaiPart.File.FileData)
+
+	roundTrip := oaiPart.ToLLMPart()
+	require.Equal(t, "document", roundTrip.Type)
+	require.NotNil(t, roundTrip.Document)
+	require.Equal(t, "report.pdf", roundTrip.Document.Filename)
+	require.Equal(t, part.Document.URL, roundTrip.Document.URL)
+}
+
+func TestMessageContentPartFromLLMDoesNotMapRegularFileURLToFileData(t *testing.T) {
+	part := MessageContentPartFromLLM(llm.MessageContentPart{
+		Type: "document",
+		Document: &llm.DocumentURL{
+			URL:      "https://example.com/report.pdf",
+			MIMEType: "application/pdf",
+		},
+	})
+
+	require.Equal(t, "file", part.Type)
+	require.NotNil(t, part.File)
+	require.Empty(t, part.File.FileData)
+	require.Empty(t, part.File.FileID)
+}
+
 func TestMessageContentFromLLM_IgnoresCompactionParts(t *testing.T) {
 	content := MessageContentFromLLM(llm.MessageContent{
 		MultipleContent: []llm.MessageContentPart{

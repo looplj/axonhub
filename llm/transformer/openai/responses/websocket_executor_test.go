@@ -254,6 +254,88 @@ func TestWebSocketExecutorDoReturnsErrorForTopLevelErrorEvent(t *testing.T) {
 	require.ErrorContains(t, err, "bad_request: invalid websocket request")
 }
 
+func TestTopLevelWebSocketErrorPreservesOfficialErrorStatusAndBody(t *testing.T) {
+	tests := []struct {
+		name string
+		data string
+		want string
+	}{
+		{
+			name: "official nested error",
+			data: `{
+				"type":"error",
+				"status":400,
+				"error":{
+					"type":"invalid_request_error",
+					"code":"invalid_value",
+					"message":"invalid websocket request",
+					"param":"input"
+				}
+			}`,
+			want: `{
+				"error":{
+					"type":"invalid_request_error",
+					"code":"invalid_value",
+					"message":"invalid websocket request",
+					"param":"input"
+				}
+			}`,
+		},
+		{
+			name: "legacy flattened error",
+			data: `{
+				"type":"error",
+				"status":400,
+				"code":"invalid_value",
+				"message":"invalid websocket request",
+				"param":"input"
+			}`,
+			want: `{
+				"error":{
+					"type":"invalid_value",
+					"code":"invalid_value",
+					"message":"invalid websocket request",
+					"param":"input"
+				}
+			}`,
+		},
+		{
+			name: "partial nested error retains flattened fields",
+			data: `{
+				"type":"error",
+				"status":400,
+				"code":"invalid_value",
+				"message":"invalid websocket request",
+				"param":"input",
+				"error":{"type":"invalid_request_error","request_id":"req_123"}
+			}`,
+			want: `{
+				"error":{
+					"type":"invalid_request_error",
+					"code":"invalid_value",
+					"message":"invalid websocket request",
+					"param":"input",
+					"request_id":"req_123"
+				}
+			}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := TopLevelWebSocketError([]*httpclient.StreamEvent{{
+				Type: "error",
+				Data: []byte(tt.data),
+			}})
+
+			var httpErr *httpclient.Error
+			require.ErrorAs(t, err, &httpErr)
+			require.Equal(t, http.StatusBadRequest, httpErr.StatusCode)
+			require.JSONEq(t, tt.want, string(httpErr.Body))
+		})
+	}
+}
+
 func TestWebSocketExecutorDoAggregatesFailedResponseEvent(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1344,6 +1426,17 @@ func TestNormalizeWebSocketEventFlattensNestedError(t *testing.T) {
 	require.Equal(t, "bad_model", payload["code"])
 	require.Equal(t, "bad request", payload["message"])
 	require.Equal(t, "model", payload["param"])
+}
+
+func TestNormalizeWebSocketEventPreservesFlattenedFields(t *testing.T) {
+	raw := []byte(`{"type":"error","status":400,"code":"invalid_value","message":"flat message","error":{"type":"invalid_request_error","message":"nested message"}}`)
+
+	normalized := normalizeWebSocketEvent(raw)
+
+	var payload map[string]any
+	require.NoError(t, json.Unmarshal(normalized, &payload))
+	require.Equal(t, "invalid_value", payload["code"])
+	require.Equal(t, "flat message", payload["message"])
 }
 
 func TestToWebSocketURL(t *testing.T) {
