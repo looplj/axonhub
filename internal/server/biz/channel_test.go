@@ -591,6 +591,34 @@ func TestChannelService_UpdateChannel_ClearsManagementKeyWhenChangingProvider(t 
 	require.Empty(t, updated.Credentials.ManagementAPIKey)
 }
 
+func TestChannelService_DuplicateChannelPreservesZenmuxManagementKey(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	source, err := client.Channel.Create().
+		SetType(channel.TypeZenmux).
+		SetName("ZenMux source").
+		SetBaseURL("https://zenmux.ai/api/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "inference-key", ManagementAPIKey: "management-key"}).
+		SetSupportedModels([]string{"test-model"}).
+		SetDefaultTestModel("test-model").
+		Save(ctx)
+	require.NoError(t, err)
+
+	duplicated, err := svc.DuplicateChannel(ctx, source.ID, ent.CreateChannelInput{
+		Type:             channel.TypeZenmux,
+		BaseURL:          lo.ToPtr("https://zenmux.ai/api/v1"),
+		Name:             "ZenMux duplicate",
+		Credentials:      objects.ChannelCredentials{APIKey: "duplicate-inference-key"},
+		SupportedModels:  []string{"test-model"},
+		DefaultTestModel: "test-model",
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "management-key", duplicated.Credentials.ManagementAPIKey)
+}
+
 func TestChannelService_UpdateChannelStatus(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()
