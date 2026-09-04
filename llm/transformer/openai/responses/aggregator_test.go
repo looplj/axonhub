@@ -955,3 +955,84 @@ func TestAggregateStreamChunks_ImageGenerationCall(t *testing.T) {
 	require.NotNil(t, resp.Output[0].Result)
 	require.Equal(t, "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", *resp.Output[0].Result)
 }
+
+func TestAggregateStreamChunks_CompletedMetaOnCleanEOFWithOutput(t *testing.T) {
+	// Bailian/DashScope compatible-mode relays close cleanly after delivering
+	// content without emitting response.completed (and often without [DONE]).
+	// The aggregated stream must be reported as Completed so the orchestrator
+	// does not treat a complete generation as truncated.
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_clean_eof","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant"}}`)},
+		{Type: "response.content_part.added", Data: []byte(`{"type":"response.content_part.added","item_id":"msg_1","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}`)},
+		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"你好"}`)},
+	}
+
+	resultBytes, meta, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.NotNil(t, resultBytes)
+	require.Equal(t, "resp_clean_eof", meta.ID)
+	require.True(t, meta.Completed)
+}
+
+func TestAggregateStreamChunks_NotCompletedWhenNoOutput(t *testing.T) {
+	// A stream with only response.created (no output, no terminal event) is a
+	// genuinely truncated/empty stream and must stay incomplete.
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_empty","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+	}
+
+	resultBytes, meta, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.NotNil(t, resultBytes)
+	require.False(t, meta.Completed)
+}
+
+func TestAggregateStreamChunks_NotCompletedOnAbnormalTerminalStatus(t *testing.T) {
+	// An explicit abnormal terminal status (failed) must never be promoted to
+	// Completed, even when partial output was delivered.
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_failed","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant"}}`)},
+		{Type: "response.content_part.added", Data: []byte(`{"type":"response.content_part.added","item_id":"msg_1","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}`)},
+		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"partial"}`)},
+		{Type: "response.failed", Data: []byte(`{"type":"response.failed","response":{"id":"resp_failed","status":"failed"}}`)},
+	}
+
+	resultBytes, meta, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.NotNil(t, resultBytes)
+	require.False(t, meta.Completed)
+}
+
+func TestAggregateStreamChunks_PartialToolCallWithoutDoneNotCompleted(t *testing.T) {
+	// A function call with partial delta arguments but no arguments-done event
+	// is not a confirmed tool-call output, so the clean-EOF aggregate must not
+	// be marked Completed.
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_partial_tool","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_partial","type":"function_call","call_id":"call_partial","name":"get_weather","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_partial","output_index":0,"delta":"{\"city\":\"bei"}`)},
+	}
+
+	resultBytes, meta, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.NotNil(t, resultBytes)
+	require.False(t, meta.Completed)
+}
+
+func TestAggregateStreamChunks_CompletedToolCallWithDoneMarkedCompleted(t *testing.T) {
+	// Once the arguments-done event confirms the tool call, the clean-EOF
+	// aggregate is a real output and may be marked Completed.
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_complete_tool","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_complete","type":"function_call","call_id":"call_complete","name":"get_weather","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_complete","output_index":0,"delta":"{\"city\":\"beijing\"}"}`)},
+		{Type: "response.function_call_arguments.done", Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_complete","output_index":0,"arguments":"{\"city\":\"beijing\"}"}`)},
+	}
+
+	resultBytes, meta, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.NotNil(t, resultBytes)
+	require.True(t, meta.Completed)
+}

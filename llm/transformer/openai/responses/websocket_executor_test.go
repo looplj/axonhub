@@ -1448,3 +1448,44 @@ func TestToWebSocketURL(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ws://localhost:8080/v1/responses", got)
 }
+
+func TestWebSocketStreamReturnsErrorWhenConnectionAbortsAfterEvent(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.created",
+			"response": map[string]any{
+				"id":         "resp_aborted",
+				"object":     "response",
+				"created_at": 1700000000,
+				"model":      "gpt-5",
+				"status":     "in_progress",
+				"output":     []any{},
+			},
+		}))
+		// Close the TCP connection without a WebSocket close frame so the
+		// peer sees an abrupt transport close after it already received output.
+		_ = conn.UnderlyingConn().Close()
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Auth:   &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body:   []byte(`{"model":"gpt-5"}`),
+	})
+	require.NoError(t, err)
+	require.True(t, stream.Next())
+	require.Equal(t, "response.created", stream.Current().Type)
+	require.False(t, stream.Next())
+	require.Error(t, stream.Err())
+	require.NoError(t, stream.Close())
+}

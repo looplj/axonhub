@@ -1084,6 +1084,39 @@ type webSocketStream struct {
 	terminal bool
 }
 
+// isWebSocketCleanClose reports whether err is a normal WebSocket close frame.
+// Only a normal close is considered a clean end of the stream.
+func isWebSocketCleanClose(err error) bool {
+	if err == nil {
+		return false
+	}
+	return websocket.IsCloseError(err, websocket.CloseNormalClosure)
+}
+
+// isWebSocketTransportClose reports whether err indicates an abrupt transport
+// close (TCP reset / abort / EOF) rather than a WebSocket close frame. The OS
+// error strings differ between platforms: Linux reports "connection reset by
+// peer", while Windows reports "an established connection was aborted by the
+// software in your host machine".
+func isWebSocketTransportClose(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	for _, s := range []string{
+		"use of closed network connection",
+		"connection reset by peer",
+		"established connection was aborted",
+		"broken pipe",
+		"eof",
+	} {
+		if strings.Contains(msg, s) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *webSocketStream) Next() bool {
 	if s.contextCancelled() {
 		return false
@@ -1094,11 +1127,25 @@ func (s *webSocketStream) Next() bool {
 
 	_, msg, err := s.lease.conn.ReadMessage()
 	if err != nil {
-		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
-			if ctxErr := s.ctx.Err(); ctxErr != nil {
+		ctxErr := s.ctx.Err()
+		if isWebSocketCleanClose(err) {
+			if ctxErr != nil {
 				s.setErr(ctxErr)
 			} else if !s.hasSeenEvent() {
 				s.setErr(fmt.Errorf("websocket closed before response event"))
+			}
+			s.finish(true)
+			return false
+		}
+		if isWebSocketTransportClose(err) {
+			if ctxErr != nil {
+				s.setErr(ctxErr)
+			} else if !s.hasSeenEvent() {
+				s.setErr(fmt.Errorf("websocket closed before response event"))
+			} else {
+				// An abrupt transport close after output is an upstream
+				// interruption, not a clean completion.
+				s.setErr(err)
 			}
 			s.finish(true)
 			return false

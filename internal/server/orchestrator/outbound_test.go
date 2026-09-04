@@ -28,6 +28,7 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
 // mockTransformer is a simple mock transformer for testing.
@@ -1036,7 +1037,7 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 		require.True(t, state.StreamCompleted)
 	})
 
-	t.Run("canceled client with aggregated completed response is still completed", func(t *testing.T) {
+	t.Run("canceled client with only aggregated inference is not completed", func(t *testing.T) {
 		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 		defer client.Close()
 
@@ -1096,10 +1097,8 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 
 		dbExec, err := client.RequestExecution.Get(baseCtx, exec.ID)
 		require.NoError(t, err)
-		require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
-		require.JSONEq(t, string(aggregated), string(dbExec.ResponseBody))
-		require.Equal(t, "resp_codex_like", dbExec.ExternalID)
-		require.True(t, state.StreamCompleted)
+		require.NotEqual(t, requestexecution.StatusCompleted, dbExec.Status)
+		require.False(t, state.StreamCompleted)
 	})
 
 	t.Run("canceled client after finish reason is still completed without done or usage", func(t *testing.T) {
@@ -1542,4 +1541,91 @@ func TestOutboundPersistentStream_Close_TransportErrorKeepsMetricsAndClassifiesE
 	require.Equal(t, int64(400), *dbExec.MetricsFirstTokenLatencyMs)
 	require.NotNil(t, dbExec.MetricsLatencyMs)
 	require.GreaterOrEqual(t, *dbExec.MetricsLatencyMs, int64(1500))
+}
+
+func TestOutboundPersistentStream_ResponsesCleanEOFWithOutputIsCompleted(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	ctx = ent.NewContext(ctx, client)
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	_, requestService, _, usageLogService := setupTestServices(t, client)
+
+	req, err := client.Request.Create().
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("qwen3.8-max").
+		SetStatus(request.StatusPending).
+		SetRequestBody([]byte(`{"stream":true}`)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	exec, err := client.RequestExecution.Create().
+		SetRequestID(req.ID).
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("qwen3.8-max").
+		SetRequestBody([]byte(`{"stream":true}`)).
+		SetFormat("openai/responses").
+		SetStatus(requestexecution.StatusPending).
+		SetStream(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	// Bailian/DashScope compatible-mode closes cleanly after deltas: no
+	// response.completed, no [DONE], no usage.
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", LastEventID: "", Size: 0, Data: []byte(`{"type":"response.created","response":{"id":"resp_clean_eof","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", LastEventID: "", Size: 0, Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"msg_1","type":"message","status":"in_progress","role":"assistant"}}`)},
+		{Type: "response.content_part.added", LastEventID: "", Size: 0, Data: []byte(`{"type":"response.content_part.added","item_id":"msg_1","output_index":0,"content_index":0,"part":{"type":"output_text","text":""}}`)},
+		{Type: "response.output_text.delta", LastEventID: "", Size: 0, Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"你好"}`)},
+	}
+	transformer, err := responses.NewOutboundTransformer("https://api.example.com/v1", "test-api-key")
+	require.NoError(t, err)
+
+	state := &PersistenceState{
+		APIKey:                  nil,
+		RequestService:          nil,
+		UsageLogService:         nil,
+		ChannelService:          nil,
+		PromptProvider:          nil,
+		PromptProtecter:         nil,
+		RetryPolicyProvider:     nil,
+		CandidateSelector:       nil,
+		LoadBalancers:           nil,
+		RoutingPolicy:           EffectiveRoutingPolicy{LoadBalancerStrategy: "", TraceStickyMode: ""},
+		ModelMapper:             nil,
+		Proxy:                   nil,
+		OriginalModel:           "",
+		RawRequest:              nil,
+		LlmRequest:              nil,
+		OriginalRequestStream:   nil,
+		Request:                 nil,
+		RequestExec:             nil,
+		ChannelModelsCandidates: nil,
+		CurrentCandidateIndex:   0,
+		CurrentCandidate:        nil,
+		CurrentModelIndex:       0,
+		Perf:                    nil,
+		StreamCompleted:         false,
+		RawProviderResponse:     nil,
+		RawProviderRequest:      nil,
+		RawStreamCh:             nil,
+		RawStreamErrRef:         nil,
+		RawStreamCancel:         nil,
+		PassThroughApplied:      false,
+	}
+	persistentStream := NewOutboundPersistentStream(ctx, streams.SliceStream(chunks), req, exec, requestService, usageLogService, transformer, nil, state)
+	for persistentStream.Next() {
+		_ = persistentStream.Current()
+	}
+	require.NoError(t, persistentStream.Close())
+
+	dbExec, err := client.RequestExecution.Get(ctx, exec.ID)
+	require.NoError(t, err)
+	require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
+	require.Empty(t, dbExec.ErrorMessage)
+	require.True(t, state.StreamCompleted)
 }

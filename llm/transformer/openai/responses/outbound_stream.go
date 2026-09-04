@@ -64,6 +64,7 @@ type outboundStreamState struct {
 
 	// Tool call tracking
 	toolCalls     map[string]*llm.ToolCall // callID -> tool call
+	toolCallsDone map[string]bool          // callID -> arguments/input confirmed finished
 	itemToCallID  map[string]string        // item.id -> call_id mapping
 	toolCallIndex map[string]int           // callID -> index in the output
 
@@ -80,6 +81,7 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 		stream: stream,
 		state: &outboundStreamState{
 			toolCalls:                        make(map[string]*llm.ToolCall),
+			toolCallsDone:                    make(map[string]bool),
 			itemToCallID:                     make(map[string]string),
 			toolCallIndex:                    make(map[string]int),
 			pendingReasoningEncryptedContent: make(map[string]*string),
@@ -106,6 +108,18 @@ func (s *responsesOutboundStream) Next() bool {
 	if !s.stream.Next() {
 		if s.err == nil && s.stream.Err() == nil {
 			if !s.responseCompleted {
+				// Some OpenAI-compatible Responses upstreams (e.g.
+				// Bailian/DashScope compatible-mode) close the SSE stream
+				// cleanly after delivering content and usage, without emitting
+				// response.completed. When output was produced and the source
+				// ended cleanly (no transport error), synthesize the terminal
+				// event instead of reporting an incomplete stream so strict
+				// clients do not treat a complete generation as truncated.
+				if s.canSynthesizeCompletion() {
+					s.synthesizeCompletion()
+
+					return true
+				}
 				s.err = ErrStreamIncomplete
 			} else if !s.doneEmitted {
 				s.doneEmitted = true
@@ -349,6 +363,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if !ok {
 			return nil // Intentionally skip an unknown tool call.
 		}
+		s.state.toolCallsDone[callID] = true
 
 		identityChanged := false
 		if streamEvent.Name != "" && streamEvent.Name != tc.Function.Name {
@@ -454,6 +469,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 			if tc, ok := s.state.toolCalls[callID]; ok {
 				tc.ResponseCustomToolCall.Input = streamEvent.Input
+				s.state.toolCallsDone[callID] = true
 			}
 		}
 
@@ -553,6 +569,17 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				},
 			}
 			break
+		}
+		if streamEvent.Item.Type == "function_call" || streamEvent.Item.Type == "custom_tool_call" {
+			callID := s.state.itemToCallID[streamEvent.Item.ID]
+			if callID == "" {
+				callID = streamEvent.Item.CallID
+			}
+			status := lo.FromPtr(streamEvent.Item.Status)
+			if callID != "" && (status == "" || status == "completed") {
+				s.state.toolCallsDone[callID] = true
+			}
+			return nil // Intentionally skip this event; tool content was already streamed via deltas.
 		}
 		if streamEvent.Item.Type != "message" {
 			return nil // Intentionally skip this event
@@ -824,6 +851,92 @@ func (s *responsesOutboundStream) Err() error {
 
 func (s *responsesOutboundStream) Close() error {
 	return s.stream.Close()
+}
+
+// allToolCallsDone reports whether every tracked tool call received a matching
+// arguments/input completion event. A stream that closes after only creating a
+// tool call item, or after a partial delta without its done event, has no
+// confirmed tool-call output yet and must stay incomplete.
+func (s *responsesOutboundStream) allToolCallsDone() bool {
+	for callID := range s.state.toolCalls {
+		if !s.state.toolCallsDone[callID] {
+			return false
+		}
+	}
+	return true
+}
+
+// canSynthesizeCompletion reports whether a clean EOF without a semantic
+// terminal event should still be treated as a successful completion. This is
+// true when the source ended without a transport error and the upstream
+// produced meaningful output (text, reasoning, or tool calls) under a known
+// response ID. Some OpenAI-compatible Responses upstreams (e.g.
+// Bailian/DashScope compatible-mode) close the SSE stream cleanly without a
+// semantic terminal event or even a bare [DONE] marker; treating that as a
+// completed generation avoids surfacing a spurious truncation error to strict
+// clients. Genuinely truncated streams that end without meaningful output, or
+// without a response identity to attach the output to, still surface
+// ErrStreamIncomplete.
+func (s *responsesOutboundStream) canSynthesizeCompletion() bool {
+	if s.state.responseID == "" {
+		return false
+	}
+
+	// A bare usage blob is not evidence of a complete generation. A stream
+	// truncated before any content (e.g. only a response.id + usage) must be
+	// surfaced as ErrStreamIncomplete rather than promoted to an empty
+	// "completed" response, which would hide the truncation from the client.
+	return (s.state.textContent.Len() > 0 ||
+		s.state.reasoningContent.Len() > 0 ||
+		len(s.state.toolCalls) > 0) && s.allToolCallsDone()
+}
+
+// synthesizeCompletion emits the terminal finish chunk and usage (if any) the
+// way response.completed would, then marks the stream done. Callers invoke it
+// only after canSynthesizeCompletion returned true, i.e. the upstream already
+// delivered content and closed cleanly (with or without a [DONE] marker).
+func (s *responsesOutboundStream) synthesizeCompletion() {
+	s.responseCompleted = true
+
+	finishReason := "stop"
+	if len(s.state.toolCalls) > 0 {
+		finishReason = "tool_calls"
+	}
+
+	finishChunk := &llm.Response{
+		Object:             "chat.completion.chunk",
+		ID:                 s.state.responseID,
+		Model:              s.state.responseModel,
+		Created:            s.state.created,
+		PreviousResponseID: s.state.previousResponseID,
+		Choices: []llm.Choice{
+			{
+				Index:        0,
+				Delta:        &llm.Message{},
+				FinishReason: &finishReason,
+			},
+		},
+	}
+	if len(s.state.transformerMetadata) > 0 && !s.state.transformerMetadataEmitted {
+		finishChunk.TransformerMetadata = s.state.transformerMetadata
+		s.state.transformerMetadataEmitted = true
+	}
+	s.enqueue(finishChunk)
+
+	if s.state.usage != nil {
+		s.enqueue(&llm.Response{
+			Object:             "chat.completion.chunk",
+			ID:                 s.state.responseID,
+			Model:              s.state.responseModel,
+			Created:            s.state.created,
+			PreviousResponseID: s.state.previousResponseID,
+			Choices:            []llm.Choice{},
+			Usage:              s.state.usage,
+		})
+	}
+
+	s.doneEmitted = true
+	s.enqueue(llm.DoneResponse)
 }
 
 // AggregateStreamChunks aggregates OpenAI Responses API streaming chunks into a complete response.
