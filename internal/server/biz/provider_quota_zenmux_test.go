@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 type zenmuxCountingQuotaChecker struct {
@@ -77,6 +78,41 @@ func TestProviderQuotaService_GroupChannelsByQuotaAccount_DeduplicatesSharedZenM
 	require.NotEmpty(t, groups[1].accountKey)
 	require.Equal(t, 4, groups[2].channels[0].ID)
 	require.Empty(t, groups[2].accountKey)
+}
+
+func TestProviderQuotaService_GroupChannelsByQuotaAccount_SeparatesProxyConfigurations(t *testing.T) {
+	service := &ProviderQuotaService{}
+	channels := []*ent.Channel{
+		{
+			ID:          1,
+			Type:        channel.TypeZenmux,
+			Credentials: objects.ChannelCredentials{ManagementAPIKey: "shared"},
+			Settings:    &objects.ChannelSettings{Proxy: &httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://proxy-a.example"}},
+		},
+		{
+			ID:          2,
+			Type:        channel.TypeZenmuxAnthropic,
+			Credentials: objects.ChannelCredentials{ManagementAPIKey: "shared"},
+			Settings:    &objects.ChannelSettings{Proxy: &httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://proxy-b.example"}},
+		},
+	}
+
+	groups := service.groupChannelsByQuotaAccount(channels)
+
+	require.Len(t, groups, 2)
+	require.Equal(t, groups[0].accountKey, groups[1].accountKey)
+}
+
+func TestQuotaCheckGroupIsDue_WhenOneSharedChannelIsDue(t *testing.T) {
+	now := time.Now()
+	group := quotaCheckGroup{
+		channels: []*ent.Channel{
+			{Edges: ent.ChannelEdges{ProviderQuotaStatus: &ent.ProviderQuotaStatus{NextCheckAt: now.Add(time.Minute)}}},
+			{Edges: ent.ChannelEdges{ProviderQuotaStatus: &ent.ProviderQuotaStatus{NextCheckAt: now.Add(-time.Minute)}}},
+		},
+	}
+
+	require.True(t, quotaCheckGroupIsDue(group, now))
 }
 
 func TestProviderQuotaService_RunQuotaCheck_DeduplicatesZenMuxAccountAndFansOutStatus(t *testing.T) {

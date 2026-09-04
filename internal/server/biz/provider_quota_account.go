@@ -3,7 +3,9 @@ package biz
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"strings"
+	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
@@ -39,12 +41,13 @@ func (svc *ProviderQuotaService) groupChannelsByQuotaAccount(channels []*ent.Cha
 			continue
 		}
 
-		if index, ok := groupIndexes[accountKey]; ok {
+		groupKey := quotaCheckGroupKey(accountKey, ch)
+		if index, ok := groupIndexes[groupKey]; ok {
 			groups[index].channels = append(groups[index].channels, ch)
 			continue
 		}
 
-		groupIndexes[accountKey] = len(groups)
+		groupIndexes[groupKey] = len(groups)
 		groups = append(groups, quotaCheckGroup{
 			channels:   []*ent.Channel{ch},
 			accountKey: accountKey,
@@ -52,6 +55,27 @@ func (svc *ProviderQuotaService) groupChannelsByQuotaAccount(channels []*ent.Cha
 	}
 
 	return groups
+}
+
+func quotaCheckGroupKey(accountKey string, ch *ent.Channel) string {
+	proxyKey := ""
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
+		proxy, err := json.Marshal(ch.Settings.Proxy)
+		if err == nil {
+			proxyKey = string(proxy)
+		}
+	}
+	return accountKey + "\x00" + proxyKey
+}
+
+func quotaCheckGroupIsDue(group quotaCheckGroup, now time.Time) bool {
+	for _, ch := range group.channels {
+		status := ch.Edges.ProviderQuotaStatus
+		if status == nil || !status.NextCheckAt.After(now) {
+			return true
+		}
+	}
+	return false
 }
 
 func nextQuotaGroupErrorCount(channels []*ent.Channel, providerType string) int {

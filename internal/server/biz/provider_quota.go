@@ -719,17 +719,6 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 			channel.TypeIn(providerQuotaChannelTypes...),
 		)
 
-	if !force {
-		q = q.Where(
-			channel.Or(
-				channel.Not(channel.HasProviderQuotaStatus()),
-				channel.HasProviderQuotaStatusWith(
-					providerquotastatus.NextCheckAtLTE(now),
-				),
-			),
-		)
-	}
-
 	channelsToCheck, err := q.
 		WithProviderQuotaStatus().
 		All(ctx)
@@ -753,10 +742,19 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	)
 
 	channelGroups := svc.groupChannelsByQuotaAccount(channelsToCheck)
+	if !force {
+		channelGroups = lo.Filter(channelGroups, func(group quotaCheckGroup, _ int) bool {
+			return quotaCheckGroupIsDue(group, now)
+		})
+	}
+	if len(channelGroups) == 0 {
+		log.Debug(ctx, "No channels need quota check at this time")
+		return
+	}
+
 	eg, egCtx := errgroup.WithContext(ctx)
 	eg.SetLimit(min(maxConcurrentQuotaChecks, len(channelGroups)))
 	for _, group := range channelGroups {
-		group := group
 		eg.Go(func() error {
 			svc.checkChannelQuota(egCtx, group, now)
 			return nil
