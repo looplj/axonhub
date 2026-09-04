@@ -3,10 +3,12 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -229,6 +231,165 @@ func TestInboundPersistentStream_Close_WithTerminalEvent(t *testing.T) {
 	assert.True(t, mockStream.closed, "Stream should be closed")
 }
 
+func TestInboundPersistentStream_Close_ErrorAfterTerminalKeepsRequestCompleted(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	_, requestService, _, _ := setupTestServices(t, client)
+	req, err := client.Request.Create().
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-5").
+		SetStatus(request.StatusProcessing).
+		SetRequestBody([]byte(`{"stream":true}`)).
+		SetStream(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	completed := &httpclient.StreamEvent{
+		Type: "response.completed",
+		Data: []byte(`{"type":"response.completed","response":{"id":"resp_123","status":"completed","output":[]}}`),
+	}
+	mockStream := &mockStream{
+		events: []*httpclient.StreamEvent{completed},
+		err:    io.ErrUnexpectedEOF,
+	}
+	mockTransformer := &mockInboundTransformer{
+		aggregateResponseBody: []byte(`{"id":"resp_123","status":"completed","output":[]}`),
+		aggregateMeta:         llm.ResponseMeta{ID: "resp_123"},
+	}
+	state := &PersistenceState{}
+	stream := NewInboundPersistentStream(
+		ctx,
+		mockStream,
+		req,
+		&ent.RequestExecution{ID: 1},
+		requestService,
+		mockTransformer,
+		nil,
+		state,
+	)
+
+	require.True(t, stream.Next())
+	_ = stream.Current()
+	require.False(t, stream.Next())
+	require.ErrorIs(t, stream.Err(), io.ErrUnexpectedEOF)
+	require.NoError(t, stream.Close())
+	require.True(t, state.StreamCompleted)
+
+	dbReq, err := client.Request.Get(ctx, req.ID)
+	require.NoError(t, err)
+	require.Equal(t, request.StatusCompleted, dbReq.Status)
+}
+
+func TestInboundPersistentStream_Close_ResponsesFailureTerminalPersistsOutcome(t *testing.T) {
+	tests := []struct {
+		name           string
+		eventType      string
+		responseBody   string
+		expectedStatus request.Status
+	}{
+		{
+			name:      "failed",
+			eventType: "response.failed",
+			responseBody: `{"id":"resp_failed","status":"failed","output":[],` +
+				`"error":{"type":"server_error","code":"provider_error","message":"provider failed"},` +
+				`"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}`,
+			expectedStatus: request.StatusFailed,
+		},
+		{
+			name:      "incomplete",
+			eventType: "response.incomplete",
+			responseBody: `{"id":"resp_incomplete","status":"incomplete","output":[],` +
+				`"incomplete_details":{"reason":"max_output_tokens"},` +
+				`"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}`,
+			expectedStatus: request.StatusFailed,
+		},
+		{
+			name:      "canceled",
+			eventType: "response.cancelled",
+			responseBody: `{"id":"resp_canceled","status":"canceled","output":[],` +
+				`"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}`,
+			expectedStatus: request.StatusCanceled,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			defer client.Close()
+
+			ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+			project := createTestProject(t, ctx, client)
+			ch := createTestChannel(t, ctx, client)
+			_, requestService, systemService, _ := setupTestServices(t, client)
+			require.NoError(t, systemService.SetStoragePolicy(ctx, &biz.StoragePolicy{
+				StoreChunks:       true,
+				StoreRequestBody:  true,
+				StoreResponseBody: true,
+			}))
+
+			req, err := client.Request.Create().
+				SetProjectID(project.ID).
+				SetChannelID(ch.ID).
+				SetModelID("gpt-5").
+				SetStatus(request.StatusProcessing).
+				SetRequestBody([]byte(`{"stream":true}`)).
+				SetStream(true).
+				Save(ctx)
+			require.NoError(t, err)
+
+			event := &httpclient.StreamEvent{
+				Type: tt.eventType,
+				Data: []byte(`{"type":"` + tt.eventType + `","response":` + tt.responseBody + `}`),
+			}
+			stream := &mockStream{
+				events: []*httpclient.StreamEvent{event},
+				err:    io.ErrUnexpectedEOF,
+			}
+			responseID := gjson.Get(tt.responseBody, "id").String()
+			mockTransformer := &mockInboundTransformer{
+				aggregateResponseBody: []byte(tt.responseBody),
+				aggregateMeta: llm.ResponseMeta{
+					ID: responseID,
+					Usage: &llm.Usage{
+						PromptTokens:     10,
+						CompletionTokens: 2,
+						TotalTokens:      12,
+					},
+				},
+			}
+			state := &PersistenceState{}
+			persistentStream := NewInboundPersistentStream(
+				ctx,
+				stream,
+				req,
+				&ent.RequestExecution{ID: 1},
+				requestService,
+				mockTransformer,
+				nil,
+				state,
+			)
+
+			require.True(t, persistentStream.Next())
+			require.Equal(t, event, persistentStream.Current())
+			require.False(t, persistentStream.Next())
+			require.NoError(t, persistentStream.Close())
+			require.False(t, state.StreamCompleted)
+
+			dbReq, err := client.Request.Get(ctx, req.ID)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedStatus, dbReq.Status)
+			require.Equal(t, responseID, dbReq.ExternalID)
+			require.JSONEq(t, tt.responseBody, string(dbReq.ResponseBody))
+			require.NotEmpty(t, dbReq.ResponseChunks)
+		})
+	}
+}
+
 // TestInboundPersistentStream_Close_WithAggregationError tests the error path:
 // aggregation fails but fallback behavior still works (persistResponseChunks called in final block).
 func TestInboundPersistentStream_Close_WithAggregationError(t *testing.T) {
@@ -398,6 +559,26 @@ func TestIsTerminalStreamEvent_SemanticCompletionInData(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.want, IsTerminalStreamEvent(tt.event))
+		})
+	}
+}
+
+func TestIsTerminalStreamEvent_ResponsesTerminalEvents(t *testing.T) {
+	terminalTypes := []string{
+		"response.completed",
+		"response.failed",
+		"response.incomplete",
+		"response.cancelled",
+	}
+
+	for _, eventType := range terminalTypes {
+		t.Run(eventType+" in SSE metadata", func(t *testing.T) {
+			require.True(t, IsTerminalStreamEvent(&httpclient.StreamEvent{Type: eventType}))
+		})
+		t.Run(eventType+" in JSON data", func(t *testing.T) {
+			require.True(t, IsTerminalStreamEvent(&httpclient.StreamEvent{
+				Data: []byte(`{"type":"` + eventType + `"}`),
+			}))
 		})
 	}
 }

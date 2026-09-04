@@ -9,6 +9,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
@@ -38,6 +39,8 @@ type OutboundPersistentStream struct {
 	transformer    transformer.Outbound
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
+	terminalState  streamTerminalState
+	terminalError  string
 	closed         bool
 	state          *PersistenceState
 }
@@ -82,12 +85,15 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
 		// summary to avoid buffering the full audio payload in memory.
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
-		// Check if this is a terminal event, which indicates the stream completed successfully.
-		// For Chat Completions API this is the raw [DONE] event; for Responses API this is
-		// response.completed; for Anthropic Messages API this is message_stop.
-		if IsTerminalStreamEvent(event) {
-			ts.state.StreamCompleted = true
-			ts.markPerformanceCompleted()
+		if ts.terminalState == streamTerminalNone {
+			ts.terminalState = classifyStreamTerminalEvent(event)
+			if ts.terminalState != streamTerminalNone {
+				if ts.terminalState != streamTerminalCompleted {
+					ts.terminalError = streamTerminalErrorMessage(event)
+				}
+				ts.state.StreamCompleted = ts.terminalState == streamTerminalCompleted
+				ts.markPerformanceTerminal(ts.terminalState, ts.terminalError)
+			}
 		}
 	}
 
@@ -111,14 +117,14 @@ func (ts *OutboundPersistentStream) Close() error {
 	streamErr := ts.stream.Err()
 	ctxErr := ctx.Err()
 
-	// If we received the [DONE] event, treat the stream as successfully completed
-	// even if there's a context cancellation error. This handles the case where
-	// the client disconnects immediately after receiving the last chunk.
-	if ts.state.StreamCompleted {
-		ts.logFinalizationDecision(ctx, "terminal_event_completed", streamErr, ctxErr, true, nil)
-		// Stream completed successfully - perform final persistence
-		log.Debug(ctx, "Stream completed successfully (received [DONE]), performing final persistence")
-		ts.persistResponseChunks(ctx)
+	// A terminal event carries the final stream outcome. Persist its structured
+	// response even if a transport or context error arrives afterward.
+	if ts.terminalState != streamTerminalNone {
+		ts.logFinalizationDecision(ctx, "terminal_event_received", streamErr, ctxErr,
+			ts.terminalState == streamTerminalCompleted, nil)
+		log.Debug(ctx, "Stream terminal event received, performing final persistence",
+			log.Any("terminal_state", ts.terminalState))
+		ts.persistResponseChunks(ctx, ts.terminalState.executionStatus(), ts.terminalError)
 
 		return ts.stream.Close()
 	}
@@ -203,9 +209,15 @@ func (ts *OutboundPersistentStream) Close() error {
 	ts.logFinalizationDecision(ctx, decision, streamErr, ctxErr, aggregatedCompleted, aggErr)
 
 	if len(responseBody) > 0 {
-		ts.persistAggregatedResponse(context.WithoutCancel(ctx), responseBody, meta)
+		ts.persistAggregatedResponse(
+			context.WithoutCancel(ctx),
+			responseBody,
+			meta,
+			requestexecution.StatusCompleted,
+			"",
+		)
 	} else {
-		ts.persistResponseChunks(ctx)
+		ts.persistResponseChunks(ctx, requestexecution.StatusCompleted, "")
 	}
 
 	return ts.stream.Close()
@@ -219,10 +231,28 @@ func (ts *OutboundPersistentStream) markPerformanceCompleted() {
 	ts.perf.MarkSuccess()
 }
 
+func (ts *OutboundPersistentStream) markPerformanceTerminal(state streamTerminalState, message string) {
+	if ts.perf == nil || ts.perf.RequestCompleted {
+		return
+	}
+
+	switch state {
+	case streamTerminalCompleted, streamTerminalIncomplete:
+		// Token limits and content filtering end a response without indicating
+		// a channel fault. Keep them out of failure counts and auto-disable rules.
+		ts.perf.MarkSuccess()
+	case streamTerminalCanceled:
+		ts.perf.MarkCanceled()
+	case streamTerminalFailed:
+		ts.perf.MarkFailedWithMessage(500, message)
+	case streamTerminalNone:
+	}
+}
+
 func (ts *OutboundPersistentStream) logFinalizationDecision(ctx context.Context, decision string, streamErr error, ctxErr error, aggregatedCompleted bool, aggregatedErr error) {
 	fields := []log.Field{
 		log.String("decision", decision),
-		log.Bool("terminal_event_seen", ts.state.StreamCompleted),
+		log.Bool("terminal_event_seen", ts.terminalState != streamTerminalNone),
 		log.Int("chunk_count", len(ts.responseChunks)),
 		log.String("api_format", string(ts.transformer.APIFormat())),
 		log.Bool("aggregated_completed", aggregatedCompleted),
@@ -241,7 +271,11 @@ func (ts *OutboundPersistentStream) logFinalizationDecision(ctx context.Context,
 	log.Debug(ctx, "Outbound stream finalization decision", fields...)
 }
 
-func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
+func (ts *OutboundPersistentStream) persistResponseChunks(
+	ctx context.Context,
+	status requestexecution.Status,
+	errorMessage string,
+) {
 	defer func() {
 		if cause := recover(); cause != nil {
 			log.Warn(ctx, "Failed to persist outbound response chunks", log.Any("cause", cause))
@@ -260,7 +294,7 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
 			return
 		}
 
-		ts.persistAggregatedResponse(persistCtx, responseBody, meta)
+		ts.persistAggregatedResponse(persistCtx, responseBody, meta, status, errorMessage)
 	}
 }
 
@@ -313,7 +347,13 @@ func (ts *OutboundPersistentStream) persistExecutionFailure(ctx context.Context,
 	}
 }
 
-func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Context, responseBody []byte, meta llm.ResponseMeta) {
+func (ts *OutboundPersistentStream) persistAggregatedResponse(
+	ctx context.Context,
+	responseBody []byte,
+	meta llm.ResponseMeta,
+	status requestexecution.Status,
+	errorMessage string,
+) {
 	if ts.requestExec == nil {
 		return
 	}
@@ -340,9 +380,11 @@ func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Contex
 		}
 	}
 
-	err := ts.RequestService.UpdateRequestExecutionCompleted(
+	err := ts.RequestService.UpdateRequestExecutionFinalized(
 		ctx,
 		ts.requestExec.ID,
+		status,
+		errorMessage,
 		meta.ID,
 		responseBody,
 		metrics,
@@ -350,14 +392,26 @@ func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Contex
 	if err != nil {
 		log.Warn(
 			ctx,
-			"Failed to update request execution with chunks, trying basic completion",
+			"Failed to update finalized request execution",
 			log.Cause(err),
+			log.Any("status", status),
 		)
 	}
 
 	// Save all response chunks at once
 	if err := ts.RequestService.SaveRequestExecutionChunks(ctx, ts.requestExec.ID, ts.responseChunks); err != nil {
 		log.Warn(ctx, "Failed to save request execution chunks", log.Cause(err))
+	}
+}
+
+func (s streamTerminalState) executionStatus() requestexecution.Status {
+	switch s {
+	case streamTerminalFailed, streamTerminalIncomplete:
+		return requestexecution.StatusFailed
+	case streamTerminalCanceled:
+		return requestexecution.StatusCanceled
+	default:
+		return requestexecution.StatusCompleted
 	}
 }
 

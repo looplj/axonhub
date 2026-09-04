@@ -464,6 +464,18 @@ func (s *RequestService) UpdateRequestCompleted(
 	responseBody any,
 	metrics *LatencyMetrics,
 ) error {
+	return s.UpdateRequestFinalized(ctx, requestID, request.StatusCompleted, externalId, responseBody, metrics)
+}
+
+// UpdateRequestFinalized persists a terminal response and its final request status.
+func (s *RequestService) UpdateRequestFinalized(
+	ctx context.Context,
+	requestID int,
+	status request.Status,
+	externalId string,
+	responseBody any,
+	metrics *LatencyMetrics,
+) error {
 	// Decide whether to store the final response body
 	storeResponseBody := true
 	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
@@ -491,7 +503,7 @@ func (s *RequestService) UpdateRequestCompleted(
 	}
 
 	upd := client.Request.UpdateOneID(requestID).
-		SetStatus(request.StatusCompleted).
+		SetStatus(status).
 		SetExternalID(externalId)
 
 	// Set latency metrics if provided
@@ -752,6 +764,27 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	responseBody any,
 	metrics *LatencyMetrics,
 ) error {
+	return s.UpdateRequestExecutionFinalized(
+		ctx,
+		executionID,
+		requestexecution.StatusCompleted,
+		"",
+		externalId,
+		responseBody,
+		metrics,
+	)
+}
+
+// UpdateRequestExecutionFinalized persists a terminal response and its final execution status.
+func (s *RequestService) UpdateRequestExecutionFinalized(
+	ctx context.Context,
+	executionID int,
+	status requestexecution.Status,
+	errorMessage string,
+	externalId string,
+	responseBody any,
+	metrics *LatencyMetrics,
+) error {
 	// Decide whether to store the final response body for execution
 	storeResponseBody := true
 	if policy, err := s.SystemService.StoragePolicy(ctx); err == nil {
@@ -779,8 +812,11 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	}
 
 	upd := client.RequestExecution.UpdateOneID(executionID).
-		SetStatus(requestexecution.StatusCompleted).
+		SetStatus(status).
 		SetExternalID(externalId)
+	if errorMessage != "" {
+		upd = upd.SetErrorMessage(errorMessage)
+	}
 
 	// Set latency metrics if provided
 	if metrics != nil {
@@ -826,7 +862,7 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	_, err = upd.Save(ctx)
 	if err != nil {
 		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
-		log.Error(ctx, "Failed to update request execution status to completed", log.Cause(err))
+		log.Error(ctx, "Failed to update finalized request execution", log.Cause(err), log.Any("status", status))
 		return err
 	}
 
