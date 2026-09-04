@@ -278,7 +278,7 @@ func mergeTencentPlans(data catalogFile, filtered *catalogFile) {
 			return
 		}
 		if requireFamily {
-			if normalized != "hy3" && !strings.HasPrefix(normalized, "hy3-") && !strings.HasPrefix(normalized, "hunyuan-") {
+			if normalized != "hy3" && normalized != "hy4" && !strings.HasPrefix(normalized, "hy3-") && !strings.HasPrefix(normalized, "hy4-") && !strings.HasPrefix(normalized, "hunyuan-") {
 				return
 			}
 		}

@@ -410,7 +410,9 @@ function filterProviders(data, allowedIds) {
 					: id;
 				const isTencentModel =
 					normalizedId === "hy3" ||
+					normalizedId === "hy4" ||
 					normalizedId.startsWith("hy3-") ||
+					normalizedId.startsWith("hy4-") ||
 					normalizedId.startsWith("hunyuan-");
 
 				if (!isTencentModel || mergedModels.has(normalizedId)) continue;
