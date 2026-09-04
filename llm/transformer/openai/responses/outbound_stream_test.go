@@ -1332,6 +1332,7 @@ func TestOutboundTransformer_TransformStream_PreservesOfficialWebSocketError(t *
 		})
 	}
 }
+
 func TestOutboundTransformer_TransformStream_DoneWithoutSemanticTerminalSynthesizesCompletion(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
@@ -1503,5 +1504,3 @@ func TestOutboundTransformer_TransformStream_UsageWithoutContentStillIncomplete(
 		}
 	}
 }
-
-
