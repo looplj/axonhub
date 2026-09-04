@@ -1328,6 +1328,10 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   groq
   qiniu_anthropic
   fenno
+  zenmux
+  zenmux_responses
+  zenmux_anthropic
+  zenmux_gemini
 }
 """
 ChannelWhereInput is used for filtering Channel objects.
@@ -3721,6 +3725,10 @@ type ProviderQuotaStatus implements Node {
   Timestamp for next scheduled quota check
   """
   nextCheckAt: Time!
+  """
+  Quota account identity shared by channels drawing from the same provider account (e.g. the same ZenMux management key). Empty means the channel has its own quota account. Never stores the raw credential.
+  """
+  accountKey: String
   channel: Channel!
 }
 """
@@ -3762,6 +3770,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   minimax
   zhipu
   charm_hyper
+  zenmux
 }
 """
 ProviderQuotaStatusStatus is enum for the field status
@@ -3863,6 +3872,24 @@ input ProviderQuotaStatusWhereInput {
   nextCheckAtGTE: Time
   nextCheckAtLT: Time
   nextCheckAtLTE: Time
+  """
+  account_key field predicates
+  """
+  accountKey: String
+  accountKeyNEQ: String
+  accountKeyIn: [String!]
+  accountKeyNotIn: [String!]
+  accountKeyGT: String
+  accountKeyGTE: String
+  accountKeyLT: String
+  accountKeyLTE: String
+  accountKeyContains: String
+  accountKeyHasPrefix: String
+  accountKeyHasSuffix: String
+  accountKeyIsNil: Boolean
+  accountKeyNotNil: Boolean
+  accountKeyEqualFold: String
+  accountKeyContainsFold: String
   """
   channel edge predicates
   """

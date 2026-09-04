@@ -251,6 +251,7 @@ type ChannelCredentials {
   apiKeys: [String!]
   gcp: GCPCredential
   oauth: OAuthCredentials
+  managementApiKey: String
 }
 
 type DisabledAPIKey {
@@ -281,6 +282,7 @@ input ChannelCredentialsInput {
   apiKeys: [String!]
   gcp: GCPCredentialInput
   oauth: OAuthCredentialsInput
+  managementApiKey: String
 }
 
 input OAuthCredentialsInput {
