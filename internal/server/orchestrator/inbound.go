@@ -199,7 +199,7 @@ func (ts *InboundPersistentStream) Close() error {
 
 	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
-		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && isCompletedAggregated(meta) {
+		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && isCompletedAggregated(meta) && ctxErr == nil && streamErr == nil {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			ts.state.StreamCompleted = true
 		}

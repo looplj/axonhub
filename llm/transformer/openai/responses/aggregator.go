@@ -279,11 +279,11 @@ func responseHasOutput(resp *Response) bool {
 				}
 			}
 		case "function_call":
-			if item.Arguments != "" {
+			if item.Arguments != "" && item.Status != nil && *item.Status == "completed" {
 				return true
 			}
 		case "custom_tool_call":
-			if item.Input != nil && *item.Input != "" {
+			if item.Input != nil && item.Status != nil && *item.Status == "completed" {
 				return true
 			}
 		case "reasoning":
@@ -420,6 +420,7 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 					item.Arguments.Reset()
 					item.Arguments.WriteString(ev.Arguments)
 				}
+				item.Status = "completed"
 			}
 		}
 
@@ -438,7 +439,10 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 			if item := a.getItemForEvent(ev.OutputIndex, ev.ItemID); item != nil {
 				if ev.Input != "" {
 					item.Input = lo.ToPtr(ev.Input)
+				} else if item.Input == nil {
+					item.Input = lo.ToPtr("")
 				}
+				item.Status = "completed"
 			}
 		}
 

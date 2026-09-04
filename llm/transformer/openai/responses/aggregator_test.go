@@ -1004,3 +1004,35 @@ func TestAggregateStreamChunks_NotCompletedOnAbnormalTerminalStatus(t *testing.T
 	require.NotNil(t, resultBytes)
 	require.False(t, meta.Completed)
 }
+
+func TestAggregateStreamChunks_PartialToolCallWithoutDoneNotCompleted(t *testing.T) {
+	// A function call with partial delta arguments but no arguments-done event
+	// is not a confirmed tool-call output, so the clean-EOF aggregate must not
+	// be marked Completed.
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_partial_tool","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_partial","type":"function_call","call_id":"call_partial","name":"get_weather","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_partial","output_index":0,"delta":"{\"city\":\"bei"}`)},
+	}
+
+	resultBytes, meta, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.NotNil(t, resultBytes)
+	require.False(t, meta.Completed)
+}
+
+func TestAggregateStreamChunks_CompletedToolCallWithDoneMarkedCompleted(t *testing.T) {
+	// Once the arguments-done event confirms the tool call, the clean-EOF
+	// aggregate is a real output and may be marked Completed.
+	chunks := []*httpclient.StreamEvent{
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_complete_tool","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_complete","type":"function_call","call_id":"call_complete","name":"get_weather","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_complete","output_index":0,"delta":"{\"city\":\"beijing\"}"}`)},
+		{Type: "response.function_call_arguments.done", Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_complete","output_index":0,"arguments":"{\"city\":\"beijing\"}"}`)},
+	}
+
+	resultBytes, meta, err := AggregateStreamChunks(t.Context(), chunks)
+	require.NoError(t, err)
+	require.NotNil(t, resultBytes)
+	require.True(t, meta.Completed)
+}

@@ -1373,7 +1373,7 @@ func TestOutboundTransformer_TransformStream_DoneWithUsageWithoutSemanticTermina
 	events := []*httpclient.StreamEvent{
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_done_usage","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
 		{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","item_id":"msg_1","output_index":0,"content_index":0,"delta":"hello"}`)},
-		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_done_usage","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"completed","output":[],"usage":{"input_tokens":2,"output_tokens":1,"total_tokens":3}}}`)},
+		{Type: "response.in_progress", Data: []byte(`{"type":"response.in_progress","response":{"id":"resp_done_usage","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[],"usage":{"input_tokens":2,"output_tokens":1,"total_tokens":3}}}`)},
 		{Data: []byte("[DONE]")},
 	}
 	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
@@ -1429,6 +1429,7 @@ func TestOutboundTransformer_TransformStream_ToolCallsDoneWithoutSemanticTermina
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_tool_done","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
 		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_1","type":"function_call","call_id":"call_1","name":"get_weather","arguments":""}}`)},
 		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_1","output_index":0,"delta":"{\"city\":\"beijing\"}"}`)},
+		{Type: "response.function_call_arguments.done", Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_1","output_index":0,"arguments":"{\"city\":\"beijing\"}"}`)},
 		{Data: []byte("[DONE]")},
 	}
 	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
@@ -1505,16 +1506,17 @@ func TestOutboundTransformer_TransformStream_UsageWithoutContentStillIncomplete(
 	}
 }
 
-func TestOutboundTransformer_TransformStream_ToolCallWithoutArgumentsStillIncomplete(t *testing.T) {
+func TestOutboundTransformer_TransformStream_ToolCallWithoutDoneStillIncomplete(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
 
-	// A stream that only creates a tool call item but never delivers any
-	// arguments/input has no meaningful output. It must stay incomplete instead
-	// of being promoted to a tool_calls completion with empty arguments.
+	// A tool call with only partial delta arguments and no arguments-done event
+	// has not been confirmed as complete. It must stay incomplete instead of
+	// being promoted to a tool_calls completion.
 	events := []*httpclient.StreamEvent{
-		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_empty_tool","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
-		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_empty","type":"function_call","call_id":"call_empty","name":"get_weather","arguments":""}}`)},
+		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_partial_tool","object":"response","created_at":1700000000,"model":"qwen3.8-max","status":"in_progress","output":[]}}`)},
+		{Type: "response.output_item.added", Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_partial","type":"function_call","call_id":"call_partial","name":"get_weather","arguments":""}}`)},
+		{Type: "response.function_call_arguments.delta", Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_partial","output_index":0,"delta":"{\"city\":\"bei"}`)},
 	}
 	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
 	require.NoError(t, err)
@@ -1523,10 +1525,10 @@ func TestOutboundTransformer_TransformStream_ToolCallWithoutArgumentsStillIncomp
 	require.ErrorIs(t, err, ErrStreamIncomplete)
 	require.Equal(t, 0, countDoneResponses(responses))
 
-	// No finish chunk must be synthesized for an empty tool-call stream.
+	// No finish chunk must be synthesized for an unfinished tool-call stream.
 	for _, response := range responses {
 		if response != nil && len(response.Choices) > 0 && response.Choices[0].FinishReason != nil {
-			t.Fatalf("unexpected synthesized finish_reason for empty tool-call stream")
+			t.Fatalf("unexpected synthesized finish_reason for unfinished tool-call stream")
 		}
 	}
 }

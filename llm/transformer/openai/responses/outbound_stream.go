@@ -64,6 +64,7 @@ type outboundStreamState struct {
 
 	// Tool call tracking
 	toolCalls     map[string]*llm.ToolCall // callID -> tool call
+	toolCallsDone map[string]bool          // callID -> arguments/input confirmed finished
 	itemToCallID  map[string]string        // item.id -> call_id mapping
 	toolCallIndex map[string]int           // callID -> index in the output
 
@@ -80,6 +81,7 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 		stream: stream,
 		state: &outboundStreamState{
 			toolCalls:                        make(map[string]*llm.ToolCall),
+			toolCallsDone:                    make(map[string]bool),
 			itemToCallID:                     make(map[string]string),
 			toolCallIndex:                    make(map[string]int),
 			pendingReasoningEncryptedContent: make(map[string]*string),
@@ -361,6 +363,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if !ok {
 			return nil // Intentionally skip an unknown tool call.
 		}
+		s.state.toolCallsDone[callID] = true
 
 		identityChanged := false
 		if streamEvent.Name != "" && streamEvent.Name != tc.Function.Name {
@@ -466,6 +469,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 			if tc, ok := s.state.toolCalls[callID]; ok {
 				tc.ResponseCustomToolCall.Input = streamEvent.Input
+				s.state.toolCallsDone[callID] = true
 			}
 		}
 
@@ -565,6 +569,17 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				},
 			}
 			break
+		}
+		if streamEvent.Item.Type == "function_call" || streamEvent.Item.Type == "custom_tool_call" {
+			callID := s.state.itemToCallID[streamEvent.Item.ID]
+			if callID == "" {
+				callID = streamEvent.Item.CallID
+			}
+			status := lo.FromPtr(streamEvent.Item.Status)
+			if callID != "" && (status == "" || status == "completed") {
+				s.state.toolCallsDone[callID] = true
+			}
+			return nil // Intentionally skip this event; tool content was already streamed via deltas.
 		}
 		if streamEvent.Item.Type != "message" {
 			return nil // Intentionally skip this event
@@ -838,17 +853,17 @@ func (s *responsesOutboundStream) Close() error {
 	return s.stream.Close()
 }
 
-// hasToolCallOutput reports whether any tracked tool call carries actual
-// arguments/input. A stream that closes after only creating a tool call item
-// (with no arguments delivered) has no meaningful output yet and must stay
-// incomplete.
-func (s *responsesOutboundStream) hasToolCallOutput() bool {
-	for _, tc := range s.state.toolCalls {
-		if tc.Function.Arguments != "" || (tc.ResponseCustomToolCall != nil && tc.ResponseCustomToolCall.Input != "") {
-			return true
+// allToolCallsDone reports whether every tracked tool call received a matching
+// arguments/input completion event. A stream that closes after only creating a
+// tool call item, or after a partial delta without its done event, has no
+// confirmed tool-call output yet and must stay incomplete.
+func (s *responsesOutboundStream) allToolCallsDone() bool {
+	for callID := range s.state.toolCalls {
+		if !s.state.toolCallsDone[callID] {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 // canSynthesizeCompletion reports whether a clean EOF without a semantic
@@ -871,9 +886,9 @@ func (s *responsesOutboundStream) canSynthesizeCompletion() bool {
 	// truncated before any content (e.g. only a response.id + usage) must be
 	// surfaced as ErrStreamIncomplete rather than promoted to an empty
 	// "completed" response, which would hide the truncation from the client.
-	return s.state.textContent.Len() > 0 ||
+	return (s.state.textContent.Len() > 0 ||
 		s.state.reasoningContent.Len() > 0 ||
-		s.hasToolCallOutput()
+		len(s.state.toolCalls) > 0) && s.allToolCallsDone()
 }
 
 // synthesizeCompletion emits the terminal finish chunk and usage (if any) the
@@ -884,7 +899,7 @@ func (s *responsesOutboundStream) synthesizeCompletion() {
 	s.responseCompleted = true
 
 	finishReason := "stop"
-	if s.hasToolCallOutput() {
+	if len(s.state.toolCalls) > 0 {
 		finishReason = "tool_calls"
 	}
 

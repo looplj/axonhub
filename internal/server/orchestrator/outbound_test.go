@@ -1037,7 +1037,7 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 		require.True(t, state.StreamCompleted)
 	})
 
-	t.Run("canceled client with aggregated completed response is still completed", func(t *testing.T) {
+	t.Run("canceled client with only aggregated inference is not completed", func(t *testing.T) {
 		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 		defer client.Close()
 
@@ -1097,10 +1097,8 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 
 		dbExec, err := client.RequestExecution.Get(baseCtx, exec.ID)
 		require.NoError(t, err)
-		require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
-		require.JSONEq(t, string(aggregated), string(dbExec.ResponseBody))
-		require.Equal(t, "resp_codex_like", dbExec.ExternalID)
-		require.True(t, state.StreamCompleted)
+		require.NotEqual(t, requestexecution.StatusCompleted, dbExec.Status)
+		require.False(t, state.StreamCompleted)
 	})
 
 	t.Run("canceled client after finish reason is still completed without done or usage", func(t *testing.T) {
