@@ -841,8 +841,8 @@ func (s *responsesOutboundStream) Close() error {
 // canSynthesizeCompletion reports whether a clean EOF without a semantic
 // terminal event should still be treated as a successful completion. This is
 // true when the source ended without a transport error and the upstream
-// produced meaningful output (text, reasoning, tool calls, or usage) under a
-// known response ID. Some OpenAI-compatible Responses upstreams (e.g.
+// produced meaningful output (text, reasoning, or tool calls) under a known
+// response ID. Some OpenAI-compatible Responses upstreams (e.g.
 // Bailian/DashScope compatible-mode) close the SSE stream cleanly without a
 // semantic terminal event or even a bare [DONE] marker; treating that as a
 // completed generation avoids surfacing a spurious truncation error to strict
@@ -866,7 +866,7 @@ func (s *responsesOutboundStream) canSynthesizeCompletion() bool {
 // synthesizeCompletion emits the terminal finish chunk and usage (if any) the
 // way response.completed would, then marks the stream done. Callers invoke it
 // only after canSynthesizeCompletion returned true, i.e. the upstream already
-// delivered content and closed cleanly with a [DONE] marker.
+// delivered content and closed cleanly (with or without a [DONE] marker).
 func (s *responsesOutboundStream) synthesizeCompletion() {
 	s.responseCompleted = true
 
