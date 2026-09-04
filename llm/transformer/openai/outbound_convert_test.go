@@ -853,3 +853,39 @@ func TestRequestFromLLM_KeepsSingleSystemMessage(t *testing.T) {
 	require.Equal(t, "system", req.Messages[0].Role)
 	require.Equal(t, "You are a coding agent.", *req.Messages[0].Content.Content)
 }
+
+// When a message carries both scalar Content and MultipleContent (both layers
+// treat MultipleContent as authoritative on marshal), merging must emit only
+// the MultipleContent text and not duplicate the scalar.
+func TestRequestFromLLM_MergesSystemMessages_MultipleContentPrecedence(t *testing.T) {
+	req := RequestFromLLM(context.Background(), &llm.Request{
+		Model: "qwen-max",
+		Messages: []llm.Message{
+			{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("STALE SCALAR — must not appear"),
+					MultipleContent: []llm.MessageContentPart{
+						{Type: "text", Text: lo.ToPtr("You are a coding agent.")},
+						{Type: "text", Text: lo.ToPtr("Use rg for searches.")},
+					},
+				},
+			},
+			{
+				Role: "system",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Second scalar"),
+				},
+			},
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	}, ReasoningFieldNone)
+
+	require.NotNil(t, req)
+	require.Len(t, req.Messages, 2)
+	require.Equal(t, "system", req.Messages[0].Role)
+	merged := *req.Messages[0].Content.Content
+	require.Equal(t, "You are a coding agent.\n\nUse rg for searches.\n\nSecond scalar", merged)
+	require.NotContains(t, merged, "STALE SCALAR")
+	require.Equal(t, "user", req.Messages[1].Role)
+}

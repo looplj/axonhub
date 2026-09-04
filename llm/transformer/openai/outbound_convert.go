@@ -158,19 +158,25 @@ func mergeSystemMessages(msgs []Message) []Message {
 	return merged
 }
 
-// messageTextParts extracts the text segments of a message from its string or
-// part-based content.
+// messageTextParts extracts the text segments of a message. MultipleContent
+// takes precedence over the scalar Content (matching MessageContent.MarshalJSON
+// and the documented mutual-exclusivity rule); the scalar is read only when
+// there are no parts, so a message carrying both representations is not
+// double-counted.
 func messageTextParts(m Message) []string {
-	var parts []string
-	if m.Content.Content != nil {
-		parts = append(parts, *m.Content.Content)
-	}
-	for _, p := range m.Content.MultipleContent {
-		if p.Type == "text" && p.Text != nil {
-			parts = append(parts, *p.Text)
+	if len(m.Content.MultipleContent) > 0 {
+		parts := make([]string, 0, len(m.Content.MultipleContent))
+		for _, p := range m.Content.MultipleContent {
+			if p.Type == "text" && p.Text != nil {
+				parts = append(parts, *p.Text)
+			}
 		}
+		return parts
 	}
-	return parts
+	if m.Content.Content != nil {
+		return []string{*m.Content.Content}
+	}
+	return nil
 }
 
 // MessageFromLLM creates OpenAI Message from unified llm.Message.
