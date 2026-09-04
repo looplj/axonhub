@@ -24,6 +24,7 @@ func (ProviderQuotaStatus) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("channel_id").Unique(),
 		index.Fields("next_check_at"),
+		index.Fields("account_key"),
 	}
 }
 
@@ -31,7 +32,7 @@ func (ProviderQuotaStatus) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("channel_id").Immutable(),
 		field.Enum("provider_type").
-			Values("claudecode", "codex", "xai_subscription", "github_copilot", "nanogpt", "cline", "wafer", "synthetic", "neuralwatt", "apertis", "opencode_go", "kimi_code", "minimax", "zhipu", "charm_hyper"),
+			Values("claudecode", "codex", "xai_subscription", "github_copilot", "nanogpt", "cline", "wafer", "synthetic", "neuralwatt", "apertis", "opencode_go", "kimi_code", "minimax", "zhipu", "charm_hyper", "zenmux"),
 		field.Enum("status").
 			Values("available", "warning", "exhausted", "unknown").
 			Comment("Overall status: available, warning, exhausted, unknown"),
@@ -46,6 +47,10 @@ func (ProviderQuotaStatus) Fields() []ent.Field {
 			Comment("True if status is available or warning"),
 		field.Time("next_check_at").
 			Comment("Timestamp for next scheduled quota check"),
+		field.String("account_key").
+			Optional().
+			Default("").
+			Comment("Quota account identity shared by channels drawing from the same provider account (e.g. the same ZenMux management key). Empty means the channel has its own quota account. Never stores the raw credential."),
 	}
 }
 

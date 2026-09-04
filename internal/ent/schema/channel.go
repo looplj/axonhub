@@ -101,6 +101,10 @@ func (Channel) Fields() []ent.Field {
 				"groq",
 				"qiniu_anthropic",
 				"fenno",
+				"zenmux",
+				"zenmux_responses",
+				"zenmux_anthropic",
+				"zenmux_gemini",
 			).
 			Annotations(
 				entgql.OrderField("TYPE"),
