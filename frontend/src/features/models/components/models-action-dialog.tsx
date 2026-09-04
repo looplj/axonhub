@@ -39,7 +39,7 @@ function isDeveloper(provider: string) {
 }
 
 export function ModelsActionDialog() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { open, setOpen, currentRow } = useModels();
   const createModel = useCreateModel();
   const updateModel = useUpdateModel();
@@ -73,12 +73,20 @@ export function ModelsActionDialog() {
     return provider?.models || [];
   }, [selectedProvider, providers]);
 
+  const getDeveloperLabel = useCallback(
+    (developer: string) => {
+      const key = `models.developers.${developer}`;
+      return i18n.exists(key) ? t(key) : developer;
+    },
+    [i18n, t]
+  );
+
   const developerOptions = useMemo(() => {
     return DEVELOPER_IDS.map((id) => ({
       value: id,
-      label: id,
+      label: getDeveloperLabel(id),
     }));
-  }, []);
+  }, [getDeveloperLabel]);
 
   const modelIdOptions = useMemo(() => {
     return selectedProviderModels.map((m: ProviderModel) => ({
@@ -135,7 +143,6 @@ export function ModelsActionDialog() {
         remark: currentRow.remark || '',
       });
       setSelectedProvider(currentRow.developer);
-      setDeveloperSearchValue(currentRow.developer);
       setModelIdInput(currentRow.modelID);
       setModelIdSearchValue(currentRow.modelID);
       setSelectedModelCard(currentRow.modelCard || {});
@@ -159,10 +166,16 @@ export function ModelsActionDialog() {
     }
   }, [isEdit, currentRow, form, isOpen]);
 
+  useEffect(() => {
+    if (isEdit && currentRow) {
+      setDeveloperSearchValue(getDeveloperLabel(currentRow.developer));
+    }
+  }, [currentRow, getDeveloperLabel, isEdit]);
+
   const handleProviderChange = useCallback(
     (providerId: string) => {
       setSelectedProvider(providerId);
-      setDeveloperSearchValue(providerId);
+      setDeveloperSearchValue(getDeveloperLabel(providerId));
       form.setValue('developer', providerId);
       if (!isEdit) {
         const icon = DEVELOPER_ICONS[providerId] || providerId;
@@ -176,7 +189,7 @@ export function ModelsActionDialog() {
         setSelectedModelCard({});
       }
     },
-    [form, isEdit]
+    [form, getDeveloperLabel, isEdit]
   );
 
   // 用户直接在输入框键入时实时同步 form 值，避免 blur/submit 竞态导致提交旧值。
