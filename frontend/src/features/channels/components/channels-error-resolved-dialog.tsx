@@ -33,7 +33,7 @@ export function ChannelsErrorResolvedDialog({ open, onOpenChange }: ChannelsErro
     onOpenChange(false);
   };
 
-  if (!currentRow || !currentRow.errorMessage) {
+  if (!currentRow || currentRow.errorMessage == null) {
     return null;
   }
 
