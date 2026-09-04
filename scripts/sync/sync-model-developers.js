@@ -429,7 +429,7 @@ function filterProviders(data, allowedIds) {
 				models: Array.from(mergedModels.values()),
 			};
 			console.log(
-				`Merged ${mergedModels.size} Hy3/Hunyuan models into Tencent developer`,
+				`Merged ${mergedModels.size} Hy3/Hy4/Hunyuan models into Tencent developer`,
 			);
 		}
 	}
