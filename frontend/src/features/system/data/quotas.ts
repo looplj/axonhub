@@ -61,6 +61,7 @@ export type ProviderQuotaResetList = {
 type ProviderQuotaDataCommon = {
   plan_type?: string;
   error?: string;
+  error_code?: string;
   _resets?: ProviderQuotaResetList;
 };
 
@@ -923,10 +924,10 @@ export function useProviderQuotaStatuses() {
     .filter(hasProviderQuotaStatus)
     .filter((c) => {
       // Skip channels that have no credentials configured, since they cannot be
-      // checked and only add noise to the quota popover. Other errors are still
-      // shown so admins can spot credential/permission issues.
-      const quotaData = c.providerQuotaStatus.quotaData as { error?: string } | undefined;
-      return quotaData?.error !== 'channel has no credentials';
+      // checked and only add noise to the quota popover. Other failures remain
+      // available with their generic status for administrators to inspect.
+      const quotaData = c.providerQuotaStatus.quotaData as { error?: string; error_code?: string } | undefined;
+      return quotaData?.error_code !== 'missing_credentials' && quotaData?.error !== 'channel has no credentials';
     })
     .map(parseChannelNode);
 

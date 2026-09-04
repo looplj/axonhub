@@ -560,18 +560,10 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
 
   const limits = getQuotaLimits(channel);
   if (limits.length === 0) {
-    const error = (channel.providerQuotaStatus.quotaData as { error?: unknown }).error;
-    const content = (
+    return (
       <div className='flex justify-center'>
         <span className='text-muted-foreground text-xs'>{t('quota.label.unavailable')}</span>
       </div>
-    );
-    if (typeof error !== 'string' || error.length === 0) return content;
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>{content}</TooltipTrigger>
-        <TooltipContent className='max-w-72 text-xs'>{error}</TooltipContent>
-      </Tooltip>
     );
   }
 
