@@ -146,8 +146,8 @@ func supportsNativeReasoningEffort(model string) bool {
 // isAlwaysThinkingModel reports whether the model always enables thinking and rejects
 // thinking.type=disabled (GLM-5.3 and GLM-5.3-FLASH).
 func isAlwaysThinkingModel(model string) bool {
-	lower := strings.ToLower(model)
-	return strings.HasPrefix(lower, "glm-5.3") || strings.Contains(lower, "/glm-5.3")
+	major, minor, ok := glmVersion(model)
+	return ok && major == 5 && minor == 3
 }
 
 // normalizeGLM53Effort maps any effort value into GLM-5.3's valid set (low/high/max).

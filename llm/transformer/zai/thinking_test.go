@@ -21,7 +21,10 @@ func TestSupportsNativeReasoningEffort(t *testing.T) {
 		{"glm-5.3", true},
 		{"glm-5.3-flash", true},
 		{"zai-org/glm-5.3:thinking", true},
+		{"zai-org:glm-5.3", true},
+		{"zai-org:glm-5.3[1m]", true},
 		{"GLM-5.3-FLASH", true},
+		{"glm-5.30", true},
 		{"gpt-4", false},
 	}
 	for _, tt := range tests {
@@ -39,8 +42,12 @@ func TestIsAlwaysThinkingModel(t *testing.T) {
 		{"glm-5.3", true},
 		{"glm-5.3-flash", true},
 		{"zai-org/glm-5.3:thinking", true},
+		{"zai-org:glm-5.3", true},
+		{"glm-5.3[1m]", true},
+		{"zai-org:glm-5.3[1m]", true},
 		{"GLM-5.3-FLASH", true},
 		{"glm-5.2", false},
+		{"glm-5.30", false},
 		{"glm-4.7", false},
 		{"gpt-4", false},
 	}
@@ -85,6 +92,13 @@ func TestResolveZaiThinking(t *testing.T) {
 		{
 			name:            "glm-5.3 none maps to low with thinking enabled",
 			model:           "glm-5.3-flash",
+			reasoningEffort: "none",
+			wantThinking:    &Thinking{Type: "enabled"},
+			wantEffort:      effortPtr("low"),
+		},
+		{
+			name:            "colon-qualified glm-5.3 none keeps thinking enabled",
+			model:           "zai-org:glm-5.3",
 			reasoningEffort: "none",
 			wantThinking:    &Thinking{Type: "enabled"},
 			wantEffort:      effortPtr("low"),
