@@ -555,7 +555,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : format(date, 'yyyy-MM-dd HH:mm');
   };
-  const quotaData = quota.quotaData;
   return (
     <div className='space-y-3 border-b py-3 first:pt-1 last:border-0 last:pb-1'>
       <div className='flex items-center justify-between'>
@@ -584,12 +583,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
           )}
         </div>
       </div>
-
-      {quotaData.error && (
-        <div className='ml-6 rounded bg-red-500/10 p-2 text-xs break-words text-red-500'>
-          <span className='font-medium'>{t('quota.label.error')}:</span> {quotaData.error}
-        </div>
-      )}
 
       {channel.type === 'claudecode' && (
         <div className='mt-4 space-y-4'>

@@ -102,7 +102,7 @@ func createProviderQuotaCollectionChannel(
 	return result
 }
 
-func TestProviderQuotaService_CheckChannelQuota_PersistsVisibleErrorForInvalidCommandCodeCookie(t *testing.T) {
+func TestProviderQuotaService_CheckChannelQuota_PersistsSanitizedErrorForInvalidCommandCodeCookie(t *testing.T) {
 	service, _, ctx, client := setupProviderQuotaCollectionService(t)
 	defer client.Close()
 
@@ -145,7 +145,8 @@ func TestProviderQuotaService_CheckChannelQuota_PersistsVisibleErrorForInvalidCo
 	require.NoError(t, err)
 	require.Equal(t, providerquotastatus.StatusUnknown, status.Status)
 	require.False(t, status.Ready)
-	require.Equal(t, provider_quota.ErrInvalidCredentials.Error(), status.QuotaData["error"])
+	require.Equal(t, "check_failed", status.QuotaData["error_code"])
+	require.NotContains(t, status.QuotaData, "error")
 	require.NotContains(t, status.QuotaData, "old")
 	cached, ok := service.quotaCache.Load(channelEntity.ID)
 	require.True(t, ok)

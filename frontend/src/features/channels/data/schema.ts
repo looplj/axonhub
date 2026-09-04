@@ -372,6 +372,15 @@ export const channelCredentialsSchema = z.object({
 });
 export type ChannelCredentials = z.infer<typeof channelCredentialsSchema>;
 
+export const providerQuotaStatusSchema = z.object({
+  status: z.enum(['available', 'warning', 'exhausted', 'unknown']),
+  nextResetAt: z.string().optional().nullable(),
+  ready: z.boolean(),
+  quotaData: z.record(z.string(), z.unknown()),
+  providerType: z.string(),
+});
+export type ProviderQuotaStatus = z.infer<typeof providerQuotaStatusSchema>;
+
 // Disabled API Key
 export const disabledAPIKeySchema = z.object({
   key: z.string(),
@@ -398,8 +407,9 @@ export const channelSchema = z.object({
   status: channelStatusSchema,
   policies: channelPoliciesSchema.optional().nullable(),
   credentials: channelCredentialsSchema.optional().nullable(),
+  providerQuotaStatus: providerQuotaStatusSchema.optional().nullable(),
   disabledAPIKeys: z.array(disabledAPIKeySchema).optional().nullable(),
-  supportedModels: z.array(z.string()),
+  supportedModels: z.array(z.string()).default([]),
   autoSyncSupportedModels: z.boolean().default(false),
   autoSyncModelPattern: z.string().optional().default(''),
   manualModels: z.array(z.string()).optional().default([]).nullable(),
