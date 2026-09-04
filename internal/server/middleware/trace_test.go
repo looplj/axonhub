@@ -1450,6 +1450,120 @@ func TestWithTrace_WritesResponseAliasesForExplicitTraceWithoutProject(t *testin
 	require.Equal(t, "client-trace-123", w.Header().Get("X-Oneapi-Request-Id"))
 }
 
+func TestWithTrace_SkipsPersistedTraceForEmbeddingEndpoint(t *testing.T) {
+	config := tracing.Config{
+		TraceHeader:          "AH-Trace-Id",
+		ResponseTraceHeaders: []string{"AH-Trace-Id"},
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+	ctx = ent.NewContext(ctx, client)
+
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	router.POST("/v1/embeddings", func(c *gin.Context) {
+		_, ok := contexts.GetTrace(c.Request.Context())
+		require.False(t, ok, "embeddings requests must not carry a persisted trace")
+
+		traceID, ok := tracing.GetTraceID(c.Request.Context())
+		require.True(t, ok)
+		require.Equal(t, "client-trace-123", traceID)
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/embeddings", bytes.NewReader([]byte(`{"model":"text-embedding-3-small","input":"hello"}`)))
+	req.Header.Set("Ah-Trace-Id", "client-trace-123")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "client-trace-123", w.Header().Get("Ah-Trace-Id"))
+	traceCount, err := client.Trace.Query().Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, traceCount, "embedding requests must not create persisted traces")
+}
+
+func TestWithTrace_PersistsTraceForChatEndpoint(t *testing.T) {
+	config := tracing.Config{
+		TraceHeader: "AH-Trace-Id",
+	}
+
+	router, client, traceService := setupTestTraceMiddleware(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(httptest.NewRequest(http.MethodGet, "/", nil).Context())
+	ctx = ent.NewContext(ctx, client)
+
+	testProject, err := client.Project.Create().
+		SetName("test-project").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	router.Use(func(c *gin.Context) {
+		ctx := authz.WithTestBypass(c.Request.Context())
+		ctx = ent.NewContext(ctx, client)
+		ctx = contexts.WithProjectID(ctx, testProject.ID)
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	router.Use(WithTrace(config, traceService))
+
+	router.POST("/v1/chat/completions", func(c *gin.Context) {
+		trace, ok := contexts.GetTrace(c.Request.Context())
+		require.True(t, ok)
+		require.Equal(t, "client-trace-123", trace.TraceID)
+		c.Status(http.StatusOK)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader([]byte(`{"model":"gpt-4o","messages":[{"role":"user","content":"hi"}]}`)))
+	req.Header.Set("Ah-Trace-Id", "client-trace-123")
+	w := httptest.NewRecorder()
+
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	storedTrace, err := client.Trace.Query().Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "client-trace-123", storedTrace.TraceID)
+}
+
+func TestIsNonMessageEndpoint(t *testing.T) {
+	testCases := []struct {
+		path string
+		want bool
+	}{
+		{path: "/v1/embeddings", want: true},
+		{path: "/jina/v1/embeddings", want: true},
+		{path: "/gemini/v1beta/models/text-embedding-004:embedContent", want: true},
+		{path: "/gemini/v1beta/models/text-embedding-004:batchEmbedContents", want: true},
+		{path: "/v1/chat/completions", want: false},
+		{path: "/anthropic/v1/messages", want: false},
+		{path: "/v1/responses", want: false},
+	}
+
+	for _, tc := range testCases {
+		require.Equal(t, tc.want, isNonMessageEndpoint(tc.path), tc.path)
+	}
+}
+
 func TestWithTrace_WritesResponseAliasesWhenTracePersistenceFails(t *testing.T) {
 	config := tracing.Config{
 		TraceHeader:          "AH-Trace-Id",
