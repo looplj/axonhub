@@ -77,8 +77,7 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 			log.Cause(err),
 		)
 	} else {
-		notifyCtx := context.WithoutCancel(ctx)
-		go svc.WebhookNotifier.NotifyChannelAutoDisabled(notifyCtx, ChannelAutoDisabledEvent{
+		svc.asyncNotifyChannelAutoDisabled(ctx, ChannelAutoDisabledEvent{
 			ChannelID:       updatedChannel.ID,
 			ChannelName:     updatedChannel.Name,
 			ChannelProvider: updatedChannel.Type.String(),
@@ -103,6 +102,20 @@ func (svc *ChannelService) markChannelUnavailable(ctx context.Context, channelID
 
 	// Also notify other instances via the watcher for cross-instance cache invalidation.
 	svc.asyncReloadChannels()
+}
+
+func (svc *ChannelService) asyncNotifyChannelAutoDisabled(ctx context.Context, event ChannelAutoDisabledEvent) {
+	notifyCtx := context.WithoutCancel(ctx)
+
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Error(notifyCtx, "channel auto-disabled webhook notification panicked", log.Any("panic", r))
+			}
+		}()
+
+		svc.WebhookNotifier.NotifyChannelAutoDisabled(notifyCtx, event)
+	}()
 }
 
 // resolveAutoDisableStatuses returns the global auto-disable thresholds, which
