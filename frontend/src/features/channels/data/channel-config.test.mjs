@@ -146,3 +146,60 @@ test('channel proxy connection reuse setting is submitted, echoed, and localized
     '适用于 Resin 等按连接切换节点的代理池。开启后每个请求都会重新建立代理连接，并增加 CONNECT 与 TLS 握手开销。'
   );
 });
+test('Command Code exposes OpenAI and Anthropic channel variants with shared base URL', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const providersConfig = read('features/channels/data/config_providers.ts');
+  const systemQuotas = read('features/system/data/quotas.ts');
+  const dialog = read('features/channels/components/channels-action-dialog.tsx');
+
+  assert.match(schema, /channelTypeSchema[\s\S]*'commandcode'[\s\S]*'commandcode_anthropic'/);
+  assert.match(
+    schema,
+    /commandCodeQuotaSettingsSchema[\s\S]*authCookie:[\s\S]*z\.string\(\)\.optional\(\)\.nullable\(\)/,
+    'schema should model the Command Code quota cookie'
+  );
+  assert.match(schema, /channelSettingsSchema[\s\S]*providerQuota:[\s\S]*channelProviderQuotaSettingsSchema/);
+  assert.match(
+    channelsConfig,
+    /commandcode:\s*{[\s\S]*?channelType:\s*'commandcode'[\s\S]*?baseURL:\s*'https:\/\/api\.commandcode\.ai\/provider\/v1'[\s\S]*?defaultModels:\s*\[\][\s\S]*?apiFormat:\s*OPENAI_CHAT_COMPLETIONS,/,
+    'commandcode should use the shared base URL with OpenAI chat completions and no static models'
+  );
+  assert.match(
+    channelsConfig,
+    /commandcode_anthropic:\s*{[\s\S]*?channelType:\s*'commandcode_anthropic'[\s\S]*?baseURL:\s*'https:\/\/api\.commandcode\.ai\/provider\/v1'[\s\S]*?defaultModels:\s*\[\][\s\S]*?apiFormat:\s*ANTHROPIC_MESSAGES,/,
+    'commandcode_anthropic should use the shared base URL with Anthropic messages and no static models'
+  );
+  assert.match(channelsConfig, /CHANNEL_TYPE_TO_PROVIDER[\s\S]*commandcode_anthropic:\s*'commandcode'/);
+  assert.match(
+    providersConfig,
+    /commandcode:\s*{[\s\S]*channelTypes:\s*\[\s*'commandcode',\s*'commandcode_anthropic'\s*\]/,
+    'PROVIDER_CONFIGS should group both Command Code channel types'
+  );
+  assert.match(
+    systemQuotas,
+    /type:\s*'commandcode'\s*\|\s*'commandcode_anthropic';[\s\S]*quotaData: ProviderCommandCodeQuotaData/,
+    'quota parsing should type Command Code channels with ProviderCommandCodeQuotaData'
+  );
+  assert.match(
+    dialog,
+    /settings\.providerQuota\.commandCode\.authCookie/,
+    'the channel dialog should bind the quota cookie input to settings.providerQuota.commandCode.authCookie'
+  );
+});
+
+test('Command Code has localized channel, provider, cookie field, and quota labels', () => {
+  for (const locale of ['en', 'zh-CN']) {
+    const channels = parseLocale(locale);
+    const system = JSON.parse(read(`locales/${locale}/system.json`));
+
+    assert.equal(channels['channels.types.commandcode'], 'Command Code');
+    assert.equal(channels['channels.providers.commandcode'], 'Command Code');
+    assert.ok(channels['channels.types.commandcode_anthropic']);
+    assert.ok(channels['channels.dialogs.fields.commandCodeQuota.authCookie.placeholder'].includes('__Secure-commandcode_prod_.session_token'));
+    assert.ok(channels['channels.dialogs.fields.commandCodeQuota.authCookie.description']);
+    assert.ok(system['quota.label.commandcode.top_up']);
+    assert.ok(system['quota.label.commandcode.no_windows']);
+    assert.ok(system['system.quota.collection.providers.commandcode']);
+  }
+});

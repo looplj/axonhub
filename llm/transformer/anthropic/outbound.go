@@ -27,17 +27,18 @@ func init() {
 type PlatformType string
 
 const (
-	PlatformDirect     PlatformType = "direct"     // Direct Anthropic API
-	PlatformBedrock    PlatformType = "bedrock"    // AWS Bedrock
-	PlatformVertex     PlatformType = "vertex"     // Google Vertex AI
-	PlatformDeepSeek   PlatformType = "deepseek"   // DeepSeek with Anthropic format
-	PlatformDoubao     PlatformType = "doubao"     // Doubao with Anthropic format
-	PlatformMoonshot   PlatformType = "moonshot"   // Moonshot with Anthropic format
-	PlatformZhipu      PlatformType = "zhipu"      // Zhipu with Anthropic format
-	PlatformZai        PlatformType = "zai"        // Zai with Anthropic format
-	PlatformLongCat    PlatformType = "longcat"    // LongCat with Anthropic format (Bearer auth)
-	PlatformClaudeCode PlatformType = "claudecode" // Claude Code CLI
-	PlatformOllama     PlatformType = "ollama"     // Ollama with Anthropic format (Bearer auth)
+	PlatformDirect      PlatformType = "direct"      // Direct Anthropic API
+	PlatformBedrock     PlatformType = "bedrock"     // AWS Bedrock
+	PlatformVertex      PlatformType = "vertex"      // Google Vertex AI
+	PlatformDeepSeek    PlatformType = "deepseek"    // DeepSeek with Anthropic format
+	PlatformDoubao      PlatformType = "doubao"      // Doubao with Anthropic format
+	PlatformMoonshot    PlatformType = "moonshot"    // Moonshot with Anthropic format
+	PlatformZhipu       PlatformType = "zhipu"       // Zhipu with Anthropic format
+	PlatformZai         PlatformType = "zai"         // Zai with Anthropic format
+	PlatformLongCat     PlatformType = "longcat"     // LongCat with Anthropic format (Bearer auth)
+	PlatformClaudeCode  PlatformType = "claudecode"  // Claude Code CLI
+	PlatformOllama      PlatformType = "ollama"      // Ollama with Anthropic format (Bearer auth)
+	PlatformCommandCode PlatformType = "commandcode" // Command Code provider (Bearer auth)
 )
 
 // Config holds all configuration for the Anthropic outbound transformer.
@@ -227,7 +228,7 @@ func (t *OutboundTransformer) TransformRequest(
 
 	if apiKey != "" {
 		// LongCat and Ollama use Bearer token authentication instead of X-API-Key
-		if t.config.Type == PlatformLongCat || t.config.Type == PlatformOllama || t.config.Type == PlatformBedrock {
+		if t.config.Type == PlatformLongCat || t.config.Type == PlatformOllama || t.config.Type == PlatformBedrock || t.config.Type == PlatformCommandCode {
 			authConfig = &httpclient.AuthConfig{
 				Type:   httpclient.AuthTypeBearer,
 				APIKey: apiKey,
