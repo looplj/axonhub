@@ -1308,6 +1308,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         const hasApiKey = apiKey.trim().length > 0;
         const apiKeys = values.credentials?.apiKeys || [];
         const hasApiKeys = apiKeys.length > 0 && apiKeys.some((k) => k.trim() !== '');
+        const hasManagementApiKey = (values.credentials?.managementApiKey || '').trim().length > 0;
         const hasGcpCredentials =
           values.credentials?.gcp?.region &&
           values.credentials.gcp.region.trim() !== '' &&
@@ -1316,7 +1317,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           values.credentials?.gcp?.jsonData &&
           values.credentials.gcp.jsonData.trim() !== '';
 
-        if (!hasApiKey && !hasApiKeys && !hasGcpCredentials) {
+        if (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials) {
           delete updateInput.credentials;
         }
 

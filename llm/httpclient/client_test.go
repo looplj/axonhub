@@ -419,7 +419,7 @@ func TestNewHttpClient_WithInsecureSkipVerify_PreservesDefaultTransportSettings(
 }
 
 func TestNewHttpClientWithProxy_RejectsHTTPSDowngrade(t *testing.T) {
-	client := NewHttpClientWithProxy(nil, WithInsecureSkipVerify(true), WithRejectHTTPSDowngrade(true))
+	client := NewHttpClientWithProxy(nil, WithInsecureSkipVerify(true)).WithRejectHTTPSDowngrade().WithProxy(nil)
 	previous := httptest.NewRequest(http.MethodGet, "https://example.com", nil)
 	next := httptest.NewRequest(http.MethodGet, "http://example.com", nil)
 	err := client.GetNativeClient().CheckRedirect(next, []*http.Request{previous})

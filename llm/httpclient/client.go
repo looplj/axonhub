@@ -26,9 +26,10 @@ const MaxErrorBodySize = 1 << 20 // 1 MB
 
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
-	client      *http.Client
-	proxyConfig *ProxyConfig
-	opts        []ClientOption
+	client               *http.Client
+	proxyConfig          *ProxyConfig
+	opts                 []ClientOption
+	rejectHTTPSDowngrade bool
 }
 
 // ClientOption configures an HttpClient.
@@ -89,16 +90,21 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 	}
 
 	return &HttpClient{
-		client:      client,
-		proxyConfig: proxyConfig,
-		opts:        opts,
+		client:               client,
+		proxyConfig:          proxyConfig,
+		opts:                 opts,
+		rejectHTTPSDowngrade: options.rejectHTTPSDowngrade,
 	}
 }
 
 // WithProxy returns a new HttpClient that uses the given proxy configuration,
 // while preserving all other options (e.g., InsecureSkipVerify) from the original client.
 func (hc *HttpClient) WithProxy(proxyConfig *ProxyConfig) *HttpClient {
-	return NewHttpClientWithProxy(proxyConfig, hc.opts...)
+	opts := append([]ClientOption(nil), hc.opts...)
+	if hc.rejectHTTPSDowngrade {
+		opts = append(opts, WithRejectHTTPSDowngrade(true))
+	}
+	return NewHttpClientWithProxy(proxyConfig, opts...)
 }
 
 // WithRejectHTTPSDowngrade returns a client that preserves all current options
@@ -115,7 +121,12 @@ func (hc *HttpClient) WithRejectHTTPSDowngrade() *HttpClient {
 		}
 		return nil
 	}
-	return &HttpClient{client: &client, proxyConfig: hc.proxyConfig, opts: hc.opts}
+	return &HttpClient{
+		client:               &client,
+		proxyConfig:          hc.proxyConfig,
+		opts:                 hc.opts,
+		rejectHTTPSDowngrade: true,
+	}
 }
 
 func rejectHTTPSDowngrade(req *http.Request, via []*http.Request) error {

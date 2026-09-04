@@ -565,6 +565,32 @@ func TestChannelService_UpdateChannel_PreservesManagementKeyWhenOmitted(t *testi
 	require.Equal(t, "management-key", updated.Credentials.ManagementAPIKey)
 }
 
+func TestChannelService_UpdateChannel_ClearsManagementKeyWhenChangingProvider(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	created, err := client.Channel.Create().
+		SetType(channel.TypeZenmux).
+		SetName("ZenMux conversion").
+		SetBaseURL("https://zenmux.ai/api/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "inference-key", ManagementAPIKey: "management-key"}).
+		SetSupportedModels([]string{"test-model"}).
+		SetDefaultTestModel("test-model").
+		Save(ctx)
+	require.NoError(t, err)
+
+	updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
+		Type:        lo.ToPtr(channel.TypeOpenai),
+		BaseURL:     lo.ToPtr("https://api.openai.com/v1"),
+		Credentials: &objects.ChannelCredentials{APIKey: "openai-key"},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, channel.TypeOpenai, updated.Type)
+	require.Empty(t, updated.Credentials.ManagementAPIKey)
+}
+
 func TestChannelService_UpdateChannelStatus(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()
