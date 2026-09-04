@@ -224,7 +224,7 @@ func (m *persistRequestMiddleware) OnInboundRawResponse(ctx context.Context, htt
 	// STT text/srt/vtt responses are non-JSON; wrap them so the JSON response_body column accepts them.
 	respBody := audioSafeResponseBody(llmResp.RequestType, httpResp.Headers.Get("Content-Type"), httpResp.Body)
 
-	err := state.RequestService.UpdateRequestCompleted(persistCtx, state.Request.ID, llmResp.ID, respBody, metrics)
+	err := state.RequestService.UpdateRequestFinalized(persistCtx, state.Request.ID, request.StatusCompleted, llmResp.ID, respBody, metrics)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to update request status to completed", log.Cause(err))
 	}

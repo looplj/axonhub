@@ -247,7 +247,7 @@ func TestOutboundTransformer_TransformStream_DuplicateProviderDoneEmitsOnce(t *t
 	require.Equal(t, 1, countDoneResponses(responses))
 }
 
-func TestOutboundTransformer_TransformStream_ProviderDoneBeforeSourceErrorDoesNotEmitDone(t *testing.T) {
+func TestOutboundTransformer_TransformStream_SemanticTerminalWinsOverLateSourceError(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
 
@@ -262,8 +262,9 @@ func TestOutboundTransformer_TransformStream_ProviderDoneBeforeSourceErrorDoesNo
 	require.NoError(t, err)
 
 	responses, err := streams.All(stream)
-	require.ErrorIs(t, err, sourceErr)
-	require.Equal(t, 0, countDoneResponses(responses))
+	require.NoError(t, err)
+	require.Equal(t, 1, countDoneResponses(responses))
+	require.Equal(t, 1, source.index, "Do not read the source after its semantic terminal")
 }
 
 type responsesErrorAfterStream struct {
@@ -1138,9 +1139,8 @@ func TestOutboundTransformer_TransformStream_PreservesPreviousResponseID(t *test
 	require.Equal(t, llm.DoneResponse, actual[3])
 }
 
-// The Responses API signals truncation/failure through response.completed with
-// status "incomplete"/"failed" rather than a dedicated event; the Chat
-// Completions finish_reason must reflect that instead of defaulting to stop.
+// Compatible providers may report abnormal statuses in response.completed.
+// The finish_reason must preserve those outcomes instead of defaulting to stop.
 func TestOutboundTransformer_TransformStream_MapsCompletedStatusToFinishReason(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -1203,6 +1203,33 @@ func TestOutboundTransformer_TransformStream_MapsCompletedStatusToFinishReason(t
 			}
 
 			require.Equal(t, []string{tt.expectedReason}, finishReasons)
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformStream_MapsIncompleteReasonToFinishReason(t *testing.T) {
+	for _, tt := range []struct {
+		reason string
+		finish string
+	}{
+		{"max_output_tokens", "length"},
+		{"content_filter", "content_filter"},
+		{"provider_limit", "length"},
+	} {
+		t.Run(tt.reason, func(t *testing.T) {
+			trans, err := NewOutboundTransformer("https://example.test", "test-key")
+			require.NoError(t, err)
+			stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{
+				{Type: "response.incomplete", Data: []byte(fmt.Sprintf(
+					`{"type":"response.incomplete","response":{"status":"incomplete","incomplete_details":{"reason":%q}}}`, tt.reason))},
+			}))
+			require.NoError(t, err)
+			chunks, err := streams.All(stream)
+			require.NoError(t, err)
+			require.Len(t, chunks, 2)
+			require.Len(t, chunks[0].Choices, 1)
+			require.Equal(t, tt.finish, lo.FromPtr(chunks[0].Choices[0].FinishReason))
+			require.Equal(t, llm.DoneResponse, chunks[1])
 		})
 	}
 }
