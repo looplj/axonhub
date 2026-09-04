@@ -23,12 +23,15 @@ func NewPersistentTransformers(
 		}
 	}
 
-	return &PersistentInboundTransformer{
-			wrapped: wrapped,
-			state:   state,
-		}, &PersistentOutboundTransformer{
-			wrapped:                       nil, // Will be set when channel is selected
-			state:                         state,
-			outboundLlmRequestMiddlewares: outboundLlmRequestMiddlewares,
-		}
+	inbound := &PersistentInboundTransformer{
+		wrapped: wrapped,
+		state:   state,
+	}
+	outbound := &PersistentOutboundTransformer{
+		wrapped:                       nil, // Will be set when channel is selected
+		state:                         state,
+		outboundLlmRequestMiddlewares: outboundLlmRequestMiddlewares,
+	}
+
+	return inbound, outbound
 }
