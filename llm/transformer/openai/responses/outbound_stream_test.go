@@ -1330,7 +1330,9 @@ func TestOutboundTransformer_TransformStream_PreservesOfficialWebSocketError(t *
 			require.Equal(t, "invalid websocket request", responseErr.Detail.Message)
 			require.Equal(t, "input", responseErr.Detail.Param)
 		})
-	}func TestOutboundTransformer_TransformStream_DoneWithoutSemanticTerminalSynthesizesCompletion(t *testing.T) {
+	}
+}
+func TestOutboundTransformer_TransformStream_DoneWithoutSemanticTerminalSynthesizesCompletion(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
 
