@@ -24,6 +24,7 @@ import {
   ProviderKimiCodeQuotaData,
   ProviderMinimaxQuotaData,
   ProviderZhipuQuotaData,
+  ProviderZenmuxQuotaData,
   ClineQuotaWindow,
   isClineActivePassQuotaData,
   isClineUnavailablePassQuotaData,
@@ -31,6 +32,7 @@ import {
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
 import { useGeneralSettings, useQuotaEnforcementSettings, type QuotaEnforcementMode } from '@/features/system/data/system';
+import { capitalizeZenmuxTier, getZenmuxMonthlyQuotaUSD, getZenmuxUsagePercentage } from '@/features/system/data/zenmux-quota-display';
 
 const syntheticWeeklyRegenTickPct = 0.02;
 
@@ -84,6 +86,20 @@ function isOpenCodeGoType(t: string): t is 'opencode_go' | 'opencode_go_anthropi
 
 function isMinimaxType(t: string): t is 'minimax' | 'minimax_anthropic' {
   return t === 'minimax' || t === 'minimax_anthropic';
+}
+
+function isZenmuxType(t: string): t is 'zenmux' | 'zenmux_responses' | 'zenmux_anthropic' | 'zenmux_gemini' {
+  return t === 'zenmux' || t === 'zenmux_responses' || t === 'zenmux_anthropic' || t === 'zenmux_gemini';
+}
+
+// Fraction of a limit's reset window that has elapsed, derived from the
+// PeriodStart/NextResetAt pair the backend stamps on windowed limits.
+function getLimitDurationPercent(limit: ProviderQuotaLimit): number | undefined {
+  if (!limit.periodStart || !limit.nextResetAt) return undefined;
+  const start = new Date(limit.periodStart).getTime();
+  const end = new Date(limit.nextResetAt).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return undefined;
+  return Math.max(0, Math.min(100, ((Date.now() - start) / (end - start)) * 100));
 }
 
 function getClineUsagePercent(window?: ClineQuotaWindow): number {
@@ -182,6 +198,8 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if (typeof balance === 'number') {
       percentage = Math.max(0, Math.min(100, (1.0 - balance / 100) * 100));
     }
+  } else if (isZenmuxType(channel.type)) {
+    percentage = getZenmuxUsagePercentage(channel.quotaStatus.limits);
   }
   return percentage;
 }
@@ -522,10 +540,8 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
         </div>
         <div className='flex items-center gap-1.5'>
           <Badge
-            variant={
-              status === 'available' ? 'outline' : status === 'warning' ? 'secondary' : status === 'exhausted' ? 'destructive' : 'outline'
-            }
-            className={status === 'available' ? BADGE_COLOR_CLASSES.green : ''}
+            variant={status === 'exhausted' ? 'destructive' : 'outline'}
+            className={status === 'available' ? BADGE_COLOR_CLASSES.green : status === 'warning' ? BADGE_COLOR_CLASSES.amber : ''}
           >
             {statusLabel}
           </Badge>
@@ -1754,6 +1770,101 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
         </div>
       )}
 
+      {isZenmuxType(channel.type) && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData as ProviderZenmuxQuotaData | undefined;
+            if (!qd) return null;
+            const items: React.ReactNode[] = [];
+
+            // Channels configured with the same ZenMux management key share one
+            // account, so the popover shows one row per account and lists the
+            // member channels behind it.
+            const sharedNames = channel.sharedAccountNames ?? [];
+            if (sharedNames.length > 1) {
+              items.push(
+                <div key='shared-account' className='bg-muted/40 text-muted-foreground rounded p-2 text-[11px]'>
+                  <div>{t('quota.label.shared_account_channels', { count: sharedNames.length })}</div>
+                  <div>{sharedNames.join(', ')}</div>
+                </div>
+              );
+            }
+
+            const monthlyUSD = getZenmuxMonthlyQuotaUSD(qd);
+            if (qd.plan?.tier || monthlyUSD != null) {
+              const tier = qd.plan?.tier ? capitalizeZenmuxTier(qd.plan.tier) : '';
+              const monthlyQuota =
+                monthlyUSD != null
+                  ? ` (${t('currencies.format', { val: monthlyUSD, currency: 'USD', locale: 'en-US', minimumFractionDigits: 2, maximumFractionDigits: 2 })})`
+                  : '';
+              items.push(
+                <div key='plan' className='flex items-center justify-between text-xs'>
+                  <span className='text-muted-foreground font-medium'>{t('quota.label.plan')}</span>
+                  <span className='text-foreground font-medium'>
+                    {tier}
+                    {monthlyQuota}
+                  </span>
+                </div>
+              );
+            }
+
+            // 5h/7d windows reuse the shared window progress-bar rendering driven
+            // by the normalized _limits data (window/usageRatio/nextResetAt).
+            quota.limits
+              .filter((limit) => limit.window === '5h' || limit.window === '7d')
+              .sort((a, b) => (a.window === '5h' ? -1 : b.window === '5h' ? 1 : 0))
+              .forEach((limit) => {
+                const labelKey = limit.window ? WINDOW_LABEL_KEYS[limit.window] : undefined;
+                if (!labelKey) return;
+                const usedPct = limit.usageRatio * 100;
+                const durationPct = getLimitDurationPercent(limit);
+                const resetText = limit.nextResetAt ? formatTimeToReset(limit.nextResetAt) : '';
+
+                items.push(
+                  <div
+                    key={limit.window}
+                    className={items.length > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}
+                  >
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(usedPct) })}
+                      </span>
+                    </div>
+                    <UsageTimeBar
+                      usagePercent={usedPct}
+                      durationPercent={durationPct}
+                      tooltip={
+                        <div className='space-y-0.5'>
+                          <div className='font-medium'>{t(labelKey)}</div>
+                          <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
+                          {durationPct !== undefined && (
+                            <div>
+                              {t('quota.label.time_elapsed')}: {Math.round(durationPct)}%
+                            </div>
+                          )}
+                          {resetText && <div>{resetText}</div>}
+                        </div>
+                      }
+                    />
+                  </div>
+                );
+              });
+
+
+            if (items.length === 0) {
+              items.push(
+                <div key='unavailable' className='bg-muted/40 text-muted-foreground rounded p-2 text-[11px]'>
+                  {t('quota.label.unavailable')}
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
+
       <PeriodQuotaEstimate limits={quota.limits} />
     </div>
   );
@@ -1804,6 +1915,17 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
       const existing = acc.find((c) => isOpenaiType(c.type) && c.providerType === channel.providerType);
       if (!existing) {
         acc.push(channel);
+      }
+    } else if (channel.accountKey) {
+      // Channels sharing one ZenMux account (same non-empty accountKey) collapse
+      // into a single row: the first channel carries the shared quota, later
+      // members only contribute their names to the shared-account note. The
+      // representative is a shallow copy so the parsed query data stays untouched.
+      const existing = acc.find((c) => c.accountKey === channel.accountKey);
+      if (existing) {
+        existing.sharedAccountNames = [...(existing.sharedAccountNames ?? [existing.name]), channel.name];
+      } else {
+        acc.push({ ...channel, sharedAccountNames: [channel.name] });
       }
     } else {
       acc.push(channel);

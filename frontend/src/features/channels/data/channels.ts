@@ -840,6 +840,7 @@ const QUERY_CHANNELS_QUERY = `
           credentials {
             apiKey
             apiKeys
+            managementApiKey
             gcp {
               region
               projectID
