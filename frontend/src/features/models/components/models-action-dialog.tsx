@@ -39,7 +39,7 @@ function isDeveloper(provider: string) {
 }
 
 export function ModelsActionDialog() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { open, setOpen, currentRow } = useModels();
   const createModel = useCreateModel();
   const updateModel = useUpdateModel();
@@ -73,12 +73,20 @@ export function ModelsActionDialog() {
     return provider?.models || [];
   }, [selectedProvider, providers]);
 
+  const getDeveloperLabel = useCallback(
+    (developer: string) => {
+      const key = `models.developers.${developer}`;
+      return i18n.exists(key) ? t(key) : developer;
+    },
+    [i18n, t]
+  );
+
   const developerOptions = useMemo(() => {
     return DEVELOPER_IDS.map((id) => ({
       value: id,
-      label: id,
+      label: getDeveloperLabel(id),
     }));
-  }, []);
+  }, [getDeveloperLabel]);
 
   const modelIdOptions = useMemo(() => {
     return selectedProviderModels.map((m: ProviderModel) => ({
@@ -135,7 +143,7 @@ export function ModelsActionDialog() {
         remark: currentRow.remark || '',
       });
       setSelectedProvider(currentRow.developer);
-      setDeveloperSearchValue(currentRow.developer);
+       setDeveloperSearchValue(getDeveloperLabel(currentRow.developer));
       setModelIdInput(currentRow.modelID);
       setModelIdSearchValue(currentRow.modelID);
       setSelectedModelCard(currentRow.modelCard || {});
@@ -157,7 +165,7 @@ export function ModelsActionDialog() {
       setModelIdSearchValue('');
       setSelectedModelCard({});
     }
-  }, [isEdit, currentRow, form, isOpen]);
+  }, [isEdit, currentRow, form, getDeveloperLabel, isOpen]);
 
   const handleProviderChange = useCallback(
     (providerId: string) => {
