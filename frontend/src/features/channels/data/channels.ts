@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { useEffect } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { pageInfoSchema } from '@/gql/pagination';
@@ -1034,7 +1035,7 @@ export function useQueryChannels(
   const { handleError } = useErrorHandler();
   const { t } = useTranslation();
 
-  return useQuery({
+  const query = useQuery({
     enabled: !options?.disableAutoFetch,
     queryKey: [
       'channels',
@@ -1049,13 +1050,8 @@ export function useQueryChannels(
       variables?.before,
     ],
     queryFn: async () => {
-      try {
-        const data = await graphqlRequest<{ queryChannels: ChannelConnection }>(QUERY_CHANNELS_QUERY, { input: variables });
-        return channelConnectionSchema.parse(data?.queryChannels);
-      } catch (error) {
-        handleError(error, t('common.errors.internalServerError'));
-        throw error;
-      }
+      const data = await graphqlRequest<{ queryChannels: ChannelConnection }>(QUERY_CHANNELS_QUERY, { input: variables });
+      return channelConnectionSchema.parse(data?.queryChannels);
     },
     // Poll so the live limiter snapshot (in-flight / queue) stays roughly fresh.
     // 5s is light traffic; pause when the tab is hidden.
@@ -1065,6 +1061,14 @@ export function useQueryChannels(
     // so the component never renders with data = undefined and crashes.
     placeholderData: keepPreviousData,
   });
+
+  useEffect(() => {
+    if (query.error && query.data === undefined) {
+      handleError(query.error, t('common.errors.internalServerError'));
+    }
+  }, [handleError, query.data, query.error, t]);
+
+  return query;
 }
 
 export function useAllChannelNames(options?: { enabled?: boolean }) {
