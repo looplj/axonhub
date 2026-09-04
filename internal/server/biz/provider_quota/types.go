@@ -54,6 +54,9 @@ const (
 // ApertisDefaultBaseURL is the default base URL for the Apertis API.
 const ApertisDefaultBaseURL = "https://api.apertis.ai"
 
+// ZenmuxDefaultBaseURL is the default base URL for the ZenMux API.
+const ZenmuxDefaultBaseURL = "https://zenmux.ai"
+
 type QuotaLimitStatus struct {
 	Type        QuotaLimitType `json:"type"`
 	Status      string         `json:"status"`
