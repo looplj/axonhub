@@ -143,7 +143,6 @@ export function ModelsActionDialog() {
         remark: currentRow.remark || '',
       });
       setSelectedProvider(currentRow.developer);
-       setDeveloperSearchValue(getDeveloperLabel(currentRow.developer));
       setModelIdInput(currentRow.modelID);
       setModelIdSearchValue(currentRow.modelID);
       setSelectedModelCard(currentRow.modelCard || {});
@@ -165,12 +164,18 @@ export function ModelsActionDialog() {
       setModelIdSearchValue('');
       setSelectedModelCard({});
     }
-  }, [isEdit, currentRow, form, getDeveloperLabel, isOpen]);
+  }, [isEdit, currentRow, form, isOpen]);
+
+  useEffect(() => {
+    if (isEdit && currentRow) {
+      setDeveloperSearchValue(getDeveloperLabel(currentRow.developer));
+    }
+  }, [currentRow, getDeveloperLabel, isEdit]);
 
   const handleProviderChange = useCallback(
     (providerId: string) => {
       setSelectedProvider(providerId);
-      setDeveloperSearchValue(providerId);
+      setDeveloperSearchValue(getDeveloperLabel(providerId));
       form.setValue('developer', providerId);
       if (!isEdit) {
         const icon = DEVELOPER_ICONS[providerId] || providerId;
@@ -184,7 +189,7 @@ export function ModelsActionDialog() {
         setSelectedModelCard({});
       }
     },
-    [form, isEdit]
+    [form, getDeveloperLabel, isEdit]
   );
 
   // 用户直接在输入框键入时实时同步 form 值，避免 blur/submit 竞态导致提交旧值。
