@@ -252,7 +252,7 @@ func TestProviderQuotaService_PeriodQuotaSurvivesPersistence(t *testing.T) {
 		AbstractService: &AbstractService{db: client},
 		checkInterval:   5 * time.Minute,
 	}
-	svc.saveQuotaStatus(ctx, ch.ID, "claudecode", provider_quota.QuotaData{
+	svc.saveQuotaStatus(ctx, ch.ID, "claudecode", "", provider_quota.QuotaData{
 		ProviderType: "claudecode",
 		Status:       string(providerquotastatus.StatusAvailable),
 		Ready:        true,

@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -46,6 +47,10 @@ var providerQuotaChannelTypes = []channel.Type{
 	channel.TypeGithubCopilot,
 	channel.TypeNanogpt,
 	channel.TypeNanogptResponses,
+	channel.TypeZenmux,
+	channel.TypeZenmuxResponses,
+	channel.TypeZenmuxAnthropic,
+	channel.TypeZenmuxGemini,
 	channel.TypeCline,
 	channel.TypeOpenai,
 	channel.TypeOpenaiResponses,
@@ -383,6 +388,7 @@ func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerXAISubscriptionSupport()
 	svc.registerGithubCopilotSupport()
 	svc.registerNanoGPTSupport()
+	svc.registerZenmuxSupport()
 	svc.registerClineSupport()
 	svc.registerWaferSupport()
 	svc.registerSyntheticSupport()
@@ -423,6 +429,10 @@ func (svc *ProviderQuotaService) registerGithubCopilotSupport() {
 
 func (svc *ProviderQuotaService) registerNanoGPTSupport() {
 	svc.checkers["nanogpt"] = provider_quota.NewNanoGPTQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerZenmuxSupport() {
+	svc.checkers["zenmux"] = provider_quota.NewZenmuxQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerClineSupport() {
@@ -673,7 +683,10 @@ func (svc *ProviderQuotaService) ResetChannelQuotaNow(ctx context.Context, chann
 	// in case a scheduled quota check is running concurrently.
 	svc.mu.Lock()
 	now := time.Now()
-	svc.checkChannelQuota(ctx, ch, now)
+	svc.checkChannelQuota(ctx, quotaCheckGroup{
+		channels:   []*ent.Channel{ch},
+		accountKey: quotaAccountKey(providerType, ch),
+	}, now)
 	svc.mu.Unlock()
 
 	return nil
@@ -739,12 +752,13 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 		log.Bool("force", force),
 	)
 
+	channelGroups := svc.groupChannelsByQuotaAccount(channelsToCheck)
 	eg, egCtx := errgroup.WithContext(ctx)
-	eg.SetLimit(min(maxConcurrentQuotaChecks, len(channelsToCheck)))
-	for _, ch := range channelsToCheck {
-		ch := ch
+	eg.SetLimit(min(maxConcurrentQuotaChecks, len(channelGroups)))
+	for _, group := range channelGroups {
+		group := group
 		eg.Go(func() error {
-			svc.checkChannelQuota(egCtx, ch, now)
+			svc.checkChannelQuota(egCtx, group, now)
 			return nil
 		})
 	}
@@ -753,7 +767,8 @@ func (svc *ProviderQuotaService) runQuotaCheck(ctx context.Context, force bool) 
 	}
 }
 
-func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.Channel, now time.Time) {
+func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group quotaCheckGroup, now time.Time) {
+	ch := group.channels[0]
 	providerType := svc.getProviderType(ch)
 	if providerType == "" {
 		return
@@ -789,7 +804,10 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 			log.String("provider", providerType),
 			log.Cause(err))
 
-		svc.saveQuotaError(ctx, ch, providerType, err, now)
+		failures := nextQuotaGroupErrorCount(group.channels, providerType)
+		for _, member := range group.channels {
+			svc.saveQuotaError(ctx, member, providerType, group.accountKey, err, failures, now)
+		}
 		return
 	}
 
@@ -808,21 +826,25 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, ch *ent.
 	}
 	quotaData.Resets = &resetList
 
-	// Save quota status
-	svc.fillPeriodQuotas(ctx, ch.ID, &quotaData, now)
-	svc.saveQuotaStatus(ctx, ch.ID, providerType, quotaData, now)
+	for _, member := range group.channels {
+		memberQuotaData := quotaData
+		memberQuotaData.Limits = slices.Clone(quotaData.Limits)
+		svc.fillPeriodQuotas(ctx, member.ID, &memberQuotaData, now)
+		svc.saveQuotaStatus(ctx, member.ID, providerType, group.accountKey, memberQuotaData, now)
 
-	log.Debug(ctx, "Updated quota status",
-		log.Int("channel_id", ch.ID),
-		log.String("provider", providerType),
-		log.String("status", quotaData.Status),
-		log.Bool("ready", quotaData.Ready))
+		log.Debug(ctx, "Updated quota status",
+			log.Int("channel_id", member.ID),
+			log.String("provider", providerType),
+			log.String("status", memberQuotaData.Status),
+			log.Bool("ready", memberQuotaData.Ready))
+	}
 }
 
 func (svc *ProviderQuotaService) saveQuotaStatus(
 	ctx context.Context,
 	channelID int,
 	providerType string,
+	accountKey string,
 	quotaData provider_quota.QuotaData,
 	now time.Time,
 ) {
@@ -832,6 +854,7 @@ func (svc *ProviderQuotaService) saveQuotaStatus(
 	create := svc.db.ProviderQuotaStatus.Create().
 		SetChannelID(channelID).
 		SetProviderType(pt).
+		SetAccountKey(accountKey).
 		SetStatus(providerquotastatus.Status(quotaData.Status)).
 		SetQuotaData(svc.mergeLimitsIntoQuotaData(quotaData)).
 		SetNextCheckAt(nextCheck)
@@ -868,23 +891,25 @@ func (svc *ProviderQuotaService) saveQuotaError(
 	ctx context.Context,
 	ch *ent.Channel,
 	providerType string,
+	accountKey string,
 	quotaErr error,
+	failures int,
 	now time.Time,
 ) {
 	pt := providerquotastatus.ProviderType(providerType)
+	nextCheck := now.Add(quotaErrorBackoff(svc.getCheckInterval(), failures))
 
 	if ch.Edges.ProviderQuotaStatus != nil {
 		existing := ch.Edges.ProviderQuotaStatus
 		if existing.ProviderType != pt {
-			nextCheck := now.Add(quotaErrorBackoff(svc.getCheckInterval(), 1))
 			quotaData := map[string]any{
 				"error":       quotaErr.Error(),
-				"error_count": 1,
+				"error_count": failures,
 			}
 
-			// 提供商变化后旧状态和限额不再有效，按新提供商的首次失败重置记录。
 			err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
 				SetProviderType(pt).
+				SetAccountKey(accountKey).
 				SetStatus(providerquotastatus.StatusUnknown).
 				SetReady(false).
 				SetQuotaData(quotaData).
@@ -909,15 +934,13 @@ func (svc *ProviderQuotaService) saveQuotaError(
 			existingData = map[string]any{}
 		}
 
-		failures := nextQuotaErrorCount(quotaErrorCount(existingData))
-		nextCheck := now.Add(quotaErrorBackoff(svc.getCheckInterval(), failures))
-
 		merged := lo.Assign(existingData, map[string]any{
 			"error":       quotaErr.Error(),
 			"error_count": failures,
 		})
 
 		err := svc.db.ProviderQuotaStatus.UpdateOne(existing).
+			SetAccountKey(accountKey).
 			SetQuotaData(merged).
 			SetNextCheckAt(nextCheck).
 			Exec(ctx)
@@ -934,16 +957,15 @@ func (svc *ProviderQuotaService) saveQuotaError(
 		return
 	}
 
-	nextCheck := now.Add(quotaErrorBackoff(svc.getCheckInterval(), 1))
-
 	err := svc.db.ProviderQuotaStatus.Create().
 		SetChannelID(ch.ID).
 		SetProviderType(pt).
+		SetAccountKey(accountKey).
 		SetStatus(providerquotastatus.StatusUnknown).
 		SetReady(false).
 		SetQuotaData(map[string]any{
 			"error":       quotaErr.Error(),
-			"error_count": 1,
+			"error_count": failures,
 		}).
 		SetNextCheckAt(nextCheck).
 		Exec(ctx)
@@ -969,6 +991,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "github_copilot"
 	case channel.TypeNanogpt, channel.TypeNanogptResponses:
 		return "nanogpt"
+	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini:
+		return "zenmux"
 	case channel.TypeCline:
 		return "cline"
 	case channel.TypeOpenai, channel.TypeOpenaiResponses:
@@ -987,6 +1011,12 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 }
 
 func hasCredentialsForProvider(ch *ent.Channel) bool {
+	switch ch.Type { //nolint:exhaustive // Only ZenMux uses the separate management credential.
+	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini:
+		return strings.TrimSpace(ch.Credentials.ManagementAPIKey) != ""
+	default:
+	}
+
 	if ch.Type == channel.TypeOpenai || ch.Type == channel.TypeOpenaiResponses {
 		providerType := provider_quota.DetectProviderFromURL(ch.BaseURL)
 		if _, ok := provider_quota.URLDetectedProviders()[providerType]; ok {
