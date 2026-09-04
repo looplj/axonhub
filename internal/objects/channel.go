@@ -293,6 +293,11 @@ type ChannelCredentials struct {
 	// When multiple keys are provided, they will be used in a round-robin fashion.
 	APIKeys []string `json:"apiKeys,omitempty"`
 
+	// ManagementAPIKey is an optional provider management/console API key used only
+	// for server-side quota checks (e.g. ZenMux). It is never attached to inference
+	// requests and never exposed to clients beyond credential write APIs.
+	ManagementAPIKey string `json:"managementApiKey,omitempty"`
+
 	// Azure configuration for the channel.
 	Azure *AzureCredential `json:"azure,omitempty"`
 

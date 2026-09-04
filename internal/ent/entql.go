@@ -382,6 +382,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			providerquotastatus.FieldNextResetAt:  {Type: field.TypeTime, Column: providerquotastatus.FieldNextResetAt},
 			providerquotastatus.FieldReady:        {Type: field.TypeBool, Column: providerquotastatus.FieldReady},
 			providerquotastatus.FieldNextCheckAt:  {Type: field.TypeTime, Column: providerquotastatus.FieldNextCheckAt},
+			providerquotastatus.FieldAccountKey:   {Type: field.TypeString, Column: providerquotastatus.FieldAccountKey},
 		},
 	}
 	graph.Nodes[15] = &sqlgraph.Node{
@@ -3191,6 +3192,11 @@ func (f *ProviderQuotaStatusFilter) WhereReady(p entql.BoolP) {
 // WhereNextCheckAt applies the entql time.Time predicate on the next_check_at field.
 func (f *ProviderQuotaStatusFilter) WhereNextCheckAt(p entql.TimeP) {
 	f.Where(p.Field(providerquotastatus.FieldNextCheckAt))
+}
+
+// WhereAccountKey applies the entql string predicate on the account_key field.
+func (f *ProviderQuotaStatusFilter) WhereAccountKey(p entql.StringP) {
+	f.Where(p.Field(providerquotastatus.FieldAccountKey))
 }
 
 // WhereHasChannel applies a predicate to check if query has an edge channel.

@@ -1462,7 +1462,7 @@ func (_m *ProviderQuotaStatus) Node(ctx context.Context) (node *Node, err error)
 	node = &Node{
 		ID:     _m.ID,
 		Type:   "ProviderQuotaStatus",
-		Fields: make([]*Field, 9),
+		Fields: make([]*Field, 10),
 		Edges:  make([]*Edge, 1),
 	}
 	var buf []byte
@@ -1536,6 +1536,14 @@ func (_m *ProviderQuotaStatus) Node(ctx context.Context) (node *Node, err error)
 	node.Fields[8] = &Field{
 		Type:  "time.Time",
 		Name:  "next_check_at",
+		Value: string(buf),
+	}
+	if buf, err = json.Marshal(_m.AccountKey); err != nil {
+		return nil, err
+	}
+	node.Fields[9] = &Field{
+		Type:  "string",
+		Name:  "account_key",
 		Value: string(buf),
 	}
 	node.Edges[0] = &Edge{

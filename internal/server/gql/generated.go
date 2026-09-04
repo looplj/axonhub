@@ -1318,6 +1318,7 @@ type ComplexityRoot struct {
 	}
 
 	ProviderQuotaStatus struct {
+		AccountKey   func(childComplexity int) int
 		Channel      func(childComplexity int) int
 		ChannelID    func(childComplexity int) int
 		CreatedAt    func(childComplexity int) int
@@ -7946,6 +7947,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ProviderQuotaCollectionSettings.Providers(childComplexity), true
 
+	case "ProviderQuotaStatus.accountKey":
+		if e.complexity.ProviderQuotaStatus.AccountKey == nil {
+			break
+		}
+
+		return e.complexity.ProviderQuotaStatus.AccountKey(childComplexity), true
 	case "ProviderQuotaStatus.channel":
 		if e.complexity.ProviderQuotaStatus.Channel == nil {
 			break
@@ -21034,6 +21041,8 @@ func (ec *executionContext) fieldContext_Channel_providerQuotaStatus(_ context.C
 				return ec.fieldContext_ProviderQuotaStatus_ready(ctx, field)
 			case "nextCheckAt":
 				return ec.fieldContext_ProviderQuotaStatus_nextCheckAt(ctx, field)
+			case "accountKey":
+				return ec.fieldContext_ProviderQuotaStatus_accountKey(ctx, field)
 			case "channel":
 				return ec.fieldContext_ProviderQuotaStatus_channel(ctx, field)
 			}
@@ -43095,6 +43104,35 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_nextCheckAt(_ conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProviderQuotaStatus_accountKey(ctx context.Context, field graphql.CollectedField, obj *ent.ProviderQuotaStatus) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProviderQuotaStatus_accountKey,
+		func(ctx context.Context) (any, error) {
+			return obj.AccountKey, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProviderQuotaStatus_accountKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProviderQuotaStatus",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65608,7 +65646,7 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiKey", "apiKeys", "gcp", "oauth"}
+	fieldsInOrder := [...]string{"apiKey", "apiKeys", "gcp", "oauth", "managementApiKey"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65643,6 +65681,13 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 				return it, err
 			}
 			it.OAuth = data
+		case "managementApiKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("managementApiKey"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ManagementAPIKey = data
 		}
 	}
 
@@ -77447,7 +77492,7 @@ func (ec *executionContext) unmarshalInputProviderQuotaStatusWhereInput(ctx cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "providerType", "providerTypeNEQ", "providerTypeIn", "providerTypeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "nextResetAt", "nextResetAtNEQ", "nextResetAtIn", "nextResetAtNotIn", "nextResetAtGT", "nextResetAtGTE", "nextResetAtLT", "nextResetAtLTE", "nextResetAtIsNil", "nextResetAtNotNil", "ready", "readyNEQ", "nextCheckAt", "nextCheckAtNEQ", "nextCheckAtIn", "nextCheckAtNotIn", "nextCheckAtGT", "nextCheckAtGTE", "nextCheckAtLT", "nextCheckAtLTE", "hasChannel", "hasChannelWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "providerType", "providerTypeNEQ", "providerTypeIn", "providerTypeNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "nextResetAt", "nextResetAtNEQ", "nextResetAtIn", "nextResetAtNotIn", "nextResetAtGT", "nextResetAtGTE", "nextResetAtLT", "nextResetAtLTE", "nextResetAtIsNil", "nextResetAtNotNil", "ready", "readyNEQ", "nextCheckAt", "nextCheckAtNEQ", "nextCheckAtIn", "nextCheckAtNotIn", "nextCheckAtGT", "nextCheckAtGTE", "nextCheckAtLT", "nextCheckAtLTE", "accountKey", "accountKeyNEQ", "accountKeyIn", "accountKeyNotIn", "accountKeyGT", "accountKeyGTE", "accountKeyLT", "accountKeyLTE", "accountKeyContains", "accountKeyHasPrefix", "accountKeyHasSuffix", "accountKeyIsNil", "accountKeyNotNil", "accountKeyEqualFold", "accountKeyContainsFold", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77915,6 +77960,111 @@ func (ec *executionContext) unmarshalInputProviderQuotaStatusWhereInput(ctx cont
 				return it, err
 			}
 			it.NextCheckAtLTE = data
+		case "accountKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKey = data
+		case "accountKeyNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyNEQ = data
+		case "accountKeyIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyIn = data
+		case "accountKeyNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyNotIn = data
+		case "accountKeyGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyGT = data
+		case "accountKeyGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyGTE = data
+		case "accountKeyLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyLT = data
+		case "accountKeyLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyLTE = data
+		case "accountKeyContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyContains = data
+		case "accountKeyHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyHasPrefix = data
+		case "accountKeyHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyHasSuffix = data
+		case "accountKeyIsNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyIsNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyIsNil = data
+		case "accountKeyNotNil":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyNotNil"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyNotNil = data
+		case "accountKeyEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyEqualFold = data
+		case "accountKeyContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountKeyContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountKeyContainsFold = data
 		case "hasChannel":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasChannel"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -100857,6 +101007,8 @@ func (ec *executionContext) _ProviderQuotaStatus(ctx context.Context, sel ast.Se
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "accountKey":
+			out.Values[i] = ec._ProviderQuotaStatus_accountKey(ctx, field, obj)
 		case "channel":
 			field := field
 

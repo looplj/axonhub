@@ -90,6 +90,11 @@ func NextCheckAt(v time.Time) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldNextCheckAt, v))
 }
 
+// AccountKey applies equality check predicate on the "account_key" field. It's identical to AccountKeyEQ.
+func AccountKey(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldAccountKey, v))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldCreatedAt, v))
@@ -368,6 +373,81 @@ func NextCheckAtLT(v time.Time) predicate.ProviderQuotaStatus {
 // NextCheckAtLTE applies the LTE predicate on the "next_check_at" field.
 func NextCheckAtLTE(v time.Time) predicate.ProviderQuotaStatus {
 	return predicate.ProviderQuotaStatus(sql.FieldLTE(FieldNextCheckAt, v))
+}
+
+// AccountKeyEQ applies the EQ predicate on the "account_key" field.
+func AccountKeyEQ(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldEQ(FieldAccountKey, v))
+}
+
+// AccountKeyNEQ applies the NEQ predicate on the "account_key" field.
+func AccountKeyNEQ(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldNEQ(FieldAccountKey, v))
+}
+
+// AccountKeyIn applies the In predicate on the "account_key" field.
+func AccountKeyIn(vs ...string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldIn(FieldAccountKey, vs...))
+}
+
+// AccountKeyNotIn applies the NotIn predicate on the "account_key" field.
+func AccountKeyNotIn(vs ...string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldNotIn(FieldAccountKey, vs...))
+}
+
+// AccountKeyGT applies the GT predicate on the "account_key" field.
+func AccountKeyGT(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldGT(FieldAccountKey, v))
+}
+
+// AccountKeyGTE applies the GTE predicate on the "account_key" field.
+func AccountKeyGTE(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldGTE(FieldAccountKey, v))
+}
+
+// AccountKeyLT applies the LT predicate on the "account_key" field.
+func AccountKeyLT(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldLT(FieldAccountKey, v))
+}
+
+// AccountKeyLTE applies the LTE predicate on the "account_key" field.
+func AccountKeyLTE(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldLTE(FieldAccountKey, v))
+}
+
+// AccountKeyContains applies the Contains predicate on the "account_key" field.
+func AccountKeyContains(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldContains(FieldAccountKey, v))
+}
+
+// AccountKeyHasPrefix applies the HasPrefix predicate on the "account_key" field.
+func AccountKeyHasPrefix(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldHasPrefix(FieldAccountKey, v))
+}
+
+// AccountKeyHasSuffix applies the HasSuffix predicate on the "account_key" field.
+func AccountKeyHasSuffix(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldHasSuffix(FieldAccountKey, v))
+}
+
+// AccountKeyIsNil applies the IsNil predicate on the "account_key" field.
+func AccountKeyIsNil() predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldIsNull(FieldAccountKey))
+}
+
+// AccountKeyNotNil applies the NotNil predicate on the "account_key" field.
+func AccountKeyNotNil() predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldNotNull(FieldAccountKey))
+}
+
+// AccountKeyEqualFold applies the EqualFold predicate on the "account_key" field.
+func AccountKeyEqualFold(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldEqualFold(FieldAccountKey, v))
+}
+
+// AccountKeyContainsFold applies the ContainsFold predicate on the "account_key" field.
+func AccountKeyContainsFold(v string) predicate.ProviderQuotaStatus {
+	return predicate.ProviderQuotaStatus(sql.FieldContainsFold(FieldAccountKey, v))
 }
 
 // HasChannel applies the HasEdge predicate on the "channel" edge.

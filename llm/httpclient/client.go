@@ -26,22 +26,31 @@ const MaxErrorBodySize = 1 << 20 // 1 MB
 
 // HttpClient implements the HttpClient interface.
 type HttpClient struct {
-	client      *http.Client
-	proxyConfig *ProxyConfig
-	opts        []ClientOption
+	client               *http.Client
+	proxyConfig          *ProxyConfig
+	opts                 []ClientOption
+	rejectHTTPSDowngrade bool
 }
 
 // ClientOption configures an HttpClient.
 type ClientOption func(*clientOptions)
 
 type clientOptions struct {
-	insecureSkipVerify bool
+	insecureSkipVerify   bool
+	rejectHTTPSDowngrade bool
 }
 
 // WithInsecureSkipVerify disables TLS certificate verification.
 func WithInsecureSkipVerify(skip bool) ClientOption {
 	return func(o *clientOptions) {
 		o.insecureSkipVerify = skip
+	}
+}
+
+// WithRejectHTTPSDowngrade rejects redirects from HTTPS to HTTP.
+func WithRejectHTTPSDowngrade(reject bool) ClientOption {
+	return func(o *clientOptions) {
+		o.rejectHTTPSDowngrade = reject
 	}
 }
 
@@ -75,19 +84,56 @@ func NewHttpClientWithProxy(proxyConfig *ProxyConfig, opts ...ClientOption) *Htt
 		}
 	}
 
+	client := &http.Client{Transport: transport}
+	if options.rejectHTTPSDowngrade {
+		client.CheckRedirect = rejectHTTPSDowngrade
+	}
+
 	return &HttpClient{
-		client: &http.Client{
-			Transport: transport,
-		},
-		proxyConfig: proxyConfig,
-		opts:        opts,
+		client:               client,
+		proxyConfig:          proxyConfig,
+		opts:                 opts,
+		rejectHTTPSDowngrade: options.rejectHTTPSDowngrade,
 	}
 }
 
 // WithProxy returns a new HttpClient that uses the given proxy configuration,
 // while preserving all other options (e.g., InsecureSkipVerify) from the original client.
 func (hc *HttpClient) WithProxy(proxyConfig *ProxyConfig) *HttpClient {
-	return NewHttpClientWithProxy(proxyConfig, hc.opts...)
+	opts := append([]ClientOption(nil), hc.opts...)
+	if hc.rejectHTTPSDowngrade {
+		opts = append(opts, WithRejectHTTPSDowngrade(true))
+	}
+	return NewHttpClientWithProxy(proxyConfig, opts...)
+}
+
+// WithRejectHTTPSDowngrade returns a client that preserves all current options
+// and rejects redirects that would send a request from HTTPS to HTTP.
+func (hc *HttpClient) WithRejectHTTPSDowngrade() *HttpClient {
+	client := *hc.client
+	previousCheckRedirect := client.CheckRedirect
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if err := rejectHTTPSDowngrade(req, via); err != nil {
+			return err
+		}
+		if previousCheckRedirect != nil {
+			return previousCheckRedirect(req, via)
+		}
+		return nil
+	}
+	return &HttpClient{
+		client:               &client,
+		proxyConfig:          hc.proxyConfig,
+		opts:                 hc.opts,
+		rejectHTTPSDowngrade: true,
+	}
+}
+
+func rejectHTTPSDowngrade(req *http.Request, via []*http.Request) error {
+	if len(via) > 0 && via[len(via)-1].URL.Scheme == "https" && req.URL.Scheme == "http" {
+		return fmt.Errorf("refusing HTTPS to HTTP redirect")
+	}
+	return nil
 }
 
 // GetNativeClient returns the underlying *http.Client for advanced use cases.

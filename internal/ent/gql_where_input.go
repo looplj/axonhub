@@ -6159,6 +6159,23 @@ type ProviderQuotaStatusWhereInput struct {
 	NextCheckAtLT    *time.Time  `json:"nextCheckAtLT,omitempty"`
 	NextCheckAtLTE   *time.Time  `json:"nextCheckAtLTE,omitempty"`
 
+	// "account_key" field predicates.
+	AccountKey             *string  `json:"accountKey,omitempty"`
+	AccountKeyNEQ          *string  `json:"accountKeyNEQ,omitempty"`
+	AccountKeyIn           []string `json:"accountKeyIn,omitempty"`
+	AccountKeyNotIn        []string `json:"accountKeyNotIn,omitempty"`
+	AccountKeyGT           *string  `json:"accountKeyGT,omitempty"`
+	AccountKeyGTE          *string  `json:"accountKeyGTE,omitempty"`
+	AccountKeyLT           *string  `json:"accountKeyLT,omitempty"`
+	AccountKeyLTE          *string  `json:"accountKeyLTE,omitempty"`
+	AccountKeyContains     *string  `json:"accountKeyContains,omitempty"`
+	AccountKeyHasPrefix    *string  `json:"accountKeyHasPrefix,omitempty"`
+	AccountKeyHasSuffix    *string  `json:"accountKeyHasSuffix,omitempty"`
+	AccountKeyIsNil        bool     `json:"accountKeyIsNil,omitempty"`
+	AccountKeyNotNil       bool     `json:"accountKeyNotNil,omitempty"`
+	AccountKeyEqualFold    *string  `json:"accountKeyEqualFold,omitempty"`
+	AccountKeyContainsFold *string  `json:"accountKeyContainsFold,omitempty"`
+
 	// "channel" edge predicates.
 	HasChannel     *bool                `json:"hasChannel,omitempty"`
 	HasChannelWith []*ChannelWhereInput `json:"hasChannelWith,omitempty"`
@@ -6402,6 +6419,51 @@ func (i *ProviderQuotaStatusWhereInput) P() (predicate.ProviderQuotaStatus, erro
 	}
 	if i.NextCheckAtLTE != nil {
 		predicates = append(predicates, providerquotastatus.NextCheckAtLTE(*i.NextCheckAtLTE))
+	}
+	if i.AccountKey != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyEQ(*i.AccountKey))
+	}
+	if i.AccountKeyNEQ != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyNEQ(*i.AccountKeyNEQ))
+	}
+	if len(i.AccountKeyIn) > 0 {
+		predicates = append(predicates, providerquotastatus.AccountKeyIn(i.AccountKeyIn...))
+	}
+	if len(i.AccountKeyNotIn) > 0 {
+		predicates = append(predicates, providerquotastatus.AccountKeyNotIn(i.AccountKeyNotIn...))
+	}
+	if i.AccountKeyGT != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyGT(*i.AccountKeyGT))
+	}
+	if i.AccountKeyGTE != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyGTE(*i.AccountKeyGTE))
+	}
+	if i.AccountKeyLT != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyLT(*i.AccountKeyLT))
+	}
+	if i.AccountKeyLTE != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyLTE(*i.AccountKeyLTE))
+	}
+	if i.AccountKeyContains != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyContains(*i.AccountKeyContains))
+	}
+	if i.AccountKeyHasPrefix != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyHasPrefix(*i.AccountKeyHasPrefix))
+	}
+	if i.AccountKeyHasSuffix != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyHasSuffix(*i.AccountKeyHasSuffix))
+	}
+	if i.AccountKeyIsNil {
+		predicates = append(predicates, providerquotastatus.AccountKeyIsNil())
+	}
+	if i.AccountKeyNotNil {
+		predicates = append(predicates, providerquotastatus.AccountKeyNotNil())
+	}
+	if i.AccountKeyEqualFold != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyEqualFold(*i.AccountKeyEqualFold))
+	}
+	if i.AccountKeyContainsFold != nil {
+		predicates = append(predicates, providerquotastatus.AccountKeyContainsFold(*i.AccountKeyContainsFold))
 	}
 
 	if i.HasChannel != nil {

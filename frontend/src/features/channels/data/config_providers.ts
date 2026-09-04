@@ -9,6 +9,7 @@ import {
   Moonshot,
   Zhipu,
   OpenRouter,
+  ZenMux,
   XAI,
   Volcengine,
   SiliconCloud,
@@ -292,6 +293,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Groq,
     color: 'bg-orange-100 text-orange-800 border-orange-200',
     channelTypes: ['groq'],
+  },
+  zenmux: {
+    provider: 'zenmux',
+    icon: ZenMux,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    channelTypes: ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini'],
   },
 };
 

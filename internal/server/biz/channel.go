@@ -988,7 +988,22 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 
 		if input.Credentials != nil {
-			mut.SetCredentials(*input.Credentials)
+			credentials := *input.Credentials
+			existing, err := db.Channel.Query().
+				Where(channel.IDEQ(id)).
+				Select(channel.FieldType, channel.FieldCredentials).
+				Only(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to load existing channel credentials: %w", err)
+			}
+			effectiveType := existing.Type
+			if input.Type != nil {
+				effectiveType = *input.Type
+			}
+			if credentials.ManagementAPIKey == "" && isZenmuxChannelType(effectiveType) {
+				credentials.ManagementAPIKey = existing.Credentials.ManagementAPIKey
+			}
+			mut.SetCredentials(credentials)
 		}
 
 		if input.Remark != nil {
@@ -1055,6 +1070,15 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	svc.reloadChannelsAfterCommit(ctx)
 
 	return updated, nil
+}
+
+func isZenmuxChannelType(channelType channel.Type) bool {
+	switch channelType {
+	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini:
+		return true
+	default:
+		return false
+	}
 }
 
 // UpdateChannelStatus updates the status of a channel.

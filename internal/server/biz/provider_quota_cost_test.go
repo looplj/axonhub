@@ -105,6 +105,26 @@ func TestProviderQuotaService_FillPeriodQuotas(t *testing.T) {
 	require.Nil(t, quotaData.Limits[2].PeriodQuota)
 }
 
+func TestProviderQuotaService_FillPeriodQuotas_SkipsZenmux(t *testing.T) {
+	now := time.Now()
+	periodCost := 12.0
+	periodQuota := 24.0
+	quotaData := provider_quota.QuotaData{
+		ProviderType: "zenmux",
+		Limits: []provider_quota.QuotaLimitStatus{{
+			PeriodStart: &now,
+			PeriodCost:  &periodCost,
+			PeriodQuota: &periodQuota,
+		}},
+	}
+
+	svc := &ProviderQuotaService{}
+	svc.fillPeriodQuotas(context.Background(), 0, &quotaData, now.Add(time.Hour))
+
+	require.Nil(t, quotaData.Limits[0].PeriodCost)
+	require.Nil(t, quotaData.Limits[0].PeriodQuota)
+}
+
 func TestProviderQuotaService_FillPeriodQuotas_OnlyCountsOwnChannel(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -252,7 +272,7 @@ func TestProviderQuotaService_PeriodQuotaSurvivesPersistence(t *testing.T) {
 		AbstractService: &AbstractService{db: client},
 		checkInterval:   5 * time.Minute,
 	}
-	svc.saveQuotaStatus(ctx, ch.ID, "claudecode", provider_quota.QuotaData{
+	svc.saveQuotaStatus(ctx, ch.ID, "claudecode", "", provider_quota.QuotaData{
 		ProviderType: "claudecode",
 		Status:       string(providerquotastatus.StatusAvailable),
 		Ready:        true,
