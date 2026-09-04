@@ -1067,7 +1067,7 @@ export function useQueryChannels(
     if (shouldNotifyChannelQueryError(query.error, query.data !== undefined, query.isPlaceholderData)) {
       handleError(query.error, t('common.errors.internalServerError'));
     }
-  }, [handleError, query.data, query.error, t]);
+  }, [handleError, query.data, query.error, query.isPlaceholderData, t]);
 
   return query;
 }
