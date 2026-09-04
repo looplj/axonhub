@@ -92,9 +92,9 @@ Ensure-Dirs $BaseDir
 # Already running?
 if(Test-Path $PidFile){
   try {
-    $pid = Get-Content -Path $PidFile -ErrorAction Stop
-    if($pid -and (Get-Process -Id $pid -ErrorAction SilentlyContinue)){
-      Write-Warn "AxonHub is already running (PID: $pid)"
+    $processId = Get-Content -Path $PidFile -ErrorAction Stop
+    if($processId -and (Get-Process -Id $processId -ErrorAction SilentlyContinue)){
+      Write-Warn "AxonHub is already running (PID: $processId)"
       exit 0
     } else {
       Write-Info 'Removing stale PID file'
