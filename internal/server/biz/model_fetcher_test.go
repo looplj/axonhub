@@ -418,6 +418,30 @@ func TestPrepareModelsEndpoint(t *testing.T) {
 			baseURL:     "https://ark.cn-beijing.volces.com/api/compatible",
 			expectedURL: "https://ark.cn-beijing.volces.com/api/v3/models",
 		},
+		{
+			name:        "CommandCode provider base without /v1",
+			channelType: channel.TypeCommandcode,
+			baseURL:     "https://api.commandcode.ai/provider",
+			expectedURL: "https://api.commandcode.ai/provider/v1/models",
+		},
+		{
+			name:        "CommandCode anthropic provider base without /v1",
+			channelType: channel.TypeCommandcodeAnthropic,
+			baseURL:     "https://api.commandcode.ai/provider",
+			expectedURL: "https://api.commandcode.ai/provider/v1/models",
+		},
+		{
+			name:        "CommandCode with /v1 suffix",
+			channelType: channel.TypeCommandcode,
+			baseURL:     "https://api.commandcode.ai/provider/v1",
+			expectedURL: "https://api.commandcode.ai/provider/v1/models",
+		},
+		{
+			name:        "CommandCode anthropic with /v1 trailing slash",
+			channelType: channel.TypeCommandcodeAnthropic,
+			baseURL:     "https://api.commandcode.ai/provider/v1/",
+			expectedURL: "https://api.commandcode.ai/provider/v1/models",
+		},
 	}
 
 	for _, tt := range tests {
@@ -1012,5 +1036,80 @@ func TestFetchCopilotModels(t *testing.T) {
 	_ = fetcher.fetchCopilotModels(ctx)
 	if int(callCount.Load()) != 1 {
 		t.Errorf("expected 1 server call (cached), got %d", callCount.Load())
+	}
+}
+
+
+
+func TestFetchModelsCommandCodeSingleBearerRequest(t *testing.T) {
+	for _, channelType := range []channel.Type{channel.TypeCommandcode, channel.TypeCommandcodeAnthropic} {
+		t.Run(channelType.String(), func(t *testing.T) {
+			var calls atomic.Int32
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				calls.Add(1)
+				if r.Header.Get("Authorization") != "Bearer test-key" {
+					t.Errorf("expected Authorization: Bearer test-key, got %q", r.Header.Get("Authorization"))
+				}
+				if r.Header.Get("X-Api-Key") != "" {
+					t.Errorf("commandcode must not send X-Api-Key, got %q", r.Header.Get("X-Api-Key"))
+				}
+				if r.URL.Path != "/v1/models" {
+					t.Errorf("expected /v1/models, got %q", r.URL.Path)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"data":[{"id":"claude-sonnet-4-5"},{"id":"claude-opus-4-1"}]}`))
+			}))
+			defer server.Close()
+
+			key := "test-key"
+			fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+			result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{
+				ChannelType: channelType.String(),
+				BaseURL:     server.URL + "/v1",
+				APIKey:      &key,
+			})
+			if err != nil {
+				t.Fatalf("FetchModels() error: %v", err)
+			}
+			if result.Error != nil {
+				t.Fatalf("FetchModels() unexpected error result: %s", *result.Error)
+			}
+			if calls.Load() != 1 {
+				t.Fatalf("expected exactly 1 request (no X-Api-Key retry), got %d", calls.Load())
+			}
+			if len(result.Models) != 2 || result.Models[0].ID != "claude-sonnet-4-5" {
+				t.Fatalf("unexpected models: %+v", result.Models)
+			}
+		})
+	}
+}
+
+func TestFetchModelsCommandCodeBaseWithoutV1AppendsV1(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if r.URL.Path != "/v1/models" {
+			t.Errorf("expected /v1/models, got %q", r.URL.Path)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[]}`))
+	}))
+	defer server.Close()
+
+	key := "test-key"
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+	result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{
+		ChannelType: channel.TypeCommandcodeAnthropic.String(),
+		BaseURL:     server.URL, // no /v1: must become /v1/models
+		APIKey:      &key,
+	})
+	if err != nil {
+		t.Fatalf("FetchModels() error: %v", err)
+	}
+	if result.Error != nil {
+		t.Fatalf("FetchModels() unexpected error result: %s", *result.Error)
+	}
+	if calls.Load() != 1 {
+		t.Fatalf("expected exactly 1 request, got %d", calls.Load())
 	}
 }

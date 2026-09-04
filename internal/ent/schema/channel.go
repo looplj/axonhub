@@ -105,6 +105,8 @@ func (Channel) Fields() []ent.Field {
 				"zenmux_responses",
 				"zenmux_anthropic",
 				"zenmux_gemini",
+				"commandcode",
+				"commandcode_anthropic",
 			).
 			Annotations(
 				entgql.OrderField("TYPE"),
@@ -146,7 +148,11 @@ func (Channel) Fields() []ent.Field {
 		field.JSON("settings", &objects.ChannelSettings{}).
 			Default(&objects.ChannelSettings{
 				ModelMappings: []objects.ModelMapping{},
-			}).Optional().Annotations(),
+			}).
+			Annotations(
+				entgql.Directives(forceResolver()),
+			).
+			Optional(),
 		field.Int("ordering_weight").Default(0).Comment("Ordering weight for display sorting").
 			Annotations(
 				entgql.OrderField("ORDERING_WEIGHT"),

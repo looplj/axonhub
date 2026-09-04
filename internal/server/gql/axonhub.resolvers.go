@@ -159,6 +159,17 @@ func (r *channelSettingsResolver) BodyOverrideOperations(ctx context.Context, ob
 	return lo.ToSlicePtr(ops), nil
 }
 
+// ProviderQuota is the resolver for the providerQuota field. Quota-only
+// credentials (e.g. the Command Code account session cookie) are sensitive, so
+// they are only exposed to operators holding channel write permission.
+func (r *channelSettingsResolver) ProviderQuota(ctx context.Context, obj *objects.ChannelSettings) (*objects.ChannelProviderQuotaSettings, error) {
+	if obj == nil || !scopes.UserHasScope(ctx, scopes.ScopeWriteChannels) {
+		return nil, nil
+	}
+
+	return obj.ProviderQuota, nil
+}
+
 // CreateChannel is the resolver for the createChannel field.
 func (r *mutationResolver) CreateChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
 	return r.channelService.CreateChannel(ctx, input)

@@ -123,6 +123,11 @@ const CREATE_CHANNEL_MUTATION = `
           apiFormats
           enabled
         }
+        providerQuota {
+          commandCode {
+            authCookie
+          }
+        }
       }
       orderingWeight
       remark
@@ -196,6 +201,11 @@ const DUPLICATE_CHANNEL_MUTATION = `
           model
           apiFormats
           enabled
+        }
+        providerQuota {
+          commandCode {
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -271,6 +281,11 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           apiFormats
           enabled
         }
+        providerQuota {
+          commandCode {
+            authCookie
+          }
+        }
       }
       orderingWeight
       remark
@@ -344,6 +359,11 @@ const UPDATE_CHANNEL_MUTATION = `
           model
           apiFormats
           enabled
+        }
+        providerQuota {
+          commandCode {
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -533,6 +553,11 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             model
             apiFormats
             enabled
+          }
+          providerQuota {
+            commandCode {
+              authCookie
+            }
           }
         }
       }
@@ -764,6 +789,11 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             apiFormats
             enabled
           }
+          providerQuota {
+            commandCode {
+              authCookie
+            }
+          }
         }
       }
     }
@@ -921,6 +951,11 @@ const QUERY_CHANNELS_QUERY = `
               model
               apiFormats
               enabled
+            }
+            providerQuota {
+              commandCode {
+                authCookie
+              }
             }
           }
           orderingWeight
@@ -1280,6 +1315,7 @@ export function useUpdateChannelSettings() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['channel', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
     },
     onError: (error) => {
       handleError(error, { context: t('channels.dialogs.edit.title') });

@@ -422,7 +422,7 @@ type Channel implements Node {
   tags: [String!]
   defaultTestModel: String!
   policies: ChannelPolicies @goField(forceResolver: true)
-  settings: ChannelSettings
+  settings: ChannelSettings @goField(forceResolver: true)
   """
   Ordering weight for display sorting
   """
@@ -1332,6 +1332,8 @@ enum ChannelType @goModel(model: "github.com/looplj/axonhub/internal/ent/channel
   zenmux_responses
   zenmux_anthropic
   zenmux_gemini
+  commandcode
+  commandcode_anthropic
 }
 """
 ChannelWhereInput is used for filtering Channel objects.
@@ -3771,6 +3773,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   zhipu
   charm_hyper
   zenmux
+  commandcode
 }
 """
 ProviderQuotaStatusStatus is enum for the field status

@@ -25,6 +25,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -530,6 +531,13 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 // createChannel creates a new channel without triggering a reload.
 // This is useful for batch operations where reload should happen once at the end.
 func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	sanitizedSettings, err := normalizeCommandCodeQuotaCookieSettings(input.Settings, input.Type)
+	if err != nil {
+		return nil, err
+	}
+	if sanitizedSettings != nil {
+		input.Settings = sanitizedSettings
+	}
 	if input.Type == channel.TypeXaiSubscription {
 		officialBaseURL := xaisubscription.DefaultBaseURL
 		input.BaseURL = &officialBaseURL
@@ -799,7 +807,44 @@ func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
 
 // UpdateChannel updates an existing channel with the provided input.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
-	log.Debug(ctx, "UpdateChannel", log.Int("id", id), log.Any("input", input))
+	log.Debug(ctx, "UpdateChannel", log.Int("id", id))
+	// Resolve the effective channel type so Command Code quota cookie handling
+	// below can distinguish "Command Code type" from "switching away".
+	var effectiveType *channel.Type
+	if input.Type != nil {
+		effectiveType = input.Type
+	} else {
+		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+			return svc.entFromContext(queryCtx).Channel.Query().
+				Where(channel.IDEQ(id)).
+				Select(channel.FieldType).
+				Only(queryCtx)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to load channel type for quota settings handling: %w", err)
+		}
+		effectiveType = &existing.Type
+	}
+
+	// A cleared Command Code quota cookie must invalidate the old persisted
+	// status, regardless of whether the client sent null or an empty object.
+	quotaCookieCleared := false
+
+	if input.Settings != nil {
+		if isCommandCodeChannelType(*effectiveType) && (input.Settings.ProviderQuota == nil || commandCodeQuotaCookieIsBlank(input.Settings)) {
+			input.Settings = clearCommandCodeQuotaSettings(input.Settings)
+			quotaCookieCleared = true
+		}
+
+		sanitizedSettings, err := normalizeCommandCodeQuotaCookieSettings(input.Settings, *effectiveType)
+		if err != nil {
+			return nil, err
+		}
+		if sanitizedSettings != nil {
+			input.Settings = sanitizedSettings
+		}
+	}
+
 	if err := NormalizeAPIKeyAutoDisableRules(input.Policies); err != nil {
 		return nil, err
 	}
@@ -939,6 +984,8 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 	var updated *ent.Channel
 	providerIdentityChanged := false
+	clearStaleQuotaSettings := input.Settings == nil && input.Type != nil &&
+		!isCommandCodeChannelType(*input.Type)
 	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
 
@@ -981,6 +1028,18 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 		if input.Settings != nil {
 			mut.SetSettings(input.Settings)
+		} else if clearStaleQuotaSettings {
+			// Type change away from the Command Code variants with no settings
+			// block: read the stored settings inside the same transaction and
+			// drop any orphaned quota cookie.
+			existingSettings, err := db.Channel.Query().
+				Where(channel.IDEQ(id)).
+				Select(channel.FieldSettings).
+				Only(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to load channel settings: %w", err)
+			}
+			mut.SetSettings(clearCommandCodeQuotaSettings(existingSettings.Settings))
 		}
 
 		if input.Policies != nil {
@@ -1056,7 +1115,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	if ent.TxFromContext(ctx) == nil {
 		updated.Unwrap()
 	}
-	if providerIdentityChanged {
+	if providerIdentityChanged || quotaCookieCleared {
 		runAfterCommit(ctx, func(ctx context.Context) {
 			svc.invalidateProviderQuota(ctx, id)
 		})
@@ -1174,4 +1233,73 @@ func (c *Channel) GetEnabledAPIKeys() []string {
 func (c *Channel) IsAPIKeyDisabled(key string) bool {
 	_, ok := c.cachedDisabledKeySet[key]
 	return ok
+}
+
+
+// normalizeCommandCodeQuotaCookieSettings is the biz-local gateway to the
+// shared Command Code cookie normalizer (provider_quota package). It keeps
+// channel persistence decoupled from the quota checker while guaranteeing the
+// exact same allowlist is applied before anything is stored. On the two
+// Command Code channel types the raw paste is canonicalized to the allowlisted
+// cookie; on every other type a supplied Command Code quota block is cleared
+// so the browser cookie never persists outside Command Code channels. A nil
+// result means no Command Code quota block was present; callers keep their
+// settings.
+func normalizeCommandCodeQuotaCookieSettings(settings *objects.ChannelSettings, typ channel.Type) (*objects.ChannelSettings, error) {
+	if settings == nil || settings.ProviderQuota == nil || settings.ProviderQuota.CommandCode == nil {
+		return nil, nil
+	}
+
+	if !isCommandCodeChannelType(typ) {
+		// The quota cookie only belongs on the two Command Code channel types.
+		// A type switch away (or a create/update that supplies a quota block on
+		// an unrelated type) must not persist the raw cookie.
+		return clearCommandCodeQuotaSettings(settings), nil
+	}
+
+	cookie, err := provider_quota.NormalizeCommandCodeCookie(settings.ProviderQuota.CommandCode.AuthCookie)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Command Code quota auth cookie: %w", err)
+	}
+
+	providerQuota := *settings.ProviderQuota
+	commandCode := *providerQuota.CommandCode
+	commandCode.AuthCookie = cookie
+	providerQuota.CommandCode = &commandCode
+
+	sanitized := *settings
+	sanitized.ProviderQuota = &providerQuota
+	return &sanitized, nil
+}
+
+// clearCommandCodeQuotaSettings removes the Command Code quota-only settings
+// block. It is applied when a type change leaves a cookie orphaned on a
+// non-Command Code channel, or when a Command Code settings update explicitly
+// blanks the quota auth cookie: the cookie must not survive outside the two
+// Command Code types. settings == nil stays nil (nothing to clear).
+func clearCommandCodeQuotaSettings(settings *objects.ChannelSettings) *objects.ChannelSettings {
+	if settings == nil {
+		return settings
+	}
+	sanitized := *settings
+	if sanitized.ProviderQuota != nil {
+		providerQuota := *sanitized.ProviderQuota
+		providerQuota.CommandCode = nil
+		if providerQuota == (objects.ChannelProviderQuotaSettings{}) {
+			sanitized.ProviderQuota = nil
+		} else {
+			sanitized.ProviderQuota = &providerQuota
+		}
+	}
+	return &sanitized
+}
+
+// commandCodeQuotaCookieIsBlank reports whether a settings update carries a
+// Command Code quota block whose auth cookie is empty or whitespace-only: the
+// explicit "clear the stored quota cookie" signal from the UI.
+func commandCodeQuotaCookieIsBlank(settings *objects.ChannelSettings) bool {
+	return settings != nil &&
+		settings.ProviderQuota != nil &&
+		settings.ProviderQuota.CommandCode != nil &&
+		strings.TrimSpace(settings.ProviderQuota.CommandCode.AuthCookie) == ""
 }

@@ -86,7 +86,7 @@ func shouldDecodeAnthropicSignature(config *Config) bool {
 	}
 
 	switch config.Type {
-	case "", PlatformDirect, PlatformClaudeCode, PlatformVertex, PlatformBedrock:
+	case "", PlatformDirect, PlatformClaudeCode, PlatformVertex, PlatformBedrock, PlatformCommandCode:
 		return true
 	default:
 		return false

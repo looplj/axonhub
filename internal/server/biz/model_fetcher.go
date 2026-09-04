@@ -179,6 +179,10 @@ func isQiniuChannelType(channelType channel.Type) bool {
 	return channelType == channel.TypeQiniu || channelType == channel.TypeQiniuAnthropic
 }
 
+func isCommandCodeChannelType(channelType channel.Type) bool {
+	return channelType == channel.TypeCommandcode || channelType == channel.TypeCommandcodeAnthropic
+}
+
 func (f *ModelFetcher) getDefaultModelsByType(ctx context.Context, typ channel.Type) []ModelIdentify {
 	//nolint:exhaustive // only supports default model fetching for specific channel types.
 	switch typ {
@@ -466,7 +470,10 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		Headers: authHeaders,
 	}
 
-	if channelType.UsesAnthropicModelAPI() {
+	if isCommandCodeChannelType(channelType) {
+		// Command Code authenticates with a Bearer API key, never X-Api-Key.
+		req.Headers.Set("Authorization", "Bearer "+apiKey)
+	} else if channelType.UsesAnthropicModelAPI() {
 		req.Headers.Set("X-Api-Key", apiKey)
 	} else if channelType.IsGemini() {
 		req.Headers.Set("X-Goog-Api-Key", apiKey)
@@ -499,7 +506,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		err  error
 	)
 
-	if channelType.UsesAnthropicModelAPI() {
+	if channelType.UsesAnthropicModelAPI() && !isCommandCodeChannelType(channelType) {
 		resp, err = httpClient.Do(ctx, req)
 		if err != nil || resp.StatusCode != http.StatusOK {
 			req.Headers.Del("X-Api-Key")
@@ -677,6 +684,19 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 	case channelType == channel.TypeDoubaoAnthropic:
 		baseURL = strings.TrimSuffix(baseURL, "/compatible")
 		return baseURL + "/v3/models", headers
+	case isCommandCodeChannelType(channelType):
+		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
+		baseURL = strings.TrimSuffix(baseURL, "/claude")
+
+		if useRawURL {
+			return baseURL + "/models", headers
+		}
+
+		if strings.HasSuffix(baseURL, "/v1") {
+			return baseURL + "/models", headers
+		}
+
+		return baseURL + "/v1/models", headers
 	case channelType.IsAnthropicLike():
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
 		baseURL = strings.TrimSuffix(baseURL, "/claude")

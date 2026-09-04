@@ -467,6 +467,20 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatAnthropicMessage.String():
+		// Command Code only accepts Authorization: Bearer, for both the
+		// Anthropic-format channel type and the chat-completions channel type
+		// opting into a custom Anthropic endpoint; ordinary Anthropic direct
+		// channels keep X-API-Key.
+		switch c.Type {
+		case channel.TypeCommandcode, channel.TypeCommandcodeAnthropic:
+			return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+				Type:           anthropic.PlatformCommandCode,
+				BaseURL:        baseURL,
+				APIKeyProvider: apiKeyProvider(),
+				EndpointPath:   ep.Path,
+			})
+		}
+
 		return anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:           anthropic.PlatformDirect,
 			BaseURL:        baseURL,
@@ -595,6 +609,12 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		// Ollama is often run locally without an API key. An apiKeyOverride
 		// (channel key test flow) may also supply a key when none are stored,
 		// so skip the stored-key check here.
+	case channel.TypeCommandcode, channel.TypeCommandcodeAnthropic:
+		// Command Code inference always authenticates with a Bearer API key;
+		// the quota collection cookie is never an inference credential.
+		if len(enabledKeys) == 0 {
+			return nil, fmt.Errorf("missing api key for channel %s", c.Name)
+		}
 	default:
 		if len(enabledKeys) == 0 {
 			return nil, fmt.Errorf("missing api key for channel %s", c.Name)
@@ -801,6 +821,19 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 	case channel.TypeAnthropic, channel.TypeQiniuAnthropic, channel.TypeMinimaxAnthropic, channel.TypeZenmuxAnthropic, channel.TypeVolcengineAnthropic, channel.TypeAihubmixAnthropic, channel.TypeXiaomiAnthropic, channel.TypeEvolinkAnthropic:
 		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
 			Type:           anthropic.PlatformDirect,
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeCommandcodeAnthropic:
+		transformer, err := anthropic.NewOutboundTransformerWithConfig(&anthropic.Config{
+			Type:           anthropic.PlatformCommandCode,
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
 		})
@@ -1059,6 +1092,19 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		return ch, nil
 	case channel.TypeOpencodeGo:
 		transformer, err := opencode.NewOutboundTransformerWithConfig(&opencode.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeCommandcode:
+		transformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
+			PlatformType:   openai.PlatformOpenAI,
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
 		})

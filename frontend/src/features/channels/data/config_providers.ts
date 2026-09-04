@@ -35,6 +35,7 @@ import {
   Groq,
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
+import { CommandCodeIcon } from '../components/commandcode-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
 import { FennoIcon } from '../components/fenno-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
@@ -299,6 +300,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: ZenMux,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini'],
+  },
+  commandcode: {
+    provider: 'commandcode',
+    icon: CommandCodeIcon,
+    color: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+    channelTypes: ['commandcode', 'commandcode_anthropic'],
   },
 };
 
