@@ -3,17 +3,23 @@ package biz
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"strings"
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 type quotaCheckGroup struct {
 	channels   []*ent.Channel
 	accountKey string
+}
+
+type quotaCheckGroupKey struct {
+	accountKey string
+	proxy      httpclient.ProxyConfig
+	hasProxy   bool
 }
 
 func quotaAccountKey(providerType string, ch *ent.Channel) string {
@@ -32,7 +38,7 @@ func quotaAccountKey(providerType string, ch *ent.Channel) string {
 
 func (svc *ProviderQuotaService) groupChannelsByQuotaAccount(channels []*ent.Channel) []quotaCheckGroup {
 	groups := make([]quotaCheckGroup, 0, len(channels))
-	groupIndexes := make(map[string]int)
+	groupIndexes := make(map[quotaCheckGroupKey]int)
 
 	for _, ch := range channels {
 		accountKey := quotaAccountKey(svc.getProviderType(ch), ch)
@@ -41,7 +47,7 @@ func (svc *ProviderQuotaService) groupChannelsByQuotaAccount(channels []*ent.Cha
 			continue
 		}
 
-		groupKey := quotaCheckGroupKey(accountKey, ch)
+		groupKey := newQuotaCheckGroupKey(accountKey, ch)
 		if index, ok := groupIndexes[groupKey]; ok {
 			groups[index].channels = append(groups[index].channels, ch)
 			continue
@@ -57,15 +63,13 @@ func (svc *ProviderQuotaService) groupChannelsByQuotaAccount(channels []*ent.Cha
 	return groups
 }
 
-func quotaCheckGroupKey(accountKey string, ch *ent.Channel) string {
-	proxyKey := ""
+func newQuotaCheckGroupKey(accountKey string, ch *ent.Channel) quotaCheckGroupKey {
+	key := quotaCheckGroupKey{accountKey: accountKey}
 	if ch.Settings != nil && ch.Settings.Proxy != nil {
-		proxy, err := json.Marshal(ch.Settings.Proxy)
-		if err == nil {
-			proxyKey = string(proxy)
-		}
+		key.proxy = *ch.Settings.Proxy
+		key.hasProxy = true
 	}
-	return accountKey + "\x00" + proxyKey
+	return key
 }
 
 func quotaCheckGroupIsDue(group quotaCheckGroup, now time.Time) bool {
