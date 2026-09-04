@@ -1304,6 +1304,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         } as z.infer<typeof updateChannelInputSchema>;
         delete updateInput.settings;
 
+        const finalChannelType = updateInput.type || currentRow.type;
+        const keepsManagementApiKey = [
+          'zenmux',
+          'zenmux_responses',
+          'zenmux_anthropic',
+          'zenmux_gemini',
+        ].includes(finalChannelType);
+        if (!keepsManagementApiKey && updateInput.credentials) {
+          delete updateInput.credentials.managementApiKey;
+        }
+
         const apiKey = values.credentials?.apiKey || '';
         const hasApiKey = apiKey.trim().length > 0;
         const apiKeys = values.credentials?.apiKeys || [];
