@@ -271,305 +271,70 @@ Here are some screenshots of AxonHub in action:
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Deployment Guide
 
-### 30-Second Local Start
+Ask your agent to read and follow [`deploy-axonhub`](https://github.com/looplj/axonhub-skills/blob/main/deploy-axonhub/SKILL.md) to deploy AxonHub.
 
-```bash
-# Download and extract (macOS ARM64 example)
-curl -sSL https://github.com/looplj/axonhub/releases/latest/download/axonhub_darwin_arm64.tar.gz | tar xz
-cd axonhub_*
+---
 
-# Run with SQLite (default)
-./axonhub
+## ⚡ Quick Start
 
-# Open http://localhost:8090
-# First run: Follow the setup wizard to initialize the system (create admin account, password must be at least 6 characters)
-```
+After deployment:
 
-That's it! Now configure your first AI channel and start calling models through AxonHub.
-
-### Zero-Code Migration Example
-
-**Your existing code works without any changes.** Just point your SDK to AxonHub:
+1. **Initialize the system**
+   - Open the AxonHub URL returned by your agent.
+   - Follow the initialization wizard to create the administrator account.
+2. **Add a channel**
+   - Add an AI provider and its API key under **Channels**.
+   - Configure supported models, test the connection, and enable the channel.
+3. **Create an API key**
+   - Create an AxonHub API key for your client under **API Keys**.
+4. **Make your first request**
 
 ```python
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="http://localhost:8090/v1",  # Point to AxonHub
-    api_key="your-axonhub-api-key"        # Use AxonHub API key
+    base_url="http://localhost:8090/v1",
+    api_key="your-axonhub-api-key"
 )
 
-# Call Claude using OpenAI SDK!
 response = client.chat.completions.create(
-    model="claude-3-5-sonnet",  # Or gpt-4, gemini-pro, deepseek-chat...
-    messages=[{"role": "user", "content": "Hello!"}]
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "Hello, AxonHub!"}]
 )
+
+print(response.choices[0].message.content)
 ```
 
-Switch models by changing one line: `model="gpt-4"` → `model="claude-3-5-sonnet"`. No SDK changes needed.
-
-### 1-click Deploy to Render
-
-Deploy AxonHub with 1-click on [Render](https://render.com) for free.
-
-<div>
-
-<a href="https://render.com/deploy?repo=https://github.com/looplj/axonhub">
-  <img src="https://render.com/images/deploy-to-render-button.svg" alt="Deploy to Render">
-</a>
-
-</div>
+See the [documentation index](docs/en/index.md) for configuration details and more API examples.
 
 ---
-
-## 🚀 Deployment Guide
-
-### 💻 Personal Computer Deployment
-
-Perfect for individual developers and small teams. No complex configuration required.
-
-#### Quick Download & Run
-
-1. **Download the latest release** from [GitHub Releases](https://github.com/looplj/axonhub/releases)
-
-   - Choose the appropriate version for your operating system:
-
-2. **Extract and run**
-
-   ```bash
-   # Extract the downloaded file
-   unzip axonhub_*.zip
-   cd axonhub_*
-
-   # Add execution permissions (only for Linux/macOS)
-   chmod +x axonhub
-
-   # Run directly - default SQLite database
-
-   # Install AxonHub to system
-   sudo ./install.sh
-
-   # Start AxonHub service
-   ./start.sh
-
-   # Stop AxonHub service
-   ./stop.sh
-   ```
-
-3. **Access the application**
-   ```
-   http://localhost:8090
-   ```
-
----
-
-### 🖥️ Server Deployment
-
-For production environments, high availability, and enterprise deployments.
-
-#### Database Support
-
-AxonHub supports multiple databases to meet different scale deployment needs:
-
-| Database       | Supported Versions | Recommended Scenario                             | Auto Migration | Links                                                       |
-| -------------- | ------------------ | ------------------------------------------------ | -------------- | ----------------------------------------------------------- |
-| **TiDB Cloud** | Starter            | Serverless, Free tier, Auto Scale                | ✅ Supported   | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-starter/)   |
-| **TiDB Cloud** | Dedicated          | Distributed deployment, large scale              | ✅ Supported   | [TiDB Cloud](https://www.pingcap.com/tidb-cloud-dedicated/) |
-| **TiDB**       | V8.0+              | Distributed deployment, large scale              | ✅ Supported   | [TiDB](https://tidb.io/)                                    |
-| **Neon DB**    | -                  | Serverless, Free tier, Auto Scale                | ✅ Supported   | [Neon DB](https://neon.com/)                                |
-| **PostgreSQL** | 15+                | Production environment, medium-large deployments | ✅ Supported   | [PostgreSQL](https://www.postgresql.org/)                   |
-| **MySQL**      | 8.0+               | Production environment, medium-large deployments | ✅ Supported   | [MySQL](https://www.mysql.com/)                             |
-| **SQLite**     | 3.0+               | Development environment, small deployments       | ✅ Supported   | [SQLite](https://www.sqlite.org/index.html)                 |
-
-#### Configuration
-
-AxonHub uses YAML configuration files with environment variable override support:
-
-```yaml
-# config.yml
-server:
-  port: 8090
-  name: "AxonHub"
-  debug: false
-
-db:
-  dialect: "tidb"
-  dsn: "<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
-
-log:
-  level: "info"
-  encoding: "json"
-```
-
-Environment variables:
-
-```bash
-AXONHUB_SERVER_PORT=8090
-AXONHUB_DB_DIALECT="tidb"
-AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
-AXONHUB_LOG_LEVEL=info
-```
-
-For detailed configuration instructions, please refer to [configuration documentation](docs/en/deployment/configuration.md).
-
-#### Docker Compose Deployment
-
-```bash
-# Clone project
-git clone https://github.com/looplj/axonhub.git
-cd axonhub
-
-# Create a local environment file (replace image digests and password)
-umask 077
-cat > .env <<'EOF'
-DB_PASSWORD=replace-with-a-long-random-password
-AXONHUB_IMAGE=looplj/axonhub@sha256:replace-with-axonhub-digest
-POSTGRES_IMAGE=postgres@sha256:replace-with-postgres-digest
-EOF
-
-# Start services
-docker compose --env-file .env up -d
-
-# Check status
-docker compose ps
-```
-
-#### Helm Kubernetes Deployment
-
-Deploy AxonHub on Kubernetes using the official Helm chart:
-
-```bash
-# Quick installation
-git clone https://github.com/looplj/axonhub.git
-cd axonhub
-helm install axonhub ./deploy/helm
-
-# Production deployment
-helm install axonhub ./deploy/helm -f ./deploy/helm/values-production.yaml
-
-# Access AxonHub
-kubectl port-forward svc/axonhub 8090:8090
-# Visit http://localhost:8090
-```
-
-**Key Configuration Options:**
-
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| `axonhub.replicaCount` | Replicas | `1` |
-| `axonhub.dbPassword` | DB password | `axonhub_password` |
-| `postgresql.enabled` | Embedded PostgreSQL | `true` |
-| `ingress.enabled` | Enable ingress | `false` |
-| `persistence.enabled` | Data persistence | `false` |
-
-For detailed configuration and troubleshooting, see [Helm Chart Documentation](deploy/helm/README.md).
-
-#### Virtual Machine Deployment
-
-Download the latest release from [GitHub Releases](https://github.com/looplj/axonhub/releases)
-
-```bash
-# Extract and run
-unzip axonhub_*.zip
-cd axonhub_*
-
-# Set environment variables
-export AXONHUB_DB_DIALECT="tidb"
-export AXONHUB_DB_DSN="<USER>.root:<PASSWORD>@tcp(gateway01.us-west-2.prod.aws.tidbcloud.com:4000)/axonhub?tls=true&parseTime=true&multiStatements=true&charset=utf8mb4"
-
-sudo ./install.sh
-
-# Configuration file check
-axonhub config check
-
-# Start service
-#  For simplicity, we recommend managing AxonHub with the helper scripts:
-
-# Start
-./start.sh
-
-# Stop
-./stop.sh
-```
-
----
-
-## 📖 Usage Guide
-
-### Unified API Overview
-
-AxonHub provides a unified API gateway that supports both OpenAI Chat Completions and Anthropic Messages APIs. This means you can:
-
-- **Use OpenAI API to call Anthropic models** - Keep using your OpenAI SDK while accessing Claude models
-- **Use Anthropic API to call OpenAI models** - Use Anthropic's native API format with GPT models
-- **Use Gemini API to call OpenAI models** - Use Gemini's native API format with GPT models
-- **Automatic API translation** - AxonHub handles format conversion automatically
-- **Zero code changes** - Your existing OpenAI or Anthropic client code continues to work
-
-### 1. Initial Setup
-
-1. **Access Management Interface**
-
-   ```
-   http://localhost:8090
-   ```
-
-2. **Configure AI Providers**
-
-   - Add API keys in the management interface
-   - Test connections to ensure correct configuration
-
-3. **Create Users and Roles**
-   - Set up permission management
-   - Assign appropriate access permissions
-
-### 2. Channel Configuration
-
-Configure AI provider channels in the management interface. For detailed information on channel configuration, including model mappings, parameter overrides, and troubleshooting, see the [Channel Configuration Guide](docs/en/guides/channel-management.md).
-
-### 3. Model Management
-
-AxonHub provides a flexible model management system that supports mapping abstract models to specific channels and model implementations through Model Associations. This enables:
-
-- **Unified Model Interface** - Use abstract model IDs (e.g., `gpt-4`, `claude-3-opus`) instead of channel-specific names
-- **Intelligent Channel Selection** - Automatically route requests to optimal channels based on association rules and load balancing
-- **Flexible Mapping Strategies** - Support for precise channel-model matching, regex patterns, and tag-based selection
-- **Priority-based Fallback** - Configure multiple associations with priorities for automatic failover
-
-For comprehensive information on model management, including association types, configuration examples, and best practices, see the [Model Management Guide](docs/en/guides/model-management.md).
-
-### 4. Create API Keys
-
-Create API keys to authenticate your applications with AxonHub. Each API key can be configured with multiple profiles that define:
-
-- **Model Mappings** - Transform user-requested models to actual available models using exact match or regex patterns
-- **Channel Restrictions** - Limit which channels an API key can use by channel IDs or tags
-- **Model Access Control** - Control which models are accessible through a specific profile
-- **Profile Switching** - Change behavior on-the-fly by activating different profiles
-
-For detailed information on API key profiles, including configuration examples, validation rules, and best practices, see the [API Key Profile Guide](docs/en/guides/api-key-profiles.md).
-
-### 5. AI Coding Tools Integration
-
-See the dedicated guides for detailed setup steps, troubleshooting, and tips on combining these tools with AxonHub model profiles:
-- [OpenCode Integration Guide](docs/en/guides/opencode-integration.md)
-- [Claude Code Integration Guide](docs/en/guides/claude-code-integration.md)
-- [Codex Integration Guide](docs/en/guides/codex-integration.md)
-
----
-
-### 6. SDK Usage
-
-For detailed SDK usage examples and code samples, please refer to the API documentation:
-- [OpenAI API](docs/en/api-reference/openai-api.md)
-- [Anthropic API](docs/en/api-reference/anthropic-api.md)
-- [Gemini API](docs/en/api-reference/gemini-api.md)
 
 ## 🛠️ Development Guide
 
 For detailed development instructions, architecture design, and contribution guidelines, please see [docs/en/development/development.md](docs/en/development/development.md).
+
+---
+
+## 👥 Team
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/looplj">
+        <img src="https://github.com/looplj.png?size=100" width="100" alt="looplj"/><br/>
+        <sub><b>looplj</b></sub>
+      </a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/llc1123">
+        <img src="https://github.com/llc1123.png?size=100" width="100" alt="llc1123"/><br/>
+        <sub><b>llc1123</b></sub>
+      </a>
+    </td>
+  </tr>
+</table>
 
 ---
 
