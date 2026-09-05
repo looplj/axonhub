@@ -280,6 +280,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		// User-Agent value (either from client pass-through or default "axonhub/1.0").
 		// This allows override headers to modify the User-Agent if configured.
 		applyUserAgentPassThrough(outbound, processor.SystemService),
+		// Replace a client-provided X-Request-Id with AxonHub's unique per-request
+		// identifier. Header overrides run afterwards and can still opt out.
+		applyUpstreamRequestID(),
 		applyOverrideRequestHeaders(outbound),
 		// Remove transport-incompatible fields after pass-through and overrides,
 		// so persistence and execution observe the same provider request.
