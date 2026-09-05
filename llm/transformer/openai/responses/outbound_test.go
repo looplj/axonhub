@@ -1137,6 +1137,27 @@ func TestOutboundTransformer_TransformRequest_UsesSharedSessionIDAsPromptCacheKe
 	require.Equal(t, "shared-session-123-"+conversationAnchor(req.Messages), *payload.PromptCacheKey)
 }
 
+func TestOutboundTransformer_TransformRequest_PromptCacheKeyFallback_SkipsStrictCompatHosts(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://integrate.api.nvidia.com/v1", "test-api-key")
+	require.NoError(t, err)
+
+	ctx := shared.WithSessionID(context.Background(), "shared-session-123")
+	req := &llm.Request{
+		Model: "moonshotai/kimi-k3",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	}
+
+	httpReq, err := transformer.TransformRequest(ctx, req)
+	require.NoError(t, err)
+
+	var payload Request
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+	require.Nil(t, payload.PromptCacheKey)
+}
+
 func TestOutboundTransformer_TransformRequest_PromptCacheKeyScopedPerConversation(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

@@ -290,7 +290,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		Truncation:           xmap.GetStringPtr(llmReq.TransformerMetadata, "truncation"),
 	}
 
-	if lo.FromPtr(payload.PromptCacheKey) == "" {
+	if lo.FromPtr(payload.PromptCacheKey) == "" && shared.SupportsPromptCacheKey(t.config.BaseURL) {
 		if sessionID, ok := shared.GetSessionID(ctx); ok {
 			// A session may multiplex several concurrent conversations
 			// (e.g. Claude Code subagents); scope the cache key to the
