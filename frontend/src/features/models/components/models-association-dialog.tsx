@@ -29,7 +29,7 @@ import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/sche
 import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
 
-const MAX_ASSOCIATION_PRIORITY = 10;
+const MAX_ASSOCIATION_PRIORITY = 100;
 
 const requestFormatConditionOptions = [
   'openai/chat_completions',
@@ -908,11 +908,11 @@ export function ModelsAssociationDialog() {
     // Get the priority of the last rule (highest priority)
     const currentAssociations = form.getValues('associations') || [];
     const lastPriority =
-      currentAssociations.length > 0 ? Math.max(...currentAssociations.map((a) => a.priority ?? 0)) : 0;
+      currentAssociations.length > 0 ? Math.max(...currentAssociations.map((a) => a.priority ?? 0)) : -1;
 
     append({
       type: 'channel_model',
-      priority: lastPriority,
+      priority: Math.min(lastPriority + 1, MAX_ASSOCIATION_PRIORITY),
       disabled: false,
       whenEnabled: false,
       whenCondition: DEFAULT_WHEN_CONDITION,
@@ -1424,6 +1424,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                   placeholder='0'
                 />
               </FormControl>
+              <FormMessage />
             </FormItem>
           )}
         />
