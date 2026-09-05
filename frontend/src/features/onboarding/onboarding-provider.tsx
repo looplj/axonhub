@@ -29,6 +29,8 @@ export function OnboardingProvider({ children, showOnboarding = true, onComplete
       } else {
         setMode('none');
       }
+    } else if (!showOnboarding || !isOwner) {
+      setMode('none');
     }
   }, [onboardingInfo, isLoading, showOnboarding, isOwner]);
 
