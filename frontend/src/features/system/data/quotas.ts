@@ -453,6 +453,20 @@ export type ProviderCommandCodeQuotaData = ProviderQuotaDataCommon & {
   };
 };
 
+export type OllamaQuotaWindow = {
+  usage_percent?: number;
+  status?: string;
+  percent_remaining?: number;
+  reset_time?: string;
+};
+
+export type ProviderOllamaQuotaData = ProviderQuotaDataCommon & {
+  windows?: {
+    '5h'?: OllamaQuotaWindow;
+    weekly?: OllamaQuotaWindow;
+  };
+};
+
 /**
  * A single limit window as normalized by the backend and stashed under
  * `quotaData._limits`. `periodCost` is what the channel cost in the current
@@ -709,6 +723,12 @@ export type ProviderQuotaChannel = {
         quotaData: ProviderCommandCodeQuotaData;
       };
     }
+  | {
+      type: 'ollama' | 'ollama_anthropic';
+      quotaStatus: {
+        quotaData: ProviderOllamaQuotaData;
+      };
+    }
 );
 
 type ProviderQuotaStatusNode = {
@@ -895,6 +915,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       ...base,
       type: node.type as 'commandcode' | 'commandcode_anthropic',
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCommandCodeQuotaData },
+    };
+  }
+  if (node.type === 'ollama' || node.type === 'ollama_anthropic') {
+    return {
+      ...base,
+      type: node.type as 'ollama' | 'ollama_anthropic',
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderOllamaQuotaData },
     };
   }
   return {

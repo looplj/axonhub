@@ -875,5 +875,8 @@
   "channels.dialogs.apiKeyRules.fields.timezone": "时区",
   "channels.dialogs.apiKeyRules.fields.timezoneHint": "cron 表达式按此时区解释。留空等同 UTC。",
   "channels.dialogs.disabledAPIKeys.oauthCredential": "OAuth 凭证",
-  "channels.dialogs.apiKeyRules.actions.permanentDisable": "永久禁用（保留凭证）"
+  "channels.dialogs.apiKeyRules.actions.permanentDisable": "永久禁用（保留凭证）",
+  "channels.dialogs.fields.ollamaQuota.authCookie.label": "Web Cookie",
+  "channels.dialogs.fields.ollamaQuota.authCookie.placeholder": "__Secure-session=...（从 ollama.com/settings 复制）",
+  "channels.dialogs.fields.ollamaQuota.authCookie.description": "访问 ollama.com/settings 的 Plan & Billing 用量页面，复制 Cookie 请求头。仅使用 __Secure-session 这个 Cookie。"
 }
