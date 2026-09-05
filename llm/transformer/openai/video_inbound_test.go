@@ -134,6 +134,27 @@ func TestVideoInboundTransformer_TransformRequest_Multipart_WithInputReferenceFi
 	assert.Contains(t, ref, "data:image/png;base64,")
 }
 
+func TestVideoInboundTransformer_TransformRequest_Multipart_ShortUntypedReference(t *testing.T) {
+	inbound := NewVideoInboundTransformer()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	require.NoError(t, writer.WriteField("model", "sora-2"))
+	require.NoError(t, writer.WriteField("prompt", "a cat walking"))
+	addFilePartVideo(t, writer, "input_reference", "ref.bin", "", []byte("short"))
+	require.NoError(t, writer.Close())
+
+	httpReq := &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{writer.FormDataContentType()}},
+		Body:    body.Bytes(),
+	}
+
+	assert.NotPanics(t, func() {
+		_, err := inbound.TransformRequest(context.Background(), httpReq)
+		require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+	})
+}
+
 func TestVideoInboundTransformer_TransformRequest_MultipartPreservesContent(t *testing.T) {
 	// Given: a multipart request carrying a typed content[] JSON field.
 	inbound := NewVideoInboundTransformer()

@@ -11,8 +11,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -97,7 +95,11 @@ func parseVideoMultipartRequest(httpReq *httpclient.Request) (*VideoCreateReques
 		}
 
 		if contentType == "" {
-			contentType = http.DetectContentType(lo.Ternary(len(data) > 512, data[:512], data))
+			sample := data
+			if len(sample) > 512 {
+				sample = sample[:512]
+			}
+			contentType = http.DetectContentType(sample)
 		}
 
 		if !isAllowedImageType(contentType) {
