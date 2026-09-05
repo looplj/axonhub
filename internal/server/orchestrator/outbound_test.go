@@ -1163,6 +1163,163 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 	})
 }
 
+func TestOutboundPersistentStream_Close_ResponsesTerminalPersistsOutcome(t *testing.T) {
+	tests := []struct {
+		name             string
+		eventType        string
+		responseBody     string
+		expectedStatus   requestexecution.Status
+		expectedError    string
+		channelSuccess   bool
+		channelCanceled  bool
+		channelErrorCode int
+	}{
+		{
+			name:      "failed",
+			eventType: "response.failed",
+			responseBody: `{"id":"resp_failed","status":"failed","output":[],` +
+				`"error":{"type":"server_error","code":"provider_error","message":"provider failed"},` +
+				`"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}`,
+			expectedStatus:   requestexecution.StatusFailed,
+			expectedError:    "provider failed",
+			channelErrorCode: 500,
+		},
+		{
+			name:      "incomplete",
+			eventType: "response.incomplete",
+			responseBody: `{"id":"resp_incomplete","status":"incomplete","output":[],` +
+				`"incomplete_details":{"reason":"max_output_tokens"},` +
+				`"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}`,
+			expectedStatus: requestexecution.StatusFailed,
+			expectedError:  "max_output_tokens",
+			channelSuccess: true,
+		},
+		{
+			name:      "content filter",
+			eventType: "response.incomplete",
+			responseBody: `{"id":"resp_filtered","status":"incomplete","output":[],` +
+				`"incomplete_details":{"reason":"content_filter"}}`,
+			expectedStatus: requestexecution.StatusFailed,
+			expectedError:  "content_filter",
+			channelSuccess: true,
+		},
+		{
+			name:      "completed event with incomplete status",
+			eventType: "response.completed",
+			responseBody: `{"id":"resp_incomplete_status","status":"incomplete","output":[],` +
+				`"incomplete_details":{"reason":"max_output_tokens"}}`,
+			expectedStatus: requestexecution.StatusFailed,
+			expectedError:  "max_output_tokens",
+			channelSuccess: true,
+		},
+		{
+			name:      "canceled",
+			eventType: "response.cancelled",
+			responseBody: `{"id":"resp_canceled","status":"canceled","output":[],` +
+				`"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}}`,
+			expectedStatus:  requestexecution.StatusCanceled,
+			expectedError:   "response.cancelled",
+			channelCanceled: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			defer client.Close()
+
+			ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+			project := createTestProject(t, ctx, client)
+			ch := createTestChannel(t, ctx, client)
+			_, requestService, systemService, usageLogService := setupTestServices(t, client)
+			require.NoError(t, systemService.SetStoragePolicy(ctx, &biz.StoragePolicy{
+				StoreChunks:       true,
+				StoreRequestBody:  true,
+				StoreResponseBody: true,
+			}))
+
+			req, err := client.Request.Create().
+				SetProjectID(project.ID).
+				SetChannelID(ch.ID).
+				SetModelID("gpt-5").
+				SetStatus(request.StatusProcessing).
+				SetRequestBody([]byte(`{"stream":true}`)).
+				SetStream(true).
+				Save(ctx)
+			require.NoError(t, err)
+			exec, err := client.RequestExecution.Create().
+				SetRequestID(req.ID).
+				SetProjectID(project.ID).
+				SetChannelID(ch.ID).
+				SetModelID("gpt-5").
+				SetFormat(llm.APIFormatOpenAIResponse.String()).
+				SetStatus(requestexecution.StatusProcessing).
+				SetRequestBody([]byte(`{"stream":true}`)).
+				SetStream(true).
+				Save(ctx)
+			require.NoError(t, err)
+
+			event := &httpclient.StreamEvent{
+				Type: tt.eventType,
+				Data: []byte(`{"type":"` + tt.eventType + `","response":` + tt.responseBody + `}`),
+			}
+			stream := &sliceEventStream{
+				events: []*httpclient.StreamEvent{event},
+				err:    io.ErrUnexpectedEOF,
+			}
+			responseID := gjson.Get(tt.responseBody, "id").String()
+			transformer := &mockTransformer{
+				apiFormat:          llm.APIFormatOpenAIResponse,
+				aggregatedResponse: []byte(tt.responseBody),
+				aggregatedMeta: llm.ResponseMeta{
+					ID: responseID,
+					Usage: &llm.Usage{
+						PromptTokens:     10,
+						CompletionTokens: 2,
+						TotalTokens:      12,
+					},
+				},
+			}
+			perf := &biz.PerformanceRecord{StartTime: time.Now(), Stream: true}
+			state := &PersistenceState{Perf: perf}
+			persistentStream := NewOutboundPersistentStream(
+				ctx,
+				stream,
+				req,
+				exec,
+				requestService,
+				usageLogService,
+				transformer,
+				perf,
+				state,
+			)
+
+			require.True(t, persistentStream.Next())
+			require.Equal(t, event, persistentStream.Current())
+			require.False(t, persistentStream.Next())
+			require.NoError(t, persistentStream.Close())
+			require.False(t, state.StreamCompleted)
+			require.True(t, perf.RequestCompleted)
+			require.Equal(t, tt.channelSuccess, perf.Success)
+			require.Equal(t, tt.channelCanceled, perf.Canceled)
+			require.Equal(t, tt.channelErrorCode, perf.ResponseStatusCode)
+			if tt.channelErrorCode == 0 {
+				require.Empty(t, perf.ErrorMessage)
+			} else {
+				require.Equal(t, tt.expectedError, perf.ErrorMessage)
+			}
+
+			dbExec, err := client.RequestExecution.Get(ctx, exec.ID)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedStatus, dbExec.Status)
+			require.Equal(t, tt.expectedError, dbExec.ErrorMessage)
+			require.Equal(t, responseID, dbExec.ExternalID)
+			require.JSONEq(t, tt.responseBody, string(dbExec.ResponseBody))
+			require.NotEmpty(t, dbExec.ResponseChunks)
+		})
+	}
+}
+
 func TestPersistentOutboundTransformer_TransformRequest_WithPrepopulatedState(t *testing.T) {
 	// Setup
 	ctx := context.Background()

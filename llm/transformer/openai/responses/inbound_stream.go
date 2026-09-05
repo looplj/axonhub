@@ -121,6 +121,13 @@ func (s *responsesInboundStream) Next() bool {
 		return true
 	}
 
+	// response.completed is the final downstream outcome. Do not read the
+	// source again, because a later transport error would otherwise be converted
+	// into a conflicting response.failed event.
+	if s.responseCompleted {
+		return false
+	}
+
 	// Clear the queue and reset index for new events
 	s.eventQueue = nil
 	s.queueIndex = 0
@@ -130,7 +137,7 @@ func (s *responsesInboundStream) Next() bool {
 		if s.err == nil && !s.errorEventEmitted && s.source.Err() == nil && s.hasFinished && !s.responseCompleted {
 			s.responseCompleted = true
 			// Only fall back to completed when no terminal status was mapped
-			// from a finish_reason (incomplete/failed/cancelled).
+			// from a finish_reason (incomplete/failed/canceled).
 			if s.aggregator.status == "" || s.aggregator.status == "in_progress" {
 				s.aggregator.status = "completed"
 			}
@@ -340,7 +347,7 @@ func (s *responsesInboundStream) Next() bool {
 		s.usage = chunk.Usage
 
 		// Build final response using aggregator
-		// A mapped terminal status (incomplete/failed/cancelled) must win over
+		// A mapped terminal status (incomplete/failed/canceled) must win over
 		// the default; only fall back to completed when still in_progress.
 		if s.aggregator.status == "" || s.aggregator.status == "in_progress" {
 			s.aggregator.status = "completed"
@@ -1214,7 +1221,7 @@ func classifyStreamError(err error) (code, message string) {
 	code = "stream_error"
 	message = err.Error()
 
-	if errors.Is(err, io.EOF) {
+	if errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, io.EOF) {
 		code = "upstream_eof"
 		message = "upstream connection closed unexpectedly"
 		return code, message
@@ -1294,6 +1301,12 @@ func (s *responsesInboundStream) Err() error {
 
 	if s.err != nil {
 		return s.err
+	}
+
+	// A source error observed after response.completed is outside the completed
+	// response and must not become a second terminal outcome downstream.
+	if s.responseCompleted {
+		return nil
 	}
 
 	return s.source.Err()
