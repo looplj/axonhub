@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useUpdateChannelSettings } from '../data/channels';
+import { getAvailableProtocolFormats, getConfigurableApiFormatsForChannelType } from '../data/protocol-options';
 import {
   Channel,
   ChannelEndpoint,
@@ -196,7 +197,10 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
 
   const usedApiFormats = useMemo(() => new Set(endpoints.map((ep) => ep.apiFormat)), [endpoints]);
 
-  const availableApiFormats = useMemo(() => configurableChannelEndpointApiFormats.filter((f) => !usedApiFormats.has(f)), [usedApiFormats]);
+  const availableApiFormats = useMemo(
+    () => getConfigurableApiFormatsForChannelType(channel.type, configurableChannelEndpointApiFormats).filter((f) => !usedApiFormats.has(f)),
+    [usedApiFormats, channel.type]
+  );
 
   const handleAddEndpoint = useCallback(() => {
     setError(null);
@@ -252,10 +256,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   );
 
   const availableProtocolFormats = useMemo(() => {
-    const formats = new Set<string>();
-    defaultEndpoints.forEach((ep) => formats.add(ep.apiFormat));
-    endpoints.forEach((ep) => formats.add(ep.apiFormat));
-    return Array.from(formats);
+    return getAvailableProtocolFormats(defaultEndpoints, endpoints);
   }, [defaultEndpoints, endpoints]);
 
   const affectedProtocolModels = useMemo(
