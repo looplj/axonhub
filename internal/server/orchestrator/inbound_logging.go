@@ -38,7 +38,10 @@ func inboundRequestDebugFields(request *httpclient.Request, retryPolicy *biz.Ret
 func urlForInboundLog(raw string) string {
 	parsed, err := url.Parse(raw)
 	if err != nil {
-		return raw
+		return "<invalid-url>"
+	}
+	if _, err := url.QueryUnescape(parsed.RawQuery); err != nil {
+		return "<invalid-url>"
 	}
 
 	parsed.User = nil
