@@ -126,7 +126,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   codex: {
     channelType: 'codex',
     baseURL: 'https://chatgpt.com/backend-api/codex#',
-    defaultModels: ['gpt-5.2', 'gpt-5.2-codex'],
+    defaultModels: ['gpt-5.2', 'gpt-5.2-codex', 'gpt-6-astra'],
     apiFormat: OPENAI_RESPONSES,
     color: 'bg-[#32746D] text-white border-[#32746D]',
     icon: OpenAI,
