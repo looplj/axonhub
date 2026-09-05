@@ -172,6 +172,12 @@ models:
   CommandCodeQuotaSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.CommandCodeQuotaSettings
+  OllamaQuotaSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OllamaQuotaSettings
+  OllamaQuotaSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OllamaQuotaSettings
   ChannelRateLimit:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelRateLimit
