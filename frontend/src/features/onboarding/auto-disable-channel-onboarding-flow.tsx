@@ -41,10 +41,11 @@ export function AutoDisableChannelOnboardingFlow({ onComplete }: AutoDisableChan
       onSuccess: () => {
         onComplete?.();
       },
-      onError: () => {
-        completedRef.current = false;
-        toast.error(t('common.errors.onboardingFailed'));
-      },
+        onError: () => {
+          completedRef.current = false;
+          setShowPrompt(true);
+          toast.error(t('common.errors.onboardingFailed'));
+        },
     });
   }, [completeOnboarding, onComplete, t]);
 
@@ -94,8 +95,8 @@ export function AutoDisableChannelOnboardingFlow({ onComplete }: AutoDisableChan
 
   const skipOnboarding = useCallback(() => {
     setShowPrompt(false);
-    markComplete();
-  }, [markComplete]);
+    markComplete(onComplete);
+  }, [markComplete, onComplete]);
 
   if (showPrompt === false) {
     return null;
