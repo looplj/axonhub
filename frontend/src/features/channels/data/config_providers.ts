@@ -40,6 +40,11 @@ import { EvolinkIcon } from '../components/evolink-icon';
 import { FennoIcon } from '../components/fenno-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
+import {
+  getApiFormatsForProvider as getApiFormatsForProviderFromConfigs,
+  getChannelTypeForApiFormat as getChannelTypeForApiFormatFromConfigs,
+  type ProtocolConfigs,
+} from './protocol-options';
 import { ApiFormat, ChannelType } from './schema';
 
 export interface ProviderConfig {
@@ -309,6 +314,11 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
 };
 
+const protocolConfigs: ProtocolConfigs = {
+  providerConfigs: PROVIDER_CONFIGS,
+  channelConfigs: CHANNEL_CONFIGS,
+};
+
 /**
  * Get provider key from channel type
  */
@@ -325,31 +335,12 @@ export const getProviderFromChannelType = (channelType: ChannelType): string | u
  * Get channel type for a provider with specific API format
  */
 export const getChannelTypeForApiFormat = (provider: string, apiFormat: ApiFormat): ChannelType | undefined => {
-  const providerConfig = PROVIDER_CONFIGS[provider];
-  if (!providerConfig) return undefined;
-
-  for (const channelType of providerConfig.channelTypes) {
-    const channelConfig = CHANNEL_CONFIGS[channelType];
-    if (channelConfig?.apiFormat === apiFormat) {
-      return channelType;
-    }
-  }
-  return undefined;
+  return getChannelTypeForApiFormatFromConfigs(provider, apiFormat, protocolConfigs);
 };
 
 /**
  * Get available API formats for a provider
  */
 export const getApiFormatsForProvider = (provider: string): ApiFormat[] => {
-  const providerConfig = PROVIDER_CONFIGS[provider];
-  if (!providerConfig) return [];
-
-  const formats: ApiFormat[] = [];
-  for (const channelType of providerConfig.channelTypes) {
-    const channelConfig = CHANNEL_CONFIGS[channelType];
-    if (channelConfig?.apiFormat && !formats.includes(channelConfig.apiFormat)) {
-      formats.push(channelConfig.apiFormat);
-    }
-  }
-  return formats;
+  return getApiFormatsForProviderFromConfigs(provider, protocolConfigs);
 };
