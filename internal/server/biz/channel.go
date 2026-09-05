@@ -839,7 +839,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	commandCodeQuotaSettings := input.Settings != nil &&
 		(isCommandCodeChannelType(effectiveType) ||
 			(input.Settings.ProviderQuota != nil && input.Settings.ProviderQuota.CommandCode != nil))
-	guardProviderIdentity := input.Type != nil || input.BaseURL != nil || commandCodeQuotaSettings
+	guardProviderIdentity := input.Type != nil || input.BaseURL != nil || input.Endpoints != nil || commandCodeQuotaSettings
 
 	// A cleared Command Code quota cookie must invalidate the old persisted
 	// status, regardless of whether the client sent null or an empty object.
@@ -1230,10 +1230,14 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 		return nil, fmt.Errorf("invalid endpoints for configured model protocols: %w", err)
 	}
 
-	ch, err = svc.entFromContext(ctx).Channel.UpdateOne(ch).
+	ch, err = svc.entFromContext(ctx).Channel.UpdateOneID(ch.ID).
+		Where(channel.UpdatedAtEQ(ch.UpdatedAt)).
 		SetEndpoints(input.Endpoints).
 		Save(ctx)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, errors.New("channel was updated concurrently; retry the operation")
+		}
 		return nil, fmt.Errorf("failed to update channel endpoints: %w", err)
 	}
 
