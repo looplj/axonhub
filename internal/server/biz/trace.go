@@ -716,12 +716,22 @@ func requestToSegment(ctx context.Context, req *ent.Request) (*Segment, error) {
 				// skip it instead of failing the whole trace.
 				log.Warn(ctx, "No outbound transformer for format, skipping response spans", log.Cause(err), log.Int("request_id", req.ID))
 			} else {
+				httpReq := &httpclient.Request{
+					APIFormat: req.Format,
+				}
+				if isImageFormat(apiFormat) {
+					httpReq.TransformerMetadata = map[string]any{
+						"model": req.ModelID,
+					}
+				}
+
 				httpResp := &httpclient.Response{
 					Body:       req.ResponseBody,
 					StatusCode: http.StatusOK,
 					Headers: http.Header{
 						"Content-Type": {"application/json"},
 					},
+					Request: httpReq,
 				}
 
 				unifiedResp, err := outbound.TransformResponse(ctx, httpResp)
@@ -1522,7 +1532,10 @@ func getInboundTransformer(format llm.APIFormat) (transformer.Inbound, error) {
 func getOutboundTransformer(format llm.APIFormat) (transformer.Outbound, error) {
 	//nolint:exhaustive // Checked
 	switch format {
-	case llm.APIFormatOpenAIChatCompletion:
+	case llm.APIFormatOpenAIChatCompletion,
+		llm.APIFormatOpenAIImageGeneration,
+		llm.APIFormatOpenAIImageEdit,
+		llm.APIFormatOpenAIImageVariation:
 		config := &openai.Config{
 			PlatformType:   openai.PlatformOpenAI,
 			BaseURL:        "https://api.openai.com/v1",
