@@ -1,6 +1,7 @@
 import { CHANNEL_CONFIGS } from '@/features/channels/data/config_channels';
 import { ApiFormat } from '@/features/channels/data/schema';
 import { getApiPath } from './curl-paths';
+import { escapeShellValue } from './curl-shell';
 
 export type ChannelType = keyof typeof CHANNEL_CONFIGS;
 
@@ -59,7 +60,7 @@ export function generateCurlCommand(options: CurlGeneratorOptions): string {
     return generateResponsesWebSocketCommand(headers, parsedBody, url);
   }
 
-  const curlParts = [`curl '${url}'`];
+  const curlParts = [`curl '${escapeShellValue(url)}'`];
 
   // Audio transcription/translation use multipart/form-data, not JSON.
   const isMultipartAudio = resolvedApiFormat === 'openai/audio_transcriptions' || resolvedApiFormat === 'openai/audio_translations';
@@ -244,15 +245,11 @@ function formatFormValue(value: unknown): string {
   return JSON.stringify(value) ?? String(value);
 }
 
-function escapeShellValue(value: string): string {
-  return value.replace(/'/g, "'\\''");
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-export function generateRequestCurl(headers: any, body: any, apiFormat?: ApiFormat): string {
+export function generateRequestCurl(headers: Record<string, unknown> | undefined, body: unknown, apiFormat?: ApiFormat): string {
   return generateCurlCommand({
     headers,
     body,
@@ -261,8 +258,8 @@ export function generateRequestCurl(headers: any, body: any, apiFormat?: ApiForm
 }
 
 export function generateExecutionCurl(
-  headers: any,
-  body: any,
+  headers: Record<string, unknown> | undefined,
+  body: unknown,
   channel?: { baseURL?: string; type?: ChannelType },
   apiFormat?: ApiFormat,
   requestURL?: string

@@ -10,6 +10,7 @@ const API_FORMAT_PATHS: Record<string, string> = {
   'openai/alpha_search': '/v1/alpha/search',
   'openai/video': '/v1/videos',
   'zenmux/video': '/v1/videos',
+  'seedance/video': '/api/v3/contents/generations/tasks',
   'openai/audio_speech': '/v1/audio/speech',
   'openai/audio_transcriptions': '/v1/audio/transcriptions',
   'openai/audio_translations': '/v1/audio/translations',
