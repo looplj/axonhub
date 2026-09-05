@@ -47,12 +47,19 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 		return nil, errors.New("base URL is required")
 	}
 
-	baseURL := strings.TrimRight(config.BaseURL, "/")
 	endpointPath := strings.TrimSpace(config.EndpointPath)
 	if endpointPath == "" {
 		endpointPath = "/videos"
 	}
 	endpointPath = "/" + strings.Trim(endpointPath, "/")
+	baseURL := config.BaseURL
+	if strings.HasSuffix(baseURL, "##") {
+		baseURL = strings.TrimSuffix(baseURL, "##")
+	} else if endpointPath == "/videos" {
+		baseURL = transformer.NormalizeBaseURL(baseURL, "v1")
+	} else {
+		baseURL = transformer.NormalizeBaseURL(baseURL, "")
+	}
 	chatTransformer, err := openai.NewOutboundTransformerWithConfig(&openai.Config{
 		PlatformType:   openai.PlatformOpenAI,
 		BaseURL:        baseURL,

@@ -38,12 +38,12 @@ func TestZenMuxNativeVideoCreatePoll(t *testing.T) {
 	// Then: the native create request has the documented endpoint, auth, type, and fields.
 	require.NoError(t, err)
 	require.Equal(t, http.MethodPost, createRequest.Method)
-	require.Equal(t, server.URL+"/videos", createRequest.URL)
+	require.Equal(t, server.URL+"/v1/videos", createRequest.URL)
 	require.Equal(t, llm.RequestTypeVideo.String(), createRequest.RequestType)
 	require.Equal(t, llm.APIFormatZenmuxVideo.String(), createRequest.APIFormat)
 	require.Equal(t, &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "zenmux-test-key"}, createRequest.Auth)
 	sendProviderRequest(t, server.Client(), createRequest)
-	require.Equal(t, capturedRequest{method: http.MethodPost, path: "/videos", auth: "Bearer zenmux-test-key"}, captured[0])
+	require.Equal(t, capturedRequest{method: http.MethodPost, path: "/v1/videos", auth: "Bearer zenmux-test-key"}, captured[0])
 
 	var body map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(createRequest.Body, &body))
@@ -79,11 +79,11 @@ func TestZenMuxNativeVideoCreatePoll(t *testing.T) {
 	pollRequest, err := videoTasks.BuildGetVideoTaskRequest(context.Background(), "task-123")
 	require.NoError(t, err)
 	require.Equal(t, http.MethodGet, pollRequest.Method)
-	require.Equal(t, server.URL+"/videos/task-123", pollRequest.URL)
+	require.Equal(t, server.URL+"/v1/videos/task-123", pollRequest.URL)
 	require.Equal(t, httpclient.AuthTypeBearer, pollRequest.Auth.Type)
 	require.Equal(t, llm.APIFormatZenmuxVideo.String(), pollRequest.APIFormat)
 	sendProviderRequest(t, server.Client(), pollRequest)
-	require.Equal(t, capturedRequest{method: http.MethodGet, path: "/videos/task-123", auth: "Bearer zenmux-test-key"}, captured[1])
+	require.Equal(t, capturedRequest{method: http.MethodGet, path: "/v1/videos/task-123", auth: "Bearer zenmux-test-key"}, captured[1])
 
 	// When: queued, running, and succeeded poll responses are parsed.
 	queued, err := videoTasks.ParseGetVideoTaskResponse(context.Background(), &httpclient.Response{
@@ -106,6 +106,37 @@ func TestZenMuxNativeVideoCreatePoll(t *testing.T) {
 	require.Equal(t, "https://example.invalid/video.mp4", succeeded.Video.VideoURL)
 	require.Equal(t, "https://example.invalid/last.jpg", succeeded.Video.LastFrameURL)
 	require.JSONEq(t, `{"video_url":"https://example.invalid/video.mp4","last_frame_url":"https://example.invalid/last.jpg","provider_metadata":{"request_id":"native-1"}}`, string(succeeded.Video.Content))
+}
+
+func TestZenMuxNativeVideoBaseURLNormalization(t *testing.T) {
+	server := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(server.Close)
+
+	tests := []struct {
+		name         string
+		baseURL      string
+		endpointPath string
+		wantURL      string
+	}{
+		{name: "default version", baseURL: server.URL + "/api", wantURL: server.URL + "/api/v1/videos"},
+		{name: "explicit endpoint", baseURL: server.URL + "/api", endpointPath: "/custom/tasks", wantURL: server.URL + "/api/custom/tasks"},
+		{name: "raw base URL", baseURL: server.URL + "/raw##", wantURL: server.URL + "/raw/videos"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outbound, err := NewOutboundTransformerWithConfig(&Config{
+				BaseURL:        tt.baseURL,
+				EndpointPath:   tt.endpointPath,
+				APIKeyProvider: auth.NewStaticKeyProvider("zenmux-test-key"),
+			})
+			require.NoError(t, err)
+
+			request, err := outbound.TransformRequest(context.Background(), nativeVideoRequest("5"))
+			require.NoError(t, err)
+			require.Equal(t, tt.wantURL, request.URL)
+		})
+	}
 }
 
 func TestZenMuxNativeVideoValidation(t *testing.T) {
@@ -322,6 +353,6 @@ func TestZenMuxDelegatesNonVideoRequestsToOpenAI(t *testing.T) {
 	// Then: existing OpenAI chat behavior supplies the request shape and endpoint.
 	require.NoError(t, err)
 	require.Equal(t, http.MethodPost, providerRequest.Method)
-	require.Equal(t, server.URL+"/chat/completions", providerRequest.URL)
+	require.Equal(t, server.URL+"/v1/chat/completions", providerRequest.URL)
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), providerRequest.APIFormat)
 }
