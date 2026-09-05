@@ -257,6 +257,38 @@ func TestOutboundTransformer_TransformRequest_PromptCacheKeyFallback(t *testing.
 	})
 }
 
+func TestOutboundTransformer_TransformRequest_PromptCacheKeyFallback_SkipsStrictCompatHosts(t *testing.T) {
+	tr, err := NewOutboundTransformer("https://integrate.api.nvidia.com/v1", "test-api-key")
+	require.NoError(t, err)
+
+	request := &llm.Request{
+		Model: "moonshotai/kimi-k3",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	}
+
+	ctx := shared.WithSessionID(t.Context(), "02351f25-5398-4576-80a5-0e29cb79904d")
+	httpReq, err := tr.TransformRequest(ctx, request)
+	require.NoError(t, err)
+
+	var payload Request
+	require.NoError(t, json.Unmarshal(httpReq.Body, &payload))
+	assert.Nil(t, payload.PromptCacheKey)
+}
+
+func TestRequestFromLLM_DoesNotInventPromptCacheKey(t *testing.T) {
+	ctx := shared.WithSessionID(t.Context(), "session-123")
+	req := RequestFromLLM(ctx, &llm.Request{
+		Model: "gpt-4",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}},
+		},
+	}, ReasoningFieldNone)
+	require.NotNil(t, req)
+	assert.Nil(t, req.PromptCacheKey)
+}
+
 func TestOutboundTransformer_TransformRequest_StripsUnsupportedToolCallExtraContentForOpenAI(t *testing.T) {
 	tests := []struct {
 		name   string
