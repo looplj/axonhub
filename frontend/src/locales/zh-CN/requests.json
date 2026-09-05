@@ -120,6 +120,7 @@
   "requests.conversation.toolResultJump": "结果 → #{{index}}",
   "requests.conversation.jumpToToolCall": "跳转到工具调用",
   "requests.detail.noResponse": "暂无响应数据",
+  "requests.detail.videoLastFrame": "视频最后一帧",
   "requests.detail.audioNotSupported": "您的浏览器不支持音频播放。",
   "requests.detail.audioNotStored": "音频未被存储。配置外部存储后可在此试听。",
   "requests.detail.audioLoadFailed": "音频加载失败。请检查存储配置，或使用下载按钮重试。",
