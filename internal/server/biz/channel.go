@@ -597,7 +597,7 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	}
 
 	if input.Endpoints != nil {
-		if err := ValidateEndpoints(input.Endpoints); err != nil {
+		if err := validateEndpointsForChannelType(input.Type, input.Endpoints); err != nil {
 			return nil, fmt.Errorf("invalid endpoints: %w", err)
 		}
 	}
@@ -1000,8 +1000,27 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 	}
 
-	if input.Endpoints != nil {
-		if err := ValidateEndpoints(input.Endpoints); err != nil {
+	if input.Endpoints != nil || input.Type != nil {
+		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+			return svc.entFromContext(queryCtx).Channel.Query().
+				Where(channel.IDEQ(id)).
+				Select(channel.FieldType, channel.FieldEndpoints).
+				Only(queryCtx)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to load channel for endpoint validation: %w", err)
+		}
+
+		channelType := existing.Type
+		if input.Type != nil {
+			channelType = *input.Type
+		}
+		endpoints := existing.Endpoints
+		if input.Endpoints != nil {
+			endpoints = input.Endpoints
+		}
+
+		if err := validateEndpointsForChannelType(channelType, endpoints); err != nil {
 			return nil, fmt.Errorf("invalid endpoints: %w", err)
 		}
 	}
@@ -1194,13 +1213,12 @@ func (svc *ChannelService) reloadChannelsAfterCommit(ctx context.Context) {
 // Validates user-configured endpoint overrides before storing them. Runtime
 // endpoint resolution merges matching api_format entries with defaults.
 func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveChannelEndpointsInput) (*ent.Channel, error) {
-	if err := ValidateEndpoints(input.Endpoints); err != nil {
-		return nil, fmt.Errorf("invalid endpoints: %w", err)
-	}
-
 	ch, err := svc.entFromContext(ctx).Channel.Get(ctx, input.ChannelID.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel: %w", err)
+	}
+	if err := validateEndpointsForChannelType(ch.Type, input.Endpoints); err != nil {
+		return nil, fmt.Errorf("invalid endpoints: %w", err)
 	}
 	if ch.Type == channel.TypeXaiSubscription {
 		return nil, errors.New("xAI subscription channels do not support custom endpoints")
