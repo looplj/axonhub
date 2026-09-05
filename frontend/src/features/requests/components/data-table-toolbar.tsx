@@ -147,7 +147,7 @@ function RequestFilterControls({
           footer={channelFooter}
         />
       )}
-      {canViewApiKeys && table.getColumn('caller') && (apiKeyOptions.length > 0 || isFetchingApiKeys) && (
+      {canViewApiKeys && table.getColumn('caller') && (
         <DataTableFacetedFilter
           column={table.getColumn('caller')}
           title={t('requests.filters.apiKey')}
