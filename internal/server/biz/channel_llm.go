@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"slices"
 	"strconv"
@@ -1422,13 +1423,13 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 	return entries
 }
 
-// GetDirectModelEntries returns the direct models this channel can handle.
-// This is used for testing purposes where we need to see all available models
-// regardless of the HideOriginalModels setting.
-// The difference from GetModelEntries is that this method does NOT filter out
-// direct models when HideOriginalModels is enabled.
+// GetDirectModelEntries returns the models a specified-channel flow
+// (playground, TestChannel) can send. It keeps every alias from
+// GetModelEntries and also re-adds the original SupportedModels names
+// when HideOriginalModels or HideMappedModels would hide them from the
+// public list, so a channel test can still target the provider model id.
 func (ch *Channel) GetDirectModelEntries() map[string]ChannelModelEntry {
-	entries := make(map[string]ChannelModelEntry)
+	entries := maps.Clone(ch.GetModelEntries())
 
 	for _, model := range ch.SupportedModels {
 		if _, exists := entries[model]; !exists {
