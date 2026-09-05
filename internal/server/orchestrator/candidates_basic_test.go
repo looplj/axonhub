@@ -201,6 +201,37 @@ func TestSpecifiedChannelSelector_Select_ModelNotSupported(t *testing.T) {
 	require.Contains(t, err.Error(), "model gpt-4 not supported")
 }
 
+func TestSpecifiedChannelSelector_Select_AutoTrimAndMapping(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("nv-api6").
+		SetBaseURL("https://integrate.api.nvidia.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"moonshotai/kimi-k3", "deepseek-ai/deepseek-v4-pro"}).
+		SetDefaultTestModel("moonshotai/kimi-k3").
+		SetSettings(&objects.ChannelSettings{
+			AutoTrimedModelPrefixes: []string{"moonshotai", "deepseek-ai"},
+			ModelMappings: []objects.ModelMapping{
+				{From: "deepseek-v4-pro", To: "deepseek-ai/deepseek-v4-pro"},
+			},
+			HideOriginalModels: true,
+		}).
+		SetStatus(channel.StatusEnabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	selector := NewSpecifiedChannelSelector(newTestChannelServiceForChannels(client), objects.GUID{ID: ch.ID})
+
+	for _, model := range []string{"kimi-k3", "moonshotai/kimi-k3", "deepseek-v4-pro"} {
+		result, err := selector.Select(ctx, &llm.Request{Model: model})
+		require.NoError(t, err, "model %s", model)
+		require.Len(t, result, 1)
+		require.Equal(t, model, result[0].Models[0].RequestModel)
+	}
+}
+
 // TestSpecifiedChannelSelector_Select_ChannelNotFound tests SpecifiedChannelSelector with non-existent channel.
 func TestSpecifiedChannelSelector_Select_ChannelNotFound(t *testing.T) {
 	ctx, client := setupTest(t)
