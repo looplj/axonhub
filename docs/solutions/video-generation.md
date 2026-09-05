@@ -456,6 +456,19 @@ Inbound transformer 将 Seedance 格式直接映射为统一 `VideoRequest` (几
 
 两套 inbound transformer 将各自原生格式统一转换为 `llm.VideoRequest`，再由 outbound transformer 转发到实际 provider。
 
+### 5.4 ZenMux 原生视频协议
+
+ZenMux 渠道使用原生异步视频接口。对外公共路径固定为 `/v1/videos`；仅上游 ZenMux endpoint path 可通过渠道配置。出站请求默认使用 ZenMux 上游的 `/videos` 路径；自定义 endpoint path 时，创建和轮询会共同使用该配置。
+
+创建请求的关键字段如下：
+
+- `model`、`content`、`duration`、`frames`、`seed`、`ratio`、`resolution`。
+- `content[].type` 支持 `text`、`image_url`、`video_url`、`audio_url`；图片角色支持 `first_frame`、`last_frame`、`reference_image`，视频和音频角色分别为 `reference_video`、`reference_audio`。
+- `generate_audio`、`camera_fixed`、`watermark`、`draft`、`callback_url`、`return_last_frame` 和 `tools` 按 ZenMux 原生字段透传；`service_tier` 与 `execution_expires_after` 不支持。
+- `size` 仅在未提供 `ratio` 和 `resolution` 时推导：`1280x720`/`720x1280` → `16:9`/`9:16` + `720p`，`1920x1080`/`1080x1920` → 对应比例 + `1080p`，`256x256` → `1:1` + `480p`，`640x480`/`480x640` → `4:3`/`3:4` + `480p`。无法映射的尺寸必须显式提供 `ratio` 和 `resolution`。
+
+创建和轮询分别使用 `POST /videos` 与 `GET /videos/{task_id}`，状态为 `queued`、`running`、`succeeded` 或 `failed`；完成结果位于 `content.video_url`，可选的最后一帧位于 `content.last_frame_url`。ZenMux 原生删除/取消任务目前不支持，AxonHub 不会发出 DELETE 上游请求。
+
 ## 6. Transformer 实现
 
 ### 6.1 Inbound Transformers (两套入口)

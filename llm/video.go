@@ -1,5 +1,7 @@
 package llm
 
+import "encoding/json"
+
 // VideoRequest is the unified video generation request model (async task).
 // It is designed based on Seedance's content[] structure for extensibility.
 // Note: Common fields like Model are in the parent Request struct, not here.
@@ -7,7 +9,7 @@ type VideoRequest struct {
 	// Model is the model ID.
 	Model string `json:"model"`
 
-	// Content is the input list (text prompt and image inputs).
+	// Content is the input list (text prompt and reference media inputs).
 	Content []VideoContent `json:"content"`
 
 	// Duration is the video duration in seconds, represented as a string to
@@ -46,10 +48,19 @@ type VideoRequest struct {
 
 	// ExecutionExpiresAfter is the task execution timeout in seconds.
 	ExecutionExpiresAfter *int64 `json:"execution_expires_after,omitempty"`
+
+	// CallbackURL is notified when the video task finishes.
+	CallbackURL string `json:"callback_url,omitempty"`
+
+	// ReturnLastFrame requests the generated video's last-frame URL.
+	ReturnLastFrame *bool `json:"return_last_frame,omitempty"`
+
+	// Tools contains provider-native video tools as opaque JSON.
+	Tools []json.RawMessage `json:"tools,omitempty"`
 }
 
 type VideoContent struct {
-	// Type is "text" or "image_url".
+	// Type is "text", "image_url", "video_url", or "audio_url".
 	Type string `json:"type"`
 
 	// Text is the prompt (when Type="text").
@@ -58,11 +69,19 @@ type VideoContent struct {
 	// ImageURL is the image input (when Type="image_url").
 	ImageURL *VideoImageURL `json:"image_url,omitempty"`
 
-	// Role is the image role (Seedance): "first_frame", "last_frame", "reference_image".
+	VideoURL *VideoURL `json:"video_url,omitempty"`
+
+	AudioURL *AudioURL `json:"audio_url,omitempty"`
+
+	// Role describes how the reference media should be used.
 	Role string `json:"role,omitempty"`
 }
 
 type VideoImageURL struct {
+	URL string `json:"url"`
+}
+
+type AudioURL struct {
 	URL string `json:"url"`
 }
 
@@ -74,7 +93,9 @@ type VideoResponse struct {
 	// Status is unified status: "queued", "running", "succeeded", "failed".
 	Status string `json:"status"`
 
-	VideoURL string `json:"video_url,omitempty"`
+	VideoURL     string          `json:"video_url,omitempty"`
+	LastFrameURL string          `json:"last_frame_url,omitempty"`
+	Content      json.RawMessage `json:"content,omitempty"`
 
 	// Progress is 0-100 (OpenAI-style).
 	Progress *float64 `json:"progress,omitempty"`

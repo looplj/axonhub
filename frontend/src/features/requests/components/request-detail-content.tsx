@@ -24,6 +24,7 @@ import { ResponseFlow } from './response-flow';
 import { parseResponse } from '../utils/response-parser';
 import { parseRequestConversation } from '../utils/request-conversation';
 import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
+import { getVideoLastFrameURL, isVideoRequestFormat } from '../utils/video-display';
 
 interface RequestDetailContentProps {
   requestId: string;
@@ -143,7 +144,8 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
   };
 
   const isSpeechRequest = request?.format === 'openai/audio_speech';
-  const isVideoRequest = request?.format === 'openai/video' || request?.format === 'seedance/video';
+  const isVideoRequest = isVideoRequestFormat(request?.format);
+  const videoLastFrameURL = getVideoLastFrameURL(request?.responseBody);
   const hasStoredContent = !!(request?.contentSaved && request?.contentStorageKey);
 
   // fetchStoredContent downloads the binary artifact (video/audio) saved to external storage
@@ -692,6 +694,15 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                             </p>
                           </div>
                         )}
+                      </div>
+                    ) : isVideoRequest && videoLastFrameURL && !hasPreviewData && !isLive ? (
+                      <div className='bg-muted/20 flex min-h-[200px] w-full items-center justify-center rounded-lg border p-6'>
+                        <img
+                          src={videoLastFrameURL}
+                          alt={t('requests.detail.videoLastFrame')}
+                          className='max-h-[500px] max-w-full rounded object-contain'
+                          data-testid='video-last-frame'
+                        />
                       </div>
                     ) : hasPreviewData || isLive ? (
                       <ResponseFlow

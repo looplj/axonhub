@@ -61,6 +61,7 @@ const (
 
 	APIFormatOllamaChat    APIFormat = "ollama/chat"
 	APIFormatSeedanceVideo APIFormat = "seedance/video"
+	APIFormatZenmuxVideo   APIFormat = "zenmux/video"
 )
 
 func (f APIFormat) String() string {
