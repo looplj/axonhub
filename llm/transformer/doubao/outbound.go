@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Config holds all configuration for the Doubao outbound transformer.
@@ -172,8 +173,18 @@ func (t *OutboundTransformer) TransformRequest(
 		RequestID: "",
 	}
 
-	if llmReq.Metadata != nil {
-		doubaoReq.UserID = llmReq.Metadata["user_id"]
+	var userID string
+	if llmReq.Metadata != nil && llmReq.Metadata["user_id"] != "" {
+		userID = llmReq.Metadata["user_id"]
+	} else if llmReq.User != nil && *llmReq.User != "" {
+		userID = *llmReq.User
+	}
+
+	if userID != "" {
+		doubaoReq.UserID = shared.SanitizeUserID(userID)
+	}
+
+	if llmReq.Metadata != nil && llmReq.Metadata["request_id"] != "" {
 		doubaoReq.RequestID = llmReq.Metadata["request_id"]
 
 		// Ark validates user_id as 6-128 characters (same constraint family as
