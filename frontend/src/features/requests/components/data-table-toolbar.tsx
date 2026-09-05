@@ -65,6 +65,9 @@ interface RequestFilterControlsProps {
   onCloseAfterAction?: () => void;
 }
 
+/**
+ * Renders the request filters available to the current user.
+ */
 function RequestFilterControls({
   table,
   dateRange,
@@ -147,7 +150,7 @@ function RequestFilterControls({
           footer={channelFooter}
         />
       )}
-      {canViewApiKeys && table.getColumn('caller') && (apiKeyOptions.length > 0 || isFetchingApiKeys) && (
+      {canViewApiKeys && table.getColumn('caller') && (
         <DataTableFacetedFilter
           column={table.getColumn('caller')}
           title={t('requests.filters.apiKey')}
