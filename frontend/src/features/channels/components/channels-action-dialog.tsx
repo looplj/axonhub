@@ -1250,7 +1250,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
     try {
       if (values.credentials?.apiKeys) {
-        values.credentials.apiKeys = [...new Set(values.credentials.apiKeys.filter((k) => k.trim().length > 0))];
+        values.credentials.apiKeys = [
+          ...new Set(values.credentials.apiKeys.map((key) => key.trim()).filter((key) => key.length > 0)),
+        ];
       }
 
       const retryableStatusCodes = parseRetryableStatusCodesInput(retryableStatusCodesText);
@@ -2358,17 +2360,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                               const keys = e.target.value.split('\n');
                                               field.onChange(keys);
                                             }}
-                                            onBlur={(e) => {
+                                            onBlur={() => {
                                               if (!showApiKey) return;
-                                              const keys = [
-                                                ...new Set(
-                                                  e.target.value
-                                                    .split('\n')
-                                                    .map((k) => k.trim())
-                                                    .filter((k) => k.length > 0)
-                                                ),
-                                              ];
-                                              field.onChange(keys);
                                               field.onBlur();
                                             }}
                                             readOnly={!showApiKey}
@@ -2441,18 +2434,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                           const keys = e.target.value.split('\n');
                                           field.onChange(keys);
                                         }}
-                                        onBlur={(e) => {
-                                          const keys = [
-                                            ...new Set(
-                                              e.target.value
-                                                .split('\n')
-                                                .map((k) => k.trim())
-                                                .filter((k) => k.length > 0)
-                                            ),
-                                          ];
-                                          field.onChange(keys);
-                                          field.onBlur();
-                                        }}
+                                        onBlur={() => field.onBlur()}
                                         placeholder={t('channels.dialogs.fields.apiKey.placeholder')}
                                         className='min-h-[80px] resize-y font-mono text-sm md:col-span-6'
                                         autoComplete='new-password'
