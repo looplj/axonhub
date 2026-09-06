@@ -94,13 +94,13 @@ func TestParseClineUsageLimits_EmptyResetOnlyMeansInactiveAtZeroUsage(t *testing
 }
 
 func TestBuildClineQuotaData_OfficialValuesDriveStatusAndResetWhileCostRemainsExact(t *testing.T) {
-	now := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	now := time.Date(2099, 7, 14, 12, 0, 0, 0, time.UTC)
 	fiveHourRatio := 0.20
 	weeklyRatio := 0.90
 	monthlyRatio := 0.40
-	fiveHourReset := time.Date(2026, 7, 14, 14, 0, 0, 0, time.UTC)
-	weeklyReset := time.Date(2026, 7, 17, 2, 56, 47, 0, time.UTC)
-	monthlyReset := time.Date(2026, 8, 1, 11, 13, 17, 0, time.UTC)
+	fiveHourReset := time.Date(2099, 7, 14, 14, 0, 0, 0, time.UTC)
+	weeklyReset := time.Date(2099, 7, 17, 2, 56, 47, 0, time.UTC)
+	monthlyReset := time.Date(2099, 8, 1, 11, 13, 17, 0, time.UTC)
 
 	quota := buildClineQuotaData(
 		now,
@@ -112,7 +112,7 @@ func TestBuildClineQuotaData_OfficialValuesDriveStatusAndResetWhileCostRemainsEx
 		},
 		nil,
 		nil,
-		[]clineUsageItem{{CreatedAt: "2026-07-14T11:00:00Z", CostUSD: 50, CreditsUsed: 7, AIModelTypeName: "cline-pass"}},
+		[]clineUsageItem{{CreatedAt: "2099-07-14T11:00:00Z", CostUSD: 50, CreditsUsed: 7, AIModelTypeName: "cline-pass"}},
 		clineUsageFetchMeta{Pages: 1, ItemsSeen: 1},
 		map[string]clineOfficialWindowLimit{
 			"last5h":  {UsageRatio: &fiveHourRatio, NextResetAt: &fiveHourReset},
@@ -591,7 +591,7 @@ func TestCline_CheckQuota_UsageLimitsNonNotFoundErrorsRemainFailures(t *testing.
 }
 
 func TestCline_CheckQuota_UsageLimitsFailureReturnsSafeError(t *testing.T) {
-	now := time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC)
+	now := time.Date(2099, 7, 7, 12, 0, 0, 0, time.UTC)
 	requestCount := 0
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -843,7 +843,7 @@ func TestCline_CheckQuota_ExhaustedWhenPassOnly(t *testing.T) {
 }
 
 func TestCline_CheckQuota_MixedScopeDoesNotExhaustWholeChannelFromPassPool(t *testing.T) {
-	now := time.Date(2026, 7, 7, 12, 0, 0, 0, time.UTC)
+	now := time.Date(2099, 7, 7, 12, 0, 0, 0, time.UTC)
 	officialRatio := 1.0
 	zeroRatio := 0.0
 	fiveHourReset := now.Add(4 * time.Hour)
@@ -857,7 +857,7 @@ func TestCline_CheckQuota_MixedScopeDoesNotExhaustWholeChannelFromPassPool(t *te
 		},
 		nil,
 		nil,
-		[]clineUsageItem{{CreatedAt: "2026-07-07T11:00:00Z", CostUSD: 1, AIModelTypeName: "cline-pass"}},
+		[]clineUsageItem{{CreatedAt: "2099-07-07T11:00:00Z", CostUSD: 1, AIModelTypeName: "cline-pass"}},
 		clineUsageFetchMeta{Pages: 1, ItemsSeen: 1},
 		map[string]clineOfficialWindowLimit{
 			"last5h":  {UsageRatio: &officialRatio, NextResetAt: &fiveHourReset},
@@ -879,6 +879,11 @@ func TestCline_CheckQuota_MixedScopeDoesNotExhaustWholeChannelFromPassPool(t *te
 	require.NotEmpty(t, quota.Limits)
 	for _, limit := range quota.Limits {
 		if limit.Type != QuotaLimitTypeToken {
+			continue
+		}
+		if limit.Window == QuotaWindow5h {
+			require.Equal(t, "exhausted", limit.Status)
+			require.False(t, limit.Ready)
 			continue
 		}
 		require.NotEqual(t, "exhausted", limit.Status)
