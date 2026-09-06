@@ -17,6 +17,12 @@ const { outputText } = ts.transpileModule(helpers, {
 const { getQuotaLimits, quotaWindowLabel } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 const t = (key) => key;
 
+/**
+ * Create a persisted Codex channel fixture with independently configurable raw and normalized data.
+ * @param {object | undefined} rateLimit Raw provider windows, or undefined for legacy records.
+ * @param {object[]} limits Normalized quota entries, defaulting to a primary window with 52% used.
+ * @returns {object} Channel fixture consumed by the table's quota helpers.
+ */
 function codex(rateLimit, limits = [{ window: 'primary', usageRatio: 0.52 }]) {
   return {
     type: 'codex',

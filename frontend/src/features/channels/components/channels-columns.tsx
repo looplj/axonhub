@@ -64,6 +64,12 @@ type QuotaLimit = {
   status?: string;
 };
 
+/**
+ * Collect displayable quota windows from persisted provider data.
+ * Codex uses its reported windows; older records fall back to normalized limits.
+ * @param channel Channel with optional persisted provider quota status.
+ * @returns Quota rows with window labels, usage ratios, and status, or an empty list.
+ */
 function getQuotaLimits(channel: Channel): QuotaLimit[] {
   const quotaStatus = channel.providerQuotaStatus;
   if (!quotaStatus) return [];
@@ -153,6 +159,11 @@ function getQuotaLimits(channel: Channel): QuotaLimit[] {
   return normalized.filter((limit) => limit.usageRatio != null || limit.status === 'exhausted');
 }
 
+/**
+ * Format a reported duration using the largest exact day, hour, minute, or second unit.
+ * @param seconds Untrusted window duration from the provider response.
+ * @returns A compact duration label, or an empty string for invalid/non-integer durations.
+ */
 function codexWindowDuration(seconds: unknown): string {
   if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) return '';
   for (const [unit, size] of [
@@ -166,6 +177,12 @@ function codexWindowDuration(seconds: unknown): string {
   return '';
 }
 
+/**
+ * Resolve window identifiers for the quota cell and tooltip without assuming role durations.
+ * @param window Provider window identifier or an already formatted duration.
+ * @param t Translation function for primary and secondary window names.
+ * @returns A display label, or an empty string when the window is unspecified.
+ */
 function quotaWindowLabel(window: string | undefined, t: (key: string) => string): string {
   if (!window) return '';
   if (window === 'primary') return t('quota.label.primary_window');
