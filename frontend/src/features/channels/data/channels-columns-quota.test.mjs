@@ -83,6 +83,14 @@ test('normalized limits: parser returns every _limits entry without fabrication'
   );
 });
 
+test('unknown normalized windows use a neutral label instead of provider slot names', () => {
+  assert.match(
+    columnsSource,
+    /window === 'primary' \|\| window === 'secondary' \? t\('quota\.label\.token_usage'\)/,
+    'Codex windows without a known duration should not display primary or secondary'
+  );
+});
+
 test('Codex Pro seven-day-only data keeps its seven-day label', () => {
   const limits = parseQuotaLimits({
     _limits: [{ type: 'token', window: '7d', usageRatio: 0.4, status: 'available', ready: true }],

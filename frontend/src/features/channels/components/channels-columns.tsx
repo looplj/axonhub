@@ -74,7 +74,8 @@ function getQuotaLimits(channel: Channel) {
 function quotaWindowLabel(window: string | undefined, t: ReturnType<typeof useTranslation>['t']): string {
   if (!window) return '';
   const translationKey = QUOTA_WINDOW_LABEL_KEYS[window];
-  return translationKey ? t(translationKey) : window;
+  if (translationKey) return t(translationKey);
+  return window === 'primary' || window === 'secondary' ? t('quota.label.token_usage') : window;
 }
 
 const quotaColor = (remaining: number) => {
