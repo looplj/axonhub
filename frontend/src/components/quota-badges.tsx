@@ -115,14 +115,18 @@ function isZenmuxType(t: string): t is 'zenmux' | 'zenmux_responses' | 'zenmux_a
   return t === 'zenmux' || t === 'zenmux_responses' || t === 'zenmux_anthropic' || t === 'zenmux_gemini';
 }
 
+function getDurationPercent(startAt?: string | null, endAt?: string | null): number | undefined {
+  if (!startAt || !endAt) return undefined;
+  const start = new Date(startAt).getTime();
+  const end = new Date(endAt).getTime();
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return undefined;
+  return Math.max(0, Math.min(100, ((Date.now() - start) / (end - start)) * 100));
+}
+
 // Fraction of a limit's reset window that has elapsed, derived from the
 // PeriodStart/NextResetAt pair the backend stamps on windowed limits.
 function getLimitDurationPercent(limit: ProviderQuotaLimit): number | undefined {
-  if (!limit.periodStart || !limit.nextResetAt) return undefined;
-  const start = new Date(limit.periodStart).getTime();
-  const end = new Date(limit.nextResetAt).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return undefined;
-  return Math.max(0, Math.min(100, ((Date.now() - start) / (end - start)) * 100));
+  return getDurationPercent(limit.periodStart, limit.nextResetAt);
 }
 
 function getClineUsagePercent(window?: ClineQuotaWindow): number {
@@ -319,8 +323,8 @@ const WINDOW_LABEL_KEYS: Record<string, string> = {
   daily: 'quota.window.daily',
   weekly: 'quota.window.weekly',
   monthly: 'quota.window.monthly',
-  primary: 'quota.label.primary_window',
-  secondary: 'quota.label.secondary_window',
+  payg: 'quota.label.token_usage',
+  credits: 'quota.label.credits_remaining',
   overage: 'quota.label.overage_window',
   cycle: 'quota.label.subscription',
 };
@@ -358,7 +362,12 @@ function PeriodQuotaEstimate({ limits }: { limits: ProviderQuotaLimit[] }) {
 
       {priced.map((limit, index) => {
         const labelKey = limit.window ? WINDOW_LABEL_KEYS[limit.window] : undefined;
-        const label = labelKey ? t(labelKey) : limit.window || t('quota.label.token_usage');
+        const label =
+          labelKey
+            ? t(labelKey)
+            : limit.window === 'primary' || limit.window === 'secondary'
+              ? t('quota.label.token_usage')
+              : limit.window || t('quota.label.token_usage');
 
         return (
           <div key={`${limit.window ?? limit.type}-${index}`} className='flex items-center justify-between text-xs'>
@@ -420,17 +429,8 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
     }
   };
 
-  const formatWindowDuration = (seconds?: number) => {
-    if (!seconds) return '';
-    const hours = Math.floor(seconds / 3600);
-    const days = hours >= 24 ? Math.floor(hours / 24) : 0;
-    if (days > 0) return `${days}${t(days > 1 ? 'quota.label.days' : 'quota.label.day')}`;
-    if (hours > 0) return `${hours}${t(hours > 1 ? 'quota.label.hours' : 'quota.label.hour')}`;
-    return `${Math.floor(seconds / 60)}${t('quota.label.mins')}`;
-  };
-
   const calcDurationPercent = (limit?: number, resetAfter?: number) => {
-    if (!limit || resetAfter === undefined) return 0;
+    if (limit == null || resetAfter == null || !Number.isFinite(limit) || !Number.isFinite(resetAfter) || limit <= 0) return undefined;
     const elapsed = limit - resetAfter;
     return Math.max(0, Math.min(100, (elapsed / limit) * 100));
   };
@@ -604,6 +604,11 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                                 {t('quota.label.time_elapsed')}: {Math.round(getClaudeDurationPercent('5h', qd.windows['5h'].reset) || 0)}%
                               </div>
                             )}
+                            {quota.nextResetAt && (
+                              <div>
+                                {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})
+                              </div>
+                            )}
                           </div>
                         }
                       />
@@ -629,16 +634,15 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                                 {t('quota.label.time_elapsed')}: {Math.round(getClaudeDurationPercent('7d', qd.windows['7d'].reset) || 0)}%
                               </div>
                             )}
+                            {qd.windows['7d'].reset && (
+                              <div>
+                                {formatTimeToReset(new Date(qd.windows['7d'].reset * 1000).toISOString())} ({formatDate(qd.windows['7d'].reset)})
+                              </div>
+                            )}
                           </div>
                         }
                       />
                     </div>
-                    {qd.windows['7d'].reset && (
-                      <div className='text-muted-foreground pt-0.5 text-right text-[11px]'>
-                        {formatTimeToReset(new Date(qd.windows['7d'].reset * 1000).toISOString())} (
-                        {formatDate(qd.windows['7d'].reset)})
-                      </div>
-                    )}
                   </div>
                 )}
                 {qd.windows?.['overage'] && (
@@ -670,11 +674,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                           ? t('quota.label.7d_limiting')
                           : ''}
                     </span>
-                    {quota.nextResetAt && (
-                      <span>
-                        {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})
-                      </span>
-                    )}
                   </div>
                 )}
               </>
@@ -726,6 +725,11 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                                 {Math.round(displayRem)}/{Math.round(displayTot)}
                               </div>
                               <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
+                              {quota.nextResetAt && (
+                                <div>
+                                  {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})
+                                </div>
+                              )}
                             </div>
                           }
                         />
@@ -783,6 +787,11 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                                   {Math.round(displayRem)}/{Math.round(displayTot)}
                                 </div>
                                 <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
+                                {quota.nextResetAt && (
+                                  <div>
+                                    {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})
+                                  </div>
+                                )}
                               </div>
                             }
                           />
@@ -797,16 +806,11 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
             return items;
           })()}
 
-          {quota.nextResetAt && (
-            <div className='text-muted-foreground pt-1 text-right text-[11px]'>
-              {formatTimeToReset(quota.nextResetAt)} ({formatDate(new Date(quota.nextResetAt).getTime() / 1000)})
-            </div>
-          )}
         </div>
       )}
 
       {channel.type === 'codex' && (
-        <div className='mt-4 space-y-4'>
+        <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus.quotaData;
             if (!qd) return null;
@@ -824,107 +828,46 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
               qd._resets?.supported === true && (Boolean(qd._resets.error) || availableResetCount > 0);
             return (
               <>
-                {qd.rate_limit?.primary_window && (
-                  <div className='space-y-2.5'>
-                    <div className='space-y-1'>
-                      <div className='flex items-center justify-between text-xs'>
-                        <span className='text-muted-foreground font-medium'>{t('quota.label.primary_window')}</span>
-                        <span className='text-foreground font-medium'>{Math.round(qd.rate_limit.primary_window.used_percent || 0)}%</span>
-                      </div>
-                      <UsageTimeBar
-                        usagePercent={qd.rate_limit.primary_window.used_percent || 0}
-                        durationPercent={
-                          qd.rate_limit.primary_window.limit_window_seconds
-                            ? calcDurationPercent(
-                                qd.rate_limit.primary_window.limit_window_seconds,
-                                qd.rate_limit.primary_window.reset_after_seconds
-                              )
-                            : undefined
-                        }
-                        tooltip={
-                          <div className='space-y-0.5'>
-                            <div className='font-medium'>{t('quota.label.primary_window')}</div>
-                            <div>
-                              {t('quota.label.percent_used', {
-                                percent: Math.round(qd.rate_limit.primary_window.used_percent || 0),
-                              })}
-                            </div>
-                            {qd.rate_limit.primary_window.limit_window_seconds ? (
-                              <div>
-                                {t('quota.label.primary_duration')} ({formatWindowDuration(qd.rate_limit.primary_window.limit_window_seconds)}):{' '}
-                                {Math.round(
-                                  calcDurationPercent(
-                                    qd.rate_limit.primary_window.limit_window_seconds,
-                                    qd.rate_limit.primary_window.reset_after_seconds
-                                  )
-                                )}
-                                %
-                              </div>
-                            ) : null}
+                {quota.limits
+                  .filter((limit) => limit.type === 'token')
+                  .map((limit, index) => {
+                    const labelKey = limit.window === '5h' || limit.window === '7d' ? WINDOW_LABEL_KEYS[limit.window] : undefined;
+                    const label = labelKey ? t(labelKey) : t('quota.label.token_usage');
+                    const usedPercent = limit.status === 'exhausted' ? 100 : limit.usageRatio * 100;
+                    const durationPercent = getLimitDurationPercent(limit);
+
+                    return (
+                      <div
+                        key={`${limit.window}-${index}`}
+                        className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}
+                      >
+                        <div className='space-y-1'>
+                          <div className='flex items-center justify-between text-xs'>
+                            <span className='text-muted-foreground font-medium'>{label}</span>
+                            <span className='text-foreground font-medium'>
+                              {t('quota.label.percent_used', { percent: Math.round(usedPercent) })}
+                            </span>
                           </div>
-                        }
-                      />
-                    </div>
-
-                    {qd.rate_limit.primary_window.reset_at && (
-                      <div className='text-muted-foreground pt-0.5 text-right text-[11px]'>
-                        {formatTimeToReset(qd.rate_limit.primary_window.reset_after_seconds)} (
-                        {formatDate(qd.rate_limit.primary_window.reset_at)})
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {qd.rate_limit?.secondary_window?.used_percent !== undefined && (
-                  <div className='border-border/60 mt-3 space-y-2.5 border-t border-dashed pt-3'>
-                    <div className='space-y-1'>
-                      <div className='flex items-center justify-between text-xs'>
-                        <span className='text-muted-foreground font-medium'>{t('quota.label.secondary_window')}</span>
-                        <span className='text-foreground font-medium'>{Math.round(qd.rate_limit.secondary_window.used_percent)}%</span>
-                      </div>
-                      <UsageTimeBar
-                        usagePercent={qd.rate_limit.secondary_window.used_percent}
-                        durationPercent={
-                          qd.rate_limit.secondary_window.limit_window_seconds
-                            ? calcDurationPercent(
-                                qd.rate_limit.secondary_window.limit_window_seconds,
-                                qd.rate_limit.secondary_window.reset_after_seconds
-                              )
-                            : undefined
-                        }
-                        tooltip={
-                          <div className='space-y-0.5'>
-                            <div className='font-medium'>{t('quota.label.secondary_window')}</div>
-                            <div>
-                              {t('quota.label.percent_used', {
-                                percent: Math.round(qd.rate_limit.secondary_window.used_percent),
-                              })}
-                            </div>
-                            {qd.rate_limit.secondary_window.limit_window_seconds ? (
-                              <div>
-                                {t('quota.label.secondary_duration')} ({formatWindowDuration(qd.rate_limit.secondary_window.limit_window_seconds)}):{' '}
-                                {Math.round(
-                                  calcDurationPercent(
-                                    qd.rate_limit.secondary_window.limit_window_seconds,
-                                    qd.rate_limit.secondary_window.reset_after_seconds
-                                  )
+                          <UsageTimeBar
+                            usagePercent={usedPercent}
+                            durationPercent={durationPercent}
+                            tooltip={
+                              <div className='space-y-0.5'>
+                                <div className='font-medium'>{label}</div>
+                                <div>{t('quota.label.percent_used', { percent: Math.round(usedPercent) })}</div>
+                                {durationPercent !== undefined && (
+                                  <div>
+                                    {t('quota.label.time_elapsed')}: {Math.round(durationPercent)}%
+                                  </div>
                                 )}
-                                %
+                                {limit.nextResetAt && <div>{formatTimeToReset(limit.nextResetAt)}</div>}
                               </div>
-                            ) : null}
-                          </div>
-                        }
-                      />
-                    </div>
-
-                    {qd.rate_limit.secondary_window.reset_at && (
-                      <div className='text-muted-foreground pt-0.5 text-right text-[11px]'>
-                        {formatTimeToReset(qd.rate_limit.secondary_window.reset_after_seconds)} (
-                        {formatDate(qd.rate_limit.secondary_window.reset_at)})
+                            }
+                          />
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )}
+                    );
+                  })}
 
                 <div className='border-border/60 space-y-2 border-t border-dashed pt-3'>
                   <div className='flex items-center justify-between text-xs'>
@@ -971,6 +914,12 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
             const qd = channel.quotaStatus.quotaData;
             const weekly = qd.billing?.weekly;
             const monthly = qd.billing?.monthly;
+            const weeklyDurationPercent = weekly?.reset_at
+              ? calcDurationPercent(7 * 24 * 3600, (new Date(weekly.reset_at).getTime() - Date.now()) / 1000)
+              : undefined;
+            const monthlyDurationPercent = monthly?.reset_at
+              ? calcDurationPercent(30 * 24 * 3600, (new Date(monthly.reset_at).getTime() - Date.now()) / 1000)
+              : undefined;
             return (
               <>
                 {qd.plan_type ? (
@@ -989,27 +938,21 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                     </div>
                     <UsageTimeBar
                       usagePercent={weekly.usage_percent ?? 0}
-                      durationPercent={
-                        weekly.reset_at
-                          ? calcDurationPercent(7 * 24 * 3600, (new Date(weekly.reset_at).getTime() - Date.now()) / 1000)
-                          : undefined
-                      }
+                      durationPercent={weeklyDurationPercent}
                       tooltip={
                         <div className='space-y-0.5'>
                           <div className='font-medium'>{t('quota.window.weekly')}</div>
                           <div>{t('quota.label.percent_used', { percent: Math.round(weekly.usage_percent ?? 0) })}</div>
-                          {weekly.reset_at && (
+                          {weeklyDurationPercent !== undefined && (
                             <div>
                               {t('quota.label.time_elapsed')}:{' '}
-                              {Math.round(calcDurationPercent(7 * 24 * 3600, (new Date(weekly.reset_at).getTime() - Date.now()) / 1000))}%
+                              {Math.round(weeklyDurationPercent)}%
                             </div>
                           )}
+                          {weekly.reset_at && <div>{formatTimeToReset(weekly.reset_at)}</div>}
                         </div>
                       }
                     />
-                    {weekly.reset_at ? (
-                      <div className='text-muted-foreground text-right text-[11px]'>{formatTimeToReset(weekly.reset_at)}</div>
-                    ) : null}
                   </div>
                 ) : null}
                 {monthly ? (
@@ -1043,27 +986,21 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                     </div>
                     <UsageTimeBar
                       usagePercent={monthly.usage_percent ?? 0}
-                      durationPercent={
-                        monthly.reset_at
-                          ? calcDurationPercent(30 * 24 * 3600, (new Date(monthly.reset_at).getTime() - Date.now()) / 1000)
-                          : undefined
-                      }
+                      durationPercent={monthlyDurationPercent}
                       tooltip={
                         <div className='space-y-0.5'>
                           <div className='font-medium'>{t('quota.window.monthly')}</div>
                           <div>{t('quota.label.percent_used', { percent: Math.round(monthly.usage_percent ?? 0) })}</div>
-                          {monthly.reset_at && (
+                          {monthlyDurationPercent !== undefined && (
                             <div>
                               {t('quota.label.time_elapsed')}:{' '}
-                              {Math.round(calcDurationPercent(30 * 24 * 3600, (new Date(monthly.reset_at).getTime() - Date.now()) / 1000))}%
+                              {Math.round(monthlyDurationPercent)}%
                             </div>
                           )}
+                          {monthly.reset_at && <div>{formatTimeToReset(monthly.reset_at)}</div>}
                         </div>
                       }
                     />
-                    {monthly.reset_at ? (
-                      <div className='text-muted-foreground text-right text-[11px]'>{formatTimeToReset(monthly.reset_at)}</div>
-                    ) : null}
                   </div>
                 ) : null}
               </>
@@ -1207,6 +1144,12 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
               const usedStr = isTokens ? formatTokenCount(window.used ?? 0) : `${window.used ?? 0}`;
               const total = (window.used ?? 0) + (window.remaining ?? 0);
               const totalStr = isTokens ? formatTokenCount(total) : `${total}`;
+              const durationPct = window.resetAt
+                ? calcDurationPercent(
+                    isTokens ? 7 * 24 * 3600 : 24 * 3600,
+                    (new Date(window.resetAt).getTime() - Date.now()) / 1000
+                  )
+                : undefined;
 
               items.push(
                 <div key={key} className={idx > 0 ? 'border-border/60 space-y-2.5 border-t border-dashed pt-3' : 'space-y-2.5'}>
@@ -1222,14 +1165,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                     </div>
                     <UsageTimeBar
                       usagePercent={pct}
-                      durationPercent={
-                        window.resetAt
-                          ? calcDurationPercent(
-                              isTokens ? 7 * 24 * 3600 : 24 * 3600,
-                              (new Date(window.resetAt).getTime() - Date.now()) / 1000
-                            )
-                          : undefined
-                      }
+                      durationPercent={durationPct}
                       tooltip={
                         <div className='space-y-0.5'>
                           <div className='font-medium'>{label}</div>
@@ -1237,26 +1173,17 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                             {usedStr}/{totalStr}
                           </div>
                           <div>{t('quota.label.percent_used', { percent: Math.round(pct) })}</div>
-                          {window.resetAt && (
+                          {durationPct !== undefined && (
                             <div>
                               {t('quota.label.time_elapsed')}:{' '}
-                              {Math.round(
-                                calcDurationPercent(
-                                  isTokens ? 7 * 24 * 3600 : 24 * 3600,
-                                  (new Date(window.resetAt).getTime() - Date.now()) / 1000
-                                )
-                              )}%
+                              {Math.round(durationPct)}%
                             </div>
                           )}
+                          {window.resetAt && <div>{formatTimeToReset(new Date(window.resetAt).toISOString())}</div>}
                         </div>
                       }
                     />
                   </div>
-                  {window.resetAt ? (
-                    <div className='text-muted-foreground pt-0.5 text-right text-[11px]'>
-                      {formatTimeToReset(new Date(window.resetAt).toISOString())}
-                    </div>
-                  ) : null}
                 </div>
               );
             });
@@ -1564,11 +1491,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                           </div>
                         }
                       />
-                      {(row.resetAt || row.resetAfterSeconds) && (
-                        <div className='text-muted-foreground text-right text-[11px]'>
-                          {formatTimeToReset(row.resetAt ?? row.resetAfterSeconds)}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -1672,11 +1594,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                             </div>
                           }
                         />
-                        {row.intervalResetAt && (
-                          <div className='text-muted-foreground text-right text-[11px]'>
-                            {formatTimeToReset(row.intervalResetAt)}
-                          </div>
-                        )}
                       </div>
                       {hasWeekly && (
                         <div className='border-border/60 space-y-1.5 border-t border-dashed pt-3'>
@@ -1709,11 +1626,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                               </div>
                             }
                           />
-                          {row.weeklyResetAt && (
-                            <div className='text-muted-foreground text-right text-[11px]'>
-                              {formatTimeToReset(row.weeklyResetAt)}
-                            </div>
-                          )}
                         </div>
                       )}
                     </div>
@@ -1767,11 +1679,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                           </div>
                         }
                       />
-                      {row.resetAt && (
-                        <div className='text-muted-foreground text-right text-[11px]'>
-                          {formatTimeToReset(row.resetAt)}
-                        </div>
-                      )}
                     </div>
                   );
                 })}
@@ -1805,19 +1712,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                   </div>
                   <UsageTimeBar
                     usagePercent={usedPct}
-                    durationPercent={
-                      qd.window_start && qd.window_end
-                        ? Math.max(
-                            0,
-                            Math.min(
-                              100,
-                              ((Date.now() - new Date(qd.window_start).getTime()) /
-                                (new Date(qd.window_end).getTime() - new Date(qd.window_start).getTime())) *
-                                100
-                            )
-                          )
-                        : undefined
-                    }
+                    durationPercent={getDurationPercent(qd.window_start, qd.window_end)}
                     tooltip={
                       <div className='space-y-0.5'>
                         <div className='font-medium'>{t('quota.label.requests')}</div>
@@ -1825,20 +1720,13 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                           {usedRequests}/{totalRequests}
                         </div>
                         <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
+                        {qd.window_end && <div>{formatTimeToReset(qd.window_end, usedPct)}</div>}
                       </div>
                     }
                   />
                 </div>
               </div>
             );
-
-            if (qd.window_end) {
-              items.push(
-                <div key='reset' className='text-muted-foreground pt-1 text-right text-[11px]'>
-                  {formatTimeToReset(qd.window_end, usedPct)}
-                </div>
-              );
-            }
 
             return items;
           })()}
@@ -1895,11 +1783,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                       }
                     />
                   </div>
-                  {qd.weeklyTokenLimit.nextRegenAt && (
-                    <div className='text-muted-foreground pt-0.5 text-right text-[11px]'>
-                      {formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct, syntheticWeeklyRegenTickPct)}
-                    </div>
-                  )}
                 </div>
               );
             }
@@ -1958,11 +1841,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                       {t('quota.status.limited')}
                     </Badge>
                   )}
-                  {qd.rollingFiveHourLimit.nextTickAt && (
-                    <div className='text-muted-foreground pt-0.5 text-right text-[11px]'>
-                      {formatTimeToReset(qd.rollingFiveHourLimit.nextTickAt, fiveHrUsedPct, qd.rollingFiveHourLimit.tickPercent ?? 0.05)}
-                    </div>
-                  )}
                 </div>
               );
             }
@@ -2006,6 +1884,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                             {kwhUsed}/{kwhIncluded}
                           </div>
                           <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
+                          {quota.nextResetAt && <div>{formatTimeToReset(quota.nextResetAt)}</div>}
                         </div>
                       }
                     />
@@ -2037,7 +1916,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
               );
             }
 
-            if (quota.nextResetAt) {
+            if (quota.nextResetAt && !qd.subscription) {
               items.push(
                 <div key='reset' className='text-muted-foreground pt-1 text-right text-[11px]'>
                   {formatTimeToReset(quota.nextResetAt)}
@@ -2081,19 +1960,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                     </div>
                     <UsageTimeBar
                       usagePercent={subPct}
-                      durationPercent={
-                        qd.subscription.cycle_start && qd.subscription.cycle_end
-                          ? Math.max(
-                              0,
-                              Math.min(
-                                100,
-                                ((Date.now() - new Date(qd.subscription.cycle_start).getTime()) /
-                                  (new Date(qd.subscription.cycle_end).getTime() - new Date(qd.subscription.cycle_start).getTime())) *
-                                  100
-                              )
-                            )
-                          : undefined
-                      }
+                      durationPercent={getDurationPercent(qd.subscription.cycle_start, qd.subscription.cycle_end)}
                       tooltip={
                         <div className='space-y-0.5'>
                           <div className='font-medium'>{planLabel}</div>
@@ -2101,6 +1968,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                             {subUsed}/{subTotal}
                           </div>
                           <div>{t('quota.label.percent_used', { percent: Math.round(subPct) })}</div>
+                          {qd.subscription.cycle_end && <div>{formatTimeToReset(qd.subscription.cycle_end)}</div>}
                         </div>
                       }
                     />
@@ -2253,7 +2121,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
               );
             }
 
-            if (quota.nextResetAt) {
+            if (quota.nextResetAt && (!qd.subscription || qd.subscription.cycle_quota_limit <= 0)) {
               items.push(
                 <div key='reset' className='text-muted-foreground pt-1 text-right text-[11px]'>
                   {formatTimeToReset(quota.nextResetAt)}
