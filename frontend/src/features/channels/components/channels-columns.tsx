@@ -889,7 +889,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
               </div>
             ),
             meta: {
-              className: 'text-center',
+              className: 'w-10 text-center',
             },
             enableSorting: false,
             enableHiding: false,
@@ -1042,7 +1042,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
             ),
             cell: ActionCell,
             meta: {
-              className: 'text-center',
+              className: 'w-44 min-w-44 text-center',
             },
             enableSorting: false,
             enableHiding: false,
