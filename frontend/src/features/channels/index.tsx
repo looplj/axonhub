@@ -262,7 +262,7 @@ function ChannelsContent() {
   const columns = useMemo(() => createColumns(t, channelPermissions.canWrite), [t, channelPermissions.canWrite]);
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden'>
+    <div className='flex min-w-0 flex-1 flex-col overflow-hidden'>
       <ChannelsErrorBanner
         errorCount={errorCount}
         onFilterErrorChannels={handleFilterErrorChannels}
