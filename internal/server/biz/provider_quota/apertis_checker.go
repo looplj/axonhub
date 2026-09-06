@@ -151,7 +151,7 @@ func (c *ApertisQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	// Build limits
 	quotaData.Limits = buildApertisLimits(&resp, nextResetAt)
 
-	return quotaData, nil
+	return NormalizeQuotaData(quotaData), nil
 }
 
 // SupportsChannel returns true if the channel is OpenAI-compatible (used by Apertis).
@@ -318,6 +318,7 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 				UsageRatio:  usageRatio,
 				Ready:       IsReadyStatus(tokenStatus),
 				NextResetAt: nextResetAt,
+				Window:      "payg",
 			})
 		}
 	}
@@ -356,16 +357,6 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 			// Apertis reports the cycle boundaries outright, so the period the
 			// usage ratio covers needs no guessing.
 			PeriodStart: parseApertisCycleStart(resp.Subscription.CycleStart),
-		})
-	}
-
-	// If no limits were created, add an unknown one
-	if len(limits) == 0 {
-		limits = append(limits, QuotaLimitStatus{
-			Type:       QuotaLimitTypeToken,
-			Status:     "unknown",
-			UsageRatio: 0,
-			Ready:      false,
 		})
 	}
 

@@ -46,6 +46,7 @@ func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
+	// Subscription is suspended but PAYG credits are available
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
 	require.Equal(t, "apertis", quota.ProviderType)
@@ -138,8 +139,8 @@ func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 					"cycle_quota_limit": 600,
 					"cycle_quota_used": 10,
 					"cycle_quota_remaining": 590,
-					"cycle_start": "2026-03-16T10:02:35Z",
-					"cycle_end": "2026-04-16T10:02:35Z",
+					"cycle_start": "2099-03-16T10:02:35Z",
+					"cycle_end": "2099-04-16T10:02:35Z",
 					"payg_fallback_enabled": false
 				}
 			}`
@@ -156,6 +157,7 @@ func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 		},
 	})
 	require.NoError(t, err)
+	// Cycle quota is exhausted but PAYG fallback is enabled with credits
 	require.Equal(t, "available", quota.Status)
 	require.NotNil(t, quota.NextResetAt)
 
@@ -183,8 +185,8 @@ func TestApertis_CheckQuota_SubscriptionWarningState(t *testing.T) {
 					"cycle_quota_limit": 1000,
 					"cycle_quota_used": 850,
 					"cycle_quota_remaining": 150,
-					"cycle_start": "2026-01-01T00:00:00Z",
-					"cycle_end": "2026-02-01T00:00:00Z",
+					"cycle_start": "2099-01-01T00:00:00Z",
+					"cycle_end": "2099-02-01T00:00:00Z",
 					"payg_fallback_enabled": false
 				}
 			}`
@@ -224,8 +226,8 @@ func TestApertis_CheckQuota_SubscriptionSuspended_WithPAYGCredits(t *testing.T) 
 					"cycle_quota_limit": 1000,
 					"cycle_quota_used": 500,
 					"cycle_quota_remaining": 500,
-					"cycle_start": "2026-01-01T00:00:00Z",
-					"cycle_end": "2026-02-01T00:00:00Z",
+					"cycle_start": "2099-01-01T00:00:00Z",
+					"cycle_end": "2099-02-01T00:00:00Z",
 					"payg_fallback_enabled": false
 				}
 			}`
@@ -242,7 +244,6 @@ func TestApertis_CheckQuota_SubscriptionSuspended_WithPAYGCredits(t *testing.T) 
 		},
 	})
 	require.NoError(t, err)
-	// Subscription is suspended but PAYG credits are available
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
 	// Subscription cycle limit should be exhausted (suspended), PAYG token limit is available
@@ -350,7 +351,6 @@ func TestApertis_CheckQuota_SubscriptionExhausted_WithPAYGFallback(t *testing.T)
 		},
 	})
 	require.NoError(t, err)
-	// Cycle quota is exhausted but PAYG fallback is enabled with credits
 	require.Equal(t, "available", quota.Status)
 	require.True(t, quota.Ready)
 	// Both subscription cycle (exhausted) and PAYG token (available) limits present
@@ -431,8 +431,8 @@ func TestApertis_CheckQuota_SubscriberWithUnlimitedPayg(t *testing.T) {
 					"cycle_quota_limit": 600,
 					"cycle_quota_used": 183,
 					"cycle_quota_remaining": 417,
-					"cycle_start": "2026-05-20T23:28:04Z",
-					"cycle_end": "2026-06-20T23:28:04Z",
+				"cycle_start": "2099-05-20T23:28:04Z",
+				"cycle_end": "2099-06-20T23:28:04Z",
 					"payg_fallback_enabled": false
 				}
 			}`
@@ -693,8 +693,8 @@ func TestApertis_NextResetTimeParsing(t *testing.T) {
 					"cycle_quota_limit": 600,
 					"cycle_quota_used": 10,
 					"cycle_quota_remaining": 590,
-					"cycle_start": "2026-01-15T00:00:00Z",
-					"cycle_end": "2026-02-15T12:00:00Z",
+				"cycle_start": "2099-01-15T00:00:00Z",
+				"cycle_end": "2099-02-15T12:00:00Z",
 					"payg_fallback_enabled": false
 				}
 			}`
@@ -712,7 +712,7 @@ func TestApertis_NextResetTimeParsing(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, quota.NextResetAt)
-	expected := time.Date(2026, 2, 15, 12, 0, 0, 0, time.UTC)
+	expected := time.Date(2099, 2, 15, 12, 0, 0, 0, time.UTC)
 	require.Equal(t, expected, *quota.NextResetAt)
 }
 
