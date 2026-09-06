@@ -169,14 +169,14 @@ func parseKimiCodeUsageResponse(body []byte) (QuotaData, error) {
 		rawData["boosterWallet"] = wallet
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       status,
 		ProviderType: "kimi_code",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(status),
 		Limits:       limits,
-	}, nil
+	}), nil
 }
 
 func parseKimiCodeUsageRow(raw map[string]any, fallbackLabel string) (kimiCodeUsageRow, bool) {
