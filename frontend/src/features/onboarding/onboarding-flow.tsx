@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
@@ -19,6 +19,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const navigate = useNavigate();
   const completeOnboarding = useCompleteOnboarding();
   const [showPrompt, setShowPrompt] = useState(true);
+  const completedRef = useRef(false);
 
   useEffect(() => {
     // Prevent body scroll when modal is open
@@ -33,6 +34,26 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       document.body.style.overflow = '';
     };
   }, [showPrompt]);
+
+  const markComplete = useCallback(
+    (onSuccess?: () => void) => {
+      if (completedRef.current || completeOnboarding.isPending) return;
+      completedRef.current = true;
+
+      completeOnboarding.mutate(undefined, {
+        onSuccess: () => {
+          toast.success(t('system.onboarding.completeTour'));
+          onSuccess?.();
+        },
+        onError: () => {
+          completedRef.current = false;
+          setShowPrompt(true);
+          toast.error(t('common.errors.onboardingFailed'));
+        },
+      });
+    },
+    [completeOnboarding, t],
+  );
 
   const startOnboarding = useCallback(() => {
     setShowPrompt(false);
@@ -230,26 +251,15 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 align: 'start',
               },
               onHighlighted: () => {
-                // Mark onboarding as completed
-                completeOnboarding.mutate(undefined, {
-                  onSuccess: () => {
-                    toast.success(t('system.onboarding.completeTour'));
-                    onComplete?.();
-                    // Navigate to data storages page
-                    navigate({ to: '/data-storages' });
-                  },
+                markComplete(() => {
+                  onComplete?.();
+                  navigate({ to: '/data-storages' });
                 });
               },
             },
           ],
           onDestroyStarted: () => {
-            // Complete onboarding when user closes the tour
-            completeOnboarding.mutate(undefined, {
-              onSuccess: () => {
-                toast.success(t('system.onboarding.completeTour'));
-                onComplete?.();
-              },
-            });
+            markComplete(onComplete);
             driverObj.destroy();
           },
         });
@@ -257,16 +267,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         driverObj.drive();
       }, 500); // Wait a bit for the page to render
     });
-  }, [completeOnboarding, navigate, t]);
+  }, [markComplete, navigate, onComplete, t]);
 
   const skipOnboarding = useCallback(() => {
     setShowPrompt(false);
-    completeOnboarding.mutate(undefined, {
-      onSuccess: () => {
-        onComplete?.();
-      },
-    });
-  }, [completeOnboarding, onComplete]);
+    markComplete(onComplete);
+  }, [markComplete, onComplete]);
 
   if (showPrompt === false) {
     return null;

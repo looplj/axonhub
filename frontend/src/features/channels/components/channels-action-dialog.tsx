@@ -1259,7 +1259,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
     try {
       if (values.credentials?.apiKeys) {
-        values.credentials.apiKeys = [...new Set(values.credentials.apiKeys.filter((k) => k.trim().length > 0))];
+        values.credentials.apiKeys = [
+          ...new Set(values.credentials.apiKeys.map((key) => key.trim()).filter((key) => key.length > 0)),
+        ];
       }
 
       const retryableStatusCodes = parseRetryableStatusCodesInput(retryableStatusCodesText);
@@ -1559,7 +1561,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
       // Fall back to apiKeys array if no OAuth token
       if (!firstApiKey && apiKeys?.length) {
-        firstApiKey = apiKeys.find((key) => key.trim().length > 0) || '';
+        firstApiKey = apiKeys.find((key) => key.trim().length > 0)?.trim() || '';
       }
 
       const result = await fetchModels.mutateAsync({
@@ -1729,15 +1731,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const removeApiKeys = useCallback(
     (keysToRemove: string[]) => {
       const currentKeys = form.getValues('credentials.apiKeys') || [];
-      const nextKeys = currentKeys.filter((k) => !keysToRemove.includes(k));
-      const validNextKeys = nextKeys.filter((k) => k.trim().length > 0);
+      const keysToRemoveSet = new Set(keysToRemove.map((key) => key.trim()));
+      const validNextKeys = currentKeys
+        .map((key) => key.trim())
+        .filter((key) => key.length > 0 && !keysToRemoveSet.has(key));
       if (validNextKeys.length === 0) {
         toast.error(t('channels.dialogs.fields.apiKey.mustKeepOne'));
         setConfirmRemoveSelectedOpen(false);
         setConfirmRemoveKey(null);
         return;
       }
-      form.setValue('credentials.apiKeys', nextKeys, { shouldDirty: true, shouldTouch: true });
+      form.setValue('credentials.apiKeys', validNextKeys, { shouldDirty: true, shouldTouch: true });
       setSelectedKeysToRemove(new Set());
       setConfirmRemoveSelectedOpen(false);
       setConfirmRemoveKey(null);
@@ -2390,17 +2394,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                               const keys = e.target.value.split('\n');
                                               field.onChange(keys);
                                             }}
-                                            onBlur={(e) => {
+                                            onBlur={() => {
                                               if (!showApiKey) return;
-                                              const keys = [
-                                                ...new Set(
-                                                  e.target.value
-                                                    .split('\n')
-                                                    .map((k) => k.trim())
-                                                    .filter((k) => k.length > 0)
-                                                ),
-                                              ];
-                                              field.onChange(keys);
                                               field.onBlur();
                                             }}
                                             readOnly={!showApiKey}
@@ -2473,18 +2468,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                           const keys = e.target.value.split('\n');
                                           field.onChange(keys);
                                         }}
-                                        onBlur={(e) => {
-                                          const keys = [
-                                            ...new Set(
-                                              e.target.value
-                                                .split('\n')
-                                                .map((k) => k.trim())
-                                                .filter((k) => k.length > 0)
-                                            ),
-                                          ];
-                                          field.onChange(keys);
-                                          field.onBlur();
-                                        }}
+                                        onBlur={() => field.onBlur()}
                                         placeholder={t('channels.dialogs.fields.apiKey.placeholder')}
                                         className='min-h-[80px] resize-y font-mono text-sm md:col-span-6'
                                         autoComplete='new-password'
@@ -3152,7 +3136,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 <ScrollArea className='min-h-0 flex-1' type='always'>
                   <div className='space-y-1 pr-3'>
                     {(() => {
-                      const validKeys = (apiKeys || []).map((k) => k.trim()).filter((k) => k.length > 0);
+                      const validKeys = [...new Set((apiKeys || []).map((key) => key.trim()).filter((key) => key.length > 0))];
                       const isLastKey = validKeys.length <= 1;
                       const enabledKeysCount = validKeys.filter((k) => savedAPIKeySet.has(k) && !disabledKeySet.has(k)).length;
                       return validKeys

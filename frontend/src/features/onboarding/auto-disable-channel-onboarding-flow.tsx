@@ -43,6 +43,7 @@ export function AutoDisableChannelOnboardingFlow({ onComplete }: AutoDisableChan
       },
       onError: () => {
         completedRef.current = false;
+        setShowPrompt(true);
         toast.error(t('common.errors.onboardingFailed'));
       },
     });

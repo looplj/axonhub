@@ -42,7 +42,9 @@ test.describe('Admin Channels Management', () => {
 
     // Fill in API Key
     const apiKeyInput = createDialog.getByTestId('channel-api-key-input')
-    await apiKeyInput.fill('sk-test-key-' + uniqueSuffix)
+    await apiKeyInput.fill('  sk-test-key-' + uniqueSuffix + '  ')
+    await createDialog.getByTestId('channel-name-input').click()
+    await expect(createDialog.getByTestId('channel-name-input')).toBeFocused()
 
     // Add at least one supported model (required to enable Create button)
     // Wait for Quick Add Models section to appear and click on gpt-4o badge
