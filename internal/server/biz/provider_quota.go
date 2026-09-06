@@ -855,6 +855,7 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 		}
 		return
 	}
+	quotaData = provider_quota.NormalizeQuotaData(quotaData)
 
 	resetList := provider_quota.ResetList{Supported: false}
 	if resetter, ok := checker.(provider_quota.Resetter); ok {
