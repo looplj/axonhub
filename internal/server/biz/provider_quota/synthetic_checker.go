@@ -144,14 +144,14 @@ func (c *SyntheticQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		rawData["rollingFiveHourLimit"] = convertSyntheticRollingFiveHourLimitToMap(response.RollingFiveHourLimit)
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       normalizedStatus,
 		ProviderType: "synthetic",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
-	}, nil
+	}), nil
 }
 
 func (c *SyntheticQuotaChecker) SupportsChannel(ch *ent.Channel) bool {

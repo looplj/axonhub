@@ -26,9 +26,9 @@ func TestOpenCodeGo_CheckQuota_Success(t *testing.T) {
 			require.Equal(t, "application/json", req.Header.Get("Accept"))
 
 			body := `{"usage":{
-				"rolling":{"percent":12,"resetsAt":"2026-06-25T15:00:00Z"},
-				"weekly":{"percent":85,"resetsAt":"2026-07-02T10:00:00Z"},
-				"monthly":{"percent":35,"resetsAt":"2026-07-25T10:00:00Z"}
+				"rolling":{"percent":12,"resetsAt":"2099-06-25T15:00:00Z"},
+				"weekly":{"percent":85,"resetsAt":"2099-07-02T10:00:00Z"},
+				"monthly":{"percent":35,"resetsAt":"2099-07-25T10:00:00Z"}
 			}}`
 			return &http.Response{
 				StatusCode: http.StatusOK,
@@ -39,7 +39,7 @@ func TestOpenCodeGo_CheckQuota_Success(t *testing.T) {
 	})
 
 	checker := NewOpenCodeGoQuotaChecker(httpClient)
-	now := time.Date(2026, 6, 25, 10, 0, 0, 0, time.UTC)
+	now := time.Date(2099, 6, 25, 10, 0, 0, 0, time.UTC)
 	checker.now = func() time.Time { return now }
 
 	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
@@ -100,7 +100,7 @@ func TestOpenCodeGo_CheckQuota_UnixResetsAt(t *testing.T) {
 func TestOpenCodeGo_CheckQuota_PartialWindows(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{"usage":{"rolling":{"percent":100,"resetsAt":"2026-06-25T15:00:00Z"}}}`
+			body := `{"usage":{"rolling":{"percent":100,"resetsAt":"2099-06-25T15:00:00Z"}}}`
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(strings.NewReader(body)),
@@ -110,7 +110,7 @@ func TestOpenCodeGo_CheckQuota_PartialWindows(t *testing.T) {
 	})
 
 	checker := NewOpenCodeGoQuotaChecker(httpClient)
-	now := time.Date(2026, 6, 25, 10, 0, 0, 0, time.UTC)
+	now := time.Date(2099, 6, 25, 10, 0, 0, 0, time.UTC)
 	checker.now = func() time.Time { return now }
 
 	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
@@ -148,7 +148,7 @@ func TestOpenCodeGo_CheckQuota_MillisecondResetsAt(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			// Live API shape: RFC3339 with fractional seconds (verified 2026-08-12).
-			body := `{"usage":{"rolling":{"status":"ok","percent":0,"resetsAt":"2026-08-12T11:24:29.905Z"}}}`
+			body := `{"usage":{"rolling":{"status":"ok","percent":0,"resetsAt":"2099-08-12T11:24:29.905Z"}}}`
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(strings.NewReader(body)),
@@ -158,7 +158,7 @@ func TestOpenCodeGo_CheckQuota_MillisecondResetsAt(t *testing.T) {
 	})
 
 	checker := NewOpenCodeGoQuotaChecker(httpClient)
-	now := time.Date(2026, 6, 25, 10, 0, 0, 0, time.UTC)
+	now := time.Date(2099, 6, 25, 10, 0, 0, 0, time.UTC)
 	checker.now = func() time.Time { return now }
 
 	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
@@ -168,12 +168,12 @@ func TestOpenCodeGo_CheckQuota_MillisecondResetsAt(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "available", quota.Status)
 	require.Len(t, quota.Limits, 1)
-	require.Equal(t, time.Date(2026, 8, 12, 11, 24, 29, 905_000_000, time.UTC), *quota.NextResetAt)
+	require.Equal(t, time.Date(2099, 8, 12, 11, 24, 29, 905_000_000, time.UTC), *quota.NextResetAt)
 
 	windows := quota.RawData["windows"].(map[string]any)
 	rolling := windows["rolling"].(map[string]any)
 	require.InDelta(t, 0, rolling["usage_percent"], 0.001)
-	require.Equal(t, "2026-08-12T11:24:29Z", rolling["reset_time"])
+	require.Equal(t, "2099-08-12T11:24:29Z", rolling["reset_time"])
 }
 
 func TestOpenCodeGo_CheckQuota_MissingAPIKey(t *testing.T) {
@@ -189,7 +189,7 @@ func TestOpenCodeGo_CheckQuota_SecondAPIKey(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			require.Equal(t, "Bearer key-two", req.Header.Get("Authorization"))
-			body := `{"usage":{"rolling":{"percent":12,"resetsAt":"2026-06-25T15:00:00Z"}}}`
+			body := `{"usage":{"rolling":{"percent":12,"resetsAt":"2099-06-25T15:00:00Z"}}}`
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(strings.NewReader(body)),
@@ -211,7 +211,7 @@ func TestOpenCodeGo_CheckQuota_SecondAPIKey(t *testing.T) {
 func TestOpenCodeGo_CheckQuota_EpochMilliseconds(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{"usage":{"rolling":{"percent":12,"resetsAt":1782370800000}}}`
+			body := `{"usage":{"rolling":{"percent":12,"resetsAt":4086082800000}}}`
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Body:       io.NopCloser(strings.NewReader(body)),
@@ -228,7 +228,7 @@ func TestOpenCodeGo_CheckQuota_EpochMilliseconds(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, "available", quota.Status)
-	require.Equal(t, time.UnixMilli(1782370800000), *quota.NextResetAt)
+	require.Equal(t, time.UnixMilli(4086082800000), *quota.NextResetAt)
 }
 
 func TestOpenCodeGo_CheckQuota_AllWindowsUnparseable(t *testing.T) {

@@ -23,16 +23,16 @@ func TestSynthetic_CheckQuota_HappyPath(t *testing.T) {
 			require.Equal(t, "application/json", req.Header.Get("Content-Type"))
 
 			body := `{
-				"subscription": {"limit": 750, "requests": 0, "renewsAt": "2026-04-25T08:47:39.947Z"},
+				"subscription": {"limit": 750, "requests": 0, "renewsAt": "2099-04-25T08:47:39.947Z"},
 				"search": {"hourly": {"limit": 250, "requests": 0}},
 				"weeklyTokenLimit": {
-					"nextRegenAt": "2026-04-25T04:48:26.000Z",
+					"nextRegenAt": "2099-04-25T04:48:26.000Z",
 					"percentRemaining": 38.6,
 					"maxCredits": "$36.00",
 					"remainingCredits": "$13.90"
 				},
 				"rollingFiveHourLimit": {
-					"nextTickAt": "2026-04-25T04:00:01.000Z",
+					"nextTickAt": "2099-04-25T04:00:01.000Z",
 					"tickPercent": 0.05,
 					"remaining": 750,
 					"max": 750,
@@ -315,21 +315,21 @@ func TestSynthetic_SupportsChannel(t *testing.T) {
 }
 
 func TestSynthetic_CheckQuota_NextResetAt(t *testing.T) {
-	expectedTime, _ := time.Parse(time.RFC3339, "2026-04-25T04:00:01.000Z")
+	expectedTime, _ := time.Parse(time.RFC3339, "2099-04-25T04:00:01.000Z")
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			// rollingFiveHourLimit.nextTickAt is earliest
 			body := `{
-				"subscription": {"limit": 750, "requests": 0, "renewsAt": "2026-04-25T08:47:39.947Z"},
+				"subscription": {"limit": 750, "requests": 0, "renewsAt": "2099-04-25T08:47:39.947Z"},
 				"weeklyTokenLimit": {
-					"nextRegenAt": "2026-04-25T04:48:26.000Z",
+					"nextRegenAt": "2099-04-25T04:48:26.000Z",
 					"percentRemaining": 38.6,
 					"maxCredits": "$36.00",
 					"remainingCredits": "$13.90"
 				},
 				"rollingFiveHourLimit": {
-					"nextTickAt": "2026-04-25T04:00:01.000Z",
+					"nextTickAt": "2099-04-25T04:00:01.000Z",
 					"tickPercent": 0.05,
 					"remaining": 750,
 					"max": 750,
