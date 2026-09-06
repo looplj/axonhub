@@ -3,9 +3,12 @@ package video_storage
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -39,6 +42,10 @@ type Worker struct {
 	dataStorageService *biz.DataStorageService
 	videoService       *biz.VideoService
 }
+
+var ErrUnsafeVideoURL = errors.New("unsafe video download URL")
+
+var sharedAddressPrefix = netip.MustParsePrefix("100.64.0.0/10")
 
 func NewWorker(params Params) *Worker {
 	w := &Worker{
@@ -250,7 +257,11 @@ func openVideoStream(ctx context.Context, videoURL string) (io.ReadCloser, strin
 	}
 
 	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
-		return nil, "", fmt.Errorf("invalid URL scheme: %s", parsedURL.Scheme)
+		return nil, "", fmt.Errorf("%w: invalid URL scheme: %s", ErrUnsafeVideoURL, parsedURL.Scheme)
+	}
+
+	if err := validateVideoDownloadURL(ctx, parsedURL); err != nil {
+		return nil, "", err
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, videoURL, nil)
@@ -258,8 +269,22 @@ func openVideoStream(ctx context.Context, videoURL string) (io.ReadCloser, strin
 		return nil, "", fmt.Errorf("failed to create request: %w", err)
 	}
 
-	// nolint:gosec
-	resp, err := http.DefaultClient.Do(req)
+	transport, ok := http.DefaultTransport.(*http.Transport)
+	if !ok {
+		return nil, "", fmt.Errorf("failed to configure safe video transport")
+	}
+	transport = transport.Clone()
+	transport.Proxy = nil
+	transport.DialContext = safeVideoDialContext
+
+	client := &http.Client{
+		Transport: transport,
+		CheckRedirect: func(redirectReq *http.Request, _ []*http.Request) error {
+			return validateVideoDownloadURL(redirectReq.Context(), redirectReq.URL)
+		},
+	}
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to download video: %w", err)
 	}
@@ -271,6 +296,85 @@ func openVideoStream(ctx context.Context, videoURL string) (io.ReadCloser, strin
 
 	filename := filenameFromResponse(resp, videoURL)
 	return resp.Body, filename, nil
+}
+
+func validateVideoDownloadURL(ctx context.Context, videoURL *url.URL) error {
+	if videoURL == nil || (videoURL.Scheme != "http" && videoURL.Scheme != "https") || videoURL.Hostname() == "" || videoURL.User != nil {
+		return fmt.Errorf("%w: URL must be an http(s) URL with a public host", ErrUnsafeVideoURL)
+	}
+
+	host := videoURL.Hostname()
+	addresses, err := resolveVideoHost(ctx, host)
+	if err != nil {
+		return fmt.Errorf("%w: failed to resolve host %q: %v", ErrUnsafeVideoURL, host, err)
+	}
+
+	for _, address := range addresses {
+		if isUnsafeVideoAddress(address) {
+			return fmt.Errorf("%w: host %q resolves to private or local address %s", ErrUnsafeVideoURL, host, address)
+		}
+	}
+
+	return nil
+}
+
+func resolveVideoHost(ctx context.Context, host string) ([]netip.Addr, error) {
+	if address, err := netip.ParseAddr(host); err == nil {
+		return []netip.Addr{address.Unmap()}, nil
+	}
+
+	resolved, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+	if err != nil {
+		return nil, err
+	}
+	if len(resolved) == 0 {
+		return nil, fmt.Errorf("host has no addresses")
+	}
+
+	addresses := make([]netip.Addr, 0, len(resolved))
+	for _, address := range resolved {
+		addresses = append(addresses, address.Unmap())
+	}
+
+	return addresses, nil
+}
+
+func isUnsafeVideoAddress(address netip.Addr) bool {
+	return !address.IsValid() ||
+		address.IsLoopback() ||
+		address.IsPrivate() ||
+		address.IsLinkLocalUnicast() ||
+		address.IsUnspecified() ||
+		address.IsMulticast() ||
+		sharedAddressPrefix.Contains(address)
+}
+
+func safeVideoDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, fmt.Errorf("invalid video download address %q: %w", address, err)
+	}
+
+	addresses, err := resolveVideoHost(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+
+	var lastErr error
+	dialer := &net.Dialer{Timeout: 30 * time.Second}
+	for _, resolved := range addresses {
+		if isUnsafeVideoAddress(resolved) {
+			return nil, fmt.Errorf("%w: host %q resolved to private or local address %s", ErrUnsafeVideoURL, host, resolved)
+		}
+
+		conn, err := dialer.DialContext(ctx, network, net.JoinHostPort(resolved.String(), port))
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
+	}
+
+	return nil, fmt.Errorf("failed to connect to video host %q: %w", host, lastErr)
 }
 
 func filenameFromResponse(resp *http.Response, fallbackURL string) string {
