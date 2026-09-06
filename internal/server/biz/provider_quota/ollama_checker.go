@@ -76,6 +76,9 @@ func (c *OllamaQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Q
 	if ch.Settings.Proxy != nil {
 		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
 	}
+	// Reject HTTPS-to-HTTP redirects so the session cookie is never forwarded
+	// over a downgraded (cleartext) connection.
+	hc = hc.WithRejectHTTPSDowngrade()
 
 	request := httpclient.NewRequestBuilder().
 		WithMethod(http.MethodGet).
@@ -87,8 +90,7 @@ func (c *OllamaQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Q
 
 	resp, err := hc.Do(ctx, request)
 	if err != nil {
-		var httpErr *httpclient.Error
-		if errors.As(err, &httpErr) {
+		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
 			if httpErr.StatusCode == http.StatusUnauthorized || httpErr.StatusCode == http.StatusForbidden {
 				return QuotaData{}, fmt.Errorf("%w: Ollama settings page returned %d (expired session cookie?)", ErrInvalidCredentials, httpErr.StatusCode)
 			}
@@ -181,10 +183,7 @@ func (c *OllamaQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		if idx < 0 {
 			return
 		}
-		end := idx + 4000
-		if end > len(html) {
-			end = len(html)
-		}
+		end := min(idx+4000, len(html))
 		chunk := html[idx:end]
 
 		meter := ollamaUsageMeterRe.FindStringSubmatch(chunk)

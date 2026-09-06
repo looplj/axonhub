@@ -316,3 +316,26 @@ func TestOllama_NormalizeCookie(t *testing.T) {
 	_, err = NormalizeOllamaCookie("__Secure-session=")
 	require.Error(t, err)
 }
+
+// The checker must reject HTTPS-to-HTTP redirects so the session cookie is
+// never forwarded over a downgraded (cleartext) connection. We simulate a real
+// 302 redirect from https://ollama.com/settings to an http:// target; the
+// client's CheckRedirect (set by WithRejectHTTPSDowngrade) must refuse it.
+func TestOllama_CheckQuota_RejectsHTTPSDowngrade(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			// First request to the HTTPS settings URL returns a 302 to an HTTP
+			// target. The client must refuse to follow it.
+			return &http.Response{
+				StatusCode: http.StatusFound,
+				Header:     http.Header{"Location": []string{"http://ollama.com/settings"}},
+				Body:       io.NopCloser(strings.NewReader("")),
+			}, nil
+		}),
+	})
+
+	checker := NewOllamaQuotaChecker(httpClient)
+	_, err := checker.CheckQuota(context.Background(), ollamaChannel("__Secure-session=aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789"))
+	require.Error(t, err)
+	require.ErrorContains(t, err, "refusing HTTPS to HTTP redirect")
+}
