@@ -218,10 +218,14 @@ func (c *OllamaQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 	if len(windows) == 0 {
 		// No usage windows matched: the page may be a sign-in redirect to an
 		// HTML login page (an expired cookie that returns 200 rather than 401/403)
-		// or the markup has changed. Here we surface a generic error rather than
-		// silently returning empty. Note: a 200 login page is not classified as
-		// invalid credentials here, so the framework retains previously cached
-		// quota with backoff instead of clearing it; only hard 401/403 clear it.
+		// or the markup has changed. A sign-in page means the session credential
+		// is no longer valid, so classify it as invalid credentials so the
+		// framework invalidates stale cached quota rather than retaining it with
+		// backoff. Any other 200 body is a genuine parse failure (likely markup
+		// change), which surfaces as a generic check error.
+		if ollamaLooksLikeLoginPage(html) {
+			return QuotaData{}, fmt.Errorf("%w: ollama.com/settings returned the sign-in page (expired session cookie?)", ErrInvalidCredentials)
+		}
 		return QuotaData{}, fmt.Errorf("no Ollama usage windows found in settings page (expired cookie or markup change)")
 	}
 
@@ -300,4 +304,30 @@ func normalizeOllamaWindowStatus(usageRatio float64) string {
 		return "warning"
 	}
 	return "available"
+}
+
+// ollamaLooksLikeLoginPage reports whether an HTML body is the Ollama sign-in
+// page rather than the logged-in settings page. When an expired session cookie
+// hits ollama.com/settings, the site may return an HTTP 200 login/redirect
+// page instead of 401/403. Detecting that lets the checker classify the result
+// as invalid credentials so stale cached quota is invalidated rather than
+// retained with backoff. The markers are stable HTML tokens of the AuthKit
+// sign-in flow; a body containing none of them is treated as a genuine markup
+// change (a generic parse failure), not an auth problem.
+func ollamaLooksLikeLoginPage(html string) bool {
+	lower := strings.ToLower(html)
+	markers := []string{
+		"<title>sign in",
+		"sign-in",
+		"signin",
+		"wos-session", // session cookie reference implies a redirect/auth flow
+		"log in to your account",
+		"/signin",
+	}
+	for _, m := range markers {
+		if strings.Contains(lower, m) {
+			return true
+		}
+	}
+	return false
 }

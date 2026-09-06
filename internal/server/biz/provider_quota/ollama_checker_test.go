@@ -180,6 +180,39 @@ func TestOllama_CheckQuota_ExpiredCookie(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidCredentials)
 }
 
+// A 200 login/redirect page (expired cookie that isn't a hard 403) must still be
+// classified as invalid credentials so stale quota is invalidated, not retained.
+func TestOllama_CheckQuota_ExpiredCookieLoginPage200(t *testing.T) {
+	loginHTML := `<!DOCTYPE html><html><head><title>Sign in · Ollama</title></head><body>` +
+		`<form action="/signin"><input name="email"/><button>Sign in</button></form></body></html>`
+
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			// Site returns 200 with the AuthKit sign-in page instead of 403.
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader(loginHTML)),
+				Header:     make(http.Header),
+			}, nil
+		}),
+	})
+
+	checker := NewOllamaQuotaChecker(httpClient)
+	_, err := checker.CheckQuota(context.Background(), ollamaChannel("__Secure-session=aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789"))
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidCredentials)
+}
+
+func TestOllama_LooksLikeLoginPage(t *testing.T) {
+	require.True(t, ollamaLooksLikeLoginPage(`<html><head><title>Sign in · Ollama</title></head><body>...</body></html>`))
+	require.True(t, ollamaLooksLikeLoginPage(`<form action="/signin">Sign in</form>`))
+	require.True(t, ollamaLooksLikeLoginPage(`signin`))
+	require.True(t, ollamaLooksLikeLoginPage(`Log in to your account`))
+	// Normal settings page / genuinely broken page must NOT be flagged as login.
+	require.False(t, ollamaLooksLikeLoginPage(ollamaSettingsHTML()))
+	require.False(t, ollamaLooksLikeLoginPage(`<html><body><p>no data</p></body></html>`))
+}
+
 func TestOllama_CheckQuota_OnlySessionWindow(t *testing.T) {
 	html := `<!DOCTYPE html><html><head><title>Usage</title></head><body>` +
 		`<span class="text-sm">Session usage</span>` +

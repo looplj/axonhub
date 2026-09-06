@@ -80,3 +80,29 @@ test('Codex reset can be attempted after a transient reset-list failure', () => 
     'the reset button should use the retry-aware availability condition'
   );
 });
+
+test('Ollama badge derives percentage from the heavier of the 5h/weekly windows', () => {
+  const source = read('components/quota-badges.tsx');
+  const start = source.indexOf('} else if (isOllamaType(channel.type)) {');
+  const end = source.indexOf('} else if (', start + 5);
+  const percentBlock = source.slice(start, end);
+
+  assert.match(
+    percentBlock,
+    /Math\.max\(\s*qd\?\.windows\?\.\[['"]5h['"]\]\?\.usage_percent \?\? 0,\s*qd\?\.windows\?\.weekly\?\.usage_percent \?\? 0\s*\)/,
+    'ollama badge percentage should be the max of the 5h and weekly window usage'
+  );
+});
+
+test('Ollama badge renders both the 5h and weekly windows with a reset countdown', () => {
+  const source = read('components/quota-badges.tsx');
+  const start = source.indexOf("{isOllamaType(channel.type) &&");
+  const end = source.indexOf("{isCommandCodeType(channel.type) &&", start);
+  const ollamaBlock = source.slice(start, end);
+
+  assert.match(ollamaBlock, /QuotaWindow5h|'5h'/);
+  assert.match(ollamaBlock, /'quota\.window\.5h'/);
+  assert.match(ollamaBlock, /'quota\.window\.weekly'/);
+  assert.match(ollamaBlock, /formatTimeToReset\(window\.reset_time\)/);
+  assert.doesNotMatch(ollamaBlock, /durationPercent/);
+});
