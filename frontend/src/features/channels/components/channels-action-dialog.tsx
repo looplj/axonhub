@@ -59,6 +59,7 @@ import {
   getApiFormatsForProvider,
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
+import { getInitialApiFormatForChannel, getModelProtocolsForApiFormat } from '../data/protocol-options';
 import { Channel, ChannelType, ApiFormat, ChannelSettings, RetryableErrorPattern, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
@@ -472,9 +473,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   });
   const [selectedApiFormat, setSelectedApiFormat] = useState<ApiFormat>(() => {
     if (initialRow) {
-      return CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || 'openai/chat_completions';
+      return getInitialApiFormatForChannel(
+        initialRow.type,
+        CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
+        initialRow.settings?.modelProtocols
+      );
     }
-    return 'openai/chat_completions';
+    return OPENAI_CHAT_COMPLETIONS;
   });
   const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() => getResponsesTransportFromChannel(initialRow));
   const [useGeminiVertex, setUseGeminiVertex] = useState(() => {
@@ -501,7 +506,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
     const provider = getProviderFromChannelType(initialRow.type) || 'openai';
     setSelectedProvider(provider);
-    const apiFormat = CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS;
+    const apiFormat = getInitialApiFormatForChannel(
+      initialRow.type,
+      CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
+      initialRow.settings?.modelProtocols
+    );
     setSelectedApiFormat(apiFormat);
     setResponsesTransport(getResponsesTransportFromChannel(initialRow));
     setUseGeminiVertex(initialRow.type === 'gemini_vertex');
@@ -1316,6 +1325,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
+        const existingModelProtocols = currentRow.settings?.modelProtocols;
+        const shouldUpdateModelProtocols =
+          selectedApiFormat === 'zenmux/video' ||
+          existingModelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video')) === true;
         const settingsPatch: Partial<ChannelSettings> = {
           passThroughUserAgent,
           passThroughBody,
@@ -1325,6 +1338,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
           providerQuota: settingsForSubmit?.providerQuota,
+          ...(shouldUpdateModelProtocols
+            ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
+            : {}),
         };
 
         const updateInput = {
@@ -1383,6 +1399,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          ...(selectedApiFormat === 'zenmux/video' ||
+          settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
+            ? {
+                modelProtocols: getModelProtocolsForApiFormat(
+                  selectedApiFormat,
+                  supportedModels,
+                  settingsForSubmit?.modelProtocols
+                ),
+              }
+            : {}),
         });
 
         const createInput = {
@@ -1816,7 +1842,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
-              setSelectedApiFormat(CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS);
+              setSelectedApiFormat(
+                getInitialApiFormatForChannel(
+                  initialRow.type,
+                  CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
+                  initialRow.settings?.modelProtocols
+                )
+              );
               setResponsesTransport(getResponsesTransportFromChannel(initialRow));
               setUseGeminiVertex(initialRow.type === 'gemini_vertex');
               setUseAnthropicAws(initialRow.type === 'anthropic_aws');

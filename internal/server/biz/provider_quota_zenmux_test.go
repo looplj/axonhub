@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
@@ -101,6 +102,49 @@ func TestProviderQuotaService_GroupChannelsByQuotaAccount_SeparatesProxyConfigur
 
 	require.Len(t, groups, 2)
 	require.Equal(t, groups[0].accountKey, groups[1].accountKey)
+}
+
+func TestProviderQuotaService_GroupChannelsByQuotaAccount_NativeVideoSharesManagementKeyAndProxyScope(t *testing.T) {
+	service := &ProviderQuotaService{}
+	channels := []*ent.Channel{
+		{
+			ID:          1,
+			Type:        channel.TypeZenmux,
+			Credentials: objects.ChannelCredentials{ManagementAPIKey: "shared"},
+			Settings:    &objects.ChannelSettings{Proxy: &httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://proxy-a.example"}},
+			Endpoints:   []objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIVideo.String()}},
+		},
+		{
+			ID:          2,
+			Type:        channel.TypeZenmux,
+			Credentials: objects.ChannelCredentials{ManagementAPIKey: "shared"},
+			Settings:    &objects.ChannelSettings{Proxy: &httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://proxy-a.example"}},
+			Endpoints:   []objects.ChannelEndpoint{{APIFormat: llm.APIFormatZenmuxVideo.String()}},
+		},
+		{
+			ID:          3,
+			Type:        channel.TypeZenmux,
+			Credentials: objects.ChannelCredentials{ManagementAPIKey: "shared"},
+			Settings:    &objects.ChannelSettings{Proxy: &httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://proxy-b.example"}},
+			Endpoints:   []objects.ChannelEndpoint{{APIFormat: llm.APIFormatZenmuxVideo.String()}},
+		},
+		{
+			ID:          4,
+			Type:        channel.TypeZenmux,
+			Credentials: objects.ChannelCredentials{ManagementAPIKey: "other"},
+			Settings:    &objects.ChannelSettings{Proxy: &httpclient.ProxyConfig{Type: httpclient.ProxyTypeURL, URL: "http://proxy-a.example"}},
+			Endpoints:   []objects.ChannelEndpoint{{APIFormat: llm.APIFormatZenmuxVideo.String()}},
+		},
+	}
+
+	groups := service.groupChannelsByQuotaAccount(channels)
+
+	require.Len(t, groups, 3)
+	require.Equal(t, []int{1, 2}, []int{groups[0].channels[0].ID, groups[0].channels[1].ID})
+	require.Equal(t, groups[0].accountKey, groups[1].accountKey)
+	require.NotEqual(t, groups[0].accountKey, groups[2].accountKey)
+	require.Equal(t, 3, groups[1].channels[0].ID)
+	require.Equal(t, 4, groups[2].channels[0].ID)
 }
 
 func TestQuotaCheckGroupIsDue_WhenOneSharedChannelIsDue(t *testing.T) {

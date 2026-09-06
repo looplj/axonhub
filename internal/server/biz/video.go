@@ -2,14 +2,18 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer"
+	zenmuxtransformer "github.com/looplj/axonhub/llm/transformer/zenmux"
 )
 
 type VideoService struct {
@@ -57,15 +61,18 @@ func (s *VideoService) GetTask(ctx context.Context, requestID int) (*llm.Respons
 }
 
 // GetTaskByExternalID looks up a video task by the provider's task ID (external_id).
-// NOTE: assumes provider task IDs are globally unique across channels.
 func (s *VideoService) GetTaskByExternalID(ctx context.Context, externalID string) (*llm.Response, error) {
 	client := ent.FromContext(ctx)
 	if client == nil {
 		return nil, fmt.Errorf("%w: ent client not found in context", ErrInternal)
 	}
+	projectID, err := videoTaskProjectID(ctx)
+	if err != nil {
+		return nil, err
+	}
 
 	task, err := client.Request.Query().
-		Where(request.ExternalID(externalID)).
+		Where(request.ExternalID(externalID), request.ProjectID(projectID)).
 		Only(ctx)
 	if err != nil {
 		return nil, err
@@ -75,21 +82,37 @@ func (s *VideoService) GetTaskByExternalID(ctx context.Context, externalID strin
 }
 
 // DeleteTaskByExternalID deletes a video task by the provider's task ID (external_id).
-// NOTE: assumes provider task IDs are globally unique across channels.
 func (s *VideoService) DeleteTaskByExternalID(ctx context.Context, externalID string) error {
 	client := ent.FromContext(ctx)
 	if client == nil {
 		return fmt.Errorf("%w: ent client not found in context", ErrInternal)
 	}
+	projectID, err := videoTaskProjectID(ctx)
+	if err != nil {
+		return err
+	}
 
 	task, err := client.Request.Query().
-		Where(request.ExternalID(externalID)).
+		Where(request.ExternalID(externalID), request.ProjectID(projectID)).
 		Only(ctx)
 	if err != nil {
 		return err
 	}
 
 	return s.DeleteTask(ctx, task.ID)
+}
+
+func videoTaskProjectID(ctx context.Context) (int, error) {
+	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
+		return apiKey.ProjectID, nil
+	}
+
+	projectID, ok := contexts.GetProjectID(ctx)
+	if !ok {
+		return 0, fmt.Errorf("%w: project id not found in context", ErrInternal)
+	}
+
+	return projectID, nil
 }
 
 func (s *VideoService) DeleteTask(ctx context.Context, requestID int) error {
@@ -100,6 +123,13 @@ func (s *VideoService) DeleteTask(ctx context.Context, requestID int) error {
 
 	httpReq, err := outbound.BuildDeleteVideoTaskRequest(ctx, task.ExternalID)
 	if err != nil {
+		if errors.Is(err, zenmuxtransformer.ErrVideoTaskDeleteUnsupported) {
+			if err := s.RequestService.UpdateRequestStatus(ctx, requestID, request.StatusCanceled); err != nil {
+				return fmt.Errorf("failed to cancel video task locally: %w", err)
+			}
+			return nil
+		}
+
 		return err
 	}
 
@@ -138,16 +168,36 @@ func (s *VideoService) loadTask(ctx context.Context, requestID int) (*ent.Reques
 		return nil, nil, nil, err
 	}
 
-	var outbound transformer.VideoTaskOutbound
-
-	var videoKey string
-
-	switch ch.Type {
-	case channel.TypeDoubao:
-		videoKey = llm.APIFormatSeedanceVideo.String()
-	default:
-		videoKey = llm.APIFormatOpenAIVideo.String()
+	videoKey := ""
+	executions, err := client.RequestExecution.Query().
+		Where(requestexecution.RequestID(requestID)).
+		Order(ent.Desc(requestexecution.FieldID)).
+		All(ctx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("failed to query request executions: %w", err)
 	}
+
+	for _, execution := range executions {
+		if strings.TrimSpace(execution.Format) == "" || strings.TrimSpace(execution.ExternalID) == "" {
+			continue
+		}
+
+		videoKey = execution.Format
+		break
+	}
+
+	if videoKey == "" {
+		switch ch.Type {
+		case channel.TypeDoubao:
+			videoKey = llm.APIFormatSeedanceVideo.String()
+		default:
+			videoKey = llm.APIFormatOpenAIVideo.String()
+		}
+	} else if _, ok := llm.CapableAPIFormats(llm.RequestTypeVideo)[videoKey]; !ok {
+		return nil, nil, nil, fmt.Errorf("%w: persisted execution format %q does not support video task operations", ErrInternal, videoKey)
+	}
+
+	var outbound transformer.VideoTaskOutbound
 
 	if ch.Outbounds != nil {
 		if out, ok := ch.Outbounds[videoKey]; ok {

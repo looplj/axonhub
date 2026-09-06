@@ -50,6 +50,7 @@ func CapableAPIFormats(requestType RequestType) map[string]struct{} {
 		return map[string]struct{}{
 			APIFormatOpenAIVideo.String():   {},
 			APIFormatSeedanceVideo.String(): {},
+			APIFormatZenmuxVideo.String():   {},
 		}
 	case RequestTypeSpeech:
 		return map[string]struct{}{

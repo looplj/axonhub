@@ -334,6 +334,7 @@
   "channels.dialogs.fields.apiFormat.formats.openai/image_edit": "OpenAI (Image Edit)",
   "channels.dialogs.fields.apiFormat.formats.openai/image_variation": "OpenAI (Image Variation)",
   "channels.dialogs.fields.apiFormat.formats.openai/video": "OpenAI (Video)",
+  "channels.dialogs.fields.apiFormat.formats.zenmux/video": "ZenMux (Video)",
   "channels.dialogs.fields.apiFormat.formats.openai/audio_speech": "OpenAI (Audio Speech)",
   "channels.dialogs.fields.apiFormat.formats.openai/audio_transcriptions": "OpenAI (Audio Transcriptions)",
   "channels.dialogs.fields.apiFormat.formats.openai/audio_translations": "OpenAI (Audio Translations)",

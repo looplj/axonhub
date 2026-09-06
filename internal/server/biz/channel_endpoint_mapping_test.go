@@ -280,6 +280,14 @@ func TestValidateEndpoints(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("Zenmux video endpoint is supported", func(t *testing.T) {
+		format := llm.APIFormatZenmuxVideo.String()
+
+		_, supported := SupportedAPIFormats[format]
+		require.True(t, supported)
+		require.NoError(t, ValidateEndpoints([]objects.ChannelEndpoint{{APIFormat: format}}))
+	})
+
 	t.Run("empty endpoints list passes validation", func(t *testing.T) {
 		err := ValidateEndpoints(nil)
 		require.NoError(t, err)
