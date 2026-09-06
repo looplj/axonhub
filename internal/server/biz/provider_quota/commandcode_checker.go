@@ -365,14 +365,14 @@ func parseCommandCodeCredits(creditsBody, subscriptionsBody []byte) (QuotaData, 
 		})
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       overall,
 		ProviderType: commandCodeProviderType,
 		RawData:      raw,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(overall),
 		Limits:       limits,
-	}, nil
+	}), nil
 }
 
 type commandCodeWindow struct {

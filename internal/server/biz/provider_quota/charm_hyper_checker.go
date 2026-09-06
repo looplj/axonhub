@@ -81,16 +81,16 @@ func (c *CharmHyperQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 
 	status, ready, usageRatio := c.computeStatus(*resp.Balance)
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       status,
 		ProviderType: "charm_hyper",
 		RawData:      map[string]any{"balance": *resp.Balance},
 		NextResetAt:  nil,
 		Ready:        ready,
 		Limits: []QuotaLimitStatus{
-			NewTokenLimitStatus(status, usageRatio, nil),
+			NewTokenLimitStatus(status, usageRatio, nil).WithWindow("credits", 0),
 		},
-	}, nil
+	}), nil
 }
 
 func (c *CharmHyperQuotaChecker) computeStatus(balance float64) (status string, ready bool, usageRatio float64) {

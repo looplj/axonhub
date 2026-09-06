@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -51,35 +53,82 @@ func (c *GithubCopilotQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Chan
 		return QuotaData{}, err
 	}
 
-	status, lowestPercentage := c.calculateStatus(payload)
+	status, _ := c.calculateStatus(payload)
 
-	usageRatio := 1.0
-	if lowestPercentage > 0 {
-		usageRatio = 1.0 - (lowestPercentage / 100.0)
-	}
 	// Copilot quotas reset monthly on the account's billing date, so the period
 	// they cover starts one calendar month before that date.
 	resetAt := c.parseResetDate(payload)
-	limits := []QuotaLimitStatus{
-		{
-			Type:        QuotaLimitTypeToken,
-			Status:      status,
-			UsageRatio:  usageRatio,
-			Ready:       IsReadyStatus(status),
-			NextResetAt: resetAt,
-			Window:      QuotaWindowMonthly,
-			PeriodStart: PeriodStartFromMonthlyReset(resetAt),
-		},
-	}
+	limits := c.buildLimits(payload, resetAt)
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       status,
 		ProviderType: "github_copilot",
 		RawData:      c.prepareRawData(payload),
 		NextResetAt:  resetAt,
 		Ready:        IsReadyStatus(status),
 		Limits:       limits,
-	}, nil
+	}), nil
+}
+
+func (c *GithubCopilotQuotaChecker) buildLimits(payload *copilotUserPayload, resetAt *time.Time) []QuotaLimitStatus {
+	limits := make([]QuotaLimitStatus, 0, len(payload.LimitedUserQuotas)+len(payload.QuotaSnapshots))
+	keys := make([]string, 0, len(payload.LimitedUserQuotas))
+	for key := range payload.LimitedUserQuotas {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		remaining, ok := c.getNumber(payload.LimitedUserQuotas[key])
+		if !ok || !isFiniteCopilotNumber(remaining) || remaining < 0 {
+			continue
+		}
+		total, totalOK := c.getNumber(payload.MonthlyQuotas[key])
+		if !totalOK || !isFiniteCopilotNumber(total) || total < 0 {
+			total = remaining
+		}
+		if total == 0 && remaining != 0 {
+			continue
+		}
+		ratio := 0.0
+		if total > 0 {
+			ratio = (total - remaining) / total
+		}
+		limits = append(limits, copilotLimit(key, ratio, resetAt))
+	}
+
+	keys = keys[:0]
+	for key := range payload.QuotaSnapshots {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		snapshot, ok := payload.QuotaSnapshots[key].(map[string]any)
+		if !ok || snapshot["unlimited"] == true {
+			continue
+		}
+		remaining, ok := c.getNumber(snapshot["percent_remaining"])
+		if !ok || !isFiniteCopilotNumber(remaining) || remaining < 0 || remaining > 100 {
+			continue
+		}
+		limits = append(limits, copilotLimit(key, 1-remaining/100, resetAt))
+	}
+
+	return limits
+}
+
+func copilotLimit(window string, ratio float64, resetAt *time.Time) QuotaLimitStatus {
+	status := "available"
+	if ratio >= 1 {
+		status = "exhausted"
+	} else if ratio >= WarningThresholdRatio {
+		status = "warning"
+	}
+	return NewTokenLimitStatus(status, ratio, resetAt).
+		WithWindow(window, 0)
+}
+
+func isFiniteCopilotNumber(value float64) bool {
+	return !math.IsNaN(value) && !math.IsInf(value, 0)
 }
 
 func (c *GithubCopilotQuotaChecker) getAccessToken(ch *ent.Channel) (string, error) {
@@ -259,7 +308,6 @@ func (c *GithubCopilotQuotaChecker) parseResetDate(payload *copilotUserPayload) 
 	}
 	return nil
 }
-
 
 func (c *GithubCopilotQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	return ch.Type == channel.TypeGithubCopilot
