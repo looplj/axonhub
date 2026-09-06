@@ -386,6 +386,7 @@ export const providerQuotaStatusSchema = z.object({
   ready: z.boolean(),
   quotaData: z.record(z.string(), z.unknown()),
   providerType: z.string(),
+  accountKey: z.string().optional().nullable(),
 });
 export type ProviderQuotaStatus = z.infer<typeof providerQuotaStatusSchema>;
 
