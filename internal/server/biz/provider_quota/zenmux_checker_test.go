@@ -32,7 +32,7 @@ func TestZenmuxQuotaChecker_CheckQuota(t *testing.T) {
 		{
 			name:               "healthy mid-usage",
 			statusCode:         http.StatusOK,
-			body:               zenmuxQuotaFixture("healthy", 0.4, `"2026-09-03T15:00:00Z"`),
+			body:               zenmuxQuotaFixture("healthy", 0.4, `"2099-09-03T15:00:00Z"`),
 			wantStatus:         "available",
 			wantReady:          true,
 			wantFiveHourStatus: "available",
@@ -42,7 +42,7 @@ func TestZenmuxQuotaChecker_CheckQuota(t *testing.T) {
 		{
 			name:               "five hour window exhausted",
 			statusCode:         http.StatusOK,
-			body:               zenmuxQuotaFixture("healthy", 1, `"2026-09-03T15:00:00Z"`),
+			body:               zenmuxQuotaFixture("healthy", 1, `"2099-09-03T15:00:00Z"`),
 			wantStatus:         "exhausted",
 			wantReady:          false,
 			wantFiveHourStatus: "exhausted",
@@ -62,7 +62,7 @@ func TestZenmuxQuotaChecker_CheckQuota(t *testing.T) {
 		{
 			name:               "suspended account",
 			statusCode:         http.StatusOK,
-			body:               zenmuxQuotaFixture("suspended", 0.2, `"2026-09-03T15:00:00Z"`),
+			body:               zenmuxQuotaFixture("suspended", 0.2, `"2099-09-03T15:00:00Z"`),
 			wantStatus:         "exhausted",
 			wantReady:          false,
 			wantFiveHourStatus: "available",
@@ -134,6 +134,23 @@ func TestZenmuxQuotaChecker_CheckQuota(t *testing.T) {
 	}
 }
 
+func TestZenmuxQuotaChecker_QuotaMonthlyStaysInRawDataOnly(t *testing.T) {
+	// Given a response containing the provider's monthly metadata.
+	body := []byte(zenmuxQuotaFixture("healthy", 0.4, `"2099-09-03T15:00:00Z"`))
+
+	// When the checker parses the response.
+	quota, err := parseZenmuxQuotaResponse(body)
+
+	// Then only the actual 5-hour and 7-day windows are normalized as limits.
+	require.NoError(t, err)
+	require.Len(t, quota.Limits, 2)
+	require.Equal(t, []string{QuotaWindow5h, QuotaWindow7d}, []string{
+		quota.Limits[0].Window,
+		quota.Limits[1].Window,
+	})
+	require.Contains(t, quota.RawData, "quota_monthly")
+}
+
 func TestZenmuxQuotaChecker_SupportsOnlyZenMuxChannelTypes(t *testing.T) {
 	checker := NewZenmuxQuotaChecker(httpclient.NewHttpClient())
 
@@ -160,7 +177,7 @@ func zenmuxQuotaFixture(accountStatus string, fiveHourUsage float64, fiveHourRes
 	return fmt.Sprintf(`{
 		"success": true,
 		"data": {
-			"plan": {"tier":"pro","amount_usd":200,"interval":"month","expires_at":"2026-10-01T00:00:00Z"},
+		"plan": {"tier":"pro","amount_usd":200,"interval":"month","expires_at":"2099-10-01T00:00:00Z"},
 			"account_status": %q,
 			"quota_5_hour": {
 				"usage_percentage": %v,
@@ -173,7 +190,7 @@ func zenmuxQuotaFixture(accountStatus string, fiveHourUsage float64, fiveHourRes
 			},
 			"quota_7_day": {
 				"usage_percentage": 0.6,
-				"resets_at": "2026-09-10T10:00:00Z",
+				"resets_at": "2099-09-10T10:00:00Z",
 				"max_flows": 10000,
 				"used_flows": 6000,
 				"remaining_flows": 4000,

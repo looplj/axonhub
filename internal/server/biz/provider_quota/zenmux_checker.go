@@ -47,8 +47,8 @@ type zenmuxQuotaWindow struct {
 }
 
 type zenmuxMonthlyQuota struct {
-	MaxFlows    float64 `json:"max_flows"`
-	MaxValueUSD float64 `json:"max_value_usd"`
+	MaxFlows    *float64 `json:"max_flows"`
+	MaxValueUSD *float64 `json:"max_value_usd"`
 }
 
 type ZenmuxQuotaChecker struct {
@@ -137,7 +137,14 @@ func parseZenmuxQuotaResponse(body []byte) (QuotaData, error) {
 		nextResetAt = sevenDayReset
 	}
 
-	return QuotaData{
+	limits := []QuotaLimitStatus{
+		NewTokenLimitStatus(fiveHourStatus, response.Data.Quota5Hour.UsagePercentage, fiveHourReset).
+			WithWindow(QuotaWindow5h, 5*time.Hour),
+		NewTokenLimitStatus(sevenDayStatus, response.Data.Quota7Day.UsagePercentage, sevenDayReset).
+			WithWindow(QuotaWindow7d, 7*24*time.Hour),
+	}
+
+	return NormalizeQuotaData(QuotaData{
 		Status:       overallStatus,
 		ProviderType: "zenmux",
 		RawData: map[string]any{
@@ -147,13 +154,8 @@ func parseZenmuxQuotaResponse(body []byte) (QuotaData, error) {
 		},
 		NextResetAt: nextResetAt,
 		Ready:       IsReadyStatus(overallStatus),
-		Limits: []QuotaLimitStatus{
-			NewTokenLimitStatus(fiveHourStatus, response.Data.Quota5Hour.UsagePercentage, fiveHourReset).
-				WithWindow(QuotaWindow5h, 5*time.Hour),
-			NewTokenLimitStatus(sevenDayStatus, response.Data.Quota7Day.UsagePercentage, sevenDayReset).
-				WithWindow(QuotaWindow7d, 7*24*time.Hour),
-		},
-	}, nil
+		Limits:      limits,
+	}), nil
 }
 
 func parseZenmuxResetAt(value *string) (*time.Time, error) {

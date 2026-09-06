@@ -19,8 +19,8 @@ import (
 func TestXAISubscriptionQuotaChecker_CheckQuota_merges_billing_windows(t *testing.T) {
 	// Given
 	checker := NewXAISubscriptionQuotaChecker(newXAIBillingTestClient(t, "access-token",
-		`{"config":{"currentPeriod":{"type":"WEEKLY","end":"2026-07-16T03:25:00Z"},"creditUsagePercent":82.5}}`,
-		`{"config":{"monthlyLimit":{"val":15000},"used":{"val":7500},"billingPeriodEnd":"2026-08-01T00:00:00Z"}}`,
+		`{"config":{"currentPeriod":{"type":"WEEKLY","end":"2099-07-16T03:25:00Z"},"creditUsagePercent":82.5}}`,
+		`{"config":{"monthlyLimit":{"val":15000},"used":{"val":7500},"billingPeriodEnd":"2099-08-01T00:00:00Z"}}`,
 	))
 	ch := &ent.Channel{
 		Type:    channel.TypeXaiSubscription,
@@ -42,12 +42,12 @@ func TestXAISubscriptionQuotaChecker_CheckQuota_merges_billing_windows(t *testin
 	require.Equal(t, "warning", result.Limits[0].Status)
 	require.Equal(t, QuotaWindowWeekly, result.Limits[0].Window)
 	require.InDelta(t, 0.825, result.Limits[0].UsageRatio, 1e-9)
-	require.Equal(t, time.Date(2026, 7, 16, 3, 25, 0, 0, time.UTC), *result.Limits[0].NextResetAt)
+	require.Equal(t, time.Date(2099, 7, 16, 3, 25, 0, 0, time.UTC), *result.Limits[0].NextResetAt)
 	require.Equal(t, "available", result.Limits[1].Status)
 	require.Equal(t, QuotaWindowMonthly, result.Limits[1].Window)
 	require.InDelta(t, 0.5, result.Limits[1].UsageRatio, 1e-9)
-	require.Equal(t, time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC), *result.Limits[1].NextResetAt)
-	require.Equal(t, time.Date(2026, 7, 16, 3, 25, 0, 0, time.UTC), *result.NextResetAt)
+	require.Equal(t, time.Date(2099, 8, 1, 0, 0, 0, 0, time.UTC), *result.Limits[1].NextResetAt)
+	require.Equal(t, time.Date(2099, 7, 16, 3, 25, 0, 0, time.UTC), *result.NextResetAt)
 	require.Equal(t, "SuperGrok", result.RawData["plan_type"])
 	require.NotNil(t, result.RawData["billing"])
 }
