@@ -107,14 +107,17 @@ const WarningThresholdRatio = 0.8
 // Well-known limit window identifiers. Providers name their windows
 // differently; these are the normalized labels the UI renders.
 const (
-	QuotaWindow5h      = "5h"
-	QuotaWindow7d      = "7d"
-	QuotaWindow30d     = "30d"
-	QuotaWindowDaily   = "daily"
-	QuotaWindowWeekly  = "weekly"
-	QuotaWindowMonthly = "monthly"
-	QuotaWindowPrimary = "primary"
-	QuotaWindowCycle   = "cycle"
+	QuotaWindow5h        = "5h"
+	QuotaWindow7d        = "7d"
+	QuotaWindow30d       = "30d"
+	QuotaWindowDaily     = "daily"
+	QuotaWindowWeekly    = "weekly"
+	QuotaWindowMonthly   = "monthly"
+	QuotaWindowPrimary   = "primary"
+	QuotaWindowSecondary = "secondary"
+	QuotaWindowPayg      = "payg"
+	QuotaWindowCredits   = "credits"
+	QuotaWindowCycle     = "cycle"
 )
 
 // EstimatePeriodQuota derives the total money quota of a limit period from the
@@ -122,11 +125,17 @@ const (
 // reports `usageRatio` of the quota consumed is worth periodCost/usageRatio in
 // total. It reports false when the inputs cannot support an estimate.
 func EstimatePeriodQuota(periodCost float64, usageRatio float64) (float64, bool) {
-	if periodCost <= 0 || usageRatio <= 0 || math.IsNaN(usageRatio) || math.IsInf(usageRatio, 0) {
+	if periodCost <= 0 || math.IsNaN(periodCost) || math.IsInf(periodCost, 0) ||
+		usageRatio <= 0 || math.IsNaN(usageRatio) || math.IsInf(usageRatio, 0) {
 		return 0, false
 	}
 
-	return periodCost / usageRatio, true
+	total := periodCost / usageRatio
+	if math.IsNaN(total) || math.IsInf(total, 0) {
+		return 0, false
+	}
+
+	return total, true
 }
 
 // FillPeriodQuota recomputes PeriodQuota from PeriodCost and UsageRatio,

@@ -79,7 +79,6 @@ func TestQuotaCheckers_MalformedWindows(t *testing.T) {
 	require.Len(t, quota.Limits, 1)
 	require.Equal(t, QuotaWindowWeekly, quota.Limits[0].Window)
 	require.InDelta(t, 0.25, quota.Limits[0].UsageRatio, 1e-9)
-
 }
 
 func TestQuotaCheckers_NormalizeDuplicateLimits(t *testing.T) {
