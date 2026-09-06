@@ -11,7 +11,6 @@ import {
   IconArchive,
   IconTrash,
   IconCheck,
-  IconWeight,
   IconTransform,
   IconNetwork,
   IconAdjustments,
@@ -127,13 +126,11 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const hasError = channel.errorMessage != null;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
 
-  const handleDefaultTest = async () => {
-    try {
-      await testChannel.mutateAsync({
-        channelID: channel.id,
-        modelID: channel.defaultTestModel || undefined,
-      });
-    } catch (_error) {}
+  const handleDefaultTest = () => {
+    testChannel.mutate({
+      channelID: channel.id,
+      modelID: channel.defaultTestModel || undefined,
+    });
   };
 
   const handleOpenTestDialog = useCallback(() => {

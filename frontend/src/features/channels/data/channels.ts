@@ -1213,6 +1213,8 @@ export function useQueryChannels(
     enabled: !options?.disableAutoFetch,
     queryKey: [
       'channels',
+      query,
+      queryInput,
       variables?.where,
       variables?.orderBy?.field,
       variables?.orderBy?.direction,
