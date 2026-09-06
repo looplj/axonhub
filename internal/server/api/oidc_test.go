@@ -29,6 +29,7 @@ func TestOIDCHandlersGetBaseURLRejectsUnsafeConfiguration(t *testing.T) {
 		"//attacker.example.com",
 		"https://axonhub.example.com/callback?next=attacker",
 		"https://user:secret@axonhub.example.com",
+		"https://:443",
 		"ftp://axonhub.example.com",
 	} {
 		t.Run(publicURL, func(t *testing.T) {

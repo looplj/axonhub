@@ -194,7 +194,7 @@ func (h *OIDCHandlers) getBaseURL() (string, error) {
 	}
 
 	parsed, err := url.Parse(baseURL)
-	if err != nil || parsed.Host == "" || parsed.Scheme == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+	if err != nil || parsed.Hostname() == "" || parsed.Scheme == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return "", fmt.Errorf("invalid server.public_url")
 	}
 	if parsed.Scheme != "http" && parsed.Scheme != "https" {
