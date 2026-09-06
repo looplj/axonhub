@@ -6,6 +6,9 @@
 server:
   host: "0.0.0.0"               # Server host (env: AXONHUB_SERVER_HOST)
   port: 8090                    # Server port (env: AXONHUB_SERVER_PORT)
+  # Only these proxy networks may provide X-Forwarded-For/X-Real-IP. Empty
+  # means forwarded client IP headers are ignored and the TCP peer is used.
+  trusted_proxies: []            # (env: AXONHUB_SERVER_TRUSTED_PROXIES)
   name: "AxonHub"               # Server name (env: AXONHUB_SERVER_NAME)
   base_path: ""                 # Base path for API routes (env: AXONHUB_SERVER_BASE_PATH)
   # pid_file: "~/.config/axonhub/axonhub.pid"  # PID file for axonhub reload (env: AXONHUB_SERVER_PID_FILE)

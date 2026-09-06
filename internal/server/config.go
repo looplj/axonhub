@@ -77,13 +77,17 @@ func (m *MemorySize) UnmarshalText(text []byte) error {
 }
 
 type Config struct {
-	Host        string        `conf:"host" yaml:"host" json:"host"`
-	Port        int           `conf:"port" yaml:"port" json:"port"`
-	PublicURL   string        `conf:"public_url" yaml:"public_url" json:"public_url"`
-	Name        string        `conf:"name" yaml:"name" json:"name"`
-	BasePath    string        `conf:"base_path" yaml:"base_path" json:"base_path"`
-	PidFile     string        `conf:"pid_file" yaml:"pid_file" json:"pid_file"`
-	ReadTimeout time.Duration `conf:"read_timeout" yaml:"read_timeout" json:"read_timeout"`
+	Host      string `conf:"host" yaml:"host" json:"host"`
+	Port      int    `conf:"port" yaml:"port" json:"port"`
+	PublicURL string `conf:"public_url" yaml:"public_url" json:"public_url"`
+	// TrustedProxies contains the proxy networks allowed to provide the
+	// X-Forwarded-For and X-Real-IP headers. An empty list disables proxy header
+	// trust and uses the direct TCP peer address.
+	TrustedProxies []string      `conf:"trusted_proxies" yaml:"trusted_proxies" json:"trusted_proxies"`
+	Name           string        `conf:"name" yaml:"name" json:"name"`
+	BasePath       string        `conf:"base_path" yaml:"base_path" json:"base_path"`
+	PidFile        string        `conf:"pid_file" yaml:"pid_file" json:"pid_file"`
+	ReadTimeout    time.Duration `conf:"read_timeout" yaml:"read_timeout" json:"read_timeout"`
 
 	// RequestTimeout is the maximum duration for processing a request.
 	RequestTimeout time.Duration `conf:"request_timeout" yaml:"request_timeout" json:"request_timeout"`
