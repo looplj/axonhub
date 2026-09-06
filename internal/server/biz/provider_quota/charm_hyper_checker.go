@@ -88,7 +88,7 @@ func (c *CharmHyperQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		NextResetAt:  nil,
 		Ready:        ready,
 		Limits: []QuotaLimitStatus{
-			NewTokenLimitStatus(status, usageRatio, nil).WithWindow("credits", 0),
+			NewTokenLimitStatus(status, usageRatio, nil).WithWindow(QuotaWindowCredits, 0),
 		},
 	}), nil
 }

@@ -102,7 +102,7 @@ func TestNormalizeQuotaData_OverallStatusUsesReadyLimitOR(t *testing.T) {
 			name: "exhausted and available",
 			limits: []QuotaLimitStatus{
 				{Type: QuotaLimitTypeSubscriptionCycle, Window: QuotaWindowCycle, UsageRatio: 1, Status: "exhausted"},
-				{Type: QuotaLimitTypeToken, Window: "payg", UsageRatio: 0.2, Status: "available"},
+				{Type: QuotaLimitTypeToken, Window: QuotaWindowPayg, UsageRatio: 0.2, Status: "available"},
 			},
 			wantStatus: "available",
 			wantReady:  true,
@@ -111,7 +111,7 @@ func TestNormalizeQuotaData_OverallStatusUsesReadyLimitOR(t *testing.T) {
 			name: "exhausted and warning",
 			limits: []QuotaLimitStatus{
 				{Type: QuotaLimitTypeSubscriptionCycle, Window: QuotaWindowCycle, UsageRatio: 1, Status: "exhausted"},
-				{Type: QuotaLimitTypeToken, Window: "payg", UsageRatio: 0.9, Status: "warning"},
+				{Type: QuotaLimitTypeToken, Window: QuotaWindowPayg, UsageRatio: 0.9, Status: "warning"},
 			},
 			wantStatus: "warning",
 			wantReady:  true,
@@ -120,7 +120,7 @@ func TestNormalizeQuotaData_OverallStatusUsesReadyLimitOR(t *testing.T) {
 			name: "all exhausted",
 			limits: []QuotaLimitStatus{
 				{Type: QuotaLimitTypeSubscriptionCycle, Window: QuotaWindowCycle, UsageRatio: 1, Status: "exhausted"},
-				{Type: QuotaLimitTypeToken, Window: "payg", UsageRatio: 1, Status: "exhausted"},
+				{Type: QuotaLimitTypeToken, Window: QuotaWindowPayg, UsageRatio: 1, Status: "exhausted"},
 			},
 			wantStatus: "exhausted",
 			wantReady:  false,
@@ -128,7 +128,7 @@ func TestNormalizeQuotaData_OverallStatusUsesReadyLimitOR(t *testing.T) {
 		{
 			name: "unknown only",
 			limits: []QuotaLimitStatus{
-				{Type: QuotaLimitTypeToken, Window: "payg", UsageRatio: 0, Status: "unknown"},
+				{Type: QuotaLimitTypeToken, Window: QuotaWindowPayg, UsageRatio: 0, Status: "unknown"},
 			},
 			wantStatus: "unknown",
 			wantReady:  false,

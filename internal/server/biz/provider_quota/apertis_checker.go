@@ -318,7 +318,7 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 				UsageRatio:  usageRatio,
 				Ready:       IsReadyStatus(tokenStatus),
 				NextResetAt: nextResetAt,
-				Window:      "payg",
+				Window:      QuotaWindowPayg,
 			})
 		}
 	}
