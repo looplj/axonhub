@@ -259,6 +259,38 @@ func TestReadHTTPRequest_EmptyBodyWithContentEncoding(t *testing.T) {
 	assert.Empty(t, got.Body)
 }
 
+func TestReadHTTPRequest_RejectsOversizedRawBody(t *testing.T) {
+	originalLimit := maxRequestBodySize
+	maxRequestBodySize = 32
+	t.Cleanup(func() { maxRequestBodySize = originalLimit })
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(bytes.Repeat([]byte("a"), maxRequestBodySize+1)))
+
+	_, err := ReadHTTPRequest(req)
+
+	require.ErrorIs(t, err, ErrRequestBodyTooLarge)
+}
+
+func TestReadHTTPRequest_RejectsOversizedDecodedBody(t *testing.T) {
+	originalLimit := maxRequestBodySize
+	maxRequestBodySize = 32
+	t.Cleanup(func() { maxRequestBodySize = originalLimit })
+
+	originalBody := bytes.Repeat([]byte("a"), maxRequestBodySize+1)
+	var compressed bytes.Buffer
+	writer := gzip.NewWriter(&compressed)
+	_, err := writer.Write(originalBody)
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(compressed.Bytes()))
+	req.Header.Set("Content-Encoding", "gzip")
+
+	_, err = ReadHTTPRequest(req)
+
+	require.ErrorIs(t, err, ErrRequestBodyTooLarge)
+}
+
 func TestDecodeRequestBody_NoEncoding(t *testing.T) {
 	body := []byte(`{"test":"data"}`)
 	headers := http.Header{}
