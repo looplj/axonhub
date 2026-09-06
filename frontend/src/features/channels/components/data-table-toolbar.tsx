@@ -97,7 +97,7 @@ export function DataTableToolbar<TData>({
   );
 
   return (
-    <div ref={scrollRef} className='flex items-center gap-4 overflow-x-auto pb-2 md:overflow-x-visible md:pb-0'>
+    <div ref={scrollRef} className='flex flex-wrap items-center gap-2 md:gap-4'>
       <div className='relative w-[150px] shrink-0 lg:flex-1 lg:w-auto'>
         <IconSearch className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
         <Input

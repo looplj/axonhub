@@ -570,7 +570,7 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
   const visibleLimits = isExpanded ? limits : limits.slice(0, QUOTA_VISIBLE_LIMIT);
   const hiddenCount = limits.length - QUOTA_VISIBLE_LIMIT;
   const content = (
-    <div className='flex min-w-80 flex-col items-stretch gap-1.5 text-[11px]'>
+    <div className='flex flex-col items-stretch gap-1.5 text-[11px]'>
       {visibleLimits.map((limit, index) => {
         const usageRatio = limit.status === 'exhausted' ? 1 : (limit.usageRatio ?? 1);
         const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
@@ -901,7 +901,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} className='justify-center' />,
       cell: NameCell,
       meta: {
-        className: 'md:table-cell min-w-48 text-center',
+        className: 'md:table-cell min-w-32 text-center',
       },
       enableHiding: false,
       enableSorting: true,
@@ -936,7 +936,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.quota')} className='justify-center' />,
       cell: QuotaCell,
       meta: {
-        className: 'w-96 min-w-96 text-center',
+        className: 'hidden 2xl:table-cell text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -947,7 +947,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} className='justify-center' />,
       cell: TagsCell,
       meta: {
-        className: 'text-center',
+        className: 'hidden xl:table-cell text-center',
       },
       filterFn: (row, id, value) => {
         const tags = (row.getValue(id) as string[]) || [];
@@ -985,7 +985,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
       cell: ProxyCell,
       meta: {
-        className: 'w-32 min-w-32 text-center',
+        className: 'hidden 2xl:table-cell text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -1028,7 +1028,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} className='justify-center' />,
       cell: CreatedAtCell,
       meta: {
-        className: 'text-center',
+        className: 'hidden xl:table-cell text-center',
       },
       enableSorting: true,
       enableHiding: false,
