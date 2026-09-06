@@ -10,50 +10,50 @@ function read(relativePath) {
   return readFileSync(join(srcRoot, relativePath), 'utf8');
 }
 
-// Isolate the Codex render branch (between the Codex and Cline branch
-// markers) so assertions about the usage bars cannot bleed into Claude Code
-// or Cline, which legitimately keep duration-aware severity.
+// Isolate the Codex render branch (between the Codex and XAI branch markers)
+// so assertions about the usage bars cannot bleed into neighboring providers.
 function isolateCodexBlock(source) {
   const start = source.indexOf("{channel.type === 'codex' &&");
-  const end = source.indexOf("{channel.type === 'cline' &&", start);
+  const end = source.indexOf("{channel.type === 'xai_subscription' &&", start);
 
   assert.ok(start !== -1, 'Codex render branch should exist in quota-badges source');
-  assert.ok(end !== -1 && end > start, 'Cline render branch should follow the Codex branch');
+  assert.ok(end !== -1 && end > start, 'XAI render branch should follow the Codex branch');
 
   return source.slice(start, end);
 }
 
-test('Codex usage bar color tracks used percentage, not reset-window elapsed time', () => {
+test('Codex usage windows render as combined usage and time bars', () => {
   const quotaBadges = read('components/quota-badges.tsx');
   const codexBlock = isolateCodexBlock(quotaBadges);
 
-  // Both usage bars must render the user-visible used percentage so their
-  // severity reflects actual usage rather than elapsed reset-window time.
-  assert.match(
-    codexBlock,
-    /percentage=\{qd\.rate_limit\.primary_window\.used_percent/,
-    'Codex primary usage bar should render the primary window used percentage'
-  );
-  assert.match(
-    codexBlock,
-    /percentage=\{qd\.rate_limit\.secondary_window\.used_percent/,
-    'Codex secondary usage bar should render the secondary window used percentage'
-  );
-
-  // Reset-window elapsed time stays on separate duration bars...
+  // Each window has one shared bar whose fill reflects usage and whose marker
+  // reflects the reset-window elapsed time.
   assert.equal(
-    (codexBlock.match(/ProgressBar\s*\n?\s*type='duration'/g) || []).length,
+    (codexBlock.match(/<UsageTimeBar\s/g) || []).length,
     2,
-    'Codex should keep a separate duration bar for the primary and secondary windows'
+    'Codex primary and secondary windows should each use one combined bar'
   );
-
-  // ...so the usage bars must NOT feed durationPercentage into ProgressBar,
-  // which would severity-adjust their color by elapsed window time.
-  assert.doesNotMatch(
+  assert.match(
     codexBlock,
-    /durationPercentage/,
-    'Codex usage bar color must not be severity-adjusted by reset-window elapsed time'
+    /usagePercent=\{qd\.rate_limit\.primary_window\.used_percent/,
+    'Codex primary combined bar should render the primary window used percentage'
   );
+  assert.match(
+    codexBlock,
+    /usagePercent=\{qd\.rate_limit\.secondary_window\.used_percent/,
+    'Codex secondary combined bar should render the secondary window used percentage'
+  );
+  assert.equal(
+    (codexBlock.match(/durationPercent=\{/g) || []).length,
+    2,
+    'Codex combined bars should each mark reset-window elapsed time'
+  );
+});
+
+test('quota popover has no standalone progress-bar renders', () => {
+  const quotaBadges = read('components/quota-badges.tsx');
+
+  assert.doesNotMatch(quotaBadges, /\bProgressBar\b/, 'all quota bars should use the combined UsageTimeBar component');
 });
 
 test('Command Code monthly hover matches the other windows', () => {
