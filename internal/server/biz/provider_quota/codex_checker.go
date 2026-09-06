@@ -279,7 +279,7 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 			value *CodeUsageWindow
 		}{
 			{name: QuotaWindowPrimary, value: response.RateLimit.PrimaryWindow},
-			{name: "secondary", value: response.RateLimit.SecondaryWindow},
+			{name: QuotaWindowSecondary, value: response.RateLimit.SecondaryWindow},
 		}
 
 		for _, candidate := range windows {

@@ -180,7 +180,7 @@ func TestCodexQuotaChecker_UnknownWindowDurationKeepsNeutralLabel(t *testing.T) 
 	require.NoError(t, err)
 	require.Len(t, quota.Limits, 2)
 	require.Equal(t, QuotaWindowPrimary, quota.Limits[0].Window)
-	require.Equal(t, "secondary", quota.Limits[1].Window)
+	require.Equal(t, QuotaWindowSecondary, quota.Limits[1].Window)
 	require.NotContains(t, []string{quota.Limits[0].Window, quota.Limits[1].Window}, QuotaWindow5h)
 	require.NotContains(t, []string{quota.Limits[0].Window, quota.Limits[1].Window}, QuotaWindow7d)
 	require.NotNil(t, quota.Limits[0].PeriodStart)
@@ -389,13 +389,11 @@ func TestApertisQuotaChecker_SubscriptionCycleCarriesReportedStart(t *testing.T)
 	require.Equal(t, time.Date(2099, 3, 16, 10, 2, 35, 0, time.UTC), cycle.PeriodStart.UTC())
 }
 
-func TestGithubCopilotQuotaChecker_MonthlyPeriodStepsBackACalendarMonth(t *testing.T) {
+func TestGithubCopilotQuotaChecker_PreservesMonthlyResetWithoutPeriod(t *testing.T) {
 	t.Parallel()
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
-			// A reset on March 1 means the period opened on February 1, which a
-			// fixed 30 day window would miss.
 			body := `{
 				"copilot_plan": "individual",
 				"quota_reset_date_utc": "2099-03-01T00:00:00Z",

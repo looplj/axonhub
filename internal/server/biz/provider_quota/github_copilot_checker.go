@@ -55,8 +55,8 @@ func (c *GithubCopilotQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Chan
 
 	status, _ := c.calculateStatus(payload)
 
-	// Copilot quotas reset monthly on the account's billing date, so the period
-	// they cover starts one calendar month before that date.
+	// Copilot quotas reset monthly on the account's billing date, but the
+	// provider does not report a fixed window length for deriving PeriodStart.
 	resetAt := c.parseResetDate(payload)
 	limits := c.buildLimits(payload, resetAt)
 
