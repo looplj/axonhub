@@ -49,7 +49,7 @@ func (r *channelResolver) DefaultEndpoints(ctx context.Context, obj *ent.Channel
 func (r *channelResolver) AllModelEntries(ctx context.Context, obj *ent.Channel) ([]*biz.ChannelModelEntry, error) {
 	ch := biz.Channel{Channel: obj}
 	entries := ch.GetModelEntries()
-	result := lo.Values(entries)
+	result := sortChannelModelEntries(lo.Values(entries))
 
 	return lo.ToSlicePtr(result), nil
 }
