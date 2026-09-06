@@ -3,6 +3,7 @@ package provider_quota
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -116,18 +117,12 @@ const (
 	QuotaWindowCycle   = "cycle"
 )
 
-// MinPeriodQuotaUsageRatio is the smallest usage ratio that yields a period
-// quota estimate. Dividing the period cost by a tiny ratio amplifies both the
-// pricing error and any usage that did not go through AxonHub into an absurd
-// number, so below this threshold no estimate is reported at all.
-const MinPeriodQuotaUsageRatio = 0.05
-
 // EstimatePeriodQuota derives the total money quota of a limit period from the
 // cost already spent in it: a period that cost `periodCost` while the provider
 // reports `usageRatio` of the quota consumed is worth periodCost/usageRatio in
 // total. It reports false when the inputs cannot support an estimate.
 func EstimatePeriodQuota(periodCost float64, usageRatio float64) (float64, bool) {
-	if periodCost <= 0 || usageRatio < MinPeriodQuotaUsageRatio {
+	if periodCost <= 0 || usageRatio <= 0 || math.IsNaN(usageRatio) || math.IsInf(usageRatio, 0) {
 		return 0, false
 	}
 
