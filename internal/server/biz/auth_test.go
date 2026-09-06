@@ -396,9 +396,6 @@ func TestAuthService_AuthenticateAPIKey(t *testing.T) {
 	_, err = authService.APIKeyService.UpdateAPIKeyStatus(ctx, apiKey.ID, "disabled")
 	require.NoError(t, err)
 
-	// Synchronously invalidate the cache for testing (async notification may not complete in time)
-	authService.APIKeyService.APIKeyCache.Invalidate(buildAPIKeyCacheKey(apiKeyString))
-
 	_, err = authService.AuthenticateAPIKey(ctx, apiKeyString)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "api key not enabled")
@@ -407,9 +404,6 @@ func TestAuthService_AuthenticateAPIKey(t *testing.T) {
 	// First, re-enable the API key
 	_, err = authService.APIKeyService.UpdateAPIKeyStatus(ctx, apiKey.ID, "enabled")
 	require.NoError(t, err)
-
-	// Synchronously invalidate the cache for testing
-	authService.APIKeyService.APIKeyCache.Invalidate(buildAPIKeyCacheKey(apiKeyString))
 
 	// Then archive the project (making it inactive)
 	_, err = client.Project.UpdateOneID(testProject.ID).

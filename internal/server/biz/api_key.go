@@ -1041,6 +1041,14 @@ func (s *APIKeyService) invalidateAPIKeyCaches(ctx context.Context, keys ...stri
 		return
 	}
 
+	// Invalidate this instance synchronously before broadcasting the best-effort
+	// cross-instance event. Authentication must observe status, scope, allowlist,
+	// and rotated-key changes immediately instead of serving a stale entry until
+	// the asynchronous watcher or periodic refresh runs.
+	for _, key := range keys {
+		s.APIKeyCache.Invalidate(buildAPIKeyCacheKey(key))
+	}
+
 	cacheKeys := buildAPIKeyCacheKeys(keys)
 	if err := s.apiKeyNotifier.Notify(ctx, live.NewInvalidateKeysEvent(cacheKeys...)); err != nil {
 		log.Warn(ctx, "api key cache watcher notify failed", log.Cause(err))
