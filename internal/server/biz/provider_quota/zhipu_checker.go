@@ -193,14 +193,14 @@ func parseZhipuQuotaResponse(body []byte) (QuotaData, error) {
 		"level": response.Data.Level,
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       overallStatus,
 		ProviderType: "zhipu",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(overallStatus),
 		Limits:       limits,
-	}, nil
+	}), nil
 }
 
 func zhipuStatusForRatio(ratio float64) string {
