@@ -19,8 +19,6 @@ import {
   ProviderNeuralWattQuotaData,
   ProviderApertisQuotaData,
   ProviderCharmHyperQuotaData,
-  ProviderOpenCodeGoQuotaData,
-  OpenCodeGoQuotaWindow,
   ProviderKimiCodeQuotaData,
   ProviderMinimaxQuotaData,
   ProviderZhipuQuotaData,
@@ -81,10 +79,6 @@ function getBatteryLevel(percentage: number, status: string): BatteryLevel {
 
 function isOpenaiType(t: string): t is 'openai' | 'openai_responses' {
   return t === 'openai' || t === 'openai_responses';
-}
-
-function isOpenCodeGoType(t: string): t is 'opencode_go' | 'opencode_go_anthropic' {
-  return t === 'opencode_go' || t === 'opencode_go_anthropic';
 }
 
 function isCommandCodeType(t: string): t is 'commandcode' | 'commandcode_anthropic' {
@@ -184,13 +178,8 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if (qd.windows?.dailyInputTokens) maxPercent = Math.max(maxPercent, (qd.windows.dailyInputTokens.percentUsed ?? 0) * 100);
     if (qd.windows?.dailyImages) maxPercent = Math.max(maxPercent, (qd.windows.dailyImages.percentUsed ?? 0) * 100);
     percentage = maxPercent;
-  } else if (isOpenCodeGoType(channel.type)) {
-    const qd = channel.quotaStatus.quotaData as ProviderOpenCodeGoQuotaData | undefined;
-    percentage = Math.max(
-      qd?.windows?.rolling?.usage_percent ?? 0,
-      qd?.windows?.weekly?.usage_percent ?? 0,
-      qd?.windows?.monthly?.usage_percent ?? 0
-    );
+  } else if (channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') {
+    percentage = Math.max(0, ...channel.quotaStatus.limits.map((limit) => limit.usageRatio * 100));
   } else if (isOllamaType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderOllamaQuotaData | undefined;
     percentage = Math.max(
@@ -444,29 +433,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
 
     const now = Date.now() / 1000;
     const resetAfter = resetTs - now;
-    return calcDurationPercent(limit, resetAfter);
-  };
-
-  // Fraction of the reset window that has elapsed, rendered as a second
-  // "time elapsed" bar so usage progress can be read against time progress.
-  const getOpenCodeGoDurationPercent = (key: 'rolling' | 'weekly' | 'monthly', window: OpenCodeGoQuotaWindow): number | undefined => {
-    const limits: Record<string, number> = {
-      rolling: 5 * 3600,
-      weekly: 7 * 24 * 3600,
-      monthly: 30 * 24 * 3600,
-    };
-    const limit = limits[key];
-
-    // Prefer the absolute reset_time so the marker keeps advancing as the user
-    // looks; fall back to the snapshot reset_in_seconds from the last poll.
-    let resetAfter: number | undefined;
-    if (window.reset_time) {
-      resetAfter = (new Date(window.reset_time).getTime() - Date.now()) / 1000;
-    } else if (window.reset_in_seconds != null) {
-      resetAfter = window.reset_in_seconds;
-    }
-    if (resetAfter === undefined) return undefined;
-
     return calcDurationPercent(limit, resetAfter);
   };
 
@@ -1203,61 +1169,6 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
             }
 
             return items;
-          })()}
-        </div>
-      )}
-
-      {isOpenCodeGoType(channel.type) && (
-        <div className='mt-3 space-y-3'>
-          {(() => {
-            const qd = channel.quotaStatus.quotaData as ProviderOpenCodeGoQuotaData | undefined;
-            if (!qd) return null;
-
-            const entries: Array<['rolling' | 'weekly' | 'monthly', string]> = [
-              ['rolling', 'quota.window.5h'],
-              ['weekly', 'quota.window.weekly'],
-              ['monthly', 'quota.window.monthly'],
-            ];
-
-            return entries
-              .map(([key, labelKey], index) => {
-                const window = qd.windows?.[key];
-                if (!window) return null;
-
-                const usedPct = window.usage_percent ?? 0;
-                const durationPct = getOpenCodeGoDurationPercent(key, window);
-                // Always show the reset countdown — the elapsed-time marker already
-                // conveys progress, so the "no usage yet" special case is unwanted here.
-                const resetText =
-                  window.reset_time || window.reset_in_seconds != null
-                    ? formatTimeToReset(window.reset_time ?? window.reset_in_seconds)
-                    : '';
-                return (
-                  <div key={key} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
-                    <div className='flex items-center justify-between text-xs'>
-                      <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
-                      <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
-                    </div>
-                    <UsageTimeBar
-                      usagePercent={usedPct}
-                      durationPercent={durationPct}
-                      tooltip={
-                        <div className='space-y-0.5'>
-                          <div className='font-medium'>{t(labelKey)}</div>
-                          <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
-                          {durationPct !== undefined && (
-                            <div>
-                              {t('quota.label.time_elapsed')}: {Math.round(durationPct)}%
-                            </div>
-                          )}
-                          {resetText && <div>{resetText}</div>}
-                        </div>
-                      }
-                    />
-                  </div>
-                );
-              })
-              .filter(Boolean);
           })()}
         </div>
       )}
