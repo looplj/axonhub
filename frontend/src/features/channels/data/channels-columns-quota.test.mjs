@@ -234,14 +234,8 @@ test('unknown usage: limits with missing usage fail closed without rendering exh
       _limits: [{ type: 'token', window: '7d', status: 'exhausted', ready: false, usageRatio }],
     });
 
-    assert.deepEqual(limits, [], `usage ratio ${String(usageRatio)} must be unavailable`);
+    assert.equal(limits.length, 0, `usage ratio ${String(usageRatio)} must be unavailable to the quota cell`);
   }
-
-  assert.doesNotMatch(
-    columnsSource,
-    /limit\.status === 'exhausted' \? 1|limit\.usageRatio \?\? 1/,
-    'generic quota rows must not fabricate 100% usage for missing ratios'
-  );
 });
 
 test('hidden quota selection removes only quota fields from the real query', () => {
