@@ -24,7 +24,7 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 		"apertis", "antigravity", "charm_hyper", "claudecode", "cline", "codex",
 		"commandcode", "github_copilot", "kimi_code", "minimax", "nanogpt",
 		"neuralwatt", "opencode_go", "synthetic", "wafer", "xai_subscription",
-		"zenmux", "zhipu",
+		"ollama", "zenmux", "zhipu",
 	}
 	require.ElementsMatch(t, expectedCheckers, mapKeys(svc.checkers))
 
@@ -64,6 +64,8 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 		{"charm_hyper", channel.TypeOpenaiResponses, "https://hyper.charm.land"},
 		{"commandcode", channel.TypeCommandcode, ""},
 		{"commandcode", channel.TypeCommandcodeAnthropic, ""},
+		{"ollama", channel.TypeOllama, ""},
+		{"ollama", channel.TypeOllamaAnthropic, ""},
 	}
 
 	for _, relation := range expectedRelations {
@@ -73,6 +75,13 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 			quotaChannel.Settings = &objects.ChannelSettings{
 				ProviderQuota: &objects.ChannelProviderQuotaSettings{
 					CommandCode: &objects.CommandCodeQuotaSettings{AuthCookie: "fixture-cookie"},
+				},
+			}
+		}
+		if relation.checker == "ollama" {
+			quotaChannel.Settings = &objects.ChannelSettings{
+				ProviderQuota: &objects.ChannelProviderQuotaSettings{
+					Ollama: &objects.OllamaQuotaSettings{AuthCookie: "fixture-cookie"},
 				},
 			}
 		}

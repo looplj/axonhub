@@ -290,7 +290,7 @@ function UsageTimeBar({ usagePercent, durationPercent, tooltip }: { usagePercent
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <div className='relative cursor-default pb-1.5'>
+        <div className='relative cursor-default pb-1.5' tabIndex={0}>
           <div className='bg-muted/60 h-1.5 w-full overflow-hidden rounded-full'>
             <div
               className='h-full transition-all duration-500'

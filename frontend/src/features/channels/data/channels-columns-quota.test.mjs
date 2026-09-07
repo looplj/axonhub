@@ -125,6 +125,15 @@ test('normalized limits: malformed _limits containers fail closed', () => {
   }
 });
 
+test('normalized limits: invalid reset timestamps fail closed', () => {
+  assert.deepEqual(
+    parseQuotaLimits({
+      _limits: [{ type: 'token', window: '7d', usageRatio: 0.4, status: 'available', ready: true, nextResetAt: 'not-a-date' }],
+    }),
+    []
+  );
+});
+
 test('normalized limits: malformed required fields produce no rendered limits', () => {
   // Given entries with malformed identity, status, or usage fields,
   // When the provider quota payload is parsed,

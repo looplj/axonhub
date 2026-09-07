@@ -520,6 +520,7 @@ function parseQuotaLimit(entry: unknown): ProviderQuotaLimit | undefined {
 
   const nextResetAt = optionalString(limit.nextResetAt);
   if (limit.nextResetAt !== undefined && nextResetAt === undefined) return undefined;
+  if (nextResetAt !== undefined && Number.isNaN(Date.parse(nextResetAt))) return undefined;
 
   const periodStart = optionalString(limit.periodStart);
   if (limit.periodStart !== undefined && periodStart === undefined) return undefined;

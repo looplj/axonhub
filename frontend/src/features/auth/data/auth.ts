@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { graphqlRequest } from '@/gql/graphql';
 import { ME_QUERY } from '@/gql/users';
@@ -88,6 +88,7 @@ export function useSignIn() {
 export function useSignOut() {
   const { reset } = useAuthStore((state) => state.auth);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   return () => {
     // Clear token from localStorage
@@ -95,6 +96,8 @@ export function useSignOut() {
 
     // Clear auth store
     reset();
+
+    queryClient.clear();
 
     toast.success(i18n.t('common.success.signedOut'));
 
