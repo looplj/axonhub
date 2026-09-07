@@ -72,6 +72,7 @@ type responsesInboundStream struct {
 	currentToolCallIdx  int
 	toolCallItemStarted map[int]bool
 	toolCallOutputIndex map[int]int // Maps tool call index to output index
+	namespaceMapping    NamespaceToolMapping
 
 	// Response accumulation using streamAggregator
 	usage               *llm.Usage
@@ -208,6 +209,11 @@ func (s *responsesInboundStream) Next() bool {
 
 	if len(chunk.TransformerMetadata) > 0 {
 		s.mergeTransformerMetadata(chunk.TransformerMetadata)
+		if s.namespaceMapping == nil {
+			if mapping, ok := chunk.TransformerMetadata[NamespaceToolMappingMetadataKey].(NamespaceToolMapping); ok {
+				s.namespaceMapping = llm.CloneNamespaceToolMapping(mapping)
+			}
+		}
 	}
 
 	// Generate response.created event if this is the first chunk
@@ -757,8 +763,8 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 		Type:                   tc.Type,
 		ResponseCustomToolCall: tc.ResponseCustomToolCall,
 		Function: llm.FunctionCall{
-			Name:      tc.Function.Name,
-			Namespace: tc.Function.Namespace,
+			Name:      s.restoreToolCallName(tc.Function),
+			Namespace: s.restoreToolCallNamespace(tc.Function),
 			Arguments: "",
 		},
 	}
@@ -771,6 +777,30 @@ func (s *responsesInboundStream) initToolCall(tc llm.ToolCall) error {
 	}
 
 	return s.startToolCallItem(toolCallIndex)
+}
+
+// restoreToolCallName looks up the flat function name in the namespace mapping
+// and returns the original short name when a match is found.
+func (s *responsesInboundStream) restoreToolCallName(fc llm.FunctionCall) string {
+	if s.namespaceMapping == nil {
+		return fc.Name
+	}
+	if ref, ok := s.namespaceMapping[fc.Name]; ok {
+		return ref.Name
+	}
+	return fc.Name
+}
+
+// restoreToolCallNamespace looks up the flat function name in the namespace
+// mapping and returns the original namespace when a match is found.
+func (s *responsesInboundStream) restoreToolCallNamespace(fc llm.FunctionCall) string {
+	if s.namespaceMapping == nil {
+		return fc.Namespace
+	}
+	if ref, ok := s.namespaceMapping[fc.Name]; ok {
+		return ref.Namespace
+	}
+	return fc.Namespace
 }
 
 func (s *responsesInboundStream) startToolCallItem(toolCallIndex int) error {
@@ -843,10 +873,10 @@ func (s *responsesInboundStream) handleFunctionCallDelta(tc llm.ToolCall) error 
 		storedToolCall.Type = tc.Type
 	}
 	if tc.Function.Name != "" {
-		storedToolCall.Function.Name = tc.Function.Name
+		storedToolCall.Function.Name = s.restoreToolCallName(tc.Function)
 	}
 	if tc.Function.Namespace != "" {
-		storedToolCall.Function.Namespace = tc.Function.Namespace
+		storedToolCall.Function.Namespace = s.restoreToolCallNamespace(tc.Function)
 	}
 	storedToolCall.Function.Arguments += tc.Function.Arguments
 

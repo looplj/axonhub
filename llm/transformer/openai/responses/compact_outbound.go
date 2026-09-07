@@ -92,7 +92,7 @@ func (t *OutboundTransformer) transformCompactResponse(
 		return nil, fmt.Errorf("failed to unmarshal compact response: %w", err)
 	}
 
-	outputMessages, err := convertInputToMessages(&Input{Items: compactResp.Output})
+	outputMessages, err := convertInputToMessages(&Input{Items: compactResp.Output}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert compact response output: %w", err)
 	}

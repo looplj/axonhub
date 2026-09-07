@@ -1024,6 +1024,210 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
+func TestConvertToolsToLLM_NamespaceMapping(t *testing.T) {
+	tools := []Tool{
+		{
+			Type: "namespace",
+			Name: "mcp__context7",
+			Tools: []Tool{
+				{Type: "function", Name: "resolve_library_id", Parameters: map[string]any{"type": "object"}},
+				{Type: "function", Name: "get_library_doc", Parameters: map[string]any{"type": "object"}},
+			},
+		},
+		{
+			Type:        "function",
+			Name:        "get_weather",
+			Parameters:  map[string]any{"type": "object"},
+			Description: "Get weather",
+		},
+	}
+
+	result, mapping, err := convertToolsToLLM(tools)
+	require.NoError(t, err)
+	require.Len(t, result, 3)
+	require.Equal(t, "mcp__context7__resolve_library_id", result[0].Function.Name)
+	require.Equal(t, "mcp__context7__get_library_doc", result[1].Function.Name)
+	require.Equal(t, "get_weather", result[2].Function.Name)
+
+	require.Len(t, mapping, 2)
+	require.Equal(t, NamespaceToolReference{Namespace: "mcp__context7", Name: "resolve_library_id"}, mapping["mcp__context7__resolve_library_id"])
+	require.Equal(t, NamespaceToolReference{Namespace: "mcp__context7", Name: "get_library_doc"}, mapping["mcp__context7__get_library_doc"])
+}
+
+func TestConvertToolsToLLM_NamespaceConflict(t *testing.T) {
+	tests := []struct {
+		name  string
+		tools []Tool
+	}{
+		{
+			name: "flat name conflicts with direct function",
+			tools: []Tool{
+				{Type: "namespace", Name: "ns", Tools: []Tool{
+					{Type: "function", Name: "fn", Parameters: map[string]any{"type": "object"}},
+				}},
+				{Type: "function", Name: "ns__fn", Parameters: map[string]any{"type": "object"}},
+			},
+		},
+		{
+			name: "direct function conflicts with later namespace flat name",
+			tools: []Tool{
+				{Type: "function", Name: "ns__fn", Parameters: map[string]any{"type": "object"}},
+				{Type: "namespace", Name: "ns", Tools: []Tool{
+					{Type: "function", Name: "fn", Parameters: map[string]any{"type": "object"}},
+				}},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, _, err := convertToolsToLLM(tt.tools)
+			require.Error(t, err)
+			require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+		})
+	}
+}
+
+func TestConvertToolChoiceToLLM_Namespace(t *testing.T) {
+	mapping := NamespaceToolMapping{
+		"mcp__context7__resolve_library_id": {Namespace: "mcp__context7", Name: "resolve_library_id"},
+		"mcp__context7__get_library_doc":    {Namespace: "mcp__context7", Name: "get_library_doc"},
+	}
+
+	t.Run("namespace with unique subtool resolves to flat name", func(t *testing.T) {
+		singleMapping := NamespaceToolMapping{
+			"docs__search": {Namespace: "docs", Name: "search"},
+		}
+		result, err := convertToolChoiceToLLM(&ToolChoice{
+			Type: lo.ToPtr("namespace"),
+			Name: lo.ToPtr("docs"),
+		}, singleMapping)
+		require.NoError(t, err)
+		require.NotNil(t, result.NamedToolChoice)
+		require.Equal(t, "function", result.NamedToolChoice.Type)
+		require.Equal(t, "docs__search", result.NamedToolChoice.Function.Name)
+	})
+
+	t.Run("tools list with single function resolves to named choice", func(t *testing.T) {
+		result, err := convertToolChoiceToLLM(&ToolChoice{
+			Tools: []ToolOption{{Type: "function", Name: "mcp__context7__resolve_library_id"}},
+		}, mapping)
+		require.NoError(t, err)
+		require.NotNil(t, result.NamedToolChoice)
+		require.Equal(t, "mcp__context7__resolve_library_id", result.NamedToolChoice.Function.Name)
+	})
+
+	t.Run("tools list with multiple entries preserves raw options", func(t *testing.T) {
+		result, err := convertToolChoiceToLLM(&ToolChoice{
+			Tools: []ToolOption{
+				{Type: "function", Name: "get_weather"},
+				{Type: "function", Name: "get_time"},
+			},
+		}, mapping)
+		require.NoError(t, err)
+		require.Len(t, result.Tools, 2)
+		require.Nil(t, result.NamedToolChoice)
+	})
+}
+
+func TestConvertInputToMessages_NamespaceFlattening(t *testing.T) {
+	mapping := NamespaceToolMapping{
+		"mcp__context7__resolve_library_id": {Namespace: "mcp__context7", Name: "resolve_library_id"},
+	}
+
+	input := &Input{
+		Items: []Item{
+			{
+				Type:      "function_call",
+				CallID:    "call_123",
+				Name:      "resolve_library_id",
+				Namespace: "mcp__context7",
+				Arguments: `{"query":"test"}`,
+			},
+			{
+				Type:      "function_call_output",
+				CallID:    "call_123",
+				Output:    &Input{Text: lo.ToPtr(`{"result":"ok"}`)},
+			},
+		},
+	}
+
+	messages, err := convertInputToMessages(input, mapping)
+	require.NoError(t, err)
+	require.Len(t, messages, 2)
+	require.Len(t, messages[0].ToolCalls, 1)
+	require.Equal(t, "mcp__context7__resolve_library_id", messages[0].ToolCalls[0].Function.Name)
+	require.Equal(t, "mcp__context7", messages[0].ToolCalls[0].Function.Namespace)
+}
+
+func TestRestoreNamespaceToolCall(t *testing.T) {
+	mapping := NamespaceToolMapping{
+		"mcp__context7__resolve_library_id": {Namespace: "mcp__context7", Name: "resolve_library_id"},
+	}
+
+	t.Run("flat name is restored", func(t *testing.T) {
+		name, namespace := restoreNamespaceToolCall(llm.FunctionCall{
+			Name: "mcp__context7__resolve_library_id",
+		}, mapping)
+		require.Equal(t, "resolve_library_id", name)
+		require.Equal(t, "mcp__context7", namespace)
+	})
+
+	t.Run("unknown name is passed through", func(t *testing.T) {
+		name, namespace := restoreNamespaceToolCall(llm.FunctionCall{
+			Name: "get_weather",
+		}, mapping)
+		require.Equal(t, "get_weather", name)
+		require.Empty(t, namespace)
+	})
+}
+
+func TestConvertToResponsesAPIResponse_NamespaceRestoration(t *testing.T) {
+	mapping := NamespaceToolMapping{
+		"mcp__context7__resolve_library_id": {Namespace: "mcp__context7", Name: "resolve_library_id"},
+	}
+
+	chatResp := &llm.Response{
+		ID: "resp_1",
+		Choices: []llm.Choice{
+			{
+				Index: 0,
+				Message: &llm.Message{
+					Role: "assistant",
+					ToolCalls: []llm.ToolCall{
+						{
+							ID:   "call_1",
+							Type: "function",
+							Function: llm.FunctionCall{
+								Name:      "mcp__context7__resolve_library_id",
+								Arguments: `{"query":"test"}`,
+							},
+						},
+					},
+				},
+			},
+		},
+		TransformerMetadata: map[string]any{
+			NamespaceToolMappingMetadataKey: mapping,
+		},
+	}
+
+	resp := convertToResponsesAPIResponse(chatResp)
+
+	var functionCall *Item
+	for i := range resp.Output {
+		if resp.Output[i].Type == "function_call" {
+			functionCall = &resp.Output[i]
+			break
+		}
+	}
+	require.NotNil(t, functionCall)
+	require.Equal(t, "resolve_library_id", functionCall.Name)
+	require.Equal(t, "mcp__context7", functionCall.Namespace)
+	require.Equal(t, "call_1", functionCall.CallID)
+	require.JSONEq(t, `{"query":"test"}`, functionCall.Arguments)
+}
+
 func TestConvertItemToMessage_Compaction(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1108,7 +1312,7 @@ func TestConvertItemToMessage_Compaction(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := convertItemToMessage(tt.item)
+			result, err := convertItemToMessage(tt.item, nil)
 			tt.validate(t, result, err)
 		})
 	}
@@ -1480,7 +1684,8 @@ func TestConvertToolChoiceToLLM(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := convertToolChoiceToLLM(tt.input)
+			result, err := convertToolChoiceToLLM(tt.input, nil)
+			require.NoError(t, err)
 			tt.validate(t, result)
 		})
 	}
@@ -1655,7 +1860,7 @@ func TestConvertItemToMessage_Reasoning(t *testing.T) {
 		},
 	}
 
-	result, err := convertItemToMessage(item)
+	result, err := convertItemToMessage(item, nil)
 	require.NoError(t, err)
 	require.Nil(t, result, "reasoning items should return nil from convertItemToMessage")
 }
@@ -1670,7 +1875,7 @@ func TestConvertInputToMessages_GroupsConsecutiveToolCalls(t *testing.T) {
 		{Role: "user", Content: &Input{Text: lo.ToPtr("Continue.")}},
 	}}
 
-	messages, err := convertInputToMessages(input)
+	messages, err := convertInputToMessages(input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 5)
 
@@ -1714,7 +1919,7 @@ func TestConvertInputToMessages_GroupsMixedToolCallTypes(t *testing.T) {
 		},
 	}}
 
-	messages, err := convertInputToMessages(input)
+	messages, err := convertInputToMessages(input, nil)
 	require.NoError(t, err)
 	require.Len(t, messages, 1)
 	require.Equal(t, "assistant", messages[0].Role)
@@ -1744,7 +1949,7 @@ func TestConvertInputToMessages_DoesNotGroupToolCallsAcrossBoundaries(t *testing
 			{Type: "function_call", CallID: "call_b", Name: "second_tool", Arguments: `{}`},
 		}}
 
-		messages, err := convertInputToMessages(input)
+		messages, err := convertInputToMessages(input, nil)
 		require.NoError(t, err)
 		require.Len(t, messages, 3)
 		require.Equal(t, []string{"assistant", "tool", "assistant"}, []string{
@@ -1763,7 +1968,7 @@ func TestConvertInputToMessages_DoesNotGroupToolCallsAcrossBoundaries(t *testing
 			{Type: "function_call", CallID: "call_b", Name: "second_tool", Arguments: `{}`},
 		}}
 
-		messages, err := convertInputToMessages(input)
+		messages, err := convertInputToMessages(input, nil)
 		require.NoError(t, err)
 		require.Len(t, messages, 3)
 		require.Equal(t, []string{"assistant", "user", "assistant"}, []string{
@@ -1998,7 +2203,7 @@ func TestConvertReasoningWithFollowing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, consumed, err := convertReasoningWithFollowing(tt.items, tt.startIdx)
+			result, consumed, err := convertReasoningWithFollowing(tt.items, tt.startIdx, nil)
 			tt.validate(t, result, consumed, err)
 		})
 	}

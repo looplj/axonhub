@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // PlatformType represents the platform type for OpenAI API.
@@ -173,6 +174,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
 	}
 
+	// Chat Completions only supports a single named tool choice. Entries that
+	// cannot be resolved to one flat function name are rejected rather than
+	// silently degraded to a broader selection mode.
+	if llmReq.ToolChoice != nil && len(llmReq.ToolChoice.Tools) > 0 {
+		return nil, fmt.Errorf(
+			"%w: tool_choice.tools with multiple entries is not supported by OpenAI Chat Completions",
+			transformer.ErrInvalidRequest,
+		)
+	}
+
 	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
@@ -291,7 +302,21 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Convert to unified llm.Response
-	return oaiResp.ToLLMResponse(), nil
+	resp := oaiResp.ToLLMResponse()
+
+	// Propagate the namespace tool mapping from the request metadata to the
+	// response so that the Responses inbound transformer can perform exact
+	// round-trip restoration of tool call names.
+	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+		if mapping, ok := httpResp.Request.TransformerMetadata[shared.NamespaceToolMappingMetadataKey].(llm.NamespaceToolMapping); ok {
+			if resp.TransformerMetadata == nil {
+				resp.TransformerMetadata = make(map[string]any)
+			}
+			resp.TransformerMetadata[shared.NamespaceToolMappingMetadataKey] = llm.CloneNamespaceToolMapping(mapping)
+		}
+	}
+
+	return resp, nil
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
@@ -313,9 +338,40 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 	//
 	// Note: TransformStreamChunk only returns nil for events with explicit "choices":[]
 	// in the raw JSON. Events without a choices key (nil slice) are passed through.
-	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	mapping := extractNamespaceToolMapping(req)
+
+	transformed := streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
-	})), nil
+	}))
+
+	if mapping == nil {
+		return transformed, nil
+	}
+
+	// Each chunk gets an independent deep copy of the mapping to prevent
+	// downstream consumers from mutating shared state across chunks.
+	return streams.Map(transformed, func(resp *llm.Response) *llm.Response {
+		if resp == nil || resp == llm.DoneResponse {
+			return resp
+		}
+		if resp.TransformerMetadata == nil {
+			resp.TransformerMetadata = make(map[string]any)
+		}
+		resp.TransformerMetadata[shared.NamespaceToolMappingMetadataKey] = llm.CloneNamespaceToolMapping(mapping)
+		return resp
+	}), nil
+}
+
+// extractNamespaceToolMapping reads the namespace tool mapping from the
+// request's TransformerMetadata, if present.
+func extractNamespaceToolMapping(req *httpclient.Request) llm.NamespaceToolMapping {
+	if req == nil || req.TransformerMetadata == nil {
+		return nil
+	}
+
+	mapping, _ := req.TransformerMetadata[shared.NamespaceToolMappingMetadataKey].(llm.NamespaceToolMapping)
+
+	return mapping
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(

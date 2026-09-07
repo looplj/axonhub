@@ -89,12 +89,47 @@ type ToolFunction struct {
 	Name string `json:"name"`
 }
 
+// ToolOption represents a specific tool within a multi-tool choice.
+type ToolOption struct {
+	Type      string `json:"type"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
+// NamespaceToolReference records the original namespace and function name for
+// a flat function name generated from an OpenAI Responses namespace tool.
+type NamespaceToolReference struct {
+	Namespace string `json:"namespace"`
+	Name      string `json:"name"`
+}
+
+// NamespaceToolMapping maps flat function names to their original
+// namespace/name references for exact round-trip restoration between OpenAI
+// Responses namespace tools and OpenAI Chat Completions function tools.
+type NamespaceToolMapping map[string]NamespaceToolReference
+
+// CloneNamespaceToolMapping returns a deep copy of a namespace tool mapping to
+// prevent shared mutable state between pipeline attempts or stream chunks.
+func CloneNamespaceToolMapping(m NamespaceToolMapping) NamespaceToolMapping {
+	if m == nil {
+		return nil
+	}
+
+	out := make(NamespaceToolMapping, len(m))
+	for key, value := range m {
+		out[key] = value
+	}
+
+	return out
+}
+
 // ToolChoice represents the tool choice parameter for function calling.
 //
 // Tool choice can be a string or a struct.
 type ToolChoice struct {
 	ToolChoice      *string          `json:"tool_choice,omitempty"`
 	NamedToolChoice *NamedToolChoice `json:"named_tool_choice,omitempty"`
+	Tools           []ToolOption     `json:"tools,omitempty"`
 }
 
 type NamedToolChoice struct {
@@ -105,6 +140,10 @@ type NamedToolChoice struct {
 func (t ToolChoice) MarshalJSON() ([]byte, error) {
 	if t.ToolChoice != nil {
 		return json.Marshal(t.ToolChoice)
+	}
+
+	if len(t.Tools) > 0 {
+		return json.Marshal(t.Tools)
 	}
 
 	return json.Marshal(t.NamedToolChoice)
@@ -124,6 +163,14 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 	err = json.Unmarshal(data, &named)
 	if err == nil {
 		t.NamedToolChoice = &named
+		return nil
+	}
+
+	var options []ToolOption
+
+	err = json.Unmarshal(data, &options)
+	if err == nil {
+		t.Tools = options
 		return nil
 	}
 

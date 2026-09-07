@@ -1,5 +1,11 @@
 package shared
 
+// NamespaceToolMappingMetadataKey is the key used to store the namespace tool
+// mapping in request and response TransformerMetadata. It maps flat function
+// names to their original namespace/name references for exact round-trip
+// restoration between OpenAI Responses and OpenAI Chat Completions.
+const NamespaceToolMappingMetadataKey = "openai_responses_namespace_tool_mapping"
+
 // EncodeOpenAIEncryptedContent encodes raw OpenAI encrypted content for storage.
 // OpenAI encrypted_content is already base64-encoded, so this is a passthrough.
 func EncodeOpenAIEncryptedContent(content *string) *string {

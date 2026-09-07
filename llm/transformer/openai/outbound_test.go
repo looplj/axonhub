@@ -15,6 +15,8 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -189,6 +191,98 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestOutboundTransformer_TransformRequest_RejectsMultiToolChoice(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+		},
+		ToolChoice: &llm.ToolChoice{
+			Tools: []llm.ToolOption{
+				{Type: "function", Name: "get_weather"},
+				{Type: "function", Name: "get_time"},
+			},
+		},
+	}
+
+	_, err = outbound.TransformRequest(context.Background(), req)
+	require.Error(t, err)
+	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
+}
+
+func TestOutboundTransformer_TransformResponse_NamespaceMappingPropagation(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+
+	mapping := llm.NamespaceToolMapping{
+		"ns__fn": {Namespace: "ns", Name: "fn"},
+	}
+
+	httpResp := &httpclient.Response{
+		StatusCode: 200,
+		Body:       []byte(`{"id":"resp_1","object":"chat.completion","model":"gpt-4o","choices":[{"index":0,"message":{"role":"assistant","tool_calls":[{"id":"call_1","type":"function","function":{"name":"ns__fn","arguments":"{}"}}],"finish_reason":"tool_calls"}}]}`),
+		Request: &httpclient.Request{
+			TransformerMetadata: map[string]any{
+				shared.NamespaceToolMappingMetadataKey: mapping,
+			},
+		},
+	}
+
+	resp, err := outbound.TransformResponse(context.Background(), httpResp)
+	require.NoError(t, err)
+
+	got, ok := resp.TransformerMetadata[shared.NamespaceToolMappingMetadataKey].(llm.NamespaceToolMapping)
+	require.True(t, ok)
+	require.Equal(t, mapping, got)
+}
+
+func TestOutboundTransformer_TransformStream_NamespaceMappingPropagation(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
+	require.NoError(t, err)
+
+	mapping := llm.NamespaceToolMapping{
+		"ns__fn": {Namespace: "ns", Name: "fn"},
+	}
+
+	req := &httpclient.Request{
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		TransformerMetadata: map[string]any{
+			shared.NamespaceToolMappingMetadataKey: mapping,
+		},
+	}
+
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"resp_1","object":"chat.completion.chunk","model":"gpt-4o","choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"call_1","type":"function","function":{"name":"ns__fn","arguments":""}}]}}]}`)},
+		{Data: []byte(`{"id":"resp_1","object":"chat.completion.chunk","model":"gpt-4o","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{}"}}]}}]}`)},
+		{Data: []byte(`{"id":"resp_1","object":"chat.completion.chunk","model":"gpt-4o","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}`)},
+	}
+
+	stream := streams.SliceStream(chunks)
+	out, err := outbound.TransformStream(context.Background(), req, stream)
+	require.NoError(t, err)
+
+	var responses []*llm.Response
+	for out.Next() {
+		if resp := out.Current(); resp != nil {
+			responses = append(responses, resp)
+		}
+	}
+	require.NoError(t, out.Err())
+	require.NotEmpty(t, responses)
+
+	for _, resp := range responses {
+		if resp == llm.DoneResponse {
+			continue
+		}
+		got, ok := resp.TransformerMetadata[shared.NamespaceToolMappingMetadataKey].(llm.NamespaceToolMapping)
+		require.True(t, ok)
+		require.Equal(t, mapping, got)
 	}
 }
 

@@ -55,7 +55,7 @@ func (t *CompactInboundTransformer) TransformRequest(ctx context.Context, httpRe
 	}
 
 	// Reuse convertInputToMessages to convert Input to []llm.Message
-	inputMessages, err := convertInputToMessages(&req.Input)
+	inputMessages, err := convertInputToMessages(&req.Input, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to convert input: %w", transformer.ErrInvalidRequest, err)
 	}
