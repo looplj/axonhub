@@ -229,9 +229,13 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.trace.extra_trace_headers", []string{})
 	v.SetDefault("server.trace.response_trace_headers", []string{})
 	v.SetDefault("server.trace.extra_trace_body_fields", []string{})
-	v.SetDefault("server.trace.claude_code_trace_enabled", true)
-	v.SetDefault("server.trace.codex_trace_enabled", true)
-	v.SetDefault("server.trace.opencode_trace_enabled", true)
+	// Native client trace extraction (Codex / Claude Code / OpenCode) is opt-in.
+	// These integrations reuse headers that every official client session sends, so
+	// enabling them by default persistently records traffic without an explicit
+	// trace ID (for example AH-Trace-Id).
+	v.SetDefault("server.trace.claude_code_trace_enabled", false)
+	v.SetDefault("server.trace.codex_trace_enabled", false)
+	v.SetDefault("server.trace.opencode_trace_enabled", false)
 
 	// Dashboard defaults
 	v.SetDefault("server.dashboard.all_time_token_stats_soft_ttl", "1h")

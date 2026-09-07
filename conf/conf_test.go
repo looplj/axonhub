@@ -75,7 +75,7 @@ func TestSSEKeepAliveDefaultsToDisabled(t *testing.T) {
 	}
 }
 
-func TestTraceExtractionDefaultsToEnabled(t *testing.T) {
+func TestTraceExtractionDefaultsToDisabled(t *testing.T) {
 	configFile := writeTestConfig(t, "")
 
 	cfg, _, err := loadConfig(configFile)
@@ -84,14 +84,14 @@ func TestTraceExtractionDefaultsToEnabled(t *testing.T) {
 	}
 
 	trace := cfg.APIServer.Trace
-	if !trace.ClaudeCodeTraceEnabled {
-		t.Error("Claude Code trace extraction should default to enabled")
+	if trace.ClaudeCodeTraceEnabled {
+		t.Error("Claude Code trace extraction should default to disabled")
 	}
-	if !trace.CodexTraceEnabled {
-		t.Error("Codex trace extraction should default to enabled")
+	if trace.CodexTraceEnabled {
+		t.Error("Codex trace extraction should default to disabled")
 	}
-	if !trace.OpenCodeTraceEnabled {
-		t.Error("OpenCode trace extraction should default to enabled")
+	if trace.OpenCodeTraceEnabled {
+		t.Error("OpenCode trace extraction should default to disabled")
 	}
 }
 

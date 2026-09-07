@@ -39,15 +39,15 @@ type Config struct {
 	ExtraTraceBodyFields []string `conf:"extra_trace_body_fields" yaml:"extra_trace_body_fields" json:"extra_trace_body_fields"`
 
 	// ClaudeCodeTraceEnabled enables extracting trace IDs from Claude Code request metadata.
-	// Default to true.
+	// Default to false.
 	ClaudeCodeTraceEnabled bool `conf:"claude_code_trace_enabled" yaml:"claude_code_trace_enabled" json:"claude_code_trace_enabled"`
 
 	// CodexTraceEnabled enables extracting trace IDs from Codex request headers.
-	// Default to true.
+	// Default to false.
 	CodexTraceEnabled bool `conf:"codex_trace_enabled" yaml:"codex_trace_enabled" json:"codex_trace_enabled"`
 
 	// OpenCodeTraceEnabled enables extracting trace IDs from OpenCode request headers.
-	// Default to true.
+	// Default to false.
 	OpenCodeTraceEnabled bool `conf:"opencode_trace_enabled" yaml:"opencode_trace_enabled" json:"opencode_trace_enabled"`
 }
 
