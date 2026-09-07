@@ -52,10 +52,21 @@ func TestApertis_CheckQuota_HappyPath_PaygOnly(t *testing.T) {
 	require.Equal(t, "apertis", quota.ProviderType)
 	require.NotNil(t, quota.Limits)
 	require.Len(t, quota.Limits, 2)
-	require.Equal(t, QuotaLimitTypeToken, quota.Limits[0].Type)
-	require.Equal(t, "available", quota.Limits[0].Status)
-	require.Equal(t, QuotaWindowCredits, quota.Limits[1].Window)
-	require.Equal(t, "available", quota.Limits[1].Status)
+	var paygLimit, creditsLimit QuotaLimitStatus
+	for _, limit := range quota.Limits {
+		if limit.Type != QuotaLimitTypeToken {
+			continue
+		}
+		if limit.Window == QuotaWindowPayAsYouGo {
+			paygLimit = limit
+		} else if limit.Window == QuotaWindowCredits {
+			creditsLimit = limit
+		}
+	}
+	require.Equal(t, QuotaWindowPayAsYouGo, paygLimit.Window)
+	require.Equal(t, "available", paygLimit.Status)
+	require.Equal(t, QuotaWindowCredits, creditsLimit.Window)
+	require.Equal(t, "available", creditsLimit.Status)
 }
 
 func TestApertis_CheckQuota_WarningState(t *testing.T) {
