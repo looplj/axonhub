@@ -185,10 +185,10 @@ func buildApertisQuotaURL(baseURL string) string {
 //  1. If subscription is active with remaining cycle quota → check if high usage (warning)
 //  2. If subscription cycle quota is exhausted BUT PAYG fallback is enabled with credits → available/warning
 //  3. If subscription is suspended/canceled → fall through to PAYG check
-//  4. If PAYG account credits > 0 → available/warning based on token usage
-//  5. Otherwise → exhausted
+//  4. If PAYG account credits > 0 → available, with a warning before token exhaustion
+//  5. If no quota source is present → unknown; otherwise → exhausted
 func determineApertisStatus(resp *ApertisBillingCreditsResponse) string {
-	bestStatus := "exhausted"
+	bestStatus := "unknown"
 
 	// --- Subscription path ---
 	if resp.Subscription != nil {
@@ -231,14 +231,16 @@ func determineSubscriptionStatus(sub *ApertisSubscription) string {
 		return "exhausted"
 	}
 
-	if sub.CycleQuotaLimit > 0 {
-		usageRatio := float64(sub.CycleQuotaUsed) / float64(sub.CycleQuotaLimit)
-		if sub.CycleQuotaRemaining <= 0 {
-			return "exhausted"
-		}
-		if usageRatio > WarningThresholdRatio {
-			return "warning"
-		}
+	if sub.CycleQuotaLimit <= 0 {
+		return "unknown"
+	}
+
+	usageRatio := float64(sub.CycleQuotaUsed) / float64(sub.CycleQuotaLimit)
+	if sub.CycleQuotaRemaining <= 0 {
+		return "exhausted"
+	}
+	if usageRatio >= WarningThresholdRatio {
+		return "warning"
 	}
 
 	return "available"
@@ -251,19 +253,27 @@ func determinePaygStatus(payg *ApertisPayg) string {
 		return "available"
 	}
 
-	if payg.AccountCredits <= 0 {
-		return "exhausted"
-	}
-
-	// Check token-level usage ratio for warning
-	if total, ok := toFloat64(payg.TokenTotal); ok && total > 0 {
-		usageRatio := payg.TokenUsed / total
-		if usageRatio > WarningThresholdRatio {
-			return "warning"
+	if payg.AccountCredits > 0 {
+		// A positive account balance keeps PAYG available even when its token
+		// limit is exhausted. A non-exhausted token limit can still report a
+		// warning.
+		if total, ok := toFloat64(payg.TokenTotal); ok && total > 0 {
+			usageRatio := payg.TokenUsed / total
+			if usageRatio >= 1 {
+				return "available"
+			}
+			if usageRatio >= WarningThresholdRatio {
+				return "warning"
+			}
 		}
+		return "available"
 	}
 
-	return "available"
+	if total, ok := toFloat64(payg.TokenTotal); !ok || total <= 0 {
+		return "unknown"
+	}
+
+	return "exhausted"
 }
 
 // betterStatus returns the more permissive of two statuses.
@@ -302,7 +312,7 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 					usageRatio = resp.Payg.TokenUsed / total
 					if resp.Payg.TokenUsed >= total {
 						tokenStatus = "exhausted"
-					} else if usageRatio > WarningThresholdRatio {
+					} else if usageRatio >= WarningThresholdRatio {
 						tokenStatus = "warning"
 					} else {
 						tokenStatus = "available"
@@ -338,7 +348,7 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 			usageRatio = float64(resp.Subscription.CycleQuotaUsed) / float64(resp.Subscription.CycleQuotaLimit)
 			if resp.Subscription.CycleQuotaRemaining <= 0 {
 				subStatus = "exhausted"
-			} else if usageRatio > WarningThresholdRatio {
+			} else if usageRatio >= WarningThresholdRatio {
 				subStatus = "warning"
 			} else {
 				subStatus = "available"

@@ -119,6 +119,86 @@ func TestApertis_CheckQuota_ExhaustedState(t *testing.T) {
 	require.False(t, quota.Ready)
 }
 
+func TestApertis_CheckQuota_EmptySources_ReturnsUnknown(t *testing.T) {
+	checker := NewApertisQuotaChecker(nil)
+
+	quota, err := checker.parseResponse([]byte(`{
+		"object": "billing_credits",
+		"is_subscriber": false
+	}`))
+	require.NoError(t, err)
+	require.Equal(t, "unknown", quota.Status)
+	require.False(t, quota.Ready)
+	require.Empty(t, quota.Limits)
+}
+
+func TestApertis_CheckQuota_EmptySourceObjects_ReturnUnknown(t *testing.T) {
+	checker := NewApertisQuotaChecker(nil)
+
+	quota, err := checker.parseResponse([]byte(`{
+		"object": "billing_credits",
+		"is_subscriber": true,
+		"payg": {},
+		"subscription": {"status": "active"}
+	}`))
+
+	require.NoError(t, err)
+	require.Equal(t, "unknown", quota.Status)
+	require.False(t, quota.Ready)
+}
+
+func TestApertis_CheckQuota_PaygCreditsRemainAvailableWhenTokenLimitExhausted(t *testing.T) {
+	checker := NewApertisQuotaChecker(nil)
+
+	quota, err := checker.parseResponse([]byte(`{
+		"object": "billing_credits",
+		"is_subscriber": true,
+		"payg": {
+			"account_credits": 3.0,
+			"token_used": 10.0,
+			"token_total": 10.0,
+			"token_remaining": 0.0,
+			"token_is_unlimited": false
+		},
+		"subscription": {
+			"status": "active",
+			"cycle_quota_limit": 5000,
+			"cycle_quota_used": 5000,
+			"cycle_quota_remaining": 0,
+			"payg_fallback_enabled": true
+		}
+	}`))
+
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+
+	var paygLimit QuotaLimitStatus
+	for _, limit := range quota.Limits {
+		if limit.Type == QuotaLimitTypeToken && limit.Window == QuotaWindowPayg {
+			paygLimit = limit
+		}
+	}
+	require.Equal(t, "exhausted", paygLimit.Status)
+}
+
+func TestApertis_WarningAtUsageThreshold(t *testing.T) {
+	subscriptionStatus := determineSubscriptionStatus(&ApertisSubscription{
+		Status:              "active",
+		CycleQuotaLimit:     10,
+		CycleQuotaUsed:      8,
+		CycleQuotaRemaining: 2,
+	})
+	paygStatus := determinePaygStatus(&ApertisPayg{
+		AccountCredits: 1,
+		TokenUsed:      8,
+		TokenTotal:     10,
+	})
+
+	require.Equal(t, "warning", subscriptionStatus)
+	require.Equal(t, "warning", paygStatus)
+}
+
 func TestApertis_CheckQuota_WithSubscription(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {

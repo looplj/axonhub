@@ -125,6 +125,20 @@ func TestSynthetic_CheckQuota_WarningState(t *testing.T) {
 	require.True(t, quota.Limits[1].Ready)
 }
 
+func TestSynthetic_WarningAtUsageThreshold(t *testing.T) {
+	tickPercent := 0.8
+	percentRemaining := 20.0
+
+	limits := buildSyntheticLimitStatuses(
+		&SyntheticWeeklyTokenLimit{PercentRemaining: &percentRemaining},
+		&SyntheticRollingFiveHourLimit{TickPercent: &tickPercent},
+	)
+
+	require.Len(t, limits, 2)
+	require.Equal(t, "warning", limits[0].Status)
+	require.Equal(t, "warning", limits[1].Status)
+}
+
 func TestSynthetic_CheckQuota_ExhaustedState(t *testing.T) {
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {

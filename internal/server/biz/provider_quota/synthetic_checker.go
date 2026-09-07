@@ -193,7 +193,7 @@ func buildSyntheticLimitStatuses(weekly *SyntheticWeeklyTokenLimit, fiveHour *Sy
 			usageRatio = 1.0
 		} else if fiveHour.TickPercent != nil {
 			usageRatio = *fiveHour.TickPercent
-			if usageRatio > WarningThresholdRatio {
+			if usageRatio >= WarningThresholdRatio {
 				status = "warning"
 			}
 		}
@@ -233,7 +233,7 @@ func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus 
 
 		if usageRatio >= 1.0 {
 			status = "exhausted"
-		} else if usageRatio > WarningThresholdRatio {
+		} else if usageRatio >= WarningThresholdRatio {
 			status = "warning"
 		}
 	}
