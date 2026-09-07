@@ -514,9 +514,7 @@ function parseQuotaLimit(entry: unknown): ProviderQuotaLimit | undefined {
   if (!type || !window || !isNormalizedQuotaStatus(limit.status)) return undefined;
 
   const usageRatio = optionalNumber(limit.usageRatio);
-  if (limit.usageRatio !== undefined && usageRatio === undefined) return undefined;
-  if (usageRatio === undefined && limit.status !== 'exhausted') return undefined;
-  if (usageRatio !== undefined && (usageRatio < 0 || usageRatio > 1)) return undefined;
+  if (usageRatio === undefined || usageRatio < 0 || usageRatio > 1) return undefined;
 
   if (limit.ready !== undefined && typeof limit.ready !== 'boolean') return undefined;
 
@@ -535,7 +533,7 @@ function parseQuotaLimit(entry: unknown): ProviderQuotaLimit | undefined {
   return {
     type,
     status: limit.status,
-    usageRatio: usageRatio ?? 1,
+    usageRatio,
     ready: limit.ready === true,
     window,
     nextResetAt,

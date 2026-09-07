@@ -474,7 +474,7 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
   const content = (
     <div className='flex min-w-0 flex-col items-stretch gap-1.5 text-[11px]'>
       {visibleLimits.map((limit, index) => {
-        const usageRatio = limit.status === 'exhausted' ? 1 : (limit.usageRatio ?? 1);
+        const usageRatio = limit.usageRatio;
         const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
         const label = quotaWindowLabel(limit.window, t) || t('quota.label.quota');
         return (
@@ -512,7 +512,7 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
       <TooltipContent className='space-y-1'>
         <div className='font-medium'>{t(`quota.status.${channel.providerQuotaStatus.status}`)}</div>
         {limits.map((limit, index) => {
-          const usageRatio = limit.status === 'exhausted' ? 1 : (limit.usageRatio ?? 1);
+          const usageRatio = limit.usageRatio;
           const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
           return (
             <div key={`${limit.window}-${index}`} className='text-xs'>

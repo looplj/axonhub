@@ -228,19 +228,19 @@ test('no provider fallback: raw-only provider payloads without _limits yield una
   }
 });
 
-test('exhausted: exhausted limits with missing usage still render as exhausted with zero remaining', () => {
-  const limits = parseQuotaLimits({
-    _limits: [{ type: 'token', window: '7d', status: 'exhausted', ready: false }],
-  });
+test('unknown usage: limits with missing usage fail closed without rendering exhausted', () => {
+  for (const usageRatio of [undefined, Number.NaN, Number.POSITIVE_INFINITY]) {
+    const limits = parseQuotaLimits({
+      _limits: [{ type: 'token', window: '7d', status: 'exhausted', ready: false, usageRatio }],
+    });
 
-  assert.equal(limits.length, 1);
-  assert.equal(limits[0].status, 'exhausted');
-  assert.equal(limits[0].usageRatio, 1);
-  // The renderer treats an exhausted limit as fully used regardless of ratio.
-  assert.match(
+    assert.deepEqual(limits, [], `usage ratio ${String(usageRatio)} must be unavailable`);
+  }
+
+  assert.doesNotMatch(
     columnsSource,
-    /limit\.status === 'exhausted' \? 1/,
-    'exhausted limits must render as fully used even when usageRatio is absent'
+    /limit\.status === 'exhausted' \? 1|limit\.usageRatio \?\? 1/,
+    'generic quota rows must not fabricate 100% usage for missing ratios'
   );
 });
 
