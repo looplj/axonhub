@@ -64,6 +64,12 @@ type QuotaLimit = {
   status?: string;
 };
 
+/**
+ * Collect displayable quota windows from persisted provider data.
+ * Codex uses its reported windows; older records fall back to normalized limits.
+ * @param channel Channel with optional persisted provider quota status.
+ * @returns Quota rows with window labels, usage ratios, and status, or an empty list.
+ */
 function getQuotaLimits(channel: Channel): QuotaLimit[] {
   const quotaStatus = channel.providerQuotaStatus;
   if (!quotaStatus) return [];
@@ -126,26 +132,23 @@ function getQuotaLimits(channel: Channel): QuotaLimit[] {
     }
   }
 
-  // Codex exposes a secondary window in rate_limit while its normalized
-  // provider limit currently contains only the primary window.
+  // Window roles do not imply durations: some Codex plans have a weekly
+  // primary window. Prefer the reported windows over the normalized primary
+  // limit, which can exist even when the API returns no primary window.
   if (channel.type === 'codex') {
     const rateLimit = data.rate_limit as Record<string, unknown> | undefined;
-    for (const [key, label] of [
-      ['primary_window', '5h'],
-      ['secondary_window', '7d'],
-    ] as const) {
-      const window = rateLimit?.[key] as Record<string, unknown> | undefined;
-      if (typeof window?.used_percent !== 'number') continue;
-      const alreadyIncluded = normalized.some(
-        (limit) => limit.window === label || (key === 'primary_window' && limit.window === 'primary')
-      );
-      if (!alreadyIncluded) {
-        normalized.push({
-          window: label,
+    if (rateLimit) {
+      const codexLimits: QuotaLimit[] = [];
+      for (const role of ['primary', 'secondary'] as const) {
+        const window = rateLimit[`${role}_window`] as Record<string, unknown> | undefined;
+        if (typeof window?.used_percent !== 'number') continue;
+        codexLimits.push({
+          window: codexWindowDuration(window.limit_window_seconds) || role,
           usageRatio: window.used_percent / 100,
           status: quotaStatus.status,
         });
       }
+      return codexLimits;
     }
   }
 
@@ -156,10 +159,34 @@ function getQuotaLimits(channel: Channel): QuotaLimit[] {
   return normalized.filter((limit) => limit.usageRatio != null || limit.status === 'exhausted');
 }
 
-function quotaWindowLabel(window: string | undefined): string {
+/**
+ * Format a reported duration using the largest exact day, hour, minute, or second unit.
+ * @param seconds Untrusted window duration from the provider response.
+ * @returns A compact duration label, or an empty string for invalid/non-integer durations.
+ */
+function codexWindowDuration(seconds: unknown): string {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) return '';
+  for (const [unit, size] of [
+    ['d', 86400],
+    ['h', 3600],
+    ['m', 60],
+    ['s', 1],
+  ] as const) {
+    if (seconds % size === 0) return `${seconds / size}${unit}`;
+  }
+  return '';
+}
+
+/**
+ * Resolve window identifiers for the quota cell and tooltip without assuming role durations.
+ * @param window Provider window identifier or an already formatted duration.
+ * @param t Translation function for primary and secondary window names.
+ * @returns A display label, or an empty string when the window is unspecified.
+ */
+function quotaWindowLabel(window: string | undefined, t: (key: string) => string): string {
   if (!window) return '';
-  if (window === 'primary') return '5h';
-  if (window === 'secondary') return '7d';
+  if (window === 'primary') return t('quota.label.primary_window');
+  if (window === 'secondary') return t('quota.label.secondary_window');
   if (window === 'daily') return '1d';
   if (window === 'weekly') return '7d';
   if (window === 'monthly') return '30d';
@@ -574,7 +601,7 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
       {visibleLimits.map((limit, index) => {
         const usageRatio = limit.status === 'exhausted' ? 1 : (limit.usageRatio ?? 1);
         const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
-        const label = quotaWindowLabel(limit.window) || t('quota.label.quota');
+        const label = quotaWindowLabel(limit.window, t) || t('quota.label.quota');
         return (
           <div key={`${label}-${index}`} className='flex items-center justify-end gap-2'>
             <span className='text-muted-foreground min-w-24 whitespace-nowrap text-left'>{label}</span>
@@ -614,7 +641,7 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
           const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
           return (
             <div key={`${limit.window}-${index}`} className='text-xs'>
-              {quotaWindowLabel(limit.window) || t('quota.label.quota')}: {remaining}%
+              {quotaWindowLabel(limit.window, t) || t('quota.label.quota')}: {remaining}%
             </div>
           );
         })}
