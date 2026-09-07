@@ -139,6 +139,21 @@ test('quota selection follows quota column visibility and preserves normalized f
   assert.equal(zhSystem['quota.window.cycle'], '周期窗口');
 });
 
+test('filter-only model column stays hidden while model filtering remains configured', () => {
+  const channelsData = read('features/channels/data/channels.ts');
+  const channelColumns = read('features/channels/components/channels-columns.tsx');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+
+  assert.match(channelsData, /DEFAULT_CHANNEL_COLUMN_VISIBILITY[\s\S]*model:\s*false/);
+  assert.match(channelsData, /\.\.\.parsed\.data,\s*model:\s*false/);
+  assert.match(
+    channelColumns,
+    /id:\s*'model'[\s\S]*?accessorFn:\s*\(\)\s*=>\s*''[\s\S]*?header:\s*\(\)\s*=>\s*null[\s\S]*?cell:\s*\(\)\s*=>\s*null[\s\S]*?filterFn:\s*\(\)\s*=>\s*true[\s\S]*?enableColumnFilter:\s*false[\s\S]*?enableGlobalFilter:\s*false/,
+    'the virtual model column must render nothing while keeping its server-side filtering hooks'
+  );
+  assert.match(channelsConfig, /zenmux_gemini:\s*\{[\s\S]*icon:\s*ZenMux/);
+});
+
 test('ZenMux quota schema accepts all channel variants without row grouping', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsData = read('features/channels/data/channels.ts');

@@ -834,7 +834,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     defaultModels: ['google/gemini-2.5-pro'],
     apiFormat: GEMINI_CONTENTS,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
-    icon: OpenRouter,
+    icon: ZenMux,
   },
   commandcode: {
     channelType: 'commandcode',
