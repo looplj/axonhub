@@ -233,3 +233,48 @@ test('Command Code has localized channel, provider, cookie field, and quota labe
     assert.ok(system['system.quota.collection.providers.commandcode']);
   }
 });
+
+test('Ollama exposes OpenAI and Anthropic channel variants with a quota cookie field', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const providersConfig = read('features/channels/data/config_providers.ts');
+  const systemQuotas = read('features/system/data/quotas.ts');
+  const dialog = read('features/channels/components/channels-action-dialog.tsx');
+
+  assert.match(schema, /channelTypeSchema[\s\S]*'ollama'[\s\S]*'ollama_anthropic'/);
+  assert.match(
+    schema,
+    /ollamaQuotaSettingsSchema[\s\S]*authCookie:[\s\S]*z\.string\(\)\.optional\(\)\.nullable\(\)/,
+    'schema should model the Ollama quota cookie'
+  );
+  assert.match(channelsConfig, /CHANNEL_TYPE_TO_PROVIDER[\s\S]*ollama_anthropic:\s*'ollama'/);
+  assert.match(
+    providersConfig,
+    /ollama:\s*{[\s\S]*channelTypes:\s*\[\s*'ollama',\s*'ollama_anthropic'\s*\]/,
+    'PROVIDER_CONFIGS should group both Ollama channel types'
+  );
+  assert.match(
+    systemQuotas,
+    /type:\s*'ollama'\s*\|\s*'ollama_anthropic';[\s\S]*quotaData: ProviderOllamaQuotaData/,
+    'quota parsing should type Ollama channels with ProviderOllamaQuotaData'
+  );
+  assert.match(
+    dialog,
+    /settings\.providerQuota\.ollama\.authCookie/,
+    'the channel dialog should bind the quota cookie input to settings.providerQuota.ollama.authCookie'
+  );
+});
+
+test('Ollama has localized channel, provider, cookie field, and quota-collection labels', () => {
+  for (const locale of ['en', 'zh-CN']) {
+    const channels = parseLocale(locale);
+    const system = JSON.parse(read(`locales/${locale}/system.json`));
+
+    assert.equal(channels['channels.types.ollama'], 'Ollama');
+    assert.equal(channels['channels.providers.ollama'], 'Ollama');
+    assert.ok(channels['channels.types.ollama_anthropic']);
+    assert.ok(channels['channels.dialogs.fields.ollamaQuota.authCookie.placeholder'].includes('__Secure-session'));
+    assert.ok(channels['channels.dialogs.fields.ollamaQuota.authCookie.description']);
+    assert.ok(system['system.quota.collection.providers.ollama']);
+  }
+});

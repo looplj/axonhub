@@ -156,12 +156,22 @@ input CommandCodeQuotaSettingsInput {
   authCookie: String
 }
 
+type OllamaQuotaSettings {
+  authCookie: String
+}
+
+input OllamaQuotaSettingsInput {
+  authCookie: String
+}
+
 type ChannelProviderQuotaSettings {
   commandCode: CommandCodeQuotaSettings
+  ollama: OllamaQuotaSettings
 }
 
 input ChannelProviderQuotaSettingsInput {
   commandCode: CommandCodeQuotaSettingsInput
+  ollama: OllamaQuotaSettingsInput
 }
 
 type ChannelSettings {

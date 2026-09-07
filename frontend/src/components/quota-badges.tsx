@@ -30,6 +30,7 @@ import {
   isClineUnavailablePassQuotaData,
   ProviderCommandCodeQuotaData,
   CommandCodeQuotaWindow,
+  ProviderOllamaQuotaData,
   resetChannelQuotaNow,
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
@@ -88,6 +89,10 @@ function isOpenCodeGoType(t: string): t is 'opencode_go' | 'opencode_go_anthropi
 
 function isCommandCodeType(t: string): t is 'commandcode' | 'commandcode_anthropic' {
   return t === 'commandcode' || t === 'commandcode_anthropic';
+}
+
+function isOllamaType(t: string): t is 'ollama' | 'ollama_anthropic' {
+  return t === 'ollama' || t === 'ollama_anthropic';
 }
 const COMMAND_CODE_PLAN_LABELS: Record<string, string> = {
   'individual-go': 'Go',
@@ -181,6 +186,12 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
       qd?.windows?.rolling?.usage_percent ?? 0,
       qd?.windows?.weekly?.usage_percent ?? 0,
       qd?.windows?.monthly?.usage_percent ?? 0
+    );
+  } else if (isOllamaType(channel.type)) {
+    const qd = channel.quotaStatus.quotaData as ProviderOllamaQuotaData | undefined;
+    percentage = Math.max(
+      qd?.windows?.['5h']?.usage_percent ?? 0,
+      qd?.windows?.weekly?.usage_percent ?? 0
     );
   } else if (isCommandCodeType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderCommandCodeQuotaData | undefined;
@@ -1218,6 +1229,48 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                               {t('quota.label.time_elapsed')}: {Math.round(durationPct)}%
                             </div>
                           )}
+                          {resetText && <div>{resetText}</div>}
+                        </div>
+                      }
+                    />
+                  </div>
+                );
+              })
+              .filter(Boolean);
+          })()}
+        </div>
+      )}
+
+      {isOllamaType(channel.type) && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData as ProviderOllamaQuotaData | undefined;
+            if (!qd) return null;
+
+            const entries: Array<['5h' | 'weekly', string]> = [
+              ['5h', 'quota.window.5h'],
+              ['weekly', 'quota.window.weekly'],
+            ];
+
+            return entries
+              .map(([key, labelKey], index) => {
+                const window = qd.windows?.[key];
+                if (!window) return null;
+
+                const usedPct = window.usage_percent ?? 0;
+                const resetText = window.reset_time ? formatTimeToReset(window.reset_time) : '';
+                return (
+                  <div key={key} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
+                      <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
+                    </div>
+                    <UsageTimeBar
+                      usagePercent={usedPct}
+                      tooltip={
+                        <div className='space-y-0.5'>
+                          <div className='font-medium'>{t(labelKey)}</div>
+                          <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
                           {resetText && <div>{resetText}</div>}
                         </div>
                       }

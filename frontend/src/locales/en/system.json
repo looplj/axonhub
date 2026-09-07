@@ -495,5 +495,6 @@
   "system.quota.enforcement.allowedChannels.description": "Channels selected here will continue serving requests even when their provider quota is exhausted.",
   "system.quota.enforcement.allowedChannels.selectedCount_one": "{{count}} channel selected",
   "system.quota.enforcement.allowedChannels.selectedCount_other": "{{count}} channels selected",
-  "system.quota.enforcement.allowedChannels.removeChannel": "Remove {{name}}"
+  "system.quota.enforcement.allowedChannels.removeChannel": "Remove {{name}}",
+  "system.quota.collection.providers.ollama": "Ollama"
 }

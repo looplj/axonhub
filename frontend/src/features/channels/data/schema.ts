@@ -308,8 +308,14 @@ export const commandCodeQuotaSettingsSchema = z.object({
 });
 export type CommandCodeQuotaSettings = z.infer<typeof commandCodeQuotaSettingsSchema>;
 
+export const ollamaQuotaSettingsSchema = z.object({
+  authCookie: z.string().optional().nullable(),
+});
+export type OllamaQuotaSettings = z.infer<typeof ollamaQuotaSettingsSchema>;
+
 export const channelProviderQuotaSettingsSchema = z.object({
   commandCode: commandCodeQuotaSettingsSchema.optional().nullable(),
+  ollama: ollamaQuotaSettingsSchema.optional().nullable(),
 });
 export type ChannelProviderQuotaSettings = z.infer<typeof channelProviderQuotaSettingsSchema>;
 

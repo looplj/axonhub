@@ -127,6 +127,9 @@ const CREATE_CHANNEL_MUTATION = `
           commandCode {
             authCookie
           }
+          ollama {
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -204,6 +207,9 @@ const DUPLICATE_CHANNEL_MUTATION = `
         }
         providerQuota {
           commandCode {
+            authCookie
+          }
+          ollama {
             authCookie
           }
         }
@@ -285,6 +291,9 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           commandCode {
             authCookie
           }
+          ollama {
+            authCookie
+          }
         }
       }
       orderingWeight
@@ -362,6 +371,9 @@ const UPDATE_CHANNEL_MUTATION = `
         }
         providerQuota {
           commandCode {
+            authCookie
+          }
+          ollama {
             authCookie
           }
         }
@@ -556,6 +568,9 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           }
           providerQuota {
             commandCode {
+              authCookie
+            }
+            ollama {
               authCookie
             }
           }
@@ -793,6 +808,9 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             commandCode {
               authCookie
             }
+            ollama {
+              authCookie
+            }
           }
         }
       }
@@ -957,6 +975,9 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             }
             providerQuota {
               commandCode {
+                authCookie
+              }
+              ollama {
                 authCookie
               }
             }

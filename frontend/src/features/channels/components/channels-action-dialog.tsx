@@ -357,6 +357,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const hasAutoSetDuplicateNameRef = useRef(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showCommandCodeAuthCookie, setShowCommandCodeAuthCookie] = useState(false);
+  const [showOllamaAuthCookie, setShowOllamaAuthCookie] = useState(false);
   const [showApiKeysPanel, setShowApiKeysPanel] = useState(false);
   const [apiKeysSearch, setApiKeysSearch] = useState('');
   const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<string>>(new Set());
@@ -542,6 +543,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (!open) {
       setShowApiKey(false);
       setShowCommandCodeAuthCookie(false);
+      setShowOllamaAuthCookie(false);
       setShowApiKeysPanel(false);
       setApiKeysSearch('');
       setSelectedKeysToRemove(new Set());
@@ -806,6 +808,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isXAISubscriptionType = activeChannelType === 'xai_subscription';
   const isZenmuxType = ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini'].includes(activeChannelType);
   const isCommandCodeType = activeChannelType === 'commandcode' || activeChannelType === 'commandcode_anthropic';
+  const isOllamaType = activeChannelType === 'ollama' || activeChannelType === 'ollama_anthropic';
 
   // OAuth providers cannot have their provider/API format changed during edit.
   // Derived from currentRow credentials so it stays stable across re-renders
@@ -1090,7 +1093,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (!isCommandCodeType) {
       setShowCommandCodeAuthCookie(false);
     }
-  }, [isCommandCodeType]);
+    if (!isOllamaType) {
+      setShowOllamaAuthCookie(false);
+    }
+  }, [isCommandCodeType, isOllamaType]);
 
   useEffect(() => {
     if (isEdit || isDuplicate) return;
@@ -1289,19 +1295,27 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         manualModels,
         credentials: valuesForSubmit.credentials,
       };
-      // The Command Code quota cookie is a browser-session credential that only
-      // belongs on Command Code channels. Never let a duplicate/type-switch
-      // flow attach it to an unrelated channel type. Clearing it explicitly
-      // sends providerQuota: null so the backend removes the stored cookie.
+      // The Command Code / Ollama quota cookie is a browser-session credential
+      // that only belongs on its own channel type. Never let a
+      // duplicate/type-switch flow attach it to an unrelated channel type.
+      // Clearing it explicitly sends providerQuota: null so the backend
+      // removes the stored cookie.
       const isCommandCodeSubmit =
         valuesForSubmit.type === 'commandcode' || valuesForSubmit.type === 'commandcode_anthropic';
       const commandCodeAuthCookie = isCommandCodeSubmit
         ? values.settings?.providerQuota?.commandCode?.authCookie?.trim()
         : undefined;
+      const isOllamaSubmit =
+        valuesForSubmit.type === 'ollama' || valuesForSubmit.type === 'ollama_anthropic';
+      const ollamaAuthCookie = isOllamaSubmit
+        ? values.settings?.providerQuota?.ollama?.authCookie?.trim()
+        : undefined;
       const settingsForSubmit = values.settings
         ? {
             ...values.settings,
-            ...(isCommandCodeSubmit && commandCodeAuthCookie ? {} : { providerQuota: null }),
+            ...((isCommandCodeSubmit && commandCodeAuthCookie) || (isOllamaSubmit && ollamaAuthCookie)
+              ? {}
+              : { providerQuota: null }),
           }
         : undefined;
 
@@ -2551,6 +2565,50 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 </div>
                                 <FormDescription className='text-xs'>
                                   {t('channels.dialogs.fields.commandCodeQuota.authCookie.description')}
+                                </FormDescription>
+                                <FormMessage />
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
+                      {isOllamaType && (
+                        <FormField
+                          control={form.control}
+                          name='settings.providerQuota.ollama.authCookie'
+                          render={({ field, fieldState }) => (
+                            <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                              <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                {t('channels.dialogs.fields.ollamaQuota.authCookie.label')}
+                              </FormLabel>
+                              <div className='space-y-1 md:col-span-6'>
+                                <div className='relative'>
+                                  <Input
+                                    type={showOllamaAuthCookie ? 'text' : 'password'}
+                                    value={field.value ?? ''}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    placeholder={t('channels.dialogs.fields.ollamaQuota.authCookie.placeholder')}
+                                    autoComplete='new-password'
+                                    data-form-type='other'
+                                    spellCheck={false}
+                                    aria-invalid={!!fieldState.error}
+                                    data-testid='channel-ollama-auth-cookie-input'
+                                    className='pr-10 font-mono text-xs'
+                                  />
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='sm'
+                                    className='absolute top-0 right-0 h-full px-3'
+                                    onClick={() => setShowOllamaAuthCookie((visible) => !visible)}
+                                  >
+                                    {showOllamaAuthCookie ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                  </Button>
+                                </div>
+                                <FormDescription className='text-xs'>
+                                  {t('channels.dialogs.fields.ollamaQuota.authCookie.description')}
                                 </FormDescription>
                                 <FormMessage />
                               </div>

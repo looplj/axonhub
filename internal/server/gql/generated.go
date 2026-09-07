@@ -548,6 +548,7 @@ type ComplexityRoot struct {
 
 	ChannelProviderQuotaSettings struct {
 		CommandCode func(childComplexity int) int
+		Ollama      func(childComplexity int) int
 	}
 
 	ChannelRateLimit struct {
@@ -1122,6 +1123,10 @@ type ComplexityRoot struct {
 		IdpName func(childComplexity int) int
 		Issuer  func(childComplexity int) int
 		Subject func(childComplexity int) int
+	}
+
+	OllamaQuotaSettings struct {
+		AuthCookie func(childComplexity int) int
 	}
 
 	OnboardingInfo struct {
@@ -4277,6 +4282,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelProviderQuotaSettings.CommandCode(childComplexity), true
+	case "ChannelProviderQuotaSettings.ollama":
+		if e.complexity.ChannelProviderQuotaSettings.Ollama == nil {
+			break
+		}
+
+		return e.complexity.ChannelProviderQuotaSettings.Ollama(childComplexity), true
 
 	case "ChannelRateLimit.maxConcurrent":
 		if e.complexity.ChannelRateLimit.MaxConcurrent == nil {
@@ -7231,6 +7242,13 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.OIDCIdentityInfo.Subject(childComplexity), true
+
+	case "OllamaQuotaSettings.authCookie":
+		if e.complexity.OllamaQuotaSettings.AuthCookie == nil {
+			break
+		}
+
+		return e.complexity.OllamaQuotaSettings.AuthCookie(childComplexity), true
 
 	case "OnboardingInfo.autoDisableChannel":
 		if e.complexity.OnboardingInfo.AutoDisableChannel == nil {
@@ -11740,6 +11758,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputOAuthCredentialsInput,
 		ec.unmarshalInputOIDCIdentityOrder,
 		ec.unmarshalInputOIDCIdentityWhereInput,
+		ec.unmarshalInputOllamaQuotaSettingsInput,
 		ec.unmarshalInputOverrideMatchInput,
 		ec.unmarshalInputOverrideOperationInput,
 		ec.unmarshalInputOverrideWhenInput,
@@ -24589,6 +24608,39 @@ func (ec *executionContext) fieldContext_ChannelProviderQuotaSettings_commandCod
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelProviderQuotaSettings_ollama(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelProviderQuotaSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelProviderQuotaSettings_ollama,
+		func(ctx context.Context) (any, error) {
+			return obj.Ollama, nil
+		},
+		nil,
+		ec.marshalOOllamaQuotaSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOllamaQuotaSettings,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelProviderQuotaSettings_ollama(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelProviderQuotaSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "authCookie":
+				return ec.fieldContext_OllamaQuotaSettings_authCookie(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type OllamaQuotaSettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelRateLimit_rpm(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelRateLimit) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25376,6 +25428,8 @@ func (ec *executionContext) fieldContext_ChannelSettings_providerQuota(_ context
 			switch field.Name {
 			case "commandCode":
 				return ec.fieldContext_ChannelProviderQuotaSettings_commandCode(ctx, field)
+			case "ollama":
+				return ec.fieldContext_ChannelProviderQuotaSettings_ollama(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelProviderQuotaSettings", field.Name)
 		},
@@ -39204,6 +39258,35 @@ func (ec *executionContext) _OIDCIdentityInfo_email(ctx context.Context, field g
 func (ec *executionContext) fieldContext_OIDCIdentityInfo_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "OIDCIdentityInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OllamaQuotaSettings_authCookie(ctx context.Context, field graphql.CollectedField, obj *objects.OllamaQuotaSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OllamaQuotaSettings_authCookie,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthCookie, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OllamaQuotaSettings_authCookie(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OllamaQuotaSettings",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -68419,7 +68502,7 @@ func (ec *executionContext) unmarshalInputChannelProviderQuotaSettingsInput(ctx 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"commandCode"}
+	fieldsInOrder := [...]string{"commandCode", "ollama"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68433,6 +68516,13 @@ func (ec *executionContext) unmarshalInputChannelProviderQuotaSettingsInput(ctx 
 				return it, err
 			}
 			it.CommandCode = data
+		case "ollama":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ollama"))
+			data, err := ec.unmarshalOOllamaQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOllamaQuotaSettings(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Ollama = data
 		}
 	}
 
@@ -74983,6 +75073,33 @@ func (ec *executionContext) unmarshalInputOIDCIdentityWhereInput(ctx context.Con
 				return it, err
 			}
 			it.HasUserWith = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputOllamaQuotaSettingsInput(ctx context.Context, obj any) (objects.OllamaQuotaSettings, error) {
+	var it objects.OllamaQuotaSettings
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"authCookie"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "authCookie":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("authCookie"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AuthCookie = data
 		}
 	}
 
@@ -94756,6 +94873,8 @@ func (ec *executionContext) _ChannelProviderQuotaSettings(ctx context.Context, s
 			out.Values[i] = graphql.MarshalString("ChannelProviderQuotaSettings")
 		case "commandCode":
 			out.Values[i] = ec._ChannelProviderQuotaSettings_commandCode(ctx, field, obj)
+		case "ollama":
+			out.Values[i] = ec._ChannelProviderQuotaSettings_ollama(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -99230,6 +99349,42 @@ func (ec *executionContext) _OIDCIdentityInfo(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var ollamaQuotaSettingsImplementors = []string{"OllamaQuotaSettings"}
+
+func (ec *executionContext) _OllamaQuotaSettings(ctx context.Context, sel ast.SelectionSet, obj *objects.OllamaQuotaSettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, ollamaQuotaSettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("OllamaQuotaSettings")
+		case "authCookie":
+			out.Values[i] = ec._OllamaQuotaSettings_authCookie(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -120818,6 +120973,21 @@ func (ec *executionContext) unmarshalOOIDCIdentityWhereInput2ᚖgithubᚗcomᚋl
 		return nil, nil
 	}
 	res, err := ec.unmarshalInputOIDCIdentityWhereInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOOllamaQuotaSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOllamaQuotaSettings(ctx context.Context, sel ast.SelectionSet, v *objects.OllamaQuotaSettings) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._OllamaQuotaSettings(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOOllamaQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐOllamaQuotaSettings(ctx context.Context, v any) (*objects.OllamaQuotaSettings, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputOllamaQuotaSettingsInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
