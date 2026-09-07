@@ -24,7 +24,7 @@ func TestKimiCode_CheckQuota(t *testing.T) {
 			require.Equal(t, "Bearer kimi-token", req.Header.Get("Authorization"))
 
 			body := `{
-				"usage":{"name":"Weekly limit","used":80,"limit":100,"resetAt":"2026-07-20T00:00:00.123456Z"},
+				"usage":{"name":"Weekly limit","used":80,"limit":100,"resetAt":"2099-07-20T00:00:00.123456Z"},
 				"limits":[
 					{"detail":{"remaining":"0","limit":"20"},"window":{"duration":300,"timeUnit":"MINUTE"}},
 					{"detail":{"used":1,"limit":10,"title":"Daily limit"}}
@@ -57,7 +57,7 @@ func TestKimiCode_CheckQuota(t *testing.T) {
 	require.Len(t, quota.Limits, 3)
 	require.InDelta(t, 0.8, quota.Limits[0].UsageRatio, 0.001)
 	require.InDelta(t, 1, quota.Limits[1].UsageRatio, 0.001)
-	require.Equal(t, time.Date(2026, 7, 20, 0, 0, 0, 123456000, time.UTC), *quota.NextResetAt)
+	require.Equal(t, time.Date(2099, 7, 20, 0, 0, 0, 123456000, time.UTC), *quota.NextResetAt)
 
 	rows, ok := quota.RawData["rows"].([]kimiCodeUsageRow)
 	require.True(t, ok)

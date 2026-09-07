@@ -447,8 +447,8 @@ func TestZhipu_CheckQuota_WithResetTime(t *testing.T) {
 				"data": {
 					"level": "standard",
 					"limits": [
-						{"type": "TOKENS_LIMIT", "percentage": 50.0, "nextResetTime": 1784322000000},
-						{"type": "TOKENS_LIMIT", "percentage": 30.0, "nextResetTime": 1784476800000}
+						{"type": "TOKENS_LIMIT", "percentage": 50.0, "nextResetTime": 4087947600000},
+						{"type": "TOKENS_LIMIT", "percentage": 30.0, "nextResetTime": 4088534400000}
 					]
 				}
 			}`
@@ -468,7 +468,7 @@ func TestZhipu_CheckQuota_WithResetTime(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, quota.NextResetAt)
 	// Earlier reset time
-	require.Equal(t, int64(1784322000), quota.NextResetAt.Unix())
+	require.Equal(t, int64(4087947600), quota.NextResetAt.Unix())
 }
 
 func TestZhipu_CheckQuota_OverallStatusWorst(t *testing.T) {

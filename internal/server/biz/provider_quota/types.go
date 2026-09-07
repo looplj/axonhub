@@ -3,6 +3,7 @@ package provider_quota
 import (
 	"context"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -68,6 +69,10 @@ type QuotaLimitStatus struct {
 	Ready       bool           `json:"ready"`
 	NextResetAt *time.Time     `json:"next_reset_at"`
 
+	// AvailabilityGroup identifies alternative capacity sources that should be
+	// aggregated with OR semantics for routing decisions.
+	AvailabilityGroup string `json:"availability_group,omitempty"`
+
 	// Window identifies the limit window this status describes ("5h", "7d",
 	// "weekly", ...). Providers report several limits of the same
 	// QuotaLimitType, so this is what tells them apart in the UI.
@@ -106,32 +111,35 @@ const WarningThresholdRatio = 0.8
 // Well-known limit window identifiers. Providers name their windows
 // differently; these are the normalized labels the UI renders.
 const (
-	QuotaWindow5h      = "5h"
-	QuotaWindow7d      = "7d"
-	QuotaWindow30d     = "30d"
-	QuotaWindowDaily   = "daily"
-	QuotaWindowWeekly  = "weekly"
-	QuotaWindowMonthly = "monthly"
-	QuotaWindowPrimary = "primary"
-	QuotaWindowCycle   = "cycle"
+	QuotaWindow5h         = "5h"
+	QuotaWindow7d         = "7d"
+	QuotaWindow30d        = "30d"
+	QuotaWindowDaily      = "daily"
+	QuotaWindowWeekly     = "weekly"
+	QuotaWindowMonthly    = "monthly"
+	QuotaWindowPrimary    = "primary"
+	QuotaWindowSecondary  = "secondary"
+	QuotaWindowPayAsYouGo = "pay_as_you_go"
+	QuotaWindowCredits    = "credits"
+	QuotaWindowCycle      = "cycle"
 )
-
-// MinPeriodQuotaUsageRatio is the smallest usage ratio that yields a period
-// quota estimate. Dividing the period cost by a tiny ratio amplifies both the
-// pricing error and any usage that did not go through AxonHub into an absurd
-// number, so below this threshold no estimate is reported at all.
-const MinPeriodQuotaUsageRatio = 0.05
 
 // EstimatePeriodQuota derives the total money quota of a limit period from the
 // cost already spent in it: a period that cost `periodCost` while the provider
 // reports `usageRatio` of the quota consumed is worth periodCost/usageRatio in
 // total. It reports false when the inputs cannot support an estimate.
 func EstimatePeriodQuota(periodCost float64, usageRatio float64) (float64, bool) {
-	if periodCost <= 0 || usageRatio < MinPeriodQuotaUsageRatio {
+	if periodCost <= 0 || math.IsNaN(periodCost) || math.IsInf(periodCost, 0) ||
+		usageRatio <= 0 || math.IsNaN(usageRatio) || math.IsInf(usageRatio, 0) {
 		return 0, false
 	}
 
-	return periodCost / usageRatio, true
+	total := periodCost / usageRatio
+	if math.IsNaN(total) || math.IsInf(total, 0) {
+		return 0, false
+	}
+
+	return total, true
 }
 
 // FillPeriodQuota recomputes PeriodQuota from PeriodCost and UsageRatio,

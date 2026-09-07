@@ -196,7 +196,7 @@ func (c *OpenCodeGoQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		})
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       normalizedStatus,
 		ProviderType: opencodeGoProviderType,
 		RawData: map[string]any{
@@ -206,7 +206,7 @@ func (c *OpenCodeGoQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		NextResetAt: nextResetAt,
 		Ready:       IsReadyStatus(normalizedStatus),
 		Limits:      limits,
-	}, nil
+	}), nil
 }
 
 // parseOpenCodeGoResetsAt parses the resetsAt value from the usage API. The

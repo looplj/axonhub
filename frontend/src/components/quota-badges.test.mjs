@@ -10,50 +10,62 @@ function read(relativePath) {
   return readFileSync(join(srcRoot, relativePath), 'utf8');
 }
 
-// Isolate the Codex render branch (between the Codex and Cline branch
-// markers) so assertions about the usage bars cannot bleed into Claude Code
-// or Cline, which legitimately keep duration-aware severity.
+// Isolate the Codex render branch (between the Codex and XAI branch markers)
+// so assertions about the usage bars cannot bleed into neighboring providers.
 function isolateCodexBlock(source) {
   const start = source.indexOf("{channel.type === 'codex' &&");
-  const end = source.indexOf("{channel.type === 'cline' &&", start);
+  const end = source.indexOf("{channel.type === 'xai_subscription' &&", start);
 
   assert.ok(start !== -1, 'Codex render branch should exist in quota-badges source');
-  assert.ok(end !== -1 && end > start, 'Cline render branch should follow the Codex branch');
+  assert.ok(end !== -1 && end > start, 'XAI render branch should follow the Codex branch');
 
   return source.slice(start, end);
 }
 
-test('Codex usage bar color tracks used percentage, not reset-window elapsed time', () => {
+test('Codex usage windows render as combined usage and time bars', () => {
   const quotaBadges = read('components/quota-badges.tsx');
   const codexBlock = isolateCodexBlock(quotaBadges);
 
-  // Both usage bars must render the user-visible used percentage so their
-  // severity reflects actual usage rather than elapsed reset-window time.
-  assert.match(
-    codexBlock,
-    /percentage=\{qd\.rate_limit\.primary_window\.used_percent/,
-    'Codex primary usage bar should render the primary window used percentage'
-  );
-  assert.match(
-    codexBlock,
-    /percentage=\{qd\.rate_limit\.secondary_window\.used_percent/,
-    'Codex secondary usage bar should render the secondary window used percentage'
-  );
-
-  // Reset-window elapsed time stays on separate duration bars...
+  // Each window has one shared bar whose fill reflects usage and whose marker
+  // reflects the reset-window elapsed time.
   assert.equal(
-    (codexBlock.match(/ProgressBar\s*\n?\s*type='duration'/g) || []).length,
-    2,
-    'Codex should keep a separate duration bar for the primary and secondary windows'
+    (codexBlock.match(/<UsageTimeBar\s/g) || []).length,
+    1,
+    'Codex normalized limits should use one combined bar'
   );
-
-  // ...so the usage bars must NOT feed durationPercentage into ProgressBar,
-  // which would severity-adjust their color by elapsed window time.
-  assert.doesNotMatch(
+  assert.match(
     codexBlock,
-    /durationPercentage/,
-    'Codex usage bar color must not be severity-adjusted by reset-window elapsed time'
+    /quota\.limits\s*\.filter\([\s\S]*?\.map\(\(limit,\s*index\)/,
+    'Codex bars should render normalized limits'
   );
+  assert.match(
+    codexBlock,
+    /limit\.window === '5h'/,
+    'Codex five-hour label should be selected from the normalized window'
+  );
+  assert.match(
+    codexBlock,
+    /limit\.window === '7d'/,
+    'Codex seven-day label should be selected from the normalized window'
+  );
+  assert.match(
+    codexBlock,
+    /WINDOW_LABEL_KEYS\[limit\.window\]/,
+    'Codex labels should resolve through the shared translation map'
+  );
+  assert.match(
+    codexBlock,
+    /t\('quota\.label\.token_usage'\)/,
+    'Codex unknown windows should use the neutral quota label'
+  );
+  assert.doesNotMatch(codexBlock, /quota\.label\.primary_window/);
+  assert.doesNotMatch(codexBlock, /quota\.label\.secondary_window/);
+});
+
+test('quota popover has no standalone progress-bar renders', () => {
+  const quotaBadges = read('components/quota-badges.tsx');
+
+  assert.doesNotMatch(quotaBadges, /\bProgressBar\b/, 'all quota bars should use the combined UsageTimeBar component');
 });
 
 test('Command Code monthly hover matches the other windows', () => {
@@ -105,4 +117,29 @@ test('Ollama badge renders both the 5h and weekly windows with a reset countdown
   assert.match(ollamaBlock, /'quota\.window\.weekly'/);
   assert.match(ollamaBlock, /formatTimeToReset\(window\.reset_time\)/);
   assert.doesNotMatch(ollamaBlock, /durationPercent/);
+});
+
+test('quota window identifiers resolve to localized labels', () => {
+  const quotaBadges = read('components/quota-badges.tsx');
+
+  assert.match(quotaBadges, /payg:\s*'quota\.label\.token_usage'/);
+  assert.match(quotaBadges, /credits:\s*'quota\.label\.credits_remaining'/);
+  assert.match(quotaBadges, /'5h':\s*'quota\.window\.5h'/);
+  assert.match(quotaBadges, /'7d':\s*'quota\.window\.7d'/);
+  assert.match(quotaBadges, /limit\.window === 'primary' \|\| limit\.window === 'secondary'/);
+});
+
+test('Wafer and Apertis duration markers share timestamp validation', () => {
+  const quotaBadges = read('components/quota-badges.tsx');
+  const waferStart = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'wafer' &&");
+  const waferEnd = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'synthetic' &&");
+  const apertisStart = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'apertis' &&");
+  const apertisEnd = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'charm_hyper' &&");
+
+  assert.match(quotaBadges, /function getDurationPercent\([\s\S]*?Number\.isFinite\(start\)[\s\S]*?end <= start/);
+  assert.match(quotaBadges.slice(waferStart, waferEnd), /durationPercent=\{getDurationPercent\(qd\.window_start, qd\.window_end\)\}/);
+  assert.match(
+    quotaBadges.slice(apertisStart, apertisEnd),
+    /durationPercent=\{getDurationPercent\(qd\.subscription\.cycle_start, qd\.subscription\.cycle_end\)\}/
+  );
 });

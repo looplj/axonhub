@@ -149,25 +149,59 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 	var worstStatus providerquotastatus.Status
 	worstReady := true
 	found := false
+	groupNames := make(map[string]bool)
+	grouped := make(map[string][]provider_quota.QuotaLimitStatus)
 
 	for _, l := range s.Limits {
-		if l.Type != limitType {
+		if l.Type != limitType || l.AvailabilityGroup == "" {
+			continue
+		}
+		groupNames[l.AvailabilityGroup] = true
+	}
+
+	for _, l := range s.Limits {
+		if l.Type != limitType && !groupNames[l.AvailabilityGroup] {
+			continue
+		}
+
+		if groupNames[l.AvailabilityGroup] {
+			grouped[l.AvailabilityGroup] = append(grouped[l.AvailabilityGroup], l)
 			continue
 		}
 
 		ls := providerquotastatus.Status(l.Status)
-		if !found {
+		if !found || quotaStatusRank(ls) > quotaStatusRank(worstStatus) {
 			worstStatus = ls
 			worstReady = l.Ready
 			found = true
-			continue
-		}
-
-		if quotaStatusRank(ls) > quotaStatusRank(worstStatus) {
-			worstStatus = ls
-			worstReady = l.Ready
 		} else if quotaStatusRank(ls) == quotaStatusRank(worstStatus) {
 			worstReady = worstReady && l.Ready
+		}
+	}
+
+	for _, limits := range grouped {
+		bestStatus := providerquotastatus.StatusUnknown
+		bestReady := false
+		groupFound := false
+		for _, l := range limits {
+			ls := providerquotastatus.Status(l.Status)
+			if !groupFound ||
+				(l.Ready && !bestReady) ||
+				(l.Ready == bestReady && quotaStatusRank(ls) < quotaStatusRank(bestStatus)) {
+				bestStatus = ls
+				bestReady = l.Ready
+				groupFound = true
+			} else if quotaStatusRank(ls) == quotaStatusRank(bestStatus) {
+				bestReady = bestReady || l.Ready
+			}
+		}
+
+		if !found || quotaStatusRank(bestStatus) > quotaStatusRank(worstStatus) {
+			worstStatus = bestStatus
+			worstReady = bestReady
+			found = true
+		} else if quotaStatusRank(bestStatus) == quotaStatusRank(worstStatus) {
+			worstReady = worstReady && bestReady
 		}
 	}
 
@@ -855,6 +889,7 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 		}
 		return
 	}
+	quotaData = provider_quota.NormalizeQuotaData(quotaData)
 
 	resetList := provider_quota.ResetList{Supported: false}
 	if resetter, ok := checker.(provider_quota.Resetter); ok {

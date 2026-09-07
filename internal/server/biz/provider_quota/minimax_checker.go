@@ -210,9 +210,7 @@ func parseMinimaxResponse(body []byte) (QuotaData, error) {
 		if model.EndTime > 0 {
 			t := time.UnixMilli(model.EndTime)
 			intervalResetAt = &t
-			if nextResetAt == nil || t.Before(*nextResetAt) {
-				nextResetAt = &t
-			}
+			nextResetAt = earliestReset(nextResetAt, intervalResetAt)
 		}
 
 		limits = append(limits, QuotaLimitStatus{
@@ -243,9 +241,7 @@ func parseMinimaxResponse(body []byte) (QuotaData, error) {
 			if model.WeeklyEndTime > 0 {
 				t := time.UnixMilli(model.WeeklyEndTime)
 				weeklyResetAt = &t
-				if nextResetAt == nil || t.Before(*nextResetAt) {
-					nextResetAt = &t
-				}
+				nextResetAt = earliestReset(nextResetAt, weeklyResetAt)
 			}
 
 			limits = append(limits, QuotaLimitStatus{
@@ -295,14 +291,14 @@ func parseMinimaxResponse(body []byte) (QuotaData, error) {
 		"rows": rows,
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       overallStatus,
 		ProviderType: "minimax",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(overallStatus),
 		Limits:       limits,
-	}, nil
+	}), nil
 }
 
 func worseStatus(a, b string) string {

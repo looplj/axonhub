@@ -17,20 +17,20 @@ import (
 const warningUsedPercent = 80
 
 type WaferUsageResponse struct {
-	Endpoint                   *string  `json:"endpoint,omitempty"`
-	BillingModel               *string  `json:"billing_model,omitempty"`
-	PlanTier                   *string  `json:"plan_tier,omitempty"`
-	WindowStart                *string  `json:"window_start,omitempty"`
-	WindowEnd                  *string  `json:"window_end,omitempty"`
-	RequestCount               *int64   `json:"request_count,omitempty"`
-	IncludedRequestLimit       *int64   `json:"included_request_limit,omitempty"`
-	IncludedRequestCount       *int64   `json:"included_request_count,omitempty"`
-	RemainingIncludedRequests  *int64   `json:"remaining_included_requests,omitempty"`
-	OverageRequestCount        *int64   `json:"overage_request_count,omitempty"`
-	CurrentPeriodUsedPercent   *float64 `json:"current_period_used_percent,omitempty"`
-	InputTokens                *int64   `json:"input_tokens,omitempty"`
-	OutputTokens               *int64   `json:"output_tokens,omitempty"`
-	TotalTokens                *int64   `json:"total_tokens,omitempty"`
+	Endpoint                  *string  `json:"endpoint,omitempty"`
+	BillingModel              *string  `json:"billing_model,omitempty"`
+	PlanTier                  *string  `json:"plan_tier,omitempty"`
+	WindowStart               *string  `json:"window_start,omitempty"`
+	WindowEnd                 *string  `json:"window_end,omitempty"`
+	RequestCount              *int64   `json:"request_count,omitempty"`
+	IncludedRequestLimit      *int64   `json:"included_request_limit,omitempty"`
+	IncludedRequestCount      *int64   `json:"included_request_count,omitempty"`
+	RemainingIncludedRequests *int64   `json:"remaining_included_requests,omitempty"`
+	OverageRequestCount       *int64   `json:"overage_request_count,omitempty"`
+	CurrentPeriodUsedPercent  *float64 `json:"current_period_used_percent,omitempty"`
+	InputTokens               *int64   `json:"input_tokens,omitempty"`
+	OutputTokens              *int64   `json:"output_tokens,omitempty"`
+	TotalTokens               *int64   `json:"total_tokens,omitempty"`
 }
 
 type WaferQuotaChecker struct {
@@ -182,14 +182,14 @@ func (c *WaferQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		},
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       normalizedStatus,
 		ProviderType: "wafer",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
-	}, nil
+	}), nil
 }
 
 func (c *WaferQuotaChecker) SupportsChannel(ch *ent.Channel) bool {

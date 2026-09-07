@@ -119,7 +119,7 @@ func xaiBillingQuotaData(summary subscription.BillingSummary) QuotaData {
 		rawBilling["monthly"] = summary.Monthly
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       status,
 		ProviderType: "xai_subscription",
 		RawData: map[string]any{
@@ -129,7 +129,7 @@ func xaiBillingQuotaData(summary subscription.BillingSummary) QuotaData {
 		NextResetAt: nextResetAt,
 		Ready:       IsReadyStatus(status),
 		Limits:      limits,
-	}
+	})
 }
 
 func xaiBillingWindowStatus(usagePercent float64) string {

@@ -673,7 +673,7 @@ func buildClineQuotaData(
 		statusBasis = "mixed_pool_pass_exhausted"
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       status,
 		ProviderType: clineProviderType,
 		Ready:        IsReadyStatus(status),
@@ -699,7 +699,7 @@ func buildClineQuotaData(
 			},
 			"usage_limits_fetch": clineUsageLimitsFetchRawData(officialMeta),
 		},
-	}
+	})
 }
 
 func buildClinePassUnavailableQuota(

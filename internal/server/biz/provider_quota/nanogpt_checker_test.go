@@ -183,15 +183,15 @@ func TestNanoGPT_CheckQuota_APIError(t *testing.T) {
 }
 
 func TestNanoGPT_CheckQuota_NextResetAt(t *testing.T) {
-	expectedResetAt := time.UnixMilli(1717200000000)
+	expectedResetAt := time.UnixMilli(4087929600000)
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
 			body := `{
 				"active": true,
 				"state": "active",
-				"dailyInputTokens": {"used": 1000, "remaining": 199000, "percentUsed": 0.5, "resetAt": 1717200000000},
-				"weeklyInputTokens": {"used": 5000, "remaining": 995000, "percentUsed": 0.05, "resetAt": 1717804800000}
+				"dailyInputTokens": {"used": 1000, "remaining": 199000, "percentUsed": 0.5, "resetAt": 4087929600000},
+				"weeklyInputTokens": {"used": 5000, "remaining": 995000, "percentUsed": 0.05, "resetAt": 4088534400000}
 			}`
 
 			return &http.Response{
@@ -221,7 +221,7 @@ func TestNanoGPT_CheckQuota_NullWindow(t *testing.T) {
 			body := `{
 				"active": true,
 				"state": "active",
-				"weeklyInputTokens": {"used": 5000, "remaining": 995000, "percentUsed": 0.05, "resetAt": 1717804800000}
+				"weeklyInputTokens": {"used": 5000, "remaining": 995000, "percentUsed": 0.05, "resetAt": 4088534400000}
 			}`
 
 			return &http.Response{
@@ -255,17 +255,17 @@ func TestNanoGPT_CheckQuota_NullWindow(t *testing.T) {
 	require.True(t, hasWeekly)
 
 	require.NotNil(t, quota.NextResetAt)
-	expectedResetAt := time.UnixMilli(1717804800000)
+	expectedResetAt := time.UnixMilli(4088534400000)
 	require.Equal(t, expectedResetAt, *quota.NextResetAt)
 }
 
 func TestNanoGPT_CheckQuota_GraceUntilAsNextResetAt(t *testing.T) {
-	graceUntil := "2025-04-30T00:00:00Z"
+	graceUntil := "2099-04-30T00:00:00Z"
 	expectedTime, _ := time.Parse(time.RFC3339, graceUntil)
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			body := `{"active": true, "state": "grace", "graceUntil": "2025-04-30T00:00:00Z"}`
+			body := `{"active": true, "state": "grace", "graceUntil": "2099-04-30T00:00:00Z"}`
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     make(http.Header),
