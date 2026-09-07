@@ -252,7 +252,7 @@ func buildThinking(chatReq *llm.Request, config *Config) *Thinking {
 }
 
 // convertToolsAnthropic converts LLM tools to Anthropic tools.
-// If the platform is not direct Anthropic API or Bedrock, anthropic native tools (like web_search) are filtered out.
+// If the platform does not support Anthropic native tools, tools like web_search are filtered out.
 // Only web_search tool is supported as native tool, other native tools (image_generation, google_*, etc.) are ignored.
 func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	if len(tools) == 0 {

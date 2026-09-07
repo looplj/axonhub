@@ -1225,11 +1225,12 @@ func TestOutboundTransformer_WebSearchBetaHeader(t *testing.T) {
 
 func TestOutboundTransformer_NativeToolFiltering(t *testing.T) {
 	tests := []struct {
-		name              string
-		config            *Config
-		request           *llm.Request
-		expectedToolCount int
-		expectedToolNames []string
+		name                     string
+		config                   *Config
+		request                  *llm.Request
+		expectedToolCount        int
+		expectedToolNames        []string
+		expectedWebSearchMaxUses *int64
 	}{
 		{
 			name: "Direct platform preserves native tools",
@@ -1334,7 +1335,7 @@ func TestOutboundTransformer_NativeToolFiltering(t *testing.T) {
 			expectedToolNames: []string{"web_search", "calculator"},
 		},
 		{
-			name: "DeepSeek platform filters native tools",
+			name: "DeepSeek platform preserves native tools",
 			config: &Config{
 				Type:           PlatformDeepSeek,
 				BaseURL:        "https://api.deepseek.com",
@@ -1353,7 +1354,10 @@ func TestOutboundTransformer_NativeToolFiltering(t *testing.T) {
 				},
 				Tools: []llm.Tool{
 					{
-						Type: ToolTypeWebSearch20250305,
+						Type: llm.ToolTypeWebSearch,
+						WebSearch: &llm.WebSearch{
+							MaxUses: lo.ToPtr(int64(5)),
+						},
 					},
 					{
 						Type: "function",
@@ -1364,8 +1368,9 @@ func TestOutboundTransformer_NativeToolFiltering(t *testing.T) {
 					},
 				},
 			},
-			expectedToolCount: 1,
-			expectedToolNames: []string{"calculator"},
+			expectedToolCount:        2,
+			expectedToolNames:        []string{"web_search", "calculator"},
+			expectedWebSearchMaxUses: lo.ToPtr(int64(5)),
 		},
 		{
 			name: "Doubao platform filters native tools",
@@ -1402,7 +1407,7 @@ func TestOutboundTransformer_NativeToolFiltering(t *testing.T) {
 			expectedToolNames: []string{"get_weather"},
 		},
 		{
-			name: "Non-direct platform with only native tools results in empty tools",
+			name: "DeepSeek platform with only native tools preserves them",
 			config: &Config{
 				Type:           PlatformDeepSeek,
 				BaseURL:        "https://api.deepseek.com",
@@ -1421,12 +1426,12 @@ func TestOutboundTransformer_NativeToolFiltering(t *testing.T) {
 				},
 				Tools: []llm.Tool{
 					{
-						Type: ToolTypeWebSearch20250305,
+						Type: llm.ToolTypeWebSearch,
 					},
 				},
 			},
-			expectedToolCount: 0,
-			expectedToolNames: []string{},
+			expectedToolCount: 1,
+			expectedToolNames: []string{"web_search"},
 		},
 		{
 			name: "Direct platform with llm.ToolTypeWebSearch type converts to native tool",
@@ -1597,6 +1602,12 @@ func TestOutboundTransformer_NativeToolFiltering(t *testing.T) {
 				actualNames := make([]string, len(anthropicReq.Tools))
 				for i, tool := range anthropicReq.Tools {
 					actualNames[i] = tool.Name
+					if tool.Name == WebSearchFunctionName {
+						require.Equal(t, ToolTypeWebSearch20250305, tool.Type)
+						if tt.expectedWebSearchMaxUses != nil {
+							require.Equal(t, tt.expectedWebSearchMaxUses, tool.MaxUses)
+						}
+					}
 				}
 
 				require.Equal(t, tt.expectedToolNames, actualNames)

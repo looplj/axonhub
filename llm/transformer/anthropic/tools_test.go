@@ -223,6 +223,7 @@ func TestSupportsAnthropicNativeTools(t *testing.T) {
 		{name: "direct", config: &Config{Type: PlatformDirect}, want: true},
 		{name: "bedrock", config: &Config{Type: PlatformBedrock}, want: true},
 		{name: "claude code", config: &Config{Type: PlatformClaudeCode}, want: true},
+		{name: "deepseek", config: &Config{Type: PlatformDeepSeek}, want: true},
 		{name: "command code", config: &Config{Type: PlatformCommandCode}, want: false},
 		{name: "vertex", config: &Config{Type: PlatformVertex}, want: false},
 	}
