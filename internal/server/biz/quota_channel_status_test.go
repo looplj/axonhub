@@ -88,6 +88,33 @@ func TestQuotaChannelStatus_EffectiveStatus_AlternativeCapacitySources(t *testin
 	assert.True(t, ready)
 }
 
+func TestQuotaChannelStatus_EffectiveStatus_UnknownAlternativeDoesNotBlock(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		status     providerquotastatus.Status
+		ready      bool
+		wantStatus providerquotastatus.Status
+	}{
+		{name: "available", status: providerquotastatus.StatusAvailable, ready: true, wantStatus: providerquotastatus.StatusAvailable},
+		{name: "warning", status: providerquotastatus.StatusWarning, ready: true, wantStatus: providerquotastatus.StatusWarning},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := &QuotaChannelStatus{
+				Status: providerquotastatus.StatusAvailable,
+				Ready:  true,
+				Limits: []provider_quota.QuotaLimitStatus{
+					{Type: provider_quota.QuotaLimitTypeToken, Status: "unknown", Ready: false, AvailabilityGroup: "capacity"},
+					{Type: provider_quota.QuotaLimitTypeSubscriptionCycle, Status: string(tc.status), Ready: tc.ready, AvailabilityGroup: "capacity"},
+				},
+			}
+
+			status, ready := s.EffectiveStatus(provider_quota.QuotaLimitTypeToken)
+			assert.Equal(t, tc.wantStatus, status)
+			assert.True(t, ready)
+		})
+	}
+}
+
 func TestQuotaChannelStatus_EffectiveStatus_NoMatchingLimit_Fallback(t *testing.T) {
 	s := &QuotaChannelStatus{
 		Status: providerquotastatus.StatusAvailable,

@@ -185,7 +185,9 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 		groupFound := false
 		for _, l := range limits {
 			ls := providerquotastatus.Status(l.Status)
-			if !groupFound || quotaStatusRank(ls) < quotaStatusRank(bestStatus) {
+			if !groupFound ||
+				(l.Ready && !bestReady) ||
+				(l.Ready == bestReady && quotaStatusRank(ls) < quotaStatusRank(bestStatus)) {
 				bestStatus = ls
 				bestReady = l.Ready
 				groupFound = true

@@ -333,13 +333,20 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 				AvailabilityGroup: apertisAvailabilityGroup,
 				Window:            QuotaWindowPayAsYouGo,
 			})
+			if resp.Payg.AccountCredits > 0 {
+				limits = append(limits, QuotaLimitStatus{
+					Type:              QuotaLimitTypeToken,
+					Status:            "available",
+					Ready:             true,
+					AvailabilityGroup: apertisAvailabilityGroup,
+					Window:            QuotaWindowCredits,
+				})
+			}
 		}
 	}
 
-	// Subscription cycle limit (if subscriber).
-	// Uses a distinct QuotaLimitTypeSubscriptionCycle so that EffectiveStatus
-	// does not merge subscription-cycle and PAYG-token limits under
-	// OR-semantics (available if EITHER source has quota).
+	// Subscription cycle limit (if subscriber). It shares the capacity group
+	// with PAYG so EffectiveStatus applies OR semantics to both sources.
 	if resp.IsSubscriber && resp.Subscription != nil {
 		var subStatus string
 		usageRatio := 0.0
