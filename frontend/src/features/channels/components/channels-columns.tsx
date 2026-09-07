@@ -63,7 +63,7 @@ const QUOTA_WINDOW_LABEL_KEYS: Record<string, string> = {
   daily: 'quota.window.daily',
   weekly: 'quota.window.weekly',
   monthly: 'quota.window.monthly',
-  payg: 'quota.label.token_usage',
+  pay_as_you_go: 'quota.label.token_usage',
   credits: 'quota.label.credits_remaining',
   cycle: 'quota.window.cycle',
   overage: 'quota.label.overage_window',

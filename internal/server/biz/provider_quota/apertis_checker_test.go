@@ -175,7 +175,7 @@ func TestApertis_CheckQuota_PaygCreditsRemainAvailableWhenTokenLimitExhausted(t 
 
 	var paygLimit QuotaLimitStatus
 	for _, limit := range quota.Limits {
-		if limit.Type == QuotaLimitTypeToken && limit.Window == QuotaWindowPayg {
+		if limit.Type == QuotaLimitTypeToken && limit.Window == QuotaWindowPayAsYouGo {
 			paygLimit = limit
 		}
 	}

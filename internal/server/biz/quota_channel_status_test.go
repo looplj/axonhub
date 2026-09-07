@@ -73,6 +73,21 @@ func TestQuotaChannelStatus_EffectiveStatus_MultipleTokenLimits_WorstWins(t *tes
 	assert.True(t, ready)
 }
 
+func TestQuotaChannelStatus_EffectiveStatus_AlternativeCapacitySources(t *testing.T) {
+	s := &QuotaChannelStatus{
+		Status: providerquotastatus.StatusAvailable,
+		Ready:  true,
+		Limits: []provider_quota.QuotaLimitStatus{
+			{Type: provider_quota.QuotaLimitTypeToken, Status: "exhausted", Ready: false, AvailabilityGroup: "capacity"},
+			{Type: provider_quota.QuotaLimitTypeSubscriptionCycle, Status: "available", Ready: true, AvailabilityGroup: "capacity"},
+		},
+	}
+
+	status, ready := s.EffectiveStatus(provider_quota.QuotaLimitTypeToken)
+	assert.Equal(t, providerquotastatus.StatusAvailable, status)
+	assert.True(t, ready)
+}
+
 func TestQuotaChannelStatus_EffectiveStatus_NoMatchingLimit_Fallback(t *testing.T) {
 	s := &QuotaChannelStatus{
 		Status: providerquotastatus.StatusAvailable,

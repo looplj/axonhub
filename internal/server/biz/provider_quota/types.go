@@ -69,6 +69,10 @@ type QuotaLimitStatus struct {
 	Ready       bool           `json:"ready"`
 	NextResetAt *time.Time     `json:"next_reset_at"`
 
+	// AvailabilityGroup identifies alternative capacity sources that should be
+	// aggregated with OR semantics for routing decisions.
+	AvailabilityGroup string `json:"availability_group,omitempty"`
+
 	// Window identifies the limit window this status describes ("5h", "7d",
 	// "weekly", ...). Providers report several limits of the same
 	// QuotaLimitType, so this is what tells them apart in the UI.
@@ -107,17 +111,17 @@ const WarningThresholdRatio = 0.8
 // Well-known limit window identifiers. Providers name their windows
 // differently; these are the normalized labels the UI renders.
 const (
-	QuotaWindow5h        = "5h"
-	QuotaWindow7d        = "7d"
-	QuotaWindow30d       = "30d"
-	QuotaWindowDaily     = "daily"
-	QuotaWindowWeekly    = "weekly"
-	QuotaWindowMonthly   = "monthly"
-	QuotaWindowPrimary   = "primary"
-	QuotaWindowSecondary = "secondary"
-	QuotaWindowPayg      = "payg"
-	QuotaWindowCredits   = "credits"
-	QuotaWindowCycle     = "cycle"
+	QuotaWindow5h         = "5h"
+	QuotaWindow7d         = "7d"
+	QuotaWindow30d        = "30d"
+	QuotaWindowDaily      = "daily"
+	QuotaWindowWeekly     = "weekly"
+	QuotaWindowMonthly    = "monthly"
+	QuotaWindowPrimary    = "primary"
+	QuotaWindowSecondary  = "secondary"
+	QuotaWindowPayAsYouGo = "pay_as_you_go"
+	QuotaWindowCredits    = "credits"
+	QuotaWindowCycle      = "cycle"
 )
 
 // EstimatePeriodQuota derives the total money quota of a limit period from the

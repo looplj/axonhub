@@ -64,6 +64,8 @@ type ApertisQuotaChecker struct {
 	httpClient *httpclient.HttpClient
 }
 
+const apertisAvailabilityGroup = "apertis_capacity"
+
 // NewApertisQuotaChecker creates a new Apertis quota checker.
 func NewApertisQuotaChecker(httpClient *httpclient.HttpClient) *ApertisQuotaChecker {
 	return &ApertisQuotaChecker{
@@ -323,12 +325,13 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 				}
 			}
 			limits = append(limits, QuotaLimitStatus{
-				Type:        QuotaLimitTypeToken,
-				Status:      tokenStatus,
-				UsageRatio:  usageRatio,
-				Ready:       IsReadyStatus(tokenStatus),
-				NextResetAt: nextResetAt,
-				Window:      QuotaWindowPayg,
+				Type:              QuotaLimitTypeToken,
+				Status:            tokenStatus,
+				UsageRatio:        usageRatio,
+				Ready:             IsReadyStatus(tokenStatus),
+				NextResetAt:       nextResetAt,
+				AvailabilityGroup: apertisAvailabilityGroup,
+				Window:            QuotaWindowPayAsYouGo,
 			})
 		}
 	}
@@ -358,12 +361,13 @@ func buildApertisLimits(resp *ApertisBillingCreditsResponse, nextResetAt *time.T
 		}
 
 		limits = append(limits, QuotaLimitStatus{
-			Type:        QuotaLimitTypeSubscriptionCycle,
-			Status:      subStatus,
-			UsageRatio:  usageRatio,
-			Ready:       IsReadyStatus(subStatus),
-			NextResetAt: nextResetAt,
-			Window:      QuotaWindowCycle,
+			Type:              QuotaLimitTypeSubscriptionCycle,
+			Status:            subStatus,
+			UsageRatio:        usageRatio,
+			Ready:             IsReadyStatus(subStatus),
+			NextResetAt:       nextResetAt,
+			AvailabilityGroup: apertisAvailabilityGroup,
+			Window:            QuotaWindowCycle,
 			// Apertis reports the cycle boundaries outright, so the period the
 			// usage ratio covers needs no guessing.
 			PeriodStart: parseApertisCycleStart(resp.Subscription.CycleStart),
