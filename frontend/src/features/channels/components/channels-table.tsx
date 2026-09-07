@@ -263,7 +263,7 @@ export function ChannelsTable({
   }, [data, rowSelection]);
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden'>
+    <div className='flex min-w-0 flex-1 flex-col overflow-hidden'>
       <DataTableToolbar
         table={table}
         isFiltered={isFiltered}
@@ -272,18 +272,18 @@ export function ChannelsTable({
         showErrorOnly={showErrorOnly}
         onExitErrorOnlyMode={onExitErrorOnlyMode}
       />
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
-        <div className='min-w-max'>
-        <Table data-testid='channels-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
+      <div className='shadow-soft relative mt-4 min-w-0 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
+        <Table data-testid='channels-table' className='w-full table-fixed border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>
                 {headerGroup.headers.map((header) => {
+                  const isAction = header.column.id === 'action';
                   return (
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
+                      className={`${header.column.columnDef.meta?.className ?? ''} ${isAction ? 'overflow-visible whitespace-nowrap' : 'overflow-hidden whitespace-normal'} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
@@ -305,11 +305,17 @@ export function ChannelsTable({
                       data-state={row.getIsSelected() && 'selected'}
                       className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)]'
                     >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3 transition-colors duration-200`}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </TableCell>
-                      ))}
+                      {row.getVisibleCells().map((cell) => {
+                        const isAction = cell.column.id === 'action';
+                        return (
+                          <TableCell
+                            key={cell.id}
+                            className={`${cell.column.columnDef.meta?.className ?? ''} ${isAction ? 'overflow-visible whitespace-nowrap' : 'overflow-hidden whitespace-normal'} border-0 bg-inherit px-2 py-3 transition-colors duration-200`}
+                          >
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </TableCell>
+                        );
+                      })}
                     </MotionTableRow>
                     <AnimatePresence initial={false}>
                       {row.getIsExpanded() && (
@@ -320,7 +326,7 @@ export function ChannelsTable({
                           exit={{ opacity: 0 }}
                           className='border-0'
                         >
-                          <TableCell colSpan={columns.length} className='p-0 border-0'>
+                          <TableCell colSpan={columns.length} className='whitespace-normal p-0 border-0'>
                             <motion.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
@@ -346,7 +352,6 @@ export function ChannelsTable({
             )}
           </TableBody>
         </Table>
-        </div>
       </div>
       <div className='mt-4 flex-shrink-0'>
         <ServerSidePagination

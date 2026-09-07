@@ -597,15 +597,15 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
   const visibleLimits = isExpanded ? limits : limits.slice(0, QUOTA_VISIBLE_LIMIT);
   const hiddenCount = limits.length - QUOTA_VISIBLE_LIMIT;
   const content = (
-    <div className='flex min-w-80 flex-col items-stretch gap-1.5 text-[11px]'>
+    <div className='flex min-w-0 flex-col items-stretch gap-1.5 text-[11px]'>
       {visibleLimits.map((limit, index) => {
         const usageRatio = limit.status === 'exhausted' ? 1 : (limit.usageRatio ?? 1);
         const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
         const label = quotaWindowLabel(limit.window, t) || t('quota.label.quota');
         return (
-          <div key={`${label}-${index}`} className='flex items-center justify-end gap-2'>
-            <span className='text-muted-foreground min-w-24 whitespace-nowrap text-left'>{label}</span>
-            <div className='bg-muted h-1.5 w-24 shrink-0 overflow-hidden rounded-full'>
+          <div key={`${label}-${index}`} className='flex min-w-0 items-center justify-end gap-2'>
+            <span className='text-muted-foreground min-w-0 truncate text-left'>{label}</span>
+            <div className='bg-muted h-1.5 w-16 shrink-0 overflow-hidden rounded-full sm:w-24'>
               <div
                 className={`h-full ${remaining <= 20 ? 'bg-red-500' : remaining <= 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
                 style={{ width: `${remaining}%` }}
@@ -741,8 +741,8 @@ const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   }, [channel, setCurrentRow, setOpen]);
 
   return (
-    <div className='flex items-center justify-center gap-2'>
-      <div className='flex flex-wrap justify-center gap-1 overflow-hidden'>
+    <div className='flex min-w-0 items-center justify-center gap-2'>
+      <div className='flex min-w-0 flex-wrap justify-center gap-1 overflow-hidden'>
         {models.slice(0, 5).map((model) => (
           <Badge key={model} variant='secondary' className='block max-w-48 truncate text-left text-xs'>
             {model}
@@ -916,7 +916,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
               </div>
             ),
             meta: {
-              className: 'text-center',
+              className: 'w-10 text-center',
             },
             enableSorting: false,
             enableHiding: false,
@@ -928,7 +928,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} className='justify-center' />,
       cell: NameCell,
       meta: {
-        className: 'md:table-cell min-w-48 text-center',
+        className: 'w-[18%] min-w-0 text-center',
       },
       enableHiding: false,
       enableSorting: true,
@@ -963,7 +963,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.quota')} className='justify-center' />,
       cell: QuotaCell,
       meta: {
-        className: 'w-96 min-w-96 text-center',
+        className: 'hidden min-w-0 2xl:table-cell text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -974,7 +974,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} className='justify-center' />,
       cell: TagsCell,
       meta: {
-        className: 'text-center',
+        className: 'hidden min-w-0 xl:table-cell text-center',
       },
       filterFn: (row, id, value) => {
         const tags = (row.getValue(id) as string[]) || [];
@@ -1002,7 +1002,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       ),
       cell: SupportedModelsCell,
       meta: {
-        className: 'max-w-64 text-center',
+        className: 'w-[22%] min-w-0 max-w-none text-center',
       },
       enableSorting: false,
     },
@@ -1012,7 +1012,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
       cell: ProxyCell,
       meta: {
-        className: 'w-32 min-w-32 text-center',
+        className: 'hidden min-w-0 2xl:table-cell text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -1044,7 +1044,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       ),
       cell: OrderingWeightCell,
       meta: {
-        className: 'w-20 min-w-20 text-center',
+        className: 'w-16 min-w-0 text-center',
       },
       sortingFn: 'alphanumeric',
       enableSorting: true,
@@ -1055,7 +1055,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} className='justify-center' />,
       cell: CreatedAtCell,
       meta: {
-        className: 'text-center',
+        className: 'hidden min-w-0 xl:table-cell text-center',
       },
       enableSorting: true,
       enableHiding: false,
@@ -1069,7 +1069,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
             ),
             cell: ActionCell,
             meta: {
-              className: 'text-center',
+              className: 'w-44 min-w-44 text-center',
             },
             enableSorting: false,
             enableHiding: false,
