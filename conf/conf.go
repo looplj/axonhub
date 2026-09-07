@@ -217,6 +217,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.port", 8090)
 	v.SetDefault("server.pid_file", "")
 	v.SetDefault("server.public_url", "")
+	v.SetDefault("server.trusted_proxies", []string{})
 	v.SetDefault("server.name", "AxonHub")
 	v.SetDefault("server.base_path", "")
 	v.SetDefault("server.request_timeout", "30s")
