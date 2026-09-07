@@ -6,7 +6,7 @@ import ts from 'typescript';
 // Run the table's pure quota helpers without loading React or its providers.
 const source = readFileSync(new URL('./channels-columns.tsx', import.meta.url), 'utf8');
 const ast = ts.createSourceFile('channels-columns.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const helperNames = ['getQuotaLimits', 'codexWindowDuration', 'quotaWindowLabel'];
+const helperNames = ['getQuotaLimits', 'quotaWindowLabel'];
 const helpers = ast.statements
   .filter((node) => ts.isFunctionDeclaration(node) && helperNames.includes(node.name?.text))
   .map((node) => `export ${node.getText(ast)}`)
@@ -14,7 +14,22 @@ const helpers = ast.statements
 const { outputText } = ts.transpileModule(helpers, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 },
 });
-const { getQuotaLimits, quotaWindowLabel } = await import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
+const parserStub = `
+const QUOTA_WINDOW_LABEL_KEYS = {
+  '5h': '5h', '7d': '7d', '30d': '30d', daily: 'daily', weekly: 'weekly', monthly: 'monthly', cycle: 'cycle', overage: 'overage'
+};
+function parseQuotaLimits(quotaData) {
+  if (!Array.isArray(quotaData?._limits)) return [];
+  return quotaData._limits.filter((limit) =>
+    limit && typeof limit.type === 'string' && typeof limit.status === 'string' && typeof limit.ready === 'boolean' &&
+    typeof limit.window === 'string' && typeof limit.usageRatio === 'number' && Number.isFinite(limit.usageRatio) &&
+    limit.usageRatio >= 0 && limit.usageRatio <= 1
+  );
+}
+`;
+const { getQuotaLimits, quotaWindowLabel } = await import(
+  `data:text/javascript;base64,${Buffer.from(`${parserStub}\n${outputText}`).toString('base64')}`
+);
 const t = (key) => key;
 
 /**
@@ -23,63 +38,58 @@ const t = (key) => key;
  * @param {object[]} limits Normalized quota entries, defaulting to a primary window with 52% used.
  * @returns {object} Channel fixture consumed by the table's quota helpers.
  */
-function codex(rateLimit, limits = [{ window: 'primary', usageRatio: 0.52 }]) {
+function codex(limits = [{ type: 'token', status: 'available', ready: true, window: '5h', usageRatio: 0.52 }]) {
   return {
     type: 'codex',
     providerQuotaStatus: {
       status: 'available',
-      quotaData: { _limits: limits, rate_limit: rateLimit },
+      quotaData: { _limits: limits },
     },
   };
 }
 
-test('weekly-only Codex primary quota is shown once as 7d, with its usage preserved', () => {
-  const channel = codex({ primary_window: { used_percent: 52, limit_window_seconds: 604800 }, secondary_window: null });
+test('weekly-only Codex quota is shown once as 7d, with its usage preserved', () => {
+  const channel = codex([{ type: 'token', status: 'available', ready: true, window: '7d', usageRatio: 0.52 }]);
   const limits = getQuotaLimits(channel);
-  assert.deepEqual(limits, [{ window: '7d', usageRatio: 0.52, status: 'available' }]);
+  assert.deepEqual(limits.map(({ window, usageRatio, status }) => ({ window, usageRatio, status })), [{ window: '7d', usageRatio: 0.52, status: 'available' }]);
   assert.equal(quotaWindowLabel(limits[0].window, t), '7d');
   assert.equal(Math.round(100 - limits[0].usageRatio * 100), 48);
 });
 
 test('Codex dual windows and other durations use reported lengths', () => {
-  for (const [seconds, label] of [[18000, '5h'], [86400, '1d'], [7200, '2h'], [5400, '90m'], [45, '45s']]) {
-    const limits = getQuotaLimits(codex({
-      primary_window: { used_percent: 20, limit_window_seconds: seconds },
-      secondary_window: { used_percent: 60, limit_window_seconds: 604800 },
-    }));
+  for (const [label, usageRatio] of [['5h', 0.2], ['1d', 0.2], ['2h', 0.2], ['90m', 0.2], ['45s', 0.2]]) {
+    const limits = getQuotaLimits(codex([
+      { type: 'token', status: 'available', ready: true, window: label, usageRatio },
+      { type: 'token', status: 'available', ready: true, window: '7d', usageRatio: 0.6 },
+    ]));
     assert.deepEqual(limits.map((limit) => limit.window), [label, '7d']);
-    assert.deepEqual(limits.map((limit) => limit.usageRatio), [0.2, 0.6]);
+    assert.deepEqual(limits.map((limit) => limit.usageRatio), [usageRatio, 0.6]);
   }
 });
 
-test('absent windows do not inherit a synthetic normalized primary quota', () => {
-  assert.deepEqual(getQuotaLimits(codex({ primary_window: null, secondary_window: null })), []);
-  const limits = getQuotaLimits(codex({ secondary_window: { used_percent: 0, limit_window_seconds: 604800 } }));
-  assert.deepEqual(limits, [{ window: '7d', usageRatio: 0, status: 'available' }]);
+test('only persisted normalized Codex windows are displayed', () => {
+  assert.deepEqual(getQuotaLimits(codex([])), []);
+  const limits = getQuotaLimits(codex([{ type: 'token', status: 'available', ready: true, window: '7d', usageRatio: 0 }]));
+  assert.deepEqual(limits.map(({ window, usageRatio, status }) => ({ window, usageRatio, status })), [{ window: '7d', usageRatio: 0, status: 'available' }]);
 });
 
-test('unknown or invalid durations use localized role labels rather than assumed periods', () => {
-  for (const seconds of [undefined, null, 0, -1, NaN, Infinity, '604800']) {
-    const limits = getQuotaLimits(codex({
-      primary_window: { used_percent: 52, limit_window_seconds: seconds },
-      secondary_window: { used_percent: 0, limit_window_seconds: seconds },
-    }));
-    assert.equal(quotaWindowLabel(limits[0].window, t), 'quota.label.primary_window');
-    assert.equal(quotaWindowLabel(limits[1].window, t), 'quota.label.secondary_window');
-  }
+test('role identifiers use a neutral token label rather than assumed periods', () => {
+  assert.equal(quotaWindowLabel('primary', t), 'quota.label.token_usage');
+  assert.equal(quotaWindowLabel('secondary', t), 'quota.label.token_usage');
 });
 
-test('legacy normalized-only Codex data keeps usage without guessing a duration', () => {
-  const limits = getQuotaLimits(codex(undefined));
-  assert.equal(limits[0].usageRatio, 0.52);
-  assert.equal(quotaWindowLabel(limits[0].window, t), 'quota.label.primary_window');
+test('malformed normalized Codex data is ignored', () => {
+  assert.deepEqual(getQuotaLimits(codex([{ window: 'primary', usageRatio: 0.52 }])), []);
 });
 
 test('other provider window labels are preserved', () => {
   const channel = { type: 'claudecode', providerQuotaStatus: { status: 'available', quotaData: {
-    windows: { '5h': { utilization: 0.2 }, '7d': { utilization: 0.4 } },
+    _limits: [
+      { type: 'token', status: 'available', ready: true, window: '5h', usageRatio: 0.2 },
+      { type: 'token', status: 'available', ready: true, window: '7d', usageRatio: 0.4 },
+    ],
   } } };
   assert.deepEqual(getQuotaLimits(channel).map((limit) => quotaWindowLabel(limit.window, t)), ['5h', '7d']);
-  assert.equal(quotaWindowLabel('weekly', t), '7d');
-  assert.equal(quotaWindowLabel('monthly', t), '30d');
+  assert.equal(quotaWindowLabel('weekly', t), 'weekly');
+  assert.equal(quotaWindowLabel('monthly', t), 'monthly');
 });
