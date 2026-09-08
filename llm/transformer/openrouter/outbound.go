@@ -105,7 +105,12 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
-	body, err := json.Marshal(openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldReasoning))
+	preparedRequest, namespaceMetadata, err := openai.PrepareNamespaceRequest(llmReq)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := json.Marshal(openai.RequestFromLLM(ctx, preparedRequest, openai.ReasoningFieldReasoning))
 	if err != nil {
 		return nil, fmt.Errorf("%w: failed to transform request: %w", transformer.ErrInvalidRequest, err)
 	}
@@ -126,13 +131,14 @@ func (t *OutboundTransformer) TransformRequest(
 	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
-		Method:      http.MethodPost,
-		URL:         url,
-		Headers:     headers,
-		Body:        body,
-		Auth:        auth,
-		ContentType: "application/json",
-		APIFormat:   string(llm.APIFormatOpenAIChatCompletion),
+		TransformerMetadata: namespaceMetadata,
+		Method:              http.MethodPost,
+		URL:                 url,
+		Headers:             headers,
+		Body:                body,
+		Auth:                auth,
+		ContentType:         "application/json",
+		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
 }
 
@@ -304,7 +310,9 @@ func (t *OutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal chat completion response: %w", err)
 	}
 
-	return chatResp.ToOpenAIResponse().ToLLMResponse(), nil
+	response := chatResp.ToOpenAIResponse().ToLLMResponse()
+	openai.RestoreNamespaceResponse(httpResp.Request, response)
+	return response, nil
 }
 
 // transformImageGenerationResponse transforms the OpenRouter image-router
@@ -457,7 +465,9 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 
 	// Transform remaining events
 	transformedStream := streams.MapErr(filteredStream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
-		return t.TransformStreamChunk(ctx, event)
+		response, err := t.TransformStreamChunk(ctx, event)
+		openai.RestoreNamespaceResponse(req, response)
+		return response, err
 	})
 
 	// Always append our own DONE event at the end

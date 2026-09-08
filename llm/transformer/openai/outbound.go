@@ -17,7 +17,6 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // PlatformType represents the platform type for OpenAI API.
@@ -174,16 +173,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("%w: rerank is not supported", transformer.ErrInvalidRequest)
 	}
 
-	// Chat Completions only supports a single named tool choice. Entries that
-	// cannot be resolved to one flat function name are rejected rather than
-	// silently degraded to a broader selection mode.
-	if llmReq.ToolChoice != nil && len(llmReq.ToolChoice.Tools) > 0 {
-		return nil, fmt.Errorf(
-			"%w: tool_choice.tools with multiple entries is not supported by OpenAI Chat Completions",
-			transformer.ErrInvalidRequest,
-		)
-	}
-
 	if len(llmReq.Messages) == 0 {
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
@@ -201,6 +190,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	reasoningField := t.config.ReasoningField
 	if reasoningField == "" {
 		reasoningField = ReasoningFieldContent
+	}
+
+	llmReq, namespaceMetadata, err := PrepareNamespaceRequest(llmReq)
+	if err != nil {
+		return nil, err
 	}
 
 	// Convert to OpenAI Request format (this strips helper fields)
@@ -236,13 +230,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	return &httpclient.Request{
-		Method:    http.MethodPost,
-		URL:       url,
-		Headers:   headers,
-		Body:      body,
-		Auth:      authConfig,
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-		Metadata:  nil,
+		Method:              http.MethodPost,
+		URL:                 url,
+		Headers:             headers,
+		Body:                body,
+		Auth:                authConfig,
+		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
+		TransformerMetadata: namespaceMetadata,
+		Metadata:            nil,
 	}, nil
 }
 
@@ -304,17 +299,7 @@ func (t *OutboundTransformer) TransformResponse(
 	// Convert to unified llm.Response
 	resp := oaiResp.ToLLMResponse()
 
-	// Propagate the namespace tool mapping from the request metadata to the
-	// response so that the Responses inbound transformer can perform exact
-	// round-trip restoration of tool call names.
-	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if mapping, ok := httpResp.Request.TransformerMetadata[shared.NamespaceToolMappingMetadataKey].(llm.NamespaceToolMapping); ok {
-			if resp.TransformerMetadata == nil {
-				resp.TransformerMetadata = make(map[string]any)
-			}
-			resp.TransformerMetadata[shared.NamespaceToolMappingMetadataKey] = llm.CloneNamespaceToolMapping(mapping)
-		}
-	}
+	RestoreNamespaceResponse(httpResp.Request, resp)
 
 	return resp, nil
 }
@@ -348,29 +333,18 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 		return transformed, nil
 	}
 
-	// Each chunk gets an independent deep copy of the mapping to prevent
-	// downstream consumers from mutating shared state across chunks.
 	return streams.Map(transformed, func(resp *llm.Response) *llm.Response {
-		if resp == nil || resp == llm.DoneResponse {
-			return resp
-		}
-		if resp.TransformerMetadata == nil {
-			resp.TransformerMetadata = make(map[string]any)
-		}
-		resp.TransformerMetadata[shared.NamespaceToolMappingMetadataKey] = llm.CloneNamespaceToolMapping(mapping)
+		restoreNamespaceResponse(resp, mapping)
 		return resp
 	}), nil
 }
 
-// extractNamespaceToolMapping reads the namespace tool mapping from the
-// request's TransformerMetadata, if present.
-func extractNamespaceToolMapping(req *httpclient.Request) llm.NamespaceToolMapping {
-	if req == nil || req.TransformerMetadata == nil {
+// extractNamespaceToolMapping reads the mapping owned by this outbound attempt.
+func extractNamespaceToolMapping(req *httpclient.Request) namespaceToolMapping {
+	if req == nil {
 		return nil
 	}
-
-	mapping, _ := req.TransformerMetadata[shared.NamespaceToolMappingMetadataKey].(llm.NamespaceToolMapping)
-
+	mapping, _ := req.TransformerMetadata[namespaceToolMappingMetadataKey].(namespaceToolMapping)
 	return mapping
 }
 

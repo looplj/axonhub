@@ -244,20 +244,12 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		}
 	}
 
-	var namespaceMapping NamespaceToolMapping
-
 	if len(req.Tools) > 0 {
-		tools, mapping, err := convertToolsToLLM(req.Tools)
+		tools, err := convertToolsToLLM(req.Tools)
 		if err != nil {
 			return nil, err
 		}
-
 		chatReq.Tools = tools
-		namespaceMapping = mapping
-
-		if len(mapping) > 0 {
-			chatReq.TransformerMetadata[NamespaceToolMappingMetadataKey] = mapping
-		}
 	}
 
 	// Convert instructions to system message
@@ -271,13 +263,12 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		})
 	}
 
-	// Convert input to messages with namespace mapping to flatten
-	// historical function_call names for multi-turn consistency.
+	// Preserve tool identities in the unified model.
 	if req.Input.Items != nil {
 		chatReq.TransformOptions.ArrayInputs = lo.ToPtr(true)
 	}
 
-	inputMessages, err := convertInputToMessages(&req.Input, namespaceMapping)
+	inputMessages, err := convertInputToMessages(&req.Input)
 	if err != nil {
 		return nil, err
 	}
@@ -286,10 +277,9 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 
 	chatReq.Messages = messages
 
-	// Convert tool choice after tools so that namespace tool references can be
-	// resolved to flat function names via the mapping.
+	// Preserve tool selection constraints for outbound-specific handling.
 	if req.ToolChoice != nil {
-		choice, err := convertToolChoiceToLLM(req.ToolChoice, namespaceMapping)
+		choice, err := convertToolChoiceToLLM(req.ToolChoice)
 		if err != nil {
 			return nil, err
 		}
@@ -328,94 +318,28 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	return chatReq, nil
 }
 
-// convertToolChoiceToLLM converts Responses API ToolChoice to llm.ToolChoice.
-// The mapping parameter resolves namespace tool references to flat function
-// names. When a specific choice cannot be represented as a single named tool,
-// the original options are preserved in the unified model's Tools field for
-// outbound-specific handling.
-func convertToolChoiceToLLM(src *ToolChoice, mapping NamespaceToolMapping) (*llm.ToolChoice, error) {
+// convertToolChoiceToLLM preserves Responses tool selection without imposing
+// Chat Completions naming or selection restrictions on other outbounds.
+func convertToolChoiceToLLM(src *ToolChoice) (*llm.ToolChoice, error) {
 	if src == nil {
 		return nil, nil
 	}
-
-	result := &llm.ToolChoice{}
-
-	if src.Mode != nil {
-		result.ToolChoice = src.Mode
-		return result, nil
-	}
-
+	result := &llm.ToolChoice{ToolChoice: src.Mode}
 	if src.Type != nil {
 		result.NamedToolChoice = &llm.NamedToolChoice{
-			Type: *src.Type,
+			Type:     *src.Type,
+			Function: llm.ToolFunction{Name: lo.FromPtr(src.Name), Namespace: src.Namespace},
 		}
-		if src.Name != nil {
-			name := *src.Name
-			if *src.Type == "namespace" && mapping != nil {
-				flats := flatNamesForNamespace(mapping, name)
-				if len(flats) == 1 {
-					// Unique subtool: resolve to flat name.
-					result.NamedToolChoice.Type = "function"
-					name = flats[0]
-				}
-				// If len(flats) > 1, we cannot resolve to a single tool.
-				// Keep type/name as-is; Chat outbound will reject.
-			}
-			result.NamedToolChoice.Function.Name = name
-		}
-		return result, nil
 	}
-
-	// Handle Tools list (multi-tool choice).
-	if len(src.Tools) > 0 {
-		if len(src.Tools) == 1 {
-			opt := src.Tools[0]
-			if opt.Type == "function" {
-				flat := opt.Name
-				if opt.Namespace != "" && mapping != nil {
-					candidate := namespaceFunctionName(opt.Namespace, opt.Name)
-					if _, ok := mapping[candidate]; ok {
-						flat = candidate
-					}
-				}
-				if _, ok := mapping[flat]; ok || opt.Namespace == "" {
-					result.NamedToolChoice = &llm.NamedToolChoice{
-						Type:     "function",
-						Function: llm.ToolFunction{Name: flat},
-					}
-					return result, nil
-				}
-			}
-			if opt.Type == "namespace" && mapping != nil {
-				flats := flatNamesForNamespace(mapping, opt.Name)
-				if len(flats) == 1 {
-					result.NamedToolChoice = &llm.NamedToolChoice{
-						Type:     "function",
-						Function: llm.ToolFunction{Name: flats[0]},
-					}
-					return result, nil
-				}
-			}
-		}
-
-		// Cannot resolve to a single named tool; preserve for outbound handling.
-		result.Tools = make([]llm.ToolOption, len(src.Tools))
-		for i, opt := range src.Tools {
-			result.Tools[i] = llm.ToolOption{
-				Type:      opt.Type,
-				Name:      opt.Name,
-				Namespace: opt.Namespace,
-			}
-		}
-		return result, nil
+	for _, opt := range src.Tools {
+		result.Tools = append(result.Tools, llm.ToolOption{Type: opt.Type, Name: opt.Name, Namespace: opt.Namespace})
 	}
-
 	return result, nil
 }
 
 // convertInputToMessages converts Responses API input to llm.Message slice.
 // It handles merging consecutive tool calls that belong to the same assistant turn.
-func convertInputToMessages(input *Input, mapping NamespaceToolMapping) ([]llm.Message, error) {
+func convertInputToMessages(input *Input) ([]llm.Message, error) {
 	if input == nil {
 		return nil, nil
 	}
@@ -441,7 +365,7 @@ func convertInputToMessages(input *Input, mapping NamespaceToolMapping) ([]llm.M
 
 		// Handle reasoning item - merge with subsequent function_call or text items
 		if item.Type == "reasoning" {
-			msg, consumed, err := convertReasoningWithFollowing(input.Items, i, mapping)
+			msg, consumed, err := convertReasoningWithFollowing(input.Items, i)
 			if err != nil {
 				return nil, err
 			}
@@ -464,7 +388,7 @@ func convertInputToMessages(input *Input, mapping NamespaceToolMapping) ([]llm.M
 					break
 				}
 
-				callMsg, err := convertItemToMessage(callItem, mapping)
+				callMsg, err := convertItemToMessage(callItem)
 				if err != nil {
 					return nil, err
 				}
@@ -480,7 +404,7 @@ func convertInputToMessages(input *Input, mapping NamespaceToolMapping) ([]llm.M
 		}
 
 		// Handle regular items
-		msg, err := convertItemToMessage(item, mapping)
+		msg, err := convertItemToMessage(item)
 		if err != nil {
 			return nil, err
 		}
@@ -498,7 +422,7 @@ func convertInputToMessages(input *Input, mapping NamespaceToolMapping) ([]llm.M
 // convertReasoningWithFollowing converts a reasoning item and merges it with subsequent
 // function_call items or text content into a single assistant message.
 // Returns the merged message and the number of items consumed.
-func convertReasoningWithFollowing(items []Item, startIdx int, mapping NamespaceToolMapping) (*llm.Message, int, error) {
+func convertReasoningWithFollowing(items []Item, startIdx int) (*llm.Message, int, error) {
 	if startIdx >= len(items) || items[startIdx].Type != "reasoning" {
 		return nil, 0, nil
 	}
@@ -548,7 +472,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int, mapping Namespace
 				ID:   nextItem.CallID,
 				Type: "function",
 				Function: llm.FunctionCall{
-					Name:      flattenHistoricalFunctionName(nextItem, mapping),
+					Name:      nextItem.Name,
 					Namespace: nextItem.Namespace,
 					Arguments: nextItem.Arguments,
 				},
@@ -601,7 +525,7 @@ func convertReasoningWithFollowing(items []Item, startIdx int, mapping Namespace
 }
 
 // convertItemToMessage converts a single input item to an llm.Message.
-func convertItemToMessage(item *Item, mapping NamespaceToolMapping) (*llm.Message, error) {
+func convertItemToMessage(item *Item) (*llm.Message, error) {
 	if item == nil {
 		return nil, nil
 	}
@@ -655,7 +579,7 @@ func convertItemToMessage(item *Item, mapping NamespaceToolMapping) (*llm.Messag
 					ID:   item.CallID,
 					Type: "function",
 					Function: llm.FunctionCall{
-						Name:      flattenHistoricalFunctionName(item, mapping),
+						Name:      item.Name,
 						Namespace: item.Namespace,
 						Arguments: item.Arguments,
 					},
@@ -870,26 +794,16 @@ func responseInputFileMessage(item *Item) *llm.Message {
 	}
 }
 
-// convertToolsToLLM converts Responses API tools to llm.Tool slice and returns
-// a namespace tool mapping for exact round-trip restoration. When the request
-// contains no namespace tools, the mapping is nil.
-func convertToolsToLLM(tools []Tool) ([]llm.Tool, NamespaceToolMapping, error) {
+// convertToolsToLLM converts Responses API tools to llm.Tool slice.
+func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 	result := make([]llm.Tool, 0, len(tools))
-	var mapping NamespaceToolMapping
-	directNames := make(map[string]struct{})
 
-	for i := range tools {
-		tool := &tools[i]
+	for _, tool := range tools {
 		switch tool.Type {
 		case "function":
-			if _, exists := directNames[tool.Name]; exists {
-				return nil, nil, fmt.Errorf("%w: duplicate function tool name %q", transformer.ErrInvalidRequest, tool.Name)
-			}
-			directNames[tool.Name] = struct{}{}
-
 			params, err := json.Marshal(tool.Parameters)
 			if err != nil {
-				return nil, nil, fmt.Errorf("failed to marshal function parameters: %w", err)
+				return nil, fmt.Errorf("failed to marshal function parameters: %w", err)
 			}
 
 			result = append(result, llm.Tool{
@@ -964,36 +878,21 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, NamespaceToolMapping, error) {
 					continue
 				}
 
-				flat := namespaceFunctionName(tool.Name, subTool.Name)
-				if _, exists := directNames[flat]; exists {
-					return nil, nil, fmt.Errorf("%w: namespace tool flat name %q conflicts with an existing direct function tool name", transformer.ErrInvalidRequest, flat)
-				}
-				if _, exists := mapping[flat]; exists {
-					return nil, nil, fmt.Errorf("%w: duplicate namespace tool flat name %q", transformer.ErrInvalidRequest, flat)
-				}
-
 				params, err := json.Marshal(subTool.Parameters)
 				if err != nil {
-					return nil, nil, fmt.Errorf("failed to marshal namespace tool parameters: %w", err)
+					return nil, fmt.Errorf("failed to marshal namespace tool parameters: %w", err)
 				}
 
 				result = append(result, llm.Tool{
 					Type: "function",
 					Function: llm.Function{
-						Name:        flat,
+						Name:        subTool.Name,
+						Namespace:   tool.Name,
 						Description: subTool.Description,
 						Parameters:  params,
 						Strict:      subTool.Strict,
 					},
 				})
-
-				if mapping == nil {
-					mapping = make(NamespaceToolMapping)
-				}
-				mapping[flat] = NamespaceToolReference{
-					Namespace: tool.Name,
-					Name:      subTool.Name,
-				}
 			}
 
 		default:
@@ -1002,26 +901,7 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, NamespaceToolMapping, error) {
 		}
 	}
 
-	// Check namespace flat names against direct function names that appear
-	// after the namespace tool in the tools array.
-	for _, item := range result {
-		if _, isNamespace := mapping[item.Function.Name]; !isNamespace {
-			continue
-		}
-		if _, exists := directNames[item.Function.Name]; exists {
-			return nil, nil, fmt.Errorf(
-				"%w: namespace tool flat name %s conflicts with a direct function tool name",
-				transformer.ErrInvalidRequest,
-				item.Function.Name,
-			)
-		}
-	}
-
-	return result, mapping, nil
-}
-
-func namespaceFunctionName(namespaceName, functionName string) string {
-	return namespaceName + "__" + functionName
+	return result, nil
 }
 
 func getResponseWebSearchCallsFromMetadata(metadata map[string]any) []Item {
@@ -1112,8 +992,6 @@ func attachAnnotationsToFirstTextItem(items []Item, annotations []llm.Annotation
 
 // convertToResponsesAPIResponse converts llm.Response to Responses API Response.
 func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
-	mapping := getNamespaceToolMapping(chatResp.TransformerMetadata)
-
 	resp := &Response{
 		Object:             "response",
 		ID:                 chatResp.ID,
@@ -1163,13 +1041,12 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						Status: lo.ToPtr("completed"),
 					})
 				} else {
-					name, namespace := restoreNamespaceToolCall(toolCall.Function, mapping)
 					resp.Output = append(resp.Output, Item{
 						ID:        toolCall.ID,
 						Type:      "function_call",
 						CallID:    toolCall.ID,
-						Name:      name,
-						Namespace: namespace,
+						Name:      toolCall.Function.Name,
+						Namespace: toolCall.Function.Namespace,
 						Arguments: toolCall.Function.Arguments,
 						Status:    lo.ToPtr("completed"),
 					})
@@ -1283,33 +1160,6 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 	return resp
 }
 
-// getNamespaceToolMapping extracts the namespace tool mapping from response
-// metadata for round-trip restoration of tool call names.
-func getNamespaceToolMapping(metadata map[string]any) NamespaceToolMapping {
-	if len(metadata) == 0 {
-		return nil
-	}
-
-	mapping, _ := metadata[NamespaceToolMappingMetadataKey].(NamespaceToolMapping)
-
-	return mapping
-}
-
-// restoreNamespaceToolCall looks up the flat function name in the mapping and
-// returns the original name and namespace. When no mapping entry exists, the
-// original values are returned unchanged.
-func restoreNamespaceToolCall(fc llm.FunctionCall, mapping NamespaceToolMapping) (string, string) {
-	if len(mapping) == 0 {
-		return fc.Name, fc.Namespace
-	}
-
-	if ref, ok := mapping[fc.Name]; ok {
-		return ref.Name, ref.Namespace
-	}
-
-	return fc.Name, fc.Namespace
-}
-
 // generateItemID generates a unique item ID for output items.
 func generateItemID() string {
 	return fmt.Sprintf("item_%s", lo.RandomString(16, lo.AlphanumericCharset))
@@ -1359,21 +1209,4 @@ func buildReasoningItems(msg llm.Message) []Item {
 	}
 
 	return items
-}
-
-// flattenHistoricalFunctionName converts a historical function_call's short
-// name to its flat form using the current request's namespace tool mapping.
-// If the item has no namespace or the mapping has no matching entry, the
-// original name is returned unchanged.
-func flattenHistoricalFunctionName(item *Item, mapping NamespaceToolMapping) string {
-	if item.Namespace == "" || item.Name == "" || len(mapping) == 0 {
-		return item.Name
-	}
-
-	flat := namespaceFunctionName(item.Namespace, item.Name)
-	if _, ok := mapping[flat]; ok {
-		return flat
-	}
-
-	return item.Name
 }

@@ -18,7 +18,7 @@ func convertToAnthropicRequest(chatReq *llm.Request) *MessageRequest {
 func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *MessageRequest {
 	req := buildBaseRequest(chatReq, config)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
-	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
+	req.ToolChoice = convertToolChoiceToAnthropic(llm.ResolveSingleFunctionChoice(chatReq.ToolChoice, chatReq.Tools))
 	req.Messages = convertMessages(chatReq, config)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
@@ -267,7 +267,7 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 		switch tool.Type {
 		case llm.ToolTypeFunction:
 			anthropicTools = append(anthropicTools, Tool{
-				Name:         tool.Function.Name,
+				Name:         llm.FlattenFunctionName(tool.Function.Namespace, tool.Function.Name),
 				Description:  tool.Function.Description,
 				InputSchema:  tool.Function.Parameters,
 				CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
@@ -332,7 +332,7 @@ func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
 	if src.NamedToolChoice != nil && src.NamedToolChoice.Function.Name != "" {
 		return &ToolChoice{
 			Type: "tool",
-			Name: lo.ToPtr(src.NamedToolChoice.Function.Name),
+			Name: lo.ToPtr(llm.FlattenFunctionName(src.NamedToolChoice.Function.Namespace, src.NamedToolChoice.Function.Name)),
 		}
 	}
 
@@ -1238,7 +1238,7 @@ func toolUseBlockFromLLM(toolCall llm.ToolCall) MessageContentBlock {
 	return MessageContentBlock{
 		Type:         blockType,
 		ID:           toolCall.ID,
-		Name:         &toolCall.Function.Name,
+		Name:         lo.ToPtr(llm.FlattenFunctionName(toolCall.Function.Namespace, toolCall.Function.Name)),
 		Input:        xjson.SafeJSONRawMessage(toolCall.Function.Arguments),
 		CacheControl: convertToAnthropicCacheControl(toolCall.CacheControl),
 		Caller:       getAnthropicCaller(toolCall.TransformerMetadata),

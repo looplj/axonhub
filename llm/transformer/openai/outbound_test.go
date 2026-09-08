@@ -216,11 +216,11 @@ func TestOutboundTransformer_TransformRequest_RejectsMultiToolChoice(t *testing.
 	require.ErrorIs(t, err, transformer.ErrInvalidRequest)
 }
 
-func TestOutboundTransformer_TransformResponse_NamespaceMappingPropagation(t *testing.T) {
+func TestOutboundTransformer_TransformResponse_NamespaceRestoration(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
 	require.NoError(t, err)
 
-	mapping := llm.NamespaceToolMapping{
+	mapping := namespaceToolMapping{
 		"ns__fn": {Namespace: "ns", Name: "fn"},
 	}
 
@@ -229,7 +229,7 @@ func TestOutboundTransformer_TransformResponse_NamespaceMappingPropagation(t *te
 		Body:       []byte(`{"id":"resp_1","object":"chat.completion","model":"gpt-4o","choices":[{"index":0,"message":{"role":"assistant","tool_calls":[{"id":"call_1","type":"function","function":{"name":"ns__fn","arguments":"{}"}}],"finish_reason":"tool_calls"}}]}`),
 		Request: &httpclient.Request{
 			TransformerMetadata: map[string]any{
-				shared.NamespaceToolMappingMetadataKey: mapping,
+				namespaceToolMappingMetadataKey: mapping,
 			},
 		},
 	}
@@ -237,23 +237,23 @@ func TestOutboundTransformer_TransformResponse_NamespaceMappingPropagation(t *te
 	resp, err := outbound.TransformResponse(context.Background(), httpResp)
 	require.NoError(t, err)
 
-	got, ok := resp.TransformerMetadata[shared.NamespaceToolMappingMetadataKey].(llm.NamespaceToolMapping)
-	require.True(t, ok)
-	require.Equal(t, mapping, got)
+	require.Equal(t, "fn", resp.Choices[0].Message.ToolCalls[0].Function.Name)
+	require.Equal(t, "ns", resp.Choices[0].Message.ToolCalls[0].Function.Namespace)
+	require.NotContains(t, resp.TransformerMetadata, namespaceToolMappingMetadataKey)
 }
 
-func TestOutboundTransformer_TransformStream_NamespaceMappingPropagation(t *testing.T) {
+func TestOutboundTransformer_TransformStream_NamespaceRestoration(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-key")
 	require.NoError(t, err)
 
-	mapping := llm.NamespaceToolMapping{
+	mapping := namespaceToolMapping{
 		"ns__fn": {Namespace: "ns", Name: "fn"},
 	}
 
 	req := &httpclient.Request{
 		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 		TransformerMetadata: map[string]any{
-			shared.NamespaceToolMappingMetadataKey: mapping,
+			namespaceToolMappingMetadataKey: mapping,
 		},
 	}
 
@@ -276,14 +276,12 @@ func TestOutboundTransformer_TransformStream_NamespaceMappingPropagation(t *test
 	require.NoError(t, out.Err())
 	require.NotEmpty(t, responses)
 
+	require.Equal(t, "fn", responses[0].Choices[0].Delta.ToolCalls[0].Function.Name)
+	require.Equal(t, "ns", responses[0].Choices[0].Delta.ToolCalls[0].Function.Namespace)
 	for _, resp := range responses {
-		if resp == llm.DoneResponse {
-			continue
-		}
-		got, ok := resp.TransformerMetadata[shared.NamespaceToolMappingMetadataKey].(llm.NamespaceToolMapping)
-		require.True(t, ok)
-		require.Equal(t, mapping, got)
+		require.NotContains(t, resp.TransformerMetadata, namespaceToolMappingMetadataKey)
 	}
+
 }
 
 func TestOutboundTransformer_RejectsRegularChatFileURL(t *testing.T) {

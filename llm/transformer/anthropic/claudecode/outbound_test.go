@@ -593,3 +593,18 @@ func (m *mockHTTPStream) Err() error {
 func (m *mockHTTPStream) Close() error {
 	return nil
 }
+
+func TestClaudeToolPrefix_NamespaceBoundary(t *testing.T) {
+	request := &llm.Request{
+		Tools:      []llm.Tool{{Type: "function", Function: llm.Function{Name: "search", Namespace: "docs"}}},
+		ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{Type: "namespace", Function: llm.ToolFunction{Name: "docs"}}},
+	}
+	prepared := applyClaudeToolPrefixStructured(request, "proxy_")
+	require.Equal(t, "proxy_docs__search", prepared.Tools[0].Function.Name)
+	require.Empty(t, prepared.Tools[0].Function.Namespace)
+	require.Equal(t, "search", prepared.ToolChoice.NamedToolChoice.Function.Name)
+	require.Equal(t, "docs", prepared.ToolChoice.NamedToolChoice.Function.Namespace)
+	require.Equal(t, "search", request.Tools[0].Function.Name)
+	require.Equal(t, "docs", request.Tools[0].Function.Namespace)
+	require.Equal(t, "namespace", request.ToolChoice.NamedToolChoice.Type)
+}

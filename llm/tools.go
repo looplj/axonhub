@@ -37,6 +37,8 @@ type Tool struct {
 
 // Function represents a function definition.
 type Function struct {
+	// Namespace is the namespace that owns this function, when present.
+	Namespace   string          `json:"namespace,omitempty"`
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
 	Parameters  json.RawMessage `json:"parameters,omitempty"`
@@ -86,7 +88,8 @@ type ToolCall struct {
 }
 
 type ToolFunction struct {
-	Name string `json:"name"`
+	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name"`
 }
 
 // ToolOption represents a specific tool within a multi-tool choice.
@@ -94,33 +97,6 @@ type ToolOption struct {
 	Type      string `json:"type"`
 	Name      string `json:"name"`
 	Namespace string `json:"namespace,omitempty"`
-}
-
-// NamespaceToolReference records the original namespace and function name for
-// a flat function name generated from an OpenAI Responses namespace tool.
-type NamespaceToolReference struct {
-	Namespace string `json:"namespace"`
-	Name      string `json:"name"`
-}
-
-// NamespaceToolMapping maps flat function names to their original
-// namespace/name references for exact round-trip restoration between OpenAI
-// Responses namespace tools and OpenAI Chat Completions function tools.
-type NamespaceToolMapping map[string]NamespaceToolReference
-
-// CloneNamespaceToolMapping returns a deep copy of a namespace tool mapping to
-// prevent shared mutable state between pipeline attempts or stream chunks.
-func CloneNamespaceToolMapping(m NamespaceToolMapping) NamespaceToolMapping {
-	if m == nil {
-		return nil
-	}
-
-	out := make(NamespaceToolMapping, len(m))
-	for key, value := range m {
-		out[key] = value
-	}
-
-	return out
 }
 
 // ToolChoice represents the tool choice parameter for function calling.

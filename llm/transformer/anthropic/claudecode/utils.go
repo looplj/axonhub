@@ -3,6 +3,7 @@ package claudecode
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -63,8 +64,24 @@ func applyClaudeToolPrefixStructured(llmReq *llm.Request, prefix string) *llm.Re
 		return llmReq
 	}
 
+	request := *llmReq
+	request.Tools = slices.Clone(llmReq.Tools)
+	request.ToolChoice = llm.ResolveSingleFunctionChoice(llmReq.ToolChoice, llmReq.Tools)
+	if request.ToolChoice != nil {
+		choice := *request.ToolChoice
+		if choice.NamedToolChoice != nil {
+			named := *choice.NamedToolChoice
+			choice.NamedToolChoice = &named
+		}
+		request.ToolChoice = &choice
+	}
+	llmReq = &request
+
 	// Prefix tool names in tools array
 	for i := range llmReq.Tools {
+		function := &llmReq.Tools[i].Function
+		function.Name = llm.FlattenFunctionName(function.Namespace, function.Name)
+		function.Namespace = ""
 		if !strings.HasPrefix(llmReq.Tools[i].Function.Name, prefix) {
 			llmReq.Tools[i].Function.Name = prefix + llmReq.Tools[i].Function.Name
 		}

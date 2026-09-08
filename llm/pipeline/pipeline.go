@@ -11,7 +11,6 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
-	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Retryable interface for transformers that support channel switching.
@@ -365,17 +364,6 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 	httpReq, err := p.Outbound.TransformRequest(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform request: %w", err)
-	}
-
-	// Copy the namespace tool mapping from the unified request to the outbound
-	// HTTP request so that response transformers can perform exact restoration.
-	// This must run per attempt because retry/channel-switching creates a new
-	// httpReq each time.
-	if mapping, ok := request.TransformerMetadata[shared.NamespaceToolMappingMetadataKey].(llm.NamespaceToolMapping); ok {
-		if httpReq.TransformerMetadata == nil {
-			httpReq.TransformerMetadata = make(map[string]any)
-		}
-		httpReq.TransformerMetadata[shared.NamespaceToolMappingMetadataKey] = llm.CloneNamespaceToolMapping(mapping)
 	}
 
 	httpReq = httpclient.MergeInboundRequest(httpReq, request.RawRequest)
