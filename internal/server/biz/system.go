@@ -153,77 +153,6 @@ type VideoStorageSettings struct {
 	ScanLimit int `json:"scan_limit"`
 }
 
-// QuotaEnforcementMode defines how quota enforcement is applied.
-type QuotaEnforcementMode string
-
-const (
-	// QuotaEnforcementModeExhaustedOnly filters out channels with exhausted quota only.
-	QuotaEnforcementModeExhaustedOnly QuotaEnforcementMode = "exhausted_only"
-	// QuotaEnforcementModeDePrioritize deprioritizes exhausted channels and penalizes warning channels.
-	QuotaEnforcementModeDePrioritize QuotaEnforcementMode = "de_prioritize"
-)
-
-func (m QuotaEnforcementMode) MarshalGQL(w io.Writer) {
-	var s string
-
-	switch m {
-	case QuotaEnforcementModeExhaustedOnly:
-		s = "EXHAUSTED_ONLY"
-	case QuotaEnforcementModeDePrioritize:
-		s = "DE_PRIORITIZE"
-	default:
-		s = "EXHAUSTED_ONLY"
-	}
-
-	_, _ = io.WriteString(w, `"`+s+`"`)
-}
-
-func (m *QuotaEnforcementMode) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("QuotaEnforcementMode must be a string")
-	}
-
-	switch str {
-	case "EXHAUSTED_ONLY":
-		*m = QuotaEnforcementModeExhaustedOnly
-	case "DE_PRIORITIZE":
-		*m = QuotaEnforcementModeDePrioritize
-	default:
-		return fmt.Errorf("invalid QuotaEnforcementMode: %s", str)
-	}
-
-	return nil
-}
-
-func (m *QuotaEnforcementMode) UnmarshalJSON(data []byte) error {
-	var raw string
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return fmt.Errorf("invalid QuotaEnforcementMode: %w", err)
-	}
-
-	switch raw {
-	case "EXHAUSTED_ONLY", string(QuotaEnforcementModeExhaustedOnly):
-		*m = QuotaEnforcementModeExhaustedOnly
-	case "DE_PRIORITIZE", string(QuotaEnforcementModeDePrioritize):
-		*m = QuotaEnforcementModeDePrioritize
-	default:
-		return fmt.Errorf("invalid QuotaEnforcementMode: %q", raw)
-	}
-
-	return nil
-}
-
-// QuotaEnforcementSettings represents quota enforcement configuration.
-type QuotaEnforcementSettings struct {
-	// Enabled controls whether quota enforcement is active.
-	Enabled bool `json:"enabled"`
-	// Mode defines how quota is enforced.
-	Mode QuotaEnforcementMode `json:"mode"`
-	// AllowedChannelIDs contains channel IDs that bypass quota filtering.
-	AllowedChannelIDs []int `json:"allowedChannelIDs"`
-}
-
 // QuotaRoutingSettings represents the quota routing policy.
 type QuotaRoutingSettings struct {
 	DefaultMode objects.QuotaRoutingMode `json:"defaultMode"`
@@ -235,11 +164,11 @@ type QuotaRoutingSettingsProvider interface {
 }
 
 type legacyQuotaEnforcementSettings struct {
-	Enabled           bool                 `json:"enabled"`
-	ExhaustedOnly     bool                 `json:"exhaustedOnly"`
-	DePrioritize      bool                 `json:"dePrioritize"`
-	AllowedChannelIDs []int                `json:"allowedChannelIDs"`
-	Mode              QuotaEnforcementMode `json:"mode"`
+	Enabled           bool   `json:"enabled"`
+	ExhaustedOnly     bool   `json:"exhaustedOnly"`
+	DePrioritize      bool   `json:"dePrioritize"`
+	AllowedChannelIDs []int  `json:"allowedChannelIDs"`
+	Mode              string `json:"mode"`
 }
 
 // SecuritySettings represents system-wide request access controls.
@@ -1859,59 +1788,6 @@ func (s *SystemService) SetInjectUsageCostEnabled(ctx context.Context, enabled b
 	return s.setSystemValue(ctx, SystemKeyInjectUsageCost, strValue)
 }
 
-// QuotaEnforcementSettings retrieves the quota enforcement settings.
-func (s *SystemService) QuotaEnforcementSettings(ctx context.Context) (*QuotaEnforcementSettings, error) {
-	value, err := s.getSystemValue(ctx, SystemKeyQuotaEnforcementSettings)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return lo.ToPtr(defaultQuotaEnforcementSettings), nil
-		}
-
-		return nil, fmt.Errorf("failed to get quota enforcement settings: %w", err)
-	}
-
-	var settings QuotaEnforcementSettings
-	if err := json.Unmarshal([]byte(value), &settings); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal quota enforcement settings: %w", err)
-	}
-
-	if settings.Mode == "" {
-		settings.Mode = defaultQuotaEnforcementSettings.Mode
-	}
-
-	return &settings, nil
-}
-
-// QuotaEnforcementSettingsOrDefault retrieves the quota enforcement settings or returns the default.
-func (s *SystemService) QuotaEnforcementSettingsOrDefault(ctx context.Context) *QuotaEnforcementSettings {
-	settings, err := s.QuotaEnforcementSettings(ctx)
-	if err != nil {
-		log.Warn(ctx, "failed to get quota enforcement settings", log.Cause(err))
-
-		return lo.ToPtr(defaultQuotaEnforcementSettings)
-	}
-
-	return settings
-}
-
-// SetQuotaEnforcementSettings sets the quota enforcement settings.
-func (s *SystemService) SetQuotaEnforcementSettings(ctx context.Context, settings QuotaEnforcementSettings) error {
-	if settings.Mode == "" {
-		settings.Mode = defaultQuotaEnforcementSettings.Mode
-	}
-
-	if settings.Mode != QuotaEnforcementModeExhaustedOnly && settings.Mode != QuotaEnforcementModeDePrioritize {
-		return fmt.Errorf("invalid quota enforcement mode: %q", settings.Mode)
-	}
-
-	jsonBytes, err := json.Marshal(settings)
-	if err != nil {
-		return fmt.Errorf("failed to marshal quota enforcement settings: %w", err)
-	}
-
-	return s.setSystemValue(ctx, SystemKeyQuotaEnforcementSettings, string(jsonBytes))
-}
-
 // QuotaRoutingSettings retrieves quota routing settings, lazily mapping the legacy
 // quota enforcement setting when the new key is absent.
 func (s *SystemService) QuotaRoutingSettings(ctx context.Context) (*QuotaRoutingSettings, error) {
@@ -1936,9 +1812,9 @@ func (s *SystemService) QuotaRoutingSettings(ctx context.Context) (*QuotaRouting
 
 		if legacy.Enabled {
 			switch {
-			case legacy.ExhaustedOnly, legacy.Mode == QuotaEnforcementModeExhaustedOnly:
+			case legacy.ExhaustedOnly, legacy.Mode == "EXHAUSTED_ONLY", legacy.Mode == "exhausted_only":
 				return lo.ToPtr(QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}), nil
-			case legacy.DePrioritize, legacy.Mode == QuotaEnforcementModeDePrioritize:
+			case legacy.DePrioritize, legacy.Mode == "DE_PRIORITIZE", legacy.Mode == "de_prioritize":
 				return lo.ToPtr(QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure}), nil
 			}
 		}
