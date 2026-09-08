@@ -4,63 +4,29 @@ interface Props {
   children: React.ReactNode;
 }
 
-const particles = Array.from({ length: 80 }).map((_, i) => ({
-  id: i,
-  left: `${Math.random() * 100}%`,
-  top: `${Math.random() * 100}%`,
-  size: `${Math.random() * 2 + 1}px`,
-  delay: `${Math.random() * 5}s`,
-  duration: `${Math.random() * 10 + 5}s`,
-  color: Math.random() > 0.2 ? '#00C77E' : '#FF2E4D',
-}));
-
 export default function AuthLayout({ children }: Props) {
   return (
-    <div className='tech relative min-h-screen overflow-hidden bg-[#1A1A1A]'>
-      {/* Tech grid background */}
-      <div className='tech-grid absolute inset-0 opacity-30'></div>
+    <div className='relative min-h-screen overflow-hidden bg-[#1A1A1A]'>
+      {/* Static grid background */}
+      <div
+        className='absolute inset-0 opacity-20'
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(0,255,157,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,157,0.1) 1px, transparent 1px)',
+          backgroundSize: '50px 50px',
+        }}
+      />
 
-      {/* Low-poly network pattern */}
-      <div className='low-poly-network absolute inset-0'></div>
-
-      {/* Fullscreen Connection Lines */}
-      <svg className='absolute inset-0 z-0 h-full w-full opacity-40' preserveAspectRatio='xMidYMid slice' viewBox='0 0 1920 1080'>
-        <defs>
-          <linearGradient id='dataFlow' x1='0%' y1='0%' x2='100%' y2='0%'>
-            <stop offset='0%' stopColor='#00C77E' stopOpacity='0' />
-            <stop offset='50%' stopColor='#00C77E' stopOpacity='1' />
-            <stop offset='100%' stopColor='#00C77E' stopOpacity='0' />
-          </linearGradient>
-        </defs>
-        <line x1='0' y1='0' x2='960' y2='540' stroke='url(#dataFlow)' strokeWidth='2' className='animate-data-flow' />
-        <line
-          x1='1920'
-          y1='0'
-          x2='960'
-          y2='540'
-          stroke='url(#dataFlow)'
-          strokeWidth='2'
-          className='animate-data-flow animation-delay-1000'
-        />
-        <line
-          x1='0'
-          y1='1080'
-          x2='960'
-          y2='540'
-          stroke='url(#dataFlow)'
-          strokeWidth='2'
-          className='animate-data-flow animation-delay-2000'
-        />
-        <line
-          x1='1920'
-          y1='1080'
-          x2='960'
-          y2='540'
-          stroke='url(#dataFlow)'
-          strokeWidth='2'
-          className='animate-data-flow animation-delay-3000'
-        />
-      </svg>
+      {/* Low-poly network pattern (static) */}
+      <div
+        className='absolute inset-0'
+        style={{
+          backgroundImage:
+            'radial-gradient(circle at 25% 25%, rgba(0,255,157,0.1) 0%, transparent 50%), ' +
+            'radial-gradient(circle at 75% 75%, rgba(255,46,77,0.1) 0%, transparent 50%), ' +
+            'radial-gradient(circle at 50% 50%, rgba(240,240,240,0.05) 0%, transparent 50%)',
+        }}
+      />
 
       {/* Top Navigation (overlay) */}
       <nav className='absolute top-0 right-0 left-0 z-50 flex items-center justify-between p-6'>
@@ -74,34 +40,8 @@ export default function AuthLayout({ children }: Props) {
         </div>
       </nav>
 
-      {/* Main Content Area - children control layout; full height since header overlays */}
+      {/* Main Content Area */}
       <main className='relative z-10 min-h-screen'>{children}</main>
-
-      {/* Micro-light Particles Background */}
-      <div className='pointer-events-none absolute inset-0 z-0 overflow-hidden'>
-        {/* Matrix Rain Effect */}
-        {/* <div className='absolute top-0 left-1/4 w-px h-full bg-gradient-to-b from-transparent via-[#00C77E]/30 to-transparent animate-matrix-rain'></div>
-        <div className='absolute top-0 left-3/4 w-px h-full bg-gradient-to-b from-transparent via-[#00C77E]/20 to-transparent animate-matrix-rain animation-delay-2000'></div>
-        <div className='absolute top-0 left-1/2 w-px h-full bg-gradient-to-b from-transparent via-[#FF2E4D]/20 to-transparent animate-matrix-rain animation-delay-4000'></div> */}
-
-        {/* Floating Particles */}
-        {particles.map((p) => (
-          <div
-            key={p.id}
-            className='animate-particle-float absolute rounded-full'
-            style={{
-              left: p.left,
-              top: p.top,
-              width: p.size,
-              height: p.size,
-              backgroundColor: p.color,
-              boxShadow: `0 0 10px ${p.color}`,
-              animationDelay: p.delay,
-              animationDuration: p.duration,
-            }}
-          ></div>
-        ))}
-      </div>
     </div>
   );
 }
