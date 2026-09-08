@@ -112,9 +112,13 @@ var Module = fx.Module("biz",
 			},
 		})
 	}),
-	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService, s *scheduler.Scheduler) {
+	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService, channelSvc *ChannelService, systemSvc *SystemService, s *scheduler.Scheduler) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
+				// The migration must complete before quota tasks can observe channel routing settings.
+				if err := (&quotaRoutingMigrator{system: systemSvc, channels: channelSvc}).Migrate(ctx); err != nil {
+					return err
+				}
 				return svc.RegisterScheduledTasks(ctx, s)
 			},
 		})
