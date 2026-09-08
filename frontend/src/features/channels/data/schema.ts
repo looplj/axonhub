@@ -130,6 +130,7 @@ export const channelTypeSchema = z.enum([
   'zenmux_responses',
   'zenmux_anthropic',
   'zenmux_gemini',
+  'zenmux_video',
   'commandcode',
   'commandcode_anthropic',
 ]);

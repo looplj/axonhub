@@ -44,6 +44,7 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 		{"zenmux", channel.TypeZenmuxResponses, ""},
 		{"zenmux", channel.TypeZenmuxAnthropic, ""},
 		{"zenmux", channel.TypeZenmuxGemini, ""},
+		{"zenmux", channel.TypeZenmuxVideo, ""},
 		{"cline", channel.TypeCline, ""},
 		{"wafer", channel.TypeOpenai, "https://pass.wafer.ai"},
 		{"wafer", channel.TypeOpenaiResponses, "https://pass.wafer.ai"},

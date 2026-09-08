@@ -64,6 +64,7 @@ var providerQuotaChannelTypes = []channel.Type{
 	channel.TypeZenmuxResponses,
 	channel.TypeZenmuxAnthropic,
 	channel.TypeZenmuxGemini,
+	channel.TypeZenmuxVideo,
 	channel.TypeCline,
 	channel.TypeOpenai,
 	channel.TypeOpenaiResponses,
@@ -1080,7 +1081,7 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "github_copilot"
 	case channel.TypeNanogpt, channel.TypeNanogptResponses:
 		return "nanogpt"
-	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini:
+	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini, channel.TypeZenmuxVideo:
 		return "zenmux"
 	case channel.TypeCline:
 		return "cline"
@@ -1105,7 +1106,7 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 
 func hasCredentialsForProvider(ch *ent.Channel) bool {
 	switch ch.Type { //nolint:exhaustive // Only ZenMux uses the separate management credential.
-	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini:
+	case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxAnthropic, channel.TypeZenmuxGemini, channel.TypeZenmuxVideo:
 		return strings.TrimSpace(ch.Credentials.ManagementAPIKey) != ""
 	default:
 	}

@@ -159,6 +159,7 @@ func TestZenmuxQuotaChecker_SupportsOnlyZenMuxChannelTypes(t *testing.T) {
 		channel.TypeZenmuxResponses,
 		channel.TypeZenmuxAnthropic,
 		channel.TypeZenmuxGemini,
+		channel.TypeZenmuxVideo,
 	} {
 		require.True(t, checker.SupportsChannel(&ent.Channel{Type: channelType}))
 	}

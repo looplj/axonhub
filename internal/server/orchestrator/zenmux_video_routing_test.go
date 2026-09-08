@@ -37,6 +37,9 @@ func newZenmuxVideoCandidateFixture(t *testing.T, settings *objects.ChannelSetti
 			Name:     "ZenMux video",
 			Type:     channel.TypeZenmux,
 			Settings: settings,
+			Endpoints: []objects.ChannelEndpoint{{
+				APIFormat: llm.APIFormatZenmuxVideo.String(),
+			}},
 		},
 		Outbound: openAIOutbound,
 		Outbounds: map[string]transformer.Outbound{

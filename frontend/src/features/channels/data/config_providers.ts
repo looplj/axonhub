@@ -304,7 +304,7 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     provider: 'zenmux',
     icon: ZenMux,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
-    channelTypes: ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini'],
+    channelTypes: ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'],
   },
   commandcode: {
     provider: 'commandcode',

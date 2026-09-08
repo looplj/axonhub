@@ -9,7 +9,7 @@ import {
 } from './protocol-options.ts';
 
 const providerConfigs = {
-  zenmux: { channelTypes: ['zenmux', 'zenmux_responses'] },
+  zenmux: { channelTypes: ['zenmux', 'zenmux_responses', 'zenmux_video'] },
   openai: { channelTypes: ['openai', 'openai_responses'] },
 };
 
@@ -18,6 +18,7 @@ const channelConfigs = {
   zenmux_responses: { apiFormat: 'openai/responses' },
   zenmux_anthropic: { apiFormat: 'anthropic/messages' },
   zenmux_gemini: { apiFormat: 'gemini/contents' },
+  zenmux_video: { apiFormat: 'zenmux/video' },
   openai: { apiFormat: 'openai/chat_completions' },
   openai_responses: { apiFormat: 'openai/responses' },
 };
@@ -28,8 +29,8 @@ test('includes ZenMux native video in the add-channel provider formats', () => {
   assert.deepEqual(getApiFormatsForProvider('zenmux', configs), ['openai/chat_completions', 'openai/responses', 'zenmux/video']);
 });
 
-test('maps ZenMux native video back to the ZenMux channel type', () => {
-  assert.equal(getChannelTypeForApiFormat('zenmux', 'zenmux/video', configs), 'zenmux');
+test('maps ZenMux native video back to the dedicated ZenMux video channel type', () => {
+  assert.equal(getChannelTypeForApiFormat('zenmux', 'zenmux/video', configs), 'zenmux_video');
 });
 
 test('exposes the native video default endpoint to model protocol editing', () => {
@@ -41,7 +42,7 @@ test('does not expose ZenMux native video to unrelated providers', () => {
   assert.equal(getChannelTypeForApiFormat('openai', 'zenmux/video', configs), undefined);
 });
 
-test('does not expose ZenMux native video to a provider lacking the ZenMux channel type', () => {
+test('does not expose ZenMux native video to a provider lacking the ZenMux video channel type', () => {
   const openaiOnly = { providerConfigs: { zenmux: { channelTypes: ['zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini'] } }, channelConfigs };
   assert.deepEqual(getApiFormatsForProvider('zenmux', openaiOnly), ['openai/responses', 'anthropic/messages', 'gemini/contents']);
   assert.equal(getChannelTypeForApiFormat('zenmux', 'zenmux/video', openaiOnly), undefined);

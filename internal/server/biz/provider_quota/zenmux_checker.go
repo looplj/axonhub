@@ -93,7 +93,8 @@ func (c *ZenmuxQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	case channel.TypeZenmux,
 		channel.TypeZenmuxResponses,
 		channel.TypeZenmuxAnthropic,
-		channel.TypeZenmuxGemini:
+		channel.TypeZenmuxGemini,
+		channel.TypeZenmuxVideo:
 		return true
 	default:
 		return false

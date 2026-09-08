@@ -111,6 +111,7 @@
   "channels.types.zenmux_responses": "ZenMux (Responses)",
   "channels.types.zenmux_anthropic": "ZenMux (Anthropic)",
   "channels.types.zenmux_gemini": "ZenMux (Gemini)",
+  "channels.types.zenmux_video": "ZenMux (Video)",
   "channels.types.commandcode": "Command Code",
   "channels.types.commandcode_anthropic": "Command Code (Anthropic)",
   "channels.providers.openai": "OpenAI",
