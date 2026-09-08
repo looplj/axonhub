@@ -3,472 +3,345 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm"
 )
 
-func TestProviderQuotaSelector_ExhaustedOnlyMode(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			2: {Status: providerquotastatus.StatusWarning, Ready: true},
-			3: {Status: providerquotastatus.StatusAvailable, Ready: true},
-		},
-	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exhausted"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "warning"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "available"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 2)
-	require.Equal(t, 2, got[0].Channel.ID)
-	require.Equal(t, 3, got[1].Channel.ID)
+type mockQuotaRoutingSettingsProvider struct {
+	settings biz.QuotaRoutingSettings
 }
 
-func TestProviderQuotaSelector_DePrioritizeMode(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			2: {Status: providerquotastatus.StatusWarning, Ready: true},
-			3: {Status: providerquotastatus.StatusAvailable, Ready: true},
-		},
-	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeDePrioritize},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exhausted"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "warning"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "available"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 3)
-
-	ids := make([]int, len(got))
-	for i, c := range got {
-		ids[i] = c.Channel.ID
-	}
-	require.ElementsMatch(t, []int{1, 2, 3}, ids)
+func (m *mockQuotaRoutingSettingsProvider) QuotaRoutingSettingsOrDefault(context.Context) biz.QuotaRoutingSettings {
+	return m.settings
 }
 
-func TestProviderQuotaSelector_EnforcementDisabled(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-		},
-	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: false, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exhausted"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 1)
+type quotaRequestCandidateSelector struct {
+	candidatesByModel map[string][]*ChannelModelsCandidate
 }
 
-func TestProviderQuotaSelector_AllExhausted(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			2: {Status: providerquotastatus.StatusExhausted, Ready: false},
-		},
-	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "c1"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "c2"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Empty(t, got)
+func (s *quotaRequestCandidateSelector) Select(_ context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
+	return s.candidatesByModel[req.Model], nil
 }
 
-func TestProviderQuotaSelector_NoQuotaData(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{},
+func quotaRoutingCandidate(id int, mode objects.QuotaRoutingMode) *ChannelModelsCandidate {
+	return &ChannelModelsCandidate{
+		Channel: &biz.Channel{Channel: &ent.Channel{
+			ID:       id,
+			Name:     "channel",
+			Settings: &objects.ChannelSettings{QuotaRoutingMode: mode},
+		}},
 	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "no-data"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 1)
 }
 
-func TestProviderQuotaSelector_NilProvider(t *testing.T) {
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "test"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, nil, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 1)
+func quotaRoutingStatus(status providerquotastatus.Status) *biz.QuotaChannelStatus {
+	return &biz.QuotaChannelStatus{Status: status, Ready: status != providerquotastatus.StatusExhausted}
 }
 
-func TestProviderQuotaSelector_WrappedError(t *testing.T) {
-	provider := &mockQuotaStatusProvider{}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
+func quotaStickyOnlyStatus() *biz.QuotaChannelStatus {
+	start := time.Now().Add(-2 * time.Hour)
+	reset := time.Now().Add(time.Hour)
+	return &biz.QuotaChannelStatus{
+		Status: providerquotastatus.StatusAvailable,
+		Ready:  true,
+		Limits: []provider_quota.QuotaLimitStatus{{
+			Type:        provider_quota.QuotaLimitTypeToken,
+			Status:      "available",
+			UsageRatio:  0.9,
+			Window:      provider_quota.QuotaWindow5h,
+			PeriodStart: &start,
+			NextResetAt: &reset,
+		}},
+	}
+}
+
+func quotaExhaustedStatus() *biz.QuotaChannelStatus {
+	return quotaRoutingStatus(providerquotastatus.StatusExhausted)
+}
+
+func newQuotaRoutingSelector(
+	candidates []*ChannelModelsCandidate,
+	statuses map[int]*biz.QuotaChannelStatus,
+	settings biz.QuotaRoutingSettings,
+) (*LoadBalancedSelector, *QuotaRoutingGate) {
+	provider := &mockQuotaStatusProvider{statuses: statuses}
+	gate := NewQuotaRoutingGate(provider, settings)
+	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{
+		Enabled:           true,
+		MaxChannelRetries: 2,
+		TraceStickyMode:   biz.TraceStickyPreferPreviousChannel,
+	}}
+	selector := WithRoutingPolicyLoadBalancedSelector(
+		&staticChannelSelector{candidates: candidates},
+		nil,
+		policy,
+		&fakePreviousChannelProvider{traceChannelIDs: map[int]int{10: 2}},
+		nil,
+		nil,
+		gate,
+	)
+	return selector, gate
+}
+
+func TestQuotaRoutingGate_excludes_non_pinned_stickyOnly_while_open_exists(t *testing.T) {
+	// Given
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+		2: quotaStickyOnlyStatus(),
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure})
+	candidates := []*ChannelModelsCandidate{
+		quotaRoutingCandidate(1, ""),
+		quotaRoutingCandidate(2, ""),
 	}
 
-	inner := &mockSelector{err: errors.New("inner error")}
+	// When
+	got := gate.Filter(context.Background(), candidates, &llm.Request{}, 0)
 
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	_, err := selector.Select(context.Background(), &llm.Request{})
+	// Then
+	require.Equal(t, []int{1}, quotaRoutingIDs(got))
+	require.Equal(t, 1, gate.DroppedCount())
+}
 
+func TestLoadBalancedSelector_retains_stickyOnly_candidate_and_pins_it_first(t *testing.T) {
+	// Given
+	candidates := []*ChannelModelsCandidate{quotaRoutingCandidate(1, ""), quotaRoutingCandidate(2, "")}
+	selector, gate := newQuotaRoutingSelector(candidates, map[int]*biz.QuotaChannelStatus{
+		1: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+		2: quotaStickyOnlyStatus(),
+	}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure})
+	ctx := contexts.WithTrace(context.Background(), &ent.Trace{ID: 10, ThreadID: 20})
+
+	// When
+	got, err := selector.Select(ctx, &llm.Request{Model: "model"})
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, []int{2, 1}, quotaRoutingIDs(got))
+	require.True(t, got[0].TraceSticky)
+	require.Zero(t, gate.DroppedCount())
+}
+
+func TestLoadBalancedSelector_abandons_exhausted_sticky_candidate(t *testing.T) {
+	// Given
+	selector, gate := newQuotaRoutingSelector(
+		[]*ChannelModelsCandidate{quotaRoutingCandidate(1, ""), quotaRoutingCandidate(2, "")},
+		map[int]*biz.QuotaChannelStatus{1: quotaRoutingStatus(providerquotastatus.StatusAvailable), 2: quotaExhaustedStatus()},
+		biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure},
+	)
+	ctx := contexts.WithTrace(context.Background(), &ent.Trace{ID: 10, ThreadID: 20})
+
+	// When
+	got, err := selector.Select(ctx, &llm.Request{Model: "model"})
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, []int{1}, quotaRoutingIDs(got))
+	require.Equal(t, 1, gate.DroppedCount())
+}
+
+func TestQuotaRoutingGate_phaseTwo_returns_single_stickyOnly_candidate(t *testing.T) {
+	// Given
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{1: quotaStickyOnlyStatus()}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure})
+
+	// When
+	got := gate.Filter(context.Background(), []*ChannelModelsCandidate{quotaRoutingCandidate(1, "")}, &llm.Request{}, 0)
+
+	// Then
+	require.Equal(t, []int{1}, quotaRoutingIDs(got))
+	require.Zero(t, gate.DroppedCount())
+}
+
+func TestQuotaRoutingGate_does_not_apply_phaseTwo_when_open_exists(t *testing.T) {
+	// Given
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: quotaRoutingStatus(providerquotastatus.StatusAvailable),
+		2: quotaStickyOnlyStatus(),
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure})
+
+	// When
+	got := gate.Filter(context.Background(), []*ChannelModelsCandidate{quotaRoutingCandidate(1, ""), quotaRoutingCandidate(2, "")}, &llm.Request{}, 0)
+
+	// Then
+	require.Equal(t, []int{1}, quotaRoutingIDs(got))
+}
+
+func TestQuotaRoutingGate_mixed_stickyOnly_keeps_only_resolved_sticky_and_open(t *testing.T) {
+	// Given
+	selector, _ := newQuotaRoutingSelector(
+		[]*ChannelModelsCandidate{quotaRoutingCandidate(1, ""), quotaRoutingCandidate(2, ""), quotaRoutingCandidate(3, "")},
+		map[int]*biz.QuotaChannelStatus{1: quotaRoutingStatus(providerquotastatus.StatusAvailable), 2: quotaStickyOnlyStatus(), 3: quotaStickyOnlyStatus()},
+		biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure},
+	)
+	ctx := contexts.WithTrace(context.Background(), &ent.Trace{ID: 10, ThreadID: 20})
+
+	// When
+	got, err := selector.Select(ctx, &llm.Request{Model: "model"})
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, []int{2, 1}, quotaRoutingIDs(got))
+	require.NotContains(t, quotaRoutingIDs(got), 3)
+}
+
+func TestQuotaRoutingGate_ignoreQuota_keeps_exhausted_channel(t *testing.T) {
+	// Given
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{1: quotaExhaustedStatus()}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted})
+
+	// When
+	got := gate.Filter(context.Background(), []*ChannelModelsCandidate{quotaRoutingCandidate(1, objects.QuotaRoutingModeIgnoreQuota)}, &llm.Request{}, 0)
+
+	// Then
+	require.Equal(t, []int{1}, quotaRoutingIDs(got))
+	require.Zero(t, gate.DroppedCount())
+}
+
+func TestQuotaRoutingGate_channel_override_beats_global_and_inherit_uses_global(t *testing.T) {
+	// Given
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: quotaExhaustedStatus(),
+		2: quotaExhaustedStatus(),
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted})
+	candidates := []*ChannelModelsCandidate{
+		quotaRoutingCandidate(1, objects.QuotaRoutingModeIgnoreQuota),
+		quotaRoutingCandidate(2, ""),
+	}
+
+	// When
+	got := gate.Filter(context.Background(), candidates, &llm.Request{}, 0)
+
+	// Then
+	require.Equal(t, []int{1}, quotaRoutingIDs(got))
+	require.Equal(t, 1, gate.DroppedCount())
+}
+
+func TestQuotaRoutingGate_uses_request_modality_and_keeps_unknown_neutral(t *testing.T) {
+	// Given
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: {
+			Status: providerquotastatus.StatusWarning,
+			Limits: []provider_quota.QuotaLimitStatus{
+				{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1},
+				{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.2},
+			},
+		},
+		2: quotaRoutingStatus(providerquotastatus.StatusUnknown),
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted})
+	candidates := []*ChannelModelsCandidate{quotaRoutingCandidate(1, ""), quotaRoutingCandidate(2, "")}
+
+	// When
+	got := gate.Filter(context.Background(), candidates, &llm.Request{}, 0)
+
+	// Then
+	require.Equal(t, []int{1, 2}, quotaRoutingIDs(got))
+	got = gate.Filter(context.Background(), candidates, &llm.Request{Image: &llm.ImageRequest{}}, 0)
+	require.Equal(t, []int{2}, quotaRoutingIDs(got))
+}
+
+func TestSelectCandidates_returns_quota_error_only_when_gate_dropped_candidates(t *testing.T) {
+	// Given
+	provider := &mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{1: quotaExhaustedStatus()}}
+	settings := &mockQuotaRoutingSettingsProvider{settings: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}}
+	inbound := &PersistentInboundTransformer{state: &PersistenceState{
+		CandidateSelector: &staticChannelSelector{candidates: []*ChannelModelsCandidate{quotaRoutingCandidate(1, "")}},
+	}}
+	middleware := selectCandidates(inbound, provider, settings)
+
+	// When
+	_, err := middleware.OnInboundLlmRequest(context.Background(), &llm.Request{Model: "model"})
+
+	// Then
+	var quotaErr *QuotaExhaustedError
+	require.True(t, errors.As(err, &quotaErr))
+
+	// Given
+	inbound = &PersistentInboundTransformer{state: &PersistenceState{CandidateSelector: &staticChannelSelector{}}}
+	middleware = selectCandidates(inbound, provider, settings)
+
+	// When
+	_, err = middleware.OnInboundLlmRequest(context.Background(), &llm.Request{Model: "model"})
+
+	// Then
 	require.Error(t, err)
-	require.Equal(t, "inner error", err.Error())
+	require.False(t, errors.As(err, &quotaErr))
 }
 
-func TestProviderQuotaSelector_EmptyCandidates(t *testing.T) {
-	provider := &mockQuotaStatusProvider{}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
+func TestSelectCandidates_empty_loadBalancers_still_gates_exhausted_candidate(t *testing.T) {
+	// Given
+	inbound := &PersistentInboundTransformer{state: &PersistenceState{
+		CandidateSelector: &staticChannelSelector{candidates: []*ChannelModelsCandidate{quotaRoutingCandidate(7, "")}},
+		LoadBalancers:     map[string]*LoadBalancer{},
+	}}
+	middleware := selectCandidates(inbound, &mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{7: quotaExhaustedStatus()}}, &mockQuotaRoutingSettingsProvider{settings: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}})
 
-	inner := &mockSelector{candidates: []*ChannelModelsCandidate{}}
+	// When
+	_, err := middleware.OnInboundLlmRequest(context.Background(), &llm.Request{Model: "model"})
 
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Empty(t, got)
+	// Then
+	var quotaErr *QuotaExhaustedError
+	require.True(t, errors.As(err, &quotaErr))
+	require.Empty(t, inbound.state.ChannelModelsCandidates)
 }
 
-func TestProviderQuotaSelector_UnknownStatusKept(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusUnknown, Ready: false},
-		},
+func TestSelectCandidates_concurrent_requests_have_independent_drop_counts(t *testing.T) {
+	// Given
+	inbound := &PersistentInboundTransformer{state: &PersistenceState{
+		CandidateSelector: &quotaRequestCandidateSelector{candidatesByModel: map[string][]*ChannelModelsCandidate{
+			"exhausted": {quotaRoutingCandidate(1, "")},
+		}},
+		LoadBalancers: map[string]*LoadBalancer{},
+	}}
+	middleware := selectCandidates(
+		inbound,
+		&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{1: quotaExhaustedStatus()}},
+		&mockQuotaRoutingSettingsProvider{settings: biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}},
+	)
+	results := make(chan struct {
+		model string
+		err   error
+	}, 2)
+	var wg sync.WaitGroup
+	for _, model := range []string{"exhausted", "empty"} {
+		wg.Add(1)
+		go func(model string) {
+			defer wg.Done()
+			_, err := middleware.OnInboundLlmRequest(context.Background(), &llm.Request{Model: model})
+			results <- struct {
+				model string
+				err   error
+			}{model, err}
+		}(model)
 	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
+	wg.Wait()
+	close(results)
+
+	// When
+	observed := make(map[string]error, 2)
+	for result := range results {
+		observed[result.model] = result.err
 	}
 
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "unknown"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 1)
+	// Then
+	require.Len(t, observed, 2)
+	var quotaErr *QuotaExhaustedError
+	require.True(t, errors.As(observed["exhausted"], &quotaErr))
+	require.False(t, errors.As(observed["empty"], &quotaErr))
+	require.ErrorIs(t, observed["empty"], biz.ErrInvalidModel)
 }
 
-func TestProviderQuotaSelector_MixedCandidates(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			2: {Status: providerquotastatus.StatusWarning, Ready: true},
-			3: {Status: providerquotastatus.StatusAvailable, Ready: true},
-			4: {Status: providerquotastatus.StatusUnknown, Ready: false},
-		},
+func quotaRoutingIDs(candidates []*ChannelModelsCandidate) []int {
+	ids := make([]int, 0, len(candidates))
+	for _, candidate := range candidates {
+		ids = append(ids, candidate.Channel.ID)
 	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeDePrioritize},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exhausted"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "warning"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "available"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 4, Name: "unknown"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 5, Name: "no-data"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 5)
-
-	ids := make([]int, len(got))
-	for i, c := range got {
-		ids[i] = c.Channel.ID
-	}
-	require.ElementsMatch(t, []int{1, 2, 3, 4, 5}, ids)
-}
-
-func TestProviderQuotaSelector_PerLimit_ImageExhausted_KeptForToken(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {
-				Status: providerquotastatus.StatusWarning,
-				Ready:  true,
-				Limits: []provider_quota.QuotaLimitStatus{
-					{Type: provider_quota.QuotaLimitTypeImage, Status: "exhausted", UsageRatio: 1.0, Ready: false},
-					{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
-				},
-			},
-		},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
-		},
-	}
-
-	systemService := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, systemService)
-
-	tokenReq := &llm.Request{Model: "gpt-4"}
-	result, err := selector.Select(context.Background(), tokenReq)
-	require.NoError(t, err)
-	require.Len(t, result, 1, "channel should be kept for token request when only image limit is exhausted")
-
-	imageReq := &llm.Request{Model: "dall-e-3", Image: &llm.ImageRequest{}}
-	result, err = selector.Select(context.Background(), imageReq)
-	require.NoError(t, err)
-	require.Len(t, result, 0, "channel should be filtered for image request when image limit is exhausted")
-}
-
-func TestProviderQuotaSelector_FiltersExhaustedBeforeLoadBalancer(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			2: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			3: {Status: providerquotastatus.StatusAvailable, Ready: true},
-		},
-	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exhausted-1"}}, Priority: 0},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "exhausted-2"}}, Priority: 0},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "available"}}, Priority: 1},
-		},
-	}
-
-	quotaSelector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := quotaSelector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 1)
-	require.Equal(t, 3, got[0].Channel.ID, "available channel should be preserved after quota filtering")
-}
-
-func TestProviderQuotaSelector_ChannelExhaustedOverridesPerLimitAvailable(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {
-				Status: providerquotastatus.StatusExhausted,
-				Ready:  false,
-				Limits: []provider_quota.QuotaLimitStatus{
-					{Type: provider_quota.QuotaLimitTypeToken, Status: "available", UsageRatio: 0.3, Ready: true},
-				},
-			},
-		},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
-		},
-	}
-
-	systemService := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, systemService)
-
-	tokenReq := &llm.Request{Model: "gpt-4"}
-	result, err := selector.Select(context.Background(), tokenReq)
-	require.NoError(t, err)
-	require.Empty(t, result, "channel with Exhausted channel-level status must be filtered even if per-limit token status is available")
-}
-
-func TestProviderQuotaSelector_AllowedChannelIDs_ExemptFromFiltering(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			2: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			3: {Status: providerquotastatus.StatusAvailable, Ready: true},
-		},
-	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{
-			Enabled:           true,
-			Mode:              biz.QuotaEnforcementModeExhaustedOnly,
-			AllowedChannelIDs: []int{1},
-		},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exempt-exhausted"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "filtered-exhausted"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "available"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 2, "exempt channel should be kept, non-exempt exhausted filtered, available kept")
-	require.Equal(t, 1, got[0].Channel.ID, "exempt channel must be preserved")
-	require.Equal(t, 3, got[1].Channel.ID, "available channel must be preserved")
-}
-
-func TestProviderQuotaSelector_AllowedChannelIDs_EmptyList(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-		},
-	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{
-			Enabled:           true,
-			Mode:              biz.QuotaEnforcementModeExhaustedOnly,
-			AllowedChannelIDs: []int{},
-		},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exhausted"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Empty(t, got, "empty allowed list should not exempt any channel")
-}
-
-func TestProviderQuotaSelector_AllowedChannelIDs_NilList(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-		},
-	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{
-			Enabled: true,
-			Mode:    biz.QuotaEnforcementModeExhaustedOnly,
-		},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exhausted"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Empty(t, got, "nil allowed list should not exempt any channel")
-}
-
-func TestProviderQuotaSelector_AllowedChannelIDs_MultipleExempt(t *testing.T) {
-	provider := &mockQuotaStatusProvider{
-		statuses: map[int]*biz.QuotaChannelStatus{
-			1: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			2: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			3: {Status: providerquotastatus.StatusExhausted, Ready: false},
-			4: {Status: providerquotastatus.StatusAvailable, Ready: true},
-		},
-	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{
-			Enabled:           true,
-			Mode:              biz.QuotaEnforcementModeExhaustedOnly,
-			AllowedChannelIDs: []int{1, 3},
-		},
-	}
-
-	inner := &mockSelector{
-		candidates: []*ChannelModelsCandidate{
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "exempt-1"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "filtered"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 3, Name: "exempt-2"}}},
-			{Channel: &biz.Channel{Channel: &ent.Channel{ID: 4, Name: "available"}}},
-		},
-	}
-
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	got, err := selector.Select(context.Background(), &llm.Request{})
-
-	require.NoError(t, err)
-	require.Len(t, got, 3, "two exempt + one available should remain")
-
-	ids := make([]int, len(got))
-	for i, c := range got {
-		ids[i] = c.Channel.ID
-	}
-	require.ElementsMatch(t, []int{1, 3, 4}, ids)
+	return ids
 }
