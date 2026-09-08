@@ -6,14 +6,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 )
 
-type QuotaRoutingMode string
-
-const (
-	QuotaRoutingModeIgnoreQuota       QuotaRoutingMode = "ignore_quota"
-	QuotaRoutingModeRemoveOnExhausted QuotaRoutingMode = "remove_on_exhausted"
-	QuotaRoutingModeBackpressure      QuotaRoutingMode = "backpressure"
-)
-
 type RoutingState string
 
 const (

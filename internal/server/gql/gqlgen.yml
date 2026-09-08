@@ -712,6 +712,9 @@ models:
   QuotaEnforcementMode:
     model:
       - github.com/looplj/axonhub/internal/server/biz.QuotaEnforcementMode
+  ChannelQuotaRoutingMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.QuotaRoutingMode
   TraceStickyMode:
     model:
       - github.com/looplj/axonhub/internal/server/biz.TraceStickyMode
