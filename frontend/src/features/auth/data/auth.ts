@@ -5,6 +5,7 @@ import { graphqlRequest } from '@/gql/graphql';
 import { ME_QUERY } from '@/gql/users';
 import { toast } from 'sonner';
 import { useAuthStore, setTokenToStorage, removeTokenFromStorage } from '@/stores/authStore';
+import { useProjectStore } from '@/stores/projectStore';
 import { AuthUser } from '@/stores/authStore';
 import { authApi } from '@/lib/api-client';
 import i18n from '@/lib/i18n';
@@ -36,6 +37,15 @@ export function useMe(enabled = true) {
     if (query.data) {
       const userLanguage = query.data.preferLanguage || 'en';
 
+      // The selected project is persisted per browser, but only valid for the
+      // user it belonged to. Drop any project the current user is not a member
+      // of so a stale selection from a previous account is never sent to the
+      // server as X-Project-ID.
+      const { selectedProjectId, clearSelectedProjectId } = useProjectStore.getState();
+      if (selectedProjectId && !(query.data.projects ?? []).some((p) => p.projectID === selectedProjectId)) {
+        clearSelectedProjectId();
+      }
+
       setUser(query.data);
 
       // Initialize i18n with user's preferred language
@@ -65,6 +75,11 @@ export function useSignIn() {
       // Update auth store
       setAccessToken(data.token);
       setUser(data.user);
+
+      // Reset project selection: a persisted project from a previous account
+      // on the same browser must not leak into this session. The project
+      // switcher re-selects the first available project once myProjects loads.
+      useProjectStore.getState().clearSelectedProjectId();
 
       // Initialize i18n with user's preferred language
       if (userLanguage !== i18n.language) {
@@ -96,6 +111,10 @@ export function useSignOut() {
 
     // Clear auth store
     reset();
+
+    // Drop the persisted project selection so the next account on this browser
+    // does not inherit it.
+    useProjectStore.getState().clearSelectedProjectId();
 
     queryClient.clear();
 
@@ -157,6 +176,11 @@ export function useOIDCExchange() {
       // Update auth store
       setAccessToken(data.token);
       setUser(data.user);
+
+      // Reset project selection: a persisted project from a previous account
+      // on the same browser must not leak into this session. The project
+      // switcher re-selects the first available project once myProjects loads.
+      useProjectStore.getState().clearSelectedProjectId();
 
       // Initialize i18n with user's preferred language
       if (userLanguage !== i18n.language) {
