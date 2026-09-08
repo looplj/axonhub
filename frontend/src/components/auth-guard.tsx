@@ -22,10 +22,12 @@ export function AuthGuard({ children }: AuthGuardProps) {
   // the persisted project has been validated against the current user's
   // projects (and cleared when stale), keep showing the loading state so
   // descendant queries never carry a X-Project-ID the user has no membership in.
+  // `meData` must be present: an unvalidated selection is never a reason to
+  // render protected content, even when the `me` query itself errored.
   const projectReady =
-    !meData ||
-    !selectedProjectId ||
-    (meData.projects ?? []).some((p) => p.projectID === selectedProjectId);
+    !!meData &&
+    (!selectedProjectId ||
+      (meData.projects ?? []).some((p) => p.projectID === selectedProjectId));
 
   useEffect(() => {
     // If no token, redirect to sign-in
