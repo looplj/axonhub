@@ -2,16 +2,17 @@ package scopes
 
 import (
 	"context"
-	dbsql "database/sql"
+	"database/sql"
 	"errors"
 	"slices"
 	"testing"
 
 	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/entql"
 	"github.com/samber/lo"
+
+	entsql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -19,7 +20,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/migrate/schemahook"
 	"github.com/looplj/axonhub/internal/ent/privacy"
 	"github.com/looplj/axonhub/internal/ent/user"
-
 	_ "github.com/looplj/axonhub/internal/pkg/sqlite"
 )
 
@@ -936,7 +936,7 @@ func TestProjectMemberReadUsersRule(t *testing.T) {
 func openScopesTestClient(t *testing.T) *ent.Client {
 	t.Helper()
 
-	db, err := dbsql.Open("sqlite3", "file:scopes_mem?mode=memory&cache=shared")
+	db, err := sql.Open("sqlite3", "file:scopes_mem?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatalf("open sqlite: %v", err)
 	}
