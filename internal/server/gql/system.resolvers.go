@@ -175,7 +175,7 @@ func (r *mutationResolver) UpdateVideoStorageSettings(ctx context.Context, input
 
 // UpdateQuotaRoutingSettings is the resolver for the updateQuotaRoutingSettings field.
 func (r *mutationResolver) UpdateQuotaRoutingSettings(ctx context.Context, input UpdateQuotaRoutingSettingsInput) (bool, error) {
-	if !scopes.UserHasScope(ctx, scopes.ScopeWriteSettings) {
+	if !authz.HasScope(ctx, scopes.ScopeWriteSettings) {
 		return false, fmt.Errorf("permission denied: requires write_settings scope")
 	}
 
