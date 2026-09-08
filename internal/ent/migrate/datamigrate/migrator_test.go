@@ -313,6 +313,50 @@ func TestMigrator_Run_BetaMigration(t *testing.T) {
 	assert.Equal(t, 1, unstableMigration.migrateCalls)
 }
 
+func TestMigrator_Run_BetaMigrationAcrossTenBoundary(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := ent.NewContext(context.Background(), client)
+	ctx = authz.WithTestBypass(ctx)
+
+	systemService := biz.NewSystemService(biz.SystemServiceParams{})
+	err := systemService.Initialize(ctx, &biz.InitializeSystemParams{
+		OwnerEmail:     "owner@example.com",
+		OwnerPassword:  "password123",
+		OwnerFirstName: "System",
+		OwnerLastName:  "Owner",
+		BrandName:      "Test Brand",
+	})
+	require.NoError(t, err)
+	require.NoError(t, systemService.SetVersion(ctx, "v1.0.0-beta9"))
+
+	migrator := datamigrate.NewMigratorWithoutRegistrations(client)
+	migration := &mockMigrator{version: "v1.0.0-beta10"}
+	migrator.Register(migration)
+
+	require.NoError(t, migrator.Run(ctx))
+	assert.Equal(t, 1, migration.migrateCalls, "beta10 migration must run on a beta9 system")
+
+	// A beta10 system must not replay the beta10 migration.
+	require.NoError(t, systemService.SetVersion(ctx, "v1.0.0-beta10"))
+	replayed := &mockMigrator{version: "v1.0.0-beta10"}
+	migrator = datamigrate.NewMigratorWithoutRegistrations(client)
+	migrator.Register(replayed)
+
+	require.NoError(t, migrator.Run(ctx))
+	assert.Equal(t, 0, replayed.migrateCalls, "beta10 migration must not replay on a beta10 system")
+
+	// A beta10 system must skip the older beta9 migration.
+	require.NoError(t, systemService.SetVersion(ctx, "v1.0.0-beta10"))
+	older := &mockMigrator{version: "v1.0.0-beta9"}
+	migrator = datamigrate.NewMigratorWithoutRegistrations(client)
+	migrator.Register(older)
+
+	require.NoError(t, migrator.Run(ctx))
+	assert.Equal(t, 0, older.migrateCalls, "beta9 migration must be skipped on a beta10 system")
+}
+
 func TestMigrator_Run_EmptySystemVersion(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=1")
 	defer client.Close()
