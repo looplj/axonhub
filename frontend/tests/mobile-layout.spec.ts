@@ -26,12 +26,6 @@ test.describe('Mobile Header Layout', () => {
       const sidebarTrigger = page.locator('button[data-sidebar="trigger"]');
       await expect(sidebarTrigger).toBeVisible();
 
-      const quotaBadges = page.locator('header [data-testid="quota-badges"] button').first();
-      const quotaVisible = await quotaBadges.isVisible().catch(() => false);
-      if (quotaVisible) {
-        await expect(quotaBadges).toBeVisible();
-      }
-
       const languageSwitch = page.getByRole('button', { name: /Toggle language/i });
       await expect(languageSwitch).toBeVisible();
 
@@ -59,12 +53,6 @@ test.describe('Mobile Header Layout', () => {
 
       const sidebarTrigger = page.locator('button[data-sidebar="trigger"]');
       await expect(sidebarTrigger).toBeVisible();
-
-      const quotaBadges = page.locator('header [data-testid="quota-badges"] button').first();
-      const quotaVisible = await quotaBadges.isVisible().catch(() => false);
-      if (quotaVisible) {
-        await expect(quotaBadges).toBeVisible();
-      }
 
       const languageSwitch = page.getByRole('button', { name: /Toggle language/i });
       await expect(languageSwitch).toBeHidden();

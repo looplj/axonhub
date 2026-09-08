@@ -16,7 +16,6 @@ function parseLocale(locale) {
 
 test('Cline Pass unavailable quota does not require active windows', () => {
   const quotaTypes = read('features/system/data/quotas.ts');
-  const quotaBadges = read('components/quota-badges.tsx');
 
   assert.match(quotaTypes, /pass_state:\s*'unavailable'/, 'quota data should model unavailable Cline Pass explicitly');
   assert.match(
@@ -24,12 +23,6 @@ test('Cline Pass unavailable quota does not require active windows', () => {
     /qd\.pool === 'cline_pass' && qd\.windows != null/,
     'the active Cline Pass type guard should require window data'
   );
-  assert.match(
-    quotaBadges,
-    /isClineUnavailablePassQuotaData\(qd\)/,
-    'the Cline quota row should render unavailable Pass data separately'
-  );
-  assert.match(quotaBadges, /quota\.status\.cline_pass_unavailable/, 'the status badge should use the Cline Pass unavailable label');
 });
 
 test('Cline Pass unavailable copy does not infer subscription expiry', () => {

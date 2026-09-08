@@ -1,46 +1,17 @@
-import { useState, useCallback } from 'react';
 import { Link } from '@tanstack/react-router';
 import { IconSettings } from '@tabler/icons-react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { LanguageSwitch } from '@/components/language-switch';
 import { ThemeSwitch } from '@/components/theme-switch';
-import { QuotaBadges } from '@/components/quota-badges';
 import { PermissionGuard } from '@/components/permission-guard';
-import { checkProviderQuotas } from '@/features/system/data/quotas';
 import { useBrandSettings } from '@/features/system/data/system';
 import { ProjectSwitcher } from './project-switcher';
-import { toast } from 'sonner';
 
 export function AppHeader() {
   const { data: brandSettings } = useBrandSettings();
-  const { t } = useTranslation();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const queryClient = useQueryClient();
   const { isMobile } = useSidebar();
   const displayName = brandSettings?.brandName || 'AxonHub';
-
-  const refreshMutation = useMutation({
-    mutationFn: async () => {
-      return checkProviderQuotas();
-    },
-    onSuccess: () => {
-      void queryClient.refetchQueries({ queryKey: ['provider-quotas'] });
-      toast.success(t('system.providerQuota.refresh.success'));
-    },
-    onError: (error: any) => {
-      toast.error(error.message || t('system.providerQuota.refresh.failure'));
-    },
-  });
-
-  const handleRefresh = useCallback(() => {
-    setIsRefreshing(true);
-    refreshMutation.mutate(undefined, {
-      onSettled: () => setIsRefreshing(false),
-    });
-  }, [refreshMutation]);
 
   return (
     <header className='bg-background/95 supports-[backdrop-filter]:bg-background/60 fixed top-0 z-50 w-full backdrop-blur'>
@@ -80,11 +51,6 @@ export function AppHeader() {
 
         {/* 右侧控件 */}
         <div className='flex items-center gap-2 pr-6'>
-          {/* Quota Badges - only visible to users with channel read permission */}
-          <PermissionGuard requiredSystemScope='read_channels'>
-            <QuotaBadges onRefresh={handleRefresh} isRefreshing={isRefreshing} />
-          </PermissionGuard>
-
           {/* Desktop-only controls - hidden on mobile */}
           {!isMobile && (
             <>
