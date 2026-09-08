@@ -221,11 +221,8 @@ var openAIChatOnlyDefaultEndpoints = []objects.ChannelEndpoint{
 // built-in contract. User-configured custom endpoints remain external overrides
 // and are not modeled here.
 var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
-	channel.TypeOpenai: openAIFullDefaultEndpoints,
-	channel.TypeZenmux: append(
-		append([]objects.ChannelEndpoint{}, openAIFullDefaultEndpoints...),
-		objects.ChannelEndpoint{APIFormat: llm.APIFormatZenmuxVideo.String()},
-	),
+	channel.TypeOpenai:          openAIFullDefaultEndpoints,
+	channel.TypeZenmux:          openAIFullDefaultEndpoints,
 	channel.TypeOpenaiResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeZenmuxResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
 	channel.TypeAtlascloud:      openAICompatibleDefaultEndpoints,
@@ -255,6 +252,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatGeminiContents.String()},
 		{APIFormat: llm.APIFormatGeminiEmbedding.String()},
 	},
+	channel.TypeZenmuxVideo: {{APIFormat: llm.APIFormatZenmuxVideo.String()}},
 	channel.TypeGeminiVertex: {
 		{APIFormat: llm.APIFormatGeminiContents.String()},
 		{APIFormat: llm.APIFormatGeminiEmbedding.String()},
@@ -336,7 +334,7 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 		return err
 	}
 
-	if channelType == channel.TypeZenmux {
+	if isZenmuxChannelType(channelType) {
 		return nil
 	}
 

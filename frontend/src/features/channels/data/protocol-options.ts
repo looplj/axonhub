@@ -44,25 +44,19 @@ export function getApiFormatsForProvider(provider: string, configs: ProtocolConf
     }
   }
 
-  // Native video is a ZenMux channel type, so it is only offered when the
-  // provider actually includes the ZenMux channel type in its config.
-  if (providerConfig.channelTypes.includes('zenmux') && !formats.includes('zenmux/video')) {
-    formats.push('zenmux/video');
-  }
-
   return formats;
 }
 
 /**
  * Custom endpoint formats the endpoints dialog may offer for a channel.
- * Native video is a ZenMux channel type, so it must not be offered on other
- * channel types. Other custom endpoint formats remain available everywhere.
+ * Native video is available as a custom endpoint on every ZenMux channel type.
+ * Other custom endpoint formats remain available everywhere.
  */
 export function getConfigurableApiFormatsForChannelType(
   channelType: ChannelType,
   configurableFormats: readonly string[]
 ): string[] {
-  if (channelType === 'zenmux') {
+  if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {
     return [...configurableFormats];
   }
   return configurableFormats.filter((format) => format !== 'zenmux/video');
@@ -76,7 +70,7 @@ export function getChannelTypeForApiFormat(provider: string, apiFormat: ApiForma
   // channel type when the provider config actually includes the ZenMux
   // channel type.
   if (apiFormat === 'zenmux/video') {
-    return providerConfig.channelTypes.includes('zenmux') ? 'zenmux' : undefined;
+    return providerConfig.channelTypes.includes('zenmux_video') ? 'zenmux_video' : undefined;
   }
 
   for (const channelType of providerConfig.channelTypes) {

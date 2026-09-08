@@ -158,6 +158,7 @@ func TestQuotaCheckerCoverageMatrix(t *testing.T) {
 		{"zenmux", channel.TypeZenmuxResponses, "", "zenmux_windows", 2},
 		{"zenmux", channel.TypeZenmuxAnthropic, "", "zenmux_windows", 2},
 		{"zenmux", channel.TypeZenmuxGemini, "", "zenmux_windows", 2},
+		{"zenmux", channel.TypeZenmuxVideo, "", "zenmux_windows", 2},
 		{"cline", channel.TypeCline, "", "cline_windows", 3},
 		{"wafer", channel.TypeOpenai, "https://pass.wafer.ai", "wafer_cycle", 1},
 		{"wafer", channel.TypeOpenaiResponses, "https://pass.wafer.ai", "wafer_cycle", 1},

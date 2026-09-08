@@ -143,7 +143,7 @@ test('ZenMux quota schema accepts all channel variants without row grouping', ()
   const schema = read('features/channels/data/schema.ts');
   const channelsData = read('features/channels/data/channels.ts');
 
-  for (const type of ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini']) {
+  for (const type of ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video']) {
     assert.match(schema, new RegExp(`'${type}'`), `channel schema should accept ${type}`);
   }
   assert.match(schema, /providerQuotaStatusSchema[\s\S]*quotaData:\s*z\.record\(z\.string\(\),\s*z\.unknown\(\)\)/);

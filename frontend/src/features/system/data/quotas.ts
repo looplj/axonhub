@@ -706,7 +706,7 @@ export type ProviderQuotaChannel = {
       };
     }
   | {
-      type: 'zenmux' | 'zenmux_responses' | 'zenmux_anthropic' | 'zenmux_gemini';
+      type: 'zenmux' | 'zenmux_responses' | 'zenmux_anthropic' | 'zenmux_gemini' | 'zenmux_video';
       quotaStatus: {
         quotaData: ProviderZenmuxQuotaData;
       };
@@ -815,10 +815,16 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
     },
   };
 
-  if (node.type === 'zenmux' || node.type === 'zenmux_responses' || node.type === 'zenmux_anthropic' || node.type === 'zenmux_gemini') {
+  if (
+    node.type === 'zenmux' ||
+    node.type === 'zenmux_responses' ||
+    node.type === 'zenmux_anthropic' ||
+    node.type === 'zenmux_gemini' ||
+    node.type === 'zenmux_video'
+  ) {
     return {
       ...base,
-      type: node.type as 'zenmux' | 'zenmux_responses' | 'zenmux_anthropic' | 'zenmux_gemini',
+      type: node.type as 'zenmux' | 'zenmux_responses' | 'zenmux_anthropic' | 'zenmux_gemini' | 'zenmux_video',
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderZenmuxQuotaData },
     };
   }

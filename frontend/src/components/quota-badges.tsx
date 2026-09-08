@@ -105,8 +105,8 @@ function isMinimaxType(t: string): t is 'minimax' | 'minimax_anthropic' {
   return t === 'minimax' || t === 'minimax_anthropic';
 }
 
-function isZenmuxType(t: string): t is 'zenmux' | 'zenmux_responses' | 'zenmux_anthropic' | 'zenmux_gemini' {
-  return t === 'zenmux' || t === 'zenmux_responses' || t === 'zenmux_anthropic' || t === 'zenmux_gemini';
+function isZenmuxType(t: string): t is 'zenmux' | 'zenmux_responses' | 'zenmux_anthropic' | 'zenmux_gemini' | 'zenmux_video' {
+  return t === 'zenmux' || t === 'zenmux_responses' || t === 'zenmux_anthropic' || t === 'zenmux_gemini' || t === 'zenmux_video';
 }
 
 function getDurationPercent(startAt?: string | null, endAt?: string | null): number | undefined {

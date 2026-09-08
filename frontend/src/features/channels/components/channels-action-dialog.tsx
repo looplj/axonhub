@@ -806,7 +806,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isClaudeCodeType = activeChannelType === 'claudecode';
   const isCopilotType = activeChannelType === 'github_copilot';
   const isXAISubscriptionType = activeChannelType === 'xai_subscription';
-  const isZenmuxType = ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini'].includes(activeChannelType);
+  const isZenmuxType = ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(activeChannelType);
   const isCommandCodeType = activeChannelType === 'commandcode' || activeChannelType === 'commandcode_anthropic';
   const isOllamaType = activeChannelType === 'ollama' || activeChannelType === 'ollama_anthropic';
 
@@ -1371,6 +1371,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           'zenmux_responses',
           'zenmux_anthropic',
           'zenmux_gemini',
+          'zenmux_video',
         ].includes(finalChannelType);
         if (!keepsManagementApiKey && updateInput.credentials) {
           delete updateInput.credentials.managementApiKey;

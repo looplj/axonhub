@@ -164,6 +164,7 @@ test('no provider fallback: channels table renders quota for any channel type wi
     'zenmux_responses',
     'zenmux_anthropic',
     'zenmux_gemini',
+    'zenmux_video',
     'cline',
     'nanogpt',
     'minimax',
