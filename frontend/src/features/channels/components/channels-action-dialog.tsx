@@ -2658,6 +2658,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 onSelectedValueChange={setNewModel}
                                 searchValue={newModel}
                                 onSearchValueChange={setNewModel}
+                                onKeyDown={handleKeyDown}
                                 placeholder={t('channels.dialogs.fields.supportedModels.description')}
                               />
                             ) : (
