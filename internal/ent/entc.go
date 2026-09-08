@@ -14,7 +14,24 @@ import (
 )
 
 func main() {
+	customPaginationTemplate, err := gen.NewTemplate(entgql.PaginationTemplate.Name()).
+		Funcs(entgql.TemplateFuncs).
+		ParseFiles(filepath.Join(xfile.CurDir(), "template", "pagination.tmpl"))
+	if err != nil {
+		log.Fatalf("creating custom entgql pagination template: %v", err)
+	}
+
+	templates := make([]*gen.Template, len(entgql.AllTemplates))
+	copy(templates, entgql.AllTemplates)
+	for i, tmpl := range templates {
+		if tmpl.Name() == entgql.PaginationTemplate.Name() {
+			templates[i] = customPaginationTemplate
+			break
+		}
+	}
+
 	ex, err := entgql.NewExtension(
+		entgql.WithTemplates(templates...),
 		// entgql.WithConfigPath("../graph/gqlgen.yml"),
 		// entgql.WithConfigPath("./graph/gqlgen.yml"),
 		entgql.WithConfigPath("gqlgen.yml"),

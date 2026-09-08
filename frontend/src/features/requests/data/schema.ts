@@ -76,8 +76,9 @@ export const requestSchema = z.object({
           cursor: z.string(),
         })
       ),
-      pageInfo: pageInfoSchema,
-      totalCount: z.number(),
+      // The request list only needs execution summary rows; nested pagination metadata is not requested.
+      pageInfo: pageInfoSchema.optional(),
+      totalCount: z.number().optional(),
     })
     .optional(),
   usageLogs: z
@@ -107,7 +108,7 @@ export const requestConnectionSchema = z.object({
     })
   ),
   pageInfo: pageInfoSchema,
-  totalCount: z.number(),
+  totalCount: z.number().optional(),
 });
 export type RequestConnection = z.infer<typeof requestConnectionSchema>;
 

@@ -1,0 +1,671 @@
+{{/*
+Copyright 2019-present Facebook Inc. All rights reserved.
+This source code is licensed under the Apache 2.0 license found
+in the LICENSE file in the root directory of this source tree.
+*/}}
+
+{{/* gotype: entgo.io/ent/entc/gen.Graph */}}
+
+{{ define "gql_pagination" }}
+{{ template "header" $ }}
+
+{{- if ne $.Storage.Name "sql" }}
+	{{ fail "pagination requires SQL storage" }}
+{{- end }}
+
+{{- if not (hasTemplate "gql_collection") }}
+	{{ fail "pagination requires field collection" }}
+{{- end }}
+
+{{ $gqlNodes := filterNodes $.Nodes (skipMode "type") }}
+{{ $idType := gqlIDType $gqlNodes $.IDType }}
+
+{{ template "import" $ }}
+
+import (
+	"io"
+	"strconv"
+	"encoding/base64"
+
+	{{- range $n := $gqlNodes }}
+		"{{ $.Config.Package }}/{{ $n.Package }}"
+	{{- end }}
+	"{{ $.Config.Package }}/predicate"
+
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/contrib/entgql"
+	"github.com/99designs/gqlgen/graphql/errcode"
+	"github.com/vektah/gqlparser/v2/gqlerror"
+	"github.com/vmihailenco/msgpack/v5"
+)
+
+// Common entgql types.
+type (
+	Cursor = entgql.Cursor[{{ $idType }}]
+	PageInfo = entgql.PageInfo[{{ $idType }}]
+	OrderDirection = entgql.OrderDirection
+)
+
+func orderFunc(o OrderDirection, field string) func(*sql.Selector) {
+       if o == entgql.OrderDirectionDesc {
+               return Desc(field)
+       }
+       return Asc(field)
+}
+
+const errInvalidPagination = "INVALID_PAGINATION"
+
+func validateFirstLast(first, last *int) (err *gqlerror.Error) {
+	switch {
+	case first != nil && last != nil:
+		err = &gqlerror.Error{
+			Message: "Passing both `first` and `last` to paginate a connection is not supported.",
+		}
+	{{- range $arg := list "first" "last" }}
+		case {{ $arg }} != nil && *{{ $arg }} < 0:
+			err = &gqlerror.Error{
+				Message: "`{{ $arg }}` on a connection cannot be less than zero.",
+			}
+			errcode.Set(err, errInvalidPagination)
+	{{- end }}
+	}
+	return err
+}
+
+func collectedField(ctx context.Context, path ...string) *graphql.CollectedField {
+	fc := graphql.GetFieldContext(ctx)
+	if fc == nil {
+		return nil
+	}
+	field := fc.Field
+	oc := graphql.GetOperationContext(ctx)
+walk:
+	for _, name := range path {
+		for _, f := range graphql.CollectFields(oc, field.Selections, nil) {
+			if f.Alias == name {
+				field = f
+				continue walk
+			}
+		}
+		return nil
+	}
+	return &field
+}
+
+func hasCollectedField(ctx context.Context, path ...string) bool {
+	if graphql.GetFieldContext(ctx) == nil {
+		return true
+	}
+	return collectedField(ctx, path...) != nil
+}
+
+const (
+	{{- range $field := list "edges" "node" "pageInfo" "totalCount" }}
+		{{ $field }}Field = "{{ $field }}"
+	{{- end }}
+)
+
+func paginateLimit(first, last *int) int {
+	var limit int
+	if first != nil {
+		limit = *first+1
+	} else if last != nil {
+		limit = *last+1
+	}
+	return limit
+}
+
+{{ range $node := $gqlNodes -}}
+{{ $orderFields := orderFields $node }}
+
+{{ $names := nodePaginationNames $node -}}
+{{ $name := $names.Node -}}
+
+{{- if not (eq $name $node.Name) }}
+// {{ $name }} is the type alias for {{ $node.Name }}.
+type {{ $name }} = {{ $node.Name }}
+{{- end}}
+
+{{ $edge := $names.Edge -}}
+// {{ $edge }} is the edge representation of {{ $name }}.
+type {{ $edge }} struct {
+	Node *{{ $name }} `json:"node"`
+	Cursor Cursor     `json:"cursor"`
+}
+
+{{ $conn := $names.Connection }}
+// {{ $conn }} is the connection containing edges to {{ $name }}.
+type {{ $conn }} struct {
+	Edges []*{{ $edge }} `json:"edges"`
+	PageInfo PageInfo    `json:"pageInfo"`
+	TotalCount int       `json:"totalCount"`
+}
+
+{{ $pager := print (camel $name) "Pager" }}
+{{ $multiOrder := $node.Annotations.EntGQL.MultiOrder }}
+
+func (c *{{ $conn }}) build(nodes []*{{ $name }}, pager *{{ $pager }}, after *Cursor, first *int, before *Cursor, last *int) {
+	c.PageInfo.HasNextPage = before != nil
+	c.PageInfo.HasPreviousPage = after != nil
+	if first != nil && *first+1 == len(nodes) {
+		c.PageInfo.HasNextPage = true
+		nodes = nodes[:len(nodes)-1]
+	} else if last != nil && *last+1 == len(nodes) {
+		c.PageInfo.HasPreviousPage = true
+		nodes = nodes[:len(nodes)-1]
+	}
+	var nodeAt func(int) *{{ $name }}
+	if last != nil {
+		n := len(nodes) - 1
+		nodeAt = func(i int) *{{ $name }} {
+			return nodes[n-i]
+		}
+	} else {
+		nodeAt = func(i int) *{{ $name }} {
+			return nodes[i]
+		}
+	}
+	c.Edges = make([]*{{ $edge }}, len(nodes))
+	for i := range nodes {
+		node := nodeAt(i)
+		c.Edges[i] = &{{ $edge }}{
+			Node: node,
+			Cursor: pager.toCursor(node),
+		}
+	}
+	if l := len(c.Edges); l > 0 {
+		c.PageInfo.StartCursor = &c.Edges[0].Cursor
+		c.PageInfo.EndCursor = &c.Edges[l-1].Cursor
+	}
+	if c.TotalCount == 0 {
+		c.TotalCount = len(nodes)
+	}
+}
+
+{{ $opt := print $name "PaginateOption" }}
+// {{ $opt }} enables pagination customization.
+type {{ $opt }} func(*{{ $pager }}) error
+
+{{ $order := $names.Order -}}
+{{ $optOrder := print "With" $order -}}
+{{ $defaultOrder := print "Default" $name "Order" }}
+// {{ $optOrder }} configures pagination ordering.
+func {{ $optOrder }}(order {{ if $multiOrder }}[]{{ end }}*{{ $order }}) {{ $opt }} {
+	{{- if $multiOrder }}
+		return func(pager *{{ $pager }}) error {
+			for _, o := range order {
+				if err := o.Direction.Validate(); err != nil {
+					return err
+				}
+			}
+			pager.order = append(pager.order, order...)
+			return nil
+		}
+	{{- else }}
+		if order == nil {
+			order = {{ $defaultOrder }}
+		}
+		o := *order
+		return func(pager *{{ $pager }}) error {
+			if err := o.Direction.Validate(); err != nil {
+				return err
+			}
+			if o.Field == nil {
+				o.Field = {{ $defaultOrder }}.Field
+			}
+			pager.order = &o
+			return nil
+		}
+	{{- end }}
+}
+
+{{ $query := print $node.QueryName -}}
+{{ $optFilter := print "With" $name "Filter" -}}
+// {{ $optFilter }} configures pagination filter.
+func {{ $optFilter }}(filter func(*{{ $query }}) (*{{ $query }}, error)) {{ $opt }} {
+	return func(pager *{{ $pager }}) error {
+		if filter == nil {
+			return errors.New("{{ $query }} filter cannot be nil")
+		}
+		pager.filter = filter
+		return nil
+	}
+}
+
+type {{ $pager }} struct {
+	{{- /* Pagination is reversed if last != nil. */}}
+	reverse bool
+	order {{ if $multiOrder }}[]{{ end }}*{{ $order }}
+	filter func(*{{ $query }}) (*{{ $query }}, error)
+}
+
+{{ $newPager := print "new" $name "Pager" -}}
+func {{ $newPager }}(opts []{{ $opt }}, reverse bool) (*{{ $pager }}, error) {
+	pager := &{{ $pager }}{reverse: reverse}
+	for _, opt := range opts {
+		if err := opt(pager); err != nil {
+			return nil, err
+		}
+	}
+	{{- if $multiOrder }}
+		for i, o := range pager.order {
+			if i > 0 && o.Field == pager.order[i-1].Field {
+				return nil, fmt.Errorf("duplicate order direction %q", o.Direction)
+			}
+		}
+	{{- else }}
+		if pager.order == nil {
+			pager.order = {{ $defaultOrder }}
+		}
+	{{- end }}
+	return pager, nil
+}
+
+func (p *{{ $pager }}) applyFilter(query *{{ $query }}) (*{{ $query }}, error) {
+	if p.filter != nil {
+		return p.filter(query)
+	}
+	return query, nil
+}
+
+{{ $r := $node.Receiver }}
+func (p *{{ $pager }}) toCursor({{ $r }} *{{ $name }}) Cursor {
+	{{- if $multiOrder }}
+		cs_ := make([]any, 0, len(p.order))
+		for _, o_ := range p.order {
+			cs_ = append(cs_, o_.Field.toCursor({{ $r }}).Value)
+		}
+		{{- $marshalID := and $idType.Mixed (gqlMarshaler $node.ID) }}
+		return Cursor{ID: {{ $r }}.{{ if $marshalID }}marshalID(){{ else }}ID{{ end }}, Value: cs_}
+	{{- else }}
+		return p.order.Field.toCursor({{ $r }})
+	{{- end }}
+}
+
+func (p *{{ $pager }}) applyCursors(query *{{ $query }}, after, before *Cursor) (*{{ $query }}, error) {
+	{{- if $multiOrder }}
+		idDirection := entgql.OrderDirectionAsc
+		if p.reverse {
+			idDirection = entgql.OrderDirectionDesc
+		}
+		fields, directions := make([]string, 0, len(p.order)), make([]OrderDirection, 0, len(p.order))
+		for _, o := range p.order {
+			fields = append(fields, o.Field.column)
+			direction := o.Direction
+			if p.reverse {
+				direction = direction.Reverse()
+			}
+			directions = append(directions, direction)
+		}
+		predicates, err := entgql.MultiCursorsPredicate(after, before, &entgql.MultiCursorsOptions{
+			FieldID: {{ $defaultOrder }}.Field.column,
+			DirectionID: idDirection,
+			Fields: fields,
+			Directions: directions,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, predicate := range predicates {
+			query = query.Where(predicate)
+		}
+	{{- else }}
+		direction := p.order.Direction
+		if p.reverse {
+			direction = direction.Reverse()
+		}
+		for _, predicate := range entgql.CursorsPredicate(after, before, {{ $defaultOrder }}.Field.column, p.order.Field.column, direction) {
+			query = query.Where(predicate)
+		}
+	{{- end }}
+	return query, nil
+}
+
+{{- $byEdges := list }}
+{{- range $orderFields }}{{ if not .IsFieldTerm }}{{ $byEdges = append $byEdges . }}{{ end }}{{ end }}
+
+func (p *{{ $pager }}) applyOrder(query *{{ $query }}) *{{ $query }} {
+	{{- if $multiOrder }}
+		var defaultOrdered bool
+		for _, o := range p.order {
+			direction := o.Direction
+			if p.reverse {
+				direction = direction.Reverse()
+			}
+			query = query.Order(o.Field.toTerm(direction.OrderTermOption()))
+			if o.Field.column == {{ $defaultOrder }}.Field.column {
+				defaultOrdered = true
+			}
+			{{- /* Ensure the cursor field is selected to encode it back to the client. */}}
+			{{- with $byEdges }}
+				switch o.Field.column {
+				case {{ range $i, $f := . }}{{ if $i }},{{ end }}{{ $f.VarName }}.column{{ end }}:
+				default:
+					if len(query.ctx.Fields) > 0 {
+						query.ctx.AppendFieldOnce(o.Field.column)
+					}
+				}
+			{{- else }}
+				if len(query.ctx.Fields) > 0 {
+					query.ctx.AppendFieldOnce(o.Field.column)
+				}
+			{{- end }}
+		}
+		{{- /* We need to ensure the ID field is included in ORDER BY since the other terms might not be unique. */}}
+		if !defaultOrdered {
+			direction := entgql.OrderDirectionAsc
+			if p.reverse {
+				direction = direction.Reverse()
+			}
+			query = query.Order({{ $defaultOrder }}.Field.toTerm(direction.OrderTermOption()))
+		}
+	{{- else }}
+		direction := p.order.Direction
+		if p.reverse {
+			direction = direction.Reverse()
+		}
+		query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+		{{- /* We need to ensure the ID field is included in ORDER BY since the other terms might not be unique. */}}
+		if p.order.Field != {{ $defaultOrder }}.Field {
+			query = query.Order({{ $defaultOrder }}.Field.toTerm(direction.OrderTermOption()))
+		}
+		{{- /* Ensure the cursor field is selected to encode it back to the client. */}}
+		{{- with $byEdges }}
+			switch p.order.Field.column {
+			case {{ range $i, $f := . }}{{ if $i }},{{ end }}{{ $f.VarName }}.column{{ end }}:
+			default:
+				{{- /* Ensure the cursor field is selected to encode it back to the client. */}}
+				if len(query.ctx.Fields) > 0 {
+					query.ctx.AppendFieldOnce(p.order.Field.column)
+				}
+			}
+		{{- else }}
+			if len(query.ctx.Fields) > 0 {
+				query.ctx.AppendFieldOnce(p.order.Field.column)
+			}
+		{{- end }}
+	{{- end }}
+	return query
+}
+
+func (p *{{ $pager }}) orderExpr(query *{{ $node.QueryName }}) sql.Querier {
+	{{- if $multiOrder }}
+		{{- /* Edge ordering must be applied to update the query. */}}
+		{{- with $byEdges }}
+			for _, o := range p.order {
+				switch o.Field.column {
+				case {{ range $i, $f := . }}{{ if $i }},{{ end }}{{ $f.VarName }}.column{{ end }}:
+					direction := o.Direction
+					if p.reverse {
+						direction = direction.Reverse()
+					}
+					query = query.Order(o.Field.toTerm(direction.OrderTermOption()))
+				default:
+					{{- /* Ensure the cursor field is selected to encode it back to the client. */}}
+					if len(query.ctx.Fields) > 0 {
+						query.ctx.AppendFieldOnce(o.Field.column)
+					}
+				}
+			}
+		{{- else }}
+			if len(query.ctx.Fields) > 0 {
+				for _, o := range p.order {
+					query.ctx.AppendFieldOnce(o.Field.column)
+				}
+			}
+		{{- end }}
+		return sql.ExprFunc(func(b *sql.Builder) {
+			for _, o := range p.order {
+				direction := o.Direction
+				if p.reverse {
+					direction = direction.Reverse()
+				}
+				b.Ident(o.Field.column).Pad().WriteString(string(direction))
+				b.Comma()
+			}
+			direction := entgql.OrderDirectionAsc
+			if p.reverse {
+				direction = direction.Reverse()
+			}
+			b.Ident({{ $defaultOrder }}.Field.column).Pad().WriteString(string(direction))
+		})
+	{{- else }}
+		direction := p.order.Direction
+		if p.reverse {
+			direction = direction.Reverse()
+		}
+		{{- with $byEdges }}
+			switch p.order.Field.column {
+			case {{ range $i, $f := . }}{{ if $i }},{{ end }}{{ $f.VarName }}.column{{ end }}:
+				query = query.Order(p.order.Field.toTerm(direction.OrderTermOption()))
+			default:
+				{{- /* Ensure the cursor field is selected to encode it back to the client. */}}
+				if len(query.ctx.Fields) > 0 {
+					query.ctx.AppendFieldOnce(p.order.Field.column)
+				}
+			}
+		{{- else }}
+			if len(query.ctx.Fields) > 0 {
+				query.ctx.AppendFieldOnce(p.order.Field.column)
+			}
+		{{- end }}
+		return sql.ExprFunc(func(b *sql.Builder) {
+			b.Ident(p.order.Field.column).Pad().WriteString(string(direction))
+			if p.order.Field != {{ $defaultOrder }}.Field {
+				b.Comma().Ident({{ $defaultOrder }}.Field.column).Pad().WriteString(string(direction))
+			}
+		})
+	{{- end }}
+}
+
+// Paginate executes the query and returns a relay based cursor connection to {{ $name }}.
+func ({{ $r }} *{{ $query }}) Paginate(
+	ctx context.Context, after *Cursor, first *int,
+	before *Cursor, last *int, opts ...{{ $opt }},
+) (*{{ $conn }}, error) {
+	{{- with extend $ "Node" $node "Query" $r -}}
+		{{ template "gql_pagination/helper/paginate" . }}
+	{{- end -}}
+}
+
+{{ $orderField := $names.OrderField -}}
+{{- if $orderFields }}
+	var (
+		{{- range $f := $orderFields }}
+			{{- $var := $f.VarName }}
+			{{- if $f.IsFieldTerm }}
+				// {{ $var }} orders {{ $f.Type.Name }} by {{ $f.Field.Name }}.
+			{{- else }}
+				// {{ $var }} orders by {{ $f.GQL }}.
+			{{- end }}
+			{{ $var }} = &{{ $orderField }}{
+				Value: func({{ $r }} *{{ $name }}) (ent.Value, error) {
+					{{- if $f.IsFieldTerm }}
+						return {{ $r }}.{{ $f.Field.StructField }}, nil
+					{{- else }}
+						return {{ $r }}.{{ $node.ValueName }}({{ $f.VarField }})
+					{{- end }}
+				},
+				{{- if $f.IsFieldTerm }}
+					column: {{ $node.Package }}.{{ $f.Field.Constant }},
+					toTerm: {{ $node.Package }}.{{ $f.Field.OrderName }},
+				{{- else if $f.IsEdgeFieldTerm }}
+					column: {{ $f.VarField }},
+					toTerm: func(opts ...sql.OrderTermOption) {{ $node.Package }}.OrderOption {
+						return {{ $node.Package}}.{{ $f.Edge.OrderFieldName }}(
+							{{ $f.Type.Package }}.{{ $f.Field.Constant }},
+							append(opts, sql.OrderSelectAs({{ $f.VarField }}))...,
+						)
+					},
+				{{- else if $f.IsEdgeCountTerm }}
+					column: {{ $f.VarField }},
+					toTerm: func(opts ...sql.OrderTermOption) {{ $node.Package }}.OrderOption {
+						return {{ $node.Package}}.{{ $f.Edge.OrderCountName }}(
+							append(opts, sql.OrderSelectAs({{ $f.VarField }}))...,
+						)
+					},
+				{{- end }}
+				toCursor: func({{ $r }} *{{ $name }}) Cursor {
+					{{- $marshalID := and $idType.Mixed (gqlMarshaler $node.ID) }}
+					{{- if $f.IsFieldTerm }}
+						return Cursor{
+							ID: {{ $r }}.{{ if $marshalID }}marshalID(){{ else }}ID{{ end }},
+							Value: {{ $r }}.{{ $f.Field.StructField }},
+						}
+					{{- else }}
+						{{- /* Unxpected non-selected field error can occur. */}}
+						cv, _ := {{ $r }}.{{ $node.ValueName }}({{ $f.VarField }})
+						return Cursor{
+							ID: {{ $r }}.{{ if $marshalID }}marshalID(){{ else }}ID{{ end }},
+							Value: cv,
+						}
+					{{- end }}
+				},
+			}
+		{{- end }}
+	)
+
+	// String implement fmt.Stringer interface.
+	func (f {{ $orderField }}) String() string {
+		var str string
+		switch f.column {
+			{{- range $f := $orderFields }}
+				case {{ $f.VarName }}.column:
+					str = "{{ $f.GQL }}"
+			{{- end }}
+		}
+		return str
+	}
+
+	// MarshalGQL implements graphql.Marshaler interface.
+	func (f {{ $orderField }}) MarshalGQL(w io.Writer) {
+		io.WriteString(w, strconv.Quote(f.String()))
+	}
+
+	// UnmarshalGQL implements graphql.Unmarshaler interface.
+	func (f *{{ $orderField }}) UnmarshalGQL(v interface{}) error {
+		str, ok := v.(string)
+		if !ok {
+			return fmt.Errorf("{{ $orderField }} %T must be a string", v)
+		}
+		switch str {
+			{{- range $f := $orderFields }}
+				case "{{ $f.GQL }}":
+					*f = *{{ $f.VarName }}
+			{{- end }}
+		default:
+			return fmt.Errorf("%s is not a valid {{ $orderField }}", str)
+		}
+		return nil
+	}
+{{- end }}
+
+// {{ $orderField }} defines the ordering field of {{ $node.Name }}.
+type {{ $orderField }} struct {
+	// Value extracts the ordering value from the given {{ $node.Name }}.
+	Value    func(*{{ $name }}) (ent.Value, error)
+	column   string // field or computed.
+	toTerm   func(...sql.OrderTermOption) {{ $node.Package }}.OrderOption
+	toCursor func(*{{ $name }}) Cursor
+}
+
+// {{ $order }} defines the ordering of {{ $node.Name }}.
+type {{ $order }} struct {
+	Direction OrderDirection `json:"direction"`
+	Field *{{ $orderField }} `json:"field"`
+}
+
+// {{ $defaultOrder }} is the default ordering of {{ $node.Name }}.
+var {{ $defaultOrder }} = &{{ $order }}{
+	Direction: entgql.OrderDirectionAsc,
+	Field: &{{ $orderField }}{
+		Value: func({{ $r }} *{{ $name }}) (ent.Value, error) {
+			return {{ $r }}.ID, nil
+		},
+		column: {{ $node.Package }}.{{ $node.ID.Constant }},
+		toTerm: {{ $node.Package }}.{{ $node.ID.OrderName }},
+		toCursor: func({{ $r }} *{{ $name }}) Cursor {
+			{{- $marshalID := and $idType.Mixed (gqlMarshaler $node.ID) }}
+			return Cursor{ID: {{ $r }}.{{ if $marshalID }}marshalID(){{ else }}ID{{ end }}}
+		},
+	},
+}
+
+// ToEdge converts {{ $name }} into {{ $edge }}.
+func ({{ $r }} *{{ $name }}) ToEdge(order *{{ $order }}) *{{ $edge }} {
+	if order == nil {
+		order = {{ $defaultOrder }}
+	}
+	return &{{ $edge }}{
+		Node:   {{ $r }},
+		Cursor: order.Field.toCursor({{ $r }}),
+	}
+}
+
+{{- end }}
+{{ end }}
+
+{{ define "gql_pagination/helper/paginate" }}
+	{{- $node := $.Scope.Node }}
+	{{- $r := $.Scope.Query }}
+	{{- $names := nodePaginationNames $node }}
+	{{- $name := $names.Node }}
+	{{- $order := $names.Order }}
+	{{- $edge := $names.Edge }}
+	{{- $conn := $names.Connection }}
+	{{- $newPager := print "new" $name "Pager" -}}
+
+	if err := validateFirstLast(first, last); err != nil {
+		return nil, err
+	}
+	pager, err := {{ $newPager }}(opts, last != nil)
+	if err != nil {
+		return nil, err
+	}
+	if {{ $r }}, err = pager.applyFilter({{ $r }}); err != nil {
+		return nil, err
+	}
+	{{- /* Ensure the "edges" field is marshaled as "[]" in case it is empty. */}}
+	conn := &{{ $conn }}{Edges: []*{{ $edge }}{}}
+	ignoredEdges := !hasCollectedField(ctx, edgesField)
+{{- if eq $name "Request" }}
+	if hasCollectedField(ctx, totalCountField) || (hasCollectedField(ctx, pageInfoField) && ignoredEdges) {
+{{- else }}
+	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+{{- end }}
+		hasPagination := after != nil || first != nil || before != nil || last != nil
+		if hasPagination || ignoredEdges {
+			c := {{ $r }}.Clone()
+			{{- /* Clear the selection fields before counting to avoid generating invalid queries. */}}
+			c.ctx.Fields = nil
+			if conn.TotalCount, err = c.Count(ctx); err != nil {
+				return nil, err
+			}
+			conn.PageInfo.HasNextPage = first != nil && conn.TotalCount > 0
+			conn.PageInfo.HasPreviousPage = last != nil && conn.TotalCount > 0
+		}
+		{{- /* TotalCount will be settled by conn.build() */}}
+	}
+	if ignoredEdges || (first != nil && *first == 0) || (last != nil && *last == 0) {
+		return conn, nil
+	}
+	if {{ $r }}, err = pager.applyCursors({{ $r }}, after, before); err != nil {
+		return nil, err
+	}
+	limit := paginateLimit(first, last)
+	if limit != 0 {
+		{{ $r }}.Limit(limit)
+	}
+	if field := collectedField(ctx, edgesField, nodeField); field != nil {
+		if err := {{ $r }}.collectField(ctx, limit == 1, graphql.GetOperationContext(ctx), *field, []string{edgesField, nodeField}); err != nil {
+			return nil, err
+		}
+	}
+	{{ $r }} = pager.applyOrder({{ $r }})
+	nodes, err := {{ $r }}.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	conn.build(nodes, pager, after, first, before, last)
+	return conn, nil
+{{ end }}
