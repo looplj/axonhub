@@ -298,7 +298,7 @@ func comparePrerelease(a, b string) int {
 func prereleaseTokens(s string) []string {
 	var tokens []string
 
-	for _, identifier := range strings.Split(s, ".") {
+	for identifier := range strings.SplitSeq(s, ".") {
 		tokens = append(tokens, splitDigitRuns(identifier)...)
 	}
 
