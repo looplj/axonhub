@@ -24,7 +24,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { AutoComplete } from '@/components/auto-complete';
 import { SelectDropdown } from '@/components/select-dropdown';
 import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -2653,10 +2653,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         <div className='space-y-2 md:col-span-6'>
                           <div className='flex gap-2'>
                             {useFetchedModels && fetchedModels.length > 20 ? (
-                              <AutoCompleteSelect
+                              <AutoComplete
                                 items={fetchedModels.map((model) => ({ value: model, label: model }))}
                                 selectedValue={newModel}
                                 onSelectedValueChange={setNewModel}
+                                searchValue={newModel}
+                                onSearchValueChange={setNewModel}
+                                onKeyDown={handleKeyDown}
                                 placeholder={t('channels.dialogs.fields.supportedModels.description')}
                               />
                             ) : (

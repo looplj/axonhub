@@ -43,6 +43,8 @@ type Props<T extends string> = {
   placeholder?: string;
   /** 指定 Popover Portal 的容器元素，用于解决在 Dialog 内无法滚动的问题 */
   portalContainer?: HTMLElement | null;
+  /** Pass a keydown handler through to the underlying input (e.g. for Enter-to-submit). */
+  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;
 };
 
 export function AutoComplete<T extends string>({
@@ -55,6 +57,7 @@ export function AutoComplete<T extends string>({
   emptyMessage = 'No items.',
   placeholder = 'Search...',
   portalContainer,
+  onKeyDown,
 }: Props<T>) {
   const [open, setOpen] = useState(false);
 
@@ -125,7 +128,10 @@ export function AutoComplete<T extends string>({
               asChild
               value={searchValue}
               onValueChange={onSearchValueChange}
-              onKeyDown={(e) => setOpen(e.key !== 'Escape')}
+              onKeyDown={(e) => {
+                setOpen(e.key !== 'Escape');
+                onKeyDown?.(e);
+              }}
               onMouseDown={() => setOpen((open) => !!searchValue || !open)}
               onFocus={() => setOpen(true)}
               onBlur={onInputBlur}
