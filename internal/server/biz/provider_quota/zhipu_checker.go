@@ -109,6 +109,12 @@ func zhipuQuotaBaseFromChannelURL(baseURL string) string {
 }
 
 func parseZhipuQuotaResponse(body []byte) (QuotaData, error) {
+	return parseZhipuFamilyQuotaResponse(body, "zhipu")
+}
+
+// parseZhipuFamilyQuotaResponse parses the ZhiPu-family quota API payload
+// (shared by open.bigmodel.cn and api.z.ai) under the given provider type.
+func parseZhipuFamilyQuotaResponse(body []byte, providerType string) (QuotaData, error) {
 	var response zhipuQuotaResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		return QuotaData{}, fmt.Errorf("failed to parse zhipu quota response: %w", err)
@@ -195,7 +201,7 @@ func parseZhipuQuotaResponse(body []byte) (QuotaData, error) {
 
 	return NormalizeQuotaData(QuotaData{
 		Status:       overallStatus,
-		ProviderType: "zhipu",
+		ProviderType: providerType,
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(overallStatus),

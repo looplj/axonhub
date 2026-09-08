@@ -98,6 +98,8 @@ func quotaCheckerFixture(checker string) (QuotaData, error) {
 		return parseMinimaxResponse([]byte(`{"base_resp":{"status_code":0},"model_remains":[{"model_name":"general","start_time":4070908800000,"end_time":4070926800000,"current_interval_status":1,"current_interval_remaining_percent":75,"current_interval_boost_permille":1000,"weekly_start_time":4070908800000,"weekly_end_time":4071513600000,"current_weekly_status":1,"current_weekly_remaining_percent":50,"weekly_boost_permille":1000}]}`))
 	case "zhipu":
 		return parseZhipuQuotaResponse([]byte(`{"success":true,"data":{"limits":[{"type":"TOKENS_LIMIT","percentage":25,"nextResetTime":4102444800000},{"type":"TOKENS_LIMIT","percentage":50,"nextResetTime":4103049600000}]}}`))
+	case "zai":
+		return parseZaiQuotaResponse([]byte(`{"success":true,"data":{"limits":[{"type":"TOKENS_LIMIT","percentage":25,"nextResetTime":4102444800000},{"type":"TOKENS_LIMIT","percentage":50,"nextResetTime":4103049600000}]}}`))
 	case "charm_hyper":
 		return NewCharmHyperQuotaChecker(nil).parseResponse([]byte(`{"balance":75}`))
 	case "commandcode":
