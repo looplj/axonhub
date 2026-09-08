@@ -41,11 +41,13 @@ test('recall: edit and duplicate show the stored mode', () => {
   assert.equal(recallQuotaRoutingMode({ quotaRoutingMode: 'REMOVE_ON_EXHAUSTED' }), 'REMOVE_ON_EXHAUSTED');
 });
 
-test('payload mapping: INHERIT selection produces a payload without quotaRoutingMode', () => {
+test('payload mapping: INHERIT selection sends explicit INHERIT (clears server-side)', () => {
   const patch = quotaRoutingModeSettingsPatch('INHERIT');
-  assert.deepEqual(patch, {});
+  assert.deepEqual(patch, { quotaRoutingMode: 'INHERIT' });
+  // Create path (existing=null): pick() passes the explicit value through, so
+  // the payload carries INHERIT; the backend maps INHERIT to empty storage.
   const merged = wire(mergeChannelSettingsForUpdate(undefined, patch));
-  assert.equal('quotaRoutingMode' in merged, false);
+  assert.equal(merged.quotaRoutingMode, 'INHERIT');
 });
 
 test('payload mapping: BACKPRESSURE survives into the payload', () => {
@@ -55,19 +57,23 @@ test('payload mapping: BACKPRESSURE survives into the payload', () => {
   assert.equal(merged.quotaRoutingMode, 'BACKPRESSURE');
 });
 
-test('clobber protection: editing an unrelated field keeps the stored mode', () => {
+test('clobber protection: unrelated edit keeps the stored mode, INHERIT selection clears it', () => {
   const existing = { extraModelPrefix: 'prefix-', quotaRoutingMode: 'REMOVE_ON_EXHAUSTED' };
+
+  // Unrelated fields only: the patch omits quotaRoutingMode, so the merge
+  // whitelist falls back to the stored mode.
   const unrelatedPatch = { passThroughUserAgent: true, passThroughBody: false };
   const merged = wire(mergeChannelSettingsForUpdate(existing, unrelatedPatch));
   assert.equal(merged.quotaRoutingMode, 'REMOVE_ON_EXHAUSTED');
   assert.equal(merged.extraModelPrefix, 'prefix-');
 
-  // Same edit while the select sits on INHERIT: the patch still omits the
-  // field, so the stored mode survives the merge whitelist.
+  // Same edit while the select sits on INHERIT: the explicit value overrides
+  // the whitelist fallback and reaches the payload, so the stored override is
+  // cleared server-side (backend maps INHERIT to empty storage).
   const patchWithInheritSelected = { ...unrelatedPatch, ...quotaRoutingModeSettingsPatch('INHERIT') };
-  assert.equal('quotaRoutingMode' in patchWithInheritSelected, false);
+  assert.equal(patchWithInheritSelected.quotaRoutingMode, 'INHERIT');
   const mergedAgain = wire(mergeChannelSettingsForUpdate(existing, patchWithInheritSelected));
-  assert.equal(mergedAgain.quotaRoutingMode, 'REMOVE_ON_EXHAUSTED');
+  assert.equal(mergedAgain.quotaRoutingMode, 'INHERIT');
 });
 
 test('mapping helpers stay wired into the dialog payload boundaries', () => {

@@ -114,11 +114,11 @@ export function recallQuotaRoutingMode(settings: ChannelSettings | null | undefi
   return settings?.quotaRoutingMode ?? 'INHERIT';
 }
 
-// Single dialog-state -> GraphQL-input mapping: selecting INHERIT omits the
-// field from the payload entirely (backend stores ""); every other wire value
-// passes through unchanged.
+// Single dialog-state -> GraphQL-input mapping: every wire value passes
+// through unchanged. Explicit INHERIT is required to override the merge
+// whitelist's stored-value fallback; the backend maps INHERIT to empty storage.
 export function quotaRoutingModeSettingsPatch(mode: ChannelQuotaRoutingMode): Partial<ChannelSettings> {
-  return mode === 'INHERIT' ? {} : { quotaRoutingMode: mode };
+  return mode === 'INHERIT' ? { quotaRoutingMode: 'INHERIT' } : { quotaRoutingMode: mode };
 }
 
 function formatRetryableStatusCodes(codes: number[] | null | undefined): string {
