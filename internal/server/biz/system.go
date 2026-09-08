@@ -30,6 +30,8 @@ import (
 )
 
 const (
+	legacyQuotaEnforcementSettingsKey = "quota_enforcement_settings"
+
 	maxRetryResponseTimeoutSeconds  = 600
 	maxChannelSettingUpdateAttempts = 5
 )
@@ -118,7 +120,13 @@ const (
 
 	// SystemKeyQuotaEnforcementSettings is the key used to store the quota enforcement settings.
 	// The value is JSON-encoded QuotaEnforcementSettings struct.
-	SystemKeyQuotaEnforcementSettings = "quota_enforcement_settings"
+	SystemKeyQuotaEnforcementSettings = legacyQuotaEnforcementSettingsKey
+
+	// SystemKeyQuotaRoutingSettings is the key used to store quota routing settings.
+	SystemKeyQuotaRoutingSettings = "quota_routing_settings"
+
+	// SystemKeyQuotaRoutingMigrationDone marks completion of quota routing migration.
+	SystemKeyQuotaRoutingMigrationDone = "quota_routing_migration_done"
 
 	// SystemKeySecuritySettings is the key used to store security settings.
 	// The value is JSON-encoded SecuritySettings struct.
@@ -214,6 +222,24 @@ type QuotaEnforcementSettings struct {
 	Mode QuotaEnforcementMode `json:"mode"`
 	// AllowedChannelIDs contains channel IDs that bypass quota filtering.
 	AllowedChannelIDs []int `json:"allowedChannelIDs"`
+}
+
+// QuotaRoutingSettings represents the quota routing policy.
+type QuotaRoutingSettings struct {
+	DefaultMode objects.QuotaRoutingMode `json:"defaultMode"`
+}
+
+// QuotaRoutingSettingsProvider supplies the effective quota routing settings.
+type QuotaRoutingSettingsProvider interface {
+	QuotaRoutingSettingsOrDefault(ctx context.Context) QuotaRoutingSettings
+}
+
+type legacyQuotaEnforcementSettings struct {
+	Enabled           bool                 `json:"enabled"`
+	ExhaustedOnly     bool                 `json:"exhaustedOnly"`
+	DePrioritize      bool                 `json:"dePrioritize"`
+	AllowedChannelIDs []int                `json:"allowedChannelIDs"`
+	Mode              QuotaEnforcementMode `json:"mode"`
 }
 
 // SecuritySettings represents system-wide request access controls.
@@ -1884,6 +1910,91 @@ func (s *SystemService) SetQuotaEnforcementSettings(ctx context.Context, setting
 	}
 
 	return s.setSystemValue(ctx, SystemKeyQuotaEnforcementSettings, string(jsonBytes))
+}
+
+// QuotaRoutingSettings retrieves quota routing settings, lazily mapping the legacy
+// quota enforcement setting when the new key is absent.
+func (s *SystemService) QuotaRoutingSettings(ctx context.Context) (*QuotaRoutingSettings, error) {
+	value, err := s.getSystemValue(ctx, SystemKeyQuotaRoutingSettings)
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get quota routing settings: %w", err)
+		}
+
+		legacyValue, legacyErr := s.getSystemValue(ctx, legacyQuotaEnforcementSettingsKey)
+		if legacyErr != nil {
+			if ent.IsNotFound(legacyErr) {
+				return lo.ToPtr(defaultQuotaRoutingSettings), nil
+			}
+			return nil, fmt.Errorf("failed to get legacy quota enforcement settings: %w", legacyErr)
+		}
+
+		var legacy legacyQuotaEnforcementSettings
+		if json.Unmarshal([]byte(legacyValue), &legacy) != nil {
+			return lo.ToPtr(defaultQuotaRoutingSettings), nil
+		}
+
+		if legacy.Enabled {
+			switch {
+			case legacy.ExhaustedOnly, legacy.Mode == QuotaEnforcementModeExhaustedOnly:
+				return lo.ToPtr(QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}), nil
+			case legacy.DePrioritize, legacy.Mode == QuotaEnforcementModeDePrioritize:
+				return lo.ToPtr(QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure}), nil
+			}
+		}
+
+		return lo.ToPtr(defaultQuotaRoutingSettings), nil
+	}
+
+	var settings QuotaRoutingSettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal quota routing settings: %w", err)
+	}
+	if settings.DefaultMode == "" {
+		settings.DefaultMode = defaultQuotaRoutingSettings.DefaultMode
+	}
+	if !isQuotaRoutingMode(settings.DefaultMode) {
+		return nil, fmt.Errorf("invalid quota routing mode: %q", settings.DefaultMode)
+	}
+
+	return &settings, nil
+}
+
+// QuotaRoutingSettingsOrDefault retrieves quota routing settings or returns the default.
+func (s *SystemService) QuotaRoutingSettingsOrDefault(ctx context.Context) QuotaRoutingSettings {
+	settings, err := s.QuotaRoutingSettings(ctx)
+	if err != nil {
+		log.Warn(ctx, "failed to get quota routing settings", log.Cause(err))
+		return defaultQuotaRoutingSettings
+	}
+	return *settings
+}
+
+// SetQuotaRoutingSettings stores quota routing settings.
+func (s *SystemService) SetQuotaRoutingSettings(ctx context.Context, settings QuotaRoutingSettings) error {
+	if settings.DefaultMode == "" {
+		settings.DefaultMode = defaultQuotaRoutingSettings.DefaultMode
+	}
+	if !isQuotaRoutingMode(settings.DefaultMode) {
+		return fmt.Errorf("invalid quota routing mode: %q", settings.DefaultMode)
+	}
+
+	jsonBytes, err := json.Marshal(settings)
+	if err != nil {
+		return fmt.Errorf("failed to marshal quota routing settings: %w", err)
+	}
+	return s.setSystemValue(ctx, SystemKeyQuotaRoutingSettings, string(jsonBytes))
+}
+
+func isQuotaRoutingMode(mode objects.QuotaRoutingMode) bool {
+	switch mode {
+	case objects.QuotaRoutingModeIgnoreQuota,
+		objects.QuotaRoutingModeRemoveOnExhausted,
+		objects.QuotaRoutingModeBackpressure:
+		return true
+	default:
+		return false
+	}
 }
 
 // SecuritySettings retrieves the security settings.

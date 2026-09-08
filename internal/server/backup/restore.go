@@ -23,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 func (svc *BackupService) Restore(ctx context.Context, data []byte, opts RestoreOptions) error {
@@ -140,6 +141,18 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 }
 
 func (svc *BackupService) restoreSystemConfigs(ctx context.Context, db *ent.Client, configs []*BackupSystemConfig) error {
+	legacySettings, hasLegacySettings := decodeLegacyQuotaEnforcementSettings(configs)
+	if hasLegacySettings && len(legacySettings.AllowedChannelIDs) > 0 {
+		migrated, err := db.System.Query().Where(system.KeyEQ(biz.SystemKeyQuotaRoutingMigrationDone)).Exist(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to check quota routing migration marker: %w", err)
+		}
+		if migrated {
+			log.Warn(ctx, "restored legacy quota enforcement settings will not re-migrate allowed channels",
+				log.String("key", biz.SystemKeyQuotaEnforcementSettings))
+		}
+	}
+
 	for _, config := range configs {
 		if config == nil || !lo.Contains(systemConfigBackupKeys, config.Key) {
 			continue
@@ -156,6 +169,24 @@ func (svc *BackupService) restoreSystemConfigs(ctx context.Context, db *ent.Clie
 	}
 
 	return nil
+}
+
+type legacyQuotaEnforcementSettings struct {
+	AllowedChannelIDs []int `json:"allowedChannelIDs"`
+}
+
+func decodeLegacyQuotaEnforcementSettings(configs []*BackupSystemConfig) (legacyQuotaEnforcementSettings, bool) {
+	for _, config := range configs {
+		if config == nil || config.Key != biz.SystemKeyQuotaEnforcementSettings {
+			continue
+		}
+		var settings legacyQuotaEnforcementSettings
+		if err := json.Unmarshal([]byte(config.Value), &settings); err != nil {
+			return legacyQuotaEnforcementSettings{}, false
+		}
+		return settings, true
+	}
+	return legacyQuotaEnforcementSettings{}, false
 }
 
 func (svc *BackupService) buildChannelIDMap(ctx context.Context, db *ent.Client, channels []*BackupChannel) (map[int]int, error) {
