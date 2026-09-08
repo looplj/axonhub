@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { isAuthError } from '@/gql/graphql';
 import { useAuthStore } from '@/stores/authStore';
+import { useSelectedProjectId } from '@/stores/projectStore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMe } from '@/features/auth/data/auth';
 
@@ -12,9 +13,19 @@ interface AuthGuardProps {
 export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
   const { accessToken } = useAuthStore((state) => state.auth);
+  const selectedProjectId = useSelectedProjectId();
 
   // Automatically fetch user info when token is available
-  const { isLoading: isMeLoading, error: meError } = useMe();
+  const { isLoading: isMeLoading, error: meError, data: meData } = useMe();
+
+  // The selected project is persisted per browser. Until `me` has resolved and
+  // the persisted project has been validated against the current user's
+  // projects (and cleared when stale), keep showing the loading state so
+  // descendant queries never carry a X-Project-ID the user has no membership in.
+  const projectReady =
+    !meData ||
+    !selectedProjectId ||
+    (meData.projects ?? []).some((p) => p.projectID === selectedProjectId);
 
   useEffect(() => {
     // If no token, redirect to sign-in
@@ -65,8 +76,8 @@ export function AuthGuard({ children }: AuthGuardProps) {
     );
   }
 
-  // Show loading while fetching user info
-  if (accessToken && isMeLoading) {
+  // Show loading while fetching user info or validating the persisted project
+  if (accessToken && (isMeLoading || !projectReady)) {
     return (
       <div className='flex h-screen items-center justify-center'>
         <div className='space-y-4'>
