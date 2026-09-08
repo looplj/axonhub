@@ -872,6 +872,7 @@ const ALL_CHANNEL_TAGS_QUERY = `
 export type ChannelListColumnVisibility = Record<string, boolean>;
 
 export const DEFAULT_CHANNEL_COLUMN_VISIBILITY: ChannelListColumnVisibility = {
+  model: false,
   tags: false,
   proxy: false,
 };
@@ -880,7 +881,7 @@ const channelListColumnVisibilitySchema = z.record(z.string(), z.boolean());
 
 export function parseChannelColumnVisibility(value: unknown): ChannelListColumnVisibility {
   const parsed = channelListColumnVisibilitySchema.safeParse(value);
-  return parsed.success ? { ...DEFAULT_CHANNEL_COLUMN_VISIBILITY, ...parsed.data } : DEFAULT_CHANNEL_COLUMN_VISIBILITY;
+  return parsed.success ? { ...DEFAULT_CHANNEL_COLUMN_VISIBILITY, ...parsed.data, model: false } : DEFAULT_CHANNEL_COLUMN_VISIBILITY;
 }
 
 const CHANNEL_QUERY_FULL_NODE_SELECTION = `
