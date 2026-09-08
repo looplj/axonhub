@@ -653,6 +653,102 @@ func TestUserHasProjectScope(t *testing.T) {
 			requiredScope: ScopeReadRequests,
 			expected:      true,
 		},
+		{
+			name: "user has required scope via project role",
+			user: &ent.User{
+				ID: 1,
+				Edges: ent.UserEdges{
+					ProjectUsers: []*ent.UserProject{
+						{
+							ProjectID: 100,
+							Scopes:    []string{},
+						},
+					},
+					Roles: []*ent.Role{
+						{
+							ID:        1,
+							ProjectID: lo.ToPtr(100),
+							Scopes:    []string{"read_requests"},
+						},
+					},
+				},
+			},
+			projectID:     100,
+			requiredScope: ScopeReadRequests,
+			expected:      true,
+		},
+		{
+			name: "role on a different project does not grant scope",
+			user: &ent.User{
+				ID: 1,
+				Edges: ent.UserEdges{
+					ProjectUsers: []*ent.UserProject{
+						{
+							ProjectID: 200,
+							Scopes:    []string{},
+						},
+					},
+					Roles: []*ent.Role{
+						{
+							ID:        1,
+							ProjectID: lo.ToPtr(200),
+							Scopes:    []string{"read_requests"},
+						},
+					},
+				},
+			},
+			projectID:     100,
+			requiredScope: ScopeReadRequests,
+			expected:      false,
+		},
+		{
+			name: "system role does not grant project scope",
+			user: &ent.User{
+				ID: 1,
+				Edges: ent.UserEdges{
+					ProjectUsers: []*ent.UserProject{
+						{
+							ProjectID: 100,
+							Scopes:    []string{},
+						},
+					},
+					Roles: []*ent.Role{
+						{
+							ID:        1,
+							Scopes:    []string{"read_requests"},
+							ProjectID: nil,
+						},
+					},
+				},
+			},
+			projectID:     100,
+			requiredScope: ScopeReadRequests,
+			expected:      false,
+		},
+		{
+			name: "role without required scope does not grant",
+			user: &ent.User{
+				ID: 1,
+				Edges: ent.UserEdges{
+					ProjectUsers: []*ent.UserProject{
+						{
+							ProjectID: 100,
+							Scopes:    []string{},
+						},
+					},
+					Roles: []*ent.Role{
+						{
+							ID:        1,
+							ProjectID: lo.ToPtr(100),
+							Scopes:    []string{"read_channels"},
+						},
+					},
+				},
+			},
+			projectID:     100,
+			requiredScope: ScopeReadRequests,
+			expected:      false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -702,6 +798,127 @@ func TestUserIsProjectOwner(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := userIsProjectOwner(tt.user, tt.projectID); got != tt.expected {
 				t.Fatalf("userIsProjectOwner() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestProjectMemberReadUsersRule(t *testing.T) {
+	tests := []struct {
+		name        string
+		ctx         context.Context
+		expectAllow bool
+	}{
+		{
+			name:        "no project ID in context",
+			ctx:         contexts.WithUser(context.Background(), &ent.User{ID: 1, Scopes: []string{"read_users"}}),
+			expectAllow: false,
+		},
+		{
+			name:        "no user in context",
+			ctx:         contexts.WithProjectID(context.Background(), 100),
+			expectAllow: false,
+		},
+		{
+			name: "user with system scope",
+			ctx: contexts.WithProjectID(
+				contexts.WithUser(context.Background(), &ent.User{
+					ID:     1,
+					Scopes: []string{"read_users"},
+				}),
+				100,
+			),
+			expectAllow: true,
+		},
+		{
+			name: "project member with direct scope",
+			ctx: contexts.WithProjectID(
+				contexts.WithUser(context.Background(), &ent.User{
+					ID:     1,
+					Scopes: []string{},
+					Edges: ent.UserEdges{
+						ProjectUsers: []*ent.UserProject{
+							{
+								ProjectID: 100,
+								Scopes:    []string{"read_users"},
+							},
+						},
+					},
+				}),
+				100,
+			),
+			expectAllow: true,
+		},
+		{
+			name: "project member with scope via project role",
+			ctx: contexts.WithProjectID(
+				contexts.WithUser(context.Background(), &ent.User{
+					ID:     1,
+					Scopes: []string{},
+					Edges: ent.UserEdges{
+						ProjectUsers: []*ent.UserProject{
+							{ProjectID: 100, Scopes: []string{}},
+						},
+						Roles: []*ent.Role{
+							{
+								ID:        1,
+								ProjectID: lo.ToPtr(100),
+								Scopes:    []string{"read_users"},
+							},
+						},
+					},
+				}),
+				100,
+			),
+			expectAllow: true,
+		},
+		{
+			name: "project member without read scope",
+			ctx: contexts.WithProjectID(
+				contexts.WithUser(context.Background(), &ent.User{
+					ID:     1,
+					Scopes: []string{},
+					Edges: ent.UserEdges{
+						ProjectUsers: []*ent.UserProject{
+							{ProjectID: 100, Scopes: []string{"read_api_keys"}},
+						},
+					},
+				}),
+				100,
+			),
+			expectAllow: false,
+		},
+		{
+			name: "user without membership in the project",
+			ctx: contexts.WithProjectID(
+				contexts.WithUser(context.Background(), &ent.User{
+					ID:     1,
+					Scopes: []string{},
+					Edges: ent.UserEdges{
+						ProjectUsers: []*ent.UserProject{
+							{ProjectID: 200, Scopes: []string{"read_users"}},
+						},
+					},
+				}),
+				100,
+			),
+			expectAllow: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule := ProjectMemberReadUsersRule(ScopeReadUsers)
+			err := rule.EvalQuery(tt.ctx, &ent.UserQuery{})
+
+			if tt.expectAllow {
+				if !errors.Is(err, privacy.Allow) {
+					t.Errorf("expected privacy.Allow, got %v", err)
+				}
+			} else {
+				if errors.Is(err, privacy.Allow) {
+					t.Error("expected error or deny, got privacy.Allow")
+				}
 			}
 		})
 	}
