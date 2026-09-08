@@ -4,6 +4,7 @@ import { USERS_QUERY, CREATE_USER_MUTATION, UPDATE_USER_MUTATION, UPDATE_USER_ST
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
+import { useSelectedProjectId } from '@/stores/projectStore';
 import { User, UserConnection, CreateUserInput, UpdateUserInput, userConnectionSchema, userSchema } from './schema';
 
 // Query hooks
@@ -20,6 +21,7 @@ export function useUsers(
 ) {
   const { t } = useTranslation();
   const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
 
   const queryVariables = {
     ...variables,
@@ -27,10 +29,11 @@ export function useUsers(
   };
 
   return useQuery({
-    queryKey: ['users', queryVariables],
+    queryKey: ['users', queryVariables, selectedProjectId],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ users: UserConnection }>(USERS_QUERY, queryVariables);
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ users: UserConnection }>(USERS_QUERY, queryVariables, headers);
         return userConnectionSchema.parse(data?.users);
       } catch (error) {
         handleError(error, t('common.errors.loadFailed'));
