@@ -3,6 +3,7 @@ import { useRouter } from '@tanstack/react-router';
 import { isAuthError } from '@/gql/graphql';
 import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { isProjectSelectionValid } from '@/lib/project-membership';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMe } from '@/features/auth/data/auth';
 
@@ -24,10 +25,7 @@ export function AuthGuard({ children }: AuthGuardProps) {
   // descendant queries never carry a X-Project-ID the user has no membership in.
   // `meData` must be present: an unvalidated selection is never a reason to
   // render protected content, even when the `me` query itself errored.
-  const projectReady =
-    !!meData &&
-    (!selectedProjectId ||
-      (meData.projects ?? []).some((p) => p.projectID === selectedProjectId));
+  const projectReady = isProjectSelectionValid(meData, selectedProjectId);
 
   useEffect(() => {
     // If no token, redirect to sign-in

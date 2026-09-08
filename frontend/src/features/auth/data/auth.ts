@@ -6,6 +6,7 @@ import { ME_QUERY } from '@/gql/users';
 import { toast } from 'sonner';
 import { useAuthStore, setTokenToStorage, removeTokenFromStorage } from '@/stores/authStore';
 import { useProjectStore } from '@/stores/projectStore';
+import { isProjectSelectionValid } from '@/lib/project-membership';
 import { AuthUser } from '@/stores/authStore';
 import { authApi } from '@/lib/api-client';
 import i18n from '@/lib/i18n';
@@ -46,7 +47,7 @@ export function useMe(enabled = true) {
       // of so a stale selection from a previous account is never sent to the
       // server as X-Project-ID.
       const { selectedProjectId, clearSelectedProjectId } = useProjectStore.getState();
-      if (selectedProjectId && !(query.data.projects ?? []).some((p) => p.projectID === selectedProjectId)) {
+      if (!isProjectSelectionValid(query.data, selectedProjectId)) {
         clearSelectedProjectId();
       }
 
