@@ -18,6 +18,17 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+type mockQuotaStatusProvider struct {
+	statuses map[int]*biz.QuotaChannelStatus
+}
+
+func (m *mockQuotaStatusProvider) GetQuotaStatus(_ context.Context, channelID int) *biz.QuotaChannelStatus {
+	if m.statuses == nil {
+		return nil
+	}
+	return m.statuses[channelID]
+}
+
 type mockQuotaRoutingSettingsProvider struct {
 	settings biz.QuotaRoutingSettings
 }
