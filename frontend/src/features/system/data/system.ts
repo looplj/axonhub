@@ -1810,9 +1810,9 @@ export function useUpdateQuotaRoutingSettings() {
 
 // DEPRECATED legacy quota-enforcement surface. The quotaEnforcementSettings
 // GraphQL API was removed (commit 7d8fce57); this block is kept ONLY so the
-// not-yet-migrated quota-settings.tsx / quota-badges.tsx still compile.
-// Todos 9/11 rework those components onto the quota-routing hooks above and
-// must delete this block together with their leftover imports.
+// not-yet-migrated quota-badges.tsx still compiles (quota-settings.tsx was
+// reworked onto the quota-routing hooks above in Todo 9). Todo 11 must delete
+// this block together with quota-badges.tsx's leftover imports.
 
 const QUOTA_ENFORCEMENT_SETTINGS_QUERY = `
   query QuotaEnforcementSettings {
