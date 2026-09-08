@@ -340,7 +340,7 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 
 	for _, endpoint := range endpoints {
 		if endpoint.APIFormat == llm.APIFormatZenmuxVideo.String() {
-			return fmt.Errorf("api_format %q is only supported by channel type %q", endpoint.APIFormat, channel.TypeZenmux)
+			return fmt.Errorf("api_format %q is only supported by ZenMux channel types", endpoint.APIFormat)
 		}
 	}
 
