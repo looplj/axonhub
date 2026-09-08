@@ -1747,6 +1747,73 @@ export function useUpdateUsageCostInjectionSettings() {
   });
 }
 
+const QUOTA_ROUTING_SETTINGS_QUERY = `
+  query QuotaRoutingSettings {
+    quotaRoutingSettings {
+      defaultMode
+    }
+  }
+`;
+
+const UPDATE_QUOTA_ROUTING_SETTINGS_MUTATION = `
+  mutation UpdateQuotaRoutingSettings($input: UpdateQuotaRoutingSettingsInput!) {
+    updateQuotaRoutingSettings(input: $input)
+  }
+`;
+
+export type QuotaRoutingMode = 'IGNORE_QUOTA' | 'REMOVE_ON_EXHAUSTED' | 'BACKPRESSURE';
+
+export interface QuotaRoutingSettings {
+  defaultMode: QuotaRoutingMode;
+}
+
+export interface UpdateQuotaRoutingSettingsInput {
+  defaultMode?: QuotaRoutingMode;
+}
+
+export function useQuotaRoutingSettings() {
+  const { handleError } = useErrorHandler();
+  const { hasSystemScope } = usePermissions();
+
+  return useQuery({
+    queryKey: ['quotaRoutingSettings'],
+    enabled: hasSystemScope('read_settings'),
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ quotaRoutingSettings: QuotaRoutingSettings }>(QUOTA_ROUTING_SETTINGS_QUERY);
+        return data.quotaRoutingSettings;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
+export function useUpdateQuotaRoutingSettings() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateQuotaRoutingSettingsInput) => {
+      const data = await graphqlRequest<{ updateQuotaRoutingSettings: boolean }>(UPDATE_QUOTA_ROUTING_SETTINGS_MUTATION, { input });
+      return data.updateQuotaRoutingSettings;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['quotaRoutingSettings'] });
+      toast.success(i18n.t('common.success.systemUpdated'));
+    },
+    onError: () => {
+      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    },
+  });
+}
+
+// DEPRECATED legacy quota-enforcement surface. The quotaEnforcementSettings
+// GraphQL API was removed (commit 7d8fce57); this block is kept ONLY so the
+// not-yet-migrated quota-settings.tsx / quota-badges.tsx still compile.
+// Todos 9/11 rework those components onto the quota-routing hooks above and
+// must delete this block together with their leftover imports.
+
 const QUOTA_ENFORCEMENT_SETTINGS_QUERY = `
   query QuotaEnforcementSettings {
     quotaEnforcementSettings {
