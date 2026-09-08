@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -131,6 +130,35 @@ type QuotaChannelStatus struct {
 	Limits       []provider_quota.QuotaLimitStatus
 }
 
+func cloneQuotaLimitStatus(limit provider_quota.QuotaLimitStatus) provider_quota.QuotaLimitStatus {
+	clone := limit
+	if limit.NextResetAt != nil {
+		clone.NextResetAt = lo.ToPtr(*limit.NextResetAt)
+	}
+	if limit.PeriodStart != nil {
+		clone.PeriodStart = lo.ToPtr(*limit.PeriodStart)
+	}
+	if limit.PeriodCost != nil {
+		clone.PeriodCost = lo.ToPtr(*limit.PeriodCost)
+	}
+	if limit.PeriodQuota != nil {
+		clone.PeriodQuota = lo.ToPtr(*limit.PeriodQuota)
+	}
+	return clone
+}
+
+func cloneLimits(limits []provider_quota.QuotaLimitStatus) []provider_quota.QuotaLimitStatus {
+	if limits == nil {
+		return nil
+	}
+
+	clones := make([]provider_quota.QuotaLimitStatus, len(limits))
+	for i, limit := range limits {
+		clones[i] = cloneQuotaLimitStatus(limit)
+	}
+	return clones
+}
+
 // EffectiveStatus returns the effective quota status for the given limit type.
 //
 // If the channel-level status is Exhausted, it short-circuits regardless of
@@ -139,96 +167,7 @@ type QuotaChannelStatus struct {
 // "exhausted" for a single limit type (e.g., images), token-limit queries
 // would also return "exhausted" even if tokens remain.
 func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimitType) (providerquotastatus.Status, bool) {
-	if s.Status == providerquotastatus.StatusExhausted {
-		return providerquotastatus.StatusExhausted, false
-	}
-
-	if len(s.Limits) == 0 {
-		return s.Status, s.Ready
-	}
-
-	var worstStatus providerquotastatus.Status
-	worstReady := true
-	found := false
-	groupNames := make(map[string]bool)
-	grouped := make(map[string][]provider_quota.QuotaLimitStatus)
-
-	for _, l := range s.Limits {
-		if l.Type != limitType || l.AvailabilityGroup == "" {
-			continue
-		}
-		groupNames[l.AvailabilityGroup] = true
-	}
-
-	for _, l := range s.Limits {
-		if l.Type != limitType && !groupNames[l.AvailabilityGroup] {
-			continue
-		}
-
-		if groupNames[l.AvailabilityGroup] {
-			grouped[l.AvailabilityGroup] = append(grouped[l.AvailabilityGroup], l)
-			continue
-		}
-
-		ls := providerquotastatus.Status(l.Status)
-		if !found || quotaStatusRank(ls) > quotaStatusRank(worstStatus) {
-			worstStatus = ls
-			worstReady = l.Ready
-			found = true
-		} else if quotaStatusRank(ls) == quotaStatusRank(worstStatus) {
-			worstReady = worstReady && l.Ready
-		}
-	}
-
-	for _, limits := range grouped {
-		bestStatus := providerquotastatus.StatusUnknown
-		bestReady := false
-		groupFound := false
-		for _, l := range limits {
-			ls := providerquotastatus.Status(l.Status)
-			if !groupFound ||
-				(l.Ready && !bestReady) ||
-				(l.Ready == bestReady && quotaStatusRank(ls) < quotaStatusRank(bestStatus)) {
-				bestStatus = ls
-				bestReady = l.Ready
-				groupFound = true
-			} else if quotaStatusRank(ls) == quotaStatusRank(bestStatus) {
-				bestReady = bestReady || l.Ready
-			}
-		}
-
-		if !found || quotaStatusRank(bestStatus) > quotaStatusRank(worstStatus) {
-			worstStatus = bestStatus
-			worstReady = bestReady
-			found = true
-		} else if quotaStatusRank(bestStatus) == quotaStatusRank(worstStatus) {
-			worstReady = worstReady && bestReady
-		}
-	}
-
-	if !found {
-		// No matching limit type: return Unknown with ready=true so the channel
-		// is not filtered out. This differs from a per-limit "unknown" status
-		// (where ready=false) because missing data should not block routing.
-		return providerquotastatus.StatusUnknown, true
-	}
-
-	return worstStatus, worstReady
-}
-
-func quotaStatusRank(s providerquotastatus.Status) int {
-	switch s {
-	case providerquotastatus.StatusAvailable:
-		return 0
-	case providerquotastatus.StatusWarning:
-		return 1
-	case providerquotastatus.StatusExhausted:
-		return 2
-	case providerquotastatus.StatusUnknown:
-		return -1
-	default:
-		return -1
-	}
+	return provider_quota.EffectiveStatus(s.Limits, s.Status, s.Ready, limitType)
 }
 
 // HOW TO ADD A NEW PROVIDER QUOTA CHECKER
@@ -614,7 +553,7 @@ func (svc *ProviderQuotaService) loadQuotaCache(ctx context.Context) {
 			ProviderType: r.ProviderType.String(),
 			Status:       r.Status,
 			Ready:        r.Ready,
-			Limits:       extractLimitsFromQuotaData(r.QuotaData),
+			Limits:       cloneLimits(extractLimitsFromQuotaData(r.QuotaData)),
 		})
 	}
 
@@ -638,7 +577,12 @@ func (svc *ProviderQuotaService) GetQuotaStatus(ctx context.Context, channelID i
 		}
 	}
 
-	return status
+	return &QuotaChannelStatus{
+		ProviderType: status.ProviderType,
+		Status:       status.Status,
+		Ready:        status.Ready,
+		Limits:       cloneLimits(status.Limits),
+	}
 }
 
 func (svc *ProviderQuotaService) updateQuotaCache(channelID int, providerType string, status providerquotastatus.Status, ready bool, limits []provider_quota.QuotaLimitStatus) {
@@ -646,7 +590,7 @@ func (svc *ProviderQuotaService) updateQuotaCache(channelID int, providerType st
 		ProviderType: providerType,
 		Status:       status,
 		Ready:        ready,
-		Limits:       limits,
+		Limits:       cloneLimits(limits),
 	})
 }
 
@@ -909,7 +853,7 @@ func (svc *ProviderQuotaService) checkChannelQuota(ctx context.Context, group qu
 
 	for _, member := range group.channels {
 		memberQuotaData := quotaData
-		memberQuotaData.Limits = slices.Clone(quotaData.Limits)
+		memberQuotaData.Limits = cloneLimits(quotaData.Limits)
 		svc.fillPeriodQuotas(ctx, member.ID, &memberQuotaData, now)
 		svc.saveQuotaStatus(ctx, member.ID, providerType, group.accountKey, memberQuotaData, now)
 
