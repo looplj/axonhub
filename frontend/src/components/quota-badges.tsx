@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { getChannelQuotaRoutingIndicator } from '@/features/channels/utils/quota-routing-status';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -413,11 +414,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
   // throttled (amber), REMOVE_ON_EXHAUSTED channels are removed once exhausted
   // (red). Without a resolvable mode the badge is omitted.
   let modeBadge: { key: string; color: string } | null = null;
-  if (effectiveMode && (status === 'exhausted' || status === 'warning')) {
-    if (effectiveMode === 'IGNORE_QUOTA') modeBadge = { key: 'quota.status.ignore_quota', color: 'blue' };
-    else if (effectiveMode === 'BACKPRESSURE') modeBadge = { key: 'quota.status.backpressure', color: 'amber' };
-    else if (effectiveMode === 'REMOVE_ON_EXHAUSTED' && status === 'exhausted') modeBadge = { key: 'quota.status.remove_on_exhausted', color: 'red' };
-  }
+  const routingIndicator = getChannelQuotaRoutingIndicator(channel, effectiveMode ?? undefined);
+  if (routingIndicator === 'exhausted') modeBadge = { key: 'quota.status.remove_on_exhausted', color: 'red' };
+  else if (routingIndicator === 'backpressure') modeBadge = { key: 'quota.status.backpressure', color: 'amber' };
 
   const percentage = getChannelPercentage(channel);
   const batteryLevel = getBatteryLevel(percentage, status);
