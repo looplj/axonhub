@@ -207,6 +207,12 @@ enum APIKeyAutoDisableAction {
   permanent_disable_delete
 }
 
+enum APIKeyAutoDisableMode {
+  inherit
+  custom
+  off
+}
+
 type APIKeyAutoDisableRule {
   statusCodes: [Int!]
   keywordPatterns: [String!]
@@ -229,11 +235,13 @@ input APIKeyAutoDisableRuleInput {
 
 type ChannelPolicies {
   stream: CapabilityPolicy
+  apiKeyAutoDisableMode: APIKeyAutoDisableMode
   apiKeyAutoDisableRules: [APIKeyAutoDisableRule!]
 }
 
 input ChannelPoliciesInput {
   stream: CapabilityPolicy
+  apiKeyAutoDisableMode: APIKeyAutoDisableMode
   apiKeyAutoDisableRules: [APIKeyAutoDisableRuleInput!]
 }
 

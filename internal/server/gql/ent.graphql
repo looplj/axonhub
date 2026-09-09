@@ -433,6 +433,10 @@ type Channel implements Node {
   """
   autoDisabledAt: Time
   """
+  When set together with auto_disabled_at, the cleanup task re-enables the channel after this instant. Operator disables leave this null.
+  """
+  autoDisableExpiresAt: Time
+  """
   User-defined remark or note for the channel
   """
   remark: String
@@ -1506,6 +1510,19 @@ input ChannelWhereInput {
   autoDisabledAtLTE: Time
   autoDisabledAtIsNil: Boolean
   autoDisabledAtNotNil: Boolean
+  """
+  auto_disable_expires_at field predicates
+  """
+  autoDisableExpiresAt: Time
+  autoDisableExpiresAtNEQ: Time
+  autoDisableExpiresAtIn: [Time!]
+  autoDisableExpiresAtNotIn: [Time!]
+  autoDisableExpiresAtGT: Time
+  autoDisableExpiresAtGTE: Time
+  autoDisableExpiresAtLT: Time
+  autoDisableExpiresAtLTE: Time
+  autoDisableExpiresAtIsNil: Boolean
+  autoDisableExpiresAtNotNil: Boolean
   """
   remark field predicates
   """

@@ -148,6 +148,9 @@ models:
   APIKeyAutoDisableAction:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableAction
+  APIKeyAutoDisableMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableMode
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings
@@ -244,15 +247,9 @@ models:
   AutoDisableChannel:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel
-  AutoDisableChannelStatus:
-    model:
-      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
   AutoDisableChannelInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel
-  AutoDisableChannelStatusInput:
-    model:
-      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
   UpstreamErrorPolicy:
     model:
       - github.com/looplj/axonhub/internal/server/biz.UpstreamErrorPolicy

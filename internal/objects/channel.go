@@ -502,13 +502,46 @@ const (
 	CapabilityPolicyForbid    CapabilityPolicy = "forbid"
 )
 
+type APIKeyAutoDisableMode string
+
+const (
+	APIKeyAutoDisableModeInherit APIKeyAutoDisableMode = "inherit"
+	APIKeyAutoDisableModeCustom  APIKeyAutoDisableMode = "custom"
+	APIKeyAutoDisableModeOff     APIKeyAutoDisableMode = "off"
+)
+
 type ChannelPolicies struct {
 	Stream CapabilityPolicy `json:"stream,omitempty"`
 
+	// APIKeyAutoDisableMode selects how this channel combines with the global
+	// auto-disable rules: inherit (global only), custom (channel first, then
+	// global), or off (neither layer). Empty is inferred from whether rules exist.
+	APIKeyAutoDisableMode APIKeyAutoDisableMode `json:"apiKeyAutoDisableMode,omitempty"`
+
 	// APIKeyAutoDisableRules are the channel's own auto-disable rules. They are
-	// evaluated before the global retry policy and, when one matches, own the
-	// failure outright. Channels without rules fall back to the global policy.
+	// evaluated before the global retry policy when the mode is custom, and the
+	// first match owns the failure. Unmatched custom failures fall back to global.
 	APIKeyAutoDisableRules []APIKeyAutoDisableRule `json:"apiKeyAutoDisableRules,omitempty"`
+}
+
+// EffectiveAutoDisableMode returns the mode used at evaluation time.
+func (p ChannelPolicies) EffectiveAutoDisableMode() APIKeyAutoDisableMode {
+	switch p.APIKeyAutoDisableMode {
+	case APIKeyAutoDisableModeOff:
+		return APIKeyAutoDisableModeOff
+	case APIKeyAutoDisableModeCustom:
+		if len(p.APIKeyAutoDisableRules) == 0 {
+			return APIKeyAutoDisableModeInherit
+		}
+		return APIKeyAutoDisableModeCustom
+	case APIKeyAutoDisableModeInherit:
+		return APIKeyAutoDisableModeInherit
+	default:
+		if len(p.APIKeyAutoDisableRules) > 0 {
+			return APIKeyAutoDisableModeCustom
+		}
+		return APIKeyAutoDisableModeInherit
+	}
 }
 
 type APIKeyAutoDisableAction string

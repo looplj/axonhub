@@ -166,6 +166,7 @@ func TestChannelService_OAuthCredentialDisableAndCronRecovery(t *testing.T) {
 	require.NotNil(t, disabled.ErrorMessage)
 	require.Contains(t, *disabled.ErrorMessage, allKeysDisabledErrorPrefix)
 	require.NotNil(t, disabled.AutoDisabledAt)
+	require.Nil(t, disabled.AutoDisableExpiresAt, "all-keys-unavailable must not set a channel expiry")
 
 	// Credentials themselves must be untouched: the sentinel is bookkeeping only.
 	require.Empty(t, disabled.Credentials.GetAllAPIKeys())
