@@ -81,13 +81,6 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                 }
                 cursor
               }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
-              totalCount
             }
             usageLogs(first: 1) {
               edges {
@@ -112,7 +105,6 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
           startCursor
           endCursor
         }
-        totalCount
       }
     }
   `;
