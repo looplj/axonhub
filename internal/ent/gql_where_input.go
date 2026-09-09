@@ -976,6 +976,18 @@ type ChannelWhereInput struct {
 	AutoDisabledAtIsNil  bool        `json:"autoDisabledAtIsNil,omitempty"`
 	AutoDisabledAtNotNil bool        `json:"autoDisabledAtNotNil,omitempty"`
 
+	// "auto_disable_expires_at" field predicates.
+	AutoDisableExpiresAt       *time.Time  `json:"autoDisableExpiresAt,omitempty"`
+	AutoDisableExpiresAtNEQ    *time.Time  `json:"autoDisableExpiresAtNEQ,omitempty"`
+	AutoDisableExpiresAtIn     []time.Time `json:"autoDisableExpiresAtIn,omitempty"`
+	AutoDisableExpiresAtNotIn  []time.Time `json:"autoDisableExpiresAtNotIn,omitempty"`
+	AutoDisableExpiresAtGT     *time.Time  `json:"autoDisableExpiresAtGT,omitempty"`
+	AutoDisableExpiresAtGTE    *time.Time  `json:"autoDisableExpiresAtGTE,omitempty"`
+	AutoDisableExpiresAtLT     *time.Time  `json:"autoDisableExpiresAtLT,omitempty"`
+	AutoDisableExpiresAtLTE    *time.Time  `json:"autoDisableExpiresAtLTE,omitempty"`
+	AutoDisableExpiresAtIsNil  bool        `json:"autoDisableExpiresAtIsNil,omitempty"`
+	AutoDisableExpiresAtNotNil bool        `json:"autoDisableExpiresAtNotNil,omitempty"`
+
 	// "remark" field predicates.
 	Remark             *string  `json:"remark,omitempty"`
 	RemarkNEQ          *string  `json:"remarkNEQ,omitempty"`
@@ -1457,6 +1469,36 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	}
 	if i.AutoDisabledAtNotNil {
 		predicates = append(predicates, channel.AutoDisabledAtNotNil())
+	}
+	if i.AutoDisableExpiresAt != nil {
+		predicates = append(predicates, channel.AutoDisableExpiresAtEQ(*i.AutoDisableExpiresAt))
+	}
+	if i.AutoDisableExpiresAtNEQ != nil {
+		predicates = append(predicates, channel.AutoDisableExpiresAtNEQ(*i.AutoDisableExpiresAtNEQ))
+	}
+	if len(i.AutoDisableExpiresAtIn) > 0 {
+		predicates = append(predicates, channel.AutoDisableExpiresAtIn(i.AutoDisableExpiresAtIn...))
+	}
+	if len(i.AutoDisableExpiresAtNotIn) > 0 {
+		predicates = append(predicates, channel.AutoDisableExpiresAtNotIn(i.AutoDisableExpiresAtNotIn...))
+	}
+	if i.AutoDisableExpiresAtGT != nil {
+		predicates = append(predicates, channel.AutoDisableExpiresAtGT(*i.AutoDisableExpiresAtGT))
+	}
+	if i.AutoDisableExpiresAtGTE != nil {
+		predicates = append(predicates, channel.AutoDisableExpiresAtGTE(*i.AutoDisableExpiresAtGTE))
+	}
+	if i.AutoDisableExpiresAtLT != nil {
+		predicates = append(predicates, channel.AutoDisableExpiresAtLT(*i.AutoDisableExpiresAtLT))
+	}
+	if i.AutoDisableExpiresAtLTE != nil {
+		predicates = append(predicates, channel.AutoDisableExpiresAtLTE(*i.AutoDisableExpiresAtLTE))
+	}
+	if i.AutoDisableExpiresAtIsNil {
+		predicates = append(predicates, channel.AutoDisableExpiresAtIsNil())
+	}
+	if i.AutoDisableExpiresAtNotNil {
+		predicates = append(predicates, channel.AutoDisableExpiresAtNotNil())
 	}
 	if i.Remark != nil {
 		predicates = append(predicates, channel.RemarkEQ(*i.Remark))
