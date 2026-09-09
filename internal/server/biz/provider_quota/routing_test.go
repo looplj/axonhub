@@ -159,14 +159,14 @@ func TestEvaluateQuotaRouting_DecisionTable(t *testing.T) {
 			wantState:     RoutingExhausted,
 		},
 		{
-			name: "multiple windows worst wins",
+			name: "ungrouped windows require all windows",
 			limits: []QuotaLimitStatus{
 				{Type: QuotaLimitTypeToken, Status: "available", UsageRatio: 0.2, Window: QuotaWindow5h},
 				{Type: QuotaLimitTypeToken, Status: "exhausted", UsageRatio: 1, Window: QuotaWindow7d},
 			},
 			overallStatus: "available",
 			limitType:     QuotaLimitTypeToken,
-			wantState:     RoutingOpen,
+			wantState:     RoutingExhausted,
 		},
 		{
 			name: "channel exhausted short-circuits limits",

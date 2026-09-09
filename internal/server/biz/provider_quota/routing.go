@@ -65,9 +65,13 @@ func EvaluateQuotaRouting(
 	allWindowsExhausted := true
 	balanceAvailable := false
 	for _, group := range groups {
-		groupAvailable := false
+		groupAvailable := len(group) > 0 && group[0].AvailabilityGroup == ""
 		for _, limit := range group {
-			if !routingLimitExhausted(limit) {
+			if group[0].AvailabilityGroup == "" {
+				if routingLimitExhausted(limit) {
+					groupAvailable = false
+				}
+			} else if !routingLimitExhausted(limit) {
 				groupAvailable = true
 			}
 
@@ -125,7 +129,8 @@ func routingGroups(limits []QuotaLimitStatus, limitType QuotaLimitType) [][]Quot
 	}
 
 	grouped := make(map[string][]QuotaLimitStatus)
-	var ungrouped []QuotaLimitStatus
+	var ungroupedWindows []QuotaLimitStatus
+	var ungroupedBalances []QuotaLimitStatus
 	for _, limit := range limits {
 		if limit.Type != limitType && !groupNames[limit.AvailabilityGroup] {
 			continue
@@ -135,15 +140,22 @@ func routingGroups(limits []QuotaLimitStatus, limitType QuotaLimitType) [][]Quot
 			grouped[limit.AvailabilityGroup] = append(grouped[limit.AvailabilityGroup], limit)
 			continue
 		}
-		ungrouped = append(ungrouped, limit)
+		if IsBalanceLimit(limit) {
+			ungroupedBalances = append(ungroupedBalances, limit)
+		} else {
+			ungroupedWindows = append(ungroupedWindows, limit)
+		}
 	}
 
-	groups := make([][]QuotaLimitStatus, 0, len(grouped)+len(ungrouped))
+	groups := make([][]QuotaLimitStatus, 0, len(grouped)+2)
 	for _, group := range grouped {
 		groups = append(groups, group)
 	}
-	for _, limit := range ungrouped {
-		groups = append(groups, []QuotaLimitStatus{limit})
+	if len(ungroupedWindows) > 0 {
+		groups = append(groups, ungroupedWindows)
+	}
+	if len(ungroupedBalances) > 0 {
+		groups = append(groups, ungroupedBalances)
 	}
 	return groups
 }

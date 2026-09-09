@@ -143,8 +143,8 @@ func (g *QuotaRoutingGate) evaluate(
 		decision.keepPhaseOne = true
 		decision.keepPhaseTwo = true
 	case objects.QuotaRoutingModeBackpressure:
-		decision.keepPhaseOne = decision.state == provider_quota.RoutingOpen || decision.state == provider_quota.RoutingUnknown
-		decision.keepPhaseOne = decision.keepPhaseOne ||
+		decision.keepPhaseOne = decision.state == provider_quota.RoutingOpen ||
+			decision.state == provider_quota.RoutingUnknown ||
 			(decision.state == provider_quota.RoutingStickyOnly && candidate.Channel.ID == stickyID && stickyID != 0)
 		decision.keepPhaseTwo = decision.state == provider_quota.RoutingStickyOnly
 	default:
