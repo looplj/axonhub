@@ -414,7 +414,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
   // throttled (amber), REMOVE_ON_EXHAUSTED channels are removed once exhausted
   // (red). Without a resolvable mode the badge is omitted.
   let modeBadge: { key: string; color: string } | null = null;
-  const routingIndicator = getChannelQuotaRoutingIndicator(channel, effectiveMode ?? undefined);
+  const routingIndicator = getChannelQuotaRoutingIndicator(channel, undefined, effectiveMode);
   if (routingIndicator === 'exhausted') modeBadge = { key: 'quota.status.remove_on_exhausted', color: 'red' };
   else if (routingIndicator === 'backpressure') modeBadge = { key: 'quota.status.backpressure', color: 'amber' };
 

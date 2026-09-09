@@ -927,7 +927,7 @@ export const createColumns = (
         );
       },
       meta: {
-        className: 'w-24 min-w-24 text-center',
+        className: 'w-32 min-w-32 text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -939,7 +939,7 @@ export const createColumns = (
       ),
       cell: OrderingWeightCell,
       meta: {
-        className: 'w-16 min-w-0 text-center',
+        className: 'w-28 min-w-28 text-center',
       },
       sortingFn: 'alphanumeric',
       enableSorting: true,

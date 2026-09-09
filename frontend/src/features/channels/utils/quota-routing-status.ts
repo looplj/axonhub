@@ -5,11 +5,12 @@ import type { Channel } from '../data/schema';
 export type ChannelQuotaRoutingIndicator = 'exhausted' | 'backpressure';
 
 export function getChannelQuotaRoutingIndicator(
-  channel: Pick<Channel, 'providerQuotaStatus' | 'settings'>,
-  globalDefaultMode?: QuotaRoutingMode
+  channel: Pick<Channel, 'providerQuotaStatus' | 'settings'> & { quotaRoutingMode?: QuotaRoutingMode | null },
+  globalDefaultMode?: QuotaRoutingMode,
+  effectiveModeOverride?: QuotaRoutingMode | null
 ): ChannelQuotaRoutingIndicator | undefined {
-  const channelMode = channel.settings?.quotaRoutingMode;
-  const effectiveMode = channelMode && channelMode !== 'INHERIT' ? channelMode : globalDefaultMode;
+  const channelMode = channel.settings?.quotaRoutingMode ?? channel.quotaRoutingMode;
+  const effectiveMode = effectiveModeOverride ?? (channelMode && channelMode !== 'INHERIT' ? channelMode : globalDefaultMode);
   if (effectiveMode === 'IGNORE_QUOTA') return undefined;
 
   if (channel.providerQuotaStatus?.status === 'exhausted') return 'exhausted';
