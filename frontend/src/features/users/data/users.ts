@@ -47,12 +47,14 @@ export function useUsers(
 export function useUser(id: string) {
   const { t } = useTranslation();
   const { handleError } = useErrorHandler();
+  const selectedProjectId = useSelectedProjectId();
 
   return useQuery({
-    queryKey: ['user', id],
+    queryKey: ['user', id, selectedProjectId],
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ users: UserConnection }>(USERS_QUERY, { where: { id } });
+        const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+        const data = await graphqlRequest<{ users: UserConnection }>(USERS_QUERY, { where: { id } }, headers);
         const user = data.users.edges[0]?.node;
         if (!user) {
           throw new Error(t('users.messages.userNotFound'));
