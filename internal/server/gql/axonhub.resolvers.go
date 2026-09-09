@@ -662,9 +662,17 @@ func (r *mutationResolver) SyncChannelModels(ctx context.Context, channelID obje
 		return nil, err
 	}
 
+	// manual_models is nullable in the schema; normalize nil so the non-null
+	// payload field never resolves to null.
+	manualModels := ch.ManualModels
+	if manualModels == nil {
+		manualModels = []string{}
+	}
+
 	return &SyncChannelModelsPayload{
 		ChannelID:       channelID,
 		SupportedModels: ch.SupportedModels,
+		ManualModels:    manualModels,
 	}, nil
 }
 

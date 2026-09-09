@@ -606,13 +606,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
   }, [open, showModelsPanel, initialRow]);
 
-  // Sync manualModels when dialog opens with new initialRow
-  useEffect(() => {
-    if (open && initialRow) {
-      setManualModels(initialRow.manualModels || []);
-    }
-  }, [open, initialRow]);
-
   // Get available providers (excluding fake types)
   const availableProviders = useMemo(
     () =>
@@ -1622,7 +1615,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       pattern: formPattern.trim() ? formPattern : undefined,
     });
 
+    // Sync is authoritative for both lists; refreshing only supportedModels
+    // leaves manualModels stale and makes the header count drift from the badges.
     setSupportedModels(result.supportedModels || []);
+    setManualModels(result.manualModels || []);
     return result.supportedModels || [];
   }, [currentRow, form, patternError, syncChannelModels]);
 
