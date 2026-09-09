@@ -15,6 +15,8 @@ func TestLLMMetricsRecordLifecycleUsageAndPerformance(t *testing.T) {
 	reader := sdkmetric.NewManualReader()
 	provider := sdkmetric.NewMeterProvider(sdkmetric.WithReader(reader))
 	t.Cleanup(func() { _ = provider.Shutdown(context.Background()) })
+	previous := Metrics
+	t.Cleanup(func() { Metrics = previous })
 
 	require.NoError(t, SetupMetrics(provider, "axonhub-test"))
 	attrs := RequestAttributes{
@@ -29,9 +31,23 @@ func TestLLMMetricsRecordLifecycleUsageAndPerformance(t *testing.T) {
 		Stream:         true,
 	}
 
-	Metrics.RecordDownstreamRequestCreated(t.Context(), attrs)
+	// Routing and context enrichment change between creation and completion.
+	downstreamCreated := attrs
+	downstreamCreated.ChannelID = 0
+	downstreamCreated.ModelID = ""
+	downstreamCreated.UserID = 0
+	upstreamCreated := attrs
+	upstreamCreated.RequestModelID = ""
+	upstreamCreated.APIKeyID = 0
+	upstreamCreated.UserID = 0
+	upstreamCreated.Source = ""
+	Metrics.RecordDownstreamRequestCreated(t.Context(), downstreamCreated)
+	Metrics.RecordUpstreamRequestCreated(t.Context(), upstreamCreated)
+	active := metricdata.ResourceMetrics{}
+	require.NoError(t, reader.Collect(t.Context(), &active))
+	assert.Equal(t, int64(1), metricCounterValue(t, active, "axonhub_downstream_active_requests"))
+	assert.Equal(t, int64(1), metricCounterValue(t, active, "axonhub_upstream_active_requests"))
 	Metrics.RecordDownstreamRequestCompleted(t.Context(), attrs, "completed")
-	Metrics.RecordUpstreamRequestCreated(t.Context(), attrs)
 	Metrics.RecordUpstreamRequestCompleted(t.Context(), attrs, "failed")
 	cost := 0.125
 	Metrics.RecordLLMUsage(t.Context(), attrs, 100, 40, 20, 5, &cost)

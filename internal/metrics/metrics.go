@@ -231,7 +231,7 @@ func (sm *_Metrics) RecordDownstreamRequestCreated(ctx context.Context, attrs Re
 		return
 	}
 
-	sm.DownstreamActiveRequests.Add(ctx, 1, metric.WithAttributes(requestAttrs(attrs)...))
+	sm.DownstreamActiveRequests.Add(ctx, 1, metric.WithAttributes(downstreamActiveAttrs(attrs)...))
 }
 
 // RecordDownstreamRequestCompleted records one logical client request entering
@@ -242,11 +242,9 @@ func (sm *_Metrics) RecordDownstreamRequestCompleted(ctx context.Context, attrs 
 	}
 
 	attrs.Status = status
-	attrsWithoutStatus := attrs
-	attrsWithoutStatus.Status = ""
 	sm.DownstreamRequestsTotal.Add(ctx, 1, metric.WithAttributes(requestAttrs(attrs)...))
 	if sm.DownstreamActiveRequests != nil {
-		sm.DownstreamActiveRequests.Add(ctx, -1, metric.WithAttributes(requestAttrs(attrsWithoutStatus)...))
+		sm.DownstreamActiveRequests.Add(ctx, -1, metric.WithAttributes(downstreamActiveAttrs(attrs)...))
 	}
 }
 
@@ -256,7 +254,7 @@ func (sm *_Metrics) RecordUpstreamRequestCreated(ctx context.Context, attrs Requ
 		return
 	}
 
-	sm.UpstreamActiveRequests.Add(ctx, 1, metric.WithAttributes(requestAttrs(attrs)...))
+	sm.UpstreamActiveRequests.Add(ctx, 1, metric.WithAttributes(upstreamActiveAttrs(attrs)...))
 }
 
 // RecordUpstreamRequestCompleted records one provider execution attempt entering
@@ -268,10 +266,8 @@ func (sm *_Metrics) RecordUpstreamRequestCompleted(ctx context.Context, attrs Re
 
 	attrs.Status = status
 	sm.UpstreamRequestsTotal.Add(ctx, 1, metric.WithAttributes(requestAttrs(attrs)...))
-	attrsWithoutStatus := attrs
-	attrsWithoutStatus.Status = ""
 	if sm.UpstreamActiveRequests != nil {
-		sm.UpstreamActiveRequests.Add(ctx, -1, metric.WithAttributes(requestAttrs(attrsWithoutStatus)...))
+		sm.UpstreamActiveRequests.Add(ctx, -1, metric.WithAttributes(upstreamActiveAttrs(attrs)...))
 	}
 }
 
@@ -338,6 +334,28 @@ func (sm *_Metrics) RecordDownstreamPerformance(ctx context.Context, attrs Reque
 	}
 	if ttftSeconds != nil && *ttftSeconds >= 0 && sm.DownstreamTTFT != nil {
 		sm.DownstreamTTFT.Record(ctx, *ttftSeconds, metricAttrs)
+	}
+}
+
+// Active series use only immutable dimensions available at both lifecycle
+// boundaries. Routing and context enrichment must not split an increment and
+// its matching decrement into different time series.
+func downstreamActiveAttrs(attrs RequestAttributes) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.Int("project_id", attrs.ProjectID),
+		attribute.String("request_model_id", attrs.RequestModelID),
+		attribute.String("format", attrs.Format),
+		attribute.Bool("stream", attrs.Stream),
+	}
+}
+
+func upstreamActiveAttrs(attrs RequestAttributes) []attribute.KeyValue {
+	return []attribute.KeyValue{
+		attribute.Int("project_id", attrs.ProjectID),
+		attribute.Int("channel_id", attrs.ChannelID),
+		attribute.String("model_id", attrs.ModelID),
+		attribute.String("format", attrs.Format),
+		attribute.Bool("stream", attrs.Stream),
 	}
 }
 
