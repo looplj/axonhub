@@ -52,6 +52,8 @@ func TestRouteForModel(t *testing.T) {
 		// Grok/GPT family → OpenAI Responses API
 		{"grok-4.5", routeResponses},
 		{"gpt-5.6-luna", routeResponses},
+		{"muse-spark-1.3-contributor", routeResponses},
+		{"muse-spark-1.2-contributor", routeResponses},
 		// MiniMax/Qwen family → Anthropic messages
 		{"minimax-m3", routeAnthropic},
 		{"minimax-m2.7", routeAnthropic},

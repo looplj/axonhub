@@ -162,7 +162,7 @@ func routeForModel(model string) route {
 	switch {
 	case strings.HasPrefix(model, "deepseek"):
 		return routeDeepseek
-	case strings.HasPrefix(model, "grok"), strings.HasPrefix(model, "gpt"):
+	case strings.HasPrefix(model, "grok"), strings.HasPrefix(model, "gpt"), strings.HasPrefix(model, "muse"):
 		return routeResponses
 	case strings.HasPrefix(model, "minimax"), strings.HasPrefix(model, "qwen3"):
 		return routeAnthropic
