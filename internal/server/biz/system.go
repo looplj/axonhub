@@ -1806,7 +1806,7 @@ func (s *SystemService) QuotaRoutingSettings(ctx context.Context) (*QuotaRouting
 		}
 
 		var legacy legacyQuotaEnforcementSettings
-		if json.Unmarshal([]byte(legacyValue), &legacy) != nil {
+		if err := json.Unmarshal([]byte(legacyValue), &legacy); err != nil {
 			return lo.ToPtr(defaultQuotaRoutingSettings), nil
 		}
 

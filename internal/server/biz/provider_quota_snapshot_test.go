@@ -76,9 +76,7 @@ func TestQuotaCacheSnapshot_RaceUpdateAndRead(t *testing.T) {
 	var group sync.WaitGroup
 
 	// When
-	group.Add(1)
-	go func() {
-		defer group.Done()
+	group.Go(func() {
 		defer func() {
 			if recovered := recover(); recovered != nil {
 				t.Errorf("cache writer panicked: %v", recovered)
@@ -89,12 +87,10 @@ func TestQuotaCacheSnapshot_RaceUpdateAndRead(t *testing.T) {
 			limits[0].UsageRatio = float64(i) / iterations
 			service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, limits)
 		}
-	}()
+	})
 
-	for i := 0; i < readers; i++ {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+	for range readers {
+		group.Go(func() {
 			defer func() {
 				if recovered := recover(); recovered != nil {
 					t.Errorf("cache reader panicked: %v", recovered)
@@ -108,7 +104,7 @@ func TestQuotaCacheSnapshot_RaceUpdateAndRead(t *testing.T) {
 				}
 				provider_quota.EffectiveStatus(status.Limits, status.Status, status.Ready, provider_quota.QuotaLimitTypeToken)
 			}
-		}()
+		})
 	}
 	group.Wait()
 }
