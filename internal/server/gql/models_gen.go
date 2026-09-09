@@ -463,6 +463,7 @@ type SignInPayload struct {
 type SyncChannelModelsPayload struct {
 	ChannelID       objects.GUID `json:"channelID"`
 	SupportedModels []string     `json:"supportedModels"`
+	ManualModels    []string     `json:"manualModels"`
 }
 
 type SystemModelSettingOnboarding struct {

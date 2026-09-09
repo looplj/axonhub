@@ -360,6 +360,61 @@ func TestChannelService_PeriodicModelSyncNotifiesOnceForChangedBatch(t *testing.
 	require.Equal(t, 2, priceCount)
 }
 
+func TestChannelService_SyncChannelModelsKeepsManualModelsSavedDuringFetch(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	var channelID int
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/v1/models", r.URL.Path)
+
+		// Simulate a user saving a manual model while the provider fetch is in
+		// flight. The sync must re-read manual_models instead of overwriting it
+		// with the snapshot taken before the fetch.
+		_, err := client.Channel.UpdateOneID(channelID).
+			SetManualModels([]string{"concurrent-manual"}).
+			SetSupportedModels([]string{"auto-a", "auto-b", "concurrent-manual"}).
+			Save(ctx)
+		assert.NoError(t, err)
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"auto-a"},{"id":"auto-c"}]}`))
+	}))
+	defer server.Close()
+
+	svc.httpClient = httpclient.NewHttpClientWithClient(server.Client())
+	previousAsyncReloadDisabled := asyncReloadDisabled
+	asyncReloadDisabled = false
+	t.Cleanup(func() {
+		asyncReloadDisabled = previousAsyncReloadDisabled
+	})
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Concurrent manual model sync").
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"auto-a", "auto-b"}).
+		SetManualModels([]string{}).
+		SetDefaultTestModel("auto-a").
+		Save(ctx)
+	require.NoError(t, err)
+	channelID = ch.ID
+
+	updated, err := svc.SyncChannelModels(ctx, ch.ID, nil)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"auto-a", "auto-c", "concurrent-manual"}, updated.SupportedModels)
+	require.Equal(t, []string{"concurrent-manual"}, updated.ManualModels)
+
+	persisted, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"auto-a", "auto-c", "concurrent-manual"}, persisted.SupportedModels)
+	require.Equal(t, []string{"concurrent-manual"}, persisted.ManualModels)
+}
+
 func TestPreserveManualModels(t *testing.T) {
 	tests := []struct {
 		name          string
