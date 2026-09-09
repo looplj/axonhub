@@ -1,4 +1,12 @@
-import type { APIKeyAutoDisableMode, APIKeyAutoDisableRule, CapabilityPolicy } from './schema';
+import type {
+  APIKeyAutoDisableMode,
+  APIKeyAutoDisableRule,
+  BulkAutoDisableAction,
+  BulkUpdateChannelAutoDisableInput,
+  CapabilityPolicy,
+} from './schema';
+
+export type { BulkAutoDisableAction, BulkUpdateChannelAutoDisableInput };
 
 export type AutoDisablePoliciesInput = {
   apiKeyAutoDisableMode?: APIKeyAutoDisableMode | null;
@@ -79,4 +87,20 @@ export function availabilityPoliciesPayload(input: {
     apiKeyAutoDisableRules: savedMode === 'inherit' ? null : serialized,
     emptiedCustom,
   };
+}
+
+export function buildBulkAutoDisableInput(input: {
+  channelIDs: string[];
+  action: BulkAutoDisableAction;
+  rules: ApiKeyAutoDisableRuleFormValue[];
+}): { ok: true; input: BulkUpdateChannelAutoDisableInput } | { ok: false; error: 'empty_rules' } {
+  if (input.action === 'write_rules') {
+    const rules = serializeApiKeyAutoDisableRules(input.rules);
+    if (rules.length === 0) {
+      return { ok: false, error: 'empty_rules' };
+    }
+    return { ok: true, input: { channelIDs: input.channelIDs, action: 'write_rules', rules } };
+  }
+
+  return { ok: true, input: { channelIDs: input.channelIDs, action: input.action } };
 }
