@@ -22,6 +22,7 @@ import {
   type ChannelListColumnVisibility,
 } from './data/channels';
 import { useProvidersData } from '@/features/models/data/providers';
+import { useQuotaRoutingSettings } from '@/features/system/data/system';
 
 const ChannelsDialogs = lazy(() => import('./components/channels-dialogs').then((m) => ({ default: m.ChannelsDialogs })));
 
@@ -29,6 +30,7 @@ function ChannelsContent() {
   const { t } = useTranslation();
   useProvidersData();
   const { channelPermissions } = usePermissions();
+  const { data: quotaRoutingSettings } = useQuotaRoutingSettings();
   const { showTypeTabs } = useChannels();
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs } = usePaginationSearch({
     defaultPageSize: 20,
@@ -258,7 +260,10 @@ function ChannelsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const columns = useMemo(() => createColumns(t, channelPermissions.canWrite), [t, channelPermissions.canWrite]);
+  const columns = useMemo(
+    () => createColumns(t, channelPermissions.canWrite, quotaRoutingSettings?.defaultMode),
+    [t, channelPermissions.canWrite, quotaRoutingSettings?.defaultMode]
+  );
 
   return (
     <div className='flex min-w-0 flex-1 flex-col overflow-hidden'>
