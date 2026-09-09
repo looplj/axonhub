@@ -18,7 +18,7 @@ const transpiledMerge = ts.transpileModule(mergeSource, {
   },
 }).outputText;
 const mergeModuleUrl = `data:text/javascript;base64,${Buffer.from(transpiledMerge).toString('base64')}`;
-const { mergeOverrideOperations } = await import(mergeModuleUrl);
+const { mergeChannelSettingsForUpdate, mergeOverrideOperations } = await import(mergeModuleUrl);
 
 test('set_if_absent participates in scalar body override replacement', () => {
   const setIfAbsent = { op: 'set_if_absent', path: 'max_output_tokens', value: '32000' };
@@ -101,4 +101,24 @@ test('set_if_absent is exposed as a localized body-only operation', () => {
     assert.ok(messages['channels.dialogs.settings.overrides.body.opSetIfAbsent']);
     assert.ok(messages['channels.dialogs.settings.overrides.validation.missingValue']);
   }
+});
+test('mergeChannelSettingsForUpdate preserves quotaRoutingMode through a patch merge', () => {
+  const existing = {
+    extraModelPrefix: 'prefix-',
+    quotaRoutingMode: 'BACKPRESSURE',
+  };
+
+  // Patch touching unrelated keys must retain the existing routing mode.
+  const merged = mergeChannelSettingsForUpdate(existing, { lowercaseModelId: true });
+  assert.equal(merged.quotaRoutingMode, 'BACKPRESSURE');
+  assert.equal(merged.lowercaseModelId, true);
+  assert.equal(merged.extraModelPrefix, 'prefix-');
+
+  // Explicit patch value wins.
+  const overridden = mergeChannelSettingsForUpdate(existing, { quotaRoutingMode: 'IGNORE_QUOTA' });
+  assert.equal(overridden.quotaRoutingMode, 'IGNORE_QUOTA');
+
+  // No existing mode stays unset so the backend keeps its INHERIT semantics.
+  const unset = mergeChannelSettingsForUpdate({ extraModelPrefix: 'x' }, {});
+  assert.equal(unset.quotaRoutingMode, undefined);
 });

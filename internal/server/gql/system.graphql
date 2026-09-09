@@ -171,21 +171,18 @@ enum TraceStickyMode {
   PREFER_PREVIOUS_CHANNEL
 }
 
-enum QuotaEnforcementMode {
-  EXHAUSTED_ONLY
-  DE_PRIORITIZE
+enum QuotaRoutingMode {
+  IGNORE_QUOTA
+  REMOVE_ON_EXHAUSTED
+  BACKPRESSURE
 }
 
-type QuotaEnforcementSettings {
-  enabled: Boolean!
-  mode: QuotaEnforcementMode!
-  allowedChannelIDs: [ID!]!
+type QuotaRoutingSettings {
+  defaultMode: QuotaRoutingMode!
 }
 
-input UpdateQuotaEnforcementSettingsInput {
-  enabled: Boolean
-  mode: QuotaEnforcementMode
-  allowedChannelIDs: [ID!]
+input UpdateQuotaRoutingSettingsInput {
+  defaultMode: QuotaRoutingMode
 }
 
 type ProviderQuotaCollectionProvider {
@@ -432,7 +429,7 @@ extend type Mutation {
   updateSystemChannelSettings(input: UpdateSystemChannelSettingsInput!): Boolean!
   updateSystemGeneralSettings(input: UpdateSystemGeneralSettingsInput!): Boolean!
   updateVideoStorageSettings(input: UpdateVideoStorageSettingsInput!): Boolean!
-  updateQuotaEnforcementSettings(input: UpdateQuotaEnforcementSettingsInput!): Boolean!
+  updateQuotaRoutingSettings(input: UpdateQuotaRoutingSettingsInput!): Boolean!
   updateProviderQuotaCollectionSettings(input: UpdateProviderQuotaCollectionSettingsInput!): Boolean!
   updateSecuritySettings(input: UpdateSecuritySettingsInput!): Boolean!
   checkProviderQuotas: Boolean!
@@ -507,7 +504,7 @@ extend type Query {
   systemChannelSettings: SystemChannelSettings!
   systemGeneralSettings: SystemGeneralSettings!
   videoStorageSettings: VideoStorageSettings!
-  quotaEnforcementSettings: QuotaEnforcementSettings!
+  quotaRoutingSettings: QuotaRoutingSettings!
   providerQuotaCollectionSettings: ProviderQuotaCollectionSettings!
   securitySettings: SecuritySettings!
   proxyPresets: [ProxyPreset!]!

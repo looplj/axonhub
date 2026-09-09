@@ -47,6 +47,8 @@ import { useTestChannel, useUpdateChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
 import { parseQuotaLimits } from '../../system/data/quotas';
+import type { QuotaRoutingMode } from '../../system/data/system';
+import { getChannelQuotaRoutingIndicator } from '../utils/quota-routing-status';
 import { ChannelHealthCell } from './channel-health-cell';
 import { ChannelLimiterCell } from './channel-limiter-cell';
 import { ChannelsStatusDialog } from './channels-status-dialog';
@@ -367,13 +369,14 @@ function getProxyURLSummary(proxyURL: string): { label: string; detail?: string 
 }
 
 // Memoized cell components to avoid recreating on every render
-const NameCell = memo(({ row }: { row: Row<Channel> }) => {
+const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDefaultMode?: QuotaRoutingMode }) => {
   const { t } = useTranslation();
   const channel = row.original;
   const hasError = channel.errorMessage != null;
   const disabledKeysCount = channel.disabledAPIKeys?.length ?? 0;
   const hasDisabledKeys = disabledKeysCount > 0;
   const websiteURL = getChannelWebsiteURL(channel.baseURL);
+  const quotaRoutingIndicator = getChannelQuotaRoutingIndicator(channel, globalDefaultMode);
 
   const nameElement = websiteURL ? (
     <a
@@ -389,20 +392,29 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
     <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
   );
 
-  // Both indicators are shown independently: a channel disabled because every
-  // credential is unavailable carries an error *and* disabled credentials, and
-  // hiding the key icon behind the error would lose the reason it went down.
   const content = (
     <div className='flex justify-center'>
       <div className='flex max-w-56 items-center gap-2'>
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
         {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
+        {quotaRoutingIndicator === 'exhausted' && (
+          <>
+            <IconCoin className='h-4 w-4 shrink-0 text-destructive' aria-hidden='true' />
+            <span className='sr-only'>{t('quota.status.exhausted')}</span>
+          </>
+        )}
+        {quotaRoutingIndicator === 'backpressure' && (
+          <>
+            <IconGauge className='h-4 w-4 shrink-0 text-amber-500' aria-hidden='true' />
+            <span className='sr-only'>{t('quota.status.backpressure')}</span>
+          </>
+        )}
         {nameElement}
       </div>
     </div>
   );
 
-  if (!hasError && !hasDisabledKeys) {
+  if (!hasError && !hasDisabledKeys && !quotaRoutingIndicator) {
     return content;
   }
 
@@ -421,6 +433,8 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
           {hasDisabledKeys && (
             <p className='text-sm text-amber-500'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>
           )}
+          {quotaRoutingIndicator === 'exhausted' && <p className='text-destructive text-sm'>{t('quota.status.exhausted')}</p>}
+          {quotaRoutingIndicator === 'backpressure' && <p className='text-sm text-amber-500'>{t('quota.status.backpressure')}</p>}
         </div>
       </TooltipContent>
     </Tooltip>
@@ -480,15 +494,15 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
         const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
         const label = quotaWindowLabel(limit.window, t) || t('quota.label.quota');
         return (
-          <div key={`${label}-${index}`} className='flex min-w-0 items-center justify-end gap-2'>
-            <span className='text-muted-foreground min-w-0 truncate text-left'>{label}</span>
-            <div className='bg-muted h-1.5 w-16 shrink-0 overflow-hidden rounded-full sm:w-24'>
+          <div key={`${label}-${index}`} className='flex min-w-0 items-center gap-1'>
+            <span className='text-muted-foreground w-20 shrink-0 truncate text-left'>{label}</span>
+            <div className='bg-muted h-1.5 min-w-0 flex-1 overflow-hidden rounded-full'>
               <div
                 className={`h-full ${remaining <= 20 ? 'bg-red-500' : remaining <= 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
                 style={{ width: `${remaining}%` }}
               />
             </div>
-            <span className={`w-8 text-right font-medium ${quotaColor(remaining)}`}>{remaining}%</span>
+            <span className={`w-9 shrink-0 text-right font-medium ${quotaColor(remaining)}`}>{remaining}%</span>
           </div>
         );
       })}
@@ -756,7 +770,11 @@ const CreatedAtCell = memo(({ row }: { row: Row<Channel> }) => {
 
 CreatedAtCell.displayName = 'CreatedAtCell';
 
-export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true): ColumnDef<Channel>[] => {
+export const createColumns = (
+  t: ReturnType<typeof useTranslation>['t'],
+  canWrite: boolean = true,
+  globalDefaultMode?: QuotaRoutingMode
+): ColumnDef<Channel>[] => {
   return [
     {
       id: 'expand',
@@ -803,9 +821,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     {
       accessorKey: 'name',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} className='justify-center' />,
-      cell: NameCell,
+      cell: ({ row }: { row: Row<Channel> }) => <NameCell row={row} globalDefaultMode={globalDefaultMode} />,
       meta: {
-        className: 'w-[18%] min-w-0 text-center',
+         className: 'w-[13%] min-w-0 text-center',
       },
       enableHiding: false,
       enableSorting: true,
@@ -816,7 +834,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.provider')} className='justify-center' />,
       cell: ProviderCell,
       meta: {
-        className: 'text-center',
+         className: 'w-[9%] min-w-0 text-center',
       },
       filterFn: (row, _id, value) => {
         return value.includes(row.original.type);
@@ -829,7 +847,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} className='justify-center' />,
       cell: StatusSwitchCell,
       meta: {
-        className: 'text-center',
+         className: 'w-[8%] min-w-0 text-center',
       },
       enableSorting: true,
       enableHiding: false,
@@ -840,7 +858,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.quota')} className='justify-center' />,
       cell: QuotaCell,
       meta: {
-        className: 'hidden min-w-0 2xl:table-cell text-center',
+         className: 'hidden w-[23%] min-w-0 2xl:table-cell text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -879,7 +897,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       ),
       cell: SupportedModelsCell,
       meta: {
-        className: 'w-[22%] min-w-0 max-w-none text-center',
+         className: 'w-[20%] min-w-0 max-w-none text-center',
       },
       enableSorting: false,
     },
@@ -909,7 +927,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
         );
       },
       meta: {
-        className: 'text-center',
+        className: 'w-32 min-w-32 text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -921,7 +939,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       ),
       cell: OrderingWeightCell,
       meta: {
-        className: 'w-16 min-w-0 text-center',
+        className: 'w-28 min-w-28 text-center',
       },
       sortingFn: 'alphanumeric',
       enableSorting: true,
@@ -932,7 +950,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} className='justify-center' />,
       cell: CreatedAtCell,
       meta: {
-        className: 'hidden min-w-0 xl:table-cell text-center',
+        className: 'hidden w-28 min-w-28 xl:table-cell text-center',
       },
       enableSorting: true,
       enableHiding: false,

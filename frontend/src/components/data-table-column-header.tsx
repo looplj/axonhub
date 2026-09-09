@@ -20,15 +20,15 @@ export function DataTableColumnHeader<TData, TValue>({ column, title, className 
   const { t } = useTranslation();
 
   if (!column.getCanSort()) {
-    return <div className={cn(className)}>{title}</div>;
+    return <div className={cn('text-muted-foreground text-xs font-medium leading-5', className)}>{title}</div>;
   }
 
   return (
     <div className={cn('flex items-center space-x-2', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant='ghost' size='sm' className='data-[state=open]:bg-accent -ml-3 h-8'>
-            <span className='uppercase'>{title}</span>
+          <Button variant='ghost' size='sm' className='data-[state=open]:bg-accent -ml-3 h-8 text-xs font-medium leading-5 text-muted-foreground'>
+            <span>{title}</span>
             {column.getIsSorted() === 'desc' ? (
               <ArrowDownIcon className='ml-2 h-4 w-4' />
             ) : column.getIsSorted() === 'asc' ? (

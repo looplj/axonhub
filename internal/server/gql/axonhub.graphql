@@ -193,6 +193,14 @@ type ChannelSettings {
   retryableErrorPatterns: [RetryableErrorPattern!]
   modelProtocols: [ModelProtocol!]
   providerQuota: ChannelProviderQuotaSettings @goField(forceResolver: true)
+  quotaRoutingMode: ChannelQuotaRoutingMode
+}
+
+enum ChannelQuotaRoutingMode {
+  INHERIT
+  IGNORE_QUOTA
+  REMOVE_ON_EXHAUSTED
+  BACKPRESSURE
 }
 
 enum CapabilityPolicy {
@@ -261,6 +269,7 @@ input ChannelSettingsInput {
   retryableErrorPatterns: [RetryableErrorPatternInput!]
   modelProtocols: [ModelProtocolInput!]
   providerQuota: ChannelProviderQuotaSettingsInput
+  quotaRoutingMode: ChannelQuotaRoutingMode
 }
 
 input ChannelRateLimitInput {

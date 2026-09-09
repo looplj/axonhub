@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
+import type { ChannelQuotaRoutingMode } from '@/features/channels/data/schema';
 
 const CHECK_PROVIDER_QUOTAS_QUERY = `
   mutation CheckProviderQuotas {
@@ -21,6 +22,9 @@ const PROVIDER_QUOTA_STATUSES_QUERY = `
           id
           name
           type
+          settings {
+            quotaRoutingMode
+          }
           providerQuotaStatus {
             status
             nextResetAt
@@ -632,6 +636,8 @@ export type ProviderQuotaChannel = {
   // Names of the channels sharing this account, only set on the representative
   // entry built by the quota popover grouping.
   sharedAccountNames?: string[];
+  // Quota routing mode declared on the channel settings; INHERIT defers to the global default.
+  quotaRoutingMode: ChannelQuotaRoutingMode;
   quotaStatus: {
     status: 'available' | 'warning' | 'exhausted' | 'unknown';
     nextResetAt: string | null;
@@ -786,6 +792,7 @@ type QueryChannelNode = {
   id: string;
   name: string;
   type: string;
+  settings: { quotaRoutingMode: ChannelQuotaRoutingMode } | null;
   providerQuotaStatus: ProviderQuotaStatusNode | null;
 };
 
@@ -812,6 +819,7 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
   const base = {
     id: node.id,
     name: node.name,
+    quotaRoutingMode: node.settings?.quotaRoutingMode ?? 'INHERIT',
     accountKey: optionalString(quotaStatus.accountKey),
     quotaStatus: {
       status: quotaStatus.status,

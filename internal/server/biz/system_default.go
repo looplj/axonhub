@@ -1,5 +1,7 @@
 package biz
 
+import "github.com/looplj/axonhub/internal/objects"
+
 const (
 	defaultChannelTestSystemPrompt = "You are a helpful assistant."
 	defaultChannelTestUserPrompt   = "Hello world, I'm AxonHub.\nPlease tell me who you are?"
@@ -133,9 +135,8 @@ var defaultVideoStorageSettings = VideoStorageSettings{
 	ScanLimit:           50,
 }
 
-var defaultQuotaEnforcementSettings = QuotaEnforcementSettings{
-	Enabled: false,
-	Mode:    QuotaEnforcementModeExhaustedOnly,
+var defaultQuotaRoutingSettings = QuotaRoutingSettings{
+	DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted,
 }
 
 var defaultSecuritySettings = SecuritySettings{

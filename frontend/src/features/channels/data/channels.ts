@@ -98,6 +98,7 @@ const CREATE_CHANNEL_MUTATION = `
         hideOriginalModels
         hideMappedModels
         lowercaseModelId
+        quotaRoutingMode
         proxy {
           type
           url
@@ -180,6 +181,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         hideOriginalModels
         hideMappedModels
         lowercaseModelId
+        quotaRoutingMode
         proxy {
           type
           url
@@ -262,6 +264,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         hideOriginalModels
         hideMappedModels
         lowercaseModelId
+        quotaRoutingMode
         proxy {
           type
           url
@@ -344,6 +347,7 @@ const UPDATE_CHANNEL_MUTATION = `
         hideOriginalModels
         hideMappedModels
         lowercaseModelId
+        quotaRoutingMode
         proxy {
           type
           url
@@ -548,6 +552,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           hideOriginalModels
           hideMappedModels
           lowercaseModelId
+          quotaRoutingMode
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -786,6 +791,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           hideOriginalModels
           hideMappedModels
           lowercaseModelId
+          quotaRoutingMode
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -921,6 +927,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             hideOriginalModels
             hideMappedModels
             lowercaseModelId
+            quotaRoutingMode
             bodyOverrideOperations {
               op
               path
@@ -1029,7 +1036,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
 `;
 
 const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
-          id
+           id
           createdAt
           updatedAt
           type
@@ -1044,7 +1051,19 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
             errorCode
             reason
             expiresAt
-          }
+           }
+`;
+
+const CHANNEL_QUERY_ROUTING_STATUS_SELECTION = `
+           settings {
+             quotaRoutingMode
+           }
+           providerQuotaStatus {
+             status
+             ready
+             quotaData
+             providerType
+           }
 `;
 
 const CHANNEL_QUERY_SUPPORTED_MODELS_SELECTION = `
@@ -1057,6 +1076,7 @@ const CHANNEL_QUERY_TAGS_SELECTION = `
 
 const CHANNEL_QUERY_PROXY_SELECTION = `
           settings {
+            quotaRoutingMode
             proxy {
               type
               url
@@ -1103,6 +1123,7 @@ export function buildQueryChannelsQuery(
     ? CHANNEL_QUERY_FULL_NODE_SELECTION
     : [
         CHANNEL_QUERY_LIST_NODE_BASE_SELECTION,
+        CHANNEL_QUERY_ROUTING_STATUS_SELECTION,
         isChannelColumnVisible(columnVisibility, 'supportedModels') ? CHANNEL_QUERY_SUPPORTED_MODELS_SELECTION : '',
         isChannelColumnVisible(columnVisibility, 'tags') ? CHANNEL_QUERY_TAGS_SELECTION : '',
         isChannelColumnVisible(columnVisibility, 'proxy') ? CHANNEL_QUERY_PROXY_SELECTION : '',
