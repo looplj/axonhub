@@ -186,7 +186,7 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	if err != nil {
 		return nil, false, err
 	}
-	if ent.TxFromContext(ctx) == nil && modelsChanged {
+	if ent.TxFromContext(ctx) == nil && updatedCh != nil {
 		updatedCh.Unwrap()
 	}
 

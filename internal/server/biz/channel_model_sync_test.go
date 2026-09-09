@@ -275,6 +275,11 @@ func TestChannelService_ModelSyncIgnoresProviderOnlyOrderChanges(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"model-a", "model-b"}, second.SupportedModels)
 	require.Equal(t, 1, notifier.notifyCount)
+
+	// The unchanged sync returns an entity read inside the transaction; it must be
+	// unwrapped so later edge queries do not run against the closed transaction.
+	_, err = second.QueryChannelModelPrices().All(ctx)
+	require.NoError(t, err)
 }
 
 func TestChannelService_ModelSyncRemovesProtocolsForRemovedModels(t *testing.T) {
