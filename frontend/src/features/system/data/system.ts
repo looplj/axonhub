@@ -1597,11 +1597,12 @@ export interface UpdateUserAgentPassThroughSettingsInput {
   enabled: boolean;
 }
 
-export function useUserAgentPassThroughSettings() {
+export function useUserAgentPassThroughSettings(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler();
 
   return useQuery({
     queryKey: ['userAgentPassThroughSettings'],
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ userAgentPassThroughSettings: UserAgentPassThroughSettings }>(USER_AGENT_PASS_THROUGH_SETTINGS_QUERY);
@@ -1655,11 +1656,12 @@ export interface UpdatePassThroughSettingsInput {
   enabled: boolean;
 }
 
-export function usePassThroughSettings() {
+export function usePassThroughSettings(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler();
 
   return useQuery({
     queryKey: ['passThroughSettings'],
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ passThroughSettings: PassThroughSettings }>(PASS_THROUGH_SETTINGS_QUERY);
