@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest, GraphQLRequestError } from '@/gql/graphql';
 import { toast } from 'sonner';
-import { getTokenFromStorage } from '@/stores/authStore';
+import { getTokenFromStorage, useAuthStore } from '@/stores/authStore';
 import i18n from '@/lib/i18n';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -1597,11 +1597,18 @@ export interface UpdateUserAgentPassThroughSettingsInput {
   enabled: boolean;
 }
 
+function useSystemSettingsQueryIdentity() {
+  const { hasSystemScope } = usePermissions();
+  const authUserId = useAuthStore((state) => state.auth.user?.id ?? null);
+  return { authUserId, canReadSystemSettings: hasSystemScope('read_settings') };
+}
+
 export function useUserAgentPassThroughSettings(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler();
+  const { authUserId, canReadSystemSettings } = useSystemSettingsQueryIdentity();
 
   return useQuery({
-    queryKey: ['userAgentPassThroughSettings'],
+    queryKey: ['userAgentPassThroughSettings', authUserId ?? 'signed-out', canReadSystemSettings],
     enabled: options?.enabled ?? true,
     queryFn: async () => {
       try {
@@ -1658,9 +1665,10 @@ export interface UpdatePassThroughSettingsInput {
 
 export function usePassThroughSettings(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler();
+  const { authUserId, canReadSystemSettings } = useSystemSettingsQueryIdentity();
 
   return useQuery({
-    queryKey: ['passThroughSettings'],
+    queryKey: ['passThroughSettings', authUserId ?? 'signed-out', canReadSystemSettings],
     enabled: options?.enabled ?? true,
     queryFn: async () => {
       try {
@@ -1776,9 +1784,10 @@ export interface UpdateQuotaRoutingSettingsInput {
 export function useQuotaRoutingSettings() {
   const { handleError } = useErrorHandler();
   const { hasSystemScope } = usePermissions();
+  const { authUserId, canReadSystemSettings } = useSystemSettingsQueryIdentity();
 
   return useQuery({
-    queryKey: ['quotaRoutingSettings'],
+    queryKey: ['quotaRoutingSettings', authUserId ?? 'signed-out', canReadSystemSettings],
     enabled: hasSystemScope('read_settings'),
     queryFn: async () => {
       try {
