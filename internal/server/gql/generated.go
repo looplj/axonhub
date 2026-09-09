@@ -332,6 +332,12 @@ type ComplexityRoot struct {
 		Success  func(childComplexity int) int
 	}
 
+	BulkUpdateChannelAutoDisablePayload struct {
+		Channels func(childComplexity int) int
+		Success  func(childComplexity int) int
+		Updated  func(childComplexity int) int
+	}
+
 	BulkUpdateChannelOrderingResult struct {
 		Channels func(childComplexity int) int
 		Success  func(childComplexity int) int
@@ -982,6 +988,7 @@ type ComplexityRoot struct {
 		BulkEnablePrompts                     func(childComplexity int, ids []*objects.GUID) int
 		BulkImportChannels                    func(childComplexity int, input BulkImportChannelsInput) int
 		BulkRecoverChannels                   func(childComplexity int, ids []*objects.GUID) int
+		BulkUpdateChannelAutoDisable          func(childComplexity int, input biz.BulkUpdateChannelAutoDisableInput) int
 		BulkUpdateChannelOrdering             func(childComplexity int, input BulkUpdateChannelOrderingInput) int
 		CheckProviderQuotas                   func(childComplexity int) int
 		ClearCache                            func(childComplexity int, input ClearCacheInput) int
@@ -2235,6 +2242,7 @@ type MutationResolver interface {
 	TestChannelAPIKey(ctx context.Context, channelID objects.GUID, key string, modelID *string) (*TestAPIKeyResult, error)
 	BulkImportChannels(ctx context.Context, input BulkImportChannelsInput) (*biz.BulkImportChannelsResult, error)
 	BulkUpdateChannelOrdering(ctx context.Context, input BulkUpdateChannelOrderingInput) (*BulkUpdateChannelOrderingResult, error)
+	BulkUpdateChannelAutoDisable(ctx context.Context, input biz.BulkUpdateChannelAutoDisableInput) (*BulkUpdateChannelAutoDisablePayload, error)
 	DisableChannelAPIKey(ctx context.Context, channelID objects.GUID, key string) (bool, error)
 	EnableChannelAPIKey(ctx context.Context, channelID objects.GUID, key string) (bool, error)
 	EnableAllChannelAPIKeys(ctx context.Context, channelID objects.GUID) (bool, error)
@@ -3432,6 +3440,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BulkImportChannelsResult.Success(childComplexity), true
+
+	case "BulkUpdateChannelAutoDisablePayload.channels":
+		if e.complexity.BulkUpdateChannelAutoDisablePayload.Channels == nil {
+			break
+		}
+
+		return e.complexity.BulkUpdateChannelAutoDisablePayload.Channels(childComplexity), true
+	case "BulkUpdateChannelAutoDisablePayload.success":
+		if e.complexity.BulkUpdateChannelAutoDisablePayload.Success == nil {
+			break
+		}
+
+		return e.complexity.BulkUpdateChannelAutoDisablePayload.Success(childComplexity), true
+	case "BulkUpdateChannelAutoDisablePayload.updated":
+		if e.complexity.BulkUpdateChannelAutoDisablePayload.Updated == nil {
+			break
+		}
+
+		return e.complexity.BulkUpdateChannelAutoDisablePayload.Updated(childComplexity), true
 
 	case "BulkUpdateChannelOrderingResult.channels":
 		if e.complexity.BulkUpdateChannelOrderingResult.Channels == nil {
@@ -6025,6 +6052,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.BulkRecoverChannels(childComplexity, args["ids"].([]*objects.GUID)), true
+	case "Mutation.bulkUpdateChannelAutoDisable":
+		if e.complexity.Mutation.BulkUpdateChannelAutoDisable == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_bulkUpdateChannelAutoDisable_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.BulkUpdateChannelAutoDisable(childComplexity, args["input"].(biz.BulkUpdateChannelAutoDisableInput)), true
 	case "Mutation.bulkUpdateChannelOrdering":
 		if e.complexity.Mutation.BulkUpdateChannelOrdering == nil {
 			break
@@ -11671,6 +11709,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBulkCreateChannelsInput,
 		ec.unmarshalInputBulkImportChannelItem,
 		ec.unmarshalInputBulkImportChannelsInput,
+		ec.unmarshalInputBulkUpdateChannelAutoDisableInput,
 		ec.unmarshalInputBulkUpdateChannelOrderingInput,
 		ec.unmarshalInputChannelCredentialsInput,
 		ec.unmarshalInputChannelEndpointInput,
@@ -12502,6 +12541,17 @@ func (ec *executionContext) field_Mutation_bulkRecoverChannels_args(ctx context.
 		return nil, err
 	}
 	args["ids"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_bulkUpdateChannelAutoDisable_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNBulkUpdateChannelAutoDisableInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkUpdateChannelAutoDisableInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -19843,6 +19893,159 @@ func (ec *executionContext) _BulkImportChannelsResult_channels(ctx context.Conte
 func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "BulkImportChannelsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Channel_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Channel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Channel_updatedAt(ctx, field)
+			case "type":
+				return ec.fieldContext_Channel_type(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_Channel_baseURL(ctx, field)
+			case "name":
+				return ec.fieldContext_Channel_name(ctx, field)
+			case "status":
+				return ec.fieldContext_Channel_status(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
+			case "autoSyncSupportedModels":
+				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
+			case "tags":
+				return ec.fieldContext_Channel_tags(ctx, field)
+			case "defaultTestModel":
+				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
+			case "policies":
+				return ec.fieldContext_Channel_policies(ctx, field)
+			case "settings":
+				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
+			case "autoDisabledAt":
+				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
+			case "autoDisableExpiresAt":
+				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "remark":
+				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
+			case "requests":
+				return ec.fieldContext_Channel_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_Channel_executions(ctx, field)
+			case "usageLogs":
+				return ec.fieldContext_Channel_usageLogs(ctx, field)
+			case "channelProbes":
+				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
+			case "providerQuotaStatus":
+				return ec.fieldContext_Channel_providerQuotaStatus(ctx, field)
+			case "defaultEndpoints":
+				return ec.fieldContext_Channel_defaultEndpoints(ctx, field)
+			case "allModelEntries":
+				return ec.fieldContext_Channel_allModelEntries(ctx, field)
+			case "credentials":
+				return ec.fieldContext_Channel_credentials(ctx, field)
+			case "disabledAPIKeys":
+				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "liveLimiterStats":
+				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BulkUpdateChannelAutoDisablePayload_success(ctx context.Context, field graphql.CollectedField, obj *BulkUpdateChannelAutoDisablePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BulkUpdateChannelAutoDisablePayload_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BulkUpdateChannelAutoDisablePayload_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BulkUpdateChannelAutoDisablePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BulkUpdateChannelAutoDisablePayload_updated(ctx context.Context, field graphql.CollectedField, obj *BulkUpdateChannelAutoDisablePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BulkUpdateChannelAutoDisablePayload_updated,
+		func(ctx context.Context) (any, error) {
+			return obj.Updated, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BulkUpdateChannelAutoDisablePayload_updated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BulkUpdateChannelAutoDisablePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BulkUpdateChannelAutoDisablePayload_channels(ctx context.Context, field graphql.CollectedField, obj *BulkUpdateChannelAutoDisablePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BulkUpdateChannelAutoDisablePayload_channels,
+		func(ctx context.Context) (any, error) {
+			return obj.Channels, nil
+		},
+		nil,
+		ec.marshalNChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BulkUpdateChannelAutoDisablePayload_channels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BulkUpdateChannelAutoDisablePayload",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -33118,6 +33321,55 @@ func (ec *executionContext) fieldContext_Mutation_bulkUpdateChannelOrdering(ctx 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_bulkUpdateChannelOrdering_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_bulkUpdateChannelAutoDisable(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_bulkUpdateChannelAutoDisable,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().BulkUpdateChannelAutoDisable(ctx, fc.Args["input"].(biz.BulkUpdateChannelAutoDisableInput))
+		},
+		nil,
+		ec.marshalNBulkUpdateChannelAutoDisablePayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelAutoDisablePayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_bulkUpdateChannelAutoDisable(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_BulkUpdateChannelAutoDisablePayload_success(ctx, field)
+			case "updated":
+				return ec.fieldContext_BulkUpdateChannelAutoDisablePayload_updated(ctx, field)
+			case "channels":
+				return ec.fieldContext_BulkUpdateChannelAutoDisablePayload_channels(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BulkUpdateChannelAutoDisablePayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_bulkUpdateChannelAutoDisable_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -65839,6 +66091,51 @@ func (ec *executionContext) unmarshalInputBulkImportChannelsInput(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputBulkUpdateChannelAutoDisableInput(ctx context.Context, obj any) (biz.BulkUpdateChannelAutoDisableInput, error) {
+	var it biz.BulkUpdateChannelAutoDisableInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channelIDs", "action", "rules"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channelIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelIDs"))
+			data, err := ec.unmarshalNID2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			converted, err := objects.ConvertGUIDPtrsToInts(data)
+			if err != nil {
+				return it, graphql.ErrorOnPath(ctx, err)
+			}
+			it.ChannelIDs = converted
+		case "action":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+			data, err := ec.unmarshalNBulkAutoDisableAction2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkAutoDisableAction(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Action = data
+		case "rules":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rules"))
+			data, err := ec.unmarshalOAPIKeyAutoDisableRuleInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRuleᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Rules = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputBulkUpdateChannelOrderingInput(ctx context.Context, obj any) (BulkUpdateChannelOrderingInput, error) {
 	var it BulkUpdateChannelOrderingInput
 	asMap := map[string]any{}
@@ -92575,6 +92872,55 @@ func (ec *executionContext) _BulkImportChannelsResult(ctx context.Context, sel a
 	return out
 }
 
+var bulkUpdateChannelAutoDisablePayloadImplementors = []string{"BulkUpdateChannelAutoDisablePayload"}
+
+func (ec *executionContext) _BulkUpdateChannelAutoDisablePayload(ctx context.Context, sel ast.SelectionSet, obj *BulkUpdateChannelAutoDisablePayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, bulkUpdateChannelAutoDisablePayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BulkUpdateChannelAutoDisablePayload")
+		case "success":
+			out.Values[i] = ec._BulkUpdateChannelAutoDisablePayload_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updated":
+			out.Values[i] = ec._BulkUpdateChannelAutoDisablePayload_updated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "channels":
+			out.Values[i] = ec._BulkUpdateChannelAutoDisablePayload_channels(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var bulkUpdateChannelOrderingResultImplementors = []string{"BulkUpdateChannelOrderingResult"}
 
 func (ec *executionContext) _BulkUpdateChannelOrderingResult(ctx context.Context, sel ast.SelectionSet, obj *BulkUpdateChannelOrderingResult) graphql.Marshaler {
@@ -98286,6 +98632,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "bulkUpdateChannelOrdering":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_bulkUpdateChannelOrdering(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "bulkUpdateChannelAutoDisable":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_bulkUpdateChannelAutoDisable(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -111843,6 +112196,23 @@ func (ec *executionContext) marshalNBrandSettings2ᚖgithubᚗcomᚋloopljᚋaxo
 	return ec._BrandSettings(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNBulkAutoDisableAction2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkAutoDisableAction(ctx context.Context, v any) (biz.BulkAutoDisableAction, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := biz.BulkAutoDisableAction(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBulkAutoDisableAction2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkAutoDisableAction(ctx context.Context, sel ast.SelectionSet, v biz.BulkAutoDisableAction) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNBulkCreateChannelsInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkCreateChannelsInput(ctx context.Context, v any) (biz.BulkCreateChannelsInput, error) {
 	res, err := ec.unmarshalInputBulkCreateChannelsInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -111885,6 +112255,25 @@ func (ec *executionContext) marshalNBulkImportChannelsResult2ᚖgithubᚗcomᚋl
 		return graphql.Null
 	}
 	return ec._BulkImportChannelsResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNBulkUpdateChannelAutoDisableInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐBulkUpdateChannelAutoDisableInput(ctx context.Context, v any) (biz.BulkUpdateChannelAutoDisableInput, error) {
+	res, err := ec.unmarshalInputBulkUpdateChannelAutoDisableInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBulkUpdateChannelAutoDisablePayload2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelAutoDisablePayload(ctx context.Context, sel ast.SelectionSet, v BulkUpdateChannelAutoDisablePayload) graphql.Marshaler {
+	return ec._BulkUpdateChannelAutoDisablePayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBulkUpdateChannelAutoDisablePayload2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelAutoDisablePayload(ctx context.Context, sel ast.SelectionSet, v *BulkUpdateChannelAutoDisablePayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BulkUpdateChannelAutoDisablePayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNBulkUpdateChannelOrderingInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐBulkUpdateChannelOrderingInput(ctx context.Context, v any) (BulkUpdateChannelOrderingInput, error) {

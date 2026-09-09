@@ -22,6 +22,7 @@ const moduleUrl = `data:text/javascript;base64,${Buffer.from(transpiled).toStrin
 const {
   RECOMMENDED_GLOBAL_AUTO_DISABLE_RULES,
   availabilityPoliciesPayload,
+  buildBulkAutoDisableInput,
   effectiveAutoDisableMode,
   serializeApiKeyAutoDisableRules,
   toApiKeyAutoDisableRuleFormValues,
@@ -158,4 +159,87 @@ test('auto-disable mode and recommended-rule copy exist in both locales', () => 
   assert.ok(enSystem['system.retry.autoDisableChannel.recommendedRules']);
   assert.ok(zhSystem['system.retry.autoDisableChannel.recommendedRules']);
   assert.doesNotMatch(JSON.stringify(enSystem), /autoDisableChannel\.statuses\.(label|add|empty)/);
+});
+
+test('bulk write_rules payload refuses empty rules and inherit/off omit rules', () => {
+  const channelIDs = ['gid://axonhub/Channel/1'];
+  const empty = buildBulkAutoDisableInput({ channelIDs, action: 'write_rules', rules: [] });
+  assert.equal(empty.ok, false);
+  if (!empty.ok) {
+    assert.equal(empty.error, 'empty_rules');
+  }
+
+  const written = buildBulkAutoDisableInput({
+    channelIDs,
+    action: 'write_rules',
+    rules: toApiKeyAutoDisableRuleFormValues([{ statusCodes: [401], times: 3, action: 'permanent_disable' }]),
+  });
+  assert.equal(written.ok, true);
+  if (written.ok) {
+    assert.equal(written.input.action, 'write_rules');
+    assert.equal(written.input.rules?.length, 1);
+  }
+
+  const inherited = buildBulkAutoDisableInput({
+    channelIDs,
+    action: 'inherit',
+    rules: toApiKeyAutoDisableRuleFormValues([{ statusCodes: [401], times: 3, action: 'permanent_disable' }]),
+  });
+  assert.equal(inherited.ok, true);
+  if (inherited.ok) {
+    assert.equal(inherited.input.action, 'inherit');
+    assert.equal(inherited.input.rules, undefined);
+  }
+
+  const off = buildBulkAutoDisableInput({ channelIDs, action: 'off', rules: [] });
+  assert.equal(off.ok, true);
+  if (off.ok) {
+    assert.equal(off.input.action, 'off');
+    assert.equal(off.input.rules, undefined);
+  }
+});
+
+test('bulk auto-disable mutation and dialog guard empty write_rules', () => {
+  const channelsData = read('features/channels/data/channels.ts');
+  const schema = read('features/channels/data/schema.ts');
+  const dialog = read('features/channels/components/channels-bulk-auto-disable-dialog.tsx');
+  const summaryQuery = channelsData.match(/const ALL_CHANNEL_SUMMARYS_QUERY = `[\s\S]*?`;/)?.[0] ?? '';
+  const copyQuery = channelsData.match(/const CHANNEL_AUTO_DISABLE_COPY_SOURCES_QUERY = `[\s\S]*?`;/)?.[0] ?? '';
+  const mutation = channelsData.match(/const BULK_UPDATE_CHANNEL_AUTO_DISABLE_MUTATION = `[\s\S]*?`;/)?.[0] ?? '';
+  const payloadSchema = schema.match(/export const bulkUpdateChannelAutoDisablePayloadSchema[\s\S]*?;/)?.[0] ?? '';
+
+  assert.match(channelsData, /mutation BulkUpdateChannelAutoDisable/);
+  assert.match(channelsData, /bulkUpdateChannelAutoDisable/);
+  assert.match(channelsData, /write_rules/);
+  assert.match(channelsData, /query ChannelAutoDisableCopySources/);
+  assert.match(copyQuery, /policies/);
+  assert.doesNotMatch(summaryQuery, /policies/, 'ordering summary query must stay slim; copy-from uses a dedicated query');
+  assert.match(mutation, /channels \{\s*id\s*name\s*policies \{/);
+  assert.match(payloadSchema, /channelAutoDisableCopySourceSchema/);
+  assert.doesNotMatch(payloadSchema, /channelSchema/);
+  assert.match(dialog, /buildBulkAutoDisableInput/);
+  assert.match(dialog, /emptyRules/);
+  assert.doesNotMatch(dialog, /availabilityPoliciesPayload/);
+});
+
+test('bulk auto-disable i18n keys exist in both locales', () => {
+  const enChannels = JSON.parse(read('locales/en/channels.json'));
+  const zhChannels = JSON.parse(read('locales/zh-CN/channels.json'));
+
+  for (const key of [
+    'channels.bulkAutoDisable.button',
+    'channels.bulkAutoDisable.title',
+    'channels.bulkAutoDisable.description',
+    'channels.bulkAutoDisable.actions.writeRules',
+    'channels.bulkAutoDisable.actions.inherit',
+    'channels.bulkAutoDisable.actions.off',
+    'channels.bulkAutoDisable.copyFrom',
+    'channels.bulkAutoDisable.copyEmpty',
+    'channels.bulkAutoDisable.overwriteWarning',
+    'channels.bulkAutoDisable.emptyRules',
+    'channels.bulkAutoDisable.success',
+  ]) {
+    assert.ok(enChannels[key], `${key} missing in en`);
+    assert.ok(zhChannels[key], `${key} missing in zh-CN`);
+  }
 });

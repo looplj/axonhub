@@ -161,6 +161,12 @@ type BulkImportChannelsInput struct {
 	Channels []*biz.BulkImportChannelItem `json:"channels"`
 }
 
+type BulkUpdateChannelAutoDisablePayload struct {
+	Success  bool           `json:"success"`
+	Updated  int            `json:"updated"`
+	Channels []*ent.Channel `json:"channels"`
+}
+
 type BulkUpdateChannelOrderingInput struct {
 	Channels []*biz.ChannelOrderingItem `json:"channels"`
 }

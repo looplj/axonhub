@@ -1,11 +1,14 @@
 import { useEffect } from 'react';
 import { useChannels } from '../context/channels-context';
+import { useChannelDetails } from '../data/channels';
 import { ChannelsActionDialog } from './channels-action-dialog';
+import { ChannelsAPIKeyManagementDialog } from './channels-api-key-management-dialog';
 import { ChannelsArchiveDialog } from './channels-archive-dialog';
 import { ChannelsAvailabilityDialog } from './channels-availability-dialog';
 import { ChannelsBulkApplyTemplateDialog } from './channels-bulk-apply-template-dialog';
-import { ChannelsBulkClearTemplateDialog } from './channels-bulk-clear-template-dialog';
 import { ChannelsBulkArchiveDialog } from './channels-bulk-archive-dialog';
+import { ChannelsBulkAutoDisableDialog } from './channels-bulk-auto-disable-dialog';
+import { ChannelsBulkClearTemplateDialog } from './channels-bulk-clear-template-dialog';
 import { ChannelsBulkDeleteDialog } from './channels-bulk-delete-dialog';
 import { ChannelsBulkDisableDialog } from './channels-bulk-disable-dialog';
 import { ChannelsBulkEnableDialog } from './channels-bulk-enable-dialog';
@@ -14,20 +17,18 @@ import { ChannelsBulkOrderingDialog } from './channels-bulk-ordering-dialog';
 import { ChannelsBulkTestDialog } from './channels-bulk-test-dialog';
 import { ChannelsDeleteDialog } from './channels-delete-dialog';
 import { ChannelsDisabledAPIKeysDialog } from './channels-disabled-api-keys-dialog';
+import { ChannelsEndpointsDialog } from './channels-endpoints-dialog';
 import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog';
 import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog';
 import { ChannelsModelPriceDialog } from './channels-model-price-dialog';
 import { ChannelsOverrideDialog } from './channels-override-dialog';
 import { ChannelsProxyDialog } from './channels-proxy-dialog';
+import { ChannelsRateLimitDialog } from './channels-rate-limit-dialog';
 import { ChannelsStatusDialog } from './channels-status-dialog';
+import { ChannelsSystemSettingsDialog } from './channels-system-settings-dialog';
 import { ChannelsTestDialog } from './channels-test-dialog';
 import { ChannelsTestHistoryDrawer } from './channels-test-history-drawer';
-import { ChannelsAPIKeyManagementDialog } from './channels-api-key-management-dialog';
-import { ChannelsRateLimitDialog } from './channels-rate-limit-dialog';
 import { ChannelsTransformOptionsDialog } from './channels-transform-options-dialog';
-import { ChannelsEndpointsDialog } from './channels-endpoints-dialog';
-import { ChannelsSystemSettingsDialog } from './channels-system-settings-dialog';
-import { useChannelDetails } from '../data/channels';
 
 export function ChannelsDialogs() {
   const { open, setOpen, currentRow: partialCurrentRow, setCurrentRow, selectedChannels } = useChannels();
@@ -45,8 +46,7 @@ export function ChannelsDialogs() {
   // Delay row-scoped dialogs until the full snapshot has been loaded so hiding
   // a column never removes data from edit/configuration dialogs.
   const currentRow =
-    partialCurrentRow &&
-    (!open || detailsQuery.isError || detailsQuery.data === partialCurrentRow)
+    partialCurrentRow && (!open || detailsQuery.isError || detailsQuery.data === partialCurrentRow)
       ? (detailsQuery.data ?? partialCurrentRow)
       : null;
   return (
@@ -68,6 +68,12 @@ export function ChannelsDialogs() {
       <ChannelsBulkApplyTemplateDialog
         open={open === 'bulkApplyTemplate'}
         onOpenChange={(isOpen) => setOpen(isOpen ? 'bulkApplyTemplate' : null)}
+        selectedChannels={selectedChannels}
+      />
+
+      <ChannelsBulkAutoDisableDialog
+        open={open === 'bulkAutoDisable'}
+        onOpenChange={(isOpen) => setOpen(isOpen ? 'bulkAutoDisable' : null)}
         selectedChannels={selectedChannels}
       />
 

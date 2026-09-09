@@ -363,6 +363,20 @@ func (r *mutationResolver) BulkUpdateChannelOrdering(ctx context.Context, input 
 	}, nil
 }
 
+// BulkUpdateChannelAutoDisable is the resolver for the bulkUpdateChannelAutoDisable field.
+func (r *mutationResolver) BulkUpdateChannelAutoDisable(ctx context.Context, input biz.BulkUpdateChannelAutoDisableInput) (*BulkUpdateChannelAutoDisablePayload, error) {
+	updatedChannels, err := r.channelService.BulkUpdateChannelAutoDisable(ctx, input)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BulkUpdateChannelAutoDisablePayload{
+		Success:  true,
+		Updated:  len(updatedChannels),
+		Channels: updatedChannels,
+	}, nil
+}
+
 // DisableChannelAPIKey is the resolver for the disableChannelAPIKey field.
 func (r *mutationResolver) DisableChannelAPIKey(ctx context.Context, channelID objects.GUID, key string) (bool, error) {
 	if err := r.channelService.DisableAPIKey(ctx, channelID.ID, key, 0, "Manually disabled by user"); err != nil {

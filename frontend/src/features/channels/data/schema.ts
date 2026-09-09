@@ -923,6 +923,31 @@ export const bulkUpdateChannelOrderingResultSchema = z.object({
 });
 export type BulkUpdateChannelOrderingResult = z.infer<typeof bulkUpdateChannelOrderingResultSchema>;
 
+export const bulkAutoDisableActionSchema = z.enum(['write_rules', 'inherit', 'off']);
+export type BulkAutoDisableAction = z.infer<typeof bulkAutoDisableActionSchema>;
+
+export const bulkUpdateChannelAutoDisableInputSchema = z.object({
+  channelIDs: z.array(z.string()).min(1),
+  action: bulkAutoDisableActionSchema,
+  rules: z.array(apiKeyAutoDisableRuleSchema).optional(),
+});
+export type BulkUpdateChannelAutoDisableInput = z.infer<typeof bulkUpdateChannelAutoDisableInputSchema>;
+
+export const channelAutoDisableCopySourceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  policies: channelPoliciesSchema.optional().nullable(),
+});
+export type ChannelAutoDisableCopySource = z.infer<typeof channelAutoDisableCopySourceSchema>;
+
+// Mutation only selects id/name/policies; do not parse with the full channelSchema.
+export const bulkUpdateChannelAutoDisablePayloadSchema = z.object({
+  success: z.boolean(),
+  updated: z.number(),
+  channels: z.array(channelAutoDisableCopySourceSchema),
+});
+export type BulkUpdateChannelAutoDisablePayload = z.infer<typeof bulkUpdateChannelAutoDisablePayloadSchema>;
+
 // Re-export template types from templates.ts
 export type {
   ChannelOverrideTemplate,

@@ -429,6 +429,24 @@ type BulkUpdateChannelOrderingResult {
   channels: [Channel!]!
 }
 
+enum BulkAutoDisableAction {
+  write_rules
+  inherit
+  off
+}
+
+input BulkUpdateChannelAutoDisableInput {
+  channelIDs: [ID!]!
+  action: BulkAutoDisableAction!
+  rules: [APIKeyAutoDisableRuleInput!]
+}
+
+type BulkUpdateChannelAutoDisablePayload {
+  success: Boolean!
+  updated: Int!
+  channels: [Channel!]!
+}
+
 input UpdateAPIKeyProfilesInput {
   activeProfile: String!
   profiles: [APIKeyProfileInput!]
@@ -908,6 +926,9 @@ type Mutation {
   bulkUpdateChannelOrdering(
     input: BulkUpdateChannelOrderingInput!
   ): BulkUpdateChannelOrderingResult!
+  bulkUpdateChannelAutoDisable(
+    input: BulkUpdateChannelAutoDisableInput!
+  ): BulkUpdateChannelAutoDisablePayload!
 
   # Channel API Key Management
   disableChannelAPIKey(channelID: ID!, key: String!): Boolean!

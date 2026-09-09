@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/samber/lo"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // ChannelOrderingItem represents a channel ordering update.
@@ -182,7 +184,8 @@ func (svc *ChannelService) bulkUpdateChannelStatus(ctx context.Context, ids []in
 	updater := client.Channel.Update().
 		Where(channel.IDIn(ids...)).
 		SetStatus(status).
-		ClearAutoDisabledAt()
+		ClearAutoDisabledAt().
+		ClearAutoDisableExpiresAt()
 
 	if clearErrorMessage {
 		updater.ClearErrorMessage()
@@ -217,6 +220,123 @@ func (svc *ChannelService) BulkEnableChannels(ctx context.Context, ids []int) er
 // BulkRecoverChannels enables multiple channels and clears their error messages.
 func (svc *ChannelService) BulkRecoverChannels(ctx context.Context, ids []int) error {
 	return svc.bulkUpdateChannelStatus(ctx, ids, channel.StatusEnabled, "recover", true)
+}
+
+// BulkAutoDisableAction is the GraphQL bulk auto-disable operation.
+type BulkAutoDisableAction string
+
+const (
+	BulkAutoDisableActionWriteRules BulkAutoDisableAction = "write_rules"
+	BulkAutoDisableActionInherit    BulkAutoDisableAction = "inherit"
+	BulkAutoDisableActionOff        BulkAutoDisableAction = "off"
+)
+
+// BulkUpdateChannelAutoDisableInput is the GraphQL input for bulk auto-disable writes.
+type BulkUpdateChannelAutoDisableInput struct {
+	ChannelIDs []int                           `json:"channelIDs"`
+	Action     BulkAutoDisableAction           `json:"action"`
+	Rules      []objects.APIKeyAutoDisableRule `json:"rules"`
+}
+
+// BulkUpdateChannelAutoDisable writes the same auto-disable mode/rules to many
+// channels. Only those two policy fields change; Stream and other fields stay.
+func (svc *ChannelService) BulkUpdateChannelAutoDisable(ctx context.Context, input BulkUpdateChannelAutoDisableInput) ([]*ent.Channel, error) {
+	ids := input.ChannelIDs
+	if len(ids) == 0 {
+		return nil, xerrors.ValidationError("channel IDs are required")
+	}
+
+	var normalized []objects.APIKeyAutoDisableRule
+
+	switch input.Action {
+	case BulkAutoDisableActionWriteRules:
+		if len(input.Rules) == 0 {
+			return nil, xerrors.ValidationError("rules are required when writing auto-disable rules")
+		}
+
+		rules, err := normalizeAutoDisableRules(input.Rules, true)
+		if err != nil {
+			return nil, xerrors.ValidationError(err.Error())
+		}
+
+		normalized = rules
+	case BulkAutoDisableActionInherit, BulkAutoDisableActionOff:
+		// inherit/off ignore the submitted rules list.
+	default:
+		return nil, xerrors.ValidationError(fmt.Sprintf("unsupported auto-disable action %q", input.Action))
+	}
+
+	var updatedChannels []*ent.Channel
+
+	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
+		client := svc.entFromContext(ctx)
+
+		channels, err := client.Channel.Query().
+			Where(channel.IDIn(ids...)).
+			All(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to query channels: %w", err)
+		}
+
+		if len(channels) != len(ids) {
+			return fmt.Errorf("expected to find %d channels, but found %d", len(ids), len(channels))
+		}
+
+		updatedChannels = make([]*ent.Channel, 0, len(channels))
+
+		for _, ch := range channels {
+			policies := ch.Policies
+
+			switch input.Action {
+			case BulkAutoDisableActionWriteRules:
+				policies.APIKeyAutoDisableMode = objects.APIKeyAutoDisableModeCustom
+				policies.APIKeyAutoDisableRules = cloneAPIKeyAutoDisableRules(normalized)
+			case BulkAutoDisableActionInherit:
+				policies.APIKeyAutoDisableMode = objects.APIKeyAutoDisableModeInherit
+				policies.APIKeyAutoDisableRules = nil
+			case BulkAutoDisableActionOff:
+				policies.APIKeyAutoDisableMode = objects.APIKeyAutoDisableModeOff
+				policies.APIKeyAutoDisableRules = cloneAPIKeyAutoDisableRules(ch.Policies.APIKeyAutoDisableRules)
+			}
+
+			updated, err := client.Channel.
+				UpdateOneID(ch.ID).
+				SetPolicies(policies).
+				Save(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to update auto-disable policies for channel %q (%d): %w", ch.Name, ch.ID, err)
+			}
+
+			updatedChannels = append(updatedChannels, updated)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	svc.reloadChannelsAfterCommit(ctx)
+
+	return updatedChannels, nil
+}
+
+func cloneAPIKeyAutoDisableRules(rules []objects.APIKeyAutoDisableRule) []objects.APIKeyAutoDisableRule {
+	if rules == nil {
+		return nil
+	}
+
+	cloned := slices.Clone(rules)
+	for i := range cloned {
+		cloned[i].StatusCodes = slices.Clone(cloned[i].StatusCodes)
+		cloned[i].KeywordPatterns = slices.Clone(cloned[i].KeywordPatterns)
+		if cloned[i].DisableDurationMinutes != nil {
+			minutes := *cloned[i].DisableDurationMinutes
+			cloned[i].DisableDurationMinutes = &minutes
+		}
+	}
+
+	return cloned
 }
 
 // BulkDeleteChannels deletes multiple channels by their IDs.
