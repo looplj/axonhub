@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -43,10 +44,47 @@ func TestQuotaRoutingMigration(t *testing.T) {
 		fixture.requireChannelMode(1, objects.QuotaRoutingModeIgnoreQuota)
 	})
 
+	t.Run("concurrent startup migration is idempotent", func(t *testing.T) {
+		fixture := newQuotaRoutingMigrationFixture(t)
+		fixture.setLegacy(legacyQuotaEnforcementSettings{Enabled: true, AllowedChannelIDs: []int{1}})
+		fixture.createChannel(1, objects.ChannelSettings{})
+
+		migrators := []*quotaRoutingMigrator{
+			{system: fixture.system, channels: fixture.channels},
+			{system: fixture.system, channels: fixture.channels},
+		}
+		errs := make(chan error, len(migrators))
+		var wg sync.WaitGroup
+		for _, migrator := range migrators {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				errs <- migrator.Migrate(context.Background())
+			}()
+		}
+		wg.Wait()
+		close(errs)
+		for err := range errs {
+			require.NoError(t, err)
+		}
+		fixture.requireChannelMode(1, objects.QuotaRoutingModeIgnoreQuota)
+		fixture.requireMarker()
+	})
+
 	t.Run("missing channels are skipped", func(t *testing.T) {
 		fixture := newQuotaRoutingMigrationFixture(t)
 		fixture.setLegacy(legacyQuotaEnforcementSettings{Enabled: true, ExhaustedOnly: true, AllowedChannelIDs: []int{1, 99}})
 		fixture.createChannel(1, objects.ChannelSettings{})
+
+		require.NoError(t, fixture.migrator.Migrate(context.Background()))
+		fixture.requireChannelMode(1, objects.QuotaRoutingModeIgnoreQuota)
+		fixture.requireMarker()
+	})
+
+	t.Run("nil channel settings are migrated", func(t *testing.T) {
+		fixture := newQuotaRoutingMigrationFixture(t)
+		fixture.setLegacy(legacyQuotaEnforcementSettings{Enabled: true, AllowedChannelIDs: []int{1}})
+		fixture.createChannelWithoutSettings(1)
 
 		require.NoError(t, fixture.migrator.Migrate(context.Background()))
 		fixture.requireChannelMode(1, objects.QuotaRoutingModeIgnoreQuota)
@@ -158,6 +196,20 @@ func (f *quotaRoutingMigrationFixture) createChannel(id int, settings objects.Ch
 		SetSupportedModels([]string{"gpt-4"}).
 		SetDefaultTestModel("gpt-4").
 		SetSettings(&settings).
+		Save(f.ctx)
+	require.NoError(f.t, err)
+}
+
+func (f *quotaRoutingMigrationFixture) createChannelWithoutSettings(id int) {
+	f.t.Helper()
+	_, err := f.client.Channel.Create().
+		SetName(fmt.Sprintf("channel-%d", id)).
+		SetType(channel.TypeOpenai).
+		SetBaseURL("https://api.openai.com").
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"key"}}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetSettings(nil).
 		Save(f.ctx)
 	require.NoError(f.t, err)
 }

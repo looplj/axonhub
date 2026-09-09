@@ -1810,16 +1810,7 @@ func (s *SystemService) QuotaRoutingSettings(ctx context.Context) (*QuotaRouting
 			return lo.ToPtr(defaultQuotaRoutingSettings), nil
 		}
 
-		if legacy.Enabled {
-			switch {
-			case legacy.ExhaustedOnly, legacy.Mode == "EXHAUSTED_ONLY", legacy.Mode == "exhausted_only":
-				return lo.ToPtr(QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted}), nil
-			case legacy.DePrioritize, legacy.Mode == "DE_PRIORITIZE", legacy.Mode == "de_prioritize":
-				return lo.ToPtr(QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeBackpressure}), nil
-			}
-		}
-
-		return lo.ToPtr(defaultQuotaRoutingSettings), nil
+		return lo.ToPtr(QuotaRoutingSettings{DefaultMode: quotaRoutingModeFromLegacy(legacy)}), nil
 	}
 
 	var settings QuotaRoutingSettings

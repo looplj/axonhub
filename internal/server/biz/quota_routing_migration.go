@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -29,10 +33,22 @@ func (m *quotaRoutingMigrator) Migrate(ctx context.Context) error {
 }
 
 func (m *quotaRoutingMigrator) migrateInTransaction(ctx context.Context) error {
-	if _, err := m.system.getSystemValue(ctx, SystemKeyQuotaRoutingMigrationDone); err == nil {
+	claim := uuid.NewString()
+	if err := m.system.entFromContext(ctx).System.Create().
+		SetKey(SystemKeyQuotaRoutingMigrationDone).
+		SetValue(claim).
+		OnConflict(sql.ResolveWithIgnore()).
+		Exec(ctx); err != nil {
+		return fmt.Errorf("failed to claim quota routing migration: %w", err)
+	}
+	marker, err := m.system.entFromContext(ctx).System.Query().
+		Where(system.KeyEQ(SystemKeyQuotaRoutingMigrationDone)).
+		Only(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to read quota routing migration marker: %w", err)
+	}
+	if marker.Value != claim {
 		return nil
-	} else if !ent.IsNotFound(err) {
-		return fmt.Errorf("failed to check quota routing migration marker: %w", err)
 	}
 
 	legacyValue, err := m.system.getSystemValue(ctx, legacyQuotaEnforcementSettingsKey)
@@ -69,7 +85,10 @@ func (m *quotaRoutingMigrator) migrateInTransaction(ctx context.Context) error {
 			return fmt.Errorf("failed to load channel %d during quota routing migration: %w", id, err)
 		}
 
-		settings := *ch.Settings
+		settings := objects.ChannelSettings{}
+		if ch.Settings != nil {
+			settings = *ch.Settings
+		}
 		settings.QuotaRoutingMode = objects.QuotaRoutingModeIgnoreQuota
 		if m.beforeChannelUpdate != nil {
 			if err := m.beforeChannelUpdate(id); err != nil {
@@ -100,4 +119,13 @@ func quotaRoutingModeFromLegacy(legacy legacyQuotaEnforcementSettings) objects.Q
 		return objects.QuotaRoutingModeBackpressure
 	}
 	return objects.QuotaRoutingModeRemoveOnExhausted
+}
+
+func QuotaRoutingModeFromLegacy(enabled, exhaustedOnly, dePrioritize bool, mode string) objects.QuotaRoutingMode {
+	return quotaRoutingModeFromLegacy(legacyQuotaEnforcementSettings{
+		Enabled:       enabled,
+		ExhaustedOnly: exhaustedOnly,
+		DePrioritize:  dePrioritize,
+		Mode:          mode,
+	})
 }
