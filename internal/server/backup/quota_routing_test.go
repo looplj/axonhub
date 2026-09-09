@@ -10,6 +10,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/system"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -115,6 +116,9 @@ func TestQuotaRoutingSettings_RestoreNewSettingsDoesNotApplyLegacyMapping(t *tes
 	restored, err := client.Channel.Query().Where(channel.NameEQ("new-settings-channel")).Only(ctx)
 	require.NoError(t, err)
 	require.Equal(t, objects.QuotaRoutingModeRemoveOnExhausted, restored.Settings.QuotaRoutingMode)
+	marker, err := client.System.Query().Where(system.KeyEQ(biz.SystemKeyQuotaRoutingMigrationDone)).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "true", marker.Value)
 }
 
 func TestQuotaRoutingSettings_RestoreSystemOnlyDoesNotRemapExistingChannels(t *testing.T) {
@@ -146,4 +150,8 @@ func TestQuotaRoutingSettings_RestoreSystemOnlyDoesNotRemapExistingChannels(t *t
 	existing, err := client.Channel.Query().Where(channel.NameEQ("existing-channel")).Only(ctx)
 	require.NoError(t, err)
 	require.Equal(t, objects.QuotaRoutingModeRemoveOnExhausted, existing.Settings.QuotaRoutingMode)
+	require.Equal(t, objects.QuotaRoutingModeRemoveOnExhausted, service.systemService.QuotaRoutingSettingsOrDefault(ctx).DefaultMode)
+	marker, err := client.System.Query().Where(system.KeyEQ(biz.SystemKeyQuotaRoutingMigrationDone)).Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "true", marker.Value)
 }

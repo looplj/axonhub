@@ -98,9 +98,6 @@ func (g *QuotaRoutingGate) evaluate(
 	if candidate.Channel.Settings != nil && candidate.Channel.Settings.QuotaRoutingMode != "" {
 		mode = candidate.Channel.Settings.QuotaRoutingMode
 	}
-	if mode == "" {
-		mode = objects.QuotaRoutingModeRemoveOnExhausted
-	}
 	if mode != objects.QuotaRoutingModeRemoveOnExhausted &&
 		mode != objects.QuotaRoutingModeBackpressure &&
 		mode != objects.QuotaRoutingModeIgnoreQuota {
