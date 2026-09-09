@@ -166,7 +166,7 @@ func (svc *BackupService) restoreSystemConfigs(ctx context.Context, db *ent.Clie
 
 func (svc *BackupService) restoreLegacyQuotaRouting(ctx context.Context, db *ent.Client, configs []*BackupSystemConfig, channelIDMap map[int]int) error {
 	legacySettings, ok := decodeLegacyQuotaEnforcementSettings(configs)
-	if !ok || len(legacySettings.AllowedChannelIDs) == 0 {
+	if !ok || hasSystemConfig(configs, biz.SystemKeyQuotaRoutingSettings) {
 		return nil
 	}
 
