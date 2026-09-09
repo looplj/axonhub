@@ -3773,6 +3773,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   kimi_code
   minimax
   zhipu
+  zai
   charm_hyper
   zenmux
   commandcode

@@ -136,6 +136,7 @@ func TestQuotaCheckerCoverageMatrix(t *testing.T) {
 		"kimi_code":        NewKimiCodeQuotaChecker(client),
 		"minimax":          NewMinimaxQuotaChecker(client),
 		"zhipu":            NewZhipuQuotaChecker(client),
+		"zai":              NewZaiQuotaChecker(client),
 		"charm_hyper":      NewCharmHyperQuotaChecker(client),
 		"commandcode":      NewCommandCodeQuotaChecker(client),
 	}
@@ -175,6 +176,8 @@ func TestQuotaCheckerCoverageMatrix(t *testing.T) {
 		{"minimax", channel.TypeMinimaxAnthropic, "", "minimax_windows", 2},
 		{"zhipu", channel.TypeZhipu, "", "zhipu_windows", 2},
 		{"zhipu", channel.TypeZhipuAnthropic, "", "zhipu_windows", 2},
+		{"zai", channel.TypeZai, "", "zai_windows", 2},
+		{"zai", channel.TypeZaiAnthropic, "", "zai_windows", 2},
 		{"charm_hyper", channel.TypeOpenai, "https://hyper.charm.land", "charm_credits", 1},
 		{"charm_hyper", channel.TypeOpenaiResponses, "https://hyper.charm.land", "charm_credits", 1},
 		{"commandcode", channel.TypeCommandcode, "", "commandcode_windows", 2},

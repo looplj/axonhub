@@ -75,6 +75,8 @@ var providerQuotaChannelTypes = []channel.Type{
 	channel.TypeMinimaxAnthropic,
 	channel.TypeZhipu,
 	channel.TypeZhipuAnthropic,
+	channel.TypeZai,
+	channel.TypeZaiAnthropic,
 	channel.TypeCommandcode,
 	channel.TypeCommandcodeAnthropic,
 	channel.TypeOllama,
@@ -451,6 +453,7 @@ func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerKimiCodeSupport()
 	svc.registerMinimaxSupport()
 	svc.registerZhipuSupport()
+	svc.registerZaiSupport()
 	svc.registerCharmHyperSupport()
 	svc.registerCommandCodeSupport()
 	svc.registerOllamaSupport()
@@ -536,6 +539,10 @@ func (svc *ProviderQuotaService) registerMinimaxSupport() {
 
 func (svc *ProviderQuotaService) registerZhipuSupport() {
 	svc.checkers["zhipu"] = provider_quota.NewZhipuQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerZaiSupport() {
+	svc.checkers["zai"] = provider_quota.NewZaiQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerCharmHyperSupport() {
@@ -1095,6 +1102,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "minimax"
 	case channel.TypeZhipu, channel.TypeZhipuAnthropic:
 		return "zhipu"
+	case channel.TypeZai, channel.TypeZaiAnthropic:
+		return "zai"
 	case channel.TypeCommandcode, channel.TypeCommandcodeAnthropic:
 		return "commandcode"
 	case channel.TypeOllama, channel.TypeOllamaAnthropic:

@@ -204,7 +204,7 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
       0,
       ...(qd?.rows ?? []).map((row) => Math.max(row.intervalPercent, row.weeklyPercent))
     );
-  } else if (channel.type === 'zhipu' || channel.type === 'zhipu_anthropic') {
+  } else if (channel.type === 'zhipu' || channel.type === 'zhipu_anthropic' || channel.type === 'zai' || channel.type === 'zai_anthropic') {
     const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
     percentage = Math.max(0, ...(qd?.rows ?? []).map((row) => row.usedPercent));
   } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
@@ -1548,7 +1548,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
         </div>
       )}
 
-      {(channel.type === 'zhipu' || channel.type === 'zhipu_anthropic') && (
+      {(channel.type === 'zhipu' || channel.type === 'zhipu_anthropic' || channel.type === 'zai' || channel.type === 'zai_anthropic') && (
         <div className='mt-3 space-y-3'>
           {(() => {
             const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;

@@ -706,6 +706,12 @@ export type ProviderQuotaChannel = {
       };
     }
   | {
+      type: 'zai' | 'zai_anthropic';
+      quotaStatus: {
+        quotaData: ProviderZhipuQuotaData;
+      };
+    }
+  | {
       type: 'zenmux' | 'zenmux_responses' | 'zenmux_anthropic' | 'zenmux_gemini' | 'zenmux_video';
       quotaStatus: {
         quotaData: ProviderZenmuxQuotaData;
@@ -899,6 +905,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
     return {
       ...base,
       type: node.type as 'zhipu' | 'zhipu_anthropic',
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderZhipuQuotaData },
+    };
+  }
+  if (node.type === 'zai' || node.type === 'zai_anthropic') {
+    return {
+      ...base,
+      type: node.type as 'zai' | 'zai_anthropic',
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderZhipuQuotaData },
     };
   }

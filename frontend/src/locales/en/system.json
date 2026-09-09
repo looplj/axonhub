@@ -478,6 +478,7 @@
   "system.quota.collection.providers.kimi_code": "Kimi Code",
   "system.quota.collection.providers.minimax": "MiniMax",
   "system.quota.collection.providers.zhipu": "BigModel",
+  "system.quota.collection.providers.zai": "Z.ai",
   "system.quota.collection.providers.charm_hyper": "Charm Hyper",
   "system.quota.collection.providers.zenmux": "ZenMux",
   "system.quota.collection.providers.commandcode": "Command Code",
