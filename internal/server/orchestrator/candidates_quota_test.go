@@ -216,6 +216,22 @@ func TestQuotaRoutingGate_ignoreQuota_keeps_exhausted_channel(t *testing.T) {
 	require.Zero(t, gate.DroppedCount())
 }
 
+func TestQuotaRoutingGate_unknown_channel_mode_fails_closed(t *testing.T) {
+	// Given
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: quotaExhaustedStatus(),
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeIgnoreQuota})
+
+	candidate := quotaRoutingCandidate(1, objects.QuotaRoutingMode("unknown"))
+
+	// When
+	decision := gate.evaluate(context.Background(), candidate, provider_quota.QuotaLimitTypeToken, 0)
+
+	// Then
+	require.Equal(t, objects.QuotaRoutingModeRemoveOnExhausted, decision.mode)
+	require.False(t, decision.keepPhaseOne)
+}
+
 func TestQuotaRoutingGate_channel_override_beats_global_and_inherit_uses_global(t *testing.T) {
 	// Given
 	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{

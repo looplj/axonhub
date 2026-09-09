@@ -704,13 +704,8 @@ func WithRoutingPolicyLoadBalancedSelector(
 	previousChannelProvider PreviousChannelProvider,
 	apiKey *ent.APIKey,
 	effectiveRoutingPolicy *EffectiveRoutingPolicy,
-	quotaGates ...*QuotaRoutingGate,
+	quotaGate *QuotaRoutingGate,
 ) *LoadBalancedSelector {
-	var quotaGate *QuotaRoutingGate
-	if len(quotaGates) > 0 {
-		quotaGate = quotaGates[0]
-	}
-
 	return &LoadBalancedSelector{
 		wrapped:                 wrapped,
 		loadBalancers:           loadBalancers,

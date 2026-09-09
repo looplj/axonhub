@@ -101,6 +101,11 @@ func (g *QuotaRoutingGate) evaluate(
 	if mode == "" {
 		mode = objects.QuotaRoutingModeRemoveOnExhausted
 	}
+	if mode != objects.QuotaRoutingModeRemoveOnExhausted &&
+		mode != objects.QuotaRoutingModeBackpressure &&
+		mode != objects.QuotaRoutingModeIgnoreQuota {
+		mode = objects.QuotaRoutingModeRemoveOnExhausted
+	}
 
 	decision := quotaRoutingDecision{
 		candidate: candidate,

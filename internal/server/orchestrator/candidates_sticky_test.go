@@ -203,6 +203,7 @@ func TestLoadBalancedSelector_FallbackUpdatesEffectiveStrategy(t *testing.T) {
 		nil,
 		nil,
 		&effectivePolicy,
+		nil,
 	)
 
 	_, err := selector.Select(context.Background(), &llm.Request{Model: "gpt-4"})
@@ -249,6 +250,7 @@ func TestLoadBalancedSelector_ModelDisablesStickyWhenProfileDefaults(t *testing.
 		&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
 		apiKey,
 		&effectivePolicy,
+		nil,
 	)
 
 	result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4"})
@@ -304,6 +306,7 @@ func TestLoadBalancedSelector_EffectiveRoutingPolicyPriority(t *testing.T) {
 		&fakePreviousChannelProvider{traceChannelIDs: map[int]int{trace.ID: 2}},
 		apiKey,
 		&effectivePolicy,
+		nil,
 	)
 
 	result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4"})
