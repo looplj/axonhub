@@ -9,8 +9,86 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
+
+func TestBailianTransformRequest_PreservesOpenAIEnableThinking(t *testing.T) {
+	transformer, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        "https://example.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name      string
+		apiFormat llm.APIFormat
+		rawBody   string
+		expected  string
+	}{
+		{
+			name:      "false",
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			rawBody:   `{"model":"qwen-max","messages":[{"role":"user","content":"hi"}],"enable_thinking":false}`,
+			expected:  `false`,
+		},
+		{
+			name:      "true",
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			rawBody:   `{"model":"qwen-max","messages":[{"role":"user","content":"hi"}],"enable_thinking":true}`,
+			expected:  `true`,
+		},
+		{
+			name:      "omitted",
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			rawBody:   `{"model":"qwen-max","messages":[{"role":"user","content":"hi"}]}`,
+		},
+		{
+			name:      "null",
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			rawBody:   `{"model":"qwen-max","messages":[{"role":"user","content":"hi"}],"enable_thinking":null}`,
+		},
+		{
+			name:      "string",
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			rawBody:   `{"model":"qwen-max","messages":[{"role":"user","content":"hi"}],"enable_thinking":"false"}`,
+		},
+		{
+			name:      "non OpenAI inbound",
+			apiFormat: llm.APIFormatAnthropicMessage,
+			rawBody:   `{"model":"qwen-max","messages":[{"role":"user","content":"hi"}],"enable_thinking":false}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			userContent := "hi"
+			req := &llm.Request{
+				Model:     "qwen-max",
+				APIFormat: tt.apiFormat,
+				Messages: []llm.Message{
+					{Role: "user", Content: llm.MessageContent{Content: &userContent}},
+				},
+				RawRequest: &httpclient.Request{Body: []byte(tt.rawBody)},
+			}
+
+			httpReq, err := transformer.TransformRequest(context.Background(), req)
+			require.NoError(t, err)
+
+			var body map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(httpReq.Body, &body))
+
+			enableThinking, ok := body["enable_thinking"]
+			if tt.expected == "" {
+				require.False(t, ok)
+				return
+			}
+
+			require.True(t, ok)
+			require.JSONEq(t, tt.expected, string(enableThinking))
+		})
+	}
+}
 
 func TestBailianTransformRequest_MergeConsecutiveToolCalls(t *testing.T) {
 	transformer, err := NewOutboundTransformerWithConfig(&Config{
