@@ -397,8 +397,18 @@ const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDe
       <div className='flex max-w-56 items-center gap-2'>
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
         {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
-        {quotaRoutingIndicator === 'exhausted' && <IconCoin className='h-4 w-4 shrink-0 text-destructive' />}
-        {quotaRoutingIndicator === 'backpressure' && <IconGauge className='h-4 w-4 shrink-0 text-amber-500' />}
+        {quotaRoutingIndicator === 'exhausted' && (
+          <>
+            <IconCoin className='h-4 w-4 shrink-0 text-destructive' aria-hidden='true' />
+            <span className='sr-only'>{t('quota.status.exhausted')}</span>
+          </>
+        )}
+        {quotaRoutingIndicator === 'backpressure' && (
+          <>
+            <IconGauge className='h-4 w-4 shrink-0 text-amber-500' aria-hidden='true' />
+            <span className='sr-only'>{t('quota.status.backpressure')}</span>
+          </>
+        )}
         {nameElement}
       </div>
     </div>
@@ -485,14 +495,14 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
         const label = quotaWindowLabel(limit.window, t) || t('quota.label.quota');
         return (
           <div key={`${label}-${index}`} className='flex min-w-0 items-center justify-end gap-2'>
-            <span className='text-muted-foreground min-w-0 truncate text-left'>{label}</span>
-            <div className='bg-muted h-1.5 w-16 shrink-0 overflow-hidden rounded-full sm:w-24'>
+            <span className='text-muted-foreground w-32 shrink-0 truncate text-left'>{label}</span>
+            <div className='bg-muted h-1.5 min-w-20 flex-1 overflow-hidden rounded-full'>
               <div
                 className={`h-full ${remaining <= 20 ? 'bg-red-500' : remaining <= 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
                 style={{ width: `${remaining}%` }}
               />
             </div>
-            <span className={`w-8 text-right font-medium ${quotaColor(remaining)}`}>{remaining}%</span>
+            <span className={`w-10 shrink-0 text-right font-medium ${quotaColor(remaining)}`}>{remaining}%</span>
           </div>
         );
       })}
@@ -813,7 +823,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} className='justify-center' />,
       cell: ({ row }: { row: Row<Channel> }) => <NameCell row={row} globalDefaultMode={globalDefaultMode} />,
       meta: {
-        className: 'w-[18%] min-w-0 text-center',
+        className: 'w-[15%] min-w-0 text-center',
       },
       enableHiding: false,
       enableSorting: true,
@@ -824,7 +834,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.provider')} className='justify-center' />,
       cell: ProviderCell,
       meta: {
-        className: 'text-center',
+        className: 'w-[12%] text-center',
       },
       filterFn: (row, _id, value) => {
         return value.includes(row.original.type);
@@ -837,7 +847,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} className='justify-center' />,
       cell: StatusSwitchCell,
       meta: {
-        className: 'text-center',
+        className: 'w-[10%] text-center',
       },
       enableSorting: true,
       enableHiding: false,
@@ -848,7 +858,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.quota')} className='justify-center' />,
       cell: QuotaCell,
       meta: {
-        className: 'hidden min-w-0 2xl:table-cell text-center',
+        className: 'hidden w-[25%] min-w-0 2xl:table-cell text-center',
       },
       enableSorting: false,
       enableHiding: true,

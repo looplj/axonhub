@@ -26,7 +26,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { SelectDropdown } from '@/components/select-dropdown';
-import { useProxyPresets, useQuotaRoutingSettings, useSaveProxyPreset } from '@/features/system/data/system';
+import {
+  usePassThroughSettings,
+  useProxyPresets,
+  useQuotaRoutingSettings,
+  useSaveProxyPreset,
+  useUserAgentPassThroughSettings,
+} from '@/features/system/data/system';
 import { usePermissions } from '@/hooks/usePermissions';
 import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
@@ -348,6 +354,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const saveProxyPreset = useSaveProxyPreset();
   const { hasSystemScope } = usePermissions();
   const { data: quotaRoutingSettings } = useQuotaRoutingSettings();
+  const canReadSystemSettings = hasSystemScope('read_settings');
+  const { data: userAgentPassThroughSettings } = useUserAgentPassThroughSettings({ enabled: canReadSystemSettings });
+  const { data: passThroughSettings } = usePassThroughSettings({ enabled: canReadSystemSettings });
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
@@ -414,6 +423,20 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
   );
+  const userAgentInheritLabel = userAgentPassThroughSettings
+    ? t('channels.dialogs.userAgentPassThrough.inheritWithValue', {
+        value: t(
+          userAgentPassThroughSettings.enabled
+            ? 'channels.dialogs.userAgentPassThrough.enabled'
+            : 'channels.dialogs.userAgentPassThrough.disabled'
+        ),
+      })
+    : t('channels.dialogs.userAgentPassThrough.inherit');
+  const passThroughInheritLabel = passThroughSettings
+    ? t('channels.dialogs.bodyPassThrough.inheritWithValue', {
+        value: t(passThroughSettings.enabled ? 'channels.dialogs.bodyPassThrough.enabled' : 'channels.dialogs.bodyPassThrough.disabled'),
+      })
+    : t('channels.dialogs.bodyPassThrough.inherit');
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -2954,7 +2977,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <SelectValue placeholder={t('channels.dialogs.userAgentPassThrough.inherit')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value='inherit'>{t('channels.dialogs.userAgentPassThrough.inherit')}</SelectItem>
+                              <SelectItem value='inherit'>{userAgentInheritLabel}</SelectItem>
                               <SelectItem value='enabled'>{t('channels.dialogs.userAgentPassThrough.enabled')}</SelectItem>
                               <SelectItem value='disabled'>{t('channels.dialogs.userAgentPassThrough.disabled')}</SelectItem>
                             </SelectContent>
@@ -2975,7 +2998,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <SelectValue placeholder={t('channels.dialogs.bodyPassThrough.inherit')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value='inherit'>{t('channels.dialogs.bodyPassThrough.inherit')}</SelectItem>
+                              <SelectItem value='inherit'>{passThroughInheritLabel}</SelectItem>
                               <SelectItem value='enabled'>{t('channels.dialogs.bodyPassThrough.enabled')}</SelectItem>
                               <SelectItem value='disabled'>{t('channels.dialogs.bodyPassThrough.disabled')}</SelectItem>
                             </SelectContent>
