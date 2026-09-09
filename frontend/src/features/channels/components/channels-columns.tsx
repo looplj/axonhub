@@ -47,6 +47,8 @@ import { useTestChannel, useUpdateChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
 import { parseQuotaLimits } from '../../system/data/quotas';
+import type { QuotaRoutingMode } from '../../system/data/system';
+import { getChannelQuotaRoutingIndicator } from '../utils/quota-routing-status';
 import { ChannelHealthCell } from './channel-health-cell';
 import { ChannelLimiterCell } from './channel-limiter-cell';
 import { ChannelsStatusDialog } from './channels-status-dialog';
@@ -367,13 +369,14 @@ function getProxyURLSummary(proxyURL: string): { label: string; detail?: string 
 }
 
 // Memoized cell components to avoid recreating on every render
-const NameCell = memo(({ row }: { row: Row<Channel> }) => {
+const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDefaultMode?: QuotaRoutingMode }) => {
   const { t } = useTranslation();
   const channel = row.original;
   const hasError = channel.errorMessage != null;
   const disabledKeysCount = channel.disabledAPIKeys?.length ?? 0;
   const hasDisabledKeys = disabledKeysCount > 0;
   const websiteURL = getChannelWebsiteURL(channel.baseURL);
+  const quotaRoutingIndicator = getChannelQuotaRoutingIndicator(channel, globalDefaultMode);
 
   const nameElement = websiteURL ? (
     <a
@@ -389,20 +392,19 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
     <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
   );
 
-  // Both indicators are shown independently: a channel disabled because every
-  // credential is unavailable carries an error *and* disabled credentials, and
-  // hiding the key icon behind the error would lose the reason it went down.
   const content = (
     <div className='flex justify-center'>
       <div className='flex max-w-56 items-center gap-2'>
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
         {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
+        {quotaRoutingIndicator === 'exhausted' && <IconCoin className='h-4 w-4 shrink-0 text-destructive' />}
+        {quotaRoutingIndicator === 'backpressure' && <IconGauge className='h-4 w-4 shrink-0 text-amber-500' />}
         {nameElement}
       </div>
     </div>
   );
 
-  if (!hasError && !hasDisabledKeys) {
+  if (!hasError && !hasDisabledKeys && !quotaRoutingIndicator) {
     return content;
   }
 
@@ -421,6 +423,8 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
           {hasDisabledKeys && (
             <p className='text-sm text-amber-500'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>
           )}
+          {quotaRoutingIndicator === 'exhausted' && <p className='text-destructive text-sm'>{t('quota.status.exhausted')}</p>}
+          {quotaRoutingIndicator === 'backpressure' && <p className='text-sm text-amber-500'>{t('quota.status.backpressure')}</p>}
         </div>
       </TooltipContent>
     </Tooltip>
@@ -756,7 +760,11 @@ const CreatedAtCell = memo(({ row }: { row: Row<Channel> }) => {
 
 CreatedAtCell.displayName = 'CreatedAtCell';
 
-export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrite: boolean = true): ColumnDef<Channel>[] => {
+export const createColumns = (
+  t: ReturnType<typeof useTranslation>['t'],
+  canWrite: boolean = true,
+  globalDefaultMode?: QuotaRoutingMode
+): ColumnDef<Channel>[] => {
   return [
     {
       id: 'expand',
@@ -803,7 +811,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
     {
       accessorKey: 'name',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} className='justify-center' />,
-      cell: NameCell,
+      cell: ({ row }: { row: Row<Channel> }) => <NameCell row={row} globalDefaultMode={globalDefaultMode} />,
       meta: {
         className: 'w-[18%] min-w-0 text-center',
       },
