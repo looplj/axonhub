@@ -8,12 +8,12 @@ export function getChannelQuotaRoutingIndicator(
   channel: Pick<Channel, 'providerQuotaStatus' | 'settings'>,
   globalDefaultMode?: QuotaRoutingMode
 ): ChannelQuotaRoutingIndicator | undefined {
-  if (channel.providerQuotaStatus?.status === 'exhausted') {
-    return 'exhausted';
-  }
-
   const channelMode = channel.settings?.quotaRoutingMode;
   const effectiveMode = channelMode && channelMode !== 'INHERIT' ? channelMode : globalDefaultMode;
+  if (effectiveMode === 'IGNORE_QUOTA') return undefined;
+
+  if (channel.providerQuotaStatus?.status === 'exhausted') return 'exhausted';
+
   if (effectiveMode === 'BACKPRESSURE' && hasQuotaWindowPressure(channel.providerQuotaStatus?.quotaData)) {
     return 'backpressure';
   }

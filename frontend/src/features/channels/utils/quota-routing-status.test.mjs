@@ -16,10 +16,17 @@ const { getChannelQuotaRoutingIndicator } = await import(`data:text/javascript;b
 
 const status = (value, quotaData = {}) => ({ status: value, quotaData });
 
-test('exhausted status is shown regardless of routing mode', () => {
+test('exhausted status is shown when the backend removes exhausted channels', () => {
+  assert.equal(
+    getChannelQuotaRoutingIndicator({ providerQuotaStatus: status('exhausted'), settings: { quotaRoutingMode: 'REMOVE_ON_EXHAUSTED' } }),
+    'exhausted'
+  );
+});
+
+test('ignore quota mode does not show a quota routing indicator', () => {
   assert.equal(
     getChannelQuotaRoutingIndicator({ providerQuotaStatus: status('exhausted'), settings: { quotaRoutingMode: 'IGNORE_QUOTA' } }),
-    'exhausted'
+    undefined
   );
 });
 
@@ -47,6 +54,19 @@ test('an available quota window without pressure does not show a quota routing i
         _limits: [{ type: 'token', window: '5h', status: 'available', usageRatio: 0.2, periodStart: new Date(now - 60 * 60 * 1000).toISOString(), nextResetAt: new Date(now + 60 * 60 * 1000).toISOString() }],
       }),
       settings: { quotaRoutingMode: 'BACKPRESSURE' },
+    }),
+    undefined
+  );
+});
+
+test('a pressured quota window does not show backpressure when the channel removes only on exhaustion', () => {
+  const now = Date.now();
+  assert.equal(
+    getChannelQuotaRoutingIndicator({
+      providerQuotaStatus: status('available', {
+        _limits: [{ type: 'token', window: '5h', status: 'available', usageRatio: 0.8, periodStart: new Date(now - 60 * 60 * 1000).toISOString(), nextResetAt: new Date(now + 60 * 60 * 1000).toISOString() }],
+      }),
+      settings: { quotaRoutingMode: 'REMOVE_ON_EXHAUSTED' },
     }),
     undefined
   );
