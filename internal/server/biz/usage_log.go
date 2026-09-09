@@ -118,10 +118,13 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 
 	apiKeyID := 0
 	userID := 0
+	hasAPIKeyID := false
 	if params.APIKeyID != nil {
 		apiKeyID = *params.APIKeyID
+		hasAPIKeyID = true
 	} else if ctxAPIKey, ok := contexts.GetAPIKey(ctx); ok && ctxAPIKey != nil {
 		apiKeyID = ctxAPIKey.ID
+		hasAPIKeyID = true
 	}
 	if ctxAPIKey, ok := contexts.GetAPIKey(ctx); ok && ctxAPIKey != nil && ctxAPIKey.ID == apiKeyID {
 		userID = ctxAPIKey.UserID
@@ -138,10 +141,8 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		SetSource(params.Source).
 		SetFormat(params.Format)
 
-	if params.APIKeyID != nil {
-		mut = mut.SetAPIKeyID(*params.APIKeyID)
-	} else if ctxAPIKey, ok := contexts.GetAPIKey(ctx); ok && ctxAPIKey != nil {
-		mut = mut.SetAPIKeyID(ctxAPIKey.ID)
+	if hasAPIKeyID {
+		mut = mut.SetAPIKeyID(apiKeyID)
 	}
 
 	// Set prompt tokens details if available

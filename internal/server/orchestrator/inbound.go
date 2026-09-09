@@ -85,8 +85,8 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 				APIKeyID: ts.request.APIKeyID, Source: string(ts.request.Source),
 				Format: ts.request.Format, Stream: ts.request.Stream,
 			}
-			value := time.Since(ts.request.CreatedAt).Seconds()
-			appmetrics.Metrics.RecordDownstreamPerformance(ts.ctx, attrs, "streaming", value, &value)
+			ttft := time.Since(ts.request.CreatedAt).Seconds()
+			appmetrics.Metrics.RecordDownstreamPerformance(ts.ctx, attrs, "streaming", -1, &ttft)
 			ts.downstreamTTFTRecorded = true
 		}
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
