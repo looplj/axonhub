@@ -20,7 +20,7 @@ func TestQuotaRoutingSettings_LegacyMapping(t *testing.T) {
 		legacyJSON string
 		want       objects.QuotaRoutingMode
 	}{
-		{name: "disabled", legacyJSON: `{"enabled":false}`, want: objects.QuotaRoutingModeRemoveOnExhausted},
+		{name: "disabled", legacyJSON: `{"enabled":false}`, want: objects.QuotaRoutingModeIgnoreQuota},
 		{name: "exhausted only", legacyJSON: `{"enabled":true,"exhaustedOnly":true}`, want: objects.QuotaRoutingModeRemoveOnExhausted},
 		{name: "deprioritize", legacyJSON: `{"enabled":true,"dePrioritize":true}`, want: objects.QuotaRoutingModeBackpressure},
 		{name: "absent legacy key", want: objects.QuotaRoutingModeRemoveOnExhausted},

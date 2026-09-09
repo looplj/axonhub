@@ -56,11 +56,9 @@ func TestQuotaRoutingMigration(t *testing.T) {
 		errs := make(chan error, len(migrators))
 		var wg sync.WaitGroup
 		for _, migrator := range migrators {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				errs <- migrator.Migrate(context.Background())
-			}()
+			})
 		}
 		wg.Wait()
 		close(errs)
@@ -108,7 +106,7 @@ func TestQuotaRoutingMigration(t *testing.T) {
 		fixture.setLegacy(legacyQuotaEnforcementSettings{Enabled: false})
 
 		require.NoError(t, fixture.migrator.Migrate(context.Background()))
-		fixture.requireMode(objects.QuotaRoutingModeRemoveOnExhausted)
+		fixture.requireMode(objects.QuotaRoutingModeIgnoreQuota)
 		fixture.requireMarker()
 	})
 

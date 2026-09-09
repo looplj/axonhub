@@ -110,7 +110,7 @@ func (m *quotaRoutingMigrator) migrateInTransaction(ctx context.Context) error {
 
 func quotaRoutingModeFromLegacy(legacy legacyQuotaEnforcementSettings) objects.QuotaRoutingMode {
 	if !legacy.Enabled {
-		return objects.QuotaRoutingModeRemoveOnExhausted
+		return objects.QuotaRoutingModeIgnoreQuota
 	}
 	if legacy.ExhaustedOnly || legacy.Mode == "EXHAUSTED_ONLY" || legacy.Mode == "exhausted_only" {
 		return objects.QuotaRoutingModeRemoveOnExhausted
