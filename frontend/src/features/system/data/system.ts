@@ -1609,7 +1609,7 @@ export function useUserAgentPassThroughSettings(options?: { enabled?: boolean })
 
   return useQuery({
     queryKey: ['userAgentPassThroughSettings', authUserId ?? 'signed-out', canReadSystemSettings],
-    enabled: options?.enabled ?? true,
+    enabled: (options?.enabled ?? true) && canReadSystemSettings,
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ userAgentPassThroughSettings: UserAgentPassThroughSettings }>(USER_AGENT_PASS_THROUGH_SETTINGS_QUERY);
@@ -1669,7 +1669,7 @@ export function usePassThroughSettings(options?: { enabled?: boolean }) {
 
   return useQuery({
     queryKey: ['passThroughSettings', authUserId ?? 'signed-out', canReadSystemSettings],
-    enabled: options?.enabled ?? true,
+    enabled: (options?.enabled ?? true) && canReadSystemSettings,
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ passThroughSettings: PassThroughSettings }>(PASS_THROUGH_SETTINGS_QUERY);
