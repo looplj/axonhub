@@ -82,3 +82,8 @@ test('mapping helpers stay wired into the dialog payload boundaries', () => {
   assert.equal(spread, 2, 'payload mapping must feed the edit settingsPatch and the create merge');
   assert.equal(recall, 2, 'recall mapping must feed the state init and the reopen reset');
 });
+
+test('inherit option includes the current global mode when available', () => {
+  assert.match(source, /quotaRoutingMode\.options\.INHERIT_WITH_MODE/);
+  assert.match(source, /quotaRoutingSettings\.defaultMode/);
+});

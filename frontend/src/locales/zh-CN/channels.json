@@ -314,6 +314,7 @@
   "channels.dialogs.fields.commandCodeQuota.authCookie.description": "访问 Command Code 的用量页面，复制 Cookie 请求头。可以粘贴整段 Cookie，只会保留 session_token/data。",
   "channels.dialogs.fields.quotaRoutingMode.label": "限额调度模式",
   "channels.dialogs.fields.quotaRoutingMode.options.INHERIT": "继承全局默认值",
+  "channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE": "继承全局默认值（当前：{{mode}}）",
   "channels.dialogs.fields.quotaRoutingMode.options.IGNORE_QUOTA": "忽略限额状态",
   "channels.dialogs.fields.quotaRoutingMode.options.REMOVE_ON_EXHAUSTED": "达到限额后摘除",
   "channels.dialogs.fields.quotaRoutingMode.options.BACKPRESSURE": "基于用量和时长限流",

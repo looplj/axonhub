@@ -26,7 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { SelectDropdown } from '@/components/select-dropdown';
-import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
+import { useProxyPresets, useQuotaRoutingSettings, useSaveProxyPreset } from '@/features/system/data/system';
 import { usePermissions } from '@/hooks/usePermissions';
 import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
@@ -347,6 +347,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const { data: proxyPresets = [] } = useProxyPresets();
   const saveProxyPreset = useSaveProxyPreset();
   const { hasSystemScope } = usePermissions();
+  const { data: quotaRoutingSettings } = useQuotaRoutingSettings();
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
@@ -2648,7 +2649,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <SelectValue placeholder={t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value='INHERIT'>{t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')}</SelectItem>
+                               <SelectItem value='INHERIT'>
+                                 {quotaRoutingSettings?.defaultMode
+                                   ? t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE', {
+                                       mode: t(`channels.dialogs.fields.quotaRoutingMode.options.${quotaRoutingSettings.defaultMode}`),
+                                     })
+                                   : t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')}
+                               </SelectItem>
                               <SelectItem value='IGNORE_QUOTA'>{t('channels.dialogs.fields.quotaRoutingMode.options.IGNORE_QUOTA')}</SelectItem>
                               <SelectItem value='REMOVE_ON_EXHAUSTED'>{t('channels.dialogs.fields.quotaRoutingMode.options.REMOVE_ON_EXHAUSTED')}</SelectItem>
                               <SelectItem value='BACKPRESSURE'>{t('channels.dialogs.fields.quotaRoutingMode.options.BACKPRESSURE')}</SelectItem>
