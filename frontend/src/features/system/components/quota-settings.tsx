@@ -25,7 +25,7 @@ interface ProviderQuotaCollectionFormData {
 
 export function QuotaSettings() {
   const { t } = useTranslation();
-  const { data: routingSettings, isLoading: isRoutingSettingsLoading } = useQuotaRoutingSettings();
+  const { data: routingSettings, isError: isRoutingSettingsError, isLoading: isRoutingSettingsLoading } = useQuotaRoutingSettings();
   const { data: collectionSettings, isLoading: isCollectionSettingsLoading } = useProviderQuotaCollectionSettings();
   const updateQuotaRoutingSettings = useUpdateQuotaRoutingSettings();
   const updateProviderQuotaCollectionSettings = useUpdateProviderQuotaCollectionSettings();
@@ -166,7 +166,11 @@ export function QuotaSettings() {
             <Separator />
 
             <div className='flex justify-end'>
-              <Button type='submit' disabled={updateQuotaRoutingSettings.isPending} className='min-w-24'>
+              <Button
+                type='submit'
+                disabled={updateQuotaRoutingSettings.isPending || isRoutingSettingsLoading || isRoutingSettingsError || !routingSettings}
+                className='min-w-24'
+              >
                 {updateQuotaRoutingSettings.isPending ? <Loader2 className='h-4 w-4 animate-spin' /> : t('common.buttons.save')}
               </Button>
             </div>

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { readFileSync, mkdtempSync, cpSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 
 const componentsDir = import.meta.dirname;
@@ -70,7 +70,11 @@ test('legacy enforcement UI and hooks are gone from the card', () => {
 test('selection is persisted through the routing mutation hook', () => {
   assert.match(source, /const updateQuotaRoutingSettings = useUpdateQuotaRoutingSettings\(\);/);
   assert.match(source, /await updateQuotaRoutingSettings\.mutateAsync\(\{ defaultMode: routingMode \}\)/);
-  assert.match(source, /disabled=\{updateQuotaRoutingSettings\.isPending\}/, 'save button tracks mutation pending state');
+  assert.match(
+    source,
+    /disabled=\{updateQuotaRoutingSettings\.isPending \|\| isRoutingSettingsLoading \|\| isRoutingSettingsError \|\| !routingSettings\}/,
+    'save button stays disabled until routing settings load successfully'
+  );
 });
 
 test('routing query is scope-gated in the data layer', () => {
@@ -80,7 +84,10 @@ test('routing query is scope-gated in the data layer', () => {
 
 test('card degrades gracefully when settings data is absent (no read_settings scope)', () => {
   // Form state seeds only from fetched data, so a scope-disabled query leaves the card on its default mode.
-  assert.match(source, /const \{ data: routingSettings, isLoading: isRoutingSettingsLoading \} = useQuotaRoutingSettings\(\);/);
+  assert.match(
+    source,
+    /const \{ data: routingSettings, isError: isRoutingSettingsError, isLoading: isRoutingSettingsLoading \} = useQuotaRoutingSettings\(\);/
+  );
   assert.match(source, /if \(routingSettings\) \{\s*setRoutingMode\(routingSettings\.defaultMode\);\s*\}/);
   // Loading gate uses isLoading (false for a disabled query), not isPending, so the card still renders.
   assert.match(source, /isRoutingSettingsLoading \|\| isCollectionSettingsLoading/);
@@ -108,7 +115,10 @@ test('zh-CN mode labels match the specified copy', () => {
 });
 
 test('legacy enforcement locale keys removed from both locales', () => {
-  for (const [name, obj] of [['en', enSystem], ['zh-CN', zhSystem]]) {
+  for (const [name, obj] of [
+    ['en', enSystem],
+    ['zh-CN', zhSystem],
+  ]) {
     const legacy = Object.keys(obj).filter(
       (key) =>
         key === 'system.quota.title' ||
@@ -123,7 +133,7 @@ test('legacy enforcement locale keys removed from both locales', () => {
 
 test('negative control: a mutation hook without an error handler is rejected by the validator', () => {
   // Simulates a hook that swallows rejections: the same assertion used above must fail for it.
-  const mock = "useMutation({ mutationFn: async () => true, onSuccess: () => {} });";
+  const mock = 'useMutation({ mutationFn: async () => true, onSuccess: () => {} });';
   assert.throws(() => assertMutationErrorToastHandled(mock, 'mock'), /error toast handler/);
 });
 
@@ -145,10 +155,7 @@ test('sandbox regression: stripping the error handler from a copy makes this sui
     // identical onError blocks, so a whole-file replace would hit the wrong hook.
     const original = read('features/system/data/system.ts');
     const hook = extractFunction(original, 'useUpdateQuotaRoutingSettings');
-    const strippedHook = hook.replace(
-      /onError: \(\) => \{\s*toast\.error\(i18n\.t\('common\.errors\.systemUpdateFailed'\)\);\s*\}/,
-      ''
-    );
+    const strippedHook = hook.replace(/onError: \(\) => \{\s*toast\.error\(i18n\.t\('common\.errors\.systemUpdateFailed'\)\);\s*\}/, '');
     assert.notEqual(strippedHook, hook, 'sandbox mutation did not change the fixture');
     writeFileSync(sandboxSystem, original.replace(hook, strippedHook));
     cpSync(join(componentsDir, 'quota-settings.test.mjs'), join(sandbox, 'features/system/components/quota-settings.test.mjs'));
