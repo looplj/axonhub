@@ -23,7 +23,11 @@ func (m QuotaRoutingMode) MarshalGQL(w io.Writer) {
 	case QuotaRoutingModeBackpressure:
 		value = "BACKPRESSURE"
 	default:
-		value = "INHERIT"
+		if m == "" {
+			value = "INHERIT"
+		} else {
+			value = "REMOVE_ON_EXHAUSTED"
+		}
 	}
 
 	_, _ = io.WriteString(w, `"`+value+`"`)

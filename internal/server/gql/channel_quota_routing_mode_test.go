@@ -67,6 +67,9 @@ func TestChannelQuotaRoutingModeGraphQLRoundTrip(t *testing.T) {
 	var encoded bytes.Buffer
 	objects.QuotaRoutingMode("").MarshalGQL(&encoded)
 	require.Equal(t, `"INHERIT"`, encoded.String())
+	encoded.Reset()
+	objects.QuotaRoutingMode("invalid").MarshalGQL(&encoded)
+	require.Equal(t, `"REMOVE_ON_EXHAUSTED"`, encoded.String())
 
 	stored, err := json.Marshal(&objects.ChannelSettings{QuotaRoutingMode: ""})
 	require.NoError(t, err)
