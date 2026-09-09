@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
+	appmetrics "github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -36,6 +37,125 @@ type RequestService struct {
 	DataStorageService   *DataStorageService
 	LiveStreamRegistry   *LiveStreamRegistry
 	previousChannelCache xcache.Cache[int]
+}
+
+func requestMetricAttributes(ctx context.Context, req *ent.Request, channelID int, modelID string) appmetrics.RequestAttributes {
+	if req == nil {
+		return appmetrics.RequestAttributes{ChannelID: channelID, ModelID: modelID}
+	}
+
+	attrs := appmetrics.RequestAttributes{
+		ProjectID:      req.ProjectID,
+		ChannelID:      channelID,
+		RequestModelID: req.ModelID,
+		ModelID:        modelID,
+		APIKeyID:       req.APIKeyID,
+		Source:         string(req.Source),
+		Format:         req.Format,
+		Stream:         req.Stream,
+	}
+
+	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
+		if attrs.APIKeyID == 0 {
+			attrs.APIKeyID = apiKey.ID
+		}
+		if attrs.APIKeyID == apiKey.ID {
+			attrs.UserID = apiKey.UserID
+		}
+	}
+
+	return attrs
+}
+
+func executionMetricAttributes(execution *ent.RequestExecution, req *ent.Request) appmetrics.RequestAttributes {
+	if execution == nil {
+		return appmetrics.RequestAttributes{}
+	}
+
+	// Upstream lifecycle and performance metrics deliberately use only
+	// dimensions present on the execution itself. This keeps create and
+	// completion series identical and avoids putting API-key/user cardinality
+	// on the high-volume execution metrics.
+	attrs := appmetrics.RequestAttributes{
+		ProjectID: execution.ProjectID,
+		ChannelID: execution.ChannelID,
+		ModelID:   execution.ModelID,
+		Format:    execution.Format,
+		Stream:    execution.Stream,
+	}
+	if req != nil {
+		attrs.RequestModelID = req.ModelID
+		attrs.APIKeyID = req.APIKeyID
+		attrs.Source = string(req.Source)
+	}
+
+	return attrs
+}
+
+func upstreamMetricAttributes(req *ent.Request, channelID int, modelID string, format string, stream bool) appmetrics.RequestAttributes {
+	attrs := appmetrics.RequestAttributes{
+		ChannelID: channelID,
+		ModelID:   modelID,
+		Format:    format,
+		Stream:    stream,
+	}
+	if req != nil {
+		attrs.ProjectID = req.ProjectID
+	}
+
+	return attrs
+}
+
+func isTerminalRequestStatus(status request.Status) bool {
+	return status == request.StatusCompleted || status == request.StatusFailed || status == request.StatusCanceled
+}
+
+func isTerminalExecutionStatus(status requestexecution.Status) bool {
+	return status == requestexecution.StatusCompleted || status == requestexecution.StatusFailed || status == requestexecution.StatusCanceled
+}
+
+func recordDownstreamCompletionMetrics(ctx context.Context, req *ent.Request, status request.Status) {
+	if req == nil || !isTerminalRequestStatus(status) || isTerminalRequestStatus(req.Status) {
+		return
+	}
+
+	attrs := requestMetricAttributes(ctx, req, req.ChannelID, "")
+	appmetrics.Metrics.RecordDownstreamRequestCompleted(ctx, attrs, string(status))
+	appmetrics.Metrics.RecordDownstreamPerformance(ctx, attrs, string(status), time.Since(req.CreatedAt).Seconds(), nil)
+}
+
+func recordUpstreamCompletionMetrics(
+	ctx context.Context,
+	execution *ent.RequestExecution,
+	status requestexecution.Status,
+	wasTerminal bool,
+	latency *LatencyMetrics,
+	req *ent.Request,
+) {
+	if execution == nil || !isTerminalExecutionStatus(status) || wasTerminal {
+		return
+	}
+
+	attrs := executionMetricAttributes(execution, req)
+	appmetrics.Metrics.RecordUpstreamRequestCompleted(ctx, attrs, string(status))
+
+	if latency == nil || latency.LatencyMs == nil {
+		return
+	}
+
+	var ttftSeconds *float64
+	if latency.FirstTokenLatencyMs != nil {
+		value := float64(*latency.FirstTokenLatencyMs) / 1000
+		ttftSeconds = &value
+	}
+
+	appmetrics.Metrics.RecordUpstreamPerformance(
+		ctx,
+		attrs,
+		string(status),
+		float64(*latency.LatencyMs)/1000,
+		ttftSeconds,
+	)
 }
 
 // NewRequestService creates a new RequestService.
@@ -286,6 +406,8 @@ func (s *RequestService) CreateRequest(
 		}
 	}
 
+	appmetrics.Metrics.RecordDownstreamRequestCreated(ctx, requestMetricAttributes(ctx, req, req.ChannelID, ""))
+
 	// Save request body to external storage if needed
 	if useExternalStorage {
 		key := GenerateRequestBodyKey(projectID, req.ID)
@@ -408,6 +530,11 @@ func (s *RequestService) CreateRequestExecution(
 			return nil, err
 		}
 	}
+
+	appmetrics.Metrics.RecordUpstreamRequestCreated(
+		ctx,
+		upstreamMetricAttributes(request, channel.ID, modelID, string(format), request.Stream),
+	)
 
 	// Save request body to external storage if needed
 	if useExternalStorage {
@@ -543,6 +670,8 @@ func (s *RequestService) UpdateRequestCompleted(
 		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
 		return err
 	}
+
+	recordDownstreamCompletionMetrics(ctx, req, request.StatusCompleted)
 
 	return nil
 }
@@ -741,6 +870,8 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 		return err
 	}
 
+	recordDownstreamCompletionMetrics(ctx, req, status)
+
 	return nil
 }
 
@@ -767,6 +898,11 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 	if err != nil {
 		log.Error(ctx, "Failed to get request execution", log.Cause(err))
 		return err
+	}
+	wasTerminal := isTerminalExecutionStatus(execution.Status)
+	req, reqErr := client.Request.Get(ctx, execution.RequestID)
+	if reqErr != nil {
+		log.Warn(ctx, "failed to load request for execution metrics", log.Cause(reqErr))
 	}
 
 	// Get data storage if set
@@ -830,6 +966,8 @@ func (s *RequestService) UpdateRequestExecutionCompleted(
 		return err
 	}
 
+	recordUpstreamCompletionMetrics(ctx, execution, requestexecution.StatusCompleted, wasTerminal, metrics, req)
+
 	return nil
 }
 
@@ -881,6 +1019,16 @@ func (s *RequestService) UpdateRequestExecutionStatusWithMetrics(
 ) error {
 	client := s.entFromContext(ctx)
 
+	execution, err := client.RequestExecution.Get(ctx, executionID)
+	if err != nil {
+		return fmt.Errorf("failed to get request execution before status update: %w", err)
+	}
+	wasTerminal := isTerminalExecutionStatus(execution.Status)
+	req, reqErr := client.Request.Get(ctx, execution.RequestID)
+	if reqErr != nil {
+		log.Warn(ctx, "failed to load request for execution metrics", log.Cause(reqErr))
+	}
+
 	upd := client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(status)
 	if errorMsg != "" {
@@ -910,6 +1058,8 @@ func (s *RequestService) UpdateRequestExecutionStatusWithMetrics(
 		log.Error(ctx, "Failed to update request execution status", log.Cause(err), log.Any("status", status))
 		return err
 	}
+
+	recordUpstreamCompletionMetrics(ctx, execution, status, wasTerminal, nil, req)
 
 	return nil
 }
@@ -1187,12 +1337,19 @@ func (s *RequestService) MarkRequestFailed(ctx context.Context, requestID int) e
 func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int, status request.Status) error {
 	client := s.entFromContext(ctx)
 
-	_, err := client.Request.UpdateOneID(requestID).
+	req, err := client.Request.Get(ctx, requestID)
+	if err != nil {
+		return fmt.Errorf("failed to get request before status update: %w", err)
+	}
+
+	_, err = client.Request.UpdateOneID(requestID).
 		SetStatus(status).
 		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update request status: %w", err)
 	}
+
+	recordDownstreamCompletionMetrics(ctx, req, status)
 
 	return nil
 }
