@@ -3,6 +3,8 @@ package responses
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -13,6 +15,26 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+func TestClassifyStreamError_UpstreamEOF(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+	}{
+		{name: "EOF", err: io.EOF},
+		{name: "unexpected EOF", err: io.ErrUnexpectedEOF},
+		{name: "wrapped unexpected EOF", err: fmt.Errorf("read body: %w", io.ErrUnexpectedEOF)},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			code, message := classifyStreamError(tt.err)
+
+			require.Equal(t, "upstream_eof", code)
+			require.Equal(t, "upstream connection closed unexpectedly", message)
+		})
+	}
+}
 
 // Compare each event.
 var ignoreFields = cmp.FilterPath(func(p cmp.Path) bool {
@@ -488,6 +510,52 @@ func TestInboundTransformer_TransformStream_EmitsUpstreamErrorEvents(t *testing.
 	}
 }
 
+func TestInboundTransformer_TransformStream_DoesNotEmitFailureAfterCompleted(t *testing.T) {
+	transformedStream, err := NewInboundTransformer().TransformStream(t.Context(), &errorResponseStream{
+		items: []*llm.Response{
+			{
+				Object:  "chat.completion.chunk",
+				ID:      "resp_completed_before_error",
+				Created: 1700000000,
+				Model:   "gpt-5",
+				Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Role: "assistant"}}},
+			},
+			{
+				Object:  "chat.completion.chunk",
+				ID:      "resp_completed_before_error",
+				Created: 1700000000,
+				Model:   "gpt-5",
+				Choices: []llm.Choice{{
+					Index:        0,
+					Delta:        &llm.Message{},
+					FinishReason: lo.ToPtr("stop"),
+				}},
+			},
+			{
+				Object:  "chat.completion.chunk",
+				ID:      "resp_completed_before_error",
+				Created: 1700000000,
+				Model:   "gpt-5",
+				Usage:   &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2},
+			},
+		},
+		err: fmt.Errorf("read body: %w", io.ErrUnexpectedEOF),
+	})
+	require.NoError(t, err)
+
+	var eventTypes []StreamEventType
+	for transformedStream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(transformedStream.Current().Data, &event))
+		eventTypes = append(eventTypes, event.Type)
+	}
+
+	require.NoError(t, transformedStream.Err())
+	require.Contains(t, eventTypes, StreamEventTypeResponseCompleted)
+	require.NotContains(t, eventTypes, StreamEventTypeResponseFailed)
+	require.NotContains(t, eventTypes, StreamEventTypeError)
+}
+
 type errorResponseStream struct {
 	items []*llm.Response
 	index int
@@ -524,23 +592,23 @@ func (s *errorResponseStream) Close() error {
 }
 
 // Chat Completions finish_reason must be propagated onto the Responses
-// response.completed status: truncation and failure are otherwise silently
-// reported as a successful completion downstream.
-func TestInboundTransformer_TransformStream_MapsFinishReasonToCompletedStatus(t *testing.T) {
+// terminal event and status, including truncation and provider failure.
+func TestInboundTransformer_TransformStream_MapsFinishReasonToTerminalEvent(t *testing.T) {
 	tests := []struct {
-		name                 string
-		finishReason         string
-		expectedStatus       string
-		expectedIncomplete   *ResponseIncompleteDetails
+		name               string
+		finishReason       string
+		expectedStatus     string
+		expectedType       StreamEventType
+		expectedIncomplete *ResponseIncompleteDetails
 	}{
-		{name: "length maps to incomplete", finishReason: "length", expectedStatus: "incomplete", expectedIncomplete: &ResponseIncompleteDetails{Reason: "max_output_tokens"}},
-		{name: "content_filter maps to incomplete", finishReason: "content_filter", expectedStatus: "incomplete", expectedIncomplete: &ResponseIncompleteDetails{Reason: "content_filter"}},
-		{name: "error maps to failed", finishReason: "error", expectedStatus: "failed"},
-		{name: "cancelled maps to cancelled", finishReason: "cancelled", expectedStatus: "cancelled"},
-		{name: "canceled (US spelling) maps to cancelled", finishReason: "canceled", expectedStatus: "cancelled"},
-		{name: "unknown finish reason stays completed", finishReason: "bogus", expectedStatus: "completed"},
-		{name: "stop stays completed", finishReason: "stop", expectedStatus: "completed"},
-		{name: "tool_calls stays completed", finishReason: "tool_calls", expectedStatus: "completed"},
+		{name: "length maps to incomplete", finishReason: "length", expectedStatus: "incomplete", expectedType: StreamEventTypeResponseIncomplete, expectedIncomplete: &ResponseIncompleteDetails{Reason: "max_output_tokens"}},
+		{name: "content_filter maps to incomplete", finishReason: "content_filter", expectedStatus: "incomplete", expectedType: StreamEventTypeResponseIncomplete, expectedIncomplete: &ResponseIncompleteDetails{Reason: "content_filter"}},
+		{name: "error maps to failed", finishReason: "error", expectedStatus: "failed", expectedType: StreamEventTypeResponseFailed},
+		{name: "cancelled maps to cancelled", finishReason: "cancelled", expectedStatus: "cancelled", expectedType: StreamEventTypeResponseCompleted},
+		{name: "canceled (US spelling) maps to cancelled", finishReason: "canceled", expectedStatus: "cancelled", expectedType: StreamEventTypeResponseCompleted},
+		{name: "unknown finish reason stays completed", finishReason: "bogus", expectedStatus: "completed", expectedType: StreamEventTypeResponseCompleted},
+		{name: "stop stays completed", finishReason: "stop", expectedStatus: "completed", expectedType: StreamEventTypeResponseCompleted},
+		{name: "tool_calls stays completed", finishReason: "tool_calls", expectedStatus: "completed", expectedType: StreamEventTypeResponseCompleted},
 	}
 
 	for _, tt := range tests {
@@ -569,24 +637,25 @@ func TestInboundTransformer_TransformStream_MapsFinishReasonToCompletedStatus(t 
 			}))
 			require.NoError(t, err)
 
-			var completed *Response
+			var terminal *StreamEvent
 			for stream.Next() {
 				var ev StreamEvent
 				require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
-				if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
-					completed = ev.Response
+				if ev.Response != nil {
+					terminal = &ev
 				}
 			}
 			require.NoError(t, stream.Err())
 
-			require.NotNil(t, completed)
-			require.NotNil(t, completed.Status)
-			require.Equal(t, tt.expectedStatus, *completed.Status)
+			require.NotNil(t, terminal)
+			require.Equal(t, tt.expectedType, terminal.Type)
+			require.NotNil(t, terminal.Response.Status)
+			require.Equal(t, tt.expectedStatus, *terminal.Response.Status)
 			if tt.expectedIncomplete != nil {
-				require.NotNil(t, completed.IncompleteDetails)
-				require.Equal(t, tt.expectedIncomplete.Reason, completed.IncompleteDetails.Reason)
+				require.NotNil(t, terminal.Response.IncompleteDetails)
+				require.Equal(t, tt.expectedIncomplete.Reason, terminal.Response.IncompleteDetails.Reason)
 			} else {
-				require.Nil(t, completed.IncompleteDetails)
+				require.Nil(t, terminal.Response.IncompleteDetails)
 			}
 		})
 	}
@@ -632,7 +701,7 @@ func TestInboundTransformer_TransformStream_UsageBeforeFinishReasonKeepsMappedSt
 	for stream.Next() {
 		var ev StreamEvent
 		require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
-		if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
+		if ev.Type == StreamEventTypeResponseIncomplete && ev.Response != nil {
 			completed = ev.Response
 		}
 	}
