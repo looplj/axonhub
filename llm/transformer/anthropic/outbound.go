@@ -163,6 +163,13 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: max_tokens must be positive", transformer.ErrInvalidRequest)
 	}
 
+	if err := transformer.ValidateFlatFunctionNames(llmReq); err != nil {
+		return nil, err
+	}
+	if err := transformer.ValidateNamespaceToolChoice(llmReq.ToolChoice, llmReq.Tools); err != nil {
+		return nil, err
+	}
+
 	// Convert to Anthropic request format
 	anthropicReq := convertToAnthropicRequestWithConfig(llmReq, t.config)
 

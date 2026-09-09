@@ -87,13 +87,15 @@ func applyClaudeToolPrefixStructured(llmReq *llm.Request, prefix string) *llm.Re
 		}
 	}
 
-	// Prefix tool_choice.name if type is "tool"
 	if llmReq.ToolChoice != nil && llmReq.ToolChoice.NamedToolChoice != nil {
-		if llmReq.ToolChoice.NamedToolChoice.Type == "tool" {
-			name := llmReq.ToolChoice.NamedToolChoice.Function.Name
-			if name != "" && !strings.HasPrefix(name, prefix) {
-				llmReq.ToolChoice.NamedToolChoice.Function.Name = prefix + name
+		named := llmReq.ToolChoice.NamedToolChoice
+		if (named.Type == llm.ToolTypeFunction || named.Type == "tool") && named.Function.Name != "" {
+			name := llm.FlattenFunctionName(named.Function.Namespace, named.Function.Name)
+			if !strings.HasPrefix(name, prefix) {
+				name = prefix + name
 			}
+			named.Function.Name = name
+			named.Function.Namespace = ""
 		}
 	}
 

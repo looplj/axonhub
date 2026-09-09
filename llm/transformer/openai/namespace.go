@@ -32,37 +32,25 @@ func PrepareNamespaceRequest(src *llm.Request) (*llm.Request, map[string]any, er
 // prepareNamespaceRequest flattens identities only on a copy for Chat. The
 // original request remains reusable by retries and Responses channel switches.
 func prepareNamespaceRequest(src *llm.Request) (*llm.Request, namespaceToolMapping, error) {
+	if err := transformer.ValidateFlatFunctionNames(src); err != nil {
+		return nil, nil, err
+	}
 	req := *src
 	req.Tools = slices.Clone(src.Tools)
 	mapping := make(namespaceToolMapping)
-	identities := make(map[string]llm.ToolFunction)
-	register := func(namespace, name string) (string, error) {
+	register := func(namespace, name string) string {
 		flat := llm.FlattenFunctionName(namespace, name)
-		ref := llm.ToolFunction{Namespace: namespace, Name: name}
-		if previous, ok := identities[flat]; ok && previous != ref {
-			return "", fmt.Errorf("%w: namespace tool flat name %q conflicts with another function", transformer.ErrInvalidRequest, flat)
-		}
-		identities[flat] = ref
 		if namespace != "" {
-			mapping[flat] = ref
+			mapping[flat] = llm.ToolFunction{Namespace: namespace, Name: name}
 		}
-		return flat, nil
+		return flat
 	}
-	declared := make(map[string]bool)
 	for i := range req.Tools {
 		tool := &req.Tools[i]
 		if tool.Type != llm.ToolTypeFunction {
 			continue
 		}
-		flat, err := register(tool.Function.Namespace, tool.Function.Name)
-		if err != nil {
-			return nil, nil, err
-		}
-		if declared[flat] {
-			return nil, nil, fmt.Errorf("%w: duplicate function tool name %q", transformer.ErrInvalidRequest, flat)
-		}
-		declared[flat] = true
-		tool.Function.Name = flat
+		tool.Function.Name = register(tool.Function.Namespace, tool.Function.Name)
 		tool.Function.Namespace = ""
 	}
 	req.Messages = slices.Clone(src.Messages)
@@ -73,11 +61,7 @@ func prepareNamespaceRequest(src *llm.Request) (*llm.Request, namespaceToolMappi
 			if tc.Type != "function" && tc.Type != "" {
 				continue
 			}
-			flat, err := register(tc.Function.Namespace, tc.Function.Name)
-			if err != nil {
-				return nil, nil, err
-			}
-			tc.Function.Name = flat
+			tc.Function.Name = register(tc.Function.Namespace, tc.Function.Name)
 			tc.Function.Namespace = ""
 		}
 	}
