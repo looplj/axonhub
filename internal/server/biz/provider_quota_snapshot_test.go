@@ -82,7 +82,7 @@ func TestQuotaCacheSnapshot_RaceUpdateAndRead(t *testing.T) {
 				t.Errorf("cache writer panicked: %v", recovered)
 			}
 		}()
-		for i := 0; i < iterations; i++ {
+		for i := range iterations {
 			limits := snapshotTestLimits()
 			limits[0].UsageRatio = float64(i) / iterations
 			service.updateQuotaCache(1, "", providerquotastatus.StatusAvailable, true, limits)
@@ -96,7 +96,7 @@ func TestQuotaCacheSnapshot_RaceUpdateAndRead(t *testing.T) {
 					t.Errorf("cache reader panicked: %v", recovered)
 				}
 			}()
-			for j := 0; j < iterations; j++ {
+			for range iterations {
 				status := service.GetQuotaStatus(t.Context(), 1)
 				if status == nil {
 					t.Error("cache read returned nil")
