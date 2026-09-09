@@ -115,11 +115,17 @@ var Module = fx.Module("biz",
 	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService, channelSvc *ChannelService, systemSvc *SystemService, s *scheduler.Scheduler) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
-				// The migration must complete before quota tasks can observe channel routing settings.
-				if err := (&quotaRoutingMigrator{system: systemSvc, channels: channelSvc}).Migrate(ctx); err != nil {
-					return err
-				}
-				return svc.RegisterScheduledTasks(ctx, s)
+				go func() {
+					migrationCtx := context.Background()
+					if err := (&quotaRoutingMigrator{system: systemSvc, channels: channelSvc}).Migrate(migrationCtx); err != nil {
+						log.Error(migrationCtx, "quota routing migration failed", log.Cause(err))
+						return
+					}
+					if err := svc.RegisterScheduledTasks(migrationCtx, s); err != nil {
+						log.Error(migrationCtx, "provider quota scheduler registration failed", log.Cause(err))
+					}
+				}()
+				return nil
 			},
 		})
 	}),
