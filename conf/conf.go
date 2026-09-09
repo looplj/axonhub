@@ -292,6 +292,12 @@ func setDefaults(v *viper.Viper) {
 
 	// Metrics defaults
 	v.SetDefault("metrics.enabled", false)
+	// Register exporter keys so Viper's AutomaticEnv includes their
+	// AXONHUB_METRICS_EXPORTER_* environment variable overrides even when no
+	// config file is present.
+	v.SetDefault("metrics.exporter.type", "")
+	v.SetDefault("metrics.exporter.endpoint", "")
+	v.SetDefault("metrics.exporter.insecure", false)
 
 	// GC defaults
 	v.SetDefault("gc.cron", "0 2 * * *") // Daily at 2:00 AM
