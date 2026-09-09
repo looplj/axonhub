@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"time"
 
 	"github.com/tidwall/gjson"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/log"
+	appmetrics "github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -38,17 +40,18 @@ const (
 //
 //nolint:containedctx // Checked.
 type InboundPersistentStream struct {
-	ctx            context.Context
-	stream         streams.Stream[*httpclient.StreamEvent]
-	request        *ent.Request
-	requestExec    *ent.RequestExecution
-	requestService *biz.RequestService
-	transformer    transformer.Inbound
-	perf           *biz.PerformanceRecord
-	responseChunks []*httpclient.StreamEvent
-	terminalState  streamTerminalState
-	closed         bool
-	state          *PersistenceState
+	ctx                    context.Context
+	stream                 streams.Stream[*httpclient.StreamEvent]
+	request                *ent.Request
+	requestExec            *ent.RequestExecution
+	requestService         *biz.RequestService
+	transformer            transformer.Inbound
+	perf                   *biz.PerformanceRecord
+	responseChunks         []*httpclient.StreamEvent
+	terminalState          streamTerminalState
+	closed                 bool
+	downstreamTTFTRecorded bool
+	state                  *PersistenceState
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*InboundPersistentStream)(nil)
@@ -88,6 +91,16 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	if event != nil {
 		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
 		// summary to avoid buffering the full audio payload in memory.
+		if !ts.downstreamTTFTRecorded && ts.request != nil && len(event.Data) > 0 && !IsTerminalStreamEvent(event) {
+			attrs := appmetrics.RequestAttributes{
+				ProjectID: ts.request.ProjectID, RequestModelID: ts.request.ModelID,
+				APIKeyID: ts.request.APIKeyID, Source: string(ts.request.Source),
+				Format: ts.request.Format, Stream: ts.request.Stream,
+			}
+			value := time.Since(ts.request.CreatedAt).Seconds()
+			appmetrics.Metrics.RecordDownstreamPerformance(ts.ctx, attrs, "streaming", value, &value)
+			ts.downstreamTTFTRecorded = true
+		}
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 		if ts.terminalState == streamTerminalNone {
 			ts.terminalState = classifyStreamTerminalEvent(event)
