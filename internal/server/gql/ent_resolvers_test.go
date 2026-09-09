@@ -70,6 +70,18 @@ func TestChannelResolver_ProviderQuotaStatus_HidesDisabledCollectionProvider(t *
 	require.NoError(t, err)
 	require.NotNil(t, status)
 	require.Equal(t, providerquotastatus.ProviderTypeMinimax, status.ProviderType)
+
+	channelWithoutProviderType, err := client.Channel.Query().
+		Where(channel.IDEQ(channelEntity.ID)).
+		WithProviderQuotaStatus(func(query *ent.ProviderQuotaStatusQuery) {
+			query.Select(providerquotastatus.FieldStatus)
+		}).
+		Only(ctx)
+	require.NoError(t, err)
+	status, err = resolver.ProviderQuotaStatus(ctx, channelWithoutProviderType)
+	require.NoError(t, err)
+	require.NotNil(t, status)
+	require.Equal(t, providerquotastatus.ProviderTypeMinimax, status.ProviderType)
 }
 
 func TestChannelResolver_ProviderQuotaStatus_ReturnsNilWhenStatusDoesNotExist(t *testing.T) {
