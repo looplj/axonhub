@@ -5,7 +5,7 @@ import { getTokenFromStorage, useAuthStore } from '@/stores/authStore';
 import i18n from '@/lib/i18n';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { usePermissions } from '@/hooks/usePermissions';
-import type { ProxyConfig } from '@/features/channels/data/schema';
+import type { ProxyConfig, APIKeyAutoDisableRule } from '@/features/channels/data/schema';
 import type { ModelAssociation } from '@/features/models/data/schema';
 
 // GraphQL queries and mutations
@@ -109,9 +109,14 @@ const RETRY_POLICY_QUERY = `
       }
       autoDisableChannel {
         enabled
-        statuses {
-          status
+        rules {
+          statusCodes
+          keywordPatterns
           times
+          action
+          disableDurationMinutes
+          disableUntilCron
+          disableUntilTimezone
         }
       }
     }
@@ -312,9 +317,9 @@ export interface GcCleanupPreviewItem {
   retentionDays: number;
 }
 
-export interface AutoDisableChannelStatus {
-  status: number;
-  times: number;
+export interface AutoDisableChannel {
+  enabled: boolean;
+  rules: APIKeyAutoDisableRule[];
 }
 
 export interface WebhookHeader {
@@ -342,11 +347,6 @@ export interface WebhookNotifierConfig {
   subscriptions: WebhookSubscription[];
 }
 
-export interface AutoDisableChannel {
-  enabled: boolean;
-  statuses: AutoDisableChannelStatus[];
-}
-
 export interface RetryPolicy {
   maxChannelRetries: number;
   maxSingleChannelRetries: number;
@@ -366,14 +366,9 @@ export interface UpstreamErrorPolicy {
   customMessage: string;
 }
 
-export interface AutoDisableChannelStatusInput {
-  status: number;
-  times: number;
-}
-
 export interface AutoDisableChannelInput {
   enabled?: boolean;
-  statuses?: AutoDisableChannelStatusInput[];
+  rules?: APIKeyAutoDisableRule[];
 }
 
 export interface RetryPolicyInput {
@@ -554,16 +549,10 @@ export function usePreviewGcCleanup() {
   });
 }
 
-export async function previewGcCleanup(
-  input: TriggerGcCleanupInput,
-  signal?: AbortSignal
-): Promise<GcCleanupPreviewItem[]> {
-  const data = await graphqlRequest<{ previewGcCleanup: GcCleanupPreviewItem[] }>(
-    PREVIEW_GC_CLEANUP_QUERY,
-    { input },
-    undefined,
-    { signal }
-  );
+export async function previewGcCleanup(input: TriggerGcCleanupInput, signal?: AbortSignal): Promise<GcCleanupPreviewItem[]> {
+  const data = await graphqlRequest<{ previewGcCleanup: GcCleanupPreviewItem[] }>(PREVIEW_GC_CLEANUP_QUERY, { input }, undefined, {
+    signal,
+  });
   return data.previewGcCleanup;
 }
 
@@ -586,6 +575,7 @@ export function useRetryPolicy() {
 
 export function useUpdateRetryPolicy() {
   const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
 
   return useMutation({
     mutationFn: async (input: RetryPolicyInput) => {
@@ -596,8 +586,8 @@ export function useUpdateRetryPolicy() {
       queryClient.invalidateQueries({ queryKey: ['retryPolicy'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
-    onError: () => {
-      toast.error(i18n.t('common.errors.systemUpdateFailed'));
+    onError: (error) => {
+      handleError(error, i18n.t('common.errors.systemUpdateFailed'));
     },
   });
 }
@@ -775,10 +765,9 @@ export function useExportCacheDiagnostics() {
 
   return useMutation({
     mutationFn: async () => {
-      const data = await graphqlRequest<{ getCacheDiagnostics: GetCacheDiagnosticsPayload }>(
-        GET_CACHE_DIAGNOSTICS_QUERY,
-        { input: { targets: ['CHANNEL_CACHE'] } }
-      );
+      const data = await graphqlRequest<{ getCacheDiagnostics: GetCacheDiagnosticsPayload }>(GET_CACHE_DIAGNOSTICS_QUERY, {
+        input: { targets: ['CHANNEL_CACHE'] },
+      });
       return data.getCacheDiagnostics;
     },
     onSuccess: (data) => {
@@ -1573,7 +1562,6 @@ export function useDeleteProxyPreset() {
   });
 }
 
-
 // User-Agent Pass-Through Settings
 const USER_AGENT_PASS_THROUGH_SETTINGS_QUERY = `
   query UserAgentPassThroughSettings {
@@ -1612,7 +1600,9 @@ export function useUserAgentPassThroughSettings(options?: { enabled?: boolean })
     enabled: (options?.enabled ?? true) && canReadSystemSettings,
     queryFn: async () => {
       try {
-        const data = await graphqlRequest<{ userAgentPassThroughSettings: UserAgentPassThroughSettings }>(USER_AGENT_PASS_THROUGH_SETTINGS_QUERY);
+        const data = await graphqlRequest<{ userAgentPassThroughSettings: UserAgentPassThroughSettings }>(
+          USER_AGENT_PASS_THROUGH_SETTINGS_QUERY
+        );
         return data.userAgentPassThroughSettings;
       } catch (error) {
         handleError(error, i18n.t('common.errors.internalServerError'));
@@ -1627,7 +1617,9 @@ export function useUpdateUserAgentPassThroughSettings() {
 
   return useMutation({
     mutationFn: async (input: UpdateUserAgentPassThroughSettingsInput) => {
-      const data = await graphqlRequest<{ updateUserAgentPassThroughSettings: boolean }>(UPDATE_USER_AGENT_PASS_THROUGH_SETTINGS_MUTATION, { input });
+      const data = await graphqlRequest<{ updateUserAgentPassThroughSettings: boolean }>(UPDATE_USER_AGENT_PASS_THROUGH_SETTINGS_MUTATION, {
+        input,
+      });
       return data.updateUserAgentPassThroughSettings;
     },
     onSuccess: () => {
@@ -1744,7 +1736,9 @@ export function useUpdateUsageCostInjectionSettings() {
 
   return useMutation({
     mutationFn: async (input: UpdateUsageCostInjectionSettingsInput) => {
-      const data = await graphqlRequest<{ updateUsageCostInjectionSettings: boolean }>(UPDATE_USAGE_COST_INJECTION_SETTINGS_MUTATION, { input });
+      const data = await graphqlRequest<{ updateUsageCostInjectionSettings: boolean }>(UPDATE_USAGE_COST_INJECTION_SETTINGS_MUTATION, {
+        input,
+      });
       return data.updateUsageCostInjectionSettings;
     },
     onSuccess: () => {

@@ -1,12 +1,13 @@
-import { z } from 'zod';
 import { useEffect } from 'react';
+import { z } from 'zod';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { pageInfoSchema } from '@/gql/pagination';
-import { shouldNotifyChannelQueryError } from './channel-query-error';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
+import { mergeChannelSettingsForUpdate } from '../utils/merge';
+import { shouldNotifyChannelQueryError } from './channel-query-error';
 import {
   Channel,
   ChannelConnection,
@@ -34,7 +35,6 @@ import {
   TestAPIKeyResult,
   testAPIKeyResultSchema,
 } from './schema';
-import { mergeChannelSettingsForUpdate } from '../utils/merge';
 
 const QUERY_CHANNEL_NAMES_QUERY = `
   query QueryChannelNames($input: QueryChannelInput!) {
@@ -80,7 +80,16 @@ const CREATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
-        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
+        apiKeyAutoDisableMode
+        apiKeyAutoDisableRules {
+          statusCodes
+          keywordPatterns
+          times
+          action
+          disableDurationMinutes
+          disableUntilCron
+          disableUntilTimezone
+        }
       }
       supportedModels
       autoSyncSupportedModels
@@ -163,7 +172,16 @@ const DUPLICATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
-        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
+        apiKeyAutoDisableMode
+        apiKeyAutoDisableRules {
+          statusCodes
+          keywordPatterns
+          times
+          action
+          disableDurationMinutes
+          disableUntilCron
+          disableUntilTimezone
+        }
       }
       supportedModels
       autoSyncSupportedModels
@@ -246,7 +264,16 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       status
       policies {
         stream
-        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
+        apiKeyAutoDisableMode
+        apiKeyAutoDisableRules {
+          statusCodes
+          keywordPatterns
+          times
+          action
+          disableDurationMinutes
+          disableUntilCron
+          disableUntilTimezone
+        }
       }
       supportedModels
       autoSyncSupportedModels
@@ -329,7 +356,16 @@ const UPDATE_CHANNEL_MUTATION = `
       status
       policies {
         stream
-        apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
+        apiKeyAutoDisableMode
+        apiKeyAutoDisableRules {
+          statusCodes
+          keywordPatterns
+          times
+          action
+          disableDurationMinutes
+          disableUntilCron
+          disableUntilTimezone
+        }
       }
       supportedModels
       autoSyncSupportedModels
@@ -932,7 +968,16 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
           status
           policies {
             stream
-            apiKeyAutoDisableRules { statusCodes keywordPatterns times action disableDurationMinutes disableUntilCron disableUntilTimezone }
+            apiKeyAutoDisableMode
+            apiKeyAutoDisableRules {
+              statusCodes
+              keywordPatterns
+              times
+              action
+              disableDurationMinutes
+              disableUntilCron
+              disableUntilTimezone
+            }
           }
           credentials {
             apiKey
@@ -1147,10 +1192,7 @@ function isChannelColumnVisible(columnVisibility: ChannelListColumnVisibility | 
   return columnVisibility?.[columnID] !== false;
 }
 
-export function buildQueryChannelsQuery(
-  columnVisibility?: ChannelListColumnVisibility,
-  options?: { full?: boolean }
-): string {
+export function buildQueryChannelsQuery(columnVisibility?: ChannelListColumnVisibility, options?: { full?: boolean }): string {
   const nodeSelection = options?.full
     ? CHANNEL_QUERY_FULL_NODE_SELECTION
     : [
@@ -1785,6 +1827,7 @@ export function useTestChannel(options?: { silent?: boolean }) {
   const silent = options?.silent ?? false;
 
   return useMutation({
+    // prettier-ignore
     mutationFn: async ({
       channelID,
       modelID,
