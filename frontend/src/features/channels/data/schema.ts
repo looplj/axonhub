@@ -151,6 +151,9 @@ export const apiKeyAutoDisableActionSchema = z.enum([
 ]);
 export type APIKeyAutoDisableAction = z.infer<typeof apiKeyAutoDisableActionSchema>;
 
+export const apiKeyAutoDisableModeSchema = z.enum(['inherit', 'custom', 'off']);
+export type APIKeyAutoDisableMode = z.infer<typeof apiKeyAutoDisableModeSchema>;
+
 export const apiKeyAutoDisableRuleSchema = z.object({
   statusCodes: z.array(z.number().int().min(100).max(599)).optional().nullable(),
   keywordPatterns: z.array(z.string()).optional().nullable(),
@@ -178,6 +181,7 @@ export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
 
 export const channelPoliciesSchema = z.object({
   stream: capabilityPolicySchema.optional(),
+  apiKeyAutoDisableMode: apiKeyAutoDisableModeSchema.optional().nullable(),
   apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
 });
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
@@ -565,9 +569,7 @@ function validateOAuthCredentials(type: string, apiKey: string | undefined, ctx:
   if (requiresJSON && !apiKey.trim().startsWith('{')) {
     ctx.addIssue({
       code: 'custom' as const,
-      message: isCopilot
-        ? 'channels.dialogs.oauth.errors.copilotCredentialsInvalid'
-        : 'channels.dialogs.oauth.errors.credentialsInvalid',
+      message: isCopilot ? 'channels.dialogs.oauth.errors.copilotCredentialsInvalid' : 'channels.dialogs.oauth.errors.credentialsInvalid',
       path: ['credentials', 'apiKey'],
     });
     return;
