@@ -98,6 +98,11 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 	if err != nil {
 		return err
 	}
+	if opts.IncludeSystemConfigs && opts.IncludeChannels {
+		if err := svc.restoreLegacyQuotaRouting(ctx, db, backupData.SystemConfigs, channelIDMap); err != nil {
+			return err
+		}
+	}
 
 	if opts.IncludeModelPrices {
 		if err := svc.restoreChannelModelPrices(ctx, db, backupData.ChannelModelPrices, opts); err != nil {
@@ -141,18 +146,6 @@ func (svc *BackupService) restore(ctx context.Context, db *ent.Client, backupDat
 }
 
 func (svc *BackupService) restoreSystemConfigs(ctx context.Context, db *ent.Client, configs []*BackupSystemConfig) error {
-	legacySettings, hasLegacySettings := decodeLegacyQuotaEnforcementSettings(configs)
-	if hasLegacySettings && len(legacySettings.AllowedChannelIDs) > 0 {
-		migrated, err := db.System.Query().Where(system.KeyEQ(biz.SystemKeyQuotaRoutingMigrationDone)).Exist(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to check quota routing migration marker: %w", err)
-		}
-		if migrated {
-			log.Warn(ctx, "restored legacy quota enforcement settings will not re-migrate allowed channels",
-				log.String("key", biz.SystemKeyQuotaEnforcementSettings))
-		}
-	}
-
 	for _, config := range configs {
 		if config == nil || !lo.Contains(systemConfigBackupKeys, config.Key) {
 			continue
@@ -171,8 +164,80 @@ func (svc *BackupService) restoreSystemConfigs(ctx context.Context, db *ent.Clie
 	return nil
 }
 
+func (svc *BackupService) restoreLegacyQuotaRouting(ctx context.Context, db *ent.Client, configs []*BackupSystemConfig, channelIDMap map[int]int) error {
+	legacySettings, ok := decodeLegacyQuotaEnforcementSettings(configs)
+	if !ok || len(legacySettings.AllowedChannelIDs) == 0 {
+		return nil
+	}
+
+	for _, oldID := range legacySettings.AllowedChannelIDs {
+		newID, ok := channelIDMap[oldID]
+		if !ok {
+			log.Warn(ctx, "restored legacy quota enforcement skipped missing channel",
+				log.Int("channel_id", oldID))
+			continue
+		}
+		ch, err := db.Channel.Query().Where(channel.IDEQ(newID)).Only(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to load restored channel %d: %w", newID, err)
+		}
+		settings := objects.ChannelSettings{}
+		if ch.Settings != nil {
+			settings = *ch.Settings
+		}
+		settings.QuotaRoutingMode = objects.QuotaRoutingModeIgnoreQuota
+		if _, err := db.Channel.UpdateOneID(newID).SetSettings(&settings).Save(ctx); err != nil {
+			return fmt.Errorf("failed to restore quota routing for channel %d: %w", newID, err)
+		}
+	}
+
+	if !hasSystemConfig(configs, biz.SystemKeyQuotaRoutingSettings) {
+		mode := biz.QuotaRoutingModeFromLegacy(
+			legacySettings.Enabled,
+			legacySettings.ExhaustedOnly,
+			legacySettings.DePrioritize,
+			legacySettings.Mode,
+		)
+		value, err := json.Marshal(biz.QuotaRoutingSettings{DefaultMode: mode})
+		if err != nil {
+			return fmt.Errorf("failed to encode restored quota routing settings: %w", err)
+		}
+		if err := db.System.Create().
+			SetKey(biz.SystemKeyQuotaRoutingSettings).
+			SetValue(string(value)).
+			OnConflict(sql.ConflictColumns(system.FieldKey)).
+			UpdateNewValues().
+			Exec(ctx); err != nil {
+			return fmt.Errorf("failed to restore quota routing settings: %w", err)
+		}
+	}
+
+	if err := db.System.Create().
+		SetKey(biz.SystemKeyQuotaRoutingMigrationDone).
+		SetValue("true").
+		OnConflict(sql.ConflictColumns(system.FieldKey)).
+		UpdateNewValues().
+		Exec(ctx); err != nil {
+		return fmt.Errorf("failed to mark quota routing migration complete: %w", err)
+	}
+	return nil
+}
+
+func hasSystemConfig(configs []*BackupSystemConfig, key string) bool {
+	for _, config := range configs {
+		if config != nil && config.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
 type legacyQuotaEnforcementSettings struct {
-	AllowedChannelIDs []int `json:"allowedChannelIDs"`
+	Enabled           bool   `json:"enabled"`
+	ExhaustedOnly     bool   `json:"exhaustedOnly"`
+	DePrioritize      bool   `json:"dePrioritize"`
+	Mode              string `json:"mode"`
+	AllowedChannelIDs []int  `json:"allowedChannelIDs"`
 }
 
 func decodeLegacyQuotaEnforcementSettings(configs []*BackupSystemConfig) (legacyQuotaEnforcementSettings, bool) {

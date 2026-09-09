@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -48,7 +50,7 @@ func TestQuotaRoutingSettings_RestoreLegacyMappingWithoutMigrationMarker(t *test
 	}
 }
 
-func TestQuotaRoutingSettings_RestoreWarnsAfterMigrationMarker(t *testing.T) {
+func TestQuotaRoutingSettings_RestoreLegacyMappingAfterMigrationMarker(t *testing.T) {
 	client, service, ctx := setupBackupTest(t)
 	defer client.Close()
 
@@ -57,34 +59,29 @@ func TestQuotaRoutingSettings_RestoreWarnsAfterMigrationMarker(t *testing.T) {
 		SetValue("true").
 		Save(ctx)
 	require.NoError(t, err)
-	before, err := client.Channel.Query().Count(ctx)
-	require.NoError(t, err)
-
-	warning := make(chan string, 1)
-	log.GetGlobalLogger().AddHook(log.HookFunc(func(_ context.Context, msg string, fields ...log.Field) []log.Field {
-		if strings.Contains(msg, "will not re-migrate") {
-			warning <- msg
-		}
-		return fields
-	}))
-
 	data, err := json.Marshal(BackupData{
 		Version: BackupVersion,
 		SystemConfigs: []*BackupSystemConfig{{
 			Key:   biz.SystemKeyQuotaEnforcementSettings,
 			Value: `{"enabled":true,"dePrioritize":true,"allowedChannelIDs":[7]}`,
 		}},
+		Channels: []*BackupChannel{{
+			Channel: ent.Channel{
+				ID:              7,
+				Name:            "restored-channel",
+				Type:            channel.TypeOpenai,
+				BaseURL:         "https://api.openai.com",
+				Status:          channel.StatusEnabled,
+				SupportedModels: []string{"gpt-4"},
+				Settings:        &objects.ChannelSettings{},
+			},
+			Credentials: objects.ChannelCredentials{APIKeys: []string{"key"}},
+		}},
 	})
 	require.NoError(t, err)
-	require.NoError(t, service.Restore(ctx, data, RestoreOptions{IncludeSystemConfigs: true}))
+	require.NoError(t, service.Restore(ctx, data, RestoreOptions{IncludeSystemConfigs: true, IncludeChannels: true}))
 
-	select {
-	case msg := <-warning:
-		require.Contains(t, msg, "will not re-migrate")
-	default:
-		t.Fatal("expected quota migration warning")
-	}
-	after, err := client.Channel.Query().Count(ctx)
+	restored, err := client.Channel.Query().Where(channel.NameEQ("restored-channel")).Only(ctx)
 	require.NoError(t, err)
-	require.Equal(t, before, after)
+	require.Equal(t, objects.QuotaRoutingModeIgnoreQuota, restored.Settings.QuotaRoutingMode)
 }
