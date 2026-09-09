@@ -927,7 +927,7 @@ export const createColumns = (
         );
       },
       meta: {
-        className: 'text-center',
+        className: 'w-24 min-w-24 text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -950,7 +950,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} className='justify-center' />,
       cell: CreatedAtCell,
       meta: {
-        className: 'hidden min-w-0 xl:table-cell text-center',
+        className: 'hidden w-28 min-w-28 xl:table-cell text-center',
       },
       enableSorting: true,
       enableHiding: false,
