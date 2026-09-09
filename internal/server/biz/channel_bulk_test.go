@@ -14,6 +14,131 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 )
 
+func TestChannelService_BulkAddChannelTags(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	createChannel := func(name string, tags []string) *ent.Channel {
+		ch, err := client.Channel.Create().
+			SetType(channel.TypeOpenai).
+			SetName(name).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: name}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetTags(tags).
+			Save(ctx)
+		require.NoError(t, err)
+		return ch
+	}
+
+	ch1 := createChannel("Bulk Tags 1", []string{"existing", "公益"})
+	ch2 := createChannel("Bulk Tags 2", []string{"official"})
+	ch3 := createChannel("Bulk Tags 3", nil)
+
+	err := svc.BulkAddChannelTags(ctx, []int{ch1.ID, ch2.ID, ch3.ID}, []string{" 公益 ", "低价", "低价", " "})
+	require.NoError(t, err)
+
+	updated1, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing", "公益", "低价"}, updated1.Tags)
+	updated2, err := client.Channel.Get(ctx, ch2.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"official", "公益", "低价"}, updated2.Tags)
+	updated3, err := client.Channel.Get(ctx, ch3.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"公益", "低价"}, updated3.Tags)
+
+	err = svc.BulkAddChannelTags(ctx, []int{ch1.ID, 99999}, []string{"should-not-apply"})
+	require.Error(t, err)
+	unchanged, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing", "公益", "低价"}, unchanged.Tags)
+}
+
+func TestChannelService_BulkRemoveChannelTags(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	createChannel := func(name string, tags []string) *ent.Channel {
+		ch, err := client.Channel.Create().
+			SetType(channel.TypeOpenai).
+			SetName(name).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: name}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetTags(tags).
+			Save(ctx)
+		require.NoError(t, err)
+		return ch
+	}
+
+	ch1 := createChannel("Bulk Remove Tags 1", []string{"existing", "公益", "低价"})
+	ch2 := createChannel("Bulk Remove Tags 2", []string{"official", "公益", "低价"})
+	ch3 := createChannel("Bulk Remove Tags 3", []string{"公益", "低价", "other"})
+
+	err := svc.BulkRemoveChannelTags(ctx, []int{ch1.ID, ch2.ID, ch3.ID}, []string{" 公益 ", "低价", "低价"})
+	require.NoError(t, err)
+
+	updated1, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing"}, updated1.Tags)
+	updated2, err := client.Channel.Get(ctx, ch2.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"official"}, updated2.Tags)
+	updated3, err := client.Channel.Get(ctx, ch3.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"other"}, updated3.Tags)
+
+	err = svc.BulkRemoveChannelTags(ctx, []int{ch1.ID, 99999}, []string{"should-not-apply"})
+	require.Error(t, err)
+	unchanged, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing"}, unchanged.Tags)
+}
+
+func TestChannelService_BulkManageChannelTags(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	createChannel := func(name string, tags []string) *ent.Channel {
+		ch, err := client.Channel.Create().
+			SetType(channel.TypeOpenai).
+			SetName(name).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: name}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetTags(tags).
+			Save(ctx)
+		require.NoError(t, err)
+		return ch
+	}
+
+	ch1 := createChannel("Bulk Manage Tags 1", []string{"existing", "公益"})
+	ch2 := createChannel("Bulk Manage Tags 2", []string{"official", "公益"})
+
+	err := svc.BulkManageChannelTags(ctx, []int{ch1.ID, ch2.ID}, []string{" 低价 ", "低价"}, []string{"公益"})
+	require.NoError(t, err)
+
+	updated1, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing", "低价"}, updated1.Tags)
+	updated2, err := client.Channel.Get(ctx, ch2.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"official", "低价"}, updated2.Tags)
+
+	err = svc.BulkManageChannelTags(ctx, []int{ch1.ID, 99999}, []string{"should-not-apply"}, []string{"existing"})
+	require.Error(t, err)
+	unchanged, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing", "低价"}, unchanged.Tags)
+}
+
 func TestChannelService_BulkEnableChannels(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()

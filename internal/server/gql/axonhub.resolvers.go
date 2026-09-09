@@ -264,6 +264,39 @@ func (r *mutationResolver) BulkDeleteChannels(ctx context.Context, ids []*object
 	return true, nil
 }
 
+// BulkAddChannelTags is the resolver for the bulkAddChannelTags field.
+func (r *mutationResolver) BulkAddChannelTags(ctx context.Context, ids []*objects.GUID, tags []string) (bool, error) {
+	channelIDs := objects.IntGuids(ids)
+
+	if err := r.channelService.BulkAddChannelTags(ctx, channelIDs, tags); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// BulkRemoveChannelTags is the resolver for the bulkRemoveChannelTags field.
+func (r *mutationResolver) BulkRemoveChannelTags(ctx context.Context, ids []*objects.GUID, tags []string) (bool, error) {
+	channelIDs := objects.IntGuids(ids)
+
+	if err := r.channelService.BulkRemoveChannelTags(ctx, channelIDs, tags); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+// BulkManageChannelTags is the resolver for the bulkManageChannelTags field.
+func (r *mutationResolver) BulkManageChannelTags(ctx context.Context, ids []*objects.GUID, addTags []string, removeTags []string) (bool, error) {
+	channelIDs := objects.IntGuids(ids)
+
+	if err := r.channelService.BulkManageChannelTags(ctx, channelIDs, addTags, removeTags); err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // TestChannel is the resolver for the testChannel field.
 func (r *mutationResolver) TestChannel(ctx context.Context, input TestChannelInput) (*TestChannelPayload, error) {
 	// Set test source context for test channel requests
