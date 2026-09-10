@@ -6,8 +6,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
-	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
 	"github.com/looplj/axonhub/internal/ent"
 	appmetrics "github.com/looplj/axonhub/internal/metrics"
