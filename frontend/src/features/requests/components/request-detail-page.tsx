@@ -118,6 +118,7 @@ async function readPreviewStream(
   }
 }
 
+/** Request detail page with live preview streaming. */
 export default function RequestDetailPage() {
   const { t } = useTranslation();
   const { requestId } = useParams({ from: '/_authenticated/project/requests/$requestId' });
