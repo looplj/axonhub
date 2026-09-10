@@ -720,6 +720,16 @@ func TestLoadTemplate_PersonalKeyOnlyCreator(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
+	ownerUser, err := client.User.Create().
+		SetEmail(fmt.Sprintf("owner-%d@example.com", time.Now().UnixNano())).
+		SetPassword(hashedPassword).
+		SetFirstName("System").
+		SetLastName("Owner").
+		SetIsOwner(true).
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
 	testProject, err := client.Project.Create().
 		SetName(fmt.Sprintf("test-project-%d", time.Now().UnixNano())).
 		SetDescription("test").
@@ -744,12 +754,11 @@ func TestLoadTemplate_PersonalKeyOnlyCreator(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Another user (e.g. a system/project owner) cannot load a template into
-	// someone else's personal key.
+	// A regular user cannot load a template into someone else's personal key.
 	otherCtx := contexts.WithUser(ctx, otherUser)
 	_, err = svc.LoadTemplate(otherCtx, template.ID, apiKey.ID)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "personal API key can only be modified by its creator")
+	require.Contains(t, err.Error(), "personal API key can only be modified by its creator or a system owner")
 
 	// The creator can.
 	creatorCtx := contexts.WithUser(ctx, creator)
@@ -757,4 +766,11 @@ func TestLoadTemplate_PersonalKeyOnlyCreator(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, updatedKey.Profiles)
 	require.Len(t, updatedKey.Profiles.Profiles, 1)
+
+	// A system owner can too.
+	ownerCtx := contexts.WithUser(ctx, ownerUser)
+	updatedKey, err = svc.LoadTemplate(ownerCtx, template.ID, apiKey.ID)
+	require.NoError(t, err)
+	require.NotNil(t, updatedKey.Profiles)
+	require.Len(t, updatedKey.Profiles.Profiles, 2)
 }

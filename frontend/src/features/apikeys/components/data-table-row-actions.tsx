@@ -25,9 +25,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const [open, setOpen] = React.useState(false);
   const [chartOpen, setChartOpen] = React.useState(false);
 
-  // Personal API keys can only be modified by their creator; hide mutating
-  // actions on other users' personal keys instead of letting them fail.
-  const isOthersPersonalKey = apiKey.type === 'personal' && apiKey.user?.id != null && apiKey.user.id !== currentUser?.id;
+  // Personal API keys can only be modified by their creator or a system
+  // owner; hide mutating actions on other users' personal keys for anyone
+  // else instead of letting them fail.
+  const isOthersPersonalKey =
+    apiKey.type === 'personal' && !currentUser?.isOwner && apiKey.user?.id != null && apiKey.user.id !== currentUser?.id;
   const canMutate = apiKeyPermissions.canWrite && !isOthersPersonalKey;
 
   // Don't show menu if user has no permissions
