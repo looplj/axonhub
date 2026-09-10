@@ -5,6 +5,7 @@ import { IconUserOff, IconUserCheck, IconEdit, IconSettings, IconArchive, IconCh
 import { BarChart3 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useApiKeysContext } from '../context/apikeys-context';
@@ -19,9 +20,15 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const { t } = useTranslation();
   const { openDialog } = useApiKeysContext();
   const { apiKeyPermissions } = usePermissions();
+  const currentUser = useAuthStore((state) => state.auth.user);
   const apiKey = row.original;
   const [open, setOpen] = React.useState(false);
   const [chartOpen, setChartOpen] = React.useState(false);
+
+  // Personal API keys can only be modified by their creator; hide mutating
+  // actions on other users' personal keys instead of letting them fail.
+  const isOthersPersonalKey = apiKey.type === 'personal' && apiKey.user?.id != null && apiKey.user.id !== currentUser?.id;
+  const canMutate = apiKeyPermissions.canWrite && !isOthersPersonalKey;
 
   // Don't show menu if user has no permissions
   if (!apiKeyPermissions.canRead && !apiKeyPermissions.canWrite) {
@@ -76,7 +83,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
             <BarChart3 className='mr-2 h-4 w-4' />
             {t('apikeys.actions.viewTokenChart')}
           </DropdownMenuItem>
-          {apiKeyPermissions.canWrite && (
+          {canMutate && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => handleEdit(apiKey)}>
