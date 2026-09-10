@@ -107,7 +107,6 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		WebhookNotifier:           params.WebhookNotifier,
 		httpClient:                params.HttpClient,
 		channelPerfMetrics:        make(map[int]*channelMetrics),
-		channelErrorCounts:        make(map[int]map[int]int),
 		apiKeyErrorCounts:         make(map[int]map[string]map[int]int),
 		apiKeyRuleActionsInFlight: make(map[int]map[string]bool),
 		perfCh:                    make(chan *PerformanceRecord, 1024),
@@ -183,13 +182,8 @@ type ChannelService struct {
 	channelPerfMetrics     map[int]*channelMetrics
 	channelPerfMetricsLock sync.RWMutex
 
-	// channelErrorCounts stores the error counts for each channel and status code
-	// channelID -> statusCode -> count
-	channelErrorCounts     map[int]map[int]int
-	channelErrorCountsLock sync.Mutex
-
-	// apiKeyErrorCounts stores the error counts for each API key and status code
-	// channelID -> apiKey -> statusCode -> count
+	// apiKeyErrorCounts stores consecutive auto-disable counters.
+	// channelID -> counterKey -> dummy status (always 0) -> count
 	apiKeyErrorCounts         map[int]map[string]map[int]int
 	apiKeyRuleActionsInFlight map[int]map[string]bool
 	apiKeyErrorCountsLock     sync.Mutex
@@ -735,15 +729,45 @@ func NormalizeRetryableErrorPatterns(settings *objects.ChannelSettings) error {
 // NormalizeAPIKeyAutoDisableRules validates and canonicalizes channel-scoped
 // API key rules before they are persisted.
 func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
-	if policies == nil || len(policies.APIKeyAutoDisableRules) == 0 {
+	if policies == nil {
 		return nil
 	}
 
-	rules := slices.Clone(policies.APIKeyAutoDisableRules)
-	for i := range rules {
-		rule := &rules[i]
+	switch policies.APIKeyAutoDisableMode {
+	case objects.APIKeyAutoDisableModeInherit:
+		policies.APIKeyAutoDisableRules = nil
+		return nil
+	case objects.APIKeyAutoDisableModeCustom:
+		if len(policies.APIKeyAutoDisableRules) == 0 {
+			policies.APIKeyAutoDisableMode = objects.APIKeyAutoDisableModeInherit
+			return nil
+		}
+	}
+
+	if len(policies.APIKeyAutoDisableRules) == 0 {
+		return nil
+	}
+
+	rules, err := normalizeAutoDisableRules(policies.APIKeyAutoDisableRules, true)
+	if err != nil {
+		return err
+	}
+	policies.APIKeyAutoDisableRules = rules
+	return nil
+}
+
+// normalizeAutoDisableRules validates a rule list. Global retry policy uses
+// allowDelete=false so permanent_disable_delete is rejected there.
+func normalizeAutoDisableRules(rules []objects.APIKeyAutoDisableRule, allowDelete bool) ([]objects.APIKeyAutoDisableRule, error) {
+	if len(rules) == 0 {
+		return rules, nil
+	}
+
+	normalized := slices.Clone(rules)
+	for i := range normalized {
+		rule := &normalized[i]
 		if rule.Times < 1 {
-			return fmt.Errorf("API key rule %d consecutive error count must be at least 1", i+1)
+			return nil, fmt.Errorf("API key rule %d consecutive error count must be at least 1", i+1)
 		}
 
 		// Each action owns one schedule field; the others are cleared so a rule
@@ -751,10 +775,10 @@ func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
 		switch rule.Action {
 		case objects.APIKeyAutoDisableActionTemporary:
 			if rule.DisableDurationMinutes == nil {
-				return fmt.Errorf("API key rule %d requires a disable duration for temporary disable", i+1)
+				return nil, fmt.Errorf("API key rule %d requires a disable duration for temporary disable", i+1)
 			}
 			if *rule.DisableDurationMinutes < 1 {
-				return fmt.Errorf("API key rule %d disable duration must be at least 1 minute", i+1)
+				return nil, fmt.Errorf("API key rule %d disable duration must be at least 1 minute", i+1)
 			}
 
 			rule.DisableUntilCron = ""
@@ -764,32 +788,39 @@ func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
 			rule.DisableUntilTimezone = strings.TrimSpace(rule.DisableUntilTimezone)
 
 			if rule.DisableUntilCron == "" {
-				return fmt.Errorf("API key rule %d requires a cron expression for scheduled recovery", i+1)
+				return nil, fmt.Errorf("API key rule %d requires a cron expression for scheduled recovery", i+1)
 			}
 
 			if _, err := cronexpr.Parse(rule.DisableUntilCron); err != nil {
-				return fmt.Errorf("API key rule %d has invalid cron expression %q: %w", i+1, rule.DisableUntilCron, err)
+				return nil, fmt.Errorf("API key rule %d has invalid cron expression %q: %w", i+1, rule.DisableUntilCron, err)
 			}
 
 			if rule.DisableUntilTimezone != "" {
 				if _, err := time.LoadLocation(rule.DisableUntilTimezone); err != nil {
-					return fmt.Errorf("API key rule %d has invalid timezone %q: %w", i+1, rule.DisableUntilTimezone, err)
+					return nil, fmt.Errorf("API key rule %d has invalid timezone %q: %w", i+1, rule.DisableUntilTimezone, err)
 				}
 			}
 
 			rule.DisableDurationMinutes = nil
-		case objects.APIKeyAutoDisableActionPermanent, objects.APIKeyAutoDisableActionPermanentDelete:
+		case objects.APIKeyAutoDisableActionPermanent:
+			rule.DisableDurationMinutes = nil
+			rule.DisableUntilCron = ""
+			rule.DisableUntilTimezone = ""
+		case objects.APIKeyAutoDisableActionPermanentDelete:
+			if !allowDelete {
+				return nil, fmt.Errorf("API key rule %d cannot use permanent_disable_delete in global auto-disable settings", i+1)
+			}
 			rule.DisableDurationMinutes = nil
 			rule.DisableUntilCron = ""
 			rule.DisableUntilTimezone = ""
 		default:
-			return fmt.Errorf("API key rule %d has unsupported action %q", i+1, rule.Action)
+			return nil, fmt.Errorf("API key rule %d has unsupported action %q", i+1, rule.Action)
 		}
 
 		codes := slices.Clone(rule.StatusCodes)
 		for _, code := range codes {
 			if code < 100 || code > 599 {
-				return fmt.Errorf("API key rule %d has invalid HTTP status code %d", i+1, code)
+				return nil, fmt.Errorf("API key rule %d has invalid HTTP status code %d", i+1, code)
 			}
 		}
 		slices.Sort(codes)
@@ -811,8 +842,7 @@ func NormalizeAPIKeyAutoDisableRules(policies *objects.ChannelPolicies) error {
 		rule.KeywordPatterns = patterns
 	}
 
-	policies.APIKeyAutoDisableRules = rules
-	return nil
+	return normalized, nil
 }
 
 // UpdateChannel updates an existing channel with the provided input.
@@ -1178,6 +1208,7 @@ func (svc *ChannelService) UpdateChannelStatus(ctx context.Context, id int, stat
 	channel, err := svc.entFromContext(ctx).Channel.UpdateOneID(id).
 		SetStatus(status).
 		ClearAutoDisabledAt().
+		ClearAutoDisableExpiresAt().
 		Save(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update channel status: %w", err)

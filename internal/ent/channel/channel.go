@@ -59,6 +59,8 @@ const (
 	FieldErrorMessage = "error_message"
 	// FieldAutoDisabledAt holds the string denoting the auto_disabled_at field in the database.
 	FieldAutoDisabledAt = "auto_disabled_at"
+	// FieldAutoDisableExpiresAt holds the string denoting the auto_disable_expires_at field in the database.
+	FieldAutoDisableExpiresAt = "auto_disable_expires_at"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
 	// FieldEndpoints holds the string denoting the endpoints field in the database.
@@ -144,6 +146,7 @@ var Columns = []string{
 	FieldOrderingWeight,
 	FieldErrorMessage,
 	FieldAutoDisabledAt,
+	FieldAutoDisableExpiresAt,
 	FieldRemark,
 	FieldEndpoints,
 }
@@ -386,6 +389,11 @@ func ByErrorMessage(opts ...sql.OrderTermOption) OrderOption {
 // ByAutoDisabledAt orders the results by the auto_disabled_at field.
 func ByAutoDisabledAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldAutoDisabledAt, opts...).ToFunc()
+}
+
+// ByAutoDisableExpiresAt orders the results by the auto_disable_expires_at field.
+func ByAutoDisableExpiresAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAutoDisableExpiresAt, opts...).ToFunc()
 }
 
 // ByRemark orders the results by the remark field.

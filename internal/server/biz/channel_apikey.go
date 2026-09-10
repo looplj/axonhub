@@ -96,6 +96,7 @@ func (svc *ChannelService) DisableAPIKey(
 		update.SetStatus(channel.StatusDisabled)
 		update.SetErrorMessage(autoDisabledReason)
 		update.SetAutoDisabledAt(autoDisabledAt)
+		update.ClearAutoDisableExpiresAt()
 		log.Warn(ctx, "Channel disabled because all API keys are disabled",
 			log.Int("channel_id", channelID),
 			log.String("channel_name", ch.Name),
@@ -386,7 +387,7 @@ func applyRecoveredChannelStatus(
 		log.String("channel_name", ch.Name),
 	)
 
-	return update.SetStatus(channel.StatusEnabled).ClearErrorMessage().ClearAutoDisabledAt()
+	return update.SetStatus(channel.StatusEnabled).ClearErrorMessage().ClearAutoDisabledAt().ClearAutoDisableExpiresAt()
 }
 
 // cleanupExpiredDisabledAPIKeys prunes elapsed temporary disables and restores
@@ -425,9 +426,66 @@ func (svc *ChannelService) cleanupExpiredDisabledAPIKeys(ctx context.Context) {
 		needsReload = true
 	}
 
+	if svc.cleanupExpiredAutoDisabledChannels(ctx) {
+		needsReload = true
+	}
+
 	if needsReload {
 		svc.asyncReloadChannels()
 	}
+}
+
+func (svc *ChannelService) cleanupExpiredAutoDisabledChannels(ctx context.Context) bool {
+	now := time.Now()
+	channelIDs, err := svc.entFromContext(ctx).Channel.Query().
+		Where(
+			channel.StatusEQ(channel.StatusDisabled),
+			channel.AutoDisabledAtNotNil(),
+			channel.AutoDisableExpiresAtNotNil(),
+			channel.AutoDisableExpiresAtLTE(now),
+		).
+		IDs(ctx)
+	if err != nil {
+		log.Error(ctx, "Failed to query expired auto-disabled channels", log.Cause(err))
+		return false
+	}
+	if len(channelIDs) == 0 {
+		return false
+	}
+
+	recovered := false
+	for _, channelID := range channelIDs {
+		affected, err := svc.entFromContext(ctx).Channel.Update().
+			Where(
+				channel.ID(channelID),
+				channel.StatusEQ(channel.StatusDisabled),
+				channel.AutoDisabledAtNotNil(),
+				channel.AutoDisableExpiresAtNotNil(),
+				channel.AutoDisableExpiresAtLTE(now),
+			).
+			SetStatus(channel.StatusEnabled).
+			ClearErrorMessage().
+			ClearAutoDisabledAt().
+			ClearAutoDisableExpiresAt().
+			Save(ctx)
+		if err != nil {
+			log.Error(ctx, "Failed to recover expired auto-disabled channel",
+				log.Int("channel_id", channelID),
+				log.Cause(err),
+			)
+			continue
+		}
+		if affected == 0 {
+			continue
+		}
+
+		log.Info(ctx, "Recovered channel after auto-disable expiry",
+			log.Int("channel_id", channelID),
+		)
+		recovered = true
+	}
+
+	return recovered
 }
 
 func (svc *ChannelService) cleanupChannelExpiredDisabledAPIKeys(ctx context.Context, channelID int) (bool, int, error) {

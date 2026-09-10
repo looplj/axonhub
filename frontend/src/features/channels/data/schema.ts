@@ -151,6 +151,9 @@ export const apiKeyAutoDisableActionSchema = z.enum([
 ]);
 export type APIKeyAutoDisableAction = z.infer<typeof apiKeyAutoDisableActionSchema>;
 
+export const apiKeyAutoDisableModeSchema = z.enum(['inherit', 'custom', 'off']);
+export type APIKeyAutoDisableMode = z.infer<typeof apiKeyAutoDisableModeSchema>;
+
 export const apiKeyAutoDisableRuleSchema = z.object({
   statusCodes: z.array(z.number().int().min(100).max(599)).optional().nullable(),
   keywordPatterns: z.array(z.string()).optional().nullable(),
@@ -178,6 +181,7 @@ export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
 
 export const channelPoliciesSchema = z.object({
   stream: capabilityPolicySchema.optional(),
+  apiKeyAutoDisableMode: apiKeyAutoDisableModeSchema.optional().nullable(),
   apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
 });
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
@@ -567,9 +571,7 @@ function validateOAuthCredentials(type: string, apiKey: string | undefined, ctx:
   if (requiresJSON && !apiKey.trim().startsWith('{')) {
     ctx.addIssue({
       code: 'custom' as const,
-      message: isCopilot
-        ? 'channels.dialogs.oauth.errors.copilotCredentialsInvalid'
-        : 'channels.dialogs.oauth.errors.credentialsInvalid',
+      message: isCopilot ? 'channels.dialogs.oauth.errors.copilotCredentialsInvalid' : 'channels.dialogs.oauth.errors.credentialsInvalid',
       path: ['credentials', 'apiKey'],
     });
     return;
@@ -922,6 +924,31 @@ export const bulkUpdateChannelOrderingResultSchema = z.object({
   channels: z.array(channelSchema),
 });
 export type BulkUpdateChannelOrderingResult = z.infer<typeof bulkUpdateChannelOrderingResultSchema>;
+
+export const bulkAutoDisableActionSchema = z.enum(['write_rules', 'inherit', 'off']);
+export type BulkAutoDisableAction = z.infer<typeof bulkAutoDisableActionSchema>;
+
+export const bulkUpdateChannelAutoDisableInputSchema = z.object({
+  channelIDs: z.array(z.string()).min(1),
+  action: bulkAutoDisableActionSchema,
+  rules: z.array(apiKeyAutoDisableRuleSchema).optional(),
+});
+export type BulkUpdateChannelAutoDisableInput = z.infer<typeof bulkUpdateChannelAutoDisableInputSchema>;
+
+export const channelAutoDisableCopySourceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  policies: channelPoliciesSchema.optional().nullable(),
+});
+export type ChannelAutoDisableCopySource = z.infer<typeof channelAutoDisableCopySourceSchema>;
+
+// Mutation only selects id/name/policies; do not parse with the full channelSchema.
+export const bulkUpdateChannelAutoDisablePayloadSchema = z.object({
+  success: z.boolean(),
+  updated: z.number(),
+  channels: z.array(channelAutoDisableCopySourceSchema),
+});
+export type BulkUpdateChannelAutoDisablePayload = z.infer<typeof bulkUpdateChannelAutoDisablePayloadSchema>;
 
 // Re-export template types from templates.ts
 export type {

@@ -169,6 +169,12 @@ func (Channel) Fields() []ent.Field {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
+		field.Time("auto_disable_expires_at").
+			Optional().Nillable().
+			Comment("When set together with auto_disabled_at, the cleanup task re-enables the channel after this instant. Operator disables leave this null.").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 		field.String("remark").
 			Optional().Nillable().
 			Comment("User-defined remark or note for the channel"),
