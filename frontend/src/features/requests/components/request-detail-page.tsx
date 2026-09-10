@@ -133,6 +133,7 @@ export default function RequestDetailPage() {
   const [previewFallbackActive, setPreviewFallbackActive] = useState(false);
   const previewCompletedRef = useRef(false);
   const previewChunkCountRef = useRef(0);
+  const previousRequestIdRef = useRef<string | null>(null);
 
   const { data: requestData, refetch: refetchRequest } = useRequest(requestId, {
     projectId: selectedProjectId,
@@ -145,13 +146,29 @@ export default function RequestDetailPage() {
     if (!requestData) {
       setPreviewRequest(null);
       setPreviewFallbackActive(false);
+      previousRequestIdRef.current = null;
       return;
     }
 
+    const isSameRequest = previousRequestIdRef.current === requestData.id;
+    previousRequestIdRef.current = requestData.id;
+
     if (requestData.status !== 'processing' || !requestData.stream) {
-      setPreviewRequest(null);
-      setIsPreviewStreaming(false);
-      setPreviewFallbackActive(false);
+      if (isSameRequest && previewRequest?.responseChunks?.length) {
+        setIsPreviewStreaming(false);
+        setPreviewFallbackActive(false);
+        setPreviewRequest((current) => {
+          if (!current) return null;
+          return {
+            ...requestData,
+            responseChunks: current.responseChunks,
+          };
+        });
+      } else {
+        setPreviewRequest(null);
+        setIsPreviewStreaming(false);
+        setPreviewFallbackActive(false);
+      }
       previewCompletedRef.current = false;
       previewChunkCountRef.current = 0;
     }
@@ -339,6 +356,7 @@ export default function RequestDetailPage() {
       setIsPreviewStreaming(false);
       clearReconnectTimer();
       controller.abort();
+      previousRequestIdRef.current = null;
     };
   }, [isLivePreviewEnabled, previewFallbackActive, requestData, refetchRequest, selectedProjectId]);
 
