@@ -13,6 +13,7 @@ export function ChannelsBulkManageTagsDialog() {
   const bulkManageChannelTags = useBulkManageChannelTags();
   const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags();
   const [tags, setTags] = useState<string[]>([]);
+  const [isTagsDirty, setIsTagsDirty] = useState(false);
 
   const isDialogOpen = open === 'bulkManageTags';
   const selectedCount = selectedChannels.length;
@@ -20,6 +21,8 @@ export function ChannelsBulkManageTagsDialog() {
   const selectionKey = JSON.stringify(selectedChannelIDs);
   const selectedChannelTagsQuery = useSelectedChannelTags(selectedChannelIDs, { enabled: isDialogOpen });
   const initializedSelectionRef = useRef<string | null>(null);
+  const isLoadingSelectedTags = selectedChannelTagsQuery.isLoading || selectedChannelTagsQuery.isFetching;
+  const hasSelectedChannelTagsError = selectedChannelTagsQuery.isError;
 
   const commonTags = useMemo(() => {
     if (!isDialogOpen || selectedChannelIDs.length === 0 || !selectedChannelTagsQuery.data) {
@@ -42,17 +45,23 @@ export function ChannelsBulkManageTagsDialog() {
   useEffect(() => {
     if (!isDialogOpen) {
       setTags([]);
+      setIsTagsDirty(false);
       initializedSelectionRef.current = null;
       return;
     }
 
-    if (selectedChannelTagsQuery.isLoading || initializedSelectionRef.current === selectionKey) {
+    if (isLoadingSelectedTags || hasSelectedChannelTagsError) {
+      return;
+    }
+
+    if (initializedSelectionRef.current === selectionKey && isTagsDirty) {
       return;
     }
 
     setTags(commonTags);
+    setIsTagsDirty(false);
     initializedSelectionRef.current = selectionKey;
-  }, [commonTags, isDialogOpen, selectedChannelTagsQuery.isLoading, selectionKey]);
+  }, [commonTags, hasSelectedChannelTagsError, isDialogOpen, isLoadingSelectedTags, isTagsDirty, selectionKey]);
 
   if (selectedCount === 0 && !isDialogOpen) {
     return null;
@@ -66,11 +75,16 @@ export function ChannelsBulkManageTagsDialog() {
 
     if (!bulkManageChannelTags.isPending) {
       setTags([]);
+      setIsTagsDirty(false);
       setOpen(null);
     }
   };
 
   const handleApply = async () => {
+    if (isLoadingSelectedTags || hasSelectedChannelTagsError) {
+      return;
+    }
+
     const commonTagSet = new Set(commonTags);
     const addTags = tags.filter((tag) => !commonTagSet.has(tag));
     const removeTags = commonTags.filter((tag) => !tags.includes(tag));
@@ -102,16 +116,21 @@ export function ChannelsBulkManageTagsDialog() {
 
         <div className='space-y-2 py-4'>
           <div className='text-sm font-medium'>{t('channels.dialogs.bulkManageTags.label')}</div>
-          {selectedChannelTagsQuery.isLoading ? (
+          {isLoadingSelectedTags ? (
             <div className='text-muted-foreground flex min-h-10 items-center rounded-md border px-3 py-2 text-sm'>
               <Loader2 className='mr-2 h-4 w-4 animate-spin' />
               {t('channels.dialogs.bulkManageTags.loading')}
             </div>
+          ) : hasSelectedChannelTagsError ? (
+            <div className='text-destructive rounded-md border px-3 py-2 text-sm'>{t('common.errors.internalServerError')}</div>
           ) : (
             <>
               <TagsAutocompleteInput
                 value={tags}
-                onChange={setTags}
+                onChange={(nextTags) => {
+                  setTags(nextTags);
+                  setIsTagsDirty(true);
+                }}
                 placeholder={t('channels.dialogs.bulkManageTags.placeholder')}
                 suggestions={allTags}
                 isLoading={isLoadingTags}
@@ -128,7 +147,12 @@ export function ChannelsBulkManageTagsDialog() {
           <Button variant='outline' onClick={() => handleOpenChange(false)} disabled={bulkManageChannelTags.isPending}>
             {t('common.buttons.cancel')}
           </Button>
-          <Button onClick={handleApply} disabled={!hasChanges || bulkManageChannelTags.isPending || selectedCount === 0}>
+          <Button
+            onClick={handleApply}
+            disabled={
+              !hasChanges || isLoadingSelectedTags || hasSelectedChannelTagsError || bulkManageChannelTags.isPending || selectedCount === 0
+            }
+          >
             {bulkManageChannelTags.isPending ? (
               <>
                 <Loader2 className='mr-2 h-4 w-4 animate-spin' />

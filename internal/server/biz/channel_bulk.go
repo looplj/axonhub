@@ -295,7 +295,13 @@ func (svc *ChannelService) BulkManageChannelTags(ctx context.Context, ids []int,
 				continue
 			}
 
-			if _, err := client.Channel.UpdateOneID(ch.ID).SetTags(managedTags).Save(txCtx); err != nil {
+			if _, err := client.Channel.UpdateOneID(ch.ID).
+				Where(channel.UpdatedAtEQ(ch.UpdatedAt)).
+				SetTags(managedTags).
+				Save(txCtx); err != nil {
+				if ent.IsNotFound(err) {
+					return fmt.Errorf("channel %d was modified while managing tags; please retry: %w", ch.ID, err)
+				}
 				return fmt.Errorf("failed to manage tags for channel %d: %w", ch.ID, err)
 			}
 		}

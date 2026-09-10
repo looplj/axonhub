@@ -1773,6 +1773,9 @@ export function useBulkManageChannelTags() {
       queryClient.invalidateQueries({ queryKey: ['selectedChannelTags'] });
       toast.success(t('channels.messages.bulkManageTagsSuccess', { count: variables.ids.length }));
     },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['selectedChannelTags'] });
+    },
   });
 }
 
