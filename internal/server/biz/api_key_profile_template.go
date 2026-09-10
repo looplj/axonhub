@@ -231,8 +231,8 @@ func (s *APIKeyProfileTemplateService) LoadTemplate(ctx context.Context, templat
 			if !ok {
 				return fmt.Errorf("user not found in context")
 			}
-			if apiKey.UserID != user.ID {
-				return fmt.Errorf("personal API key can only be modified by its creator")
+			if apiKey.UserID != user.ID && !user.IsOwner {
+				return fmt.Errorf("personal API key can only be modified by its creator or a system owner")
 			}
 		}
 
