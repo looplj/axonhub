@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/tidwall/gjson"
@@ -77,9 +78,7 @@ func (ts *InboundPersistentStream) Next() bool {
 func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
-		// summary to avoid buffering the full audio payload in memory.
-		if !ts.downstreamTTFTRecorded && ts.request != nil && len(event.Data) > 0 && !IsTerminalStreamEvent(event) {
+		if !ts.downstreamTTFTRecorded && ts.request != nil && hasClientVisibleOutput(event) {
 			attrs := appmetrics.RequestAttributes{
 				ProjectID: ts.request.ProjectID, RequestModelID: ts.request.ModelID,
 				APIKeyID: ts.request.APIKeyID, Source: string(ts.request.Source),
@@ -89,6 +88,7 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 			appmetrics.Metrics.RecordDownstreamPerformance(ts.ctx, attrs, "streaming", -1, &ttft)
 			ts.downstreamTTFTRecorded = true
 		}
+		// For raw binary audio chunks, persist only a size summary.
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 		if IsTerminalStreamEvent(event) {
 			ts.state.StreamCompleted = true
@@ -96,6 +96,73 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	}
 
 	return event
+}
+
+// hasClientVisibleOutput recognizes output in the downstream wire protocol.
+// Current runs before the HTTP write: this measures output ready for delivery,
+// not an acknowledgement from the client. A final chunk can also carry output.
+func hasClientVisibleOutput(event *httpclient.StreamEvent) bool {
+	if event == nil || len(event.Data) == 0 || bytes.Equal(event.Data, llm.DoneStreamEvent.Data) {
+		return false
+	}
+
+	if strings.HasPrefix(event.Type, "audio/") || event.Type == "application/octet-stream" {
+		return true
+	}
+	data := gjson.ParseBytes(event.Data)
+	eventType := event.Type
+	if eventType == "" {
+		eventType = data.Get("type").String()
+	}
+	switch eventType {
+	case "content_block_delta":
+		return hasOutputString(data.Get("delta"), "text", "thinking", "partial_json")
+	case "content_block_start":
+		block := data.Get("content_block")
+		return hasOutputString(block, "text", "thinking") ||
+			(block.Get("type").String() == "tool_use" && hasOutputString(block, "name"))
+	case "response.output_text.delta", "response.reasoning_text.delta", "response.reasoning_summary_text.delta",
+		"response.function_call_arguments.delta", "response.refusal.delta", "response.audio.delta",
+		"response.output_audio.delta", "transcript.text.delta":
+		return hasOutputString(data, "delta")
+	case "speech.audio.delta":
+		return hasOutputString(data, "audio")
+	case "response.output_item.added":
+		item := data.Get("item")
+		return item.Get("type").String() == "function_call" && hasOutputString(item, "name")
+	case "text-delta", "reasoning-delta": // AI SDK data stream
+		return hasOutputString(data, "delta")
+	}
+
+	for _, choice := range data.Get("choices").Array() {
+		delta := choice.Get("delta")
+		if hasOutputString(choice, "text") || hasOutputString(delta, "content", "reasoning_content", "reasoning", "refusal", "audio.data") {
+			return true
+		}
+		for _, call := range delta.Get("tool_calls").Array() {
+			if hasOutputString(call, "function.name", "function.arguments") {
+				return true
+			}
+		}
+	}
+	for _, candidate := range data.Get("candidates").Array() {
+		for _, part := range candidate.Get("content.parts").Array() {
+			if hasOutputString(part, "text", "functionCall.name", "inlineData.data") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasOutputString(data gjson.Result, paths ...string) bool {
+	for _, path := range paths {
+		value := data.Get(path)
+		if value.Type == gjson.String && value.String() != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // IsTerminalStreamEvent checks both SSE metadata and JSON data for a successful

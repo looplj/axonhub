@@ -29,12 +29,15 @@ func TestInboundFirstOutputDoesNotRecordRequestDuration(t *testing.T) {
 		request: &ent.Request{CreatedAt: time.Now().Add(-time.Second), ModelID: "requested", Stream: true},
 		state:   &PersistenceState{},
 		stream: &mockStream{events: []*httpclient.StreamEvent{
+			{Data: []byte(`{"type":"response.created"}`)},
+			{Data: []byte(`{"choices":[{"delta":{"role":"assistant","content":""}}]}`)},
 			{Data: []byte(`{"choices":[{"delta":{"content":"hello"}}]}`)},
 			{Data: []byte(`{"choices":[{"delta":{"content":" world"}}]}`)},
 		}},
 	}
-	for stream.Next() {
+	for i := 0; stream.Next(); i++ {
 		stream.Current()
+		require.Equal(t, i >= 2, stream.downstreamTTFTRecorded)
 	}
 
 	var collected metricdata.ResourceMetrics
@@ -52,4 +55,39 @@ func TestInboundFirstOutputDoesNotRecordRequestDuration(t *testing.T) {
 		}
 	}
 	require.Equal(t, uint64(1), ttftCount)
+}
+
+func TestHasClientVisibleOutput(t *testing.T) {
+	tests := []struct {
+		name string
+		kind string
+		data string
+		want bool
+	}{
+		{"empty", "", "", false},
+		{"done", "", "[DONE]", false},
+		{"created in JSON", "", `{"type":"response.created"}`, false},
+		{"message start", "message_start", `{"message":{"role":"assistant"}}`, false},
+		{"role only", "", `{"choices":[{"delta":{"role":"assistant","content":""}}]}`, false},
+		{"usage only", "", `{"usage":{"completion_tokens":5}}`, false},
+		{"error", "error", `{"error":{"message":"failed"}}`, false},
+		{"text", "", `{"choices":[{"delta":{"content":"hello"}}]}`, true},
+		{"final text", "", `{"choices":[{"delta":{"content":"hello"},"finish_reason":"stop"}]}`, true},
+		{"tool", "", `{"choices":[{"delta":{"tool_calls":[{"function":{"name":"search"}}]}}]}`, true},
+		{"responses delta", "", `{"type":"response.output_text.delta","delta":"hello"}`, true},
+		{"empty delta", "response.output_text.delta", `{"delta":""}`, false},
+		{"anthropic empty block", "content_block_start", `{"content_block":{"type":"text","text":""}}`, false},
+		{"anthropic tool block", "content_block_start", `{"content_block":{"type":"tool_use","name":"search"}}`, true},
+		{"thinking", "content_block_delta", `{"delta":{"thinking":"think"}}`, true},
+		{"signature only", "content_block_delta", `{"delta":{"signature":"sig"}}`, false},
+		{"gemini final output", "", `{"candidates":[{"content":{"parts":[{"text":"hello"}]},"finishReason":"STOP"}]}`, true},
+		{"audio", "audio/mpeg", "binary", true},
+		{"ai sdk text", "text-delta", `{"delta":"hello"}`, true},
+	}
+	require.False(t, hasClientVisibleOutput(nil))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, hasClientVisibleOutput(&httpclient.StreamEvent{Type: tt.kind, Data: []byte(tt.data)}))
+		})
+	}
 }

@@ -1059,7 +1059,7 @@ func (s *RequestService) UpdateRequestExecutionStatusWithMetrics(
 		return err
 	}
 
-	recordUpstreamCompletionMetrics(ctx, execution, status, wasTerminal, nil, req)
+	recordUpstreamCompletionMetrics(ctx, execution, status, wasTerminal, metrics, req)
 
 	return nil
 }
