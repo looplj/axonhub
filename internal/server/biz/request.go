@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"github.com/eko/gocache/lib/v4/store"
 	"github.com/tidwall/gjson"
 
@@ -942,30 +943,16 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 		}
 	}
 
-	savedExternalKey := ""
-
+	// Persist the response alongside the winning terminal transition first.
+	// This is also the durable fallback if external storage fails or the process
+	// stops before offloading finishes. Losing finalizers must not write the key.
+	var responseBodyBytes objects.JSONRawMessage
 	if storeResponseBody {
-		responseBodyBytes, err := xjson.Marshal(responseBody)
+		responseBodyBytes, err = xjson.Marshal(responseBody)
 		if err != nil {
 			return err
 		}
-
-		// Check if we should use external storage
-		if s.shouldUseExternalStorage(ctx, dataStorage) {
-			// Save to external storage
-			key := GenerateExecutionResponseBodyKey(execution.ProjectID, execution.RequestID, executionID)
-
-			err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
-			if err != nil {
-				log.Error(ctx, "Failed to save execution response body to external storage", log.Cause(err))
-			} else {
-				savedExternalKey = key
-				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
-			}
-		} else {
-			// Store in database
-			upd = upd.SetResponseBody(responseBodyBytes)
-		}
+		upd = upd.SetResponseBody(responseBodyBytes)
 	}
 
 	updated, err := s.saveExecutionTransition(ctx, upd, executionID)
@@ -973,12 +960,29 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 		return nil
 	}
 	if err != nil {
-		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
 		log.Error(ctx, "Failed to update finalized request execution", log.Cause(err), log.Any("status", status))
 		return err
 	}
 
 	recordUpstreamCompletionMetrics(ctx, execution, status, wasTerminal, metrics, req)
+
+	// A caller-owned transaction has not committed the winning body yet. Keep
+	// it inline rather than publishing an external file for a possible rollback.
+	if _, transactional := client.Driver().(dialect.Tx); transactional {
+		return nil
+	}
+
+	if storeResponseBody && s.shouldUseExternalStorage(ctx, dataStorage) {
+		key := GenerateExecutionResponseBodyKey(execution.ProjectID, execution.RequestID, executionID)
+		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
+			log.Error(ctx, "Failed to offload execution response; retaining database body", log.Cause(err))
+			return nil
+		}
+		if err := client.RequestExecution.UpdateOneID(executionID).
+			SetResponseBody(ExternalResponseBodyMarker).Exec(ctx); err != nil {
+			log.Error(ctx, "Failed to mark offloaded execution response; retaining database body", log.Cause(err))
+		}
+	}
 
 	return nil
 }
@@ -1709,6 +1713,12 @@ func (s *RequestService) LoadRequestExecutionResponseBody(ctx context.Context, e
 	// Only load response body if execution is completed
 	if exec.Status != requestexecution.StatusCompleted {
 		return xjson.EmptyJSONRawMessage, nil
+	}
+
+	// A finalized execution retains its inline body until external offloading
+	// succeeds. Prefer that durable copy, including when storage is unavailable.
+	if len(exec.ResponseBody) > 0 && !isExternalResponseBodyMarker(exec.ResponseBody) && !bytes.Equal(bytes.TrimSpace(exec.ResponseBody), xjson.EmptyJSONRawMessage) {
+		return sanitizeLoadedResponseBody(exec.ResponseBody), nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, exec.DataStorageID)
