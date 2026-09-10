@@ -7,6 +7,7 @@ import (
 
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
@@ -172,9 +173,11 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 	// before persisting into the JSON response_body column.
 	respBody := audioSafeResponseBody(llmResp.RequestType, m.rawResponse.Headers.Get("Content-Type"), m.rawResponse.Body)
 
-	err := state.RequestService.UpdateRequestExecutionCompleted(
+	err := state.RequestService.UpdateRequestExecutionFinalized(
 		persistCtx,
 		state.RequestExec.ID,
+		requestexecution.StatusCompleted,
+		"",
 		llmResp.ID,
 		respBody,
 		metrics,

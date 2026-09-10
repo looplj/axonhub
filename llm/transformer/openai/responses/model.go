@@ -431,6 +431,13 @@ type URLCitation struct {
 
 const responsesWebSearchCallsTransformerMetadataKey = "openai_responses_web_search_calls"
 const responsesReasoningItemTransformerMetadataKey = "openai_responses_reasoning_item"
+const responsesTerminalDetailsTransformerMetadataKey = "openai_responses_terminal_details"
+
+// Preserve details that cannot be represented by a Chat Completions finish_reason.
+type responsesTerminalDetails struct {
+	Error             *Error                     `json:"error,omitempty"`
+	IncompleteDetails *ResponseIncompleteDetails `json:"incomplete_details,omitempty"`
+}
 
 type responsesReasoningItemMetadata struct {
 	ID   string `json:"id,omitempty"`

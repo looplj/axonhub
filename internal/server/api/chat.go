@@ -362,6 +362,10 @@ func writeSSEStreamEnd(
 ) {
 	switch {
 	case terminalSeen:
+		if streamErr != nil {
+			log.Warn(ctx, "Stream error after terminal event was delivered, suppressing trailing error event",
+				log.Cause(streamErr))
+		}
 	case errors.Is(ctx.Err(), context.Canceled):
 		*clientDisconnected = true
 

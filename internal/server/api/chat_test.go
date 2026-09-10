@@ -1193,6 +1193,44 @@ func TestWriteSSEStream_TerminalEventWinsDeadlineRace(t *testing.T) {
 	require.NotContains(t, w.Body.String(), "event:error")
 }
 
+func TestWriteSSEStream_ResponsesErrorAfterTerminalIsSuppressed(t *testing.T) {
+	tests := []struct {
+		name      string
+		keepAlive SSEKeepAliveConfig
+	}{
+		{name: "without heartbeat"},
+		{
+			name: "with heartbeat",
+			keepAlive: SSEKeepAliveConfig{
+				Enabled:  true,
+				Interval: time.Hour,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+			stream := &errorAfterStream{
+				items: []*httpclient.StreamEvent{
+					{Type: "response.created", Data: []byte(`{"type":"response.created"}`)},
+					{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"status":"completed"}}`)},
+				},
+				err: fmt.Errorf("read body: %w", io.ErrUnexpectedEOF),
+			}
+
+			writeSSEStream(c, stream, FormatStreamError, tt.keepAlive, sseHeartbeatOpenAI)
+
+			body := w.Body.String()
+			require.Contains(t, body, "response.completed")
+			require.NotContains(t, body, "event:error")
+			require.NotContains(t, body, io.ErrUnexpectedEOF.Error())
+		})
+	}
+}
+
 func TestWriteSSEStream_RefreshesWriteDeadline(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -1276,4 +1314,44 @@ func TestUpstreamErrorStream_PassthroughClassifiesTransportError(t *testing.T) {
 	stream = newUpstreamErrorStream(ctx, &errorAfterStream{err: plain}, systemService)
 	require.False(t, stream.Next())
 	assert.Equal(t, plain, stream.Err())
+}
+
+func TestWriteSSEStream_StandaloneErrorIsTerminal(t *testing.T) {
+	for _, event := range []*httpclient.StreamEvent{
+		{Type: "error", Data: []byte(`{"error":{"message":"provider failed"}}`)},
+		{Data: []byte(`{"type":"error","error":{"message":"provider failed"}}`)},
+	} {
+		name := "json_type"
+		if event.Type != "" {
+			name = "sse_type"
+		}
+		t.Run(name, func(t *testing.T) {
+			for _, heartbeat := range []bool{false, true} {
+				name := "without_heartbeat"
+				if heartbeat {
+					name = "with_heartbeat"
+				}
+				t.Run(name, func(t *testing.T) {
+					for _, streamErr := range []error{nil, io.ErrUnexpectedEOF} {
+						name := "clean_eof"
+						if streamErr != nil {
+							name = "transport_error"
+						}
+						t.Run(name, func(t *testing.T) {
+							w := httptest.NewRecorder()
+							c, _ := gin.CreateTestContext(w)
+							c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+							stream := &errorAfterStream{items: []*httpclient.StreamEvent{event}, err: streamErr}
+							writeSSEStream(c, stream, FormatStreamError, SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatOpenAI)
+							body := w.Body.String()
+							require.Equal(t, 1, strings.Count(body, "data:"))
+							require.Contains(t, body, string(event.Data))
+							require.NotContains(t, body, orchestrator.ErrStreamIncomplete.Error())
+							require.NotContains(t, body, io.ErrUnexpectedEOF.Error())
+						})
+					}
+				})
+			}
+		})
+	}
 }

@@ -52,14 +52,23 @@ type PersistenceState struct {
 	// CurrentModelIndex is the current model index in CurrentCandidate.Models
 	CurrentModelIndex int
 
-	// Perf is the performance record for the current request.
+	// Perf records channel health and latency for the current request. For stream
+	// terminals, incomplete (token limit or content filtering) counts as channel
+	// success: it must not trigger channel failure counts or auto-disable rules.
 	Perf *biz.PerformanceRecord
 
-	// StreamCompleted tracks whether the stream has response successfully completed.
-	// This is used to distinguish between a stream that was canceled mid-way
-	// versus a stream that completed successfully but the client disconnected
-	// immediately after receiving the last chunk.
+	// StreamCompleted tracks a successful generation outcome, not channel health.
+	// A recognized incomplete terminal keeps this false and is persisted as Failed
+	// on both request and execution, even though Perf.Success is true. This does
+	// not turn a valid protocol response (such as finish_reason=length) into an
+	// HTTP/stream error for the client.
 	StreamCompleted bool
+
+	// OutboundStreamTerminal preserves the provider outcome across protocol
+	// conversion, which may replace an abnormal terminal event with a generic stop.
+	// Request/execution status and channel health intentionally interpret this
+	// outcome differently, as described by StreamCompleted and Perf above.
+	OutboundStreamTerminal streamTerminalState
 
 	// RawProviderResponse stores the raw provider response for non-stream response pass-through.
 	RawProviderResponse *httpclient.Response
