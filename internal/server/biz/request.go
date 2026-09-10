@@ -609,6 +609,9 @@ func (s *RequestService) UpdateRequestFinalized(
 		log.Error(ctx, "Failed to get request", log.Cause(err))
 		return err
 	}
+	if isTerminalRequestStatus(req.Status) {
+		return nil
+	}
 
 	// Get data storage if set
 	var dataStorage *ent.DataStorage
@@ -638,42 +641,42 @@ func (s *RequestService) UpdateRequestFinalized(
 		}
 	}
 
-	savedExternalKey := ""
-
+	// Save the winning body together with the terminal transition before any
+	// external write. The inline copy remains readable if offloading fails.
+	var responseBodyBytes objects.JSONRawMessage
 	if storeResponseBody {
-		responseBodyBytes, err := xjson.Marshal(responseBody)
+		responseBodyBytes, err = xjson.Marshal(responseBody)
 		if err != nil {
-			log.Error(ctx, "Failed to serialize response body", log.Cause(err))
 			return err
 		}
-
-		// Check if we should use external storage
-		if s.shouldUseExternalStorage(ctx, dataStorage) {
-			// Save to external storage
-			key := GenerateResponseBodyKey(req.ProjectID, requestID)
-
-			err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
-			if err != nil {
-				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
-				// Continue anyway
-			} else {
-				savedExternalKey = key
-				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
-			}
-		} else {
-			// Store in database
-			upd = upd.SetResponseBody(responseBodyBytes)
-		}
+		upd = upd.SetResponseBody(responseBodyBytes)
 	}
 
-	_, err = upd.Save(ctx)
+	updated, err := s.saveRequestTransition(ctx, upd, requestID)
 	if err != nil {
-		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
-		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
+		log.Error(ctx, "Failed to finalize request", log.Cause(err))
 		return err
+	}
+	if !updated {
+		return nil
 	}
 
 	recordDownstreamCompletionMetrics(ctx, req, status)
+
+	if _, transactional := client.Driver().(dialect.Tx); transactional {
+		return nil
+	}
+	if storeResponseBody && s.shouldUseExternalStorage(ctx, dataStorage) {
+		key := GenerateResponseBodyKey(req.ProjectID, requestID)
+		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
+			log.Error(ctx, "Failed to offload request response; retaining database body", log.Cause(err))
+			return nil
+		}
+		if err := client.Request.UpdateOneID(requestID).
+			SetResponseBody(ExternalResponseBodyMarker).Exec(ctx); err != nil {
+			log.Error(ctx, "Failed to mark offloaded request response; retaining database body", log.Cause(err))
+		}
+	}
 
 	return nil
 }
@@ -1379,17 +1382,37 @@ func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int,
 	if err != nil {
 		return fmt.Errorf("failed to get request before status update: %w", err)
 	}
+	if isTerminalRequestStatus(req.Status) {
+		return nil
+	}
 
-	_, err = client.Request.UpdateOneID(requestID).
-		SetStatus(status).
-		Save(ctx)
+	upd := client.Request.UpdateOneID(requestID).SetStatus(status)
+	updated, err := s.saveRequestTransition(ctx, upd, requestID)
 	if err != nil {
 		return fmt.Errorf("failed to update request status: %w", err)
 	}
 
-	recordDownstreamCompletionMetrics(ctx, req, status)
+	if updated {
+		recordDownstreamCompletionMetrics(ctx, req, status)
+	}
 
 	return nil
+}
+
+// The conditional UPDATE, not the preceding read, determines who owns the
+// terminal metric. Late callbacks are idempotent and cannot reopen a request.
+func (s *RequestService) saveRequestTransition(ctx context.Context, upd *ent.RequestUpdateOne, id int) (bool, error) {
+	_, err := upd.Where(request.StatusIn(request.StatusPending, request.StatusProcessing)).Save(ctx)
+	if err == nil {
+		return true, nil
+	}
+	if ent.IsNotFound(err) {
+		current, readErr := s.entFromContext(ctx).Request.Get(ctx, id)
+		if readErr == nil && isTerminalRequestStatus(current.Status) {
+			return false, nil
+		}
+	}
+	return false, err
 }
 
 // UpdateRequestStatusFromError updates request status based on error type: canceled if context canceled, otherwise failed.
@@ -1520,6 +1543,9 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 	// Only load response body if request is completed
 	if req.Status != request.StatusCompleted {
 		return xjson.EmptyJSONRawMessage, nil
+	}
+	if len(req.ResponseBody) > 0 && !isExternalResponseBodyMarker(req.ResponseBody) && !bytes.Equal(bytes.TrimSpace(req.ResponseBody), xjson.EmptyJSONRawMessage) {
+		return sanitizeLoadedResponseBody(req.ResponseBody), nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, req.DataStorageID)

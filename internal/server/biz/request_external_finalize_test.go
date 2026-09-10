@@ -38,7 +38,7 @@ func externalFinalizationFixture(t *testing.T) (context.Context, *ent.Client, *R
 		SetSettings(&objects.DataStorageSettings{Directory: &dir}).Save(ctx)
 	require.NoError(t, err)
 	req, err := client.Request.Create().SetModelID("requested").SetRequestBody([]byte(`{}`)).
-		SetStatus(request.StatusProcessing).Save(ctx)
+		SetStatus(request.StatusProcessing).SetDataStorageID(ds.ID).Save(ctx)
 	require.NoError(t, err)
 	execution, err := client.RequestExecution.Create().SetRequestID(req.ID).SetModelID("actual").
 		SetRequestBody([]byte(`{}`)).SetStatus(requestexecution.StatusProcessing).SetDataStorageID(ds.ID).Save(ctx)
@@ -95,6 +95,61 @@ func TestConcurrentFinalizationKeepsWinningExternalBody(t *testing.T) {
 	require.NoError(t, err)
 	require.JSONEq(t, fmt.Sprintf(`{"winner":%q}`, stored.ExternalID), string(body))
 	loaded, err := svc.LoadRequestExecutionResponseBody(ctx, stored)
+	require.NoError(t, err)
+	require.JSONEq(t, string(body), string(loaded))
+}
+
+func TestConcurrentDownstreamFinalizationKeepsWinningExternalBody(t *testing.T) {
+	ctx, client, svc, ds, execution := externalFinalizationFixture(t)
+	req, err := client.Request.Get(ctx, execution.RequestID)
+	require.NoError(t, err)
+	key := GenerateResponseBodyKey(req.ProjectID, req.ID)
+	fs, err := svc.DataStorageService.GetFileSystem(ctx, ds)
+	require.NoError(t, err)
+	var arrivals atomic.Int32
+	ready := make(chan struct{})
+	client.Request.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, mutation ent.Mutation) (ent.Value, error) {
+			m := mutation.(*ent.RequestMutation)
+			if _, terminalUpdate := m.Status(); terminalUpdate {
+				// Both finalizers pause after their reads, before the atomic UPDATE.
+				// Neither may have touched the shared file at this point.
+				_, statErr := fs.Stat(key)
+				if statErr == nil {
+					return nil, errors.New("external body written before claiming finalization")
+				}
+				if arrivals.Add(1) == 2 {
+					close(ready)
+				}
+				select {
+				case <-ready:
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				}
+			}
+			return next.Mutate(ctx, mutation)
+		})
+	})
+	var group errgroup.Group
+	for _, id := range []string{"first", "second"} {
+		group.Go(func() (err error) {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					err = fmt.Errorf("finalizer panic: %v", recovered)
+					log.Error(ctx, "external finalization test panic", log.Cause(err))
+				}
+			}()
+			return svc.UpdateRequestFinalized(ctx, req.ID, request.StatusCompleted, id, map[string]string{"winner": id}, nil)
+		})
+	}
+	require.NoError(t, group.Wait())
+	stored, err := client.Request.Get(ctx, req.ID)
+	require.NoError(t, err)
+	require.True(t, isExternalResponseBodyMarker(stored.ResponseBody))
+	body, err := svc.DataStorageService.LoadData(ctx, ds, key)
+	require.NoError(t, err)
+	require.JSONEq(t, fmt.Sprintf(`{"winner":%q}`, stored.ExternalID), string(body))
+	loaded, err := svc.LoadResponseBody(ctx, stored)
 	require.NoError(t, err)
 	require.JSONEq(t, string(body), string(loaded))
 }
