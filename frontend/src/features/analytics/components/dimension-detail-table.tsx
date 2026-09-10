@@ -96,17 +96,19 @@ export function DimensionDetailTable({
           </div>
         ) : (
           <div className='overflow-x-auto'>
-            <table className='w-full min-w-[800px] table-fixed caption-bottom text-sm'>
+            <table className='w-full min-w-[1100px] table-fixed caption-bottom text-sm'>
               <colgroup>
                 <col className='w-[20%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
               </colgroup>
               <thead className='[&_tr]:border-b'>
                 <tr className='border-b transition-colors hover:bg-muted/50'>
@@ -118,6 +120,8 @@ export function DimensionDetailTable({
                   <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.outputTokens')}</th>
                   <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.cacheHitRate')}</th>
                   <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.requests')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.tokensPerSecond')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.ttft')}</th>
                   <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.cost')}</th>
                 </tr>
               </thead>
@@ -134,6 +138,12 @@ export function DimensionDetailTable({
                       {item.inputTokens > 0 ? ((item.cachedInputTokens / item.inputTokens) * 100).toFixed(1) : '0'}%
                     </td>
                     <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>{formatExactNumber(item.requestCount)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>
+                      {item.tokensPerSecond == null ? '—' : item.tokensPerSecond.toFixed(2)}
+                    </td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>
+                      {item.ttftMs == null ? '—' : Math.round(item.ttftMs).toLocaleString()}
+                    </td>
                     <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>{formatCurrency(item.cost)}</td>
                   </tr>
                 ))}
