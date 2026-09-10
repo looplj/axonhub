@@ -356,7 +356,6 @@ export default function RequestDetailPage() {
       setIsPreviewStreaming(false);
       clearReconnectTimer();
       controller.abort();
-      previousRequestIdRef.current = null;
     };
   }, [isLivePreviewEnabled, previewFallbackActive, requestData, refetchRequest, selectedProjectId]);
 
