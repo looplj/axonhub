@@ -113,12 +113,58 @@ test('falls back to the document copy command when the Clipboard API is unavaila
   }
 });
 
+test('falls back to the document copy command when the Clipboard API rejects', async () => {
+  const { document, state } = createFallbackDocument(true);
+  const restore = replaceGlobals({
+    document,
+    navigator: {
+      clipboard: {
+        async writeText() {
+          throw new Error('NotAllowedError');
+        },
+      },
+    },
+  });
+
+  try {
+    // Insecure HTTP origins such as Safari expose the Clipboard API but reject every write.
+    await copyTextToClipboard('fallback-after-reject');
+    assert.equal(state.command, 'copy');
+    assert.equal(state.textarea.value, 'fallback-after-reject');
+    assert.equal(state.removed, true);
+  } finally {
+    restore();
+  }
+});
+
 test('rejects when neither clipboard path can copy the text', async () => {
   const { document, state } = createFallbackDocument(false);
   const restore = replaceGlobals({ document, navigator: {} });
 
   try {
     await assert.rejects(copyTextToClipboard('failure'), /compatibility copy command failed/);
+    assert.equal(state.removed, true);
+  } finally {
+    restore();
+  }
+});
+
+test('rejects when the Clipboard API rejects and the fallback also fails', async () => {
+  const { document, state } = createFallbackDocument(false);
+  const restore = replaceGlobals({
+    document,
+    navigator: {
+      clipboard: {
+        async writeText() {
+          throw new Error('NotAllowedError');
+        },
+      },
+    },
+  });
+
+  try {
+    await assert.rejects(copyTextToClipboard('failure'), /compatibility copy command failed/);
+    assert.equal(state.command, 'copy');
     assert.equal(state.removed, true);
   } finally {
     restore();
