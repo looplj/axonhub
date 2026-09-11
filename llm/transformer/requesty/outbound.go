@@ -219,6 +219,7 @@ func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, l
 		Auth:        auth,
 		ContentType: "application/json",
 		RequestType: llm.RequestTypeImage.String(),
+		APIFormat:   llm.APIFormatOpenAIImageGeneration.String(),
 	}
 
 	// Save model to TransformerMetadata for response transformation
@@ -349,6 +350,7 @@ func (t *OutboundTransformer) transformImageGenerationResponse(httpResp *httpcli
 		Created:     chatResp.Created,
 		Model:       model,
 		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
 	}
 
 	// Convert usage information
@@ -452,9 +454,16 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 func (t *OutboundTransformer) TransformStreamChunk(ctx context.Context, event *httpclient.StreamEvent) (*llm.Response, error) {
 	ep := gjson.GetBytes(event.Data, "error")
 	if ep.Exists() {
+		// Prefer error.message so callers see the upstream text rather than the raw JSON object.
+		message := ep.Get("message").String()
+		if message == "" {
+			message = ep.String()
+		}
+
 		return nil, &llm.ResponseError{
 			Detail: llm.ErrorDetail{
-				Message: ep.String(),
+				Message: message,
+				Type:    "api_error",
 			},
 		}
 	}
@@ -494,6 +503,12 @@ func (e requestyError) ToLLMError() llm.ErrorDetail {
 	}
 }
 
+// isEmpty reports whether the decoded body carried no usable Requesty error payload,
+// which happens for bodies such as {} or unrelated JSON from a proxy in front of Requesty.
+func (e requestyError) isEmpty() bool {
+	return e.Error.Message == "" && e.Error.Code == 0 && e.Error.Metadata.Raw == nil
+}
+
 func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
 	if rawErr == nil {
 		return &llm.ResponseError{
@@ -509,14 +524,14 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 	var openaiError requestyError
 
 	err := json.Unmarshal(rawErr.Body, &openaiError)
-	if err == nil {
+	if err == nil && !openaiError.isEmpty() {
 		return &llm.ResponseError{
 			StatusCode: rawErr.StatusCode,
 			Detail:     openaiError.ToLLMError(),
 		}
 	}
 
-	// If JSON parsing fails, use the upstream status text
+	// If JSON parsing fails or the body is not a Requesty error, use the upstream status text
 	return &llm.ResponseError{
 		StatusCode: rawErr.StatusCode,
 		Detail: llm.ErrorDetail{

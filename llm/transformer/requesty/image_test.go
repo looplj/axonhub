@@ -89,8 +89,9 @@ func TestOutboundTransformer_ImageGenerationRequest(t *testing.T) {
 			require.Equal(t, http.MethodPost, req.Method)
 			require.Contains(t, req.URL, "/chat/completions")
 
-			// Verify request type is set
+			// Verify request type and api format are set
 			require.Equal(t, llm.RequestTypeImage.String(), req.RequestType)
+			require.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), req.APIFormat)
 
 			// Parse body and verify modalities
 			var body map[string]any
