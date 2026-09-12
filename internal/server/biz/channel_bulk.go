@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -238,6 +239,106 @@ func (svc *ChannelService) BulkDeleteChannels(ctx context.Context, ids []int) er
 	svc.reloadChannelsAfterCommit(ctx)
 
 	return nil
+}
+
+// BulkManageChannelTags adds and removes tags from multiple channels in one transaction.
+func (svc *ChannelService) BulkManageChannelTags(ctx context.Context, ids []int, addTags []string, removeTags []string) error {
+	channelIDs := lo.Uniq(ids)
+	newTags := normalizeChannelTags(addTags)
+	tagsToRemove := normalizeChannelTags(removeTags)
+	if len(channelIDs) == 0 || (len(newTags) == 0 && len(tagsToRemove) == 0) {
+		return nil
+	}
+
+	tagsToRemoveSet := make(map[string]struct{}, len(tagsToRemove))
+	for _, tag := range tagsToRemove {
+		tagsToRemoveSet[tag] = struct{}{}
+	}
+
+	return svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		client := svc.entFromContext(txCtx)
+		channels, err := client.Channel.Query().
+			Where(channel.IDIn(channelIDs...)).
+			All(txCtx)
+		if err != nil {
+			return fmt.Errorf("failed to query channels for bulk tag management: %w", err)
+		}
+		if len(channels) != len(channelIDs) {
+			return fmt.Errorf("expected to find %d channels, but found %d", len(channelIDs), len(channels))
+		}
+
+		for _, ch := range channels {
+			managedTags := make([]string, 0, len(ch.Tags)+len(newTags))
+			existingTags := make(map[string]struct{}, len(ch.Tags)+len(newTags))
+			changed := false
+			for _, tag := range ch.Tags {
+				if _, remove := tagsToRemoveSet[tag]; remove {
+					changed = true
+					continue
+				}
+
+				managedTags = append(managedTags, tag)
+				existingTags[tag] = struct{}{}
+			}
+
+			for _, tag := range newTags {
+				if _, exists := existingTags[tag]; exists {
+					continue
+				}
+
+				managedTags = append(managedTags, tag)
+				existingTags[tag] = struct{}{}
+				changed = true
+			}
+
+			if !changed {
+				continue
+			}
+
+			if _, err := client.Channel.UpdateOneID(ch.ID).
+				Where(channel.UpdatedAtEQ(ch.UpdatedAt)).
+				SetTags(managedTags).
+				Save(txCtx); err != nil {
+				if ent.IsNotFound(err) {
+					return fmt.Errorf("channel %d was modified while managing tags; please retry: %w", ch.ID, err)
+				}
+				return fmt.Errorf("failed to manage tags for channel %d: %w", ch.ID, err)
+			}
+		}
+
+		svc.reloadChannelsAfterCommit(txCtx)
+		return nil
+	})
+}
+
+// BulkAddChannelTags appends tags to multiple channels while preserving their
+// existing tags and avoiding duplicates.
+func (svc *ChannelService) BulkAddChannelTags(ctx context.Context, ids []int, tags []string) error {
+	return svc.BulkManageChannelTags(ctx, ids, tags, nil)
+}
+
+// BulkRemoveChannelTags removes the specified tags from multiple channels.
+func (svc *ChannelService) BulkRemoveChannelTags(ctx context.Context, ids []int, tags []string) error {
+	return svc.BulkManageChannelTags(ctx, ids, nil, tags)
+}
+
+func normalizeChannelTags(tags []string) []string {
+	result := make([]string, 0, len(tags))
+	seen := make(map[string]struct{}, len(tags))
+	for _, tag := range tags {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		if _, exists := seen[tag]; exists {
+			continue
+		}
+
+		seen[tag] = struct{}{}
+		result = append(result, tag)
+	}
+
+	return result
 }
 
 // BulkImportChannelItem represents a single channel to be imported.

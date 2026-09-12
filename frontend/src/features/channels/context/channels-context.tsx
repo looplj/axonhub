@@ -23,6 +23,7 @@ type ChannelsDialogType =
   | 'bulkEnable'
   | 'bulkTest'
   | 'bulkDelete'
+  | 'bulkManageTags'
   | 'bulkApplyTemplate'
   | 'bulkClearTemplate'
   | 'errorResolved'
