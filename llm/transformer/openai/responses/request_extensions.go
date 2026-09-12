@@ -1,6 +1,7 @@
 package responses
 
 import (
+	"bytes"
 	"encoding/json"
 
 	"github.com/looplj/axonhub/llm"
@@ -144,13 +145,14 @@ func buildRepresentedToolSignatures(tools []Tool) []string {
 	signatures := make([]string, 0, len(tools))
 	for _, tool := range tools {
 		if tool.Type == "namespace" {
+			represented := Tool{Type: "namespace", Name: tool.Name}
 			for _, subTool := range tool.Tools {
 				if subTool.Type == "function" {
-					signatures = append(signatures, responseToolSignature(Tool{
-						Type: "function",
-						Name: namespaceFunctionName(tool.Name, subTool.Name),
-					}))
+					represented.Tools = append(represented.Tools, subTool)
 				}
+			}
+			if len(represented.Tools) > 0 {
+				signatures = append(signatures, responseToolSignature(represented))
 			}
 			continue
 		}
@@ -191,14 +193,14 @@ func representedNamespaceToolCount(tool Tool) int {
 		return 0
 	}
 
-	count := 0
+	// A namespace is now represented by one grouped Responses tool.
 	for _, subTool := range tool.Tools {
 		if subTool.Type == "function" {
-			count++
+			return 1
 		}
 	}
 
-	return count
+	return 0
 }
 
 func isStructurallyRepresentedToolType(toolType string) bool {
@@ -212,6 +214,13 @@ func isStructurallyRepresentedToolType(toolType string) bool {
 
 func responseToolSignature(tool Tool) string {
 	switch tool.Type {
+	case "namespace":
+		names := []string{tool.Name}
+		for _, subTool := range tool.Tools {
+			names = append(names, subTool.Type, subTool.Name)
+		}
+		encoded, _ := json.Marshal(names)
+		return "namespace:" + string(encoded)
 	case "function", "custom":
 		return tool.Type + ":" + tool.Name
 	default:
@@ -467,13 +476,27 @@ func structuredToolSignaturesMatch(structuredTools []json.RawMessage, expected [
 }
 
 func rawToolChoiceMatchesCurrentTools(raw json.RawMessage, current *ToolChoice) bool {
-	if current == nil {
-		return true
-	}
-
 	var rawChoice ToolChoice
 	if err := json.Unmarshal(raw, &rawChoice); err != nil {
 		return false
+	}
+
+	if (rawChoice.Type != nil && *rawChoice.Type == "allowed_tools") ||
+		(current != nil && current.Type != nil && *current.Type == "allowed_tools") {
+		if current == nil {
+			return false
+		}
+		// Matching only mode would restore a stale allowlist after a caller
+		// changed its members or replaced it with an unrestricted string mode.
+		expected, err := json.Marshal(&rawChoice)
+		if err != nil {
+			return false
+		}
+		actual, err := json.Marshal(current)
+		return err == nil && bytes.Equal(expected, actual)
+	}
+	if current == nil {
+		return true
 	}
 
 	currentSignature := toolChoiceSignature(current)

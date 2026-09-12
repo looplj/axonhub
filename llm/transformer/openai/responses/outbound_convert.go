@@ -271,7 +271,7 @@ func convertAssistantMessage(msg llm.Message) []Item {
 			toolCallItems = append(toolCallItems, Item{
 				Type:      "function_call",
 				CallID:    tc.ID,
-				Name:      tc.Function.Name,
+				Name:      localFunctionName(tc.Function.Namespace, tc.Function.Name),
 				Namespace: tc.Function.Namespace,
 				Arguments: tc.Function.Arguments,
 			})
@@ -456,7 +456,7 @@ func convertCustomToTool(src llm.Tool) Tool {
 func convertFunctionToTool(src llm.Tool) Tool {
 	tool := Tool{
 		Type:        "function",
-		Name:        src.Function.Name,
+		Name:        localFunctionName(src.Function.Namespace, src.Function.Name),
 		Description: src.Function.Description,
 		Strict:      src.Function.Strict,
 	}
@@ -530,12 +530,18 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 	if src.ToolChoice != nil {
 		// String mode like "none", "auto", "required"
 		result.Mode = src.ToolChoice
-	} else if src.NamedToolChoice != nil {
+	}
+	if src.NamedToolChoice != nil {
 		// Specific tool choice
 		result.Type = &src.NamedToolChoice.Type
 		if src.NamedToolChoice.Function.Name != "" {
-			result.Name = &src.NamedToolChoice.Function.Name
+			name := src.NamedToolChoice.Function.Name
+			result.Name = &name
 		}
+	}
+
+	for _, opt := range src.Tools {
+		result.Tools = append(result.Tools, ToolOption{Type: opt.Type, Name: opt.Name})
 	}
 
 	return result
@@ -716,7 +722,7 @@ func convertOutputToMessage(output []Item, transformerMetadata map[string]any) l
 				ID:   outputItem.CallID,
 				Type: "function",
 				Function: llm.FunctionCall{
-					Name:      outputItem.Name,
+					Name:      flatFunctionName(outputItem.Namespace, outputItem.Name),
 					Namespace: outputItem.Namespace,
 					Arguments: outputItem.Arguments,
 				},
