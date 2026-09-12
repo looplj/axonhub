@@ -260,6 +260,7 @@ AxonHubの動作画面をご覧ください：
 | **Fireworks**          | ✅ 完了    | MiniMax-M2.5, GLM-5, Kimi K2.5など | OpenAI |
 | **Jina AI**            | ✅ 完了    | Embeddings, Rerankerなど   | Jina Embedding, Jina Rerank |
 | **OpenRouter**         | ✅ 完了    | 各種モデル               | OpenAI, Anthropic, Gemini, Image Generation |
+| **Requesty**           | ✅ 完了    | 各種モデル               | OpenAI, Anthropic, Gemini, Image Generation |
 | **ZAI**                | ✅ 完了    | -                            | Image Generation |
 | **AWS Bedrock**        | 🔄 テスト中 | Claude on AWS                | OpenAI, Anthropic, Gemini |
 | **Google Cloud**       | 🔄 テスト中 | Claude on GCP                | OpenAI, Anthropic, Gemini |

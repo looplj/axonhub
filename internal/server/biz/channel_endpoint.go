@@ -280,6 +280,15 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatOpenAITranscription.String()},
 		{APIFormat: llm.APIFormatOpenAITranslation.String()},
 	},
+	// Requesty serves image generation through /chat/completions with modalities,
+	// which the requesty transformer handles on the primary outbound. Requesty exposes
+	// /audio/speech and /audio/transcriptions but not /audio/translations.
+	channel.TypeRequesty: {
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatOpenAIImageGeneration.String()},
+		{APIFormat: llm.APIFormatOpenAISpeech.String()},
+		{APIFormat: llm.APIFormatOpenAITranscription.String()},
+	},
 	channel.TypeXiaomi:          openAIChatOnlyDefaultEndpoints,
 	channel.TypeXiaomiAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeXai: {
