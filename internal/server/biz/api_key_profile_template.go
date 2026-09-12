@@ -8,6 +8,7 @@ import (
 	"github.com/samber/lo"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
@@ -223,6 +224,16 @@ func (s *APIKeyProfileTemplateService) LoadTemplate(ctx context.Context, templat
 
 		if template.ProjectID != apiKey.ProjectID {
 			return fmt.Errorf("template and API key must belong to the same project")
+		}
+
+		if apiKey.Type == apikey.TypePersonal {
+			user, ok := contexts.GetUser(ctx)
+			if !ok {
+				return fmt.Errorf("user not found in context")
+			}
+			if apiKey.UserID != user.ID && !user.IsOwner {
+				return fmt.Errorf("personal API key can only be modified by its creator or a system owner")
+			}
 		}
 
 		templateProfile := template.Profile.Clone()
