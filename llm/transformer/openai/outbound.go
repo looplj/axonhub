@@ -199,6 +199,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	// Convert to OpenAI Request format (this strips helper fields)
 	oaiReq := RequestFromLLM(ctx, llmReq, reasoningField)
+	applyPromptCacheKeyFallback(ctx, oaiReq, t.config.BaseURL)
 	//nolint:exhaustive // Checked.
 	switch t.config.PlatformType {
 	case PlatformOpenAI:

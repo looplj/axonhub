@@ -13,8 +13,11 @@ import (
 )
 
 // RequestFromLLM creates an OpenAI Request from unified llm.Request with reasoning
-// field configuration. When the request has no explicit prompt cache key, ctx's
-// session ID is used as a fallback when available.
+// field configuration. It copies an explicit prompt cache key when the inbound
+// request already has one; it does not invent a session-derived fallback.
+// Official OpenAI Chat Completions hosts apply that fallback in
+// applyPromptCacheKeyFallback, because NVIDIA NIM and other strict
+// OpenAI-compatible gateways reject unknown `prompt_cache_key`.
 func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField ReasoningField) *Request {
 	if r == nil {
 		return nil
@@ -43,12 +46,6 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 		Stream:              r.Stream,
 		ParallelToolCalls:   r.ParallelToolCalls,
 		Verbosity:           r.Verbosity,
-	}
-
-	if ctx != nil && lo.FromPtr(req.PromptCacheKey) == "" {
-		if sessionID, ok := shared.GetSessionID(ctx); ok && sessionID != "" {
-			req.PromptCacheKey = lo.ToPtr(sessionID)
-		}
 	}
 
 	// Convert messages
@@ -113,6 +110,25 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 	}
 
 	return req
+}
+
+// applyPromptCacheKeyFallback fills prompt_cache_key from the request session ID
+// only for hosts that accept the field. Explicit inbound keys are left as-is.
+func applyPromptCacheKeyFallback(ctx context.Context, req *Request, baseURL string) {
+	if req == nil || !shared.SupportsPromptCacheKey(baseURL) {
+		return
+	}
+	if lo.FromPtr(req.PromptCacheKey) != "" {
+		return
+	}
+	if ctx == nil {
+		return
+	}
+	sessionID, ok := shared.GetSessionID(ctx)
+	if !ok || sessionID == "" {
+		return
+	}
+	req.PromptCacheKey = lo.ToPtr(sessionID)
 }
 
 // mergeSystemMessages collapses all system-role messages into one at the
