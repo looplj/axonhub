@@ -340,25 +340,31 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 	return llmReq, nil
 }
 
+// Make the fucking wrong URL redirect to the correct URL
+type ImageEditJSONImage struct {
+	ImageURL	string	`json:"image_url"`
+}
+
 // ImageEditJSONRequest represents an application/json body for the image edit API.
 // The Image field accepts a single data URL string or an array of data URL strings;
 // Mask accepts a data URL string.
 type ImageEditJSONRequest struct {
-	Prompt            string          `json:"prompt"`
-	Model             string          `json:"model"`
-	Image             json.RawMessage `json:"image,omitempty"`
-	Mask              string          `json:"mask,omitempty"`
-	N                 *int64          `json:"n,omitempty"`
-	Size              string          `json:"size,omitempty"`
-	Quality           string          `json:"quality,omitempty"`
-	ResponseFormat    string          `json:"response_format,omitempty"`
-	User              string          `json:"user,omitempty"`
-	Background        string          `json:"background,omitempty"`
-	OutputFormat      string          `json:"output_format,omitempty"`
-	OutputCompression *int64          `json:"output_compression,omitempty"`
-	InputFidelity     string          `json:"input_fidelity,omitempty"`
-	PartialImages     *int64          `json:"partial_images,omitempty"`
-	Stream            bool            `json:"stream,omitempty"`
+	Prompt            string          		`json:"prompt"`
+	Model             string          		`json:"model"`
+	Image             json.RawMessage 		`json:"image,omitempty"`
+	Images			  []ImageEditJSONImage 	`json:"images,omitempty"`
+	Mask              string          		`json:"mask,omitempty"`
+	N                 *int64          		`json:"n,omitempty"`
+	Size              string          		`json:"size,omitempty"`
+	Quality           string          		`json:"quality,omitempty"`
+	ResponseFormat    string          		`json:"response_format,omitempty"`
+	User              string          		`json:"user,omitempty"`
+	Background        string          		`json:"background,omitempty"`
+	OutputFormat      string          		`json:"output_format,omitempty"`
+	OutputCompression *int64          		`json:"output_compression,omitempty"`
+	InputFidelity     string          		`json:"input_fidelity,omitempty"`
+	PartialImages     *int64          		`json:"partial_images,omitempty"`
+	Stream            bool            		`json:"stream,omitempty"`
 }
 
 func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.Request) (*llm.Request, error) {
@@ -388,9 +394,44 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 		model = "dall-e-2"
 	}
 
-	images, err := parseGenerationImageField(editReq.Image)
-	if err != nil {
-		return nil, err
+	// images, err := parseGenerationImageField(editReq.Image)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	var images [][]byte
+	if len(editReq.Images) > 0 {
+		if len(editReq.Images) > maxImageCount {
+			return nil, fmt.Errorf(
+				"%w: too many images", 
+				transformer.ErrInvalidRequest,
+			)
+		}
+
+		images = make([][]byte, 0, len(editReq.Images))
+
+		for _, item := range editReq.Images {
+			imageURL := strings.TrimSpace(item.ImageURL)
+			if imageURL == "" {
+				return nil, fmt.Errorf(
+					"%w: image URL is empty", 
+					transformer.ErrInvalidRequest,
+				)
+			}
+
+			data, err := decodeDataURLToBytes(imageURL)
+			if err != nil {
+				return nil, err
+			}
+
+			images = append(images, data)
+		}
+	} else {
+		var err error
+		images, err = parseGenerationImageField(editReq.Image)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if len(images) == 0 {
@@ -404,6 +445,7 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 	var mask []byte
 
 	if maskDataURL := strings.TrimSpace(editReq.Mask); maskDataURL != "" {
+		var err error
 		mask, err = decodeDataURLToBytes(maskDataURL)
 		if err != nil {
 			return nil, err
@@ -720,7 +762,7 @@ func decodeDataURLToBytes(dataURL string) ([]byte, error) {
 		return nil, fmt.Errorf("%w: image data URL must be base64-encoded", transformer.ErrInvalidRequest)
 	}
 	if !isAllowedImageType(parsed.MediaType) {
-		return nil, fmt.Errorf("%w: unsupported image content type %q", transformer.ErrInvalidRequest, parsed.MediaType)
+		return nil, fmt.Errorf("%w: fuck fuck fuck unsupported image content type %q", transformer.ErrInvalidRequest, parsed.MediaType)
 	}
 	if len(parsed.Data) > base64.StdEncoding.EncodedLen(maxImageFileSize) {
 		return nil, fmt.Errorf("%w: image file too large", transformer.ErrInvalidRequest)

@@ -357,6 +357,31 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		hreq.Headers.Set("Version", codexDefaultVersion)
 	}
 
+	// if isImageRequest && originalAPIFormat == llm.APIFormatOpenAIImageGeneration {
+	// 	if err := t.rewriteDirectImageGenerationRequest(hreq, llmReq); err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+
+	if isImageRequest {
+		switch originalAPIFormat {
+		case llm.APIFormatOpenAIImageGeneration:
+			if err := t.rewriteDirectImageGenerationRequest(
+				hreq,
+				llmReq,
+			); err != nil {
+				return nil, err
+			}
+		case llm.APIFormatOpenAIImageEdit:
+			if err := t.rewriteDirectImageEditRequest(
+				hreq,
+				llmReq,
+			); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	return hreq, nil
 }
 
@@ -365,6 +390,12 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, httpResp *h
 		return t.transformAlphaSearchResponse(ctx, httpResp)
 	}
 	if httpResp != nil && httpResp.Request != nil && httpResp.Request.RequestType == llm.RequestTypeImage.String() {
+		switch httpResp.Request.APIFormat {
+		case string(llm.APIFormatOpenAIImageGeneration),
+			string(llm.APIFormatOpenAIImageEdit):
+			return transformDirectImageResponse(httpResp)
+		}
+
 		if httpResp.StatusCode >= 400 {
 			return nil, fmt.Errorf("codex image HTTP error %d: %s", httpResp.StatusCode, httpResp.Body)
 		}
@@ -456,7 +487,10 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 	// Compact and alpha search are non-streaming endpoints; proxy them
 	// through the real HTTP client instead of the SSE stream path.
 	if request.RequestType == string(llm.RequestTypeCompact) ||
-		request.RequestType == llm.RequestTypeAlphaSearch.String() {
+		request.RequestType == llm.RequestTypeAlphaSearch.String() ||
+		(request.RequestType == string(llm.RequestTypeImage) &&
+			(request.APIFormat == string(llm.APIFormatOpenAIImageGeneration) ||
+				request.APIFormat == string(llm.APIFormatOpenAIImageEdit))) {
 		return e.httpExecutor.Do(ctx, request)
 	}
 
@@ -615,6 +649,12 @@ func (e *codexExecutor) executor(_ context.Context) pipeline.Executor {
 
 func (e *codexExecutor) requestForTransport(request *httpclient.Request) *httpclient.Request {
 	if e == nil || e.transformer == nil {
+		return request
+	}
+
+	if request != nil && request.RequestType == string(llm.RequestTypeImage) &&
+		(request.APIFormat == string(llm.APIFormatOpenAIImageGeneration) ||
+			request.APIFormat == string(llm.APIFormatOpenAIImageEdit)) {
 		return request
 	}
 
