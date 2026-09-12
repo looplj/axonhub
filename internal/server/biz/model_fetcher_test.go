@@ -1134,3 +1134,101 @@ func TestFetchModelsCommandCodeRejectsHTTP(t *testing.T) {
 	}
 	require.Zero(t, calls.Load())
 }
+
+func TestFetchModelsAppliesHeaderOverrideOperationsFromSettings(t *testing.T) {
+	var gotAPIKey, gotAuth string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAPIKey = r.Header.Get("X-Api-Key")
+		gotAuth = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"override-model"}]}`))
+	}))
+	defer server.Close()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:fetch_models_header_override?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithSystemBypass(context.Background(), "test")
+	ch, err := client.Channel.Create().
+		SetName("header-override").
+		SetType(channel.TypeOpenai).
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "stored-secret"}).
+		SetSupportedModels([]string{"override-model"}).
+		SetDefaultTestModel("override-model").
+		SetSettings(&objects.ChannelSettings{
+			HeaderOverrideOperations: []objects.OverrideOperation{
+				{Op: objects.OverrideOpSet, Path: "x-api-key", Value: "override-secret"},
+				{Op: objects.OverrideOpDelete, Path: "Authorization"},
+			},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	fetcher := NewModelFetcher(
+		httpclient.NewHttpClientWithClient(server.Client()),
+		&ChannelService{AbstractService: &AbstractService{db: client}},
+	)
+
+	result, err := fetcher.FetchModels(ctx, FetchModelsInput{
+		ChannelType: channel.TypeOpenai.String(),
+		BaseURL:     server.URL + "/",
+		ChannelID:   &ch.ID,
+	})
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	require.Len(t, result.Models, 1)
+	require.Equal(t, "override-model", result.Models[0].ID)
+
+	assert.Equal(t, "override-secret", gotAPIKey,
+		"the channel's header override must be applied to the /models probe request")
+	assert.Empty(t, gotAuth,
+		"a delete override must remove the standard Authorization header from the probe")
+}
+
+func TestFetchModelsAppliesLegacyOverrideHeaders(t *testing.T) {
+	var gotAPIKey string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAPIKey = r.Header.Get("X-Api-Key")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"legacy-model"}]}`))
+	}))
+	defer server.Close()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:fetch_models_header_override_legacy?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithSystemBypass(context.Background(), "test")
+	ch, err := client.Channel.Create().
+		SetName("legacy-header-override").
+		SetType(channel.TypeOpenai).
+		SetBaseURL(server.URL).
+		SetCredentials(objects.ChannelCredentials{APIKey: "stored-secret"}).
+		SetSupportedModels([]string{"legacy-model"}).
+		SetDefaultTestModel("legacy-model").
+		SetSettings(&objects.ChannelSettings{
+			OverrideHeaders: []objects.HeaderEntry{{Key: "x-api-key", Value: "legacy-secret"}},
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	fetcher := NewModelFetcher(
+		httpclient.NewHttpClientWithClient(server.Client()),
+		&ChannelService{AbstractService: &AbstractService{db: client}},
+	)
+
+	result, err := fetcher.FetchModels(ctx, FetchModelsInput{
+		ChannelType: channel.TypeOpenai.String(),
+		BaseURL:     server.URL + "/",
+		ChannelID:   &ch.ID,
+	})
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	require.Len(t, result.Models, 1)
+	require.Equal(t, "legacy-model", result.Models[0].ID)
+
+	assert.Equal(t, "legacy-secret", gotAPIKey,
+		"the deprecated OverrideHeaders list must still be applied to the probe request")
+}

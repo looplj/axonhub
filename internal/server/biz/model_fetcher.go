@@ -17,6 +17,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
@@ -390,8 +391,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	var (
-		apiKey      string
-		proxyConfig *httpclient.ProxyConfig
+		apiKey            string
+		proxyConfig       *httpclient.ProxyConfig
+		headerOverrideOps []objects.OverrideOperation
 	)
 
 	if input.APIKey != nil && *input.APIKey != "" {
@@ -431,6 +433,15 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 		if ch.Settings != nil {
 			proxyConfig = ch.Settings.Proxy
+
+			// The new schema field takes precedence; the legacy OverrideHeaders list is
+			// converted when the new field is absent (same precedence as
+			// (*Channel).GetHeaderOverrideOperations).
+			if ch.Settings.HeaderOverrideOperations != nil {
+				headerOverrideOps = ch.Settings.HeaderOverrideOperations
+			} else {
+				headerOverrideOps = objects.HeaderEntriesToOverrideOperations(ch.Settings.OverrideHeaders)
+			}
 		}
 	}
 
@@ -509,6 +520,13 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	} else {
 		req.Headers.Set("Authorization", "Bearer "+apiKey)
 	}
+
+	if req.Headers == nil {
+		req.Headers = make(http.Header)
+	}
+	// Channel header overrides win over the standard auth headers, matching the
+	// chat/completion path.
+	ApplyModelFetchHeaderOverrides(req.Headers, headerOverrideOps)
 
 	httpClient := f.httpClient
 	if proxyConfig != nil {
