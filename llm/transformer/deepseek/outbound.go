@@ -100,12 +100,7 @@ func (t *OutboundTransformer) TransformRequest(
 		return nil, fmt.Errorf("%w: messages are required", transformer.ErrInvalidRequest)
 	}
 
-	preparedRequest, namespaceMetadata, err := openai.PrepareNamespaceRequest(llmReq)
-	if err != nil {
-		return nil, err
-	}
-
-	oaiReq := openai.RequestFromLLM(ctx, preparedRequest, openai.ReasoningFieldContent)
+	oaiReq := openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldContent)
 
 	if oaiReq.ResponseFormat != nil && oaiReq.ResponseFormat.Type == "json_schema" {
 		oaiReq.ResponseFormat.Type = "json_object"
@@ -155,13 +150,12 @@ func (t *OutboundTransformer) TransformRequest(
 	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
-		TransformerMetadata: namespaceMetadata,
-		Method:              http.MethodPost,
-		URL:                 url,
-		Headers:             headers,
-		Body:                body,
-		Auth:                auth,
-		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
+		Method:    http.MethodPost,
+		URL:       url,
+		Headers:   headers,
+		Body:      body,
+		Auth:      auth,
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
 }
 

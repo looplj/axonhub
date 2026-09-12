@@ -136,9 +136,6 @@ func (t *ClaudeCodeTransformer) TransformRequest(
 
 	reqCopy = injectFakeUserIDStructured(ctx, reqCopy, t.accountIdentity)
 	if t.isOfficial && !keepClientUA {
-		if err := transformer.ValidateFlatFunctionNames(&reqCopy); err != nil {
-			return nil, err
-		}
 		reqCopy = *applyClaudeToolPrefixStructured(&reqCopy, toolPrefix)
 	}
 

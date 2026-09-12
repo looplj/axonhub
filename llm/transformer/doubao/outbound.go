@@ -163,12 +163,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert llm.Request to openai.Request first
-	preparedRequest, namespaceMetadata, err := openai.PrepareNamespaceRequest(llmReq)
-	if err != nil {
-		return nil, err
-	}
-
-	oaiReq := openai.RequestFromLLM(ctx, preparedRequest, openai.ReasoningFieldContent)
+	oaiReq := openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldContent)
 
 	// Create Doubao-specific request by adding request_id/user_id
 	doubaoReq := Request{
@@ -230,13 +225,12 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	return &httpclient.Request{
-		TransformerMetadata: namespaceMetadata,
-		Method:              http.MethodPost,
-		URL:                 url,
-		Headers:             headers,
-		Body:                body,
-		Auth:                auth,
-		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
+		Method:    http.MethodPost,
+		URL:       url,
+		Headers:   headers,
+		Body:      body,
+		Auth:      auth,
+		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
 }
 

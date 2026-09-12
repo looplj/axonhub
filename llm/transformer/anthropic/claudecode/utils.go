@@ -3,7 +3,6 @@ package claudecode
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -64,38 +63,20 @@ func applyClaudeToolPrefixStructured(llmReq *llm.Request, prefix string) *llm.Re
 		return llmReq
 	}
 
-	request := *llmReq
-	request.Tools = slices.Clone(llmReq.Tools)
-	request.ToolChoice = llm.ResolveSingleFunctionChoice(llmReq.ToolChoice, llmReq.Tools)
-	if request.ToolChoice != nil {
-		choice := *request.ToolChoice
-		if choice.NamedToolChoice != nil {
-			named := *choice.NamedToolChoice
-			choice.NamedToolChoice = &named
-		}
-		request.ToolChoice = &choice
-	}
-	llmReq = &request
-
 	// Prefix tool names in tools array
 	for i := range llmReq.Tools {
-		function := &llmReq.Tools[i].Function
-		function.Name = llm.FlattenFunctionName(function.Namespace, function.Name)
-		function.Namespace = ""
 		if !strings.HasPrefix(llmReq.Tools[i].Function.Name, prefix) {
 			llmReq.Tools[i].Function.Name = prefix + llmReq.Tools[i].Function.Name
 		}
 	}
 
+	// Prefix tool_choice.name if type is "tool"
 	if llmReq.ToolChoice != nil && llmReq.ToolChoice.NamedToolChoice != nil {
-		named := llmReq.ToolChoice.NamedToolChoice
-		if (named.Type == llm.ToolTypeFunction || named.Type == "tool") && named.Function.Name != "" {
-			name := llm.FlattenFunctionName(named.Function.Namespace, named.Function.Name)
-			if !strings.HasPrefix(name, prefix) {
-				name = prefix + name
+		if llmReq.ToolChoice.NamedToolChoice.Type == "tool" {
+			name := llmReq.ToolChoice.NamedToolChoice.Function.Name
+			if name != "" && !strings.HasPrefix(name, prefix) {
+				llmReq.ToolChoice.NamedToolChoice.Function.Name = prefix + name
 			}
-			named.Function.Name = name
-			named.Function.Namespace = ""
 		}
 	}
 

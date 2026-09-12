@@ -37,8 +37,6 @@ type Tool struct {
 
 // Function represents a function definition.
 type Function struct {
-	// Namespace is the namespace that owns this function, when present.
-	Namespace   string          `json:"namespace,omitempty"`
 	Name        string          `json:"name"`
 	Description string          `json:"description,omitempty"`
 	Parameters  json.RawMessage `json:"parameters,omitempty"`
@@ -88,15 +86,7 @@ type ToolCall struct {
 }
 
 type ToolFunction struct {
-	Namespace string `json:"namespace,omitempty"`
-	Name      string `json:"name"`
-}
-
-// ToolOption represents a specific tool within a multi-tool choice.
-type ToolOption struct {
-	Type      string `json:"type"`
-	Name      string `json:"name"`
-	Namespace string `json:"namespace,omitempty"`
+	Name string `json:"name"`
 }
 
 // ToolChoice represents the tool choice parameter for function calling.
@@ -105,7 +95,6 @@ type ToolOption struct {
 type ToolChoice struct {
 	ToolChoice      *string          `json:"tool_choice,omitempty"`
 	NamedToolChoice *NamedToolChoice `json:"named_tool_choice,omitempty"`
-	Tools           []ToolOption     `json:"tools,omitempty"`
 }
 
 type NamedToolChoice struct {
@@ -116,10 +105,6 @@ type NamedToolChoice struct {
 func (t ToolChoice) MarshalJSON() ([]byte, error) {
 	if t.ToolChoice != nil {
 		return json.Marshal(t.ToolChoice)
-	}
-
-	if len(t.Tools) > 0 {
-		return json.Marshal(t.Tools)
 	}
 
 	return json.Marshal(t.NamedToolChoice)
@@ -139,14 +124,6 @@ func (t *ToolChoice) UnmarshalJSON(data []byte) error {
 	err = json.Unmarshal(data, &named)
 	if err == nil {
 		t.NamedToolChoice = &named
-		return nil
-	}
-
-	var options []ToolOption
-
-	err = json.Unmarshal(data, &options)
-	if err == nil {
-		t.Tools = options
 		return nil
 	}
 

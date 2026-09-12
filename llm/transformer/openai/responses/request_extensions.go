@@ -144,14 +144,13 @@ func buildRepresentedToolSignatures(tools []Tool) []string {
 	signatures := make([]string, 0, len(tools))
 	for _, tool := range tools {
 		if tool.Type == "namespace" {
-			represented := Tool{Type: "namespace", Name: tool.Name}
 			for _, subTool := range tool.Tools {
 				if subTool.Type == "function" {
-					represented.Tools = append(represented.Tools, subTool)
+					signatures = append(signatures, responseToolSignature(Tool{
+						Type: "function",
+						Name: namespaceFunctionName(tool.Name, subTool.Name),
+					}))
 				}
-			}
-			if len(represented.Tools) > 0 {
-				signatures = append(signatures, responseToolSignature(represented))
 			}
 			continue
 		}
@@ -192,14 +191,14 @@ func representedNamespaceToolCount(tool Tool) int {
 		return 0
 	}
 
-	// A namespace is now represented by one grouped Responses tool.
+	count := 0
 	for _, subTool := range tool.Tools {
 		if subTool.Type == "function" {
-			return 1
+			count++
 		}
 	}
 
-	return 0
+	return count
 }
 
 func isStructurallyRepresentedToolType(toolType string) bool {
@@ -213,13 +212,6 @@ func isStructurallyRepresentedToolType(toolType string) bool {
 
 func responseToolSignature(tool Tool) string {
 	switch tool.Type {
-	case "namespace":
-		names := []string{tool.Name}
-		for _, subTool := range tool.Tools {
-			names = append(names, subTool.Type, subTool.Name)
-		}
-		encoded, _ := json.Marshal(names)
-		return "namespace:" + string(encoded)
 	case "function", "custom":
 		return tool.Type + ":" + tool.Name
 	default:

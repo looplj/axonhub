@@ -333,12 +333,7 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert llm.Request to openai.Request
-	preparedRequest, namespaceMetadata, err := openai.PrepareNamespaceRequest(&req)
-	if err != nil {
-		return nil, err
-	}
-
-	oaiReq := openai.RequestFromLLM(ctx, preparedRequest, openai.ReasoningFieldContent)
+	oaiReq := openai.RequestFromLLM(ctx, &req, openai.ReasoningFieldContent)
 	fillGeminiThoughtSignatureForGeminiOpenAIRequest(&req, oaiReq)
 
 	geminiReq := Request{Request: *oaiReq}
@@ -367,7 +362,6 @@ func (t *OutboundTransformer) TransformRequest(
 	url := t.BaseURL + "/chat/completions"
 
 	return &httpclient.Request{
-		TransformerMetadata:   namespaceMetadata,
 		Method:                http.MethodPost,
 		URL:                   url,
 		Headers:               headers,

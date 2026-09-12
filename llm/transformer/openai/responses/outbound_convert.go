@@ -533,14 +533,9 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 	} else if src.NamedToolChoice != nil {
 		// Specific tool choice
 		result.Type = &src.NamedToolChoice.Type
-		result.Namespace = src.NamedToolChoice.Function.Namespace
 		if src.NamedToolChoice.Function.Name != "" {
 			result.Name = &src.NamedToolChoice.Function.Name
 		}
-	}
-
-	for _, opt := range src.Tools {
-		result.Tools = append(result.Tools, ToolOption{Type: opt.Type, Name: opt.Name, Namespace: opt.Namespace})
 	}
 
 	return result
