@@ -393,8 +393,9 @@ const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDe
   );
 
   const content = (
-    <div className='flex justify-center'>
-      <div className='flex max-w-56 items-center gap-2'>
+    <div className='flex min-w-0 justify-start'>
+      <div className='flex min-w-0 max-w-56 items-center gap-2'>
+        {nameElement}
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
         {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
         {quotaRoutingIndicator === 'exhausted' && (
@@ -409,7 +410,6 @@ const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDe
             <span className='sr-only'>{t('quota.status.backpressure')}</span>
           </>
         )}
-        {nameElement}
       </div>
     </div>
   );
@@ -820,10 +820,10 @@ export const createColumns = (
       : []),
     {
       accessorKey: 'name',
-      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} className='justify-center' />,
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} />,
       cell: ({ row }: { row: Row<Channel> }) => <NameCell row={row} globalDefaultMode={globalDefaultMode} />,
       meta: {
-         className: 'w-[13%] min-w-0 text-center',
+        className: 'w-[13%] min-w-0 text-left',
       },
       enableHiding: false,
       enableSorting: true,
