@@ -370,7 +370,7 @@ func convertLLMToolChoiceToGeminiToolConfig(tc *llm.ToolChoice) *ToolConfig {
 		// Named tool choice - specific function
 		fcc.Mode = "ANY"
 		if tc.NamedToolChoice.Function.Name != "" {
-			fcc.AllowedFunctionNames = []string{llm.FlattenFunctionName(tc.NamedToolChoice.Function.Namespace, tc.NamedToolChoice.Function.Name)}
+			fcc.AllowedFunctionNames = []string{tc.NamedToolChoice.Function.Name}
 		}
 	} else {
 		fcc.Mode = "AUTO"

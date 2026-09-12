@@ -211,14 +211,13 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 
 				namespaceTool := result.Tools[0]
 				require.Equal(t, "function", namespaceTool.Type)
-				require.Equal(t, "list_projects", namespaceTool.Function.Name)
-				require.Equal(t, "mcp__codebase_memory_mcp", namespaceTool.Function.Namespace)
+				require.Equal(t, "mcp__codebase_memory_mcp__list_projects", namespaceTool.Function.Name)
 				require.Equal(t, "List stored projects", namespaceTool.Function.Description)
 				require.JSONEq(t, `{"type":"object","properties":{}}`, string(namespaceTool.Function.Parameters))
 				require.NotNil(t, namespaceTool.Function.Strict)
 				require.True(t, *namespaceTool.Function.Strict)
 
-				require.Equal(t, "get_project", result.Tools[1].Function.Name)
+				require.Equal(t, "mcp__codebase_memory_mcp__get_project", result.Tools[1].Function.Name)
 				require.Equal(t, "get_weather", result.Tools[2].Function.Name)
 			},
 		},
@@ -1025,30 +1024,6 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
-func TestConvertToolsToLLM_Namespace(t *testing.T) {
-	tools, err := convertToolsToLLM([]Tool{
-		{Type: "namespace", Name: "mcp__context7", Tools: []Tool{{Type: "function", Name: "query_docs"}}},
-		{Type: "function", Name: "mcp__context7__query_docs"},
-	})
-	require.NoError(t, err)
-	require.Len(t, tools, 2)
-	require.Equal(t, "query_docs", tools[0].Function.Name)
-	require.Equal(t, "mcp__context7", tools[0].Function.Namespace)
-	require.Equal(t, "mcp__context7__query_docs", tools[1].Function.Name)
-	require.Empty(t, tools[1].Function.Namespace)
-}
-
-func TestConvertToolChoiceToLLM_Namespace(t *testing.T) {
-	choice, err := convertToolChoiceToLLM(&ToolChoice{Type: lo.ToPtr("namespace"), Name: lo.ToPtr("docs")})
-	require.NoError(t, err)
-	require.Equal(t, "namespace", choice.NamedToolChoice.Type)
-	require.Equal(t, "docs", choice.NamedToolChoice.Function.Name)
-	choice, err = convertToolChoiceToLLM(&ToolChoice{Tools: []ToolOption{{Type: "function", Name: "search", Namespace: "docs"}}})
-	require.NoError(t, err)
-	require.Nil(t, choice.NamedToolChoice)
-	require.Equal(t, []llm.ToolOption{{Type: "function", Name: "search", Namespace: "docs"}}, choice.Tools)
-}
-
 func TestConvertItemToMessage_Compaction(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -1505,8 +1480,7 @@ func TestConvertToolChoiceToLLM(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := convertToolChoiceToLLM(tt.input)
-			require.NoError(t, err)
+			result := convertToolChoiceToLLM(tt.input)
 			tt.validate(t, result)
 		})
 	}

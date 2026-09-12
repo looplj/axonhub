@@ -236,20 +236,17 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		}
 	}
 
+	// Convert tool choice
+	if req.ToolChoice != nil {
+		chatReq.ToolChoice = convertToolChoiceToLLM(req.ToolChoice)
+	}
+
 	// Convert stream options
 	if req.StreamOptions != nil {
 		chatReq.StreamOptions = &llm.StreamOptions{}
 		if req.StreamOptions.IncludeObfuscation != nil {
 			chatReq.TransformerMetadata["include_obfuscation"] = req.StreamOptions.IncludeObfuscation
 		}
-	}
-
-	if len(req.Tools) > 0 {
-		tools, err := convertToolsToLLM(req.Tools)
-		if err != nil {
-			return nil, err
-		}
-		chatReq.Tools = tools
 	}
 
 	// Convert instructions to system message
@@ -263,7 +260,7 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 		})
 	}
 
-	// Preserve tool identities in the unified model.
+	// Convert input to messages
 	if req.Input.Items != nil {
 		chatReq.TransformOptions.ArrayInputs = lo.ToPtr(true)
 	}
@@ -277,13 +274,13 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 
 	chatReq.Messages = messages
 
-	// Preserve tool selection constraints for outbound-specific handling.
-	if req.ToolChoice != nil {
-		choice, err := convertToolChoiceToLLM(req.ToolChoice)
+	if len(req.Tools) > 0 {
+		tools, err := convertToolsToLLM(req.Tools)
 		if err != nil {
 			return nil, err
 		}
-		chatReq.ToolChoice = choice
+
+		chatReq.Tools = tools
 	}
 
 	// Convert text format to response format
@@ -318,23 +315,26 @@ func convertToLLMRequest(req *Request, rawBody ...[]byte) (*llm.Request, error) 
 	return chatReq, nil
 }
 
-// convertToolChoiceToLLM preserves Responses tool selection without imposing
-// Chat Completions naming or selection restrictions on other outbounds.
-func convertToolChoiceToLLM(src *ToolChoice) (*llm.ToolChoice, error) {
+// convertToolChoiceToLLM converts Responses API ToolChoice to llm.ToolChoice.
+func convertToolChoiceToLLM(src *ToolChoice) *llm.ToolChoice {
 	if src == nil {
-		return nil, nil
+		return nil
 	}
-	result := &llm.ToolChoice{ToolChoice: src.Mode}
-	if src.Type != nil {
+
+	result := &llm.ToolChoice{}
+
+	if src.Mode != nil {
+		result.ToolChoice = src.Mode
+	} else if src.Type != nil {
 		result.NamedToolChoice = &llm.NamedToolChoice{
-			Type:     *src.Type,
-			Function: llm.ToolFunction{Name: lo.FromPtr(src.Name), Namespace: src.Namespace},
+			Type: *src.Type,
+		}
+		if src.Name != nil {
+			result.NamedToolChoice.Function.Name = *src.Name
 		}
 	}
-	for _, opt := range src.Tools {
-		result.Tools = append(result.Tools, llm.ToolOption{Type: opt.Type, Name: opt.Name, Namespace: opt.Namespace})
-	}
-	return result, nil
+
+	return result
 }
 
 // convertInputToMessages converts Responses API input to llm.Message slice.
@@ -886,8 +886,7 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 				result = append(result, llm.Tool{
 					Type: "function",
 					Function: llm.Function{
-						Name:        subTool.Name,
-						Namespace:   tool.Name,
+						Name:        namespaceFunctionName(tool.Name, subTool.Name),
 						Description: subTool.Description,
 						Parameters:  params,
 						Strict:      subTool.Strict,
@@ -902,6 +901,10 @@ func convertToolsToLLM(tools []Tool) ([]llm.Tool, error) {
 	}
 
 	return result, nil
+}
+
+func namespaceFunctionName(namespaceName, functionName string) string {
+	return namespaceName + "__" + functionName
 }
 
 func getResponseWebSearchCallsFromMetadata(metadata map[string]any) []Item {
