@@ -118290,16 +118290,13 @@ func (ec *executionContext) marshalOAPIKey2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋ
 }
 
 func (ec *executionContext) unmarshalOAPIKeyAutoDisableMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableMode(ctx context.Context, v any) (objects.APIKeyAutoDisableMode, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	res := objects.APIKeyAutoDisableMode(tmp)
+	var res objects.APIKeyAutoDisableMode
+	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalOAPIKeyAutoDisableMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableMode(ctx context.Context, sel ast.SelectionSet, v objects.APIKeyAutoDisableMode) graphql.Marshaler {
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalString(string(v))
-	return res
+	return v
 }
 
 func (ec *executionContext) marshalOAPIKeyAutoDisableRule2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyAutoDisableRuleᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.APIKeyAutoDisableRule) graphql.Marshaler {

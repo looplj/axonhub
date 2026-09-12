@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import ts from 'typescript';
+import { z } from 'zod';
 
 const dataDir = import.meta.dirname;
 const srcRoot = join(dataDir, '..', '..', '..');
@@ -42,6 +43,27 @@ test('effectiveAutoDisableMode infers custom from legacy rules and inherit from 
   );
   assert.equal(effectiveAutoDisableMode({}), 'inherit');
   assert.equal(effectiveAutoDisableMode(null), 'inherit');
+  assert.equal(effectiveAutoDisableMode({ apiKeyAutoDisableMode: '' }), 'inherit');
+  assert.equal(
+    effectiveAutoDisableMode({
+      apiKeyAutoDisableMode: '',
+      apiKeyAutoDisableRules: [{ times: 1, action: 'permanent_disable', statusCodes: [401] }],
+    }),
+    'custom'
+  );
+});
+
+test('channelPoliciesSchema coerces empty apiKeyAutoDisableMode to null before enum checks', () => {
+  const schemaSource = read('features/channels/data/schema.ts');
+  assert.match(schemaSource, /export function coerceApiKeyAutoDisableMode/);
+  assert.match(schemaSource, /apiKeyAutoDisableMode:\s*z\.preprocess\(coerceApiKeyAutoDisableMode/);
+  assert.match(schemaSource, /value === '' \? null : value/);
+
+  const modeSchema = z.preprocess((value) => (value === '' ? null : value), z.enum(['inherit', 'custom', 'off']).optional().nullable());
+  assert.equal(modeSchema.parse(''), null);
+  assert.equal(modeSchema.parse(null), null);
+  assert.equal(modeSchema.parse('inherit'), 'inherit');
+  assert.throws(() => modeSchema.parse('nope'));
 });
 
 test('effectiveAutoDisableMode treats empty custom as inherit', () => {

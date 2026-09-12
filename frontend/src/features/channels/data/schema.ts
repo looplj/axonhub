@@ -154,6 +154,11 @@ export type APIKeyAutoDisableAction = z.infer<typeof apiKeyAutoDisableActionSche
 export const apiKeyAutoDisableModeSchema = z.enum(['inherit', 'custom', 'off']);
 export type APIKeyAutoDisableMode = z.infer<typeof apiKeyAutoDisableModeSchema>;
 
+/** GraphQL may still emit "" for unset mode; treat it as null before enum checks. */
+export function coerceApiKeyAutoDisableMode(value: unknown): unknown {
+  return value === '' ? null : value;
+}
+
 export const apiKeyAutoDisableRuleSchema = z.object({
   statusCodes: z.array(z.number().int().min(100).max(599)).optional().nullable(),
   keywordPatterns: z.array(z.string()).optional().nullable(),
@@ -181,7 +186,7 @@ export const apiKeyAutoDisableRuleFormSchema = apiKeyAutoDisableRuleSchema
 
 export const channelPoliciesSchema = z.object({
   stream: capabilityPolicySchema.optional(),
-  apiKeyAutoDisableMode: apiKeyAutoDisableModeSchema.optional().nullable(),
+  apiKeyAutoDisableMode: z.preprocess(coerceApiKeyAutoDisableMode, apiKeyAutoDisableModeSchema.optional().nullable()),
   apiKeyAutoDisableRules: z.array(apiKeyAutoDisableRuleSchema).optional().nullable(),
 });
 export type ChannelPolicies = z.infer<typeof channelPoliciesSchema>;
