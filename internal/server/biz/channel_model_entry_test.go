@@ -518,3 +518,34 @@ func TestChannel_GetUnifiedModels_LowercaseModelID(t *testing.T) {
 		})
 	}
 }
+
+func TestChannel_GetDirectModelEntries_IncludesAliasesAndHiddenOriginals(t *testing.T) {
+	ch := &Channel{
+		Channel: &ent.Channel{
+			Name:            "nv-api6",
+			SupportedModels: []string{"moonshotai/kimi-k3", "deepseek-ai/deepseek-v4-pro"},
+			Settings: &objects.ChannelSettings{
+				AutoTrimedModelPrefixes: []string{"moonshotai", "deepseek-ai"},
+				ModelMappings: []objects.ModelMapping{
+					{From: "deepseek-v4-flash", To: "deepseek-ai/deepseek-v4-pro"},
+				},
+				HideOriginalModels: true,
+			},
+		},
+	}
+
+	entries := ch.GetDirectModelEntries()
+
+	require.Equal(t, "moonshotai/kimi-k3", entries["kimi-k3"].ActualModel)
+	require.Equal(t, "auto_trim", entries["kimi-k3"].Source)
+	require.Equal(t, "deepseek-ai/deepseek-v4-pro", entries["deepseek-v4-pro"].ActualModel)
+	require.Equal(t, "deepseek-ai/deepseek-v4-pro", entries["deepseek-v4-flash"].ActualModel)
+	require.Equal(t, "mapping", entries["deepseek-v4-flash"].Source)
+	require.Equal(t, "moonshotai/kimi-k3", entries["moonshotai/kimi-k3"].ActualModel)
+	require.Equal(t, "direct", entries["moonshotai/kimi-k3"].Source)
+
+	public := ch.GetModelEntries()
+	_, hidden := public["moonshotai/kimi-k3"]
+	require.False(t, hidden, "HideOriginalModels should still hide provider ids from the public list")
+	require.Contains(t, public, "kimi-k3")
+}
