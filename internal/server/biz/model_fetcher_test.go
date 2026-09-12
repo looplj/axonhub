@@ -1139,7 +1139,7 @@ func TestFetchModelsAppliesHeaderOverrideOperationsFromSettings(t *testing.T) {
 	var gotAPIKey, gotAuth string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotAPIKey = r.Header.Get("x-api-key")
+		gotAPIKey = r.Header.Get("X-Api-Key")
 		gotAuth = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"data":[{"id":"override-model"}]}`))
@@ -1191,7 +1191,7 @@ func TestFetchModelsAppliesLegacyOverrideHeaders(t *testing.T) {
 	var gotAPIKey string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotAPIKey = r.Header.Get("x-api-key")
+		gotAPIKey = r.Header.Get("X-Api-Key")
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"data":[{"id":"legacy-model"}]}`))
 	}))
