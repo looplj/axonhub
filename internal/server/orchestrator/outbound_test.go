@@ -759,7 +759,7 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 		require.False(t, outbound.CanRetry(errSkipCandidateByCircuitBreaker))
 	})
 
-	t.Run("sticky candidate should not trigger same-channel retry", func(t *testing.T) {
+	t.Run("sticky candidate follows normal same-channel retry rules", func(t *testing.T) {
 		outbound := &PersistentOutboundTransformer{
 			wrapped: &mockTransformer{},
 			state: &PersistenceState{
@@ -768,13 +768,20 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 					TraceSticky: true,
 					Models: []biz.ChannelModelEntry{
 						{RequestModel: "gpt-4", ActualModel: "gpt-4"},
-						{RequestModel: "gpt-4", ActualModel: "gpt-4-alternative"},
 					},
 				},
 			},
 		}
 
-		require.False(t, outbound.CanRetry(retryableErr))
+		require.True(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusInternalServerError}))
+		require.True(t, outbound.CanRetry(pipeline.ErrEmptyResponse))
+		require.False(t, outbound.CanRetry(nonRetryableErr))
+		require.False(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusTooManyRequests}))
+		require.False(t, outbound.CanRetry(errSkipCandidateByCircuitBreaker))
+
+		outbound.state.CurrentCandidate.Models = append(outbound.state.CurrentCandidate.Models,
+			biz.ChannelModelEntry{RequestModel: "gpt-4", ActualModel: "gpt-4-alternative"})
+		require.True(t, outbound.CanRetry(nonRetryableErr), "sticky channels can retry another mapped model")
 	})
 
 	t.Run("auto-aggregate empty errors are retryable", func(t *testing.T) {
