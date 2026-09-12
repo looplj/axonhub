@@ -2,10 +2,12 @@ package provider_quota
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -326,7 +328,12 @@ func TestCommandCodeCamelSnakeAndNestedWindowLimits(t *testing.T) {
 // windowLimits.{fiveHour,weekly}.{used,cap,resetAt(ms)}; subscriptions wraps
 // the subscription under "data" with planId/currentPeriodEnd.
 func TestCommandCodeRealWirePayload(t *testing.T) {
-	credits := `{"credits":{"belowThreshold":false,"creditThreshold":0,"monthlyCredits":24.7335198407,"purchasedCredits":0,"premiumMonthlyCredits":0,"opensourceMonthlyCredits":24.7335198407},"windowLimits":{"limited":true,"exceeded":null,"fiveHour":{"used":0.3185113898,"cap":14,"exceeded":false,"resetAt":1788464063798},"weekly":{"used":1.2796088158,"cap":35,"exceeded":false,"resetAt":1789047746618}}}`
+	// Keep resets in the future: normalization clears expired timestamps.
+	// Preserve the wire format and millisecond precision of the captured payload.
+	now := time.Now().Truncate(time.Second)
+	fiveHourReset := now.Add(2*time.Hour + 798*time.Millisecond)
+	weeklyReset := now.Add(3*24*time.Hour + 618*time.Millisecond)
+	credits := fmt.Sprintf(`{"credits":{"belowThreshold":false,"creditThreshold":0,"monthlyCredits":24.7335198407,"purchasedCredits":0,"premiumMonthlyCredits":0,"opensourceMonthlyCredits":24.7335198407},"windowLimits":{"limited":true,"exceeded":null,"fiveHour":{"used":0.3185113898,"cap":14,"exceeded":false,"resetAt":%d},"weekly":{"used":1.2796088158,"cap":35,"exceeded":false,"resetAt":%d}}}`, fiveHourReset.UnixMilli(), weeklyReset.UnixMilli())
 	subs := `{"success":true,"data":{"id":"sub_x","status":"active","planId":"individual-goat","currentPeriodEnd":"2026-09-19T12:02:05.000Z","metadata":{"commandCode":"true"}}}`
 
 	quota, err := parseCommandCodeCredits([]byte(credits), []byte(subs))
@@ -352,10 +359,11 @@ func TestCommandCodeRealWirePayload(t *testing.T) {
 	// Window reset times survive the millisecond epoch → RFC3339 round trip.
 	windows := quota.RawData["windows"].(map[string]any)
 	fiveHour := windows["five_hour"].(map[string]any)
-	require.NotEmpty(t, fiveHour["reset_time"])
+	require.Equal(t, fiveHourReset.Format(time.RFC3339), fiveHour["reset_time"])
 	weekly := windows["weekly"].(map[string]any)
-	require.NotEmpty(t, weekly["reset_time"])
+	require.Equal(t, weeklyReset.Format(time.RFC3339), weekly["reset_time"])
 	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, fiveHourReset.UnixMilli(), quota.NextResetAt.UnixMilli())
 }
 
 func TestCommandCodeGoPlanAllowance(t *testing.T) {

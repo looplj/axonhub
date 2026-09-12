@@ -21,6 +21,9 @@ func (t *InboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
+	stream = streams.MapErr(stream, func(resp *llm.Response) (*llm.Response, error) {
+		return mapResponseFunctionNames(resp, false), nil
+	})
 	return &responsesInboundStream{
 		source:              stream,
 		ctx:                 ctx,

@@ -212,6 +212,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 				namespaceTool := result.Tools[0]
 				require.Equal(t, "function", namespaceTool.Type)
 				require.Equal(t, "mcp__codebase_memory_mcp__list_projects", namespaceTool.Function.Name)
+				require.Equal(t, "mcp__codebase_memory_mcp", namespaceTool.Function.Namespace)
 				require.Equal(t, "List stored projects", namespaceTool.Function.Description)
 				require.JSONEq(t, `{"type":"object","properties":{}}`, string(namespaceTool.Function.Parameters))
 				require.NotNil(t, namespaceTool.Function.Strict)
@@ -1022,6 +1023,19 @@ func TestInboundTransformer_TransformResponse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConvertToolsToLLM_Namespace(t *testing.T) {
+	tools, err := convertToolsToLLM([]Tool{
+		{Type: "namespace", Name: "mcp__context7", Tools: []Tool{{Type: "function", Name: "query_docs"}}},
+		{Type: "function", Name: "mcp__context7__query_docs"},
+	})
+	require.NoError(t, err)
+	require.Len(t, tools, 2)
+	require.Equal(t, "query_docs", tools[0].Function.Name)
+	require.Equal(t, "mcp__context7", tools[0].Function.Namespace)
+	require.Equal(t, "mcp__context7__query_docs", tools[1].Function.Name)
+	require.Empty(t, tools[1].Function.Namespace)
 }
 
 func TestConvertItemToMessage_Compaction(t *testing.T) {

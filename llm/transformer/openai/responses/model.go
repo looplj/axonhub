@@ -230,20 +230,7 @@ func (t *ToolChoice) MarshalJSON() ([]byte, error) {
 		return json.Marshal(*t.Mode)
 	}
 
-	// For other cases, marshal as object
-	type Alias ToolChoice
-
-	return json.Marshal(&struct {
-		Mode  *string      `json:"mode,omitempty"`
-		Type  *string      `json:"type,omitempty"`
-		Name  *string      `json:"name,omitempty"`
-		Tools []ToolOption `json:"tools,omitempty"`
-	}{
-		Mode:  t.Mode,
-		Type:  t.Type,
-		Name:  t.Name,
-		Tools: t.Tools,
-	})
+	return json.Marshal((*ToolChoiceAlias)(t))
 }
 
 // ResponseToolChoice represents tool_choice in responses, which can be a string or object.

@@ -60,6 +60,7 @@ func (p *pipeline) notStream(
 
 	slog.DebugContext(ctx, "LLM response", slog.Any("response", llmResp))
 
+	llmResp = withTransformerMetadata(request.TransformerMetadata, llmResp)
 	finalResp, err := p.Inbound.TransformResponse(ctx, llmResp)
 	if err != nil {
 		p.applyRawErrorResponseMiddlewares(ctx, err)
