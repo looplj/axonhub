@@ -192,6 +192,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		reasoningField = ReasoningFieldContent
 	}
 
+	llmReq, namespaceMetadata, err := PrepareNamespaceRequest(llmReq)
+	if err != nil {
+		return nil, err
+	}
+
 	// Convert to OpenAI Request format (this strips helper fields)
 	oaiReq := RequestFromLLM(ctx, llmReq, reasoningField)
 	//nolint:exhaustive // Checked.
@@ -225,13 +230,14 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	return &httpclient.Request{
-		Method:    http.MethodPost,
-		URL:       url,
-		Headers:   headers,
-		Body:      body,
-		Auth:      authConfig,
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
-		Metadata:  nil,
+		Method:              http.MethodPost,
+		URL:                 url,
+		Headers:             headers,
+		Body:                body,
+		Auth:                authConfig,
+		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
+		TransformerMetadata: namespaceMetadata,
+		Metadata:            nil,
 	}, nil
 }
 
@@ -291,7 +297,11 @@ func (t *OutboundTransformer) TransformResponse(
 	}
 
 	// Convert to unified llm.Response
-	return oaiResp.ToLLMResponse(), nil
+	resp := oaiResp.ToLLMResponse()
+
+	RestoreNamespaceResponse(httpResp.Request, resp)
+
+	return resp, nil
 }
 
 func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
@@ -313,9 +323,29 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 	//
 	// Note: TransformStreamChunk only returns nil for events with explicit "choices":[]
 	// in the raw JSON. Events without a choices key (nil slice) are passed through.
-	return streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
+	mapping := extractNamespaceToolMapping(req)
+
+	transformed := streams.NoNil(streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.TransformStreamChunk(ctx, event)
-	})), nil
+	}))
+
+	if mapping == nil {
+		return transformed, nil
+	}
+
+	return streams.Map(transformed, func(resp *llm.Response) *llm.Response {
+		restoreNamespaceResponse(resp, mapping)
+		return resp
+	}), nil
+}
+
+// extractNamespaceToolMapping reads the mapping owned by this outbound attempt.
+func extractNamespaceToolMapping(req *httpclient.Request) namespaceToolMapping {
+	if req == nil {
+		return nil
+	}
+	mapping, _ := req.TransformerMetadata[namespaceToolMappingMetadataKey].(namespaceToolMapping)
+	return mapping
 }
 
 func (t *OutboundTransformer) TransformStreamChunk(

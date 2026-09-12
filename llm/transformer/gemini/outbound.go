@@ -133,6 +133,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("%w: messages are required,%v", transformer.ErrInvalidRequest, llmReq.Messages)
 	}
 
+	if err := transformer.ValidateFlatFunctionNames(llmReq); err != nil {
+		return nil, err
+	}
+	if err := transformer.ValidateNamespaceToolChoice(llmReq.ToolChoice, llmReq.Tools); err != nil {
+		return nil, err
+	}
+
 	// Convert to Gemini request format with config
 	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config)
 

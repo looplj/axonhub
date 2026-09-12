@@ -1249,3 +1249,36 @@ func TestInferCopilotInitiator(t *testing.T) {
 		})
 	}
 }
+
+func TestOutboundTransformer_NamespaceProtocolDispatch(t *testing.T) {
+	out, err := NewOutboundTransformer(OutboundTransformerParams{TokenProvider: &mockTokenProvider{token: "test-token"}})
+	require.NoError(t, err)
+	for _, model := range []string{"gpt-4o", "gpt-5"} {
+		t.Run(model, func(t *testing.T) {
+			req := &llm.Request{Model: model,
+				Tools:      []llm.Tool{{Type: "function", Function: llm.Function{Name: "search", Namespace: "docs"}}},
+				Messages:   []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
+				ToolChoice: &llm.ToolChoice{NamedToolChoice: &llm.NamedToolChoice{Type: "namespace", Function: llm.ToolFunction{Name: "docs"}}},
+			}
+			wire, err := out.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(wire.Body, &body))
+			tool := body["tools"].([]any)[0].(map[string]any)
+			choice := body["tool_choice"].(map[string]any)
+			if model == "gpt-5" {
+				require.Equal(t, "namespace", tool["type"])
+				require.Equal(t, "docs", tool["name"])
+				require.Equal(t, "search", tool["tools"].([]any)[0].(map[string]any)["name"])
+				require.Equal(t, "namespace", choice["type"])
+				require.Equal(t, "docs", choice["name"])
+			} else {
+				require.Equal(t, "docs__search", tool["function"].(map[string]any)["name"])
+				require.Equal(t, "docs__search", choice["function"].(map[string]any)["name"])
+				require.NotEmpty(t, wire.TransformerMetadata)
+			}
+			require.Equal(t, "search", req.Tools[0].Function.Name)
+			require.Equal(t, "docs", req.Tools[0].Function.Namespace)
+		})
+	}
+}

@@ -244,7 +244,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 			switch tool.Type {
 			case "function":
 				fd := &FunctionDeclaration{
-					Name:        tool.Function.Name,
+					Name:        llm.FlattenFunctionName(tool.Function.Namespace, tool.Function.Name),
 					Description: tool.Function.Description,
 				}
 
@@ -290,7 +290,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 
 	// Convert tool choice
 	if chatReq.ToolChoice != nil {
-		req.ToolConfig = convertLLMToolChoiceToGeminiToolConfig(chatReq.ToolChoice)
+		req.ToolConfig = convertLLMToolChoiceToGeminiToolConfig(llm.ResolveSingleFunctionChoice(chatReq.ToolChoice, chatReq.Tools))
 	}
 
 	// Convert safety settings from TransformerMetadata
@@ -414,7 +414,7 @@ func convertLLMMessageToGeminiContent(msg *llm.Message) *Content {
 		part := &Part{
 			FunctionCall: &FunctionCall{
 				ID:   toolCall.ID,
-				Name: toolCall.Function.Name,
+				Name: llm.FlattenFunctionName(toolCall.Function.Namespace, toolCall.Function.Name),
 				Args: args,
 			},
 		}

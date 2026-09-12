@@ -120,7 +120,12 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		return nil, fmt.Errorf("failed to get copilot token: %w", err)
 	}
 
-	oaiReq := openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldAll)
+	preparedRequest, namespaceMetadata, err := openai.PrepareNamespaceRequest(llmReq)
+	if err != nil {
+		return nil, err
+	}
+
+	oaiReq := openai.RequestFromLLM(ctx, preparedRequest, openai.ReasoningFieldAll)
 
 	body, err := json.Marshal(oaiReq)
 	if err != nil {
@@ -148,12 +153,13 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	return &httpclient.Request{
-		Method:    http.MethodPost,
-		URL:       url,
-		Headers:   headers,
-		Body:      body,
-		Auth:      authConfig,
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		TransformerMetadata: namespaceMetadata,
+		Method:              http.MethodPost,
+		URL:                 url,
+		Headers:             headers,
+		Body:                body,
+		Auth:                authConfig,
+		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
 }
 

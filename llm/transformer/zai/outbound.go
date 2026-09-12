@@ -236,7 +236,12 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	// Convert llm.Request to openai.Request first
-	oaiReq := openai.RequestFromLLM(ctx, llmReq, openai.ReasoningFieldContent)
+	preparedRequest, namespaceMetadata, err := openai.PrepareNamespaceRequest(llmReq)
+	if err != nil {
+		return nil, err
+	}
+
+	oaiReq := openai.RequestFromLLM(ctx, preparedRequest, openai.ReasoningFieldContent)
 
 	// Zai doesn't support json_schema, convert to json_object
 	if oaiReq.ResponseFormat != nil && oaiReq.ResponseFormat.Type == "json_schema" {
@@ -324,12 +329,13 @@ func (t *OutboundTransformer) TransformRequest(
 	}
 
 	return &httpclient.Request{
-		Method:    http.MethodPost,
-		URL:       url,
-		Headers:   headers,
-		Body:      body,
-		Auth:      auth,
-		APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+		TransformerMetadata: namespaceMetadata,
+		Method:              http.MethodPost,
+		URL:                 url,
+		Headers:             headers,
+		Body:                body,
+		Auth:                auth,
+		APIFormat:           string(llm.APIFormatOpenAIChatCompletion),
 	}, nil
 }
 

@@ -191,6 +191,7 @@ type StreamOptions struct {
 
 // ToolChoice represents how the model should select which tool to use (for requests).
 type ToolChoice struct {
+	Namespace string `json:"namespace,omitempty"`
 	// Mode can be "none", "auto", "required".
 	Mode *string `json:"mode,omitempty"`
 	// Type for specific tool choice. Any of "function", "file_search", "web_search", "shell" etc.
@@ -203,8 +204,9 @@ type ToolChoice struct {
 }
 
 type ToolOption struct {
-	Type string `json:"type"`
-	Name string `json:"name"`
+	Type      string `json:"type"`
+	Name      string `json:"name"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 type ToolChoiceAlias ToolChoice
@@ -234,15 +236,17 @@ func (t *ToolChoice) MarshalJSON() ([]byte, error) {
 	type Alias ToolChoice
 
 	return json.Marshal(&struct {
-		Mode  *string      `json:"mode,omitempty"`
-		Type  *string      `json:"type,omitempty"`
-		Name  *string      `json:"name,omitempty"`
-		Tools []ToolOption `json:"tools,omitempty"`
+		Namespace string       `json:"namespace,omitempty"`
+		Mode      *string      `json:"mode,omitempty"`
+		Type      *string      `json:"type,omitempty"`
+		Name      *string      `json:"name,omitempty"`
+		Tools     []ToolOption `json:"tools,omitempty"`
 	}{
-		Mode:  t.Mode,
-		Type:  t.Type,
-		Name:  t.Name,
-		Tools: t.Tools,
+		Namespace: t.Namespace,
+		Mode:      t.Mode,
+		Type:      t.Type,
+		Name:      t.Name,
+		Tools:     t.Tools,
 	})
 }
 
