@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"github.com/eko/gocache/lib/v4/store"
 	"github.com/tidwall/gjson"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
+	appmetrics "github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -36,6 +38,125 @@ type RequestService struct {
 	DataStorageService   *DataStorageService
 	LiveStreamRegistry   *LiveStreamRegistry
 	previousChannelCache xcache.Cache[int]
+}
+
+func requestMetricAttributes(ctx context.Context, req *ent.Request, channelID int, modelID string) appmetrics.RequestAttributes {
+	if req == nil {
+		return appmetrics.RequestAttributes{ChannelID: channelID, ModelID: modelID}
+	}
+
+	attrs := appmetrics.RequestAttributes{
+		ProjectID:      req.ProjectID,
+		ChannelID:      channelID,
+		RequestModelID: req.ModelID,
+		ModelID:        modelID,
+		APIKeyID:       req.APIKeyID,
+		Source:         string(req.Source),
+		Format:         req.Format,
+		Stream:         req.Stream,
+	}
+
+	if apiKey, ok := contexts.GetAPIKey(ctx); ok && apiKey != nil {
+		if attrs.APIKeyID == 0 {
+			attrs.APIKeyID = apiKey.ID
+		}
+		if attrs.APIKeyID == apiKey.ID {
+			attrs.UserID = apiKey.UserID
+		}
+	}
+
+	return attrs
+}
+
+func executionMetricAttributes(execution *ent.RequestExecution, req *ent.Request) appmetrics.RequestAttributes {
+	if execution == nil {
+		return appmetrics.RequestAttributes{}
+	}
+
+	// Upstream lifecycle and performance metrics deliberately use only
+	// dimensions present on the execution itself. This keeps create and
+	// completion series identical and avoids putting API-key/user cardinality
+	// on the high-volume execution metrics.
+	attrs := appmetrics.RequestAttributes{
+		ProjectID: execution.ProjectID,
+		ChannelID: execution.ChannelID,
+		ModelID:   execution.ModelID,
+		Format:    execution.Format,
+		Stream:    execution.Stream,
+	}
+	if req != nil {
+		attrs.RequestModelID = req.ModelID
+		attrs.APIKeyID = req.APIKeyID
+		attrs.Source = string(req.Source)
+	}
+
+	return attrs
+}
+
+func upstreamMetricAttributes(req *ent.Request, channelID int, modelID string, format string, stream bool) appmetrics.RequestAttributes {
+	attrs := appmetrics.RequestAttributes{
+		ChannelID: channelID,
+		ModelID:   modelID,
+		Format:    format,
+		Stream:    stream,
+	}
+	if req != nil {
+		attrs.ProjectID = req.ProjectID
+	}
+
+	return attrs
+}
+
+func isTerminalRequestStatus(status request.Status) bool {
+	return status == request.StatusCompleted || status == request.StatusFailed || status == request.StatusCanceled
+}
+
+func isTerminalExecutionStatus(status requestexecution.Status) bool {
+	return status == requestexecution.StatusCompleted || status == requestexecution.StatusFailed || status == requestexecution.StatusCanceled
+}
+
+func recordDownstreamCompletionMetrics(ctx context.Context, req *ent.Request, status request.Status) {
+	if req == nil || !isTerminalRequestStatus(status) || isTerminalRequestStatus(req.Status) {
+		return
+	}
+
+	attrs := requestMetricAttributes(ctx, req, req.ChannelID, "")
+	appmetrics.Metrics.RecordDownstreamRequestCompleted(ctx, attrs, string(status))
+	appmetrics.Metrics.RecordDownstreamPerformance(ctx, attrs, string(status), time.Since(req.CreatedAt).Seconds(), nil)
+}
+
+func recordUpstreamCompletionMetrics(
+	ctx context.Context,
+	execution *ent.RequestExecution,
+	status requestexecution.Status,
+	wasTerminal bool,
+	latency *LatencyMetrics,
+	req *ent.Request,
+) {
+	if execution == nil || !isTerminalExecutionStatus(status) || wasTerminal {
+		return
+	}
+
+	attrs := executionMetricAttributes(execution, req)
+	appmetrics.Metrics.RecordUpstreamRequestCompleted(ctx, attrs, string(status))
+
+	if latency == nil || latency.LatencyMs == nil {
+		return
+	}
+
+	var ttftSeconds *float64
+	if latency.FirstTokenLatencyMs != nil {
+		value := float64(*latency.FirstTokenLatencyMs) / 1000
+		ttftSeconds = &value
+	}
+
+	appmetrics.Metrics.RecordUpstreamPerformance(
+		ctx,
+		attrs,
+		string(status),
+		float64(*latency.LatencyMs)/1000,
+		ttftSeconds,
+	)
 }
 
 // NewRequestService creates a new RequestService.
@@ -286,6 +407,8 @@ func (s *RequestService) CreateRequest(
 		}
 	}
 
+	appmetrics.Metrics.RecordDownstreamRequestCreated(ctx, requestMetricAttributes(ctx, req, req.ChannelID, ""))
+
 	// Save request body to external storage if needed
 	if useExternalStorage {
 		key := GenerateRequestBodyKey(projectID, req.ID)
@@ -409,6 +532,11 @@ func (s *RequestService) CreateRequestExecution(
 		}
 	}
 
+	appmetrics.Metrics.RecordUpstreamRequestCreated(
+		ctx,
+		upstreamMetricAttributes(request, channel.ID, modelID, string(format), request.Stream),
+	)
+
 	// Save request body to external storage if needed
 	if useExternalStorage {
 		key := GenerateExecutionRequestBodyKey(request.ProjectID, request.ID, execution.ID)
@@ -481,6 +609,9 @@ func (s *RequestService) UpdateRequestFinalized(
 		log.Error(ctx, "Failed to get request", log.Cause(err))
 		return err
 	}
+	if isTerminalRequestStatus(req.Status) {
+		return nil
+	}
 
 	// Get data storage if set
 	var dataStorage *ent.DataStorage
@@ -510,39 +641,41 @@ func (s *RequestService) UpdateRequestFinalized(
 		}
 	}
 
-	savedExternalKey := ""
-
+	// Save the winning body together with the terminal transition before any
+	// external write. The inline copy remains readable if offloading fails.
+	var responseBodyBytes objects.JSONRawMessage
 	if storeResponseBody {
-		responseBodyBytes, err := xjson.Marshal(responseBody)
+		responseBodyBytes, err = xjson.Marshal(responseBody)
 		if err != nil {
-			log.Error(ctx, "Failed to serialize response body", log.Cause(err))
 			return err
 		}
-
-		// Check if we should use external storage
-		if s.shouldUseExternalStorage(ctx, dataStorage) {
-			// Save to external storage
-			key := GenerateResponseBodyKey(req.ProjectID, requestID)
-
-			err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
-			if err != nil {
-				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
-				// Continue anyway
-			} else {
-				savedExternalKey = key
-				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
-			}
-		} else {
-			// Store in database
-			upd = upd.SetResponseBody(responseBodyBytes)
-		}
+		upd = upd.SetResponseBody(responseBodyBytes)
 	}
 
-	_, err = upd.Save(ctx)
+	updated, err := s.saveRequestTransition(ctx, upd, requestID)
 	if err != nil {
-		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
-		log.Error(ctx, "Failed to update request status to completed", log.Cause(err))
+		log.Error(ctx, "Failed to finalize request", log.Cause(err))
 		return err
+	}
+	if !updated {
+		return nil
+	}
+
+	recordDownstreamCompletionMetrics(ctx, req, status)
+
+	if _, transactional := client.Driver().(dialect.Tx); transactional {
+		return nil
+	}
+	if storeResponseBody && s.shouldUseExternalStorage(ctx, dataStorage) {
+		key := GenerateResponseBodyKey(req.ProjectID, requestID)
+		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
+			log.Error(ctx, "Failed to offload request response; retaining database body", log.Cause(err))
+			return nil
+		}
+		if err := client.Request.UpdateOneID(requestID).
+			SetResponseBody(ExternalResponseBodyMarker).Exec(ctx); err != nil {
+			log.Error(ctx, "Failed to mark offloaded request response; retaining database body", log.Cause(err))
+		}
 	}
 
 	return nil
@@ -742,6 +875,8 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 		return err
 	}
 
+	recordDownstreamCompletionMetrics(ctx, req, status)
+
 	return nil
 }
 
@@ -770,6 +905,14 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 	if err != nil {
 		log.Error(ctx, "Failed to get request execution", log.Cause(err))
 		return err
+	}
+	wasTerminal := isTerminalExecutionStatus(execution.Status)
+	if wasTerminal {
+		return nil
+	}
+	req, reqErr := client.Request.Get(ctx, execution.RequestID)
+	if reqErr != nil {
+		log.Warn(ctx, "failed to load request for execution metrics", log.Cause(reqErr))
 	}
 
 	// Get data storage if set
@@ -803,37 +946,45 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 		}
 	}
 
-	savedExternalKey := ""
-
+	// Persist the response alongside the winning terminal transition first.
+	// This is also the durable fallback if external storage fails or the process
+	// stops before offloading finishes. Losing finalizers must not write the key.
+	var responseBodyBytes objects.JSONRawMessage
 	if storeResponseBody {
-		responseBodyBytes, err := xjson.Marshal(responseBody)
+		responseBodyBytes, err = xjson.Marshal(responseBody)
 		if err != nil {
 			return err
 		}
-
-		// Check if we should use external storage
-		if s.shouldUseExternalStorage(ctx, dataStorage) {
-			// Save to external storage
-			key := GenerateExecutionResponseBodyKey(execution.ProjectID, execution.RequestID, executionID)
-
-			err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
-			if err != nil {
-				log.Error(ctx, "Failed to save execution response body to external storage", log.Cause(err))
-			} else {
-				savedExternalKey = key
-				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
-			}
-		} else {
-			// Store in database
-			upd = upd.SetResponseBody(responseBodyBytes)
-		}
+		upd = upd.SetResponseBody(responseBodyBytes)
 	}
 
-	_, err = upd.Save(ctx)
+	updated, err := s.saveExecutionTransition(ctx, upd, executionID)
+	if err == nil && !updated {
+		return nil
+	}
 	if err != nil {
-		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
 		log.Error(ctx, "Failed to update finalized request execution", log.Cause(err), log.Any("status", status))
 		return err
+	}
+
+	recordUpstreamCompletionMetrics(ctx, execution, status, wasTerminal, metrics, req)
+
+	// A caller-owned transaction has not committed the winning body yet. Keep
+	// it inline rather than publishing an external file for a possible rollback.
+	if _, transactional := client.Driver().(dialect.Tx); transactional {
+		return nil
+	}
+
+	if storeResponseBody && s.shouldUseExternalStorage(ctx, dataStorage) {
+		key := GenerateExecutionResponseBodyKey(execution.ProjectID, execution.RequestID, executionID)
+		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
+			log.Error(ctx, "Failed to offload execution response; retaining database body", log.Cause(err))
+			return nil
+		}
+		if err := client.RequestExecution.UpdateOneID(executionID).
+			SetResponseBody(ExternalResponseBodyMarker).Exec(ctx); err != nil {
+			log.Error(ctx, "Failed to mark offloaded execution response; retaining database body", log.Cause(err))
+		}
 	}
 
 	return nil
@@ -887,6 +1038,19 @@ func (s *RequestService) UpdateRequestExecutionStatusWithMetrics(
 ) error {
 	client := s.entFromContext(ctx)
 
+	execution, err := client.RequestExecution.Get(ctx, executionID)
+	if err != nil {
+		return fmt.Errorf("failed to get request execution before status update: %w", err)
+	}
+	wasTerminal := isTerminalExecutionStatus(execution.Status)
+	if wasTerminal {
+		return nil
+	}
+	req, reqErr := client.Request.Get(ctx, execution.RequestID)
+	if reqErr != nil {
+		log.Warn(ctx, "failed to load request for execution metrics", log.Cause(reqErr))
+	}
+
 	upd := client.RequestExecution.UpdateOneID(executionID).
 		SetStatus(status)
 	if errorMsg != "" {
@@ -911,13 +1075,34 @@ func (s *RequestService) UpdateRequestExecutionStatusWithMetrics(
 		}
 	}
 
-	_, err := upd.Save(ctx)
+	updated, err := s.saveExecutionTransition(ctx, upd, executionID)
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status", log.Cause(err), log.Any("status", status))
 		return err
 	}
 
+	if updated {
+		recordUpstreamCompletionMetrics(ctx, execution, status, wasTerminal, metrics, req)
+	}
+
 	return nil
+}
+
+// Only the writer that changes a nonterminal row owns its completion metric.
+// UpdateOne reports NotFound when a concurrent terminal update wins the race;
+// distinguish that idempotent outcome from an actually missing execution.
+func (s *RequestService) saveExecutionTransition(ctx context.Context, upd *ent.RequestExecutionUpdateOne, id int) (bool, error) {
+	_, err := upd.Where(requestexecution.StatusIn(requestexecution.StatusPending, requestexecution.StatusProcessing)).Save(ctx)
+	if err == nil {
+		return true, nil
+	}
+	if ent.IsNotFound(err) {
+		current, readErr := s.entFromContext(ctx).RequestExecution.Get(ctx, id)
+		if readErr == nil && isTerminalExecutionStatus(current.Status) {
+			return false, nil
+		}
+	}
+	return false, err
 }
 
 // UpdateRequestExecutionStatusFromError updates request execution status based on error type and sets error message.
@@ -1193,14 +1378,41 @@ func (s *RequestService) MarkRequestFailed(ctx context.Context, requestID int) e
 func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int, status request.Status) error {
 	client := s.entFromContext(ctx)
 
-	_, err := client.Request.UpdateOneID(requestID).
-		SetStatus(status).
-		Save(ctx)
+	req, err := client.Request.Get(ctx, requestID)
+	if err != nil {
+		return fmt.Errorf("failed to get request before status update: %w", err)
+	}
+	if isTerminalRequestStatus(req.Status) {
+		return nil
+	}
+
+	upd := client.Request.UpdateOneID(requestID).SetStatus(status)
+	updated, err := s.saveRequestTransition(ctx, upd, requestID)
 	if err != nil {
 		return fmt.Errorf("failed to update request status: %w", err)
 	}
 
+	if updated {
+		recordDownstreamCompletionMetrics(ctx, req, status)
+	}
+
 	return nil
+}
+
+// The conditional UPDATE, not the preceding read, determines who owns the
+// terminal metric. Late callbacks are idempotent and cannot reopen a request.
+func (s *RequestService) saveRequestTransition(ctx context.Context, upd *ent.RequestUpdateOne, id int) (bool, error) {
+	_, err := upd.Where(request.StatusIn(request.StatusPending, request.StatusProcessing)).Save(ctx)
+	if err == nil {
+		return true, nil
+	}
+	if ent.IsNotFound(err) {
+		current, readErr := s.entFromContext(ctx).Request.Get(ctx, id)
+		if readErr == nil && isTerminalRequestStatus(current.Status) {
+			return false, nil
+		}
+	}
+	return false, err
 }
 
 // UpdateRequestStatusFromError updates request status based on error type: canceled if context canceled, otherwise failed.
@@ -1331,6 +1543,9 @@ func (s *RequestService) LoadResponseBody(ctx context.Context, req *ent.Request)
 	// Only load response body if request is completed
 	if req.Status != request.StatusCompleted {
 		return xjson.EmptyJSONRawMessage, nil
+	}
+	if len(req.ResponseBody) > 0 && !isExternalResponseBodyMarker(req.ResponseBody) && !bytes.Equal(bytes.TrimSpace(req.ResponseBody), xjson.EmptyJSONRawMessage) {
+		return sanitizeLoadedResponseBody(req.ResponseBody), nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, req.DataStorageID)
@@ -1524,6 +1739,12 @@ func (s *RequestService) LoadRequestExecutionResponseBody(ctx context.Context, e
 	// Only load response body if execution is completed
 	if exec.Status != requestexecution.StatusCompleted {
 		return xjson.EmptyJSONRawMessage, nil
+	}
+
+	// A finalized execution retains its inline body until external offloading
+	// succeeds. Prefer that durable copy, including when storage is unavailable.
+	if len(exec.ResponseBody) > 0 && !isExternalResponseBodyMarker(exec.ResponseBody) && !bytes.Equal(bytes.TrimSpace(exec.ResponseBody), xjson.EmptyJSONRawMessage) {
+		return sanitizeLoadedResponseBody(exec.ResponseBody), nil
 	}
 
 	dataStorage, err := s.getDataStorage(ctx, exec.DataStorageID)
