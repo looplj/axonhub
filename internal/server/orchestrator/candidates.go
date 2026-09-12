@@ -860,8 +860,8 @@ func (s *LoadBalancedSelector) pinStickyCandidate(
 
 // extractStickyCandidate returns the highest-priority candidate for channelID
 // and removes every candidate for that channel from the fallback set. This
-// prevents a failed sticky channel from being retried through another
-// association entry.
+// prevents a sticky channel from receiving another retry budget through a
+// duplicate association entry after its same-channel retries are exhausted.
 func extractStickyCandidate(
 	candidates []*ChannelModelsCandidate,
 	channelID int,

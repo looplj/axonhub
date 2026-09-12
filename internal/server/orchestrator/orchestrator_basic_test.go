@@ -953,3 +953,121 @@ func TestChatCompletionOrchestrator_Process_SameChannelRetryNextModel(t *testing
 	require.NoError(t, err)
 	require.Len(t, executions, 2)
 }
+
+func TestChatCompletionOrchestrator_Process_StickyChannelRetryBudget(t *testing.T) {
+	for _, tt := range []struct {
+		name       string
+		retries    int
+		failures   int
+		fallback   bool
+		wantError  bool
+		wantModels []string
+	}{
+		{
+			name: "zero retries", failures: 1, wantError: true,
+			wantModels: []string{"gpt-4"},
+		},
+		{
+			name: "single channel exhausts retries", retries: 2, failures: 3, wantError: true,
+			wantModels: []string{"gpt-4", "gpt-4", "gpt-4"},
+		},
+		{
+			name: "single channel recovers on final retry", retries: 2, failures: 2,
+			wantModels: []string{"gpt-4", "gpt-4", "gpt-4"},
+		},
+		{
+			name: "fallback follows sticky retries", retries: 2, failures: 3, fallback: true,
+			wantModels: []string{"gpt-4", "gpt-4", "gpt-4", "gpt-3.5-turbo"},
+		},
+		{
+			name: "zero retries switches directly to fallback", failures: 1, fallback: true,
+			wantModels: []string{"gpt-4", "gpt-3.5-turbo"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := authz.WithTestBypass(context.Background())
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			defer client.Close()
+			ctx = ent.NewContext(ctx, client)
+			project := createTestProject(t, ctx, client)
+			ctx = contexts.WithProjectID(ctx, project.ID)
+			ch := createTestChannel(t, ctx, client)
+			channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+			require.NoError(t, systemService.SetRetryPolicy(ctx, &biz.RetryPolicy{
+				Enabled:                 true,
+				MaxChannelRetries:       1,
+				MaxSingleChannelRetries: tt.retries,
+				LoadBalancerStrategy:    "adaptive",
+				TraceStickyMode:         biz.TraceStickyPreferPreviousChannel,
+			}))
+
+			outbound, err := openai.NewOutboundTransformer(ch.BaseURL, ch.Credentials.APIKey)
+			require.NoError(t, err)
+			selector := &staticChannelSelector{candidates: []*ChannelModelsCandidate{{
+				Channel:     &biz.Channel{Channel: ch, Outbound: outbound},
+				TraceSticky: true,
+				Models:      []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+			}}}
+			if tt.fallback {
+				backup, err := client.Channel.Create().
+					SetType(ch.Type).
+					SetName("Backup channel").
+					SetBaseURL(ch.BaseURL).
+					SetCredentials(ch.Credentials).
+					SetSupportedModels(ch.SupportedModels).
+					SetDefaultTestModel(ch.DefaultTestModel).
+					Save(ctx)
+				require.NoError(t, err)
+				selector.candidates = append(selector.candidates, &ChannelModelsCandidate{
+					Channel: &biz.Channel{Channel: backup, Outbound: outbound},
+					Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-3.5-turbo"}},
+				})
+			}
+
+			executor := &sequenceExecutor{}
+			for range tt.failures {
+				executor.steps = append(executor.steps, executorStep{err: &httpclient.Error{
+					StatusCode: http.StatusInternalServerError,
+					Body:       []byte(`{"error":{"message":"upstream error","type":"api_error"}}`),
+				}})
+			}
+			// Keep a success available even in exhaustion cases to detect extra attempts.
+			executor.steps = append(executor.steps, executorStep{resp: &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body:       buildMockOpenAIResponse("chatcmpl-sticky-retry", tt.wantModels[len(tt.wantModels)-1], "Recovered", 10, 20),
+				Headers:    http.Header{"Content-Type": []string{"application/json"}},
+			}})
+			orchestrator := &ChatCompletionOrchestrator{
+				channelSelector:       selector,
+				Inbound:               openai.NewInboundTransformer(),
+				RequestService:        requestService,
+				ChannelService:        channelService,
+				PromptProvider:        &stubPromptProvider{},
+				SystemService:         systemService,
+				UsageLogService:       usageLogService,
+				PipelineFactory:       pipeline.NewFactory(executor),
+				ModelMapper:           NewModelMapper(),
+				channelLimiterManager: NewChannelLimiterManager(),
+			}
+			result, err := orchestrator.Process(ctx, buildTestRequest("gpt-4", "Hello!", false))
+			if tt.wantError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.NotNil(t, result.ChatCompletion)
+			}
+			models := make([]string, 0, len(executor.requests))
+			for _, req := range executor.requests {
+				var body struct {
+					Model string `json:"model"`
+				}
+				require.NoError(t, json.Unmarshal(req.Body, &body))
+				models = append(models, body.Model)
+			}
+			require.Equal(t, tt.wantModels, models)
+			executions, err := client.RequestExecution.Query().All(ctx)
+			require.NoError(t, err)
+			require.Len(t, executions, len(tt.wantModels))
+		})
+	}
+}

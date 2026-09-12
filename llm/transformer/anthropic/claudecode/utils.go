@@ -64,17 +64,7 @@ func applyClaudeToolPrefixStructured(llmReq *llm.Request, prefix string) *llm.Re
 		return llmReq
 	}
 
-	request := *llmReq
-	request.Tools = slices.Clone(llmReq.Tools)
-	if llmReq.ToolChoice != nil {
-		choice := *llmReq.ToolChoice
-		if choice.NamedToolChoice != nil {
-			named := *choice.NamedToolChoice
-			choice.NamedToolChoice = &named
-		}
-		request.ToolChoice = &choice
-	}
-	llmReq = &request
+	llmReq = cloneRequestForToolPrefix(llmReq)
 
 	// Prefix tool names in tools array
 	for i := range llmReq.Tools {
@@ -94,6 +84,21 @@ func applyClaudeToolPrefixStructured(llmReq *llm.Request, prefix string) *llm.Re
 	}
 
 	return llmReq
+}
+
+// cloneRequestForToolPrefix copies the fields modified when prefixing tool names.
+func cloneRequestForToolPrefix(src *llm.Request) *llm.Request {
+	request := *src
+	request.Tools = slices.Clone(src.Tools)
+	if src.ToolChoice != nil {
+		choice := *src.ToolChoice
+		if choice.NamedToolChoice != nil {
+			named := *choice.NamedToolChoice
+			choice.NamedToolChoice = &named
+		}
+		request.ToolChoice = &choice
+	}
+	return &request
 }
 
 // stripClaudeToolPrefixFromResponse removes the prefix from tool names in the response.
