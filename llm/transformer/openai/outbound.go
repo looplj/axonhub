@@ -200,6 +200,21 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		stripUnsupportedToolCallExtraContent(oaiReq)
 	}
 
+	// When reasoning_content is enabled (ReasoningFieldContent or ReasoningFieldAll),
+	// ensure all assistant messages have a reasoning_content field.
+	// Some thinking-enabled providers (e.g., Kimi, DeepSeek) require reasoning_content
+	// to be present in every assistant message, even if it's an empty string.
+	// Without this, multi-turn tool-calling conversations fail with:
+	// "thinking is enabled but reasoning_content is missing in assistant tool call message".
+	if reasoningField == ReasoningFieldContent || reasoningField == ReasoningFieldAll {
+		for i := range oaiReq.Messages {
+			if oaiReq.Messages[i].Role == "assistant" && oaiReq.Messages[i].ReasoningContent == nil {
+				emptyStr := ""
+				oaiReq.Messages[i].ReasoningContent = &emptyStr
+			}
+		}
+	}
+
 	body, err := json.Marshal(oaiReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to transform request: %w", err)
