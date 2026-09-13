@@ -250,6 +250,12 @@ type ChannelSettings struct {
 	ProviderQuota *ChannelProviderQuotaSettings `json:"providerQuota,omitempty"`
 
 	QuotaRoutingMode QuotaRoutingMode `json:"quotaRoutingMode,omitempty"`
+
+	// ClaudeCodeBillingHeader controls whether the Claude Code billing header
+	// system message is forwarded to this channel. Empty (auto) preserves the
+	// historic behaviour of keeping it only for official Claude Code OAuth
+	// channels; keep and strip pin the decision explicitly.
+	ClaudeCodeBillingHeader ClaudeCodeBillingHeaderMode `json:"claudeCodeBillingHeader,omitempty"`
 }
 
 // ChannelProviderQuotaSettings groups per-provider quota collection settings.
