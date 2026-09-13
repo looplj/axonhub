@@ -11329,271 +11329,6 @@
             }
           },
           "type": "chat"
-        },
-        {
-          "id": "kimi-k2.5",
-          "name": "Kimi K2.5",
-          "description": "Earlier Kimi frontier model for long-context agents, coding, and multimodal work",
-          "family": "kimi-k2",
-          "attachment": true,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "reasoning_options": [
-            {
-              "type": "toggle"
-            }
-          ],
-          "tool_call": true,
-          "interleaved": {
-            "field": "reasoning_content"
-          },
-          "structured_output": true,
-          "temperature": false,
-          "knowledge": "2025-01",
-          "release_date": "2026-01",
-          "last_updated": "2026-01",
-          "modalities": {
-            "input": [
-              "text",
-              "image",
-              "video"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "cost": {
-            "input": 0.6,
-            "output": 3,
-            "cache_read": 0.1
-          },
-          "display_name": "Kimi K2.5",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "interleaved": true,
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thinking_blocks"
-              ]
-            }
-          },
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-thinking-turbo",
-          "name": "Kimi K2 Thinking Turbo",
-          "description": "Kimi reasoning model for long-horizon research, planning, and tool use",
-          "family": "kimi-thinking",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "reasoning_options": [],
-          "tool_call": true,
-          "interleaved": {
-            "field": "reasoning_content"
-          },
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2025-11-06",
-          "last_updated": "2025-11-06",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "cost": {
-            "input": 1.15,
-            "output": 8,
-            "cache_read": 0.15
-          },
-          "display_name": "Kimi K2 Thinking Turbo",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "interleaved": true,
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thinking_blocks"
-              ]
-            }
-          },
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-thinking",
-          "name": "Kimi K2 Thinking",
-          "description": "Thinking Kimi model for slower research passes, planning, and hard technical questions",
-          "family": "kimi-thinking",
-          "attachment": false,
-          "reasoning": {
-            "supported": true,
-            "default": true
-          },
-          "reasoning_options": [],
-          "tool_call": true,
-          "interleaved": {
-            "field": "reasoning_content"
-          },
-          "temperature": true,
-          "knowledge": "2024-08",
-          "release_date": "2025-11-06",
-          "last_updated": "2025-11-06",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
-          },
-          "display_name": "Kimi K2 Thinking",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true,
-              "interleaved": true,
-              "summaries": true,
-              "visibility": "summary",
-              "continuation": [
-                "thinking_blocks"
-              ]
-            }
-          },
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-0905-preview",
-          "name": "Kimi K2 0905",
-          "description": "Kimi model for long-context chat, coding, and agentic reasoning",
-          "family": "kimi-k2",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-09-05",
-          "last_updated": "2025-09-05",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
-          },
-          "display_name": "Kimi K2 0905",
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-turbo-preview",
-          "name": "Kimi K2 Turbo",
-          "description": "Fast Kimi model for responsive chat, coding help, and agent loops",
-          "family": "kimi-k2",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-09-05",
-          "last_updated": "2025-09-05",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "cost": {
-            "input": 2.4,
-            "output": 10,
-            "cache_read": 0.6
-          },
-          "display_name": "Kimi K2 Turbo",
-          "type": "chat"
-        },
-        {
-          "id": "kimi-k2-0711-preview",
-          "name": "Kimi K2 0711",
-          "description": "Kimi model for long-context chat, coding, and agentic reasoning",
-          "family": "kimi-k2",
-          "attachment": false,
-          "reasoning": {
-            "supported": false
-          },
-          "tool_call": true,
-          "temperature": true,
-          "knowledge": "2024-10",
-          "release_date": "2025-07-14",
-          "last_updated": "2025-07-14",
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "open_weights": true,
-          "limit": {
-            "context": 131072,
-            "output": 16384
-          },
-          "cost": {
-            "input": 0.6,
-            "output": 2.5,
-            "cache_read": 0.15
-          },
-          "display_name": "Kimi K2 0711",
-          "type": "chat"
         }
       ]
     },
@@ -11628,6 +11363,7 @@
           "tool_call": true,
           "structured_output": true,
           "temperature": false,
+          "knowledge": "2026-04-30",
           "release_date": "2026-09-04",
           "last_updated": "2026-09-04",
           "modalities": {
@@ -15580,7 +15316,7 @@
               "text"
             ]
           },
-          "open_weights": false,
+          "open_weights": true,
           "limit": {
             "context": 1000000,
             "output": 131072
@@ -18546,7 +18282,7 @@
       "name": "ByteDance",
       "display_name": "ByteDance",
       "doc": "https://www.volcengine.com/docs/82379/1330310?lang=zh",
-      "updated_at": "2026-09-05T11:12:52Z",
+      "updated_at": "2026-09-09T06:47:09Z",
       "metadata": {
         "source": "volcengine-docs",
         "doc_detail_url": "https://www.volcengine.com/api/doc/getDocDetail?LibraryID=82379&DocumentID=1330310&lang=zh"
@@ -18562,7 +18298,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18609,7 +18345,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18656,7 +18392,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -18702,7 +18438,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18745,7 +18481,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18786,7 +18522,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18829,7 +18565,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18886,7 +18622,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -18943,7 +18679,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19000,7 +18736,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19057,7 +18793,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19115,7 +18851,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19171,7 +18907,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19227,7 +18963,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19285,7 +19021,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19342,7 +19078,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19400,7 +19136,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19457,7 +19193,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19515,7 +19251,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19572,7 +19308,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19627,7 +19363,7 @@
             "supported": false
           },
           "tool_call": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19657,7 +19393,7 @@
               "文本生成"
             ],
             "raw_limits": [
-              "上下文窗口: 128k 最大输��: 96k 最大回答(默认 4k): 32k",
+              "上下文窗口: 128k 最大输入: 96k 最大回答(默认 4k): 32k",
               "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "features": [
@@ -19677,7 +19413,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19732,7 +19468,7 @@
             "default": true
           },
           "tool_call": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19788,7 +19524,7 @@
           },
           "tool_call": true,
           "structured_output": true,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -19843,7 +19579,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19885,7 +19621,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19925,7 +19661,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -19965,7 +19701,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": false,
           "modalities": {
             "input": [
@@ -20005,7 +19741,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -20042,7 +19778,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -20079,7 +19815,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -20116,7 +19852,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -20153,7 +19889,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -20190,7 +19926,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -20227,7 +19963,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
@@ -20264,7 +20000,7 @@
             "supported": false
           },
           "tool_call": false,
-          "last_updated": "2026-09-05T11:12:52Z",
+          "last_updated": "2026-09-09T06:47:09Z",
           "vision": true,
           "modalities": {
             "input": [
