@@ -1088,14 +1088,9 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 	}
 
 	if isCommandCodeChannelType(ch.Type) {
-		// Command Code quota collection is authenticated with the account
-		// session cookie, never the inference API key.
-		if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.CommandCode == nil {
-			return false
-		}
-
-		_, err := provider_quota.NormalizeCommandCodeCookie(ch.Settings.ProviderQuota.CommandCode.AuthCookie)
-		return err == nil
+		// Command Code quota collection authenticates with the account API key
+		// (/alpha/billing/*), or with the Studio session cookie as a fallback.
+		return provider_quota.HasCommandCodeQuotaCredentials(ch)
 	}
 
 	if ch.Type == channel.TypeOllama || ch.Type == channel.TypeOllamaAnthropic {

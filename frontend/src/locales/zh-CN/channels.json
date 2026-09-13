@@ -313,7 +313,7 @@
   "channels.dialogs.github_copilot.messages.credentialsStored": "此渠道已存储 OAuth 凭证",
   "channels.dialogs.fields.commandCodeQuota.authCookie.label": "Web Cookie",
   "channels.dialogs.fields.commandCodeQuota.authCookie.placeholder": "__Secure-commandcode_prod_.session_token=...; __Secure-commandcode_prod_.session_data=...",
-  "channels.dialogs.fields.commandCodeQuota.authCookie.description": "访问 Command Code 的用量页面，复制 Cookie 请求头。可以粘贴整段 Cookie，只会保留 session_token/data。",
+  "channels.dialogs.fields.commandCodeQuota.authCookie.description": "可选。额度优先用渠道的 API Key 查询（Go 套餐也支持），只有 API Key 无法访问计费接口时才回退到这个 Cookie。访问 Command Code 的用量页面复制 Cookie 请求头，只会保留 session_token/data。",
   "channels.dialogs.fields.quotaRoutingMode.label": "限额调度模式",
   "channels.dialogs.fields.quotaRoutingMode.options.INHERIT": "继承全局默认值",
   "channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE": "继承全局默认值（当前：{{mode}}）",

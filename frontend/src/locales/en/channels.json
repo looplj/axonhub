@@ -316,7 +316,7 @@
   "channels.dialogs.github_copilot.messages.credentialsStored": "OAuth credentials are stored for this channel",
   "channels.dialogs.fields.commandCodeQuota.authCookie.label": "Web Cookie",
   "channels.dialogs.fields.commandCodeQuota.authCookie.placeholder": "__Secure-commandcode_prod_.session_token=...; __Secure-commandcode_prod_.session_data=...",
-  "channels.dialogs.fields.commandCodeQuota.authCookie.description": "Visit the Command Code usage page and copy the Cookie request header. You can paste the whole Cookie; only session_token/data are kept.",
+  "channels.dialogs.fields.commandCodeQuota.authCookie.description": "Optional. Quota is read with the channel API key first (the Go plan included); this cookie is only used as a fallback when the key cannot reach the billing API. Visit the Command Code usage page and copy the Cookie request header — only session_token/data are kept.",
   "channels.dialogs.fields.quotaRoutingMode.label": "Quota Routing Mode",
   "channels.dialogs.fields.quotaRoutingMode.options.INHERIT": "Inherit global default",
   "channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE": "Inherit global default ({{mode}})",

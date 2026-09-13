@@ -261,10 +261,12 @@ type ChannelProviderQuotaSettings struct {
 	Ollama *OllamaQuotaSettings `json:"ollama,omitempty"`
 }
 
-// CommandCodeQuotaSettings holds the credentials used to query the Command Code
-// account quota. AuthCookie is the commandcode.ai session cookie (a
-// "__Secure-commandcode_prod_.session_token" style value) sent to the internal
-// billing endpoints.
+// CommandCodeQuotaSettings holds the fallback credential used to query the
+// Command Code account quota. Quota is normally read with the channel API key
+// (the /alpha/billing/* endpoints, the same key the official CLI uses);
+// AuthCookie is only used when that key cannot reach the billing API, and is
+// the commandcode.ai session cookie (a "__Secure-commandcode_prod_.session_token"
+// style value) sent to the Studio-wide internal billing endpoints.
 type CommandCodeQuotaSettings struct {
 	AuthCookie string `json:"authCookie,omitempty"`
 }
