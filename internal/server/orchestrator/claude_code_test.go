@@ -15,28 +15,59 @@ import (
 )
 
 func TestBillingSystemMessageMiddleware(t *testing.T) {
+	oauthCredentials := objects.ChannelCredentials{
+		OAuth: &objects.OAuthCredentials{AccessToken: "test-access-token"},
+	}
+	apiKeyCredentials := objects.ChannelCredentials{APIKey: "test-api-key"}
+
 	tests := []struct {
 		name        string
 		channelType entchannel.Type
 		credentials objects.ChannelCredentials
+		settings    *objects.ChannelSettings
 		wantBilling bool
 	}{
 		{
-			name:        "official Claude Code OAuth preserves billing message",
+			name:        "auto preserves billing message for official Claude Code OAuth",
 			channelType: entchannel.TypeClaudecode,
-			credentials: objects.ChannelCredentials{
-				OAuth: &objects.OAuthCredentials{AccessToken: "test-access-token"},
-			},
+			credentials: oauthCredentials,
+			settings:    &objects.ChannelSettings{ClaudeCodeBillingHeader: objects.ClaudeCodeBillingHeaderAuto},
 			wantBilling: true,
 		},
 		{
-			name:        "Claude Code API key removes billing message",
+			name:        "auto removes billing message for Claude Code API key",
 			channelType: entchannel.TypeClaudecode,
-			credentials: objects.ChannelCredentials{APIKey: "test-api-key"},
+			credentials: apiKeyCredentials,
+			settings:    &objects.ChannelSettings{ClaudeCodeBillingHeader: objects.ClaudeCodeBillingHeaderAuto},
 		},
 		{
-			name:        "Anthropic-compatible channel removes billing message",
+			name:        "auto removes billing message for Anthropic-compatible channel",
 			channelType: entchannel.TypeAnthropic,
+			settings:    &objects.ChannelSettings{ClaudeCodeBillingHeader: objects.ClaudeCodeBillingHeaderAuto},
+		},
+		{
+			name:        "keep preserves billing message for Anthropic-compatible channel",
+			channelType: entchannel.TypeAnthropic,
+			credentials: apiKeyCredentials,
+			settings:    &objects.ChannelSettings{ClaudeCodeBillingHeader: objects.ClaudeCodeBillingHeaderKeep},
+			wantBilling: true,
+		},
+		{
+			name:        "strip removes billing message for official Claude Code OAuth",
+			channelType: entchannel.TypeClaudecode,
+			credentials: oauthCredentials,
+			settings:    &objects.ChannelSettings{ClaudeCodeBillingHeader: objects.ClaudeCodeBillingHeaderStrip},
+		},
+		{
+			name:        "unset settings fall back to auto for official Claude Code OAuth",
+			channelType: entchannel.TypeClaudecode,
+			credentials: oauthCredentials,
+			wantBilling: true,
+		},
+		{
+			name:        "unset settings fall back to auto for Anthropic-compatible channel",
+			channelType: entchannel.TypeAnthropic,
+			credentials: apiKeyCredentials,
 		},
 	}
 
@@ -46,6 +77,7 @@ func TestBillingSystemMessageMiddleware(t *testing.T) {
 				CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
 					Type:        tt.channelType,
 					Credentials: tt.credentials,
+					Settings:    tt.settings,
 				}}},
 			}
 			middleware := newBillingSystemMessageMiddleware(state)

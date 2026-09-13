@@ -569,6 +569,7 @@ type ComplexityRoot struct {
 	ChannelSettings struct {
 		AutoTrimedModelPrefixes  func(childComplexity int) int
 		BodyOverrideOperations   func(childComplexity int) int
+		ClaudeCodeBillingHeader  func(childComplexity int) int
 		ExtraModelPrefix         func(childComplexity int) int
 		HeaderOverrideOperations func(childComplexity int) int
 		HideMappedModels         func(childComplexity int) int
@@ -4370,6 +4371,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.BodyOverrideOperations(childComplexity), true
+	case "ChannelSettings.claudeCodeBillingHeader":
+		if e.complexity.ChannelSettings.ClaudeCodeBillingHeader == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.ClaudeCodeBillingHeader(childComplexity), true
 	case "ChannelSettings.extraModelPrefix":
 		if e.complexity.ChannelSettings.ExtraModelPrefix == nil {
 			break
@@ -20895,6 +20902,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_providerQuota(ctx, field)
 			case "quotaRoutingMode":
 				return ec.fieldContext_ChannelSettings_quotaRoutingMode(ctx, field)
+			case "claudeCodeBillingHeader":
+				return ec.fieldContext_ChannelSettings_claudeCodeBillingHeader(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelSettings", field.Name)
 		},
@@ -25773,6 +25782,35 @@ func (ec *executionContext) fieldContext_ChannelSettings_quotaRoutingMode(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type ChannelQuotaRoutingMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_claudeCodeBillingHeader(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_claudeCodeBillingHeader,
+		func(ctx context.Context) (any, error) {
+			return obj.ClaudeCodeBillingHeader, nil
+		},
+		nil,
+		ec.marshalOChannelClaudeCodeBillingHeaderMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐClaudeCodeBillingHeaderMode,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_claudeCodeBillingHeader(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ChannelClaudeCodeBillingHeaderMode does not have child fields")
 		},
 	}
 	return fc, nil
@@ -69153,7 +69191,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "providerQuota", "quotaRoutingMode", "claudeCodeBillingHeader"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69286,6 +69324,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.QuotaRoutingMode = data
+		case "claudeCodeBillingHeader":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("claudeCodeBillingHeader"))
+			data, err := ec.unmarshalOChannelClaudeCodeBillingHeaderMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐClaudeCodeBillingHeaderMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClaudeCodeBillingHeader = data
 		}
 	}
 
@@ -95732,6 +95777,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "quotaRoutingMode":
 			out.Values[i] = ec._ChannelSettings_quotaRoutingMode(ctx, field, obj)
+		case "claudeCodeBillingHeader":
+			out.Values[i] = ec._ChannelSettings_claudeCodeBillingHeader(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -118942,6 +118989,16 @@ func (ec *executionContext) marshalOChannel2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 		return graphql.Null
 	}
 	return ec._Channel(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelClaudeCodeBillingHeaderMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐClaudeCodeBillingHeaderMode(ctx context.Context, v any) (objects.ClaudeCodeBillingHeaderMode, error) {
+	var res objects.ClaudeCodeBillingHeaderMode
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOChannelClaudeCodeBillingHeaderMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐClaudeCodeBillingHeaderMode(ctx context.Context, sel ast.SelectionSet, v objects.ClaudeCodeBillingHeaderMode) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalOChannelCredentials2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelCredentials(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelCredentials) graphql.Marshaler {
