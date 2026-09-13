@@ -1,5 +1,10 @@
 package shared
 
+import (
+	"net/url"
+	"strings"
+)
+
 // EncodeOpenAIEncryptedContent encodes raw OpenAI encrypted content for storage.
 // OpenAI encrypted_content is already base64-encoded, so this is a passthrough.
 func EncodeOpenAIEncryptedContent(content *string) *string {
@@ -23,4 +28,23 @@ func DecodeOpenAIEncryptedContent(content *string) *string {
 	}
 
 	return content
+}
+
+// SupportsPromptCacheKey reports whether the OpenAI-protocol host documents
+// prompt_cache_key. Official OpenAI Chat Completions and Responses do;
+// NVIDIA NIM and many OpenAI-compatible gateways reject the field.
+func SupportsPromptCacheKey(baseURL string) bool {
+	raw := strings.TrimSpace(baseURL)
+	if raw == "" {
+		return false
+	}
+	if !strings.Contains(raw, "://") {
+		raw = "https://" + raw
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	return host == "api.openai.com" || strings.HasSuffix(host, ".api.openai.com")
 }
