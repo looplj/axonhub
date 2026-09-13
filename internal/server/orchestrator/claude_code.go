@@ -72,3 +72,27 @@ func keepsBillingSystemMessages(channel *biz.Channel) bool {
 
 	return channel.Type == entchannel.TypeClaudecode && channel.Credentials.IsOAuth()
 }
+
+// billingStripWouldBeUndone reports whether replaying the raw inbound body would
+// put a billing system message back on a channel pinned to strip.
+//
+// OnOutboundLlmRequest rewrites the unified request and deliberately leaves
+// RawRequest.Body alone, so pass-through would otherwise resurrect the block.
+// llmReq is the unfiltered inbound request, which makes the removal helper its
+// own detector: an unchanged pointer means there was nothing to remove and
+// pass-through stays byte-exact.
+//
+// Only the explicit strip mode is covered. Under auto the outcome still depends
+// on pass-through, which is exactly the ambiguity the mode exists to resolve;
+// changing auto here would alter behaviour for channels that never opted in.
+func billingStripWouldBeUndone(channel *biz.Channel, llmReq *llm.Request) bool {
+	if channel == nil || channel.Settings == nil || llmReq == nil {
+		return false
+	}
+
+	if channel.Settings.ClaudeCodeBillingHeader != objects.ClaudeCodeBillingHeaderStrip {
+		return false
+	}
+
+	return claudecode.RemoveBillingSystemMessages(llmReq) != llmReq
+}
