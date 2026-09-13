@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestBillingSystemMessageMiddleware(t *testing.T) {
@@ -101,4 +102,34 @@ func TestBillingSystemMessageMiddleware(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestBillingSystemMessageMiddlewareLeavesRawBodyIntact pins the reason the
+// removal is not observable from the channel configuration alone: it rewrites
+// the unified request only. A pass-through channel replays RawRequest.Body, so
+// the very same channel forwards the billing block when pass-through body is on
+// and drops it when it is off. Auto cannot express either intent on purpose;
+// keep and strip make the outcome independent of pass-through.
+func TestBillingSystemMessageMiddlewareLeavesRawBodyIntact(t *testing.T) {
+	rawBody := []byte(`{"system":[{"type":"text","text":"x-anthropic-billing-header: cc_version=2.1.42;"}]}`)
+	state := &PersistenceState{
+		CurrentCandidate: &ChannelModelsCandidate{Channel: &biz.Channel{Channel: &ent.Channel{
+			Type: entchannel.TypeAnthropic,
+		}}},
+	}
+	billing := "x-anthropic-billing-header: cc_version=2.1.42;"
+	request := &llm.Request{
+		RawRequest: &httpclient.Request{Body: rawBody},
+		Messages: []llm.Message{
+			{Role: "system", Content: llm.MessageContent{Content: &billing}},
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
+		},
+	}
+
+	result, err := newBillingSystemMessageMiddleware(state).
+		OnOutboundLlmRequest(t.Context(), request, llm.APIFormatAnthropicMessage)
+
+	require.NoError(t, err)
+	require.Len(t, result.Messages, 1, "the unified request loses the billing block")
+	require.Equal(t, rawBody, result.RawRequest.Body, "the raw body a pass-through channel replays still carries it")
 }
