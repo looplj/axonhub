@@ -133,3 +133,104 @@ func TestBillingSystemMessageMiddlewareLeavesRawBodyIntact(t *testing.T) {
 	require.Len(t, result.Messages, 1, "the unified request loses the billing block")
 	require.Equal(t, rawBody, result.RawRequest.Body, "the raw body a pass-through channel replays still carries it")
 }
+
+// TestBillingHeaderModeAgainstPassThroughBody covers the pass-through boundary:
+// replaying the raw inbound body must not resurrect a block on a channel pinned
+// to strip, and must not cost byte-exact pass-through for anything else.
+func TestBillingHeaderModeAgainstPassThroughBody(t *testing.T) {
+	const billingText = "x-anthropic-billing-header: cc_version=2.1.42;"
+
+	withBilling := []byte(`{"model":"claude-sonnet-4","system":[{"type":"text","text":"` + billingText +
+		`"},{"type":"text","text":"You are Claude Code."}],"messages":[{"role":"user","content":"hi"}]}`)
+	withoutBilling := []byte(`{"model":"claude-sonnet-4","system":[{"type":"text","text":"You are Claude Code."}],"messages":[{"role":"user","content":"hi"}]}`)
+
+	tests := []struct {
+		name            string
+		mode            objects.ClaudeCodeBillingHeaderMode
+		rawBody         []byte
+		inboundMessages []llm.Message
+		wantReplayed    bool
+	}{
+		{
+			name:    "strip skips the replay that would restore the block",
+			mode:    objects.ClaudeCodeBillingHeaderStrip,
+			rawBody: withBilling,
+			inboundMessages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr(billingText)}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+			},
+		},
+		{
+			name:    "strip keeps pass-through byte-exact when no block is present",
+			mode:    objects.ClaudeCodeBillingHeaderStrip,
+			rawBody: withoutBilling,
+			inboundMessages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+			},
+			wantReplayed: true,
+		},
+		{
+			name:    "keep replays the block as the operator asked",
+			mode:    objects.ClaudeCodeBillingHeaderKeep,
+			rawBody: withBilling,
+			inboundMessages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr(billingText)}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+			},
+			wantReplayed: true,
+		},
+		{
+			// Documents the historic behaviour the explicit modes exist to escape:
+			// under auto the outcome still depends on pass-through.
+			name:    "auto still lets pass-through decide",
+			mode:    objects.ClaudeCodeBillingHeaderAuto,
+			rawBody: withBilling,
+			inboundMessages: []llm.Message{
+				{Role: "system", Content: llm.MessageContent{Content: lo.ToPtr(billingText)}},
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+			},
+			wantReplayed: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			channel := &biz.Channel{Channel: &ent.Channel{
+				ID:   1,
+				Name: "relay",
+				Type: entchannel.TypeAnthropic,
+				Settings: &objects.ChannelSettings{
+					PassThroughBody:         lo.ToPtr(true),
+					ClaudeCodeBillingHeader: tt.mode,
+				},
+			}}
+			outbound := &PersistentOutboundTransformer{state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+				LlmRequest: &llm.Request{
+					Model:      "claude-sonnet-4",
+					APIFormat:  llm.APIFormatAnthropicMessage,
+					Messages:   tt.inboundMessages,
+					RawRequest: &httpclient.Request{APIFormat: string(llm.APIFormatAnthropicMessage), Body: tt.rawBody},
+				},
+			}}
+
+			// What the outbound transformer serialized after the billing
+			// middleware filtered the unified request.
+			serialized := &httpclient.Request{
+				APIFormat: string(llm.APIFormatAnthropicMessage),
+				Body:      withoutBilling,
+			}
+
+			processed, err := applyPassThroughRequestBody(outbound, nil).OnOutboundRawRequest(t.Context(), serialized)
+
+			require.NoError(t, err)
+			require.Equal(t, tt.wantReplayed, outbound.state.PassThroughApplied)
+
+			if tt.wantReplayed {
+				require.Equal(t, string(tt.rawBody), string(processed.Body))
+			} else {
+				require.NotContains(t, string(processed.Body), "x-anthropic-billing-header")
+			}
+		})
+	}
+}
