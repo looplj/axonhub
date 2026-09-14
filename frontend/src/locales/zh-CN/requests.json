@@ -19,6 +19,7 @@
   "requests.columns.clientIP": "客户端IP",
   "requests.columns.user": "用户",
   "requests.columns.apiKey": "API密钥",
+  "requests.columns.upstreamApiKey": "上游密钥",
   "requests.columns.roles": "角色",
   "requests.columns.noRoles": "无角色",
   "requests.columns.details": "详情",

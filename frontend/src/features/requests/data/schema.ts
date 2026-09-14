@@ -35,6 +35,7 @@ export const requestExecutionSchema = z.object({
   status: requestExecutionStatusSchema,
   format: z.string().optional(),
   reasoningEffort: z.string().nullable().optional(),
+  channelAPIKeySuffix: z.string().nullable().optional(),
   metricsLatencyMs: z.number().nullable().optional(),
   metricsFirstTokenLatencyMs: z.number().nullable().optional(),
   metricsReasoningDurationMs: z.number().nullable().optional(),

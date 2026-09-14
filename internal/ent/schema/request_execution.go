@@ -55,6 +55,12 @@ func (RequestExecution) Fields() []ent.Field {
 			Nillable().
 			Immutable().
 			Comment("Final reasoning effort sent to the upstream provider"),
+		field.String("channel_api_key_suffix").
+			Optional().
+			Nillable().
+			Immutable().
+			MaxLen(4).
+			Comment("Last 4 characters of the channel API key used for this execution"),
 		// The original request to the provider.
 		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the Claude request format.
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable().Annotations(

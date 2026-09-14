@@ -42,6 +42,8 @@ type RequestExecution struct {
 	Format string `json:"format,omitempty"`
 	// Final reasoning effort sent to the upstream provider
 	ReasoningEffort *string `json:"reasoning_effort,omitempty"`
+	// Last 4 characters of the channel API key used for this execution
+	ChannelAPIKeySuffix *string `json:"channel_api_key_suffix,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
@@ -133,7 +135,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs, requestexecution.FieldMetricsReasoningDurationMs:
 			values[i] = new(sql.NullInt64)
-		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldReasoningEffort, requestexecution.FieldErrorMessage, requestexecution.FieldStatus, requestexecution.FieldRequestURL:
+		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldFormat, requestexecution.FieldReasoningEffort, requestexecution.FieldChannelAPIKeySuffix, requestexecution.FieldErrorMessage, requestexecution.FieldStatus, requestexecution.FieldRequestURL:
 			values[i] = new(sql.NullString)
 		case requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -218,6 +220,13 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ReasoningEffort = new(string)
 				*_m.ReasoningEffort = value.String
+			}
+		case requestexecution.FieldChannelAPIKeySuffix:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field channel_api_key_suffix", values[i])
+			} else if value.Valid {
+				_m.ChannelAPIKeySuffix = new(string)
+				*_m.ChannelAPIKeySuffix = value.String
 			}
 		case requestexecution.FieldRequestBody:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -389,6 +398,11 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(", ")
 	if v := _m.ReasoningEffort; v != nil {
 		builder.WriteString("reasoning_effort=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.ChannelAPIKeySuffix; v != nil {
+		builder.WriteString("channel_api_key_suffix=")
 		builder.WriteString(*v)
 	}
 	builder.WriteString(", ")
