@@ -737,7 +737,10 @@ func (r *requestExecutionResolver) ChannelAPIKeySuffix(ctx context.Context, obj 
 	}
 
 	ch, err := getNilableChannel(ctx, r.client, obj.ChannelID)
-	if err != nil || ch == nil {
+	if err != nil {
+		return nil, err
+	}
+	if ch == nil {
 		return nil, nil
 	}
 
