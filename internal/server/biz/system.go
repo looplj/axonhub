@@ -1063,7 +1063,12 @@ func (s *SystemService) RetryPolicy(ctx context.Context) (*RetryPolicy, error) {
 }
 
 func (s *SystemService) RetryPolicyOrDefault(ctx context.Context) *RetryPolicy {
-	policy, err := s.RetryPolicy(ctx)
+	// Internal callers (stream processing, error handling, channel auto-disable,
+	// load balancing) run with API-key or background contexts that carry no user
+	// principal, which the Ent privacy layer rejects with "no user in context".
+	// Reading the global retry policy is a system-scoped operation, so apply a
+	// scoped system bypass instead of silently falling back to the default.
+	policy, err := s.RetryPolicy(authz.WithSystemBypass(ctx, "retry-policy-or-default"))
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return lo.ToPtr(defaultRetryPolicy)
