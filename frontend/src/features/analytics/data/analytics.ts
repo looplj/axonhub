@@ -50,6 +50,8 @@ export const analyticsDimensionStatSchema = z.object({
   outputTokens: z.number(),
   totalTokens: z.number(),
   cost: z.number(),
+  tokensPerSecond: z.number().nullable(),
+  ttftMs: z.number().nullable(),
 });
 
 export type AnalyticsDimensionStat = z.infer<typeof analyticsDimensionStatSchema>;
@@ -110,6 +112,8 @@ const ANALYTICS_DIMENSION_STATS_QUERY = `
       outputTokens
       totalTokens
       cost
+      tokensPerSecond
+      ttftMs
     }
   }
 `;
