@@ -644,7 +644,7 @@ var (
 		{Name: "model_id", Type: field.TypeString},
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
 		{Name: "reasoning_effort", Type: field.TypeString, Nullable: true},
-		{Name: "channel_api_key_suffix", Type: field.TypeString, Nullable: true, Size: 4},
+		{Name: "channel_api_key_suffix", Type: field.TypeString, Nullable: true},
 		{Name: "request_body", Type: field.TypeJSON},
 		{Name: "response_body", Type: field.TypeJSON, Nullable: true},
 		{Name: "response_chunks", Type: field.TypeJSON, Nullable: true},

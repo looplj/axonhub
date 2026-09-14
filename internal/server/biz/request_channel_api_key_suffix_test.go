@@ -81,6 +81,11 @@ func TestRequestService_CreateRequestExecution_ChannelAPIKeySuffix(t *testing.T)
 			wantSuffix: func() *string { s := "9999"; return &s }(),
 		},
 		{
+			name:       "multi-byte unicode suffix saves last 4 runes",
+			apiKey:     func() *string { s := "sk-provider-渠道密钥"; return &s }(),
+			wantSuffix: func() *string { s := "渠道密钥"; return &s }(),
+		},
+		{
 			name:       "different long key saves distinct suffix",
 			apiKey:     func() *string { s := "sk-another-provider-key-1234"; return &s }(),
 			wantSuffix: func() *string { s := "1234"; return &s }(),

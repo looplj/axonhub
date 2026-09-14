@@ -4647,7 +4647,7 @@ type RequestExecution implements Node {
   """
   Last 4 characters of the channel API key used for this execution
   """
-  channelAPIKeySuffix: String
+  channelAPIKeySuffix: String @goField(forceResolver: true)
   requestBody: JSONRawMessage! @goField(forceResolver: true)
   responseBody: JSONRawMessage @goField(forceResolver: true)
   responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
@@ -4885,24 +4885,6 @@ input RequestExecutionWhereInput {
   reasoningEffortNotNil: Boolean
   reasoningEffortEqualFold: String
   reasoningEffortContainsFold: String
-  """
-  channel_api_key_suffix field predicates
-  """
-  channelAPIKeySuffix: String
-  channelAPIKeySuffixNEQ: String
-  channelAPIKeySuffixIn: [String!]
-  channelAPIKeySuffixNotIn: [String!]
-  channelAPIKeySuffixGT: String
-  channelAPIKeySuffixGTE: String
-  channelAPIKeySuffixLT: String
-  channelAPIKeySuffixLTE: String
-  channelAPIKeySuffixContains: String
-  channelAPIKeySuffixHasPrefix: String
-  channelAPIKeySuffixHasSuffix: String
-  channelAPIKeySuffixIsNil: Boolean
-  channelAPIKeySuffixNotNil: Boolean
-  channelAPIKeySuffixEqualFold: String
-  channelAPIKeySuffixContainsFold: String
   """
   error_message field predicates
   """

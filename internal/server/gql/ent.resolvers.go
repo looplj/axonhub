@@ -730,6 +730,20 @@ func (r *requestExecutionResolver) DataStorageID(ctx context.Context, obj *ent.R
 	}, nil
 }
 
+// ChannelAPIKeySuffix is the resolver for the channelAPIKeySuffix field.
+func (r *requestExecutionResolver) ChannelAPIKeySuffix(ctx context.Context, obj *ent.RequestExecution) (*string, error) {
+	if obj.ChannelAPIKeySuffix == nil || obj.ChannelID == 0 {
+		return nil, nil
+	}
+
+	ch, err := getNilableChannel(ctx, r.client, obj.ChannelID)
+	if err != nil || ch == nil {
+		return nil, nil
+	}
+
+	return obj.ChannelAPIKeySuffix, nil
+}
+
 // RequestBody is the resolver for the requestBody field.
 func (r *requestExecutionResolver) RequestBody(ctx context.Context, obj *ent.RequestExecution) (objects.JSONRawMessage, error) {
 	value, err := r.requestService.LoadRequestExecutionRequestBody(ctx, obj)

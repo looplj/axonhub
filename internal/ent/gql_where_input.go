@@ -7751,23 +7751,6 @@ type RequestExecutionWhereInput struct {
 	ReasoningEffortEqualFold    *string  `json:"reasoningEffortEqualFold,omitempty"`
 	ReasoningEffortContainsFold *string  `json:"reasoningEffortContainsFold,omitempty"`
 
-	// "channel_api_key_suffix" field predicates.
-	ChannelAPIKeySuffix             *string  `json:"channelAPIKeySuffix,omitempty"`
-	ChannelAPIKeySuffixNEQ          *string  `json:"channelAPIKeySuffixNEQ,omitempty"`
-	ChannelAPIKeySuffixIn           []string `json:"channelAPIKeySuffixIn,omitempty"`
-	ChannelAPIKeySuffixNotIn        []string `json:"channelAPIKeySuffixNotIn,omitempty"`
-	ChannelAPIKeySuffixGT           *string  `json:"channelAPIKeySuffixGT,omitempty"`
-	ChannelAPIKeySuffixGTE          *string  `json:"channelAPIKeySuffixGTE,omitempty"`
-	ChannelAPIKeySuffixLT           *string  `json:"channelAPIKeySuffixLT,omitempty"`
-	ChannelAPIKeySuffixLTE          *string  `json:"channelAPIKeySuffixLTE,omitempty"`
-	ChannelAPIKeySuffixContains     *string  `json:"channelAPIKeySuffixContains,omitempty"`
-	ChannelAPIKeySuffixHasPrefix    *string  `json:"channelAPIKeySuffixHasPrefix,omitempty"`
-	ChannelAPIKeySuffixHasSuffix    *string  `json:"channelAPIKeySuffixHasSuffix,omitempty"`
-	ChannelAPIKeySuffixIsNil        bool     `json:"channelAPIKeySuffixIsNil,omitempty"`
-	ChannelAPIKeySuffixNotNil       bool     `json:"channelAPIKeySuffixNotNil,omitempty"`
-	ChannelAPIKeySuffixEqualFold    *string  `json:"channelAPIKeySuffixEqualFold,omitempty"`
-	ChannelAPIKeySuffixContainsFold *string  `json:"channelAPIKeySuffixContainsFold,omitempty"`
-
 	// "error_message" field predicates.
 	ErrorMessage             *string  `json:"errorMessage,omitempty"`
 	ErrorMessageNEQ          *string  `json:"errorMessageNEQ,omitempty"`
@@ -8259,51 +8242,6 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.ReasoningEffortContainsFold != nil {
 		predicates = append(predicates, requestexecution.ReasoningEffortContainsFold(*i.ReasoningEffortContainsFold))
-	}
-	if i.ChannelAPIKeySuffix != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixEQ(*i.ChannelAPIKeySuffix))
-	}
-	if i.ChannelAPIKeySuffixNEQ != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixNEQ(*i.ChannelAPIKeySuffixNEQ))
-	}
-	if len(i.ChannelAPIKeySuffixIn) > 0 {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixIn(i.ChannelAPIKeySuffixIn...))
-	}
-	if len(i.ChannelAPIKeySuffixNotIn) > 0 {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixNotIn(i.ChannelAPIKeySuffixNotIn...))
-	}
-	if i.ChannelAPIKeySuffixGT != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixGT(*i.ChannelAPIKeySuffixGT))
-	}
-	if i.ChannelAPIKeySuffixGTE != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixGTE(*i.ChannelAPIKeySuffixGTE))
-	}
-	if i.ChannelAPIKeySuffixLT != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixLT(*i.ChannelAPIKeySuffixLT))
-	}
-	if i.ChannelAPIKeySuffixLTE != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixLTE(*i.ChannelAPIKeySuffixLTE))
-	}
-	if i.ChannelAPIKeySuffixContains != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixContains(*i.ChannelAPIKeySuffixContains))
-	}
-	if i.ChannelAPIKeySuffixHasPrefix != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixHasPrefix(*i.ChannelAPIKeySuffixHasPrefix))
-	}
-	if i.ChannelAPIKeySuffixHasSuffix != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixHasSuffix(*i.ChannelAPIKeySuffixHasSuffix))
-	}
-	if i.ChannelAPIKeySuffixIsNil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixIsNil())
-	}
-	if i.ChannelAPIKeySuffixNotNil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixNotNil())
-	}
-	if i.ChannelAPIKeySuffixEqualFold != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixEqualFold(*i.ChannelAPIKeySuffixEqualFold))
-	}
-	if i.ChannelAPIKeySuffixContainsFold != nil {
-		predicates = append(predicates, requestexecution.ChannelAPIKeySuffixContainsFold(*i.ChannelAPIKeySuffixContainsFold))
 	}
 	if i.ErrorMessage != nil {
 		predicates = append(predicates, requestexecution.ErrorMessageEQ(*i.ErrorMessage))

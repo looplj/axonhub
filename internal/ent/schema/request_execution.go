@@ -1,6 +1,9 @@
 package schema
 
 import (
+	"errors"
+	"unicode/utf8"
+
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
 	"entgo.io/ent/schema"
@@ -59,8 +62,17 @@ func (RequestExecution) Fields() []ent.Field {
 			Optional().
 			Nillable().
 			Immutable().
-			MaxLen(4).
-			Comment("Last 4 characters of the channel API key used for this execution"),
+			Validate(func(s string) error {
+				if utf8.RuneCountInString(s) > 4 {
+					return errors.New("channel_api_key_suffix must be at most 4 characters")
+				}
+				return nil
+			}).
+			Comment("Last 4 characters of the channel API key used for this execution").
+			Annotations(
+				entgql.Directives(forceResolver()),
+				entgql.Skip(entgql.SkipWhereInput),
+			),
 		// The original request to the provider.
 		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the Claude request format.
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable().Annotations(
