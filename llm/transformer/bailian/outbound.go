@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -62,7 +65,26 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	llmReq = mergeConsecutiveToolCallMessages(llmReq)
 
-	return t.Outbound.TransformRequest(ctx, llmReq)
+	httpReq, err := t.Outbound.TransformRequest(ctx, llmReq)
+	if err != nil {
+		return nil, err
+	}
+
+	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
+		return httpReq, nil
+	}
+
+	enableThinking := gjson.GetBytes(llmReq.RawRequest.Body, "enable_thinking")
+	if enableThinking.Type != gjson.True && enableThinking.Type != gjson.False {
+		return httpReq, nil
+	}
+
+	httpReq.Body, err = sjson.SetBytes(httpReq.Body, "enable_thinking", enableThinking.Bool())
+	if err != nil {
+		return nil, fmt.Errorf("failed to preserve Bailian enable_thinking: %w", err)
+	}
+
+	return httpReq, nil
 }
 
 func mergeConsecutiveToolCallMessages(req *llm.Request) *llm.Request {
