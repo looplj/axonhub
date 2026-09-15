@@ -281,6 +281,42 @@ func TestPrepareModelsEndpoint(t *testing.T) {
 			expectedURL: "https://open.bigmodel.cn/api/v4/models",
 		},
 		{
+			name:        "ZhipuAnthropic with raw URL marker (#)",
+			channelType: channel.TypeZhipuAnthropic,
+			baseURL:     "https://custom-proxy.example.com/v1#",
+			expectedURL: "https://custom-proxy.example.com/v1/models",
+		},
+		{
+			name:        "ZaiAnthropic with raw URL marker (#)",
+			channelType: channel.TypeZaiAnthropic,
+			baseURL:     "https://custom-proxy.example.com/v1#",
+			expectedURL: "https://custom-proxy.example.com/v1/models",
+		},
+		{
+			name:        "ZaiAnthropic with /v1 suffix",
+			channelType: channel.TypeZaiAnthropic,
+			baseURL:     "https://custom-proxy.example.com/v1",
+			expectedURL: "https://custom-proxy.example.com/v1/models",
+		},
+		{
+			name:        "Zai with raw URL marker (#)",
+			channelType: channel.TypeZai,
+			baseURL:     "https://custom-proxy.example.com/v1#",
+			expectedURL: "https://custom-proxy.example.com/v1/models",
+		},
+		{
+			name:        "Zai with /v1 suffix",
+			channelType: channel.TypeZai,
+			baseURL:     "https://custom-proxy.example.com/v1",
+			expectedURL: "https://custom-proxy.example.com/v1/models",
+		},
+		{
+			name:        "Zhipu with raw URL marker on official path",
+			channelType: channel.TypeZhipu,
+			baseURL:     "https://open.bigmodel.cn/api/paas/v4#",
+			expectedURL: "https://open.bigmodel.cn/api/paas/v4/models",
+		},
+		{
 			name:        "DeepseekAnthropic",
 			channelType: channel.TypeDeepseekAnthropic,
 			baseURL:     "https://api.deepseek.com/anthropic",
@@ -561,6 +597,35 @@ func TestFetchModelsGeminiPagination(t *testing.T) {
 			t.Fatalf("missing model id %q in result: %#v", want, result.Models)
 		}
 	}
+}
+
+// TestFetchModelsFamilyAnthropicWithRawURLMarker reproduces #2479: a Zai/Zhipu
+// Anthropic-format channel pointed at an OpenAI-compatible relay must send the
+// model-list probe to <relay>/models when the base URL carries the raw "#" marker,
+// instead of appending the official family path (/paas/v4/models).
+func TestFetchModelsFamilyAnthropicWithRawURLMarker(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/models" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"glm-5.2"},{"id":"glm-5.1"}]}`))
+	}))
+	defer server.Close()
+
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
+	apiKey := "test-key"
+
+	result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{
+		ChannelType: channel.TypeZaiAnthropic.String(),
+		BaseURL:     server.URL + "/v1#",
+		APIKey:      &apiKey,
+	})
+
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	assert.Equal(t, []ModelIdentify{{ID: "glm-5.2"}, {ID: "glm-5.1"}}, result.Models)
 }
 
 func TestFetchModelsWithChannelIDUsesStoredCredentialsOnlyForStoredEndpoint(t *testing.T) {

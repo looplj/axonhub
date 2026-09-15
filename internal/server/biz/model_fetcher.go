@@ -727,16 +727,36 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 
 		return baseURL + "/v1/models", headers
 	case channelType == channel.TypeZhipuAnthropic || channelType == channel.TypeZaiAnthropic:
+		if useRawURL {
+			return baseURL + "/models", headers
+		}
+
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
+
+		if strings.HasSuffix(baseURL, "/v1") {
+			return baseURL + "/models", headers
+		}
+
 		return baseURL + "/paas/v4/models", headers
 	case channelType == channel.TypeZai || channelType == channel.TypeZhipu:
+		if useRawURL {
+			return baseURL + "/models", headers
+		}
+
 		baseURL = strings.TrimSuffix(baseURL, "/v4")
+
+		if strings.HasSuffix(baseURL, "/v1") {
+			return baseURL + "/models", headers
+		}
+
 		return baseURL + "/v4/models", headers
 	case channelType == channel.TypeDoubao || channelType == channel.TypeVolcengine:
 		baseURL = strings.TrimSuffix(baseURL, "/v3")
+
 		return baseURL + "/v3/models", headers
 	case channelType == channel.TypeDoubaoAnthropic:
 		baseURL = strings.TrimSuffix(baseURL, "/compatible")
+
 		return baseURL + "/v3/models", headers
 	case isCommandCodeChannelType(channelType):
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
