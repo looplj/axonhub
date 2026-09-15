@@ -27,8 +27,13 @@ function copyTextWithDocumentCommand(text: string): void {
 
 export async function copyTextToClipboard(text: string): Promise<void> {
   if (typeof navigator !== 'undefined' && typeof navigator.clipboard?.writeText === 'function') {
-    await navigator.clipboard.writeText(text);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Insecure HTTP origins (e.g. Safari on http://) still expose the Clipboard
+      // API but reject every write, so fall through to the document command.
+    }
   }
 
   copyTextWithDocumentCommand(text);
