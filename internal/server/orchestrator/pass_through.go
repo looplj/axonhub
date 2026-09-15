@@ -110,6 +110,19 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 			return request, nil
 		}
 
+		// Replaying the inbound bytes would undo the billing system message
+		// removal, because that removal rewrites the unified request only. A
+		// channel pinned to strip has asked for the block to be gone, and that
+		// outranks a byte-exact replay for the few requests carrying one.
+		if billingStripWouldBeUndone(channel, llmReq) {
+			log.Debug(ctx, "skipping pass-through body, channel pins the Claude Code billing header to strip",
+				log.String("channel", channel.Name),
+				log.Int("channel_id", channel.ID),
+			)
+
+			return request, nil
+		}
+
 		log.Debug(ctx, "applying pass-through body",
 			log.String("channel", channel.Name),
 			log.String("api_format", request.APIFormat),
