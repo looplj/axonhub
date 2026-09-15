@@ -2,6 +2,7 @@ package provider_quota
 
 import (
 	"math"
+	"strings"
 	"time"
 )
 
@@ -96,7 +97,13 @@ func normalizeQuotaLimits(limits []QuotaLimitStatus, now time.Time) []QuotaLimit
 			limit.PeriodStart = nil
 		}
 
-		identity := string(limit.Type) + "\x00" + limit.Window
+		// Limits of different accounts of one channel share a window, so the
+		// account identity stays part of the key. Without it two keys would
+		// collapse into a single limit and the capacity of the healthier
+		// account would be lost.
+		identity := strings.Join([]string{
+			string(limit.Type), limit.Window, limit.AvailabilityGroup, limit.Account,
+		}, "\x00")
 		if index, ok := indexes[identity]; ok {
 			mergeQuotaLimit(&normalized[index], limit)
 			continue
