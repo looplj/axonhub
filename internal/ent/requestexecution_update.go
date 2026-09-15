@@ -376,6 +376,9 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if _u.mutation.ReasoningEffortCleared() {
 		_spec.ClearField(requestexecution.FieldReasoningEffort, field.TypeString)
 	}
+	if _u.mutation.ChannelAPIKeySuffixCleared() {
+		_spec.ClearField(requestexecution.FieldChannelAPIKeySuffix, field.TypeString)
+	}
 	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
 	}
@@ -859,6 +862,9 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	}
 	if _u.mutation.ReasoningEffortCleared() {
 		_spec.ClearField(requestexecution.FieldReasoningEffort, field.TypeString)
+	}
+	if _u.mutation.ChannelAPIKeySuffixCleared() {
+		_spec.ClearField(requestexecution.FieldChannelAPIKeySuffix, field.TypeString)
 	}
 	if value, ok := _u.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)

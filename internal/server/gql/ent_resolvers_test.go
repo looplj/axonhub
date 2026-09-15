@@ -109,3 +109,48 @@ func TestChannelResolver_ProviderQuotaStatus_ReturnsNilWhenStatusDoesNotExist(t 
 	require.NoError(t, err)
 	require.Nil(t, status)
 }
+
+func TestRequestExecutionResolver_ChannelAPIKeySuffix(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent_req_exec?mode=memory&_fk=1")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+
+	channelEntity, err := client.Channel.Create().
+		SetName("OpenAI Channel").
+		SetType(channel.TypeOpenai).
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"test-model"}).
+		SetDefaultTestModel("test-model").
+		Save(ctx)
+	require.NoError(t, err)
+
+	suffix := "ZxWL"
+	exec := &ent.RequestExecution{
+		ChannelID:           channelEntity.ID,
+		ChannelAPIKeySuffix: &suffix,
+	}
+
+	resolver := &requestExecutionResolver{&Resolver{client: client}}
+
+	// 1. Authorized context can read suffix
+	got, err := resolver.ChannelAPIKeySuffix(ctx, exec)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, "ZxWL", *got)
+
+	// 2. Nil suffix returns nil
+	execNoSuffix := &ent.RequestExecution{
+		ChannelID: channelEntity.ID,
+	}
+	got, err = resolver.ChannelAPIKeySuffix(ctx, execNoSuffix)
+	require.NoError(t, err)
+	require.Nil(t, got)
+
+	// 3. Unauthorized context (without channel read permission) gets nil
+	unauthorizedCtx := ent.NewContext(t.Context(), client)
+	got, err = resolver.ChannelAPIKeySuffix(unauthorizedCtx, exec)
+	require.NoError(t, err)
+	require.Nil(t, got)
+}

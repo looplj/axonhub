@@ -4644,6 +4644,10 @@ type RequestExecution implements Node {
   Final reasoning effort sent to the upstream provider
   """
   reasoningEffort: String
+  """
+  Last 4 characters of the channel API key used for this execution
+  """
+  channelAPIKeySuffix: String @goField(forceResolver: true)
   requestBody: JSONRawMessage! @goField(forceResolver: true)
   responseBody: JSONRawMessage @goField(forceResolver: true)
   responseChunks: [JSONRawMessage!] @goField(forceResolver: true)

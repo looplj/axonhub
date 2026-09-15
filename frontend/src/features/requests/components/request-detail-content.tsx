@@ -802,6 +802,13 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                               <p className='text-muted-foreground font-mono text-sm'>
                                 {execution.channel?.name || t('requests.columns.unknown')}
                               </p>
+                              {execution.channelAPIKeySuffix && (
+                                <div className='flex items-center gap-1.5 text-xs text-muted-foreground pt-0.5'>
+                                  <Key className='h-3.5 w-3.5 shrink-0' />
+                                  <span>{t('requests.columns.upstreamApiKey')}</span>
+                                  <span className='font-mono'>••••{execution.channelAPIKeySuffix}</span>
+                                </div>
+                              )}
                             </div>
                             <div className='bg-background space-y-2 rounded-lg border p-3'>
                               <span className='flex items-center gap-2 text-sm font-medium'>
