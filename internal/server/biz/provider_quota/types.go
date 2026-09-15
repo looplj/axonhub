@@ -78,6 +78,11 @@ type QuotaLimitStatus struct {
 	// QuotaLimitType, so this is what tells them apart in the UI.
 	Window string `json:"window,omitempty"`
 
+	// Account identifies the credential a limit belongs to when one channel
+	// draws from several accounts (one API key per account). It is a display
+	// label and never holds a credential.
+	Account string `json:"account,omitempty"`
+
 	// PeriodStart is the beginning of the window UsageRatio covers. Checkers
 	// fill it whenever the window length is known (either reported by the
 	// provider or fixed by the plan); it is what makes the usage-log cost
