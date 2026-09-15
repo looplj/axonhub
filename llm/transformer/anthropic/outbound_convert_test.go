@@ -1137,3 +1137,62 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToolsAnthropic_NilParameters(t *testing.T) {
+	t.Run("nil parameters defaults to empty object schema", func(t *testing.T) {
+		tools := []llm.Tool{
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:        "web_search",
+					Description: "Search the web",
+					Parameters:  nil,
+				},
+			},
+		}
+		result := convertToolsAnthropic(tools, nil)
+		require.Len(t, result, 1)
+		require.Equal(t, "web_search", result[0].Name)
+		require.NotNil(t, result[0].InputSchema)
+		require.True(t, json.Valid(result[0].InputSchema))
+		var schema map[string]any
+		require.NoError(t, json.Unmarshal(result[0].InputSchema, &schema))
+		require.Equal(t, "object", schema["type"])
+		require.NotNil(t, schema["properties"])
+	})
+
+	t.Run("empty parameters defaults to empty object schema", func(t *testing.T) {
+		tools := []llm.Tool{
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:        "no_params_func",
+					Description: "A function with no parameters",
+					Parameters:  json.RawMessage{},
+				},
+			},
+		}
+		result := convertToolsAnthropic(tools, nil)
+		require.Len(t, result, 1)
+		require.NotNil(t, result[0].InputSchema)
+		var schema map[string]any
+		require.NoError(t, json.Unmarshal(result[0].InputSchema, &schema))
+		require.Equal(t, "object", schema["type"])
+	})
+
+	t.Run("explicit parameters are preserved unchanged", func(t *testing.T) {
+		params := json.RawMessage(`{"type":"object","properties":{"query":{"type":"string"}},"required":["query"]}`)
+		tools := []llm.Tool{
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:       "search",
+					Parameters: params,
+				},
+			},
+		}
+		result := convertToolsAnthropic(tools, nil)
+		require.Len(t, result, 1)
+		require.Equal(t, params, result[0].InputSchema)
+	})
+}

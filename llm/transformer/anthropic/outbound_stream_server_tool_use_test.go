@@ -30,10 +30,10 @@ func TestOutboundTransformer_ServerToolUse_NoPanic(t *testing.T) {
 		sseEvent(t, "message_start", map[string]any{
 			"type": "message_start",
 			"message": map[string]any{
-				"id":    "msg_01AEsGpin3gJumakZWMTyQp3",
-				"type":  "message",
-				"role":  "assistant",
-				"model": "claude-opus-4-7",
+				"id":      "msg_01AEsGpin3gJumakZWMTyQp3",
+				"type":    "message",
+				"role":    "assistant",
+				"model":   "claude-opus-4-7",
 				"content": []any{},
 				"usage": map[string]any{
 					"input_tokens":  6,
