@@ -1137,3 +1137,73 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveMaxTokens(t *testing.T) {
+	tests := []struct {
+		name     string
+		chatReq  *llm.Request
+		expected int64
+	}{
+		{
+			name: "uses client max_tokens",
+			chatReq: &llm.Request{
+				MaxTokens: lo.ToPtr(int64(1024)),
+			},
+			expected: 1024,
+		},
+		{
+			name: "uses max_completion_tokens when max_tokens is unset",
+			chatReq: &llm.Request{
+				MaxCompletionTokens: lo.ToPtr(int64(2048)),
+			},
+			expected: 2048,
+		},
+		{
+			name: "prefers max_tokens over max_completion_tokens",
+			chatReq: &llm.Request{
+				MaxTokens:           lo.ToPtr(int64(512)),
+				MaxCompletionTokens: lo.ToPtr(int64(2048)),
+			},
+			expected: 512,
+		},
+		{
+			name: "uses model card default when client omitted an output cap",
+			chatReq: &llm.Request{
+				TransformOptions: llm.TransformOptions{
+					DefaultMaxTokens: lo.ToPtr(int64(131072)),
+				},
+			},
+			expected: 131072,
+		},
+		{
+			name: "prefers client max_tokens over model card default",
+			chatReq: &llm.Request{
+				MaxTokens: lo.ToPtr(int64(1024)),
+				TransformOptions: llm.TransformOptions{
+					DefaultMaxTokens: lo.ToPtr(int64(131072)),
+				},
+			},
+			expected: 1024,
+		},
+		{
+			name: "ignores non-positive model card default",
+			chatReq: &llm.Request{
+				TransformOptions: llm.TransformOptions{
+					DefaultMaxTokens: lo.ToPtr(int64(0)),
+				},
+			},
+			expected: 8192,
+		},
+		{
+			name:     "falls back to 8192 when no limit is available",
+			chatReq:  &llm.Request{},
+			expected: 8192,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, resolveMaxTokens(tt.chatReq))
+		})
+	}
+}

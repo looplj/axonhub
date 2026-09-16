@@ -43,6 +43,32 @@ func applyTransformOptions(req *llm.Request, channelSettings *objects.ChannelSet
 	return &newReq
 }
 
+// applyModelDefaultMaxTokens copies the catalog model output limit onto the
+// request so Anthropic outbound conversion can use it as max_tokens when the
+// client omitted an output cap. Other outbound formats leave max_tokens unset.
+func applyModelDefaultMaxTokens(req *llm.Request, candidate *ChannelModelsCandidate, outboundFormat llm.APIFormat) *llm.Request {
+	if req == nil || candidate == nil || candidate.DefaultMaxTokens <= 0 {
+		return req
+	}
+
+	if outboundFormat != llm.APIFormatAnthropicMessage {
+		return req
+	}
+
+	if req.MaxTokens != nil || req.MaxCompletionTokens != nil {
+		return req
+	}
+
+	if req.TransformOptions.DefaultMaxTokens != nil {
+		return req
+	}
+
+	newReq := *req
+	newReq.TransformOptions.DefaultMaxTokens = lo.ToPtr(candidate.DefaultMaxTokens)
+
+	return &newReq
+}
+
 // applyReasoningEffortMapping applies the channel's reasoning effort mapping to the
 // unified request before the outbound transformer runs, so the mapping affects every
 // outbound protocol (chat completions, responses, messages) uniformly, regardless of
