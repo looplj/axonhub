@@ -187,8 +187,9 @@ func collectZhipuFamilyQuota(
 	accounts := make([]zhipuAccountQuota, 0, len(targets))
 
 	var (
-		failures int
-		firstErr error
+		failures         int
+		enabledSuccesses int
+		firstErr         error
 	)
 
 	for _, key := range targets {
@@ -212,6 +213,10 @@ func collectZhipuFamilyQuota(
 			continue
 		}
 
+		if !account.Disabled {
+			enabledSuccesses++
+		}
+
 		account.Status = snapshot.Status
 		account.Ready = snapshot.Ready
 		account.Level = snapshot.Level
@@ -223,6 +228,12 @@ func collectZhipuFamilyQuota(
 		// Every key failed: keep the underlying reason (the quota service logs
 		// it and stores the error code) instead of a generic summary.
 		return QuotaData{}, fmt.Errorf("zhipu quota check failed for all %d keys: %w", len(keys), firstErr)
+	}
+
+	if len(enabledKeys) > 0 && enabledSuccesses == 0 {
+		// No serving key could be read; disabled accounts must not mask the
+		// failure into a bogus exhausted verdict.
+		return QuotaData{}, fmt.Errorf("zhipu quota check failed for all %d enabled keys: %w", len(enabledKeys), firstErr)
 	}
 
 	return buildZhipuQuotaData(providerType, accounts), nil
@@ -307,9 +318,11 @@ func zhipuAggregateStatus(usable []zhipuAccountQuota) (string, bool) {
 }
 
 // zhipuChannelLimits keeps the historical single-key shape and switches to one
-// binding limit per account as soon as the channel carries several keys.
+// binding limit per account as soon as the channel carries several keys. A
+// sole key that is disabled or failed to read has no usable capacity, so it
+// falls through to the account-aware path instead of publishing window limits.
 func zhipuChannelLimits(accounts, usable []zhipuAccountQuota) []QuotaLimitStatus {
-	if len(accounts) == 1 {
+	if len(accounts) == 1 && len(usable) == 1 {
 		return zhipuWindowLimits(accounts[0])
 	}
 

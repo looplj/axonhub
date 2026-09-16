@@ -1624,6 +1624,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
               // account with its two figures. Disabled and failing keys are
               // collapsed behind a toggle.
               const usableAccounts = accounts.filter((account) => !account.disabled && !account.error);
+              const readyAccountCount = usableAccounts.filter((account) => account.ready === true).length;
               const unavailableAccounts = accounts.filter((account) => account.disabled || account.error);
               const visibleAccounts = showDisabledAccounts ? [...usableAccounts, ...unavailableAccounts] : usableAccounts;
               const hiddenCount = unavailableAccounts.length;
@@ -1642,7 +1643,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                 <>
                   <div className='flex items-center justify-between text-xs'>
                     <span className='text-muted-foreground font-medium'>
-                      {t('quota.label.accounts_summary', { usable: usableAccounts.length, total: accounts.length })}
+                      {t('quota.label.accounts_summary', { usable: readyAccountCount, total: accounts.length })}
                     </span>
                     <span className='text-muted-foreground text-[11px]'>{t('quota.label.worst_window')}</span>
                   </div>

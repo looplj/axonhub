@@ -677,6 +677,56 @@ func TestZhipu_CheckQuota_DisabledAccountKeepsRowsWithoutCapacity(t *testing.T) 
 	require.Equal(t, "available", quota.Status)
 }
 
+func TestZhipu_CheckQuota_EnabledFailuresWithDisabledSuccessIsError(t *testing.T) {
+	expiresAt := time.Now().Add(time.Hour)
+
+	// The only serving key is unreachable while the parked key answers fine, so
+	// the channel status cannot be trusted: the check must fail instead of
+	// reporting a bogus exhausted verdict.
+	checker := NewZhipuQuotaChecker(zhipuKeyedHTTPClient(map[string]string{
+		"bbbb-account-0002": zhipuCreditLimitPayload("max", 16, 31),
+	}))
+
+	_, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Type:        channel.TypeZhipu,
+		Credentials: objects.ChannelCredentials{APIKeys: []string{"aaaa-account-0001", "bbbb-account-0002"}},
+		DisabledAPIKeys: []objects.DisabledAPIKey{{
+			Key:        "bbbb-account-0002",
+			DisabledAt: time.Now(),
+			ErrorCode:  429,
+			Reason:     "rate limited",
+			ExpiresAt:  &expiresAt,
+		}},
+	})
+	require.ErrorContains(t, err, "failed for all 1 enabled keys")
+}
+
+func TestZhipu_CheckQuota_DisabledOnlySingleKeyHasNoLimits(t *testing.T) {
+	expiresAt := time.Now().Add(time.Hour)
+
+	// A channel whose sole key is parked can serve nothing, so it must not
+	// publish window limits for that key.
+	checker := NewZhipuQuotaChecker(zhipuKeyedHTTPClient(map[string]string{
+		"aaaa-account-0001": zhipuCreditLimitPayload("max", 10, 20),
+	}))
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Type:        channel.TypeZhipu,
+		Credentials: objects.ChannelCredentials{APIKey: "aaaa-account-0001"},
+		DisabledAPIKeys: []objects.DisabledAPIKey{{
+			Key:        "aaaa-account-0001",
+			DisabledAt: time.Now(),
+			ErrorCode:  429,
+			Reason:     "rate limited",
+			ExpiresAt:  &expiresAt,
+		}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "exhausted", quota.Status)
+	require.False(t, quota.Ready)
+	require.Empty(t, quota.Limits)
+}
+
 func TestZhipu_CheckQuota_OneAccountFailureKeepsTheRest(t *testing.T) {
 	checker := NewZhipuQuotaChecker(zhipuKeyedHTTPClient(map[string]string{
 		"bbbb-account-0002": zhipuCreditLimitPayload("max", 16, 31),
