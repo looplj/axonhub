@@ -95,6 +95,53 @@ func TestApplyTransformOptions_ForceArrayInputs(t *testing.T) {
 	require.Equal(t, lo.ToPtr(true), result.TransformOptions.ArrayInputs)
 }
 
+func TestApplyModelDefaultMaxTokens(t *testing.T) {
+	candidate := &ChannelModelsCandidate{DefaultMaxTokens: 131072}
+
+	t.Run("sets default for anthropic when client omitted an output cap", func(t *testing.T) {
+		req := &llm.Request{Model: "glm-5.3"}
+
+		result := applyModelDefaultMaxTokens(req, candidate, llm.APIFormatAnthropicMessage)
+
+		require.NotSame(t, req, result)
+		require.Equal(t, lo.ToPtr(int64(131072)), result.TransformOptions.DefaultMaxTokens)
+		require.Nil(t, req.TransformOptions.DefaultMaxTokens)
+	})
+
+	t.Run("does not apply to openai outbound", func(t *testing.T) {
+		req := &llm.Request{Model: "glm-5.3"}
+
+		result := applyModelDefaultMaxTokens(req, candidate, llm.APIFormatOpenAIChatCompletion)
+
+		require.Same(t, req, result)
+		require.Nil(t, result.TransformOptions.DefaultMaxTokens)
+	})
+
+	t.Run("keeps client max_tokens", func(t *testing.T) {
+		req := &llm.Request{Model: "glm-5.3", MaxTokens: lo.ToPtr(int64(1024))}
+
+		result := applyModelDefaultMaxTokens(req, candidate, llm.APIFormatAnthropicMessage)
+
+		require.Same(t, req, result)
+		require.Nil(t, result.TransformOptions.DefaultMaxTokens)
+	})
+
+	t.Run("keeps client max_completion_tokens", func(t *testing.T) {
+		req := &llm.Request{Model: "glm-5.3", MaxCompletionTokens: lo.ToPtr(int64(2048))}
+
+		result := applyModelDefaultMaxTokens(req, candidate, llm.APIFormatAnthropicMessage)
+
+		require.Same(t, req, result)
+	})
+
+	t.Run("skips missing or non-positive model limit", func(t *testing.T) {
+		req := &llm.Request{Model: "glm-5.3"}
+
+		require.Same(t, req, applyModelDefaultMaxTokens(req, nil, llm.APIFormatAnthropicMessage))
+		require.Same(t, req, applyModelDefaultMaxTokens(req, &ChannelModelsCandidate{}, llm.APIFormatAnthropicMessage))
+	})
+}
+
 func TestApplyReasoningEffortMapping(t *testing.T) {
 	settings := &objects.ChannelSettings{TransformOptions: objects.TransformOptions{
 		ReasoningEffortMapping: []llm.ReasoningEffortMapping{

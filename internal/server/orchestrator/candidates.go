@@ -34,6 +34,10 @@ type ChannelModelsCandidate struct {
 	modelAPIFormats    []string
 	TraceSticky        bool // selected from the last successful trace or thread channel
 	ModelRoutingPolicy *ModelRoutingPolicy
+	// DefaultMaxTokens is the AxonHub model card output limit, used as the
+	// Anthropic max_tokens fallback when the client omitted an output cap.
+	// Zero means the catalog model has no usable limit.
+	DefaultMaxTokens int64
 }
 
 // ModelRoutingPolicy contains model-level overrides carried from model
@@ -221,8 +225,10 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 		LoadBalancerStrategy: strategy,
 		TraceStickyMode:      traceStickyMode,
 	}
+	defaultMaxTokens := modelCardOutputLimit(model)
 	for _, candidate := range candidates {
 		candidate.ModelRoutingPolicy = modelRoutingPolicy
+		candidate.DefaultMaxTokens = defaultMaxTokens
 	}
 
 	if log.DebugEnabled(ctx) {
@@ -598,6 +604,14 @@ func aggregateChannelModelCandidates(resolvedCandidates []*resolvedAssociationCa
 	}
 
 	return candidates
+}
+
+func modelCardOutputLimit(m *ent.Model) int64 {
+	if m == nil || m.ModelCard == nil || m.ModelCard.Limit.Output <= 0 {
+		return 0
+	}
+
+	return int64(m.ModelCard.Limit.Output)
 }
 
 // getLatestChannelUpdateTime returns the latest update time among all channels.
