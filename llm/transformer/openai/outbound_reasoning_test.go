@@ -301,7 +301,9 @@ func TestOutboundTransformer_TransformRequest_ReasoningOnlyAssistantKeepsContent
 
 	// Stricter OpenAI-compatible upstreams reject a missing messages.content
 	// key, so reasoning-only assistant turns must serialize content explicitly.
+	// The placeholder is a single "." rather than an empty string, which
+	// LiteLLM-family gateways rewrite into their sanitization marker.
 	content, hasContent := raw.Messages[1]["content"]
 	require.True(t, hasContent, "reasoning-only assistant message must keep the content key on the wire")
-	assert.Equal(t, `""`, string(content))
+	assert.Equal(t, `"."`, string(content))
 }

@@ -229,7 +229,9 @@ func TestOutboundTransformer_NativeChatBypassesResponsesToolAdapter(t *testing.T
 	var converted Request
 	assert.NoError(t, json.Unmarshal(request.Body, &converted))
 	assert.Len(t, converted.Messages, 3)
-	assert.Equal(t, blank, lo.FromPtr(converted.Messages[1].Content.Content))
+	// The native chat path keeps the payload-less assistant turn, but its blank
+	// content is normalized to the placeholder before it reaches the provider.
+	assert.Equal(t, ".", lo.FromPtr(converted.Messages[1].Content.Content))
 	assert.Len(t, converted.Tools, 1)
 	assert.JSONEq(t, `{"properties":{"query":{"type":"string"}}}`, string(converted.Tools[0].Function.Parameters))
 	assert.Equal(t, map[string]any{"existing": "kept"}, request.TransformerMetadata)

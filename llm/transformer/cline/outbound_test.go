@@ -192,7 +192,9 @@ func TestOutboundTransformer_TransformRequest_NormalizesOnlyRequiredEmptyContent
 	assert.JSONEq(t, emptyTextPart, string(body.Messages[2].Content))
 	assert.JSONEq(t, emptyTextPart, string(body.Messages[3].Content))
 	assert.JSONEq(t, emptyTextPart, string(body.Messages[4].Content))
-	assert.Equal(t, `""`, string(body.Messages[5].Content))
+	// Assistant blank content is normalized to the placeholder by the shared
+	// Chat codec before it reaches the provider.
+	assert.Equal(t, `"."`, string(body.Messages[5].Content))
 	assert.Equal(t, `""`, string(body.Messages[6].Content))
 	assert.Equal(t, `"   "`, string(body.Messages[7].Content))
 }

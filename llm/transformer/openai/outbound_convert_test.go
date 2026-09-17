@@ -214,18 +214,20 @@ func TestResponsesChatToolAdapter_DropsEmptyAssistantHistoryMessages(t *testing.
 	require.Equal(t, "kept reasoning", lo.FromPtr(chatRequest.Messages[1].ReasoningContent))
 	// Reasoning-only assistant messages must still serialize an explicit content
 	// field; stricter OpenAI-compatible upstreams reject a missing content key.
+	// The placeholder is a single "." because a blank string would be rewritten
+	// by LiteLLM-family gateways into their sanitization marker.
 	require.NotNil(t, chatRequest.Messages[1].Content.Content)
-	require.Equal(t, "", *chatRequest.Messages[1].Content.Content)
+	require.Equal(t, ".", *chatRequest.Messages[1].Content.Content)
 	require.Len(t, chatRequest.Messages[2].ToolCalls, 1)
 	require.Contains(t, adapter.warnings, "empty_assistant_message: dropped 3 history message(s) with no Chat-compatible payload")
 }
 
 func TestResponsesChatToolAdapter_RevalidatesEveryAssistantPayloadForm(t *testing.T) {
-	assistantWithPart := func(part llm.MessageContentPart) llm.Message {
+	assistantWithPart := func(parts ...llm.MessageContentPart) llm.Message {
 		return llm.Message{
 			Role: "assistant",
 			Content: llm.MessageContent{
-				MultipleContent: []llm.MessageContentPart{part},
+				MultipleContent: parts,
 			},
 		}
 	}
@@ -235,7 +237,15 @@ func TestResponsesChatToolAdapter_RevalidatesEveryAssistantPayloadForm(t *testin
 		wantKept bool
 	}{
 		{name: "nil content", message: llm.Message{Role: "assistant"}},
+		{name: "empty string scalar content", message: llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("")}}},
 		{name: "whitespace scalar content", message: llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(" \n\t")}}},
+		{
+			name: "blank content with visible reasoning",
+			message: llm.Message{
+				Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("")}, ReasoningContent: lo.ToPtr("thinking"),
+			},
+			wantKept: true,
+		},
 		{name: "empty reasoning content", message: llm.Message{Role: "assistant", ReasoningContent: lo.ToPtr("")}},
 		{name: "whitespace reasoning", message: llm.Message{Role: "assistant", Reasoning: lo.ToPtr(" \n")}},
 		{name: "whitespace refusal", message: llm.Message{Role: "assistant", Refusal: " \t"}},
@@ -251,6 +261,22 @@ func TestResponsesChatToolAdapter_RevalidatesEveryAssistantPayloadForm(t *testin
 			message: llm.Message{Role: "assistant", Content: llm.MessageContent{
 				Content: lo.ToPtr("ignored"), MultipleContent: []llm.MessageContentPart{{Type: "text", Text: lo.ToPtr(" ")}},
 			}},
+		},
+		{
+			name:    "sanitization marker only",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(litellmSanitizedEmptyContentMarker)}},
+		},
+		{
+			name:    "sanitization marker text part only",
+			message: assistantWithPart(llm.MessageContentPart{Type: "text", Text: lo.ToPtr(litellmSanitizedEmptyContentMarker)}),
+		},
+		{
+			name: "sanitization marker next to visible text",
+			message: assistantWithPart(
+				llm.MessageContentPart{Type: "text", Text: lo.ToPtr(litellmSanitizedEmptyContentMarker)},
+				llm.MessageContentPart{Type: "text", Text: lo.ToPtr("visible")},
+			),
+			wantKept: true,
 		},
 		{name: "visible scalar content", message: llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("visible")}}, wantKept: true},
 		{name: "visible reasoning content", message: llm.Message{Role: "assistant", ReasoningContent: lo.ToPtr("thinking")}, wantKept: true},
@@ -1941,7 +1967,7 @@ func TestRequestFromLLM_PreservesReasoningEffort(t *testing.T) {
 // content field. Omitting it (nil content) or emitting null (all parts filtered
 // out) is accepted by OpenAI but rejected by stricter OpenAI-compatible upstreams
 // whose schema only allows a string or an array.
-func TestMessageFromLLM_ToolCallOnlyMessageKeepsContentField(t *testing.T) {
+func TestMessageFromLLMWithConfig_ToolCallOnlyMessageKeepsContentField(t *testing.T) {
 	toolCalls := []llm.ToolCall{
 		{
 			ID:   "call_1",
@@ -1983,7 +2009,7 @@ func TestMessageFromLLM_ToolCallOnlyMessageKeepsContentField(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			msg := MessageFromLLM(tt.message)
+			msg := MessageFromLLMWithConfig(tt.message, ReasoningFieldAll)
 
 			data, err := json.Marshal(msg)
 			require.NoError(t, err)
@@ -1994,9 +2020,244 @@ func TestMessageFromLLM_ToolCallOnlyMessageKeepsContentField(t *testing.T) {
 			content, ok := decoded["content"]
 			require.True(t, ok, "content field must be present, got %s", data)
 			require.NotNil(t, content, "content must not be null, got %s", data)
-			require.Equal(t, "", content)
+			require.Equal(t, ".", content)
 		})
 	}
+}
+
+// Assistant content that a LiteLLM-family gateway would rewrite into its
+// sanitization marker must not reach the model: blank text becomes the
+// placeholder, and the marker itself is stripped from replayed history. User
+// turns and normal text pass through untouched.
+func TestMessageFromLLMWithConfig_NormalizesAssistantRequestContent(t *testing.T) {
+	marker := "[System: Empty message content sanitised to satisfy protocol]"
+
+	type wantPart struct {
+		partType string
+		text     string
+	}
+
+	tests := []struct {
+		name          string
+		message       llm.Message
+		wantContent   *string
+		wantParts     []wantPart
+		wantToolCalls int
+	}{
+		{
+			name:        "blank scalar content becomes the placeholder",
+			message:     llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("")}},
+			wantContent: lo.ToPtr("."),
+		},
+		{
+			name:        "whitespace scalar content becomes the placeholder",
+			message:     llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(" \n\t")}},
+			wantContent: lo.ToPtr("."),
+		},
+		{
+			name: "blank scalar content keeps tool calls",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("")}, ToolCalls: []llm.ToolCall{
+				{ID: "call_1", Type: llm.ToolTypeFunction, Function: llm.FunctionCall{Name: "lookup", Arguments: `{}`}},
+			}},
+			wantContent:   lo.ToPtr("."),
+			wantToolCalls: 1,
+		},
+		{
+			name: "only blank text part becomes the placeholder",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "text", Text: lo.ToPtr(" \n")},
+			}}},
+			wantContent: lo.ToPtr("."),
+		},
+		{
+			name: "nil text part becomes the placeholder",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "text"},
+			}}},
+			wantContent: lo.ToPtr("."),
+		},
+		{
+			name: "blank text part is dropped next to real text",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "text", Text: lo.ToPtr("")},
+				{Type: "text", Text: lo.ToPtr("real answer")},
+			}}},
+			wantParts: []wantPart{{partType: "text", text: "real answer"}},
+		},
+		{
+			name: "blank text part is dropped next to an image part",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "text", Text: lo.ToPtr(" ")},
+				{Type: "image_url", ImageURL: &llm.ImageURL{URL: "https://example.com/image.png"}},
+			}}},
+			wantParts: []wantPart{{partType: "image_url"}},
+		},
+		{
+			name: "scalar content does not resurface when the part list empties",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{
+				Content:         lo.ToPtr("ignored"),
+				MultipleContent: []llm.MessageContentPart{{Type: "text", Text: lo.ToPtr(" ")}},
+			}},
+			wantContent: lo.ToPtr("."),
+		},
+		{
+			name:        "user blank scalar content is preserved",
+			message:     llm.Message{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("")}},
+			wantContent: lo.ToPtr(""),
+		},
+		{
+			name: "user blank text part is preserved",
+			message: llm.Message{Role: "user", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "input_text", Text: lo.ToPtr("")},
+			}}},
+			wantParts: []wantPart{{partType: "text", text: ""}},
+		},
+		{
+			name:        "marker as scalar content becomes the placeholder",
+			message:     llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(marker)}},
+			wantContent: lo.ToPtr("."),
+		},
+		{
+			name:        "marker with surrounding whitespace becomes the placeholder",
+			message:     llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(" \n" + marker + "\t")}},
+			wantContent: lo.ToPtr("."),
+		},
+		{
+			name: "marker text part is dropped when it is the only part",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "output_text", Text: lo.ToPtr(marker)},
+			}}},
+			wantContent: lo.ToPtr("."),
+		},
+		{
+			name: "marker text part is dropped next to real text",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "text", Text: lo.ToPtr(marker)},
+				{Type: "text", Text: lo.ToPtr("real answer")},
+			}}},
+			wantParts: []wantPart{{partType: "text", text: "real answer"}},
+		},
+		{
+			name: "marker text part is dropped next to an image part",
+			message: llm.Message{Role: "assistant", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "text", Text: lo.ToPtr(marker)},
+				{Type: "image_url", ImageURL: &llm.ImageURL{URL: "https://example.com/image.png"}},
+			}}},
+			wantParts: []wantPart{{partType: "image_url"}},
+		},
+		{
+			name:        "user marker is preserved",
+			message:     llm.Message{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(marker)}},
+			wantContent: lo.ToPtr(marker),
+		},
+		{
+			name: "user marker text part is preserved",
+			message: llm.Message{Role: "user", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+				{Type: "input_text", Text: lo.ToPtr(marker)},
+			}}},
+			wantParts: []wantPart{{partType: "text", text: marker}},
+		},
+		{
+			name:        "unrelated assistant text is untouched",
+			message:     llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("real answer")}},
+			wantContent: lo.ToPtr("real answer"),
+		},
+		{
+			name:        "assistant text that merely mentions the marker is untouched",
+			message:     llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("the marker is " + marker)}},
+			wantContent: lo.ToPtr("the marker is " + marker),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := MessageFromLLMWithConfig(tt.message, ReasoningFieldAll)
+
+			if tt.wantContent != nil {
+				require.NotNil(t, msg.Content.Content)
+				require.Equal(t, *tt.wantContent, *msg.Content.Content)
+			} else {
+				require.Nil(t, msg.Content.Content)
+				require.Len(t, msg.Content.MultipleContent, len(tt.wantParts))
+				for index, want := range tt.wantParts {
+					require.Equal(t, want.partType, msg.Content.MultipleContent[index].Type)
+					require.Equal(t, want.text, lo.FromPtr(msg.Content.MultipleContent[index].Text))
+				}
+			}
+
+			require.Len(t, msg.ToolCalls, tt.wantToolCalls)
+		})
+	}
+}
+
+// End-to-end on the wire: a history carrying the LiteLLM sanitization marker
+// leaves AxonHub with the placeholder on assistant turns, while a user turn
+// quoting the same string passes through untouched.
+func TestRequestFromLLM_ReplacesSanitizedMarkerOnTheWire(t *testing.T) {
+	marker := "[System: Empty message content sanitised to satisfy protocol]"
+	req, err := RequestFromLLM(&llm.Request{Messages: []llm.Message{
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+		{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(marker)}},
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr(marker)}},
+		{Role: "assistant", ToolCalls: []llm.ToolCall{{
+			ID: "call_1", Type: llm.ToolTypeFunction, Function: llm.FunctionCall{Name: "lookup", Arguments: `{}`},
+		}}},
+		{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("")}},
+		{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(" \n")}},
+	}}, ReasoningFieldAll)
+	require.NoError(t, err)
+
+	data, err := json.Marshal(req)
+	require.NoError(t, err)
+
+	var raw struct {
+		Messages []struct {
+			Role    string          `json:"role"`
+			Content json.RawMessage `json:"content"`
+		} `json:"messages"`
+	}
+	require.NoError(t, json.Unmarshal(data, &raw))
+	require.Len(t, raw.Messages, 6)
+
+	require.JSONEq(t, `"hi"`, string(raw.Messages[0].Content))
+	require.JSONEq(t, `"."`, string(raw.Messages[1].Content), "assistant marker must become the placeholder")
+	require.JSONEq(t, `"`+marker+`"`, string(raw.Messages[2].Content), "user marker must be preserved")
+	require.JSONEq(t, `"."`, string(raw.Messages[3].Content), "tool-call-only assistant turn must get the placeholder")
+	require.JSONEq(t, `""`, string(raw.Messages[4].Content), "user blank content must pass through")
+	require.JSONEq(t, `"."`, string(raw.Messages[5].Content), "assistant whitespace content must become the placeholder")
+}
+
+// The response direction keeps its historical serialization: payloads go back
+// to clients, not to a sanitizing upstream, so the empty string stays and the
+// sanitization marker is left alone.
+func TestMessageFromLLM_ResponseDirectionKeepsEmptyStringContent(t *testing.T) {
+	msg := MessageFromLLM(llm.Message{
+		Role:      "assistant",
+		ToolCalls: []llm.ToolCall{{ID: "call_1", Type: llm.ToolTypeFunction, Function: llm.FunctionCall{Name: "lookup"}}},
+	})
+	require.NotNil(t, msg.Content.Content)
+	require.Equal(t, "", *msg.Content.Content)
+
+	// Blank scalars are a request-direction concern only; a response that
+	// already carries one keeps it.
+	blank := MessageFromLLM(llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("")}})
+	require.NotNil(t, blank.Content.Content)
+	require.Equal(t, "", *blank.Content.Content)
+
+	whitespace := MessageFromLLM(llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(" \n")}})
+	require.NotNil(t, whitespace.Content.Content)
+	require.Equal(t, " \n", *whitespace.Content.Content)
+
+	blankPart := MessageFromLLM(llm.Message{Role: "assistant", Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+		{Type: "text", Text: lo.ToPtr("")},
+	}}})
+	require.Nil(t, blankPart.Content.Content)
+	require.Len(t, blankPart.Content.MultipleContent, 1)
+
+	marker := "[System: Empty message content sanitised to satisfy protocol]"
+	quoted := MessageFromLLM(llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr(marker)}})
+	require.NotNil(t, quoted.Content.Content)
+	require.Equal(t, marker, *quoted.Content.Content)
 }
 
 // Content that survives conversion must be preserved as-is.

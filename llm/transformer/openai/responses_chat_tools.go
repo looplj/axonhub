@@ -434,9 +434,17 @@ func (a *responsesChatToolAdapter) convertMessage(message llm.Message, reasoning
 
 // hasChatAssistantPayload reports whether a converted message contains data
 // accepted as assistant history by Chat Completions providers. Non-assistant
-// roles use different validation rules and pass through unchanged.
+// roles use different validation rules and pass through unchanged. The
+// empty-content placeholder only marks a turn whose real content was normalized
+// away, so it does not count as a payload by itself.
 func hasChatAssistantPayload(message Message) bool {
-	return shared.HasChatCompatibleAssistantPayload(message.ToLLMMessage())
+	llmMessage := message.ToLLMMessage()
+	if llmMessage.Content.Content != nil && *llmMessage.Content.Content == emptyAssistantContentPlaceholder &&
+		len(llmMessage.Content.MultipleContent) == 0 {
+		llmMessage.Content.Content = nil
+	}
+
+	return shared.HasChatCompatibleAssistantPayload(llmMessage)
 }
 
 // chatFunctionCall builds a Chat function call while preserving common call metadata.

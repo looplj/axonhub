@@ -12,6 +12,26 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
+const (
+	// emptyAssistantContentPlaceholder replaces the content of assistant turns
+	// that carry none: turns that only request tool calls, turns that only carry
+	// reasoning, and turns whose parts were all filtered out (compaction, or a
+	// stripped sanitization marker). It cannot be an empty or whitespace-only
+	// string, because LiteLLM-family gateways rewrite any blank content into
+	// litellmSanitizedEmptyContentMarker, which pollutes the model's context and
+	// gets copied into its output. It cannot be null either, because stricter
+	// OpenAI-compatible upstreams reject a missing or null content with a 400
+	// schema error. A single "." passes those gateways unchanged and models do
+	// not mimic it.
+	emptyAssistantContentPlaceholder = "."
+
+	// litellmSanitizedEmptyContentMarker is the placeholder LiteLLM-family
+	// gateways substitute for blank message content. History replayed from such
+	// a gateway carries it as real text, so assistant turns whose content is only
+	// this marker are treated as content-less.
+	litellmSanitizedEmptyContentMarker = "[System: Empty message content sanitised to satisfy protocol]"
+)
+
 // RequestFromLLM creates OpenAI Request from unified llm.Request with reasoning field configuration.
 func RequestFromLLM(r *llm.Request, reasoningField ReasoningField) (*Request, error) {
 	if r == nil {
@@ -221,12 +241,28 @@ func applyReasoningEffortMapping(effort string, mappings []llm.ReasoningEffortMa
 
 // MessageFromLLM creates OpenAI Message from unified llm.Message.
 // Defaults to ReasoningFieldAll to preserve both reasoning fields.
+//
+// MessageFromLLM serves the response direction: the payload heads back to the
+// client, so empty assistant content keeps the historical empty string, which
+// client-side content accumulators treat as no content.
 func MessageFromLLM(m llm.Message) Message {
-	return MessageFromLLMWithConfig(m, ReasoningFieldAll)
+	return messageFromLLM(m, ReasoningFieldAll, false)
 }
 
 // MessageFromLLMWithConfig creates OpenAI Message from unified llm.Message with reasoning field configuration.
+//
+// MessageFromLLMWithConfig serves the request direction: the payload heads to
+// an upstream provider, so assistant turns get the LiteLLM sanitization marker
+// stripped and content-less ones take emptyAssistantContentPlaceholder.
 func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Message {
+	return messageFromLLM(m, reasoningField, true)
+}
+
+// messageFromLLM converts a unified message into an OpenAI message.
+// forUpstreamRequest selects the request-direction content rules: strip the
+// LiteLLM sanitization marker from assistant turns and substitute
+// emptyAssistantContentPlaceholder for content-less ones.
+func messageFromLLM(m llm.Message, reasoningField ReasoningField, forUpstreamRequest bool) Message {
 	var reasoningContent, reasoning *string
 
 	// Apply reasoning field configuration
@@ -294,6 +330,15 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 		msg.Content = flattenChatToolContent(msg.Content)
 	}
 
+	// LiteLLM-family gateways rewrite blank message content into a fixed
+	// sanitization marker, which the model then copies into its own output.
+	// Normalize assistant turns so no blank content reaches such a gateway, and
+	// strip the marker itself from history replayed through one. User turns
+	// keep their text: a user may quote the marker on purpose.
+	if forUpstreamRequest && msg.Role == "assistant" {
+		msg.Content = normalizeAssistantRequestContent(msg.Content)
+	}
+
 	// Convert ToolCalls
 	if m.ToolCalls != nil {
 		msg.ToolCalls = lo.Map(m.ToolCalls, func(tc llm.ToolCall, _ int) ToolCall {
@@ -304,13 +349,22 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 	// Assistant turns can carry no content: turns that only request tool calls,
 	// turns that only carry reasoning (a Responses reasoning item not followed by
 	// text or a call), and messages whose parts were all filtered out (e.g.
-	// compaction) are left with an empty part list. These cases would reach the
-	// wire as a missing or null content field, which the OpenAI spec permits but
-	// stricter OpenAI-compatible upstreams reject because their schema only
-	// accepts a string or an array. Normalize to an empty string, which every
-	// implementation accepts and OpenAI treats as no content.
+	// compaction, or a stripped sanitization marker) are left with an empty part
+	// list. These cases would reach the wire as a missing or null content field,
+	// which the OpenAI spec permits but stricter OpenAI-compatible upstreams
+	// reject because their schema only accepts a string or an array.
+	//
+	// Requests headed upstream take emptyAssistantContentPlaceholder, because a
+	// blank string would be rewritten by LiteLLM-family gateways into their
+	// sanitization marker. Responses headed back to the client keep the empty
+	// string, which every implementation accepts and client-side accumulators
+	// treat as no content.
 	if msg.Role == "assistant" && msg.Content.Content == nil && len(msg.Content.MultipleContent) == 0 {
-		msg.Content = MessageContent{Content: lo.ToPtr("")}
+		placeholder := ""
+		if forUpstreamRequest {
+			placeholder = emptyAssistantContentPlaceholder
+		}
+		msg.Content = MessageContent{Content: lo.ToPtr(placeholder)}
 	}
 
 	// Convert Annotations
@@ -356,6 +410,60 @@ func MessageContentFromLLM(c llm.MessageContent) MessageContent {
 				return MessageContentPartFromLLM(p), true
 			}
 		})
+	}
+
+	return content
+}
+
+// normalizeAssistantRequestContent removes the assistant content shapes that a
+// LiteLLM-family gateway would rewrite into litellmSanitizedEmptyContentMarker,
+// so the model never receives that protocol text. Two sources produce such
+// content, and both are treated as no content:
+//
+//  1. blank text — an empty or whitespace-only scalar content, and text parts
+//     whose text is nil or whitespace-only;
+//  2. the sanitization marker itself, replayed as history from a gateway that
+//     had already rewritten blank content into it.
+//
+// Text is compared trimmed so surrounding whitespace added by intermediate
+// proxies does not defeat the check, and parts are examined after
+// MessageContentFromLLM has dropped the types Chat Completions cannot
+// represent. The caller turns an emptied content into
+// emptyAssistantContentPlaceholder. MessageContent marshals MultipleContent in
+// preference to Content, so a scalar sitting next to a part list is dead
+// weight: when every part is dropped, the scalar is cleared too rather than
+// resurfacing as visible content.
+func normalizeAssistantRequestContent(content MessageContent) MessageContent {
+	if content.Content != nil {
+		trimmed := strings.TrimSpace(*content.Content)
+		if trimmed == "" || trimmed == litellmSanitizedEmptyContentMarker {
+			content.Content = nil
+		}
+	}
+
+	if len(content.MultipleContent) > 0 {
+		content.MultipleContent = lo.FilterMap(content.MultipleContent, func(p MessageContentPart, _ int) (MessageContentPart, bool) {
+			if p.Type != "text" {
+				return p, true
+			}
+			if p.Text == nil {
+				return MessageContentPart{}, false
+			}
+
+			trimmed := strings.TrimSpace(*p.Text)
+			if trimmed == "" || trimmed == litellmSanitizedEmptyContentMarker {
+				return MessageContentPart{}, false
+			}
+
+			return p, true
+		})
+
+		// The list is the authoritative representation for this turn, so a
+		// scalar that marshaling already ignored must not resurface once every
+		// part has been dropped.
+		if len(content.MultipleContent) == 0 {
+			content.Content = nil
+		}
 	}
 
 	return content
