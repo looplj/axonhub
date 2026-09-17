@@ -1349,7 +1349,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						ID: toolCall.ID, Type: "tool_search_call",
 						CallID:    toolCall.ResponseToolSearchCall.CallID,
 						Execution: toolCall.ResponseToolSearchCall.Execution,
-						Arguments: toolCall.ResponseToolSearchCall.Arguments,
+						Arguments: xjson.CanonicalizeIntegralJSONNumbers(toolCall.ResponseToolSearchCall.Arguments),
 						Status:    lo.ToPtr(toolCallStatus),
 					})
 				} else if toolCall.ResponseCustomToolCall != nil {
@@ -1369,7 +1369,7 @@ func convertToResponsesAPIResponse(chatResp *llm.Response) *Response {
 						CallID:    toolCall.ID,
 						Name:      toolCall.Function.Name,
 						Namespace: toolCall.Function.Namespace,
-						Arguments: toolCall.Function.Arguments,
+						Arguments: xjson.CanonicalizeIntegralJSONNumbers(toolCall.Function.Arguments),
 						Status:    lo.ToPtr(toolCallStatus),
 					})
 				}

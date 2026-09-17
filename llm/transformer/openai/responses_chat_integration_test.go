@@ -2353,3 +2353,76 @@ func TestResponsesChatAllowedToolChoiceSignaturesAndDegradation(t *testing.T) {
 		})
 	}
 }
+
+func TestResponsesToChatTools_CanonicalizesFloatEncodedIntegerArguments(t *testing.T) {
+	ctx := context.Background()
+	responsesInbound := responsesapi.NewInboundTransformer()
+	llmRequest, err := responsesInbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{"model":"gpt-5.5","input":"wait","tools":[{"type":"function","name":"functions__wait","parameters":{"type":"object","properties":{"yield_time_ms":{"type":"integer"}}}}]}`)})
+	require.NoError(t, err)
+
+	chatOutbound, err := NewOutboundTransformer("https://chat.example.com", "test-key")
+	require.NoError(t, err)
+	chatRequest, err := chatOutbound.TransformRequest(ctx, llmRequest)
+	require.NoError(t, err)
+
+	chatResponse := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Request:    chatRequest,
+		Body:       []byte(`{"id":"chatcmpl_1","object":"chat.completion","created":1,"model":"glm-5.2","choices":[{"index":0,"finish_reason":"tool_calls","message":{"role":"assistant","tool_calls":[{"id":"call_wait","type":"function","function":{"name":"functions__wait","arguments":"{\"yield_time_ms\":180000.0}"}}]}}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`),
+	}
+	llmResponse, err := chatOutbound.TransformResponse(ctx, chatResponse)
+	require.NoError(t, err)
+	responsesResponse, err := responsesInbound.TransformResponse(ctx, llmResponse)
+	require.NoError(t, err)
+
+	require.NotContains(t, string(responsesResponse.Body), "180000.0")
+	var result responsesapi.Response
+	require.NoError(t, json.Unmarshal(responsesResponse.Body, &result))
+	require.Len(t, result.Output, 1)
+	require.Equal(t, "function_call", result.Output[0].Type)
+	require.JSONEq(t, `{"yield_time_ms":180000}`, result.Output[0].Arguments)
+	require.NotContains(t, result.Output[0].Arguments, "180000.0")
+}
+
+func TestResponsesToChatStream_CanonicalizesFloatEncodedIntegerArgumentsOnDone(t *testing.T) {
+	events, streamErr := simulateResponsesChatStream(t, `{"model":"gpt-5.5","stream":true,"input":"wait","tools":[{"type":"function","name":"functions__wait","parameters":{"type":"object","properties":{"yield_time_ms":{"type":"integer"}}}}]}`, []map[string]any{
+		{
+			"index": 0,
+			"delta": map[string]any{"tool_calls": []any{map[string]any{
+				"index": 0, "id": "call_wait", "type": "function",
+				"function": map[string]any{"name": "functions__wait", "arguments": `{"yield_time_ms":`},
+			}}},
+		},
+		{
+			"index": 0,
+			"delta": map[string]any{"tool_calls": []any{map[string]any{
+				"index": 0, "function": map[string]any{"arguments": `180000.0}`},
+			}}},
+		},
+		{"index": 0, "delta": map[string]any{}, "finish_reason": "tool_calls"},
+	})
+	require.NoError(t, streamErr)
+
+	var deltas []string
+	var doneArgs []string
+	var itemArgs []string
+	for _, event := range events {
+		switch event.Type {
+		case responsesapi.StreamEventTypeFunctionCallArgumentsDelta:
+			deltas = append(deltas, event.Delta)
+		case responsesapi.StreamEventTypeFunctionCallArgumentsDone:
+			doneArgs = append(doneArgs, event.Arguments)
+			require.NotContains(t, event.Arguments, "180000.0")
+		case responsesapi.StreamEventTypeOutputItemDone:
+			if event.Item != nil && event.Item.Type == "function_call" {
+				itemArgs = append(itemArgs, event.Item.Arguments)
+				require.NotContains(t, event.Item.Arguments, "180000.0")
+			}
+		}
+	}
+	require.Equal(t, []string{`{"yield_time_ms":`, `180000.0}`}, deltas)
+	require.Len(t, doneArgs, 1)
+	require.JSONEq(t, `{"yield_time_ms":180000}`, doneArgs[0])
+	require.Len(t, itemArgs, 1)
+	require.JSONEq(t, `{"yield_time_ms":180000}`, itemArgs[0])
+}

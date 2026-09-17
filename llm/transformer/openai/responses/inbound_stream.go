@@ -14,6 +14,7 @@ import (
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/streams"
 )
 
@@ -1297,7 +1298,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 
 		switch {
 		case tc.ResponseToolSearchCall != nil:
-			arguments := tc.ResponseToolSearchCall.Arguments
+			arguments := xjson.CanonicalizeIntegralJSONNumbers(tc.ResponseToolSearchCall.Arguments)
 			if err := s.enqueueEvent(&StreamEvent{
 				Type: StreamEventTypeFunctionCallArgumentsDone, ItemID: &itemID,
 				OutputIndex: s.toolCallOutputIndex[idx], Arguments: arguments,
@@ -1373,6 +1374,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 
 		default:
 			// Function call - emit function_call_arguments.done then output_item.done
+			arguments := xjson.CanonicalizeIntegralJSONNumbers(tc.Function.Arguments)
 			err := s.enqueueEvent(&StreamEvent{
 				Type:        StreamEventTypeFunctionCallArgumentsDone,
 				ItemID:      &itemID,
@@ -1380,7 +1382,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				CallID:      tc.ID,
 				Name:        tc.Function.Name,
 				Namespace:   tc.Function.Namespace,
-				Arguments:   tc.Function.Arguments,
+				Arguments:   arguments,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to enqueue function_call_arguments.done event: %w", err)
@@ -1393,7 +1395,7 @@ func (s *responsesInboundStream) closeCurrentOutputItem() error {
 				CallID:    tc.ID,
 				Name:      tc.Function.Name,
 				Namespace: tc.Function.Namespace,
-				Arguments: tc.Function.Arguments,
+				Arguments: arguments,
 			}
 
 			err = s.enqueueEvent(&StreamEvent{
