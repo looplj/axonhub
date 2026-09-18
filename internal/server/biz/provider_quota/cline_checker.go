@@ -21,7 +21,10 @@ const (
 	clineProviderType        = "cline"
 	clinePassModelPrefix     = "cline-pass/"
 	clineQuotaDefaultBaseURL = "https://api.cline.bot"
-	clineUsagePageLimit      = 100
+	// Cline caps /usages at 200 items per page; requesting more silently
+	// returns 200. Using the cap halves the number of requests needed to
+	// rebuild the cost ledger and makes rate limiting far less likely.
+	clineUsagePageLimit      = 200
 	clineMaxUsagePages       = 100
 	clineCostUnitsPerUSD     = int64(100_000_000)
 	clineMaxResponseBodySize = 1 << 20
@@ -53,6 +56,9 @@ const (
 	clineWindowStateInvalid     = "invalid"
 
 	clineWindowBoundaryTolerance = 2 * time.Second
+
+	clineLedgerErrorRateLimited = "rate_limited"
+	clineLedgerErrorTransport   = "transport"
 )
 
 type ClineQuotaChecker struct {
@@ -210,6 +216,13 @@ type clineUsageFetchMeta struct {
 	UnclassifiedItemsSeen int
 	InvalidTimestampItems int
 	Truncated             bool
+	// LedgerUnavailable is set when the /usages cost ledger could not be
+	// fetched. The official usage-limits response still drives the window
+	// percentages, so this only disables the supplementary cost breakdown.
+	LedgerUnavailable bool
+	// LedgerErrorCode is a safe classification of the ledger failure
+	// (never the raw error, which may embed credentials or URLs).
+	LedgerErrorCode string
 }
 
 type clineModelScope string
@@ -281,7 +294,16 @@ func (c *ClineQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Qu
 
 	items, fetchMeta, err := c.fetchUsageItems(ctx, hc, ch.BaseURL, me.Data.ID, apiKey)
 	if err != nil {
-		return QuotaData{}, err
+		// The /usages ledger only supplies the supplementary per-window cost
+		// breakdown. The official usage-limits response fetched above already
+		// carries the authoritative window percentages and reset times, and
+		// Cline rate limits rapid /usages pagination (HTTP 429). Treat a
+		// ledger failure as "cost unavailable" instead of failing the whole
+		// quota check, otherwise the channel keeps a stale quota status while
+		// backing off.
+		fetchMeta.LedgerUnavailable = true
+		fetchMeta.LedgerErrorCode = clineLedgerErrorCode(err)
+		items = nil
 	}
 
 	return buildClineQuotaData(
@@ -527,6 +549,21 @@ func (c *ClineQuotaChecker) fetchUsageItems(ctx context.Context, hc *httpclient.
 	return items, meta, nil
 }
 
+// clineLedgerErrorCode classifies a /usages ledger failure without exposing
+// the raw error string, which can embed credentials, user identifiers, or
+// pagination cursors.
+func clineLedgerErrorCode(err error) string {
+	var httpErr *clineHTTPError
+	if errors.As(err, &httpErr) {
+		if httpErr.StatusCode == http.StatusTooManyRequests {
+			return clineLedgerErrorRateLimited
+		}
+		return fmt.Sprintf("http_%d", httpErr.StatusCode)
+	}
+
+	return clineLedgerErrorTransport
+}
+
 func oldestClineUsageTime(items []clineUsageItem) *time.Time {
 	var oldest *time.Time
 
@@ -659,10 +696,25 @@ func buildClineQuotaData(
 	officialLimits map[string]clineOfficialWindowLimit,
 	officialMeta clineUsageLimitsFetchMeta,
 ) QuotaData {
+	costUnavailable := usageFetchMeta.Truncated || usageFetchMeta.LedgerUnavailable
 	windows := []clineWindow{
-		buildClineWindow(now, "last5h", 5*time.Hour, threshold.Last5HoursUsageCostUSDPerUser, items, usageFetchMeta.Truncated, officialLimits["last5h"]),
-		buildClineWindow(now, "last7d", 7*24*time.Hour, threshold.Last7DaysUsageCostUSDPerUser, items, usageFetchMeta.Truncated, officialLimits["last7d"]),
-		buildClineWindow(now, "last30d", 30*24*time.Hour, threshold.Last30DaysUsageCostUSDPerUser, items, usageFetchMeta.Truncated, officialLimits["last30d"]),
+		buildClineWindow(now, "last5h", 5*time.Hour, threshold.Last5HoursUsageCostUSDPerUser, items, costUnavailable, officialLimits["last5h"]),
+		buildClineWindow(now, "last7d", 7*24*time.Hour, threshold.Last7DaysUsageCostUSDPerUser, items, costUnavailable, officialLimits["last7d"]),
+		buildClineWindow(now, "last30d", 30*24*time.Hour, threshold.Last30DaysUsageCostUSDPerUser, items, costUnavailable, officialLimits["last30d"]),
+	}
+
+	usageFetch := map[string]any{
+		"pages":                   usageFetchMeta.Pages,
+		"items_seen":              usageFetchMeta.ItemsSeen,
+		"cline_pass_items_seen":   usageFetchMeta.ClinePassItemsSeen,
+		"direct_items_seen":       usageFetchMeta.DirectItemsSeen,
+		"unclassified_items_seen": usageFetchMeta.UnclassifiedItemsSeen,
+		"invalid_timestamp_items": usageFetchMeta.InvalidTimestampItems,
+		"truncated":               usageFetchMeta.Truncated,
+		"ledger_unavailable":      usageFetchMeta.LedgerUnavailable,
+	}
+	if usageFetchMeta.LedgerErrorCode != "" {
+		usageFetch["ledger_error_code"] = usageFetchMeta.LedgerErrorCode
 	}
 
 	passStatus := worstClineStatus(windows)
@@ -680,23 +732,15 @@ func buildClineQuotaData(
 		NextResetAt:  earliestClineWindowReset(windows),
 		Limits:       clineLimitStatuses(windows, scope == clineModelScopePassOnly),
 		RawData: map[string]any{
-			"model_scope":  string(scope),
-			"status_basis": statusBasis,
-			"pool":         "cline_pass",
-			"pool_note":    "ClinePass is a separate provider; this quota applies to cline-pass/* models only.",
-			"cost_scale":   clineCostUnitsPerUSD,
-			"balance":      clineBalanceRawData(balance),
-			"plans":        plans,
-			"windows":      clineWindowsRawData(windows),
-			"usage_fetch": map[string]any{
-				"pages":                   usageFetchMeta.Pages,
-				"items_seen":              usageFetchMeta.ItemsSeen,
-				"cline_pass_items_seen":   usageFetchMeta.ClinePassItemsSeen,
-				"direct_items_seen":       usageFetchMeta.DirectItemsSeen,
-				"unclassified_items_seen": usageFetchMeta.UnclassifiedItemsSeen,
-				"invalid_timestamp_items": usageFetchMeta.InvalidTimestampItems,
-				"truncated":               usageFetchMeta.Truncated,
-			},
+			"model_scope":        string(scope),
+			"status_basis":       statusBasis,
+			"pool":               "cline_pass",
+			"pool_note":          "ClinePass is a separate provider; this quota applies to cline-pass/* models only.",
+			"cost_scale":         clineCostUnitsPerUSD,
+			"balance":            clineBalanceRawData(balance),
+			"plans":              plans,
+			"windows":            clineWindowsRawData(windows),
+			"usage_fetch":        usageFetch,
 			"usage_limits_fetch": clineUsageLimitsFetchRawData(officialMeta),
 		},
 	})
@@ -756,7 +800,7 @@ func buildClineWindow(
 	duration time.Duration,
 	limit int64,
 	items []clineUsageItem,
-	usageTruncated bool,
+	costUnavailable bool,
 	official clineOfficialWindowLimit,
 ) clineWindow {
 	window := clineWindow{
@@ -820,7 +864,7 @@ func buildClineWindow(
 	window.active = true
 	window.nextResetAt = &resetAt
 	window.resetSource = clineWindowSourceOfficialUsageLimits
-	if usageTruncated {
+	if costUnavailable {
 		return window
 	}
 
