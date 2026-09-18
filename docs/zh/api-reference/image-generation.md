@@ -143,6 +143,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | 参数 | 类型 | 描述 | 默认值 |
 |-----------|------|-------------|---------|
 | `image` | file | **必填。** 要编辑的图像。 | - |
+| `images` | array | `application/json` 请求下 `image` 的替代写法：data URL 字符串数组，或 `{"image_url": "<data URL>"}` 对象数组。当 `image` 已带图时本字段被忽略。 | - |
 | `prompt` | string | **必填。** 所需编辑的文本描述。 | - |
 | `mask` | file | 可选的蒙版图像。透明区域表示要编辑的位置。 | - |
 | `model` | string | 要使用的模型。 | `dall-e-2` |

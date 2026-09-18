@@ -143,6 +143,7 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
 | `image` | file | **Required.** The image to edit. | - |
+| `images` | array | Alternative to `image` for `application/json` requests: an array of data URLs or of `{"image_url": "<data URL>"}` objects. Ignored when `image` carries at least one image. | - |
 | `prompt` | string | **Required.** A text description of the desired edit. | - |
 | `mask` | file | An optional mask image. Transparent areas indicate where to edit. | - |
 | `model` | string | The model to use. | `dall-e-2` |

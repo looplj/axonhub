@@ -342,11 +342,13 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 
 // ImageEditJSONRequest represents an application/json body for the image edit API.
 // The Image field accepts a single data URL string or an array of data URL strings;
+// Images accepts an array of data URL strings or of objects carrying image_url;
 // Mask accepts a data URL string.
 type ImageEditJSONRequest struct {
 	Prompt            string          `json:"prompt"`
 	Model             string          `json:"model"`
 	Image             json.RawMessage `json:"image,omitempty"`
+	Images            json.RawMessage `json:"images,omitempty"`
 	Mask              string          `json:"mask,omitempty"`
 	N                 *int64          `json:"n,omitempty"`
 	Size              string          `json:"size,omitempty"`
@@ -388,7 +390,7 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 		model = "dall-e-2"
 	}
 
-	images, err := parseGenerationImageField(editReq.Image)
+	images, err := parseEditImagesField(editReq.Image, editReq.Images)
 	if err != nil {
 		return nil, err
 	}
@@ -697,6 +699,71 @@ func parseGenerationImageField(raw json.RawMessage) ([][]byte, error) {
 		data, err := decodeDataURLToBytes(url)
 		if err != nil {
 			return nil, err
+		}
+
+		images = append(images, data)
+	}
+
+	return images, nil
+}
+
+// parseEditImagesField parses the image inputs of a JSON image edit request.
+//
+// The legacy "image" field wins whenever it yields at least one image. A request
+// carrying both fields is served by "image" today, because "images" is not part of
+// ImageEditJSONRequest and json.Unmarshal drops it, so this keeps that behavior
+// unchanged. "images" is only consulted when "image" is absent or empty, and a
+// malformed "image" is reported instead of falling through so that a broken client
+// cannot silently switch fields.
+// unchanged. "images" is only consulted when "image" is absent or empty, and a
+// malformed "image" is reported instead of falling through so that a broken client
+// cannot silently switch fields. Note that "image" set to null or to an empty
+// string is malformed under the existing rules and still errors out; clients that
+// do not have a legacy image must omit the field.
+//
+// "images" accepts an array of data URL strings or an array of objects with an
+// image_url field, the shape newer image-edit clients send. Every element goes
+// through decodeDataURLToBytes, so the per-image limits (allowed media types,
+// base64 encoding and maxImageFileSize) stay shared with the "image" field.
+func parseEditImagesField(rawImage, rawImages json.RawMessage) ([][]byte, error) {
+	images, err := parseGenerationImageField(rawImage)
+	if err != nil {
+		return nil, err
+	}
+	if len(images) > 0 {
+		return images, nil
+	}
+
+	if len(rawImages) == 0 {
+		return nil, nil
+	}
+
+	var entries []json.RawMessage
+	if err := json.Unmarshal(rawImages, &entries); err != nil {
+		return nil, fmt.Errorf("%w: images field must be an array", transformer.ErrInvalidRequest)
+	}
+	if len(entries) > maxImageCount {
+		return nil, fmt.Errorf("%w: too many images", transformer.ErrInvalidRequest)
+	}
+
+	images = make([][]byte, 0, len(entries))
+
+	for i, entry := range entries {
+		var dataURL string
+		if err := json.Unmarshal(entry, &dataURL); err != nil {
+			var object struct {
+				ImageURL string `json:"image_url"`
+			}
+			if err := json.Unmarshal(entry, &object); err != nil || object.ImageURL == "" {
+				return nil, fmt.Errorf("%w: images[%d] must be a data URL or an object with image_url", transformer.ErrInvalidRequest, i)
+			}
+
+			dataURL = object.ImageURL
+		}
+
+		data, err := decodeDataURLToBytes(dataURL)
+		if err != nil {
+			return nil, fmt.Errorf("images[%d]: %w", i, err)
 		}
 
 		images = append(images, data)
