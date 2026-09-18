@@ -709,22 +709,20 @@ func parseGenerationImageField(raw json.RawMessage) ([][]byte, error) {
 
 // parseEditImagesField parses the image inputs of a JSON image edit request.
 //
-// The legacy "image" field wins whenever it yields at least one image. A request
-// carrying both fields is served by "image" today, because "images" is not part of
-// ImageEditJSONRequest and json.Unmarshal drops it, so this keeps that behavior
-// unchanged. "images" is only consulted when "image" is absent or empty, and a
-// malformed "image" is reported instead of falling through so that a broken client
-// cannot silently switch fields.
-// unchanged. "images" is only consulted when "image" is absent or empty, and a
-// malformed "image" is reported instead of falling through so that a broken client
-// cannot silently switch fields. Note that "image" set to null or to an empty
-// string is malformed under the existing rules and still errors out; clients that
-// do not have a legacy image must omit the field.
+// The legacy "image" field wins whenever it yields at least one image, so a
+// request carrying both fields is served by "image" exactly as it was before
+// the "images" field existed. "images" is only consulted when "image" is
+// absent or empty, and a malformed "image" is reported instead of falling
+// through so that a broken client cannot silently switch fields. Note that
+// "image" set to null or to an empty string is malformed under the existing
+// rules and still errors out; clients without a legacy image must omit the
+// field.
 //
-// "images" accepts an array of data URL strings or an array of objects with an
-// image_url field, the shape newer image-edit clients send. Every element goes
-// through decodeDataURLToBytes, so the per-image limits (allowed media types,
-// base64 encoding and maxImageFileSize) stay shared with the "image" field.
+// "images" accepts an array of data URL strings or an array of objects with
+// an image_url field, the shape newer image-edit clients send. Every element
+// goes through decodeDataURLToBytes, so the per-image limits (allowed media
+// types, base64 encoding and maxImageFileSize) stay shared with the "image"
+// field.
 func parseEditImagesField(rawImage, rawImages json.RawMessage) ([][]byte, error) {
 	images, err := parseGenerationImageField(rawImage)
 	if err != nil {
