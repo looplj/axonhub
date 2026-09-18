@@ -34,6 +34,7 @@ type Request struct {
 	// Request tracking
 	RequestID string `json:"request_id"`
 	ClientIP  string `json:"client_ip"`
+	UserAgent string `json:"user_agent"`
 
 	// RequestType is the type of the request, ref to llm.RequestType.
 	// For example, "chat", "image", "embedding", etc.

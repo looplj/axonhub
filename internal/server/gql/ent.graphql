@@ -1845,6 +1845,7 @@ input CreateRequestInput {
   status: RequestStatus!
   stream: Boolean
   clientIP: String
+  userAgent: String
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
   """
@@ -4506,6 +4507,7 @@ type Request implements Node {
   status: RequestStatus!
   stream: Boolean!
   clientIP: String!
+  userAgent: String!
   metricsLatencyMs: Int
   metricsFirstTokenLatencyMs: Int
   """
@@ -5231,6 +5233,22 @@ input RequestWhereInput {
   clientIPHasSuffix: String
   clientIPEqualFold: String
   clientIPContainsFold: String
+  """
+  user_agent field predicates
+  """
+  userAgent: String
+  userAgentNEQ: String
+  userAgentIn: [String!]
+  userAgentNotIn: [String!]
+  userAgentGT: String
+  userAgentGTE: String
+  userAgentLT: String
+  userAgentLTE: String
+  userAgentContains: String
+  userAgentHasPrefix: String
+  userAgentHasSuffix: String
+  userAgentEqualFold: String
+  userAgentContainsFold: String
   """
   metrics_latency_ms field predicates
   """

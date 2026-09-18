@@ -62,6 +62,8 @@ type Request struct {
 	Stream bool `json:"stream,omitempty"`
 	// ClientIP holds the value of the "client_ip" field.
 	ClientIP string `json:"client_ip,omitempty"`
+	// UserAgent holds the value of the "user_agent" field.
+	UserAgent string `json:"user_agent,omitempty"`
 	// MetricsLatencyMs holds the value of the "metrics_latency_ms" field.
 	MetricsLatencyMs *int64 `json:"metrics_latency_ms,omitempty"`
 	// MetricsFirstTokenLatencyMs holds the value of the "metrics_first_token_latency_ms" field.
@@ -192,7 +194,7 @@ func (*Request) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case request.FieldID, request.FieldAPIKeyID, request.FieldProjectID, request.FieldTraceID, request.FieldDataStorageID, request.FieldChannelID, request.FieldMetricsLatencyMs, request.FieldMetricsFirstTokenLatencyMs, request.FieldMetricsReasoningDurationMs, request.FieldContentStorageID:
 			values[i] = new(sql.NullInt64)
-		case request.FieldSource, request.FieldModelID, request.FieldReasoningEffort, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldContentStorageKey:
+		case request.FieldSource, request.FieldModelID, request.FieldReasoningEffort, request.FieldFormat, request.FieldExternalID, request.FieldStatus, request.FieldClientIP, request.FieldUserAgent, request.FieldContentStorageKey:
 			values[i] = new(sql.NullString)
 		case request.FieldCreatedAt, request.FieldUpdatedAt, request.FieldContentSavedAt:
 			values[i] = new(sql.NullTime)
@@ -338,6 +340,12 @@ func (_m *Request) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field client_ip", values[i])
 			} else if value.Valid {
 				_m.ClientIP = value.String
+			}
+		case request.FieldUserAgent:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field user_agent", values[i])
+			} else if value.Valid {
+				_m.UserAgent = value.String
 			}
 		case request.FieldMetricsLatencyMs:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -514,6 +522,9 @@ func (_m *Request) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("client_ip=")
 	builder.WriteString(_m.ClientIP)
+	builder.WriteString(", ")
+	builder.WriteString("user_agent=")
+	builder.WriteString(_m.UserAgent)
 	builder.WriteString(", ")
 	if v := _m.MetricsLatencyMs; v != nil {
 		builder.WriteString("metrics_latency_ms=")

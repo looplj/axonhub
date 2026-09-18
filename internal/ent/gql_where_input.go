@@ -6706,6 +6706,21 @@ type RequestWhereInput struct {
 	ClientIPEqualFold    *string  `json:"clientIPEqualFold,omitempty"`
 	ClientIPContainsFold *string  `json:"clientIPContainsFold,omitempty"`
 
+	// "user_agent" field predicates.
+	UserAgent             *string  `json:"userAgent,omitempty"`
+	UserAgentNEQ          *string  `json:"userAgentNEQ,omitempty"`
+	UserAgentIn           []string `json:"userAgentIn,omitempty"`
+	UserAgentNotIn        []string `json:"userAgentNotIn,omitempty"`
+	UserAgentGT           *string  `json:"userAgentGT,omitempty"`
+	UserAgentGTE          *string  `json:"userAgentGTE,omitempty"`
+	UserAgentLT           *string  `json:"userAgentLT,omitempty"`
+	UserAgentLTE          *string  `json:"userAgentLTE,omitempty"`
+	UserAgentContains     *string  `json:"userAgentContains,omitempty"`
+	UserAgentHasPrefix    *string  `json:"userAgentHasPrefix,omitempty"`
+	UserAgentHasSuffix    *string  `json:"userAgentHasSuffix,omitempty"`
+	UserAgentEqualFold    *string  `json:"userAgentEqualFold,omitempty"`
+	UserAgentContainsFold *string  `json:"userAgentContainsFold,omitempty"`
+
 	// "metrics_latency_ms" field predicates.
 	MetricsLatencyMs       *int64  `json:"metricsLatencyMs,omitempty"`
 	MetricsLatencyMsNEQ    *int64  `json:"metricsLatencyMsNEQ,omitempty"`
@@ -7279,6 +7294,45 @@ func (i *RequestWhereInput) P() (predicate.Request, error) {
 	}
 	if i.ClientIPContainsFold != nil {
 		predicates = append(predicates, request.ClientIPContainsFold(*i.ClientIPContainsFold))
+	}
+	if i.UserAgent != nil {
+		predicates = append(predicates, request.UserAgentEQ(*i.UserAgent))
+	}
+	if i.UserAgentNEQ != nil {
+		predicates = append(predicates, request.UserAgentNEQ(*i.UserAgentNEQ))
+	}
+	if len(i.UserAgentIn) > 0 {
+		predicates = append(predicates, request.UserAgentIn(i.UserAgentIn...))
+	}
+	if len(i.UserAgentNotIn) > 0 {
+		predicates = append(predicates, request.UserAgentNotIn(i.UserAgentNotIn...))
+	}
+	if i.UserAgentGT != nil {
+		predicates = append(predicates, request.UserAgentGT(*i.UserAgentGT))
+	}
+	if i.UserAgentGTE != nil {
+		predicates = append(predicates, request.UserAgentGTE(*i.UserAgentGTE))
+	}
+	if i.UserAgentLT != nil {
+		predicates = append(predicates, request.UserAgentLT(*i.UserAgentLT))
+	}
+	if i.UserAgentLTE != nil {
+		predicates = append(predicates, request.UserAgentLTE(*i.UserAgentLTE))
+	}
+	if i.UserAgentContains != nil {
+		predicates = append(predicates, request.UserAgentContains(*i.UserAgentContains))
+	}
+	if i.UserAgentHasPrefix != nil {
+		predicates = append(predicates, request.UserAgentHasPrefix(*i.UserAgentHasPrefix))
+	}
+	if i.UserAgentHasSuffix != nil {
+		predicates = append(predicates, request.UserAgentHasSuffix(*i.UserAgentHasSuffix))
+	}
+	if i.UserAgentEqualFold != nil {
+		predicates = append(predicates, request.UserAgentEqualFold(*i.UserAgentEqualFold))
+	}
+	if i.UserAgentContainsFold != nil {
+		predicates = append(predicates, request.UserAgentContainsFold(*i.UserAgentContainsFold))
 	}
 	if i.MetricsLatencyMs != nil {
 		predicates = append(predicates, request.MetricsLatencyMsEQ(*i.MetricsLatencyMs))

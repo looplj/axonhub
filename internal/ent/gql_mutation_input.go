@@ -923,6 +923,7 @@ type CreateRequestInput struct {
 	Status                     request.Status
 	Stream                     *bool
 	ClientIP                   *string
+	UserAgent                  *string
 	MetricsLatencyMs           *int64
 	MetricsFirstTokenLatencyMs *int64
 	MetricsReasoningDurationMs *int64
@@ -970,6 +971,9 @@ func (i *CreateRequestInput) Mutate(m *RequestMutation) {
 	}
 	if v := i.ClientIP; v != nil {
 		m.SetClientIP(*v)
+	}
+	if v := i.UserAgent; v != nil {
+		m.SetUserAgent(*v)
 	}
 	if v := i.MetricsLatencyMs; v != nil {
 		m.SetMetricsLatencyMs(*v)

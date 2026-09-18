@@ -17,6 +17,7 @@
   "requests.columns.source": "Source",
   "requests.columns.channel": "Channel",
   "requests.columns.clientIP": "Client IP",
+  "requests.columns.userAgent": "User-Agent",
   "requests.columns.user": "User",
   "requests.columns.apiKey": "API Key",
   "requests.columns.upstreamApiKey": "Upstream API Key",
