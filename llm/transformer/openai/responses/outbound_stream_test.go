@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -120,6 +121,56 @@ func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestResponsesStream_PreservesResponseMetadata(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	metadata := []byte(`{"type":"response.metadata","headers":{"x-codex-turn-state":"ts-1"}}`)
+	created := []byte(`{"type":"response.created","response":{"id":"resp-1","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)
+	completed := []byte(`{"type":"response.completed","response":{"id":"resp-1","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)
+
+	llmStream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{
+		{
+			Type:    string(StreamEventTypeResponseMetadata),
+			Data:    metadata,
+			Headers: http.Header{"X-Codex-Turn-State": []string{"ts-1"}},
+		},
+		{Type: string(StreamEventTypeResponseCreated), Data: created},
+		{Type: string(StreamEventTypeResponseCompleted), Data: completed},
+	}))
+	require.NoError(t, err)
+
+	var responses []*llm.Response
+	for llmStream.Next() {
+		responses = append(responses, llmStream.Current())
+	}
+	require.NoError(t, llmStream.Err())
+
+	var metadataResponse *llm.Response
+	for _, response := range responses {
+		if _, ok := rawResponseMetadataEvent(response.TransformerMetadata); ok {
+			metadataResponse = response
+			break
+		}
+	}
+	require.NotNil(t, metadataResponse)
+
+	downstream, err := NewInboundTransformer().TransformStream(t.Context(), streams.SliceStream(responses))
+	require.NoError(t, err)
+	var metadataEvent *httpclient.StreamEvent
+	for downstream.Next() {
+		event := downstream.Current()
+		if event.Type == string(StreamEventTypeResponseMetadata) {
+			metadataEvent = event
+			break
+		}
+	}
+	require.NoError(t, downstream.Err())
+	require.NotNil(t, metadataEvent)
+	require.JSONEq(t, string(metadata), string(metadataEvent.Data))
+	require.Equal(t, "ts-1", metadataEvent.Headers.Get("X-Codex-Turn-State"))
 }
 
 func TestOutboundTransformer_TransformStream_IncompleteResponseDoesNotEmitDone(t *testing.T) {

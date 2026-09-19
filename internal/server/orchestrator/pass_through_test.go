@@ -1588,6 +1588,7 @@ func TestApplyPassThroughBodySkipsWhenOutboundPolicyRejects(t *testing.T) {
 func TestApplyPassThroughRequestHeaders(t *testing.T) {
 	inboundHeaders := http.Header{
 		"X-Codex-Turn-Metadata":                  {`{"session_id":"session-123","turn_id":"turn-456"}`},
+		"X-Codex-Turn-State":                     {"ts-1"},
 		"X-Codex-Window-Id":                      {"window-123"},
 		"X-Client-Request-Id":                    {"request-123"},
 		"X-Codex-Beta-Features":                  {"js_repl"},

@@ -24,6 +24,7 @@ import (
 // credentials, transport headers, and protocol-selection headers are never copied.
 var codexResponsesPassThroughHeaders = []string{
 	"X-Codex-Turn-Metadata",
+	"X-Codex-Turn-State",
 	"X-Codex-Window-Id",
 	"X-Client-Request-Id",
 	"X-Codex-Beta-Features",

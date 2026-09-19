@@ -67,6 +67,7 @@ func (p *pipeline) notStream(
 
 		return nil, fmt.Errorf("failed to transform final response: %w", err)
 	}
+	preserveCodexTurnStateHeader(finalResp, httpResp)
 
 	// Apply inbound raw response middlewares after final response transformation
 	finalResp, err = p.applyInboundRawResponseMiddlewares(ctx, finalResp)
@@ -119,13 +120,24 @@ func (p *pipeline) autoAggregateStream(
 		return nil, ErrEmptyAggregatedBody
 	}
 
+	responseHeaders := http.Header{
+		"Content-Type":  []string{"application/json"},
+		"Cache-Control": []string{"no-cache"},
+	}
+	for _, chunk := range chunks {
+		if chunk == nil {
+			continue
+		}
+		if value := chunk.Headers.Get("X-Codex-Turn-State"); value != "" {
+			responseHeaders.Set("X-Codex-Turn-State", value)
+			break
+		}
+	}
+
 	resp := &httpclient.Response{
 		StatusCode: http.StatusOK,
-		Headers: http.Header{
-			"Content-Type":  []string{"application/json"},
-			"Cache-Control": []string{"no-cache"},
-		},
-		Body: body,
+		Headers:    responseHeaders,
+		Body:       body,
 	}
 
 	resp, err = p.applyInboundRawResponseMiddlewares(ctx, resp)
@@ -135,4 +147,16 @@ func (p *pipeline) autoAggregateStream(
 	}
 
 	return resp, nil
+}
+
+func preserveCodexTurnStateHeader(dst, src *httpclient.Response) {
+	if dst == nil || src == nil {
+		return
+	}
+	if value := src.Headers.Get("X-Codex-Turn-State"); value != "" {
+		if dst.Headers == nil {
+			dst.Headers = make(http.Header)
+		}
+		dst.Headers.Set("X-Codex-Turn-State", value)
+	}
 }

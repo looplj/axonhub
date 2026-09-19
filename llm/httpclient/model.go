@@ -112,6 +112,9 @@ type StreamEvent struct {
 	// from Data for persistence (e.g. raw TTS audio chunks). It lets stream
 	// aggregators report total bytes without retaining the audio payload.
 	Size int `json:"size,omitempty"`
+	// Headers is populated only on the first event by HTTP stream executors.
+	// It carries transport metadata such as Codex turn-state headers.
+	Headers http.Header `json:"-"`
 }
 
 // IsBinaryAudioChunk reports whether the event carries a raw binary audio payload

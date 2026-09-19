@@ -420,6 +420,18 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 	}
 
 	stream := decoderFactory(ctx, rawResp.Body)
+	responseHeaders := make(http.Header)
+	if value := rawResp.Header.Get("X-Codex-Turn-State"); value != "" {
+		responseHeaders.Set("X-Codex-Turn-State", value)
+	}
+	first := true
+	stream = streams.Map(stream, func(event *StreamEvent) *StreamEvent {
+		if event != nil && first {
+			event.Headers = responseHeaders
+			first = false
+		}
+		return event
+	})
 
 	return stream, nil
 }
