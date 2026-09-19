@@ -55,6 +55,8 @@
   "analytics.table.uncachedTokens": "Input Token (Uncached)",
   "analytics.table.outputTokens": "Output Token",
   "analytics.table.totalTokens": "Total Token",
+  "analytics.table.tokensPerSecond": "tok/s",
+  "analytics.table.ttft": "TTFT (ms)",
   "analytics.table.cost": "Cost",
   "analytics.table.noData": "No data available for the selected filters"
 }
