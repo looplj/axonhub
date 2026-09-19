@@ -248,6 +248,20 @@ func (_c *RequestCreate) SetNillableClientIP(v *string) *RequestCreate {
 	return _c
 }
 
+// SetUserAgent sets the "user_agent" field.
+func (_c *RequestCreate) SetUserAgent(v string) *RequestCreate {
+	_c.mutation.SetUserAgent(v)
+	return _c
+}
+
+// SetNillableUserAgent sets the "user_agent" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableUserAgent(v *string) *RequestCreate {
+	if v != nil {
+		_c.SetUserAgent(*v)
+	}
+	return _c
+}
+
 // SetMetricsLatencyMs sets the "metrics_latency_ms" field.
 func (_c *RequestCreate) SetMetricsLatencyMs(v int64) *RequestCreate {
 	_c.mutation.SetMetricsLatencyMs(v)
@@ -472,6 +486,10 @@ func (_c *RequestCreate) defaults() error {
 		v := request.DefaultClientIP
 		_c.mutation.SetClientIP(v)
 	}
+	if _, ok := _c.mutation.UserAgent(); !ok {
+		v := request.DefaultUserAgent
+		_c.mutation.SetUserAgent(v)
+	}
 	if _, ok := _c.mutation.ContentSaved(); !ok {
 		v := request.DefaultContentSaved
 		_c.mutation.SetContentSaved(v)
@@ -519,6 +537,9 @@ func (_c *RequestCreate) check() error {
 	}
 	if _, ok := _c.mutation.ClientIP(); !ok {
 		return &ValidationError{Name: "client_ip", err: errors.New(`ent: missing required field "Request.client_ip"`)}
+	}
+	if _, ok := _c.mutation.UserAgent(); !ok {
+		return &ValidationError{Name: "user_agent", err: errors.New(`ent: missing required field "Request.user_agent"`)}
 	}
 	if _, ok := _c.mutation.ContentSaved(); !ok {
 		return &ValidationError{Name: "content_saved", err: errors.New(`ent: missing required field "Request.content_saved"`)}
@@ -608,6 +629,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ClientIP(); ok {
 		_spec.SetField(request.FieldClientIP, field.TypeString, value)
 		_node.ClientIP = value
+	}
+	if value, ok := _c.mutation.UserAgent(); ok {
+		_spec.SetField(request.FieldUserAgent, field.TypeString, value)
+		_node.UserAgent = value
 	}
 	if value, ok := _c.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
@@ -1110,6 +1135,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		}
 		if _, exists := u.create.mutation.ClientIP(); exists {
 			s.SetIgnore(request.FieldClientIP)
+		}
+		if _, exists := u.create.mutation.UserAgent(); exists {
+			s.SetIgnore(request.FieldUserAgent)
 		}
 	}))
 	return u
@@ -1654,6 +1682,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			}
 			if _, exists := b.mutation.ClientIP(); exists {
 				s.SetIgnore(request.FieldClientIP)
+			}
+			if _, exists := b.mutation.UserAgent(); exists {
+				s.SetIgnore(request.FieldUserAgent)
 			}
 		}
 	}))

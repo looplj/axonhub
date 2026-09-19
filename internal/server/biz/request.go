@@ -244,6 +244,7 @@ func (s *RequestService) CreateRequest(
 
 	if httpRequest != nil {
 		mut = mut.SetClientIP(httpRequest.ClientIP)
+		mut = mut.SetUserAgent(httpRequest.UserAgent)
 	}
 
 	if llmRequest.ReasoningEffort != "" {

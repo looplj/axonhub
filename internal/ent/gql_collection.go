@@ -3832,6 +3832,11 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldClientIP)
 				fieldSeen[request.FieldClientIP] = struct{}{}
 			}
+		case "userAgent":
+			if _, ok := fieldSeen[request.FieldUserAgent]; !ok {
+				selectedFields = append(selectedFields, request.FieldUserAgent)
+				fieldSeen[request.FieldUserAgent] = struct{}{}
+			}
 		case "metricsLatencyMs":
 			if _, ok := fieldSeen[request.FieldMetricsLatencyMs]; !ok {
 				selectedFields = append(selectedFields, request.FieldMetricsLatencyMs)

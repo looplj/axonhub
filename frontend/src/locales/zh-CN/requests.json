@@ -17,6 +17,7 @@
   "requests.columns.source": "来源",
   "requests.columns.channel": "渠道",
   "requests.columns.clientIP": "客户端IP",
+  "requests.columns.userAgent": "User-Agent",
   "requests.columns.user": "用户",
   "requests.columns.apiKey": "API密钥",
   "requests.columns.upstreamApiKey": "上游密钥",
