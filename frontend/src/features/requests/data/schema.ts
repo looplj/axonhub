@@ -27,6 +27,7 @@ export const requestExecutionSchema = z.object({
   channel: channelSchema.partial().nullable().optional(),
   modelID: z.string(),
   requestHeaders: z.any().nullable().optional(),
+  responseHeaders: z.any().nullable().optional(),
   requestBody: z.any(), // JSONRawMessage
   responseBody: z.any().nullable(), // JSONRawMessage
   responseChunks: z.array(z.any()).nullable(), // [JSONRawMessage!]
@@ -59,6 +60,7 @@ export const requestSchema = z.object({
   contentSaved: z.boolean().optional(),
   contentStorageKey: z.string().nullable().optional(),
   requestHeaders: z.any().nullable().optional(),
+  responseHeaders: z.any().nullable().optional(),
   requestBody: z.any().nullable().optional(), // JSONRawMessage
   responseBody: z.any().nullable().optional(), // JSONRawMessage
   responseChunks: z.array(z.any()).nullable().optional(), // [JSONRawMessage!]

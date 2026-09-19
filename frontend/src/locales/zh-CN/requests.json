@@ -46,6 +46,7 @@
   "requests.columns.responseBody": "响应体",
   "requests.columns.responseChunks": "响应块",
   "requests.columns.requestHeaders": "请求头",
+  "requests.columns.responseHeaders": "响应头",
   "requests.columns.executedModelId": "执行模型ID",
   "requests.columns.retryProcess": "重试过程",
   "requests.columns.mappedModel": "映射模型",

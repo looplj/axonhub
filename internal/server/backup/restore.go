@@ -1063,6 +1063,7 @@ func (svc *BackupService) restoreUsageRequests(
 			SetNillableChannelID(nilIfZero(channelID)).
 			SetNillableReasoningEffort(nilIfEmpty(reqData.ReasoningEffort)).
 			SetRequestHeaders(reqData.RequestHeaders).
+			SetResponseHeaders(reqData.ResponseHeaders).
 			SetResponseBody(reqData.ResponseBody).
 			SetResponseChunks(reqData.ResponseChunks).
 			SetNillableExternalID(nilIfEmpty(reqData.ExternalID)).

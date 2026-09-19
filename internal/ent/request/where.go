@@ -585,6 +585,16 @@ func RequestHeadersNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldRequestHeaders))
 }
 
+// ResponseHeadersIsNil applies the IsNil predicate on the "response_headers" field.
+func ResponseHeadersIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldResponseHeaders))
+}
+
+// ResponseHeadersNotNil applies the NotNil predicate on the "response_headers" field.
+func ResponseHeadersNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldResponseHeaders))
+}
+
 // ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.
 func ResponseBodyIsNil() predicate.Request {
 	return predicate.Request(sql.FieldIsNull(FieldResponseBody))

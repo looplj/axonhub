@@ -705,6 +705,16 @@ func ChannelAPIKeySuffixContainsFold(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldContainsFold(FieldChannelAPIKeySuffix, v))
 }
 
+// ResponseHeadersIsNil applies the IsNil predicate on the "response_headers" field.
+func ResponseHeadersIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldResponseHeaders))
+}
+
+// ResponseHeadersNotNil applies the NotNil predicate on the "response_headers" field.
+func ResponseHeadersNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldResponseHeaders))
+}
+
 // ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.
 func ResponseBodyIsNil() predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldIsNull(FieldResponseBody))

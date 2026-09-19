@@ -271,6 +271,9 @@ func (hc *HttpClient) Do(ctx context.Context, request *Request) (*Response, erro
 	}
 
 	rawResp, err := hc.client.Do(rawReq)
+	if rawResp != nil {
+		request.ObserveResponseHeaders(ctx, rawResp.Header)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
@@ -362,6 +365,9 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 
 	// Execute request
 	rawResp, err := hc.client.Do(rawReq)
+	if rawResp != nil {
+		request.ObserveResponseHeaders(ctx, rawResp.Header)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("HTTP stream request failed: %w", err)
 	}
