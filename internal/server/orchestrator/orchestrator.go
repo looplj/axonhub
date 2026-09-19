@@ -271,7 +271,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		applyOverrideRequestBody(outbound),
 		// applyUserAgentPassThrough runs before header overrides to set the initial
 		// User-Agent value (either from client pass-through or default "axonhub/1.0").
-		// This allows override headers to modify the User-Agent if configured.
+		// A provider-required User-Agent already set by the outbound transformer
+		// (e.g. GitHubCopilotChat on Copilot channels) is preserved when
+		// pass-through is disabled. Override headers can still modify the
+		// User-Agent if configured.
 		applyUserAgentPassThrough(outbound, processor.SystemService),
 		applyOverrideRequestHeaders(outbound),
 		// Remove transport-incompatible fields after pass-through and overrides,
