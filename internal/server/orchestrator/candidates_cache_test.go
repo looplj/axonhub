@@ -540,6 +540,45 @@ func TestDefaultSelector_SelectModelCandidates_Cache(t *testing.T) {
 	})
 }
 
+func TestDefaultSelector_SelectModelCandidates_UsesModelCardOutputLimit(t *testing.T) {
+	ctx, client := setupTest(t)
+	createTestChannels(t, ctx, client)
+
+	client.Model.Create().
+		SetDeveloper("test-developer").
+		SetModelID("glm-5.3").
+		SetType(model.TypeChat).
+		SetName("GLM 5.3").
+		SetIcon("test-icon").
+		SetGroup("test-group").
+		SetModelCard(&objects.ModelCard{
+			Limit: objects.ModelCardLimit{Context: 1000000, Output: 131072},
+		}).
+		SetStatus(model.StatusEnabled).
+		SetSettings(&objects.ModelSettings{
+			Associations: []*objects.ModelAssociation{
+				{
+					Type:  "regex",
+					Regex: &objects.RegexAssociation{Pattern: "gpt-.*"},
+				},
+			},
+		}).
+		SaveX(ctx)
+
+	selector := NewDefaultSelector(
+		newTestChannelServiceForChannels(client),
+		newTestModelService(client),
+		newTestSystemService(client),
+	)
+	candidates, err := selector.selectModelCandidates(ctx, &llm.Request{Model: "glm-5.3"})
+	require.NoError(t, err)
+	require.NotEmpty(t, candidates)
+
+	for _, candidate := range candidates {
+		require.Equal(t, int64(131072), candidate.DefaultMaxTokens)
+	}
+}
+
 func TestDefaultSelector_GetLatestChannelUpdateTime(t *testing.T) {
 	t.Parallel()
 

@@ -228,16 +228,23 @@ func buildBaseRequest(chatReq *llm.Request, config *Config) *MessageRequest {
 	return req
 }
 
+// defaultAnthropicMaxTokens is used when the client omitted an output limit and
+// no model-card default is available. Anthropic requires max_tokens.
+const defaultAnthropicMaxTokens int64 = 8192
+
 // resolveMaxTokens determines the max_tokens value with fallback.
+// Priority: client max_tokens, client max_completion_tokens, model-card
+// default (TransformOptions.DefaultMaxTokens), then 8192.
 func resolveMaxTokens(chatReq *llm.Request) int64 {
 	switch {
 	case chatReq.MaxTokens != nil:
 		return *chatReq.MaxTokens
 	case chatReq.MaxCompletionTokens != nil:
 		return *chatReq.MaxCompletionTokens
+	case chatReq.TransformOptions.DefaultMaxTokens != nil && *chatReq.TransformOptions.DefaultMaxTokens > 0:
+		return *chatReq.TransformOptions.DefaultMaxTokens
 	default:
-		// Set to 8192 tokens to match common model upper limit.
-		return 8192
+		return defaultAnthropicMaxTokens
 	}
 }
 

@@ -416,6 +416,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			request.FieldStatus:                     {Type: field.TypeEnum, Column: request.FieldStatus},
 			request.FieldStream:                     {Type: field.TypeBool, Column: request.FieldStream},
 			request.FieldClientIP:                   {Type: field.TypeString, Column: request.FieldClientIP},
+			request.FieldUserAgent:                  {Type: field.TypeString, Column: request.FieldUserAgent},
 			request.FieldMetricsLatencyMs:           {Type: field.TypeInt64, Column: request.FieldMetricsLatencyMs},
 			request.FieldMetricsFirstTokenLatencyMs: {Type: field.TypeInt64, Column: request.FieldMetricsFirstTokenLatencyMs},
 			request.FieldMetricsReasoningDurationMs: {Type: field.TypeInt64, Column: request.FieldMetricsReasoningDurationMs},
@@ -3353,6 +3354,11 @@ func (f *RequestFilter) WhereStream(p entql.BoolP) {
 // WhereClientIP applies the entql string predicate on the client_ip field.
 func (f *RequestFilter) WhereClientIP(p entql.StringP) {
 	f.Where(p.Field(request.FieldClientIP))
+}
+
+// WhereUserAgent applies the entql string predicate on the user_agent field.
+func (f *RequestFilter) WhereUserAgent(p entql.StringP) {
+	f.Where(p.Field(request.FieldUserAgent))
 }
 
 // WhereMetricsLatencyMs applies the entql int64 predicate on the metrics_latency_ms field.

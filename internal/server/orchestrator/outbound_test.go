@@ -28,6 +28,7 @@ import (
 	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
 // mockTransformer is a simple mock transformer for testing.
@@ -157,6 +158,60 @@ func TestPersistentOutboundTransformer_TransformRequest_ReasoningEffortMapping(t
 			require.Equal(t, tt.wantSecondRole, gjson.GetBytes(httpRequest.Body, "messages.1.role").String())
 		})
 	}
+}
+
+func TestPersistentOutboundTransformer_TransformRequest_UsesModelCardOutputLimit(t *testing.T) {
+	outbound, err := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	channel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 1, Name: "anthropic"},
+		Outbound: outbound,
+		Outbounds: map[string]transformer.Outbound{
+			llm.APIFormatAnthropicMessage.String(): outbound,
+		},
+	}
+	processor := &PersistentOutboundTransformer{
+		wrapped: outbound,
+		state: &PersistenceState{
+			OriginalModel: "glm-5.3",
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{
+				Channel:          channel,
+				Models:           []biz.ChannelModelEntry{{RequestModel: "glm-5.3", ActualModel: "glm-5.3"}},
+				APIFormat:        llm.APIFormatAnthropicMessage.String(),
+				DefaultMaxTokens: 131072,
+			}},
+		},
+	}
+
+	t.Run("injects model card output limit when client omitted max_tokens", func(t *testing.T) {
+		request := &llm.Request{
+			Model: "glm-5.3",
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
+			},
+		}
+
+		httpRequest, err := processor.TransformRequest(context.Background(), request)
+		require.NoError(t, err)
+		require.Equal(t, int64(131072), gjson.GetBytes(httpRequest.Body, "max_tokens").Int())
+		require.Nil(t, request.MaxTokens)
+		require.Nil(t, request.TransformOptions.DefaultMaxTokens)
+	})
+
+	t.Run("keeps client max_tokens", func(t *testing.T) {
+		request := &llm.Request{
+			Model:     "glm-5.3",
+			MaxTokens: lo.ToPtr(int64(1024)),
+			Messages: []llm.Message{
+				{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
+			},
+		}
+
+		httpRequest, err := processor.TransformRequest(context.Background(), request)
+		require.NoError(t, err)
+		require.Equal(t, int64(1024), gjson.GetBytes(httpRequest.Body, "max_tokens").Int())
+	})
 }
 
 func TestPersistentOutboundTransformer_TransformRequest_AppliesSystemCompatibilityPerAttempt(t *testing.T) {

@@ -25,6 +25,15 @@ func TestReadHTTPRequest_NoContentEncoding(t *testing.T) {
 	assert.Equal(t, "", got.Headers.Get("Content-Encoding"))
 }
 
+func TestReadHTTPRequest_UserAgent(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(nil))
+	req.Header.Set("User-Agent", "axonhub-test/1.0")
+
+	got, err := ReadHTTPRequest(req)
+	require.NoError(t, err)
+	assert.Equal(t, "axonhub-test/1.0", got.UserAgent)
+}
+
 func TestReadHTTPRequest_IdentityEncoding(t *testing.T) {
 	body := []byte(`{"model":"gpt-4","messages":[{"role":"user","content":"hello"}]}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))

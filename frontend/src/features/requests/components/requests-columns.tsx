@@ -26,7 +26,7 @@ interface UseRequestsColumnsOptions {
   onViewDetail?: (requestId: string) => void;
 }
 
-export const DEFAULT_HIDDEN_COLUMN_IDS = ['status', 'source', 'apiFormat', 'clientIP', 'tokensPerSecond', 'writeCache'];
+export const DEFAULT_HIDDEN_COLUMN_IDS = ['status', 'source', 'apiFormat', 'clientIP', 'userAgent', 'tokensPerSecond', 'writeCache'];
 
 export const DEFAULT_MOBILE_HIDDEN_COLUMN_IDS = [
   ...DEFAULT_HIDDEN_COLUMN_IDS,
@@ -307,6 +307,26 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                 </Tooltip>
               ))}
           </div>
+        );
+      },
+    },
+    {
+      id: 'userAgent',
+      accessorKey: 'userAgent',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.userAgent')} />,
+      enableSorting: false,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const userAgent = row.original.userAgent?.trim() ?? '';
+        if (!userAgent) return <span className='text-muted-foreground text-xs'>-</span>;
+
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className='block max-w-[240px] cursor-help truncate font-mono text-xs'>{userAgent}</span>
+            </TooltipTrigger>
+            <TooltipContent className='max-w-[420px] break-all'>{userAgent}</TooltipContent>
+          </Tooltip>
         );
       },
     },

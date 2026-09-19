@@ -80,11 +80,16 @@ var (
 )
 
 func isExternalResponseBodyMarker(body objects.JSONRawMessage) bool {
-	return bytes.Equal(bytes.TrimSpace(body), ExternalResponseBodyMarker)
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, body); err != nil {
+		return false
+	}
+
+	return bytes.Equal(compact.Bytes(), ExternalResponseBodyMarker)
 }
 
 func isExternalResponseChunksMarker(chunks []objects.JSONRawMessage) bool {
-	return len(chunks) == 1 && bytes.Equal(bytes.TrimSpace(chunks[0]), []byte(`{"_ext":1}`))
+	return len(chunks) == 1 && isExternalResponseBodyMarker(chunks[0])
 }
 
 func sanitizeLoadedResponseBody(body objects.JSONRawMessage) objects.JSONRawMessage {
@@ -239,6 +244,7 @@ func (s *RequestService) CreateRequest(
 
 	if httpRequest != nil {
 		mut = mut.SetClientIP(httpRequest.ClientIP)
+		mut = mut.SetUserAgent(httpRequest.UserAgent)
 	}
 
 	if llmRequest.ReasoningEffort != "" {

@@ -180,6 +180,11 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				require.Equal(t, tt.chatReq.Model, anthropicReq.Model)
 				require.Greater(t, anthropicReq.MaxTokens, int64(0))
 
+				if tt.chatReq.MaxTokens == nil && tt.chatReq.MaxCompletionTokens == nil &&
+					(tt.chatReq.TransformOptions.DefaultMaxTokens == nil || *tt.chatReq.TransformOptions.DefaultMaxTokens <= 0) {
+					require.Equal(t, int64(8192), anthropicReq.MaxTokens)
+				}
+
 				// Verify auth
 				if result.Auth != nil {
 					require.Equal(t, "api_key", result.Auth.Type)
@@ -188,6 +193,31 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestOutboundTransformer_TransformRequest_UsesModelCardDefaultMaxTokens(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+		Model: "glm-5.3",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Hello"),
+				},
+			},
+		},
+		TransformOptions: llm.TransformOptions{
+			DefaultMaxTokens: lo.ToPtr(int64(131072)),
+		},
+	})
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	require.NoError(t, json.Unmarshal(result.Body, &anthropicReq))
+	require.Equal(t, int64(131072), anthropicReq.MaxTokens)
 }
 
 func TestOutboundTransformer_TransformRequest_DeepSeekReasoningEffortUsesOutputConfig(t *testing.T) {
