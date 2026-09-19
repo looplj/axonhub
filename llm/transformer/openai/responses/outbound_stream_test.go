@@ -737,6 +737,139 @@ func TestResponsesStream_RoundTrip_DefersFunctionCallUntilLateIdentityArrives(t 
 	require.JSONEq(t, arguments, receivedArguments)
 }
 
+func TestResponsesStream_RoundTrip_PreservesCustomToolInputProvidedOnlyInFinalEvents(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	input := "*** Begin Patch\n*** Add File: /tmp/probe.txt\n+hello\n*** End Patch\n"
+	upstreamEvents := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.created","response":{"id":"resp_custom_done_input","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ct_custom_done_input","type":"custom_tool_call","call_id":"call_custom_done_input","name":"apply_patch","input":""}}`)},
+		{Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"ct_custom_done_input","output_index":0,"input":"*** Begin Patch\n*** Add File: /tmp/probe.txt\n+hello\n*** End Patch\n"}`)},
+		{Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ct_custom_done_input","type":"custom_tool_call","status":"completed","call_id":"call_custom_done_input","name":"apply_patch","input":"*** Begin Patch\n*** Add File: /tmp/probe.txt\n+hello\n*** End Patch\n"}}`)},
+		{Data: []byte(`{"type":"response.completed","response":{"id":"resp_custom_done_input","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+	}
+
+	unifiedStream, err := outbound.TransformStream(t.Context(), nil, streams.SliceStream(upstreamEvents))
+	require.NoError(t, err)
+
+	clientStream, err := NewInboundTransformer().TransformStream(t.Context(), unifiedStream)
+	require.NoError(t, err)
+
+	clientEvents, err := streams.All(clientStream)
+	require.NoError(t, err)
+
+	var completedInput string
+	for _, clientEvent := range clientEvents {
+		if string(clientEvent.Data) == "[DONE]" {
+			continue
+		}
+
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(clientEvent.Data, &event))
+		if event.Type == StreamEventTypeOutputItemDone && event.Item != nil && event.Item.Type == "custom_tool_call" {
+			completedInput = lo.FromPtr(event.Item.Input)
+		}
+	}
+
+	require.Equal(t, input, completedInput)
+}
+
+func TestOutboundTransformer_TransformStream_ReconcilesCustomToolFinalInput(t *testing.T) {
+	tests := []struct {
+		name     string
+		events   []*httpclient.StreamEvent
+		expected map[string]string
+	}{
+		{
+			name: "custom tool input done is the only final input source",
+			events: []*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ct_input_done","type":"custom_tool_call","call_id":"call_input_done","name":"apply_patch","input":""}}`)},
+				{Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"ct_input_done","output_index":0,"input":"complete input"}`)},
+			},
+			expected: map[string]string{"call_input_done": "complete input"},
+		},
+		{
+			name: "output item done is the only final input source",
+			events: []*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ct_item_done","type":"custom_tool_call","call_id":"call_item_done","name":"apply_patch","input":""}}`)},
+				{Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ct_item_done","type":"custom_tool_call","status":"completed","call_id":"call_item_done","name":"apply_patch","input":"complete input"}}`)},
+			},
+			expected: map[string]string{"call_item_done": "complete input"},
+		},
+		{
+			name: "final input adds only the suffix missing from deltas",
+			events: []*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ct_partial","type":"custom_tool_call","call_id":"call_partial","name":"apply_patch","input":""}}`)},
+				{Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ct_partial","output_index":0,"delta":"partial"}`)},
+				{Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"ct_partial","output_index":0,"input":"partial input"}`)},
+				{Data: []byte(`{"type":"response.output_item.done","output_index":0,"item":{"id":"ct_partial","type":"custom_tool_call","status":"completed","call_id":"call_partial","name":"apply_patch","input":"partial input"}}`)},
+			},
+			expected: map[string]string{"call_partial": "partial input"},
+		},
+		{
+			name: "multiple calls keep their final inputs isolated",
+			events: []*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ct_first","type":"custom_tool_call","call_id":"call_first","name":"apply_patch","input":""}}`)},
+				{Data: []byte(`{"type":"response.output_item.added","output_index":1,"item":{"id":"ct_second","type":"custom_tool_call","call_id":"call_second","name":"write_file","input":""}}`)},
+				{Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"ct_second","output_index":1,"input":"second input"}`)},
+				{Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"ct_first","output_index":0,"input":"first input"}`)},
+			},
+			expected: map[string]string{
+				"call_first":  "first input",
+				"call_second": "second input",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+			require.NoError(t, err)
+
+			tt.events = append(tt.events,
+				&httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_custom_final_input","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+			)
+			stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(tt.events))
+			require.NoError(t, err)
+
+			responses, err := streams.All(stream)
+			require.NoError(t, err)
+
+			actual := make(map[string]string)
+			for _, response := range responses {
+				if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil {
+					continue
+				}
+				for _, toolCall := range response.Choices[0].Delta.ToolCalls {
+					if toolCall.ResponseCustomToolCall != nil && toolCall.ResponseCustomToolCall.Input != "" {
+						actual[toolCall.ResponseCustomToolCall.CallID] += toolCall.ResponseCustomToolCall.Input
+					}
+				}
+			}
+
+			require.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
+func TestOutboundTransformer_TransformStream_RejectsConflictingCustomToolFinalInput(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"ct_conflict","type":"custom_tool_call","call_id":"call_conflict","name":"apply_patch","input":""}}`)},
+		{Data: []byte(`{"type":"response.custom_tool_call_input.delta","item_id":"ct_conflict","output_index":0,"delta":"forwarded input"}`)},
+		{Data: []byte(`{"type":"response.custom_tool_call_input.done","item_id":"ct_conflict","output_index":0,"input":"different input"}`)},
+	}
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	_, err = streams.All(stream)
+	require.ErrorContains(t, err, `custom tool call input mismatch for call_id "call_conflict"`)
+}
+
 func TestOutboundTransformer_TransformStream_PreservesFinalItemAnnotations(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
