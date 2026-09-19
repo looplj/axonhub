@@ -194,6 +194,7 @@ type ChannelSettings {
   modelProtocols: [ModelProtocol!]
   providerQuota: ChannelProviderQuotaSettings @goField(forceResolver: true)
   quotaRoutingMode: ChannelQuotaRoutingMode
+  claudeCodeBillingHeader: ChannelClaudeCodeBillingHeaderMode
 }
 
 enum ChannelQuotaRoutingMode {
@@ -201,6 +202,17 @@ enum ChannelQuotaRoutingMode {
   IGNORE_QUOTA
   REMOVE_ON_EXHAUSTED
   BACKPRESSURE
+}
+
+# Controls the Claude Code billing header system message
+# ("x-anthropic-billing-header: ...") on requests forwarded to this channel.
+enum ChannelClaudeCodeBillingHeaderMode {
+  # Keep it only for official Claude Code OAuth channels, strip it otherwise.
+  AUTO
+  # Always forward it, e.g. for a relay that reaches the official endpoint.
+  KEEP
+  # Always remove it, e.g. for a relay that rejects requests carrying it.
+  STRIP
 }
 
 enum CapabilityPolicy {
@@ -278,6 +290,7 @@ input ChannelSettingsInput {
   modelProtocols: [ModelProtocolInput!]
   providerQuota: ChannelProviderQuotaSettingsInput
   quotaRoutingMode: ChannelQuotaRoutingMode
+  claudeCodeBillingHeader: ChannelClaudeCodeBillingHeaderMode
 }
 
 input ChannelRateLimitInput {

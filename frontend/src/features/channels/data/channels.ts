@@ -114,6 +114,7 @@ const CREATE_CHANNEL_MUTATION = `
         hideMappedModels
         lowercaseModelId
         quotaRoutingMode
+        claudeCodeBillingHeader
         proxy {
           type
           url
@@ -206,6 +207,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
         hideMappedModels
         lowercaseModelId
         quotaRoutingMode
+        claudeCodeBillingHeader
         proxy {
           type
           url
@@ -298,6 +300,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
         hideMappedModels
         lowercaseModelId
         quotaRoutingMode
+        claudeCodeBillingHeader
         proxy {
           type
           url
@@ -390,6 +393,7 @@ const UPDATE_CHANNEL_MUTATION = `
         hideMappedModels
         lowercaseModelId
         quotaRoutingMode
+        claudeCodeBillingHeader
         proxy {
           type
           url
@@ -601,6 +605,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           hideMappedModels
           lowercaseModelId
           quotaRoutingMode
+          claudeCodeBillingHeader
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -840,6 +845,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
           hideMappedModels
           lowercaseModelId
           quotaRoutingMode
+          claudeCodeBillingHeader
           transformOptions {
             forceArrayInstructions
             forceArrayInputs
@@ -1059,6 +1065,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             hideMappedModels
             lowercaseModelId
             quotaRoutingMode
+            claudeCodeBillingHeader
             bodyOverrideOperations {
               op
               path
