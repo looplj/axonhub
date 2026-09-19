@@ -80,6 +80,9 @@ func (RequestExecution) Fields() []ent.Field {
 		),
 		// The final response from the provider.
 		// e.g: the provider response with Claude format, and the user expects the response with OpenAI format, the response_body is the Claude response format.
+		field.JSON("response_headers", objects.JSONRawMessage{}).
+			Optional().
+			Comment("Response headers received from the upstream provider, with sensitive values masked"),
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional().Annotations(
 			entgql.Directives(forceResolver()),
 		),

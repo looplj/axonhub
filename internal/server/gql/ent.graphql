@@ -1839,6 +1839,10 @@ input CreateRequestInput {
   """
   requestHeaders: JSONRawMessageInput
   requestBody: JSONRawMessageInput!
+  """
+  Response headers sent to the client, with sensitive values masked
+  """
+  responseHeaders: JSONRawMessageInput
   responseBody: JSONRawMessageInput
   responseChunks: [JSONRawMessageInput!]
   externalID: String
@@ -4500,6 +4504,10 @@ type Request implements Node {
   """
   requestHeaders: JSONRawMessage
   requestBody: JSONRawMessage! @goField(forceResolver: true)
+  """
+  Response headers sent to the client, with sensitive values masked
+  """
+  responseHeaders: JSONRawMessage
   responseBody: JSONRawMessage @goField(forceResolver: true)
   responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
   channelID: ID
@@ -4651,6 +4659,10 @@ type RequestExecution implements Node {
   """
   channelAPIKeySuffix: String @goField(forceResolver: true)
   requestBody: JSONRawMessage! @goField(forceResolver: true)
+  """
+  Response headers received from the upstream provider, with sensitive values masked
+  """
+  responseHeaders: JSONRawMessage
   responseBody: JSONRawMessage @goField(forceResolver: true)
   responseChunks: [JSONRawMessage!] @goField(forceResolver: true)
   errorMessage: String
@@ -6385,6 +6397,12 @@ input UpdateRequestInput {
   requestHeaders: JSONRawMessageInput
   appendRequestHeaders: JSONRawMessageInput
   clearRequestHeaders: Boolean
+  """
+  Response headers sent to the client, with sensitive values masked
+  """
+  responseHeaders: JSONRawMessageInput
+  appendResponseHeaders: JSONRawMessageInput
+  clearResponseHeaders: Boolean
   responseBody: JSONRawMessageInput
   appendResponseBody: JSONRawMessageInput
   clearResponseBody: Boolean

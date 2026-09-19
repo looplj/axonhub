@@ -170,6 +170,12 @@ func (_c *RequestExecutionCreate) SetRequestBody(v objects.JSONRawMessage) *Requ
 	return _c
 }
 
+// SetResponseHeaders sets the "response_headers" field.
+func (_c *RequestExecutionCreate) SetResponseHeaders(v objects.JSONRawMessage) *RequestExecutionCreate {
+	_c.mutation.SetResponseHeaders(v)
+	return _c
+}
+
 // SetResponseBody sets the "response_body" field.
 func (_c *RequestExecutionCreate) SetResponseBody(v objects.JSONRawMessage) *RequestExecutionCreate {
 	_c.mutation.SetResponseBody(v)
@@ -489,6 +495,10 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 		_spec.SetField(requestexecution.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
 	}
+	if value, ok := _c.mutation.ResponseHeaders(); ok {
+		_spec.SetField(requestexecution.FieldResponseHeaders, field.TypeJSON, value)
+		_node.ResponseHeaders = value
+	}
 	if value, ok := _c.mutation.ResponseBody(); ok {
 		_spec.SetField(requestexecution.FieldResponseBody, field.TypeJSON, value)
 		_node.ResponseBody = value
@@ -667,6 +677,24 @@ func (u *RequestExecutionUpsert) UpdateExternalID() *RequestExecutionUpsert {
 // ClearExternalID clears the value of the "external_id" field.
 func (u *RequestExecutionUpsert) ClearExternalID() *RequestExecutionUpsert {
 	u.SetNull(requestexecution.FieldExternalID)
+	return u
+}
+
+// SetResponseHeaders sets the "response_headers" field.
+func (u *RequestExecutionUpsert) SetResponseHeaders(v objects.JSONRawMessage) *RequestExecutionUpsert {
+	u.Set(requestexecution.FieldResponseHeaders, v)
+	return u
+}
+
+// UpdateResponseHeaders sets the "response_headers" field to the value that was provided on create.
+func (u *RequestExecutionUpsert) UpdateResponseHeaders() *RequestExecutionUpsert {
+	u.SetExcluded(requestexecution.FieldResponseHeaders)
+	return u
+}
+
+// ClearResponseHeaders clears the value of the "response_headers" field.
+func (u *RequestExecutionUpsert) ClearResponseHeaders() *RequestExecutionUpsert {
+	u.SetNull(requestexecution.FieldResponseHeaders)
 	return u
 }
 
@@ -987,6 +1015,27 @@ func (u *RequestExecutionUpsertOne) UpdateExternalID() *RequestExecutionUpsertOn
 func (u *RequestExecutionUpsertOne) ClearExternalID() *RequestExecutionUpsertOne {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearExternalID()
+	})
+}
+
+// SetResponseHeaders sets the "response_headers" field.
+func (u *RequestExecutionUpsertOne) SetResponseHeaders(v objects.JSONRawMessage) *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetResponseHeaders(v)
+	})
+}
+
+// UpdateResponseHeaders sets the "response_headers" field to the value that was provided on create.
+func (u *RequestExecutionUpsertOne) UpdateResponseHeaders() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateResponseHeaders()
+	})
+}
+
+// ClearResponseHeaders clears the value of the "response_headers" field.
+func (u *RequestExecutionUpsertOne) ClearResponseHeaders() *RequestExecutionUpsertOne {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearResponseHeaders()
 	})
 }
 
@@ -1508,6 +1557,27 @@ func (u *RequestExecutionUpsertBulk) UpdateExternalID() *RequestExecutionUpsertB
 func (u *RequestExecutionUpsertBulk) ClearExternalID() *RequestExecutionUpsertBulk {
 	return u.Update(func(s *RequestExecutionUpsert) {
 		s.ClearExternalID()
+	})
+}
+
+// SetResponseHeaders sets the "response_headers" field.
+func (u *RequestExecutionUpsertBulk) SetResponseHeaders(v objects.JSONRawMessage) *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.SetResponseHeaders(v)
+	})
+}
+
+// UpdateResponseHeaders sets the "response_headers" field to the value that was provided on create.
+func (u *RequestExecutionUpsertBulk) UpdateResponseHeaders() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.UpdateResponseHeaders()
+	})
+}
+
+// ClearResponseHeaders clears the value of the "response_headers" field.
+func (u *RequestExecutionUpsertBulk) ClearResponseHeaders() *RequestExecutionUpsertBulk {
+	return u.Update(func(s *RequestExecutionUpsert) {
+		s.ClearResponseHeaders()
 	})
 }
 

@@ -41,6 +41,8 @@ const (
 	FieldChannelAPIKeySuffix = "channel_api_key_suffix"
 	// FieldRequestBody holds the string denoting the request_body field in the database.
 	FieldRequestBody = "request_body"
+	// FieldResponseHeaders holds the string denoting the response_headers field in the database.
+	FieldResponseHeaders = "response_headers"
 	// FieldResponseBody holds the string denoting the response_body field in the database.
 	FieldResponseBody = "response_body"
 	// FieldResponseChunks holds the string denoting the response_chunks field in the database.
@@ -111,6 +113,7 @@ var Columns = []string{
 	FieldReasoningEffort,
 	FieldChannelAPIKeySuffix,
 	FieldRequestBody,
+	FieldResponseHeaders,
 	FieldResponseBody,
 	FieldResponseChunks,
 	FieldErrorMessage,
