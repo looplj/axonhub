@@ -390,3 +390,27 @@ func TestMergeHTTPHeaders_AcceptNotOverridden(t *testing.T) {
 	assert.Equal(t, "*/*", merged.Get("Accept"))
 	assert.Equal(t, "client-value", merged.Get("X-Custom"))
 }
+
+func TestMergeHTTPHeaders_UserAgentNotMerged(t *testing.T) {
+	// The User-Agent identifies the client (e.g. codex_cli_rs/...); merging it
+	// into the outbound request would clobber a provider-required UA set by the
+	// outbound transformer (e.g. GitHubCopilotChat for Copilot channels) before
+	// the pass-through middleware can apply the configured policy.
+	dest := http.Header{}
+	dest.Set("User-Agent", "GitHubCopilotChat/0.26.7")
+
+	src := http.Header{}
+	src.Set("User-Agent", "codex_cli_rs/1.2.3")
+	src.Set("X-Custom", "client-value")
+
+	merged := MergeHTTPHeaders(dest, src)
+	assert.Equal(t, "GitHubCopilotChat/0.26.7", merged.Get("User-Agent"))
+	assert.Equal(t, "client-value", merged.Get("X-Custom"))
+
+	// A transformer that set no UA must not receive the client UA either; the
+	// pass-through middleware owns client-UA forwarding.
+	emptyDest := http.Header{}
+
+	merged = MergeHTTPHeaders(emptyDest, src)
+	assert.Empty(t, merged.Get("User-Agent"))
+}
