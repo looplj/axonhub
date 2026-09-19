@@ -2035,6 +2035,105 @@ func TestOverrideBodySetIfAbsent(t *testing.T) {
 	}
 }
 
+// TestOverrideBodySetIfAbsentOriginalRequest covers https://github.com/looplj/axonhub/issues/2133:
+// the outbound body is produced by format transformation, so a field the client sent may not
+// survive it (e.g. Anthropic `thinking` mapped to `reasoning_effort`). set_if_absent must treat
+// a field present in the original inbound request body as present.
+func TestOverrideBodySetIfAbsentOriginalRequest(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name         string
+		originalBody string
+		body         string
+		op           objects.OverrideOperation
+		expected     string
+	}{
+		{
+			name:         "preserves field sent by client but dropped by transformation",
+			originalBody: `{"model":"deepseek-v4-flash","thinking":{"type":"enabled","budget_tokens":13312}}`,
+			body:         `{"model":"deepseek-v4-flash","reasoning_effort":"high"}`,
+			op:           objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "thinking", Value: `{"type":"disabled"}`},
+			expected:     `{"model":"deepseek-v4-flash","reasoning_effort":"high"}`,
+		},
+		{
+			name:         "preserves explicit null sent by client",
+			originalBody: `{"thinking":null}`,
+			body:         `{}`,
+			op:           objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "thinking", Value: `{"type":"disabled"}`},
+			expected:     `{}`,
+		},
+		{
+			name:         "preserves nested field sent by client",
+			originalBody: `{"generation":{"max_output_tokens":16000}}`,
+			body:         `{}`,
+			op:           objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "generation.max_output_tokens", Value: "32000"},
+			expected:     `{}`,
+		},
+		{
+			name:         "sets default when absent from both bodies",
+			originalBody: `{"model":"deepseek-v4-flash"}`,
+			body:         `{"model":"deepseek-v4-flash","reasoning_effort":"high"}`,
+			op:           objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "thinking", Value: `{"type":"disabled"}`},
+			expected:     `{"model":"deepseek-v4-flash","reasoning_effort":"high","thinking":{"type":"disabled"}}`,
+		},
+		{
+			name:         "preserves field present only in transformed body",
+			originalBody: `{}`,
+			body:         `{"max_output_tokens":8000}`,
+			op:           objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "max_output_tokens", Value: "32000"},
+			expected:     `{"max_output_tokens":8000}`,
+		},
+		{
+			name:         "ignores non-JSON original body",
+			originalBody: `not-json`,
+			body:         `{}`,
+			op:           objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "thinking", Value: `{"type":"disabled"}`},
+			expected:     `{"thinking":{"type":"disabled"}}`,
+		},
+		{
+			name:         "sets default when no original request is recorded",
+			originalBody: "",
+			body:         `{}`,
+			op:           objects.OverrideOperation{Op: objects.OverrideOpSetIfAbsent, Path: "thinking", Value: `{"type":"disabled"}`},
+			expected:     `{"thinking":{"type":"disabled"}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			llmRequest := &llm.Request{Model: "deepseek-v4-flash"}
+			if tt.originalBody != "" {
+				llmRequest.RawRequest = &httpclient.Request{Body: []byte(tt.originalBody)}
+			}
+
+			channel := &biz.Channel{
+				Channel: &ent.Channel{
+					ID:   1,
+					Name: "set-if-absent-original-test",
+					Settings: &objects.ChannelSettings{
+						BodyOverrideOperations: []objects.OverrideOperation{tt.op},
+					},
+				},
+				Outbound: &mockTransformer{},
+			}
+			outbound := &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+					LlmRequest:       llmRequest,
+					OriginalModel:    llmRequest.Model,
+				},
+			}
+
+			middleware := applyOverrideRequestBody(outbound)
+			result, err := middleware.OnOutboundRawRequest(ctx, &httpclient.Request{Body: []byte(tt.body)})
+			require.NoError(t, err)
+			require.JSONEq(t, tt.expected, string(result.Body))
+		})
+	}
+}
+
 func TestParseOverrideOperations(t *testing.T) {
 	t.Run("empty input", func(t *testing.T) {
 		ops, err := objects.ParseOverrideOperations("")
