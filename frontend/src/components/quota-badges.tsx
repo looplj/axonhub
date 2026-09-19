@@ -23,6 +23,8 @@ import {
   ProviderKimiCodeQuotaData,
   ProviderMinimaxQuotaData,
   ProviderZhipuQuotaData,
+  ZhipuAccountQuota,
+  ZhipuWindowRow,
   ProviderZenmuxQuotaData,
   ClineQuotaWindow,
   isClineActivePassQuotaData,
@@ -403,6 +405,8 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
   const [isResetting, setIsResetting] = useState(false);
+  // Channels can carry dozens of keys; the disabled ones stay collapsed.
+  const [showDisabledAccounts, setShowDisabledAccounts] = useState(false);
   const quota = channel.quotaStatus;
 
   const status = quota.status;
@@ -1572,47 +1576,137 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
             if (!qd) return null;
 
-            const rows = qd.rows ?? [];
             const windowLabels: Record<string, string> = {
               five_hour: t('quota.window.5h'),
               weekly_limit: t('quota.window.weekly'),
             };
 
-            return (
-              <>
-                {rows.map((row, index) => {
-                  const percentage = Math.min(100, row.usedPercent);
-                  return (
-                    <div key={`${row.window}-${index}`} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
-                      <div className='flex items-center justify-between text-xs'>
-                        <span className='text-muted-foreground font-medium'>
-                          {windowLabels[row.window] ?? row.window}
-                        </span>
-                        <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</span>
-                      </div>
-                      <UsageTimeBar
-                        usagePercent={percentage}
-                        durationPercent={
-                          row.resetAt
-                            ? calcDurationPercent(
-                                row.window === 'five_hour' ? 5 * 3600 : 7 * 24 * 3600,
-                                (new Date(row.resetAt).getTime() - Date.now()) / 1000
-                              )
-                            : undefined
-                        }
-                        tooltip={
-                          <div className='space-y-0.5'>
-                            <div className='font-medium'>{windowLabels[row.window] ?? row.window}</div>
-                            <div>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</div>
-                            {row.resetAt && <div>{formatTimeToReset(row.resetAt)}</div>}
-                          </div>
-                        }
-                      />
+            // One bar per window; reused for the aggregated fallback and for
+            // every account of a multi-key channel.
+            const renderWindowRows = (rows: ZhipuWindowRow[]) =>
+              rows.map((row, index) => {
+                const percentage = Math.min(100, row.usedPercent);
+                return (
+                  <div key={`${row.window}-${index}`} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{windowLabels[row.window] ?? row.window}</span>
+                      <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</span>
                     </div>
-                  );
-                })}
-              </>
-            );
+                    <UsageTimeBar
+                      usagePercent={percentage}
+                      durationPercent={
+                        row.resetAt
+                          ? calcDurationPercent(
+                              row.window === 'five_hour' ? 5 * 3600 : 7 * 24 * 3600,
+                              (new Date(row.resetAt).getTime() - Date.now()) / 1000
+                            )
+                          : undefined
+                      }
+                      tooltip={
+                        <div className='space-y-0.5'>
+                          <div className='font-medium'>{windowLabels[row.window] ?? row.window}</div>
+                          <div>{t('quota.label.percent_used', { percent: Math.round(percentage) })}</div>
+                          {row.remaining != null && row.usage != null && (
+                            <div>{t('quota.label.credits_amount', { remaining: row.remaining.toLocaleString(), total: row.usage.toLocaleString() })}</div>
+                          )}
+                          {row.resetAt && <div>{formatTimeToReset(row.resetAt)}</div>}
+                        </div>
+                      }
+                    />
+                  </div>
+                );
+              });
+
+            const accounts = qd.accounts ?? [];
+            if (accounts.length > 1) {
+              // A channel can carry dozens of keys, so the detail stays a
+              // compact list: the aggregate windows on top, then one line per
+              // account with its two figures. Disabled and failing keys are
+              // collapsed behind a toggle.
+              const usableAccounts = accounts.filter((account) => !account.disabled && !account.error);
+              const readyAccountCount = usableAccounts.filter((account) => account.ready === true).length;
+              const unavailableAccounts = accounts.filter((account) => account.disabled || account.error);
+              const visibleAccounts = showDisabledAccounts ? [...usableAccounts, ...unavailableAccounts] : usableAccounts;
+              const hiddenCount = unavailableAccounts.length;
+
+              const windowPercent = (account: ZhipuAccountQuota, window: string) =>
+                account.rows?.find((row) => row.window === window)?.usedPercent;
+              const percentClass = (percent?: number) => {
+                if (percent === undefined) return 'text-muted-foreground';
+                if (percent >= 100) return 'text-red-500';
+                if (percent >= 80) return 'text-amber-500';
+                return 'text-green-600 dark:text-green-500';
+              };
+              const formatPercent = (percent?: number) => (percent === undefined ? '-' : `${Math.round(Math.min(100, percent))}%`);
+
+              return (
+                <>
+                  <div className='flex items-center justify-between text-xs'>
+                    <span className='text-muted-foreground font-medium'>
+                      {t('quota.label.accounts_summary', { usable: readyAccountCount, total: accounts.length })}
+                    </span>
+                    <span className='text-muted-foreground text-[11px]'>{t('quota.label.worst_window')}</span>
+                  </div>
+                  {renderWindowRows(qd.rows ?? [])}
+                  <div className='max-h-44 space-y-0.5 overflow-y-auto pr-1'>
+                    {visibleAccounts.map((account, accountIndex) => {
+                      const fiveHour = windowPercent(account, 'five_hour');
+                      const weekly = windowPercent(account, 'weekly_limit');
+                      const failed = Boolean(account.error);
+                      return (
+                        <Tooltip key={account.ref ?? `account-${accountIndex}`}>
+                          <TooltipTrigger asChild>
+                            <div
+                              tabIndex={0}
+                              className='hover:bg-muted/50 focus-visible:ring-ring/50 flex cursor-default items-center justify-between gap-2 rounded px-1 py-0.5 text-[11px] focus-visible:ring-2 focus-visible:outline-none'
+                            >
+                              <span className={`font-mono ${account.disabled || failed ? 'text-muted-foreground' : 'text-foreground'}`}>
+                                {`****${account.suffix ?? ''}`}
+                              </span>
+                              {failed ? (
+                                <span className='text-red-500'>{t('quota.label.account_error')}</span>
+                              ) : (
+                                <span className='flex items-center gap-2 tabular-nums'>
+                                  <span className={percentClass(fiveHour)}>{`${t('quota.label.short_5h')} ${formatPercent(fiveHour)}`}</span>
+                                  <span className={percentClass(weekly)}>{`${t('quota.label.short_weekly')} ${formatPercent(weekly)}`}</span>
+                                  {account.disabled && <span className='text-amber-500'>{t('quota.label.account_disabled')}</span>}
+                                </span>
+                              )}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent className='space-y-0.5'>
+                            <div className='font-medium'>{`****${account.suffix ?? ''}`}</div>
+                            {(account.rows ?? []).map((row, rowIndex) => (
+                              <div key={`${row.window}-${rowIndex}`}>
+                                {`${windowLabels[row.window] ?? row.window}: ${t('quota.label.percent_used', { percent: Math.round(Math.min(100, row.usedPercent)) })}`}
+                                {row.remaining != null && row.usage != null
+                                  ? ` · ${t('quota.label.credits_amount', { remaining: row.remaining.toLocaleString(), total: row.usage.toLocaleString() })}`
+                                  : ''}
+                                {row.resetAt ? ` · ${formatTimeToReset(row.resetAt)}` : ''}
+                              </div>
+                            ))}
+                            {account.error && <div className='text-red-500'>{account.error}</div>}
+                            {account.disabled && <div className='text-amber-500'>{t('quota.label.account_disabled')}</div>}
+                          </TooltipContent>
+                        </Tooltip>
+                      );
+                    })}
+                  </div>
+                  {hiddenCount > 0 && (
+                    <button
+                      type='button'
+                      className='text-primary hover:text-primary/80 self-start text-[11px] font-medium hover:underline'
+                      onClick={() => setShowDisabledAccounts((shown) => !shown)}
+                    >
+                      {showDisabledAccounts
+                        ? t('quota.label.hide_disabled_accounts', { count: hiddenCount })
+                        : t('quota.label.show_disabled_accounts', { count: hiddenCount })}
+                    </button>
+                  )}
+                </>
+              );
+            }
+            return <>{renderWindowRows(qd.rows ?? [])}</>;
           })()}
         </div>
       )}
