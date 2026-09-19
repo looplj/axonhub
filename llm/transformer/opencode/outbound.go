@@ -33,7 +33,9 @@ const (
 	// routeDeepseek routes DeepSeek models through the DeepSeek transformer,
 	// which handles its thinking/reasoning_content conventions.
 	routeDeepseek route = "deepseek"
-	// routeResponses routes Grok/GPT models through the OpenAI Responses API (/v1/responses).
+	// routeResponses routes Grok/GPT/Muse models through the OpenAI Responses API (/v1/responses).
+	// Muse-spark models are only served on /v1/responses upstream: /v1/chat/completions
+	// returns HTTP 500 for them.
 	routeResponses route = "responses"
 	// routeAnthropic routes MiniMax/Qwen models through the Anthropic messages endpoint (/v1/messages).
 	routeAnthropic route = "anthropic"
@@ -162,7 +164,7 @@ func routeForModel(model string) route {
 	switch {
 	case strings.HasPrefix(model, "deepseek"):
 		return routeDeepseek
-	case strings.HasPrefix(model, "grok"), strings.HasPrefix(model, "gpt"):
+	case strings.HasPrefix(model, "grok"), strings.HasPrefix(model, "gpt"), strings.HasPrefix(model, "muse"):
 		return routeResponses
 	case strings.HasPrefix(model, "minimax"), strings.HasPrefix(model, "qwen3"):
 		return routeAnthropic

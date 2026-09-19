@@ -6,6 +6,7 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
+	sql "entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -565,6 +566,82 @@ func TestChannelService_UpdateChannel(t *testing.T) {
 			}
 		})
 	}
+}
+
+// poisonUpdatedAtSQLCurrentTimestamp rewrites a channel's updated_at to the
+// bare "YYYY-MM-DD HH:MM:SS" text SQLite's CURRENT_TIMESTAMP column default
+// stores, simulating a row last written by a non-ent writer. The optimistic
+// identity guard must not misreport such rows as concurrently updated.
+func poisonUpdatedAtSQLCurrentTimestamp(t *testing.T, ctx context.Context, client *ent.Client, id int) {
+	t.Helper()
+
+	_, err := client.Channel.Update().
+		Where(channel.IDEQ(id)).
+		Modify(func(u *sql.UpdateBuilder) {
+			u.Set(channel.FieldUpdatedAt, "2026-01-01 00:00:00")
+		}).
+		Save(ctx)
+	require.NoError(t, err)
+}
+
+func TestChannelService_UpdateChannel_SqliteCurrentTimestampUpdatedAt(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	created, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Poisoned Timestamp").
+		SetBaseURL("https://api.example.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "poisoned-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		Save(ctx)
+	require.NoError(t, err)
+
+	poisonUpdatedAtSQLCurrentTimestamp(t, ctx, client, created.ID)
+
+	// The identity-guarded update must succeed despite the mismatched stored
+	// format instead of reporting a bogus concurrent update.
+	updated, err := svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
+		BaseURL: lo.ToPtr("https://api.example.com/v2"),
+	})
+	require.NoError(t, err)
+	require.Equal(t, "https://api.example.com/v2", updated.BaseURL)
+
+	// The retry rewrote updated_at through ent, so a follow-up guarded update
+	// matches the stored text again.
+	_, err = svc.UpdateChannel(ctx, created.ID, &ent.UpdateChannelInput{
+		BaseURL: lo.ToPtr("https://api.example.com/v3"),
+	})
+	require.NoError(t, err)
+}
+
+func TestChannelService_SaveChannelEndpoints_SqliteCurrentTimestampUpdatedAt(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	created, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Poisoned Timestamp Endpoints").
+		SetBaseURL("https://api.example.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "poisoned-key"}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		Save(ctx)
+	require.NoError(t, err)
+
+	poisonUpdatedAtSQLCurrentTimestamp(t, ctx, client, created.ID)
+
+	updated, err := svc.SaveChannelEndpoints(ctx, SaveChannelEndpointsInput{
+		ChannelID: objects.GUID{Type: "Channel", ID: created.ID},
+		Endpoints: []objects.ChannelEndpoint{{APIFormat: "openai/responses"}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, []objects.ChannelEndpoint{{APIFormat: "openai/responses"}}, updated.Endpoints)
 }
 
 func TestChannelService_UpdateChannel_PreservesManagementKeyWhenOmitted(t *testing.T) {
