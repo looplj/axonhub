@@ -69,12 +69,25 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             metricsLatencyMs
             metricsFirstTokenLatencyMs
             metricsReasoningDurationMs
+            modelAudit {
+              status
+              matchedUpstreamIds
+              upstreamModelIds
+              mismatchedModelIds
+              conflictingModelIds
+              unknownCount
+              comparedCount
+              conflictCount
+            }
             executions(first: 10, orderBy: { field: CREATED_AT, direction: DESC }) {
               edges {
                 node {
                   id
                   createdAt
                   modelID
+                  outboundModelID
+                  upstreamModelID
+                  upstreamModelIds
                   format
                   status
                   reasoningEffort
@@ -251,6 +264,9 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 updatedAt
                 requestID${channelFields}
                 modelID
+                outboundModelID
+                upstreamModelID
+                upstreamModelIds
                 projectID
                 dataStorageID
                 requestHeaders

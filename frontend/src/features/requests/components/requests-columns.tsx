@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
-import { IconArrowsExchange, IconArrowsJoin2, IconRoute } from '@tabler/icons-react';
+import { IconAlertTriangle, IconArrowsExchange, IconArrowsJoin2, IconCheck, IconQuestionMark, IconRoute } from '@tabler/icons-react';
 import { Ban, FileText } from 'lucide-react';
 import { zhCN, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } fr
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { calculateTokensPerSecond, getTokensPerSecondValue } from '../utils/tokens-per-second';
+import { getRequestModelAuditTooltip, getUpstreamModelAudit } from '../utils/upstream-model-audit';
 import { getStatusColor } from './help';
 
 interface UseRequestsColumnsOptions {
@@ -144,6 +145,22 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const executionModelIds = Array.from(new Set(executions.map((exe) => exe.modelID || ''))).filter(
           (id) => id && id !== originalModelId
         );
+        // The latest ten display rows cannot establish a complete audit.
+        const modelAudit = request.modelAudit ?? getUpstreamModelAudit([]);
+        const upstreamModelMatches = modelAudit.status === 'matched';
+        const requestIsProcessing = request.status === 'pending' || request.status === 'processing';
+        const requestFailed = request.status === 'failed' || request.status === 'canceled';
+        const upstreamModelAuditIconClass = requestIsProcessing
+          ? 'text-sky-600 dark:text-sky-400 motion-safe:animate-pulse'
+          : requestFailed
+            ? 'text-red-600 dark:text-red-400'
+            : modelAudit.status === 'unknown'
+              ? 'text-amber-600 dark:text-amber-400'
+              : upstreamModelMatches
+                ? 'text-emerald-700 dark:text-emerald-300'
+                : 'text-red-700 dark:text-red-400';
+        const upstreamModelAuditTooltip = getRequestModelAuditTooltip(modelAudit, request.status, t);
+
         const reasoningEffort = executions[0]?.reasoningEffort ?? request.reasoningEffort;
         const inboundFormat = request.format;
         const outboundFormat = executions[0]?.format;
@@ -225,6 +242,29 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                   </span>
                 </TooltipTrigger>
                 <TooltipContent>{t(passThroughApplied ? 'requests.tooltips.passThroughApplied' : 'requests.tooltips.passThroughNotApplied')}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`inline-flex h-5 w-5 items-center justify-center ${upstreamModelAuditIconClass}`}
+                    tabIndex={0}
+                    role='img'
+                    aria-label={upstreamModelAuditTooltip}
+                  >
+                    {requestIsProcessing ? (
+                      <IconQuestionMark className='h-3.5 w-3.5' />
+                    ) : requestFailed ? (
+                      <IconAlertTriangle className='h-3.5 w-3.5' />
+                    ) : modelAudit.status === 'unknown' ? (
+                      <IconQuestionMark className='h-3.5 w-3.5' />
+                    ) : upstreamModelMatches ? (
+                      <IconCheck className='h-3.5 w-3.5' />
+                    ) : (
+                      <IconAlertTriangle className='h-3.5 w-3.5' />
+                    )}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{upstreamModelAuditTooltip}</TooltipContent>
               </Tooltip>
             </div>
           </div>

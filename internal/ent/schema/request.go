@@ -49,6 +49,7 @@ func (Request) Fields() []ent.Field {
 		field.Int("project_id").
 			Immutable().
 			Default(1).
+			Annotations(entgql.CollectedFor("modelAudit")).
 			Comment("Project ID, default to 1 for backward compatibility"),
 		field.Int("trace_id").
 			Optional().

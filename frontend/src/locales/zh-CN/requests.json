@@ -144,5 +144,19 @@
   "requests.drawer.viewDetail": "查看详情",
   "requests.drawer.noRequestBody": "无请求体",
   "requests.drawer.expandAll": "展开全部",
-  "requests.drawer.collapseAll": "折叠全部"
+  "requests.drawer.collapseAll": "折叠全部",
+  "requests.detail.upstreamModelMismatch": "上游返回模型名称与发送模型不同：{{model}}",
+  "requests.detail.upstreamModelMatched": "上游返回模型名称与发送模型一致",
+  "requests.tooltips.upstreamModelMatching": "成功执行的上游模型名称与发送模型一致（{{model}}）",
+  "requests.tooltips.upstreamModelMatchedAfterRetries": "成功执行的上游模型名称与发送模型一致（{{model}}）；另有 {{unknown}} 次失败或取消的执行缺少模型信息，可在详情中查看",
+  "requests.tooltips.upstreamModelMismatch": "上游返回模型名称不同：{{model}}",
+  "requests.tooltips.upstreamModelUnknown": "最终发送或上游自报模型未记录，无法判断名称是否一致",
+  "requests.tooltips.upstreamModelRequestProcessing": "请求处理中，等待请求完成和上游返回模型信息",
+  "requests.tooltips.upstreamModelRequestFailed": "请求未成功，模型一致性无法作为成功结论；请查看失败原因",
+  "requests.tooltips.upstreamModelPartial": "仅部分执行可审计：已比较 {{compared}} 次，未知 {{unknown}} 次",
+  "requests.detail.routedModel": "路由模型",
+  "requests.detail.outboundModel": "最终发送模型",
+  "requests.detail.upstreamModels": "上游自报模型",
+  "requests.detail.upstreamModelConflict": "同一次执行中，上游自报的模型名发生变化（保留前两个不同名称）",
+  "requests.tooltips.upstreamModelConflict": "同一次执行出现不同的上游自报模型名：{{model}}（保留前两个不同名称）"
 }

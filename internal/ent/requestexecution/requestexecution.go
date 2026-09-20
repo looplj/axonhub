@@ -33,6 +33,12 @@ const (
 	FieldExternalID = "external_id"
 	// FieldModelID holds the string denoting the model_id field in the database.
 	FieldModelID = "model_id"
+	// FieldOutboundModelID holds the string denoting the outbound_model_id field in the database.
+	FieldOutboundModelID = "outbound_model_id"
+	// FieldUpstreamModelID holds the string denoting the upstream_model_id field in the database.
+	FieldUpstreamModelID = "upstream_model_id"
+	// FieldUpstreamModelIds holds the string denoting the upstream_model_ids field in the database.
+	FieldUpstreamModelIds = "upstream_model_ids"
 	// FieldFormat holds the string denoting the format field in the database.
 	FieldFormat = "format"
 	// FieldReasoningEffort holds the string denoting the reasoning_effort field in the database.
@@ -109,6 +115,9 @@ var Columns = []string{
 	FieldDataStorageID,
 	FieldExternalID,
 	FieldModelID,
+	FieldOutboundModelID,
+	FieldUpstreamModelID,
+	FieldUpstreamModelIds,
 	FieldFormat,
 	FieldReasoningEffort,
 	FieldChannelAPIKeySuffix,
@@ -149,6 +158,8 @@ var (
 	DefaultProjectID int
 	// ExternalIDValidator is a validator for the "external_id" field. It is called by the builders before save.
 	ExternalIDValidator func(string) error
+	// OutboundModelIDValidator is a validator for the "outbound_model_id" field. It is called by the builders before save.
+	OutboundModelIDValidator func(string) error
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
 	// ChannelAPIKeySuffixValidator is a validator for the "channel_api_key_suffix" field. It is called by the builders before save.
@@ -231,6 +242,16 @@ func ByExternalID(opts ...sql.OrderTermOption) OrderOption {
 // ByModelID orders the results by the model_id field.
 func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModelID, opts...).ToFunc()
+}
+
+// ByOutboundModelID orders the results by the outbound_model_id field.
+func ByOutboundModelID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldOutboundModelID, opts...).ToFunc()
+}
+
+// ByUpstreamModelID orders the results by the upstream_model_id field.
+func ByUpstreamModelID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpstreamModelID, opts...).ToFunc()
 }
 
 // ByFormat orders the results by the format field.

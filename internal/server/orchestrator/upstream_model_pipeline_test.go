@@ -1,0 +1,343 @@
+package orchestrator
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"testing"
+	"time"
+
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
+
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
+	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/llm/transformer/gemini"
+	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+)
+
+func newModelAuditOutbound(t *testing.T, format llm.APIFormat) transformer.Outbound {
+	t.Helper()
+	var outbound transformer.Outbound
+	var err error
+	switch format {
+	case llm.APIFormatAnthropicMessage:
+		outbound, err = anthropic.NewOutboundTransformer("https://example.invalid", "test-key")
+	case llm.APIFormatGeminiContents:
+		outbound, err = gemini.NewOutboundTransformer("https://example.invalid", "test-key")
+	case llm.APIFormatOpenAIResponse:
+		outbound, err = responses.NewOutboundTransformer("https://example.invalid", "test-key")
+	default:
+		outbound, err = openai.NewOutboundTransformer("https://example.invalid", "test-key")
+	}
+	require.NoError(t, err)
+	return outbound
+}
+
+func prepareModelAuditCandidate(t *testing.T, ctx context.Context, db *ent.Client, state *PersistenceState, format llm.APIFormat, passThrough, forceStream bool) {
+	t.Helper()
+	entity, err := db.Channel.Get(ctx, state.Request.ChannelID)
+	require.NoError(t, err)
+	entity.Settings = &objects.ChannelSettings{
+		PassThroughBody:        lo.ToPtr(passThrough),
+		BodyOverrideOperations: []objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "model", Value: "wire-b"}},
+	}
+	if forceStream {
+		entity.Policies.Stream = objects.CapabilityPolicyRequire
+	}
+	channel := &biz.Channel{Channel: entity, Outbound: newModelAuditOutbound(t, format)}
+	state.OriginalModel = "client-alias"
+	state.ChannelModelsCandidates = []*ChannelModelsCandidate{{
+		Channel: channel, APIFormat: string(format),
+		Models: []biz.ChannelModelEntry{{RequestModel: "client-alias", ActualModel: "routed-a", Source: "direct"}},
+	}}
+}
+
+func modelAuditMiddlewares(inbound *PersistentInboundTransformer, outbound *PersistentOutboundTransformer) []pipeline.Middleware {
+	return []pipeline.Middleware{
+		applyModelMapping(inbound),
+		applyPassThroughResponse(outbound, nil),
+		applyPassThroughStream(outbound, nil),
+		applyPassThroughRequestBody(outbound, nil),
+		applyOverrideRequestBody(outbound),
+		finalizeTransportRequest(outbound),
+		persistRequestExecution(outbound),
+		captureRawProviderResponse(outbound, nil),
+		captureRawProviderStream(outbound, nil),
+	}
+}
+
+func TestUpstreamModelPipeline_NonStreaming(t *testing.T) {
+	tests := []struct {
+		name           string
+		format         llm.APIFormat
+		response       string
+		sent, reported string
+		passThrough    bool
+		status         objects.ModelAuditStatus
+	}{
+		{
+			name: "OpenAI final override", format: llm.APIFormatOpenAIChatCompletion,
+			response: `{"id":"resp","model":"wire-b","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`,
+			sent:     "wire-b", reported: "wire-b", status: objects.ModelAuditMatched,
+		},
+		{
+			name: "OpenAI override reveals mismatch", format: llm.APIFormatOpenAIChatCompletion,
+			response: `{"id":"resp","model":"routed-a","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`,
+			sent:     "wire-b", reported: "routed-a", status: objects.ModelAuditMismatched,
+		},
+		{
+			name: "OpenAI pass through and override", format: llm.APIFormatOpenAIChatCompletion, passThrough: true,
+			response: `{"id":"resp","model":"wire-b","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`,
+			sent:     "wire-b", reported: "wire-b", status: objects.ModelAuditMatched,
+		},
+		{
+			name: "Anthropic protocol conversion", format: llm.APIFormatAnthropicMessage,
+			response: `{"id":"resp","type":"message","role":"assistant","model":"wire-b","content":[{"type":"text","text":"hello"}],"stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`,
+			sent:     "wire-b", reported: "wire-b", status: objects.ModelAuditMatched,
+		},
+		{
+			name: "Responses protocol conversion", format: llm.APIFormatOpenAIResponse,
+			response: `{"id":"resp","object":"response","status":"completed","model":"wire-b","output":[{"type":"message","id":"msg","status":"completed","role":"assistant","content":[{"type":"output_text","text":"hello","annotations":[]}]}]}`,
+			sent:     "wire-b", reported: "wire-b", status: objects.ModelAuditMatched,
+		},
+		{
+			name: "Gemini URL model survives unrelated JSON override", format: llm.APIFormatGeminiContents,
+			response: `{"responseId":"resp","modelVersion":"routed-a","candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"hello"}]},"finishReason":"STOP"}]}`,
+			sent:     "routed-a", reported: "routed-a", status: objects.ModelAuditMatched,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, db, state := newUpstreamModelPersistenceTest(t)
+			prepareModelAuditCandidate(t, ctx, db, state, tt.format, tt.passThrough, false)
+			inbound, outbound := NewPersistentTransformers(state, openai.NewInboundTransformer())
+			executor := &mockExecutor{response: &httpclient.Response{
+				StatusCode: http.StatusOK, Headers: http.Header{"Content-Type": {"application/json"}}, Body: []byte(tt.response),
+			}}
+			pipe := pipeline.NewFactory(executor).Pipeline(inbound, outbound, pipeline.WithMiddlewares(modelAuditMiddlewares(inbound, outbound)...))
+			result, err := pipe.Process(ctx, buildTestRequest("client-alias", "hello", false))
+			require.NoError(t, err)
+			require.NotNil(t, result.Response)
+			if tt.passThrough {
+				require.Equal(t, tt.response, string(result.Response.Body))
+			} else {
+				require.Equal(t, "client-alias", gjson.GetBytes(result.Response.Body, "model").String(), "client rewriting is separate from upstream evidence")
+			}
+			require.Equal(t, "wire-b", gjson.GetBytes(executor.lastRequest.Body, "model").String())
+			if tt.format == llm.APIFormatGeminiContents {
+				require.Contains(t, executor.lastRequest.URL, "/models/routed-a:")
+			}
+			saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
+			require.NoError(t, err)
+			require.Equal(t, "routed-a", saved.ModelID)
+			require.Equal(t, tt.sent, saved.OutboundModelID)
+			require.Equal(t, tt.reported, saved.UpstreamModelID)
+			require.Equal(t, []string{tt.reported}, saved.UpstreamModelIds)
+			require.Equal(t, tt.passThrough, saved.PassThroughApplied)
+			require.Equal(t, tt.status, biz.AuditRequestModels([]*ent.RequestExecution{saved}).Status)
+			require.JSONEq(t, "{}", string(saved.RequestBody))
+			require.Empty(t, saved.ResponseBody)
+		})
+	}
+}
+
+func TestUpstreamModelPipeline_StreamingAndAutoAggregate(t *testing.T) {
+	for _, tt := range []struct {
+		name                     string
+		passThrough, forceStream bool
+	}{
+		{name: "stream conversion"},
+		{name: "pass through stream", passThrough: true},
+		{name: "upstream stream aggregated for nonstream client", forceStream: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, db, state := newUpstreamModelPersistenceTest(t)
+			prepareModelAuditCandidate(t, ctx, db, state, llm.APIFormatOpenAIChatCompletion, tt.passThrough, tt.forceStream)
+			state.Request.Stream = !tt.forceStream
+			inbound, outbound := NewPersistentTransformers(state, openai.NewInboundTransformer())
+			events := []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"resp","model":"wire-b","choices":[{"index":0,"delta":{"role":"assistant","content":"hello"}}]}`)},
+				{Data: []byte(`{"id":"resp","model":"changed-c","choices":[{"index":0,"delta":{"content":" world"},"finish_reason":"stop"}]}`)},
+				{Data: []byte("[DONE]")},
+			}
+			executor := &mockExecutor{streamEvents: events}
+			pipe := pipeline.NewFactory(executor).Pipeline(inbound, outbound, pipeline.WithMiddlewares(modelAuditMiddlewares(inbound, outbound)...))
+			result, err := pipe.Process(ctx, buildTestRequest("client-alias", "hello", !tt.forceStream))
+			require.NoError(t, err)
+			if tt.forceStream {
+				require.NotNil(t, result.Response)
+				require.Nil(t, result.EventStream)
+				require.Contains(t, string(result.Response.Body), "hello world")
+			} else {
+				require.NotNil(t, result.EventStream)
+				var received []*httpclient.StreamEvent
+				for result.EventStream.Next() {
+					received = append(received, result.EventStream.Current())
+				}
+				require.NoError(t, result.EventStream.Err())
+				require.NoError(t, result.EventStream.Close())
+				if tt.passThrough {
+					require.Equal(t, events, received)
+				}
+			}
+			// Pass-through drains the transformation branch asynchronously.
+			require.Eventually(t, func() bool {
+				saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
+				return err == nil && saved.Status == requestexecution.StatusCompleted && len(saved.UpstreamModelIds) == 2
+			}, time.Second, 5*time.Millisecond)
+			saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
+			require.NoError(t, err)
+			require.Equal(t, "wire-b", saved.OutboundModelID)
+			require.Equal(t, []string{"wire-b", "changed-c"}, saved.UpstreamModelIds)
+			require.Equal(t, objects.ModelAuditConflicting, biz.AuditRequestModels([]*ent.RequestExecution{saved}).Status)
+			require.Empty(t, saved.ResponseChunks)
+			require.Empty(t, saved.ResponseBody)
+		})
+	}
+}
+
+func TestUpstreamModelPipeline_TextTranscription(t *testing.T) {
+	ctx, db, state := newUpstreamModelPersistenceTest(t)
+	state.RequestExec = createUpstreamModelTestExecution(t, ctx, db, state.Request, "whisper-1", llm.APIFormatOpenAITranscription, false)
+	outbound := newModelAuditOutbound(t, llm.APIFormatOpenAIChatCompletion)
+	middleware := &persistRequestExecutionMiddleware{outbound: &PersistentOutboundTransformer{state: state, wrapped: outbound}}
+	_, err := middleware.OnOutboundRawRequest(ctx, &httpclient.Request{})
+	require.NoError(t, err)
+	transcript := `{"model":"whisper-1"}`
+	raw, err := middleware.OnOutboundRawResponse(ctx, &httpclient.Response{
+		StatusCode: http.StatusOK, Headers: http.Header{"Content-Type": {"text/plain"}},
+		Request: &httpclient.Request{APIFormat: string(llm.APIFormatOpenAITranscription)}, Body: []byte(transcript),
+	})
+	require.NoError(t, err)
+	response, err := outbound.TransformResponse(ctx, raw)
+	require.NoError(t, err)
+	require.Equal(t, transcript, response.Transcription.Text)
+	_, err = middleware.OnOutboundLlmResponse(ctx, response)
+	require.NoError(t, err)
+	saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
+	require.NoError(t, err)
+	require.Empty(t, saved.UpstreamModelID)
+	require.Empty(t, saved.UpstreamModelIds)
+	require.Equal(t, objects.ModelAuditUnknown, biz.AuditRequestModels([]*ent.RequestExecution{saved}).Status)
+}
+
+func TestUpstreamModelPipeline_ChannelRetry(t *testing.T) {
+	for _, reported := range []string{"first-a", ""} {
+		t.Run("second response model="+reported, func(t *testing.T) {
+			ctx, db, state := newUpstreamModelPersistenceTest(t)
+			prepareModelAuditCandidate(t, ctx, db, state, llm.APIFormatOpenAIChatCompletion, false, false)
+			first := state.ChannelModelsCandidates[0]
+			first.Channel.Settings.BodyOverrideOperations[0].Value = "first-a"
+			secondRow := db.Channel.Create().SetName("retry-channel").SetType(first.Channel.Type).
+				SetBaseURL("https://example.invalid").SetCredentials(first.Channel.Credentials).
+				SetSupportedModels([]string{"routed-b"}).SetDefaultTestModel("routed-b").SaveX(ctx)
+			secondRow.Settings = &objects.ChannelSettings{
+				PassThroughBody:        lo.ToPtr(false),
+				BodyOverrideOperations: []objects.OverrideOperation{{Op: objects.OverrideOpSet, Path: "model", Value: "second-b"}},
+			}
+			state.ChannelModelsCandidates = append(state.ChannelModelsCandidates, &ChannelModelsCandidate{
+				Channel:   &biz.Channel{Channel: secondRow, Outbound: newModelAuditOutbound(t, llm.APIFormatOpenAIChatCompletion)},
+				APIFormat: string(llm.APIFormatOpenAIChatCompletion),
+				Models:    []biz.ChannelModelEntry{{RequestModel: "client-alias", ActualModel: "routed-b", Source: "direct"}},
+			})
+			inbound, outbound := NewPersistentTransformers(state, openai.NewInboundTransformer())
+			executor := pipeline.NewMockExecutor(t)
+			executor.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+				require.Equal(t, "first-a", gjson.GetBytes(req.Body, "model").String())
+				return &httpclient.Response{StatusCode: http.StatusOK, Request: req, Body: []byte(`{"id":"first","model":"first-a","choices":[]}`)}, nil
+			}).Once()
+			executor.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+				require.Equal(t, "second-b", gjson.GetBytes(req.Body, "model").String())
+				return &httpclient.Response{
+					StatusCode: http.StatusOK, Request: req,
+					Body: []byte(fmt.Sprintf(`{"id":"second","model":%q,"choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`, reported)),
+				}, nil
+			}).Once()
+			pipe := pipeline.NewFactory(executor).Pipeline(inbound, outbound,
+				pipeline.WithRetry(1, 0, 0), pipeline.WithEmptyResponseDetection(),
+				pipeline.WithMiddlewares(modelAuditMiddlewares(inbound, outbound)...))
+			result, err := pipe.Process(ctx, buildTestRequest("client-alias", "hello", false))
+			require.NoError(t, err)
+			require.NotNil(t, result.Response)
+			executions, err := db.RequestExecution.Query().Order(ent.Asc(requestexecution.FieldID)).All(ctx)
+			require.NoError(t, err)
+			require.Len(t, executions, 2)
+			require.NotEqual(t, executions[0].ChannelID, executions[1].ChannelID)
+			require.Equal(t, requestexecution.StatusFailed, executions[0].Status)
+			require.Equal(t, []string{"first-a"}, executions[0].UpstreamModelIds)
+			require.Equal(t, requestexecution.StatusCompleted, executions[1].Status)
+			require.Equal(t, "second-b", executions[1].OutboundModelID)
+			require.Equal(t, reported, executions[1].UpstreamModelID)
+			if reported == "" {
+				require.Empty(t, executions[1].UpstreamModelIds)
+				require.Equal(t, objects.ModelAuditUnknown, biz.AuditRequestModels(executions).Status)
+			} else {
+				require.Equal(t, []string{reported}, executions[1].UpstreamModelIds)
+				require.Equal(t, objects.ModelAuditMismatched, biz.AuditRequestModels(executions).Status)
+			}
+		})
+	}
+}
+
+func TestUpstreamModelPersistence_ConflictsSurviveTermination(t *testing.T) {
+	for _, tt := range []struct {
+		name                    string
+		terminal, cancel        bool
+		streamErr, aggregateErr error
+		status                  requestexecution.Status
+	}{
+		{name: "normal terminal", terminal: true, status: requestexecution.StatusCompleted},
+		{name: "unexpected EOF", streamErr: io.ErrUnexpectedEOF, status: requestexecution.StatusFailed},
+		{name: "client cancellation", cancel: true, status: requestexecution.StatusCanceled},
+		{name: "aggregation failure", terminal: true, aggregateErr: io.ErrUnexpectedEOF, status: requestexecution.StatusCompleted},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, db, state := newUpstreamModelPersistenceTest(t)
+			execution := createUpstreamModelTestExecution(t, ctx, db, state.Request, "a", llm.APIFormatOpenAIChatCompletion, true)
+			events := []*httpclient.StreamEvent{
+				{Data: []byte(`{"choices":[]}`)},
+				{Data: []byte(`{"model":"a","choices":[]}`)},
+				{Data: []byte(`{"model":"a","choices":[]}`)},
+				{Data: []byte(`{"model":"b","choices":[]}`)},
+				{Data: []byte(`{"model":"c","choices":[]}`)},
+			}
+			if tt.terminal {
+				events = append(events, &httpclient.StreamEvent{Data: []byte("[DONE]")})
+			}
+			streamCtx, cancel := context.WithCancel(ctx)
+			defer cancel()
+			outbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion, aggregatedResponse: []byte(`{"id":"resp"}`), aggregatedErr: tt.aggregateErr}
+			stream := NewOutboundPersistentStream(streamCtx, &sliceEventStream{events: events, err: tt.streamErr}, state.Request, execution, state.RequestService, state.UsageLogService, outbound, nil, state)
+			for stream.Next() {
+				_ = stream.Current()
+			}
+			if tt.cancel {
+				cancel()
+			}
+			require.NoError(t, stream.Close())
+			require.NoError(t, stream.Close())
+			saved, err := db.RequestExecution.Get(ctx, execution.ID)
+			require.NoError(t, err)
+			require.Equal(t, tt.status, saved.Status)
+			require.Equal(t, "a", saved.UpstreamModelID)
+			require.Equal(t, []string{"a", "b"}, saved.UpstreamModelIds, "keep bounded conflict evidence, not only the first or last name")
+			require.Empty(t, saved.ResponseChunks)
+			require.NoError(t, state.RequestService.UpdateRequestExecutionStatus(ctx, saved.ID, saved.Status, "", nil))
+			saved, err = db.RequestExecution.Get(ctx, saved.ID)
+			require.NoError(t, err)
+			require.Equal(t, []string{"a", "b"}, saved.UpstreamModelIds, "status-only updates preserve existing observations")
+		})
+	}
+}
