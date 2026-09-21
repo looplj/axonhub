@@ -426,10 +426,14 @@ func TestCommandCodeRealWirePayload(t *testing.T) {
 }
 
 func TestCommandCodeGoPlanAllowance(t *testing.T) {
-	// Verbatim Go-plan payloads observed 2026-09-12: the Go plan has no monthly
+	// Go-plan payloads observed 2026-09-12: the Go plan has no monthly
 	// limit field, so the $10 denominator comes from the local plan table once
-	// the 5h/weekly caps (3/6) match.
-	credits := `{"credits":{"belowThreshold":false,"creditThreshold":0,"monthlyCredits":9.09842701,"purchasedCredits":0,"freeCredits":0},"windowLimits":{"limited":true,"exceeded":null,"fiveHour":{"used":0.104066178,"cap":3,"exceeded":false,"resetAt":1789272260599},"weekly":{"used":0.90157299,"cap":6,"exceeded":false,"resetAt":1789839833234}}}`
+	// the 5h/weekly caps (3/6) match. Keep resets in the future because
+	// normalization clears expired timestamps, preserving wire millisecond precision.
+	now := time.Now().Truncate(time.Second)
+	fiveHourReset := now.Add(2*time.Hour + 599*time.Millisecond)
+	weeklyReset := now.Add(3*24*time.Hour + 234*time.Millisecond)
+	credits := fmt.Sprintf(`{"credits":{"belowThreshold":false,"creditThreshold":0,"monthlyCredits":9.09842701,"purchasedCredits":0,"freeCredits":0},"windowLimits":{"limited":true,"exceeded":null,"fiveHour":{"used":0.104066178,"cap":3,"exceeded":false,"resetAt":%d},"weekly":{"used":0.90157299,"cap":6,"exceeded":false,"resetAt":%d}}}`, fiveHourReset.UnixMilli(), weeklyReset.UnixMilli())
 	subscriptions := `{"success":true,"data":{"id":"sub_x","status":"active","planId":"individual-go","currentPeriodEnd":"2026-10-10T08:20:47.000Z"}}`
 
 	quota, err := parseCommandCodeCredits([]byte(credits), []byte(subscriptions))
@@ -440,6 +444,7 @@ func TestCommandCodeGoPlanAllowance(t *testing.T) {
 	require.InDelta(t, float64(10), quota.RawData["credits"].(map[string]any)["monthly_limit_usd"], 0.0001)
 	require.InDelta(t, 9.09842701, quota.RawData["credits"].(map[string]any)["monthly_remaining_usd"], 0.0001)
 	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, fiveHourReset.UnixMilli(), quota.NextResetAt.UnixMilli())
 }
 
 // TestCommandCodePlanAllowanceRows pins the legacy/re-issued plan split: the

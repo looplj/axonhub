@@ -110,6 +110,16 @@ const whenFilterFields: FilterBuilderField[] = [
     })),
   },
   {
+    value: 'reasoning_effort',
+    label: 'Reasoning effort',
+    type: 'string',
+    placeholder: 'e.g. high, xhigh, max',
+    operators: [
+      { value: 'eq', label: '= Equals' },
+      { value: 'ne', label: '!= Not equal' },
+    ],
+  },
+  {
     value: 'daily_time',
     label: 'Daily time',
     type: 'string',
@@ -292,7 +302,10 @@ function validateWhenConditionNode(
       path: [...path, 'value'],
     });
   }
-  if ((condition.field === 'request_format' || condition.field === 'daily_time') && typeof condition.value !== 'string') {
+  if (
+    (condition.field === 'request_format' || condition.field === 'reasoning_effort' || condition.field === 'daily_time') &&
+    typeof condition.value !== 'string'
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Value must be text',

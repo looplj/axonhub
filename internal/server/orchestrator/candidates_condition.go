@@ -38,6 +38,7 @@ func filterResolvedCandidatesForRequest(
 	promptTokens := estimatePromptTokens(req)
 	stream := reqStream(req)
 	requestFormat := reqAPIFormat(req)
+	reasoningEffort := reqReasoningEffort(req)
 	contentFeatures := detectRequestContentFeatures(req)
 	requestHeaders := buildRequestHeaderMap(req)
 	now := time.Now()
@@ -48,7 +49,7 @@ func filterResolvedCandidatesForRequest(
 			continue
 		}
 
-		if !matchesAssociationWhen(promptTokens, stream, requestFormat, contentFeatures, requestHeaders, now, candidate.when) {
+		if !matchesAssociationWhen(promptTokens, stream, requestFormat, reasoningEffort, contentFeatures, requestHeaders, now, candidate.when) {
 			continue
 		}
 
@@ -140,6 +141,14 @@ func reqAPIFormat(req *llm.Request) string {
 	return string(req.APIFormat)
 }
 
+func reqReasoningEffort(req *llm.Request) string {
+	if req == nil {
+		return ""
+	}
+
+	return req.ReasoningEffort
+}
+
 type requestContentFeatures struct {
 	hasImage    bool
 	hasVideo    bool
@@ -151,6 +160,7 @@ func matchesAssociationWhen(
 	promptTokens int64,
 	stream bool,
 	requestFormat string,
+	reasoningEffort string,
 	contentFeatures requestContentFeatures,
 	requestHeaders map[string]string,
 	now time.Time,
@@ -165,14 +175,15 @@ func matchesAssociationWhen(
 	}
 
 	if when.Condition != nil && !objects.Evaluate(*when.Condition, map[string]any{
-		objects.ModelAssociationConditionFieldPromptTokens:  promptTokens,
-		objects.ModelAssociationConditionFieldStream:        stream,
-		objects.ModelAssociationConditionFieldRequestFormat: requestFormat,
-		objects.ModelAssociationConditionFieldHasImage:      contentFeatures.hasImage,
-		objects.ModelAssociationConditionFieldHasVideo:      contentFeatures.hasVideo,
-		objects.ModelAssociationConditionFieldHasDocument:   contentFeatures.hasDocument,
-		objects.ModelAssociationConditionFieldHasAudio:      contentFeatures.hasAudio,
-		objects.ModelAssociationConditionFieldRequestHeader: requestHeaders,
+		objects.ModelAssociationConditionFieldPromptTokens:    promptTokens,
+		objects.ModelAssociationConditionFieldStream:          stream,
+		objects.ModelAssociationConditionFieldRequestFormat:   requestFormat,
+		objects.ModelAssociationConditionFieldReasoningEffort: reasoningEffort,
+		objects.ModelAssociationConditionFieldHasImage:        contentFeatures.hasImage,
+		objects.ModelAssociationConditionFieldHasVideo:        contentFeatures.hasVideo,
+		objects.ModelAssociationConditionFieldHasDocument:     contentFeatures.hasDocument,
+		objects.ModelAssociationConditionFieldHasAudio:        contentFeatures.hasAudio,
+		objects.ModelAssociationConditionFieldRequestHeader:   requestHeaders,
 		"now": now,
 	}) {
 		return false
