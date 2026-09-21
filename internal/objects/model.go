@@ -47,6 +47,7 @@ const (
 	ModelAssociationConditionFieldPromptTokens        = "prompt_tokens"
 	ModelAssociationConditionFieldStream              = "stream"
 	ModelAssociationConditionFieldRequestFormat       = "request_format"
+	ModelAssociationConditionFieldReasoningEffort     = "reasoning_effort"
 	ModelAssociationConditionFieldDailyTime           = "daily_time"
 	ModelAssociationConditionFieldHasImage            = "has_image"
 	ModelAssociationConditionFieldHasVideo            = "has_video"
