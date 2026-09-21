@@ -26,6 +26,11 @@ import { parseRequestConversation } from '../utils/request-conversation';
 import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
 import { getVideoLastFrameURL, isVideoRequestFormat } from '../utils/video-display';
 
+// The detail page renders whole request and response payloads. Expanding every
+// level eagerly produces hundreds of thousands of characters of DOM for a large
+// conversation and freezes the page, so open only the first levels by default.
+const JSON_VIEWER_EXPAND_DEPTH = 2;
+
 interface RequestDetailContentProps {
   requestId: string;
   projectId?: string | null;
@@ -556,7 +561,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                     </div>
                   </div>
                   <div className='bg-muted/20 h-[300px] w-full overflow-auto rounded-lg border p-4'>
-                    <JsonViewer data={request.requestHeaders} rootName='' defaultExpanded={true} expandDepth='all' hideArrayIndices={true} className='text-sm' />
+                    <JsonViewer data={request.requestHeaders} rootName='' defaultExpanded={true} expandDepth={JSON_VIEWER_EXPAND_DEPTH} hideArrayIndices={true} className='text-sm' />
                   </div>
                 </div>
               )}
@@ -589,7 +594,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                   <RequestConversationViewer body={request.requestBody} format={request.format} />
                 ) : (
                   <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                    <JsonViewer data={request.requestBody} rootName='' defaultExpanded={true} expandDepth='all' hideArrayIndices={true} className='text-sm' />
+                    <JsonViewer data={request.requestBody} rootName='' defaultExpanded={true} expandDepth={JSON_VIEWER_EXPAND_DEPTH} hideArrayIndices={true} className='text-sm' />
                   </div>
                 )}
               </div>
@@ -731,7 +736,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                   <TabsContent value='json' className='mt-0 focus-visible:outline-none'>
                     {hasResponseBody ? (
                       <div className='bg-muted/20 h-[500px] w-full overflow-auto rounded-lg border p-4'>
-                        <JsonViewer data={request.responseBody} rootName='' defaultExpanded={true} expandDepth='all' hideArrayIndices={true} className='text-sm' />
+                        <JsonViewer data={request.responseBody} rootName='' defaultExpanded={true} expandDepth={JSON_VIEWER_EXPAND_DEPTH} hideArrayIndices={true} className='text-sm' />
                       </div>
                     ) : request.status === 'processing' ? (
                       <div className='bg-muted/20 flex h-[500px] w-full items-center justify-center rounded-lg border'>
