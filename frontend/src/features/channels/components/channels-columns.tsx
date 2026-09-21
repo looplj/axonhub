@@ -1,4 +1,4 @@
-import { useCallback, useState, memo, useRef, useEffect } from 'react';
+import { useCallback, useMemo, useState, memo, useRef, useEffect } from 'react';
 import { format } from 'date-fns';
 import { DotsHorizontalIcon } from '@radix-ui/react-icons';
 import { ColumnDef, Row, Table } from '@tanstack/react-table';
