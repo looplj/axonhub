@@ -1,0 +1,8 @@
+AxonHub
+Copyright 2026 looplj
+
+AxonHub Licensing Overview:
+1. Priority: If a specific file contains a different license header, the terms in that header take precedence for that file.
+2. Scope: The `llm/` directory in this project is licensed under the GNU Lesser General Public License version 3.0 (LGPL-3.0). See `llm/LICENSE` for details.
+3. Scope: The `llm/bedrock/` directory in this project is copied from anthropic-sdk-go. See `llm/bedrock/NOTICE` for details.
+4. General: All other parts of this project are licensed under the Apache License, Version 2.0, unless otherwise specified. See `LICENSE` for the full license text.

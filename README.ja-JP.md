@@ -349,7 +349,7 @@ print(response.choices[0].message.content)
 
 ## 📄 ライセンス
 
-このプロジェクトは複数のライセンス（Apache-2.0およびLGPL-3.0）の下でライセンスされています。詳細なライセンスの概要と条項については、[LICENSE](LICENSE)ファイルを参照してください。
+このプロジェクトは複数のライセンス（Apache-2.0およびLGPL-3.0）の下でライセンスされています。適用範囲は[NOTICE](NOTICE)、ライセンス全文は[LICENSE](LICENSE)および[llm/LICENSE](llm/LICENSE)を参照してください。
 
 ---
 
