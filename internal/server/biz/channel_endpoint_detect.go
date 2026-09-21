@@ -77,9 +77,20 @@ func (svc *ChannelService) DetectChannelEndpoints(
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
 
-	ch, err := svc.buildChannelWithTransformer(entity)
+	ch, err := svc.buildChannelWithOutbounds(entity)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build channel %s: %w", entity.Name, err)
+		// A malformed custom endpoint must not abort detection: fall back to the
+		// primary transformer and probe the remaining formats generically.
+		log.Warn(ctx, "endpoint detection: failed to build channel outbounds, falling back to primary",
+			log.String("channel", entity.Name),
+			log.Cause(err))
+
+		ch, err = svc.buildChannelWithTransformer(entity)
+		if err != nil {
+			return nil, fmt.Errorf("failed to build channel %s: %w", entity.Name, err)
+		}
+
+		ch.Outbounds = nil
 	}
 
 	model := resolveEndpointDetectModel(entity, input.Model)
@@ -117,15 +128,24 @@ func (svc *ChannelService) detectChannelEndpoint(
 		Reason:    endpointDetectReasonUnreachable,
 	}
 
-	outbound, err := svc.buildNonDefaultEndpointOutbound(entity, ch, objects.ChannelEndpoint{APIFormat: apiFormat})
-	if err != nil {
-		log.Debug(ctx, "endpoint detection: cannot build outbound",
-			log.String("channel", entity.Name),
-			log.String("api_format", apiFormat),
-			log.Cause(err))
-		result.Reason = endpointDetectReasonInvalid
+	// Reuse the outbound the channel already has for this format when present:
+	// it carries the channel type's real platform, auth scheme, base URL and
+	// path. Only fall back to a generic transformer for formats the channel does
+	// not expose yet, which is exactly what detection is trying to discover.
+	outbound := ch.Outbounds[apiFormat]
+	if outbound == nil {
+		var err error
 
-		return result
+		outbound, err = svc.buildNonDefaultEndpointOutbound(entity, ch, objects.ChannelEndpoint{APIFormat: apiFormat})
+		if err != nil {
+			log.Debug(ctx, "endpoint detection: cannot build outbound",
+				log.String("channel", entity.Name),
+				log.String("api_format", apiFormat),
+				log.Cause(err))
+			result.Reason = endpointDetectReasonInvalid
+
+			return result
+		}
 	}
 
 	probeCtx, cancel := context.WithTimeout(ctx, endpointDetectTimeout)
