@@ -1448,3 +1448,39 @@ func TestToWebSocketURL(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "ws://localhost:8080/v1/responses", got)
 }
+
+func TestWebSocketExecutorObservesHandshakeHeaders(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, http.Header{"X-Handshake-ID": {"review"}})
+		require.NoError(t, err)
+		defer conn.Close()
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type":     "response.completed",
+			"response": map[string]any{"id": "resp_review", "object": "response", "status": "completed", "output": []any{}},
+		}))
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	defer executor.Close()
+	observed := 0
+	stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    server.URL + "/v1/responses",
+		Body:   []byte(`{"model":"gpt-5","stream":true}`),
+		OnResponseHeaders: func(_ context.Context, headers http.Header) {
+			observed++
+			require.Equal(t, "review", headers.Get("X-Handshake-Id"))
+		},
+	})
+	require.NoError(t, err)
+	defer stream.Close()
+	for stream.Next() {
+		_ = stream.Current()
+	}
+	require.NoError(t, stream.Err())
+	require.Equal(t, 1, observed)
+}

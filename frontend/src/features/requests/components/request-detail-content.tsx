@@ -596,6 +596,29 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
             </TabsContent>
 
             <TabsContent value='response' className='space-y-6 p-6'>
+              {request.responseHeaders && (
+                <div className='space-y-4'>
+                  <div className='flex items-center justify-between'>
+                    <h4 className='flex items-center gap-2 text-base font-semibold'>
+                      <FileText className='text-primary h-4 w-4' />
+                      {t('requests.columns.responseHeaders')}
+                    </h4>
+                    <div className='flex gap-2'>
+                      <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.responseHeaders))} className='hover:bg-primary hover:text-primary-foreground'>
+                        <Copy className='mr-2 h-4 w-4' />
+                        {t('requests.dialogs.jsonViewer.copy')}
+                      </Button>
+                      <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.responseHeaders), `response-headers-${request.id}.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                        <Download className='mr-2 h-4 w-4' />
+                        {t('requests.dialogs.jsonViewer.download')}
+                      </Button>
+                    </div>
+                  </div>
+                  <div className='bg-muted/20 h-[240px] w-full overflow-auto rounded-lg border p-4'>
+                    <JsonViewer data={request.responseHeaders} rootName='' defaultExpanded={true} expandDepth='all' hideArrayIndices={true} className='text-sm' />
+                  </div>
+                </div>
+              )}
               <Tabs value={responseView} onValueChange={(v: any) => setResponseView(v)} className='w-full'>
                 <div className='flex flex-wrap items-center justify-between gap-4'>
                   <TabsList className='grid w-full grid-cols-2 sm:w-[300px]'>
@@ -894,6 +917,30 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                               </div>
                               <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
                                 <JsonViewer data={execution.requestHeaders} rootName='' defaultExpanded={false} hideArrayIndices={true} className='text-xs' />
+                              </div>
+                            </div>
+                          )}
+
+                          {execution.responseHeaders && (
+                            <div className='space-y-3'>
+                              <div className='flex items-center justify-between'>
+                                <span className='flex items-center gap-2 text-sm font-semibold'>
+                                  <FileText className='text-primary h-4 w-4' />
+                                  {t('requests.columns.responseHeaders')}
+                                </span>
+                                <div className='flex gap-2'>
+                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.responseHeaders))} className='hover:bg-primary hover:text-primary-foreground'>
+                                    <Copy className='mr-2 h-4 w-4' />
+                                    {t('requests.dialogs.jsonViewer.copy')}
+                                  </Button>
+                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.responseHeaders), `execution-${execution.id}-response-headers.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                                    <Download className='mr-2 h-4 w-4' />
+                                    {t('requests.dialogs.jsonViewer.download')}
+                                  </Button>
+                                </div>
+                              </div>
+                              <div className='bg-background h-64 w-full overflow-auto rounded-lg border p-3'>
+                                <JsonViewer data={execution.responseHeaders} rootName='' defaultExpanded={false} hideArrayIndices={true} className='text-xs' />
                               </div>
                             </div>
                           )}

@@ -46,6 +46,8 @@ type RequestExecution struct {
 	ChannelAPIKeySuffix *string `json:"channel_api_key_suffix,omitempty"`
 	// RequestBody holds the value of the "request_body" field.
 	RequestBody objects.JSONRawMessage `json:"request_body,omitempty"`
+	// Response headers received from the upstream provider, with sensitive values masked
+	ResponseHeaders objects.JSONRawMessage `json:"response_headers,omitempty"`
 	// ResponseBody holds the value of the "response_body" field.
 	ResponseBody objects.JSONRawMessage `json:"response_body,omitempty"`
 	// ResponseChunks holds the value of the "response_chunks" field.
@@ -129,7 +131,7 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case requestexecution.FieldRequestBody, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks, requestexecution.FieldRequestHeaders:
+		case requestexecution.FieldRequestBody, requestexecution.FieldResponseHeaders, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks, requestexecution.FieldRequestHeaders:
 			values[i] = new([]byte)
 		case requestexecution.FieldStream, requestexecution.FieldPassThroughApplied:
 			values[i] = new(sql.NullBool)
@@ -234,6 +236,14 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 			} else if value != nil && len(*value) > 0 {
 				if err := json.Unmarshal(*value, &_m.RequestBody); err != nil {
 					return fmt.Errorf("unmarshal field request_body: %w", err)
+				}
+			}
+		case requestexecution.FieldResponseHeaders:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field response_headers", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.ResponseHeaders); err != nil {
+					return fmt.Errorf("unmarshal field response_headers: %w", err)
 				}
 			}
 		case requestexecution.FieldResponseBody:
@@ -408,6 +418,9 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("request_body=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RequestBody))
+	builder.WriteString(", ")
+	builder.WriteString("response_headers=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ResponseHeaders))
 	builder.WriteString(", ")
 	builder.WriteString("response_body=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ResponseBody))

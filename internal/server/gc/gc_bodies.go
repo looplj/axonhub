@@ -132,7 +132,7 @@ func (w *Worker) stripRequestPayloads(ctx context.Context, kind bodyPayloadKind,
 
 		reqs, err := query.
 			Modify(func(s *sql.Selector) {
-				applyBodyPayloadPredicate(s, kind, primaryID, request.FieldRequestBody, request.FieldRequestHeaders, request.FieldResponseBody, request.FieldResponseChunks, request.FieldDataStorageID)
+				applyBodyPayloadPredicate(s, kind, primaryID, request.FieldRequestBody, request.FieldRequestHeaders, request.FieldResponseBody, request.FieldResponseHeaders, request.FieldResponseChunks, request.FieldDataStorageID)
 			}).
 			Order(ent.Asc(request.FieldID)).
 			Limit(batchSize).
@@ -206,7 +206,7 @@ func (w *Worker) stripExecutionPayloads(ctx context.Context, kind bodyPayloadKin
 
 		execs, err := query.
 			Modify(func(s *sql.Selector) {
-				applyBodyPayloadPredicate(s, kind, primaryID, requestexecution.FieldRequestBody, requestexecution.FieldRequestHeaders, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks, requestexecution.FieldDataStorageID)
+				applyBodyPayloadPredicate(s, kind, primaryID, requestexecution.FieldRequestBody, requestexecution.FieldRequestHeaders, requestexecution.FieldResponseBody, requestexecution.FieldResponseHeaders, requestexecution.FieldResponseChunks, requestexecution.FieldDataStorageID)
 			}).
 			Order(ent.Asc(requestexecution.FieldID)).
 			Limit(batchSize).
@@ -263,7 +263,7 @@ func (w *Worker) clearRequestPayloadColumns(ctx context.Context, kind bodyPayloa
 			setImmutableJSONObject(u, request.FieldRequestBody)
 		})
 	case bodyPayloadResponse:
-		upd = upd.SetResponseBody(emptyJSONObject)
+		upd = upd.SetResponseBody(emptyJSONObject).ClearResponseHeaders()
 	case bodyPayloadChunks:
 		upd = upd.SetResponseChunks(emptyJSONArray)
 	}
@@ -284,7 +284,7 @@ func (w *Worker) clearExecutionPayloadColumns(ctx context.Context, kind bodyPayl
 			setImmutableJSONObject(u, requestexecution.FieldRequestBody)
 		})
 	case bodyPayloadResponse:
-		upd = upd.SetResponseBody(emptyJSONObject)
+		upd = upd.SetResponseBody(emptyJSONObject).ClearResponseHeaders()
 	case bodyPayloadChunks:
 		upd = upd.SetResponseChunks(emptyJSONArray)
 	}
@@ -385,7 +385,7 @@ func applyBodyPayloadPredicate(
 	s *sql.Selector,
 	kind bodyPayloadKind,
 	primaryID int,
-	bodyCol, headersCol, responseCol, chunksCol, storageCol string,
+	bodyCol, headersCol, responseCol, responseHeadersCol, chunksCol, storageCol string,
 ) {
 	s.Where(sql.P(func(b *sql.Builder) {
 		b.WriteByte('(')
@@ -410,6 +410,8 @@ func applyBodyPayloadPredicate(
 			}
 		case bodyPayloadResponse:
 			appendJSONNotPlaceholder(b, s, responseCol, "{}", "null", "")
+			b.WriteString(" OR ")
+			appendJSONNotPlaceholder(b, s, responseHeadersCol, "{}", "null", "")
 			appendExternalNullPayload(b, s, primaryID, storageCol, responseCol)
 		case bodyPayloadChunks:
 			appendJSONNotPlaceholder(b, s, chunksCol, "[]", "{}", "null", "")

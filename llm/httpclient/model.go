@@ -56,7 +56,14 @@ type Request struct {
 
 	// SkipInboundQueryMerge when set to true, prevents query parameters from the original
 	// inbound request from being merged into this request during MergeInboundRequest.
-	SkipInboundQueryMerge bool `json:"-"`
+	SkipInboundQueryMerge bool                               `json:"-"`
+	OnResponseHeaders     func(context.Context, http.Header) `json:"-"`
+}
+
+func (r *Request) ObserveResponseHeaders(ctx context.Context, headers http.Header) {
+	if r != nil && r.OnResponseHeaders != nil {
+		r.OnResponseHeaders(ctx, headers.Clone())
+	}
 }
 
 // AuthConfig represents authentication configuration.

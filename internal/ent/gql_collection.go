@@ -3797,6 +3797,11 @@ func (_q *RequestQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, request.FieldRequestBody)
 				fieldSeen[request.FieldRequestBody] = struct{}{}
 			}
+		case "responseHeaders":
+			if _, ok := fieldSeen[request.FieldResponseHeaders]; !ok {
+				selectedFields = append(selectedFields, request.FieldResponseHeaders)
+				fieldSeen[request.FieldResponseHeaders] = struct{}{}
+			}
 		case "responseBody":
 			if _, ok := fieldSeen[request.FieldResponseBody]; !ok {
 				selectedFields = append(selectedFields, request.FieldResponseBody)
@@ -4060,6 +4065,11 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 			if _, ok := fieldSeen[requestexecution.FieldRequestBody]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldRequestBody)
 				fieldSeen[requestexecution.FieldRequestBody] = struct{}{}
+			}
+		case "responseHeaders":
+			if _, ok := fieldSeen[requestexecution.FieldResponseHeaders]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldResponseHeaders)
+				fieldSeen[requestexecution.FieldResponseHeaders] = struct{}{}
 			}
 		case "responseBody":
 			if _, ok := fieldSeen[requestexecution.FieldResponseBody]; !ok {
