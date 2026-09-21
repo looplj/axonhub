@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	"github.com/samber/lo"
@@ -80,6 +81,8 @@ type responsesInboundStream struct {
 	usage               *llm.Usage
 	aggregator          *streamAggregator
 	transformerMetadata map[string]any
+	responseHeaders     http.Header
+	responseHeadersSent bool
 
 	// Event queue
 	eventQueue []*httpclient.StreamEvent
@@ -104,6 +107,7 @@ func (s *responsesInboundStream) enqueueEvent(ev *StreamEvent) error {
 		Type: string(ev.Type),
 		Data: eventData,
 	}
+	s.attachResponseHeaders(streamEvent)
 
 	s.eventQueue = append(s.eventQueue, streamEvent)
 
@@ -176,6 +180,19 @@ func (s *responsesInboundStream) Next() bool {
 	// Handle [DONE] marker
 	if chunk.Object == "[DONE]" {
 		return s.Next() // Try next chunk
+	}
+
+	if headers, ok := responseTransportHeaders(chunk.TransformerMetadata); ok {
+		s.responseHeaders = headers
+	}
+	if raw, ok := rawResponseMetadataEvent(chunk.TransformerMetadata); ok {
+		event := &httpclient.StreamEvent{
+			Type: string(StreamEventTypeResponseMetadata),
+			Data: raw,
+		}
+		s.attachResponseHeaders(event)
+		s.eventQueue = append(s.eventQueue, event)
+		return s.Next()
 	}
 
 	// Initialize response metadata from first chunk
@@ -395,6 +412,44 @@ func (s *responsesInboundStream) mergeTransformerMetadata(metadata map[string]an
 		mergedCalls := append(existingCalls, calls...)
 		s.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = mergedCalls
 	}
+}
+
+func rawResponseMetadataEvent(metadata map[string]any) ([]byte, bool) {
+	if len(metadata) == 0 {
+		return nil, false
+	}
+
+	value := metadata[responseMetadataTransformerMetadataKey]
+	switch raw := value.(type) {
+	case json.RawMessage:
+		return append([]byte(nil), raw...), len(raw) > 0
+	case []byte:
+		return append([]byte(nil), raw...), len(raw) > 0
+	default:
+		return nil, false
+	}
+}
+
+func responseTransportHeaders(metadata map[string]any) (http.Header, bool) {
+	if len(metadata) == 0 {
+		return nil, false
+	}
+
+	headers, ok := metadata[responseHeadersTransformerMetadataKey].(http.Header)
+	if !ok || len(headers) == 0 {
+		return nil, false
+	}
+
+	return headers.Clone(), true
+}
+
+func (s *responsesInboundStream) attachResponseHeaders(event *httpclient.StreamEvent) {
+	if event == nil || s.responseHeadersSent || len(s.responseHeaders) == 0 {
+		return
+	}
+
+	event.Headers = s.responseHeaders.Clone()
+	s.responseHeadersSent = true
 }
 
 func getResponsesReasoningItemMetadata(metadata map[string]any) (responsesReasoningItemMetadata, bool) {
