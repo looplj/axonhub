@@ -42,7 +42,6 @@ import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedRequestsRequestIdRouteImport } from './routes/_authenticated/requests/$requestId'
-import { Route as AuthenticatedDashboardChannelSuccessRatesRouteImport } from './routes/_authenticated/dashboard/channel-success-rates'
 import { Route as AuthenticatedProjectUsersIndexRouteImport } from './routes/_authenticated/project/users/index'
 import { Route as AuthenticatedProjectUsageStatsIndexRouteImport } from './routes/_authenticated/project/usage-stats/index'
 import { Route as AuthenticatedProjectTracesIndexRouteImport } from './routes/_authenticated/project/traces/index'
@@ -237,12 +236,6 @@ const AuthenticatedRequestsRequestIdRoute =
     path: '/requests/$requestId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedDashboardChannelSuccessRatesRoute =
-  AuthenticatedDashboardChannelSuccessRatesRouteImport.update({
-    id: '/dashboard/channel-success-rates',
-    path: '/dashboard/channel-success-rates',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedProjectUsersIndexRoute =
   AuthenticatedProjectUsersIndexRouteImport.update({
     id: '/project/users/',
@@ -329,7 +322,6 @@ export interface FileRoutesByFullPath {
   '/500': typeof errors500Route
   '/503': typeof errors503Route
   '/permission': typeof AuthenticatedPermissionRoute
-  '/dashboard/channel-success-rates': typeof AuthenticatedDashboardChannelSuccessRatesRoute
   '/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -375,7 +367,6 @@ export interface FileRoutesByTo {
   '/503': typeof errors503Route
   '/permission': typeof AuthenticatedPermissionRoute
   '/': typeof AuthenticatedIndexRoute
-  '/dashboard/channel-success-rates': typeof AuthenticatedDashboardChannelSuccessRatesRoute
   '/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -424,7 +415,6 @@ export interface FileRoutesById {
   '/(errors)/503': typeof errors503Route
   '/_authenticated/permission': typeof AuthenticatedPermissionRoute
   '/_authenticated/': typeof AuthenticatedIndexRoute
-  '/_authenticated/dashboard/channel-success-rates': typeof AuthenticatedDashboardChannelSuccessRatesRoute
   '/_authenticated/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
   '/_authenticated/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/_authenticated/settings/display': typeof AuthenticatedSettingsDisplayRoute
@@ -473,7 +463,6 @@ export interface FileRouteTypes {
     | '/500'
     | '/503'
     | '/permission'
-    | '/dashboard/channel-success-rates'
     | '/requests/$requestId'
     | '/settings/appearance'
     | '/settings/display'
@@ -519,7 +508,6 @@ export interface FileRouteTypes {
     | '/503'
     | '/permission'
     | '/'
-    | '/dashboard/channel-success-rates'
     | '/requests/$requestId'
     | '/settings/appearance'
     | '/settings/display'
@@ -567,7 +555,6 @@ export interface FileRouteTypes {
     | '/(errors)/503'
     | '/_authenticated/permission'
     | '/_authenticated/'
-    | '/_authenticated/dashboard/channel-success-rates'
     | '/_authenticated/requests/$requestId'
     | '/_authenticated/settings/appearance'
     | '/_authenticated/settings/display'
@@ -849,13 +836,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRequestsRequestIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/dashboard/channel-success-rates': {
-      id: '/_authenticated/dashboard/channel-success-rates'
-      path: '/dashboard/channel-success-rates'
-      fullPath: '/dashboard/channel-success-rates'
-      preLoaderRoute: typeof AuthenticatedDashboardChannelSuccessRatesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/project/users/': {
       id: '/_authenticated/project/users/'
       path: '/project/users'
@@ -970,7 +950,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRouteRoute: typeof AuthenticatedSettingsRouteRouteWithChildren
   AuthenticatedPermissionRoute: typeof AuthenticatedPermissionRoute
   AuthenticatedIndexRoute: typeof AuthenticatedIndexRoute
-  AuthenticatedDashboardChannelSuccessRatesRoute: typeof AuthenticatedDashboardChannelSuccessRatesRoute
   AuthenticatedRequestsRequestIdRoute: typeof AuthenticatedRequestsRequestIdRoute
   AuthenticatedAnalyticsIndexRoute: typeof AuthenticatedAnalyticsIndexRoute
   AuthenticatedApiKeysIndexRoute: typeof AuthenticatedApiKeysIndexRoute
@@ -1003,8 +982,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRouteRoute: AuthenticatedSettingsRouteRouteWithChildren,
   AuthenticatedPermissionRoute: AuthenticatedPermissionRoute,
   AuthenticatedIndexRoute: AuthenticatedIndexRoute,
-  AuthenticatedDashboardChannelSuccessRatesRoute:
-    AuthenticatedDashboardChannelSuccessRatesRoute,
   AuthenticatedRequestsRequestIdRoute: AuthenticatedRequestsRequestIdRoute,
   AuthenticatedAnalyticsIndexRoute: AuthenticatedAnalyticsIndexRoute,
   AuthenticatedApiKeysIndexRoute: AuthenticatedApiKeysIndexRoute,

@@ -78,6 +78,18 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 	}
 
 	r0 := results[0]
+
+	successCount, failedCount, err := r.queryExecutionSuccessCounts(ctx, filter, apiKeyIDs, hasUserFilter, loc)
+	if err != nil {
+		return nil, err
+	}
+
+	executionTotal := successCount + failedCount
+	successRate := 0.0
+	if executionTotal > 0 {
+		successRate = float64(successCount) / float64(executionTotal) * 100
+	}
+
 	return &AnalyticsOverview{
 		TotalTokens:              safeIntFromInt64(r0.TotalTokens),
 		TotalInputTokens:         safeIntFromInt64(r0.TotalInputTokens),
@@ -86,6 +98,8 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 		TotalOutputTokens:        safeIntFromInt64(r0.TotalOutputTokens),
 		TotalRequests:            r0.TotalRequests,
 		TotalCost:                r0.TotalCost,
+		FailedRequests:           failedCount,
+		SuccessRate:              successRate,
 	}, nil
 }
 

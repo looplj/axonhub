@@ -28,6 +28,11 @@ export const routeConfigs: RouteGroup[] = [
         mode: 'hidden',
       },
       {
+        path: '/analytics',
+        requiredScopes: ['read_dashboard'],
+        mode: 'hidden',
+      },
+      {
         path: '/projects',
         requiredScopes: ['read_projects'],
         mode: 'hidden',

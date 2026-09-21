@@ -5,8 +5,13 @@ import { formatNumber } from '@/utils/format-number';
 import { FastestPerformersCard } from './fastest-performers-card';
 import { useFastestModels } from '../data/fastest-performers';
 import type { FastestModel } from '../data/fastest-performers';
+import type { CoarseTimeWindow } from '../utils/time-window';
 
-export function FastestModelsCard() {
+interface FastestModelsCardProps {
+  timeWindow: CoarseTimeWindow;
+}
+
+export function FastestModelsCard({ timeWindow }: FastestModelsCardProps) {
   const { t } = useTranslation();
 
   return (
@@ -16,6 +21,7 @@ export function FastestModelsCard() {
       noDataLabel={t('dashboard.cards.fastestPerformers.noData')}
       useData={useFastestModels}
       getName={(item) => item.modelName}
+      timeWindow={timeWindow}
     />
   );
 }

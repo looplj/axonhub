@@ -5,8 +5,13 @@ import { formatNumber } from '@/utils/format-number';
 import { FastestPerformersCard } from './fastest-performers-card';
 import { useFastestChannels } from '../data/fastest-performers';
 import type { FastestChannel } from '../data/fastest-performers';
+import type { CoarseTimeWindow } from '../utils/time-window';
 
-export function FastestChannelsCard() {
+interface FastestChannelsCardProps {
+  timeWindow: CoarseTimeWindow;
+}
+
+export function FastestChannelsCard({ timeWindow }: FastestChannelsCardProps) {
   const { t } = useTranslation();
 
   return (
@@ -16,6 +21,7 @@ export function FastestChannelsCard() {
       noDataLabel={t('dashboard.cards.fastestPerformers.noData')}
       useData={useFastestChannels}
       getName={(item) => item.channelName}
+      timeWindow={timeWindow}
     />
   );
 }

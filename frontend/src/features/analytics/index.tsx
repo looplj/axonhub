@@ -1,7 +1,7 @@
-import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Header } from '@/components/layout/header';
-import { Button } from '@/components/ui/button';
+import { Main } from '@/components/layout/main';
+import { Globe } from 'lucide-react';
 import { useAnalyticsFilterStore } from '@/stores/analyticsStore';
 import { useAnalyticsMetadata, useAnalyticsOverview, useAnalyticsDailyStats, useAnalyticsDimensionStats } from './data/analytics';
 import { AnalyticsFilterBar } from './components/analytics-filter-bar';
@@ -13,7 +13,6 @@ import { useGeneralSettings } from '@/features/system/data/system';
 
 export default function AnalyticsPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const filter = useAnalyticsFilterStore((state) => state.filter);
   const { data: generalSettings } = useGeneralSettings();
 
@@ -28,29 +27,42 @@ export default function AnalyticsPage() {
   const { data: userStats, isLoading: isUserLoading } = useAnalyticsDimensionStats(filter, 'user');
 
   return (
-    <div className='flex-1 space-y-6 p-8 pt-6'>
-      <Header />
-      <Button onClick={() => navigate({ to: '/' })} variant='outline' className='self-start'>
-        {t('dashboard.channelSuccessRates.backToDashboard')}
-      </Button>
-      <AnalyticsFilterBar earliestDate={metadata?.earliestDate} />
-      <OverviewCards overview={overview} isLoading={isOverviewLoading} />
-      <CombinedTrendChart data={dailyStats || []} isLoading={isDailyLoading} currencyCode={currencyCode} />
-      <DimensionPieCharts
-        channelStats={channelStats || []}
-        modelStats={modelStats || []}
-        apiKeyStats={apiKeyStats || []}
-        userStats={userStats || []}
-        isLoading={isChannelLoading || isModelLoading || isApiKeyLoading || isUserLoading}
-        currencyCode={currencyCode}
-      />
-      <DimensionDetailTable
-        channelStats={channelStats || []}
-        modelStats={modelStats || []}
-        apiKeyStats={apiKeyStats || []}
-        userStats={userStats || []}
-        isLoading={isChannelLoading || isModelLoading || isApiKeyLoading || isUserLoading}
-      />
+    <div className='flex flex-1 flex-col overflow-hidden'>
+      <Header fixed>
+        <div className='flex flex-1 items-center justify-between'>
+          <div>
+            <h2 className='text-xl font-bold tracking-tight'>{t('analytics.title')}</h2>
+            <p className='text-sm text-muted-foreground'>{t('analytics.description')}</p>
+          </div>
+          <span className='text-muted-foreground flex items-center gap-1.5 text-xs'>
+            <Globe className='h-3.5 w-3.5' />
+            {t('dashboard.scope.system')}
+          </span>
+        </div>
+      </Header>
+
+      <Main fixed>
+        <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-auto'>
+          <AnalyticsFilterBar earliestDate={metadata?.earliestDate} />
+          <OverviewCards overview={overview} isLoading={isOverviewLoading} />
+          <CombinedTrendChart data={dailyStats || []} isLoading={isDailyLoading} currencyCode={currencyCode} />
+          <DimensionPieCharts
+            channelStats={channelStats || []}
+            modelStats={modelStats || []}
+            apiKeyStats={apiKeyStats || []}
+            userStats={userStats || []}
+            isLoading={isChannelLoading || isModelLoading || isApiKeyLoading || isUserLoading}
+            currencyCode={currencyCode}
+          />
+          <DimensionDetailTable
+            channelStats={channelStats || []}
+            modelStats={modelStats || []}
+            apiKeyStats={apiKeyStats || []}
+            userStats={userStats || []}
+            isLoading={isChannelLoading || isModelLoading || isApiKeyLoading || isUserLoading}
+          />
+        </div>
+      </Main>
     </div>
   );
 }
