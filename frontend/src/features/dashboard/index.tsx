@@ -21,8 +21,8 @@ import { FastestModelsCard } from './components/fastest-models-card';
 import { KpiRow } from './components/kpi-row';
 import { inclusiveCalendarDays, type CoarseTimeWindow } from './utils/time-window';
 
-// channelSuccessRates 只支持粗粒度日历窗口，超出 31 天的范围没有对应的
-// allTime 支持，因此统一落到 month。
+// channelSuccessRates only understands coarse calendar windows, so ranges past 31
+// days, which have no matching allTime support, fall back to month.
 function toCoarseWindow(startTime: string | null, endTime: string | null): CoarseTimeWindow {
   if (!startTime) return 'month';
 
@@ -33,6 +33,8 @@ function toCoarseWindow(startTime: string | null, endTime: string | null): Coars
   return 'month';
 }
 
+/** Dashboard page: KPI row, combined trend chart and channel health for the range
+ * held in the shared time store. */
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { startTime, endTime, setRange } = useDashboardTimeStore();

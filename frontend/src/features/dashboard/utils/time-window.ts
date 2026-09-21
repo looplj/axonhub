@@ -1,3 +1,4 @@
+/** Coarse time window, for backends that only accept day/week/month/allTime. */
 export type CoarseTimeWindow = 'allTime' | 'month' | 'week' | 'day';
 
 const LABEL_KEYS: Record<CoarseTimeWindow, string> = {
@@ -7,23 +8,27 @@ const LABEL_KEYS: Record<CoarseTimeWindow, string> = {
   allTime: 'timeRange.allTime',
 };
 
+/** Coarse window to i18n label key. */
 export function coarseWindowLabelKey(timeWindow: CoarseTimeWindow): string {
   return LABEL_KEYS[timeWindow];
 }
 
-// 'YYYY-MM-DD' → 本地午夜。预设和后端 parseDateStr 都按本地日历日取边界，
-// 这里必须同一套语义，否则跨时区会算错天数。
+/** 'YYYY-MM-DD' to local midnight. Presets and the backend parseDateStr both take
+ * boundaries by local calendar day, so this has to share that semantics or the day
+ * count drifts across timezones. */
 function parseLocalDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
 
+/** Local midnight of the given day, dropping the time of day. */
 function localMidnight(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-// 含首含尾的日历天数。不能直接相减时间戳：结束日期缺省时取的是"当前时刻"，
-// 过了中午后起始于今天的范围会被算成 2 天，从而选错窗口。
+/** Calendar days spanned, both endpoints included. Timestamps cannot be subtracted
+ * directly: a missing end date resolves to "now", so a range starting today counts
+ * as 2 days past noon and picks the wrong window. */
 export function inclusiveCalendarDays(startTime: string, endTime: string | null): number {
   const start = parseLocalDate(startTime);
   const end = endTime ? parseLocalDate(endTime) : localMidnight(new Date());

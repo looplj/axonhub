@@ -17,6 +17,7 @@ interface AnalyticsFilterBarProps {
   earliestDate?: string | null;
 }
 
+/** Analytics filter bar: the shared time range filter plus faceted dimension selectors. */
 export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
   const { t } = useTranslation();
   const filter = useAnalyticsFilterStore((state) => state.filter);

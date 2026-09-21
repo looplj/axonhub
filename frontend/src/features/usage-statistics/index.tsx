@@ -25,6 +25,8 @@ type Dimension = 'user' | 'apiKey' | 'model' | 'channel';
 
 const DIMENSIONS: Dimension[] = ['user', 'apiKey', 'model', 'channel'];
 
+/** Usage statistics for the selected project, broken down by one dimension at a time
+ * and scoped by the shared time range filter. */
 export default function UsageStatisticsPage() {
   const { t, i18n } = useTranslation();
   const selectedProjectId = useSelectedProjectId();

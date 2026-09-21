@@ -11,6 +11,7 @@ interface FastestChannelsCardProps {
   timeWindow: CoarseTimeWindow;
 }
 
+/** Fastest channels panel; the time window is picked by the shared time range filter. */
 export function FastestChannelsCard({ timeWindow }: FastestChannelsCardProps) {
   const { t } = useTranslation();
 

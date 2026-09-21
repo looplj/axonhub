@@ -11,6 +11,7 @@ interface FastestModelsCardProps {
   timeWindow: CoarseTimeWindow;
 }
 
+/** Fastest models panel; the time window is picked by the shared time range filter. */
 export function FastestModelsCard({ timeWindow }: FastestModelsCardProps) {
   const { t } = useTranslation();
 

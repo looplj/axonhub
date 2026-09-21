@@ -11,8 +11,9 @@ import { coarseWindowLabelKey, inclusiveCalendarDays, type CoarseTimeWindow } fr
 const UNHEALTHY_RATE = 90;
 const CHANNEL_LIMIT = 12;
 
-// channelSuccessRates only understands coarse calendar windows, so the global
-// date range is mapped onto the closest supported window.
+/** channelSuccessRates only understands coarse calendar windows, so the global date
+ * range is mapped onto the closest supported window; ranges past 31 days have no
+ * matching allTime support and fall back to month. */
 function toCoarseTimeWindow(startTime: string | null, endTime: string | null): CoarseTimeWindow {
   if (!startTime) return 'allTime';
 
@@ -29,6 +30,7 @@ interface ChannelHealthCardProps {
   endTime: string | null;
 }
 
+/** Channel health card: success rates per channel, unhealthy ones first. */
 export function ChannelHealthCard({ startTime, endTime }: ChannelHealthCardProps) {
   const { t } = useTranslation();
   const timeWindow = toCoarseTimeWindow(startTime, endTime);

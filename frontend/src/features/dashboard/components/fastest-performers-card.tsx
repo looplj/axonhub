@@ -22,6 +22,8 @@ interface HorizontalBarChartProps {
   noDataLabel: string;
 }
 
+/** Horizontal throughput bars with a custom tooltip; labels are hidden because the
+ * rows are rendered as a list beside the chart. */
 function HorizontalBarChart({ data, total, height = 280, noDataLabel }: HorizontalBarChartProps) {
   const safeData = sanitizeChartData(data);
   const safeTotal = safeNumber(total);
@@ -93,6 +95,8 @@ interface FastestPerformersCardProps<T extends ThroughputData> {
   timeWindow: CoarseTimeWindow;
 }
 
+/** Generic throughput card shared by the fastest-channels and fastest-models panels;
+ * the caller supplies the query hook and how to label each row. */
 export function FastestPerformersCard<T extends ThroughputData>({
   title,
   description,

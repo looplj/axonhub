@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 
+/** Per-channel request outcome counts and derived success rate. */
 export const channelSuccessRateSchema = z.object({
   channelId: z.string(),
   channelName: z.string(),
@@ -30,6 +31,7 @@ const CHANNEL_SUCCESS_RATES_QUERY = `
   }
 `;
 
+/** Channel success rates for a coarse time window, refreshed every 5 minutes. */
 export function useChannelSuccessRates(limit?: number, timeWindow?: string) {
   return useQuery({
     queryKey: ['channelSuccessRates', limit, timeWindow],
