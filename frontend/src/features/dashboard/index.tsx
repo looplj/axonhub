@@ -21,8 +21,8 @@ import { FastestModelsCard } from './components/fastest-models-card';
 import { KpiRow } from './components/kpi-row';
 import { inclusiveCalendarDays, type CoarseTimeWindow } from './utils/time-window';
 
-// channelSuccessRates only understands coarse calendar windows, so ranges past 31
-// days, which have no matching allTime support, fall back to month.
+// fastestChannels/fastestModels only understand day/week/month and silently fall back
+// to day for anything else, so a range longer than a week is clamped to month.
 function toCoarseWindow(startTime: string | null, endTime: string | null): CoarseTimeWindow {
   if (!startTime) return 'month';
 

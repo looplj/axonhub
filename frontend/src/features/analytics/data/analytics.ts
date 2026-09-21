@@ -212,6 +212,5 @@ export function useAnalyticsDimensionStats(filter: AnalyticsFilter | null, dimen
     },
     enabled: enabled && !!dimension,
     refetchInterval: 60000,
-    placeholderData: (previousData) => previousData,
   });
 }
