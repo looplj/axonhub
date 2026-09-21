@@ -1506,7 +1506,6 @@ type ComplexityRoot struct {
 		MetricsFirstTokenLatencyMs func(childComplexity int) int
 		MetricsLatencyMs           func(childComplexity int) int
 		MetricsReasoningDurationMs func(childComplexity int) int
-		ModelAudit                 func(childComplexity int) int
 		ModelID                    func(childComplexity int) int
 		Project                    func(childComplexity int) int
 		ProjectID                  func(childComplexity int) int
@@ -1552,7 +1551,6 @@ type ComplexityRoot struct {
 		MetricsLatencyMs           func(childComplexity int) int
 		MetricsReasoningDurationMs func(childComplexity int) int
 		ModelID                    func(childComplexity int) int
-		OutboundModelID            func(childComplexity int) int
 		PassThroughApplied         func(childComplexity int) int
 		ProjectID                  func(childComplexity int) int
 		ReasoningEffort            func(childComplexity int) int
@@ -1569,7 +1567,6 @@ type ComplexityRoot struct {
 		Stream                     func(childComplexity int) int
 		UpdatedAt                  func(childComplexity int) int
 		UpstreamModelID            func(childComplexity int) int
-		UpstreamModelIds           func(childComplexity int) int
 	}
 
 	RequestExecutionConnection struct {
@@ -1589,17 +1586,6 @@ type ComplexityRoot struct {
 		ItemCount    func(childComplexity int) int
 		OutputTokens func(childComplexity int) int
 		TotalTokens  func(childComplexity int) int
-	}
-
-	RequestModelAudit struct {
-		ComparedCount       func(childComplexity int) int
-		ConflictCount       func(childComplexity int) int
-		ConflictingModelIds func(childComplexity int) int
-		MatchedUpstreamIds  func(childComplexity int) int
-		MismatchedModelIds  func(childComplexity int) int
-		Status              func(childComplexity int) int
-		UnknownCount        func(childComplexity int) int
-		UpstreamModelIds    func(childComplexity int) int
 	}
 
 	RequestStats struct {
@@ -2513,8 +2499,6 @@ type RequestResolver interface {
 	ChannelID(ctx context.Context, obj *ent.Request) (*objects.GUID, error)
 
 	Channel(ctx context.Context, obj *ent.Request) (*ent.Channel, error)
-
-	ModelAudit(ctx context.Context, obj *ent.Request) (*objects.RequestModelAudit, error)
 }
 type RequestExecutionResolver interface {
 	ID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error)
@@ -9196,12 +9180,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Request.MetricsReasoningDurationMs(childComplexity), true
-	case "Request.modelAudit":
-		if e.complexity.Request.ModelAudit == nil {
-			break
-		}
-
-		return e.complexity.Request.ModelAudit(childComplexity), true
 	case "Request.modelID":
 		if e.complexity.Request.ModelID == nil {
 			break
@@ -9426,12 +9404,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.ModelID(childComplexity), true
-	case "RequestExecution.outboundModelID":
-		if e.complexity.RequestExecution.OutboundModelID == nil {
-			break
-		}
-
-		return e.complexity.RequestExecution.OutboundModelID(childComplexity), true
 	case "RequestExecution.passThroughApplied":
 		if e.complexity.RequestExecution.PassThroughApplied == nil {
 			break
@@ -9528,12 +9500,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestExecution.UpstreamModelID(childComplexity), true
-	case "RequestExecution.upstreamModelIds":
-		if e.complexity.RequestExecution.UpstreamModelIds == nil {
-			break
-		}
-
-		return e.complexity.RequestExecution.UpstreamModelIds(childComplexity), true
 
 	case "RequestExecutionConnection.edges":
 		if e.complexity.RequestExecutionConnection.Edges == nil {
@@ -9597,55 +9563,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RequestMetadata.TotalTokens(childComplexity), true
-
-	case "RequestModelAudit.comparedCount":
-		if e.complexity.RequestModelAudit.ComparedCount == nil {
-			break
-		}
-
-		return e.complexity.RequestModelAudit.ComparedCount(childComplexity), true
-	case "RequestModelAudit.conflictCount":
-		if e.complexity.RequestModelAudit.ConflictCount == nil {
-			break
-		}
-
-		return e.complexity.RequestModelAudit.ConflictCount(childComplexity), true
-	case "RequestModelAudit.conflictingModelIds":
-		if e.complexity.RequestModelAudit.ConflictingModelIds == nil {
-			break
-		}
-
-		return e.complexity.RequestModelAudit.ConflictingModelIds(childComplexity), true
-	case "RequestModelAudit.matchedUpstreamIds":
-		if e.complexity.RequestModelAudit.MatchedUpstreamIds == nil {
-			break
-		}
-
-		return e.complexity.RequestModelAudit.MatchedUpstreamIds(childComplexity), true
-	case "RequestModelAudit.mismatchedModelIds":
-		if e.complexity.RequestModelAudit.MismatchedModelIds == nil {
-			break
-		}
-
-		return e.complexity.RequestModelAudit.MismatchedModelIds(childComplexity), true
-	case "RequestModelAudit.status":
-		if e.complexity.RequestModelAudit.Status == nil {
-			break
-		}
-
-		return e.complexity.RequestModelAudit.Status(childComplexity), true
-	case "RequestModelAudit.unknownCount":
-		if e.complexity.RequestModelAudit.UnknownCount == nil {
-			break
-		}
-
-		return e.complexity.RequestModelAudit.UnknownCount(childComplexity), true
-	case "RequestModelAudit.upstreamModelIds":
-		if e.complexity.RequestModelAudit.UpstreamModelIds == nil {
-			break
-		}
-
-		return e.complexity.RequestModelAudit.UpstreamModelIds(childComplexity), true
 
 	case "RequestStats.requestsLastWeek":
 		if e.complexity.RequestStats.RequestsLastWeek == nil {
@@ -12210,7 +12127,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "axonhub.graphql" "ent.graphql" "dashboard.graphql" "scopes.graphql" "me.graphql" "system.graphql" "filter.graphql" "model.graphql" "backup.graphql" "channel_probe.graphql" "prompt.graphql" "prompt_protection_rule.graphql" "price.graphql" "cost.graphql" "analytics.graphql" "model_audit.graphql"
+//go:embed "axonhub.graphql" "ent.graphql" "dashboard.graphql" "scopes.graphql" "me.graphql" "system.graphql" "filter.graphql" "model.graphql" "backup.graphql" "channel_probe.graphql" "prompt.graphql" "prompt_protection_rule.graphql" "price.graphql" "cost.graphql" "analytics.graphql"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -12237,7 +12154,6 @@ var sources = []*ast.Source{
 	{Name: "price.graphql", Input: sourceData("price.graphql"), BuiltIn: false},
 	{Name: "cost.graphql", Input: sourceData("cost.graphql"), BuiltIn: false},
 	{Name: "analytics.graphql", Input: sourceData("analytics.graphql"), BuiltIn: false},
-	{Name: "model_audit.graphql", Input: sourceData("model_audit.graphql"), BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
 
@@ -50118,53 +50034,6 @@ func (ec *executionContext) fieldContext_Request_usageLogs(ctx context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Request_modelAudit(ctx context.Context, field graphql.CollectedField, obj *ent.Request) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Request_modelAudit,
-		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Request().ModelAudit(ctx, obj)
-		},
-		nil,
-		ec.marshalNRequestModelAudit2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRequestModelAudit,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Request_modelAudit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Request",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "status":
-				return ec.fieldContext_RequestModelAudit_status(ctx, field)
-			case "matchedUpstreamIds":
-				return ec.fieldContext_RequestModelAudit_matchedUpstreamIds(ctx, field)
-			case "upstreamModelIds":
-				return ec.fieldContext_RequestModelAudit_upstreamModelIds(ctx, field)
-			case "mismatchedModelIds":
-				return ec.fieldContext_RequestModelAudit_mismatchedModelIds(ctx, field)
-			case "conflictingModelIds":
-				return ec.fieldContext_RequestModelAudit_conflictingModelIds(ctx, field)
-			case "unknownCount":
-				return ec.fieldContext_RequestModelAudit_unknownCount(ctx, field)
-			case "comparedCount":
-				return ec.fieldContext_RequestModelAudit_comparedCount(ctx, field)
-			case "conflictCount":
-				return ec.fieldContext_RequestModelAudit_conflictCount(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type RequestModelAudit", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RequestConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.RequestConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -50364,8 +50233,6 @@ func (ec *executionContext) fieldContext_RequestEdge_node(_ context.Context, fie
 				return ec.fieldContext_Request_channel(ctx, field)
 			case "usageLogs":
 				return ec.fieldContext_Request_usageLogs(ctx, field)
-			case "modelAudit":
-				return ec.fieldContext_Request_modelAudit(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Request", field.Name)
 		},
@@ -50663,35 +50530,6 @@ func (ec *executionContext) fieldContext_RequestExecution_modelID(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _RequestExecution_outboundModelID(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestExecution_outboundModelID,
-		func(ctx context.Context) (any, error) {
-			return obj.OutboundModelID, nil
-		},
-		nil,
-		ec.marshalOString2string,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestExecution_outboundModelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _RequestExecution_upstreamModelID(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -50709,35 +50547,6 @@ func (ec *executionContext) _RequestExecution_upstreamModelID(ctx context.Contex
 }
 
 func (ec *executionContext) fieldContext_RequestExecution_upstreamModelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestExecution_upstreamModelIds(ctx context.Context, field graphql.CollectedField, obj *ent.RequestExecution) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestExecution_upstreamModelIds,
-		func(ctx context.Context) (any, error) {
-			return obj.UpstreamModelIds, nil
-		},
-		nil,
-		ec.marshalOString2ᚕstringᚄ,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestExecution_upstreamModelIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RequestExecution",
 		Field:      field,
@@ -51339,8 +51148,6 @@ func (ec *executionContext) fieldContext_RequestExecution_request(_ context.Cont
 				return ec.fieldContext_Request_channel(ctx, field)
 			case "usageLogs":
 				return ec.fieldContext_Request_usageLogs(ctx, field)
-			case "modelAudit":
-				return ec.fieldContext_Request_modelAudit(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Request", field.Name)
 		},
@@ -51641,12 +51448,8 @@ func (ec *executionContext) fieldContext_RequestExecutionEdge_node(_ context.Con
 				return ec.fieldContext_RequestExecution_externalID(ctx, field)
 			case "modelID":
 				return ec.fieldContext_RequestExecution_modelID(ctx, field)
-			case "outboundModelID":
-				return ec.fieldContext_RequestExecution_outboundModelID(ctx, field)
 			case "upstreamModelID":
 				return ec.fieldContext_RequestExecution_upstreamModelID(ctx, field)
-			case "upstreamModelIds":
-				return ec.fieldContext_RequestExecution_upstreamModelIds(ctx, field)
 			case "format":
 				return ec.fieldContext_RequestExecution_format(ctx, field)
 			case "reasoningEffort":
@@ -51858,238 +51661,6 @@ func (ec *executionContext) _RequestMetadata_cachedTokens(ctx context.Context, f
 func (ec *executionContext) fieldContext_RequestMetadata_cachedTokens(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RequestMetadata",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestModelAudit_status(ctx context.Context, field graphql.CollectedField, obj *objects.RequestModelAudit) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestModelAudit_status,
-		func(ctx context.Context) (any, error) {
-			return obj.Status, nil
-		},
-		nil,
-		ec.marshalNModelAuditStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAuditStatus,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestModelAudit_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestModelAudit",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ModelAuditStatus does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestModelAudit_matchedUpstreamIds(ctx context.Context, field graphql.CollectedField, obj *objects.RequestModelAudit) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestModelAudit_matchedUpstreamIds,
-		func(ctx context.Context) (any, error) {
-			return obj.MatchedUpstreamIds, nil
-		},
-		nil,
-		ec.marshalNString2ᚕstringᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestModelAudit_matchedUpstreamIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestModelAudit",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestModelAudit_upstreamModelIds(ctx context.Context, field graphql.CollectedField, obj *objects.RequestModelAudit) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestModelAudit_upstreamModelIds,
-		func(ctx context.Context) (any, error) {
-			return obj.UpstreamModelIds, nil
-		},
-		nil,
-		ec.marshalNString2ᚕstringᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestModelAudit_upstreamModelIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestModelAudit",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestModelAudit_mismatchedModelIds(ctx context.Context, field graphql.CollectedField, obj *objects.RequestModelAudit) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestModelAudit_mismatchedModelIds,
-		func(ctx context.Context) (any, error) {
-			return obj.MismatchedModelIds, nil
-		},
-		nil,
-		ec.marshalNString2ᚕstringᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestModelAudit_mismatchedModelIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestModelAudit",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestModelAudit_conflictingModelIds(ctx context.Context, field graphql.CollectedField, obj *objects.RequestModelAudit) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestModelAudit_conflictingModelIds,
-		func(ctx context.Context) (any, error) {
-			return obj.ConflictingModelIds, nil
-		},
-		nil,
-		ec.marshalNString2ᚕstringᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestModelAudit_conflictingModelIds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestModelAudit",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestModelAudit_unknownCount(ctx context.Context, field graphql.CollectedField, obj *objects.RequestModelAudit) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestModelAudit_unknownCount,
-		func(ctx context.Context) (any, error) {
-			return obj.UnknownCount, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestModelAudit_unknownCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestModelAudit",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestModelAudit_comparedCount(ctx context.Context, field graphql.CollectedField, obj *objects.RequestModelAudit) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestModelAudit_comparedCount,
-		func(ctx context.Context) (any, error) {
-			return obj.ComparedCount, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestModelAudit_comparedCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestModelAudit",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RequestModelAudit_conflictCount(ctx context.Context, field graphql.CollectedField, obj *objects.RequestModelAudit) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_RequestModelAudit_conflictCount,
-		func(ctx context.Context) (any, error) {
-			return obj.ConflictCount, nil
-		},
-		nil,
-		ec.marshalNInt2int,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_RequestModelAudit_conflictCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RequestModelAudit",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -60293,8 +59864,6 @@ func (ec *executionContext) fieldContext_UsageLog_request(_ context.Context, fie
 				return ec.fieldContext_Request_channel(ctx, field)
 			case "usageLogs":
 				return ec.fieldContext_Request_usageLogs(ctx, field)
-			case "modelAudit":
-				return ec.fieldContext_Request_modelAudit(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Request", field.Name)
 		},
@@ -80273,7 +79842,7 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "outboundModelID", "outboundModelIDNEQ", "outboundModelIDIn", "outboundModelIDNotIn", "outboundModelIDGT", "outboundModelIDGTE", "outboundModelIDLT", "outboundModelIDLTE", "outboundModelIDContains", "outboundModelIDHasPrefix", "outboundModelIDHasSuffix", "outboundModelIDIsNil", "outboundModelIDNotNil", "outboundModelIDEqualFold", "outboundModelIDContainsFold", "upstreamModelID", "upstreamModelIDNEQ", "upstreamModelIDIn", "upstreamModelIDNotIn", "upstreamModelIDGT", "upstreamModelIDGTE", "upstreamModelIDLT", "upstreamModelIDLTE", "upstreamModelIDContains", "upstreamModelIDHasPrefix", "upstreamModelIDHasSuffix", "upstreamModelIDIsNil", "upstreamModelIDNotNil", "upstreamModelIDEqualFold", "upstreamModelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "reasoningEffort", "reasoningEffortNEQ", "reasoningEffortIn", "reasoningEffortNotIn", "reasoningEffortGT", "reasoningEffortGTE", "reasoningEffortLT", "reasoningEffortLTE", "reasoningEffortContains", "reasoningEffortHasPrefix", "reasoningEffortHasSuffix", "reasoningEffortIsNil", "reasoningEffortNotNil", "reasoningEffortEqualFold", "reasoningEffortContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "requestURL", "requestURLNEQ", "requestURLIn", "requestURLNotIn", "requestURLGT", "requestURLGTE", "requestURLLT", "requestURLLTE", "requestURLContains", "requestURLHasPrefix", "requestURLHasSuffix", "requestURLIsNil", "requestURLNotNil", "requestURLEqualFold", "requestURLContainsFold", "passThroughApplied", "passThroughAppliedNEQ", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "projectIDGT", "projectIDGTE", "projectIDLT", "projectIDLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "dataStorageID", "dataStorageIDNEQ", "dataStorageIDIn", "dataStorageIDNotIn", "dataStorageIDIsNil", "dataStorageIDNotNil", "externalID", "externalIDNEQ", "externalIDIn", "externalIDNotIn", "externalIDGT", "externalIDGTE", "externalIDLT", "externalIDLTE", "externalIDContains", "externalIDHasPrefix", "externalIDHasSuffix", "externalIDIsNil", "externalIDNotNil", "externalIDEqualFold", "externalIDContainsFold", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "upstreamModelID", "upstreamModelIDNEQ", "upstreamModelIDIn", "upstreamModelIDNotIn", "upstreamModelIDGT", "upstreamModelIDGTE", "upstreamModelIDLT", "upstreamModelIDLTE", "upstreamModelIDContains", "upstreamModelIDHasPrefix", "upstreamModelIDHasSuffix", "upstreamModelIDIsNil", "upstreamModelIDNotNil", "upstreamModelIDEqualFold", "upstreamModelIDContainsFold", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "reasoningEffort", "reasoningEffortNEQ", "reasoningEffortIn", "reasoningEffortNotIn", "reasoningEffortGT", "reasoningEffortGTE", "reasoningEffortLT", "reasoningEffortLTE", "reasoningEffortContains", "reasoningEffortHasPrefix", "reasoningEffortHasSuffix", "reasoningEffortIsNil", "reasoningEffortNotNil", "reasoningEffortEqualFold", "reasoningEffortContainsFold", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "responseStatusCode", "responseStatusCodeNEQ", "responseStatusCodeIn", "responseStatusCodeNotIn", "responseStatusCodeGT", "responseStatusCodeGTE", "responseStatusCodeLT", "responseStatusCodeLTE", "responseStatusCodeIsNil", "responseStatusCodeNotNil", "status", "statusNEQ", "statusIn", "statusNotIn", "stream", "streamNEQ", "metricsLatencyMs", "metricsLatencyMsNEQ", "metricsLatencyMsIn", "metricsLatencyMsNotIn", "metricsLatencyMsGT", "metricsLatencyMsGTE", "metricsLatencyMsLT", "metricsLatencyMsLTE", "metricsLatencyMsIsNil", "metricsLatencyMsNotNil", "metricsFirstTokenLatencyMs", "metricsFirstTokenLatencyMsNEQ", "metricsFirstTokenLatencyMsIn", "metricsFirstTokenLatencyMsNotIn", "metricsFirstTokenLatencyMsGT", "metricsFirstTokenLatencyMsGTE", "metricsFirstTokenLatencyMsLT", "metricsFirstTokenLatencyMsLTE", "metricsFirstTokenLatencyMsIsNil", "metricsFirstTokenLatencyMsNotNil", "metricsReasoningDurationMs", "metricsReasoningDurationMsNEQ", "metricsReasoningDurationMsIn", "metricsReasoningDurationMsNotIn", "metricsReasoningDurationMsGT", "metricsReasoningDurationMsGTE", "metricsReasoningDurationMsLT", "metricsReasoningDurationMsLTE", "metricsReasoningDurationMsIsNil", "metricsReasoningDurationMsNotNil", "requestURL", "requestURLNEQ", "requestURLIn", "requestURLNotIn", "requestURLGT", "requestURLGTE", "requestURLLT", "requestURLLTE", "requestURLContains", "requestURLHasPrefix", "requestURLHasSuffix", "requestURLIsNil", "requestURLNotNil", "requestURLEqualFold", "requestURLContainsFold", "passThroughApplied", "passThroughAppliedNEQ", "hasRequest", "hasRequestWith", "hasChannel", "hasChannelWith", "hasDataStorage", "hasDataStorageWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -80913,111 +80482,6 @@ func (ec *executionContext) unmarshalInputRequestExecutionWhereInput(ctx context
 				return it, err
 			}
 			it.ModelIDContainsFold = data
-		case "outboundModelID":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelID"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelID = data
-		case "outboundModelIDNEQ":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDNEQ"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDNEQ = data
-		case "outboundModelIDIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDIn = data
-		case "outboundModelIDNotIn":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDNotIn"))
-			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDNotIn = data
-		case "outboundModelIDGT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDGT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDGT = data
-		case "outboundModelIDGTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDGTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDGTE = data
-		case "outboundModelIDLT":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDLT"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDLT = data
-		case "outboundModelIDLTE":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDLTE"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDLTE = data
-		case "outboundModelIDContains":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDContains"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDContains = data
-		case "outboundModelIDHasPrefix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDHasPrefix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDHasPrefix = data
-		case "outboundModelIDHasSuffix":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDHasSuffix"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDHasSuffix = data
-		case "outboundModelIDIsNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDIsNil"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDIsNil = data
-		case "outboundModelIDNotNil":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDNotNil"))
-			data, err := ec.unmarshalOBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDNotNil = data
-		case "outboundModelIDEqualFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDEqualFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDEqualFold = data
-		case "outboundModelIDContainsFold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("outboundModelIDContainsFold"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.OutboundModelIDContainsFold = data
 		case "upstreamModelID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upstreamModelID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -106287,42 +105751,6 @@ func (ec *executionContext) _Request(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "modelAudit":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Request_modelAudit(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -106604,12 +106032,8 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "outboundModelID":
-			out.Values[i] = ec._RequestExecution_outboundModelID(ctx, field, obj)
 		case "upstreamModelID":
 			out.Values[i] = ec._RequestExecution_upstreamModelID(ctx, field, obj)
-		case "upstreamModelIds":
-			out.Values[i] = ec._RequestExecution_upstreamModelIds(ctx, field, obj)
 		case "format":
 			out.Values[i] = ec._RequestExecution_format(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -107016,80 +106440,6 @@ func (ec *executionContext) _RequestMetadata(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._RequestMetadata_totalTokens(ctx, field, obj)
 		case "cachedTokens":
 			out.Values[i] = ec._RequestMetadata_cachedTokens(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var requestModelAuditImplementors = []string{"RequestModelAudit"}
-
-func (ec *executionContext) _RequestModelAudit(ctx context.Context, sel ast.SelectionSet, obj *objects.RequestModelAudit) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, requestModelAuditImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("RequestModelAudit")
-		case "status":
-			out.Values[i] = ec._RequestModelAudit_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "matchedUpstreamIds":
-			out.Values[i] = ec._RequestModelAudit_matchedUpstreamIds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "upstreamModelIds":
-			out.Values[i] = ec._RequestModelAudit_upstreamModelIds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "mismatchedModelIds":
-			out.Values[i] = ec._RequestModelAudit_mismatchedModelIds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "conflictingModelIds":
-			out.Values[i] = ec._RequestModelAudit_conflictingModelIds(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "unknownCount":
-			out.Values[i] = ec._RequestModelAudit_unknownCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "comparedCount":
-			out.Values[i] = ec._RequestModelAudit_comparedCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "conflictCount":
-			out.Values[i] = ec._RequestModelAudit_conflictCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -116155,23 +115505,6 @@ func (ec *executionContext) unmarshalNModelAssociationInput2ᚖgithubᚗcomᚋlo
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNModelAuditStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAuditStatus(ctx context.Context, v any) (objects.ModelAuditStatus, error) {
-	tmp, err := graphql.UnmarshalString(v)
-	res := objects.ModelAuditStatus(tmp)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNModelAuditStatus2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAuditStatus(ctx context.Context, sel ast.SelectionSet, v objects.ModelAuditStatus) graphql.Marshaler {
-	_ = sel
-	res := graphql.MarshalString(string(v))
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
-}
-
 func (ec *executionContext) marshalNModelCard2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCard(ctx context.Context, sel ast.SelectionSet, v *objects.ModelCard) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -117813,20 +117146,6 @@ func (ec *executionContext) marshalNRequestExecutionStatus2githubᚗcomᚋlooplj
 func (ec *executionContext) unmarshalNRequestExecutionWhereInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRequestExecutionWhereInput(ctx context.Context, v any) (*ent.RequestExecutionWhereInput, error) {
 	res, err := ec.unmarshalInputRequestExecutionWhereInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNRequestModelAudit2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRequestModelAudit(ctx context.Context, sel ast.SelectionSet, v objects.RequestModelAudit) graphql.Marshaler {
-	return ec._RequestModelAudit(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNRequestModelAudit2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRequestModelAudit(ctx context.Context, sel ast.SelectionSet, v *objects.RequestModelAudit) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._RequestModelAudit(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRequestOrderField2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐRequestOrderField(ctx context.Context, v any) (*ent.RequestOrderField, error) {

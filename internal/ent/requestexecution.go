@@ -38,12 +38,8 @@ type RequestExecution struct {
 	ExternalID string `json:"external_id,omitempty"`
 	// ModelID holds the value of the "model_id" field.
 	ModelID string `json:"model_id,omitempty"`
-	// Model identifier in the final provider request; absent when unknown or not recorded
-	OutboundModelID string `json:"outbound_model_id,omitempty"`
 	// Raw model reported by the upstream provider response, before client-model rewrite
 	UpstreamModelID string `json:"upstream_model_id,omitempty"`
-	// First two distinct reported model identifiers, retaining evidence of a change within one execution
-	UpstreamModelIds []string `json:"upstream_model_ids,omitempty"`
 	// Format holds the value of the "format" field.
 	Format string `json:"format,omitempty"`
 	// Final reasoning effort sent to the upstream provider
@@ -137,13 +133,13 @@ func (*RequestExecution) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case requestexecution.FieldUpstreamModelIds, requestexecution.FieldRequestBody, requestexecution.FieldResponseHeaders, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks, requestexecution.FieldRequestHeaders:
+		case requestexecution.FieldRequestBody, requestexecution.FieldResponseHeaders, requestexecution.FieldResponseBody, requestexecution.FieldResponseChunks, requestexecution.FieldRequestHeaders:
 			values[i] = new([]byte)
 		case requestexecution.FieldStream, requestexecution.FieldPassThroughApplied:
 			values[i] = new(sql.NullBool)
 		case requestexecution.FieldID, requestexecution.FieldProjectID, requestexecution.FieldRequestID, requestexecution.FieldChannelID, requestexecution.FieldDataStorageID, requestexecution.FieldResponseStatusCode, requestexecution.FieldMetricsLatencyMs, requestexecution.FieldMetricsFirstTokenLatencyMs, requestexecution.FieldMetricsReasoningDurationMs:
 			values[i] = new(sql.NullInt64)
-		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldOutboundModelID, requestexecution.FieldUpstreamModelID, requestexecution.FieldFormat, requestexecution.FieldReasoningEffort, requestexecution.FieldChannelAPIKeySuffix, requestexecution.FieldErrorMessage, requestexecution.FieldStatus, requestexecution.FieldRequestURL:
+		case requestexecution.FieldExternalID, requestexecution.FieldModelID, requestexecution.FieldUpstreamModelID, requestexecution.FieldFormat, requestexecution.FieldReasoningEffort, requestexecution.FieldChannelAPIKeySuffix, requestexecution.FieldErrorMessage, requestexecution.FieldStatus, requestexecution.FieldRequestURL:
 			values[i] = new(sql.NullString)
 		case requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -216,25 +212,11 @@ func (_m *RequestExecution) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.ModelID = value.String
 			}
-		case requestexecution.FieldOutboundModelID:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field outbound_model_id", values[i])
-			} else if value.Valid {
-				_m.OutboundModelID = value.String
-			}
 		case requestexecution.FieldUpstreamModelID:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field upstream_model_id", values[i])
 			} else if value.Valid {
 				_m.UpstreamModelID = value.String
-			}
-		case requestexecution.FieldUpstreamModelIds:
-			if value, ok := values[i].(*[]byte); !ok {
-				return fmt.Errorf("unexpected type %T for field upstream_model_ids", values[i])
-			} else if value != nil && len(*value) > 0 {
-				if err := json.Unmarshal(*value, &_m.UpstreamModelIds); err != nil {
-					return fmt.Errorf("unmarshal field upstream_model_ids: %w", err)
-				}
 			}
 		case requestexecution.FieldFormat:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -429,14 +411,8 @@ func (_m *RequestExecution) String() string {
 	builder.WriteString("model_id=")
 	builder.WriteString(_m.ModelID)
 	builder.WriteString(", ")
-	builder.WriteString("outbound_model_id=")
-	builder.WriteString(_m.OutboundModelID)
-	builder.WriteString(", ")
 	builder.WriteString("upstream_model_id=")
 	builder.WriteString(_m.UpstreamModelID)
-	builder.WriteString(", ")
-	builder.WriteString("upstream_model_ids=")
-	builder.WriteString(fmt.Sprintf("%v", _m.UpstreamModelIds))
 	builder.WriteString(", ")
 	builder.WriteString("format=")
 	builder.WriteString(_m.Format)

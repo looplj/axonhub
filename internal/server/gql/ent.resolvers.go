@@ -493,11 +493,7 @@ func (r *queryResolver) Requests(ctx context.Context, after *entgql.Cursor[int],
 		orderBy.Field = ent.DefaultRequestOrder.Field
 	}
 
-	query := r.client.Request.Query()
-	if requestModelAuditSelected(ctx) {
-		query = withModelAuditExecutions(query)
-	}
-	return query.Paginate(ctx, after, first, before, last,
+	return r.client.Request.Query().Paginate(ctx, after, first, before, last,
 		ent.WithRequestOrder(orderBy),
 		ent.WithRequestFilter(where.Filter),
 	)

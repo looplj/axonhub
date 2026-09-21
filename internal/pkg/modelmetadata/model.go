@@ -9,7 +9,6 @@ import (
 	"mime"
 	"mime/multipart"
 	"net/url"
-	"slices"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -214,13 +213,4 @@ func reportedModel(body []byte, format llm.APIFormat, eventType string, stream b
 		}
 	}
 	return ""
-}
-
-// Observe retains the first identifier and the first different identifier.
-// Two values are enough to prove a conflict without unbounded per-stream state.
-func Observe(models []string, model string) []string {
-	if len(models) >= 2 || !validModel(model) || slices.Contains(models, model) {
-		return models
-	}
-	return append(models, model)
 }

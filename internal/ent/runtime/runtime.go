@@ -705,24 +705,20 @@ func init() {
 	requestexecutionDescExternalID := requestexecutionFields[4].Descriptor()
 	// requestexecution.ExternalIDValidator is a validator for the "external_id" field. It is called by the builders before save.
 	requestexecution.ExternalIDValidator = requestexecutionDescExternalID.Validators[0].(func(string) error)
-	// requestexecutionDescOutboundModelID is the schema descriptor for outbound_model_id field.
-	requestexecutionDescOutboundModelID := requestexecutionFields[6].Descriptor()
-	// requestexecution.OutboundModelIDValidator is a validator for the "outbound_model_id" field. It is called by the builders before save.
-	requestexecution.OutboundModelIDValidator = requestexecutionDescOutboundModelID.Validators[0].(func(string) error)
 	// requestexecutionDescFormat is the schema descriptor for format field.
-	requestexecutionDescFormat := requestexecutionFields[9].Descriptor()
+	requestexecutionDescFormat := requestexecutionFields[7].Descriptor()
 	// requestexecution.DefaultFormat holds the default value on creation for the format field.
 	requestexecution.DefaultFormat = requestexecutionDescFormat.Default.(string)
 	// requestexecutionDescChannelAPIKeySuffix is the schema descriptor for channel_api_key_suffix field.
-	requestexecutionDescChannelAPIKeySuffix := requestexecutionFields[11].Descriptor()
+	requestexecutionDescChannelAPIKeySuffix := requestexecutionFields[9].Descriptor()
 	// requestexecution.ChannelAPIKeySuffixValidator is a validator for the "channel_api_key_suffix" field. It is called by the builders before save.
 	requestexecution.ChannelAPIKeySuffixValidator = requestexecutionDescChannelAPIKeySuffix.Validators[0].(func(string) error)
 	// requestexecutionDescStream is the schema descriptor for stream field.
-	requestexecutionDescStream := requestexecutionFields[19].Descriptor()
+	requestexecutionDescStream := requestexecutionFields[17].Descriptor()
 	// requestexecution.DefaultStream holds the default value on creation for the stream field.
 	requestexecution.DefaultStream = requestexecutionDescStream.Default.(bool)
 	// requestexecutionDescPassThroughApplied is the schema descriptor for pass_through_applied field.
-	requestexecutionDescPassThroughApplied := requestexecutionFields[25].Descriptor()
+	requestexecutionDescPassThroughApplied := requestexecutionFields[23].Descriptor()
 	// requestexecution.DefaultPassThroughApplied holds the default value on creation for the pass_through_applied field.
 	requestexecution.DefaultPassThroughApplied = requestexecutionDescPassThroughApplied.Default.(bool)
 	roleMixin := schema.Role{}.Mixin()

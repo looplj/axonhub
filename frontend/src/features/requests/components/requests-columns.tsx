@@ -145,8 +145,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const executionModelIds = Array.from(new Set(executions.map((exe) => exe.modelID || ''))).filter(
           (id) => id && id !== originalModelId
         );
-        // The latest ten display rows cannot establish a complete audit.
-        const modelAudit = request.modelAudit ?? getUpstreamModelAudit([]);
+        // The list query is executions(first: 10). Executions outside that window are not judged.
+        const modelAudit = getUpstreamModelAudit(executions);
         const upstreamModelMatches = modelAudit.status === 'matched';
         const requestIsProcessing = request.status === 'pending' || request.status === 'processing';
         const requestFailed = request.status === 'failed' || request.status === 'canceled';

@@ -446,9 +446,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldDataStorageID:              {Type: field.TypeInt, Column: requestexecution.FieldDataStorageID},
 			requestexecution.FieldExternalID:                 {Type: field.TypeString, Column: requestexecution.FieldExternalID},
 			requestexecution.FieldModelID:                    {Type: field.TypeString, Column: requestexecution.FieldModelID},
-			requestexecution.FieldOutboundModelID:            {Type: field.TypeString, Column: requestexecution.FieldOutboundModelID},
 			requestexecution.FieldUpstreamModelID:            {Type: field.TypeString, Column: requestexecution.FieldUpstreamModelID},
-			requestexecution.FieldUpstreamModelIds:           {Type: field.TypeJSON, Column: requestexecution.FieldUpstreamModelIds},
 			requestexecution.FieldFormat:                     {Type: field.TypeString, Column: requestexecution.FieldFormat},
 			requestexecution.FieldReasoningEffort:            {Type: field.TypeString, Column: requestexecution.FieldReasoningEffort},
 			requestexecution.FieldChannelAPIKeySuffix:        {Type: field.TypeString, Column: requestexecution.FieldChannelAPIKeySuffix},
@@ -3584,19 +3582,9 @@ func (f *RequestExecutionFilter) WhereModelID(p entql.StringP) {
 	f.Where(p.Field(requestexecution.FieldModelID))
 }
 
-// WhereOutboundModelID applies the entql string predicate on the outbound_model_id field.
-func (f *RequestExecutionFilter) WhereOutboundModelID(p entql.StringP) {
-	f.Where(p.Field(requestexecution.FieldOutboundModelID))
-}
-
 // WhereUpstreamModelID applies the entql string predicate on the upstream_model_id field.
 func (f *RequestExecutionFilter) WhereUpstreamModelID(p entql.StringP) {
 	f.Where(p.Field(requestexecution.FieldUpstreamModelID))
-}
-
-// WhereUpstreamModelIds applies the entql json.RawMessage predicate on the upstream_model_ids field.
-func (f *RequestExecutionFilter) WhereUpstreamModelIds(p entql.BytesP) {
-	f.Where(p.Field(requestexecution.FieldUpstreamModelIds))
 }
 
 // WhereFormat applies the entql string predicate on the format field.

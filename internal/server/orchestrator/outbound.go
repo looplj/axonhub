@@ -42,13 +42,12 @@ type OutboundPersistentStream struct {
 	apiFormat      llm.APIFormat
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
-	// Retain the first two distinct reported names as bounded conflict evidence,
-	// independently of aggregation, client-model rewrites, and shared retry state.
-	upstreamModelIDs []string
-	terminalState    streamTerminalState
-	terminalError    string
-	closed           bool
-	state            *PersistenceState
+	// First reported model only. Intra-stream changes are not tracked.
+	upstreamModelID string
+	terminalState   streamTerminalState
+	terminalError   string
+	closed          bool
+	state           *PersistenceState
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*OutboundPersistentStream)(nil)
@@ -93,8 +92,8 @@ func (ts *OutboundPersistentStream) Next() bool {
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
-		if len(ts.upstreamModelIDs) < 2 {
-			ts.upstreamModelIDs = modelmetadata.Observe(ts.upstreamModelIDs, modelmetadata.StreamModel(event, ts.apiFormat))
+		if ts.upstreamModelID == "" {
+			ts.upstreamModelID = modelmetadata.StreamModel(event, ts.apiFormat)
 		}
 		// For raw binary audio chunks (TTS stream_format=audio), persist only a size
 		// summary to avoid buffering the full audio payload in memory.
@@ -293,7 +292,7 @@ func (ts *OutboundPersistentStream) persistResponseChunks(ctx context.Context) {
 			// without trusting any partial response or usage returned with the error.
 			status := ts.terminalState.executionStatus()
 			if updateErr := ts.RequestService.UpdateRequestExecutionStatusWithMetrics(
-				persistCtx, ts.requestExec.ID, status, ts.terminalError, nil, ts.failureLatencyMetrics(), ts.upstreamModelIDs,
+				persistCtx, ts.requestExec.ID, status, ts.terminalError, nil, ts.failureLatencyMetrics(), ts.upstreamModelID,
 			); updateErr != nil {
 				log.Warn(persistCtx, "Failed to update terminal execution after aggregation failure",
 					log.Cause(updateErr), log.Any("status", status))
@@ -349,7 +348,7 @@ func (ts *OutboundPersistentStream) persistExecutionFailure(ctx context.Context,
 		return
 	}
 
-	err := persistRequestExecutionFailure(ctx, ts.RequestService, ts.requestExec.ID, rawErr, ts.failureLatencyMetrics(), ts.upstreamModelIDs)
+	err := persistRequestExecutionFailure(ctx, ts.RequestService, ts.requestExec.ID, rawErr, ts.failureLatencyMetrics(), ts.upstreamModelID)
 	if err != nil {
 		log.Warn(ctx, "Failed to update request execution status from error", log.Cause(err))
 	}
@@ -391,7 +390,7 @@ func (ts *OutboundPersistentStream) persistAggregatedResponse(ctx context.Contex
 		meta.ID,
 		responseBody,
 		metrics,
-		ts.upstreamModelIDs,
+		ts.upstreamModelID,
 	)
 	if err != nil {
 		log.Warn(

@@ -7773,23 +7773,6 @@ type RequestExecutionWhereInput struct {
 	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
 	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
 
-	// "outbound_model_id" field predicates.
-	OutboundModelID             *string  `json:"outboundModelID,omitempty"`
-	OutboundModelIDNEQ          *string  `json:"outboundModelIDNEQ,omitempty"`
-	OutboundModelIDIn           []string `json:"outboundModelIDIn,omitempty"`
-	OutboundModelIDNotIn        []string `json:"outboundModelIDNotIn,omitempty"`
-	OutboundModelIDGT           *string  `json:"outboundModelIDGT,omitempty"`
-	OutboundModelIDGTE          *string  `json:"outboundModelIDGTE,omitempty"`
-	OutboundModelIDLT           *string  `json:"outboundModelIDLT,omitempty"`
-	OutboundModelIDLTE          *string  `json:"outboundModelIDLTE,omitempty"`
-	OutboundModelIDContains     *string  `json:"outboundModelIDContains,omitempty"`
-	OutboundModelIDHasPrefix    *string  `json:"outboundModelIDHasPrefix,omitempty"`
-	OutboundModelIDHasSuffix    *string  `json:"outboundModelIDHasSuffix,omitempty"`
-	OutboundModelIDIsNil        bool     `json:"outboundModelIDIsNil,omitempty"`
-	OutboundModelIDNotNil       bool     `json:"outboundModelIDNotNil,omitempty"`
-	OutboundModelIDEqualFold    *string  `json:"outboundModelIDEqualFold,omitempty"`
-	OutboundModelIDContainsFold *string  `json:"outboundModelIDContainsFold,omitempty"`
-
 	// "upstream_model_id" field predicates.
 	UpstreamModelID             *string  `json:"upstreamModelID,omitempty"`
 	UpstreamModelIDNEQ          *string  `json:"upstreamModelIDNEQ,omitempty"`
@@ -8246,51 +8229,6 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.ModelIDContainsFold != nil {
 		predicates = append(predicates, requestexecution.ModelIDContainsFold(*i.ModelIDContainsFold))
-	}
-	if i.OutboundModelID != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDEQ(*i.OutboundModelID))
-	}
-	if i.OutboundModelIDNEQ != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDNEQ(*i.OutboundModelIDNEQ))
-	}
-	if len(i.OutboundModelIDIn) > 0 {
-		predicates = append(predicates, requestexecution.OutboundModelIDIn(i.OutboundModelIDIn...))
-	}
-	if len(i.OutboundModelIDNotIn) > 0 {
-		predicates = append(predicates, requestexecution.OutboundModelIDNotIn(i.OutboundModelIDNotIn...))
-	}
-	if i.OutboundModelIDGT != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDGT(*i.OutboundModelIDGT))
-	}
-	if i.OutboundModelIDGTE != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDGTE(*i.OutboundModelIDGTE))
-	}
-	if i.OutboundModelIDLT != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDLT(*i.OutboundModelIDLT))
-	}
-	if i.OutboundModelIDLTE != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDLTE(*i.OutboundModelIDLTE))
-	}
-	if i.OutboundModelIDContains != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDContains(*i.OutboundModelIDContains))
-	}
-	if i.OutboundModelIDHasPrefix != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDHasPrefix(*i.OutboundModelIDHasPrefix))
-	}
-	if i.OutboundModelIDHasSuffix != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDHasSuffix(*i.OutboundModelIDHasSuffix))
-	}
-	if i.OutboundModelIDIsNil {
-		predicates = append(predicates, requestexecution.OutboundModelIDIsNil())
-	}
-	if i.OutboundModelIDNotNil {
-		predicates = append(predicates, requestexecution.OutboundModelIDNotNil())
-	}
-	if i.OutboundModelIDEqualFold != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDEqualFold(*i.OutboundModelIDEqualFold))
-	}
-	if i.OutboundModelIDContainsFold != nil {
-		predicates = append(predicates, requestexecution.OutboundModelIDContainsFold(*i.OutboundModelIDContainsFold))
 	}
 	if i.UpstreamModelID != nil {
 		predicates = append(predicates, requestexecution.UpstreamModelIDEQ(*i.UpstreamModelID))

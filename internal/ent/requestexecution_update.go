@@ -77,24 +77,6 @@ func (_u *RequestExecutionUpdate) ClearUpstreamModelID() *RequestExecutionUpdate
 	return _u
 }
 
-// SetUpstreamModelIds sets the "upstream_model_ids" field.
-func (_u *RequestExecutionUpdate) SetUpstreamModelIds(v []string) *RequestExecutionUpdate {
-	_u.mutation.SetUpstreamModelIds(v)
-	return _u
-}
-
-// AppendUpstreamModelIds appends value to the "upstream_model_ids" field.
-func (_u *RequestExecutionUpdate) AppendUpstreamModelIds(v []string) *RequestExecutionUpdate {
-	_u.mutation.AppendUpstreamModelIds(v)
-	return _u
-}
-
-// ClearUpstreamModelIds clears the value of the "upstream_model_ids" field.
-func (_u *RequestExecutionUpdate) ClearUpstreamModelIds() *RequestExecutionUpdate {
-	_u.mutation.ClearUpstreamModelIds()
-	return _u
-}
-
 // SetResponseHeaders sets the "response_headers" field.
 func (_u *RequestExecutionUpdate) SetResponseHeaders(v objects.JSONRawMessage) *RequestExecutionUpdate {
 	_u.mutation.SetResponseHeaders(v)
@@ -429,25 +411,11 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if _u.mutation.ExternalIDCleared() {
 		_spec.ClearField(requestexecution.FieldExternalID, field.TypeString)
 	}
-	if _u.mutation.OutboundModelIDCleared() {
-		_spec.ClearField(requestexecution.FieldOutboundModelID, field.TypeString)
-	}
 	if value, ok := _u.mutation.UpstreamModelID(); ok {
 		_spec.SetField(requestexecution.FieldUpstreamModelID, field.TypeString, value)
 	}
 	if _u.mutation.UpstreamModelIDCleared() {
 		_spec.ClearField(requestexecution.FieldUpstreamModelID, field.TypeString)
-	}
-	if value, ok := _u.mutation.UpstreamModelIds(); ok {
-		_spec.SetField(requestexecution.FieldUpstreamModelIds, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.AppendedUpstreamModelIds(); ok {
-		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, requestexecution.FieldUpstreamModelIds, value)
-		})
-	}
-	if _u.mutation.UpstreamModelIdsCleared() {
-		_spec.ClearField(requestexecution.FieldUpstreamModelIds, field.TypeJSON)
 	}
 	if _u.mutation.ReasoningEffortCleared() {
 		_spec.ClearField(requestexecution.FieldReasoningEffort, field.TypeString)
@@ -618,24 +586,6 @@ func (_u *RequestExecutionUpdateOne) SetNillableUpstreamModelID(v *string) *Requ
 // ClearUpstreamModelID clears the value of the "upstream_model_id" field.
 func (_u *RequestExecutionUpdateOne) ClearUpstreamModelID() *RequestExecutionUpdateOne {
 	_u.mutation.ClearUpstreamModelID()
-	return _u
-}
-
-// SetUpstreamModelIds sets the "upstream_model_ids" field.
-func (_u *RequestExecutionUpdateOne) SetUpstreamModelIds(v []string) *RequestExecutionUpdateOne {
-	_u.mutation.SetUpstreamModelIds(v)
-	return _u
-}
-
-// AppendUpstreamModelIds appends value to the "upstream_model_ids" field.
-func (_u *RequestExecutionUpdateOne) AppendUpstreamModelIds(v []string) *RequestExecutionUpdateOne {
-	_u.mutation.AppendUpstreamModelIds(v)
-	return _u
-}
-
-// ClearUpstreamModelIds clears the value of the "upstream_model_ids" field.
-func (_u *RequestExecutionUpdateOne) ClearUpstreamModelIds() *RequestExecutionUpdateOne {
-	_u.mutation.ClearUpstreamModelIds()
 	return _u
 }
 
@@ -1003,25 +953,11 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	if _u.mutation.ExternalIDCleared() {
 		_spec.ClearField(requestexecution.FieldExternalID, field.TypeString)
 	}
-	if _u.mutation.OutboundModelIDCleared() {
-		_spec.ClearField(requestexecution.FieldOutboundModelID, field.TypeString)
-	}
 	if value, ok := _u.mutation.UpstreamModelID(); ok {
 		_spec.SetField(requestexecution.FieldUpstreamModelID, field.TypeString, value)
 	}
 	if _u.mutation.UpstreamModelIDCleared() {
 		_spec.ClearField(requestexecution.FieldUpstreamModelID, field.TypeString)
-	}
-	if value, ok := _u.mutation.UpstreamModelIds(); ok {
-		_spec.SetField(requestexecution.FieldUpstreamModelIds, field.TypeJSON, value)
-	}
-	if value, ok := _u.mutation.AppendedUpstreamModelIds(); ok {
-		_spec.AddModifier(func(u *sql.UpdateBuilder) {
-			sqljson.Append(u, requestexecution.FieldUpstreamModelIds, value)
-		})
-	}
-	if _u.mutation.UpstreamModelIdsCleared() {
-		_spec.ClearField(requestexecution.FieldUpstreamModelIds, field.TypeJSON)
 	}
 	if _u.mutation.ReasoningEffortCleared() {
 		_spec.ClearField(requestexecution.FieldReasoningEffort, field.TypeString)

@@ -51,20 +51,13 @@ func (RequestExecution) Fields() []ent.Field {
 			Optional().
 			MaxLen(512),
 		field.String("model_id").Immutable(),
-		field.String("outbound_model_id").
-			Optional().
-			Immutable().
-			MaxLen(512).
-			Comment("Model identifier in the final provider request; absent when unknown or not recorded"),
 		// UpstreamModelID is the raw model reported by the provider response, captured
 		// before AxonHub rewrites it back to the client-requested model.
-		// Empty means no supported model metadata was recorded.
+		// Empty means no supported model metadata was recorded. Intra-stream model
+		// changes are not tracked; only the first reported name is kept.
 		field.String("upstream_model_id").
 			Optional().
 			Comment("Raw model reported by the upstream provider response, before client-model rewrite"),
-		field.Strings("upstream_model_ids").
-			Optional().
-			Comment("First two distinct reported model identifiers, retaining evidence of a change within one execution"),
 		//  The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),
 		field.String("reasoning_effort").

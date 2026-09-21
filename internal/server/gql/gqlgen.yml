@@ -73,12 +73,6 @@ converters:
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:
-  ModelAuditStatus:
-    model:
-      - github.com/looplj/axonhub/internal/objects.ModelAuditStatus
-  RequestModelAudit:
-    model:
-      - github.com/looplj/axonhub/internal/objects.RequestModelAudit
   # Defines the ID field as Go 'int'.
   ID:
     model:

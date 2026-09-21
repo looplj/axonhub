@@ -4651,17 +4651,9 @@ type RequestExecution implements Node {
   externalID: String
   modelID: String!
   """
-  Model identifier in the final provider request; absent when unknown or not recorded
-  """
-  outboundModelID: String
-  """
   Raw model reported by the upstream provider response, before client-model rewrite
   """
   upstreamModelID: String
-  """
-  First two distinct reported model identifiers, retaining evidence of a change within one execution
-  """
-  upstreamModelIds: [String!]
   format: String!
   """
   Final reasoning effort sent to the upstream provider
@@ -4878,24 +4870,6 @@ input RequestExecutionWhereInput {
   modelIDHasSuffix: String
   modelIDEqualFold: String
   modelIDContainsFold: String
-  """
-  outbound_model_id field predicates
-  """
-  outboundModelID: String
-  outboundModelIDNEQ: String
-  outboundModelIDIn: [String!]
-  outboundModelIDNotIn: [String!]
-  outboundModelIDGT: String
-  outboundModelIDGTE: String
-  outboundModelIDLT: String
-  outboundModelIDLTE: String
-  outboundModelIDContains: String
-  outboundModelIDHasPrefix: String
-  outboundModelIDHasSuffix: String
-  outboundModelIDIsNil: Boolean
-  outboundModelIDNotNil: Boolean
-  outboundModelIDEqualFold: String
-  outboundModelIDContainsFold: String
   """
   upstream_model_id field predicates
   """

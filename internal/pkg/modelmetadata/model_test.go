@@ -167,18 +167,13 @@ func TestStreamModel(t *testing.T) {
 	require.Empty(t, StreamModel(nil, llm.APIFormatOpenAIChatCompletion))
 }
 
-func TestModelValidationAndBoundedEvidence(t *testing.T) {
+func TestModelValidation(t *testing.T) {
 	for _, body := range []string{
 		`{}`, `{"model":null}`, `{"model":123}`, `{"model":""}`, `{"model":"   "}`,
 		`{"model":"bad\nname"}`, `{"model":"partial"`, `{"model":"` + strings.Repeat("a", maxModelBytes+1) + `"}`,
 	} {
 		require.Empty(t, ResponseModel(&httpclient.Response{Body: []byte(body)}, llm.APIFormatOpenAIChatCompletion))
 	}
-	var models []string
-	for _, model := range []string{"", " ", "bad\nname", string([]byte{0xff}), strings.Repeat("a", maxModelBytes+1), "model-a", "model-a", "model-b", "model-c", "model-a"} {
-		models = Observe(models, model)
-	}
-	require.Equal(t, []string{"model-a", "model-b"}, models)
-	require.Equal(t, []string{strings.Repeat("a", maxModelBytes)}, Observe(nil, strings.Repeat("a", maxModelBytes)))
-	require.Equal(t, []string{"模型-1"}, Observe(nil, "模型-1"))
+	require.Equal(t, strings.Repeat("a", maxModelBytes), ResponseModel(&httpclient.Response{Body: []byte(`{"model":"` + strings.Repeat("a", maxModelBytes) + `"}`)}, llm.APIFormatOpenAIChatCompletion))
+	require.Equal(t, "模型-1", ResponseModel(&httpclient.Response{Body: []byte(`{"model":"模型-1"}`)}, llm.APIFormatOpenAIChatCompletion))
 }

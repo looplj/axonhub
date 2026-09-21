@@ -85,37 +85,36 @@ func TestUpstreamModelPipeline_NonStreaming(t *testing.T) {
 		response       string
 		sent, reported string
 		passThrough    bool
-		status         objects.ModelAuditStatus
 	}{
 		{
 			name: "OpenAI final override", format: llm.APIFormatOpenAIChatCompletion,
 			response: `{"id":"resp","model":"wire-b","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`,
-			sent:     "wire-b", reported: "wire-b", status: objects.ModelAuditMatched,
+			sent:     "wire-b", reported: "wire-b",
 		},
 		{
 			name: "OpenAI override reveals mismatch", format: llm.APIFormatOpenAIChatCompletion,
 			response: `{"id":"resp","model":"routed-a","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`,
-			sent:     "wire-b", reported: "routed-a", status: objects.ModelAuditMismatched,
+			sent:     "wire-b", reported: "routed-a",
 		},
 		{
 			name: "OpenAI pass through and override", format: llm.APIFormatOpenAIChatCompletion, passThrough: true,
 			response: `{"id":"resp","model":"wire-b","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`,
-			sent:     "wire-b", reported: "wire-b", status: objects.ModelAuditMatched,
+			sent:     "wire-b", reported: "wire-b",
 		},
 		{
 			name: "Anthropic protocol conversion", format: llm.APIFormatAnthropicMessage,
 			response: `{"id":"resp","type":"message","role":"assistant","model":"wire-b","content":[{"type":"text","text":"hello"}],"stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`,
-			sent:     "wire-b", reported: "wire-b", status: objects.ModelAuditMatched,
+			sent:     "wire-b", reported: "wire-b",
 		},
 		{
 			name: "Responses protocol conversion", format: llm.APIFormatOpenAIResponse,
 			response: `{"id":"resp","object":"response","status":"completed","model":"wire-b","output":[{"type":"message","id":"msg","status":"completed","role":"assistant","content":[{"type":"output_text","text":"hello","annotations":[]}]}]}`,
-			sent:     "wire-b", reported: "wire-b", status: objects.ModelAuditMatched,
+			sent:     "wire-b", reported: "wire-b",
 		},
 		{
 			name: "Gemini URL model survives unrelated JSON override", format: llm.APIFormatGeminiContents,
 			response: `{"responseId":"resp","modelVersion":"routed-a","candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"hello"}]},"finishReason":"STOP"}]}`,
-			sent:     "routed-a", reported: "routed-a", status: objects.ModelAuditMatched,
+			sent:     "routed-a", reported: "routed-a",
 		},
 	}
 	for _, tt := range tests {
@@ -142,11 +141,8 @@ func TestUpstreamModelPipeline_NonStreaming(t *testing.T) {
 			saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
 			require.NoError(t, err)
 			require.Equal(t, "routed-a", saved.ModelID)
-			require.Equal(t, tt.sent, saved.OutboundModelID)
 			require.Equal(t, tt.reported, saved.UpstreamModelID)
-			require.Equal(t, []string{tt.reported}, saved.UpstreamModelIds)
 			require.Equal(t, tt.passThrough, saved.PassThroughApplied)
-			require.Equal(t, tt.status, biz.AuditRequestModels([]*ent.RequestExecution{saved}).Status)
 			require.JSONEq(t, "{}", string(saved.RequestBody))
 			require.Empty(t, saved.ResponseBody)
 		})
@@ -195,13 +191,11 @@ func TestUpstreamModelPipeline_StreamingAndAutoAggregate(t *testing.T) {
 			// Pass-through drains the transformation branch asynchronously.
 			require.Eventually(t, func() bool {
 				saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
-				return err == nil && saved.Status == requestexecution.StatusCompleted && len(saved.UpstreamModelIds) == 2
+				return err == nil && saved.Status == requestexecution.StatusCompleted && saved.UpstreamModelID == "wire-b"
 			}, time.Second, 5*time.Millisecond)
 			saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
 			require.NoError(t, err)
-			require.Equal(t, "wire-b", saved.OutboundModelID)
-			require.Equal(t, []string{"wire-b", "changed-c"}, saved.UpstreamModelIds)
-			require.Equal(t, objects.ModelAuditConflicting, biz.AuditRequestModels([]*ent.RequestExecution{saved}).Status)
+			require.Equal(t, "wire-b", saved.UpstreamModelID, "only the first reported name is kept")
 			require.Empty(t, saved.ResponseChunks)
 			require.Empty(t, saved.ResponseBody)
 		})
@@ -229,8 +223,6 @@ func TestUpstreamModelPipeline_TextTranscription(t *testing.T) {
 	saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
 	require.NoError(t, err)
 	require.Empty(t, saved.UpstreamModelID)
-	require.Empty(t, saved.UpstreamModelIds)
-	require.Equal(t, objects.ModelAuditUnknown, biz.AuditRequestModels([]*ent.RequestExecution{saved}).Status)
 }
 
 func TestUpstreamModelPipeline_ChannelRetry(t *testing.T) {
@@ -276,17 +268,9 @@ func TestUpstreamModelPipeline_ChannelRetry(t *testing.T) {
 			require.Len(t, executions, 2)
 			require.NotEqual(t, executions[0].ChannelID, executions[1].ChannelID)
 			require.Equal(t, requestexecution.StatusFailed, executions[0].Status)
-			require.Equal(t, []string{"first-a"}, executions[0].UpstreamModelIds)
+			require.Equal(t, "first-a", executions[0].UpstreamModelID)
 			require.Equal(t, requestexecution.StatusCompleted, executions[1].Status)
-			require.Equal(t, "second-b", executions[1].OutboundModelID)
 			require.Equal(t, reported, executions[1].UpstreamModelID)
-			if reported == "" {
-				require.Empty(t, executions[1].UpstreamModelIds)
-				require.Equal(t, objects.ModelAuditUnknown, biz.AuditRequestModels(executions).Status)
-			} else {
-				require.Equal(t, []string{reported}, executions[1].UpstreamModelIds)
-				require.Equal(t, objects.ModelAuditMismatched, biz.AuditRequestModels(executions).Status)
-			}
 		})
 	}
 }
@@ -332,12 +316,12 @@ func TestUpstreamModelPersistence_ConflictsSurviveTermination(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.status, saved.Status)
 			require.Equal(t, "a", saved.UpstreamModelID)
-			require.Equal(t, []string{"a", "b"}, saved.UpstreamModelIds, "keep bounded conflict evidence, not only the first or last name")
+			require.Equal(t, "a", saved.UpstreamModelID, "only the first reported name is kept")
 			require.Empty(t, saved.ResponseChunks)
 			require.NoError(t, state.RequestService.UpdateRequestExecutionStatus(ctx, saved.ID, saved.Status, "", nil))
 			saved, err = db.RequestExecution.Get(ctx, saved.ID)
 			require.NoError(t, err)
-			require.Equal(t, []string{"a", "b"}, saved.UpstreamModelIds, "status-only updates preserve existing observations")
+			require.Equal(t, "a", saved.UpstreamModelID, "status-only updates preserve the recorded name")
 		})
 	}
 }

@@ -58,9 +58,9 @@ type persistRequestExecutionMiddleware struct {
 
 	outbound *PersistentOutboundTransformer
 
-	rawResponse      *httpclient.Response
-	headerObserver   *executionHeaderObserver
-	upstreamModelIDs []string
+	rawResponse     *httpclient.Response
+	headerObserver  *executionHeaderObserver
+	upstreamModelID string
 }
 
 type executionHeaderObserver struct {
@@ -92,7 +92,7 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 	// This middleware is reused across attempts. Response metadata belongs only
 	// to the execution created for this outbound request.
 	m.rawResponse = nil
-	m.upstreamModelIDs = nil
+	m.upstreamModelID = ""
 
 	state := m.outbound.state
 	if state == nil {
@@ -164,7 +164,9 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawResponse(ctx context.Co
 	} else if m.outbound.wrapped != nil {
 		format = m.outbound.APIFormat()
 	}
-	m.upstreamModelIDs = modelmetadata.Observe(m.upstreamModelIDs, modelmetadata.ResponseModel(response, format))
+	if m.upstreamModelID == "" {
+		m.upstreamModelID = modelmetadata.ResponseModel(response, format)
+	}
 	return response, nil
 }
 
@@ -226,7 +228,7 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 		llmResp.ID,
 		respBody,
 		metrics,
-		m.upstreamModelIDs,
+		m.upstreamModelID,
 	)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to completed", log.Cause(err))
@@ -275,7 +277,7 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 		ExtractErrorMessage(failure),
 		ExtractErrorInfo(failure),
 		nil,
-		m.upstreamModelIDs,
+		m.upstreamModelID,
 	)
 	if updateErr != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(updateErr))
