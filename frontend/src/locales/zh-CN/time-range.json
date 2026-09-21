@@ -1,0 +1,14 @@
+{
+  "timeRange.label": "时间范围",
+  "timeRange.today": "今天",
+  "timeRange.last7Days": "近 7 天",
+  "timeRange.last30Days": "近 30 天",
+  "timeRange.thisMonth": "本月",
+  "timeRange.thisYear": "本年",
+  "timeRange.allTime": "使用以来",
+  "timeRange.startDate": "开始日期",
+  "timeRange.endDate": "结束日期",
+  "timeRange.startDateAfterEndError": "开始日期不能晚于结束日期，请重新选择",
+  "timeRange.endDateBeforeStartError": "结束日期不能早于开始日期，请重新选择",
+  "timeRange.reset": "重置"
+}

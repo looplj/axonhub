@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { BarChart4, Activity, DollarSign } from 'lucide-react';
+import { BarChart4, Activity, DollarSign, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AnalyticsOverview } from '../data/analytics';
@@ -36,7 +36,8 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
 
   if (isLoading) {
     return (
-      <div className='grid gap-4 md:grid-cols-3'>
+      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+        <Skeleton className='h-[120px]' />
         <Skeleton className='h-[120px]' />
         <Skeleton className='h-[120px]' />
         <Skeleton className='h-[120px]' />
@@ -67,10 +68,16 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
       icon: DollarSign,
       description: null,
     },
+    {
+      title: t('analytics.overview.successRate'),
+      value: `${(overview?.successRate ?? 0).toFixed(1)}%`,
+      icon: ShieldCheck,
+      description: `${formatExactNumber(overview?.failedRequests || 0)} ${t('dashboard.stats.failedRequests')}`,
+    },
   ];
 
   return (
-    <div className='grid gap-4 md:grid-cols-3'>
+    <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
       {cards.map((card) => (
         <Card key={card.title} className='hover-card'>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>

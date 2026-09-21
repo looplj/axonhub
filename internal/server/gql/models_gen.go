@@ -116,6 +116,10 @@ type AnalyticsOverview struct {
 	TotalOutputTokens        int     `json:"totalOutputTokens"`
 	TotalRequests            int     `json:"totalRequests"`
 	TotalCost                float64 `json:"totalCost"`
+	// Failed request executions within the filter (from request_executions)
+	FailedRequests int `json:"failedRequests"`
+	// Success rate of request executions (completed / (completed + failed)) within the filter, 0-100
+	SuccessRate float64 `json:"successRate"`
 }
 
 type ApplyChannelOverrideTemplateInput struct {

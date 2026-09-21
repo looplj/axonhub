@@ -1,16 +1,16 @@
 'use client';
 
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { UseQueryResult } from '@tanstack/react-query';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
-import { TimePeriodSelector, type FastestTimeWindow } from '@/components/time-period-selector';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
 import { ChartLegend, type ChartLegendItem } from './chart-legend';
+import { coarseWindowLabelKey, type CoarseTimeWindow } from '../utils/time-window';
 
 // 5 colors matches the slice limit in chartData processing (.slice(0, 5))
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
@@ -90,6 +90,7 @@ interface FastestPerformersCardProps<T extends ThroughputData> {
   noDataLabel: string;
   useData: (timeWindow: string) => UseQueryResult<T[], Error>;
   getName: (item: T) => string | null;
+  timeWindow: CoarseTimeWindow;
 }
 
 export function FastestPerformersCard<T extends ThroughputData>({
@@ -98,9 +99,9 @@ export function FastestPerformersCard<T extends ThroughputData>({
   noDataLabel,
   useData,
   getName,
+  timeWindow,
 }: FastestPerformersCardProps<T>) {
   const { t } = useTranslation();
-  const [timeWindow, setTimeWindow] = useState<FastestTimeWindow>('month');
 
   const { data: items, isLoading, isFetching, error } = useData(timeWindow);
 
@@ -163,7 +164,9 @@ export function FastestPerformersCard<T extends ThroughputData>({
           <CardTitle className='text-base font-medium'>{title}</CardTitle>
           <CardDescription>{description(totalRequests)}</CardDescription>
         </div>
-        <TimePeriodSelector value={timeWindow} onChange={setTimeWindow} periods={['month', 'week', 'day']} />
+        <Badge variant='outline' className='text-muted-foreground font-normal'>
+          {t(coarseWindowLabelKey(timeWindow))}
+        </Badge>
       </CardHeader>
       <CardContent className='relative'>
         <div className='space-y-4'>

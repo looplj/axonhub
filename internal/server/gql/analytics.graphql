@@ -40,6 +40,10 @@ type AnalyticsOverview {
   totalOutputTokens: Int!
   totalRequests: Int!
   totalCost: Float!
+  "Failed request executions within the filter (from request_executions)"
+  failedRequests: Int!
+  "Success rate of request executions (completed / (completed + failed)) within the filter, 0-100"
+  successRate: Float!
 }
 
 """

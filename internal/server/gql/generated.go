@@ -260,6 +260,8 @@ type ComplexityRoot struct {
 	}
 
 	AnalyticsOverview struct {
+		FailedRequests           func(childComplexity int) int
+		SuccessRate              func(childComplexity int) int
 		TotalCachedInputTokens   func(childComplexity int) int
 		TotalCost                func(childComplexity int) int
 		TotalInputTokens         func(childComplexity int) int
@@ -3188,6 +3190,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AnalyticsMetadata.EarliestDate(childComplexity), true
 
+	case "AnalyticsOverview.failedRequests":
+		if e.complexity.AnalyticsOverview.FailedRequests == nil {
+			break
+		}
+
+		return e.complexity.AnalyticsOverview.FailedRequests(childComplexity), true
+	case "AnalyticsOverview.successRate":
+		if e.complexity.AnalyticsOverview.SuccessRate == nil {
+			break
+		}
+
+		return e.complexity.AnalyticsOverview.SuccessRate(childComplexity), true
 	case "AnalyticsOverview.totalCachedInputTokens":
 		if e.complexity.AnalyticsOverview.TotalCachedInputTokens == nil {
 			break
@@ -18907,6 +18921,64 @@ func (ec *executionContext) _AnalyticsOverview_totalCost(ctx context.Context, fi
 }
 
 func (ec *executionContext) fieldContext_AnalyticsOverview_totalCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnalyticsOverview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnalyticsOverview_failedRequests(ctx context.Context, field graphql.CollectedField, obj *AnalyticsOverview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AnalyticsOverview_failedRequests,
+		func(ctx context.Context) (any, error) {
+			return obj.FailedRequests, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AnalyticsOverview_failedRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnalyticsOverview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnalyticsOverview_successRate(ctx context.Context, field graphql.CollectedField, obj *AnalyticsOverview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AnalyticsOverview_successRate,
+		func(ctx context.Context) (any, error) {
+			return obj.SuccessRate, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AnalyticsOverview_successRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AnalyticsOverview",
 		Field:      field,
@@ -48088,6 +48160,10 @@ func (ec *executionContext) fieldContext_Query_analyticsOverview(ctx context.Con
 				return ec.fieldContext_AnalyticsOverview_totalRequests(ctx, field)
 			case "totalCost":
 				return ec.fieldContext_AnalyticsOverview_totalCost(ctx, field)
+			case "failedRequests":
+				return ec.fieldContext_AnalyticsOverview_failedRequests(ctx, field)
+			case "successRate":
+				return ec.fieldContext_AnalyticsOverview_successRate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AnalyticsOverview", field.Name)
 		},
@@ -92885,6 +92961,16 @@ func (ec *executionContext) _AnalyticsOverview(ctx context.Context, sel ast.Sele
 			}
 		case "totalCost":
 			out.Values[i] = ec._AnalyticsOverview_totalCost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "failedRequests":
+			out.Values[i] = ec._AnalyticsOverview_failedRequests(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "successRate":
+			out.Values[i] = ec._AnalyticsOverview_successRate(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

@@ -24,6 +24,8 @@ export const analyticsOverviewSchema = z.object({
   totalOutputTokens: z.number(),
   totalRequests: z.number(),
   totalCost: z.number(),
+  failedRequests: z.number(),
+  successRate: z.number(),
 });
 
 export type AnalyticsOverview = z.infer<typeof analyticsOverviewSchema>;
@@ -80,6 +82,8 @@ const ANALYTICS_OVERVIEW_QUERY = `
       totalOutputTokens
       totalRequests
       totalCost
+      failedRequests
+      successRate
     }
   }
 `;
@@ -180,7 +184,7 @@ export function useAnalyticsDailyStats(filter: AnalyticsFilter | null) {
   });
 }
 
-export function useAnalyticsDimensionStats(filter: AnalyticsFilter | null, dimension: string) {
+export function useAnalyticsDimensionStats(filter: AnalyticsFilter | null, dimension: string, enabled = true) {
   return useQuery({
     queryKey: ['analyticsDimensionStats', filter, dimension],
     queryFn: async () => {
@@ -191,7 +195,7 @@ export function useAnalyticsDimensionStats(filter: AnalyticsFilter | null, dimen
       );
       return data.analyticsDimensionStats.map((item) => analyticsDimensionStatSchema.parse(item));
     },
-    enabled: !!dimension,
+    enabled: enabled && !!dimension,
     refetchInterval: 60000,
     placeholderData: (previousData) => previousData,
   });
