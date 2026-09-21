@@ -353,7 +353,7 @@ For detailed development instructions, architecture design, and contribution gui
 
 ## 📄 License
 
-This project is licensed under multiple licenses (Apache-2.0 and LGPL-3.0). See [LICENSE](LICENSE) file for the detailed licensing overview and terms.
+This project is licensed under multiple licenses (Apache-2.0 and LGPL-3.0). See [NOTICE](NOTICE) for the licensing scope, and [LICENSE](LICENSE) and [llm/LICENSE](llm/LICENSE) for the full license texts.
 
 ---
 
