@@ -221,6 +221,15 @@ Manage endpoints in the channel **Endpoints** dialog:
 - Each endpoint consists of `api_format`, an optional `base_url` (inherits the channel Base URL when empty), and an optional `path` (replaces the protocol's default path; version appending is skipped when set).
 - Each channel type ships with built-in default endpoints (e.g. zhipu provides `openai/chat_completions`, `zhipu_anthropic` provides `anthropic/messages`); custom endpoints can add other formats or override same-named ones.
 
+### Endpoint Auto-Detection
+
+The **Endpoints** dialog can probe the upstream for the three relay protocols (`openai/chat_completions`, `openai/responses`, `anthropic/messages`), so a channel that supports all three can pass through almost every client protocol natively.
+
+- Click **Auto-detect** in the **Current Endpoints** section. The backend sends one lightweight probe per protocol using the channel Base URL, credentials and default test model.
+- Detected protocols are added to the custom endpoint list. They are not saved automatically — review the list and press **Save** to persist.
+- A route is reported as supported when the upstream replies with anything other than `404`/`405`; `401`/`403` are reported as an authentication problem, and `5xx` or connection failures as errors.
+- The channel list **Endpoints** column summarizes the configured relay protocols as three icons: colored when configured, dimmed otherwise.
+
 ### Model Protocol Overrides (ModelProtocols)
 
 Force the available outbound protocols for a single model in the **Model Protocol Overrides** block:
