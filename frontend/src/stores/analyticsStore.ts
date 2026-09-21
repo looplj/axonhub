@@ -23,6 +23,7 @@ const defaultFilter: AnalyticsFilter = {
   userIDs: undefined,
 };
 
+/** Analytics page filters: time range plus project/channel/model/API key/user dimensions. */
 export const useAnalyticsFilterStore = create<AnalyticsFilterState>((set) => ({
   filter: { ...defaultFilter },
 

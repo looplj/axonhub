@@ -8,6 +8,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { TimeRangeValue } from '@/stores/dashboardStore';
 
+/** Date to 'YYYY-MM-DD', read from local fields rather than toISOString so a
+ * timezone offset cannot shift the date by a day. */
 function formatDate(date: Date): string {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -15,6 +17,7 @@ function formatDate(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** 'YYYY-MM-DD' to local midnight; Calendar's selected needs a Date. */
 function parseDate(dateStr: string): Date {
   const [y, m, d] = dateStr.split('-').map(Number);
   return new Date(y, m - 1, d);
@@ -27,6 +30,8 @@ interface Preset {
   range: TimeRangeValue;
 }
 
+/** Quick presets derived from today; earliestDate is the first recorded date on the
+ * backend and feeds the allTime preset. */
 function buildPresets(earliestDate?: string | null): Preset[] {
   const now = new Date();
   const today = formatDate(now);
@@ -60,6 +65,7 @@ interface DateRangePickerProps {
   onEndChange: (date: Date | null) => void;
 }
 
+/** Start/end date picker: two popover calendars that validate ordering against each other. */
 function DateRangePicker({ startDate, endDate, onStartChange, onEndChange }: DateRangePickerProps) {
   const { t } = useTranslation();
   const [startOpen, setStartOpen] = useState(false);
@@ -144,6 +150,8 @@ interface TimeRangeFilterProps {
   earliestDate?: string | null;
 }
 
+/** Unified time range filter: preset buttons plus a custom start/end pair, replacing
+ * the per-page TimePeriodSelector. */
 export function TimeRangeFilter({ value, onChange, earliestDate }: TimeRangeFilterProps) {
   const { t } = useTranslation();
   const presets = useMemo(() => buildPresets(earliestDate), [earliestDate]);
@@ -169,8 +177,9 @@ export function TimeRangeFilter({ value, onChange, earliestDate }: TimeRangeFilt
             variant={activeKey === preset.key ? 'default' : 'outline'}
             size='sm'
             className='h-8 text-xs'
-            // earliestDate 未就绪时 allTime 只能写入 startTime: null，
-            // 后端会退回自己的 30 天默认值，与预设语义不符。
+            // Until earliestDate is ready, allTime can only emit startTime: null, and
+            // the backend then falls back to its own 30-day default, which does not
+            // match what the preset promises.
             disabled={preset.key === 'allTime' && !earliestDate}
             onClick={() => onChange(preset.range)}
           >

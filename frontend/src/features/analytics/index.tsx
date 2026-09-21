@@ -11,6 +11,8 @@ import { DimensionPieCharts } from './components/dimension-pie-charts';
 import { DimensionDetailTable } from './components/dimension-detail-table';
 import { useGeneralSettings } from '@/features/system/data/system';
 
+/** Analytics page: overview cards, trend chart and per-dimension breakdowns, all
+ * driven by the shared filter bar. */
 export default function AnalyticsPage() {
   const { t } = useTranslation();
   const filter = useAnalyticsFilterStore((state) => state.filter);

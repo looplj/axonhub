@@ -10,6 +10,8 @@ interface DashboardTimeState extends TimeRangeValue {
   reset: () => void;
 }
 
+/** Globally shared time range; dashboard and analytics read the same store so their
+ * filters stay in sync. */
 export const useDashboardTimeStore = create<DashboardTimeState>((set) => ({
   startTime: null,
   endTime: null,

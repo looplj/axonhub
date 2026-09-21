@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useGeneralSettings } from '@/features/system/data/system';
 import type { AnalyticsOverview } from '@/features/analytics/data/analytics';
 
+/** Thousands-separated integer; KPI totals must not be abbreviated. */
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
@@ -16,6 +17,7 @@ interface KpiRowProps {
   isLoading: boolean;
 }
 
+/** KPI card row: requests, tokens, cost and success rate for the selected range. */
 export function KpiRow({ overview, isLoading }: KpiRowProps) {
   const { t, i18n } = useTranslation();
   const { data: generalSettings } = useGeneralSettings();

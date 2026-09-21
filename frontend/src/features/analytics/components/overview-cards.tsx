@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { AnalyticsOverview } from '../data/analytics';
 
+/** Thousands-separated integer; overview totals must not be abbreviated. */
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
@@ -15,6 +16,7 @@ interface OverviewCardsProps {
   isLoading: boolean;
 }
 
+/** Overview stat cards: requests, tokens, cost and success rate. */
 export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
   const { t, i18n } = useTranslation();
   const { data: generalSettings } = useGeneralSettings();

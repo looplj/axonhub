@@ -110,7 +110,8 @@ func (r *queryResolver) queryExecutionSuccessCounts(ctx context.Context, filter 
 			r.buildAnalyticsExecutionWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
 
 			s.Select(
-				// 空表时 SUM 返回 NULL 而非 0，与本文件其他聚合查询保持一致显式归零。
+				// SUM over an empty table returns NULL rather than 0, so zero it
+				// explicitly to match the other aggregates in this file.
 				sql.As("COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0)", "success_count"),
 				sql.As("COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0)", "failed_count"),
 			)

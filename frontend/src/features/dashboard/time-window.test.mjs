@@ -20,7 +20,8 @@ function load(relativePath) {
 
 const { inclusiveCalendarDays } = await load('features/dashboard/utils/time-window.ts');
 
-// 结束日期缺省时取的是"当前时刻"，固定到下午以暴露未归一时间戳的 off-by-one。
+// A missing end date resolves to "now", so freeze the clock in the afternoon to
+// expose the off-by-one that unnormalized timestamps would introduce.
 const NOW = new Date(2026, 8, 21, 15, 0, 0);
 const RealDate = globalThis.Date;
 
