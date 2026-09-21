@@ -102,7 +102,13 @@ function DateRangePicker({ startDate, endDate, onStartChange, onEndChange }: Dat
           </Button>
         </PopoverTrigger>
         <PopoverContent className='w-auto p-0' align='start'>
-          <Calendar mode='single' selected={startDate ? parseDate(startDate) : undefined} onSelect={handleStartDateSelect} initialFocus />
+          <Calendar
+            mode='single'
+            selected={startDate ? parseDate(startDate) : undefined}
+            onSelect={handleStartDateSelect}
+            disabled={{ after: new Date() }}
+            initialFocus
+          />
         </PopoverContent>
       </Popover>
 
@@ -163,6 +169,9 @@ export function TimeRangeFilter({ value, onChange, earliestDate }: TimeRangeFilt
             variant={activeKey === preset.key ? 'default' : 'outline'}
             size='sm'
             className='h-8 text-xs'
+            // earliestDate 未就绪时 allTime 只能写入 startTime: null，
+            // 后端会退回自己的 30 天默认值，与预设语义不符。
+            disabled={preset.key === 'allTime' && !earliestDate}
             onClick={() => onChange(preset.range)}
           >
             {t(`timeRange.${preset.key}`)}

@@ -6,23 +6,17 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber } from '@/utils/format-number';
 import { useChannelSuccessRates, type ChannelSuccessRate } from '../data/dashboard';
-import { coarseWindowLabelKey, type CoarseTimeWindow } from '../utils/time-window';
+import { coarseWindowLabelKey, inclusiveCalendarDays, type CoarseTimeWindow } from '../utils/time-window';
 
 const UNHEALTHY_RATE = 90;
 const CHANNEL_LIMIT = 12;
-
-function parseDate(dateStr: string): Date {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
 
 // channelSuccessRates only understands coarse calendar windows, so the global
 // date range is mapped onto the closest supported window.
 function toCoarseTimeWindow(startTime: string | null, endTime: string | null): CoarseTimeWindow {
   if (!startTime) return 'allTime';
 
-  const end = endTime ? parseDate(endTime) : new Date();
-  const days = Math.round((end.getTime() - parseDate(startTime).getTime()) / 86_400_000) + 1;
+  const days = inclusiveCalendarDays(startTime, endTime);
 
   if (days <= 1) return 'day';
   if (days <= 7) return 'week';
