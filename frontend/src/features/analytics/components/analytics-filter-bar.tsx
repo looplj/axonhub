@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { IconX, IconFilter } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useAnalyticsFilterStore } from '@/stores/analyticsStore';
+import { useDashboardTimeStore } from '@/stores/dashboardStore';
 import { formatUserName } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
@@ -20,11 +21,12 @@ interface AnalyticsFilterBarProps {
 /** Analytics filter bar: the shared time range filter plus faceted dimension selectors. */
 export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
   const { t } = useTranslation();
-  const filter = useAnalyticsFilterStore((state) => state.filter);
+  const { startTime, endTime, setRange } = useDashboardTimeStore();
+  const dimensions = useAnalyticsFilterStore((state) => state.dimensions);
+  const { setProjectIDs, setChannelIDs, setModelIDs, setAPIKeyIDs, setUserIDs, resetDimensionFilters } =
+    useAnalyticsFilterStore();
   const [apiKeySearch, setApiKeySearch] = useState('');
   const debouncedApiKeySearch = useDebounce(apiKeySearch, 300);
-  const { setStartTime, setEndTime, setProjectIDs, setChannelIDs, setModelIDs, setAPIKeyIDs, setUserIDs, resetDimensionFilters } =
-    useAnalyticsFilterStore();
   const { userPermissions } = usePermissions();
   const canViewUsers = userPermissions.canRead;
 
@@ -37,8 +39,8 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
     hasNextPage: hasNextApiKeyPage,
     isFetchingNextPage: isFetchingNextApiKeyPage,
   } = useApiKeyOptions({ search: debouncedApiKeySearch, includeArchived: true });
-  const { data: selectedApiKeysData } = useApiKeyOptionsByIDs(filter.apiKeyIDs, {
-    enabled: !!filter.apiKeyIDs?.length,
+  const { data: selectedApiKeysData } = useApiKeyOptionsByIDs(dimensions.apiKeyIDs, {
+    enabled: !!dimensions.apiKeyIDs?.length,
   });
   const { data: usersData, isLoading: isLoadingUsers } = useUsers({ first: 100 }, { disableAutoFetch: !canViewUsers });
   const { data: projectsData, isLoading: isLoadingProjects } = useProjects({ first: 100 });
@@ -96,18 +98,11 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
   );
 
   const hasDimensionFilters =
-    filter.projectIDs || filter.channelIDs || filter.modelIDs || filter.apiKeyIDs || filter.userIDs;
+    dimensions.projectIDs || dimensions.channelIDs || dimensions.modelIDs || dimensions.apiKeyIDs || dimensions.userIDs;
 
   return (
     <div className='bg-card space-y-3 rounded-lg border p-4'>
-      <TimeRangeFilter
-        value={{ startTime: filter.startTime ?? null, endTime: filter.endTime ?? null }}
-        onChange={({ startTime, endTime }) => {
-          setStartTime(startTime);
-          setEndTime(endTime);
-        }}
-        earliestDate={earliestDate}
-      />
+      <TimeRangeFilter value={{ startTime, endTime }} onChange={setRange} earliestDate={earliestDate} />
 
       <div className='flex flex-wrap items-center gap-2'>
         <div className='flex items-center gap-1.5 text-sm font-medium'>
@@ -118,7 +113,7 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
         <AnalyticsFacetedFilter
           title={t('analytics.filter.project')}
           options={projectOptions}
-          selectedValues={filter.projectIDs || []}
+          selectedValues={dimensions.projectIDs || []}
           onSelectedValuesChange={setProjectIDs}
           isLoading={isLoadingProjects}
         />
@@ -126,7 +121,7 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
         <AnalyticsFacetedFilter
           title={t('analytics.filter.channel')}
           options={channelOptions}
-          selectedValues={filter.channelIDs || []}
+          selectedValues={dimensions.channelIDs || []}
           onSelectedValuesChange={setChannelIDs}
           isLoading={isLoadingChannels}
         />
@@ -134,7 +129,7 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
         <AnalyticsFacetedFilter
           title={t('analytics.filter.model')}
           options={modelOptions}
-          selectedValues={filter.modelIDs || []}
+          selectedValues={dimensions.modelIDs || []}
           onSelectedValuesChange={setModelIDs}
           isLoading={isLoadingChannels}
         />
@@ -142,7 +137,7 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
         <AnalyticsFacetedFilter
           title={t('analytics.filter.apiKey')}
           options={apiKeyOptions}
-          selectedValues={filter.apiKeyIDs || []}
+          selectedValues={dimensions.apiKeyIDs || []}
           onSelectedValuesChange={setAPIKeyIDs}
           isLoading={isFetchingApiKeys && !apiKeysData}
           searchValue={apiKeySearch}
@@ -156,7 +151,7 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
           <AnalyticsFacetedFilter
             title={t('analytics.filter.user')}
             options={userOptions}
-            selectedValues={filter.userIDs || []}
+            selectedValues={dimensions.userIDs || []}
             onSelectedValuesChange={setUserIDs}
             isLoading={isLoadingUsers}
           />

@@ -1,9 +1,11 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { Globe } from 'lucide-react';
 import { useAnalyticsFilterStore } from '@/stores/analyticsStore';
-import { useAnalyticsMetadata, useAnalyticsOverview, useAnalyticsDailyStats, useAnalyticsDimensionStats } from './data/analytics';
+import { useDashboardTimeStore } from '@/stores/dashboardStore';
+import { useAnalyticsMetadata, useAnalyticsOverview, useAnalyticsDailyStats, useAnalyticsDimensionStats, type AnalyticsFilter } from './data/analytics';
 import { AnalyticsFilterBar } from './components/analytics-filter-bar';
 import { OverviewCards } from './components/overview-cards';
 import { CombinedTrendChart } from './components/combined-trend-chart';
@@ -15,10 +17,16 @@ import { useGeneralSettings } from '@/features/system/data/system';
  * driven by the shared filter bar. */
 export default function AnalyticsPage() {
   const { t } = useTranslation();
-  const filter = useAnalyticsFilterStore((state) => state.filter);
+  const dimensions = useAnalyticsFilterStore((state) => state.dimensions);
+  const { startTime, endTime } = useDashboardTimeStore();
   const { data: generalSettings } = useGeneralSettings();
 
   const currencyCode = generalSettings?.currencyCode || 'USD';
+
+  const filter = useMemo<AnalyticsFilter>(
+    () => ({ ...dimensions, startTime, endTime }),
+    [dimensions, startTime, endTime]
+  );
 
   const { data: metadata } = useAnalyticsMetadata();
   const { data: overview, isLoading: isOverviewLoading } = useAnalyticsOverview(filter);
