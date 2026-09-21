@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"net/http"
 	"regexp"
 	"sort"
 	"strings"
@@ -176,6 +177,9 @@ func (s *markupSanitizerStream) finish() bool {
 		// instead of letting the client consume a silently corrupted turn.
 		s.pending = nil
 		s.err = &llm.ResponseError{
+			// 502 semantics: retry.go classifies by StatusCode, so a zero value
+			// would make the abort invisible to retryable-server-error handling.
+			StatusCode: http.StatusInternalServerError,
 			Detail: llm.ErrorDetail{
 				Type:    "server_error",
 				Code:    "upstream_tool_call_markup_leak",
@@ -269,6 +273,26 @@ func (s *markupSanitizerStream) cleanChunk(resp *llm.Response) bool {
 			text, stripped := s.scrubChoiceText(choice.Index, *part.Text, flush)
 			part.Text = &text
 			strippedAny = strippedAny || stripped
+		}
+
+		// A finishing choice may carry no text at all (empty final delta), so the
+		// scrubs above never run for it. Drain its held split-tag tail into this
+		// chunk so the text is delivered with the chunk carrying finish_reason;
+		// otherwise it would surface as an extra chunk after the terminal one.
+		if flush && s.carry[choice.Index] != "" {
+			emit, stripped := s.scrubChoiceText(choice.Index, "", true)
+			strippedAny = strippedAny || stripped
+
+			if emit != "" {
+				if msg.Content.Content == nil && len(msg.Content.MultipleContent) == 0 {
+					msg.Content.Content = &emit
+				} else {
+					msg.Content.MultipleContent = append(msg.Content.MultipleContent, llm.MessageContentPart{
+						Type: "text",
+						Text: &emit,
+					})
+				}
+			}
 		}
 	}
 

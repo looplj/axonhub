@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/looplj/axonhub/llm"
@@ -114,6 +115,48 @@ func TestMarkupSanitizer_LeakWithoutToolCallsAborts(t *testing.T) {
 	}
 	if respErr.Detail.Code != "upstream_tool_call_markup_leak" {
 		t.Fatalf("unexpected error code: %q", respErr.Detail.Code)
+	}
+	if respErr.StatusCode != http.StatusInternalServerError {
+		t.Fatalf("abort error must carry retryable 5xx status, got %d", respErr.StatusCode)
+	}
+}
+
+// A finishing chunk with an empty delta must still drain the held split-tag
+// tail, otherwise the text would be emitted as an extra chunk after the one
+// carrying finish_reason.
+func TestMarkupSanitizer_FinishingChunkDrainsCarry(t *testing.T) {
+	stop := "stop"
+	inner := &stubMarkupStream{items: []*llm.Response{
+		textChunk(t, "hello<"),
+		{Choices: []llm.Choice{{
+			Index:        0,
+			Delta:        &llm.Message{},
+			FinishReason: &stop,
+		}}},
+	}}
+	wrapped, _ := withUpstreamMarkupSanitizer().(interface {
+		OnOutboundLlmStream(context.Context, streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
+	}).OnOutboundLlmStream(context.Background(), inner)
+
+	var chunks []*llm.Response
+	for wrapped.Next() {
+		if resp := wrapped.Current(); resp != nil {
+			chunks = append(chunks, resp)
+		}
+	}
+	if err := wrapped.Err(); err != nil {
+		t.Fatalf("unexpected stream error: %v", err)
+	}
+	if len(chunks) != 2 {
+		t.Fatalf("expected 2 chunks (text + finish), got %d", len(chunks))
+	}
+
+	fin := chunks[1].Choices[0]
+	if fin.FinishReason == nil {
+		t.Fatalf("second chunk lost finish_reason")
+	}
+	if fin.Delta == nil || fin.Delta.Content.Content == nil || *fin.Delta.Content.Content != "<" {
+		t.Fatalf("held tail not drained onto finishing chunk: %+v", fin.Delta)
 	}
 }
 
