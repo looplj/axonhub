@@ -10,7 +10,7 @@ interface AnalyticsFilterState {
   setModelIDs: (ids: string[]) => void;
   setAPIKeyIDs: (ids: string[]) => void;
   setUserIDs: (ids: string[]) => void;
-  resetFilter: () => void;
+  resetDimensionFilters: () => void;
 }
 
 const defaultFilter: AnalyticsFilter = {
@@ -61,6 +61,15 @@ export const useAnalyticsFilterStore = create<AnalyticsFilterState>((set) => ({
       filter: { ...state.filter, userIDs: ids.length > 0 ? ids : undefined },
     })),
 
-  resetFilter: () =>
-    set({ filter: { ...defaultFilter } }),
+  resetDimensionFilters: () =>
+    set((state) => ({
+      filter: {
+        ...state.filter,
+        projectIDs: undefined,
+        channelIDs: undefined,
+        modelIDs: undefined,
+        apiKeyIDs: undefined,
+        userIDs: undefined,
+      },
+    })),
 }));

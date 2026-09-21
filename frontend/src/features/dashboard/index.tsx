@@ -19,13 +19,14 @@ import { ChannelHealthCard } from './components/channel-health-card';
 import { FastestChannelsCard } from './components/fastest-channels-card';
 import { FastestModelsCard } from './components/fastest-models-card';
 import { KpiRow } from './components/kpi-row';
-import type { CoarseTimeWindow } from './utils/time-window';
+import { inclusiveCalendarDays, type CoarseTimeWindow } from './utils/time-window';
 
+// channelSuccessRates 只支持粗粒度日历窗口，超出 31 天的范围没有对应的
+// allTime 支持，因此统一落到 month。
 function toCoarseWindow(startTime: string | null, endTime: string | null): CoarseTimeWindow {
   if (!startTime) return 'month';
 
-  const end = endTime ? new Date(endTime) : new Date();
-  const days = Math.round((end.getTime() - new Date(startTime).getTime()) / 86_400_000) + 1;
+  const days = inclusiveCalendarDays(startTime, endTime);
 
   if (days <= 1) return 'day';
   if (days <= 7) return 'week';

@@ -22,7 +22,7 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
   const filter = useAnalyticsFilterStore((state) => state.filter);
   const [apiKeySearch, setApiKeySearch] = useState('');
   const debouncedApiKeySearch = useDebounce(apiKeySearch, 300);
-  const { setStartTime, setEndTime, setProjectIDs, setChannelIDs, setModelIDs, setAPIKeyIDs, setUserIDs, resetFilter } =
+  const { setStartTime, setEndTime, setProjectIDs, setChannelIDs, setModelIDs, setAPIKeyIDs, setUserIDs, resetDimensionFilters } =
     useAnalyticsFilterStore();
   const { userPermissions } = usePermissions();
   const canViewUsers = userPermissions.canRead;
@@ -162,7 +162,7 @@ export function AnalyticsFilterBar({ earliestDate }: AnalyticsFilterBarProps) {
         )}
 
         {hasDimensionFilters && (
-          <Button variant='ghost' size='sm' className='text-muted-foreground h-8 text-xs' onClick={resetFilter}>
+          <Button variant='ghost' size='sm' className='text-muted-foreground h-8 text-xs' onClick={resetDimensionFilters}>
             <IconX className='mr-1 h-3 w-3' />
             {t('analytics.filter.reset')}
           </Button>
