@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -184,14 +185,14 @@ func (svc *ChannelService) detectChannelEndpoint(
 	result.StatusCode = httpErr.StatusCode
 
 	switch {
-	case httpErr.StatusCode == 404 || httpErr.StatusCode == 405:
+	case httpErr.StatusCode == http.StatusNotFound || httpErr.StatusCode == http.StatusMethodNotAllowed:
 		result.Reason = endpointDetectReasonNotFound
-	case httpErr.StatusCode == 401 || httpErr.StatusCode == 403:
+	case httpErr.StatusCode == http.StatusUnauthorized || httpErr.StatusCode == http.StatusForbidden:
 		result.Reason = endpointDetectReasonAuthError
-	case httpErr.StatusCode == 429:
+	case httpErr.StatusCode == http.StatusTooManyRequests:
 		result.Supported = true
 		result.Reason = endpointDetectReasonRateLimited
-	case httpErr.StatusCode >= 500:
+	case httpErr.StatusCode >= http.StatusInternalServerError:
 		result.Reason = endpointDetectReasonServerError
 	default:
 		// Any other client error (400/422/...) means the route exists and the
