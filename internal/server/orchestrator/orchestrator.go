@@ -286,6 +286,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 		withModelCircuitBreaker(outbound, processor.modelCircuitBreaker),
 
+		// Strip leaked upstream tool-call markup (e.g. DSML tags) from the
+		// content stream; aborts with a retryable in-stream error when the leak
+		// swallowed the turn's tool calls.
+		withUpstreamMarkupSanitizer(),
+
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
 		persistRequestExecution(outbound),
