@@ -39,6 +39,36 @@ func stickyTestCandidate(channelID, priority int) *ChannelModelsCandidate {
 	}
 }
 
+func TestLoadBalancedSelector_TracksOnlyFinalTopCandidateAcrossPriorityGroups(t *testing.T) {
+	tracker := &mockSelectionTracker{}
+	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 2}}
+	lb := NewLoadBalancer(policy, tracker)
+	selector := &LoadBalancedSelector{}
+	candidates := []*ChannelModelsCandidate{
+		stickyTestCandidate(1, 0),
+		stickyTestCandidate(2, 1),
+		stickyTestCandidate(3, 1),
+	}
+
+	result := selector.sortCandidates(context.Background(), lb, candidates, &llm.Request{Model: "gpt-4"}, 3, true)
+	require.Len(t, result, 3)
+	require.Equal(t, 1, tracker.selections[1])
+	require.Zero(t, tracker.selections[2])
+	require.Zero(t, tracker.selections[3])
+}
+
+func TestLoadBalancedSelector_TracksSingleCandidate(t *testing.T) {
+	tracker := &mockSelectionTracker{}
+	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: false}}
+	lb := NewLoadBalancer(policy, tracker)
+	selector := &LoadBalancedSelector{}
+	candidate := stickyTestCandidate(1, 0)
+
+	result := selector.sortCandidates(context.Background(), lb, []*ChannelModelsCandidate{candidate}, &llm.Request{Model: "gpt-4"}, 1, true)
+	require.Len(t, result, 1)
+	require.Equal(t, 1, tracker.selections[1])
+}
+
 func TestLoadBalancedSelector_TraceStickySelection(t *testing.T) {
 	trace := &ent.Trace{ID: 10, ThreadID: 20}
 	thread := &ent.Thread{ID: 20}

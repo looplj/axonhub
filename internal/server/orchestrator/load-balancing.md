@@ -80,19 +80,19 @@ NewErrorAwareStrategy(channelService)
 **Cons**:
 - Static; does not react to live performance or load unless weights are manually updated.
 
-### 3. WeightRoundRobinStrategy (Priority: 10-200 points)
+### 3. WeightRoundRobinStrategy (Priority: 0-150 points)
 
 **Purpose**: Blends historic request distribution with admin-defined weights.
 
 **Algorithm**:
 1. Fetches `AggregatedMetrics` for each channel.
-2. Uses exponential decay on request counts to compute a round-robin component (0-150). Idle channels decay quickly back toward the maximum.
-3. Normalizes `OrderingWeight` (0-100) to a weight component (0-50).
-4. Sums both components, clamping to a minimum of 10 points to keep every healthy channel in contention.
+2. Normalizes the sliding-window request count by `OrderingWeight` (non-positive values use the default effective weight of 100 to preserve the scoring scale relative to health and latency signals).
+3. Computes `150 / (1 + normalizedCount / 150)`, which stays strictly decreasing without a count cap or score floor.
+4. Lets the shared sliding window expire old load; the strategy does not apply a second inactivity decay.
 
 **Pros**:
 - Prevents hot channels from monopolizing requests while still honoring business priorities.
-- Built-in inactivity decay means new channels warm up quickly even if they start empty.
+- New or underused channels receive a higher score immediately.
 
 **Cons**:
 - Requires metrics storage similar to ErrorAwareStrategy.

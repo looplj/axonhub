@@ -63,9 +63,7 @@ func TestRoundRobinStrategy_Score_LowRequests(t *testing.T) {
 	}
 
 	score := strategy.Score(ctx, channel)
-	// Should be high but less than maxScore
-	assert.Greater(t, score, 100.0, "Low request channels should get high scores")
-	assert.Less(t, score, 150.0, "Score should be less than maxScore")
+	assert.InDelta(t, 140.625, score, 0.0001)
 }
 
 func TestRoundRobinStrategy_Score_ModerateRequests(t *testing.T) {
@@ -86,10 +84,7 @@ func TestRoundRobinStrategy_Score_ModerateRequests(t *testing.T) {
 	}
 
 	score := strategy.Score(ctx, channel)
-	// With exponential decay (scaling factor 150), 100 requests scores ~77.0
-	// This provides good differentiation while keeping 500 requests from hitting minimum too early
-	assert.Greater(t, score, 70.0, "Moderate usage channels should get moderate-high scores")
-	assert.Less(t, score, 80.0, "Score should reflect moderate usage")
+	assert.InDelta(t, 90.0, score, 0.0001)
 }
 
 func TestRoundRobinStrategy_Score_HighRequests(t *testing.T) {
@@ -110,16 +105,13 @@ func TestRoundRobinStrategy_Score_HighRequests(t *testing.T) {
 	}
 
 	score := strategy.Score(ctx, channel)
-	// With 500 requests, calculated score is ~5.35 which clamps to minScore (10.0)
-	// This is expected behavior - heavily used channels get minimum priority
-	assert.Equal(t, 10.0, score, "High usage channels should get minimum score when they exceed the decay curve")
+	assert.InDelta(t, 34.615385, score, 0.0001)
 }
 
-func TestRoundRobinStrategy_Score_InactivityDecay(t *testing.T) {
+func TestRoundRobinStrategy_Score_UsesWindowCountRegardlessOfLastActivity(t *testing.T) {
 	ctx := context.Background()
 
 	activeTime := time.Now()
-	// With 5 minute decay, use 10 minutes idle to see significant decay effect
 	idleTime := time.Now().Add(-10 * time.Minute)
 
 	activeMetrics := &biz.AggregatedMetrics{}
@@ -148,19 +140,15 @@ func TestRoundRobinStrategy_Score_InactivityDecay(t *testing.T) {
 	activeScore := strategy.Score(ctx, activeChannel)
 	idleScore := strategy.Score(ctx, idleChannel)
 
-	// With 500 requests and no decay, score is ~5.35 (clamped to 10)
-	// With 10 min idle (decay factor ~0.135), effective count ~67.5, score ~96
-	assert.Less(t, activeScore, 20.0, "Recently active channel should stay near the lower score bound")
-	assert.Greater(t, idleScore, 80.0, "Idle channel should regain score despite historical load")
-	assert.Greater(t, idleScore, activeScore, "Idle channel should outrank recently active channel")
+	assert.Equal(t, activeScore, idleScore, "the sliding window owns expiration; activity timestamps must not flatten or revive counts")
 }
 
-func TestRoundRobinStrategy_Score_CappedRequests(t *testing.T) {
+func TestRoundRobinStrategy_Score_HighCountsRemainDistinct(t *testing.T) {
 	ctx := context.Background()
 
-	// Channel with requests exceeding the cap (2000 requests, cap is 1000)
+	// Counts exceed the former cap and produce a score below the former floor.
 	metrics := &biz.AggregatedMetrics{}
-	metrics.RequestCount = 2000
+	metrics.RequestCount = 3000
 	mockProvider := &mockMetricsProvider{
 		metrics: map[int]*biz.AggregatedMetrics{
 			1: metrics,
@@ -173,9 +161,10 @@ func TestRoundRobinStrategy_Score_CappedRequests(t *testing.T) {
 	}
 
 	score := strategy.Score(ctx, channel)
-	// Should be at or near minimum score
-	assert.GreaterOrEqual(t, score, 10.0, "Score should not go below minScore")
-	assert.LessOrEqual(t, score, 20.0, "Very high usage should result in very low score")
+	assert.InDelta(t, 7.142857, score, 0.0001)
+
+	metrics.RequestCount = 1000
+	assert.Greater(t, strategy.Score(ctx, channel), score, "lower request counts must remain distinguishable at high volume")
 }
 
 func TestRoundRobinStrategy_Score_MetricsError(t *testing.T) {
@@ -193,8 +182,7 @@ func TestRoundRobinStrategy_Score_MetricsError(t *testing.T) {
 	}
 
 	score := strategy.Score(ctx, channel)
-	// Should return moderate score (max + min) / 2 = (150 + 10) / 2 = 80
-	assert.Equal(t, 80.0, score, "Should return moderate score when metrics unavailable")
+	assert.Equal(t, 75.0, score, "Should return moderate score when metrics unavailable")
 }
 
 func TestRoundRobinStrategy_MultipleChannels(t *testing.T) {
@@ -246,7 +234,7 @@ func TestRoundRobinStrategy_MultipleChannels(t *testing.T) {
 
 	// Verify specific values
 	assert.Equal(t, 150.0, scores[0], "New channel should get max score")
-	assert.Equal(t, 10.0, scores[3], "Very high usage channels should get minimum score")
+	assert.InDelta(t, 23.684211, scores[3], 0.0001)
 }
 
 func TestRoundRobinStrategy_ScoreWithDebug(t *testing.T) {
@@ -272,6 +260,7 @@ func TestRoundRobinStrategy_ScoreWithDebug(t *testing.T) {
 	assert.NotNil(t, strategyScore.Details)
 	assert.Contains(t, strategyScore.Details, "request_count")
 	assert.Contains(t, strategyScore.Details, "max_score")
+	assert.Equal(t, 150.0, strategyScore.Details["scaling_factor"])
 	assert.Contains(t, strategyScore.Details, "calculated_score")
 }
 
@@ -450,7 +439,7 @@ func TestWeightRoundRobinStrategy_Score_ZeroRequests(t *testing.T) {
 		name   string
 		weight int
 	}{
-		{"zero weight (treated as very low)", 0},
+		{"zero weight (defaults to 100)", 0},
 		{"low weight", 25},
 		{"medium weight", 50},
 		{"high weight", 100},
@@ -486,8 +475,8 @@ func TestWeightRoundRobinStrategy_Score_ModerateRequests(t *testing.T) {
 
 	// With weighted round-robin, higher weight channels need more requests to get the same penalty
 	// normalizedCount = requestCount / (weight / 100)
-	// score = 150 * exp(-normalizedCount / 150)
-	// When weight=0, weightFactor=1.0 (standard round-robin behavior)
+	// score = 150 / (1 + normalizedCount / 150)
+	// Non-positive weights retain the default effective weight of 100.
 	testCases := []struct {
 		name             string
 		requestCount     int64
@@ -495,14 +484,11 @@ func TestWeightRoundRobinStrategy_Score_ModerateRequests(t *testing.T) {
 		expectedMinScore float64
 		expectedMaxScore float64
 	}{
-		// weight=0 -> weightFactor=1.0, 100 requests -> normalized=100, score ~= 77.0
-		{"100 requests, no weight", 100, 0, 70.0, 85.0},
-		// weight=25, 100 requests -> normalized=400, score ~= 10.4 -> clamped to 10
-		{"100 requests, low weight", 100, 25, 10.0, 11.0},
-		// weight=50, 100 requests -> normalized=200, score ~= 39.6
-		{"100 requests, medium weight", 100, 50, 35.0, 45.0},
-		// weight=100, 100 requests -> normalized=100, score ~= 77.0
-		{"100 requests, high weight", 100, 100, 70.0, 85.0},
+		{"100 requests, no weight", 100, 0, 89.0, 91.0},
+		{"100 requests, negative weight", 100, -1, 89.0, 91.0},
+		{"100 requests, low weight", 100, 25, 40.0, 42.0},
+		{"100 requests, medium weight", 100, 50, 64.0, 65.0},
+		{"100 requests, high weight", 100, 100, 89.0, 91.0},
 	}
 
 	for _, tt := range testCases {
@@ -536,7 +522,7 @@ func TestWeightRoundRobinStrategy_Score_HighRequests(t *testing.T) {
 
 	// Channel with high request count (500 requests), medium weight (50)
 	// normalizedCount = 500 / 0.5 = 1000
-	// score = 150 * exp(-1000/150) = ~0.18 -> clamped to 10
+	// score = 150 / (1 + 1000/150) = ~19.57
 	metrics := &biz.AggregatedMetrics{}
 	metrics.RequestCount = 500
 	mockProvider := &mockMetricsProvider{
@@ -556,8 +542,7 @@ func TestWeightRoundRobinStrategy_Score_HighRequests(t *testing.T) {
 
 	score := strategy.Score(ctx, channel)
 	// With weight=50 and 500 requests, normalized_count=1000
-	// score should be at minimum (~10, with small offset from minScore clamping)
-	assert.InDelta(t, 10.0, score, 0.1, "High usage with medium weight should hit minimum score")
+	assert.InDelta(t, 19.565, score, 0.01, "High usage must retain a distinct score")
 }
 
 func TestWeightRoundRobinStrategy_Score_MetricsError(t *testing.T) {
@@ -579,8 +564,7 @@ func TestWeightRoundRobinStrategy_Score_MetricsError(t *testing.T) {
 	}
 
 	score := strategy.Score(ctx, channel)
-	// Should return moderate score (maxScore+minScore)/2 = (150+10)/2 = 80
-	assert.Equal(t, 80.0, score, "Should return moderate score when metrics unavailable")
+	assert.Equal(t, 75.0, score, "Should return moderate score when metrics unavailable")
 }
 
 func TestWeightRoundRobinStrategy_MultipleChannels(t *testing.T) {
@@ -634,7 +618,7 @@ func TestWeightRoundRobinStrategy_MultipleChannels(t *testing.T) {
 	assert.Equal(t, 150.0, scores[0], "New channel should get max score")
 
 	// Channels 2, 3, 4 all have normalized_count=100, so they should have approximately equal scores
-	// score = 150 * exp(-100/150) = ~77.0
+	// score = 150 / (1 + 100/150) = 90
 	assert.InDelta(t, scores[1], scores[2], 1.0, "Channels with proportional requests should have similar scores")
 	assert.InDelta(t, scores[2], scores[3], 1.0, "Channels with proportional requests should have similar scores")
 }
@@ -650,6 +634,8 @@ func TestWeightRoundRobinStrategy_ScoreConsistency(t *testing.T) {
 		{"zero requests, zero weight", 0, 0},
 		{"zero requests, low weight", 0, 25},
 		{"zero requests, high weight", 0, 100},
+		{"low requests, zero weight", 10, 0},
+		{"low requests, negative weight", 10, -1},
 		{"low requests, low weight", 10, 25},
 		{"moderate requests, medium weight", 100, 50},
 		{"high requests, high weight", 500, 100},
@@ -685,11 +671,10 @@ func TestWeightRoundRobinStrategy_ScoreConsistency(t *testing.T) {
 	}
 }
 
-func TestWeightRoundRobinStrategy_Score_InactivityDecay(t *testing.T) {
+func TestWeightRoundRobinStrategy_Score_UsesWindowCountRegardlessOfLastActivity(t *testing.T) {
 	ctx := context.Background()
 
 	activeTime := time.Now()
-	// With 5 minute decay, use 10 minutes idle to see significant decay effect
 	idleTime := time.Now().Add(-10 * time.Minute)
 
 	activeMetrics := &biz.AggregatedMetrics{}
@@ -727,10 +712,33 @@ func TestWeightRoundRobinStrategy_Score_InactivityDecay(t *testing.T) {
 	activeScore := strategy.Score(ctx, activeChannel)
 	idleScore := strategy.Score(ctx, idleChannel)
 
-	// With weight=100, normalized_count = effective_count
-	// Active: 400 requests, no decay -> normalized=400, score ~= 10.2
-	// Idle: 400 requests, 10min decay (factor ~0.135) -> effective ~54, normalized=54, score ~= 105
-	assert.Less(t, activeScore, 20.0, "Recently active channel should have low score")
-	assert.Greater(t, idleScore, 80.0, "Idle channel should recover score with decay")
-	assert.Greater(t, idleScore, activeScore, "Idle channel should outrank recently active channel")
+	assert.Equal(t, activeScore, idleScore, "the sliding window owns expiration; activity timestamps must not discount counts twice")
+}
+
+func TestWeightRoundRobinStrategy_Score_HighCountsRemainDistinct(t *testing.T) {
+	ctx := context.Background()
+	metrics := &biz.AggregatedMetrics{}
+	metrics.RequestCount = 2000
+	mockProvider := &mockMetricsProvider{metrics: map[int]*biz.AggregatedMetrics{1: metrics}}
+	strategy := NewWeightRoundRobinStrategy(mockProvider)
+	channel := &biz.Channel{Channel: &ent.Channel{ID: 1, OrderingWeight: 50}}
+
+	highCountScore := strategy.Score(ctx, channel)
+	metrics.RequestCount = 1000
+	assert.Greater(t, strategy.Score(ctx, channel), highCountScore)
+}
+
+func TestWeightRoundRobinStrategy_Score_NonPositiveWeightsMatchDefaultWeight(t *testing.T) {
+	ctx := context.Background()
+	metrics := &biz.AggregatedMetrics{}
+	metrics.RequestCount = 100
+	mockProvider := &mockMetricsProvider{metrics: map[int]*biz.AggregatedMetrics{1: metrics, 2: metrics}}
+	strategy := NewWeightRoundRobinStrategy(mockProvider)
+
+	defaultWeight := &biz.Channel{Channel: &ent.Channel{ID: 2, OrderingWeight: 100}}
+	defaultScore := strategy.Score(ctx, defaultWeight)
+	for _, weight := range []int{0, -1, -100} {
+		channel := &biz.Channel{Channel: &ent.Channel{ID: 1, OrderingWeight: weight}}
+		assert.Equal(t, defaultScore, strategy.Score(ctx, channel), "weight %d should retain the default scoring scale", weight)
+	}
 }

@@ -919,6 +919,9 @@ func (s *LoadBalancedSelector) sortCandidates(
 	}
 
 	if len(candidates) <= 1 {
+		if trackSelection && loadBalancer != nil && len(candidates) == 1 {
+			loadBalancer.TrackSelection(candidates[0])
+		}
 		return candidates
 	}
 
@@ -946,8 +949,6 @@ func (s *LoadBalancedSelector) sortCandidates(
 		var sortedCandidates []*ChannelModelsCandidate
 		if loadBalancer == nil {
 			sortedCandidates = group
-		} else if trackSelection {
-			sortedCandidates = loadBalancer.Sort(ctx, group, req.Model, useStream)
 		} else {
 			sortedCandidates = loadBalancer.SortWithoutTracking(ctx, group, req.Model, useStream)
 		}
@@ -964,6 +965,13 @@ func (s *LoadBalancedSelector) sortCandidates(
 			result = append(result, sortedCandidates[:remaining]...)
 			break
 		}
+	}
+
+	// Priority groups are sorted independently, but only the first candidate in
+	// the final result is selected for the initial attempt. Track it once after
+	// assembling the result so fallback groups are not counted prematurely.
+	if trackSelection && loadBalancer != nil && len(result) > 0 {
+		loadBalancer.TrackSelection(result[0])
 	}
 
 	if log.DebugEnabled(ctx) {

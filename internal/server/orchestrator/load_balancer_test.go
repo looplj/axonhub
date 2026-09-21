@@ -116,6 +116,108 @@ func TestLoadBalancer_Sort_WithoutWeightTieBreaker_PreservesInputOrderWhenScores
 	assert.Equal(t, 3, result[2].Channel.ID)
 }
 
+func TestLoadBalancer_Sort_RoundRobinHighCountsStayBalanced(t *testing.T) {
+	ctx := context.Background()
+	channel1Metrics := &biz.AggregatedMetrics{}
+	channel1Metrics.RequestCount = 3000
+	channel2Metrics := &biz.AggregatedMetrics{}
+	channel2Metrics.RequestCount = 3000
+	metricsProvider := &mockMetricsProvider{
+		metrics: map[int]*biz.AggregatedMetrics{
+			1: channel1Metrics,
+			2: channel2Metrics,
+		},
+	}
+	lb := NewLoadBalancer(
+		&mockSystemService{retryPolicy: &biz.RetryPolicy{Enabled: false}},
+		metricsProvider,
+		NewRoundRobinStrategy(metricsProvider),
+		NewRateLimitAwareStrategy(NewChannelRequestTracker(), NewChannelLimiterManager()),
+	).WithoutWeightTieBreaker()
+	candidates := []*ChannelModelsCandidate{
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 1, Name: "ch1"}}},
+		{Channel: &biz.Channel{Channel: &ent.Channel{ID: 2, Name: "ch2"}}},
+	}
+
+	selected := map[int]int{}
+	for range 20 {
+		result := lb.Sort(ctx, candidates, "", false)
+		require.Len(t, result, 1)
+		selected[result[0].Channel.ID]++
+	}
+
+	assert.Equal(t, 10, selected[1])
+	assert.Equal(t, 10, selected[2])
+}
+
+func TestLoadBalancer_Sort_RoundRobinWithRateLimit(t *testing.T) {
+	tests := []struct {
+		name          string
+		requestCounts [2]int64
+		rpmLimits     [2]int64
+		cooldown      bool
+		wantChannelID int
+	}{
+		{
+			name:          "small headroom difference preserves round robin preference",
+			requestCounts: [2]int64{20, 21},
+			rpmLimits:     [2]int64{100, 200},
+			wantChannelID: 1,
+		},
+		{
+			name:          "unconfigured limits preserve round robin preference",
+			requestCounts: [2]int64{20, 21},
+			wantChannelID: 1,
+		},
+		{
+			name:          "cooldown overrides lower request count",
+			requestCounts: [2]int64{0, 3000},
+			cooldown:      true,
+			wantChannelID: 2,
+		},
+		{
+			name:          "exhausted rpm overrides lower request count",
+			requestCounts: [2]int64{1, 3000},
+			rpmLimits:     [2]int64{1, 200},
+			wantChannelID: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			metricsProvider := &mockMetricsProvider{metrics: make(map[int]*biz.AggregatedMetrics)}
+			tracker := NewChannelRequestTracker()
+			candidates := make([]*ChannelModelsCandidate, 0, 2)
+			for i, count := range tt.requestCounts {
+				id := i + 1
+				metrics := &biz.AggregatedMetrics{}
+				metrics.RequestCount = count
+				metricsProvider.metrics[id] = metrics
+				channel := &biz.Channel{Channel: &ent.Channel{ID: id}}
+				if rpm := tt.rpmLimits[i]; rpm > 0 {
+					channel.Settings = &objects.ChannelSettings{RateLimit: &objects.ChannelRateLimit{RPM: &rpm}}
+					require.True(t, tracker.TryAcquireRequest(id, rpm))
+				}
+				candidates = append(candidates, &ChannelModelsCandidate{Channel: channel})
+			}
+			if tt.cooldown {
+				tracker.SetCooldown(1, time.Now().Add(time.Minute))
+			}
+			lb := newTestLoadBalancer(t, &biz.RetryPolicy{Enabled: false},
+				NewRoundRobinStrategy(metricsProvider),
+				NewRateLimitAwareStrategy(tracker, NewChannelLimiterManager()),
+			).WithoutWeightTieBreaker().WithRoundRobinHealthFilter(NewRoundRobinHealthStrategy(metricsProvider))
+
+			// With one RPM slot used each, limits of 100 and 200 yield scores
+			// of 99 and 99.5. This small difference must not reverse 20 vs 21
+			// requests, while cooldown and exhausted limits must still win.
+			result := lb.Sort(context.Background(), candidates, "", false)
+			require.Len(t, result, 1)
+			require.Equal(t, tt.wantChannelID, result[0].Channel.ID)
+		})
+	}
+}
+
 func TestLoadBalancer_Sort_RoundRobinHealthMovesUnhealthyChannelsLast(t *testing.T) {
 	ctx := context.Background()
 	recentFailure := time.Now().Add(-time.Minute)
