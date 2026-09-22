@@ -59,6 +59,15 @@ export const channelEndpointSchema = z.object({
 });
 export type ChannelEndpoint = z.infer<typeof channelEndpointSchema>;
 
+// Channel endpoint auto-detection result
+export const detectedChannelEndpointSchema = z.object({
+  apiFormat: z.string().min(1),
+  supported: z.boolean(),
+  statusCode: z.number().int().optional().nullable(),
+  reason: z.string(),
+});
+export type DetectedChannelEndpoint = z.infer<typeof detectedChannelEndpointSchema>;
+
 // Channel Types
 export const channelTypeSchema = z.enum([
   'openai',
