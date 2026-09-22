@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
@@ -152,6 +153,22 @@ func TestChannelOverrideTemplateService_CreateTemplate(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid header override operations")
 	})
+
+	t.Run("report name conflict for duplicate template name", func(t *testing.T) {
+		name := "Duplicate Name Template"
+		input := ent.CreateChannelOverrideTemplateInput{Name: name}
+
+		_, err := service.CreateTemplate(ctx, user.ID, input)
+		require.NoError(t, err)
+
+		_, err = service.CreateTemplate(ctx, user.ID, input)
+		require.Error(t, err)
+
+		codedErr, ok := xerrors.IsCodedError(err)
+		require.True(t, ok, "expected a coded error, got %v", err)
+		require.Equal(t, xerrors.ErrCodeDuplicateName, codedErr.Code)
+		require.Equal(t, name, codedErr.Extensions["value"])
+	})
 }
 
 func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
@@ -222,6 +239,23 @@ func TestChannelOverrideTemplateService_UpdateTemplate(t *testing.T) {
 
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid body override operations")
+	})
+
+	t.Run("report name conflict when renaming onto another template", func(t *testing.T) {
+		name := "Existing Name"
+		client.ChannelOverrideTemplate.Create().
+			SetUserID(user.ID).
+			SetName(name).
+			SaveX(ctx)
+
+		input := ent.UpdateChannelOverrideTemplateInput{Name: &name}
+		_, err := service.UpdateTemplate(ctx, template.ID, input)
+
+		require.Error(t, err)
+		codedErr, ok := xerrors.IsCodedError(err)
+		require.True(t, ok, "expected a coded error, got %v", err)
+		require.Equal(t, xerrors.ErrCodeDuplicateName, codedErr.Code)
+		require.Equal(t, name, codedErr.Extensions["value"])
 	})
 }
 

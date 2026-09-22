@@ -26,6 +26,7 @@ type ChannelsDialogType =
   | 'bulkManageTags'
   | 'bulkApplyTemplate'
   | 'bulkClearTemplate'
+  | 'templates'
   | 'bulkAutoDisable'
   | 'errorResolved'
   | 'viewModels'
