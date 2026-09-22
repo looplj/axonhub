@@ -87,7 +87,11 @@ func buildChannelTestRequest(model string, useStream bool, systemPrompt string, 
 				Content: llm.MessageContent{Content: lo.ToPtr(userPrompt)},
 			},
 		},
-		MaxCompletionTokens: lo.ToPtr(int64(256)),
+		// Reasoning models can spend hundreds of tokens on reasoning before any
+		// visible output; a low cap makes providers return incomplete responses
+		// with an empty output array, which the pipeline reports as an empty
+		// response. Keep the cap bounded but generous.
+		MaxCompletionTokens: lo.ToPtr(int64(2048)),
 		Stream:              lo.ToPtr(useStream),
 	}
 

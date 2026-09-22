@@ -1064,91 +1064,119 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 		// Only identity changes and Command Code quota-related settings need
 		// optimistic locking; unrelated channel edits retain their prior behavior.
-		mut := db.Channel.UpdateOneID(id).
-			SetNillableType(input.Type).
-			SetNillableBaseURL(input.BaseURL).
-			SetNillableName(input.Name).
-			SetNillableDefaultTestModel(input.DefaultTestModel).
-			SetNillableOrderingWeight(input.OrderingWeight).
-			SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels)
-		if guardProviderIdentity {
-			mut.Where(channel.UpdatedAtEQ(existingIdentity.UpdatedAt))
-		}
-
-		if input.SupportedModels != nil {
-			mut.SetSupportedModels(input.SupportedModels)
-		}
-
-		if input.ManualModels != nil {
-			mut.SetManualModels(input.ManualModels)
-		}
-
-		if input.Tags != nil {
-			mut.SetTags(input.Tags)
-		}
-
-		if input.Settings != nil {
-			mut.SetSettings(input.Settings)
-		} else if clearStaleQuotaSettings {
-			// Type change away from the Command Code variants with no settings
-			// block: read the stored settings inside the same transaction and
-			// drop any orphaned quota cookie.
-			existingSettings, err := db.Channel.Query().
-				Where(channel.IDEQ(id)).
-				Select(channel.FieldSettings).
-				Only(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to load channel settings: %w", err)
+		applyUpdate := func(withIdentityGuard bool) (*ent.Channel, error) {
+			mut := db.Channel.UpdateOneID(id).
+				SetNillableType(input.Type).
+				SetNillableBaseURL(input.BaseURL).
+				SetNillableName(input.Name).
+				SetNillableDefaultTestModel(input.DefaultTestModel).
+				SetNillableOrderingWeight(input.OrderingWeight).
+				SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels)
+			if withIdentityGuard {
+				mut.Where(channel.UpdatedAtEQ(existingIdentity.UpdatedAt))
 			}
-			mut.SetSettings(clearCommandCodeQuotaSettings(existingSettings.Settings))
-		}
 
-		if input.Policies != nil {
-			mut.SetPolicies(*input.Policies)
-		}
-
-		if input.Credentials != nil {
-			credentials := *input.Credentials
-			existing, err := db.Channel.Query().
-				Where(channel.IDEQ(id)).
-				Select(channel.FieldType, channel.FieldCredentials).
-				Only(ctx)
-			if err != nil {
-				return fmt.Errorf("failed to load existing channel credentials: %w", err)
+			if input.SupportedModels != nil {
+				mut.SetSupportedModels(input.SupportedModels)
 			}
-			effectiveType := existing.Type
-			if input.Type != nil {
-				effectiveType = *input.Type
+
+			if input.ManualModels != nil {
+				mut.SetManualModels(input.ManualModels)
 			}
-			if credentials.ManagementAPIKey == "" && isZenmuxChannelType(effectiveType) {
-				credentials.ManagementAPIKey = existing.Credentials.ManagementAPIKey
+
+			if input.Tags != nil {
+				mut.SetTags(input.Tags)
 			}
-			mut.SetCredentials(credentials)
+
+			if input.Settings != nil {
+				mut.SetSettings(input.Settings)
+			} else if clearStaleQuotaSettings {
+				// Type change away from the Command Code variants with no settings
+				// block: read the stored settings inside the same transaction and
+				// drop any orphaned quota cookie.
+				existingSettings, err := db.Channel.Query().
+					Where(channel.IDEQ(id)).
+					Select(channel.FieldSettings).
+					Only(ctx)
+				if err != nil {
+					return nil, fmt.Errorf("failed to load channel settings: %w", err)
+				}
+				mut.SetSettings(clearCommandCodeQuotaSettings(existingSettings.Settings))
+			}
+
+			if input.Policies != nil {
+				mut.SetPolicies(*input.Policies)
+			}
+
+			if input.Credentials != nil {
+				credentials := *input.Credentials
+				existing, err := db.Channel.Query().
+					Where(channel.IDEQ(id)).
+					Select(channel.FieldType, channel.FieldCredentials).
+					Only(ctx)
+				if err != nil {
+					return nil, fmt.Errorf("failed to load existing channel credentials: %w", err)
+				}
+				effectiveType := existing.Type
+				if input.Type != nil {
+					effectiveType = *input.Type
+				}
+				if credentials.ManagementAPIKey == "" && isZenmuxChannelType(effectiveType) {
+					credentials.ManagementAPIKey = existing.Credentials.ManagementAPIKey
+				}
+				mut.SetCredentials(credentials)
+			}
+
+			if input.Remark != nil {
+				mut.SetRemark(*input.Remark)
+			}
+
+			if input.ClearRemark {
+				mut.ClearRemark()
+			}
+
+			if input.ClearAutoSyncModelPattern {
+				mut.ClearAutoSyncModelPattern()
+			} else if input.AutoSyncModelPattern != nil {
+				mut.SetAutoSyncModelPattern(*input.AutoSyncModelPattern)
+			}
+
+			if input.Endpoints != nil {
+				mut.SetEndpoints(input.Endpoints)
+			}
+
+			if input.ClearErrorMessage {
+				mut.ClearErrorMessage()
+			}
+
+			return mut.Save(ctx)
 		}
 
-		if input.Remark != nil {
-			mut.SetRemark(*input.Remark)
+		updatedCh, err := applyUpdate(guardProviderIdentity)
+		if ent.IsNotFound(err) && guardProviderIdentity {
+			// SQLite stores timestamps as TEXT. A row whose updated_at was last
+			// written outside ent (for example by SQLite's CURRENT_TIMESTAMP
+			// column default, which emits a different text format than the one
+			// the driver binds) never matches the identity guard, so every
+			// identity update fails with a bogus concurrency error. Re-read the
+			// row: when updated_at still equals the identity snapshot the guard
+			// misfired on the stored format and the update is safe to retry
+			// without it. The retry rewrites updated_at through ent, healing
+			// the stored format for subsequent updates.
+			unchanged, rerr := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (bool, error) {
+				fresh, err := svc.entFromContext(queryCtx).Channel.Query().
+					Where(channel.IDEQ(id)).
+					Select(channel.FieldUpdatedAt).
+					Only(queryCtx)
+				if err != nil {
+					return false, err
+				}
+				return fresh.UpdatedAt.Equal(existingIdentity.UpdatedAt), nil
+			})
+			if rerr == nil && unchanged {
+				updatedCh, err = applyUpdate(false)
+			}
 		}
-
-		if input.ClearRemark {
-			mut.ClearRemark()
-		}
-
-		if input.ClearAutoSyncModelPattern {
-			mut.ClearAutoSyncModelPattern()
-		} else if input.AutoSyncModelPattern != nil {
-			mut.SetAutoSyncModelPattern(*input.AutoSyncModelPattern)
-		}
-
-		if input.Endpoints != nil {
-			mut.SetEndpoints(input.Endpoints)
-		}
-
-		if input.ClearErrorMessage {
-			mut.ClearErrorMessage()
-		}
-
-		channel, err := mut.Save(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
 				return fmt.Errorf("channel was updated concurrently; retry the operation")
@@ -1156,8 +1184,8 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			return fmt.Errorf("failed to update channel: %w", err)
 		}
 		if guardProviderIdentity {
-			providerIdentityChanged = channel.Type != existingIdentity.Type ||
-				channel.BaseURL != existingIdentity.BaseURL
+			providerIdentityChanged = updatedCh.Type != existingIdentity.Type ||
+				updatedCh.BaseURL != existingIdentity.BaseURL
 		}
 
 		if input.SupportedModels != nil {
@@ -1166,7 +1194,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			}
 		}
 
-		updated = channel
+		updated = updatedCh
 
 		return nil
 	})
@@ -1261,10 +1289,32 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 		return nil, fmt.Errorf("invalid endpoints for configured model protocols: %w", err)
 	}
 
-	ch, err = svc.entFromContext(ctx).Channel.UpdateOneID(ch.ID).
-		Where(channel.UpdatedAtEQ(ch.UpdatedAt)).
-		SetEndpoints(input.Endpoints).
-		Save(ctx)
+	channelID := ch.ID
+	identityUpdatedAt := ch.UpdatedAt
+	applyEndpoints := func(withIdentityGuard bool) (*ent.Channel, error) {
+		mut := svc.entFromContext(ctx).Channel.UpdateOneID(channelID).
+			SetEndpoints(input.Endpoints)
+		if withIdentityGuard {
+			mut.Where(channel.UpdatedAtEQ(identityUpdatedAt))
+		}
+
+		return mut.Save(ctx)
+	}
+	ch, err = applyEndpoints(true)
+	if ent.IsNotFound(err) {
+		// Same stored-format misfire as UpdateChannel's identity guard: a row
+		// whose updated_at text was written outside ent never matches the
+		// guard. When updated_at is unchanged since the read, retry without the
+		// guard; the retry rewrites updated_at through ent, healing the stored
+		// format.
+		fresh, rerr := svc.entFromContext(ctx).Channel.Query().
+			Where(channel.IDEQ(channelID)).
+			Select(channel.FieldUpdatedAt).
+			Only(ctx)
+		if rerr == nil && fresh.UpdatedAt.Equal(identityUpdatedAt) {
+			ch, err = applyEndpoints(false)
+		}
+	}
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, errors.New("channel was updated concurrently; retry the operation")

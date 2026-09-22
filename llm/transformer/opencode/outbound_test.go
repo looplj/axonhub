@@ -49,9 +49,11 @@ func TestRouteForModel(t *testing.T) {
 		// DeepSeek family → DeepSeek transformer
 		{"deepseek-v4-pro", routeDeepseek},
 		{"deepseek-v4-flash", routeDeepseek},
-		// Grok/GPT family → OpenAI Responses API
+		// Grok/GPT/Muse family → OpenAI Responses API
 		{"grok-4.5", routeResponses},
 		{"gpt-5.6-luna", routeResponses},
+		{"muse-spark-1.3-contributor", routeResponses},
+		{"muse-spark-1.2-contributor", routeResponses},
 		// MiniMax/Qwen family → Anthropic messages
 		{"minimax-m3", routeAnthropic},
 		{"minimax-m2.7", routeAnthropic},
@@ -93,6 +95,11 @@ func TestOutboundTransformer_TransformRequest_RoutesByModel(t *testing.T) {
 		{
 			name:        "gpt routes to Responses API",
 			model:       "gpt-5.6-luna",
+			expectedURL: "https://opencode.ai/zen/go/v1/responses",
+		},
+		{
+			name:        "muse routes to Responses API",
+			model:       "muse-spark-1.3-contributor",
 			expectedURL: "https://opencode.ai/zen/go/v1/responses",
 		},
 		{
