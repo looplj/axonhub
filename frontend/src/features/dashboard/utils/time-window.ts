@@ -34,3 +34,28 @@ export function inclusiveCalendarDays(startTime: string, endTime: string | null)
   const end = endTime ? parseLocalDate(endTime) : localMidnight(new Date());
   return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
 }
+
+/** Closest coarse window supported by the dashboard stat queries, which accept
+ * day/week/month/allTime and nothing longer than a month. */
+export function coarseWindowFromRange(startTime: string | null, endTime: string | null): CoarseTimeWindow {
+  if (!startTime) return 'allTime';
+
+  const days = inclusiveCalendarDays(startTime, endTime);
+
+  if (days <= 1) return 'day';
+  if (days <= 7) return 'week';
+  if (days <= 31) return 'month';
+  return 'allTime';
+}
+
+/** Closest coarse window for the throughput queries, which only accept
+ * day/week/month and treat anything else as day. */
+export function performanceWindowFromRange(startTime: string | null, endTime: string | null): CoarseTimeWindow {
+  if (!startTime) return 'month';
+
+  const days = inclusiveCalendarDays(startTime, endTime);
+
+  if (days <= 1) return 'day';
+  if (days <= 7) return 'week';
+  return 'month';
+}

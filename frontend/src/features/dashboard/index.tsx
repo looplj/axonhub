@@ -1,45 +1,32 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
-import { ChevronRight, Globe, TrendingUp } from 'lucide-react';
+import { ChevronRight, TrendingUp } from 'lucide-react';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TimeRangeFilter } from '@/components/time-range-filter';
 import { useDashboardTimeStore } from '@/stores/dashboardStore';
 import { useGeneralSettings } from '@/features/system/data/system';
-import {
-  useAnalyticsDailyStats,
-  useAnalyticsMetadata,
-  useAnalyticsOverview,
-  type AnalyticsFilter,
-} from '@/features/analytics/data/analytics';
+import { useAnalyticsDailyStats, useAnalyticsMetadata, useAnalyticsOverview, type AnalyticsFilter } from '@/features/analytics/data/analytics';
 import { CombinedTrendChart } from '@/features/analytics/components/combined-trend-chart';
+import { useRoutePermissions } from '@/hooks/useRoutePermissions';
 import { ChannelHealthCard } from './components/channel-health-card';
-import { FastestChannelsCard } from './components/fastest-channels-card';
-import { FastestModelsCard } from './components/fastest-models-card';
-import { KpiRow } from './components/kpi-row';
-import { inclusiveCalendarDays, type CoarseTimeWindow } from './utils/time-window';
+import { FastestPerformersCard } from './components/fastest-performers-card';
+import { PerformanceCard } from './components/performance-card';
+import { PulseStrip } from './components/pulse-strip';
+import { RangeBadge } from './components/range-badge';
+import { RequestCostDistribution } from './components/request-cost-distribution';
+import { TokenComposition } from './components/token-composition';
 
-// fastestChannels/fastestModels only understand day/week/month and silently fall back
-// to day for anything else, so a range longer than a week is clamped to month.
-function toCoarseWindow(startTime: string | null, endTime: string | null): CoarseTimeWindow {
-  if (!startTime) return 'month';
-
-  const days = inclusiveCalendarDays(startTime, endTime);
-
-  if (days <= 1) return 'day';
-  if (days <= 7) return 'week';
-  return 'month';
-}
-
-/** Dashboard page: KPI row, combined trend chart and channel health for the range
- * held in the shared time store. */
+/** Dashboard page: a fixed pulse strip first, then the analysis range drives
+ * everything below it — trend, performance, distribution and composition. */
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { startTime, endTime, setRange } = useDashboardTimeStore();
   const { data: generalSettings } = useGeneralSettings();
   const { data: metadata } = useAnalyticsMetadata();
+  const { isProjectOwner } = useRoutePermissions();
 
   const filter = useMemo<AnalyticsFilter>(() => ({ startTime, endTime }), [startTime, endTime]);
 
@@ -47,27 +34,35 @@ export default function DashboardPage() {
   const { data: dailyStats, isLoading: isDailyLoading, error: dailyError } = useAnalyticsDailyStats(filter);
 
   const currencyCode = generalSettings?.currencyCode || 'USD';
-  const performanceWindow = toCoarseWindow(startTime, endTime);
   const loadError = overviewError || dailyError;
+
+  const rangeSummary = [
+    { key: 'requests', label: t('analytics.overview.totalRequests'), value: Math.round(overview?.totalRequests || 0).toLocaleString() },
+    { key: 'tokens', label: t('analytics.overview.totalTokens'), value: Math.round(overview?.totalTokens || 0).toLocaleString() },
+    {
+      key: 'cost',
+      label: t('analytics.overview.totalCost'),
+      value: t('currencies.format', {
+        val: overview?.totalCost || 0,
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    },
+  ];
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
       <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('sidebar.items.dashboard')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('dashboard.description')}</p>
-          </div>
-          <span className='text-muted-foreground flex items-center gap-1.5 text-xs'>
-            <Globe className='h-3.5 w-3.5' />
-            {t('dashboard.scope.system')}
-          </span>
-        </div>
+        <h2 className='text-xl font-bold tracking-tight'>{t('sidebar.items.dashboard')}</h2>
       </Header>
 
       <Main fixed>
         <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-auto'>
+          <PulseStrip />
+
           <TimeRangeFilter
+            variant='compact'
             value={{ startTime, endTime }}
             onChange={setRange}
             earliestDate={metadata?.earliestDate}
@@ -79,14 +74,26 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <KpiRow overview={overview} isLoading={isOverviewLoading} />
-
               <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
                 <div className='col-span-1 lg:col-span-4'>
                   {isDailyLoading && !dailyStats ? (
                     <Skeleton className='h-[410px] w-full' />
                   ) : (
-                    <CombinedTrendChart data={dailyStats || []} isLoading={isDailyLoading} currencyCode={currencyCode} />
+                    <CombinedTrendChart
+                      data={dailyStats || []}
+                      isLoading={isDailyLoading}
+                      currencyCode={currencyCode}
+                      badge={<RangeBadge label={startTime ? `${startTime} – ${endTime || startTime}` : t('timeRange.last30Days')} />}
+                      summary={
+                        isOverviewLoading
+                          ? rangeSummary.map((item) => <Skeleton key={item.key} className='h-3 w-24' />)
+                          : rangeSummary.map((item) => (
+                              <span key={item.key}>
+                                {item.label}: <span className='text-foreground font-mono font-medium tabular-nums'>{item.value}</span>
+                              </span>
+                            ))
+                      }
+                    />
                   )}
                 </div>
                 <div className='col-span-1 lg:col-span-3'>
@@ -94,10 +101,23 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className='grid gap-4 md:grid-cols-2'>
-                <FastestChannelsCard timeWindow={performanceWindow} />
-                <FastestModelsCard timeWindow={performanceWindow} />
+              <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
+                <div className='col-span-1 lg:col-span-4'>
+                  <PerformanceCard />
+                </div>
+                <div className='col-span-1 lg:col-span-3'>
+                  <FastestPerformersCard startTime={startTime} endTime={endTime} />
+                </div>
               </div>
+
+              <RequestCostDistribution startTime={startTime} endTime={endTime} currencyCode={currencyCode} />
+
+              <TokenComposition
+                startTime={startTime}
+                endTime={endTime}
+                currencyCode={currencyCode}
+                isProjectOwner={isProjectOwner}
+              />
             </>
           )}
 
