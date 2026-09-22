@@ -19,6 +19,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	req := buildBaseRequest(chatReq, config)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
+	req.ToolChoice = applyParallelToolCalls(req.ToolChoice, chatReq.ParallelToolCalls, len(req.Tools) > 0)
 	req.Messages = convertMessages(chatReq, config)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
@@ -344,6 +345,31 @@ func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
 	}
 
 	return nil
+}
+
+// applyParallelToolCalls maps parallel_tool_calls onto tool_choice.disable_parallel_tool_use.
+// Anthropic carries the flag on tool_choice, so an explicit value needs an "auto" choice to sit on.
+func applyParallelToolCalls(choice *ToolChoice, parallelToolCalls *bool, hasTools bool) *ToolChoice {
+	if parallelToolCalls == nil || !hasTools {
+		return choice
+	}
+
+	if choice == nil {
+		if *parallelToolCalls {
+			return nil
+		}
+
+		choice = &ToolChoice{Type: "auto"}
+	}
+
+	// "none" has no disable_parallel_tool_use field; the model is not calling tools anyway.
+	if choice.Type == "none" {
+		return choice
+	}
+
+	choice.DisableParallelToolUse = lo.ToPtr(!*parallelToolCalls)
+
+	return choice
 }
 
 // convertStopSequences converts stop sequences.
