@@ -7,7 +7,7 @@ import { useDashboardTimeStore } from '@/stores/dashboardStore';
 import { useAnalyticsMetadata, useAnalyticsOverview, useAnalyticsDailyStats, useAnalyticsDimensionStats, type AnalyticsFilter } from './data/analytics';
 import { AnalyticsFilterBar } from './components/analytics-filter-bar';
 import { OverviewCards } from './components/overview-cards';
-import { CombinedTrendChart } from './components/combined-trend-chart';
+import { UsageCompositionChart } from './components/usage-composition-chart';
 import { DimensionDistribution, type DistributionMetric } from './components/dimension-distribution';
 import { DimensionShareStrip } from './components/dimension-share-strip';
 import { DimensionDetailTable } from './components/dimension-detail-table';
@@ -77,11 +77,11 @@ export default function AnalyticsPage() {
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <Main fixed>
-        <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-auto'>
+      <Main fixed className='px-0 py-0'>
+        <div className='flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-8 pt-6 pb-8'>
           <AnalyticsFilterBar earliestDate={metadata?.earliestDate} />
           <OverviewCards overview={overview} isLoading={isOverviewLoading} />
-          <CombinedTrendChart data={dailyStats || []} isLoading={isDailyLoading} currencyCode={currencyCode} />
+          <UsageCompositionChart data={dailyStats || []} isLoading={isDailyLoading} />
 
           <div className='flex flex-wrap items-center justify-end gap-2'>
             <Tabs value={metric} onValueChange={handleMetricChange}>

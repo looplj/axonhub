@@ -3,14 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { ChevronRight, TrendingUp } from 'lucide-react';
 import { Main } from '@/components/layout/main';
-import { Skeleton } from '@/components/ui/skeleton';
 import { TimeRangeFilter } from '@/components/time-range-filter';
 import { useDashboardTimeStore } from '@/stores/dashboardStore';
 import { useGeneralSettings } from '@/features/system/data/system';
 import { useAnalyticsDailyStats, useAnalyticsMetadata, useAnalyticsOverview, type AnalyticsFilter } from '@/features/analytics/data/analytics';
-import { CombinedTrendChart } from '@/features/analytics/components/combined-trend-chart';
 import { useRoutePermissions } from '@/hooks/useRoutePermissions';
 import { ChannelHealthCard } from './components/channel-health-card';
+import { DailyOverviewChart } from './components/daily-overview-chart';
 import { FastestPerformersCard } from './components/fastest-performers-card';
 import { PerformanceCard } from './components/performance-card';
 import { PulseStrip } from './components/pulse-strip';
@@ -52,8 +51,8 @@ export default function DashboardPage() {
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <Main fixed>
-        <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-auto'>
+      <Main fixed className='px-0 py-0'>
+        <div className='flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-8 pt-6 pb-8'>
           <PulseStrip />
 
           <TimeRangeFilter
@@ -69,36 +68,25 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
+              <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-7'>
                 <div className='col-span-1 lg:col-span-4'>
-                  {isDailyLoading && !dailyStats ? (
-                    <Skeleton className='h-[410px] w-full' />
-                  ) : (
-                    <CombinedTrendChart
-                      data={dailyStats || []}
-                      isLoading={isDailyLoading}
-                      currencyCode={currencyCode}
-                      badge={<RangeBadge label={startTime ? `${startTime} – ${endTime || startTime}` : t('timeRange.last30Days')} />}
-                      summary={
-                        isOverviewLoading
-                          ? rangeSummary.map((item) => <Skeleton key={item.key} className='h-3 w-24' />)
-                          : rangeSummary.map((item) => (
-                              <span key={item.key}>
-                                {item.label}: <span className='text-foreground font-mono font-medium tabular-nums'>{item.value}</span>
-                              </span>
-                            ))
-                      }
-                    />
-                  )}
+                  <DailyOverviewChart
+                    data={dailyStats || []}
+                    isLoading={isDailyLoading}
+                    currencyCode={currencyCode}
+                    isOverviewLoading={isOverviewLoading}
+                    rangeSummary={rangeSummary}
+                    badge={<RangeBadge label={startTime ? `${startTime} – ${endTime || startTime}` : t('timeRange.last30Days')} />}
+                  />
                 </div>
                 <div className='col-span-1 lg:col-span-3'>
                   <ChannelHealthCard startTime={startTime} endTime={endTime} />
                 </div>
               </div>
 
-              <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
+              <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-7'>
                 <div className='col-span-1 lg:col-span-4'>
-                  <PerformanceCard />
+                  <PerformanceCard startTime={startTime} endTime={endTime} />
                 </div>
                 <div className='col-span-1 lg:col-span-3'>
                   <FastestPerformersCard startTime={startTime} endTime={endTime} />

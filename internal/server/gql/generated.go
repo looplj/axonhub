@@ -1393,7 +1393,7 @@ type ComplexityRoot struct {
 		BrandSettings                   func(childComplexity int) int
 		CatalogSettings                 func(childComplexity int) int
 		ChannelOverrideTemplates        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
-		ChannelPerformanceStats         func(childComplexity int) int
+		ChannelPerformanceStats         func(childComplexity int, startTime *string, endTime *string) int
 		ChannelProbeData                func(childComplexity int, input biz.GetChannelProbeDataInput) int
 		ChannelSuccessRates             func(childComplexity int, timeWindow *string, limit *int) int
 		Channels                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
@@ -1411,7 +1411,7 @@ type ComplexityRoot struct {
 		FetchModels                     func(childComplexity int, input biz.FetchModelsInput) int
 		GetCacheDiagnostics             func(childComplexity int, input *GetCacheDiagnosticsInput) int
 		Me                              func(childComplexity int) int
-		ModelPerformanceStats           func(childComplexity int) int
+		ModelPerformanceStats           func(childComplexity int, startTime *string, endTime *string) int
 		Models                          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
 		MyProjects                      func(childComplexity int) int
 		Node                            func(childComplexity int, id objects.GUID) int
@@ -2426,8 +2426,8 @@ type QueryResolver interface {
 	ChannelSuccessRates(ctx context.Context, timeWindow *string, limit *int) ([]*ChannelSuccessRate, error)
 	FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error)
 	FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error)
-	ModelPerformanceStats(ctx context.Context) ([]*ModelPerformanceStat, error)
-	ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error)
+	ModelPerformanceStats(ctx context.Context, startTime *string, endTime *string) ([]*ModelPerformanceStat, error)
+	ChannelPerformanceStats(ctx context.Context, startTime *string, endTime *string) ([]*ChannelPerformanceStat, error)
 	TokenStatsByChannel(ctx context.Context, timeWindow *string) ([]*TokenStatsByChannel, error)
 	TokenStatsByModel(ctx context.Context, timeWindow *string) ([]*TokenStatsByModel, error)
 	CostStatsByChannel(ctx context.Context, timeWindow *string) ([]*CostStatsByChannel, error)
@@ -8392,7 +8392,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.ChannelPerformanceStats(childComplexity), true
+		args, err := ec.field_Query_channelPerformanceStats_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ChannelPerformanceStats(childComplexity, args["startTime"].(*string), args["endTime"].(*string)), true
 	case "Query.channelProbeData":
 		if e.complexity.Query.ChannelProbeData == nil {
 			break
@@ -8565,7 +8570,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.ModelPerformanceStats(childComplexity), true
+		args, err := ec.field_Query_modelPerformanceStats_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ModelPerformanceStats(childComplexity, args["startTime"].(*string), args["endTime"].(*string)), true
 	case "Query.models":
 		if e.complexity.Query.Models == nil {
 			break
@@ -14412,6 +14422,22 @@ func (ec *executionContext) field_Query_channelOverrideTemplates_args(ctx contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_channelPerformanceStats_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "startTime", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["startTime"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "endTime", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["endTime"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_channelProbeData_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14607,6 +14633,22 @@ func (ec *executionContext) field_Query_getCacheDiagnostics_args(ctx context.Con
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_modelPerformanceStats_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "startTime", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["startTime"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "endTime", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["endTime"] = arg1
 	return args, nil
 }
 
@@ -46306,7 +46348,8 @@ func (ec *executionContext) _Query_modelPerformanceStats(ctx context.Context, fi
 		field,
 		ec.fieldContext_Query_modelPerformanceStats,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().ModelPerformanceStats(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().ModelPerformanceStats(ctx, fc.Args["startTime"].(*string), fc.Args["endTime"].(*string))
 		},
 		nil,
 		ec.marshalNModelPerformanceStat2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelPerformanceStatᚄ,
@@ -46315,8 +46358,9 @@ func (ec *executionContext) _Query_modelPerformanceStats(ctx context.Context, fi
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_modelPerformanceStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_modelPerformanceStats(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
+		Args:       map[string]any{},
 		Object:     "Query",
 		Field:      field,
 		IsMethod:   true,
@@ -46337,6 +46381,9 @@ func (ec *executionContext) fieldContext_Query_modelPerformanceStats(_ context.C
 			return nil, fmt.Errorf("no field named %q was found under type ModelPerformanceStat", field.Name)
 		},
 	}
+	if fc.Args, err = ec.field_Query_modelPerformanceStats_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		return nil, err
+	}
 	return fc, nil
 }
 
@@ -46347,7 +46394,8 @@ func (ec *executionContext) _Query_channelPerformanceStats(ctx context.Context, 
 		field,
 		ec.fieldContext_Query_channelPerformanceStats,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().ChannelPerformanceStats(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().ChannelPerformanceStats(ctx, fc.Args["startTime"].(*string), fc.Args["endTime"].(*string))
 		},
 		nil,
 		ec.marshalNChannelPerformanceStat2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelPerformanceStatᚄ,
@@ -46356,8 +46404,9 @@ func (ec *executionContext) _Query_channelPerformanceStats(ctx context.Context, 
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_channelPerformanceStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_channelPerformanceStats(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
+		Args:       map[string]any{},
 		Object:     "Query",
 		Field:      field,
 		IsMethod:   true,
@@ -46379,6 +46428,9 @@ func (ec *executionContext) fieldContext_Query_channelPerformanceStats(_ context
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelPerformanceStat", field.Name)
 		},
+	}
+	if fc.Args, err = ec.field_Query_channelPerformanceStats_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		return nil, err
 	}
 	return fc, nil
 }

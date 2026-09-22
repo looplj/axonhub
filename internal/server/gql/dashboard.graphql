@@ -134,7 +134,8 @@ type FastestModel {
 }
 
 """
-Performance statistics for a specific model on a given date
+Performance statistics for a specific model in a single time bucket.
+The date is "YYYY-MM-DD" for daily buckets and "YYYY-MM-DD HH:00" for hourly ones.
 """
 type ModelPerformanceStat {
   date: String!
@@ -145,7 +146,8 @@ type ModelPerformanceStat {
 }
 
 """
-Performance statistics for a specific channel on a given date
+Performance statistics for a specific channel in a single time bucket.
+The date is "YYYY-MM-DD" for daily buckets and "YYYY-MM-DD HH:00" for hourly ones.
 """
 type ChannelPerformanceStat {
   date: String!
@@ -239,13 +241,19 @@ extend type Query {
   fastestChannels(input: FastestChannelsInput!): [FastestChannel!]!
   fastestModels(input: FastestChannelsInput!): [FastestModel!]!
   """
-  Get performance statistics for models over time
+  Get performance statistics for models over time.
+
+  The bucket resolution is derived from the range: hourly for ranges up to 14 days,
+  daily for anything longer. Omitting both arguments keeps the last 30 days, daily.
   """
-  modelPerformanceStats: [ModelPerformanceStat!]!
+  modelPerformanceStats(startTime: String, endTime: String): [ModelPerformanceStat!]!
   """
-  Get performance statistics for channels over time
+  Get performance statistics for channels over time.
+
+  The bucket resolution is derived from the range: hourly for ranges up to 14 days,
+  daily for anything longer. Omitting both arguments keeps the last 30 days, daily.
   """
-  channelPerformanceStats: [ChannelPerformanceStat!]!
+  channelPerformanceStats(startTime: String, endTime: String): [ChannelPerformanceStat!]!
   tokenStatsByChannel(timeWindow: String): [TokenStatsByChannel!]!
   tokenStatsByModel(timeWindow: String): [TokenStatsByModel!]!
   costStatsByChannel(timeWindow: String): [CostStatsByChannel!]!

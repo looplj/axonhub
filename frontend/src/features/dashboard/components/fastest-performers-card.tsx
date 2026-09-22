@@ -119,12 +119,12 @@ export function FastestPerformersCard({ startTime, endTime }: FastestPerformersC
 
   if (isLoading && !data) {
     return (
-      <Card className='hover-card'>
+      <Card className='hover-card flex h-full flex-col'>
         <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
           <Skeleton className='h-5 w-[180px]' />
           {dimensionSwitch}
         </CardHeader>
-        <CardContent>
+        <CardContent className='flex-1'>
           <div className='flex h-[250px] items-center justify-center'>
             <Skeleton className='h-[200px] w-full' />
           </div>
@@ -135,12 +135,12 @@ export function FastestPerformersCard({ startTime, endTime }: FastestPerformersC
 
   if (error) {
     return (
-      <Card className='hover-card'>
+      <Card className='hover-card flex h-full flex-col'>
         <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
           <CardTitle className='text-base font-medium'>{title}</CardTitle>
           {dimensionSwitch}
         </CardHeader>
-        <CardContent>
+        <CardContent className='flex-1'>
           <div className='text-sm text-red-500'>
             {t('common.loadError')}: {error.message}
           </div>

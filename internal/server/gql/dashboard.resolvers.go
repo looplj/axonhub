@@ -1281,10 +1281,11 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 }
 
 // ModelPerformanceStats is the resolver for the modelPerformanceStats field.
-// Returns daily performance statistics for the top models over the last 30 days.
-// Aggregates by date and model_id, calculating throughput (tokens per second).
-// Only includes successful (completed) requests with valid latency metrics.
-func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerformanceStat, error) {
+// Returns performance statistics for the top models over the requested range, bucketed by
+// hour for short ranges and by day otherwise. Aggregates by bucket and model_id,
+// calculating throughput (tokens per second). Only includes successful (completed)
+// requests with valid latency metrics.
+func (r *queryResolver) ModelPerformanceStats(ctx context.Context, startTime *string, endTime *string) ([]*ModelPerformanceStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	// Add 30-second timeout to prevent long-running queries
@@ -1292,14 +1293,10 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	daysCount := 30
+	window := r.resolvePerformanceWindow(ctx, startTime, endTime)
 
 	loc := r.systemService.TimeLocation(ctx)
-	nowUTC := xtime.UTCNow()
-	nowLocal := nowUTC.In(loc)
-	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
-	startDateUTC := startDateLocal.UTC()
-	_, offsetSeconds := nowLocal.Zone()
+	_, offsetSeconds := xtime.UTCNow().In(loc).Zone()
 
 	dbDriver := r.client.Driver()
 	sqlDB, ok := dbDriver.(*sql.Driver)
@@ -1308,12 +1305,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 	}
 
 	dialectName := sqlDB.Dialect()
-	useDollarPlaceholders := dialectName == dialect.Postgres
-
-	placeholder := "?"
-	if useDollarPlaceholders {
-		placeholder = "$1"
-	}
+	startPlaceholder, endPlaceholder, useDollarPlaceholders := placeholdersFor(dialectName)
 
 	// Select throughput mode based on dialect: ROW_NUMBER for PostgreSQL, MaxID for older SQLite
 	queryMode := qb.ThroughputModeRowNumber
@@ -1327,15 +1319,17 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 		loc.String(),
 		offsetSeconds,
 		qb.DailyThroughputByModel,
-		placeholder,
+		startPlaceholder,
+		endPlaceholder,
 		queryMode,
+		window.resolution,
 	)
 
 	if err := ctx.Err(); err != nil {
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
 
-	rows, err := sqlDB.DB().QueryContext(ctx, query, startDateUTC)
+	rows, err := sqlDB.DB().QueryContext(ctx, query, window.startLocal.UTC(), window.endLocal.UTC())
 	if err != nil {
 		return nil, fmt.Errorf("failed to query model performance stats: %w", err)
 	}
@@ -1431,7 +1425,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context) ([]*ModelPerf
 }
 
 // ChannelPerformanceStats is the resolver for the channelPerformanceStats field.
-func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error) {
+func (r *queryResolver) ChannelPerformanceStats(ctx context.Context, startTime *string, endTime *string) ([]*ChannelPerformanceStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	var cancel context.CancelFunc
@@ -1439,22 +1433,18 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	daysCount := 30
+	window := r.resolvePerformanceWindow(ctx, startTime, endTime)
 
 	loc := r.systemService.TimeLocation(ctx)
-	nowUTC := xtime.UTCNow()
-	nowLocal := nowUTC.In(loc)
-	startDateLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc).AddDate(0, 0, -daysCount+1)
-	startTimestamp := startDateLocal.UTC().Unix()
-	_, offsetSeconds := nowLocal.Zone()
+	_, offsetSeconds := xtime.UTCNow().In(loc).Zone()
 
-	probeResults, err := r.queryChannelProbeStats(ctx, startTimestamp, loc.String(), offsetSeconds)
+	probeResults, err := r.queryChannelProbeStats(ctx, window, loc.String(), offsetSeconds)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(probeResults) == 0 {
-		return r.buildChannelPerformanceStatsFromExecutions(ctx, startDateLocal, offsetSeconds, daysCount)
+		return r.buildChannelPerformanceStatsFromExecutions(ctx, window, offsetSeconds)
 	}
 
 	statsMap := aggregateProbeStats(probeResults)
@@ -1464,7 +1454,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context) ([]*Channel
 	channelIDs := extractChannelIDsFromStats(statsMap)
 	channelNames := r.fetchChannelNames(ctx, channelIDs)
 
-	return buildChannelPerformanceResponse(statsMap, channelNames, startDateLocal, daysCount), nil
+	return buildChannelPerformanceResponse(statsMap, channelNames), nil
 }
 
 // TokenStatsByChannel is the resolver for the tokenStatsByChannel field.
