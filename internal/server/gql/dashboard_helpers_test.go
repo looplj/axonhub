@@ -66,6 +66,22 @@ func TestBucketSequence(t *testing.T) {
 		}, got)
 	})
 
+	t.Run("hourly spans collapse the hour a fall-back transition repeats", func(t *testing.T) {
+		// Europe/Berlin falls back on 2026-10-25 at 03:00, so 02:00 happens twice.
+		berlin, err := time.LoadLocation("Europe/Berlin")
+		assert.NoError(t, err)
+
+		dstStart := time.Date(2026, 10, 25, 0, 0, 0, 0, berlin)
+		got := bucketSequence(dstStart, dstStart.Add(5*time.Hour), qb.ResolutionHour)
+
+		assert.Equal(t, []string{
+			"2026-10-25 00:00",
+			"2026-10-25 01:00",
+			"2026-10-25 02:00", // the repeated hour counts once
+			"2026-10-25 03:00",
+		}, got)
+	})
+
 	t.Run("an empty span yields nothing", func(t *testing.T) {
 		assert.Empty(t, bucketSequence(start, start, qb.ResolutionDay))
 		assert.Empty(t, bucketSequence(start, start, qb.ResolutionHour))

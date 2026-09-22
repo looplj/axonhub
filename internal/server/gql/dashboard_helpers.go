@@ -89,12 +89,19 @@ func bucketSequence(start, end time.Time, resolution qb.DateResolution) []string
 
 	labels := make([]string, 0, 64)
 	for d := start; d.Before(end); {
-		labels = append(labels, d.Format(layout))
+		label := d.Format(layout)
+
+		// Hourly buckets are stepped in absolute time rather than rebuilt from wall-clock
+		// components: time.Date resolves a skipped hour backwards, so reconstructing the
+		// next hour from the current one never advances across a spring-forward transition.
+		// The same absolute step lands twice in the hour a fall-back transition repeats,
+		// and that duplicate is collapsed so each wall-clock hour is one bucket.
+		if len(labels) == 0 || labels[len(labels)-1] != label {
+			labels = append(labels, label)
+		}
 
 		if resolution == qb.ResolutionHour {
-			// time.Date normalises hour 24 into the next day, which keeps the walk aligned
-			// with wall-clock hours across a DST transition.
-			d = time.Date(d.Year(), d.Month(), d.Day(), d.Hour()+1, 0, 0, 0, d.Location())
+			d = d.Add(time.Hour)
 		} else {
 			d = d.AddDate(0, 0, 1)
 		}
