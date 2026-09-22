@@ -553,8 +553,8 @@ func (c *ClineQuotaChecker) fetchUsageItems(ctx context.Context, hc *httpclient.
 // the raw error string, which can embed credentials, user identifiers, or
 // pagination cursors.
 func clineLedgerErrorCode(err error) string {
-	var httpErr *clineHTTPError
-	if errors.As(err, &httpErr) {
+	httpErr, ok := errors.AsType[*clineHTTPError](err)
+	if ok {
 		if httpErr.StatusCode == http.StatusTooManyRequests {
 			return clineLedgerErrorRateLimited
 		}
