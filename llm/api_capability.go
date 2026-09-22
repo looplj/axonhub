@@ -64,6 +64,10 @@ func CapableAPIFormats(requestType RequestType) map[string]struct{} {
 		return map[string]struct{}{
 			APIFormatOpenAITranslation.String(): {},
 		}
+	case RequestTypeSystemOne:
+		return map[string]struct{}{
+			APIFormatTypeSafeSystemOne.String(): {},
+		}
 	default:
 		return nil
 	}
@@ -83,6 +87,8 @@ func RequestTypeForModelType(modelType string) RequestType {
 		return RequestTypeImage
 	case "video_generation":
 		return RequestTypeVideo
+	case "systemone", "system_one":
+		return RequestTypeSystemOne
 	default:
 		return ""
 	}

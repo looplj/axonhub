@@ -100,6 +100,27 @@ func TestSelectAPIFormat_AlphaSearchRequiresExplicitEndpoint(t *testing.T) {
 	}))
 }
 
+func TestSelectAPIFormat_SystemOneRequiresExplicitEndpoint(t *testing.T) {
+	endpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatAnthropicMessage.String()},
+	}
+
+	require.Empty(t, SelectAPIFormat(endpoints, &llm.Request{
+		RequestType: llm.RequestTypeSystemOne,
+		APIFormat:   llm.APIFormatTypeSafeSystemOne,
+	}))
+
+	typesafeEndpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatTypeSafeSystemOne.String()},
+	}
+
+	require.Equal(t, llm.APIFormatTypeSafeSystemOne.String(), SelectAPIFormat(typesafeEndpoints, &llm.Request{
+		RequestType: llm.RequestTypeSystemOne,
+		APIFormat:   llm.APIFormatTypeSafeSystemOne,
+	}))
+}
+
 func TestFilterEndpointsByAPIFormats(t *testing.T) {
 	endpoints := []objects.ChannelEndpoint{
 		{APIFormat: "openai/responses"},

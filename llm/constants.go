@@ -21,6 +21,9 @@ const (
 	RequestTypeModeration RequestType = "moderation"
 	// RequestTypeAlphaSearch is the Codex/CPA alpha search request type, maps to /v1/alpha/search.
 	RequestTypeAlphaSearch RequestType = "alpha_search"
+
+	// RequestTypeSystemOne represents a System One decision inference request.
+	RequestTypeSystemOne RequestType = "systemone"
 )
 
 func (r RequestType) String() string {
@@ -58,6 +61,8 @@ const (
 
 	APIFormatJinaRerank    APIFormat = "jina/rerank"
 	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
+
+	APIFormatTypeSafeSystemOne APIFormat = "typesafe/systemone"
 
 	APIFormatOllamaChat    APIFormat = "ollama/chat"
 	APIFormatSeedanceVideo APIFormat = "seedance/video"

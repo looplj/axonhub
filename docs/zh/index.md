@@ -44,6 +44,7 @@
 | [图像生成 API](api-reference/image-generation.md) | 图像生成接口文档 |
 | [嵌入 API](api-reference/embedding-api.md) | 向量嵌入接口文档 |
 | [重排序 API](api-reference/rerank-api.md) | 重排序接口文档 |
+| [System One API](api-reference/systemone-api.md) | 原生决策推理接口文档 |
 
 ### 🛠️ 开发文档
 

@@ -242,6 +242,9 @@ type Request struct {
 	// Rerank is the rerank request, will be set if the request is rerank request.
 	Rerank *RerankRequest `json:"rerank,omitempty"`
 
+	// SystemOne is the System One request, will be set if the request is System One request.
+	SystemOne *SystemOneRequest `json:"systemone,omitempty"`
+
 	// Image is the image request, will be set if the request is image request.
 	Image *ImageRequest `json:"image,omitempty"`
 
@@ -710,6 +713,9 @@ type Response struct {
 	// Rerank is the rerank response, will present if the request is rerank request.
 	Rerank *RerankResponse `json:"rerank,omitempty"`
 
+	// SystemOne is the System One response, will present if the request is System One request.
+	SystemOne *SystemOneResponse `json:"systemone,omitempty"`
+
 	// Image is the image response, will present if the request is image request.
 	Image *ImageResponse `json:"image,omitempty"`
 
@@ -895,7 +901,10 @@ type ResponseError struct {
 }
 
 // Unwrap exposes the underlying cause, if any.
-func (e ResponseError) Unwrap() error {
+func (e *ResponseError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
 	return e.Cause
 }
 

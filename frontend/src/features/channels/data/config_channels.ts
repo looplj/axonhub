@@ -38,6 +38,7 @@ import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { CommandCodeIcon } from '../components/commandcode-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
 import { FennoIcon } from '../components/fenno-icon';
+import { TypeSafeIcon } from '../components/typesafe-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
@@ -47,6 +48,7 @@ export const OPENAI_RESPONSES: ApiFormat = 'openai/responses';
 export const ANTHROPIC_MESSAGES: ApiFormat = 'anthropic/messages';
 export const GEMINI_CONTENTS: ApiFormat = 'gemini/contents';
 export const GEMINI_EMBEDDINGS: ApiFormat = 'gemini/embeddings';
+export const TYPESAFE_SYSTEMONE: ApiFormat = 'typesafe/systemone';
 
 /**
  * Channel configuration interface
@@ -641,6 +643,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: Jina,
   },
+  typesafe: {
+    channelType: 'typesafe',
+    baseURL: 'https://api.typesafe.ai/v1',
+    defaultModels: ['jev-latest', 'jev-preview', 'jev-1.13.0'],
+    apiFormat: TYPESAFE_SYSTEMONE,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    icon: TypeSafeIcon,
+  },
   github: {
     channelType: 'github',
     baseURL: 'https://models.github.ai/inference',
@@ -909,6 +919,7 @@ export type Provider =
   | 'modelscope'
   | 'bailian'
   | 'jina'
+  | 'typesafe'
   | 'github'
   | 'github_copilot'
   | 'cerebras'
@@ -976,6 +987,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   bailian_anthropic: 'bailian',
   moonshot_coding: 'moonshot',
   jina: 'jina',
+  typesafe: 'typesafe',
   github: 'github',
   github_copilot: 'github_copilot',
   codex: 'codex',
