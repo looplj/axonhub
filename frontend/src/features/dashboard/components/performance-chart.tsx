@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
 import { formatDuration } from '@/utils/format-duration';
+import { formatBucketLabel } from '@/utils/format-bucket-label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useGeneralSettings } from '@/features/system/data/system';
@@ -28,31 +29,6 @@ const COLORS = [
 // Outlier caps so a single slow or fast series cannot flatten the rest of the chart.
 const MAX_CHART_THROUGHPUT = 1000;
 const MAX_CHART_TTFT_MS = 60000;
-
-/** Bucket labels are "YYYY-MM-DD" for daily resolution and "YYYY-MM-DD HH:00" for
- * hourly, so the label itself tells us which granularity the server chose. */
-function formatBucketLabel(bucket: string, locale: string): string {
-  const isHourly = bucket.includes(' ');
-  const [datePart, timePart] = isHourly ? bucket.split(' ') : [bucket, undefined];
-  const [year, month, day] = datePart.split('-').map(Number);
-  const dateObj = new Date(Date.UTC(year, month - 1, day));
-
-  if (timePart) {
-    return dateObj.toLocaleString(locale, {
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      hour12: false,
-      timeZone: 'UTC',
-    });
-  }
-
-  return dateObj.toLocaleDateString(locale, {
-    month: '2-digit',
-    day: '2-digit',
-    timeZone: 'UTC',
-  });
-}
 
 export type PerformanceDisplayMode = 'throughput' | 'ttft';
 

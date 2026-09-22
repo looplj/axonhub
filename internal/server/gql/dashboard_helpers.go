@@ -58,12 +58,49 @@ const defaultPerformanceWindowDays = 30
 // to daily buckets.
 const hourlyResolutionMaxDays = 14
 
+// resolutionForSpan picks the bucket granularity for a range spanning the given number of
+// days. Every time series on the dashboard shares this rule so a given range always
+// resolves to the same granularity across charts.
+func resolutionForSpan(days int) qb.DateResolution {
+	if days <= hourlyResolutionMaxDays {
+		return qb.ResolutionHour
+	}
+
+	return qb.ResolutionDay
+}
+
 // performanceWindow is the resolved time range plus the bucket resolution the performance
 // queries should use for it.
 type performanceWindow struct {
 	startLocal time.Time
 	endLocal   time.Time
 	resolution qb.DateResolution
+}
+
+// bucketSequence lists every bucket label in [start, end) at the given resolution. Charts
+// draw a category per label, so the sequence has to be complete: omitting an empty bucket
+// would pull its neighbours together and misrepresent the elapsed time. Both label formats
+// sort lexicographically in time order.
+func bucketSequence(start, end time.Time, resolution qb.DateResolution) []string {
+	layout := "2006-01-02"
+	if resolution == qb.ResolutionHour {
+		layout = "2006-01-02 15:00"
+	}
+
+	labels := make([]string, 0, 64)
+	for d := start; d.Before(end); {
+		labels = append(labels, d.Format(layout))
+
+		if resolution == qb.ResolutionHour {
+			// time.Date normalises hour 24 into the next day, which keeps the walk aligned
+			// with wall-clock hours across a DST transition.
+			d = time.Date(d.Year(), d.Month(), d.Day(), d.Hour()+1, 0, 0, 0, d.Location())
+		} else {
+			d = d.AddDate(0, 0, 1)
+		}
+	}
+
+	return labels
 }
 
 // resolvePerformanceWindow turns the optional start/end dates into a local time range and
@@ -94,9 +131,7 @@ func (r *queryResolver) resolvePerformanceWindow(ctx context.Context, startTime,
 		window.endLocal = window.startLocal.AddDate(0, 0, 1)
 	}
 
-	if window.endLocal.Sub(window.startLocal) <= hourlyResolutionMaxDays*24*time.Hour {
-		window.resolution = qb.ResolutionHour
-	}
+	window.resolution = resolutionForSpan(int(window.endLocal.Sub(window.startLocal).Hours() / 24))
 
 	return window
 }

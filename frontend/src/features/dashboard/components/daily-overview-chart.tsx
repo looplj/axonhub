@@ -3,6 +3,7 @@ import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, X
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber } from '@/utils/format-number';
+import { formatBucketLabel } from '@/utils/format-bucket-label';
 import { formatCurrencyTick } from '@/features/analytics/utils/format-currency';
 import type { AnalyticsDailyStat } from '@/features/analytics/data/analytics';
 
@@ -42,20 +43,12 @@ export function DailyOverviewChart({
     cost: t('analytics.overview.totalCost'),
   };
 
-  const chartData = data.map((stat) => {
-    const [year, month, day] = stat.date.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    return {
-      name: date.toLocaleDateString(locale, {
-        month: '2-digit',
-        day: '2-digit',
-        timeZone: 'UTC',
-      }),
-      requests: stat.requestCount,
-      tokens: stat.totalTokens,
-      cost: stat.cost,
-    };
-  });
+  const chartData = data.map((stat) => ({
+    name: formatBucketLabel(stat.date, locale),
+    requests: stat.requestCount,
+    tokens: stat.totalTokens,
+    cost: stat.cost,
+  }));
 
   if (isLoading) {
     return (
