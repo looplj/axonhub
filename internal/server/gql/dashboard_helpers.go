@@ -50,6 +50,82 @@ func InvalidateAllTimeTokenStatsCache() {
 	allTimeCacheMu.Unlock()
 }
 
+// defaultPerformanceWindowDays bounds the performance queries when no range is supplied.
+const defaultPerformanceWindowDays = 30
+
+// hourlyResolutionMaxDays is the widest range served at hourly resolution. Beyond it the
+// bucket count grows past what a single chart can show legibly, so the server falls back
+// to daily buckets.
+const hourlyResolutionMaxDays = 14
+
+// performanceWindow is the resolved time range plus the bucket resolution the performance
+// queries should use for it.
+type performanceWindow struct {
+	startLocal time.Time
+	endLocal   time.Time
+	resolution qb.DateResolution
+}
+
+// resolvePerformanceWindow turns the optional start/end dates into a local time range and
+// picks a bucket resolution for it. Dates are "YYYY-MM-DD" and inclusive; the end becomes
+// the next local midnight so the whole end day is covered by the half-open SQL bound.
+// An unparseable or empty range falls back to the trailing default window.
+func (r *queryResolver) resolvePerformanceWindow(ctx context.Context, startTime, endTime *string) performanceWindow {
+	loc := r.systemService.TimeLocation(ctx)
+	nowLocal := xtime.UTCNow().In(loc)
+	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+
+	window := performanceWindow{
+		startLocal: todayLocal.AddDate(0, 0, -defaultPerformanceWindowDays+1),
+		endLocal:   todayLocal.AddDate(0, 0, 1),
+		resolution: qb.ResolutionDay,
+	}
+
+	parsedStart, okStart := parseWindowDate(startTime, loc, todayLocal)
+	parsedEnd, okEnd := parseWindowDate(endTime, loc, todayLocal)
+	if !okStart && !okEnd {
+		return window
+	}
+
+	window.startLocal = parsedStart
+	window.endLocal = parsedEnd.AddDate(0, 0, 1)
+
+	if window.endLocal.Before(window.startLocal) {
+		window.endLocal = window.startLocal.AddDate(0, 0, 1)
+	}
+
+	if window.endLocal.Sub(window.startLocal) <= hourlyResolutionMaxDays*24*time.Hour {
+		window.resolution = qb.ResolutionHour
+	}
+
+	return window
+}
+
+// parseWindowDate parses an optional "YYYY-MM-DD" date into local midnight, falling back to
+// today when the value is absent or malformed.
+func parseWindowDate(value *string, loc *time.Location, todayLocal time.Time) (time.Time, bool) {
+	if value == nil || *value == "" {
+		return todayLocal, false
+	}
+
+	parsed, err := time.ParseInLocation("2006-01-02", *value, loc)
+	if err != nil {
+		return todayLocal, false
+	}
+
+	return parsed, true
+}
+
+// placeholdersFor returns the bound placeholders for a dialect. Postgres uses numbered
+// parameters, everything else positional "?" markers.
+func placeholdersFor(dialectName string) (start string, end string, dollar bool) {
+	if dialectName == dialect.Postgres {
+		return "$1", "$2", true
+	}
+
+	return "?", "?", false
+}
+
 type scoredItem[T any] struct {
 	stats      T
 	confidence string
@@ -73,15 +149,26 @@ func safeIntFromInt64(v int64) int {
 	return int(v)
 }
 
-func buildDateExpression(dialectName string, timestampCol string, offsetSeconds int, locName string) string {
+func buildDateExpression(dialectName string, timestampCol string, offsetSeconds int, locName string, resolution qb.DateResolution) string {
 	switch dialectName {
 	case dialect.SQLite:
+		if resolution == qb.ResolutionHour {
+			return fmt.Sprintf("strftime('%%Y-%%m-%%d %%H:00', datetime(%s, 'unixepoch', '%+d seconds'))", timestampCol, offsetSeconds)
+		}
 		return fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(%s, 'unixepoch', '%+d seconds'))", timestampCol, offsetSeconds)
 	case dialect.MySQL:
 		offsetStr := xtime.FormatUTCOffset(offsetSeconds)
-		return fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(FROM_UNIXTIME(%s), '+00:00', '%s'), '%%Y-%%m-%%d')", timestampCol, offsetStr)
+		layout := "%Y-%m-%d"
+		if resolution == qb.ResolutionHour {
+			layout = "%Y-%m-%d %H:00"
+		}
+		return fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(FROM_UNIXTIME(%s), '+00:00', '%s'), '%s')", timestampCol, offsetStr, layout)
 	case dialect.Postgres:
-		return fmt.Sprintf("to_char(to_timestamp(%s) AT TIME ZONE '%s', 'YYYY-MM-DD')", timestampCol, locName)
+		layout := "YYYY-MM-DD"
+		if resolution == qb.ResolutionHour {
+			layout = "YYYY-MM-DD HH24:00"
+		}
+		return fmt.Sprintf("to_char(to_timestamp(%s) AT TIME ZONE '%s', '%s')", timestampCol, locName, layout)
 	default:
 		return fmt.Sprintf("DATE(%s)", timestampCol)
 	}

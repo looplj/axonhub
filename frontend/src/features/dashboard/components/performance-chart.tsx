@@ -29,6 +29,31 @@ const COLORS = [
 const MAX_CHART_THROUGHPUT = 1000;
 const MAX_CHART_TTFT_MS = 60000;
 
+/** Bucket labels are "YYYY-MM-DD" for daily resolution and "YYYY-MM-DD HH:00" for
+ * hourly, so the label itself tells us which granularity the server chose. */
+function formatBucketLabel(bucket: string, locale: string): string {
+  const isHourly = bucket.includes(' ');
+  const [datePart, timePart] = isHourly ? bucket.split(' ') : [bucket, undefined];
+  const [year, month, day] = datePart.split('-').map(Number);
+  const dateObj = new Date(Date.UTC(year, month - 1, day));
+
+  if (timePart) {
+    return dateObj.toLocaleString(locale, {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      hour12: false,
+      timeZone: 'UTC',
+    });
+  }
+
+  return dateObj.toLocaleDateString(locale, {
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'UTC',
+  });
+}
+
 export type PerformanceDisplayMode = 'throughput' | 'ttft';
 
 export interface PerformanceDataPoint {
@@ -190,14 +215,8 @@ export function PerformanceChart({
     if (isLoadingData || seriesIds.length === 0) return [];
 
     return dates.map((date) => {
-      const [year, month, day] = date.split('-').map(Number);
-      const dateObj = new Date(Date.UTC(year, month - 1, day));
       const dataPoint: Record<string, string | number | null> = {
-        name: dateObj.toLocaleDateString(locale, {
-          month: '2-digit',
-          day: '2-digit',
-          timeZone: 'UTC',
-        }),
+        name: formatBucketLabel(date, locale),
       };
 
       seriesIds.forEach((id) => {
@@ -230,26 +249,46 @@ export function PerformanceChart({
     .reduce((max, s) => Math.max(max, s.ttftMs!), 0);
   const ttftMax = Math.max(100, Math.ceil(maxTtft * 1.1));
 
+  const modeSwitch = (
+    <div className='mb-3 flex items-center justify-end'>
+      <Tabs value={displayMode} onValueChange={(v) => setDisplayMode(v as PerformanceDisplayMode)}>
+        <TabsList className='h-7 p-0.5'>
+          <TabsTrigger value='throughput' className='h-6 px-2.5 text-xs'>
+            {t('dashboard.stats.throughput')}
+          </TabsTrigger>
+          <TabsTrigger value='ttft' className='h-6 px-2.5 text-xs'>
+            {t('dashboard.stats.ttft')}
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+    </div>
+  );
+
   if (isLoadingData) {
     return (
-      <div className='flex h-[350px] items-center justify-center'>
-        <Skeleton className='h-full w-full' />
+      <div>
+        {modeSwitch}
+        <Skeleton className='h-[350px] w-full' />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className='flex h-[350px] items-center justify-center text-red-500'>
-        {errorMessage} {error.message}
+      <div>
+        {modeSwitch}
+        <div className='flex h-[350px] items-center justify-center text-red-500'>
+          {errorMessage} {error.message}
+        </div>
       </div>
     );
   }
 
   if (seriesIds.length === 0) {
     return (
-      <div className='flex h-[350px] items-center justify-center text-muted-foreground'>
-        {emptyMessage}
+      <div>
+        {modeSwitch}
+        <div className='flex h-[350px] items-center justify-center text-muted-foreground'>{emptyMessage}</div>
       </div>
     );
   }
@@ -261,18 +300,7 @@ export function PerformanceChart({
 
   return (
     <div>
-      <div className='mb-3 flex items-center justify-end'>
-        <Tabs value={displayMode} onValueChange={(v) => setDisplayMode(v as PerformanceDisplayMode)}>
-          <TabsList className='h-7 p-0.5'>
-            <TabsTrigger value='throughput' className='h-6 px-2.5 text-xs'>
-              {t('dashboard.stats.throughput')}
-            </TabsTrigger>
-            <TabsTrigger value='ttft' className='h-6 px-2.5 text-xs'>
-              {t('dashboard.stats.ttft')}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </div>
+      {modeSwitch}
       <ResponsiveContainer width='100%' height={350}>
         <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
           <defs>

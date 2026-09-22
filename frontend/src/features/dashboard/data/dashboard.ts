@@ -300,8 +300,8 @@ const CHANNEL_SUCCESS_RATES_QUERY = `
 `;
 
 const MODEL_PERFORMANCE_STATS_QUERY = `
-  query ModelPerformanceStats {
-    modelPerformanceStats {
+  query ModelPerformanceStats($startTime: String, $endTime: String) {
+    modelPerformanceStats(startTime: $startTime, endTime: $endTime) {
       date
       modelId
       throughput
@@ -312,8 +312,8 @@ const MODEL_PERFORMANCE_STATS_QUERY = `
 `;
 
 const CHANNEL_PERFORMANCE_STATS_QUERY = `
-  query ChannelPerformanceStats {
-    channelPerformanceStats {
+  query ChannelPerformanceStats($startTime: String, $endTime: String) {
+    channelPerformanceStats(startTime: $startTime, endTime: $endTime) {
       date
       channelId
       channelName
@@ -522,12 +522,16 @@ export function useChannelSuccessRates(limit?: number, timeWindow?: string) {
   });
 }
 
-/** Throughput and time to first token per model, refreshed every 5 minutes. */
-export function useModelPerformanceStats() {
+/** Throughput and time to first token per model, refreshed every 5 minutes. Bucketing is
+ * decided by the server from the range: hourly for short ranges, daily otherwise. */
+export function useModelPerformanceStats(startTime?: string | null, endTime?: string | null) {
   return useQuery({
-    queryKey: ['modelPerformanceStats'],
+    queryKey: ['modelPerformanceStats', startTime, endTime],
     queryFn: async () => {
-      const data = await graphqlRequest<{ modelPerformanceStats: ModelPerformanceStat[] }>(MODEL_PERFORMANCE_STATS_QUERY);
+      const data = await graphqlRequest<{ modelPerformanceStats: ModelPerformanceStat[] }>(MODEL_PERFORMANCE_STATS_QUERY, {
+        ...(startTime != null && { startTime }),
+        ...(endTime != null && { endTime }),
+      });
       return data.modelPerformanceStats.map((item) => modelPerformanceStatSchema.parse(item));
     },
     refetchInterval: 300000,
@@ -535,11 +539,14 @@ export function useModelPerformanceStats() {
 }
 
 /** Throughput and time to first token per channel, refreshed every 5 minutes. */
-export function useChannelPerformanceStats() {
+export function useChannelPerformanceStats(startTime?: string | null, endTime?: string | null) {
   return useQuery({
-    queryKey: ['channelPerformanceStats'],
+    queryKey: ['channelPerformanceStats', startTime, endTime],
     queryFn: async () => {
-      const data = await graphqlRequest<{ channelPerformanceStats: ChannelPerformanceStat[] }>(CHANNEL_PERFORMANCE_STATS_QUERY);
+      const data = await graphqlRequest<{ channelPerformanceStats: ChannelPerformanceStat[] }>(CHANNEL_PERFORMANCE_STATS_QUERY, {
+        ...(startTime != null && { startTime }),
+        ...(endTime != null && { endTime }),
+      });
       return data.channelPerformanceStats.map((item) => channelPerformanceStatSchema.parse(item));
     },
     refetchInterval: 300000,

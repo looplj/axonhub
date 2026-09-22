@@ -74,7 +74,7 @@ export function ChannelHealthCard({ startTime, endTime }: ChannelHealthCardProps
   };
 
   return (
-    <Card className='hover-card flex flex-col'>
+    <Card className='hover-card flex h-full flex-col'>
       <CardHeader>
         <CardTitle>{t('dashboard.charts.channelHealth')}</CardTitle>
         <CardDescription>
@@ -89,7 +89,7 @@ export function ChannelHealthCard({ startTime, endTime }: ChannelHealthCardProps
           </Link>
         </CardAction>
       </CardHeader>
-      <CardContent className='flex-1'>
+      <CardContent className='flex-1 min-h-0'>
         {isLoading ? (
           <div className='space-y-4'>
             {Array.from({ length: 5 }).map((_, i) => (
@@ -103,7 +103,7 @@ export function ChannelHealthCard({ startTime, endTime }: ChannelHealthCardProps
         ) : rows.length === 0 ? (
           <div className='text-muted-foreground text-sm'>{t('dashboard.charts.noChannelData')}</div>
         ) : (
-          <div className='max-h-[300px] space-y-4 overflow-y-auto pr-1 [scrollbar-gutter:stable]'>
+          <div className='h-full space-y-4 overflow-y-auto pr-1 [scrollbar-gutter:stable]'>
             {rows.map(renderRow)}
           </div>
         )}

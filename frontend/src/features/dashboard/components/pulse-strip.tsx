@@ -254,11 +254,13 @@ function SuccessRatePulseCard() {
 
   const total = stats?.totalRequests || 0;
   const failed = stats?.failedRequests || 0;
-  const successRate = total > 0 ? ((total - failed) / total) * 100 : 0;
+  const succeeded = Math.max(total - failed, 0);
+  const successRate = total > 0 ? (succeeded / total) * 100 : 0;
 
-  const radius = 30;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - successRate / 100);
+  const parts = [
+    { key: 'succeeded', value: succeeded, color: 'var(--primary)', label: t('dashboard.stats.succeeded') },
+    { key: 'failed', value: failed, color: 'var(--destructive)', label: t('dashboard.stats.failedRequests') },
+  ];
 
   return (
     <PulseCardShell
@@ -272,35 +274,30 @@ function SuccessRatePulseCard() {
       {isLoading ? (
         <PulseSkeleton />
       ) : (
-        <div className='flex items-center gap-4'>
-          <div className='relative h-[76px] w-[76px] shrink-0'>
-            <svg viewBox='0 0 76 76' className='h-full w-full -rotate-90'>
-              <circle cx='38' cy='38' r={radius} fill='none' stroke='var(--muted)' strokeWidth='8' />
-              <circle
-                cx='38'
-                cy='38'
-                r={radius}
-                fill='none'
-                stroke='var(--primary)'
-                strokeWidth='8'
-                strokeLinecap='round'
-                strokeDasharray={circumference}
-                strokeDashoffset={dashOffset}
-              />
-            </svg>
-            <div className='absolute inset-0 flex items-center justify-center'>
-              <span className='font-mono text-sm font-bold'>{successRate.toFixed(1)}%</span>
-            </div>
+        <div className='space-y-3'>
+          <div className='font-mono text-3xl font-bold'>
+            {successRate.toFixed(1)}
+            <span className='text-muted-foreground ml-1 text-lg font-semibold'>%</span>
           </div>
-          <div className='min-w-0 space-y-1 text-xs'>
-            <div>
-              <span className='font-mono text-base font-semibold'>{formatNumber(failed)}</span>{' '}
-              <span className='text-muted-foreground'>{t('dashboard.stats.failedRequests')}</span>
-            </div>
+          <div className='flex h-2 overflow-hidden rounded-full bg-muted'>
+            {parts.map((part) => (
+              <div
+                key={part.key}
+                style={{ width: `${total > 0 ? (part.value / total) * 100 : 0}%`, backgroundColor: part.color }}
+              />
+            ))}
+          </div>
+          <div className='text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 text-xs'>
+            {parts.map((part) => (
+              <span key={part.key} className='flex items-center gap-1'>
+                <span className='h-2 w-2 rounded-full' style={{ backgroundColor: part.color }} />
+                {part.label} {formatNumber(part.value)}
+              </span>
+            ))}
             {stats?.averageResponseTime != null && (
-              <div className='text-muted-foreground'>
+              <span className='flex items-center gap-1'>
                 {t('dashboard.stats.average')} {formatDuration(stats.averageResponseTime)}
-              </div>
+              </span>
             )}
           </div>
         </div>
@@ -314,7 +311,7 @@ function SuccessRatePulseCard() {
  * analysis range below. */
 export function PulseStrip() {
   return (
-    <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+    <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4'>
       <TodayRequestsPulseCard />
       <AllTimeRequestsPulseCard />
       <TokenStatsPulseCard />

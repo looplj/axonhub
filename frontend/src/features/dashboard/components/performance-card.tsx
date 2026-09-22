@@ -9,13 +9,18 @@ import { RangeBadge } from './range-badge';
 
 type PerformanceDimension = 'model' | 'channel';
 
-/** Performance over time: throughput or TTFT per model or channel. */
-export function PerformanceCard() {
+interface PerformanceCardProps {
+  startTime: string | null;
+  endTime: string | null;
+}
+
+/** Throughput and time to first token over time, per model or channel. */
+export function PerformanceCard({ startTime, endTime }: PerformanceCardProps) {
   const { t } = useTranslation();
   const [dimension, setDimension] = useState<PerformanceDimension>('model');
 
-  const { data: modelStats, isLoading: isModelLoading, error: modelError } = useModelPerformanceStats();
-  const { data: channelStats, isLoading: isChannelLoading, error: channelError } = useChannelPerformanceStats();
+  const { data: modelStats, isLoading: isModelLoading, error: modelError } = useModelPerformanceStats(startTime, endTime);
+  const { data: channelStats, isLoading: isChannelLoading, error: channelError } = useChannelPerformanceStats(startTime, endTime);
 
   const isChannel = dimension === 'channel';
 
@@ -31,6 +36,7 @@ export function PerformanceCard() {
     : modelStats?.map((stat) => ({
         date: stat.date,
         id: stat.modelId,
+        name: stat.modelId,
         throughput: stat.throughput,
         ttftMs: stat.ttftMs,
         requestCount: stat.requestCount,
@@ -41,14 +47,14 @@ export function PerformanceCard() {
   });
 
   return (
-    <Card className='hover-card'>
+    <Card className='hover-card flex h-full flex-col'>
       <CardHeader>
         <div className='space-y-1'>
-          <CardTitle>{isChannel ? t('dashboard.charts.channelPerformance') : t('dashboard.charts.modelPerformance')}</CardTitle>
+          <CardTitle>{t('dashboard.charts.performanceTitle')}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
-        <CardAction className='flex items-center gap-2'>
-          <RangeBadge label={t('dashboard.charts.performanceRange')} />
+        <CardAction className='flex flex-wrap items-center justify-end gap-2'>
+          <RangeBadge label={startTime ? `${startTime} – ${endTime || startTime}` : t('timeRange.last30Days')} />
           <Tabs value={dimension} onValueChange={(value) => setDimension(value as PerformanceDimension)}>
             <TabsList className='h-8'>
               <TabsTrigger value='model' className='text-xs'>
@@ -61,7 +67,7 @@ export function PerformanceCard() {
           </Tabs>
         </CardAction>
       </CardHeader>
-      <CardContent>
+      <CardContent className='flex-1'>
         <PerformanceChart
           data={data}
           isLoading={isChannel ? isChannelLoading : isModelLoading}
