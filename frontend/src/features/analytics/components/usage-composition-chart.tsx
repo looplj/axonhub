@@ -3,6 +3,7 @@ import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber } from '@/utils/format-number';
+import { formatBucketLabel } from '@/utils/format-bucket-label';
 import type { AnalyticsDailyStat } from '../data/analytics';
 
 function formatExactNumber(value: number): string {
@@ -23,15 +24,9 @@ export function UsageCompositionChart({ data, isLoading }: UsageCompositionChart
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
 
   const chartData = data.map((stat) => {
-    const [year, month, day] = stat.date.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
     const inputTotal = stat.cachedInputTokens + stat.uncachedInputTokens;
     return {
-      name: date.toLocaleDateString(locale, {
-        month: '2-digit',
-        day: '2-digit',
-        timeZone: 'UTC',
-      }),
+      name: formatBucketLabel(stat.date, locale),
       cachedInput: stat.cachedInputTokens,
       uncachedInput: stat.uncachedInputTokens,
       output: stat.outputTokens,

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"time"
 
-	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -134,6 +133,9 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 	startDay = time.Date(startDay.Year(), startDay.Month(), startDay.Day(), 0, 0, 0, 0, loc)
 	endDay = time.Date(endDay.Year(), endDay.Month(), endDay.Day(), 0, 0, 0, 0, loc)
 
+	// Short ranges bucket by hour so a single day still yields a readable curve.
+	resolution := resolutionForSpan(int(endDay.Sub(startDay).Hours()/24) + 1)
+
 	type dailyStats struct {
 		Date         string  `json:"date"`
 		InputTokens  int64   `json:"input_tokens"`
@@ -152,19 +154,7 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 
 			// Build dialect-specific date expression
 			createdAtCol := s.C(usagelog.FieldCreatedAt)
-			var dateExpr string
-
-			switch s.Dialect() {
-			case dialect.SQLite:
-				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", createdAtCol, offsetSeconds)
-			case dialect.MySQL:
-				offsetStr := xtime.FormatUTCOffset(offsetSeconds)
-				dateExpr = fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", createdAtCol, offsetStr)
-			case dialect.Postgres:
-				dateExpr = fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", createdAtCol, loc.String())
-			default:
-				dateExpr = fmt.Sprintf("DATE(%s)", createdAtCol)
-			}
+			dateExpr := buildDateExpression(s.Dialect(), createdAtCol, offsetSeconds, loc.String(), resolution)
 
 			s.Select(
 				sql.As(dateExpr, "date"),
@@ -188,35 +178,27 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 		return item.Date, item
 	})
 
-	// Fill in missing dates with zero values
+	// Fill in missing buckets with zero values so the chart's category axis stays evenly
+	// spaced: an omitted bucket would pull its neighbours together.
 	var response []*AnalyticsDailyStat
 
-	for d := startDay; !d.After(endDay); d = d.AddDate(0, 0, 1) {
-		dateStr := d.Format("2006-01-02")
-
-		if stats, exists := statsMap[dateStr]; exists {
-			response = append(response, &AnalyticsDailyStat{
-				Date:                dateStr,
-				InputTokens:         safeIntFromInt64(stats.InputTokens),
-				CachedInputTokens:   safeIntFromInt64(stats.CachedTokens),
-				UncachedInputTokens: safeIntFromInt64(stats.InputTokens - stats.CachedTokens),
-				OutputTokens:        safeIntFromInt64(stats.OutputTokens),
-				TotalTokens:         safeIntFromInt64(stats.TotalTokens),
-				RequestCount:        stats.RequestCount,
-				Cost:                stats.Cost,
-			})
-		} else {
-			response = append(response, &AnalyticsDailyStat{
-				Date:                dateStr,
-				InputTokens:         0,
-				CachedInputTokens:   0,
-				UncachedInputTokens: 0,
-				OutputTokens:        0,
-				TotalTokens:         0,
-				RequestCount:        0,
-				Cost:                0,
-			})
+	for _, dateStr := range bucketSequence(startDay, endDay.AddDate(0, 0, 1), resolution) {
+		stats, exists := statsMap[dateStr]
+		if !exists {
+			response = append(response, &AnalyticsDailyStat{Date: dateStr})
+			continue
 		}
+
+		response = append(response, &AnalyticsDailyStat{
+			Date:                dateStr,
+			InputTokens:         safeIntFromInt64(stats.InputTokens),
+			CachedInputTokens:   safeIntFromInt64(stats.CachedTokens),
+			UncachedInputTokens: safeIntFromInt64(stats.InputTokens - stats.CachedTokens),
+			OutputTokens:        safeIntFromInt64(stats.OutputTokens),
+			TotalTokens:         safeIntFromInt64(stats.TotalTokens),
+			RequestCount:        stats.RequestCount,
+			Cost:                stats.Cost,
+		})
 	}
 
 	return response, nil
