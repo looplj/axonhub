@@ -123,8 +123,12 @@ func TestResponseModel(t *testing.T) {
 		{"JSON transcript text remains content", llm.APIFormatOpenAITranscription, `{"text":"{\"model\":\"whisper-1\"}"}`, "application/json", ""},
 		{"binary speech", llm.APIFormatOpenAISpeech, `{"model":"audio-data"}`, "audio/pcm", ""},
 		{"speech is not model metadata even if marked JSON", llm.APIFormatOpenAISpeech, `{"model":"audio-data"}`, "application/json", ""},
-		{"malformed media type", llm.APIFormatOpenAIChatCompletion, `{"model":"m"}`, "application/json; x=", ""},
+		{"malformed media type falls back to the body", llm.APIFormatOpenAIChatCompletion, `{"model":"m"}`, "application/json; x=", "m"},
 		{"structured JSON media type", llm.APIFormatOpenAIChatCompletion, `{"model":"m"}`, "application/vnd.provider+json", "m"},
+		{"stream media type on a non-streaming chat response", llm.APIFormatOpenAIChatCompletion, `{"model":"provider-model","choices":[]}`, "text/event-stream", "provider-model"},
+		{"stream media type on a non-streaming Anthropic response", llm.APIFormatAnthropicMessage, `{"model":"claude-version"}`, "text/event-stream", "claude-version"},
+		{"stream media type on a non-streaming Responses response", llm.APIFormatOpenAIResponse, `{"model":"gpt-version"}`, "text/event-stream", "gpt-version"},
+		{"text transcript keeps its content even when labelled SSE", llm.APIFormatOpenAITranscription, `{"model":"whisper-1"}`, "text/event-stream", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

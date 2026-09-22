@@ -146,8 +146,13 @@ func modelInURL(rawURL, marker string, suffixes ...string) string {
 	return ""
 }
 
-// ResponseModel respects the declared media type. A text transcript that happens
-// to be valid JSON is still generated text, not response metadata.
+// ResponseModel reads the model a non-streaming provider response reports.
+// Chat-style protocols carry the name as top-level metadata, so the media type is
+// not gated: relays that label a JSON body as text/event-stream (or send a
+// malformed one) would otherwise lose a name that is conclusively present. The
+// body still has to parse as JSON and hold the name on a known metadata path.
+// Text-bearing endpoints keep the gate, because their body is generated content
+// that may coincidentally be valid JSON.
 func ResponseModel(response *httpclient.Response, format llm.APIFormat) string {
 	if response == nil || response.StatusCode >= 400 {
 		return ""
@@ -155,17 +160,19 @@ func ResponseModel(response *httpclient.Response, format llm.APIFormat) string {
 	if response.Request != nil && response.Request.APIFormat != "" {
 		format = llm.APIFormat(response.Request.APIFormat)
 	}
-	typ := mediaType(response.Headers.Get("Content-Type"))
-	if typ != "" && !isJSON(typ) {
-		return ""
-	}
 	if format == llm.APIFormatOpenAISpeech {
 		return ""
 	}
-	if (format == llm.APIFormatOpenAITranscription || format == llm.APIFormatOpenAITranslation) && !isJSON(typ) {
+	if isTextResponseFormat(format) && !isJSON(mediaType(response.Headers.Get("Content-Type"))) {
 		return ""
 	}
 	return reportedModel(response.Body, format, "", false)
+}
+
+// isTextResponseFormat reports whether the endpoint returns generated text rather
+// than protocol metadata, so its media type has to prove the body is JSON.
+func isTextResponseFormat(format llm.APIFormat) bool {
+	return format == llm.APIFormatOpenAITranscription || format == llm.APIFormatOpenAITranslation
 }
 
 func StreamModel(event *httpclient.StreamEvent, format llm.APIFormat) string {
