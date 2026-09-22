@@ -1,29 +1,16 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 import { AlertTriangle, ActivityIcon } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber } from '@/utils/format-number';
 import { useChannelSuccessRates, type ChannelSuccessRate } from '../data/dashboard';
-import { coarseWindowLabelKey, inclusiveCalendarDays, type CoarseTimeWindow } from '../utils/time-window';
+import { coarseWindowFromRange } from '../utils/time-window';
+import { RangeBadge } from './range-badge';
 
 const UNHEALTHY_RATE = 90;
 const CHANNEL_LIMIT = 12;
-
-/** channelSuccessRates only understands coarse calendar windows, so the global date
- * range is mapped onto the closest supported window; ranges past 31 days have no
- * matching allTime support and fall back to month. */
-function toCoarseTimeWindow(startTime: string | null, endTime: string | null): CoarseTimeWindow {
-  if (!startTime) return 'allTime';
-
-  const days = inclusiveCalendarDays(startTime, endTime);
-
-  if (days <= 1) return 'day';
-  if (days <= 7) return 'week';
-  if (days <= 31) return 'month';
-  return 'allTime';
-}
 
 interface ChannelHealthCardProps {
   startTime: string | null;
@@ -33,7 +20,7 @@ interface ChannelHealthCardProps {
 /** Channel health card: success rates per channel, unhealthy ones first. */
 export function ChannelHealthCard({ startTime, endTime }: ChannelHealthCardProps) {
   const { t } = useTranslation();
-  const timeWindow = toCoarseTimeWindow(startTime, endTime);
+  const timeWindow = coarseWindowFromRange(startTime, endTime);
   const { data: channels, isLoading, error } = useChannelSuccessRates(CHANNEL_LIMIT, timeWindow);
 
   const rows = useMemo(() => {
@@ -95,10 +82,11 @@ export function ChannelHealthCard({ startTime, endTime }: ChannelHealthCardProps
             ? t('dashboard.charts.channelHealthUnhealthy', { count: unhealthyCount })
             : t('dashboard.charts.channelSuccessRateDescription')}
         </CardDescription>
-        <CardAction>
-          <Badge variant='outline' className='text-muted-foreground font-normal'>
-            {t(coarseWindowLabelKey(timeWindow))}
-          </Badge>
+        <CardAction className='flex items-center gap-2'>
+          <RangeBadge timeWindow={timeWindow} />
+          <Link to='/dashboard/channel-success-rates' className='text-sm text-primary hover:underline'>
+            {t('dashboard.viewAll')}
+          </Link>
         </CardAction>
       </CardHeader>
       <CardContent className='flex-1'>

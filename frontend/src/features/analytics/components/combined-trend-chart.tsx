@@ -24,9 +24,11 @@ interface CombinedTrendChartProps {
   data: AnalyticsDailyStat[];
   isLoading: boolean;
   currencyCode: string;
+  summary?: React.ReactNode;
+  badge?: React.ReactNode;
 }
 
-export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTrendChartProps) {
+export function CombinedTrendChart({ data, isLoading, currencyCode, summary, badge }: CombinedTrendChartProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
 
@@ -72,7 +74,11 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
   return (
     <Card className='hover-card'>
       <CardHeader>
-        <CardTitle>{t('analytics.chart.trendTitle')}</CardTitle>
+        <div className='space-y-1'>
+          <CardTitle>{t('analytics.chart.trendTitle')}</CardTitle>
+          {summary && <div className='text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-xs'>{summary}</div>}
+        </div>
+        {badge && <CardAction>{badge}</CardAction>}
       </CardHeader>
       <CardContent className='pl-2'>
         <ResponsiveContainer width='100%' height={350}>

@@ -144,15 +144,74 @@ function DateRangePicker({ startDate, endDate, onStartChange, onEndChange }: Dat
   );
 }
 
+/** Single-button date range used by the compact variant, so the slim filter row stays
+ * on one line while the pickers themselves stay reachable. */
+function CompactDateRangePicker({
+  startDate,
+  endDate,
+  onStartChange,
+  onEndChange,
+}: DateRangePickerProps) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
+      <PopoverTrigger asChild>
+        <Button variant='ghost' size='sm' className='text-muted-foreground hover:text-foreground h-7 gap-1 px-2 text-xs'>
+          <IconCalendar className='h-3 w-3' />
+          <span className='tabular-nums'>
+            {startDate || t('timeRange.startDate')} – {endDate || t('timeRange.endDate')}
+          </span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className='w-auto p-2' align='end'>
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onStartChange={onStartChange}
+          onEndChange={onEndChange}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 interface TimeRangeFilterProps {
   value: TimeRangeValue;
   onChange: (range: TimeRangeValue) => void;
   earliestDate?: string | null;
+  variant?: 'bar' | 'compact';
+}
+
+/** 'YYYY-MM-DD' to local midnight; used to count the days a custom range spans. */
+function localMidnight(dateStr: string): Date {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+/** Active range as text, so the page always states which window is in effect:
+ * a preset reads as "name · start – end", a custom range as "start – end · N days". */
+function useRangeSummary(value: TimeRangeValue, presets: Preset[]): string {
+  const { t } = useTranslation();
+
+  return useMemo(() => {
+    if (!value.startTime) return '';
+
+    const matched = presets.find((p) => p.range.startTime === value.startTime && p.range.endTime === value.endTime);
+    const span = `${value.startTime} – ${value.endTime || t('timeRange.today')}`;
+
+    if (matched) return `${t(`timeRange.${matched.key}`)} · ${span}`;
+
+    const end = value.endTime ? localMidnight(value.endTime) : new Date();
+    const days = Math.round((end.getTime() - localMidnight(value.startTime).getTime()) / 86_400_000) + 1;
+    return `${span} · ${t('timeRange.days', { count: days })}`;
+  }, [presets, t, value.endTime, value.startTime]);
 }
 
 /** Unified time range filter: preset buttons plus a custom start/end pair, replacing
  * the per-page TimePeriodSelector. */
-export function TimeRangeFilter({ value, onChange, earliestDate }: TimeRangeFilterProps) {
+export function TimeRangeFilter({ value, onChange, earliestDate, variant = 'bar' }: TimeRangeFilterProps) {
   const { t } = useTranslation();
   const presets = useMemo(() => buildPresets(earliestDate), [earliestDate]);
 
@@ -162,6 +221,47 @@ export function TimeRangeFilter({ value, onChange, earliestDate }: TimeRangeFilt
   }, [presets, value.startTime, value.endTime]);
 
   const isCustom = !activeKey && (value.startTime !== null || value.endTime !== null);
+  const summary = useRangeSummary(value, presets);
+
+  if (variant === 'compact') {
+    return (
+      <div className='flex flex-wrap items-center justify-end gap-2'>
+        <div className='flex flex-wrap items-center gap-1'>
+          {presets.map((preset) => (
+            <Button
+              key={preset.key}
+              variant={activeKey === preset.key ? 'default' : 'ghost'}
+              size='sm'
+              className='text-muted-foreground h-7 px-2 text-xs'
+              // Until earliestDate is ready, allTime can only emit startTime: null, and
+              // the backend then falls back to its own 30-day default, which does not
+              // match what the preset promises.
+              disabled={preset.key === 'allTime' && !earliestDate}
+              onClick={() => onChange(preset.range)}
+            >
+              {t(`timeRange.${preset.key}`)}
+            </Button>
+          ))}
+        </div>
+
+        <CompactDateRangePicker
+          startDate={value.startTime}
+          endDate={value.endTime}
+          onStartChange={(date) => onChange({ startTime: date ? formatDate(date) : null, endTime: value.endTime })}
+          onEndChange={(date) => onChange({ startTime: value.startTime, endTime: date ? formatDate(date) : null })}
+        />
+
+        {isCustom && (
+          <Button variant='ghost' size='sm' className='text-muted-foreground h-8 text-xs' onClick={() => onChange({ startTime: null, endTime: null })}>
+            <IconX className='mr-1 h-3 w-3' />
+            {t('timeRange.reset')}
+          </Button>
+        )}
+
+        {summary && <span className='text-muted-foreground text-xs tabular-nums'>{summary}</span>}
+      </div>
+    );
+  }
 
   return (
     <div className='bg-card flex flex-wrap items-center gap-2 rounded-lg border p-3'>

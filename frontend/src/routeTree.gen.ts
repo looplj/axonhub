@@ -42,6 +42,7 @@ import { Route as AuthenticatedSettingsNotificationsRouteImport } from './routes
 import { Route as AuthenticatedSettingsDisplayRouteImport } from './routes/_authenticated/settings/display'
 import { Route as AuthenticatedSettingsAppearanceRouteImport } from './routes/_authenticated/settings/appearance'
 import { Route as AuthenticatedRequestsRequestIdRouteImport } from './routes/_authenticated/requests/$requestId'
+import { Route as AuthenticatedDashboardChannelSuccessRatesRouteImport } from './routes/_authenticated/dashboard/channel-success-rates'
 import { Route as AuthenticatedProjectUsersIndexRouteImport } from './routes/_authenticated/project/users/index'
 import { Route as AuthenticatedProjectUsageStatsIndexRouteImport } from './routes/_authenticated/project/usage-stats/index'
 import { Route as AuthenticatedProjectTracesIndexRouteImport } from './routes/_authenticated/project/traces/index'
@@ -236,6 +237,12 @@ const AuthenticatedRequestsRequestIdRoute =
     path: '/requests/$requestId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedDashboardChannelSuccessRatesRoute =
+  AuthenticatedDashboardChannelSuccessRatesRouteImport.update({
+    id: '/dashboard/channel-success-rates',
+    path: '/dashboard/channel-success-rates',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjectUsersIndexRoute =
   AuthenticatedProjectUsersIndexRouteImport.update({
     id: '/project/users/',
@@ -323,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/503': typeof errors503Route
   '/permission': typeof AuthenticatedPermissionRoute
   '/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
+  '/dashboard/channel-success-rates': typeof AuthenticatedDashboardChannelSuccessRatesRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
@@ -368,6 +376,7 @@ export interface FileRoutesByTo {
   '/permission': typeof AuthenticatedPermissionRoute
   '/': typeof AuthenticatedIndexRoute
   '/requests/$requestId': typeof AuthenticatedRequestsRequestIdRoute
+  '/dashboard/channel-success-rates': typeof AuthenticatedDashboardChannelSuccessRatesRoute
   '/settings/appearance': typeof AuthenticatedSettingsAppearanceRoute
   '/settings/display': typeof AuthenticatedSettingsDisplayRoute
   '/settings/notifications': typeof AuthenticatedSettingsNotificationsRoute
