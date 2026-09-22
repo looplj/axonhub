@@ -10,5 +10,6 @@
   "timeRange.endDate": "结束日期",
   "timeRange.startDateAfterEndError": "开始日期不能晚于结束日期，请重新选择",
   "timeRange.endDateBeforeStartError": "结束日期不能早于开始日期，请重新选择",
-  "timeRange.reset": "重置"
+  "timeRange.reset": "重置",
+  "timeRange.days": "{{count}} 天"
 }

@@ -177,7 +177,7 @@ export function RequestCostDistribution({ startTime, endTime, currencyCode }: Re
             {tail.length > 0 && (
               <DistributionRowItem
                 rank='—'
-                name={t('analytics.pie.other')}
+                name={t('dashboard.charts.other')}
                 requests={tail.reduce((sum, row) => sum + row.requests, 0)}
                 requestShare={share(
                   tail.reduce((sum, row) => sum + row.requests, 0),

@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { ChevronRight, TrendingUp } from 'lucide-react';
-import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TimeRangeFilter } from '@/components/time-range-filter';
@@ -53,10 +52,6 @@ export default function DashboardPage() {
 
   return (
     <div className='flex flex-1 flex-col overflow-hidden'>
-      <Header fixed>
-        <h2 className='text-xl font-bold tracking-tight'>{t('sidebar.items.dashboard')}</h2>
-      </Header>
-
       <Main fixed>
         <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-auto'>
           <PulseStrip />

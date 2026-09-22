@@ -10,5 +10,7 @@
   "timeRange.endDate": "End Date",
   "timeRange.startDateAfterEndError": "Start date cannot be later than end date. Please select again.",
   "timeRange.endDateBeforeStartError": "End date cannot be earlier than start date. Please select again.",
-  "timeRange.reset": "Reset"
+  "timeRange.reset": "Reset",
+  "timeRange.days_one": "{{count}} day",
+  "timeRange.days_other": "{{count}} days"
 }

@@ -219,7 +219,7 @@ export function TokenComposition({ startTime, endTime, currencyCode, isProjectOw
                 rank='—'
                 row={{
                   key: 'other',
-                  name: t('analytics.pie.other'),
+                  name: t('dashboard.charts.other'),
                   cached: dimension === 'user' ? null : tail.reduce((sum, row) => sum + (row.cached ?? 0), 0),
                   uncached: dimension === 'user' ? null : tail.reduce((sum, row) => sum + (row.uncached ?? 0), 0),
                   output: dimension === 'user' ? null : tail.reduce((sum, row) => sum + (row.output ?? 0), 0),
