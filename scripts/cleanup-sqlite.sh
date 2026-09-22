@@ -160,21 +160,24 @@ echo " done (${TOTAL} rows)"
 # 4. Delete channel_probes (hardcoded 3 days like GC does).
 # The probe time column is "timestamp" (an integer epoch) in the current schema; older
 # databases used a datetime "created_at". Use whichever exists and compare it with a
-# cutoff of the same type - the hardcoded created_at made the statement fail and, under
-# `set -e`, aborted the script before VACUUM ever ran.
+# cutoff of the same type - an earlier revision hardcoded created_at, which made the
+# statement fail and, under `set -e`, aborted the script before VACUUM ever ran.
 PROBE_TS_COL=$(sqlite3 "$DB_PATH" "SELECT name FROM pragma_table_info('channel_probes') WHERE name IN ('created_at','timestamp','probed_at') ORDER BY CASE name WHEN 'created_at' THEN 0 WHEN 'timestamp' THEN 1 ELSE 2 END LIMIT 1;")
 echo -n "  Cleaning channel_probes (>3 days)... "
 if [ -z "$PROBE_TS_COL" ]; then
     echo " skipped (no timestamp column)"
 else
-    PROBE_TS_TYPE=$(sqlite3 "$DB_PATH" "SELECT lower(type) FROM pragma_table_info('channel_probes') WHERE name = '${PROBE_TS_COL}';")
-    case "$PROBE_TS_TYPE" in
-        *int*) PROBE_CUTOFF="CAST(strftime('%s', 'now', '-3 days') AS INTEGER)" ;;
-        *)     PROBE_CUTOFF="datetime('now', '-3 days')" ;;
-    esac
+    # Pick the comparison from the stored values, not just the declared type: an epoch can
+    # live in a column that is not declared INTEGER.
+    PROBE_EPOCH=$(sqlite3 "$DB_PATH" "SELECT CASE WHEN EXISTS (SELECT 1 FROM channel_probes WHERE (typeof(${PROBE_TS_COL}) IN ('integer','real') AND ${PROBE_TS_COL} > 0) OR (typeof(${PROBE_TS_COL}) = 'text' AND ${PROBE_TS_COL} GLOB '[0-9]*' AND ${PROBE_TS_COL} NOT GLOB '*[^0-9]*' AND CAST(${PROBE_TS_COL} AS INTEGER) > 0)) THEN 1 ELSE 0 END;")
+    if [ "$PROBE_EPOCH" = "1" ]; then
+        PROBE_WHERE="((typeof(${PROBE_TS_COL}) IN ('integer','real')) OR (typeof(${PROBE_TS_COL}) = 'text' AND ${PROBE_TS_COL} GLOB '[0-9]*' AND ${PROBE_TS_COL} NOT GLOB '*[^0-9]*')) AND CAST(${PROBE_TS_COL} AS INTEGER) > 0 AND CAST(${PROBE_TS_COL} AS INTEGER) < CAST(strftime('%s', 'now', '-3 days') AS INTEGER)"
+    else
+        PROBE_WHERE="typeof(${PROBE_TS_COL}) = 'text' AND ${PROBE_TS_COL} <> '' AND ${PROBE_TS_COL} <> '0' AND ${PROBE_TS_COL} < datetime('now', '-3 days')"
+    fi
     DELETED=$(sqlite3 "$DB_PATH" "
         DELETE FROM channel_probes
-        WHERE ${PROBE_TS_COL} < ${PROBE_CUTOFF};
+        WHERE ${PROBE_WHERE};
         SELECT changes();
     ")
     echo " done (${DELETED} rows)"
@@ -203,10 +206,11 @@ echo " done (${DELETED} rows)"
 # deleted_at is not the same type in every table: most tables get it from the SoftDelete
 # mixin as an INTEGER epoch where 0 means "not deleted", while a few store a datetime
 # string (NULL meaning "not deleted"). SQLite orders every integer before every text
-# value, so `deleted_at < datetime('now', '-90 days')` is true for *every* row of an
-# integer column and the statement deletes the whole table - in production that wiped
-# channels, api_keys, projects and users in a single run. Compare each column with a
-# cutoff of its own type, and never read the 0 sentinel as a deletion date.
+# value, so comparing an integer column against datetime('now', '-90 days') is true for
+# *every* row and the statement deletes the whole table - in production that wiped
+# channels, api_keys, projects and users in a single run.
+# Both branches below are guarded on the stored value type, so a numeric value can never
+# be compared as text (nor the reverse) and the '' / '0'/ NULL sentinels never match.
 echo -n "  Purging soft-deleted records (>90 days)... "
 TOTAL=0
 for TABLE in users projects channels api_keys models prompts prompt_protection_rules channel_model_prices channel_override_templates api_key_profile_templates oidc_identities roles provider_quota_statuses; do
@@ -217,10 +221,17 @@ for TABLE in users projects channels api_keys models prompts prompt_protection_r
     if [ -z "$DEL_COL_TYPE" ]; then
         continue
     fi
+    # Decide from the declared type *and* from the stored values: an epoch can live in a
+    # column that is not declared INTEGER (or as digits-only text).
     case "$DEL_COL_TYPE" in
-        *int*) DEL_WHERE="deleted_at > 0 AND deleted_at < CAST(strftime('%s', 'now', '-90 days') AS INTEGER)" ;;
-        *)     DEL_WHERE="deleted_at IS NOT NULL AND deleted_at < datetime('now', '-90 days')" ;;
+        *int*) DEL_EPOCH=1 ;;
+        *)     DEL_EPOCH=$(sqlite3 "$DB_PATH" "SELECT CASE WHEN EXISTS (SELECT 1 FROM ${TABLE} WHERE (typeof(deleted_at) IN ('integer','real') AND deleted_at > 0) OR (typeof(deleted_at) = 'text' AND deleted_at GLOB '[0-9]*' AND deleted_at NOT GLOB '*[^0-9]*' AND CAST(deleted_at AS INTEGER) > 0)) THEN 1 ELSE 0 END;") ;;
     esac
+    if [ "$DEL_EPOCH" = "1" ]; then
+        DEL_WHERE="((typeof(deleted_at) IN ('integer','real')) OR (typeof(deleted_at) = 'text' AND deleted_at GLOB '[0-9]*' AND deleted_at NOT GLOB '*[^0-9]*')) AND CAST(deleted_at AS INTEGER) > 0 AND CAST(deleted_at AS INTEGER) < CAST(strftime('%s', 'now', '-90 days') AS INTEGER)"
+    else
+        DEL_WHERE="typeof(deleted_at) = 'text' AND deleted_at <> '' AND deleted_at <> '0' AND deleted_at < datetime('now', '-90 days')"
+    fi
     DELETED=$(sqlite3 "$DB_PATH" "
         DELETE FROM ${TABLE}
         WHERE ${DEL_WHERE};
