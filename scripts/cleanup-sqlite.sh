@@ -157,14 +157,28 @@ while true; do
 done
 echo " done (${TOTAL} rows)"
 
-# 4. Delete channel_probes (hardcoded 3 days like GC does)
+# 4. Delete channel_probes (hardcoded 3 days like GC does).
+# The probe time column is "timestamp" (an integer epoch) in the current schema; older
+# databases used a datetime "created_at". Use whichever exists and compare it with a
+# cutoff of the same type - the hardcoded created_at made the statement fail and, under
+# `set -e`, aborted the script before VACUUM ever ran.
+PROBE_TS_COL=$(sqlite3 "$DB_PATH" "SELECT name FROM pragma_table_info('channel_probes') WHERE name IN ('created_at','timestamp','probed_at') ORDER BY CASE name WHEN 'created_at' THEN 0 WHEN 'timestamp' THEN 1 ELSE 2 END LIMIT 1;")
 echo -n "  Cleaning channel_probes (>3 days)... "
-DELETED=$(sqlite3 "$DB_PATH" "
-    DELETE FROM channel_probes
-    WHERE created_at < datetime('now', '-3 days');
-    SELECT changes();
-")
-echo " done (${DELETED} rows)"
+if [ -z "$PROBE_TS_COL" ]; then
+    echo " skipped (no timestamp column)"
+else
+    PROBE_TS_TYPE=$(sqlite3 "$DB_PATH" "SELECT lower(type) FROM pragma_table_info('channel_probes') WHERE name = '${PROBE_TS_COL}';")
+    case "$PROBE_TS_TYPE" in
+        *int*) PROBE_CUTOFF="CAST(strftime('%s', 'now', '-3 days') AS INTEGER)" ;;
+        *)     PROBE_CUTOFF="datetime('now', '-3 days')" ;;
+    esac
+    DELETED=$(sqlite3 "$DB_PATH" "
+        DELETE FROM channel_probes
+        WHERE ${PROBE_TS_COL} < ${PROBE_CUTOFF};
+        SELECT changes();
+    ")
+    echo " done (${DELETED} rows)"
+fi
 
 # 5. Delete orphaned traces
 echo -n "  Cleaning orphaned traces... "
@@ -185,16 +199,31 @@ DELETED=$(sqlite3 "$DB_PATH" "
 ")
 echo " done (${DELETED} rows)"
 
-# 7. Purge soft-deleted records (>90 days)
+# 7. Purge soft-deleted records (>90 days).
+# deleted_at is not the same type in every table: most tables get it from the SoftDelete
+# mixin as an INTEGER epoch where 0 means "not deleted", while a few store a datetime
+# string (NULL meaning "not deleted"). SQLite orders every integer before every text
+# value, so `deleted_at < datetime('now', '-90 days')` is true for *every* row of an
+# integer column and the statement deletes the whole table - in production that wiped
+# channels, api_keys, projects and users in a single run. Compare each column with a
+# cutoff of its own type, and never read the 0 sentinel as a deletion date.
 echo -n "  Purging soft-deleted records (>90 days)... "
 TOTAL=0
 for TABLE in users projects channels api_keys models prompts prompt_protection_rules channel_model_prices channel_override_templates api_key_profile_templates oidc_identities roles provider_quota_statuses; do
     if ! sqlite3 "$DB_PATH" "SELECT 1 FROM ${TABLE} LIMIT 0;" &>/dev/null; then
         continue
     fi
+    DEL_COL_TYPE=$(sqlite3 "$DB_PATH" "SELECT lower(type) FROM pragma_table_info('${TABLE}') WHERE name = 'deleted_at';")
+    if [ -z "$DEL_COL_TYPE" ]; then
+        continue
+    fi
+    case "$DEL_COL_TYPE" in
+        *int*) DEL_WHERE="deleted_at > 0 AND deleted_at < CAST(strftime('%s', 'now', '-90 days') AS INTEGER)" ;;
+        *)     DEL_WHERE="deleted_at IS NOT NULL AND deleted_at < datetime('now', '-90 days')" ;;
+    esac
     DELETED=$(sqlite3 "$DB_PATH" "
         DELETE FROM ${TABLE}
-        WHERE deleted_at IS NOT NULL AND deleted_at < datetime('now', '-90 days');
+        WHERE ${DEL_WHERE};
         SELECT changes();
     ")
     TOTAL=$((TOTAL + DELETED))
