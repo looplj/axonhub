@@ -162,6 +162,10 @@ func TestChatCompletionOrchestrator_Process_SystemOne_Success(t *testing.T) {
 	require.True(t, ok)
 	require.Equal(t, float64(120), usage["input_tokens"])
 	require.Equal(t, float64(0), usage["output_tokens"])
+	execution, err := client.RequestExecution.Query().Only(ctx)
+	require.NoError(t, err)
+	require.Equal(t, "jev-latest", execution.ModelID)
+	require.Equal(t, "jev-latest", execution.UpstreamModelID)
 }
 
 func TestChatCompletionOrchestrator_Process_SystemOne_PassThroughBody(t *testing.T) {

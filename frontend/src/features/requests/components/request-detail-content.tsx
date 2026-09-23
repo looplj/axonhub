@@ -25,7 +25,7 @@ import { parseResponse } from '../utils/response-parser';
 import { parseRequestConversation } from '../utils/request-conversation';
 import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
 import { getVideoLastFrameURL, isVideoRequestFormat } from '../utils/video-display';
-import { getExecutionModelAuditVerdict, getUpstreamModelAudit, MODEL_AUDIT_VERDICT_CLASS } from '../utils/upstream-model-audit';
+import { getExecutionModelAuditVerdict, MODEL_AUDIT_VERDICT_CLASS } from '../utils/upstream-model-audit';
 
 // The detail page renders whole request and response payloads. Expanding every
 // level eagerly produces hundreds of thousands of characters of DOM for a large
@@ -801,8 +801,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                 <div className='space-y-6'>
                   {executions.edges.map((edge: any, index: number) => {
                     const execution = edge.node;
-                    const modelAudit = getUpstreamModelAudit([execution]);
-                    const modelVerdict = getExecutionModelAuditVerdict(modelAudit, execution.status, t);
+                    const modelVerdict = getExecutionModelAuditVerdict(execution, t);
                     return (
                       <Card key={execution.id} className='bg-muted/20 border-0 shadow-sm'>
                         <CardHeader className='pb-4'>

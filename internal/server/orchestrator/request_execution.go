@@ -11,12 +11,12 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
-	"github.com/looplj/axonhub/internal/pkg/modelmetadata"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/modelname"
 	"github.com/looplj/axonhub/llm/pipeline"
 )
 
@@ -58,9 +58,8 @@ type persistRequestExecutionMiddleware struct {
 
 	outbound *PersistentOutboundTransformer
 
-	rawResponse     *httpclient.Response
-	headerObserver  *executionHeaderObserver
-	upstreamModelID string
+	rawResponse    *httpclient.Response
+	headerObserver *executionHeaderObserver
 }
 
 type executionHeaderObserver struct {
@@ -92,7 +91,6 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 	// This middleware is reused across attempts. Response metadata belongs only
 	// to the execution created for this outbound request.
 	m.rawResponse = nil
-	m.upstreamModelID = ""
 
 	state := m.outbound.state
 	if state == nil {
@@ -118,12 +116,15 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 	if request.APIFormat != "" {
 		format = llm.APIFormat(request.APIFormat)
 	}
-	sentModel := modelmetadata.SentModel(request, format)
+	// Keep the channel model used for routing and pricing. Provider transforms
+	// and body overrides may change the model in the final HTTP request.
+	candidate := state.ChannelModelsCandidates[state.CurrentCandidateIndex]
+	entry := candidate.Models[state.CurrentModelIndex]
 
 	requestExec, err := state.RequestService.CreateRequestExecution(
 		ctx,
 		channel,
-		sentModel,
+		entry.ActualModel,
 		state.Request,
 		*request,
 		format,
@@ -144,7 +145,6 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 	}
 
 	state.RequestExec = requestExec
-	m.rawResponse = nil
 	m.headerObserver = &executionHeaderObserver{service: state.RequestService, executionID: requestExec.ID}
 	request.OnResponseHeaders = m.headerObserver.observe
 
@@ -155,15 +155,6 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawResponse(ctx context.Co
 	m.rawResponse = response
 	if response != nil && m.headerObserver != nil && !m.headerObserver.observed.Load() {
 		m.headerObserver.observe(ctx, response.Headers)
-	}
-	var format llm.APIFormat
-	if state := m.outbound.state; state != nil && state.RequestExec != nil {
-		format = llm.APIFormat(state.RequestExec.Format)
-	} else if m.outbound.wrapped != nil {
-		format = m.outbound.APIFormat()
-	}
-	if m.upstreamModelID == "" {
-		m.upstreamModelID = modelmetadata.ResponseModel(response, format)
 	}
 	return response, nil
 }
@@ -226,7 +217,7 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 		llmResp.ID,
 		respBody,
 		metrics,
-		m.upstreamModelID,
+		modelname.FromResponse(m.rawResponse, llm.APIFormat(state.RequestExec.Format)),
 	)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to completed", log.Cause(err))
@@ -275,7 +266,7 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 		ExtractErrorMessage(failure),
 		ExtractErrorInfo(failure),
 		nil,
-		m.upstreamModelID,
+		modelname.FromResponse(m.rawResponse, llm.APIFormat(state.RequestExec.Format)),
 	)
 	if updateErr != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(updateErr))

@@ -8,9 +8,9 @@ interface ModelAuditExecution {
 
 type ModelAuditStatus = 'matched' | 'mismatched' | 'unknown';
 
-export type ModelAuditVerdictTone = 'success' | 'danger' | 'pending' | 'muted';
+type ModelAuditVerdictTone = 'success' | 'danger' | 'pending' | 'muted';
 
-export interface ModelAuditVerdict {
+interface ModelAuditVerdict {
   tone: ModelAuditVerdictTone;
   message: string;
 }
@@ -22,58 +22,49 @@ export const MODEL_AUDIT_VERDICT_CLASS: Record<ModelAuditVerdictTone, string> = 
   muted: 'text-muted-foreground text-xs',
 };
 
-export interface ModelAuditSummary {
+interface ModelAuditSummary {
   status: ModelAuditStatus;
   matchedUpstreamIds: string[];
-  upstreamModelIds: string[];
   mismatchedModelIds: string[];
-  equalModelIds: string[];
   unknownCount: number;
   comparedCount: number;
 }
 
-// Compares the upstream-reported name with the final modelID sent upstream.
+// Compares the upstream-reported name with the channel model used for routing
+// and pricing. Provider transformations can legitimately change the wire model.
 // The list only sees the first 10 executions; executions outside that window
 // are not part of the verdict.
 export function getUpstreamModelAudit(executions: readonly ModelAuditExecution[]): ModelAuditSummary {
   const matchedUpstreamIds = new Set<string>();
-  const equalModelIds = new Set<string>();
-  const upstreamModelIds = new Set<string>();
   const mismatchedModelIds = new Set<string>();
   let unknownCount = 0;
-  let hasCompletedComparison = false;
-  let blockingUnknownCount = 0;
+  let hasBlockingUnknown = false;
 
   for (const execution of executions) {
-    const sentModel = execution.modelID?.trim() ?? '';
+    const channelModel = execution.modelID?.trim() ?? '';
     const reportedModel = execution.upstreamModelID?.trim() ?? '';
-    if (reportedModel) upstreamModelIds.add(reportedModel);
-    if (!sentModel || !reportedModel) {
+    if (!channelModel || !reportedModel) {
       unknownCount++;
-      if (execution.status !== 'failed' && execution.status !== 'canceled') blockingUnknownCount++;
+      if (execution.status !== 'failed' && execution.status !== 'canceled') hasBlockingUnknown = true;
       continue;
     }
-    hasCompletedComparison ||= execution.status === 'completed';
-    if (reportedModel !== sentModel) {
+    if (reportedModel !== channelModel) {
       mismatchedModelIds.add(reportedModel);
-    } else {
-      equalModelIds.add(reportedModel);
-      if (execution.status === 'completed') matchedUpstreamIds.add(reportedModel);
+    } else if (execution.status === 'completed') {
+      matchedUpstreamIds.add(reportedModel);
     }
   }
 
   const status: ModelAuditStatus =
     mismatchedModelIds.size > 0
       ? 'mismatched'
-      : executions.length === 0 || (unknownCount > 0 && (!hasCompletedComparison || blockingUnknownCount > 0))
+      : executions.length === 0 || hasBlockingUnknown || (unknownCount > 0 && matchedUpstreamIds.size === 0)
         ? 'unknown'
         : 'matched';
 
   return {
     status,
     matchedUpstreamIds: Array.from(matchedUpstreamIds),
-    equalModelIds: Array.from(equalModelIds),
-    upstreamModelIds: Array.from(upstreamModelIds),
     mismatchedModelIds: Array.from(mismatchedModelIds),
     unknownCount,
     comparedCount: executions.length - unknownCount,
@@ -106,33 +97,37 @@ export function getRequestModelAuditTooltip(modelAudit: ModelAuditSummary, reque
 // One verdict per execution row. Lifecycle decides the tone, so a failed retry
 // that happens to match can never render as a green success conclusion.
 export function getExecutionModelAuditVerdict(
-  modelAudit: ModelAuditSummary,
-  executionStatus: ModelAuditExecution['status'],
+  execution: ModelAuditExecution,
   t: TFunction
 ): ModelAuditVerdict {
+  const { status: executionStatus } = execution;
+  const channelModel = execution.modelID?.trim() ?? '';
+  const reportedModel = execution.upstreamModelID?.trim() ?? '';
+  const canCompare = channelModel !== '' && reportedModel !== '';
+
   if (executionStatus === 'pending' || executionStatus === 'processing') {
     return { tone: 'pending', message: t('requests.tooltips.upstreamModelRequestProcessing') };
   }
 
-  if (modelAudit.status === 'mismatched') {
+  if (canCompare && channelModel !== reportedModel) {
     return {
       tone: 'danger',
-      message: t('requests.detail.upstreamModelMismatch', { model: modelAudit.mismatchedModelIds.join(', ') }),
+      message: t('requests.detail.upstreamModelMismatch', { model: reportedModel }),
     };
   }
 
   const failed = executionStatus === 'failed' || executionStatus === 'canceled';
   if (failed) {
-    if (modelAudit.equalModelIds.length === 0) {
+    if (!canCompare) {
       return { tone: 'danger', message: t('requests.tooltips.upstreamModelRequestFailed') };
     }
     return {
       tone: 'muted',
-      message: t('requests.detail.upstreamModelMatchedButFailed', { model: modelAudit.equalModelIds.join(', ') }),
+      message: t('requests.detail.upstreamModelMatchedButFailed', { model: reportedModel }),
     };
   }
 
-  if (modelAudit.status === 'matched') {
+  if (canCompare) {
     return { tone: 'success', message: t('requests.detail.upstreamModelMatched') };
   }
 

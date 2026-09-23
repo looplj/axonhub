@@ -34,7 +34,6 @@ test('request 73927 shows only the successful model in both list languages and r
     for (const execution of executions) {
       const detail = getUpstreamModelAudit([execution]);
       assert.equal(detail.status, 'matched');
-      assert.deepEqual(detail.upstreamModelIds, [execution.upstreamModelID]);
     }
   }
 });
@@ -127,7 +126,7 @@ test('successful retries do not hide an earlier mismatch', () => {
   assert.equal(audit.unknownCount, 1);
 });
 
-test('matches each execution against its own recorded outbound model', () => {
+test('matches each execution against its own recorded channel model', () => {
   const audit = getUpstreamModelAudit([
     { modelID: 'model-a', upstreamModelID: 'model-a' },
     { modelID: 'model-b', upstreamModelID: 'model-b' },
@@ -147,7 +146,7 @@ test('does not match a retry against a previous execution model', () => {
   assert.equal(audit.unknownCount, 1);
 });
 
-test('detects swapped models even when both appear in the outbound model set', () => {
+test('detects swapped models even when both appear in the channel model set', () => {
   const audit = getUpstreamModelAudit([
     { modelID: 'model-a', upstreamModelID: 'model-b' },
     { modelID: 'model-b', upstreamModelID: 'model-a' },
@@ -186,7 +185,7 @@ test('preserves exact reported names instead of normalizing versions or case', (
     { modelID: 'model-a', upstreamModelID: 'model-a-2026-09-19' },
   ]);
   assert.equal(audit.status, 'mismatched');
-  assert.deepEqual(audit.upstreamModelIds, ['Model-A', 'model-a-2026-09-19']);
+  assert.deepEqual(audit.mismatchedModelIds, ['Model-A', 'model-a-2026-09-19']);
 });
 
 test('deduplicates reported names only after retaining every execution mismatch', () => {
@@ -195,15 +194,15 @@ test('deduplicates reported names only after retaining every execution mismatch'
     { modelID: 'model-b', upstreamModelID: 'model-a' },
   ]);
   assert.equal(audit.status, 'mismatched');
-  assert.deepEqual(audit.upstreamModelIds, ['model-a']);
   assert.deepEqual(audit.mismatchedModelIds, ['model-a']);
 });
 
-test('compares against the actual outbound model recorded for the execution', () => {
-  const execution = { modelID: 'sent-b', upstreamModelID: 'sent-b' };
-  assert.equal(getUpstreamModelAudit([execution]).status, 'matched');
-  assert.deepEqual(getUpstreamModelAudit([execution]).equalModelIds, ['sent-b']);
-  assert.equal(getUpstreamModelAudit([{ modelID: 'sent-b', upstreamModelID: 'routed-a' }]).status, 'mismatched');
+test('compares the channel model with the reported name even when the provider transforms it', () => {
+  const execution = { status: 'completed', modelID: 'gemini-3-pro', upstreamModelID: 'gemini-3-pro-low' };
+  const audit = getUpstreamModelAudit([execution]);
+  assert.equal(audit.status, 'mismatched');
+  assert.deepEqual(audit.mismatchedModelIds, ['gemini-3-pro-low']);
+  assert.equal(getUpstreamModelAudit([{ ...execution, upstreamModelID: 'gemini-3-pro' }]).status, 'matched');
 });
 
 test('a failed execution never reports a green success conclusion', () => {
@@ -213,10 +212,9 @@ test('a failed execution never reports a green success conclusion', () => {
   ]) {
     const audit = getUpstreamModelAudit([execution]);
     assert.equal(audit.status, 'matched');
-    assert.deepEqual(audit.equalModelIds, [execution.upstreamModelID]);
     assert.deepEqual(audit.matchedUpstreamIds, []);
     for (const locale of ['en', 'zh-CN']) {
-      const verdict = getExecutionModelAuditVerdict(audit, execution.status, i18n.getFixedT(locale));
+      const verdict = getExecutionModelAuditVerdict(execution, i18n.getFixedT(locale));
       assert.equal(verdict.tone, 'muted');
       assert.ok(verdict.message.includes(execution.upstreamModelID));
       assert.ok(!verdict.message.includes('{{'));
@@ -225,16 +223,17 @@ test('a failed execution never reports a green success conclusion', () => {
 });
 
 test('a completed execution keeps the green success conclusion', () => {
-  const audit = getUpstreamModelAudit([{ status: 'completed', modelID: 'glm-5.3', upstreamModelID: 'glm-5.3' }]);
-  const verdict = getExecutionModelAuditVerdict(audit, 'completed', i18n.getFixedT('zh-CN'));
+  const verdict = getExecutionModelAuditVerdict(
+    { status: 'completed', modelID: 'glm-5.3', upstreamModelID: 'glm-5.3' },
+    i18n.getFixedT('zh-CN')
+  );
   assert.equal(verdict.tone, 'success');
   assert.equal(verdict.message, i18n.t('requests.detail.upstreamModelMatched'));
 });
 
 test('a failed execution without model evidence keeps the failure reason prompt', () => {
   for (const status of ['failed', 'canceled']) {
-    const audit = getUpstreamModelAudit([{ status, modelID: 'glm-5.3:free' }]);
-    const verdict = getExecutionModelAuditVerdict(audit, status, i18n.getFixedT('zh-CN'));
+    const verdict = getExecutionModelAuditVerdict({ status, modelID: 'glm-5.3:free' }, i18n.getFixedT('zh-CN'));
     assert.equal(verdict.tone, 'danger');
     assert.equal(verdict.message, i18n.t('requests.tooltips.upstreamModelRequestFailed'));
   }
@@ -242,8 +241,7 @@ test('a failed execution without model evidence keeps the failure reason prompt'
 
 test('a known mismatch outranks the failed lifecycle so it stays red', () => {
   const mismatch = getExecutionModelAuditVerdict(
-    getUpstreamModelAudit([{ status: 'failed', modelID: 'sent', upstreamModelID: 'different' }]),
-    'failed',
+    { status: 'failed', modelID: 'sent', upstreamModelID: 'different' },
     i18n.getFixedT('zh-CN')
   );
   assert.equal(mismatch.tone, 'danger');
@@ -251,9 +249,8 @@ test('a known mismatch outranks the failed lifecycle so it stays red', () => {
 });
 
 test('in-flight executions report the waiting state instead of a name conclusion', () => {
-  const audit = getUpstreamModelAudit([{ status: 'processing', modelID: 'sent', upstreamModelID: 'sent' }]);
   for (const status of ['pending', 'processing']) {
-    const verdict = getExecutionModelAuditVerdict(audit, status, i18n.getFixedT('zh-CN'));
+    const verdict = getExecutionModelAuditVerdict({ status, modelID: 'sent', upstreamModelID: 'sent' }, i18n.getFixedT('zh-CN'));
     assert.equal(verdict.tone, 'pending');
     assert.equal(verdict.message, i18n.t('requests.tooltips.upstreamModelRequestProcessing'));
   }
@@ -261,15 +258,15 @@ test('in-flight executions report the waiting state instead of a name conclusion
 
 test('each execution yields exactly one verdict and one locale key per tone', () => {
   const cases = [
-    ['failed', { status: 'failed', modelID: 'a', upstreamModelID: 'a' }],
-    ['failed', { status: 'failed', modelID: 'a' }],
-    ['completed', { status: 'completed', modelID: 'a', upstreamModelID: 'a' }],
-    ['completed', { status: 'completed', modelID: 'a' }],
-    ['failed', { status: 'failed', modelID: 'a', upstreamModelID: 'b' }],
+    { status: 'failed', modelID: 'a', upstreamModelID: 'a' },
+    { status: 'failed', modelID: 'a' },
+    { status: 'completed', modelID: 'a', upstreamModelID: 'a' },
+    { status: 'completed', modelID: 'a' },
+    { status: 'failed', modelID: 'a', upstreamModelID: 'b' },
   ];
-  for (const [status, execution] of cases) {
+  for (const execution of cases) {
     for (const locale of ['en', 'zh-CN']) {
-      const verdict = getExecutionModelAuditVerdict(getUpstreamModelAudit([execution]), status, i18n.getFixedT(locale));
+      const verdict = getExecutionModelAuditVerdict(execution, i18n.getFixedT(locale));
       assert.equal(typeof verdict.message, 'string');
       assert.ok(verdict.message.length > 0);
       assert.ok(!verdict.message.includes('{{'));

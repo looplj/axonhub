@@ -237,48 +237,22 @@ func TestUpstreamModelPersistence_StreamingTerminations(t *testing.T) {
 	}
 }
 
-// Both collection paths keep only the first reported name, so neither can drift
-// into recording the last value a provider happens to echo.
+// Streams keep the first reported name even if later chunks report a different one.
 func TestUpstreamModelPersistence_KeepsOnlyFirstReportedName(t *testing.T) {
-	t.Run("non-streaming", func(t *testing.T) {
-		ctx, client, state := newUpstreamModelPersistenceTest(t)
-		middleware := &persistRequestExecutionMiddleware{
-			outbound: &PersistentOutboundTransformer{state: state},
-		}
-		state.RequestExec = createUpstreamModelTestExecution(t, ctx, client, state.Request, "sent-model", llm.APIFormatOpenAIChatCompletion, false)
-		_, err := middleware.OnOutboundRawRequest(ctx, &httpclient.Request{})
-		require.NoError(t, err)
-		for _, model := range []string{"first-model", "second-model"} {
-			_, err = middleware.OnOutboundRawResponse(ctx, &httpclient.Response{
-				StatusCode: http.StatusOK,
-				Headers:    http.Header{"Content-Type": {"application/json"}},
-				Body:       []byte("{\"model\":\"" + model + "\",\"choices\":[]}"),
-			})
-			require.NoError(t, err)
-		}
-		_, err = middleware.OnOutboundLlmResponse(ctx, &llm.Response{ID: "response-id"})
-		require.NoError(t, err)
-		saved, err := client.RequestExecution.Get(ctx, state.RequestExec.ID)
-		require.NoError(t, err)
-		require.Equal(t, "first-model", saved.UpstreamModelID, "a later reported name must not overwrite the first")
-	})
-
-	t.Run("streaming", func(t *testing.T) {
-		ctx, client, state := newUpstreamModelPersistenceTest(t)
-		execution := createUpstreamModelTestExecution(t, ctx, client, state.Request, "sent-model", llm.APIFormatOpenAIChatCompletion, true)
-		events := []*httpclient.StreamEvent{
-			{Data: []byte("{\"model\":\"first-model\",\"choices\":[]}")},
-			{Data: []byte("{\"model\":\"second-model\",\"choices\":[]}")},
-			{Data: []byte("[DONE]")},
-		}
-		outbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion, aggregatedResponse: []byte("{\"id\":\"resp\"}")}
-		stream := NewOutboundPersistentStream(ctx, &sliceEventStream{events: events}, state.Request, execution, state.RequestService, state.UsageLogService, outbound, nil, state)
-		for stream.Next() {
-			_ = stream.Current()
-		}
-		require.NoError(t, stream.Close())
-		saved, err := client.RequestExecution.Get(ctx, execution.ID)
-		require.NoError(t, err)
-		require.Equal(t, "first-model", saved.UpstreamModelID, "a later reported name must not overwrite the first")
-	})
+	ctx, client, state := newUpstreamModelPersistenceTest(t)
+	execution := createUpstreamModelTestExecution(t, ctx, client, state.Request, "sent-model", llm.APIFormatOpenAIChatCompletion, true)
+	events := []*httpclient.StreamEvent{
+		{Data: []byte("{\"model\":\"first-model\",\"choices\":[]}")},
+		{Data: []byte("{\"model\":\"second-model\",\"choices\":[]}")},
+		{Data: []byte("[DONE]")},
+	}
+	outbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion, aggregatedResponse: []byte("{\"id\":\"resp\"}")}
+	stream := NewOutboundPersistentStream(ctx, &sliceEventStream{events: events}, state.Request, execution, state.RequestService, state.UsageLogService, outbound, nil, state)
+	for stream.Next() {
+		_ = stream.Current()
+	}
+	require.NoError(t, stream.Close())
+	saved, err := client.RequestExecution.Get(ctx, execution.ID)
+	require.NoError(t, err)
+	require.Equal(t, "first-model", saved.UpstreamModelID, "a later reported name must not overwrite the first")
 }

@@ -4649,6 +4649,9 @@ type RequestExecution implements Node {
   """
   dataStorageID: ID
   externalID: String
+  """
+  Channel model ID selected after model mapping, used for routing and pricing. May differ from the final wire model and the upstream-reported model.
+  """
   modelID: String!
   """
   Raw model reported by the upstream provider response, before client-model rewrite

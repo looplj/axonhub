@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -19,11 +20,13 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/gemini"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -80,41 +83,47 @@ func modelAuditMiddlewares(inbound *PersistentInboundTransformer, outbound *Pers
 
 func TestUpstreamModelPipeline_NonStreaming(t *testing.T) {
 	tests := []struct {
-		name           string
-		format         llm.APIFormat
-		response       string
-		sent, reported string
-		passThrough    bool
+		name        string
+		format      llm.APIFormat
+		response    string
+		reported    string
+		passThrough bool
+		wantError   bool
 	}{
 		{
 			name: "OpenAI final override", format: llm.APIFormatOpenAIChatCompletion,
 			response: `{"id":"resp","model":"wire-b","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`,
-			sent:     "wire-b", reported: "wire-b",
+			reported: "wire-b",
 		},
 		{
-			name: "OpenAI override reveals mismatch", format: llm.APIFormatOpenAIChatCompletion,
+			name: "OpenAI response reports the channel model", format: llm.APIFormatOpenAIChatCompletion,
 			response: `{"id":"resp","model":"routed-a","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`,
-			sent:     "wire-b", reported: "routed-a",
+			reported: "routed-a",
+		},
+		{
+			name: "model survives response conversion failure", format: llm.APIFormatOpenAIChatCompletion,
+			response: `{"id":"resp","model":"wire-b","choices":"invalid"}`,
+			reported: "wire-b", wantError: true,
 		},
 		{
 			name: "OpenAI pass through and override", format: llm.APIFormatOpenAIChatCompletion, passThrough: true,
 			response: `{"id":"resp","model":"wire-b","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`,
-			sent:     "wire-b", reported: "wire-b",
+			reported: "wire-b",
 		},
 		{
 			name: "Anthropic protocol conversion", format: llm.APIFormatAnthropicMessage,
 			response: `{"id":"resp","type":"message","role":"assistant","model":"wire-b","content":[{"type":"text","text":"hello"}],"stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`,
-			sent:     "wire-b", reported: "wire-b",
+			reported: "wire-b",
 		},
 		{
 			name: "Responses protocol conversion", format: llm.APIFormatOpenAIResponse,
 			response: `{"id":"resp","object":"response","status":"completed","model":"wire-b","output":[{"type":"message","id":"msg","status":"completed","role":"assistant","content":[{"type":"output_text","text":"hello","annotations":[]}]}]}`,
-			sent:     "wire-b", reported: "wire-b",
+			reported: "wire-b",
 		},
 		{
 			name: "Gemini URL model survives unrelated JSON override", format: llm.APIFormatGeminiContents,
 			response: `{"responseId":"resp","modelVersion":"routed-a","candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"hello"}]},"finishReason":"STOP"}]}`,
-			sent:     "routed-a", reported: "routed-a",
+			reported: "routed-a",
 		},
 	}
 	for _, tt := range tests {
@@ -127,12 +136,16 @@ func TestUpstreamModelPipeline_NonStreaming(t *testing.T) {
 			}}
 			pipe := pipeline.NewFactory(executor).Pipeline(inbound, outbound, pipeline.WithMiddlewares(modelAuditMiddlewares(inbound, outbound)...))
 			result, err := pipe.Process(ctx, buildTestRequest("client-alias", "hello", false))
-			require.NoError(t, err)
-			require.NotNil(t, result.Response)
-			if tt.passThrough {
-				require.Equal(t, tt.response, string(result.Response.Body))
+			if tt.wantError {
+				require.Error(t, err)
 			} else {
-				require.Equal(t, "client-alias", gjson.GetBytes(result.Response.Body, "model").String(), "client rewriting is separate from upstream evidence")
+				require.NoError(t, err)
+				require.NotNil(t, result.Response)
+				if tt.passThrough {
+					require.Equal(t, tt.response, string(result.Response.Body))
+				} else {
+					require.Equal(t, "client-alias", gjson.GetBytes(result.Response.Body, "model").String(), "client rewriting is separate from upstream evidence")
+				}
 			}
 			require.Equal(t, "wire-b", gjson.GetBytes(executor.lastRequest.Body, "model").String())
 			if tt.format == llm.APIFormatGeminiContents {
@@ -140,13 +153,58 @@ func TestUpstreamModelPipeline_NonStreaming(t *testing.T) {
 			}
 			saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
 			require.NoError(t, err)
-			require.Equal(t, tt.sent, saved.ModelID, "persisted model should match the final outbound model")
+			require.Equal(t, "routed-a", saved.ModelID, "persisted model remains the channel model used for pricing")
 			require.Equal(t, tt.reported, saved.UpstreamModelID)
+			if tt.wantError {
+				require.Equal(t, requestexecution.StatusFailed, saved.Status)
+			}
 			require.Equal(t, tt.passThrough, saved.PassThroughApplied)
 			require.JSONEq(t, "{}", string(saved.RequestBody))
 			require.Empty(t, saved.ResponseBody)
 		})
 	}
+}
+
+func TestUpstreamModelPipeline_ChannelModelPricingAfterOverride(t *testing.T) {
+	ctx, db, state := newUpstreamModelPersistenceTest(t)
+	prepareModelAuditCandidate(t, ctx, db, state, llm.APIFormatOpenAIChatCompletion, false, false)
+	_, err := db.ChannelModelPrice.Create().
+		SetChannelID(state.Request.ChannelID).
+		SetModelID("routed-a").
+		SetReferenceID("channel-model-price").
+		SetPrice(objects.ModelPrice{Items: []objects.ModelPriceItem{
+			{
+				ItemCode: objects.PriceItemCodeUsage,
+				Pricing: objects.Pricing{
+					Mode: objects.PricingModeFlatFee, FlatFee: lo.ToPtr(decimal.NewFromFloat(0.5)),
+				},
+			},
+		}}).Save(ctx)
+	require.NoError(t, err)
+	channelService := state.UsageLogService.ChannelService
+	channel, err := channelService.GetChannel(ctx, state.Request.ChannelID)
+	require.NoError(t, err)
+	channelService.PreloadModelPricesForTest(ctx, channel)
+	channelService.SetEnabledChannelsForTest([]*biz.Channel{channel})
+
+	inbound, outbound := NewPersistentTransformers(state, openai.NewInboundTransformer())
+	executor := &mockExecutor{response: &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       []byte(`{"id":"resp","model":"wire-b","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`),
+	}}
+	pipe := pipeline.NewFactory(executor).Pipeline(inbound, outbound, pipeline.WithMiddlewares(modelAuditMiddlewares(inbound, outbound)...))
+	_, err = pipe.Process(ctx, buildTestRequest("client-alias", "hello", false))
+	require.NoError(t, err)
+	require.Equal(t, "wire-b", gjson.GetBytes(executor.lastRequest.Body, "model").String())
+
+	usage := &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}
+	usageLog, err := state.UsageLogService.CreateUsageLogFromRequest(ctx, state.Request, state.RequestExec, usage)
+	require.NoError(t, err)
+	require.Equal(t, "routed-a", usageLog.ModelID)
+	require.NotNil(t, usageLog.TotalCost)
+	require.InDelta(t, 0.5, *usageLog.TotalCost, 1e-12)
+	state.UsageLogService.InjectUsageCost(ctx, state.RequestExec.ChannelID, state.RequestExec.ModelID, usage)
+	require.Equal(t, usageLog.TotalCost, usage.Cost)
 }
 
 func TestUpstreamModelPipeline_StreamingAndAutoAggregate(t *testing.T) {
@@ -191,16 +249,82 @@ func TestUpstreamModelPipeline_StreamingAndAutoAggregate(t *testing.T) {
 			// Pass-through drains the transformation branch asynchronously.
 			require.Eventually(t, func() bool {
 				saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
-				return err == nil && saved.Status == requestexecution.StatusCompleted && saved.ModelID == "wire-b" && saved.UpstreamModelID == "wire-b"
+				return err == nil && saved.Status == requestexecution.StatusCompleted && saved.ModelID == "routed-a" && saved.UpstreamModelID == "wire-b"
 			}, time.Second, 5*time.Millisecond)
 			saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
 			require.NoError(t, err)
-			require.Equal(t, "wire-b", saved.ModelID, "persisted model should match the final outbound model")
+			require.Equal(t, "routed-a", saved.ModelID, "persisted model remains the channel model used for pricing")
 			require.Equal(t, "wire-b", saved.UpstreamModelID, "only the first reported name is kept")
 			require.Empty(t, saved.ResponseChunks)
 			require.Empty(t, saved.ResponseBody)
 		})
 	}
+}
+
+func TestUpstreamModelPersistence_CodexImageResponsesStream(t *testing.T) {
+	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIImageGeneration, llm.APIFormatOpenAIImageEdit} {
+		t.Run(string(format), func(t *testing.T) {
+			ctx, db, state := newUpstreamModelPersistenceTest(t)
+			outbound, err := codex.NewOutboundTransformer(codex.Params{
+				BaseURL: "https://chatgpt.com/backend-api/codex#",
+				TokenProvider: oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{
+					AccessToken: "test-token",
+				}),
+			})
+			require.NoError(t, err)
+			providerRequest, err := outbound.TransformRequest(ctx, &llm.Request{
+				Model: "gpt-image-2", RequestType: llm.RequestTypeImage, APIFormat: format,
+				RawRequest: &httpclient.Request{Headers: http.Header{}},
+				Image: &llm.ImageRequest{
+					Prompt: "draw a tree", Images: [][]byte{[]byte("image-data")},
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, string(format), providerRequest.APIFormat)
+			require.Equal(t, llm.APIFormatOpenAIResponse, outbound.APIFormat())
+			state.RawProviderRequest = providerRequest
+			execution := createUpstreamModelTestExecution(t, ctx, db, state.Request, "gpt-image-2", format, true)
+			events := []*httpclient.StreamEvent{
+				{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp","model":"gpt-5.4-mini","status":"in_progress","output":[]}}`)},
+				{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp","model":"gpt-5.4-mini","status":"completed","output":[{"type":"image_generation_call","id":"img","status":"completed","result":"aW1hZ2U="}]}}`)},
+			}
+			stream := NewOutboundPersistentStream(ctx, &sliceEventStream{events: events}, state.Request, execution,
+				state.RequestService, state.UsageLogService, outbound, nil, state)
+			for stream.Next() {
+				_ = stream.Current()
+			}
+			require.NoError(t, stream.Close())
+			saved, err := db.RequestExecution.Get(ctx, execution.ID)
+			require.NoError(t, err)
+			require.Equal(t, requestexecution.StatusCompleted, saved.Status)
+			require.Equal(t, "gpt-image-2", saved.ModelID)
+			require.Equal(t, "gpt-5.4-mini", saved.UpstreamModelID)
+			require.Empty(t, saved.ResponseBody)
+			require.Empty(t, saved.ResponseChunks)
+		})
+	}
+}
+
+func TestUpstreamModelPipeline_AlphaSearchKeepsChannelModel(t *testing.T) {
+	ctx, db, state := newUpstreamModelPersistenceTest(t)
+	prepareModelAuditCandidate(t, ctx, db, state, llm.APIFormatOpenAIAlphaSearch, false, false)
+	inbound, outbound := NewPersistentTransformers(state, openai.NewAlphaSearchInboundTransformer())
+	executor := &mockExecutor{response: &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Request:    &httpclient.Request{APIFormat: string(llm.APIFormatOpenAIAlphaSearch)},
+		Body:       []byte(`{"results":[{"title":"Go","model":"search-result"}]}`),
+	}}
+	pipe := pipeline.NewFactory(executor).Pipeline(inbound, outbound, pipeline.WithMiddlewares(modelAuditMiddlewares(inbound, outbound)...))
+	result, err := pipe.Process(ctx, &httpclient.Request{
+		Method: http.MethodPost, Headers: http.Header{"Content-Type": {"application/json"}},
+		Body: []byte(`{"model":"client-alias","commands":{"search_query":[{"q":"golang"}]}}`),
+	})
+	require.NoError(t, err)
+	require.JSONEq(t, string(executor.response.Body), string(result.Response.Body))
+	saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
+	require.NoError(t, err)
+	require.Equal(t, "routed-a", saved.ModelID)
+	require.Empty(t, saved.UpstreamModelID, "search results do not report the upstream model")
 }
 
 func TestUpstreamModelPipeline_TextTranscription(t *testing.T) {
@@ -268,6 +392,8 @@ func TestUpstreamModelPipeline_ChannelRetry(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, executions, 2)
 			require.NotEqual(t, executions[0].ChannelID, executions[1].ChannelID)
+			require.Equal(t, "routed-a", executions[0].ModelID)
+			require.Equal(t, "routed-b", executions[1].ModelID)
 			require.Equal(t, requestexecution.StatusFailed, executions[0].Status)
 			require.Equal(t, "first-a", executions[0].UpstreamModelID)
 			require.Equal(t, requestexecution.StatusCompleted, executions[1].Status)

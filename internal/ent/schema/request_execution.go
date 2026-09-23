@@ -50,7 +50,9 @@ func (RequestExecution) Fields() []ent.Field {
 		field.String("external_id").
 			Optional().
 			MaxLen(512),
-		field.String("model_id").Immutable(),
+		field.String("model_id").
+			Immutable().
+			Comment("Channel model ID selected after model mapping, used for routing and pricing. May differ from the final wire model and the upstream-reported model."),
 		// UpstreamModelID is the raw model reported by the provider response, captured
 		// before AxonHub rewrites it back to the client-requested model.
 		// Empty means no supported model metadata was recorded. Intra-stream model
