@@ -203,7 +203,11 @@ func safeIntFromInt64(v int64) int {
 	return int(v)
 }
 
-func buildDateExpression(dialectName string, timestampCol string, offsetSeconds int, locName string, resolution qb.DateResolution) string {
+// buildEpochDateExpression builds a bucket-label expression for a Unix-epoch integer
+// column, which channel_probes.timestamp is. A native timestamp column must not use this:
+// qb.GetDateExpression is the builder for those, and mixing the two up yields
+// to_timestamp(timestamptz) on Postgres, which does not exist.
+func buildEpochDateExpression(dialectName string, timestampCol string, offsetSeconds int, locName string, resolution qb.DateResolution) string {
 	switch dialectName {
 	case dialect.SQLite:
 		if resolution == qb.ResolutionHour {

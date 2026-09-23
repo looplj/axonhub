@@ -171,7 +171,10 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 
 			// Build dialect-specific date expression
 			createdAtCol := s.C(usagelog.FieldCreatedAt)
-			dateExpr := buildDateExpression(s.Dialect(), createdAtCol, offsetSeconds, loc.String(), resolution)
+			// usage_logs.created_at is a native timestamp column, so this is the
+			// native-timestamp expression builder and not buildEpochDateExpression, whose
+			// dialect branches assume a Unix-epoch integer column.
+			dateExpr := qb.GetDateExpression(s.Dialect(), createdAtCol, loc.String(), offsetSeconds, resolution)
 
 			s.Select(
 				sql.As(dateExpr, "date"),

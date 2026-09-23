@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"entgo.io/ent/dialect"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/looplj/axonhub/internal/server/gql/qb"
@@ -114,4 +115,25 @@ func TestRelativeWindowStartsOnALocalHour(t *testing.T) {
 		assert.Equal(t, 25, len(labels))
 		assert.Contains(t, labels, utcNow.Format("2006-01-02 15:00"))
 	})
+}
+
+// The two builders serve different column types, and mixing them up is not a style issue:
+// a native timestamp column through the epoch builder produces to_timestamp(timestamptz) on
+// Postgres, which does not exist, and NULL on SQLite.
+func TestDateExpressionBuildersServeDifferentColumnTypes(t *testing.T) {
+	const epochCol = "channel_probes.timestamp"
+	const timestampCol = "usage_logs.created_at"
+
+	epoch := buildEpochDateExpression(dialect.Postgres, epochCol, 0, "UTC", qb.ResolutionDay)
+	assert.Contains(t, epoch, "to_timestamp", "the epoch builder must convert from epoch seconds")
+
+	native := qb.GetDateExpression(dialect.Postgres, timestampCol, "UTC", 0, qb.ResolutionDay)
+	assert.Contains(t, native, "AT TIME ZONE")
+	assert.NotContains(t, native, "to_timestamp", "a timestamptz column must not be wrapped in to_timestamp")
+
+	for _, d := range []string{dialect.SQLite, dialect.MySQL, dialect.Postgres} {
+		epoch := buildEpochDateExpression(d, epochCol, 0, "UTC", qb.ResolutionDay)
+		native := qb.GetDateExpression(d, timestampCol, "UTC", 0, qb.ResolutionDay)
+		assert.NotEqual(t, epoch, native, "%s: the two column types need different expressions", d)
+	}
 }
