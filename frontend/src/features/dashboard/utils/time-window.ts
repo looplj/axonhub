@@ -7,7 +7,9 @@ export type RelativeTimeWindow = 'last24Hours';
 
 const LABEL_KEYS: Record<CoarseTimeWindow, string> = {
   day: 'timeRange.today',
-  week: 'timeRange.last7Days',
+  // week is ThisWeek.Start on the backend (Monday), not a rolling seven days, so the
+  // badge has to say "this week" rather than repeat what the user picked.
+  week: 'timeRange.thisWeek',
   month: 'timeRange.thisMonth',
   last24Hours: 'timeRange.last24Hours',
   allTime: 'timeRange.allTime',
