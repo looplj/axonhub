@@ -75,9 +75,49 @@ func TestBuildImageRequest_GenerationOmitsImageURL(t *testing.T) {
 	require.NoError(t, json.Unmarshal(req.Body, &body))
 	require.Equal(t, "Qwen/Qwen-Image-2.1", body["model"])
 	require.Equal(t, "a fox", body["prompt"])
-	require.NotContains(t, body, "size", "size=auto must be omitted for ModelScope")
+	require.Equal(t, defaultImageSize, body["size"],
+		"ModelScope has no size=auto, so the OpenAI auto size maps onto the gateway default")
 	require.NotContains(t, body, "image_url")
 	require.Equal(t, "Qwen/Qwen-Image-2.1", req.TransformerMetadata["model"])
+}
+
+func TestBuildImageRequest_SizeMapping(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		size string
+		want string
+	}{
+		{name: "auto maps to the gateway default", size: "auto", want: defaultImageSize},
+		{name: "empty maps to the gateway default", size: "", want: defaultImageSize},
+		{name: "auto is case insensitive", size: "AUTO", want: defaultImageSize},
+		{name: "explicit size is passed through", size: "1024x1024", want: "1024x1024"},
+		{name: "explicit size is trimmed", size: " 1664x1664 ", want: "1664x1664"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			transformer := newImageTransformer(t, "https://example.com/v1")
+
+			req, err := transformer.TransformRequest(context.Background(), &llm.Request{
+				Model:       "Qwen/Qwen-Image-2.1",
+				RequestType: llm.RequestTypeImage,
+				APIFormat:   llm.APIFormatOpenAIImageGeneration,
+				Image: &llm.ImageRequest{
+					Prompt: "a fox",
+					Size:   tt.size,
+				},
+			})
+			require.NoError(t, err)
+
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(req.Body, &body))
+			require.Equal(t, tt.want, body["size"])
+		})
+	}
 }
 
 func TestBuildImageRequest_EditSendsImageURL(t *testing.T) {

@@ -24,7 +24,24 @@ const (
 	defaultImageTaskPollInterval = 2 * time.Second
 	defaultImageTaskTimeout      = 15 * time.Minute
 	defaultImageDownloadTimeout  = 2 * time.Minute
+
+	// defaultImageSize replaces the OpenAI "auto" size, which ModelScope does
+	// not accept. It is the resolution the gateway asks for when the caller does
+	// not pin one, so a caller that only knows "auto" still gets a concrete size.
+	defaultImageSize = "2048x2048"
 )
+
+// imageSizeOrDefault resolves the size sent to ModelScope. ModelScope takes a
+// WxH string and has no "auto", but OpenAI-shaped callers (the Codex image tool
+// among them) always send "auto", so it is mapped onto the gateway default
+// rather than being dropped and left to the upstream default.
+func imageSizeOrDefault(size string) string {
+	if s := strings.TrimSpace(size); s != "" && !strings.EqualFold(s, "auto") {
+		return s
+	}
+
+	return defaultImageSize
+}
 
 // imageTaskAPIKeyMeta carries the API key that submitted the task from the
 // outbound request through to the response transformation.
@@ -83,10 +100,7 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 		"prompt": prompt,
 	}
 
-	// ModelScope rejects size=auto and expects WxH when size is provided.
-	if size := strings.TrimSpace(req.Image.Size); size != "" && !strings.EqualFold(size, "auto") {
-		body["size"] = size
-	}
+	body["size"] = imageSizeOrDefault(req.Image.Size)
 
 	if len(req.Image.Images) > 0 {
 		images := make([]string, 0, len(req.Image.Images))
