@@ -211,6 +211,15 @@ models:
   SaveChannelEndpointsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SaveChannelEndpointsInput
+  DetectChannelEndpointsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DetectChannelEndpointsInput
+  DetectedChannelEndpoint:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DetectedChannelEndpoint
+  DetectChannelEndpointsPayload:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DetectChannelEndpointsPayload
   QueryChannelInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.QueryChannelsInput

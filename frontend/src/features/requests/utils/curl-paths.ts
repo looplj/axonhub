@@ -20,6 +20,7 @@ const API_FORMAT_PATHS: Record<string, string> = {
   'aisdk/datastream': '/api/datastream',
   'jina/rerank': '/v1/rerank',
   'jina/embeddings': '/jina/v1/embeddings',
+  'typesafe/systemone': '/v1/systemone',
 };
 
 export function getApiPath(apiFormat?: string, body?: unknown, channelType?: string): string {

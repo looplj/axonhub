@@ -50,8 +50,8 @@ var AllowedQueryConfigs = map[ThroughputQueryType]QueryFragmentConfig{
 		GroupBy:       "se.channel_id, c.name, c.type",
 	},
 	ThroughputQueryByModel: {
-		SelectColumns: "r.model_id,\n    m.name as model_name,",
-		JoinClause:    "JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
+		SelectColumns: "r.model_id,\n    COALESCE(m.name, r.model_id) as model_name,",
+		JoinClause:    "JOIN requests r ON se.request_id = r.id\nLEFT JOIN models m ON r.model_id = m.model_id",
 		GroupBy:       "r.model_id, m.name",
 	},
 }

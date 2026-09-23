@@ -295,3 +295,55 @@ func TestRoundTrip_Response(t *testing.T) {
 	require.NotNil(t, roundTripped.Usage)
 	require.Equal(t, original.Usage.PromptTokens, roundTripped.Usage.PromptTokens)
 }
+
+func TestToolChoice_AllowedToolsMarshalUnmarshalJSON(t *testing.T) {
+	// Chat Completions nests the mode and tool subset of an allowed_tools
+	// choice: {"type":"allowed_tools","allowed_tools":{"mode":"...","tools":[...]}}.
+	raw := `{"type":"allowed_tools","allowed_tools":{"mode":"required","tools":[{"type":"function","function":{"name":"tool_a"}}]}}`
+
+	var choice ToolChoice
+	require.NoError(t, json.Unmarshal([]byte(raw), &choice))
+	require.NotNil(t, choice.NamedToolChoice)
+	require.Equal(t, "allowed_tools", choice.NamedToolChoice.Type)
+	require.NotNil(t, choice.AllowedTools)
+	require.NotNil(t, choice.AllowedTools.Mode)
+	require.Equal(t, "required", *choice.AllowedTools.Mode)
+	require.Len(t, choice.AllowedTools.Tools, 1)
+	require.Equal(t, "function", choice.AllowedTools.Tools[0].Type)
+	require.Equal(t, "tool_a", choice.AllowedTools.Tools[0].Function.Name)
+
+	data, err := json.Marshal(choice)
+	require.NoError(t, err)
+	require.JSONEq(t, raw, string(data))
+}
+
+func TestRoundTrip_AllowedToolsToolChoice(t *testing.T) {
+	// The issue #2504 payload: the subset and mode must survive a
+	// Chat Completions inbound -> llm -> Chat Completions outbound round trip.
+	raw := `{
+		"model": "gpt-4o",
+		"messages": [{"role": "user", "content": "hi"}],
+		"tool_choice": {"type": "allowed_tools", "allowed_tools": {"mode": "required", "tools": [{"type": "function", "function": {"name": "tool_a"}}]}},
+		"tools": [
+			{"type": "function", "function": {"name": "tool_a", "parameters": {"type": "object", "properties": {}}}},
+			{"type": "function", "function": {"name": "tool_b", "parameters": {"type": "object", "properties": {}}}}
+		]
+	}`
+
+	var original Request
+	require.NoError(t, json.Unmarshal([]byte(raw), &original))
+
+	roundTripped := RequestFromLLM(context.Background(), original.ToLLMRequest(), ReasoningFieldNone)
+	require.NotNil(t, roundTripped)
+
+	data, err := json.Marshal(roundTripped)
+	require.NoError(t, err)
+
+	var encoded struct {
+		ToolChoice json.RawMessage `json:"tool_choice"`
+	}
+	require.NoError(t, json.Unmarshal(data, &encoded))
+	require.JSONEq(t,
+		`{"type":"allowed_tools","allowed_tools":{"mode":"required","tools":[{"type":"function","function":{"name":"tool_a"}}]}}`,
+		string(encoded.ToolChoice))
+}

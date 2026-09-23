@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { AlertCircle, Check, ChevronDown, Pencil, Plus, X } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Loader2, Pencil, Plus, Radar, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -22,16 +22,75 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
-import { useUpdateChannelSettings } from '../data/channels';
+import { cn } from '@/lib/utils';
+import { useDetectChannelEndpoints, useUpdateChannelSettings } from '../data/channels';
 import { getAvailableProtocolFormats, getConfigurableApiFormatsForChannelType } from '../data/protocol-options';
 import {
   Channel,
   ChannelEndpoint,
+  DetectedChannelEndpoint,
   ModelProtocol,
   channelEndpointSchema,
   configurableChannelEndpointApiFormats,
   configurableChannelEndpointApiFormatSchema,
 } from '../data/schema';
+import {
+  RELAY_PROTOCOL_LABEL_KEYS,
+  getChannelRelayProtocols,
+  isRelayProtocol,
+  type RelayProtocol,
+} from '../data/relay-protocols';
+import { ChatProtocolIcon, MessagesProtocolIcon, ResponsesProtocolIcon } from './endpoint-protocol-icons';
+
+const RELAY_PROTOCOL_ICONS: Record<RelayProtocol, React.ComponentType<{ size?: number | string; className?: string }>> = {
+  'openai/chat_completions': ChatProtocolIcon,
+  'openai/responses': ResponsesProtocolIcon,
+  'anthropic/messages': MessagesProtocolIcon,
+};
+
+const RELAY_PROTOCOL_ACTIVE_CLASSES: Record<RelayProtocol, string> = {
+  'openai/chat_completions': 'border-sky-500/30 bg-sky-500/15 text-sky-600 dark:text-sky-400',
+  'openai/responses': 'border-violet-500/30 bg-violet-500/15 text-violet-600 dark:text-violet-400',
+  'anthropic/messages': 'border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400',
+};
+
+const DETECTION_REASON_KEYS: Record<string, string> = {
+  supported: 'channels.endpoints.detect.reasons.supported',
+  not_found: 'channels.endpoints.detect.reasons.notFound',
+  auth_error: 'channels.endpoints.detect.reasons.authError',
+  rate_limited: 'channels.endpoints.detect.reasons.rateLimited',
+  server_error: 'channels.endpoints.detect.reasons.serverError',
+  unreachable: 'channels.endpoints.detect.reasons.unreachable',
+  invalid_request: 'channels.endpoints.detect.reasons.invalidRequest',
+};
+
+function DetectionResultCard({ result }: { result: DetectedChannelEndpoint }) {
+  const { t } = useTranslation();
+
+  if (!isRelayProtocol(result.apiFormat)) {
+    return null;
+  }
+
+  const Icon = RELAY_PROTOCOL_ICONS[result.apiFormat];
+  const label = t(RELAY_PROTOCOL_LABEL_KEYS[result.apiFormat]);
+  const reasonKey = DETECTION_REASON_KEYS[result.reason] ?? DETECTION_REASON_KEYS.unreachable;
+
+  return (
+    <div
+      className={cn(
+        'flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs',
+        result.supported ? RELAY_PROTOCOL_ACTIVE_CLASSES[result.apiFormat] : 'border-border/60 bg-muted/40 text-muted-foreground'
+      )}
+    >
+      <Icon size={14} />
+      <span className='truncate font-medium'>{label}</span>
+      <span className='text-muted-foreground shrink-0'>
+        {result.supported ? t('channels.endpoints.detect.supported') : t(reasonKey)}
+        {!result.supported && result.statusCode ? ` (${result.statusCode})` : ''}
+      </span>
+    </div>
+  );
+}
 
 interface Props {
   channel: Channel;
@@ -150,6 +209,7 @@ function EndpointTable({
 export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) {
   const { t } = useTranslation();
   const updateChannelSettings = useUpdateChannelSettings();
+  const detectEndpoints = useDetectChannelEndpoints();
   const [dialogContentElement, setDialogContentElement] = useState<HTMLDivElement | null>(null);
   const wasOpenRef = useRef(false);
 
@@ -165,6 +225,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const [editingProtocolModel, setEditingProtocolModel] = useState<string | null>(null);
   const [blockedEndpointRemoval, setBlockedEndpointRemoval] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [detectionResults, setDetectionResults] = useState<DetectedChannelEndpoint[] | null>(null);
 
   const supportedModelOptions = useMemo(
     () => Array.from(new Set([...channel.supportedModels, ...modelProtocols.map((mp) => mp.model)])).map((model) => ({ value: model, label: model })),
@@ -193,6 +254,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     setEditingProtocolModel(null);
     setBlockedEndpointRemoval(null);
     setError(null);
+    setDetectionResults(null);
   }, [open, channel.endpoints, channel.settings]);
 
   const usedApiFormats = useMemo(() => new Set(endpoints.map((ep) => ep.apiFormat)), [endpoints]);
@@ -254,6 +316,32 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     },
     [defaultEndpoints, handleRemoveEndpoint, modelProtocols]
   );
+
+  const handleDetectEndpoints = useCallback(async () => {
+    setError(null);
+
+    try {
+      const results = await detectEndpoints.mutateAsync({ channelID: channel.id });
+      setDetectionResults(results);
+
+      // Add the supported relay protocols that the channel does not expose yet.
+      // Default endpoints are built-in and read-only, so only the override list
+      // is updated. The user still has to save to persist the change.
+      const available = getChannelRelayProtocols(defaultEndpoints, endpoints);
+      const additions = results
+        .filter((result) => result.supported && isRelayProtocol(result.apiFormat) && !available.has(result.apiFormat))
+        .map((result) => channelEndpointSchema.parse({ apiFormat: result.apiFormat }));
+
+      if (additions.length > 0) {
+        setEndpoints((prev) => {
+          const existing = new Set(prev.map((ep) => ep.apiFormat));
+          return [...prev, ...additions.filter((ep) => !existing.has(ep.apiFormat))];
+        });
+      }
+    } catch {
+      // error handled by the hook
+    }
+  }, [channel.id, defaultEndpoints, endpoints, detectEndpoints]);
 
   const availableProtocolFormats = useMemo(() => {
     return getAvailableProtocolFormats(defaultEndpoints, endpoints);
@@ -428,14 +516,32 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
 
           {/* Current configured endpoints */}
           <div className='space-y-3'>
-            <div className='flex items-center justify-between'>
+            <div className='flex items-center justify-between gap-2'>
               <label className='text-sm font-medium'>{t('channels.endpoints.currentEndpoints')}</label>
-              {endpoints.length > 0 && (
-                <span className='text-muted-foreground text-xs'>
-                  {t('channels.endpoints.configuredCount', { count: endpoints.length })}
-                </span>
-              )}
+              <div className='flex items-center gap-2'>
+                {endpoints.length > 0 && (
+                  <span className='text-muted-foreground text-xs'>
+                    {t('channels.endpoints.configuredCount', { count: endpoints.length })}
+                  </span>
+                )}
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  className='h-8'
+                  onClick={handleDetectEndpoints}
+                  disabled={detectEndpoints.isPending}
+                >
+                  {detectEndpoints.isPending ? (
+                    <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' />
+                  ) : (
+                    <Radar className='mr-1.5 h-3.5 w-3.5' />
+                  )}
+                  {t(detectEndpoints.isPending ? 'channels.endpoints.detect.detecting' : 'channels.endpoints.detect.button')}
+                </Button>
+              </div>
             </div>
+            <p className='text-muted-foreground text-xs'>{t('channels.endpoints.detect.description')}</p>
             {endpoints.length === 0 ? (
               <div className='text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm'>
                 {t('channels.endpoints.noOverridesHint', 'No custom endpoint overrides configured.')}
@@ -455,6 +561,16 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                   </Button>
                 )}
               </EndpointTable>
+            )}
+            {detectionResults && (
+              <div className='bg-muted/20 space-y-2 rounded-lg border p-3'>
+                <p className='text-muted-foreground text-xs'>{t('channels.endpoints.detect.resultTitle')}</p>
+                <div className='flex flex-wrap gap-2'>
+                  {detectionResults.map((result) => (
+                    <DetectionResultCard key={result.apiFormat} result={result} />
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

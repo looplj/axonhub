@@ -1,15 +1,17 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
+import { pickFallbackNavUrl } from '@/config/nav-items';
 import { graphqlRequest } from '@/gql/graphql';
 import { ME_QUERY } from '@/gql/users';
 import { toast } from 'sonner';
 import { useAuthStore, setTokenToStorage, removeTokenFromStorage } from '@/stores/authStore';
-import { useProjectStore } from '@/stores/projectStore';
-import { isProjectSelectionValid } from '@/lib/project-membership';
 import { AuthUser } from '@/stores/authStore';
+import { useProjectStore } from '@/stores/projectStore';
+import { getHiddenNavItems } from '@/stores/sidebarPrefsStore';
 import { authApi } from '@/lib/api-client';
 import i18n from '@/lib/i18n';
+import { isProjectSelectionValid } from '@/lib/project-membership';
 
 export interface SignInInput {
   email: string;
@@ -93,9 +95,10 @@ export function useSignIn() {
 
       toast.success(i18n.t('common.success.signedIn'));
 
-      // Redirect based on user role
-      // Owner users go to dashboard, non-owner users go to requests page
-      const redirectPath = data.user.isOwner ? '/' : '/project/playground';
+      // Redirect based on user role, skipping routes the user hid from the sidebar.
+      // Owner users go to dashboard, non-owner users go to requests page.
+      const baseRedirectPath = data.user.isOwner ? '/' : '/project/playground';
+      const redirectPath = pickFallbackNavUrl(baseRedirectPath, getHiddenNavItems(), data.user.isOwner);
       router.navigate({ to: redirectPath });
     },
     onError: (error: any) => {
@@ -125,7 +128,6 @@ export function useSignOut() {
     router.navigate({ to: '/sign-in' });
   };
 }
-
 
 export function useOIDCProviders() {
   return useQuery({
@@ -168,7 +170,7 @@ export function useOIDCExchange() {
     },
     onSuccess: (response) => {
       const data = response.data;
-      
+
       // Store token in localStorage
       setTokenToStorage(data.token);
 

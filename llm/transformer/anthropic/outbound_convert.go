@@ -1,11 +1,15 @@
 package anthropic
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/samber/lo"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
@@ -19,6 +23,7 @@ func convertToAnthropicRequestWithConfig(chatReq *llm.Request, config *Config) *
 	req := buildBaseRequest(chatReq, config)
 	req.Tools = convertToolsAnthropic(chatReq.Tools, config)
 	req.ToolChoice = convertToolChoiceToAnthropic(chatReq.ToolChoice)
+	req.ToolChoice = applyParallelToolCalls(req.ToolChoice, chatReq.ParallelToolCalls, len(req.Tools) > 0)
 	req.Messages = convertMessages(chatReq, config)
 	req.StopSequences = convertStopSequences(chatReq.Stop)
 
@@ -346,6 +351,31 @@ func convertToolChoiceToAnthropic(src *llm.ToolChoice) *ToolChoice {
 	return nil
 }
 
+// applyParallelToolCalls maps parallel_tool_calls onto tool_choice.disable_parallel_tool_use.
+// Anthropic carries the flag on tool_choice, so an explicit value needs an "auto" choice to sit on.
+func applyParallelToolCalls(choice *ToolChoice, parallelToolCalls *bool, hasTools bool) *ToolChoice {
+	if parallelToolCalls == nil || !hasTools {
+		return choice
+	}
+
+	if choice == nil {
+		if *parallelToolCalls {
+			return nil
+		}
+
+		choice = &ToolChoice{Type: "auto"}
+	}
+
+	// "none" has no disable_parallel_tool_use field; the model is not calling tools anyway.
+	if choice.Type == "none" {
+		return choice
+	}
+
+	choice.DisableParallelToolUse = lo.ToPtr(!*parallelToolCalls)
+
+	return choice
+}
+
 // convertStopSequences converts stop sequences.
 func convertStopSequences(stop *llm.Stop) []string {
 	if stop == nil {
@@ -358,6 +388,62 @@ func convertStopSequences(stop *llm.Stop) []string {
 
 	if len(stop.MultipleStop) > 0 {
 		return stop.MultipleStop
+	}
+
+	return nil
+}
+
+// validateUnsupportedContentParts rejects content part types that have no
+// representation in the Anthropic Messages API. input_audio is skipped by
+// convertMultiplePartContent, which would leave the message with
+// "content": null and an upstream error that never names the audio part; fail
+// closed here instead.
+func validateUnsupportedContentParts(messages []llm.Message) error {
+	for _, msg := range messages {
+		for _, part := range msg.Content.MultipleContent {
+			if part.Type == "input_audio" {
+				return fmt.Errorf("%w: input_audio content parts are not supported by the Anthropic Messages API", transformer.ErrInvalidRequest)
+			}
+		}
+	}
+
+	return nil
+}
+
+// validateDroppedContentParts rejects user messages whose content parts are all
+// dropped by the conversion to the Anthropic format. convertMultiplePartContent
+// only understands text and image_url, so a message made up of other parts
+// (document, video_url, ...) would be sent as "content": null, and Anthropic
+// rejects that with an error that never names the offending part.
+//
+// Messages without content parts (e.g. tool_result turns) are left alone: they
+// have no content to lose.
+func validateDroppedContentParts(messages []llm.Message) error {
+	for i, msg := range messages {
+		if msg.Role != "user" || msg.Content.Content != nil || len(msg.Content.MultipleContent) == 0 || hasThinkingContent(msg) {
+			continue
+		}
+
+		// Reuse the converter so this check cannot drift from what it accepts.
+		content, ok := convertMultiplePartContent(msg)
+		if ok && (content.Content != nil || len(content.MultipleContent) > 0 || len(content.Raw) > 0) {
+			continue
+		}
+
+		dropped := make([]string, 0, len(msg.Content.MultipleContent))
+		for _, part := range msg.Content.MultipleContent {
+			if part.Type == "text" || part.Type == "image_url" {
+				dropped = append(dropped, part.Type+" without payload")
+				continue
+			}
+
+			dropped = append(dropped, part.Type)
+		}
+
+		return fmt.Errorf(
+			"%w: message %d (role %q) cannot be represented in the Anthropic Messages API: only text and image_url content parts are supported, %s would be dropped",
+			transformer.ErrInvalidRequest, i, msg.Role, strings.Join(lo.Uniq(dropped), ", "),
+		)
 	}
 
 	return nil

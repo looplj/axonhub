@@ -56,10 +56,14 @@ export function getConfigurableApiFormatsForChannelType(
   channelType: ChannelType,
   configurableFormats: readonly string[]
 ): string[] {
-  if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {
-    return [...configurableFormats];
+  if (channelType === 'typesafe') {
+    return ['typesafe/systemone'];
   }
-  return configurableFormats.filter((format) => format !== 'zenmux/video');
+  const filtered = configurableFormats.filter((format) => format !== 'typesafe/systemone');
+  if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {
+    return [...filtered];
+  }
+  return filtered.filter((format) => format !== 'zenmux/video');
 }
 
 export function getChannelTypeForApiFormat(provider: string, apiFormat: ApiFormat, configs: ProtocolConfigs): ChannelType | undefined {

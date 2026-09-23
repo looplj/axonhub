@@ -1877,3 +1877,50 @@ func TestOutboundPersistentStream_Close_TransportErrorKeepsMetricsAndClassifiesE
 	require.NotNil(t, dbExec.MetricsLatencyMs)
 	require.GreaterOrEqual(t, *dbExec.MetricsLatencyMs, int64(1500))
 }
+
+func TestPersistentOutboundTransformer_RetrySelectionCounts(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:retry-counts?mode=memory&_fk=0")
+	defer client.Close()
+	ctx := context.Background()
+	service := biz.NewChannelServiceForTest(client)
+	defer service.Stop()
+	first := &ChannelModelsCandidate{
+		Channel: &biz.Channel{Channel: &ent.Channel{ID: 1}, Outbound: &mockTransformer{}},
+		Models:  []biz.ChannelModelEntry{{ActualModel: "model-a"}, {ActualModel: "model-b"}},
+	}
+	second := &ChannelModelsCandidate{
+		Channel: &biz.Channel{Channel: &ent.Channel{ID: 2}, Outbound: &mockTransformer{}},
+		Models:  []biz.ChannelModelEntry{{ActualModel: "model-c"}},
+	}
+	policy := &mockRetryPolicyProvider{policy: &biz.RetryPolicy{Enabled: true, MaxChannelRetries: 1}}
+	lb := NewLoadBalancer(policy, service)
+	candidates := (&LoadBalancedSelector{}).sortCandidates(ctx, lb,
+		[]*ChannelModelsCandidate{first, second}, &llm.Request{Model: "model"}, 2, true)
+	require.Same(t, first, candidates[0])
+	processor := &PersistentOutboundTransformer{
+		wrapped: first.Channel.Outbound,
+		state: &PersistenceState{
+			ChannelService: service, CurrentCandidate: first, ChannelModelsCandidates: candidates,
+		},
+	}
+	assertCounts := func(firstCount, secondCount int64) {
+		t.Helper()
+		for id, want := range map[int]int64{1: firstCount, 2: secondCount} {
+			metrics, err := service.GetChannelMetrics(ctx, id)
+			require.NoError(t, err)
+			require.Equal(t, want, metrics.RequestCount, "channel %d", id)
+		}
+	}
+	assertCounts(1, 0)
+	require.NoError(t, processor.PrepareForRetry(ctx)) // next model, same channel
+	require.Equal(t, 1, processor.state.CurrentModelIndex)
+	assertCounts(2, 0)
+	require.NoError(t, processor.PrepareForRetry(ctx)) // same model, same channel
+	assertCounts(3, 0)
+	require.NoError(t, processor.NextChannel(ctx))
+	assertCounts(3, 1)
+	require.NoError(t, processor.PrepareForRetry(ctx))
+	assertCounts(3, 2)
+	require.Error(t, processor.NextChannel(ctx)) // exhausted candidates are not attempts
+	assertCounts(3, 2)
+}
