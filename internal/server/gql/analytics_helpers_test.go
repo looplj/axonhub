@@ -147,3 +147,75 @@ func TestAnalyticsDailyStats_BucketLabels(t *testing.T) {
 }
 
 func strptr(v string) *string { return &v }
+
+// The MAX_ID pattern ranks by "this row is the latest execution of its request", and on
+// SQLite that comparison is a correlated subquery. If the subquery is not bounded to the
+// same window as the outer query, a request whose newest attempt falls after the window
+// leaves its in-window row failing the comparison, so the request drops out entirely.
+// SQLite is the dialect that exercises MAX_ID, so this runs in CI.
+func TestChannelPerformanceStats_CountsExecutionWhenANewerOneIsOutsideTheWindow(t *testing.T) {
+	resolver, ctx, client := setupRecentPerformanceResolver(t)
+	defer client.Close()
+
+	p, err := client.Project.Create().SetName("p").SetStatus(project.StatusActive).Save(ctx)
+	require.NoError(t, err)
+
+	inside := time.Date(2026, 9, 10, 10, 0, 0, 0, time.UTC)
+	req, err := client.Request.Create().
+		SetProjectID(p.ID).
+		SetAPIKeyID(1).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetCreatedAt(inside).
+		Save(ctx)
+	require.NoError(t, err)
+
+	client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetAPIKeyID(1).
+		SetProjectID(p.ID).
+		SetChannelID(1).
+		SetModelID("gpt-4").
+		SetCompletionTokens(1000).
+		SetCreatedAt(inside).
+		SetUpdatedAt(inside).
+		SaveX(ctx)
+
+	// The qualifying in-window execution.
+	client.RequestExecution.Create().
+		SetProjectID(p.ID).
+		SetRequestID(req.ID).
+		SetChannelID(1).
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		SetMetricsLatencyMs(1000).
+		SetCreatedAt(inside).
+		SetUpdatedAt(inside).
+		SaveX(ctx)
+
+	// A newer attempt for the same request, two days past the window's end.
+	outside := inside.AddDate(0, 0, 2)
+	client.RequestExecution.Create().
+		SetProjectID(p.ID).
+		SetRequestID(req.ID).
+		SetChannelID(1).
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		SetMetricsLatencyMs(1000).
+		SetCreatedAt(outside).
+		SetUpdatedAt(outside).
+		SaveX(ctx)
+
+	stats, err := resolver.ChannelPerformanceStats(ctx, nil, strptr("2026-09-10"), strptr("2026-09-10"))
+	require.NoError(t, err)
+
+	total := 0
+	for _, s := range stats {
+		total += s.RequestCount
+	}
+	assert.Equal(t, 1, total, "the in-window execution must count even though a newer one exists outside the window")
+}
