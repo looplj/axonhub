@@ -67,6 +67,12 @@ const (
 	APIFormatOllamaChat    APIFormat = "ollama/chat"
 	APIFormatSeedanceVideo APIFormat = "seedance/video"
 	APIFormatZenmuxVideo   APIFormat = "zenmux/video"
+
+	// APIFormatModelScopeImage is the ModelScope-native image protocol. ModelScope
+	// serves image generation and image editing on one async endpoint, so a single
+	// provider format covers both directions. It is a provider-only default
+	// endpoint and is intentionally absent from the configurable format list.
+	APIFormatModelScopeImage APIFormat = "modelscope/image_generation"
 )
 
 func (f APIFormat) String() string {

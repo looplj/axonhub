@@ -5,6 +5,7 @@ const API_FORMAT_PATHS: Record<string, string> = {
   'openai/image_generation': '/v1/images/generations',
   'openai/image_edit': '/v1/images/edits',
   'openai/image_variation': '/v1/images/variations',
+  'modelscope/image_generation': '/v1/images/generations',
   'openai/embeddings': '/v1/embeddings',
   'openai/moderations': '/v1/moderations',
   'openai/alpha_search': '/v1/alpha/search',

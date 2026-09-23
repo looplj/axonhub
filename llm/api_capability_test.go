@@ -30,6 +30,19 @@ func TestCapableAPIFormats(t *testing.T) {
 	require.Nil(t, CapableAPIFormats(RequestType("unknown")))
 }
 
+func TestCapableAPIFormats_IncludesModelScopeImage(t *testing.T) {
+	t.Parallel()
+
+	image := CapableAPIFormats(RequestTypeImage)
+	require.Contains(t, image, APIFormatModelScopeImage.String())
+
+	chat := CapableAPIFormats(RequestTypeChat)
+	require.NotContains(t, chat, APIFormatModelScopeImage.String())
+
+	video := CapableAPIFormats(RequestTypeVideo)
+	require.NotContains(t, video, APIFormatModelScopeImage.String())
+}
+
 func TestRequestTypeForModelType(t *testing.T) {
 	t.Parallel()
 
