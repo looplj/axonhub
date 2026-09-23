@@ -51,7 +51,9 @@ export default function AnalyticsPage() {
   const { data: channelStats, isLoading: isChannelLoading } = useAnalyticsDimensionStats(filter, 'channel');
   const { data: modelStats, isLoading: isModelLoading } = useAnalyticsDimensionStats(filter, 'model');
   const { data: apiKeyStats, isLoading: isApiKeyLoading } = useAnalyticsDimensionStats(filter, 'apiKey');
-  const { data: userStats, isLoading: isUserLoading } = useAnalyticsDimensionStats(filter, 'user');
+  // The user dimension is owner-only: gating the request rather than only the rendered
+  // group keeps other users' per-user metrics from reaching a non-owner's browser.
+  const { data: userStats, isLoading: isUserLoading } = useAnalyticsDimensionStats(filter, 'user', isProjectOwner);
 
   const isLoading = isChannelLoading || isModelLoading || isApiKeyLoading || isUserLoading;
 

@@ -42,6 +42,16 @@ export function inclusiveCalendarDays(startTime: string, endTime: string | null)
   return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
 }
 
+/** Local "YYYY-MM-DD" for today. A range with only a start date is resolved by the
+ * backend as "start through now" — the analytics queries apply no upper bound at all and
+ * resolvePerformanceWindow falls back to today's next midnight — so the label has to name
+ * today rather than repeat the start date back at the reader. */
+export function todayLocalDate(): string {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 /** Closest coarse window supported by the dashboard stat queries, which accept
  * day/week/month/allTime and nothing longer than a month. */
 export function coarseWindowFromRange(

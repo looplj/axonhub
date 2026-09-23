@@ -4,7 +4,7 @@ import { Link } from '@tanstack/react-router';
 import { ChevronRight, TrendingUp } from 'lucide-react';
 import { Main } from '@/components/layout/main';
 import { TimeRangeFilter } from '@/components/time-range-filter';
-import { useDashboardTimeStore } from '@/stores/dashboardStore';
+import { DEFAULT_TIME_RANGE, useDashboardTimeStore } from '@/stores/dashboardStore';
 import { useGeneralSettings } from '@/features/system/data/system';
 import { useAnalyticsDailyStats, useAnalyticsMetadata, useAnalyticsOverview, type AnalyticsFilter } from '@/features/analytics/data/analytics';
 import { useRoutePermissions } from '@/hooks/useRoutePermissions';
@@ -16,6 +16,7 @@ import { PulseStrip } from './components/pulse-strip';
 import { RangeBadge } from './components/range-badge';
 import { RequestCostDistribution } from './components/request-cost-distribution';
 import { TokenComposition } from './components/token-composition';
+import { todayLocalDate } from './utils/time-window';
 import { formatNumber } from '@/utils/format-number';
 
 /** Dashboard page: a fixed pulse strip first, then the analysis range drives
@@ -37,7 +38,7 @@ export default function DashboardPage() {
 
   // The trend query applies no time filter at all when it gets neither dates nor a
   // relative window, so "since first use" is what the badge has to say in that case.
-  const rangeBadgeLabel = startTime ? `${startTime} – ${endTime || startTime}` : t(`timeRange.${timeWindow ?? 'allTime'}`);
+  const rangeBadgeLabel = startTime ? `${startTime} – ${endTime ?? todayLocalDate()}` : t(`timeRange.${timeWindow ?? 'allTime'}`);
 
   const rangeSummary = [
     { key: 'requests', label: t('analytics.overview.totalRequests'), value: formatNumber(overview?.totalRequests) },
@@ -65,6 +66,7 @@ export default function DashboardPage() {
             value={{ startTime, endTime, timeWindow }}
             onChange={setRange}
             earliestDate={metadata?.earliestDate}
+            defaultValue={DEFAULT_TIME_RANGE}
           />
 
           {loadError ? (

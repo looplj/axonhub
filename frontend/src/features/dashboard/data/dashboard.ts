@@ -585,7 +585,7 @@ export function useChannelPerformanceStats(startTime?: string | null, endTime?: 
 }
 
 /** Token, request and cost totals per user of the selected project. */
-export function useUsageStatsByUser(timeWindow?: string) {
+export function useUsageStatsByUser(timeWindow?: string, enabled = true) {
   const selectedProjectId = useSelectedProjectId();
 
   return useQuery({
@@ -599,8 +599,7 @@ export function useUsageStatsByUser(timeWindow?: string) {
       );
       return data.usageStatsByUser.map((item) => usageStatsByUserSchema.parse(item));
     },
-    enabled: !!selectedProjectId,
+    enabled: enabled && !!selectedProjectId,
     refetchInterval: 60000,
-    placeholderData: (previousData) => previousData,
   });
 }

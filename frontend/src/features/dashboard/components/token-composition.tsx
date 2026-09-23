@@ -104,7 +104,9 @@ export function TokenComposition({ startTime, endTime, timeWindow, currencyCode,
   const channels = useTokensByChannel(coarseWindow);
   const models = useTokensByModel(coarseWindow);
   const apiKeys = useTokensByAPIKey(coarseWindow);
-  const users = useUsageStatsByUser(coarseWindow);
+  // Owner-only dimension: the request itself is gated, not just the rendered tab, so
+  // per-user figures never reach a non-owner's browser.
+  const users = useUsageStatsByUser(coarseWindow, isProjectOwner);
 
   const rows = useMemo<TokenRow[]>(() => {
     if (dimension === 'user') {

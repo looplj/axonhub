@@ -87,3 +87,31 @@ func TestBucketSequence(t *testing.T) {
 		assert.Empty(t, bucketSequence(start, start, qb.ResolutionHour))
 	})
 }
+
+// A relative window starts on a local wall-clock hour. Truncate(time.Hour) rounds the
+// absolute duration since the zero time, so in a zone whose offset is not a whole hour it
+// lands on :30 instead of :00 — which both mislabels the first bucket and shifts the
+// sequence far enough to leave the current hour's usage out of the response.
+func TestRelativeWindowStartsOnALocalHour(t *testing.T) {
+	kolkata, err := time.LoadLocation("Asia/Kolkata") // UTC+05:30
+	assert.NoError(t, err)
+
+	now := time.Date(2026, 9, 23, 13, 15, 30, 0, kolkata)
+	since := now.Add(-24 * time.Hour)
+
+	assert.Equal(t, time.Date(2026, 9, 22, 13, 0, 0, 0, kolkata), localHourFloor(since))
+	assert.Equal(t, 0, localHourFloor(since).Minute())
+
+	labels := bucketSequence(localHourFloor(since), now, qb.ResolutionHour)
+	assert.Equal(t, 25, len(labels))
+	assert.Contains(t, labels, now.Format("2006-01-02 15:00"))
+
+	t.Run("the whole-hour zones keep the same shape", func(t *testing.T) {
+		// Fixed rather than wall-clock: at exactly the top of an hour the current bucket
+		// has no data yet, so the exclusive upper bound legitimately drops it.
+		utcNow := time.Date(2026, 9, 23, 13, 15, 30, 0, time.UTC)
+		labels := bucketSequence(localHourFloor(utcNow.Add(-24*time.Hour)), utcNow, qb.ResolutionHour)
+		assert.Equal(t, 25, len(labels))
+		assert.Contains(t, labels, utcNow.Format("2006-01-02 15:00"))
+	})
+}

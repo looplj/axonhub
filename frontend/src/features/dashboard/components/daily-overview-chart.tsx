@@ -4,7 +4,7 @@ import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/componen
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber } from '@/utils/format-number';
 import { formatBucketLabel } from '@/utils/format-bucket-label';
-import { formatCurrencyTick } from '@/features/analytics/utils/format-currency';
+import { formatCurrencySimple, formatCurrencyTick } from '@/features/analytics/utils/format-currency';
 import type { AnalyticsDailyStat } from '@/features/analytics/data/analytics';
 
 interface DailyOverviewChartProps {
@@ -162,7 +162,10 @@ export function DailyOverviewChart({
                         <span>{entry.name}</span>
                         <span className='font-medium'>
                           {entry.dataKey === 'cost'
-                            ? formatCurrencyTick(Number(entry.value), currencyCode)
+                            ? // Hourly buckets often cost less than one unit, and the axis
+                              // tick formatter rounds to whole units — the tooltip would
+                              // show $0 for a bucket that cost $0.45.
+                              formatCurrencySimple(Number(entry.value), currencyCode)
                             : formatNumber(Number(entry.value))}
                         </span>
                       </p>

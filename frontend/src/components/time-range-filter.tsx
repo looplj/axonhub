@@ -182,6 +182,10 @@ interface TimeRangeFilterProps {
   onChange: (range: TimeRangeValue) => void;
   earliestDate?: string | null;
   variant?: 'bar' | 'compact';
+  /** The page's own default selection. When given, reset is offered whenever the value
+   * differs from it — not only for custom dates — because a preset otherwise leaves no
+   * way back to a default that no preset emits. */
+  defaultValue?: TimeRangeValue;
 }
 
 /** 'YYYY-MM-DD' to local midnight; used to count the days a custom range spans. */
@@ -212,7 +216,7 @@ function useRangeSummary(value: TimeRangeValue, presets: Preset[]): string {
 
 /** Unified time range filter: preset buttons plus a custom start/end pair, replacing
  * the per-page TimePeriodSelector. */
-export function TimeRangeFilter({ value, onChange, earliestDate, variant = 'bar' }: TimeRangeFilterProps) {
+export function TimeRangeFilter({ value, onChange, earliestDate, variant = 'bar', defaultValue }: TimeRangeFilterProps) {
   const { t } = useTranslation();
   const presets = useMemo(() => buildPresets(earliestDate), [earliestDate]);
 
@@ -221,7 +225,13 @@ export function TimeRangeFilter({ value, onChange, earliestDate, variant = 'bar'
     return match?.key ?? null;
   }, [presets, value.startTime, value.endTime]);
 
-  const isCustom = !activeKey && (value.startTime !== null || value.endTime !== null);
+  const isDefaultValue =
+    value.startTime === (defaultValue?.startTime ?? null) &&
+    value.endTime === (defaultValue?.endTime ?? null) &&
+    value.timeWindow === defaultValue?.timeWindow;
+  const isCustom = defaultValue
+    ? !isDefaultValue
+    : !activeKey && (value.startTime !== null || value.endTime !== null);
   const summary = useRangeSummary(value, presets);
 
   if (variant === 'compact') {

@@ -64,7 +64,7 @@ export function ChannelHealthCard({ startTime, endTime, timeWindow }: ChannelHea
         </div>
         <div className='text-muted-foreground flex gap-3 text-xs'>
           <span className='flex items-center gap-1 text-green-600 dark:text-green-500'>
-            {formatNumber(channel.successCount)} {t('dashboard.stats.requests')}
+            {formatNumber(channel.successCount)} {t('dashboard.stats.succeeded')}
           </span>
           <span className='flex items-center gap-1 text-red-500'>
             {formatNumber(channel.failedCount)} {t('dashboard.stats.failedRequests')}

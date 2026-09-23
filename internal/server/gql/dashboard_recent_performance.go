@@ -58,9 +58,18 @@ func (r *queryResolver) firstTokenPercentileSeek(
 		args = []any{since, since}
 	}
 
+	// Postgres numbers its parameters, so the offset cannot reuse the boundary's marker:
+	// OFFSET $1 alongside created_at >= $1 would bind a timestamp where an integer is
+	// expected and report one argument where two are supplied. The positional dialects
+	// just take the next "?" in line, which is what placeholder already is.
+	offsetPlaceholder := placeholder
+	if sqlDB.Dialect() == dialect.Postgres {
+		offsetPlaceholder = fmt.Sprintf("$%d", len(args)+1)
+	}
+
 	rows, err := sqlDB.DB().QueryContext(
 		ctx,
-		qb.BuildRecentFirstTokenPercentileQuery(queryMode, placeholder, placeholder),
+		qb.BuildRecentFirstTokenPercentileQuery(queryMode, placeholder, offsetPlaceholder),
 		append(args, offset)...,
 	)
 	if err != nil {
