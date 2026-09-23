@@ -36,7 +36,7 @@ type RequestExecution struct {
 	DataStorageID int `json:"data_storage_id,omitempty"`
 	// ExternalID holds the value of the "external_id" field.
 	ExternalID string `json:"external_id,omitempty"`
-	// ModelID holds the value of the "model_id" field.
+	// Channel model ID selected after model mapping, used for routing and pricing. May differ from the final wire model and the upstream-reported model.
 	ModelID string `json:"model_id,omitempty"`
 	// Raw model reported by the upstream provider response, before client-model rewrite
 	UpstreamModelID string `json:"upstream_model_id,omitempty"`
