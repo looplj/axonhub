@@ -84,6 +84,9 @@ func (r *queryResolver) DashboardOverview(ctx context.Context) (*DashboardOvervi
 	// TODO: Calculate average response time from request execution data
 	// This would require additional database schema changes to store response times
 
+	stats.Last24HoursPerformance = r.last24HoursPerformance(ctx)
+	stats.Last24HoursExecutions = r.last24HoursExecutionStats(ctx)
+
 	return stats, nil
 }
 
@@ -1028,6 +1031,8 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 		since = period.ThisWeek.Start
 	case "month":
 		since = period.ThisMonth.Start
+	case relativeWindowLast24Hours:
+		since, _ = relativeSince(&input.TimeWindow)
 	default:
 		since = period.Today.Start // Default to day
 	}
@@ -1168,6 +1173,8 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 		since = period.ThisWeek.Start
 	case "month":
 		since = period.ThisMonth.Start
+	case relativeWindowLast24Hours:
+		since, _ = relativeSince(&input.TimeWindow)
 	default:
 		since = period.Today.Start // Default to day
 	}
@@ -1285,7 +1292,7 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 // hour for short ranges and by day otherwise. Aggregates by bucket and model_id,
 // calculating throughput (tokens per second). Only includes successful (completed)
 // requests with valid latency metrics.
-func (r *queryResolver) ModelPerformanceStats(ctx context.Context, startTime *string, endTime *string) ([]*ModelPerformanceStat, error) {
+func (r *queryResolver) ModelPerformanceStats(ctx context.Context, timeWindow *string, startTime *string, endTime *string) ([]*ModelPerformanceStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	// Add 30-second timeout to prevent long-running queries
@@ -1293,7 +1300,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context, startTime *st
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	window := r.resolvePerformanceWindow(ctx, startTime, endTime)
+	window := r.resolvePerformanceWindow(ctx, timeWindow, startTime, endTime)
 
 	loc := r.systemService.TimeLocation(ctx)
 	_, offsetSeconds := xtime.UTCNow().In(loc).Zone()
@@ -1425,7 +1432,7 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context, startTime *st
 }
 
 // ChannelPerformanceStats is the resolver for the channelPerformanceStats field.
-func (r *queryResolver) ChannelPerformanceStats(ctx context.Context, startTime *string, endTime *string) ([]*ChannelPerformanceStat, error) {
+func (r *queryResolver) ChannelPerformanceStats(ctx context.Context, timeWindow *string, startTime *string, endTime *string) ([]*ChannelPerformanceStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
 	var cancel context.CancelFunc
@@ -1433,7 +1440,7 @@ func (r *queryResolver) ChannelPerformanceStats(ctx context.Context, startTime *
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	window := r.resolvePerformanceWindow(ctx, startTime, endTime)
+	window := r.resolvePerformanceWindow(ctx, timeWindow, startTime, endTime)
 
 	loc := r.systemService.TimeLocation(ctx)
 	_, offsetSeconds := xtime.UTCNow().In(loc).Zone()

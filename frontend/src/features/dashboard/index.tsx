@@ -16,17 +16,18 @@ import { PulseStrip } from './components/pulse-strip';
 import { RangeBadge } from './components/range-badge';
 import { RequestCostDistribution } from './components/request-cost-distribution';
 import { TokenComposition } from './components/token-composition';
+import { formatNumber } from '@/utils/format-number';
 
 /** Dashboard page: a fixed pulse strip first, then the analysis range drives
  * everything below it — trend, performance, distribution and composition. */
 export default function DashboardPage() {
   const { t } = useTranslation();
-  const { startTime, endTime, setRange } = useDashboardTimeStore();
+  const { startTime, endTime, timeWindow, setRange } = useDashboardTimeStore();
   const { data: generalSettings } = useGeneralSettings();
   const { data: metadata } = useAnalyticsMetadata();
   const { isProjectOwner } = useRoutePermissions();
 
-  const filter = useMemo<AnalyticsFilter>(() => ({ startTime, endTime }), [startTime, endTime]);
+  const filter = useMemo<AnalyticsFilter>(() => ({ startTime, endTime, timeWindow }), [startTime, endTime, timeWindow]);
 
   const { data: overview, isLoading: isOverviewLoading, error: overviewError } = useAnalyticsOverview(filter);
   const { data: dailyStats, isLoading: isDailyLoading, error: dailyError } = useAnalyticsDailyStats(filter);
@@ -34,9 +35,13 @@ export default function DashboardPage() {
   const currencyCode = generalSettings?.currencyCode || 'USD';
   const loadError = overviewError || dailyError;
 
+  // The trend query applies no time filter at all when it gets neither dates nor a
+  // relative window, so "since first use" is what the badge has to say in that case.
+  const rangeBadgeLabel = startTime ? `${startTime} – ${endTime || startTime}` : t(`timeRange.${timeWindow ?? 'allTime'}`);
+
   const rangeSummary = [
-    { key: 'requests', label: t('analytics.overview.totalRequests'), value: Math.round(overview?.totalRequests || 0).toLocaleString() },
-    { key: 'tokens', label: t('analytics.overview.totalTokens'), value: Math.round(overview?.totalTokens || 0).toLocaleString() },
+    { key: 'requests', label: t('analytics.overview.totalRequests'), value: formatNumber(overview?.totalRequests) },
+    { key: 'tokens', label: t('analytics.overview.totalTokens'), value: formatNumber(overview?.totalTokens) },
     {
       key: 'cost',
       label: t('analytics.overview.totalCost'),
@@ -57,7 +62,7 @@ export default function DashboardPage() {
 
           <TimeRangeFilter
             variant='compact'
-            value={{ startTime, endTime }}
+            value={{ startTime, endTime, timeWindow }}
             onChange={setRange}
             earliestDate={metadata?.earliestDate}
           />
@@ -76,28 +81,29 @@ export default function DashboardPage() {
                     currencyCode={currencyCode}
                     isOverviewLoading={isOverviewLoading}
                     rangeSummary={rangeSummary}
-                    badge={<RangeBadge label={startTime ? `${startTime} – ${endTime || startTime}` : t('timeRange.last30Days')} />}
+                    badge={<RangeBadge label={rangeBadgeLabel} />}
                   />
                 </div>
                 <div className='col-span-1 lg:col-span-3'>
-                  <ChannelHealthCard startTime={startTime} endTime={endTime} />
+                  <ChannelHealthCard startTime={startTime} endTime={endTime} timeWindow={timeWindow} />
                 </div>
               </div>
 
               <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-7'>
                 <div className='col-span-1 lg:col-span-4'>
-                  <PerformanceCard startTime={startTime} endTime={endTime} />
+                  <PerformanceCard startTime={startTime} endTime={endTime} timeWindow={timeWindow} />
                 </div>
                 <div className='col-span-1 lg:col-span-3'>
-                  <FastestPerformersCard startTime={startTime} endTime={endTime} />
+                  <FastestPerformersCard startTime={startTime} endTime={endTime} timeWindow={timeWindow} />
                 </div>
               </div>
 
-              <RequestCostDistribution startTime={startTime} endTime={endTime} currencyCode={currencyCode} />
+              <RequestCostDistribution startTime={startTime} endTime={endTime} timeWindow={timeWindow} currencyCode={currencyCode} />
 
               <TokenComposition
                 startTime={startTime}
                 endTime={endTime}
+                timeWindow={timeWindow}
                 currencyCode={currencyCode}
                 isProjectOwner={isProjectOwner}
               />

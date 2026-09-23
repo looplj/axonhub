@@ -52,17 +52,23 @@ func (r *queryResolver) buildAnalyticsExecutionWhere(s *sql.Selector, filter *An
 		return
 	}
 
-	if filter.StartTime != nil {
-		startDate := parseDateStr(*filter.StartTime, loc)
-		if !startDate.IsZero() {
-			s.Where(sql.GTE(s.C(requestexecution.FieldCreatedAt), startDate.UTC()))
+	// A relative window replaces both dates rather than narrowing them, so the date
+	// branches below are skipped instead of being applied alongside it.
+	if since, ok := relativeSince(filter.TimeWindow); ok {
+		s.Where(sql.GTE(s.C(requestexecution.FieldCreatedAt), since))
+	} else {
+		if filter.StartTime != nil {
+			startDate := parseDateStr(*filter.StartTime, loc)
+			if !startDate.IsZero() {
+				s.Where(sql.GTE(s.C(requestexecution.FieldCreatedAt), startDate.UTC()))
+			}
 		}
-	}
 
-	if filter.EndTime != nil {
-		endDate := parseDateStr(*filter.EndTime, loc)
-		if !endDate.IsZero() {
-			s.Where(sql.LT(s.C(requestexecution.FieldCreatedAt), endDate.AddDate(0, 0, 1).UTC()))
+		if filter.EndTime != nil {
+			endDate := parseDateStr(*filter.EndTime, loc)
+			if !endDate.IsZero() {
+				s.Where(sql.LT(s.C(requestexecution.FieldCreatedAt), endDate.AddDate(0, 0, 1).UTC()))
+			}
 		}
 	}
 
@@ -133,19 +139,23 @@ func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFi
 		return
 	}
 
-	if filter.StartTime != nil {
-		startDate := parseDateStr(*filter.StartTime, loc)
-		if !startDate.IsZero() {
-			// 同仪表盘：本地午夜转 UTC 再比较，数据库 created_at 是 UTC
-			s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), startDate.UTC()))
+	if since, ok := relativeSince(filter.TimeWindow); ok {
+		s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+	} else {
+		if filter.StartTime != nil {
+			startDate := parseDateStr(*filter.StartTime, loc)
+			if !startDate.IsZero() {
+				// 同仪表盘：本地午夜转 UTC 再比较，数据库 created_at 是 UTC
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), startDate.UTC()))
+			}
 		}
-	}
 
-	if filter.EndTime != nil {
-		endDate := parseDateStr(*filter.EndTime, loc)
-		if !endDate.IsZero() {
-			endDateNext := endDate.AddDate(0, 0, 1)
-			s.Where(sql.LT(s.C(usagelog.FieldCreatedAt), endDateNext.UTC()))
+		if filter.EndTime != nil {
+			endDate := parseDateStr(*filter.EndTime, loc)
+			if !endDate.IsZero() {
+				endDateNext := endDate.AddDate(0, 0, 1)
+				s.Where(sql.LT(s.C(usagelog.FieldCreatedAt), endDateNext.UTC()))
+			}
 		}
 	}
 

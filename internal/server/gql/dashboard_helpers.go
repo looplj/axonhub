@@ -113,8 +113,9 @@ func bucketSequence(start, end time.Time, resolution qb.DateResolution) []string
 // resolvePerformanceWindow turns the optional start/end dates into a local time range and
 // picks a bucket resolution for it. Dates are "YYYY-MM-DD" and inclusive; the end becomes
 // the next local midnight so the whole end day is covered by the half-open SQL bound.
+// A relative window, when given, takes precedence over the dates.
 // An unparseable or empty range falls back to the trailing default window.
-func (r *queryResolver) resolvePerformanceWindow(ctx context.Context, startTime, endTime *string) performanceWindow {
+func (r *queryResolver) resolvePerformanceWindow(ctx context.Context, timeWindow, startTime, endTime *string) performanceWindow {
 	loc := r.systemService.TimeLocation(ctx)
 	nowLocal := xtime.UTCNow().In(loc)
 	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
@@ -123,6 +124,17 @@ func (r *queryResolver) resolvePerformanceWindow(ctx context.Context, startTime,
 		startLocal: todayLocal.AddDate(0, 0, -defaultPerformanceWindowDays+1),
 		endLocal:   todayLocal.AddDate(0, 0, 1),
 		resolution: qb.ResolutionDay,
+	}
+
+	// A relative window ends at the current instant, so endLocal is not a midnight and
+	// the caller must not treat the range as covering whole days.
+	if since, ok := relativeSince(timeWindow); ok {
+		start := since.In(loc).Truncate(time.Hour)
+		window.startLocal = start
+		window.endLocal = nowLocal
+		window.resolution = qb.ResolutionHour
+
+		return window
 	}
 
 	parsedStart, okStart := parseWindowDate(startTime, loc, todayLocal)
@@ -377,9 +389,26 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 	return resultMap
 }
 
+// relativeWindowLast24Hours is the one relative window the stat queries accept. It is
+// not a calendar period: the boundary is now minus 24 hours, so it never lines up with
+// any preset on the filter bar.
+const relativeWindowLast24Hours = "last24Hours"
+
+// relativeSince resolves the one supported relative window, "last24Hours", against
+// the current instant. Relative windows are resolved here rather than from a client
+// supplied boundary: a timestamp computed on the client changes on every render and
+// would defeat the query cache.
+func relativeSince(timeWindow *string) (time.Time, bool) {
+	if timeWindow == nil || *timeWindow != relativeWindowLast24Hours {
+		return time.Time{}, false
+	}
+
+	return xtime.UTCNow().Add(-24 * time.Hour), true
+}
+
 // parseTimeWindow parses a time window string and returns the start time and a flag indicating
 // if a filter should be applied. It returns the since time (zero if no filter) and applyFilter.
-// Supported timeWindow values: "day", "week", "month", "allTime", or empty string.
+// Supported timeWindow values: "day", "week", "month", "last24Hours", "allTime", or empty string.
 // Defaults to "allTime" behavior (no filtering) for unknown or empty values.
 func (r *queryResolver) parseTimeWindow(ctx context.Context, timeWindow *string) (since time.Time, applyFilter bool) {
 	loc := r.systemService.TimeLocation(ctx)
@@ -389,6 +418,8 @@ func (r *queryResolver) parseTimeWindow(ctx context.Context, timeWindow *string)
 		applyFilter = true
 
 		switch *timeWindow {
+		case relativeWindowLast24Hours:
+			since, _ = relativeSince(timeWindow)
 		case "day":
 			since = period.Today.Start
 		case "week":

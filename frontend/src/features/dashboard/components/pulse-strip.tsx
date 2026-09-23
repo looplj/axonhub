@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { IconInfoCircle } from '@tabler/icons-react';
-import { Activity, BarChart4, Database, ShieldCheck } from 'lucide-react';
+import { Activity, BarChart4, Gauge, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -144,21 +144,26 @@ function TodayRequestsPulseCard() {
   );
 }
 
-function AllTimeRequestsPulseCard() {
+function Last24HoursPerformancePulseCard() {
   const { t } = useTranslation();
   const { data: stats, isLoading } = useDashboardStats();
 
-  const current = stats?.requestStats?.requestsThisWeek || 0;
-  const previous = stats?.requestStats?.requestsLastWeek || 0;
-  const growth = previous === 0 ? (current > 0 ? 100 : 0) : ((current - previous) / previous) * 100;
-  const isPositive = growth >= 0;
+  const performance = stats?.last24HoursPerformance;
+  const throughput = performance?.throughput ?? null;
+  // Both percentiles are read off the same streaming sample, so a null on either side
+  // means the window holds no completed streaming generation. Rendering "0ms" instead
+  // would read as "measured, and instant".
+  const latency =
+    performance?.firstTokenP90Ms != null && performance.firstTokenP50Ms != null
+      ? { p90: performance.firstTokenP90Ms, p50: performance.firstTokenP50Ms }
+      : null;
 
   return (
     <PulseCardShell
-      title={t('dashboard.stats.allTimeRequests')}
+      title={t('dashboard.stats.last24hPerformance')}
       icon={
         <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
-          <Database className='h-4 w-4' />
+          <Gauge className='h-4 w-4' />
         </div>
       }
     >
@@ -166,18 +171,25 @@ function AllTimeRequestsPulseCard() {
         <PulseSkeleton />
       ) : (
         <div className='space-y-2'>
-          <div className='font-mono text-3xl font-bold'>{formatNumber(stats?.totalRequests || 0)}</div>
-          <div className={`flex items-center gap-1.5 text-xs font-medium ${isPositive ? 'text-primary' : 'text-red-500'}`}>
-            <span
-              className={`rounded-md px-1.5 py-0.5 ${
-                isPositive ? 'border-primary/20 bg-primary/10 border' : 'border border-red-500/20 bg-red-500/10'
-              }`}
-            >
-              {isPositive ? '+' : ''}
-              {growth.toFixed(0)}%
-            </span>
-            <span className='text-muted-foreground'>{t('dashboard.stats.vsLastWeek')}</span>
+          <div className='font-mono text-3xl font-bold'>
+            {throughput != null ? (
+              <>
+                {formatNumber(throughput, { digits: 0 })}
+                <span className='text-muted-foreground ml-1 text-lg font-semibold'>{t('dashboard.stats.throughput')}</span>
+              </>
+            ) : (
+              <span className='text-muted-foreground'>&mdash;</span>
+            )}
           </div>
+          {latency && (
+            <div className='text-muted-foreground flex flex-wrap items-baseline gap-x-1.5 gap-y-1 text-xs'>
+              <span>TTFT</span>
+              <span className='text-foreground font-mono tabular-nums'>{formatDuration(latency.p90)}</span>
+              <span className='text-primary font-medium'>(p90)</span>
+              <span className='text-foreground font-mono tabular-nums'>{formatDuration(latency.p50)}</span>
+              <span className='text-primary font-medium'>(p50)</span>
+            </div>
+          )}
         </div>
       )}
     </PulseCardShell>
@@ -252,10 +264,14 @@ function SuccessRatePulseCard() {
   const { t } = useTranslation();
   const { data: stats, isLoading } = useDashboardStats();
 
-  const total = stats?.totalRequests || 0;
-  const failed = stats?.failedRequests || 0;
-  const succeeded = Math.max(total - failed, 0);
-  const successRate = total > 0 ? (succeeded / total) * 100 : 0;
+  // From request_executions rather than the requests table: the denominator here is
+  // terminal outcomes only, so it matches the channel health card and the analytics
+  // page instead of counting pending and canceled attempts as failures.
+  const executions = stats?.last24HoursExecutions;
+  const succeeded = executions?.succeeded ?? 0;
+  const failed = executions?.failed ?? 0;
+  const total = succeeded + failed;
+  const successRate = executions?.successRate ?? 0;
 
   const parts = [
     { key: 'succeeded', value: succeeded, color: 'var(--primary)', label: t('dashboard.stats.succeeded') },
@@ -264,7 +280,7 @@ function SuccessRatePulseCard() {
 
   return (
     <PulseCardShell
-      title={t('dashboard.cards.successRate')}
+      title={t('dashboard.stats.last24hSuccessRate')}
       icon={
         <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
           <ShieldCheck className='h-4 w-4' />
@@ -276,8 +292,14 @@ function SuccessRatePulseCard() {
       ) : (
         <div className='space-y-3'>
           <div className='font-mono text-3xl font-bold'>
-            {successRate.toFixed(1)}
-            <span className='text-muted-foreground ml-1 text-lg font-semibold'>%</span>
+            {total > 0 ? (
+              <>
+                {successRate.toFixed(1)}
+                <span className='text-muted-foreground ml-1 text-lg font-semibold'>%</span>
+              </>
+            ) : (
+              <span className='text-muted-foreground'>&mdash;</span>
+            )}
           </div>
           <div className='flex h-2 overflow-hidden rounded-full bg-muted'>
             {parts.map((part) => (
@@ -288,16 +310,15 @@ function SuccessRatePulseCard() {
             ))}
           </div>
           <div className='text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 text-xs'>
-            {parts.map((part) => (
-              <span key={part.key} className='flex items-center gap-1'>
-                <span className='h-2 w-2 rounded-full' style={{ backgroundColor: part.color }} />
-                {part.label} {formatNumber(part.value)}
-              </span>
-            ))}
-            {stats?.averageResponseTime != null && (
-              <span className='flex items-center gap-1'>
-                {t('dashboard.stats.average')} {formatDuration(stats.averageResponseTime)}
-              </span>
+            {total > 0 ? (
+              parts.map((part) => (
+                <span key={part.key} className='flex items-center gap-1'>
+                  <span className='h-2 w-2 rounded-full' style={{ backgroundColor: part.color }} />
+                  {part.label} {formatNumber(part.value)}
+                </span>
+              ))
+            ) : (
+              <span>{t('dashboard.stats.noData')}</span>
             )}
           </div>
         </div>
@@ -306,14 +327,14 @@ function SuccessRatePulseCard() {
   );
 }
 
-/** Fixed pulse strip: today, all time, token stats and success rate. These figures
- * answer "how am I doing right now", so they are deliberately independent of the
- * analysis range below. */
+/** Fixed pulse strip: requests today, trailing-24h performance, token composition and
+ * the trailing-24h success rate. These figures answer "how am I doing right now", so
+ * they are deliberately independent of the analysis range below. */
 export function PulseStrip() {
   return (
     <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4'>
       <TodayRequestsPulseCard />
-      <AllTimeRequestsPulseCard />
+      <Last24HoursPerformancePulseCard />
       <TokenStatsPulseCard />
       <SuccessRatePulseCard />
     </div>

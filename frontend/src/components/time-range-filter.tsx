@@ -191,12 +191,13 @@ function localMidnight(dateStr: string): Date {
 }
 
 /** Active range as text, so the page always states which window is in effect:
- * a preset reads as "name · start – end", a custom range as "start – end · N days". */
+ * a preset reads as "name · start – end", a custom range as "start – end · N days",
+ * and a relative window as just its name, since it has no boundaries to print. */
 function useRangeSummary(value: TimeRangeValue, presets: Preset[]): string {
   const { t } = useTranslation();
 
   return useMemo(() => {
-    if (!value.startTime) return '';
+    if (!value.startTime) return value.timeWindow ? t(`timeRange.${value.timeWindow}`) : '';
 
     const matched = presets.find((p) => p.range.startTime === value.startTime && p.range.endTime === value.endTime);
     const span = `${value.startTime} – ${value.endTime || t('timeRange.today')}`;
@@ -206,7 +207,7 @@ function useRangeSummary(value: TimeRangeValue, presets: Preset[]): string {
     const end = value.endTime ? localMidnight(value.endTime) : new Date();
     const days = Math.round((end.getTime() - localMidnight(value.startTime).getTime()) / 86_400_000) + 1;
     return `${span} · ${t('timeRange.days', { count: days })}`;
-  }, [presets, t, value.endTime, value.startTime]);
+  }, [presets, t, value.endTime, value.startTime, value.timeWindow]);
 }
 
 /** Unified time range filter: preset buttons plus a custom start/end pair, replacing

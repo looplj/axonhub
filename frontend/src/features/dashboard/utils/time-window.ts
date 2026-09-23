@@ -1,10 +1,15 @@
-/** Coarse time window, for backends that only accept day/week/month/allTime. */
-export type CoarseTimeWindow = 'allTime' | 'month' | 'week' | 'day';
+/** Coarse time window, the string the dashboard stat queries accept for timeWindow. */
+export type CoarseTimeWindow = 'allTime' | 'month' | 'week' | 'day' | 'last24Hours';
+
+/** Window whose boundary the backend computes from the instant the query runs, so it
+ * cannot be written as a calendar date pair. */
+export type RelativeTimeWindow = 'last24Hours';
 
 const LABEL_KEYS: Record<CoarseTimeWindow, string> = {
   day: 'timeRange.today',
   week: 'timeRange.last7Days',
-  month: 'timeRange.last30Days',
+  month: 'timeRange.thisMonth',
+  last24Hours: 'timeRange.last24Hours',
   allTime: 'timeRange.allTime',
 };
 
@@ -37,7 +42,13 @@ export function inclusiveCalendarDays(startTime: string, endTime: string | null)
 
 /** Closest coarse window supported by the dashboard stat queries, which accept
  * day/week/month/allTime and nothing longer than a month. */
-export function coarseWindowFromRange(startTime: string | null, endTime: string | null): CoarseTimeWindow {
+export function coarseWindowFromRange(
+  startTime: string | null,
+  endTime: string | null,
+  timeWindow?: RelativeTimeWindow
+): CoarseTimeWindow {
+  if (timeWindow) return timeWindow;
+
   if (!startTime) return 'allTime';
 
   const days = inclusiveCalendarDays(startTime, endTime);
@@ -50,7 +61,13 @@ export function coarseWindowFromRange(startTime: string | null, endTime: string 
 
 /** Closest coarse window for the throughput queries, which only accept
  * day/week/month and treat anything else as day. */
-export function performanceWindowFromRange(startTime: string | null, endTime: string | null): CoarseTimeWindow {
+export function performanceWindowFromRange(
+  startTime: string | null,
+  endTime: string | null,
+  timeWindow?: RelativeTimeWindow
+): CoarseTimeWindow {
+  if (timeWindow) return timeWindow;
+
   if (!startTime) return 'month';
 
   const days = inclusiveCalendarDays(startTime, endTime);

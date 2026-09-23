@@ -13,7 +13,7 @@ import {
   useRequestsByChannel,
   useRequestsByModel,
 } from '../data/dashboard';
-import { coarseWindowFromRange, type CoarseTimeWindow } from '../utils/time-window';
+import { coarseWindowFromRange, type CoarseTimeWindow, type RelativeTimeWindow } from '../utils/time-window';
 import { RangeBadge } from './range-badge';
 
 const MAX_ROWS = 10;
@@ -66,22 +66,23 @@ function DistributionRowItem({ rank, name, requests, requestShare, cost, costSha
 interface RequestCostDistributionProps {
   startTime: string | null;
   endTime: string | null;
+  timeWindow?: RelativeTimeWindow;
   currencyCode: string;
 }
 
 /** Ranked request and cost shares per channel, model or API key, with the long tail
  * aggregated into a single row instead of being hidden. */
-export function RequestCostDistribution({ startTime, endTime, currencyCode }: RequestCostDistributionProps) {
+export function RequestCostDistribution({ startTime, endTime, timeWindow, currencyCode }: RequestCostDistributionProps) {
   const { t } = useTranslation();
   const [dimension, setDimension] = useState<DistributionDimension>('channel');
-  const timeWindow: CoarseTimeWindow = coarseWindowFromRange(startTime, endTime);
+  const coarseWindow: CoarseTimeWindow = coarseWindowFromRange(startTime, endTime, timeWindow);
 
-  const channelsRequests = useRequestsByChannel(timeWindow);
-  const channelsCost = useCostByChannel(timeWindow);
-  const modelsRequests = useRequestsByModel(timeWindow);
-  const modelsCost = useCostByModel(timeWindow);
-  const apiKeysRequests = useRequestsByAPIKey(timeWindow);
-  const apiKeysCost = useCostByAPIKey(timeWindow);
+  const channelsRequests = useRequestsByChannel(coarseWindow);
+  const channelsCost = useCostByChannel(coarseWindow);
+  const modelsRequests = useRequestsByModel(coarseWindow);
+  const modelsCost = useCostByModel(coarseWindow);
+  const apiKeysRequests = useRequestsByAPIKey(coarseWindow);
+  const apiKeysCost = useCostByAPIKey(coarseWindow);
 
   const activeRequests = dimension === 'channel' ? channelsRequests : dimension === 'model' ? modelsRequests : apiKeysRequests;
 
@@ -128,7 +129,7 @@ export function RequestCostDistribution({ startTime, endTime, currencyCode }: Re
           <CardDescription>{t('dashboard.charts.requestsCostDescription')}</CardDescription>
         </div>
         <CardAction className='flex items-center gap-2'>
-          <RangeBadge timeWindow={timeWindow} />
+          <RangeBadge timeWindow={coarseWindow} />
           <Tabs value={dimension} onValueChange={(value) => setDimension(value as DistributionDimension)}>
             <TabsList className='h-8'>
               <TabsTrigger value='channel' className='text-xs'>

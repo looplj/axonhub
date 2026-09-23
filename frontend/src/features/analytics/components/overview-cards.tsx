@@ -2,14 +2,15 @@ import { useTranslation } from 'react-i18next';
 import { BarChart4, Activity, DollarSign, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatNumber } from '@/utils/format-number';
 import type { AnalyticsOverview } from '../data/analytics';
+import { useGeneralSettings } from '@/features/system/data/system';
+import { useCallback } from 'react';
 
-/** Thousands-separated integer; overview totals must not be abbreviated. */
+/** Thousands-separated integer, for counts that stay short enough to read exactly. */
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
-import { useGeneralSettings } from '@/features/system/data/system';
-import { useCallback } from 'react';
 
 interface OverviewCardsProps {
   overview: AnalyticsOverview | undefined;
@@ -54,9 +55,9 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
   const cards = [
     {
       title: t('analytics.overview.totalTokens'),
-      value: formatExactNumber(overview?.totalTokens || 0),
+      value: formatNumber(overview?.totalTokens || 0),
       icon: BarChart4,
-      description: `${formatExactNumber(overview?.totalInputTokens || 0)} ${t('dashboard.stats.input')} / ${formatExactNumber(overview?.totalOutputTokens || 0)} ${t('dashboard.stats.output')} · ${t('analytics.overview.cacheHitRate')}: ${cacheHitRate}%`,
+      description: `${formatNumber(overview?.totalInputTokens || 0)} ${t('dashboard.stats.input')} / ${formatNumber(overview?.totalOutputTokens || 0)} ${t('dashboard.stats.output')} · ${t('analytics.overview.cacheHitRate')}: ${cacheHitRate}%`,
     },
     {
       title: t('analytics.overview.totalRequests'),

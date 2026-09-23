@@ -28,15 +28,15 @@ interface ChannelSuccessRateRow extends ChannelSuccessRate {
 /** Channel success rate details: sortable columns, type and warning filters, paging. */
 export default function DashboardChannelSuccessRates() {
   const { t } = useTranslation();
-  const { startTime, endTime } = useDashboardTimeStore();
-  const timeWindow = coarseWindowFromRange(startTime, endTime);
+  const { startTime, endTime, timeWindow } = useDashboardTimeStore();
+  const coarseWindow = coarseWindowFromRange(startTime, endTime, timeWindow);
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'successRate', desc: true }]);
   const [typeFilter, setTypeFilter] = useState('all');
   const [warningsOnly, setWarningsOnly] = useState(false);
 
-  const { data: channels, isLoading, error } = useChannelSuccessRates(undefined, timeWindow);
-  const { data: tokenStats } = useTokensByChannel(timeWindow);
+  const { data: channels, isLoading, error } = useChannelSuccessRates(undefined, coarseWindow);
+  const { data: tokenStats } = useTokensByChannel(coarseWindow);
 
   const rows = useMemo<ChannelSuccessRateRow[]>(() => {
     const tokensByChannel = new Map((tokenStats ?? []).map((item) => [item.channelId, item]));
@@ -162,7 +162,7 @@ export default function DashboardChannelSuccessRates() {
       <Header fixed>
         <div className='flex items-center gap-2'>
           <h2 className='text-xl font-bold tracking-tight'>{t('dashboard.channelSuccessRates.pageTitle')}</h2>
-          <RangeBadge timeWindow={timeWindow} />
+          <RangeBadge timeWindow={coarseWindow} />
         </div>
       </Header>
 

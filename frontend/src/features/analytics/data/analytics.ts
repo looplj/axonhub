@@ -6,6 +6,9 @@ import { graphqlRequest } from '@/gql/graphql';
 
 /** Analytics filter: time range plus the optional dimension selectors. */
 export const analyticsFilterSchema = z.object({
+  // A rolling window the backend measures from the moment the query runs; it overrides
+  // startTime/endTime, which are calendar dates and cannot express it.
+  timeWindow: z.string().nullable().optional(),
   startTime: z.string().nullable().optional(), // 'YYYY-MM-DD' 或 ISO timestamp
   endTime: z.string().nullable().optional(),
   projectIDs: z.array(z.string()).optional(),
@@ -133,6 +136,7 @@ export function toGraphQLFilter(filter: AnalyticsFilter | null): Record<string, 
 
   const result: Record<string, unknown> = {};
 
+  if (filter.timeWindow) result.timeWindow = filter.timeWindow;
   if (filter.startTime) result.startTime = filter.startTime;
   if (filter.endTime) result.endTime = filter.endTime;
   if (filter.projectIDs && filter.projectIDs.length > 0) result.projectIDs = filter.projectIDs;
