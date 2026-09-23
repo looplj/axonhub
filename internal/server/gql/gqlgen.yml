@@ -730,6 +730,9 @@ models:
   ChannelQuotaRoutingMode:
     model:
       - github.com/looplj/axonhub/internal/objects.QuotaRoutingMode
+  ChannelClaudeCodeBillingHeaderMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ClaudeCodeBillingHeaderMode
   TraceStickyMode:
     model:
       - github.com/looplj/axonhub/internal/server/biz.TraceStickyMode

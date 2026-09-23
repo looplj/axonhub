@@ -66,7 +66,7 @@ import {
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
 import { getInitialApiFormatForChannel, getModelProtocolsForApiFormat } from '../data/protocol-options';
-import { Channel, ChannelType, ApiFormat, ChannelSettings, ChannelQuotaRoutingMode, RetryableErrorPattern, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
+import { Channel, ChannelType, ApiFormat, ChannelSettings, ChannelQuotaRoutingMode, ChannelClaudeCodeBillingHeaderMode, RetryableErrorPattern, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
@@ -125,6 +125,23 @@ export function recallQuotaRoutingMode(settings: ChannelSettings | null | undefi
 // whitelist's stored-value fallback; the backend maps INHERIT to empty storage.
 export function quotaRoutingModeSettingsPatch(mode: ChannelQuotaRoutingMode): Partial<ChannelSettings> {
   return mode === 'INHERIT' ? { quotaRoutingMode: 'INHERIT' } : { quotaRoutingMode: mode };
+}
+
+// Dialog-init recall for the per-channel Claude Code billing header mode: an
+// absent settings field displays as AUTO (the backend stores "" for auto).
+export function recallClaudeCodeBillingHeaderMode(
+  settings: ChannelSettings | null | undefined
+): ChannelClaudeCodeBillingHeaderMode {
+  return settings?.claudeCodeBillingHeader ?? 'AUTO';
+}
+
+// Always sent explicitly, like the quota routing mode: the merge whitelist
+// falls back to the stored value when the patch omits a key, so selecting AUTO
+// has to travel on the wire to clear a previously pinned keep/strip.
+export function claudeCodeBillingHeaderSettingsPatch(
+  mode: ChannelClaudeCodeBillingHeaderMode
+): Partial<ChannelSettings> {
+  return { claudeCodeBillingHeader: mode };
 }
 
 function formatRetryableStatusCodes(codes: number[] | null | undefined): string {
@@ -417,6 +434,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     return initialRow?.settings?.passThroughBody ?? null;
   });
   const [quotaRoutingMode, setQuotaRoutingMode] = useState<ChannelQuotaRoutingMode>(() => recallQuotaRoutingMode(initialRow?.settings));
+  const [claudeCodeBillingHeader, setClaudeCodeBillingHeader] = useState<ChannelClaudeCodeBillingHeaderMode>(() =>
+    recallClaudeCodeBillingHeaderMode(initialRow?.settings)
+  );
   const [retryableStatusCodesText, setRetryableStatusCodesText] = useState(() =>
     formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes)
   );
@@ -1386,6 +1406,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           // field when the patch omits it and carries the null clear through.
           providerQuota: settingsForSubmit?.providerQuota,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
+          ...claudeCodeBillingHeaderSettingsPatch(claudeCodeBillingHeader),
           ...(shouldUpdateModelProtocols
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
             : {}),
@@ -1449,6 +1470,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           retryableStatusCodes,
           retryableErrorPatterns,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
+          ...claudeCodeBillingHeaderSettingsPatch(claudeCodeBillingHeader),
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
             ? {
@@ -1893,6 +1915,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
             setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
+            setClaudeCodeBillingHeader(recallClaudeCodeBillingHeaderMode(initialRow?.settings));
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
             // Reset provider and API format state
@@ -2682,6 +2705,30 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </Select>
                           <FormDescription className='text-xs'>
                             {t(`channels.dialogs.fields.quotaRoutingMode.descriptions.${quotaRoutingMode}`)}
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                          {t('channels.dialogs.fields.claudeCodeBillingHeader.label')}
+                        </FormLabel>
+                        <div className='space-y-1 md:col-span-6'>
+                          <Select
+                            value={claudeCodeBillingHeader}
+                            onValueChange={(value) => setClaudeCodeBillingHeader(value as ChannelClaudeCodeBillingHeaderMode)}
+                          >
+                            <SelectTrigger data-testid='channel-claude-code-billing-header-select'>
+                              <SelectValue placeholder={t('channels.dialogs.fields.claudeCodeBillingHeader.options.AUTO')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='AUTO'>{t('channels.dialogs.fields.claudeCodeBillingHeader.options.AUTO')}</SelectItem>
+                              <SelectItem value='KEEP'>{t('channels.dialogs.fields.claudeCodeBillingHeader.options.KEEP')}</SelectItem>
+                              <SelectItem value='STRIP'>{t('channels.dialogs.fields.claudeCodeBillingHeader.options.STRIP')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className='text-xs'>
+                            {t(`channels.dialogs.fields.claudeCodeBillingHeader.descriptions.${claudeCodeBillingHeader}`)}
                           </FormDescription>
                         </div>
                       </FormItem>
