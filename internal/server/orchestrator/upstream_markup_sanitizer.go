@@ -32,12 +32,16 @@ func withUpstreamMarkupSanitizer() pipeline.Middleware {
 	return &upstreamMarkupSanitizerMiddleware{}
 }
 
+// upstreamMarkupSanitizerMiddleware registers the markup sanitizer in the
+// outbound LLM stream pipeline.
 type upstreamMarkupSanitizerMiddleware struct {
 	pipeline.DummyMiddleware
 }
 
+// Name identifies the middleware in pipeline diagnostics.
 func (m *upstreamMarkupSanitizerMiddleware) Name() string { return "upstream-markup-sanitizer" }
 
+// OnOutboundLlmStream wraps the upstream response stream with the sanitizer.
 func (m *upstreamMarkupSanitizerMiddleware) OnOutboundLlmStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
@@ -82,6 +86,9 @@ func scrubText(text string, flush bool) (emit, hold string, stripped bool) {
 	return emit, "", stripped
 }
 
+// markupSanitizerStream filters a unified LLM response stream. Chunks are
+// held back while scrubbed markup may still resolve into tool calls; if the
+// leak swallowed the tool call, the stream aborts with a retryable error.
 type markupSanitizerStream struct {
 	ctx   context.Context
 	inner streams.Stream[*llm.Response]
@@ -99,6 +106,7 @@ type markupSanitizerStream struct {
 	err  error
 }
 
+// Next advances the stream to the next sanitized response chunk.
 func (s *markupSanitizerStream) Next() bool {
 	if s.err != nil {
 		return false
@@ -150,8 +158,10 @@ func (s *markupSanitizerStream) Next() bool {
 	}
 }
 
+// Current returns the current sanitized response chunk.
 func (s *markupSanitizerStream) Current() *llm.Response { return s.cur }
 
+// Err returns the stream error, preferring an abort raised by the sanitizer.
 func (s *markupSanitizerStream) Err() error {
 	if s.err != nil {
 		return s.err
@@ -160,6 +170,7 @@ func (s *markupSanitizerStream) Err() error {
 	return s.inner.Err()
 }
 
+// Close releases the underlying stream.
 func (s *markupSanitizerStream) Close() error { return s.inner.Close() }
 
 // finish is called when the inner stream is exhausted.
@@ -221,6 +232,7 @@ func (s *markupSanitizerStream) finish() bool {
 	return false
 }
 
+// trackToolCalls records whether any real tool call appeared in the stream.
 func (s *markupSanitizerStream) trackToolCalls(resp *llm.Response) {
 	if s.sawToolCalls {
 		return
@@ -299,6 +311,8 @@ func (s *markupSanitizerStream) cleanChunk(resp *llm.Response) bool {
 	return strippedAny
 }
 
+// scrubChoiceText scrubs a text fragment together with any held split-tag
+// tail for the same choice index; when flush is true the tail is released.
 func (s *markupSanitizerStream) scrubChoiceText(index int, text string, flush bool) (string, bool) {
 	emit, hold, stripped := scrubText(s.carry[index]+text, flush)
 
