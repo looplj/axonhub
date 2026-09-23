@@ -37,6 +37,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
   const [searchValue, setSearchValue] = useState('');
   const debouncedSearch = useDebounce(searchValue, 300);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [selectedSnapshot, setSelectedSnapshot] = useState<ChannelOverrideTemplate | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChannelOverrideTemplate | null>(null);
 
@@ -49,14 +50,17 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
   const templates = useMemo(() => data?.edges?.map((edge) => edge.node) || [], [data]);
 
   const selectedTemplate = useMemo(
-    () => templates.find((template) => template.id === selectedTemplateId) ?? null,
-    [templates, selectedTemplateId]
+    () =>
+      templates.find((template) => template.id === selectedTemplateId) ??
+      (selectedSnapshot?.id === selectedTemplateId ? selectedSnapshot : null),
+    [templates, selectedTemplateId, selectedSnapshot]
   );
 
   useEffect(() => {
     if (!open) {
       setSearchValue('');
       setSelectedTemplateId(null);
+      setSelectedSnapshot(null);
       setIsCreating(false);
       setPendingDelete(null);
     }
@@ -73,6 +77,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
         });
         setIsCreating(false);
         setSelectedTemplateId(created.id);
+        setSelectedSnapshot(created);
       } catch (_error) {
         // Error already handled by mutation
       }
@@ -110,6 +115,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
       await deleteTemplate.mutateAsync(deletingId);
       if (selectedTemplateId === deletingId) {
         setSelectedTemplateId(null);
+        setSelectedSnapshot(null);
       }
     } catch (_error) {
       // Error already handled by mutation
@@ -185,6 +191,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
                         onClick={() => {
                           setIsCreating(false);
                           setSelectedTemplateId(template.id);
+                          setSelectedSnapshot(template);
                         }}
                       >
                         <span className='block truncate text-sm font-medium'>{template.name}</span>
@@ -206,6 +213,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
                           onClick={() => {
                             setIsCreating(false);
                             setSelectedTemplateId(template.id);
+                            setSelectedSnapshot(template);
                           }}
                         >
                           <Pencil className='h-3.5 w-3.5' />

@@ -958,7 +958,7 @@
   "channels.endpoints.detect.reasons.serverError": "上游错误",
   "channels.endpoints.detect.reasons.unreachable": "无法连接",
   "channels.endpoints.detect.reasons.invalidRequest": "不支持",
-  "channels.templates.manager.button": "请求头模板",
+  "channels.templates.manager.button": "覆盖模板",
   "channels.templates.manager.title": "覆盖模板管理",
   "channels.templates.manager.description": "统一创建、编辑和删除可复用的请求头与请求体覆盖模板。模板仍需要显式应用到渠道，因此编辑模板不会静默影响已有渠道。",
   "channels.templates.manager.createButton": "新建模板",

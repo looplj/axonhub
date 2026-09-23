@@ -958,7 +958,7 @@
   "channels.endpoints.detect.reasons.serverError": "Upstream error",
   "channels.endpoints.detect.reasons.unreachable": "Unreachable",
   "channels.endpoints.detect.reasons.invalidRequest": "Not supported",
-  "channels.templates.manager.button": "Request Header Templates",
+  "channels.templates.manager.button": "Override Templates",
   "channels.templates.manager.title": "Override Templates",
   "channels.templates.manager.description": "Create, edit, and delete reusable header and body override templates. Applying a template to channels is still done explicitly, so editing never changes channels silently.",
   "channels.templates.manager.createButton": "New Template",
