@@ -145,6 +145,38 @@ test('Wafer and Apertis duration markers share timestamp validation', () => {
   );
 });
 
+// Regression: the quota-display refactor dropped the OpenCode Go popover
+// without adding the shared-limits replacement, so the channels showed a
+// battery percentage in the trigger but an empty detail popover.
+test('OpenCode Go renders its normalized limit windows', () => {
+  const quotaBadges = read('components/quota-badges.tsx');
+  const start = quotaBadges.indexOf("{(channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') &&");
+  const end = quotaBadges.indexOf("{isOllamaType(channel.type) &&", start);
+
+  assert.ok(start !== -1, 'OpenCode Go popover branch should exist in quota-badges source');
+  assert.ok(end !== -1 && end > start, 'the Ollama branch should follow the OpenCode Go branch');
+
+  const opencodeBlock = quotaBadges.slice(start, end);
+
+  // Rendering must be driven by the normalized limits the backend still sends,
+  // not by the removed provider-specific quotaData shape.
+  assert.match(opencodeBlock, /quota\.limits/, 'OpenCode Go should render normalized limits');
+  assert.match(
+    opencodeBlock,
+    /limit\.window === '5h'|preferredWindows = \['5h', 'weekly', 'monthly'\]/,
+    'OpenCode Go should map its windows onto the shared labels'
+  );
+  assert.match(opencodeBlock, /WINDOW_LABEL_KEYS\[limit\.window\]/, 'OpenCode Go labels should resolve through the shared map');
+  assert.match(opencodeBlock, /getLimitDurationPercent\(limit\)/, 'OpenCode Go bars should share the elapsed-window marker');
+  assert.match(opencodeBlock, /formatTimeToReset\(limit\.nextResetAt\)/, 'OpenCode Go should show a reset countdown');
+  assert.match(opencodeBlock, /quota\.label\.unavailable/, 'OpenCode Go should degrade gracefully when no limits are usable');
+  assert.doesNotMatch(
+    opencodeBlock,
+    /ProviderOpenCodeGoQuotaData|qd\.windows/,
+    'OpenCode Go should not depend on the removed provider-specific quota data'
+  );
+});
+
 
 // --- Mode-aware quota badges (quota routing) ---
 

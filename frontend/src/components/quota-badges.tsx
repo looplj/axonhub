@@ -1191,6 +1191,69 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
         </div>
       )}
 
+      {(channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            // OpenCode Go renders from the normalized limits: its checker maps
+            // the rolling/weekly/monthly windows onto the shared 5h/weekly/
+            // monthly labels, so the shared window bar rendering applies.
+            const preferredWindows = ['5h', 'weekly', 'monthly'];
+            const items: React.ReactNode[] = [];
+
+            quota.limits
+              .filter((limit) => limit.type === 'token' && limit.window && preferredWindows.includes(limit.window))
+              .sort((a, b) => preferredWindows.indexOf(a.window!) - preferredWindows.indexOf(b.window!))
+              .forEach((limit) => {
+                const labelKey = limit.window ? WINDOW_LABEL_KEYS[limit.window] : undefined;
+                if (!labelKey) return;
+                const usedPercent = limit.status === 'exhausted' ? 100 : limit.usageRatio * 100;
+                const durationPercent = getLimitDurationPercent(limit);
+                const resetText = limit.nextResetAt ? formatTimeToReset(limit.nextResetAt) : '';
+
+                items.push(
+                  <div
+                    key={limit.window}
+                    className={items.length > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}
+                  >
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(usedPercent) })}
+                      </span>
+                    </div>
+                    <UsageTimeBar
+                      usagePercent={usedPercent}
+                      durationPercent={durationPercent}
+                      tooltip={
+                        <div className='space-y-0.5'>
+                          <div className='font-medium'>{t(labelKey)}</div>
+                          <div>{t('quota.label.percent_used', { percent: Math.round(usedPercent) })}</div>
+                          {durationPercent !== undefined && (
+                            <div>
+                              {t('quota.label.time_elapsed')}: {Math.round(durationPercent)}%
+                            </div>
+                          )}
+                          {resetText && <div>{resetText}</div>}
+                        </div>
+                      }
+                    />
+                  </div>
+                );
+              });
+
+            if (items.length === 0) {
+              items.push(
+                <div key='unavailable' className='bg-muted/40 text-muted-foreground rounded p-2 text-[11px]'>
+                  {t('quota.label.unavailable')}
+                </div>
+              );
+            }
+
+            return items;
+          })()}
+        </div>
+      )}
+
       {isOllamaType(channel.type) && (
         <div className='mt-3 space-y-3'>
           {(() => {
