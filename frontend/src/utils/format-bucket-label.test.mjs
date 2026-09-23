@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 import ts from 'typescript';
 
-const srcRoot = join(import.meta.dirname, '..', '..');
+const srcRoot = join(import.meta.dirname, '..');
 
 function load(relativePath) {
   const source = readFileSync(join(srcRoot, relativePath), 'utf8');
