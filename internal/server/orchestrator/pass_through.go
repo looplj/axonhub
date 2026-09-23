@@ -259,7 +259,8 @@ func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 		// Image edits submitted as application/json carry a top-level model field.
 		// Multipart edit bodies never reach this point (passThroughBodySupported
 		// rejects them), so sjson patching only ever runs on JSON payloads.
-		llm.APIFormatOpenAIImageEdit:
+		llm.APIFormatOpenAIImageEdit,
+		llm.APIFormatTypeSafeSystemOne:
 		return true
 	default:
 		return false

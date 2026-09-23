@@ -38,6 +38,7 @@ import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { CommandCodeIcon } from '../components/commandcode-icon';
 import { EvolinkIcon } from '../components/evolink-icon';
 import { FennoIcon } from '../components/fenno-icon';
+import { TypeSafeIcon } from '../components/typesafe-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import {
@@ -161,6 +162,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: Jina,
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     channelTypes: ['jina'],
+  },
+  typesafe: {
+    provider: 'typesafe',
+    icon: TypeSafeIcon,
+    color: 'bg-blue-100 text-blue-800 border-blue-200',
+    channelTypes: ['typesafe'],
   },
   xai: {
     provider: 'xai',

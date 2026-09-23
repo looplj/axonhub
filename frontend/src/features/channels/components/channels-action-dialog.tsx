@@ -1993,7 +1993,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
                     {/* Right Side - Form Fields */}
                     <div className='flex-1 space-y-6 overflow-y-auto md:pr-4'>
-                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && (
+                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && selectedProvider !== 'typesafe' && (
                         <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                           <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                             {t('channels.dialogs.fields.apiFormat.label')}
