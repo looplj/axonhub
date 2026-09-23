@@ -77,6 +77,25 @@ function getQuotaLimits(channel: Channel) {
   return channel.providerQuotaStatus ? parseQuotaLimits(channel.providerQuotaStatus.quotaData) : [];
 }
 
+// A channel that draws from several accounts reports one limit per account, so
+// the cell keeps a single row per window (the worst account of that window) and
+// lets the tooltip list every account. Channels without account labels keep
+// their limits untouched.
+function collapseQuotaLimitsByWindow(limits: ReturnType<typeof getQuotaLimits>) {
+  if (!limits.some((limit) => limit.account)) return limits;
+
+  const worstByWindow = new Map<string, (typeof limits)[number]>();
+  for (const limit of limits) {
+    const window = limit.window ?? '';
+    const current = worstByWindow.get(window);
+    if (!current || limit.usageRatio > current.usageRatio) {
+      worstByWindow.set(window, limit);
+    }
+  }
+
+  return [...worstByWindow.values()];
+}
+
 function quotaWindowLabel(window: string | undefined, t: ReturnType<typeof useTranslation>['t']): string {
   if (!window) return '';
   const translationKey = QUOTA_WINDOW_LABEL_KEYS[window];
@@ -478,8 +497,8 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
     );
   }
 
-  const limits = getQuotaLimits(channel);
-  if (limits.length === 0) {
+  const allLimits = getQuotaLimits(channel);
+  if (allLimits.length === 0) {
     return (
       <div className='flex justify-center'>
         <span className='text-muted-foreground text-xs'>{t('quota.label.unavailable')}</span>
@@ -487,6 +506,10 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
     );
   }
 
+  // Multi-key channels report one limit per account, which would print a row
+  // per key; the cell keeps the worst account per window while the tooltip
+  // still lists every account.
+  const limits = collapseQuotaLimitsByWindow(allLimits);
   const visibleLimits = isExpanded ? limits : limits.slice(0, QUOTA_VISIBLE_LIMIT);
   const hiddenCount = limits.length - QUOTA_VISIBLE_LIMIT;
   const content = (
@@ -495,9 +518,12 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
         const usageRatio = limit.usageRatio;
         const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
         const label = quotaWindowLabel(limit.window, t) || t('quota.label.quota');
+        // Multi-key channels report one limit per account, so the bar has to
+        // say which key it belongs to.
+        const accountLabel = limit.account ? ` · ${limit.account}` : '';
         return (
           <div key={`${label}-${index}`} className='flex min-w-0 items-center gap-1'>
-            <span className='text-muted-foreground w-20 shrink-0 truncate text-left'>{label}</span>
+            <span className='text-muted-foreground w-20 shrink-0 truncate text-left'>{`${label}${accountLabel}`}</span>
             <div className='bg-muted h-1.5 min-w-0 flex-1 overflow-hidden rounded-full'>
               <div
                 className={`h-full ${remaining <= 20 ? 'bg-red-500' : remaining <= 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
@@ -529,12 +555,13 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
       <TooltipTrigger asChild>{content}</TooltipTrigger>
       <TooltipContent className='space-y-1'>
         <div className='font-medium'>{t(`quota.status.${channel.providerQuotaStatus.status}`)}</div>
-        {limits.map((limit, index) => {
+        {allLimits.map((limit, index) => {
           const usageRatio = limit.usageRatio;
           const remaining = Math.round(Math.max(0, Math.min(100, 100 - usageRatio * 100)));
           return (
             <div key={`${limit.window}-${index}`} className='text-xs'>
-              {quotaWindowLabel(limit.window, t) || t('quota.label.quota')}: {remaining}%
+              {quotaWindowLabel(limit.window, t) || t('quota.label.quota')}
+              {limit.account ? ` · ${limit.account}` : ''}: {remaining}%
             </div>
           );
         })}
@@ -922,7 +949,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.quota')} className='justify-center' />,
       cell: QuotaCell,
       meta: {
-         className: 'hidden w-[23%] min-w-0 2xl:table-cell text-center',
+         className: 'hidden w-[13%] min-w-0 2xl:table-cell text-center',
       },
       enableSorting: false,
       enableHiding: true,

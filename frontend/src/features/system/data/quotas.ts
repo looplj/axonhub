@@ -303,11 +303,29 @@ export type ZhipuWindowRow = {
   usedPercent: number;
   status: string;
   resetAt?: string;
+  usage?: number;
+  used?: number;
+  remaining?: number;
+};
+
+// One API key of a channel that draws from several accounts. The backend keeps
+// every account of a multi-key channel in this shape so the UI can render them
+// side by side.
+export type ZhipuAccountQuota = {
+  ref?: string;
+  suffix?: string;
+  disabled?: boolean;
+  status?: string;
+  ready?: boolean;
+  level?: string;
+  error?: string;
+  rows?: ZhipuWindowRow[];
 };
 
 export type ProviderZhipuQuotaData = ProviderQuotaDataCommon & {
   rows?: ZhipuWindowRow[];
   level?: string;
+  accounts?: ZhipuAccountQuota[];
 };
 
 export type ProviderZenmuxQuotaPlan = {
@@ -484,6 +502,7 @@ export type ProviderQuotaLimit = {
   usageRatio: number;
   ready: boolean;
   window?: string;
+  account?: string;
   nextResetAt?: string;
   periodStart?: string;
   periodCost?: number;
@@ -515,6 +534,7 @@ function parseQuotaLimit(entry: unknown): ProviderQuotaLimit | undefined {
   const limit = entry as Record<string, unknown>;
   const type = requiredString(limit.type);
   const window = requiredString(limit.window);
+  const account = optionalString(limit.account);
   if (!type || !window || !isNormalizedQuotaStatus(limit.status)) return undefined;
 
   const usageRatio = optionalNumber(limit.usageRatio);
@@ -541,6 +561,7 @@ function parseQuotaLimit(entry: unknown): ProviderQuotaLimit | undefined {
     usageRatio,
     ready: limit.ready === true,
     window,
+    account,
     nextResetAt,
     periodStart,
     periodCost,
