@@ -17,7 +17,6 @@ schema:
   - price.graphql
   - cost.graphql
   - analytics.graphql
-  - model_audit.graphql
 
 omit_gqlgen_version_in_file_notice: true
 

@@ -127,7 +127,7 @@ test('successful retries do not hide an earlier mismatch', () => {
   assert.equal(audit.unknownCount, 1);
 });
 
-test('matches each execution against its own requested model', () => {
+test('matches each execution against its own recorded outbound model', () => {
   const audit = getUpstreamModelAudit([
     { modelID: 'model-a', upstreamModelID: 'model-a' },
     { modelID: 'model-b', upstreamModelID: 'model-b' },
@@ -147,7 +147,7 @@ test('does not match a retry against a previous execution model', () => {
   assert.equal(audit.unknownCount, 1);
 });
 
-test('detects swapped models even when both appear in the requested model set', () => {
+test('detects swapped models even when both appear in the outbound model set', () => {
   const audit = getUpstreamModelAudit([
     { modelID: 'model-a', upstreamModelID: 'model-b' },
     { modelID: 'model-b', upstreamModelID: 'model-a' },
@@ -199,11 +199,11 @@ test('deduplicates reported names only after retaining every execution mismatch'
   assert.deepEqual(audit.mismatchedModelIds, ['model-a']);
 });
 
-test('compares against the client-requested model, so a channel mapping is a mismatch', () => {
-  const mapped = { modelID: 'routed-a', upstreamModelID: 'sent-b' };
-  assert.equal(getUpstreamModelAudit([mapped]).status, 'mismatched');
-  assert.deepEqual(getUpstreamModelAudit([mapped]).mismatchedModelIds, ['sent-b']);
-  assert.equal(getUpstreamModelAudit([{ modelID: 'routed-a', upstreamModelID: 'routed-a' }]).status, 'matched');
+test('compares against the actual outbound model recorded for the execution', () => {
+  const execution = { modelID: 'sent-b', upstreamModelID: 'sent-b' };
+  assert.equal(getUpstreamModelAudit([execution]).status, 'matched');
+  assert.deepEqual(getUpstreamModelAudit([execution]).equalModelIds, ['sent-b']);
+  assert.equal(getUpstreamModelAudit([{ modelID: 'sent-b', upstreamModelID: 'routed-a' }]).status, 'mismatched');
 });
 
 test('a failed execution never reports a green success conclusion', () => {

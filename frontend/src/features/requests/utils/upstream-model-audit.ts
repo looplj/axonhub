@@ -32,9 +32,9 @@ export interface ModelAuditSummary {
   comparedCount: number;
 }
 
-// Compares the upstream-reported name with the client-requested modelID.
-// Channel model mapping is treated as a mismatch. The list only sees the first
-// 10 executions; executions outside that window are not part of the verdict.
+// Compares the upstream-reported name with the final modelID sent upstream.
+// The list only sees the first 10 executions; executions outside that window
+// are not part of the verdict.
 export function getUpstreamModelAudit(executions: readonly ModelAuditExecution[]): ModelAuditSummary {
   const matchedUpstreamIds = new Set<string>();
   const equalModelIds = new Set<string>();
@@ -45,16 +45,16 @@ export function getUpstreamModelAudit(executions: readonly ModelAuditExecution[]
   let blockingUnknownCount = 0;
 
   for (const execution of executions) {
-    const requestedModel = execution.modelID?.trim() ?? '';
+    const sentModel = execution.modelID?.trim() ?? '';
     const reportedModel = execution.upstreamModelID?.trim() ?? '';
     if (reportedModel) upstreamModelIds.add(reportedModel);
-    if (!requestedModel || !reportedModel) {
+    if (!sentModel || !reportedModel) {
       unknownCount++;
       if (execution.status !== 'failed' && execution.status !== 'canceled') blockingUnknownCount++;
       continue;
     }
     hasCompletedComparison ||= execution.status === 'completed';
-    if (reportedModel !== requestedModel) {
+    if (reportedModel !== sentModel) {
       mismatchedModelIds.add(reportedModel);
     } else {
       equalModelIds.add(reportedModel);

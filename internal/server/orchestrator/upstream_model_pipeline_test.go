@@ -140,7 +140,7 @@ func TestUpstreamModelPipeline_NonStreaming(t *testing.T) {
 			}
 			saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
 			require.NoError(t, err)
-			require.Equal(t, "routed-a", saved.ModelID)
+			require.Equal(t, tt.sent, saved.ModelID, "persisted model should match the final outbound model")
 			require.Equal(t, tt.reported, saved.UpstreamModelID)
 			require.Equal(t, tt.passThrough, saved.PassThroughApplied)
 			require.JSONEq(t, "{}", string(saved.RequestBody))
@@ -191,10 +191,11 @@ func TestUpstreamModelPipeline_StreamingAndAutoAggregate(t *testing.T) {
 			// Pass-through drains the transformation branch asynchronously.
 			require.Eventually(t, func() bool {
 				saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
-				return err == nil && saved.Status == requestexecution.StatusCompleted && saved.UpstreamModelID == "wire-b"
+				return err == nil && saved.Status == requestexecution.StatusCompleted && saved.ModelID == "wire-b" && saved.UpstreamModelID == "wire-b"
 			}, time.Second, 5*time.Millisecond)
 			saved, err := db.RequestExecution.Get(ctx, state.RequestExec.ID)
 			require.NoError(t, err)
+			require.Equal(t, "wire-b", saved.ModelID, "persisted model should match the final outbound model")
 			require.Equal(t, "wire-b", saved.UpstreamModelID, "only the first reported name is kept")
 			require.Empty(t, saved.ResponseChunks)
 			require.Empty(t, saved.ResponseBody)

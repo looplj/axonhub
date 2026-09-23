@@ -111,9 +111,6 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		return request, nil
 	}
 
-	candidate := state.ChannelModelsCandidates[state.CurrentCandidateIndex]
-	entry := candidate.Models[state.CurrentModelIndex]
-
 	// Prefer the API format of the actual outbound request: transformers may emit
 	// multiple formats (e.g. OpenAI outbound also builds audio speech/transcription
 	// requests) while APIFormat() only reports the primary one.
@@ -121,11 +118,12 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 	if request.APIFormat != "" {
 		format = llm.APIFormat(request.APIFormat)
 	}
+	sentModel := modelmetadata.SentModel(request, format)
 
 	requestExec, err := state.RequestService.CreateRequestExecution(
 		ctx,
 		channel,
-		entry.ActualModel,
+		sentModel,
 		state.Request,
 		*request,
 		format,
