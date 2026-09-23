@@ -129,7 +129,7 @@ func (r *queryResolver) resolvePerformanceWindow(ctx context.Context, timeWindow
 	// A relative window ends at the current instant, so endLocal is not a midnight and
 	// the caller must not treat the range as covering whole days.
 	if since, ok := relativeSince(timeWindow); ok {
-		start := since.In(loc).Truncate(time.Hour)
+		start := localHourFloor(since.In(loc))
 		window.startLocal = start
 		window.endLocal = nowLocal
 		window.resolution = qb.ResolutionHour
@@ -404,6 +404,16 @@ func relativeSince(timeWindow *string) (time.Time, bool) {
 	}
 
 	return xtime.UTCNow().Add(-24 * time.Hour), true
+}
+
+// localHourFloor drops the minutes and seconds of t in its own zone. Truncate(time.Hour)
+// cannot be used for this: it rounds the absolute duration since the zero time, which in
+// a zone whose offset is not a whole hour (UTC+05:30, Australia/Darwin) lands on :30
+// instead of :00. The SQL groups by the local wall-clock hour, so a start on :30 both
+// mislabels the first bucket and shifts the sequence far enough to drop the current
+// hour's usage from the response entirely.
+func localHourFloor(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
 }
 
 // parseTimeWindow parses a time window string and returns the start time and a flag indicating

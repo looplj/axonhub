@@ -199,8 +199,11 @@ export function PerformanceChart({
         const stat = statsMap[date]?.[id];
         dataPoint[id] = stat?.throughput ?? null;
         dataPoint[`${id}-ttft`] = stat?.ttftMs ?? null;
-        dataPoint[`${id}-capped`] = Math.min(stat?.throughput ?? 0, MAX_CHART_THROUGHPUT);
-        dataPoint[`${id}-ttft-capped`] = Math.min(stat?.ttftMs ?? 0, MAX_CHART_TTFT_MS);
+        // The capped keys are the ones the areas plot, so a missing stat has to stay null
+        // here as well: 0 would draw a dip to the axis and read as a measured zero rather
+        // than as an idle hour, which is what defeats connectNulls below.
+        dataPoint[`${id}-capped`] = stat?.throughput == null ? null : Math.min(stat.throughput, MAX_CHART_THROUGHPUT);
+        dataPoint[`${id}-ttft-capped`] = stat?.ttftMs == null ? null : Math.min(stat.ttftMs, MAX_CHART_TTFT_MS);
       });
 
       return dataPoint;

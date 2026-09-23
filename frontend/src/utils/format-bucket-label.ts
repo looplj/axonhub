@@ -4,7 +4,10 @@ export function formatBucketLabel(bucket: string, locale: string): string {
   const isHourly = bucket.includes(' ');
   const [datePart, timePart] = isHourly ? bucket.split(' ') : [bucket, undefined];
   const [year, month, day] = datePart.split('-').map(Number);
-  const dateObj = new Date(Date.UTC(year, month - 1, day));
+  // The hour has to be read out of the label as well: the server emits it, and building
+  // the date from year/month/day alone would render every hourly bucket as midnight.
+  const hour = timePart ? Number(timePart.slice(0, 2)) : 0;
+  const dateObj = new Date(Date.UTC(year, month - 1, day, hour));
 
   if (timePart) {
     return dateObj.toLocaleString(locale, {

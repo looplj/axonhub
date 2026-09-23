@@ -125,7 +125,7 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 	// Determine date range — 同仪表盘 parseTimeWindow 模式
 	var startDay, endDay time.Time
 	if isRelative {
-		startDay = relative.In(loc).Truncate(time.Hour)
+		startDay = localHourFloor(relative.In(loc))
 		endDay = nowLocal
 	} else {
 		if filter != nil && filter.StartTime != nil {

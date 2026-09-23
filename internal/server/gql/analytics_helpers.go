@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
@@ -46,7 +47,8 @@ func parseDateStr(dateStr string, loc *time.Location) time.Time {
 
 // buildAnalyticsExecutionWhere mirrors buildAnalyticsWhere against request_executions,
 // whose columns are a subset of usage_logs and which has no api_key_id column.
-// API key / user filters are therefore resolved through usage_logs.request_id.
+// The API key filter is therefore resolved through the request each execution belongs to
+// rather than through usage_logs, so a failure that never produced a log still counts.
 func (r *queryResolver) buildAnalyticsExecutionWhere(s *sql.Selector, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) {
 	if filter == nil {
 		return
@@ -91,11 +93,14 @@ func (r *queryResolver) buildAnalyticsExecutionWhere(s *sql.Selector, filter *An
 	}
 
 	if len(apiKeyIDs) > 0 {
+		// Scoped through requests rather than usage_logs: a transport failure can mark an
+		// execution failed without ever writing a usage log, and keying off the log would
+		// drop exactly those failures from the success rate's denominator.
 		s.Where(sql.In(
 			requestexecution.FieldRequestID,
-			sql.Select(usagelog.FieldRequestID).
-				From(sql.Table(usagelog.Table)).
-				Where(sql.InInts(usagelog.FieldAPIKeyID, apiKeyIDs...)),
+			sql.Select(request.FieldID).
+				From(sql.Table(request.Table)).
+				Where(sql.InInts(request.FieldAPIKeyID, apiKeyIDs...)),
 		))
 	} else if hasUserFilter {
 		s.Where(sql.False())

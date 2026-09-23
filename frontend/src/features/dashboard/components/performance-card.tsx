@@ -4,7 +4,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber } from '@/utils/format-number';
 import { useChannelPerformanceStats, useModelPerformanceStats } from '../data/dashboard';
-import type { RelativeTimeWindow } from '../utils/time-window';
+import { todayLocalDate, type RelativeTimeWindow } from '../utils/time-window';
 import { PerformanceChart, type PerformanceDataPoint } from './performance-chart';
 import { RangeBadge } from './range-badge';
 
@@ -60,7 +60,7 @@ export function PerformanceCard({ startTime, endTime, timeWindow }: PerformanceC
           <CardDescription>{description}</CardDescription>
         </div>
         <CardAction className='flex flex-wrap items-center justify-end gap-2'>
-          <RangeBadge label={startTime ? `${startTime} – ${endTime || startTime}` : t(`timeRange.${timeWindow ?? 'last30Days'}`)} />
+          <RangeBadge label={startTime ? `${startTime} – ${endTime ?? todayLocalDate()}` : t(`timeRange.${timeWindow ?? 'last30Days'}`)} />
           <Tabs value={dimension} onValueChange={(value) => setDimension(value as PerformanceDimension)}>
             <TabsList className='h-8'>
               <TabsTrigger value='model' className='text-xs'>
