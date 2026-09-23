@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -16,6 +17,20 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
 )
+
+// rotatingKeyProvider hands out a different key on every call, mimicking a
+// channel that balances across several keys. The task round trip must survive it
+// by reusing the submission key instead of re-resolving per call.
+type rotatingKeyProvider struct {
+	keys []string
+	next int
+}
+
+func (p *rotatingKeyProvider) Get(context.Context) string {
+	key := p.keys[p.next%len(p.keys)]
+	p.next++
+	return key
+}
 
 func newImageTransformer(t *testing.T, baseURL string) *OutboundTransformer {
 	t.Helper()
@@ -287,4 +302,88 @@ func TestTransformImageResponse_DelegatesNonImageFormats(t *testing.T) {
 		Request:    &httpclient.Request{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
 	})
 	require.NoError(t, err)
+}
+
+// TestImageTask_ReusesSubmissionKey pins the multi-key fix: the key that
+// creates the task must authenticate every later call for that task, even when
+// the provider would hand out a different key each time.
+func TestImageTask_ReusesSubmissionKey(t *testing.T) {
+	t.Parallel()
+
+	var pollKeys []string
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/v1/tasks/task-key", func(w http.ResponseWriter, r *http.Request) {
+		pollKeys = append(pollKeys, strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "))
+		_, _ = w.Write([]byte(`{"task_id":"task-key","task_status":"SUCCEED","output_images":[]}`))
+	})
+
+	transformer := newImageTransformer(t, server.URL+"/v1")
+	transformer.apiKeyProvider = &rotatingKeyProvider{keys: []string{"key-a", "key-b", "key-c"}}
+
+	built, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:       "Qwen/Qwen-Image-2.1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
+		Image:       &llm.ImageRequest{Prompt: "a fox"},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "key-a", built.Auth.APIKey, "the first resolved key submits the task")
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       []byte(`{"task_id":"task-key","task_status":"PENDING"}`),
+		Request:    built,
+	}
+
+	_, err = transformer.TransformResponse(context.Background(), httpResp)
+	// The stub returns no output images, so a descriptive error is expected; the
+	// assertion that matters is which key was used for the poll.
+	require.Error(t, err)
+	require.Equal(t, []string{"key-a"}, pollKeys,
+		"polling must reuse the submitting key, not resolve a new one")
+}
+
+// TestTransformImageResponse_BoundsEachPollRequest pins the second review point:
+// an individual task query must be cut off by the same deadline the loop uses,
+// including when that deadline comes from the transformer's own budget rather
+// than from the caller.
+func TestTransformImageResponse_BoundsEachPollRequest(t *testing.T) {
+	t.Parallel()
+
+	released := make(chan struct{})
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/v1/tasks/task-slow", func(w http.ResponseWriter, r *http.Request) {
+		// Block past the transformer's own task budget.
+		select {
+		case <-r.Context().Done():
+		case <-released:
+		}
+	})
+	defer close(released)
+
+	transformer := newImageTransformer(t, server.URL+"/v1")
+	transformer.taskTimeout = 80 * time.Millisecond
+	transformer.pollInterval = time.Millisecond
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       []byte(`{"task_id":"task-slow","task_status":"PENDING"}`),
+		Request:    &httpclient.Request{APIFormat: llm.APIFormatModelScopeImage.String()},
+	}
+
+	start := time.Now()
+	_, err := transformer.TransformResponse(context.Background(), httpResp)
+	elapsed := time.Since(start)
+
+	require.Error(t, err)
+	require.Less(t, elapsed, 5*time.Second,
+		"a hung poll must be bounded by the poll deadline, not run until the server responds")
 }

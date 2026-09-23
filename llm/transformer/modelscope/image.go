@@ -26,6 +26,16 @@ const (
 	defaultImageDownloadTimeout  = 2 * time.Minute
 )
 
+// imageTaskAPIKeyMeta carries the API key that submitted the task from the
+// outbound request through to the response transformation.
+//
+// A ModelScope task belongs to the key that created it, so polling and result
+// download must reuse that key. Re-resolving the key per call is not safe when a
+// channel has several keys: the provider may hand out a different one, and the
+// upstream then reports the task as missing. The auth config is cleared before
+// the response is transformed, so the key travels as request metadata.
+const imageTaskAPIKeyMeta = "api_key"
+
 // imageResponse covers both the async task submission response (task_id) and the
 // task query response (task_status plus output_images).
 type imageResponse struct {
@@ -100,6 +110,13 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 	headers.Set("Accept", "application/json")
 	headers.Set("Content-Type", "application/json")
 
+	// Resolve the key once: the task is created with it, so polling and download
+	// must reuse exactly this key rather than resolving a new one per call.
+	apiKey := t.apiKeyProvider.Get(ctx)
+	if apiKey == "" {
+		return nil, fmt.Errorf("%w: no API key available for ModelScope image request", transformer.ErrInvalidRequest)
+	}
+
 	httpReq := &httpclient.Request{
 		Method:  http.MethodPost,
 		URL:     strings.TrimRight(t.baseURL, "/") + modelScopeImagePath,
@@ -107,14 +124,17 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 		Body:    payload,
 		Auth: &httpclient.AuthConfig{
 			Type:   httpclient.AuthTypeBearer,
-			APIKey: t.apiKeyProvider.Get(ctx),
+			APIKey: apiKey,
 		},
 		// The provider-facing format is the ModelScope one so the async task
 		// response is never mistaken for a ready-to-use OpenAI image response.
 		RequestType: llm.RequestTypeImage.String(),
 		APIFormat:   llm.APIFormatModelScopeImage.String(),
 	}
-	httpReq.TransformerMetadata = map[string]any{"model": req.Model}
+	httpReq.TransformerMetadata = map[string]any{
+		"model":             req.Model,
+		imageTaskAPIKeyMeta: apiKey,
+	}
 
 	return httpReq, nil
 }
@@ -138,6 +158,9 @@ func (t *OutboundTransformer) transformImageResponse(ctx context.Context, httpRe
 		return nil, fmt.Errorf("ModelScope image response body is empty")
 	}
 
+	// Reuse the key that created the task for the whole round trip.
+	apiKey := imageTaskAPIKey(httpResp, t.apiKeyProvider.Get(ctx))
+
 	var payload imageResponse
 	if err := json.Unmarshal(httpResp.Body, &payload); err != nil {
 		return nil, fmt.Errorf("failed to decode ModelScope image response: %w", err)
@@ -160,7 +183,7 @@ func (t *OutboundTransformer) transformImageResponse(ctx context.Context, httpRe
 		return nil, fmt.Errorf("ModelScope image response has neither image data nor task_id: %s", strings.TrimSpace(string(httpResp.Body)))
 	}
 
-	task, err := t.waitImageTask(ctx, payload.TaskID)
+	task, err := t.waitImageTask(ctx, apiKey, payload.TaskID)
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +196,7 @@ func (t *OutboundTransformer) transformImageResponse(ctx context.Context, httpRe
 	return t.imageResponseFromData(ctx, httpResp, task.Created, data)
 }
 
-func (t *OutboundTransformer) waitImageTask(ctx context.Context, taskID string) (*imageResponse, error) {
+func (t *OutboundTransformer) waitImageTask(ctx context.Context, apiKey, taskID string) (*imageResponse, error) {
 	// Follow the caller's deadline when it has one: the gateway already bounds
 	// non-streaming requests, so inventing a longer inner budget would only make
 	// the transformer keep polling for a request the caller has already given up
@@ -190,7 +213,10 @@ func (t *OutboundTransformer) waitImageTask(ctx context.Context, taskID string) 
 	taskURL := strings.TrimRight(t.baseURL, "/") + modelScopeTasksPath + url.PathEscape(taskID)
 
 	for {
-		task, err := t.getImageTask(ctx, taskURL)
+		pollCtx, cancel := context.WithDeadline(ctx, deadline)
+		task, err := t.getImageTask(pollCtx, apiKey, taskURL)
+		cancel()
+
 		if err != nil {
 			return nil, err
 		}
@@ -219,7 +245,7 @@ func (t *OutboundTransformer) waitImageTask(ctx context.Context, taskID string) 
 	}
 }
 
-func (t *OutboundTransformer) getImageTask(ctx context.Context, taskURL string) (*imageResponse, error) {
+func (t *OutboundTransformer) getImageTask(ctx context.Context, apiKey, taskURL string) (*imageResponse, error) {
 	headers := make(http.Header)
 	headers.Set("Accept", "application/json")
 	headers.Set("X-ModelScope-Task-Type", "image_generation")
@@ -230,7 +256,7 @@ func (t *OutboundTransformer) getImageTask(ctx context.Context, taskURL string) 
 		Headers: headers,
 		Auth: &httpclient.AuthConfig{
 			Type:   httpclient.AuthTypeBearer,
-			APIKey: t.apiKeyProvider.Get(ctx),
+			APIKey: apiKey,
 		},
 	}
 
@@ -249,7 +275,7 @@ func (t *OutboundTransformer) getImageTask(ctx context.Context, taskURL string) 
 	}
 
 	httpReq.Header = headers
-	httpReq.Header.Set("Authorization", "Bearer "+t.apiKeyProvider.Get(ctx))
+	httpReq.Header.Set("Authorization", "Bearer "+apiKey)
 
 	resp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
@@ -267,6 +293,19 @@ func (t *OutboundTransformer) getImageTask(ctx context.Context, taskURL string) 
 	}
 
 	return decodeImageTask(body)
+}
+
+// imageTaskAPIKey returns the key that created the task, falling back to the
+// provided key when the request metadata is unavailable. Every task-scoped call
+// must use the returned key so a multi-key channel cannot mix keys mid-task.
+func imageTaskAPIKey(httpResp *httpclient.Response, fallback string) string {
+	if httpResp != nil && httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
+		if key, ok := httpResp.Request.TransformerMetadata[imageTaskAPIKeyMeta].(string); ok && key != "" {
+			return key
+		}
+	}
+
+	return fallback
 }
 
 func decodeImageTask(body []byte) (*imageResponse, error) {
