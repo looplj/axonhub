@@ -71,10 +71,10 @@ type imageResponse struct {
 // submission. Image generation and image editing share this endpoint; a top-level
 // image_url is what turns the call into an edit.
 //
-// No X-ModelScope-Async-Mode header is sent: the endpoint returns a task_id
-// immediately whether or not the header is present, so the header only expresses
-// a preference for the upstream async queue. The polling half of the round trip
-// does require X-ModelScope-Task-Type, which waitImageTask supplies.
+// X-ModelScope-Async-Mode is always sent: the documented contract for this
+// endpoint is an asynchronous task, and models that cannot serve a synchronous
+// call reject a headerless submission outright. The polling half of the round
+// trip requires X-ModelScope-Task-Type, which waitImageTask supplies.
 func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
 	if req == nil || req.Image == nil {
 		return nil, fmt.Errorf("%w: image request is required", transformer.ErrInvalidRequest)
@@ -123,6 +123,7 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 	headers := make(http.Header)
 	headers.Set("Accept", "application/json")
 	headers.Set("Content-Type", "application/json")
+	headers.Set("X-ModelScope-Async-Mode", "true")
 
 	// Resolve the key once: the task is created with it, so polling and download
 	// must reuse exactly this key rather than resolving a new one per call.

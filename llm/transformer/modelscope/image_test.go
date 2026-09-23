@@ -66,8 +66,8 @@ func TestBuildImageRequest_GenerationOmitsImageURL(t *testing.T) {
 
 	require.Equal(t, http.MethodPost, req.Method)
 	require.Equal(t, "https://example.com/v1/images/generations", req.URL)
-	require.Empty(t, req.Headers.Get("X-ModelScope-Async-Mode"),
-		"the submission must not depend on the async-mode header; the endpoint returns a task_id either way")
+	require.Equal(t, "true", req.Headers.Get("X-ModelScope-Async-Mode"),
+		"the documented contract is an async task; some models reject a headerless submission")
 	require.Equal(t, llm.APIFormatModelScopeImage.String(), req.APIFormat)
 	require.Equal(t, llm.RequestTypeImage.String(), req.RequestType)
 
