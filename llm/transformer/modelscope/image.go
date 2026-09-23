@@ -40,9 +40,14 @@ type imageResponse struct {
 	} `json:"errors"`
 }
 
-// buildImageRequest converts a unified image request into a ModelScope async
-// image task submission. Image generation and image editing share this endpoint;
-// a top-level image_url is what turns the call into an edit.
+// buildImageRequest converts a unified image request into a ModelScope image task
+// submission. Image generation and image editing share this endpoint; a top-level
+// image_url is what turns the call into an edit.
+//
+// No X-ModelScope-Async-Mode header is sent: the endpoint returns a task_id
+// immediately whether or not the header is present, so the header only expresses
+// a preference for the upstream async queue. The polling half of the round trip
+// does require X-ModelScope-Task-Type, which waitImageTask supplies.
 func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
 	if req == nil || req.Image == nil {
 		return nil, fmt.Errorf("%w: image request is required", transformer.ErrInvalidRequest)
@@ -94,7 +99,6 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 	headers := make(http.Header)
 	headers.Set("Accept", "application/json")
 	headers.Set("Content-Type", "application/json")
-	headers.Set("X-ModelScope-Async-Mode", "true")
 
 	httpReq := &httpclient.Request{
 		Method:  http.MethodPost,
@@ -170,14 +174,17 @@ func (t *OutboundTransformer) transformImageResponse(ctx context.Context, httpRe
 }
 
 func (t *OutboundTransformer) waitImageTask(ctx context.Context, taskID string) (*imageResponse, error) {
-	timeout := t.taskTimeout
-	if timeout <= 0 {
-		timeout = defaultImageTaskTimeout
-	}
-
-	deadline := time.Now().Add(timeout)
-	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Before(deadline) {
-		deadline = ctxDeadline
+	// Follow the caller's deadline when it has one: the gateway already bounds
+	// non-streaming requests, so inventing a longer inner budget would only make
+	// the transformer keep polling for a request the caller has already given up
+	// on. The fixed timeout below is the fallback for callers without a deadline.
+	deadline := time.Time{}
+	if d, ok := ctx.Deadline(); ok {
+		deadline = d
+	} else if t.taskTimeout > 0 {
+		deadline = time.Now().Add(t.taskTimeout)
+	} else {
+		deadline = time.Now().Add(defaultImageTaskTimeout)
 	}
 
 	taskURL := strings.TrimRight(t.baseURL, "/") + modelScopeTasksPath + url.PathEscape(taskID)

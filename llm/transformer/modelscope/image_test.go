@@ -51,7 +51,8 @@ func TestBuildImageRequest_GenerationOmitsImageURL(t *testing.T) {
 
 	require.Equal(t, http.MethodPost, req.Method)
 	require.Equal(t, "https://example.com/v1/images/generations", req.URL)
-	require.Equal(t, "true", req.Headers.Get("X-ModelScope-Async-Mode"))
+	require.Empty(t, req.Headers.Get("X-ModelScope-Async-Mode"),
+		"the submission must not depend on the async-mode header; the endpoint returns a task_id either way")
 	require.Equal(t, llm.APIFormatModelScopeImage.String(), req.APIFormat)
 	require.Equal(t, llm.RequestTypeImage.String(), req.RequestType)
 
@@ -212,6 +213,42 @@ func TestTransformImageResponse_PollsTaskAndReturnsBase64(t *testing.T) {
 	require.Equal(t, server.URL+"/img.png", resp.Image.Data[0].URL)
 	require.Equal(t, llm.RequestTypeImage, resp.RequestType)
 	require.GreaterOrEqual(t, polls, 2, "the task must be polled until it succeeds")
+}
+
+// TestTransformImageResponse_HonoursCallerDeadline pins the inner polling budget
+// to the caller's deadline. Without it the transformer would keep polling after
+// the gateway has already given up on the request.
+func TestTransformImageResponse_HonoursCallerDeadline(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/v1/tasks/task-3", func(w http.ResponseWriter, _ *http.Request) {
+		// Never reaches a terminal status, so only the deadline can stop the loop.
+		_, _ = w.Write([]byte(`{"task_id":"task-3","task_status":"RUNNING"}`))
+	})
+
+	transformer := newImageTransformer(t, server.URL+"/v1")
+	transformer.taskTimeout = time.Hour
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       []byte(`{"task_id":"task-3","task_status":"PENDING"}`),
+		Request:    &httpclient.Request{APIFormat: llm.APIFormatModelScopeImage.String()},
+	}
+
+	start := time.Now()
+	_, err := transformer.TransformResponse(ctx, httpResp)
+	elapsed := time.Since(start)
+
+	require.Error(t, err)
+	require.Less(t, elapsed, 5*time.Second,
+		"polling must stop at the caller deadline, not at the one-hour fallback")
 }
 
 func TestTransformImageResponse_TaskFailureIsReported(t *testing.T) {
