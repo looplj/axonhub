@@ -1336,7 +1336,14 @@ func (r *queryResolver) ModelPerformanceStats(ctx context.Context, timeWindow *s
 		return nil, fmt.Errorf("context canceled: %w", err)
 	}
 
-	rows, err := sqlDB.DB().QueryContext(ctx, query, window.startLocal.UTC(), window.endLocal.UTC())
+	// MAX_ID mode repeats both window bounds inside the correlated subquery, so it needs
+	// them bound a second time; ROW_NUMBER ranks only the window's rows and needs them once.
+	queryArgs := []any{window.startLocal.UTC(), window.endLocal.UTC()}
+	if queryMode == qb.ThroughputModeMaxID {
+		queryArgs = append(queryArgs, window.startLocal.UTC(), window.endLocal.UTC())
+	}
+
+	rows, err := sqlDB.DB().QueryContext(ctx, query, queryArgs...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query model performance stats: %w", err)
 	}

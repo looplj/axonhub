@@ -263,6 +263,10 @@ func buildDailyMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, limi
 //   - mode: which SQL pattern to use (ROW_NUMBER or MAX_ID)
 //   - resolution: day or hour bucketing
 //
+// The caller binds two arguments for ROW_NUMBER mode (start, end) and four for MAX_ID mode
+// (start, end, start, end): the correlated subquery repeats both window bounds so it picks
+// the latest execution inside the window rather than the latest one overall.
+//
 // Returns: SQL query string ready for execution
 func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeconds int, queryType DailyThroughputQueryType, startPlaceholder string, endPlaceholder string, mode ThroughputQueryMode, resolution DateResolution) string {
 	config, ok := AllowedDailyQueryConfigs[queryType]
@@ -355,6 +359,13 @@ func buildDailyPerformanceStatsMaxIDQuery(dateExpr string, config DailyQueryFrag
 		"            WHERE se2.request_id = se.request_id\n" +
 		"                AND se2.status = 'completed'\n" +
 		"                AND se2.metrics_latency_ms > 0\n" +
+		"                AND se2.created_at >= " + startPlaceholder + "\n" +
+		"                AND se2.created_at < " + endPlaceholder + "\n" +
+		// The subquery has to be bounded to the same window as the outer query. Without
+		// it, MAX picks the latest execution overall: a request whose newest attempt falls
+		// after the window leaves the in-window row failing the se.id comparison, so the
+		// request contributes nothing even though it has a qualifying execution inside.
+		// ROW_NUMBER mode ranks only the window's rows and needs no second pair.
 		"        )\n" +
 		"),\n" +
 		"daily AS (\n" +

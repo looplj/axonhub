@@ -31,7 +31,10 @@ export function UsageCompositionChart({ data, isLoading }: UsageCompositionChart
       uncachedInput: stat.uncachedInputTokens,
       output: stat.outputTokens,
       totalTokens: stat.totalTokens,
-      cacheHitRate: inputTotal > 0 ? (stat.cachedInputTokens / inputTotal) * 100 : 0,
+      // An idle bucket has no input tokens at all, so it has no hit rate to report. Zero
+      // would draw a drop to the axis that reads as "measured, and nothing was cached",
+      // which is not what an hour with no traffic says.
+      cacheHitRate: inputTotal > 0 ? (stat.cachedInputTokens / inputTotal) * 100 : null,
     };
   });
 
@@ -96,7 +99,11 @@ export function UsageCompositionChart({ data, isLoading }: UsageCompositionChart
                   t('analytics.chart.outputTokens'),
                   t('analytics.chart.cacheHitRate'),
                 ];
-                const sorted = [...payload].sort((a, b) => order.indexOf(String(a.name)) - order.indexOf(String(b.name)));
+                // A null value is an unmeasured bucket, not a measured zero: Number(null)
+                // would render the hit rate of an idle hour as 0.0%.
+                const sorted = [...payload]
+                  .filter((entry) => entry.value != null)
+                  .sort((a, b) => order.indexOf(String(a.name)) - order.indexOf(String(b.name)));
                 const raw = payload[0]?.payload as Record<string, number> | undefined;
                 const totalTokens = raw?.totalTokens ?? 0;
                 return (

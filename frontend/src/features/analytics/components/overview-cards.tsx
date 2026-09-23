@@ -52,6 +52,12 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
     ? ((overview.totalCachedInputTokens / overview.totalInputTokens) * 100).toFixed(1)
     : '0';
 
+  // Zero failures with a zero rate means the window held no executions at all, not that
+  // every request failed. The dashboard's success-rate card renders a dash for this same
+  // case, and the two cards must not disagree.
+  const hasExecutions = (overview?.failedRequests ?? 0) > 0 || (overview?.successRate ?? 0) > 0;
+  const successRateValue = hasExecutions ? `${(overview?.successRate ?? 0).toFixed(1)}%` : '—';
+
   const cards = [
     {
       title: t('analytics.overview.totalTokens'),
@@ -73,7 +79,7 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
     },
     {
       title: t('analytics.overview.successRate'),
-      value: `${(overview?.successRate ?? 0).toFixed(1)}%`,
+      value: successRateValue,
       icon: ShieldCheck,
       description: `${formatExactNumber(overview?.failedRequests || 0)} ${t('dashboard.stats.failedRequests')}`,
     },

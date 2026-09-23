@@ -208,7 +208,9 @@ function useRangeSummary(value: TimeRangeValue, presets: Preset[]): string {
 
     if (matched) return `${t(`timeRange.${matched.key}`)} · ${span}`;
 
-    const end = value.endTime ? localMidnight(value.endTime) : new Date();
+    // Floored to local midnight, not left as the current instant: after local noon the
+    // elapsed hours round the span of a single day up to two.
+    const end = value.endTime ? localMidnight(value.endTime) : localMidnight(new Date());
     const days = Math.round((end.getTime() - localMidnight(value.startTime).getTime()) / 86_400_000) + 1;
     return `${span} · ${t('timeRange.days', { count: days })}`;
   }, [presets, t, value.endTime, value.startTime, value.timeWindow]);
@@ -258,8 +260,16 @@ export function TimeRangeFilter({ value, onChange, earliestDate, variant = 'bar'
         <CompactDateRangePicker
           startDate={value.startTime}
           endDate={value.endTime}
-          onStartChange={(date) => onChange({ startTime: date ? formatDate(date) : null, endTime: value.endTime })}
-          onEndChange={(date) => onChange({ startTime: value.startTime, endTime: date ? formatDate(date) : null })}
+          onStartChange={(date) =>
+            // An end date with no start date is not a range the queries can express: every
+            // consumer keys off startTime, so it would fall back to allTime and silently
+            // discard the end date. Clearing the start clears the end with it.
+            onChange({ startTime: date ? formatDate(date) : null, endTime: date ? value.endTime : null })
+          }
+          onEndChange={(date) => {
+            if (!value.startTime) return;
+            onChange({ startTime: value.startTime, endTime: date ? formatDate(date) : null });
+          }}
         />
 
         {isCustom && (
@@ -302,8 +312,16 @@ export function TimeRangeFilter({ value, onChange, earliestDate, variant = 'bar'
       <DateRangePicker
         startDate={value.startTime}
         endDate={value.endTime}
-        onStartChange={(date) => onChange({ startTime: date ? formatDate(date) : null, endTime: value.endTime })}
-        onEndChange={(date) => onChange({ startTime: value.startTime, endTime: date ? formatDate(date) : null })}
+        onStartChange={(date) =>
+          // An end date with no start date is not a range the queries can express: every
+          // consumer keys off startTime, so it would fall back to allTime and silently
+          // discard the end date. Clearing the start clears the end with it.
+          onChange({ startTime: date ? formatDate(date) : null, endTime: date ? value.endTime : null })
+        }
+        onEndChange={(date) => {
+          if (!value.startTime) return;
+          onChange({ startTime: value.startTime, endTime: date ? formatDate(date) : null });
+        }}
       />
 
       {isCustom && (
