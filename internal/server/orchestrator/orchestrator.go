@@ -168,6 +168,8 @@ type ChatCompletionResult struct {
 	ChatCompletionStream streams.Stream[*httpclient.StreamEvent]
 }
 
+// Process runs the outbound middleware pipeline for the request and returns
+// the completion result, either buffered or streamed.
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
 	var preparedResponsesBody []byte
 	if shared.IsResponsesAPI(ctx) && request != nil && processor.responsesSessions != nil {
@@ -285,6 +287,11 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		withPerformanceRecording(outbound),
 
 		withModelCircuitBreaker(outbound, processor.modelCircuitBreaker),
+
+		// Strip leaked upstream tool-call markup (e.g. DSML tags) from the
+		// content stream; aborts with a retryable in-stream error when the leak
+		// swallowed the turn's tool calls.
+		withUpstreamMarkupSanitizer(),
 
 		// The request execution middleware must be the final middleware
 		// to ensure that the request execution is created with the correct request bodys.
