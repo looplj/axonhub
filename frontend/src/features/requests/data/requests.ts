@@ -75,6 +75,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                   id
                   createdAt
                   modelID
+                  upstreamModelID
                   format
                   status
                   reasoningEffort
@@ -251,6 +252,7 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 updatedAt
                 requestID${channelFields}
                 modelID
+                upstreamModelID
                 projectID
                 dataStorageID
                 requestHeaders

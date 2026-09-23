@@ -11,6 +11,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/pkg/modelmetadata"
 	"github.com/looplj/axonhub/internal/pkg/xcontext"
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -57,8 +58,9 @@ type persistRequestExecutionMiddleware struct {
 
 	outbound *PersistentOutboundTransformer
 
-	rawResponse    *httpclient.Response
-	headerObserver *executionHeaderObserver
+	rawResponse     *httpclient.Response
+	headerObserver  *executionHeaderObserver
+	upstreamModelID string
 }
 
 type executionHeaderObserver struct {
@@ -87,6 +89,11 @@ func (m *persistRequestExecutionMiddleware) Name() string {
 }
 
 func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Context, request *httpclient.Request) (*httpclient.Request, error) {
+	// This middleware is reused across attempts. Response metadata belongs only
+	// to the execution created for this outbound request.
+	m.rawResponse = nil
+	m.upstreamModelID = ""
+
 	state := m.outbound.state
 	if state == nil {
 		return request, nil
@@ -104,9 +111,6 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 		return request, nil
 	}
 
-	candidate := state.ChannelModelsCandidates[state.CurrentCandidateIndex]
-	entry := candidate.Models[state.CurrentModelIndex]
-
 	// Prefer the API format of the actual outbound request: transformers may emit
 	// multiple formats (e.g. OpenAI outbound also builds audio speech/transcription
 	// requests) while APIFormat() only reports the primary one.
@@ -114,11 +118,12 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawRequest(ctx context.Con
 	if request.APIFormat != "" {
 		format = llm.APIFormat(request.APIFormat)
 	}
+	sentModel := modelmetadata.SentModel(request, format)
 
 	requestExec, err := state.RequestService.CreateRequestExecution(
 		ctx,
 		channel,
-		entry.ActualModel,
+		sentModel,
 		state.Request,
 		*request,
 		format,
@@ -150,6 +155,15 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawResponse(ctx context.Co
 	m.rawResponse = response
 	if response != nil && m.headerObserver != nil && !m.headerObserver.observed.Load() {
 		m.headerObserver.observe(ctx, response.Headers)
+	}
+	var format llm.APIFormat
+	if state := m.outbound.state; state != nil && state.RequestExec != nil {
+		format = llm.APIFormat(state.RequestExec.Format)
+	} else if m.outbound.wrapped != nil {
+		format = m.outbound.APIFormat()
+	}
+	if m.upstreamModelID == "" {
+		m.upstreamModelID = modelmetadata.ResponseModel(response, format)
 	}
 	return response, nil
 }
@@ -212,6 +226,7 @@ func (m *persistRequestExecutionMiddleware) OnOutboundLlmResponse(ctx context.Co
 		llmResp.ID,
 		respBody,
 		metrics,
+		m.upstreamModelID,
 	)
 	if err != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to completed", log.Cause(err))
@@ -253,11 +268,14 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 
 	failure := ClassifyUpstreamTransportError(err)
 
-	updateErr := state.RequestService.UpdateRequestExecutionFailed(
+	updateErr := state.RequestService.UpdateRequestExecutionStatusWithMetrics(
 		persistCtx,
 		state.RequestExec.ID,
+		requestexecution.StatusFailed,
 		ExtractErrorMessage(failure),
 		ExtractErrorInfo(failure),
+		nil,
+		m.upstreamModelID,
 	)
 	if updateErr != nil {
 		log.Warn(persistCtx, "Failed to update request execution status to failed", log.Cause(updateErr))

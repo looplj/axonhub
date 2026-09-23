@@ -4650,6 +4650,10 @@ type RequestExecution implements Node {
   dataStorageID: ID
   externalID: String
   modelID: String!
+  """
+  Raw model reported by the upstream provider response, before client-model rewrite
+  """
+  upstreamModelID: String
   format: String!
   """
   Final reasoning effort sent to the upstream provider
@@ -4866,6 +4870,24 @@ input RequestExecutionWhereInput {
   modelIDHasSuffix: String
   modelIDEqualFold: String
   modelIDContainsFold: String
+  """
+  upstream_model_id field predicates
+  """
+  upstreamModelID: String
+  upstreamModelIDNEQ: String
+  upstreamModelIDIn: [String!]
+  upstreamModelIDNotIn: [String!]
+  upstreamModelIDGT: String
+  upstreamModelIDGTE: String
+  upstreamModelIDLT: String
+  upstreamModelIDLTE: String
+  upstreamModelIDContains: String
+  upstreamModelIDHasPrefix: String
+  upstreamModelIDHasSuffix: String
+  upstreamModelIDIsNil: Boolean
+  upstreamModelIDNotNil: Boolean
+  upstreamModelIDEqualFold: String
+  upstreamModelIDContainsFold: String
   """
   format field predicates
   """

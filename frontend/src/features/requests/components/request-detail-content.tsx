@@ -25,6 +25,7 @@ import { parseResponse } from '../utils/response-parser';
 import { parseRequestConversation } from '../utils/request-conversation';
 import { generateRequestCurl, generateExecutionCurl } from '../utils/curl-generator';
 import { getVideoLastFrameURL, isVideoRequestFormat } from '../utils/video-display';
+import { getExecutionModelAuditVerdict, getUpstreamModelAudit, MODEL_AUDIT_VERDICT_CLASS } from '../utils/upstream-model-audit';
 
 // The detail page renders whole request and response payloads. Expanding every
 // level eagerly produces hundreds of thousands of characters of DOM for a large
@@ -800,6 +801,8 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                 <div className='space-y-6'>
                   {executions.edges.map((edge: any, index: number) => {
                     const execution = edge.node;
+                    const modelAudit = getUpstreamModelAudit([execution]);
+                    const modelVerdict = getExecutionModelAuditVerdict(modelAudit, execution.status, t);
                     return (
                       <Card key={execution.id} className='bg-muted/20 border-0 shadow-sm'>
                         <CardHeader className='pb-4'>
@@ -837,6 +840,23 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                                   <span className='font-mono'>••••{execution.channelAPIKeySuffix}</span>
                                 </div>
                               )}
+                            </div>
+                            <div className='bg-background space-y-2 rounded-lg border p-3'>
+                              <span className='flex items-center gap-2 text-sm font-medium'>
+                                <Database className='text-primary h-4 w-4' />
+                                {t('requests.columns.modelId')}
+                              </span>
+                              <dl className='space-y-2 text-xs'>
+                                <div>
+                                  <dt className='text-muted-foreground'>{t('requests.detail.routedModel')}</dt>
+                                  <dd className='break-all font-mono'>{execution.modelID || t('requests.columns.unknown')}</dd>
+                                </div>
+                                <div>
+                                  <dt className='text-muted-foreground'>{t('requests.detail.upstreamModels')}</dt>
+                                  <dd className='break-all font-mono'>{execution.upstreamModelID || t('requests.columns.unknown')}</dd>
+                                </div>
+                              </dl>
+                              <p className={MODEL_AUDIT_VERDICT_CLASS[modelVerdict.tone]}>{modelVerdict.message}</p>
                             </div>
                             <div className='bg-background space-y-2 rounded-lg border p-3'>
                               <span className='flex items-center gap-2 text-sm font-medium'>

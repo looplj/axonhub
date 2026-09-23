@@ -4046,6 +4046,11 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 				selectedFields = append(selectedFields, requestexecution.FieldModelID)
 				fieldSeen[requestexecution.FieldModelID] = struct{}{}
 			}
+		case "upstreamModelID":
+			if _, ok := fieldSeen[requestexecution.FieldUpstreamModelID]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldUpstreamModelID)
+				fieldSeen[requestexecution.FieldUpstreamModelID] = struct{}{}
+			}
 		case "format":
 			if _, ok := fieldSeen[requestexecution.FieldFormat]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldFormat)

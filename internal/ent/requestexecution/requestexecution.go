@@ -33,6 +33,8 @@ const (
 	FieldExternalID = "external_id"
 	// FieldModelID holds the string denoting the model_id field in the database.
 	FieldModelID = "model_id"
+	// FieldUpstreamModelID holds the string denoting the upstream_model_id field in the database.
+	FieldUpstreamModelID = "upstream_model_id"
 	// FieldFormat holds the string denoting the format field in the database.
 	FieldFormat = "format"
 	// FieldReasoningEffort holds the string denoting the reasoning_effort field in the database.
@@ -109,6 +111,7 @@ var Columns = []string{
 	FieldDataStorageID,
 	FieldExternalID,
 	FieldModelID,
+	FieldUpstreamModelID,
 	FieldFormat,
 	FieldReasoningEffort,
 	FieldChannelAPIKeySuffix,
@@ -231,6 +234,11 @@ func ByExternalID(opts ...sql.OrderTermOption) OrderOption {
 // ByModelID orders the results by the model_id field.
 func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModelID, opts...).ToFunc()
+}
+
+// ByUpstreamModelID orders the results by the upstream_model_id field.
+func ByUpstreamModelID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUpstreamModelID, opts...).ToFunc()
 }
 
 // ByFormat orders the results by the format field.

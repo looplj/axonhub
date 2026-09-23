@@ -330,6 +330,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 				requestExec.ID,
 				err,
 				nil,
+				"",
 			); updateErr != nil {
 				log.Warn(persistCtx, "Failed to update request execution status from error", log.Cause(updateErr))
 			}

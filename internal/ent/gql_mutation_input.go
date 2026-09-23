@@ -1073,7 +1073,7 @@ func (i *UpdateRequestInput) Mutate(m *RequestMutation) {
 		m.SetResponseHeaders(v)
 	}
 	if i.AppendResponseHeaders != nil {
-		m.AppendResponseHeaders(i.AppendResponseHeaders)
+		m.AppendResponseHeaders(i.ResponseHeaders)
 	}
 	if i.ClearResponseBody {
 		m.ClearResponseBody()

@@ -7773,6 +7773,23 @@ type RequestExecutionWhereInput struct {
 	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
 	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
 
+	// "upstream_model_id" field predicates.
+	UpstreamModelID             *string  `json:"upstreamModelID,omitempty"`
+	UpstreamModelIDNEQ          *string  `json:"upstreamModelIDNEQ,omitempty"`
+	UpstreamModelIDIn           []string `json:"upstreamModelIDIn,omitempty"`
+	UpstreamModelIDNotIn        []string `json:"upstreamModelIDNotIn,omitempty"`
+	UpstreamModelIDGT           *string  `json:"upstreamModelIDGT,omitempty"`
+	UpstreamModelIDGTE          *string  `json:"upstreamModelIDGTE,omitempty"`
+	UpstreamModelIDLT           *string  `json:"upstreamModelIDLT,omitempty"`
+	UpstreamModelIDLTE          *string  `json:"upstreamModelIDLTE,omitempty"`
+	UpstreamModelIDContains     *string  `json:"upstreamModelIDContains,omitempty"`
+	UpstreamModelIDHasPrefix    *string  `json:"upstreamModelIDHasPrefix,omitempty"`
+	UpstreamModelIDHasSuffix    *string  `json:"upstreamModelIDHasSuffix,omitempty"`
+	UpstreamModelIDIsNil        bool     `json:"upstreamModelIDIsNil,omitempty"`
+	UpstreamModelIDNotNil       bool     `json:"upstreamModelIDNotNil,omitempty"`
+	UpstreamModelIDEqualFold    *string  `json:"upstreamModelIDEqualFold,omitempty"`
+	UpstreamModelIDContainsFold *string  `json:"upstreamModelIDContainsFold,omitempty"`
+
 	// "format" field predicates.
 	Format             *string  `json:"format,omitempty"`
 	FormatNEQ          *string  `json:"formatNEQ,omitempty"`
@@ -8212,6 +8229,51 @@ func (i *RequestExecutionWhereInput) P() (predicate.RequestExecution, error) {
 	}
 	if i.ModelIDContainsFold != nil {
 		predicates = append(predicates, requestexecution.ModelIDContainsFold(*i.ModelIDContainsFold))
+	}
+	if i.UpstreamModelID != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDEQ(*i.UpstreamModelID))
+	}
+	if i.UpstreamModelIDNEQ != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDNEQ(*i.UpstreamModelIDNEQ))
+	}
+	if len(i.UpstreamModelIDIn) > 0 {
+		predicates = append(predicates, requestexecution.UpstreamModelIDIn(i.UpstreamModelIDIn...))
+	}
+	if len(i.UpstreamModelIDNotIn) > 0 {
+		predicates = append(predicates, requestexecution.UpstreamModelIDNotIn(i.UpstreamModelIDNotIn...))
+	}
+	if i.UpstreamModelIDGT != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDGT(*i.UpstreamModelIDGT))
+	}
+	if i.UpstreamModelIDGTE != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDGTE(*i.UpstreamModelIDGTE))
+	}
+	if i.UpstreamModelIDLT != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDLT(*i.UpstreamModelIDLT))
+	}
+	if i.UpstreamModelIDLTE != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDLTE(*i.UpstreamModelIDLTE))
+	}
+	if i.UpstreamModelIDContains != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDContains(*i.UpstreamModelIDContains))
+	}
+	if i.UpstreamModelIDHasPrefix != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDHasPrefix(*i.UpstreamModelIDHasPrefix))
+	}
+	if i.UpstreamModelIDHasSuffix != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDHasSuffix(*i.UpstreamModelIDHasSuffix))
+	}
+	if i.UpstreamModelIDIsNil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDIsNil())
+	}
+	if i.UpstreamModelIDNotNil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDNotNil())
+	}
+	if i.UpstreamModelIDEqualFold != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDEqualFold(*i.UpstreamModelIDEqualFold))
+	}
+	if i.UpstreamModelIDContainsFold != nil {
+		predicates = append(predicates, requestexecution.UpstreamModelIDContainsFold(*i.UpstreamModelIDContainsFold))
 	}
 	if i.Format != nil {
 		predicates = append(predicates, requestexecution.FormatEQ(*i.Format))
