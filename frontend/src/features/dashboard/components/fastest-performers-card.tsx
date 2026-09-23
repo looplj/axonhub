@@ -13,7 +13,7 @@ import { ChartLegend, type ChartLegendItem } from './chart-legend';
 import { RangeBadge } from './range-badge';
 import { useFastestChannels, useFastestModels } from '../data/fastest-performers';
 import type { FastestChannel, FastestModel } from '../data/fastest-performers';
-import { performanceWindowFromRange, type CoarseTimeWindow } from '../utils/time-window';
+import { performanceWindowFromRange, type CoarseTimeWindow, type RelativeTimeWindow } from '../utils/time-window';
 
 // 5 colors matches the slice limit in chartData processing (.slice(0, 5))
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
@@ -80,19 +80,20 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
 interface FastestPerformersCardProps {
   startTime: string | null;
   endTime: string | null;
+  timeWindow?: RelativeTimeWindow;
 }
 
 type FastestDimension = 'channel' | 'model';
 
 /** Throughput leaderboard with a model/channel switch; the time window is derived
  * from the shared time range filter. */
-export function FastestPerformersCard({ startTime, endTime }: FastestPerformersCardProps) {
+export function FastestPerformersCard({ startTime, endTime, timeWindow }: FastestPerformersCardProps) {
   const { t } = useTranslation();
   const [dimension, setDimension] = useState<FastestDimension>('channel');
-  const timeWindow: CoarseTimeWindow = performanceWindowFromRange(startTime, endTime);
+  const coarseWindow: CoarseTimeWindow = performanceWindowFromRange(startTime, endTime, timeWindow);
 
-  const channelsQuery = useFastestChannels(timeWindow);
-  const modelsQuery = useFastestModels(timeWindow);
+  const channelsQuery = useFastestChannels(coarseWindow);
+  const modelsQuery = useFastestModels(coarseWindow);
 
   const isModel = dimension === 'model';
   const { data, isLoading, isFetching, error } = isModel ? modelsQuery : channelsQuery;
@@ -178,7 +179,7 @@ export function FastestPerformersCard({ startTime, endTime }: FastestPerformersC
           <CardDescription>{description}</CardDescription>
         </div>
         <CardAction className='flex items-center gap-2'>
-          <RangeBadge timeWindow={timeWindow} />
+          <RangeBadge timeWindow={coarseWindow} />
           {dimensionSwitch}
         </CardAction>
       </CardHeader>

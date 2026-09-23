@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/server/gql/qb"
 	"github.com/samber/lo"
 )
 
@@ -109,32 +110,48 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 
 	loc := r.systemService.TimeLocation(ctx)
 	nowUTC := xtime.UTCNow()
-	_, offsetSeconds := nowUTC.In(loc).Zone()
+	nowLocal := nowUTC.In(loc)
+	_, offsetSeconds := nowLocal.Zone()
+
+	// A relative window is resolved in absolute time, so its boundaries carry a time of
+	// day. Everything below this point assumes whole days: bucketSequence gets a half-open
+	// [start, end) over day or hour labels, and both boundaries are truncated to the
+	// matching granularity rather than to local midnight.
+	relative, isRelative := time.Time{}, false
+	if filter != nil {
+		relative, isRelative = relativeSince(filter.TimeWindow)
+	}
 
 	// Determine date range — 同仪表盘 parseTimeWindow 模式
 	var startDay, endDay time.Time
-	if filter != nil && filter.StartTime != nil {
-		startDay = parseDateStr(*filter.StartTime, loc)
+	if isRelative {
+		startDay = relative.In(loc).Truncate(time.Hour)
+		endDay = nowLocal
 	} else {
-		// Default: 30 days ago
-		nowLocal := nowUTC.In(loc)
-		startDay = time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
-		startDay = startDay.AddDate(0, 0, -29)
-	}
+		if filter != nil && filter.StartTime != nil {
+			startDay = parseDateStr(*filter.StartTime, loc)
+		} else {
+			// Default: 30 days ago
+			startDay = time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+			startDay = startDay.AddDate(0, 0, -29)
+		}
 
-	if filter != nil && filter.EndTime != nil {
-		endDay = parseDateStr(*filter.EndTime, loc)
-	} else {
-		endDay = nowUTC.In(loc)
+		if filter != nil && filter.EndTime != nil {
+			endDay = parseDateStr(*filter.EndTime, loc)
+		} else {
+			endDay = time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+		}
+
+		// 填充缺失日期
+		startDay = time.Date(startDay.Year(), startDay.Month(), startDay.Day(), 0, 0, 0, 0, loc)
 		endDay = time.Date(endDay.Year(), endDay.Month(), endDay.Day(), 0, 0, 0, 0, loc)
 	}
 
-	// 填充缺失日期
-	startDay = time.Date(startDay.Year(), startDay.Month(), startDay.Day(), 0, 0, 0, 0, loc)
-	endDay = time.Date(endDay.Year(), endDay.Month(), endDay.Day(), 0, 0, 0, 0, loc)
-
 	// Short ranges bucket by hour so a single day still yields a readable curve.
 	resolution := resolutionForSpan(int(endDay.Sub(startDay).Hours()/24) + 1)
+	if isRelative {
+		resolution = qb.ResolutionHour
+	}
 
 	type dailyStats struct {
 		Date         string  `json:"date"`
@@ -180,9 +197,17 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 
 	// Fill in missing buckets with zero values so the chart's category axis stays evenly
 	// spaced: an omitted bucket would pull its neighbours together.
+	// A day range extends the exclusive upper bound by one day to cover the end day in
+	// full; a relative window already ends at the current instant, so it passes endDay
+	// through and would otherwise gain a full day of empty buckets.
+	bucketEnd := endDay.AddDate(0, 0, 1)
+	if isRelative {
+		bucketEnd = endDay
+	}
+
 	var response []*AnalyticsDailyStat
 
-	for _, dateStr := range bucketSequence(startDay, endDay.AddDate(0, 0, 1), resolution) {
+	for _, dateStr := range bucketSequence(startDay, bucketEnd, resolution) {
 		stats, exists := statsMap[dateStr]
 		if !exists {
 			response = append(response, &AnalyticsDailyStat{Date: dateStr})

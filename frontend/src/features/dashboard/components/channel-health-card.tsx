@@ -6,7 +6,7 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber } from '@/utils/format-number';
 import { useChannelSuccessRates, type ChannelSuccessRate } from '../data/dashboard';
-import { coarseWindowFromRange } from '../utils/time-window';
+import { coarseWindowFromRange, type RelativeTimeWindow } from '../utils/time-window';
 import { RangeBadge } from './range-badge';
 
 const UNHEALTHY_RATE = 90;
@@ -15,13 +15,14 @@ const CHANNEL_LIMIT = 12;
 interface ChannelHealthCardProps {
   startTime: string | null;
   endTime: string | null;
+  timeWindow?: RelativeTimeWindow;
 }
 
 /** Channel health card: success rates per channel, unhealthy ones first. */
-export function ChannelHealthCard({ startTime, endTime }: ChannelHealthCardProps) {
+export function ChannelHealthCard({ startTime, endTime, timeWindow }: ChannelHealthCardProps) {
   const { t } = useTranslation();
-  const timeWindow = coarseWindowFromRange(startTime, endTime);
-  const { data: channels, isLoading, error } = useChannelSuccessRates(CHANNEL_LIMIT, timeWindow);
+  const coarseWindow = coarseWindowFromRange(startTime, endTime, timeWindow);
+  const { data: channels, isLoading, error } = useChannelSuccessRates(CHANNEL_LIMIT, coarseWindow);
 
   const rows = useMemo(() => {
     const sorted = [...(channels || [])].sort((a, b) => {
@@ -83,7 +84,7 @@ export function ChannelHealthCard({ startTime, endTime }: ChannelHealthCardProps
             : t('dashboard.charts.channelSuccessRateDescription')}
         </CardDescription>
         <CardAction className='flex items-center gap-2'>
-          <RangeBadge timeWindow={timeWindow} />
+          <RangeBadge timeWindow={coarseWindow} />
           <Link to='/dashboard/channel-success-rates' className='text-sm text-primary hover:underline'>
             {t('dashboard.viewAll')}
           </Link>

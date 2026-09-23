@@ -1,10 +1,48 @@
 # Dashboard statistics and analytics
 
 type DashboardOverview {
+  """
+  All-time attempts from the requests table, counting every status. That table is
+  pruned by the request GC retention policy, so this is whatever has survived it
+  and never an all-time total. Use usage_logs for a request count that means
+  anything.
+  """
   totalRequests: Int!
   requestStats: RequestStats!
+  """
+  Failed attempts from the requests table, same pruning caveat as totalRequests.
+  """
   failedRequests: Int!
   averageResponseTime: Float
+  "Throughput and first-token latency over the trailing 24 hours."
+  last24HoursPerformance: RecentPerformanceStats!
+  "Terminal execution outcomes over the trailing 24 hours."
+  last24HoursExecutions: ExecutionOutcomeStats!
+}
+
+"""
+Throughput and first-token latency over the trailing 24 hours, from
+request_execution. Every field is null when the window holds no completed
+generation; that is what an empty install and an idle one look like, and it is
+deliberately not the same as a measured zero.
+"""
+type RecentPerformanceStats {
+  "Weighted tokens per second of generation time over the window"
+  throughput: Float
+  "Median first-token latency in ms; streaming executions only"
+  firstTokenP50Ms: Int
+  "90th percentile first-token latency in ms; streaming executions only"
+  firstTokenP90Ms: Int
+}
+
+"""
+Terminal execution outcomes over the trailing 24 hours. Success rate cannot come
+from usage_logs, which has no status column.
+"""
+type ExecutionOutcomeStats {
+  succeeded: Int!
+  failed: Int!
+  successRate: Float!
 }
 
 type RequestStats {
@@ -245,15 +283,21 @@ extend type Query {
 
   The bucket resolution is derived from the range: hourly for ranges up to 14 days,
   daily for anything longer. Omitting both arguments keeps the last 30 days, daily.
+
+  timeWindow takes a relative window computed by the server ("last24Hours") and
+  overrides startTime/endTime.
   """
-  modelPerformanceStats(startTime: String, endTime: String): [ModelPerformanceStat!]!
+  modelPerformanceStats(timeWindow: String, startTime: String, endTime: String): [ModelPerformanceStat!]!
   """
   Get performance statistics for channels over time.
 
   The bucket resolution is derived from the range: hourly for ranges up to 14 days,
   daily for anything longer. Omitting both arguments keeps the last 30 days, daily.
+
+  timeWindow takes a relative window computed by the server ("last24Hours") and
+  overrides startTime/endTime.
   """
-  channelPerformanceStats(startTime: String, endTime: String): [ChannelPerformanceStat!]!
+  channelPerformanceStats(timeWindow: String, startTime: String, endTime: String): [ChannelPerformanceStat!]!
   tokenStatsByChannel(timeWindow: String): [TokenStatsByChannel!]!
   tokenStatsByModel(timeWindow: String): [TokenStatsByModel!]!
   costStatsByChannel(timeWindow: String): [CostStatsByChannel!]!

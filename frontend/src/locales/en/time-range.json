@@ -12,5 +12,6 @@
   "timeRange.endDateBeforeStartError": "End date cannot be earlier than start date. Please select again.",
   "timeRange.reset": "Reset",
   "timeRange.days_one": "{{count}} day",
-  "timeRange.days_other": "{{count}} days"
+  "timeRange.days_other": "{{count}} days",
+  "timeRange.last24Hours": "Last 24 Hours"
 }

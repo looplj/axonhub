@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber } from '@/utils/format-number';
 import { formatCurrencySimple } from '@/features/analytics/utils/format-currency';
 import { useTokensByAPIKey, useTokensByChannel, useTokensByModel, useUsageStatsByUser } from '../data/dashboard';
-import { coarseWindowFromRange, type CoarseTimeWindow } from '../utils/time-window';
+import { coarseWindowFromRange, type CoarseTimeWindow, type RelativeTimeWindow } from '../utils/time-window';
 import { RangeBadge } from './range-badge';
 
 const MAX_ROWS = 10;
@@ -89,21 +89,22 @@ function TokenRowItem({ rank, row, barWidth, currencyCode }: TokenRowProps) {
 interface TokenCompositionProps {
   startTime: string | null;
   endTime: string | null;
+  timeWindow?: RelativeTimeWindow;
   currencyCode: string;
   isProjectOwner: boolean;
 }
 
 /** Token composition per channel, model, API key or user: cached and uncached input
  * plus output stacked in one bar, with the total and cache hit rate beside it. */
-export function TokenComposition({ startTime, endTime, currencyCode, isProjectOwner }: TokenCompositionProps) {
+export function TokenComposition({ startTime, endTime, timeWindow, currencyCode, isProjectOwner }: TokenCompositionProps) {
   const { t } = useTranslation();
   const [dimension, setDimension] = useState<TokenDimension>('channel');
-  const timeWindow: CoarseTimeWindow = coarseWindowFromRange(startTime, endTime);
+  const coarseWindow: CoarseTimeWindow = coarseWindowFromRange(startTime, endTime, timeWindow);
 
-  const channels = useTokensByChannel(timeWindow);
-  const models = useTokensByModel(timeWindow);
-  const apiKeys = useTokensByAPIKey(timeWindow);
-  const users = useUsageStatsByUser(timeWindow);
+  const channels = useTokensByChannel(coarseWindow);
+  const models = useTokensByModel(coarseWindow);
+  const apiKeys = useTokensByAPIKey(coarseWindow);
+  const users = useUsageStatsByUser(coarseWindow);
 
   const rows = useMemo<TokenRow[]>(() => {
     if (dimension === 'user') {
@@ -165,7 +166,7 @@ export function TokenComposition({ startTime, endTime, currencyCode, isProjectOw
           <CardDescription>{t('dashboard.charts.tokenCompositionDescription')}</CardDescription>
         </div>
         <CardAction className='flex items-center gap-2'>
-          <RangeBadge timeWindow={timeWindow} />
+          <RangeBadge timeWindow={coarseWindow} />
           <Tabs value={dimension} onValueChange={(value) => setDimension(value as TokenDimension)}>
             <TabsList className='h-8'>
               <TabsTrigger value='channel' className='text-xs'>

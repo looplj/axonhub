@@ -1,5 +1,4 @@
 {
-  "dashboard.cards.successRate": "Success Rate",
   "dashboard.cards.tokenStats": "Token Usage",
   "dashboard.cards.fastestPerformers.channels": "Fastest Channels",
   "dashboard.cards.fastestPerformers.models": "Fastest Models",
@@ -39,12 +38,9 @@
   "dashboard.channelSuccessRates.sortByTotalTokens": "Total tokens",
   "dashboard.viewAll": "View all",
   "dashboard.stats.todayRequests": "Today's Requests",
-  "dashboard.stats.allTimeRequests": "All-Time Requests",
   "dashboard.stats.thisWeek": "This Week",
   "dashboard.stats.thisMonth": "This Month",
-  "dashboard.stats.vsLastWeek": "vs last week",
   "dashboard.stats.cached": "Cached",
-  "dashboard.stats.average": "Avg",
   "dashboard.stats.updated": "Updated {{time}}",
   "dashboard.stats.all": "All",
   "dashboard.stats.month": "Month",
@@ -63,5 +59,8 @@
   "dashboard.stats.output": "Output",
   "dashboard.stats.requestCount": "Requests",
   "dashboard.stats.tokenCount": "Tokens",
-  "dashboard.stats.userCost": "Cost"
+  "dashboard.stats.userCost": "Cost",
+  "dashboard.stats.last24hPerformance": "Last 24h Performance",
+  "dashboard.stats.last24hSuccessRate": "Last 24h Success Rate",
+  "dashboard.stats.noData": "No data"
 }

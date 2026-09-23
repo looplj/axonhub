@@ -1,5 +1,4 @@
 {
-  "dashboard.cards.successRate": "成功率",
   "dashboard.cards.tokenStats": "Token 统计",
   "dashboard.cards.fastestPerformers.channels": "最快通道",
   "dashboard.cards.fastestPerformers.models": "最快模型",
@@ -39,12 +38,9 @@
   "dashboard.channelSuccessRates.sortByTotalTokens": "总 Token",
   "dashboard.viewAll": "查看全部",
   "dashboard.stats.todayRequests": "今日请求",
-  "dashboard.stats.allTimeRequests": "全时段请求",
   "dashboard.stats.thisWeek": "本周",
   "dashboard.stats.thisMonth": "本月",
-  "dashboard.stats.vsLastWeek": "较上周",
   "dashboard.stats.cached": "缓存",
-  "dashboard.stats.average": "平均",
   "dashboard.stats.updated": "更新于 {{time}}",
   "dashboard.stats.all": "全部",
   "dashboard.stats.month": "月",
@@ -63,5 +59,8 @@
   "dashboard.stats.output": "输出",
   "dashboard.stats.requestCount": "请求数",
   "dashboard.stats.tokenCount": "Token 数",
-  "dashboard.stats.userCost": "费用"
+  "dashboard.stats.userCost": "费用",
+  "dashboard.stats.last24hPerformance": "近 24 小时性能",
+  "dashboard.stats.last24hSuccessRate": "近 24 小时成功率",
+  "dashboard.stats.noData": "暂无数据"
 }

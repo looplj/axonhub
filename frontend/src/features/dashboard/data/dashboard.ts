@@ -12,11 +12,30 @@ export const requestStatsSchema = z.object({
   requestsThisMonth: z.number(),
 });
 
+/** Trailing-24h throughput and first-token latency. Every field is null when the
+ * window holds no completed generation, which is what an empty install and an idle
+ * one both look like — neither is a measured zero. */
+export const recentPerformanceStatsSchema = z.object({
+  throughput: z.number().nullable(),
+  firstTokenP50Ms: z.number().nullable(),
+  firstTokenP90Ms: z.number().nullable(),
+});
+
+/** Terminal execution counts over the trailing 24 hours. Success rate cannot come
+ * from usage_logs, which has no status column. */
+export const executionOutcomeStatsSchema = z.object({
+  succeeded: z.number(),
+  failed: z.number(),
+  successRate: z.number(),
+});
+
 export const dashboardStatsSchema = z.object({
   totalRequests: z.number(),
   requestStats: requestStatsSchema,
   failedRequests: z.number(),
   averageResponseTime: z.number().nullable(),
+  last24HoursPerformance: recentPerformanceStatsSchema,
+  last24HoursExecutions: executionOutcomeStatsSchema,
 });
 
 export const requestsByChannelSchema = z.object({
@@ -163,6 +182,16 @@ const DASHBOARD_STATS_QUERY = `
       }
       failedRequests
       averageResponseTime
+      last24HoursPerformance {
+        throughput
+        firstTokenP50Ms
+        firstTokenP90Ms
+      }
+      last24HoursExecutions {
+        succeeded
+        failed
+        successRate
+      }
     }
   }
 `;
@@ -300,8 +329,8 @@ const CHANNEL_SUCCESS_RATES_QUERY = `
 `;
 
 const MODEL_PERFORMANCE_STATS_QUERY = `
-  query ModelPerformanceStats($startTime: String, $endTime: String) {
-    modelPerformanceStats(startTime: $startTime, endTime: $endTime) {
+  query ModelPerformanceStats($startTime: String, $endTime: String, $timeWindow: String) {
+    modelPerformanceStats(startTime: $startTime, endTime: $endTime, timeWindow: $timeWindow) {
       date
       modelId
       throughput
@@ -312,8 +341,8 @@ const MODEL_PERFORMANCE_STATS_QUERY = `
 `;
 
 const CHANNEL_PERFORMANCE_STATS_QUERY = `
-  query ChannelPerformanceStats($startTime: String, $endTime: String) {
-    channelPerformanceStats(startTime: $startTime, endTime: $endTime) {
+  query ChannelPerformanceStats($startTime: String, $endTime: String, $timeWindow: String) {
+    channelPerformanceStats(startTime: $startTime, endTime: $endTime, timeWindow: $timeWindow) {
       date
       channelId
       channelName
@@ -524,13 +553,14 @@ export function useChannelSuccessRates(limit?: number, timeWindow?: string) {
 
 /** Throughput and time to first token per model, refreshed every 5 minutes. Bucketing is
  * decided by the server from the range: hourly for short ranges, daily otherwise. */
-export function useModelPerformanceStats(startTime?: string | null, endTime?: string | null) {
+export function useModelPerformanceStats(startTime?: string | null, endTime?: string | null, timeWindow?: string | null) {
   return useQuery({
-    queryKey: ['modelPerformanceStats', startTime, endTime],
+    queryKey: ['modelPerformanceStats', startTime, endTime, timeWindow],
     queryFn: async () => {
       const data = await graphqlRequest<{ modelPerformanceStats: ModelPerformanceStat[] }>(MODEL_PERFORMANCE_STATS_QUERY, {
         ...(startTime != null && { startTime }),
         ...(endTime != null && { endTime }),
+        ...(timeWindow != null && { timeWindow }),
       });
       return data.modelPerformanceStats.map((item) => modelPerformanceStatSchema.parse(item));
     },
@@ -539,13 +569,14 @@ export function useModelPerformanceStats(startTime?: string | null, endTime?: st
 }
 
 /** Throughput and time to first token per channel, refreshed every 5 minutes. */
-export function useChannelPerformanceStats(startTime?: string | null, endTime?: string | null) {
+export function useChannelPerformanceStats(startTime?: string | null, endTime?: string | null, timeWindow?: string | null) {
   return useQuery({
-    queryKey: ['channelPerformanceStats', startTime, endTime],
+    queryKey: ['channelPerformanceStats', startTime, endTime, timeWindow],
     queryFn: async () => {
       const data = await graphqlRequest<{ channelPerformanceStats: ChannelPerformanceStat[] }>(CHANNEL_PERFORMANCE_STATS_QUERY, {
         ...(startTime != null && { startTime }),
         ...(endTime != null && { endTime }),
+        ...(timeWindow != null && { timeWindow }),
       });
       return data.channelPerformanceStats.map((item) => channelPerformanceStatSchema.parse(item));
     },
