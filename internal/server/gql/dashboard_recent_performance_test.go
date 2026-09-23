@@ -17,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/gql/qb"
 )
 
 // The trailing-24h helpers call TimeLocation, which setupTestQueryResolver leaves nil,
@@ -261,11 +262,21 @@ func TestResolvePerformanceWindow_Last24Hours(t *testing.T) {
 
 	window := resolver.resolvePerformanceWindow(ctx, ptrTimeWindow(relativeWindowLast24Hours), nil, nil)
 
-	assert.Equal(t, 24*time.Hour, window.endLocal.Sub(window.startLocal).Round(time.Hour))
-	assert.False(t, window.startLocal.After(window.endLocal))
+	// startLocal is truncated back to the hour, so it reaches at most one hour past the
+	// trailing-24h boundary. Asserted on the boundaries rather than on their difference
+	// because the resolver samples the clock twice: a span computed across an hour rollover
+	// can land on exactly 25h.
+	assert.False(t, window.startLocal.After(window.endLocal.Add(-24*time.Hour)))
+	assert.False(t, window.startLocal.Before(window.endLocal.Add(-25*time.Hour)))
+	assert.False(t, window.endLocal.After(time.Now().Add(time.Minute)))
+	assert.Equal(t, qb.ResolutionHour, window.resolution)
 
-	t.Run("an explicit range still overrides nothing and stays daily", func(t *testing.T) {
-		dated := resolver.resolvePerformanceWindow(ctx, nil, ptrTimeWindow("2026-09-01"), ptrTimeWindow("2026-09-02"))
-		assert.Equal(t, 48*time.Hour, dated.endLocal.Sub(dated.startLocal))
+	t.Run("a long explicit range stays daily, as it did before the relative window", func(t *testing.T) {
+		// Beyond hourlyResolutionMaxDays the shared resolutionForSpan rule drops to daily
+		// buckets, which is what makes the hour assertion above a real one: a two-day
+		// range would also resolve to hours.
+		dated := resolver.resolvePerformanceWindow(ctx, nil, ptrTimeWindow("2026-08-01"), ptrTimeWindow("2026-09-02"))
+		assert.Equal(t, 33*24*time.Hour, dated.endLocal.Sub(dated.startLocal))
+		assert.Equal(t, qb.ResolutionDay, dated.resolution)
 	})
 }
