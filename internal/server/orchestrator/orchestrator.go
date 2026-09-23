@@ -168,6 +168,8 @@ type ChatCompletionResult struct {
 	ChatCompletionStream streams.Stream[*httpclient.StreamEvent]
 }
 
+// Process runs the outbound middleware pipeline for the request and returns
+// the completion result, either buffered or streamed.
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
 	var preparedResponsesBody []byte
 	if shared.IsResponsesAPI(ctx) && request != nil && processor.responsesSessions != nil {

@@ -10,12 +10,14 @@ import (
 	"github.com/looplj/axonhub/llm/streams"
 )
 
+// stubMarkupStream is a minimal in-memory streams.Stream for sanitizer tests.
 type stubMarkupStream struct {
 	items []*llm.Response
 	idx   int
 	err   error
 }
 
+// Next advances to the next queued response.
 func (s *stubMarkupStream) Next() bool {
 	if s.idx >= len(s.items) {
 		return false
@@ -24,10 +26,16 @@ func (s *stubMarkupStream) Next() bool {
 	return true
 }
 
+// Current returns the response delivered by the latest Next call.
 func (s *stubMarkupStream) Current() *llm.Response { return s.items[s.idx-1] }
-func (s *stubMarkupStream) Err() error             { return s.err }
-func (s *stubMarkupStream) Close() error           { return nil }
 
+// Err returns the preset stream error, if any.
+func (s *stubMarkupStream) Err() error { return s.err }
+
+// Close releases the stub stream (no-op).
+func (s *stubMarkupStream) Close() error { return nil }
+
+// textChunk builds a streamed assistant delta carrying the given text.
 func textChunk(t *testing.T, text string) *llm.Response {
 	t.Helper()
 	return &llm.Response{
@@ -38,6 +46,7 @@ func textChunk(t *testing.T, text string) *llm.Response {
 	}
 }
 
+// collectText drains the stream and concatenates all delta content fragments.
 func collectText(t *testing.T, stream streams.Stream[*llm.Response]) (string, error) {
 	t.Helper()
 	out := ""
@@ -59,6 +68,8 @@ func collectText(t *testing.T, stream streams.Stream[*llm.Response]) (string, er
 	return out, stream.Err()
 }
 
+// TestMarkupSanitizer_CleanStreamPassesThrough verifies that streams without
+// leaked markup are forwarded unmodified.
 func TestMarkupSanitizer_CleanStreamPassesThrough(t *testing.T) {
 	inner := &stubMarkupStream{items: []*llm.Response{textChunk(t, "hello "), textChunk(t, "world")}}
 	wrapped, err := withUpstreamMarkupSanitizer().(interface {
@@ -77,6 +88,8 @@ func TestMarkupSanitizer_CleanStreamPassesThrough(t *testing.T) {
 	}
 }
 
+// TestMarkupSanitizer_LeakWithToolCallsIsScrubbed verifies that leaked markup
+// is stripped when the turn still carries tool calls.
 func TestMarkupSanitizer_LeakWithToolCallsIsScrubbed(t *testing.T) {
 	tag := "<\uFF5CDSML\uFF5Cparameter name=\"x\">"
 	inner := &stubMarkupStream{items: []*llm.Response{
@@ -99,6 +112,8 @@ func TestMarkupSanitizer_LeakWithToolCallsIsScrubbed(t *testing.T) {
 	}
 }
 
+// TestMarkupSanitizer_LeakWithoutToolCallsAborts verifies that a leak without
+// tool calls aborts the stream with a retryable 500 error.
 func TestMarkupSanitizer_LeakWithoutToolCallsAborts(t *testing.T) {
 	inner := &stubMarkupStream{items: []*llm.Response{
 		textChunk(t, "开始"),
@@ -160,6 +175,8 @@ func TestMarkupSanitizer_FinishingChunkDrainsCarry(t *testing.T) {
 	}
 }
 
+// TestMarkupSanitizer_SplitTagAcrossChunks verifies that a tag split across
+// two chunks is still scrubbed.
 func TestMarkupSanitizer_SplitTagAcrossChunks(t *testing.T) {
 	inner := &stubMarkupStream{items: []*llm.Response{
 		textChunk(t, "ok<"),
@@ -182,6 +199,8 @@ func TestMarkupSanitizer_SplitTagAcrossChunks(t *testing.T) {
 	}
 }
 
+// TestScrubText_HoldsIncompleteTagPrefix verifies that incomplete tag
+// prefixes are held back until they resolve or are flushed.
 func TestScrubText_HoldsIncompleteTagPrefix(t *testing.T) {
 	emit, hold, stripped := scrubText("text<\uFF5C\uFF5CDS", false)
 	if emit != "text" || hold != "<\uFF5C\uFF5CDS" || stripped {
