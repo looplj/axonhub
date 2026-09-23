@@ -2558,3 +2558,48 @@ func TestInboundTransformer_TransformResponse_EdgeCases(t *testing.T) {
 		})
 	}
 }
+
+func TestConvertToLLMRequest_DisableParallelToolUse(t *testing.T) {
+	tests := []struct {
+		name     string
+		body     string
+		expected *bool
+	}{
+		{
+			name:     "disabled -> parallel_tool_calls false",
+			body:     `{"type": "auto", "disable_parallel_tool_use": true}`,
+			expected: lo.ToPtr(false),
+		},
+		{
+			name:     "explicit enabled -> parallel_tool_calls true",
+			body:     `{"type": "any", "disable_parallel_tool_use": false}`,
+			expected: lo.ToPtr(true),
+		},
+		{
+			name:     "unset -> parallel_tool_calls unset",
+			body:     `{"type": "auto"}`,
+			expected: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var anthropicReq MessageRequest
+
+			require.NoError(t, json.Unmarshal([]byte(`{
+				"model": "claude-sonnet-4-5-20250929",
+				"max_tokens": 1024,
+				"messages": [{"role": "user", "content": "Hello"}],
+				"tools": [{"name": "lookup", "input_schema": {"type": "object"}}],
+				"tool_choice": `+tt.body+`
+			}`), &anthropicReq))
+
+			chatReq, err := convertToLLMRequest(&anthropicReq)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, chatReq.ParallelToolCalls)
+
+			// The flag has to survive the round trip back to the Anthropic wire format.
+			require.Equal(t, anthropicReq.ToolChoice.DisableParallelToolUse, convertToAnthropicRequest(chatReq).ToolChoice.DisableParallelToolUse)
+		})
+	}
+}

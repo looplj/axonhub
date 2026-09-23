@@ -333,6 +333,10 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 	// Convert tool_choice
 	if anthropicReq.ToolChoice != nil {
 		chatReq.ToolChoice = convertAnthropicToolChoiceToLLM(anthropicReq.ToolChoice)
+
+		if disable := anthropicReq.ToolChoice.DisableParallelToolUse; disable != nil {
+			chatReq.ParallelToolCalls = lo.ToPtr(!*disable)
+		}
 	}
 
 	// Convert thinking configuration to reasoning effort and preserve budget
