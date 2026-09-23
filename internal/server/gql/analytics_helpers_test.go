@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent/project"
@@ -61,3 +62,88 @@ func TestQueryExecutionSuccessCounts_CountsFailuresWithoutAUsageLog(t *testing.T
 	require.Zero(t, success)
 	require.Equal(t, 1, failed, "a failure with no usage log still belongs to the API key's window")
 }
+
+// usage_logs.created_at is a native timestamp column, so the bucket labels come from the
+// native-timestamp expression builder. Routing them through the Unix-epoch builder instead
+// yields to_timestamp(timestamptz) on Postgres (no such function) and NULL on SQLite, which
+// surfaces as a scan error rather than as wrong-looking data.
+func TestAnalyticsDailyStats_BucketLabels(t *testing.T) {
+	resolver, ctx, client := setupRecentPerformanceResolver(t)
+	defer client.Close()
+
+	p, err := client.Project.Create().SetName("p").SetStatus(project.StatusActive).Save(ctx)
+	require.NoError(t, err)
+
+	// 10:30 UTC on a fixed date, so both bucket layouts are unambiguous.
+	at := time.Date(2026, 9, 23, 10, 30, 0, 0, time.UTC)
+	req, err := client.Request.Create().
+		SetProjectID(p.ID).
+		SetAPIKeyID(1).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetCreatedAt(at).
+		Save(ctx)
+	require.NoError(t, err)
+
+	client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetAPIKeyID(1).
+		SetProjectID(p.ID).
+		SetChannelID(1).
+		SetModelID("gpt-4").
+		SetPromptTokens(100).
+		SetCompletionTokens(200).
+		SetTotalTokens(300).
+		SetTotalCost(0.5).
+		SetCreatedAt(at).
+		SetUpdatedAt(at).
+		SaveX(ctx)
+
+	t.Run("a long range buckets by day", func(t *testing.T) {
+		stats, err := resolver.AnalyticsDailyStats(ctx, &AnalyticsFilter{
+			StartTime: strptr("2026-09-01"),
+			EndTime:   strptr("2026-09-23"),
+		})
+		require.NoError(t, err)
+
+		byDate := make(map[string]int, len(stats))
+		for _, s := range stats {
+			byDate[s.Date] = s.TotalTokens
+		}
+		require.Contains(t, byDate, "2026-09-23")
+		assert.Equal(t, 300, byDate["2026-09-23"])
+	})
+
+	t.Run("the relative window buckets by hour", func(t *testing.T) {
+		// last24Hours is resolved against the query instant, so the row has to be written
+		// recently enough to fall inside it rather than on the fixed date above.
+		recent := time.Now().UTC().Add(-2 * time.Hour)
+		client.UsageLog.Create().
+			SetRequestID(req.ID).
+			SetAPIKeyID(1).
+			SetProjectID(p.ID).
+			SetChannelID(1).
+			SetModelID("gpt-4").
+			SetPromptTokens(1).
+			SetCompletionTokens(1).
+			SetTotalTokens(2).
+			SetTotalCost(0).
+			SetCreatedAt(recent).
+			SetUpdatedAt(recent).
+			SaveX(ctx)
+
+		stats, err := resolver.AnalyticsDailyStats(ctx, &AnalyticsFilter{TimeWindow: strptr("last24Hours")})
+		require.NoError(t, err)
+
+		wantLabel := recent.In(time.UTC).Format("2006-01-02 15:00")
+		byDate := make(map[string]int, len(stats))
+		for _, s := range stats {
+			byDate[s.Date] = s.TotalTokens
+		}
+		require.Contains(t, byDate, wantLabel, "hourly buckets must carry the hour, not just the day")
+	})
+}
+
+func strptr(v string) *string { return &v }

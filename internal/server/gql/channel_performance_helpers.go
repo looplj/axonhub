@@ -41,7 +41,7 @@ func (r *queryResolver) queryChannelProbeStats(ctx context.Context, window perfo
 		).
 		Modify(func(s *sql.Selector) {
 			timestampCol := s.C(channelprobe.FieldTimestamp)
-			dateExpr := buildDateExpression(s.Dialect(), timestampCol, offsetSeconds, locName, window.resolution)
+			dateExpr := buildEpochDateExpression(s.Dialect(), timestampCol, offsetSeconds, locName, window.resolution)
 			selects := buildProbeQuerySelects(s, dateExpr)
 			s.Select(selects...).
 				GroupBy(dateExpr, s.C(channelprobe.FieldChannelID)).

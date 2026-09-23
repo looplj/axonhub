@@ -54,10 +54,14 @@ const (
 	ResolutionHour
 )
 
-// getDateExpression returns the dialect-specific date expression for grouping bucketed
+// GetDateExpression returns the dialect-specific date expression for grouping bucketed
 // time. The dateExpr should include the column reference (e.g., "se.created_at").
 // Day buckets render as "2006-01-02", hour buckets as "2006-01-02 15:00"; both sort
 // lexicographically in time order, which the performance stats queries rely on.
+//
+// The column must be a native timestamp: timestamptz on Postgres, TIMESTAMP on MySQL and
+// ISO-8601 text on SQLite. A Unix-epoch integer column cannot use this — that is what
+// buildEpochDateExpression in the gql package is for.
 //
 // SECURITY NOTE: The timezone parameter is interpolated directly into SQL queries for
 // MySQL (CONVERT_TZ) and Postgres (AT TIME ZONE). This parameter must be a trusted,
@@ -66,7 +70,7 @@ const (
 // If you need timezone support from user input, validate against a whitelist of known
 // timezones first, or use offsetSeconds as an alternative (though offsetSeconds doesn't
 // handle DST transitions correctly).
-func getDateExpression(dialect string, dateExpr string, timezone string, offsetSeconds int, resolution DateResolution) string {
+func GetDateExpression(dialect string, dateExpr string, timezone string, offsetSeconds int, resolution DateResolution) string {
 	switch dialect {
 	case "sqlite3", "sqlite":
 		// SQLite: strftime('%Y-%m-%d', datetime(substr(created_at, 1, 19), 'offset seconds'))
@@ -137,7 +141,7 @@ func buildDailyThroughputQuery(dialect string, timezone string, offsetSeconds in
 	}
 
 	// Get date expression based on dialect
-	dateExpr := getDateExpression(dialect, "se.created_at", timezone, offsetSeconds, ResolutionDay)
+	dateExpr := GetDateExpression(dialect, "se.created_at", timezone, offsetSeconds, ResolutionDay)
 
 	// Determine parameter placeholder based on dialect
 	paramPlaceholder := "?"
@@ -266,7 +270,7 @@ func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeco
 		config = AllowedDailyQueryConfigs[DailyThroughputByModel]
 	}
 
-	dateExpr := getDateExpression(dialect, "se.created_at", timezone, offsetSeconds, resolution)
+	dateExpr := GetDateExpression(dialect, "se.created_at", timezone, offsetSeconds, resolution)
 	throughputSQL := throughputCalculationSQL("se")
 
 	// Only add the requests join for model queries (channel_id is already in request_executions)
