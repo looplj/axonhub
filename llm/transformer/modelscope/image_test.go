@@ -1,0 +1,253 @@
+package modelscope
+
+import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xurl"
+)
+
+func newImageTransformer(t *testing.T, baseURL string) *OutboundTransformer {
+	t.Helper()
+
+	built, err := NewOutboundTransformerWithConfig(&Config{
+		BaseURL:        baseURL,
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	require.NoError(t, err)
+
+	outbound, ok := built.(*OutboundTransformer)
+	require.True(t, ok)
+	outbound.pollInterval = time.Millisecond
+
+	return outbound
+}
+
+func TestBuildImageRequest_GenerationOmitsImageURL(t *testing.T) {
+	t.Parallel()
+
+	transformer := newImageTransformer(t, "https://example.com/v1")
+
+	req, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:       "Qwen/Qwen-Image-2.1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
+		Image: &llm.ImageRequest{
+			Prompt: "a fox",
+			Size:   "auto",
+		},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, http.MethodPost, req.Method)
+	require.Equal(t, "https://example.com/v1/images/generations", req.URL)
+	require.Equal(t, "true", req.Headers.Get("X-ModelScope-Async-Mode"))
+	require.Equal(t, llm.APIFormatModelScopeImage.String(), req.APIFormat)
+	require.Equal(t, llm.RequestTypeImage.String(), req.RequestType)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(req.Body, &body))
+	require.Equal(t, "Qwen/Qwen-Image-2.1", body["model"])
+	require.Equal(t, "a fox", body["prompt"])
+	require.NotContains(t, body, "size", "size=auto must be omitted for ModelScope")
+	require.NotContains(t, body, "image_url")
+	require.Equal(t, "Qwen/Qwen-Image-2.1", req.TransformerMetadata["model"])
+}
+
+func TestBuildImageRequest_EditSendsImageURL(t *testing.T) {
+	t.Parallel()
+
+	transformer := newImageTransformer(t, "https://example.com/v1")
+
+	pixel := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a}
+
+	req, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:       "Qwen/Qwen-Image-2.1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageEdit,
+		Image: &llm.ImageRequest{
+			Prompt: "repaint the sky",
+			Images: [][]byte{pixel},
+		},
+	})
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(req.Body, &body))
+
+	imageURL, ok := body["image_url"].(string)
+	require.True(t, ok, "a single reference image is sent as a bare string")
+	require.True(t, xurl.IsDataURL(imageURL))
+	require.Equal(t, base64.StdEncoding.EncodeToString(pixel), xurl.ExtractBase64FromDataURL(imageURL))
+}
+
+func TestBuildImageRequest_MultipleImagesSentAsArray(t *testing.T) {
+	t.Parallel()
+
+	transformer := newImageTransformer(t, "https://example.com/v1")
+
+	pixel := []byte{0x89, 0x50, 0x4e, 0x47}
+
+	req, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:       "Qwen/Qwen-Image-2.1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageEdit,
+		Image: &llm.ImageRequest{
+			Prompt: "merge",
+			Images: [][]byte{pixel, pixel},
+		},
+	})
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(req.Body, &body))
+
+	images, ok := body["image_url"].([]any)
+	require.True(t, ok, "multiple reference images are sent as an array")
+	require.Len(t, images, 2)
+}
+
+func TestBuildImageRequest_RejectsMaskAndUnsupportedFormat(t *testing.T) {
+	t.Parallel()
+
+	transformer := newImageTransformer(t, "https://example.com/v1")
+
+	_, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:       "Qwen/Qwen-Image-2.1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageEdit,
+		Image: &llm.ImageRequest{
+			Prompt: "repaint",
+			Mask:   []byte{0x01},
+		},
+	})
+	require.ErrorContains(t, err, "do not support masks")
+
+	_, err = transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:       "Qwen/Qwen-Image-2.1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageVariation,
+		Image:       &llm.ImageRequest{Prompt: "x"},
+	})
+	require.ErrorContains(t, err, "does not support image api format")
+}
+
+func TestBuildImageRequest_RejectsEmptyPrompt(t *testing.T) {
+	t.Parallel()
+
+	transformer := newImageTransformer(t, "https://example.com/v1")
+
+	_, err := transformer.TransformRequest(context.Background(), &llm.Request{
+		Model:       "Qwen/Qwen-Image-2.1",
+		RequestType: llm.RequestTypeImage,
+		APIFormat:   llm.APIFormatOpenAIImageGeneration,
+		Image:       &llm.ImageRequest{Prompt: "   "},
+	})
+	require.ErrorContains(t, err, "prompt is required")
+}
+
+// TestTransformImageResponse_PollsTaskAndReturnsBase64 covers the async round
+// trip: submitting returns a task id, polling succeeds, and the output URL is
+// downloaded and exposed as b64_json for clients that only read b64_json.
+func TestTransformImageResponse_PollsTaskAndReturnsBase64(t *testing.T) {
+	t.Parallel()
+
+	pngBytes := []byte{0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x01}
+
+	var polls int
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/img.png", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(pngBytes)
+	})
+
+	mux.HandleFunc("/v1/tasks/task-1", func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "image_generation", r.Header.Get("X-ModelScope-Task-Type"))
+		require.Equal(t, "Bearer test-key", r.Header.Get("Authorization"))
+
+		polls++
+
+		status := "RUNNING"
+		if polls > 1 {
+			status = "SUCCEED"
+		}
+
+		payload := map[string]any{
+			"task_id":       "task-1",
+			"task_status":   status,
+			"output_images": []string{server.URL + "/img.png"},
+		}
+		require.NoError(t, json.NewEncoder(w).Encode(payload))
+	})
+
+	transformer := newImageTransformer(t, server.URL+"/v1")
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       []byte(`{"task_id":"task-1","task_status":"PENDING"}`),
+		Request: &httpclient.Request{
+			APIFormat:           llm.APIFormatModelScopeImage.String(),
+			TransformerMetadata: map[string]any{"model": "Qwen/Qwen-Image-2.1"},
+		},
+	}
+
+	resp, err := transformer.TransformResponse(context.Background(), httpResp)
+	require.NoError(t, err)
+	require.NotNil(t, resp.Image)
+	require.Len(t, resp.Image.Data, 1)
+	require.Equal(t, base64.StdEncoding.EncodeToString(pngBytes), resp.Image.Data[0].B64JSON)
+	require.Equal(t, server.URL+"/img.png", resp.Image.Data[0].URL)
+	require.Equal(t, llm.RequestTypeImage, resp.RequestType)
+	require.GreaterOrEqual(t, polls, 2, "the task must be polled until it succeeds")
+}
+
+func TestTransformImageResponse_TaskFailureIsReported(t *testing.T) {
+	t.Parallel()
+
+	mux := http.NewServeMux()
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	mux.HandleFunc("/v1/tasks/task-2", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"task_id":"task-2","task_status":"FAILED","message":"prompt rejected"}`))
+	})
+
+	transformer := newImageTransformer(t, server.URL+"/v1")
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       []byte(`{"task_id":"task-2","task_status":"PENDING"}`),
+		Request:    &httpclient.Request{APIFormat: llm.APIFormatModelScopeImage.String()},
+	}
+
+	_, err := transformer.TransformResponse(context.Background(), httpResp)
+	require.ErrorContains(t, err, "prompt rejected")
+}
+
+func TestTransformImageResponse_DelegatesNonImageFormats(t *testing.T) {
+	t.Parallel()
+
+	transformer := newImageTransformer(t, "https://example.com/v1")
+
+	// A chat response must keep flowing through the embedded OpenAI transformer
+	// instead of the ModelScope image task handling.
+	_, err := transformer.TransformResponse(context.Background(), &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       []byte(`{"id":"chatcmpl-1","object":"chat.completion","created":1,"model":"m","choices":[]}`),
+		Request:    &httpclient.Request{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+	})
+	require.NoError(t, err)
+}
