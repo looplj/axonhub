@@ -4,7 +4,7 @@ import { SelectDropdown } from '@/components/select-dropdown';
 import { FormLabel } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
-export type APIKeyStrategyValue = 'sticky' | 'random' | 'round_robin' | 'fixed';
+export type APIKeyStrategyValue = 'sticky' | 'random' | 'round_robin' | 'round_robin_success' | 'priority' | 'fixed';
 
 interface ApiKeyStrategyFieldsProps {
   value: APIKeyStrategyValue;
@@ -36,6 +36,11 @@ export function ApiKeyStrategyFields({ value, switchAfter, onChange, onSwitchAft
             { value: 'sticky', label: t('channels.dialogs.fields.apiKeyStrategy.options.sticky') },
             { value: 'random', label: t('channels.dialogs.fields.apiKeyStrategy.options.random') },
             { value: 'round_robin', label: t('channels.dialogs.fields.apiKeyStrategy.options.roundRobin') },
+            {
+              value: 'round_robin_success',
+              label: t('channels.dialogs.fields.apiKeyStrategy.options.roundRobinSuccess'),
+            },
+            { value: 'priority', label: t('channels.dialogs.fields.apiKeyStrategy.options.priority') },
             { value: 'fixed', label: t('channels.dialogs.fields.apiKeyStrategy.options.fixed') },
           ]}
         />
@@ -45,7 +50,7 @@ export function ApiKeyStrategyFields({ value, switchAfter, onChange, onSwitchAft
             type='number'
             min={1}
             value={switchAfter}
-            disabled={value !== 'round_robin'}
+            disabled={value !== 'round_robin' && value !== 'round_robin_success'}
             onChange={(e) => {
               const n = parseInt(e.target.value, 10);
               onSwitchAfterChange(Number.isNaN(n) || n < 1 ? 1 : n);

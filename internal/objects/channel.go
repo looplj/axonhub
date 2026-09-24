@@ -248,11 +248,12 @@ type ChannelSettings struct {
 	// instead of a zero-value string for channels saved before the field existed.
 	APIKeyStrategy *string `json:"apiKeyStrategy,omitempty"`
 
-	// APIKeyRoundRobinSwitchAfter is the number of consecutive requests a key is
-	// reused before round-robin advances to the next key. Only meaningful when
-	// APIKeyStrategy is APIKeyStrategyRoundRobin. Values below 1 are treated as 1
-	// (switch every request). Pointer so GQL emits null instead of 0 for legacy
-	// channels.
+	// APIKeyRoundRobinSwitchAfter is the number of times a key is reused before
+	// round-robin advances to the next key. Only meaningful for the two
+	// round-robin strategies: APIKeyStrategyRoundRobin counts every request,
+	// APIKeyStrategyRoundRobinSuccess counts only successful ones. Values below 1
+	// are treated as 1 (switch immediately). Pointer so GQL emits null instead of
+	// 0 for legacy channels.
 	APIKeyRoundRobinSwitchAfter *int `json:"apiKeyRoundRobinSwitchAfter,omitempty"`
 
 	// ProviderQuota holds provider-specific quota collection credentials and
@@ -291,10 +292,22 @@ const (
 	// APIKeyStrategyRandom picks a key at random regardless of trace.
 	APIKeyStrategyRandom = "random"
 	// APIKeyStrategyRoundRobin advances through keys in order, reusing each key for
-	// APIKeyRoundRobinSwitchAfter consecutive requests before moving on.
+	// APIKeyRoundRobinSwitchAfter consecutive requests before moving on. Every
+	// request counts, whatever its outcome.
 	APIKeyStrategyRoundRobin = "round_robin"
-	// APIKeyStrategyFixed always uses the first enabled key; failover to the next
-	// key relies on the channel's per-key auto-disable rules.
+	// APIKeyStrategyRoundRobinSuccess is round-robin that only counts successful
+	// calls: each key is reused until it has served APIKeyRoundRobinSwitchAfter
+	// successful requests, then the cursor moves on to the next key. Failed and
+	// canceled requests do not advance it.
+	APIKeyStrategyRoundRobinSuccess = "round_robin_success"
+	// APIKeyStrategyPriority always uses the first selectable key. This is the
+	// historical "fixed" behavior under a new name: every call re-reads the first
+	// key, so a disabled leading key hands over to the next one immediately.
+	APIKeyStrategyPriority = "priority"
+	// APIKeyStrategyFixed remembers the key currently in use and keeps using it
+	// until that key stops being selectable (disabled or removed from the
+	// channel). It then walks the full key array forward from the remembered
+	// position, skipping disabled keys and wrapping around at the end.
 	APIKeyStrategyFixed = "fixed"
 )
 
@@ -302,7 +315,8 @@ const (
 // and means the default sticky behavior).
 func IsValidAPIKeyStrategy(value string) bool {
 	switch value {
-	case "", APIKeyStrategySticky, APIKeyStrategyRandom, APIKeyStrategyRoundRobin, APIKeyStrategyFixed:
+	case "", APIKeyStrategySticky, APIKeyStrategyRandom, APIKeyStrategyRoundRobin,
+		APIKeyStrategyRoundRobinSuccess, APIKeyStrategyPriority, APIKeyStrategyFixed:
 		return true
 	default:
 		return false

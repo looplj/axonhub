@@ -25,7 +25,7 @@ import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
-import { ApiKeyStrategyFields } from './channel-api-key-strategy';
+import { ApiKeyStrategyFields, type APIKeyStrategyValue } from './channel-api-key-strategy';
 import { SelectDropdown } from '@/components/select-dropdown';
 import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -399,7 +399,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
   );
-  const [apiKeyStrategy, setApiKeyStrategy] = useState<'sticky' | 'random' | 'round_robin' | 'fixed'>(
+  const [apiKeyStrategy, setApiKeyStrategy] = useState<APIKeyStrategyValue>(
     () => initialRow?.settings?.apiKeyStrategy ?? 'sticky'
   );
   const [apiKeyRoundRobinSwitchAfter, setApiKeyRoundRobinSwitchAfter] = useState<number>(
@@ -1343,6 +1343,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          apiKeyStrategy,
+          apiKeyRoundRobinSwitchAfter:
+            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success'
+              ? apiKeyRoundRobinSwitchAfter
+              : null,
           // Cookie edits (including clearing the saved cookie) travel through
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
@@ -1350,8 +1355,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           ...(shouldUpdateModelProtocols
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
             : {}),
-          apiKeyStrategy,
-          apiKeyRoundRobinSwitchAfter: apiKeyStrategy === 'round_robin' ? apiKeyRoundRobinSwitchAfter : null,
         };
 
         const updateInput = {
@@ -1410,6 +1413,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          apiKeyStrategy,
+          apiKeyRoundRobinSwitchAfter:
+            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success'
+              ? apiKeyRoundRobinSwitchAfter
+              : null,
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
             ? {
@@ -1420,8 +1428,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 ),
               }
             : {}),
-          apiKeyStrategy,
-          apiKeyRoundRobinSwitchAfter: apiKeyStrategy === 'round_robin' ? apiKeyRoundRobinSwitchAfter : null,
         });
 
         const createInput = {

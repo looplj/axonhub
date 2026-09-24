@@ -232,6 +232,7 @@ func (svc *ChannelService) BulkDeleteChannels(ctx context.Context, ids []int) er
 
 	for _, id := range ids {
 		svc.forgetLimiter(id)
+		svc.forgetAPIKeySelectionState(id)
 	}
 
 	log.Info(ctx, "bulk deleted channels", log.Int("count", deleted))

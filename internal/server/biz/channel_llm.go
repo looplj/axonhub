@@ -681,6 +681,10 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		httpClient = httpClient.WithRejectHTTPSDowngrade()
 	}
 	ch := buildChannel(c, httpClient)
+	// Attach the shared key-selection state for the strategies that
+	// remember the key in use (fixed / round_robin_success). Nil otherwise.
+	ch.apiKeyState = svc.apiKeySelectionStateFor(ch)
+
 	if overrideAPIKey != "" {
 		ch.apiKeyOverride = overrideAPIKey
 	}
