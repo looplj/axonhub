@@ -740,9 +740,12 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 // It will try the next model in the same channel if available.
 func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) error {
 	// fork: re-read the channel state so a credential disabled mid-request is
-	// picked up before the next same-channel attempt (see
-	// retry_channel_refresh.go).
-	p.refreshChannelBeforeRetry(ctx)
+	// picked up before the next same-channel attempt, and so a channel that has
+	// left service ends the retry instead of burning the remaining budget
+	// (see retry_channel_refresh.go).
+	if err := p.refreshChannelBeforeRetry(ctx); err != nil {
+		return err
+	}
 
 	candidate := p.state.CurrentCandidate
 
