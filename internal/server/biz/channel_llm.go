@@ -1553,5 +1553,45 @@ func (ch *Channel) GetDirectModelEntries() map[string]ChannelModelEntry {
 		}
 	}
 
+	// Prefixed models (ExtraModelPrefix), consistent with GetModelEntries.
+	if ch.Settings == nil {
+		return entries
+	}
+
+	if ch.Settings.ExtraModelPrefix != "" {
+		prefix := ch.Settings.ExtraModelPrefix
+		for _, model := range ch.SupportedModels {
+			prefixedModel := prefix + "/" + model
+			if _, exists := entries[prefixedModel]; !exists {
+				entries[prefixedModel] = ChannelModelEntry{
+					RequestModel: prefixedModel,
+					ActualModel:  model,
+					Source:       "prefix",
+				}
+			}
+		}
+	}
+
+	// Auto-trimmed models (AutoTrimedModelPrefixes), consistent with GetModelEntries.
+	for _, prefix := range ch.Settings.AutoTrimedModelPrefixes {
+		if prefix == "" {
+			continue
+		}
+
+		prefix += "/"
+		for _, model := range ch.SupportedModels {
+			if after, ok := strings.CutPrefix(model, prefix); ok {
+				trimmedModel := after
+				if _, exists := entries[trimmedModel]; !exists {
+					entries[trimmedModel] = ChannelModelEntry{
+						RequestModel: trimmedModel,
+						ActualModel:  model,
+						Source:       "auto_trim",
+					}
+				}
+			}
+		}
+	}
+
 	return entries
 }
