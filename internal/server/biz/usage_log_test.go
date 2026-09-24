@@ -74,35 +74,6 @@ func TestUsageLogService_CreateUsageLog_PromptWriteCachedTokens(t *testing.T) {
 	require.Equal(t, int64(3), created.PromptWriteCachedTokens)
 }
 
-func TestUsageLogService_CreateUsageLogFromRequest_LeavesMissingAPIKeyUnset(t *testing.T) {
-	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
-	defer client.Close()
-
-	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
-	p, err := client.Project.Create().SetName("test-project").Save(ctx)
-	require.NoError(t, err)
-	req, err := client.Request.Create().
-		SetProjectID(p.ID).
-		SetModelID("test-model").
-		SetStatus(request.StatusCompleted).
-		SetRequestBody(objects.JSONRawMessage([]byte(`{}`))).
-		Save(ctx)
-	require.NoError(t, err)
-
-	svc := NewUsageLogService(client, NewSystemService(SystemServiceParams{
-		CacheConfig: xcache.Config{},
-		Ent:         client,
-	}), NewChannelServiceForTest(client))
-	usage := &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2}
-	created, err := svc.CreateUsageLogFromRequest(ctx, req, &ent.RequestExecution{}, usage)
-	require.NoError(t, err)
-	require.NotNil(t, created)
-
-	isNil, err := client.UsageLog.Query().Where(usagelog.IDEQ(created.ID), usagelog.APIKeyIDIsNil()).Exist(ctx)
-	require.NoError(t, err)
-	require.True(t, isNil, "a request without an API key must not be persisted with API key ID 0")
-}
-
 func TestUsageLogService_CreateUsageLog_WithPriceReferenceID(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()

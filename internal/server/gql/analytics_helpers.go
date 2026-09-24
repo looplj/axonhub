@@ -365,7 +365,7 @@ func (r *queryResolver) queryAPIKeyStats(ctx context.Context, filter *AnalyticsF
 	var rawResults []apiKeyStatsRaw
 
 	err := r.client.UsageLog.Query().
-		Where(usagelog.APIKeyIDNotNil(), usagelog.APIKeyIDNEQ(0)).
+		Where(usagelog.APIKeyIDNotNil()).
 		Modify(func(s *sql.Selector) {
 			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
 
