@@ -286,6 +286,10 @@ func (svc *ChannelService) reloadEnabledChannels(ctx context.Context, current []
 		// Preload model prices
 		svc.preloadModelPrices(ctx, channel)
 
+		// This build feeds the serving set, so let the shared key-selection
+		// state read the fresh snapshot from now on.
+		svc.publishAPIKeySelectionSnapshot(channel)
+
 		channels = append(channels, channel)
 	}
 

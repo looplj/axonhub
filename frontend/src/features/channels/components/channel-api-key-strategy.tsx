@@ -5,6 +5,10 @@ import { SelectDropdown } from '@/components/select-dropdown';
 
 export type APIKeyStrategyValue = 'sticky' | 'random' | 'round_robin' | 'round_robin_success' | 'priority' | 'fixed';
 
+// GraphQL `Int` is a signed 32-bit value, so the switch-after count must stay
+// within this range or the save would be rejected by the server.
+const GRAPHQL_INT_MAX = 2147483647;
+
 interface ApiKeyStrategyFieldsProps {
   value: APIKeyStrategyValue;
   switchAfter: number;
@@ -46,11 +50,13 @@ export function ApiKeyStrategyFields({ value, switchAfter, onChange, onSwitchAft
           <Input
             type='number'
             min={1}
+            max={GRAPHQL_INT_MAX}
             value={switchAfter}
+            aria-label={t('channels.dialogs.fields.apiKeyRoundRobinSwitchAfter.label')}
             disabled={value !== 'round_robin' && value !== 'round_robin_success'}
             onChange={(e) => {
               const n = parseInt(e.target.value, 10);
-              onSwitchAfterChange(Number.isNaN(n) || n < 1 ? 1 : n);
+              onSwitchAfterChange(Number.isNaN(n) || n < 1 ? 1 : Math.min(n, GRAPHQL_INT_MAX));
             }}
             className='w-24'
             data-testid='channel-api-key-round-robin-input'

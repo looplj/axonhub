@@ -90,9 +90,24 @@ func (svc *ChannelService) apiKeySelectionStateFor(ch *Channel) *apiKeySelection
 	state.rrSuccessPer = per
 	state.mu.Unlock()
 
-	state.snapshot.Store(ch)
-
 	return state
+}
+
+// publishAPIKeySelectionSnapshot makes ch the snapshot the shared state reads
+// from, so an in-flight request sees the key set of the channel that is actually
+// in service.
+//
+// Only the enabled-channel cache calls this. Other builds — a single channel
+// lookup, the key-test flow (GetChannelWithKey) or endpoint detection — must not
+// overwrite it: they build a channel outside the serving set, and a live request
+// reading their snapshot could pick keys from a channel that was disabled or is
+// only being probed.
+func (svc *ChannelService) publishAPIKeySelectionSnapshot(ch *Channel) {
+	if ch == nil || ch.apiKeyState == nil {
+		return
+	}
+
+	ch.apiKeyState.snapshot.Store(ch)
 }
 
 // apiKeySelectionState returns the shared state of a channel, or nil when the
@@ -135,9 +150,10 @@ func (st *apiKeySelectionState) nextRoundRobinKey(ch *Channel, per int) string {
 }
 
 // stickyKeyFor returns the sticky key of a trace, remembering the choice on the
-// shared state so a channel rebuild keeps the session on the same key. The
-// remembered key wins even if the enabled set changed, mirroring the upstream
-// provider's behaviour.
+// shared state so a channel rebuild keeps the same key. The cache outlives the
+// provider it used to live in, so a remembered key is only reused while it is
+// still in the enabled set: once it is disabled or removed, the trace moves to a
+// key that can actually serve.
 func (st *apiKeySelectionState) stickyKeyFor(ch *Channel, traceID string) string {
 	enabled := ch.cachedEnabledAPIKeys
 	if len(enabled) == 0 {
@@ -155,7 +171,7 @@ func (st *apiKeySelectionState) stickyKeyFor(ch *Channel, traceID string) string
 		st.stickyCache, _ = lru.New[string, string](traceStickyLRUSize)
 	}
 
-	if cached, ok := st.stickyCache.Get(traceID); ok {
+	if cached, ok := st.stickyCache.Get(traceID); ok && slices.Contains(enabled, cached) {
 		return cached
 	}
 
