@@ -223,22 +223,22 @@ func TestFixedKeyProvider_KeepsCurrentKeyWhileSelectable(t *testing.T) {
 func TestFixedKeyProvider_MovesForwardWhenCurrentKeyIsDisabled(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3", "k4"}), objects.APIKeyStrategyFixed)
-	p, state := newFixedProvider(t, svc, ch)
+	_, state := newFixedProvider(t, svc, ch)
 
 	setFixedCursor(state, "k2", 1)
 
-	// k2 gets disabled. The next selection must move on to k3, never back to k1.
+	// k2 gets disabled and the channel is rebuilt. A provider built from the new
+	// snapshot must move on to k3, never back to k1.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3", "k4"}, "k2"), objects.APIKeyStrategyFixed)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k3", p.Get(context.Background()))
+	require.Equal(t, "k3", NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
 func TestFixedKeyProvider_SkipsSeveralDisabledKeysOnTheWay(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3", "k4", "k5"}), objects.APIKeyStrategyFixed)
-	p, state := newFixedProvider(t, svc, ch)
+	_, state := newFixedProvider(t, svc, ch)
 
 	setFixedCursor(state, "k2", 1)
 
@@ -248,30 +248,28 @@ func TestFixedKeyProvider_SkipsSeveralDisabledKeysOnTheWay(t *testing.T) {
 		objects.APIKeyStrategyFixed,
 	)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k5", p.Get(context.Background()))
+	require.Equal(t, "k5", NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
 func TestFixedKeyProvider_WrapsAroundToFirstSelectable(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategyFixed)
-	p, state := newFixedProvider(t, svc, ch)
+	_, state := newFixedProvider(t, svc, ch)
 
 	setFixedCursor(state, "k3", 2)
 
 	// The tail is disabled, so the walk wraps around and lands on k1.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}, "k3"), objects.APIKeyStrategyFixed)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k1", p.Get(context.Background()))
+	require.Equal(t, "k1", NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
 func TestFixedKeyProvider_RemovedKeyContinuesForward(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3", "k4"}), objects.APIKeyStrategyFixed)
-	p, state := newFixedProvider(t, svc, ch)
+	_, state := newFixedProvider(t, svc, ch)
 
 	setFixedCursor(state, "k3", 2)
 
@@ -279,15 +277,14 @@ func TestFixedKeyProvider_RemovedKeyContinuesForward(t *testing.T) {
 	// sit, so k4 is next rather than restarting at k1.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k4"}), objects.APIKeyStrategyFixed)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k4", p.Get(context.Background()))
+	require.Equal(t, "k4", NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
 func TestFixedKeyProvider_RemovedKeyOutOfRangeWrapsAround(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3", "k4"}), objects.APIKeyStrategyFixed)
-	p, state := newFixedProvider(t, svc, ch)
+	_, state := newFixedProvider(t, svc, ch)
 
 	setFixedCursor(state, "k4", 3)
 
@@ -295,15 +292,14 @@ func TestFixedKeyProvider_RemovedKeyOutOfRangeWrapsAround(t *testing.T) {
 	// head of the array instead of reading past the end.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2"}), objects.APIKeyStrategyFixed)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k1", p.Get(context.Background()))
+	require.Equal(t, "k1", NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
 func TestFixedKeyProvider_RemovedKeyThenSkipsDisabledTail(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3", "k4"}), objects.APIKeyStrategyFixed)
-	p, state := newFixedProvider(t, svc, ch)
+	_, state := newFixedProvider(t, svc, ch)
 
 	setFixedCursor(state, "k3", 2)
 
@@ -311,45 +307,45 @@ func TestFixedKeyProvider_RemovedKeyThenSkipsDisabledTail(t *testing.T) {
 	// going and wraps around to k1.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k4"}, "k4"), objects.APIKeyStrategyFixed)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k1", p.Get(context.Background()))
+	require.Equal(t, "k1", NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
 func TestFixedKeyProvider_AllDisabledFallsBackToFirst(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2"}), objects.APIKeyStrategyFixed)
-	p, state := newFixedProvider(t, svc, ch)
+	_, state := newFixedProvider(t, svc, ch)
 
 	setFixedCursor(state, "k2", 1)
 
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2"}, "k1", "k2"), objects.APIKeyStrategyFixed)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k1", p.Get(context.Background()))
+	require.Equal(t, "k1", NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
-func TestFixedKeyProvider_UsesFreshestSnapshot(t *testing.T) {
+func TestFixedKeyProvider_UsesItsOwnSnapshot(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategyFixed)
 	p, _ := newFixedProvider(t, svc, ch)
 
 	require.Equal(t, "k1", p.Get(context.Background()))
 
-	// A key disabled while the request is in flight must be honoured by the next
-	// selection even though this provider was built from the older snapshot.
+	// The provider keeps the snapshot it was built with. A rebuild must not make
+	// an in-flight provider pick a key that belongs to a different channel
+	// generation than the endpoint it is about to call.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}, "k1"), objects.APIKeyStrategyFixed)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
 	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k2", p.Get(context.Background()))
+	require.Equal(t, "k1", p.Get(context.Background()), "the in-flight provider keeps its own snapshot")
+	require.Equal(t, "k2", NewFixedKeyProvider(reloaded).Get(context.Background()), "a rebuilt provider moves on")
 }
 
 func TestFixedKeyProvider_KeepsKeyWhenTheArrayShifts(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategyFixed)
-	p, state := newFixedProvider(t, svc, ch)
+	_, state := newFixedProvider(t, svc, ch)
 
 	setFixedCursor(state, "k2", 1)
 
@@ -357,9 +353,8 @@ func TestFixedKeyProvider_KeepsKeyWhenTheArrayShifts(t *testing.T) {
 	// selectable, so it keeps being used.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k0", "k1", "k2", "k3"}), objects.APIKeyStrategyFixed)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k2", p.Get(context.Background()))
+	require.Equal(t, "k2", NewFixedKeyProvider(reloaded).Get(context.Background()))
 }
 
 func TestFixedKeyProvider_ForgetsStateOnChannelDeletion(t *testing.T) {
@@ -479,7 +474,7 @@ func TestRoundRobinSuccessKeyProvider_UnknownChannelIsIgnored(t *testing.T) {
 func TestRoundRobinSuccessKeyProvider_ResetsWhenCursorKeyIsDisabled(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategyRoundRobinSuccess, 5)
-	p, state := newRoundRobinSuccessProvider(t, svc, ch)
+	_, state := newRoundRobinSuccessProvider(t, svc, ch)
 
 	setRoundRobinSuccessCursor(state, "k1", 0, 3)
 
@@ -487,9 +482,8 @@ func TestRoundRobinSuccessKeyProvider_ResetsWhenCursorKeyIsDisabled(t *testing.T
 	// discarded.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}, "k1"), objects.APIKeyStrategyRoundRobinSuccess, 5)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k2", p.Get(context.Background()))
+	require.Equal(t, "k2", NewRoundRobinSuccessKeyProvider(reloaded).Get(context.Background()))
 
 	state.mu.Lock()
 	count := state.rrSuccessCount
@@ -501,29 +495,31 @@ func TestRoundRobinSuccessKeyProvider_ResetsWhenCursorKeyIsDisabled(t *testing.T
 func TestRoundRobinSuccessKeyProvider_RemovedCursorKeyContinuesForward(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3", "k4"}), objects.APIKeyStrategyRoundRobinSuccess, 1)
-	p, state := newRoundRobinSuccessProvider(t, svc, ch)
+	_, state := newRoundRobinSuccessProvider(t, svc, ch)
 
 	setRoundRobinSuccessCursor(state, "k3", 2, 0)
 
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k4"}), objects.APIKeyStrategyRoundRobinSuccess, 1)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
-	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k4", p.Get(context.Background()))
+	require.Equal(t, "k4", NewRoundRobinSuccessKeyProvider(reloaded).Get(context.Background()))
 }
 
-func TestRoundRobinSuccessKeyProvider_UsesFreshestSnapshot(t *testing.T) {
+func TestRoundRobinSuccessKeyProvider_UsesItsOwnSnapshot(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategyRoundRobinSuccess, 1)
 	p, _ := newRoundRobinSuccessProvider(t, svc, ch)
 
 	require.Equal(t, "k1", p.Get(context.Background()))
 
+	// Same as the fixed strategy: an in-flight provider must not be steered onto
+	// another channel generation by a rebuild.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}, "k1"), objects.APIKeyStrategyRoundRobinSuccess, 1)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
 	svc.publishAPIKeySelectionSnapshot(reloaded)
 
-	require.Equal(t, "k2", p.Get(context.Background()))
+	require.Equal(t, "k1", p.Get(context.Background()), "the in-flight provider keeps its own snapshot")
+	require.Equal(t, "k2", NewRoundRobinSuccessKeyProvider(reloaded).Get(context.Background()), "a rebuilt provider moves on")
 }
 
 func TestRoundRobinSuccessKeyProvider_AdvancesPastDisabledKeys(t *testing.T) {
@@ -534,7 +530,8 @@ func TestRoundRobinSuccessKeyProvider_AdvancesPastDisabledKeys(t *testing.T) {
 	require.Equal(t, "k1", p.Get(context.Background()))
 
 	// k2 and k3 are disabled before k1 finishes its turn: the cursor must land on
-	// k4 rather than on a disabled key.
+	// k4 rather than on a disabled key. The success report reads the published
+	// snapshot, so the rebuild has to be published.
 	reloaded := withStrategy(
 		newKeyChannel(1, []string{"k1", "k2", "k3", "k4"}, "k2", "k3"),
 		objects.APIKeyStrategyRoundRobinSuccess,
@@ -545,7 +542,7 @@ func TestRoundRobinSuccessKeyProvider_AdvancesPastDisabledKeys(t *testing.T) {
 
 	svc.onAPIKeySuccess(1, "k1")
 
-	require.Equal(t, "k4", p.Get(context.Background()))
+	require.Equal(t, "k4", NewRoundRobinSuccessKeyProvider(reloaded).Get(context.Background()))
 }
 
 // --- F. concurrency ---

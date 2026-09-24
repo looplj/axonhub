@@ -28,8 +28,10 @@ type apiKeySelectionState struct {
 	// report uses it to decide whether this channel counts successes at all.
 	strategy string
 
-	// snapshot points at the freshest *Channel of this channel. Selections read
-	// through it so a key disabled mid-request is honoured by the next call.
+	// snapshot points at the freshest *Channel of this channel, published by the
+	// enabled-channel cache. Providers do not select from it (each one keeps the
+	// channel it was built with); the success report reads it to know the key
+	// array the round_robin_success cursor should advance through.
 	snapshot atomic.Pointer[Channel]
 
 	// rrCounter is the round_robin request counter. It is kept here, not in the
@@ -93,15 +95,15 @@ func (svc *ChannelService) apiKeySelectionStateFor(ch *Channel) *apiKeySelection
 	return state
 }
 
-// publishAPIKeySelectionSnapshot makes ch the snapshot the shared state reads
-// from, so an in-flight request sees the key set of the channel that is actually
-// in service.
+// publishAPIKeySelectionSnapshot records the channel the success report should
+// read its key array from, so a round_robin_success cursor advances over the
+// channels that are actually in service.
 //
 // Only the enabled-channel cache calls this. Other builds — a single channel
 // lookup, the key-test flow (GetChannelWithKey) or endpoint detection — must not
-// overwrite it: they build a channel outside the serving set, and a live request
-// reading their snapshot could pick keys from a channel that was disabled or is
-// only being probed.
+// overwrite it: they build a channel outside the serving set, and a success
+// report reading their key array would move the cursor over keys that are not
+// being served.
 func (svc *ChannelService) publishAPIKeySelectionSnapshot(ch *Channel) {
 	if ch == nil || ch.apiKeyState == nil {
 		return
