@@ -25,6 +25,7 @@ import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { ApiKeyStrategyFields } from './channel-api-key-strategy';
 import { SelectDropdown } from '@/components/select-dropdown';
 import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -2498,6 +2499,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             )}
                           />
                         )}
+
+<ApiKeyStrategyFields
+                        value={apiKeyStrategy}
+                        switchAfter={apiKeyRoundRobinSwitchAfter}
+                        onChange={(value) => setApiKeyStrategy(value)}
+                        onSwitchAfterChange={(value) => setApiKeyRoundRobinSwitchAfter(value)}
+                      />
 
                       {isZenmuxType && (
                         <FormField
