@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { IconCalendar, IconX } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -32,8 +32,8 @@ interface Preset {
 
 /** Quick presets derived from today; earliestDate is the first recorded date on the
  * backend and feeds the allTime preset. */
-function buildPresets(earliestDate?: string | null): Preset[] {
-  const now = new Date();
+function buildPresets(earliestDate?: string | null, todayString = formatDate(new Date())): Preset[] {
+  const now = parseDate(todayString);
   const today = formatDate(now);
 
   const shift = (days: number) => {
@@ -220,7 +220,15 @@ function useRangeSummary(value: TimeRangeValue, presets: Preset[]): string {
  * the per-page TimePeriodSelector. */
 export function TimeRangeFilter({ value, onChange, earliestDate, variant = 'bar', defaultValue }: TimeRangeFilterProps) {
   const { t } = useTranslation();
-  const presets = useMemo(() => buildPresets(earliestDate), [earliestDate]);
+  const [today, setToday] = useState(() => formatDate(new Date()));
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const nextToday = formatDate(new Date());
+      setToday((currentToday) => (currentToday === nextToday ? currentToday : nextToday));
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const presets = useMemo(() => buildPresets(earliestDate, today), [earliestDate, today]);
 
   const activeKey = useMemo(() => {
     const match = presets.find((p) => p.range.startTime === value.startTime && p.range.endTime === value.endTime);
@@ -233,7 +241,7 @@ export function TimeRangeFilter({ value, onChange, earliestDate, variant = 'bar'
     value.timeWindow === defaultValue?.timeWindow;
   const isCustom = defaultValue
     ? !isDefaultValue
-    : !activeKey && (value.startTime !== null || value.endTime !== null);
+    : value.startTime !== null || value.endTime !== null;
   const summary = useRangeSummary(value, presets);
 
   if (variant === 'compact') {

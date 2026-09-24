@@ -417,7 +417,7 @@ func relativeSince(timeWindow *string) (time.Time, bool) {
 // mislabels the first bucket and shifts the sequence far enough to drop the current
 // hour's usage from the response entirely.
 func localHourFloor(t time.Time) time.Time {
-	return time.Date(t.Year(), t.Month(), t.Day(), t.Hour(), 0, 0, 0, t.Location())
+	return t.Add(-time.Duration(t.Minute())*time.Minute - time.Duration(t.Second())*time.Second - time.Duration(t.Nanosecond()))
 }
 
 // parseTimeWindow parses a time window string and returns the start time and a flag indicating
