@@ -89,6 +89,20 @@ func TestBucketSequence(t *testing.T) {
 	})
 }
 
+func TestLocalHourFloorPreservesFallbackOffset(t *testing.T) {
+	newYork, err := time.LoadLocation("America/New_York")
+	assert.NoError(t, err)
+
+	firstOccurrence := time.Date(2026, 11, 1, 1, 30, 0, 0, newYork)
+	secondOccurrence := firstOccurrence.Add(time.Hour)
+	floored := localHourFloor(secondOccurrence)
+
+	assert.Equal(t, secondOccurrence.Add(-30*time.Minute), floored)
+	_, wantOffset := secondOccurrence.Zone()
+	_, gotOffset := floored.Zone()
+	assert.Equal(t, wantOffset, gotOffset)
+}
+
 // A relative window starts on a local wall-clock hour. Truncate(time.Hour) rounds the
 // absolute duration since the zero time, so in a zone whose offset is not a whole hour it
 // lands on :30 instead of :00 — which both mislabels the first bucket and shifts the
