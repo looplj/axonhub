@@ -25,6 +25,10 @@ export const requestExecutionSchema = z.object({
   // requestID: z.string(),
   // channelID: z.number(),
   channel: channelSchema.partial().nullable().optional(),
+  // 1-based position of the API key used within the channel's credential list.
+  // Null for single-key/OAuth channels and for executions recorded before the
+  // field existed.
+  channelAPIKeyIndex: z.number().nullable().optional(),
   modelID: z.string(),
   requestHeaders: z.any().nullable().optional(),
   requestBody: z.any(), // JSONRawMessage

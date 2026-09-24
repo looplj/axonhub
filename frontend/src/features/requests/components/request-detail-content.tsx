@@ -802,6 +802,13 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                               <p className='text-muted-foreground font-mono text-sm'>
                                 {execution.channel?.name || t('requests.columns.unknown')}
                               </p>
+                              {execution.channelAPIKeyIndex != null && (
+                                <div className='text-muted-foreground flex items-center gap-1.5 pt-0.5 text-xs'>
+                                  <Key className='h-3.5 w-3.5 shrink-0' />
+                                  <span>{t('requests.columns.channelAPIKeyIndex')}</span>
+                                  <span className='font-mono'>key{execution.channelAPIKeyIndex}</span>
+                                </div>
+                              )}
                             </div>
                             <div className='bg-background space-y-2 rounded-lg border p-3'>
                               <span className='flex items-center gap-2 text-sm font-medium'>

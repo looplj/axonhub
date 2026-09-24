@@ -16,6 +16,7 @@
   "requests.columns.stream": "Stream",
   "requests.columns.source": "Source",
   "requests.columns.channel": "Channel",
+  "requests.columns.channelAPIKeyIndex": "Key",
   "requests.columns.clientIP": "Client IP",
   "requests.columns.user": "User",
   "requests.columns.apiKey": "API Key",

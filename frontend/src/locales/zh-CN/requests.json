@@ -16,6 +16,7 @@
   "requests.columns.stream": "流式",
   "requests.columns.source": "来源",
   "requests.columns.channel": "渠道",
+  "requests.columns.channelAPIKeyIndex": "密钥",
   "requests.columns.clientIP": "客户端IP",
   "requests.columns.user": "用户",
   "requests.columns.apiKey": "API密钥",

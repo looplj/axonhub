@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -381,6 +382,20 @@ func (s *RequestService) CreateRequestExecution(
 
 	if reasoningEffort := extractOutboundReasoningEffort(channelRequest, format); reasoningEffort != nil {
 		mut = mut.SetReasoningEffort(*reasoningEffort)
+	}
+
+	// Record which key of the channel's credential list served this execution.
+	// The number is derived here, while the credentials are still at hand, rather
+	// than resolved from the stored suffix later: a lookup would drift as soon as
+	// keys are reordered or removed, and it cannot tell two keys with the same
+	// last-4 characters apart. Single-key and OAuth channels have nothing to
+	// disambiguate, so they stay null.
+	if allKeys := channel.Credentials.GetAllAPIKeys(); len(allKeys) > 1 {
+		if usedKey, ok := contexts.GetChannelAPIKey(ctx); ok {
+			if idx := slices.Index(allKeys, usedKey); idx >= 0 {
+				mut = mut.SetChannelAPIKeyIndex(idx + 1)
+			}
+		}
 	}
 
 	if channelRequest.URL != "" {
