@@ -376,7 +376,13 @@ export default function Playground() {
       return;
     }
 
-    if (channelOptions.some((option) => option.value === selectedChannel)) return;
+    if (channelOptions.some((option) => option.value === selectedChannel)) {
+      // 渠道仍可用但模型条目变化时，校准选中的 model，避免提交过期模型
+      if (!isModelGatewaySource && !modelOptions.some((option) => option.value === model)) {
+        setModel(modelOptions[0]?.value ?? '');
+      }
+      return;
+    }
 
     if (isModelGatewaySource) {
       setSelectedChannel(channelOptions[0].value);
@@ -384,7 +390,7 @@ export default function Playground() {
     }
 
     handleChannelChange(channelOptions[0].value);
-  }, [channelOptions, channelsLoading, handleChannelChange, isModelGatewaySource, selectedChannel]);
+  }, [channelOptions, channelsLoading, handleChannelChange, isModelGatewaySource, model, modelOptions, selectedChannel]);
 
   useEffect(() => {
     if (isModelGatewaySource && !model && modelPageModelOptions.length > 0) {
