@@ -832,14 +832,16 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                               <p className='text-muted-foreground font-mono text-sm'>
                                 {execution.channel?.name || t('requests.columns.unknown')}
                               </p>
-                              {execution.channelAPIKeySuffix && (
+                              {(execution.channelAPIKeySuffix || execution.channelAPIKeyIndex != null) && (
                                 <div className='flex items-center gap-1.5 text-xs text-muted-foreground pt-0.5'>
                                   <Key className='h-3.5 w-3.5 shrink-0' />
                                   <span>{t('requests.columns.upstreamApiKey')}</span>
                                   {execution.channelAPIKeyIndex != null && (
                                     <span className='font-mono'>key{execution.channelAPIKeyIndex}</span>
                                   )}
-                                  <span className='font-mono'>••••{execution.channelAPIKeySuffix}</span>
+                                  {execution.channelAPIKeySuffix && (
+                                    <span className='font-mono'>••••{execution.channelAPIKeySuffix}</span>
+                                  )}
                                 </div>
                               )}
                             </div>

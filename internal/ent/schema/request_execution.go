@@ -54,6 +54,7 @@ func (RequestExecution) Fields() []ent.Field {
 			Immutable().
 			Comment("1-based position of the channel API key used for this execution").
 			Annotations(
+				entgql.Directives(forceResolver()),
 				entgql.Skip(entgql.SkipWhereInput),
 			),
 		field.Int("data_storage_id").

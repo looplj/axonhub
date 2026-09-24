@@ -2506,7 +2506,7 @@ type RequestExecutionResolver interface {
 
 	RequestID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error)
 	ChannelID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error)
-
+	ChannelAPIKeyIndex(ctx context.Context, obj *ent.RequestExecution) (*int, error)
 	DataStorageID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error)
 
 	ChannelAPIKeySuffix(ctx context.Context, obj *ent.RequestExecution) (*string, error)
@@ -50458,7 +50458,7 @@ func (ec *executionContext) _RequestExecution_channelAPIKeyIndex(ctx context.Con
 		field,
 		ec.fieldContext_RequestExecution_channelAPIKeyIndex,
 		func(ctx context.Context) (any, error) {
-			return obj.ChannelAPIKeyIndex, nil
+			return ec.resolvers.RequestExecution().ChannelAPIKeyIndex(ctx, obj)
 		},
 		nil,
 		ec.marshalOInt2ᚖint,
@@ -50471,8 +50471,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channelAPIKeyIndex(_ c
 	fc = &graphql.FieldContext{
 		Object:     "RequestExecution",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
 		},
@@ -106032,7 +106032,38 @@ func (ec *executionContext) _RequestExecution(ctx context.Context, sel ast.Selec
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "channelAPIKeyIndex":
-			out.Values[i] = ec._RequestExecution_channelAPIKeyIndex(ctx, field, obj)
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._RequestExecution_channelAPIKeyIndex(ctx, field, obj)
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "dataStorageID":
 			field := field
 

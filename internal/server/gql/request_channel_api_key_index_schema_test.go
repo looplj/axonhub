@@ -6,6 +6,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
+
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 // The request-log pages build their queries as strings in TypeScript, so
@@ -171,4 +177,50 @@ func TestFrontendRequestQueries_ExposeChannelAPIKeyIndex(t *testing.T) {
 // requestExecutionSchemaSources exposes the embedded SDL for query validation.
 func requestExecutionSchemaSources() []*ast.Source {
 	return sources
+}
+
+// TestRequestExecutionResolver_ChannelAPIKeyIndex mirrors the
+// channelAPIKeySuffix resolver test: the recorded position is only disclosed
+// when the caller may read the channel it belongs to.
+func TestRequestExecutionResolver_ChannelAPIKeyIndex(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:req_exec_api_key_index?mode=memory&_fk=1")
+	t.Cleanup(func() { client.Close() })
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+
+	channelEntity, err := client.Channel.Create().
+		SetName("OpenAI Channel").
+		SetType(channel.TypeOpenai).
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{APIKeys: []string{"sk-first-1111", "sk-second-2222"}}).
+		SetSupportedModels([]string{"test-model"}).
+		SetDefaultTestModel("test-model").
+		Save(ctx)
+	require.NoError(t, err)
+
+	index := 2
+	exec := &ent.RequestExecution{
+		ChannelID:          channelEntity.ID,
+		ChannelAPIKeyIndex: &index,
+	}
+
+	resolver := &requestExecutionResolver{&Resolver{client: client}}
+
+	// 1. Authorized context can read the index.
+	got, err := resolver.ChannelAPIKeyIndex(ctx, exec)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+	require.Equal(t, 2, *got)
+
+	// 2. Nil index returns nil.
+	execNoIndex := &ent.RequestExecution{ChannelID: channelEntity.ID}
+	got, err = resolver.ChannelAPIKeyIndex(ctx, execNoIndex)
+	require.NoError(t, err)
+	require.Nil(t, got)
+
+	// 3. Unauthorized context (without channel read permission) gets nil.
+	unauthorizedCtx := ent.NewContext(t.Context(), client)
+	got, err = resolver.ChannelAPIKeyIndex(unauthorizedCtx, exec)
+	require.NoError(t, err)
+	require.Nil(t, got)
 }

@@ -717,6 +717,25 @@ func (r *requestExecutionResolver) ChannelID(ctx context.Context, obj *ent.Reque
 	}, nil
 }
 
+// ChannelAPIKeyIndex is the resolver for the channelAPIKeyIndex field.
+func (r *requestExecutionResolver) ChannelAPIKeyIndex(ctx context.Context, obj *ent.RequestExecution) (*int, error) {
+	if obj.ChannelAPIKeyIndex == nil || obj.ChannelID == 0 {
+		return nil, nil
+	}
+
+	// Mirrors ChannelAPIKeySuffix: the position is only disclosed when the
+	// caller may read the channel it belongs to.
+	ch, err := getNilableChannel(ctx, r.client, obj.ChannelID)
+	if err != nil {
+		return nil, err
+	}
+	if ch == nil {
+		return nil, nil
+	}
+
+	return obj.ChannelAPIKeyIndex, nil
+}
+
 // DataStorageID is the resolver for the dataStorageID field.
 func (r *requestExecutionResolver) DataStorageID(ctx context.Context, obj *ent.RequestExecution) (*objects.GUID, error) {
 	if obj.DataStorageID == 0 {
