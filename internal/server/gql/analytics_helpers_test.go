@@ -13,6 +13,34 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
+func TestQueryAPIKeyStats_ExcludesZeroID(t *testing.T) {
+	resolver, ctx, client := setupTestQueryResolver(t)
+	defer client.Close()
+
+	p, err := client.Project.Create().SetName("p").Save(ctx)
+	require.NoError(t, err)
+	req, err := client.Request.Create().
+		SetProjectID(p.ID).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		Save(ctx)
+	require.NoError(t, err)
+	client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetAPIKeyID(0).
+		SetProjectID(p.ID).
+		SetModelID("gpt-4").
+		SetPromptTokens(100).
+		SetTotalTokens(100).
+		SaveX(ctx)
+
+	stats, err := resolver.queryAPIKeyStats(ctx, &AnalyticsFilter{}, nil, false, time.UTC)
+	require.NoError(t, err)
+	require.Empty(t, stats, "zero is the legacy sentinel for a missing API key, not a key ID")
+}
+
 // An aggregate over an empty request_executions table still returns one row,
 // so the counts must come back as zero rather than an error.
 func TestQueryExecutionSuccessCounts_EmptyTable(t *testing.T) {
