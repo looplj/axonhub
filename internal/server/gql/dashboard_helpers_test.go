@@ -93,8 +93,7 @@ func TestLocalHourFloorPreservesFallbackOffset(t *testing.T) {
 	newYork, err := time.LoadLocation("America/New_York")
 	assert.NoError(t, err)
 
-	firstOccurrence := time.Date(2026, 11, 1, 1, 30, 0, 0, newYork)
-	secondOccurrence := firstOccurrence.Add(time.Hour)
+	secondOccurrence := time.Date(2026, 11, 1, 6, 30, 0, 0, time.UTC).In(newYork)
 	floored := localHourFloor(secondOccurrence)
 
 	assert.Equal(t, secondOccurrence.Add(-30*time.Minute), floored)
