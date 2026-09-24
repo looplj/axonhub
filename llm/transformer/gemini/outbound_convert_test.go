@@ -1018,6 +1018,35 @@ func TestConvertLLMToGeminiRequest_Tools(t *testing.T) {
 			},
 		},
 		{
+			name: "request with strict function tool",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Test"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeFunction,
+						Function: llm.Function{
+							Name:       "get_weather",
+							Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
+							Strict:     lo.ToPtr(true),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.ToolConfig)
+				require.NotNil(t, result.ToolConfig.FunctionCallingConfig)
+				require.Equal(t, "VALIDATED", result.ToolConfig.FunctionCallingConfig.Mode)
+			},
+		},
+		{
 			name: "request with tool choice none",
 			input: &llm.Request{
 				Messages: []llm.Message{

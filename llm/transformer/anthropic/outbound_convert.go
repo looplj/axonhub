@@ -282,6 +282,7 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 				Name:         tool.Function.Name,
 				Description:  tool.Function.Description,
 				InputSchema:  tool.Function.Parameters,
+				Strict:       tool.Function.Strict,
 				CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
 			})
 		case llm.ToolTypeWebSearch:
