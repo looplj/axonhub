@@ -12,8 +12,10 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/gql/qb"
@@ -235,6 +237,44 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 // AnalyticsDimensionStats is the resolver for the analyticsDimensionStats field.
 func (r *queryResolver) AnalyticsDimensionStats(ctx context.Context, filter *AnalyticsFilter, dimension string) ([]*AnalyticsDimensionStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	if dimension == "user" {
+		currentUser, ok := contexts.GetUser(ctx)
+		if !ok || currentUser == nil {
+			return nil, fmt.Errorf("user not found in context")
+		}
+		if !currentUser.IsOwner {
+			var projectIDs []*objects.GUID
+			if filter != nil {
+				projectIDs = filter.ProjectIDs
+			}
+			if len(projectIDs) == 0 {
+				projectID, ok := contexts.GetProjectID(ctx)
+				if !ok {
+					return nil, fmt.Errorf("project ID not found in context")
+				}
+				projectIDs = []*objects.GUID{{ID: projectID}}
+				if filter == nil {
+					filter = &AnalyticsFilter{}
+				} else {
+					copy := *filter
+					filter = &copy
+				}
+				filter.ProjectIDs = projectIDs
+			}
+			for _, projectID := range projectIDs {
+				owned := false
+				for _, membership := range currentUser.Edges.ProjectUsers {
+					if membership.ProjectID == projectID.ID && membership.IsOwner {
+						owned = true
+						break
+					}
+				}
+				if !owned {
+					return nil, fmt.Errorf("permission denied: only project owners can view usage statistics")
+				}
+			}
+		}
+	}
 	apiKeyIDs, hasUserFilter := r.resolveFilterAPIKeyIDs(ctx, filter)
 	loc := r.systemService.TimeLocation(ctx)
 
