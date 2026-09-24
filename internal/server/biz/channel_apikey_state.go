@@ -104,12 +104,23 @@ func (svc *ChannelService) apiKeySelectionStateFor(ch *Channel) *apiKeySelection
 // overwrite it: they build a channel outside the serving set, and a success
 // report reading their key array would move the cursor over keys that are not
 // being served.
+//
+// The store takes st.mu, the same mutex that guards the cursor updates. A
+// provider decides whether it still owns the cursor by comparing the snapshot
+// (isServing) and then writes it; if publication were not serialized with that
+// pair, a reload could land in between and the provider would write a cursor
+// computed from a key array that is no longer served.
 func (svc *ChannelService) publishAPIKeySelectionSnapshot(ch *Channel) {
 	if ch == nil || ch.apiKeyState == nil {
 		return
 	}
 
-	ch.apiKeyState.snapshot.Store(ch)
+	state := ch.apiKeyState
+
+	state.mu.Lock()
+	defer state.mu.Unlock()
+
+	state.snapshot.Store(ch)
 }
 
 // apiKeySelectionState returns the shared state of a channel, or nil when the
