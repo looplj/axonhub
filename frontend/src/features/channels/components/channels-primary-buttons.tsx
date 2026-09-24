@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { PermissionGuard } from '@/components/permission-guard';
-import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
+import { revealFocusedHorizontalButton, useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { useChannels } from '../context/channels-context';
 
 export function ChannelsPrimaryButtons() {
@@ -13,7 +13,7 @@ export function ChannelsPrimaryButtons() {
   const scrollRef = useHorizontalScroll<HTMLDivElement>();
 
   return (
-    <div ref={scrollRef} className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
+    <div ref={scrollRef} onFocusCapture={revealFocusedHorizontalButton} data-testid='channel-actions-scroller' className='flex min-w-0 max-w-full gap-2 overflow-x-auto p-1'>
       <PermissionGuard requiredSystemScope='read_settings'>
         {/* Load Balancing Strategy - navigate to system retry configuration */}
         <Button

@@ -206,6 +206,8 @@
   "common.success.signedOut": "Successfully signed out!",
   "common.success.userDeleted": "User deleted successfully",
   "common.success.systemUpdated": "System settings updated successfully",
+  "common.pageHeader.expandDescription": "Show more",
+  "common.pageHeader.collapseDescription": "Show less",
   "initialization.title": "Initialize System",
   "initialization.description": "Welcome to AxonHub! Please set up the system by creating an owner account.",
   "initialization.form.ownerEmail": "Owner Email",

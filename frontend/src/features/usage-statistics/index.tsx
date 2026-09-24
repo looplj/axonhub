@@ -2,8 +2,8 @@ import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker, type DateTimeRangeValue } from '@/components/date-range-picker';
 import { buildDateRangeWhereClause } from '@/utils/date-range';
@@ -80,15 +80,8 @@ export default function UsageStatisticsPage() {
   }
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden'>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('sidebar.items.usageStats')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('usageStats.description')}</p>
-          </div>
-        </div>
-      </Header>
+    <>
+      <PageHeader title={t('sidebar.items.usageStats')} description={t('usageStats.description')} />
 
       <Main fixed className='flex flex-col'>
         <div className='flex items-center justify-between gap-4 mb-4 flex-shrink-0'>
@@ -158,7 +151,7 @@ export default function UsageStatisticsPage() {
           )}
         </div>
       </Main>
-    </div>
+    </>
   );
 }
 
