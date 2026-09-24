@@ -25,6 +25,15 @@ func TestReadHTTPRequest_NoContentEncoding(t *testing.T) {
 	assert.Equal(t, "", got.Headers.Get("Content-Encoding"))
 }
 
+func TestReadHTTPRequest_UserAgent(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(nil))
+	req.Header.Set("User-Agent", "axonhub-test/1.0")
+
+	got, err := ReadHTTPRequest(req)
+	require.NoError(t, err)
+	assert.Equal(t, "axonhub-test/1.0", got.UserAgent)
+}
+
 func TestReadHTTPRequest_IdentityEncoding(t *testing.T) {
 	body := []byte(`{"model":"gpt-4","messages":[{"role":"user","content":"hello"}]}`)
 	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(body))
@@ -259,6 +268,38 @@ func TestReadHTTPRequest_EmptyBodyWithContentEncoding(t *testing.T) {
 	assert.Empty(t, got.Body)
 }
 
+func TestReadHTTPRequest_RejectsOversizedRawBody(t *testing.T) {
+	originalLimit := maxRequestBodySize
+	maxRequestBodySize = 32
+	t.Cleanup(func() { maxRequestBodySize = originalLimit })
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(bytes.Repeat([]byte("a"), maxRequestBodySize+1)))
+
+	_, err := ReadHTTPRequest(req)
+
+	require.ErrorIs(t, err, ErrRequestBodyTooLarge)
+}
+
+func TestReadHTTPRequest_RejectsOversizedDecodedBody(t *testing.T) {
+	originalLimit := maxRequestBodySize
+	maxRequestBodySize = 32
+	t.Cleanup(func() { maxRequestBodySize = originalLimit })
+
+	originalBody := bytes.Repeat([]byte("a"), maxRequestBodySize+1)
+	var compressed bytes.Buffer
+	writer := gzip.NewWriter(&compressed)
+	_, err := writer.Write(originalBody)
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", bytes.NewReader(compressed.Bytes()))
+	req.Header.Set("Content-Encoding", "gzip")
+
+	_, err = ReadHTTPRequest(req)
+
+	require.ErrorIs(t, err, ErrRequestBodyTooLarge)
+}
+
 func TestDecodeRequestBody_NoEncoding(t *testing.T) {
 	body := []byte(`{"test":"data"}`)
 	headers := http.Header{}
@@ -348,4 +389,28 @@ func TestMergeHTTPHeaders_AcceptNotOverridden(t *testing.T) {
 	merged := MergeHTTPHeaders(dest, src)
 	assert.Equal(t, "*/*", merged.Get("Accept"))
 	assert.Equal(t, "client-value", merged.Get("X-Custom"))
+}
+
+func TestMergeHTTPHeaders_UserAgentNotMerged(t *testing.T) {
+	// The User-Agent identifies the client (e.g. codex_cli_rs/...); merging it
+	// into the outbound request would clobber a provider-required UA set by the
+	// outbound transformer (e.g. GitHubCopilotChat for Copilot channels) before
+	// the pass-through middleware can apply the configured policy.
+	dest := http.Header{}
+	dest.Set("User-Agent", "GitHubCopilotChat/0.26.7")
+
+	src := http.Header{}
+	src.Set("User-Agent", "codex_cli_rs/1.2.3")
+	src.Set("X-Custom", "client-value")
+
+	merged := MergeHTTPHeaders(dest, src)
+	assert.Equal(t, "GitHubCopilotChat/0.26.7", merged.Get("User-Agent"))
+	assert.Equal(t, "client-value", merged.Get("X-Custom"))
+
+	// A transformer that set no UA must not receive the client UA either; the
+	// pass-through middleware owns client-UA forwarding.
+	emptyDest := http.Header{}
+
+	merged = MergeHTTPHeaders(emptyDest, src)
+	assert.Empty(t, merged.Get("User-Agent"))
 }

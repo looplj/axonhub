@@ -41,14 +41,17 @@ func newVideoServiceFixture(t *testing.T, channelType channel.Type, baseURL stri
 	client := enttest.NewEntClient(t, "sqlite3", "file:"+strings.ReplaceAll(t.Name(), "/", "_")+"?mode=memory&_fk=0")
 	t.Cleanup(func() { client.Close() })
 	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
-	channelEntity, err := client.Channel.Create().
+	channelCreate := client.Channel.Create().
 		SetName(t.Name()).
 		SetType(channelType).
 		SetBaseURL(baseURL).
 		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
 		SetSupportedModels([]string{"video-model"}).
-		SetDefaultTestModel("video-model").
-		Save(ctx)
+		SetDefaultTestModel("video-model")
+	if isZenmuxChannelType(channelType) {
+		channelCreate.SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatZenmuxVideo.String()}})
+	}
+	channelEntity, err := channelCreate.Save(ctx)
 	require.NoError(t, err)
 
 	channelService := NewChannelServiceForTest(client)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -256,38 +257,6 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		return QuotaData{}, fmt.Errorf("failed to parse codex usage response: %w", err)
 	}
 
-	// Normalize status
-	normalizedStatus := "unknown"
-
-	var (
-		nextResetAt              *time.Time
-		primaryWindowUsedPercent *float64
-	)
-
-	if response.RateLimit != nil {
-		if response.RateLimit.LimitReached != nil && *response.RateLimit.LimitReached {
-			normalizedStatus = "exhausted"
-		} else if response.RateLimit.Allowed != nil && !*response.RateLimit.Allowed {
-			normalizedStatus = "exhausted"
-		} else {
-			normalizedStatus = "available"
-
-			// Check for warning state (primary window utilization >= 80%)
-			if response.RateLimit.PrimaryWindow != nil && response.RateLimit.PrimaryWindow.UsedPercent != nil {
-				primaryWindowUsedPercent = response.RateLimit.PrimaryWindow.UsedPercent
-				if *primaryWindowUsedPercent >= 80.0 {
-					normalizedStatus = "warning"
-				}
-			}
-
-			// Extract next reset from primary window
-			if response.RateLimit.PrimaryWindow != nil && response.RateLimit.PrimaryWindow.ResetAt != nil && *response.RateLimit.PrimaryWindow.ResetAt > 0 {
-				t := time.Unix(*response.RateLimit.PrimaryWindow.ResetAt, 0)
-				nextResetAt = &t
-			}
-		}
-	}
-
 	// Convert to raw data map
 	rawData := map[string]any{
 		"plan_type": response.PlanType,
@@ -301,35 +270,150 @@ func (c *CodexQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		rawData["code_review_rate_limit"] = convertRateLimitToMap(response.CodeReviewRateLimit)
 	}
 
-	usageRatio := 0.0
-	if normalizedStatus == "exhausted" {
-		usageRatio = 1.0
+	now := time.Now()
+	limits := make([]QuotaLimitStatus, 0, 2)
+	if response.RateLimit != nil {
+		rateLimitExhausted := codexRateLimitExhausted(response.RateLimit)
+		windows := []struct {
+			name  string
+			value *CodeUsageWindow
+		}{
+			{name: QuotaWindowPrimary, value: response.RateLimit.PrimaryWindow},
+			{name: QuotaWindowSecondary, value: response.RateLimit.SecondaryWindow},
+		}
+
+		for _, candidate := range windows {
+			limit, ok := buildCodexQuotaLimit(candidate.name, candidate.value, rateLimitExhausted, now)
+			if ok {
+				limits = append(limits, limit)
+			}
+		}
 	}
 
-	if primaryWindowUsedPercent != nil {
-		usageRatio = *primaryWindowUsedPercent / 100.0
-	}
+	normalizedStatus := codexAggregateStatus(response.RateLimit, limits)
+	nextResetAt := codexEarliestFutureReset(limits, now)
 
-	// The API reports how long the primary window lasts, so the period it
-	// covers can be pinned down exactly.
-	var primaryWindow time.Duration
-	if response.RateLimit != nil && response.RateLimit.PrimaryWindow != nil && response.RateLimit.PrimaryWindow.LimitWindowSeconds != nil {
-		primaryWindow = time.Duration(*response.RateLimit.PrimaryWindow.LimitWindowSeconds) * time.Second
-	}
-
-	limits := []QuotaLimitStatus{
-		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt).
-			WithWindow(QuotaWindowPrimary, primaryWindow),
-	}
-
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       normalizedStatus,
 		ProviderType: "codex",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
-	}, nil
+	}), nil
+}
+
+func codexRateLimitExhausted(rateLimit *CodeRateLimitInfo) bool {
+	return rateLimit.LimitReached != nil && *rateLimit.LimitReached ||
+		(rateLimit.Allowed != nil && !*rateLimit.Allowed)
+}
+
+func buildCodexQuotaLimit(name string, window *CodeUsageWindow, rateLimitExhausted bool, now time.Time) (QuotaLimitStatus, bool) {
+	if window == nil {
+		return QuotaLimitStatus{}, false
+	}
+
+	duration, ok := codexWindowDuration(window.LimitWindowSeconds)
+	if !ok || window.UsedPercent != nil && (math.IsNaN(*window.UsedPercent) || math.IsInf(*window.UsedPercent, 0) || *window.UsedPercent < 0) {
+		return QuotaLimitStatus{}, false
+	}
+
+	usageRatio := 0.0
+	status := "available"
+	if window.UsedPercent != nil {
+		usageRatio = min(*window.UsedPercent/100, 1)
+		if usageRatio >= 1 {
+			status = "exhausted"
+		} else if usageRatio >= WarningThresholdRatio {
+			status = "warning"
+		}
+	}
+
+	if rateLimitExhausted {
+		status = "exhausted"
+		usageRatio = 1
+	}
+
+	resetAt := codexWindowResetAt(window, now)
+	label := NormalizeQuotaWindowLabel(duration)
+	if label == "" {
+		label = name
+	}
+
+	return NewTokenLimitStatus(status, usageRatio, resetAt).WithWindow(label, duration), true
+}
+
+func codexWindowDuration(seconds *int) (time.Duration, bool) {
+	if seconds == nil {
+		return 0, true
+	}
+
+	const maxDurationSeconds = int64(1<<63-1) / int64(time.Second)
+	if *seconds <= 0 || int64(*seconds) > maxDurationSeconds {
+		return 0, false
+	}
+
+	return time.Duration(*seconds) * time.Second, true
+}
+
+func codexWindowResetAt(window *CodeUsageWindow, now time.Time) *time.Time {
+	if window.ResetAt != nil && *window.ResetAt > 0 {
+		resetAt := time.Unix(*window.ResetAt, 0)
+		return &resetAt
+	}
+
+	if resetAfter, ok := codexWindowDuration(window.ResetAfterSeconds); ok && resetAfter > 0 {
+		resetAt := now.Add(resetAfter)
+		return &resetAt
+	}
+
+	return nil
+}
+
+func codexAggregateStatus(rateLimit *CodeRateLimitInfo, limits []QuotaLimitStatus) string {
+	status := "unknown"
+	if rateLimit != nil && rateLimit.Allowed != nil && *rateLimit.Allowed {
+		status = "available"
+	}
+	if rateLimit != nil && codexRateLimitExhausted(rateLimit) {
+		status = "exhausted"
+	}
+
+	for _, limit := range limits {
+		if codexStatusRank(limit.Status) > codexStatusRank(status) {
+			status = limit.Status
+		}
+	}
+
+	return status
+}
+
+func codexStatusRank(status string) int {
+	switch status {
+	case "exhausted":
+		return 3
+	case "warning":
+		return 2
+	case "available":
+		return 1
+	default:
+		return 0
+	}
+}
+
+func codexEarliestFutureReset(limits []QuotaLimitStatus, now time.Time) *time.Time {
+	var earliest *time.Time
+	for _, limit := range limits {
+		if limit.NextResetAt == nil || !limit.NextResetAt.After(now) {
+			continue
+		}
+		if earliest == nil || limit.NextResetAt.Before(*earliest) {
+			resetAt := *limit.NextResetAt
+			earliest = &resetAt
+		}
+	}
+
+	return earliest
 }
 
 func (c *CodexQuotaChecker) SupportsChannel(ch *ent.Channel) bool {

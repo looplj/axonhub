@@ -130,6 +130,7 @@ export function mergeChannelSettingsForUpdate(
     providerQuota: pick('providerQuota', existing?.providerQuota ?? null),
     apiKeyStrategy: pick('apiKeyStrategy', existing?.apiKeyStrategy ?? null),
     apiKeyRoundRobinSwitchAfter: pick('apiKeyRoundRobinSwitchAfter', existing?.apiKeyRoundRobinSwitchAfter ?? null),
+    quotaRoutingMode: pick('quotaRoutingMode', existing?.quotaRoutingMode ?? undefined),
   };
 }
 

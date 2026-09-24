@@ -3,6 +3,8 @@ package objects
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -260,18 +262,25 @@ type ChannelSettings struct {
 	// options. Fields are sensitive (e.g. auth cookies) and only exposed to
 	// operators holding channel write permission.
 	ProviderQuota *ChannelProviderQuotaSettings `json:"providerQuota,omitempty"`
+
+	QuotaRoutingMode QuotaRoutingMode `json:"quotaRoutingMode,omitempty"`
 }
 
 // ChannelProviderQuotaSettings groups per-provider quota collection settings.
 type ChannelProviderQuotaSettings struct {
 	// CommandCode holds the quota collection settings for Command Code channels.
 	CommandCode *CommandCodeQuotaSettings `json:"commandCode,omitempty"`
+
+	// Ollama holds the quota collection settings for Ollama Cloud channels.
+	Ollama *OllamaQuotaSettings `json:"ollama,omitempty"`
 }
 
-// CommandCodeQuotaSettings holds the credentials used to query the Command Code
-// account quota. AuthCookie is the commandcode.ai session cookie (a
-// "__Secure-commandcode_prod_.session_token" style value) sent to the internal
-// billing endpoints.
+// CommandCodeQuotaSettings holds the fallback credential used to query the
+// Command Code account quota. Quota is normally read with the channel API key
+// (the /alpha/billing/* endpoints, the same key the official CLI uses);
+// AuthCookie is only used when that key cannot reach the billing API, and is
+// the commandcode.ai session cookie (a "__Secure-commandcode_prod_.session_token"
+// style value) sent to the Studio-wide internal billing endpoints.
 type CommandCodeQuotaSettings struct {
 	AuthCookie string `json:"authCookie,omitempty"`
 }
@@ -321,6 +330,21 @@ func IsValidAPIKeyStrategy(value string) bool {
 	default:
 		return false
 	}
+}
+
+// OllamaQuotaSettings holds the credentials used to query the Ollama Cloud
+// account quota. AuthCookie is the ollama.com Web session cookie (a
+// "__Secure-session=..." value) sent to the Plan & Billing settings page.
+type OllamaQuotaSettings struct {
+	AuthCookie string `json:"authCookie,omitempty"`
+}
+
+// String redacts the auth cookie so settings never leak it into logs.
+func (s OllamaQuotaSettings) String() string {
+	if s.AuthCookie == "" {
+		return "OllamaQuotaSettings{AuthCookie: \"\"}"
+	}
+	return "OllamaQuotaSettings{AuthCookie: <redacted>}"
 }
 
 type RetryableErrorPattern struct {
@@ -537,13 +561,70 @@ const (
 	CapabilityPolicyForbid    CapabilityPolicy = "forbid"
 )
 
+type APIKeyAutoDisableMode string
+
+const (
+	APIKeyAutoDisableModeInherit APIKeyAutoDisableMode = "inherit"
+	APIKeyAutoDisableModeCustom  APIKeyAutoDisableMode = "custom"
+	APIKeyAutoDisableModeOff     APIKeyAutoDisableMode = "off"
+)
+
+// MarshalGQL writes a GraphQL enum value. The zero value is unset and must be
+// null; an empty string is not a valid APIKeyAutoDisableMode.
+func (e APIKeyAutoDisableMode) MarshalGQL(w io.Writer) {
+	if e == "" {
+		_, _ = io.WriteString(w, "null")
+		return
+	}
+	_, _ = io.WriteString(w, strconv.Quote(string(e)))
+}
+
+// UnmarshalGQL reads a GraphQL enum or null. Null stays the unset zero value.
+func (e *APIKeyAutoDisableMode) UnmarshalGQL(v any) error {
+	if v == nil {
+		*e = ""
+		return nil
+	}
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("APIKeyAutoDisableMode must be a string")
+	}
+	*e = APIKeyAutoDisableMode(str)
+	return nil
+}
+
 type ChannelPolicies struct {
 	Stream CapabilityPolicy `json:"stream,omitempty"`
 
+	// APIKeyAutoDisableMode selects how this channel combines with the global
+	// auto-disable rules: inherit (global only), custom (channel first, then
+	// global), or off (neither layer). Empty is inferred from whether rules exist.
+	APIKeyAutoDisableMode APIKeyAutoDisableMode `json:"apiKeyAutoDisableMode,omitempty"`
+
 	// APIKeyAutoDisableRules are the channel's own auto-disable rules. They are
-	// evaluated before the global retry policy and, when one matches, own the
-	// failure outright. Channels without rules fall back to the global policy.
+	// evaluated before the global retry policy when the mode is custom, and the
+	// first match owns the failure. Unmatched custom failures fall back to global.
 	APIKeyAutoDisableRules []APIKeyAutoDisableRule `json:"apiKeyAutoDisableRules,omitempty"`
+}
+
+// EffectiveAutoDisableMode returns the mode used at evaluation time.
+func (p ChannelPolicies) EffectiveAutoDisableMode() APIKeyAutoDisableMode {
+	switch p.APIKeyAutoDisableMode {
+	case APIKeyAutoDisableModeOff:
+		return APIKeyAutoDisableModeOff
+	case APIKeyAutoDisableModeCustom:
+		if len(p.APIKeyAutoDisableRules) == 0 {
+			return APIKeyAutoDisableModeInherit
+		}
+		return APIKeyAutoDisableModeCustom
+	case APIKeyAutoDisableModeInherit:
+		return APIKeyAutoDisableModeInherit
+	default:
+		if len(p.APIKeyAutoDisableRules) > 0 {
+			return APIKeyAutoDisableModeCustom
+		}
+		return APIKeyAutoDisableModeInherit
+	}
 }
 
 type APIKeyAutoDisableAction string

@@ -237,6 +237,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	apiKey := t.config.APIKeyProvider.Get(ctx)
 
 	var tools []Tool
+	namespaceIndexes := make(map[string]int)
 	// Convert tools to Responses API format
 	for _, item := range llmReq.Tools {
 		switch item.Type {
@@ -256,7 +257,16 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			tools = append(tools, tool)
 		case "function":
 			tool := convertFunctionToTool(item)
-			tools = append(tools, tool)
+			if namespace := item.Function.Namespace; namespace != "" {
+				if index, ok := namespaceIndexes[namespace]; ok {
+					tools[index].Tools = append(tools[index].Tools, tool)
+				} else {
+					namespaceIndexes[namespace] = len(tools)
+					tools = append(tools, Tool{Type: "namespace", Name: namespace, Tools: []Tool{tool}})
+				}
+			} else {
+				tools = append(tools, tool)
+			}
 		default:
 			// Skip unsupported tool types
 			continue

@@ -232,7 +232,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
 			mode:                  ThroughputModeRowNumber,
-			wantContains:          []string{"$1", "JOIN requests r ON", "JOIN models m ON", "r.model_id", "model_name", "ROW_NUMBER()", "LIMIT 10"},
+			wantContains:          []string{"$1", "JOIN requests r ON", "LEFT JOIN models m ON", "r.model_id", "model_name", "COALESCE", "ROW_NUMBER()", "LIMIT 10"},
 			wantNotContains:       []string{},
 		},
 		{
@@ -241,7 +241,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
 			mode:                  ThroughputModeRowNumber,
-			wantContains:          []string{"?", "JOIN requests r ON", "JOIN models m ON", "r.model_id", "model_name", "ROW_NUMBER()", "LIMIT 10"},
+			wantContains:          []string{"?", "JOIN requests r ON", "LEFT JOIN models m ON", "r.model_id", "model_name", "COALESCE", "ROW_NUMBER()", "LIMIT 10"},
 			wantNotContains:       []string{"$1"},
 		},
 		{
@@ -250,7 +250,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
 			mode:                  ThroughputModeMaxID,
-			wantContains:          []string{"$1", "JOIN requests r ON", "JOIN models m ON", "r.model_id", "model_name", "MAX(re2.id)", "LIMIT 10"},
+			wantContains:          []string{"$1", "JOIN requests r ON", "LEFT JOIN models m ON", "r.model_id", "model_name", "COALESCE", "MAX(re2.id)", "LIMIT 10"},
 			wantNotContains:       []string{"ROW_NUMBER()"},
 		},
 		{
@@ -259,7 +259,7 @@ func TestBuildThroughputQuery(t *testing.T) {
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
 			mode:                  ThroughputModeMaxID,
-			wantContains:          []string{"?", "JOIN requests r ON", "JOIN models m ON", "r.model_id", "model_name", "MAX(re2.id)", "LIMIT 10"},
+			wantContains:          []string{"?", "JOIN requests r ON", "LEFT JOIN models m ON", "r.model_id", "model_name", "COALESCE", "MAX(re2.id)", "LIMIT 10"},
 			wantNotContains:       []string{"$1", "ROW_NUMBER()"},
 		},
 

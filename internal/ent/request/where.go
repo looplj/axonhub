@@ -120,6 +120,11 @@ func ClientIP(v string) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldClientIP, v))
 }
 
+// UserAgent applies equality check predicate on the "user_agent" field. It's identical to UserAgentEQ.
+func UserAgent(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldUserAgent, v))
+}
+
 // MetricsLatencyMs applies equality check predicate on the "metrics_latency_ms" field. It's identical to MetricsLatencyMsEQ.
 func MetricsLatencyMs(v int64) predicate.Request {
 	return predicate.Request(sql.FieldEQ(FieldMetricsLatencyMs, v))
@@ -580,6 +585,16 @@ func RequestHeadersNotNil() predicate.Request {
 	return predicate.Request(sql.FieldNotNull(FieldRequestHeaders))
 }
 
+// ResponseHeadersIsNil applies the IsNil predicate on the "response_headers" field.
+func ResponseHeadersIsNil() predicate.Request {
+	return predicate.Request(sql.FieldIsNull(FieldResponseHeaders))
+}
+
+// ResponseHeadersNotNil applies the NotNil predicate on the "response_headers" field.
+func ResponseHeadersNotNil() predicate.Request {
+	return predicate.Request(sql.FieldNotNull(FieldResponseHeaders))
+}
+
 // ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.
 func ResponseBodyIsNil() predicate.Request {
 	return predicate.Request(sql.FieldIsNull(FieldResponseBody))
@@ -798,6 +813,71 @@ func ClientIPEqualFold(v string) predicate.Request {
 // ClientIPContainsFold applies the ContainsFold predicate on the "client_ip" field.
 func ClientIPContainsFold(v string) predicate.Request {
 	return predicate.Request(sql.FieldContainsFold(FieldClientIP, v))
+}
+
+// UserAgentEQ applies the EQ predicate on the "user_agent" field.
+func UserAgentEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldEQ(FieldUserAgent, v))
+}
+
+// UserAgentNEQ applies the NEQ predicate on the "user_agent" field.
+func UserAgentNEQ(v string) predicate.Request {
+	return predicate.Request(sql.FieldNEQ(FieldUserAgent, v))
+}
+
+// UserAgentIn applies the In predicate on the "user_agent" field.
+func UserAgentIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldIn(FieldUserAgent, vs...))
+}
+
+// UserAgentNotIn applies the NotIn predicate on the "user_agent" field.
+func UserAgentNotIn(vs ...string) predicate.Request {
+	return predicate.Request(sql.FieldNotIn(FieldUserAgent, vs...))
+}
+
+// UserAgentGT applies the GT predicate on the "user_agent" field.
+func UserAgentGT(v string) predicate.Request {
+	return predicate.Request(sql.FieldGT(FieldUserAgent, v))
+}
+
+// UserAgentGTE applies the GTE predicate on the "user_agent" field.
+func UserAgentGTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldGTE(FieldUserAgent, v))
+}
+
+// UserAgentLT applies the LT predicate on the "user_agent" field.
+func UserAgentLT(v string) predicate.Request {
+	return predicate.Request(sql.FieldLT(FieldUserAgent, v))
+}
+
+// UserAgentLTE applies the LTE predicate on the "user_agent" field.
+func UserAgentLTE(v string) predicate.Request {
+	return predicate.Request(sql.FieldLTE(FieldUserAgent, v))
+}
+
+// UserAgentContains applies the Contains predicate on the "user_agent" field.
+func UserAgentContains(v string) predicate.Request {
+	return predicate.Request(sql.FieldContains(FieldUserAgent, v))
+}
+
+// UserAgentHasPrefix applies the HasPrefix predicate on the "user_agent" field.
+func UserAgentHasPrefix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasPrefix(FieldUserAgent, v))
+}
+
+// UserAgentHasSuffix applies the HasSuffix predicate on the "user_agent" field.
+func UserAgentHasSuffix(v string) predicate.Request {
+	return predicate.Request(sql.FieldHasSuffix(FieldUserAgent, v))
+}
+
+// UserAgentEqualFold applies the EqualFold predicate on the "user_agent" field.
+func UserAgentEqualFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldEqualFold(FieldUserAgent, v))
+}
+
+// UserAgentContainsFold applies the ContainsFold predicate on the "user_agent" field.
+func UserAgentContainsFold(v string) predicate.Request {
+	return predicate.Request(sql.FieldContainsFold(FieldUserAgent, v))
 }
 
 // MetricsLatencyMsEQ applies the EQ predicate on the "metrics_latency_ms" field.

@@ -2,10 +2,12 @@ package provider_quota
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -23,6 +25,13 @@ func commandCodeChannel(cookie string) *ent.Channel {
 				CommandCode: &objects.CommandCodeQuotaSettings{AuthCookie: cookie},
 			},
 		},
+	}
+}
+
+func commandCodeChannelWithKey(apiKey string) *ent.Channel {
+	return &ent.Channel{
+		Type:        channel.TypeCommandcode,
+		Credentials: objects.ChannelCredentials{APIKey: apiKey},
 	}
 }
 
@@ -253,9 +262,59 @@ func TestCommandCodeQuotaChecker_CheckQuota(t *testing.T) {
 func TestCommandCodeQuotaChecker_SupportsChannel(t *testing.T) {
 	checker := &CommandCodeQuotaChecker{}
 	require.True(t, checker.SupportsChannel(commandCodeChannel("commandcode_prod_.session_token=tok")))
+	require.True(t, checker.SupportsChannel(commandCodeChannelWithKey("user_key")))
 	require.False(t, checker.SupportsChannel(commandCodeChannel("")))
+	require.False(t, checker.SupportsChannel(commandCodeChannelWithKey("")))
 	require.False(t, checker.SupportsChannel(&ent.Channel{Type: channel.TypeCommandcode}))
 	require.False(t, checker.SupportsChannel(&ent.Channel{Type: channel.TypeAnthropic}))
+	require.False(t, checker.SupportsChannel(&ent.Channel{
+		Type:        channel.TypeCommandcodeAnthropic,
+		Credentials: objects.ChannelCredentials{},
+	}))
+	require.True(t, checker.SupportsChannel(&ent.Channel{
+		Type:        channel.TypeCommandcodeAnthropic,
+		Credentials: objects.ChannelCredentials{APIKeys: []string{"", "user_key"}},
+	}))
+	// Legacy credentials.apiKey still counts, and OAuth JSON is not an API key.
+	require.True(t, checker.SupportsChannel(&ent.Channel{
+		Type:        channel.TypeCommandcode,
+		Credentials: objects.ChannelCredentials{APIKey: "legacy_key"},
+	}))
+	require.False(t, checker.SupportsChannel(&ent.Channel{
+		Type:        channel.TypeCommandcode,
+		Credentials: objects.ChannelCredentials{APIKey: `{"access_token":"oauth"}`},
+	}))
+	require.True(t, checker.SupportsChannel(&ent.Channel{
+		Type:        channel.TypeCommandcode,
+		Credentials: objects.ChannelCredentials{APIKey: `{"access_token":"oauth"}`, APIKeys: []string{"user_key"}},
+	}))
+}
+
+func TestHasCommandCodeQuotaCredentials(t *testing.T) {
+	require.False(t, HasCommandCodeQuotaCredentials(nil))
+	require.True(t, HasCommandCodeQuotaCredentials(commandCodeChannelWithKey("user_key")))
+	require.True(t, HasCommandCodeQuotaCredentials(commandCodeChannel("commandcode_prod_.session_token=tok")))
+	require.False(t, HasCommandCodeQuotaCredentials(commandCodeChannel("")))
+	// A malformed cookie is still a configured credential: CheckQuota reports the
+	// format error instead of collection being silently disabled.
+	require.True(t, HasCommandCodeQuotaCredentials(commandCodeChannel("_ga=foreign")))
+	// ...and it never masks a usable API key.
+	ch := commandCodeChannel("_ga=foreign")
+	ch.Credentials = objects.ChannelCredentials{APIKey: "user_key"}
+	require.True(t, HasCommandCodeQuotaCredentials(ch))
+	// Whitespace-only values do not count.
+	require.False(t, HasCommandCodeQuotaCredentials(&ent.Channel{
+		Type:        channel.TypeCommandcode,
+		Credentials: objects.ChannelCredentials{APIKeys: []string{"   ", ""}},
+	}))
+	require.False(t, HasCommandCodeQuotaCredentials(&ent.Channel{
+		Type: channel.TypeCommandcode,
+		Settings: &objects.ChannelSettings{
+			ProviderQuota: &objects.ChannelProviderQuotaSettings{
+				CommandCode: &objects.CommandCodeQuotaSettings{AuthCookie: "  "},
+			},
+		},
+	}))
 }
 
 // roundTripServer bridges a plain http.HandlerFunc onto roundTripFunc.
@@ -324,9 +383,16 @@ func TestCommandCodeCamelSnakeAndNestedWindowLimits(t *testing.T) {
 // TestCommandCodeRealWirePayload locks the parser to the actual production
 // payloads observed 2026-09: credits uses monthlyCredits/purchasedCredits and
 // windowLimits.{fiveHour,weekly}.{used,cap,resetAt(ms)}; subscriptions wraps
-// the subscription under "data" with planId/currentPeriodEnd.
+// the subscription under "data" with planId/currentPeriodEnd. Reset epochs are
+// generated relative to now because NormalizeQuotaData drops resets that are
+// already in the past.
 func TestCommandCodeRealWirePayload(t *testing.T) {
-	credits := `{"credits":{"belowThreshold":false,"creditThreshold":0,"monthlyCredits":24.7335198407,"purchasedCredits":0,"premiumMonthlyCredits":0,"opensourceMonthlyCredits":24.7335198407},"windowLimits":{"limited":true,"exceeded":null,"fiveHour":{"used":0.3185113898,"cap":14,"exceeded":false,"resetAt":1788464063798},"weekly":{"used":1.2796088158,"cap":35,"exceeded":false,"resetAt":1789047746618}}}`
+	// Keep resets in the future: normalization clears expired timestamps.
+	// Preserve the wire format and millisecond precision of the captured payload.
+	now := time.Now().Truncate(time.Second)
+	fiveHourReset := now.Add(2*time.Hour + 798*time.Millisecond)
+	weeklyReset := now.Add(3*24*time.Hour + 618*time.Millisecond)
+	credits := fmt.Sprintf(`{"credits":{"belowThreshold":false,"creditThreshold":0,"monthlyCredits":24.7335198407,"purchasedCredits":0,"premiumMonthlyCredits":0,"opensourceMonthlyCredits":24.7335198407},"windowLimits":{"limited":true,"exceeded":null,"fiveHour":{"used":0.3185113898,"cap":14,"exceeded":false,"resetAt":%d},"weekly":{"used":1.2796088158,"cap":35,"exceeded":false,"resetAt":%d}}}`, fiveHourReset.UnixMilli(), weeklyReset.UnixMilli())
 	subs := `{"success":true,"data":{"id":"sub_x","status":"active","planId":"individual-goat","currentPeriodEnd":"2026-09-19T12:02:05.000Z","metadata":{"commandCode":"true"}}}`
 
 	quota, err := parseCommandCodeCredits([]byte(credits), []byte(subs))
@@ -352,20 +418,190 @@ func TestCommandCodeRealWirePayload(t *testing.T) {
 	// Window reset times survive the millisecond epoch → RFC3339 round trip.
 	windows := quota.RawData["windows"].(map[string]any)
 	fiveHour := windows["five_hour"].(map[string]any)
-	require.NotEmpty(t, fiveHour["reset_time"])
+	require.Equal(t, fiveHourReset.Format(time.RFC3339), fiveHour["reset_time"])
 	weekly := windows["weekly"].(map[string]any)
-	require.NotEmpty(t, weekly["reset_time"])
+	require.Equal(t, weeklyReset.Format(time.RFC3339), weekly["reset_time"])
 	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, fiveHourReset.UnixMilli(), quota.NextResetAt.UnixMilli())
 }
 
 func TestCommandCodeGoPlanAllowance(t *testing.T) {
-	credits := `{"credits":{"monthlyCredits":8.7784,"purchasedCredits":0},"windowLimits":{"fiveHour":{"used":1.2216,"cap":3},"weekly":{"used":1.2216,"cap":6}}}`
-	subscriptions := `{"success":true,"data":{"planId":"individual-go","status":"active"}}`
+	// Go-plan payloads observed 2026-09-12: the Go plan has no monthly
+	// limit field, so the $10 denominator comes from the local plan table once
+	// the 5h/weekly caps (3/6) match. Keep resets in the future because
+	// normalization clears expired timestamps, preserving wire millisecond precision.
+	now := time.Now().Truncate(time.Second)
+	fiveHourReset := now.Add(2*time.Hour + 599*time.Millisecond)
+	weeklyReset := now.Add(3*24*time.Hour + 234*time.Millisecond)
+	credits := fmt.Sprintf(`{"credits":{"belowThreshold":false,"creditThreshold":0,"monthlyCredits":9.09842701,"purchasedCredits":0,"freeCredits":0},"windowLimits":{"limited":true,"exceeded":null,"fiveHour":{"used":0.104066178,"cap":3,"exceeded":false,"resetAt":%d},"weekly":{"used":0.90157299,"cap":6,"exceeded":false,"resetAt":%d}}}`, fiveHourReset.UnixMilli(), weeklyReset.UnixMilli())
+	subscriptions := `{"success":true,"data":{"id":"sub_x","status":"active","planId":"individual-go","currentPeriodEnd":"2026-10-10T08:20:47.000Z"}}`
 
 	quota, err := parseCommandCodeCredits([]byte(credits), []byte(subscriptions))
 	require.NoError(t, err)
 	require.Len(t, quota.Limits, 3)
 	require.Equal(t, QuotaWindowMonthly, quota.Limits[2].Window)
-	require.InDelta(t, 0.12216, quota.Limits[2].UsageRatio, 0.0001)
+	require.InDelta(t, 0.09016, quota.Limits[2].UsageRatio, 0.0001)
 	require.InDelta(t, float64(10), quota.RawData["credits"].(map[string]any)["monthly_limit_usd"], 0.0001)
+	require.InDelta(t, 9.09842701, quota.RawData["credits"].(map[string]any)["monthly_remaining_usd"], 0.0001)
+	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, fiveHourReset.UnixMilli(), quota.NextResetAt.UnixMilli())
+}
+
+// TestCommandCodePlanAllowanceRows pins the legacy/re-issued plan split: the
+// wire caps, not the plan id alone, select the monthly denominator.
+func TestCommandCodePlanAllowanceRows(t *testing.T) {
+	parse := func(planID, credits string) QuotaData {
+		t.Helper()
+		subs := `{"success":true,"data":{"planId":"` + planID + `","status":"active"}}`
+		quota, err := parseCommandCodeCredits([]byte(credits), []byte(subs))
+		require.NoError(t, err)
+
+		return quota
+	}
+
+	t.Run("legacy pro keeps the 30 dollar allowance", func(t *testing.T) {
+		credits := `{"credits":{"monthlyCredits":29.5},"windowLimits":{"fiveHour":{"used":1,"cap":6},"weekly":{"used":2,"cap":15}}}`
+		quota := parse("individual-pro", credits)
+		require.Len(t, quota.Limits, 3)
+		require.InDelta(t, float64(30), quota.RawData["credits"].(map[string]any)["monthly_limit_usd"], 0.0001)
+		require.InDelta(t, 0.5/30, quota.Limits[2].UsageRatio, 0.0001)
+	})
+
+	for _, planID := range []string{"individual-pro", "individual-pro-v1"} {
+		t.Run("new pro reports 80 dollars for "+planID, func(t *testing.T) {
+			credits := `{"credits":{"monthlyCredits":60},"windowLimits":{"fiveHour":{"used":2,"cap":16},"weekly":{"used":8,"cap":40}}}`
+			quota := parse(planID, credits)
+			require.Len(t, quota.Limits, 3)
+			require.InDelta(t, float64(80), quota.RawData["credits"].(map[string]any)["monthly_limit_usd"], 0.0001)
+		})
+	}
+
+	t.Run("team pro is matched by label", func(t *testing.T) {
+		credits := `{"credits":{"monthlyCredits":30},"windowLimits":{"fiveHour":{"used":3,"cap":12},"weekly":{"used":6,"cap":24}}}`
+		subs := `{"success":true,"data":{"planId":"","planLabel":"Team Pro","status":"active"}}`
+		quota, err := parseCommandCodeCredits([]byte(credits), []byte(subs))
+		require.NoError(t, err)
+		require.Len(t, quota.Limits, 3)
+		require.InDelta(t, float64(40), quota.RawData["credits"].(map[string]any)["monthly_limit_usd"], 0.0001)
+	})
+
+	t.Run("pay as you go provider plan has no denominator", func(t *testing.T) {
+		credits := `{"credits":{"monthlyCredits":15,"purchasedCredits":0}}`
+		quota := parse("individual-provider", credits)
+		require.Len(t, quota.Limits, 1)
+		require.NotContains(t, quota.RawData["credits"].(map[string]any), "monthly_limit_usd")
+	})
+
+	t.Run("unknown caps degrade to windows without a denominator", func(t *testing.T) {
+		// Plan id known, wire caps drifted: the balance stays visible but no
+		// monthly bar is rendered.
+		credits := `{"credits":{"monthlyCredits":25},"windowLimits":{"fiveHour":{"used":1,"cap":8},"weekly":{"used":2,"cap":20}}}`
+		quota := parse("individual-pro", credits)
+		require.Len(t, quota.Limits, 2)
+		require.NotContains(t, quota.RawData["credits"].(map[string]any), "monthly_limit_usd")
+		require.InDelta(t, 25, quota.RawData["credits"].(map[string]any)["monthly_remaining_usd"], 0.0001)
+	})
+}
+
+// TestCommandCodeQuotaChecker_APIKey covers the /alpha surface the official CLI
+// uses: it authenticates with the account API key, so plans without Provider API
+// access (Go) can still report quota.
+func TestCommandCodeQuotaChecker_APIKey(t *testing.T) {
+	newChecker := func(handler http.HandlerFunc) *CommandCodeQuotaChecker {
+		server := &roundTripServer{handler: handler}
+		hc := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripFunc(server.roundTrip)})
+		return NewCommandCodeQuotaChecker(hc)
+	}
+
+	creditsOK := `{"credits":{"monthlyCredits":9.09842701,"purchasedCredits":0,"freeCredits":0},"windowLimits":{"fiveHour":{"used":0.104066178,"cap":3},"weekly":{"used":0.90157299,"cap":6}}}`
+	subsOK := `{"success":true,"data":{"planId":"individual-go","status":"active"}}`
+
+	t.Run("go plan quota via api key", func(t *testing.T) {
+		var paths []string
+		checker := newChecker(func(w http.ResponseWriter, r *http.Request) {
+			paths = append(paths, r.URL.Path)
+			require.Equal(t, "Bearer user_key", r.Header.Get("Authorization"))
+			require.Empty(t, r.Header.Get("Cookie"))
+			if r.URL.Path == "/alpha/billing/subscriptions" {
+				_, _ = io.WriteString(w, subsOK)
+				return
+			}
+			_, _ = io.WriteString(w, creditsOK)
+		})
+
+		quota, err := checker.CheckQuota(context.Background(), commandCodeChannelWithKey("user_key"))
+		require.NoError(t, err)
+		require.Equal(t, []string{"/alpha/billing/credits", "/alpha/billing/subscriptions"}, paths)
+		require.Equal(t, "available", quota.Status)
+		require.Equal(t, "individual-go", quota.RawData["plan_id"])
+		require.Len(t, quota.Limits, 3)
+		require.InDelta(t, 0.0347, quota.Limits[0].UsageRatio, 0.001)
+		require.InDelta(t, 0.1503, quota.Limits[1].UsageRatio, 0.001)
+		require.InDelta(t, 0.09016, quota.Limits[2].UsageRatio, 0.0001)
+	})
+
+	t.Run("api key wins over an unusable cookie", func(t *testing.T) {
+		var paths []string
+		checker := newChecker(func(w http.ResponseWriter, r *http.Request) {
+			paths = append(paths, r.URL.Path)
+			_, _ = io.WriteString(w, creditsOK)
+		})
+		ch := commandCodeChannel("_ga=foreign-cookie")
+		ch.Credentials = objects.ChannelCredentials{APIKey: "user_key"}
+
+		_, err := checker.CheckQuota(context.Background(), ch)
+		require.NoError(t, err)
+		require.Equal(t, []string{"/alpha/billing/credits", "/alpha/billing/subscriptions"}, paths)
+	})
+
+	t.Run("rejected key falls back to the stored cookie", func(t *testing.T) {
+		var paths []string
+		checker := newChecker(func(w http.ResponseWriter, r *http.Request) {
+			paths = append(paths, r.URL.Path)
+			if strings.HasPrefix(r.URL.Path, "/alpha/") {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			if r.URL.Path == "/internal/billing/subscriptions" {
+				_, _ = io.WriteString(w, subsOK)
+				return
+			}
+			_, _ = io.WriteString(w, creditsOK)
+		})
+		ch := commandCodeChannel("__Secure-commandcode_prod_.session_token=tok")
+		ch.Credentials = objects.ChannelCredentials{APIKey: "surface_only_key"}
+
+		quota, err := checker.CheckQuota(context.Background(), ch)
+		require.NoError(t, err)
+		require.Equal(t, []string{"/alpha/billing/credits", "/internal/billing/credits", "/internal/billing/subscriptions"}, paths)
+		require.Equal(t, "individual-go", quota.RawData["plan_id"])
+	})
+
+	t.Run("rejected key without a cookie surfaces the key error", func(t *testing.T) {
+		checker := newChecker(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+		})
+		_, err := checker.CheckQuota(context.Background(), commandCodeChannelWithKey("bad_key"))
+		require.ErrorIs(t, err, ErrInvalidCredentials)
+		require.Contains(t, err.Error(), "401")
+		require.Contains(t, err.Error(), "invalid API key")
+	})
+
+	t.Run("no key and no cookie errors before any request", func(t *testing.T) {
+		checker := newChecker(func(w http.ResponseWriter, r *http.Request) {
+			t.Error("no request should be made")
+		})
+		_, err := checker.CheckQuota(context.Background(), commandCodeChannelWithKey(""))
+		require.ErrorIs(t, err, ErrInvalidCredentials)
+		require.Contains(t, err.Error(), "no Command Code API key or quota cookie")
+	})
+
+	t.Run("bad api key on a 403 is a credentials error", func(t *testing.T) {
+		checker := newChecker(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusForbidden)
+		})
+		_, err := checker.CheckQuota(context.Background(), commandCodeChannelWithKey("bad_key"))
+		require.ErrorIs(t, err, ErrInvalidCredentials)
+		require.Contains(t, err.Error(), "invalid API key")
+	})
 }

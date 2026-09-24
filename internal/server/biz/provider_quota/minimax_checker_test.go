@@ -86,13 +86,13 @@ func TestMinimax_CheckQuota_WithBoost(t *testing.T) {
 			body := `{
 				"model_remains": [{
 					"model_name": "general",
-					"start_time": 1784304000000,
-					"end_time": 1784322000000,
+					"start_time": 4087929600000,
+					"end_time": 4087947600000,
 					"current_interval_status": 1,
 					"current_interval_remaining_percent": 100,
 					"current_interval_boost_permille": 0,
-					"weekly_start_time": 1783872000000,
-					"weekly_end_time": 1784476800000,
+					"weekly_start_time": 4087324800000,
+					"weekly_end_time": 4088534400000,
 					"current_weekly_status": 1,
 					"current_weekly_remaining_percent": 97,
 					"weekly_boost_permille": 1500
@@ -475,12 +475,12 @@ func TestMinimax_CheckQuota_WithResetTime(t *testing.T) {
 			body := `{
 				"model_remains": [{
 					"model_name": "general",
-					"start_time": 1784304000000,
-					"end_time": 1784322000000,
+					"start_time": 4087929600000,
+					"end_time": 4087947600000,
 					"current_interval_status": 1,
 					"current_interval_remaining_percent": 100,
-					"weekly_start_time": 1783872000000,
-					"weekly_end_time": 1784476800000,
+					"weekly_start_time": 4087324800000,
+					"weekly_end_time": 4088534400000,
 					"current_weekly_status": 1,
 					"current_weekly_remaining_percent": 100
 				}],
@@ -501,6 +501,6 @@ func TestMinimax_CheckQuota_WithResetTime(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NotNil(t, quota.NextResetAt)
-	// end_time=1784322000000 is earlier than weekly_end_time=1784476800000
-	require.Equal(t, int64(1784322000), quota.NextResetAt.Unix())
+	// end_time=4087947600000 is earlier than weekly_end_time=4088534400000
+	require.Equal(t, int64(4087947600), quota.NextResetAt.Unix())
 }

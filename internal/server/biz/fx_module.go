@@ -112,10 +112,20 @@ var Module = fx.Module("biz",
 			},
 		})
 	}),
-	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService, s *scheduler.Scheduler) {
+	fx.Invoke(func(lc fx.Lifecycle, svc *ProviderQuotaService, channelSvc *ChannelService, systemSvc *SystemService, s *scheduler.Scheduler) {
 		lc.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
-				return svc.RegisterScheduledTasks(ctx, s)
+				if err := svc.RegisterScheduledTasks(ctx, s); err != nil {
+					return err
+				}
+				go func() {
+					migrationCtx := context.Background()
+					if err := (&quotaRoutingMigrator{system: systemSvc, channels: channelSvc}).Migrate(migrationCtx); err != nil {
+						log.Error(migrationCtx, "quota routing migration failed", log.Cause(err))
+						return
+					}
+				}()
+				return nil
 			},
 		})
 	}),

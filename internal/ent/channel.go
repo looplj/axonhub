@@ -60,6 +60,8 @@ type Channel struct {
 	ErrorMessage *string `json:"error_message,omitempty"`
 	// Set when the channel was disabled automatically, and cleared when it recovers; distinguishes an automatic disable from an operator one.
 	AutoDisabledAt *time.Time `json:"auto_disabled_at,omitempty"`
+	// When set together with auto_disabled_at, the cleanup task re-enables the channel after this instant. Operator disables leave this null.
+	AutoDisableExpiresAt *time.Time `json:"auto_disable_expires_at,omitempty"`
 	// User-defined remark or note for the channel
 	Remark *string `json:"remark,omitempty"`
 	// Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
@@ -166,7 +168,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldAutoSyncModelPattern, channel.FieldDefaultTestModel, channel.FieldErrorMessage, channel.FieldRemark:
 			values[i] = new(sql.NullString)
-		case channel.FieldCreatedAt, channel.FieldUpdatedAt, channel.FieldAutoDisabledAt:
+		case channel.FieldCreatedAt, channel.FieldUpdatedAt, channel.FieldAutoDisabledAt, channel.FieldAutoDisableExpiresAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -325,6 +327,13 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 				_m.AutoDisabledAt = new(time.Time)
 				*_m.AutoDisabledAt = value.Time
 			}
+		case channel.FieldAutoDisableExpiresAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field auto_disable_expires_at", values[i])
+			} else if value.Valid {
+				_m.AutoDisableExpiresAt = new(time.Time)
+				*_m.AutoDisableExpiresAt = value.Time
+			}
 		case channel.FieldRemark:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field remark", values[i])
@@ -465,6 +474,11 @@ func (_m *Channel) String() string {
 	builder.WriteString(", ")
 	if v := _m.AutoDisabledAt; v != nil {
 		builder.WriteString("auto_disabled_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.AutoDisableExpiresAt; v != nil {
+		builder.WriteString("auto_disable_expires_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")

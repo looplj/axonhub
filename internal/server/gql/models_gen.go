@@ -161,6 +161,12 @@ type BulkImportChannelsInput struct {
 	Channels []*biz.BulkImportChannelItem `json:"channels"`
 }
 
+type BulkUpdateChannelAutoDisablePayload struct {
+	Success  bool           `json:"success"`
+	Updated  int            `json:"updated"`
+	Channels []*ent.Channel `json:"channels"`
+}
+
 type BulkUpdateChannelOrderingInput struct {
 	Channels []*biz.ChannelOrderingItem `json:"channels"`
 }
@@ -463,6 +469,7 @@ type SignInPayload struct {
 type SyncChannelModelsPayload struct {
 	ChannelID       objects.GUID `json:"channelID"`
 	SupportedModels []string     `json:"supportedModels"`
+	ManualModels    []string     `json:"manualModels"`
 }
 
 type SystemModelSettingOnboarding struct {
@@ -625,10 +632,8 @@ type UpdateProviderQuotaCollectionSettingsInput struct {
 	Providers []*ProviderQuotaCollectionProviderInput `json:"providers,omitempty"`
 }
 
-type UpdateQuotaEnforcementSettingsInput struct {
-	Enabled           *bool                     `json:"enabled,omitempty"`
-	Mode              *biz.QuotaEnforcementMode `json:"mode,omitempty"`
-	AllowedChannelIDs []*objects.GUID           `json:"allowedChannelIDs,omitempty"`
+type UpdateQuotaRoutingSettingsInput struct {
+	DefaultMode *objects.QuotaRoutingMode `json:"defaultMode,omitempty"`
 }
 
 type UpdateSecuritySettingsInput struct {

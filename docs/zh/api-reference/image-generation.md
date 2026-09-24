@@ -112,7 +112,8 @@ if (result.data) {
 
 ## 图像编辑（局部重绘）
 
-要编辑图像，请使用 `/v1/images/edits` 端点，使用 multipart/form-data 格式：
+要编辑图像，请使用 `/v1/images/edits` 端点。multipart/form-data 请求必须提供
+`image` 字段；application/json 请求提供 `image` 或 `images` 数组之一即可：
 
 ```python
 import requests
@@ -142,7 +143,8 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 
 | 参数 | 类型 | 描述 | 默认值 |
 |-----------|------|-------------|---------|
-| `image` | file | **必填。** 要编辑的图像。 | - |
+| `image` | file | **multipart/form-data 必填。** 要编辑的图像。application/json 请求提供 `image` 或 `images` 之一即可。 | - |
+| `images` | array | application/json 请求下可替代 `image`：data URL 字符串数组，或 `{"image_url": "<data URL>"}` 对象数组。当 `image` 已提供图时忽略本字段；application/json 请求必须提供 `image` 或 `images` 之一。 | - |
 | `prompt` | string | **必填。** 所需编辑的文本描述。 | - |
 | `mask` | file | 可选的蒙版图像。透明区域表示要编辑的位置。 | - |
 | `model` | string | 要使用的模型。 | `dall-e-2` |

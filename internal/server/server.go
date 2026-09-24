@@ -32,6 +32,14 @@ func New(config Config) *Server {
 
 	engine := gin.New()
 
+	// Gin trusts all proxies by default. Never inherit that unsafe default:
+	// forwarded client IP headers must only be honored for explicitly configured
+	// proxy networks, otherwise IP access controls and API-key IP restrictions
+	// can be bypassed with a forged request header.
+	if err := engine.SetTrustedProxies(config.TrustedProxies); err != nil {
+		panic(fmt.Errorf("invalid server.trusted_proxies: %w", err))
+	}
+
 	// Set max multipart memory for file uploads (e.g., backup restore).
 	// Default 32 MB may be insufficient for large backup files.
 	if config.MaxMultipartMemory > 0 {

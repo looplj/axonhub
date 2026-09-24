@@ -35,32 +35,12 @@ func WithIPBlocklist(systemService *biz.SystemService) gin.HandlerFunc {
 }
 
 func clientIPCandidates(c *gin.Context) []string {
-	candidates := make([]string, 0, 3)
-	seen := make(map[string]struct{}, 3)
-	add := func(value string) {
-		value = strings.TrimSpace(value)
-		if value == "" {
-			return
-		}
-
-		if _, ok := seen[value]; ok {
-			return
-		}
-
-		seen[value] = struct{}{}
-		candidates = append(candidates, value)
+	clientIP := strings.TrimSpace(c.ClientIP())
+	if clientIP == "" {
+		return nil
 	}
 
-	add(c.ClientIP())
-
-	if xff := c.Request.Header.Get("X-Forwarded-For"); xff != "" {
-		before, _, _ := strings.Cut(xff, ",")
-		add(before)
-	}
-
-	add(c.Request.Header.Get("X-Real-IP"))
-
-	return candidates
+	return []string{clientIP}
 }
 
 func isBlockedIP(clientIPs []string, blockedIPs []string) bool {

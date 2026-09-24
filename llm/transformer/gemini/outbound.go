@@ -136,6 +136,15 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Convert to Gemini request format with config
 	geminiReq := convertLLMToGeminiRequestWithConfig(llmReq, &t.config)
 
+	// System and developer messages become systemInstruction, so a request made
+	// up only of them leaves contents empty. Gemini requires at least one
+	// content entry; fail here with an error that names the cause instead of
+	// forwarding an empty contents array that upstream rejects without
+	// mentioning the developer role.
+	if len(geminiReq.Contents) == 0 {
+		return nil, fmt.Errorf("%w: contents must contain at least one user or model turn; system and developer messages are converted to systemInstruction", transformer.ErrInvalidRequest)
+	}
+
 	// Clear function call/response IDs for Vertex AI (not supported)
 	if t.config.PlatformType == PlatformVertex {
 		clearFunctionIDsForVertexAI(geminiReq)

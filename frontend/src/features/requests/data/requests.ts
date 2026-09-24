@@ -65,6 +65,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
             stream
             status
             clientIP
+            userAgent
             metricsLatencyMs
             metricsFirstTokenLatencyMs
             metricsReasoningDurationMs
@@ -74,6 +75,7 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                   id
                   createdAt
                   modelID
+                  upstreamModelID
                   format
                   status
                   reasoningEffort
@@ -81,13 +83,6 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                 }
                 cursor
               }
-              pageInfo {
-                hasNextPage
-                hasPreviousPage
-                startCursor
-                endCursor
-              }
-              totalCount
             }
             usageLogs(first: 1) {
               edges {
@@ -112,7 +107,6 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
           startCursor
           endCursor
         }
-        totalCount
       }
     }
   `;
@@ -155,6 +149,7 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           contentSaved
           contentStorageKey
           requestHeaders
+          responseHeaders
           requestBody
           responseBody
           responseChunks
@@ -217,6 +212,7 @@ function buildRequestDetailPollingQuery(permissions: { canViewApiKeys: boolean; 
           dataStorageID
           contentSaved
           contentStorageKey
+          responseHeaders
           status
           format
           metricsReasoningDurationMs
@@ -234,7 +230,8 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                   name
                   type
                   baseURL
-              }`
+              }
+              channelAPIKeySuffix`
     : '';
 
   return `
@@ -255,9 +252,11 @@ function buildRequestExecutionsQuery(permissions: { canViewChannels: boolean }) 
                 updatedAt
                 requestID${channelFields}
                 modelID
+                upstreamModelID
                 projectID
                 dataStorageID
                 requestHeaders
+                responseHeaders
                 requestBody
                 responseBody
                 responseChunks

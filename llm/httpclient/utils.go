@@ -5,6 +5,7 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"compress/zlib"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -15,6 +16,10 @@ import (
 	"github.com/klauspost/compress/zstd"
 	"github.com/samber/lo"
 )
+
+var maxRequestBodySize = 64 * 1024 * 1024
+
+var ErrRequestBodyTooLarge = errors.New("request body too large")
 
 func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 	req := &Request{
@@ -27,10 +32,11 @@ func ReadHTTPRequest(rawReq *http.Request) (*Request, error) {
 		Auth:       &AuthConfig{},
 		RequestID:  "",
 		ClientIP:   getClientIP(rawReq),
+		UserAgent:  rawReq.UserAgent(),
 		RawRequest: rawReq,
 	}
 
-	body, err := io.ReadAll(rawReq.Body)
+	body, err := readLimited(rawReq.Body, maxRequestBodySize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read request body: %w", err)
 	}
@@ -66,7 +72,7 @@ func decodeRequestBody(body []byte, headers http.Header) ([]byte, error) {
 		}
 		defer reader.Close()
 
-		decoded, err := io.ReadAll(reader)
+		decoded, err := readLimited(reader, maxRequestBodySize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decompress gzip body: %w", err)
 		}
@@ -79,7 +85,7 @@ func decodeRequestBody(body []byte, headers http.Header) ([]byte, error) {
 	case "deflate":
 		// RFC 7230/2616 defines "deflate" as zlib (RFC 1950), but many clients send
 		// raw DEFLATE (RFC 1951). Try zlib first, fall back to raw DEFLATE.
-		decoded, err := decodeZlibOrFlate(body)
+		decoded, err := decodeZlibOrFlate(body, maxRequestBodySize)
 		if err != nil {
 			return nil, fmt.Errorf("failed to decompress deflate body: %w", err)
 		}
@@ -90,15 +96,20 @@ func decodeRequestBody(body []byte, headers http.Header) ([]byte, error) {
 		return decoded, nil
 
 	case "zstd":
-		decoder, err := zstd.NewReader(nil)
+		decoder, err := zstd.NewReader(bytes.NewReader(body))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create zstd decoder: %w", err)
 		}
 		defer decoder.Close()
 
-		decoded, err := decoder.DecodeAll(body, nil)
+		decoderReader := decoder.IOReadCloser()
+		decoded, err := readLimited(decoderReader, maxRequestBodySize)
+		closeErr := decoderReader.Close()
 		if err != nil {
 			return nil, fmt.Errorf("failed to decode zstd compressed body: %w", err)
+		}
+		if closeErr != nil {
+			return nil, fmt.Errorf("failed to close zstd decoder: %w", closeErr)
 		}
 
 		headers.Del("Content-Encoding")
@@ -111,16 +122,27 @@ func decodeRequestBody(body []byte, headers http.Header) ([]byte, error) {
 	}
 }
 
-func decodeZlibOrFlate(body []byte) ([]byte, error) {
+func decodeZlibOrFlate(body []byte, maxSize int) ([]byte, error) {
 	reader, err := zlib.NewReader(bytes.NewReader(body))
 	if err == nil {
 		defer reader.Close()
-		return io.ReadAll(reader)
+		return readLimited(reader, maxSize)
 	}
 
 	flateReader := flate.NewReader(bytes.NewReader(body))
 	defer flateReader.Close()
-	return io.ReadAll(flateReader)
+	return readLimited(flateReader, maxSize)
+}
+
+func readLimited(r io.Reader, maxSize int) ([]byte, error) {
+	body, err := io.ReadAll(io.LimitReader(r, int64(maxSize)+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > maxSize {
+		return nil, ErrRequestBodyTooLarge
+	}
+	return body, nil
 }
 
 func getClientIP(req *http.Request) string {
@@ -203,6 +225,12 @@ var blockedHeaders = map[string]bool{
 	"Sec-Ch-Ua":          true,
 	"Sec-Ch-Ua-Mobile":   true,
 	"Sec-Ch-Ua-Platform": true,
+
+	// User-Agent identifies the inbound client. Merging it into the outbound
+	// request would clobber a provider-required UA set by the outbound
+	// transformer (e.g. GitHubCopilotChat on Copilot channels) before any
+	// policy layer runs; explicit pass-through owns client-UA forwarding.
+	"User-Agent": true,
 
 	// AxonHub customized headers that should not be forwarded to upstream to avoid recognition.
 	// NOTE: user customized trace/thread headers will be sent to upstream.

@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strings"
+	"slices"
+	"sync"
 	"time"
-
-	"entgo.io/ent/dialect/sql"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -19,6 +18,10 @@ import (
 const (
 	// defaultPerformanceWindowSize is the default size of the sliding window in seconds (10 minutes).
 	defaultPerformanceWindowSize = 600
+
+	// channelMetricsLoadBatchSize bounds the number of lightweight execution rows
+	// held in memory while rebuilding the sliding window at startup.
+	channelMetricsLoadBatchSize = 1000
 
 	// MinLatencyMs is the minimum latency value (10ms) used for tokens/second calculations.
 	// This matches the frontend standard MINIMUM_LATENCY_MS_FOR_CACHE_HITS.
@@ -38,46 +41,56 @@ func ClampLatency(latencyMs int64) int64 {
 // channelMetrics holds the performance metrics for a channel in memory.
 type channelMetrics struct {
 	channelID int
+	// mu protects the window and aggregated metrics after publication in the
+	// service map. Release the map lock before acquiring this lock.
+	mu sync.Mutex
 
 	// sliding window of metrics for the last N minutes using ring buffer for O(1) cleanup
 	window *ringbuffer.RingBuffer[*timeSlotMetrics]
+	// Neither delayed outcomes nor clock adjustments may move the window back.
+	windowCutoff int64
+	latestSlot   int64
 
 	// aggregatedMetrics holds accumulated metrics for the flush period
 	aggregatedMetrics *AggregatedMetrics
 }
 
-// loadChannelPerformances loads channel performance metrics from request_execution table.
-// It queries the last 6 hours of data to initialize in-memory metrics for load balancing.
-// Uses a single GROUP BY query to fetch all channel metrics at once for better performance.
+// loadChannelPerformances rebuilds the in-memory load-balancing window from
+// recent request executions.
 func (svc *ChannelService) loadChannelPerformances(ctx context.Context) error {
 	client := svc.entFromContext(ctx)
 
-	// Query last 6 hours of request execution data
-	since := xtime.UTCNow().Add(-6 * time.Hour)
+	windowSize := svc.performanceWindowSeconds()
+	since := xtime.UTCNow().Add(-time.Duration(windowSize) * time.Second)
 
-	// Fetch all channel metrics in a single GROUP BY query
+	// Rebuild each channel's recent time slots from lightweight execution rows.
 	metrics, err := svc.loadAllChannelMetricsFromExecutions(ctx, client, since)
 	if err != nil {
 		return fmt.Errorf("failed to load channel metrics: %w", err)
 	}
 
 	if len(metrics) == 0 {
-		log.Info(ctx, "No request execution data found in the last 6 hours")
+		log.Info(ctx, "No request execution data found in the performance window")
 		return nil
 	}
 
-	svc.channelPerfMetricsLock.Lock()
-	defer svc.channelPerfMetricsLock.Unlock()
+	restored := make(map[int]*channelMetrics, len(metrics))
+	for channelID, m := range metrics {
+		cm := newChannelMetricsWithWindow(channelID, windowSize)
+		svc.populateChannelMetrics(cm, m)
+		restored[channelID] = cm
+	}
 
+	// Publish fully initialized channels without holding the map lock while
+	// rebuilding their windows.
+	svc.channelPerfMetricsLock.Lock()
 	if svc.channelPerfMetrics == nil {
 		svc.channelPerfMetrics = make(map[int]*channelMetrics)
 	}
-
-	for channelID, m := range metrics {
-		cm := newChannelMetrics(channelID)
-		svc.populateChannelMetrics(cm, m)
+	for channelID, cm := range restored {
 		svc.channelPerfMetrics[channelID] = cm
 	}
+	svc.channelPerfMetricsLock.Unlock()
 
 	log.Info(ctx, "Loaded channel performance metrics from request executions",
 		log.Int("count", len(metrics)),
@@ -89,75 +102,165 @@ func (svc *ChannelService) loadChannelPerformances(ctx context.Context) error {
 // channelMetricsResult holds aggregated metrics for a single channel.
 // Only includes fields needed for load balancing.
 type channelMetricsResult struct {
-	ChannelID     int        `json:"channel_id"`
-	RequestCount  int64      `json:"request_count"`
-	LastFailureAt *time.Time `json:"last_failure_at"`
+	ChannelID           int        `json:"channel_id"`
+	RequestCount        int64      `json:"request_count"`
+	ConsecutiveFailures int64      `json:"consecutive_failures"`
+	LastSelectedAt      *time.Time `json:"last_selected_at"`
+	LastFailureAt       *time.Time `json:"last_failure_at"`
+	Slots               []*timeSlotMetrics
 }
 
-// loadAllChannelMetricsFromExecutions loads metrics for all channels using a single GROUP BY query.
-// Uses raw SQL via Modify to get request count and last failure time in one query.
-func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Context, client *ent.Client, since time.Time) (map[int]*channelMetricsResult, error) {
-	// Aggregate result columns (MAX(...)) lose their declared type in SQLite and
-	// are returned as TEXT, formatted according to the driver that wrote them
-	// (currently "2026-08-10 13:22:10.251164681 +0000 UTC"; older versions may
-	// carry a fixed 9-digit fraction ".000000000"). database/sql cannot scan such
-	// TEXT directly into time.Time, so read it as a string first and parse manually.
-	// When there are no failed records the column is NULL: ent's struct scan wraps
-	// string fields in a *string intermediary (dialect/sql/scan.go), so NULL is
-	// safely received as an empty string instead of a scan error.
-	// Note: the lexical MAX(...) equals the chronologically latest failure because
-	// every write path (ent + the SQLite driver) serializes times with the same
-	// "YYYY-MM-DD HH:MM:SS" prefix, regardless of the fractional part.
+// channelMetricExecution contains only the fields needed to restore metrics.
+// Terminal updated_at is the persisted approximation of completion time.
+type channelMetricExecution struct {
+	ID          int
+	ChannelID   int
+	Status      requestexecution.Status
+	SelectedAt  time.Time
+	CompletedAt time.Time
+}
+
+// scanChannelMetricExecutions reads executions created within the window in
+// bounded batches. Recent updates do not bring older executions into recovery.
+func scanChannelMetricExecutions(ctx context.Context, client *ent.Client, since time.Time, statuses []requestexecution.Status, visit func(channelMetricExecution)) error {
 	type queryResult struct {
-		ChannelID     int    `json:"channel_id"`
-		RequestCount  int64  `json:"request_count"`
-		LastFailureAt string `json:"last_failure_at"`
+		ID        int    `json:"id"`
+		ChannelID int    `json:"channel_id"`
+		Status    string `json:"status"`
+		CreatedAt string `json:"created_at"`
+		UpdatedAt string `json:"updated_at"`
 	}
 
-	var results []queryResult
-
-	err := client.RequestExecution.Query().
-		Where(
-			requestexecution.CreatedAtGTE(since),
-			requestexecution.ChannelIDNotNil(),
-			requestexecution.StatusNotIn(requestexecution.StatusPending, requestexecution.StatusProcessing),
-		).
-		Modify(func(s *sql.Selector) {
-			// Use a subquery or join to get last failure time per channel
-			// For simplicity, we use MAX(CASE WHEN status = 'failed' THEN created_at END) to get last failure
-			s.Select(
-				s.C(requestexecution.FieldChannelID),
-				sql.As(sql.Count("*"), "request_count"),
-				sql.As(fmt.Sprintf("MAX(CASE WHEN status = '%s' THEN %s END)", requestexecution.StatusFailed, s.C(requestexecution.FieldCreatedAt)), "last_failure_at"),
+	afterID := 0
+	for {
+		var results []queryResult
+		err := client.RequestExecution.Query().
+			Where(
+				requestexecution.IDGT(afterID),
+				requestexecution.CreatedAtGTE(since),
+				requestexecution.ChannelIDNotNil(),
+				requestexecution.StatusIn(statuses...),
 			).
-				GroupBy(s.C(requestexecution.FieldChannelID))
-		}).
-		Scan(ctx, &results)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query channel metrics: %w", err)
-	}
-
-	metricsMap := make(map[int]*channelMetricsResult)
-
-	for _, r := range results {
-		m := &channelMetricsResult{
-			ChannelID:    r.ChannelID,
-			RequestCount: r.RequestCount,
+			Order(ent.Asc(requestexecution.FieldID)).
+			Limit(channelMetricsLoadBatchSize).
+			Select(requestexecution.FieldID, requestexecution.FieldChannelID,
+				requestexecution.FieldStatus, requestexecution.FieldCreatedAt, requestexecution.FieldUpdatedAt).
+			Scan(ctx, &results)
+		if err != nil {
+			return fmt.Errorf("failed to query channel metrics: %w", err)
 		}
-		if r.LastFailureAt != "" {
-			if t, parseErr := parseDBTime(r.LastFailureAt); parseErr == nil {
-				m.LastFailureAt = &t
-			} else {
-				log.Warn(ctx, "failed to parse last_failure_at",
-					log.String("value", r.LastFailureAt),
-					log.Cause(parseErr),
-				)
+		for _, r := range results {
+			selectedAt, err := parseDBTime(r.CreatedAt)
+			if err != nil {
+				log.Warn(ctx, "failed to parse execution created_at while loading channel metrics",
+					log.Int("request_execution_id", r.ID), log.Cause(err))
+				continue
+			}
+			completedAt, err := parseDBTime(r.UpdatedAt)
+			if err != nil {
+				log.Warn(ctx, "failed to parse execution updated_at while loading channel metrics",
+					log.Int("request_execution_id", r.ID), log.Cause(err))
+				continue
+			}
+			visit(channelMetricExecution{
+				ID: r.ID, ChannelID: r.ChannelID, Status: requestexecution.Status(r.Status),
+				SelectedAt: selectedAt, CompletedAt: completedAt,
+			})
+		}
+		if len(results) < channelMetricsLoadBatchSize {
+			return nil
+		}
+		afterID = results[len(results)-1].ID
+	}
+}
+
+// loadAllChannelMetricsFromExecutions restores metrics from executions created
+// within the window, using selection time for load and completion time for health.
+// Two bounded passes avoid retaining every outcome merely to sort concurrent
+// requests by their completion order.
+func (svc *ChannelService) loadAllChannelMetricsFromExecutions(ctx context.Context, client *ent.Client, since time.Time) (map[int]*channelMetricsResult, error) {
+	metricsMap := make(map[int]*channelMetricsResult)
+	slotsByChannel := make(map[int]map[int64]*timeSlotMetrics)
+	lastSuccess := make(map[int]channelMetricExecution)
+	getSlot := func(channelID int, at time.Time) *timeSlotMetrics {
+		ts := at.Unix()
+		slot := slotsByChannel[channelID][ts]
+		if slot == nil {
+			slot = &timeSlotMetrics{timestamp: ts}
+			slotsByChannel[channelID][ts] = slot
+		}
+		return slot
+	}
+	after := func(a, b channelMetricExecution) bool {
+		return a.CompletedAt.After(b.CompletedAt) || a.CompletedAt.Equal(b.CompletedAt) && a.ID > b.ID
+	}
+	statuses := []requestexecution.Status{requestexecution.StatusCompleted, requestexecution.StatusFailed, requestexecution.StatusCanceled}
+	err := scanChannelMetricExecutions(ctx, client, since, statuses, func(r channelMetricExecution) {
+		m := metricsMap[r.ChannelID]
+		if m == nil {
+			m = &channelMetricsResult{ChannelID: r.ChannelID}
+			metricsMap[r.ChannelID] = m
+			slotsByChannel[r.ChannelID] = make(map[int64]*timeSlotMetrics)
+		}
+		if !r.SelectedAt.Before(since) {
+			getSlot(r.ChannelID, r.SelectedAt).RequestCount++
+			m.RequestCount++
+			if m.LastSelectedAt == nil || r.SelectedAt.After(*m.LastSelectedAt) {
+				m.LastSelectedAt = &r.SelectedAt
 			}
 		}
-
-		metricsMap[r.ChannelID] = m
+		if r.CompletedAt.Before(since) {
+			return
+		}
+		switch r.Status {
+		case requestexecution.StatusCompleted:
+			getSlot(r.ChannelID, r.CompletedAt).SuccessCount++
+			if previous, ok := lastSuccess[r.ChannelID]; !ok || after(r, previous) {
+				lastSuccess[r.ChannelID] = r
+			}
+		case requestexecution.StatusFailed:
+			getSlot(r.ChannelID, r.CompletedAt).FailureCount++
+			if m.LastFailureAt == nil || r.CompletedAt.After(*m.LastFailureAt) {
+				m.LastFailureAt = &r.CompletedAt
+			}
+		}
+	})
+	if err != nil {
+		return nil, err
 	}
 
+	// IDs describe creation order, not completion order. Count only failures
+	// completed after the latest success, even across pagination boundaries.
+	err = scanChannelMetricExecutions(ctx, client, since, []requestexecution.Status{requestexecution.StatusFailed}, func(r channelMetricExecution) {
+		m := metricsMap[r.ChannelID]
+		if m == nil || r.CompletedAt.Before(since) {
+			return
+		}
+		if success, ok := lastSuccess[r.ChannelID]; !ok || after(r, success) {
+			m.ConsecutiveFailures++
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for channelID, slots := range slotsByChannel {
+		m := metricsMap[channelID]
+		m.Slots = make([]*timeSlotMetrics, 0, len(slots))
+		for _, slot := range slots {
+			m.Slots = append(m.Slots, slot)
+		}
+		slices.SortFunc(m.Slots, func(a, b *timeSlotMetrics) int {
+			switch {
+			case a.timestamp < b.timestamp:
+				return -1
+			case a.timestamp > b.timestamp:
+				return 1
+			default:
+				return 0
+			}
+		})
+	}
 	return metricsMap, nil
 }
 
@@ -170,6 +273,7 @@ var dbTimeFormats = []string{
 	"2006-01-02 15:04:05.999999999 -0700 MST",
 	time.RFC3339Nano,
 	time.RFC3339,
+	"2006-01-02 15:04:05.999999999",
 	"2006-01-02 15:04:05",
 }
 
@@ -187,15 +291,24 @@ func parseDBTime(value string) (time.Time, error) {
 // populateChannelMetrics populates channelMetrics from the aggregated result.
 // Only populates fields needed for load balancing.
 func (svc *ChannelService) populateChannelMetrics(cm *channelMetrics, m *channelMetricsResult) {
-	// Populate aggregated metrics - only fields needed for load balancing
-	cm.aggregatedMetrics.RequestCount = m.RequestCount
+	for _, slot := range m.Slots {
+		target := cm.getOrCreateTimeSlot(slot.timestamp, time.Unix(slot.timestamp, 0), int64(cm.window.Capacity()-1))
+		if target == nil {
+			continue
+		}
+		*target = *slot
+		cm.aggregatedMetrics.RequestCount += slot.RequestCount
+		cm.aggregatedMetrics.SuccessCount += slot.SuccessCount
+		cm.aggregatedMetrics.FailureCount += slot.FailureCount
+	}
+
+	cm.aggregatedMetrics.LastSelectedAt = m.LastSelectedAt
+	cm.aggregatedMetrics.ConsecutiveFailures = m.ConsecutiveFailures
 
 	if m.LastFailureAt != nil {
 		cm.aggregatedMetrics.LastFailureAt = m.LastFailureAt
 	}
 
-	// Note: ConsecutiveFailures is not loaded from historical data.
-	// It will be tracked in real-time as requests are processed.
 }
 
 // timeSlotMetrics holds metrics for a specific second.
@@ -249,12 +362,53 @@ func (m *AggregatedMetrics) Clone() *AggregatedMetrics {
 
 // newChannelMetrics creates a new channelMetrics instance.
 func newChannelMetrics(channelID int) *channelMetrics {
+	return newChannelMetricsWithWindow(channelID, defaultPerformanceWindowSize)
+}
+
+func newChannelMetricsWithWindow(channelID int, windowSize int64) *channelMetrics {
+	if windowSize <= 0 {
+		windowSize = defaultPerformanceWindowSize
+	}
+
 	cm := &channelMetrics{
 		channelID: channelID,
-		window:    ringbuffer.New[*timeSlotMetrics](defaultPerformanceWindowSize),
+		window:    ringbuffer.New[*timeSlotMetrics](int(windowSize) + 1),
 		aggregatedMetrics: &AggregatedMetrics{
 			metricsRecord: metricsRecord{},
 		},
+	}
+
+	return cm
+}
+
+func (svc *ChannelService) performanceWindowSeconds() int64 {
+	if svc.perfWindowSeconds > 0 {
+		return svc.perfWindowSeconds
+	}
+
+	return defaultPerformanceWindowSize
+}
+
+func (svc *ChannelService) getChannelMetrics(channelID int) *channelMetrics {
+	svc.channelPerfMetricsLock.RLock()
+	defer svc.channelPerfMetricsLock.RUnlock()
+
+	return svc.channelPerfMetrics[channelID]
+}
+
+func (svc *ChannelService) getOrCreateChannelMetrics(channelID int, windowSize int64) *channelMetrics {
+	if cm := svc.getChannelMetrics(channelID); cm != nil {
+		return cm
+	}
+
+	svc.channelPerfMetricsLock.Lock()
+	defer svc.channelPerfMetricsLock.Unlock()
+
+	// Another writer may have created the channel since the initial lookup.
+	cm := svc.channelPerfMetrics[channelID]
+	if cm == nil {
+		cm = newChannelMetricsWithWindow(channelID, windowSize)
+		svc.channelPerfMetrics[channelID] = cm
 	}
 
 	return cm
@@ -266,7 +420,6 @@ const latencyEWMAAlpha = 0.3
 func (cm *channelMetrics) recordSuccess(slot *timeSlotMetrics, perf *PerformanceRecord) {
 	slot.SuccessCount++
 	cm.aggregatedMetrics.SuccessCount++
-	cm.aggregatedMetrics.LastSelectedAt = &perf.EndTime
 
 	// Reset consecutive failures on success
 	cm.aggregatedMetrics.ConsecutiveFailures = 0
@@ -308,34 +461,57 @@ func (cm *channelMetrics) recordSuccess(slot *timeSlotMetrics, perf *Performance
 func (cm *channelMetrics) recordFailure(slot *timeSlotMetrics, perf *PerformanceRecord) {
 	slot.FailureCount++
 	cm.aggregatedMetrics.FailureCount++
-	cm.aggregatedMetrics.LastFailureAt = &perf.EndTime
+	if cm.aggregatedMetrics.LastFailureAt == nil || cm.aggregatedMetrics.LastFailureAt.Before(perf.EndTime) {
+		cm.aggregatedMetrics.LastFailureAt = &perf.EndTime
+	}
 
 	// Increment consecutive failures
 	cm.aggregatedMetrics.ConsecutiveFailures++
 }
 
-// getOrCreateTimeSlot gets or creates a time slot for the given timestamp.
+// getOrCreateTimeSlot returns nil for timestamps that have already expired.
 func (cm *channelMetrics) getOrCreateTimeSlot(ts int64, endTime time.Time, windowSize int64) *timeSlotMetrics {
-	if slot, ok := cm.window.Get(ts); ok {
-		return slot
+	cm.cleanupExpiredSlots(endTime.Add(-time.Duration(windowSize) * time.Second))
+	if ts < cm.windowCutoff {
+		return nil
 	}
 
-	// Clean old entries to prevent memory leak
-	if cm.window.Len() >= int(windowSize) {
-		cm.cleanupExpiredSlots(endTime.Add(-time.Duration(windowSize) * time.Second))
+	if slot, ok := cm.window.Get(ts); ok {
+		return slot
 	}
 
 	slot := &timeSlotMetrics{
 		timestamp:     ts,
 		metricsRecord: metricsRecord{},
 	}
-	cm.window.Push(ts, slot)
+	// The monotonic cutoff leaves at most windowSize+1 distinct seconds,
+	// including both endpoints, so insertion cannot silently evict a slot.
+	if ts >= cm.latestSlot {
+		cm.window.Push(ts, slot)
+		cm.latestSlot = ts
+	} else {
+		// The async outcome worker can lag behind selection-time writes. Keep
+		// chronological order so cleanup cannot miss an expired slot behind a
+		// newer one. Only late insertions need to rebuild this bounded buffer.
+		items := cm.window.GetAll()
+		cm.window.Clear()
+		inserted := false
+		for _, item := range items {
+			if !inserted && ts < item.Timestamp {
+				cm.window.Push(ts, slot)
+				inserted = true
+			}
+			cm.window.Push(item.Timestamp, item.Value)
+		}
+		if !inserted {
+			cm.window.Push(ts, slot)
+		}
+	}
 
 	return slot
 }
 
-// RecordPerformance records performance metrics to in-memory cache.
-// This function is not thread-safe.
+// RecordPerformance records performance metrics to the in-memory cache.
 func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *PerformanceRecord) {
 	if perf == nil || !perf.IsValid() {
 		return
@@ -348,88 +524,27 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 	}()
 
 	if perf.Success {
-		svc.channelErrorCountsLock.Lock()
-		delete(svc.channelErrorCounts, perf.ChannelID)
-		svc.channelErrorCountsLock.Unlock()
+		svc.clearAutoDisableCountsOnSuccess(perf)
 
 		// Let the round_robin_success strategy count this success and move
 		// its cursor once the key has served its share of successful requests.
 		svc.onAPIKeySuccess(perf.ChannelID, perf.APIKey)
-
-		// Also clear API key error counts on success
-		if perf.APIKey != "" {
-			svc.apiKeyErrorCountsLock.Lock()
-
-			rulePrefix := perf.APIKey + ":rule:"
-			if svc.apiKeyErrorCounts[perf.ChannelID] != nil {
-				delete(svc.apiKeyErrorCounts[perf.ChannelID], perf.APIKey)
-				for key := range svc.apiKeyErrorCounts[perf.ChannelID] {
-					if strings.HasPrefix(key, rulePrefix) {
-						delete(svc.apiKeyErrorCounts[perf.ChannelID], key)
-					}
-				}
-			}
-			for key := range svc.apiKeyRuleActionsInFlight[perf.ChannelID] {
-				if strings.HasPrefix(key, rulePrefix) {
-					svc.apiKeyRuleActionsInFlight[perf.ChannelID][key] = true
-				}
-			}
-
-			svc.apiKeyErrorCountsLock.Unlock()
-		}
 	} else if !perf.Canceled {
-		matched := false
-		if perf.APIKey != "" {
-			matched, _ = svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
-		}
-		if !matched {
-			policy := svc.SystemService.RetryPolicyOrDefault(ctx)
-			if statuses, ok := svc.resolveAutoDisableStatuses(policy); ok {
-				if perf.APIKey != "" {
-					svc.checkAndHandleAPIKeyError(ctx, perf, statuses)
-				} else {
-					svc.checkAndHandleChannelError(ctx, perf, statuses)
-				}
-			}
-		}
+		svc.evaluateAutoDisableForFailure(ctx, perf)
 	}
 
-	// Get or create channel metrics
-	svc.channelPerfMetricsLock.Lock()
+	windowSize := svc.performanceWindowSeconds()
 
-	cm, exists := svc.channelPerfMetrics[perf.ChannelID]
-	if !exists {
-		cm = newChannelMetrics(perf.ChannelID)
-		svc.channelPerfMetrics[perf.ChannelID] = cm
-	}
-
-	svc.channelPerfMetricsLock.Unlock()
-
-	// Determine window size
-	var windowSize int64 = defaultPerformanceWindowSize
-	if svc.perfWindowSeconds > 0 {
-		windowSize = svc.perfWindowSeconds
-	}
+	cm := svc.getOrCreateChannelMetrics(perf.ChannelID, windowSize)
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 
 	ts := perf.EndTime.Unix()
 
 	// Get or create time slot for this second
 	slot := cm.getOrCreateTimeSlot(ts, perf.EndTime, windowSize)
-
-	// Update slot request count for sliding window metrics.
-	// Note: aggregatedMetrics.RequestCount is NOT incremented here because it was already
-	// incremented in IncrementChannelSelection() at selection time for immediate load balancing effect.
-	// The cleanup logic will subtract slot.RequestCount from aggregatedMetrics when the slot expires.
-	if !perf.Canceled {
-		slot.RequestCount++
-	} else {
-		// If canceled, decrement the aggregated request count that was incremented at selection time.
-		// We don't increment slot.RequestCount, so it won't be subtracted later.
-		svc.channelPerfMetricsLock.Lock()
-
-		cm.aggregatedMetrics.RequestCount--
-
-		svc.channelPerfMetricsLock.Unlock()
+	if slot == nil {
+		return
 	}
 
 	// Record success or failure
@@ -461,7 +576,8 @@ func (svc *ChannelService) AsyncRecordPerformance(ctx context.Context, perr *Per
 // cleanupExpiredSlots removes time slots older than the cutoff time.
 // This is now O(k) where k is the number of items to remove, instead of O(n) for the entire map.
 func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
-	cutoffTs := cutoff.Unix()
+	cutoffTs := max(cutoff.Unix(), cm.windowCutoff)
+	cm.windowCutoff = cutoffTs
 
 	// Collect metrics to subtract before cleanup
 	var metricsToRemove []*timeSlotMetrics
@@ -487,15 +603,20 @@ func (cm *channelMetrics) cleanupExpiredSlots(cutoff time.Time) {
 }
 
 // GetChannelMetrics returns performance metrics for the channel.
-// If in-memory metrics are not available (e.g., after restart), it falls back to database values.
+// If in-memory metrics are not available, it returns an empty snapshot.
 func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int) (*AggregatedMetrics, error) {
-	svc.channelPerfMetricsLock.RLock()
-	cm, exists := svc.channelPerfMetrics[channelID]
-	svc.channelPerfMetricsLock.RUnlock()
-
-	if !exists {
+	cm := svc.getChannelMetrics(channelID)
+	if cm == nil {
 		return &AggregatedMetrics{}, nil
 	}
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	// Idle channels have no writes to expire their load. Clean on reads too,
+	// using only this channel's lock so other channels can proceed.
+	windowSize := svc.performanceWindowSeconds()
+	cm.cleanupExpiredSlots(time.Now().Add(-time.Duration(windowSize) * time.Second))
 
 	// Return a full copy of the aggregated metrics to avoid concurrent modification
 	// while preserving all load-balancing signals, including latency EWMA.
@@ -507,22 +628,25 @@ func (svc *ChannelService) GetChannelMetrics(ctx context.Context, channelID int)
 // impact on subsequent selections, preventing the same channel from being selected
 // repeatedly during burst/concurrent requests.
 func (svc *ChannelService) IncrementChannelSelection(channelID int) {
-	svc.channelPerfMetricsLock.Lock()
-	defer svc.channelPerfMetricsLock.Unlock()
+	windowSize := svc.performanceWindowSeconds()
+	cm := svc.getOrCreateChannelMetrics(channelID, windowSize)
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 
-	cm, exists := svc.channelPerfMetrics[channelID]
-	if !exists {
-		cm = newChannelMetrics(channelID)
-		svc.channelPerfMetrics[channelID] = cm
+	now := time.Now()
+	slot := cm.getOrCreateTimeSlot(now.Unix(), now, windowSize)
+	if slot == nil {
+		return
 	}
-
 	oldCount := cm.aggregatedMetrics.RequestCount
 
-	// Increment request count immediately to affect subsequent load balancing decisions
+	// Record the selection in its own time slot so the request count expires from
+	// the same selection-time window used by startup recovery. Completion metrics
+	// may land in a later slot without extending the selection's lifetime.
+	slot.RequestCount++
 	cm.aggregatedMetrics.RequestCount++
 
 	// Update last activity time to current time
-	now := time.Now()
 	if cm.aggregatedMetrics.LastSelectedAt == nil || cm.aggregatedMetrics.LastSelectedAt.Before(now) {
 		cm.aggregatedMetrics.LastSelectedAt = &now
 	}

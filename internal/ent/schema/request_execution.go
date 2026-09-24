@@ -1,6 +1,9 @@
 package schema
 
 import (
+	"errors"
+	"unicode/utf8"
+
 	"entgo.io/contrib/entgql"
 	"entgo.io/ent"
 	"entgo.io/ent/schema"
@@ -47,7 +50,16 @@ func (RequestExecution) Fields() []ent.Field {
 		field.String("external_id").
 			Optional().
 			MaxLen(512),
-		field.String("model_id").Immutable(),
+		field.String("model_id").
+			Immutable().
+			Comment("Channel model ID selected after model mapping, used for routing and pricing. May differ from the final wire model and the upstream-reported model."),
+		// UpstreamModelID is the raw model reported by the provider response, captured
+		// before AxonHub rewrites it back to the client-requested model.
+		// Empty means no supported model metadata was recorded. Intra-stream model
+		// changes are not tracked; only the first reported name is kept.
+		field.String("upstream_model_id").
+			Optional().
+			Comment("Raw model reported by the upstream provider response, before client-model rewrite"),
 		//  The format of the request, e.g: openai/chat_completions, claude/messages, openai/response.
 		field.String("format").Immutable().Default("openai/chat_completions"),
 		field.String("reasoning_effort").
@@ -55,6 +67,21 @@ func (RequestExecution) Fields() []ent.Field {
 			Nillable().
 			Immutable().
 			Comment("Final reasoning effort sent to the upstream provider"),
+		field.String("channel_api_key_suffix").
+			Optional().
+			Nillable().
+			Immutable().
+			Validate(func(s string) error {
+				if utf8.RuneCountInString(s) > 4 {
+					return errors.New("channel_api_key_suffix must be at most 4 characters")
+				}
+				return nil
+			}).
+			Comment("Last 4 characters of the channel API key used for this execution").
+			Annotations(
+				entgql.Directives(forceResolver()),
+				entgql.Skip(entgql.SkipWhereInput),
+			),
 		// The original request to the provider.
 		// e.g: the user request via OpenAI request format, but the actual request to the provider with Claude format, the request_body is the Claude request format.
 		field.JSON("request_body", objects.JSONRawMessage{}).Immutable().Annotations(
@@ -62,6 +89,9 @@ func (RequestExecution) Fields() []ent.Field {
 		),
 		// The final response from the provider.
 		// e.g: the provider response with Claude format, and the user expects the response with OpenAI format, the response_body is the Claude response format.
+		field.JSON("response_headers", objects.JSONRawMessage{}).
+			Optional().
+			Comment("Response headers received from the upstream provider, with sensitive values masked"),
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional().Annotations(
 			entgql.Directives(forceResolver()),
 		),

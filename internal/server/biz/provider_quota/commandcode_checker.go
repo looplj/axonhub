@@ -16,11 +16,20 @@ import (
 )
 
 const (
-	commandCodeProviderType        = "commandcode"
-	commandCodeCreditsURL          = "https://api.commandcode.ai/internal/billing/credits" //nolint:gosec // Public endpoint URL, not a credential.
-	commandCodeSubscriptionsURL    = "https://api.commandcode.ai/internal/billing/subscriptions"
-	commandCodeQuotaUserAgent      = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
-	commandCodeMaxResetEpochMillis = 1e15
+	commandCodeProviderType = "commandcode"
+	// Command Code exposes two billing surfaces. /alpha/* is the one the
+	// official CLI uses: it authenticates with an account API key (Bearer) and
+	// works for every plan, including Go. /internal/billing/* is Studio's
+	// browser surface and only accepts the session cookie.
+	commandCodeAPIBaseURL            = "https://api.commandcode.ai"
+	commandCodeAlphaCreditsURL       = commandCodeAPIBaseURL + "/alpha/billing/credits"
+	commandCodeAlphaSubscriptionsURL = commandCodeAPIBaseURL + "/alpha/billing/subscriptions"
+	//nolint:gosec // Public endpoint URL, not a credential.
+	commandCodeInternalCreditsURL = commandCodeAPIBaseURL + "/internal/billing/credits"
+	//nolint:gosec // Public endpoint URL, not a credential.
+	commandCodeInternalSubscriptionsURL = commandCodeAPIBaseURL + "/internal/billing/subscriptions"
+	commandCodeQuotaUserAgent           = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+	commandCodeMaxResetEpochMillis      = 1e15
 )
 
 // commandCodeCookieNames are the only cookie names forwarded to the Command
@@ -43,19 +52,78 @@ type commandCodePlanAllowance struct {
 	WeeklyUSD   float64
 }
 
-// Team Pro has no stable plan id; it is matched by label.
-var commandCodePlanAllowances = map[string]commandCodePlanAllowance{
-	"individual-go":    {MonthlyUSD: 10, FiveHourUSD: 3, WeeklyUSD: 6},
-	"individual-goat":  {MonthlyUSD: 70, FiveHourUSD: 14, WeeklyUSD: 35},
-	"individual-pro":   {MonthlyUSD: 80, FiveHourUSD: 16, WeeklyUSD: 40},
-	"individual-max":   {MonthlyUSD: 150, FiveHourUSD: 45, WeeklyUSD: 90},
-	"individual-ultra": {MonthlyUSD: 300, FiveHourUSD: 90, WeeklyUSD: 180},
+// A plan id can map to more than one row. Values follow
+// https://commandcode.ai/docs/resources/usage-limits plus the plan totals the
+// official CLI ships (command-code 1.53.1); the wire 5h/weekly caps select the
+// row and double as the price-drift check, so a stale row only drops the monthly
+// denominator and never misreports a balance. Pay-as-you-go plans such as
+// `individual-provider` report no windows and are intentionally absent.
+var commandCodePlanAllowances = map[string][]commandCodePlanAllowance{
+	"individual-go":   {{MonthlyUSD: 10, FiveHourUSD: 3, WeeklyUSD: 6}},
+	"individual-goat": {{MonthlyUSD: 70, FiveHourUSD: 14, WeeklyUSD: 35}},
+	// Legacy Pro reports the $30 allowance the CLI still ships, but its window
+	// caps are undocumented: they are scaled from the re-issued Pro row (3/8).
+	"individual-pro":    {{MonthlyUSD: 80, FiveHourUSD: 16, WeeklyUSD: 40}, {MonthlyUSD: 30, FiveHourUSD: 6, WeeklyUSD: 15}},
+	"individual-pro-v1": {{MonthlyUSD: 80, FiveHourUSD: 16, WeeklyUSD: 40}},
+	"individual-max":    {{MonthlyUSD: 150, FiveHourUSD: 45, WeeklyUSD: 90}},
+	"individual-ultra":  {{MonthlyUSD: 300, FiveHourUSD: 90, WeeklyUSD: 180}},
 }
 
-// CommandCodeQuotaChecker reads Command Code account quota from the internal
-// billing endpoints using the browser session cookie stored on the channel's
-// settings. It is quota-only: upstream inference uses the channel API key and
-// never sees this cookie.
+// commandCodeTeamProAllowance is matched by label because Team Pro has no
+// stable plan id in the subscriptions payload.
+var commandCodeTeamProAllowance = commandCodePlanAllowance{MonthlyUSD: 40, FiveHourUSD: 12, WeeklyUSD: 24}
+
+// commandCodeAPIKey returns the first usable account API key on the channel.
+// Command Code issues one key per account, so the channel's inference key
+// doubles as the quota credential; GetAllAPIKeys keeps the legacy-key ordering
+// and skips OAuth JSON payloads.
+func commandCodeAPIKey(ch *ent.Channel) string {
+	for _, candidate := range ch.Credentials.GetAllAPIKeys() {
+		if trimmed := strings.TrimSpace(candidate); trimmed != "" {
+			return trimmed
+		}
+	}
+
+	return ""
+}
+
+// commandCodeCookie returns the normalized Studio session cookie, or an empty
+// string when none is configured. A malformed cookie is reported as an error so
+// the caller can decide whether the API key covers it.
+func commandCodeCookie(ch *ent.Channel) (string, error) {
+	if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.CommandCode == nil {
+		return "", nil
+	}
+	raw := strings.TrimSpace(ch.Settings.ProviderQuota.CommandCode.AuthCookie)
+	if raw == "" {
+		return "", nil
+	}
+
+	return NormalizeCommandCodeCookie(raw)
+}
+
+// HasCommandCodeQuotaCredentials reports whether the channel is configured with
+// a credential the billing APIs accept: the account API key (/alpha/*, preferred
+// because it never expires) or the Studio session cookie (/internal/billing/*).
+// Format validation stays in CheckQuota so a malformed credential surfaces as a
+// quota error instead of the channel being silently skipped.
+func HasCommandCodeQuotaCredentials(ch *ent.Channel) bool {
+	if ch == nil {
+		return false
+	}
+	if commandCodeAPIKey(ch) != "" {
+		return true
+	}
+
+	cookie, err := commandCodeCookie(ch)
+
+	return err != nil || cookie != ""
+}
+
+// CommandCodeQuotaChecker reads Command Code account quota from the billing
+// endpoints using the channel's account API key (preferred) or the browser
+// session cookie stored on the channel settings (fallback). It is quota-only:
+// upstream inference uses the channel API key and never sees this cookie.
 type CommandCodeQuotaChecker struct {
 	httpClient *httpclient.HttpClient
 }
@@ -68,71 +136,107 @@ func (c *CommandCodeQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	if ch.Type != channel.TypeCommandcode && ch.Type != channel.TypeCommandcodeAnthropic {
 		return false
 	}
-	if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.CommandCode == nil {
-		return false
-	}
 
-	return strings.TrimSpace(ch.Settings.ProviderQuota.CommandCode.AuthCookie) != ""
+	return HasCommandCodeQuotaCredentials(ch)
 }
 
 func (c *CommandCodeQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
-	if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.CommandCode == nil {
-		return QuotaData{}, fmt.Errorf("%w: channel has no Command Code quota cookie", ErrInvalidCredentials)
-	}
+	apiKey := commandCodeAPIKey(ch)
 
-	cookie, err := NormalizeCommandCodeCookie(ch.Settings.ProviderQuota.CommandCode.AuthCookie)
-	if err != nil {
-		return QuotaData{}, fmt.Errorf("%w: invalid Command Code auth cookie: %w", ErrInvalidCredentials, err)
+	cookie, cookieErr := commandCodeCookie(ch)
+	if apiKey == "" && cookie == "" {
+		if cookieErr != nil {
+			return QuotaData{}, fmt.Errorf("%w: invalid Command Code auth cookie: %w", ErrInvalidCredentials, cookieErr)
+		}
+
+		return QuotaData{}, fmt.Errorf("%w: channel has no Command Code API key or quota cookie", ErrInvalidCredentials)
 	}
 
 	hc := c.httpClient
-	if ch.Settings.Proxy != nil {
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
 		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
 	}
 
-	creditsBody, err := commandCodeGet(ctx, hc, commandCodeCreditsURL, cookie)
+	// Prefer the account API key: it does not expire the way the Studio session
+	// cookie does.
+	if apiKey != "" {
+		quota, err := commandCodeFetchQuota(ctx, hc, commandCodeAlphaCreditsURL, commandCodeAlphaSubscriptionsURL, "", apiKey)
+		if err == nil {
+			return quota, nil
+		}
+		if cookie == "" || !errors.Is(err, ErrInvalidCredentials) {
+			return QuotaData{}, err
+		}
+		// Keys that only authenticate the chat surface still leave the cookie
+		// usable, so degrade to it instead of failing the whole check.
+	}
+
+	return commandCodeFetchQuota(ctx, hc, commandCodeInternalCreditsURL, commandCodeInternalSubscriptionsURL, cookie, "")
+}
+
+func commandCodeFetchQuota(
+	ctx context.Context,
+	hc *httpclient.HttpClient,
+	creditsURL, subscriptionsURL, cookie, apiKey string,
+) (QuotaData, error) {
+	creditsBody, err := commandCodeGet(ctx, hc, creditsURL, cookie, apiKey)
 	if err != nil {
 		return QuotaData{}, err
 	}
 
 	// The subscription endpoint is optional: a failure only drops plan info
 	// (and with it the trusted monthly denominator), never the credits result.
-	subscriptionsBody, _ := commandCodeGet(ctx, hc, commandCodeSubscriptionsURL, cookie)
+	subscriptionsBody, _ := commandCodeGet(ctx, hc, subscriptionsURL, cookie, apiKey)
+
 	return parseCommandCodeCredits(creditsBody, subscriptionsBody)
 }
 
-func commandCodeGet(ctx context.Context, hc *httpclient.HttpClient, url, cookie string) ([]byte, error) {
-	request := httpclient.NewRequestBuilder().
+// commandCodeGet authenticates with the API key when one is supplied, otherwise
+// with the session cookie.
+func commandCodeGet(ctx context.Context, hc *httpclient.HttpClient, url, cookie, apiKey string) ([]byte, error) {
+	builder := httpclient.NewRequestBuilder().
 		WithMethod(http.MethodGet).
 		WithURL(url).
-		WithHeader("Cookie", cookie).
 		WithHeader("Accept", "application/json, text/plain, */*").
 		WithHeader("Accept-Language", "en-US,en;q=0.9").
 		WithHeader("User-Agent", commandCodeQuotaUserAgent).
 		WithHeader("Origin", "https://commandcode.ai").
-		WithHeader("Referer", "https://commandcode.ai/").
-		Build()
+		WithHeader("Referer", "https://commandcode.ai/")
+	if apiKey != "" {
+		builder = builder.WithBearerToken(apiKey)
+	} else {
+		builder = builder.WithHeader("Cookie", cookie)
+	}
 
-	resp, err := hc.Do(ctx, request)
+	resp, err := hc.Do(ctx, builder.Build())
 	if err != nil {
 		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
-			if httpErr.StatusCode == http.StatusUnauthorized || httpErr.StatusCode == http.StatusForbidden {
-				return nil, fmt.Errorf("%w: Command Code billing API returned %d (expired session cookie?)", ErrInvalidCredentials, httpErr.StatusCode)
-			}
-			// 429 and other rate-limit/HTTP errors keep the standard message
-			// so the generic quota-error backoff applies.
-			return nil, fmt.Errorf("Command Code billing API returned %d", httpErr.StatusCode)
+			return nil, commandCodeStatusError(httpErr.StatusCode, apiKey)
 		}
+
 		return nil, fmt.Errorf("Command Code billing request failed: %w", err)
 	}
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-			return nil, fmt.Errorf("%w: Command Code billing API returned %d (expired session cookie?)", ErrInvalidCredentials, resp.StatusCode)
-		}
-		return nil, fmt.Errorf("Command Code billing API returned %d", resp.StatusCode)
+		return nil, commandCodeStatusError(resp.StatusCode, apiKey)
 	}
 
 	return resp.Body, nil
+}
+
+// commandCodeStatusError maps a billing response status onto the quota error
+// contract. 401/403 mean the credential can no longer be trusted; every other
+// status keeps the generic message so the standard quota-error backoff applies.
+func commandCodeStatusError(statusCode int, apiKey string) error {
+	if statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden {
+		credential := "expired session cookie?"
+		if apiKey != "" {
+			credential = "invalid API key?" //nolint:gosec // Not a credential: a fixed error hint, carries no secret.
+		}
+
+		return fmt.Errorf("%w: Command Code billing API returned %d (%s)", ErrInvalidCredentials, statusCode, credential)
+	}
+
+	return fmt.Errorf("Command Code billing API returned %d", statusCode)
 }
 
 // NormalizeCommandCodeCookie canonicalizes a raw browser cookie capture into
@@ -295,16 +399,14 @@ func parseCommandCodeCredits(creditsBody, subscriptionsBody []byte) (QuotaData, 
 		raw["windows"] = windowsRaw
 	}
 
-	// Trusted monthly denominator: only when the plan is in the local table,
-	// the wire caps match the table exactly, and the remaining balance is
-	// within the monthly allowance. Go plan / unknown plan / subscription
-	// failure / price drift never guess a denominator. The raw wire limit is
-	// only exposed as a structured monthly_limit_usd when it is trusted, so
-	// the UI never renders an untrusted "$used / $limit" bar.
-	allowance := commandCodeMatchPlan(planID, planLabel)
-	trustedMonthly := allowance != nil && monthlyRemainingOK && fiveHour != nil && weekly != nil &&
-		fiveHour.capUSD == allowance.FiveHourUSD && weekly.capUSD == allowance.WeeklyUSD &&
-		monthlyRemaining <= allowance.MonthlyUSD
+	// Trusted monthly denominator: only when the wire 5h/weekly caps select one
+	// of the plan's local allowance rows and the remaining balance fits inside
+	// that row. Unknown plan / subscription failure / price drift never guess a
+	// denominator. The raw wire limit is only exposed as a structured
+	// monthly_limit_usd when it is trusted, so the UI never renders an
+	// untrusted "$used / $limit" bar.
+	allowance, allowanceOK := commandCodeMatchPlan(planID, planLabel, fiveHour, weekly)
+	trustedMonthly := allowanceOK && monthlyRemainingOK && monthlyRemaining <= allowance.MonthlyUSD
 	if trustedMonthly {
 		if monthlyLimitWireOK {
 			rawCredits["monthly_limit_usd"] = monthlyLimitWire
@@ -365,14 +467,14 @@ func parseCommandCodeCredits(creditsBody, subscriptionsBody []byte) (QuotaData, 
 		})
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       overall,
 		ProviderType: commandCodeProviderType,
 		RawData:      raw,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(overall),
 		Limits:       limits,
-	}, nil
+	}), nil
 }
 
 type commandCodeWindow struct {
@@ -491,14 +593,30 @@ func commandCodeResetFromEpoch(epoch float64) *time.Time {
 	return &t
 }
 
-func commandCodeMatchPlan(planID, planLabel string) *commandCodePlanAllowance {
-	if allowance, ok := commandCodePlanAllowances[strings.TrimSpace(planID)]; ok {
-		return &allowance
+// commandCodeMatchPlan selects the local allowance row for a subscription. A
+// plan id can have several rows (legacy vs re-issued Pro), so the 5h/weekly
+// caps reported by the provider pick the row and double as the drift check.
+// Pay-as-you-go plans report no windows and never match.
+func commandCodeMatchPlan(
+	planID, planLabel string,
+	fiveHour, weekly *commandCodeWindow,
+) (commandCodePlanAllowance, bool) {
+	if fiveHour == nil || weekly == nil {
+		return commandCodePlanAllowance{}, false
 	}
-	if strings.EqualFold(strings.TrimSpace(planLabel), "team pro") {
-		return &commandCodePlanAllowance{MonthlyUSD: 40, FiveHourUSD: 12, WeeklyUSD: 24}
+
+	candidates := commandCodePlanAllowances[strings.TrimSpace(planID)]
+	if len(candidates) == 0 && strings.EqualFold(strings.TrimSpace(planLabel), "team pro") {
+		candidates = []commandCodePlanAllowance{commandCodeTeamProAllowance}
 	}
-	return nil
+
+	for _, candidate := range candidates {
+		if candidate.FiveHourUSD == fiveHour.capUSD && candidate.WeeklyUSD == weekly.capUSD {
+			return candidate, true
+		}
+	}
+
+	return commandCodePlanAllowance{}, false
 }
 
 func parseJSONObject(body []byte) (map[string]any, error) {

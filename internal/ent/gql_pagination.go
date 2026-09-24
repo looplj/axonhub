@@ -4768,7 +4768,7 @@ func (_m *RequestQuery) Paginate(
 	}
 	conn := &RequestConnection{Edges: []*RequestEdge{}}
 	ignoredEdges := !hasCollectedField(ctx, edgesField)
-	if hasCollectedField(ctx, totalCountField) || hasCollectedField(ctx, pageInfoField) {
+	if hasCollectedField(ctx, totalCountField) || (hasCollectedField(ctx, pageInfoField) && ignoredEdges) {
 		hasPagination := after != nil || first != nil || before != nil || last != nil
 		if hasPagination || ignoredEdges {
 			c := _m.Clone()

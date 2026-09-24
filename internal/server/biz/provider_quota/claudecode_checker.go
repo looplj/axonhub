@@ -168,26 +168,29 @@ func (c *ClaudeCodeQuotaChecker) parseResponse(headers http.Header) (QuotaData, 
 		}
 	}
 
-	limits := []QuotaLimitStatus{
-		c.buildTokenLimit("5h", headers),
-		c.buildTokenLimit("7d", headers),
+	limits := make([]QuotaLimitStatus, 0, 2)
+	for _, windowKey := range []string{"5h", "7d"} {
+		limit, ok := c.buildTokenLimit(windowKey, headers)
+		if ok {
+			limits = append(limits, limit)
+		}
 	}
 
-	return QuotaData{
+	return NormalizeQuotaData(QuotaData{
 		Status:       normalizedStatus,
 		ProviderType: "claudecode",
 		RawData:      rawData,
 		NextResetAt:  nextResetAt,
 		Ready:        IsReadyStatus(normalizedStatus),
 		Limits:       limits,
-	}, nil
+	}), nil
 }
 
 func (c *ClaudeCodeQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	return ch.Type == channel.TypeClaudecode
 }
 
-func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.Header) QuotaLimitStatus {
+func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.Header) (QuotaLimitStatus, bool) {
 	var (
 		utilizationKey, resetKey string
 		window                   time.Duration
@@ -202,6 +205,9 @@ func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.
 		utilizationKey = "Anthropic-Ratelimit-Unified-7d-Utilization"
 		resetKey = "Anthropic-Ratelimit-Unified-7d-Reset"
 		window = 7 * 24 * time.Hour
+	}
+	if headers.Get(utilizationKey) == "" && headers.Get(resetKey) == "" && headers.Get("Anthropic-Ratelimit-Unified-"+windowKey+"-Status") == "" {
+		return QuotaLimitStatus{}, false
 	}
 
 	utilization := parseFloat(headers.Get(utilizationKey))
@@ -226,7 +232,7 @@ func (c *ClaudeCodeQuotaChecker) buildTokenLimit(windowKey string, headers http.
 		UsageRatio:  utilization,
 		Ready:       IsReadyStatus(status),
 		NextResetAt: nextReset,
-	}.WithWindow(windowKey, window)
+	}.WithWindow(windowKey, window), true
 }
 
 func getEndpointURL(baseURL string) string {

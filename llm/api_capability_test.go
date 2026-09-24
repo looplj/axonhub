@@ -22,7 +22,25 @@ func TestCapableAPIFormats(t *testing.T) {
 	require.Contains(t, alphaSearch, APIFormatOpenAIAlphaSearch.String())
 	require.NotContains(t, alphaSearch, APIFormatOpenAIResponse.String())
 
+	systemOne := CapableAPIFormats(RequestTypeSystemOne)
+	require.NotNil(t, systemOne)
+	require.Contains(t, systemOne, APIFormatTypeSafeSystemOne.String())
+	require.NotContains(t, systemOne, APIFormatOpenAIChatCompletion.String())
+
 	require.Nil(t, CapableAPIFormats(RequestType("unknown")))
+}
+
+func TestCapableAPIFormats_IncludesModelScopeImage(t *testing.T) {
+	t.Parallel()
+
+	image := CapableAPIFormats(RequestTypeImage)
+	require.Contains(t, image, APIFormatModelScopeImage.String())
+
+	chat := CapableAPIFormats(RequestTypeChat)
+	require.NotContains(t, chat, APIFormatModelScopeImage.String())
+
+	video := CapableAPIFormats(RequestTypeVideo)
+	require.NotContains(t, video, APIFormatModelScopeImage.String())
 }
 
 func TestRequestTypeForModelType(t *testing.T) {
@@ -33,5 +51,7 @@ func TestRequestTypeForModelType(t *testing.T) {
 	require.Equal(t, RequestTypeRerank, RequestTypeForModelType("rerank"))
 	require.Equal(t, RequestTypeImage, RequestTypeForModelType("image_generation"))
 	require.Equal(t, RequestTypeVideo, RequestTypeForModelType("video_generation"))
+	require.Equal(t, RequestTypeSystemOne, RequestTypeForModelType("systemone"))
+	require.Equal(t, RequestTypeSystemOne, RequestTypeForModelType("system_one"))
 	require.Empty(t, RequestTypeForModelType("unknown"))
 }

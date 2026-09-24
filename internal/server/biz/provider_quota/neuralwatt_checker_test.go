@@ -60,7 +60,7 @@ func TestNeuralWatt_CheckQuota_HappyPath(t *testing.T) {
 }
 
 func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
-	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-02T05:58:36Z")
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2099-06-02T05:58:36Z")
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -78,7 +78,7 @@ func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
 					"kwh_used": 17.0,
 					"kwh_remaining": 3.0,
 					"in_overage": false,
-					"kwh_reset_date": "2026-06-02T05:58:36Z"
+					"kwh_reset_date": "2099-06-02T05:58:36Z"
 				}
 			}`
 			return &http.Response{
@@ -104,7 +104,7 @@ func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
 }
 
 func TestNeuralWatt_CheckQuota_ExhaustedState(t *testing.T) {
-	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-02T05:58:36Z")
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2099-06-02T05:58:36Z")
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -121,7 +121,7 @@ func TestNeuralWatt_CheckQuota_ExhaustedState(t *testing.T) {
 					"kwh_used": 22.5,
 					"kwh_remaining": 0.0,
 					"in_overage": true,
-					"kwh_reset_date": "2026-06-02T05:58:36Z"
+					"kwh_reset_date": "2099-06-02T05:58:36Z"
 				}
 			}`
 
@@ -215,7 +215,7 @@ func TestNeuralWatt_CheckQuota_HTTPError(t *testing.T) {
 }
 
 func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
-	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-02T05:58:36Z")
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2099-06-02T05:58:36Z")
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -232,7 +232,7 @@ func TestNeuralWatt_CheckQuota_ZeroRemainingWithoutOverage(t *testing.T) {
 					"kwh_used": 20.0,
 					"kwh_remaining": 0.0,
 					"in_overage": false,
-					"kwh_reset_date": "2026-06-02T05:58:36Z"
+					"kwh_reset_date": "2099-06-02T05:58:36Z"
 				}
 			}`
 
@@ -335,7 +335,7 @@ func TestNeuralWatt_CheckQuota_CustomBaseURL(t *testing.T) {
 }
 
 func TestNeuralWatt_CheckQuota_KwhResetDate(t *testing.T) {
-	expectedResetAt, _ := time.Parse(time.RFC3339, "2026-06-26T19:25:50Z")
+	expectedResetAt, _ := time.Parse(time.RFC3339, "2099-06-26T19:25:50Z")
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
@@ -352,7 +352,7 @@ func TestNeuralWatt_CheckQuota_KwhResetDate(t *testing.T) {
 					"kwh_used": 8.7808,
 					"kwh_remaining": 24.2192,
 					"in_overage": false,
-					"kwh_reset_date": "2026-06-26T19:25:50Z"
+					"kwh_reset_date": "2099-06-26T19:25:50Z"
 				}
 			}`
 

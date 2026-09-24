@@ -93,6 +93,39 @@ func ProjectOwnerReadUsersRule() privacy.QueryRule {
 	})
 }
 
+// ProjectMemberReadUsersRule allows project members to view users belonging to
+// their current project when they hold the required scope on that project.
+// Users with the scope at system level keep their current unrestricted view.
+func ProjectMemberReadUsersRule(requiredScope ScopeSlug) privacy.QueryRule {
+	return privacy.FilterFunc(func(ctx context.Context, q privacy.Filter) error {
+		projectID, hasProjectID := contexts.GetProjectID(ctx)
+		if !hasProjectID {
+			return privacy.Skipf("Project ID not found in context")
+		}
+
+		currentUser, err := getUserFromContext(ctx)
+		if err != nil {
+			return privacy.Skipf("User not found in context")
+		}
+
+		userFilter, ok := q.(*ent.UserFilter)
+		if !ok {
+			return privacy.Skipf("Not a user query")
+		}
+
+		if HasSystemScope(currentUser, requiredScope) {
+			return privacy.Allowf("User %d has system scope %s, querying users", currentUser.ID, requiredScope)
+		}
+
+		if !userHasProjectScope(currentUser, projectID, requiredScope) {
+			return privacy.Skipf("User %d can not query users in project %d with scope %s", currentUser.ID, requiredScope, requiredScope)
+		}
+
+		userFilter.WhereHasProjectUsersWith(userproject.ProjectID(projectID))
+		return privacy.Allowf("User %d can query users in project %d with scope %s", currentUser.ID, projectID, requiredScope)
+	})
+}
+
 // UserProjectScopeReadRule allows users to query projects they are members of.
 // It checks:
 // 1. If user has global scope permission -> Allow all

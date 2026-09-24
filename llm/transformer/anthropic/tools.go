@@ -55,15 +55,16 @@ func FilterOutAnthropicNativeTools(tools []llm.Tool) []llm.Tool {
 }
 
 // supportsAnthropicNativeTools checks if the platform supports Anthropic native tools.
-// Only direct Anthropic API, Bedrock, and Claude Code support native tools like web_search.
+// Direct Anthropic API, Bedrock, Claude Code, and DeepSeek's Anthropic-compatible API
+// support native tools like web_search.
 func supportsAnthropicNativeTools(config *Config) bool {
 	if config == nil {
 		return true
 	}
 
-	//nolint:exhaustive // Only check direct, bedrock, and claude code platforms.
+	//nolint:exhaustive // Only check platforms with verified native tool support.
 	switch config.Type {
-	case PlatformDirect, PlatformBedrock, PlatformClaudeCode:
+	case PlatformDirect, PlatformBedrock, PlatformClaudeCode, PlatformDeepSeek:
 		return true
 	default:
 		return false

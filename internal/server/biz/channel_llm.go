@@ -43,6 +43,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/opencode"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
+	"github.com/looplj/axonhub/llm/transformer/typesafe"
 	"github.com/looplj/axonhub/llm/transformer/xai"
 	xaisubscription "github.com/looplj/axonhub/llm/transformer/xai/subscription"
 	"github.com/looplj/axonhub/llm/transformer/zai"
@@ -219,15 +220,6 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 
 	for _, ep := range defaultEndpoints {
 		if ep.APIFormat == "" {
-			continue
-		}
-
-		if c.Type == channel.TypeZenmux && ep.APIFormat == llm.APIFormatZenmuxVideo.String() {
-			out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
-			if err != nil {
-				return nil, fmt.Errorf("failed to build default outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
-			}
-			outbounds[ep.APIFormat] = out
 			continue
 		}
 
@@ -484,8 +476,8 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatZenmuxVideo.String():
-		if c.Type != channel.TypeZenmux {
-			return nil, fmt.Errorf("api_format %q is only supported by channel type %q", ep.APIFormat, channel.TypeZenmux)
+		if !isZenmuxChannelType(c.Type) {
+			return nil, fmt.Errorf("api_format %q is only supported by ZenMux channel types", ep.APIFormat)
 		}
 
 		return zenmuxtransformer.NewOutboundTransformerWithConfig(&zenmuxtransformer.Config{
@@ -530,6 +522,12 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		})
 	case llm.APIFormatJinaRerank.String(), llm.APIFormatJinaEmbedding.String():
 		return jina.NewOutboundTransformerWithConfig(&jina.Config{
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+			EndpointPath:   ep.Path,
+		})
+	case llm.APIFormatTypeSafeSystemOne.String():
+		return typesafe.NewOutboundTransformerWithConfig(&typesafe.Config{
 			BaseURL:        baseURL,
 			APIKeyProvider: apiKeyProvider(),
 			EndpointPath:   ep.Path,
@@ -663,7 +661,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 	if c.BaseURL == "" {
 		switch c.Type { //nolint:exhaustive // Only ZenMux types have defaults applied here.
-		case channel.TypeZenmux, channel.TypeZenmuxResponses:
+		case channel.TypeZenmux, channel.TypeZenmuxResponses, channel.TypeZenmuxVideo:
 			c.BaseURL = zenmuxOpenAIBaseURL
 		case channel.TypeZenmuxAnthropic:
 			c.BaseURL = zenmuxAnthropicBaseURL
@@ -1070,6 +1068,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		transformer, err := modelscope.NewOutboundTransformerWithConfig(&modelscope.Config{
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
+			HTTPClient:     ch.HTTPClient,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -1250,6 +1249,16 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		ch.Outbound = transformer
 
 		return ch, nil
+	case channel.TypeZenmuxVideo:
+		transformer, err := zenmuxtransformer.NewOutboundTransformerWithConfig(&zenmuxtransformer.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create ZenMux video outbound transformer: %w", err)
+		}
+		ch.Outbound = transformer
+		return ch, nil
 	case channel.TypeOpenaiResponses:
 		transformer, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
 			BaseURL:        c.BaseURL,
@@ -1290,6 +1299,18 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		return ch, nil
 	case channel.TypeJina:
 		transformer, err := jina.NewOutboundTransformerWithConfig(&jina.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeTypesafe:
+		transformer, err := typesafe.NewOutboundTransformerWithConfig(&typesafe.Config{
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
 		})

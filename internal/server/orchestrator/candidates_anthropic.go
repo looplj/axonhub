@@ -12,7 +12,7 @@ import (
 
 // AnthropicNativeToolsSelector is a decorator that prioritizes candidates supporting Anthropic native tools.
 // When a request contains Anthropic native tools (web_search -> web_search_20250305),
-// this selector filters out candidates whose channels don't support these tools (e.g., deepseek_anthropic).
+// this selector filters out candidates whose channels don't support these tools (e.g., moonshot_anthropic).
 // If no compatible candidates are found, it falls back to all candidates (allowing downstream fallback logic).
 type AnthropicNativeToolsSelector struct {
 	wrapped CandidateSelector
