@@ -170,7 +170,7 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 
 	enabled := ch.cachedEnabledAPIKeys
 	if len(enabled) > 1 {
-		return NewChannelAPIKeyContextProvider(NewTraceStickyKeyProvider(ch))
+		return NewChannelAPIKeyContextProvider(newMultiKeyProvider(ch))
 	}
 
 	if len(enabled) == 1 {

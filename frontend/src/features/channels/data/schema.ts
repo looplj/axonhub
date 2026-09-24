@@ -332,6 +332,8 @@ export const channelSettingsSchema = z.object({
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
+  apiKeyStrategy: z.enum(['sticky', 'random', 'round_robin', 'fixed']).optional().nullable(),
+  apiKeyRoundRobinSwitchAfter: z.number().int().min(1).optional().nullable(),
 });
 
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;

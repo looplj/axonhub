@@ -242,6 +242,17 @@ type ChannelSettings struct {
 	// restricted to those formats; otherwise all channel endpoints are eligible.
 	ModelProtocols []ModelProtocol `json:"modelProtocols,omitempty"`
 
+	// APIKeyStrategy selects how an API key is chosen when a channel has multiple
+	// enabled keys. Empty defaults to APIKeyStrategySticky (trace affinity + random
+	// fallback), preserving the historical behavior.
+	APIKeyStrategy string `json:"apiKeyStrategy,omitempty"`
+
+	// APIKeyRoundRobinSwitchAfter is the number of consecutive requests a key is
+	// reused before round-robin advances to the next key. Only meaningful when
+	// APIKeyStrategy is APIKeyStrategyRoundRobin. Values below 1 are treated as 1
+	// (switch every request).
+	APIKeyRoundRobinSwitchAfter int `json:"apiKeyRoundRobinSwitchAfter,omitempty"`
+
 	// ProviderQuota holds provider-specific quota collection credentials and
 	// options. Fields are sensitive (e.g. auth cookies) and only exposed to
 	// operators holding channel write permission.
@@ -268,6 +279,32 @@ func (s CommandCodeQuotaSettings) String() string {
 		return "CommandCodeQuotaSettings{AuthCookie: \"\"}"
 	}
 	return "CommandCodeQuotaSettings{AuthCookie: <redacted>}"
+}
+
+// API key selection strategies for channels with multiple enabled keys.
+const (
+	// APIKeyStrategySticky keeps the same key for a given trace and picks randomly
+	// when there is no trace. This is the default / historical behavior.
+	APIKeyStrategySticky = "sticky"
+	// APIKeyStrategyRandom picks a key at random regardless of trace.
+	APIKeyStrategyRandom = "random"
+	// APIKeyStrategyRoundRobin advances through keys in order, reusing each key for
+	// APIKeyRoundRobinSwitchAfter consecutive requests before moving on.
+	APIKeyStrategyRoundRobin = "round_robin"
+	// APIKeyStrategyFixed always uses the first enabled key; failover to the next
+	// key relies on the channel's per-key auto-disable rules.
+	APIKeyStrategyFixed = "fixed"
+)
+
+// IsValidAPIKeyStrategy reports whether value is a known strategy (empty is valid
+// and means the default sticky behavior).
+func IsValidAPIKeyStrategy(value string) bool {
+	switch value {
+	case "", APIKeyStrategySticky, APIKeyStrategyRandom, APIKeyStrategyRoundRobin, APIKeyStrategyFixed:
+		return true
+	default:
+		return false
+	}
 }
 
 type RetryableErrorPattern struct {

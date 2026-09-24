@@ -398,6 +398,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
   );
+  const [apiKeyStrategy, setApiKeyStrategy] = useState<'sticky' | 'random' | 'round_robin' | 'fixed'>(
+    () => initialRow?.settings?.apiKeyStrategy ?? 'sticky'
+  );
+  const [apiKeyRoundRobinSwitchAfter, setApiKeyRoundRobinSwitchAfter] = useState<number>(
+    () => initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1
+  );
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -1343,6 +1349,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           ...(shouldUpdateModelProtocols
             ? { modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, existingModelProtocols) }
             : {}),
+          apiKeyStrategy,
+          apiKeyRoundRobinSwitchAfter: apiKeyStrategy === 'round_robin' ? apiKeyRoundRobinSwitchAfter : null,
         };
 
         const updateInput = {
@@ -1411,6 +1419,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 ),
               }
             : {}),
+          apiKeyStrategy,
+          apiKeyRoundRobinSwitchAfter: apiKeyStrategy === 'round_robin' ? apiKeyRoundRobinSwitchAfter : null,
         });
 
         const createInput = {
@@ -1843,6 +1853,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+            setApiKeyStrategy(initialRow?.settings?.apiKeyStrategy ?? 'sticky');
+            setApiKeyRoundRobinSwitchAfter(initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1);
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -2559,6 +2571,47 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         />
                       )}
 
+                      <div className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                          {t('channels.dialogs.fields.apiKeyStrategy.label')}
+                        </FormLabel>
+                        <div className='space-y-1 md:col-span-6'>
+                          <SelectDropdown
+                            defaultValue={apiKeyStrategy}
+                            onValueChange={(value) =>
+                              setApiKeyStrategy(value as 'sticky' | 'random' | 'round_robin' | 'fixed')
+                            }
+                            data-testid='channel-api-key-strategy-select'
+                            isControlled={true}
+                            items={[
+                              { value: 'sticky', label: t('channels.dialogs.fields.apiKeyStrategy.options.sticky') },
+                              { value: 'random', label: t('channels.dialogs.fields.apiKeyStrategy.options.random') },
+                              { value: 'round_robin', label: t('channels.dialogs.fields.apiKeyStrategy.options.roundRobin') },
+                              { value: 'fixed', label: t('channels.dialogs.fields.apiKeyStrategy.options.fixed') },
+                            ]}
+                          />
+                          <p className='text-muted-foreground text-xs'>
+                            {t('channels.dialogs.fields.apiKeyStrategy.tooltip')}
+                          </p>
+                          <div className='flex items-center gap-2'>
+                            <Input
+                              type='number'
+                              min={1}
+                              value={apiKeyRoundRobinSwitchAfter}
+                              disabled={apiKeyStrategy !== 'round_robin'}
+                              onChange={(e) => {
+                                const n = parseInt(e.target.value, 10);
+                                setApiKeyRoundRobinSwitchAfter(Number.isNaN(n) || n < 1 ? 1 : n);
+                              }}
+                              className='w-24'
+                              data-testid='channel-api-key-round-robin-input'
+                            />
+                            <span className='text-muted-foreground text-xs'>
+                              {t('channels.dialogs.fields.apiKeyRoundRobinSwitchAfter.label')}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
 
                       <FormField
                         control={form.control}

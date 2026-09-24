@@ -182,6 +182,8 @@ type ChannelSettings {
   retryableErrorPatterns: [RetryableErrorPattern!]
   modelProtocols: [ModelProtocol!]
   providerQuota: ChannelProviderQuotaSettings @goField(forceResolver: true)
+  apiKeyStrategy: String
+  apiKeyRoundRobinSwitchAfter: Int
 }
 
 enum CapabilityPolicy {
@@ -250,6 +252,8 @@ input ChannelSettingsInput {
   retryableErrorPatterns: [RetryableErrorPatternInput!]
   modelProtocols: [ModelProtocolInput!]
   providerQuota: ChannelProviderQuotaSettingsInput
+  apiKeyStrategy: String
+  apiKeyRoundRobinSwitchAfter: Int
 }
 
 input ChannelRateLimitInput {
