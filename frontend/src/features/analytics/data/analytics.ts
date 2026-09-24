@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
-
+import { useSelectedProjectId } from '@/stores/projectStore';
 // --- Zod Schemas ---
 
 /** Analytics filter: time range plus the optional dimension selectors. */
@@ -200,13 +200,17 @@ export function useAnalyticsDailyStats(filter: AnalyticsFilter | null) {
 
 /** Breakdown for one dimension; disabled until a dimension is selected. */
 export function useAnalyticsDimensionStats(filter: AnalyticsFilter | null, dimension: string, enabled = true) {
+  const selectedProjectId = useSelectedProjectId();
+
   return useQuery({
-    queryKey: ['analyticsDimensionStats', filter, dimension],
+    queryKey: ['analyticsDimensionStats', filter, dimension, selectedProjectId],
     queryFn: async () => {
       const gqlFilter = toGraphQLFilter(filter);
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
       const data = await graphqlRequest<{ analyticsDimensionStats: AnalyticsDimensionStat[] }>(
         ANALYTICS_DIMENSION_STATS_QUERY,
-        { filter: gqlFilter, dimension }
+        { filter: gqlFilter, dimension },
+        headers
       );
       return data.analyticsDimensionStats.map((item) => analyticsDimensionStatSchema.parse(item));
     },
