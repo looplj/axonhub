@@ -331,11 +331,8 @@ export const channelSettingsSchema = z.object({
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
-providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
-  apiKeyStrategy: z
-    .enum(['sticky', 'random', 'round_robin', 'round_robin_success', 'priority', 'fixed'])
-    .optional()
-    .nullable(),
+  providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
+  apiKeyStrategy: z.enum(['sticky', 'random', 'round_robin', 'round_robin_success', 'priority', 'fixed']).optional().nullable(),
   apiKeyRoundRobinSwitchAfter: z.number().int().min(1).optional().nullable(),
 });
 
