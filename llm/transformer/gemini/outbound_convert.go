@@ -291,6 +291,10 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	// Convert tool choice
 	if chatReq.ToolChoice != nil {
 		req.ToolConfig = convertLLMToolChoiceToGeminiToolConfig(chatReq.ToolChoice)
+	} else if hasStrictFunctionTool(chatReq.Tools) {
+		req.ToolConfig = &ToolConfig{
+			FunctionCallingConfig: &FunctionCallingConfig{Mode: "VALIDATED"},
+		}
 	}
 
 	// Convert safety settings from TransformerMetadata
@@ -308,6 +312,16 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	}
 
 	return req
+}
+
+func hasStrictFunctionTool(tools []llm.Tool) bool {
+	for _, tool := range tools {
+		if tool.Type == llm.ToolTypeFunction && tool.Function.Strict != nil && *tool.Function.Strict {
+			return true
+		}
+	}
+
+	return false
 }
 
 // convertLLMMessageToGeminiContent converts an LLM Message to Gemini Content.
