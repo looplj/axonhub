@@ -56,27 +56,27 @@ func TestRequestService_CreateRequestExecution_ChannelAPIKeyIndex(t *testing.T) 
 		wantIndex *int
 	}{
 		{
-			name:    "first key of a multi-key channel is key1",
-			apiKeys: []string{"sk-first-1111", "sk-second-2222", "sk-third-3333"},
-			usedKey: "sk-first-1111",
+			name:      "first key of a multi-key channel is key1",
+			apiKeys:   []string{"sk-first-1111", "sk-second-2222", "sk-third-3333"},
+			usedKey:   "sk-first-1111",
 			wantIndex: func() *int { v := 1; return &v }(),
 		},
 		{
-			name:    "second key of a multi-key channel is key2",
-			apiKeys: []string{"sk-first-1111", "sk-second-2222", "sk-third-3333"},
-			usedKey: "sk-second-2222",
+			name:      "second key of a multi-key channel is key2",
+			apiKeys:   []string{"sk-first-1111", "sk-second-2222", "sk-third-3333"},
+			usedKey:   "sk-second-2222",
 			wantIndex: func() *int { v := 2; return &v }(),
 		},
 		{
-			name:    "last key of a multi-key channel keeps its position",
-			apiKeys: []string{"sk-first-1111", "sk-second-2222", "sk-third-3333"},
-			usedKey: "sk-third-3333",
+			name:      "last key of a multi-key channel keeps its position",
+			apiKeys:   []string{"sk-first-1111", "sk-second-2222", "sk-third-3333"},
+			usedKey:   "sk-third-3333",
 			wantIndex: func() *int { v := 3; return &v }(),
 		},
 		{
-			name:    "keys differing only in the last 4 characters are still distinguished",
-			apiKeys: []string{"sk-alpha-9999", "sk-bravo-9999"},
-			usedKey: "sk-bravo-9999",
+			name:      "keys differing only in the last 4 characters are still distinguished",
+			apiKeys:   []string{"sk-alpha-9999", "sk-bravo-9999"},
+			usedKey:   "sk-bravo-9999",
 			wantIndex: func() *int { v := 2; return &v }(),
 		},
 		{
