@@ -86,7 +86,8 @@ func TestNewMultiKeyProvider_Dispatch(t *testing.T) {
 		{"unknown_value", &TraceStickyKeyProvider{}},
 	}
 	for _, tc := range cases {
-		ch.Settings = &objects.ChannelSettings{APIKeyStrategy: tc.strategy}
+		strategy := tc.strategy
+		ch.Settings = &objects.ChannelSettings{APIKeyStrategy: &strategy}
 		require.IsTypef(t, tc.want, newMultiKeyProvider(ch), "strategy %q", tc.strategy)
 	}
 }

@@ -17,8 +17,12 @@ func newMultiKeyProvider(ch *Channel) auth.APIKeyProvider {
 	var strategy string
 	var per int
 	if ch.Settings != nil {
-		strategy = ch.Settings.APIKeyStrategy
-		per = ch.Settings.APIKeyRoundRobinSwitchAfter
+		if s := ch.Settings.APIKeyStrategy; s != nil {
+			strategy = *s
+		}
+		if n := ch.Settings.APIKeyRoundRobinSwitchAfter; n != nil {
+			per = *n
+		}
 	}
 
 	switch strategy {
