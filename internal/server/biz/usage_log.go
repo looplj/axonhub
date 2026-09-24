@@ -198,11 +198,6 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 		return nil, nil
 	}
 
-	var apiKeyID *int
-	if request.APIKeyID > 0 {
-		apiKeyID = lo.ToPtr(request.APIKeyID)
-	}
-
 	return s.CreateUsageLog(ctx, CreateUsageLogParams{
 		RequestID:     request.ID,
 		ProjectID:     request.ProjectID,
@@ -211,6 +206,6 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 		Usage:         usage,
 		Source:        usagelog.Source(request.Source),
 		Format:        request.Format,
-		APIKeyID:      apiKeyID,
+		APIKeyID:      lo.ToPtr(request.APIKeyID),
 	})
 }
