@@ -363,9 +363,19 @@ export default function Playground() {
     }
   }, [canUseModelGateway, modelSource]);
 
-  // 初始化 / 校准：默认选第一个渠道；若当前选中渠道已不可用（如已被关闭），回退到第一个可用渠道
+  // 初始化 / 校准：默认选第一个渠道；若当前选中渠道已不可用（如已被关闭），回退到第一个可用渠道。
+  // 若已无任何可用渠道，清空选择，避免提交时仍带上已不可用的渠道 ID 与模型。
   useEffect(() => {
-    if (channelsLoading || channelOptions.length === 0) return;
+    if (channelsLoading) return;
+
+    if (channelOptions.length === 0) {
+      setSelectedChannel('');
+      if (!isModelGatewaySource) {
+        setModel('');
+      }
+      return;
+    }
+
     if (channelOptions.some((option) => option.value === selectedChannel)) return;
 
     if (isModelGatewaySource) {
