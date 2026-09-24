@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/auth"
 )
@@ -36,12 +37,17 @@ func channelAPIKeySwitchAfter(ch *Channel) int {
 	return 1
 }
 
-// strategyKeepsSelectionState reports whether a strategy remembers which key is
-// in use across channel snapshots, and therefore needs the shared per-channel
-// state owned by ChannelService.
+// strategyKeepsSelectionState reports whether a strategy remembers something
+// between requests, and therefore needs the shared per-channel state owned by
+// ChannelService. An empty strategy means sticky, the historical default.
 func strategyKeepsSelectionState(strategy string) bool {
-	return strategy == objects.APIKeyStrategyFixed ||
-		strategy == objects.APIKeyStrategyRoundRobinSuccess
+	switch strategy {
+	case "", objects.APIKeyStrategySticky, objects.APIKeyStrategyRoundRobin,
+		objects.APIKeyStrategyRoundRobinSuccess, objects.APIKeyStrategyFixed:
+		return true
+	default:
+		return false
+	}
 }
 
 // newMultiKeyProvider builds the key provider for a channel with more than one
@@ -60,9 +66,9 @@ func newMultiKeyProvider(ch *Channel) auth.APIKeyProvider {
 	case objects.APIKeyStrategyFixed:
 		return NewFixedKeyProvider(ch)
 	case objects.APIKeyStrategySticky, "":
-		return NewTraceStickyKeyProvider(ch)
+		return newSharedStickyKeyProvider(ch)
 	default:
-		return NewTraceStickyKeyProvider(ch)
+		return newSharedStickyKeyProvider(ch)
 	}
 }
 
@@ -147,31 +153,106 @@ func (p *RandomKeyProvider) Get(ctx context.Context) string {
 	return selectedKey
 }
 
+// sharedStickyKeyProvider is the shared sticky provider: it selects a key
+// deterministically per traceID and remembers the choice on the shared
+// per-channel state.
+//
+// The upstream TraceStickyKeyProvider keeps its trace→key memory inside the
+// provider, which a channel rebuild discards: every channel change rebuilds
+// every provider, so an ongoing session would be scattered across keys. This
+// variant keeps that memory where it survives the rebuilds.
+type sharedStickyKeyProvider struct {
+	channel *Channel
+	state   *apiKeySelectionState
+}
+
+func newSharedStickyKeyProvider(channel *Channel) *sharedStickyKeyProvider {
+	return &sharedStickyKeyProvider{channel: channel, state: channel.apiKeyState}
+}
+
+func (p *sharedStickyKeyProvider) Get(ctx context.Context) string {
+	if p.state == nil {
+		// Defensive: without shared state fall back to the upstream provider.
+		return NewTraceStickyKeyProvider(p.channel).Get(ctx)
+	}
+
+	ch := currentChannel(p.channel, p.state)
+
+	enabled := ch.cachedEnabledAPIKeys
+	if len(enabled) == 0 {
+		return ch.Credentials.APIKeys[0]
+	}
+
+	if len(enabled) == 1 {
+		return enabled[0]
+	}
+
+	var selectedKey string
+
+	if trace, ok := contexts.GetTrace(ctx); ok && trace != nil {
+		selectedKey = p.state.stickyKeyFor(ch, trace.TraceID)
+
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "Trace sticky key selected",
+				log.String("trace_id", trace.TraceID),
+				log.String("key_prefix", safeAPIKeyPrefix(selectedKey)),
+			)
+		}
+	} else {
+		//nolint:gosec // not a security issue, just a random selection.
+		selectedKey = enabled[rand.IntN(len(enabled))]
+
+		if log.DebugEnabled(ctx) {
+			log.Debug(ctx, "Random key selected",
+				log.String("key_prefix", safeAPIKeyPrefix(selectedKey)),
+			)
+		}
+	}
+
+	contexts.WithChannelAPIKey(ctx, selectedKey)
+
+	return selectedKey
+}
+
 // RoundRobinKeyProvider advances through the enabled keys in order, reusing each
 // key for `per` consecutive requests before moving to the next. Every request
-// counts, whatever its outcome. The counter is in-process and resets whenever
-// the channel (and thus this provider) is rebuilt.
+// counts, whatever its outcome.
+//
+// The counter lives on the shared per-channel state rather than in the provider:
+// every channel change rebuilds every provider, so a per-provider counter would
+// restart the rotation at the first key each time any channel in the cluster
+// changes.
 type RoundRobinKeyProvider struct {
 	channel *Channel
-	per     uint64
-	counter atomic.Uint64
+	state   *apiKeySelectionState
+	per     int
+
+	// fallback counts rotations for the defensive case where no shared state is
+	// available, so the provider still rotates on its own.
+	fallback atomic.Uint64
 }
 
 func NewRoundRobinKeyProvider(channel *Channel, per int) *RoundRobinKeyProvider {
 	if per < 1 {
 		per = 1
 	}
-	return &RoundRobinKeyProvider{
-		channel: channel,
-		per:     uint64(per),
-	}
+
+	return &RoundRobinKeyProvider{channel: channel, state: channel.apiKeyState, per: per}
 }
 
 func (p *RoundRobinKeyProvider) Get(ctx context.Context) string {
-	enabled := selectableKeys(p.channel)
+	ch := currentChannel(p.channel, p.state)
 
-	index := (p.counter.Add(1) - 1) / p.per % uint64(len(enabled))
-	selectedKey := enabled[index]
+	var selectedKey string
+
+	if p.state != nil {
+		selectedKey = p.state.nextRoundRobinKey(ch, p.per)
+	} else {
+		enabled := selectableKeys(ch)
+
+		index := (p.fallback.Add(1) - 1) / uint64(p.per) % uint64(len(enabled))
+		selectedKey = enabled[index]
+	}
 
 	contexts.WithChannelAPIKey(ctx, selectedKey)
 

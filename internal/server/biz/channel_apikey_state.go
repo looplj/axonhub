@@ -5,18 +5,22 @@ import (
 	"sync"
 	"sync/atomic"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+
 	"github.com/looplj/axonhub/internal/objects"
 )
 
 // apiKeySelectionState is the per-channel selection state that has to outlive a
 // channel snapshot.
 //
-// Disabling a key, editing a channel, or the periodic cleanup of expired
-// disables all rebuild every *Channel, and with it every outbound transformer
-// and key provider. A strategy that remembers "the key in use" would lose its
-// place on each of those rebuilds. The state therefore lives on ChannelService,
-// keyed by channel id; only the snapshot pointer is refreshed when a channel is
-// rebuilt.
+// Any channel change (disabling a key, editing a channel, the periodic cleanup
+// of expired disables, even a change to a *different* channel) rebuilds every
+// enabled *Channel, and with it every outbound transformer and key provider.
+// A strategy that remembers anything between requests would lose it on each of
+// those rebuilds: the round-robin rotation would restart at the first key and an
+// in-flight session would be scattered across keys. The state therefore lives on
+// ChannelService, keyed by channel id; only the snapshot pointer is refreshed
+// when a channel is rebuilt.
 type apiKeySelectionState struct {
 	mu sync.Mutex
 
@@ -27,6 +31,15 @@ type apiKeySelectionState struct {
 	// snapshot points at the freshest *Channel of this channel. Selections read
 	// through it so a key disabled mid-request is honoured by the next call.
 	snapshot atomic.Pointer[Channel]
+
+	// rrCounter is the round_robin request counter. It is kept here, not in the
+	// provider, so that rebuilding a snapshot does not restart the rotation at
+	// the first key.
+	rrCounter uint64
+
+	// stickyCache remembers traceID → key for the sticky strategy, for the same
+	// reason: a rebuild must not scatter an ongoing session across keys.
+	stickyCache *lru.Cache[string, string]
 
 	// fixedCursorKey / fixedCursorIdx remember the key the fixed strategy is
 	// using and where it sits in the channel's key array.
@@ -44,8 +57,8 @@ type apiKeySelectionState struct {
 }
 
 // apiKeySelectionStateFor returns the shared state of a channel, creating it on
-// first use. Strategies that keep all their state inside the provider get nil,
-// so their channels never allocate one.
+// first use. Strategies that need no memory between requests get nil, so their
+// channels never allocate one.
 func (svc *ChannelService) apiKeySelectionStateFor(ch *Channel) *apiKeySelectionState {
 	if ch == nil || !strategyKeepsSelectionState(channelAPIKeyStrategy(ch)) {
 		return nil
@@ -98,6 +111,58 @@ func (svc *ChannelService) forgetAPIKeySelectionState(channelID int) {
 	defer svc.apiKeyStatesLock.Unlock()
 
 	delete(svc.apiKeyStates, channelID)
+}
+
+// nextRoundRobinKey advances the shared round-robin counter and returns the key
+// for this request. Every request counts, whatever its outcome.
+func (st *apiKeySelectionState) nextRoundRobinKey(ch *Channel, per int) string {
+	enabled := selectableKeys(ch)
+	if len(enabled) == 0 {
+		return ""
+	}
+
+	if per < 1 {
+		per = 1
+	}
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+
+	index := st.rrCounter / uint64(per) % uint64(len(enabled))
+	st.rrCounter++
+
+	return enabled[index]
+}
+
+// stickyKeyFor returns the sticky key of a trace, remembering the choice on the
+// shared state so a channel rebuild keeps the session on the same key. The
+// remembered key wins even if the enabled set changed, mirroring the upstream
+// provider's behaviour.
+func (st *apiKeySelectionState) stickyKeyFor(ch *Channel, traceID string) string {
+	enabled := ch.cachedEnabledAPIKeys
+	if len(enabled) == 0 {
+		return ch.Credentials.APIKeys[0]
+	}
+
+	if len(enabled) == 1 {
+		return enabled[0]
+	}
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+
+	if st.stickyCache == nil {
+		st.stickyCache, _ = lru.New[string, string](traceStickyLRUSize)
+	}
+
+	if cached, ok := st.stickyCache.Get(traceID); ok {
+		return cached
+	}
+
+	selected := rendezvousSelect(enabled, traceID)
+	st.stickyCache.Add(traceID, selected)
+
+	return selected
 }
 
 // selectFixedKey returns the key the fixed strategy should use and records it.

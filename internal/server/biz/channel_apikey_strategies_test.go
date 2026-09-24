@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
@@ -104,20 +105,20 @@ func TestNewMultiKeyProvider_Dispatch(t *testing.T) {
 	ch := newKeyChannel(1, []string{"k1", "k2"})
 
 	// nil settings -> sticky (default).
-	require.IsType(t, &TraceStickyKeyProvider{}, newMultiKeyProvider(ch))
+	require.IsType(t, &sharedStickyKeyProvider{}, newMultiKeyProvider(ch))
 
 	cases := []struct {
 		strategy string
 		want     any
 	}{
-		{"", &TraceStickyKeyProvider{}},
-		{objects.APIKeyStrategySticky, &TraceStickyKeyProvider{}},
+		{"", &sharedStickyKeyProvider{}},
+		{objects.APIKeyStrategySticky, &sharedStickyKeyProvider{}},
 		{objects.APIKeyStrategyRandom, &RandomKeyProvider{}},
 		{objects.APIKeyStrategyRoundRobin, &RoundRobinKeyProvider{}},
 		{objects.APIKeyStrategyRoundRobinSuccess, &RoundRobinSuccessKeyProvider{}},
 		{objects.APIKeyStrategyPriority, &PriorityKeyProvider{}},
 		{objects.APIKeyStrategyFixed, &FixedKeyProvider{}},
-		{"unknown_value", &TraceStickyKeyProvider{}},
+		{"unknown_value", &sharedStickyKeyProvider{}},
 	}
 	for _, tc := range cases {
 		strategy := tc.strategy
@@ -127,13 +128,14 @@ func TestNewMultiKeyProvider_Dispatch(t *testing.T) {
 }
 
 func TestStrategyKeepsSelectionState(t *testing.T) {
-	require.True(t, strategyKeepsSelectionState(objects.APIKeyStrategyFixed))
-	require.True(t, strategyKeepsSelectionState(objects.APIKeyStrategyRoundRobinSuccess))
-
 	for _, strategy := range []string{
-		"", objects.APIKeyStrategySticky, objects.APIKeyStrategyRandom,
-		objects.APIKeyStrategyRoundRobin, objects.APIKeyStrategyPriority,
+		"", objects.APIKeyStrategySticky, objects.APIKeyStrategyRoundRobin,
+		objects.APIKeyStrategyRoundRobinSuccess, objects.APIKeyStrategyFixed,
 	} {
+		require.Truef(t, strategyKeepsSelectionState(strategy), "strategy %q", strategy)
+	}
+
+	for _, strategy := range []string{objects.APIKeyStrategyRandom, objects.APIKeyStrategyPriority} {
 		require.Falsef(t, strategyKeepsSelectionState(strategy), "strategy %q", strategy)
 	}
 }
@@ -141,12 +143,19 @@ func TestStrategyKeepsSelectionState(t *testing.T) {
 func TestAPIKeySelectionStateFor_OnlyRegistersRememberingStrategies(t *testing.T) {
 	svc := &ChannelService{}
 
-	fixed := withStrategy(newKeyChannel(1, []string{"k1", "k2"}), objects.APIKeyStrategyFixed)
-	require.NotNil(t, svc.apiKeySelectionStateFor(fixed))
+	for i, strategy := range []string{
+		"", objects.APIKeyStrategySticky, objects.APIKeyStrategyRoundRobin,
+		objects.APIKeyStrategyRoundRobinSuccess, objects.APIKeyStrategyFixed,
+	} {
+		ch := withStrategy(newKeyChannel(i+1, []string{"k1", "k2"}), strategy)
+		require.NotNilf(t, svc.apiKeySelectionStateFor(ch), "strategy %q", strategy)
+	}
 
-	sticky := withStrategy(newKeyChannel(2, []string{"k1", "k2"}), objects.APIKeyStrategySticky)
-	require.Nil(t, svc.apiKeySelectionStateFor(sticky))
-	require.Nil(t, svc.apiKeySelectionState(2))
+	for i, strategy := range []string{objects.APIKeyStrategyRandom, objects.APIKeyStrategyPriority} {
+		ch := withStrategy(newKeyChannel(100+i, []string{"k1", "k2"}), strategy)
+		require.Nilf(t, svc.apiKeySelectionStateFor(ch), "strategy %q", strategy)
+		require.Nil(t, svc.apiKeySelectionState(100+i))
+	}
 }
 
 // --- B. priority ---
@@ -651,4 +660,88 @@ func TestRecordPerformance_SuccessDoesNotTouchOtherStrategies(t *testing.T) {
 	})
 
 	require.Equal(t, "k1", NewFixedKeyProvider(ch).Get(ctx))
+}
+
+// --- D2. round_robin & sticky keep their state across snapshot rebuilds ---
+
+// Any channel change rebuilds every channel snapshot, and with it every
+// provider. A per-provider counter would restart the rotation at the first key
+// each time any channel in the cluster changed, which is exactly the
+// "everything goes to the first key" symptom this pins down.
+func TestRoundRobinKeyProvider_RotatesAcrossRequests(t *testing.T) {
+	svc := &ChannelService{}
+	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategyRoundRobin, 1)
+	ch.apiKeyState = svc.apiKeySelectionStateFor(ch)
+	p := NewRoundRobinKeyProvider(ch, 1)
+
+	ctx := context.Background()
+	require.Equal(t, "k1", p.Get(ctx))
+	require.Equal(t, "k2", p.Get(ctx))
+	require.Equal(t, "k3", p.Get(ctx))
+	require.Equal(t, "k1", p.Get(ctx))
+}
+
+func TestRoundRobinKeyProvider_SwitchAfterN(t *testing.T) {
+	svc := &ChannelService{}
+	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2"}), objects.APIKeyStrategyRoundRobin, 2)
+	ch.apiKeyState = svc.apiKeySelectionStateFor(ch)
+	p := NewRoundRobinKeyProvider(ch, 2)
+
+	ctx := context.Background()
+	require.Equal(t, "k1", p.Get(ctx))
+	require.Equal(t, "k1", p.Get(ctx))
+	require.Equal(t, "k2", p.Get(ctx))
+	require.Equal(t, "k2", p.Get(ctx))
+	require.Equal(t, "k1", p.Get(ctx))
+}
+
+func TestRoundRobinKeyProvider_KeepsRotatingAcrossSnapshotRebuild(t *testing.T) {
+	svc := &ChannelService{}
+	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategyRoundRobin, 1)
+	ch.apiKeyState = svc.apiKeySelectionStateFor(ch)
+	p := NewRoundRobinKeyProvider(ch, 1)
+
+	ctx := context.Background()
+	require.Equal(t, "k1", p.Get(ctx))
+	require.Equal(t, "k2", p.Get(ctx))
+
+	// Rebuild the snapshot (any channel change does this) and build a fresh
+	// provider from it: the rotation must continue with k3, not restart at k1.
+	rebuilt := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategyRoundRobin, 1)
+	rebuilt.apiKeyState = svc.apiKeySelectionStateFor(rebuilt)
+
+	rebuiltProvider := NewRoundRobinKeyProvider(rebuilt, 1)
+	require.Equal(t, "k3", rebuiltProvider.Get(ctx))
+	require.Equal(t, "k1", rebuiltProvider.Get(ctx))
+}
+
+func TestStickyKeyProvider_KeepsSessionAcrossSnapshotRebuild(t *testing.T) {
+	svc := &ChannelService{}
+	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategySticky)
+	ch.apiKeyState = svc.apiKeySelectionStateFor(ch)
+	p := newSharedStickyKeyProvider(ch)
+
+	ctx := contexts.WithTrace(context.Background(), &ent.Trace{TraceID: "trace-1"})
+
+	first := p.Get(ctx)
+
+	// A rebuild must not move an ongoing session onto another key.
+	rebuilt := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategySticky)
+	rebuilt.apiKeyState = svc.apiKeySelectionStateFor(rebuilt)
+
+	require.Equal(t, first, newSharedStickyKeyProvider(rebuilt).Get(ctx))
+}
+
+func TestStickyKeyProvider_SameTraceStaysOnItsKey(t *testing.T) {
+	svc := &ChannelService{}
+	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategySticky)
+	ch.apiKeyState = svc.apiKeySelectionStateFor(ch)
+	p := newSharedStickyKeyProvider(ch)
+
+	ctx := context.Background()
+	first := p.Get(contexts.WithTrace(ctx, &ent.Trace{TraceID: "trace-a"}))
+
+	for i := 0; i < 10; i++ {
+		require.Equal(t, first, p.Get(contexts.WithTrace(ctx, &ent.Trace{TraceID: "trace-a"})))
+	}
 }
