@@ -165,7 +165,7 @@ func TestPriorityKeyProvider_AlwaysFirstSelectable(t *testing.T) {
 	p := NewPriorityKeyProvider(ch)
 
 	ctx := context.Background()
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		require.Equal(t, "first", p.Get(ctx))
 	}
 }
@@ -213,7 +213,7 @@ func TestFixedKeyProvider_KeepsCurrentKeyWhileSelectable(t *testing.T) {
 	setFixedCursor(state, "k2", 1)
 
 	ctx := context.Background()
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		require.Equal(t, "k2", p.Get(ctx), "call %d", i)
 	}
 }
@@ -371,7 +371,7 @@ func TestRoundRobinSuccessKeyProvider_GetDoesNotAdvance(t *testing.T) {
 	p, _ := newRoundRobinSuccessProvider(t, svc, ch)
 
 	ctx := context.Background()
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		require.Equal(t, "k1", p.Get(ctx), "call %d", i)
 	}
 }
@@ -541,17 +541,13 @@ func TestFixedKeyProvider_ConcurrentGetIsConsistent(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 32; i++ {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+	for range 32 {
+		wg.Go(func() {
 			ctx := context.Background()
-			for j := 0; j < 50; j++ {
+			for range 50 {
 				require.Equal(t, "k1", p.Get(ctx))
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -564,18 +560,14 @@ func TestRoundRobinSuccessKeyProvider_ConcurrentGetAndSuccess(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 16; i++ {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
+	for range 16 {
+		wg.Go(func() {
 			ctx := context.Background()
-			for j := 0; j < 50; j++ {
+			for range 50 {
 				key := p.Get(ctx)
 				svc.onAPIKeySuccess(1, key)
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -741,7 +733,7 @@ func TestStickyKeyProvider_SameTraceStaysOnItsKey(t *testing.T) {
 	ctx := context.Background()
 	first := p.Get(contexts.WithTrace(ctx, &ent.Trace{TraceID: "trace-a"}))
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		require.Equal(t, first, p.Get(contexts.WithTrace(ctx, &ent.Trace{TraceID: "trace-a"})))
 	}
 }

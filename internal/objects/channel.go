@@ -308,6 +308,8 @@ const (
 	// calls: each key is reused until it has served APIKeyRoundRobinSwitchAfter
 	// successful requests, then the cursor moves on to the next key. Failed and
 	// canceled requests do not advance it.
+	//
+	//nolint:gosec // G101 - a strategy identifier, not a credential.
 	APIKeyStrategyRoundRobinSuccess = "round_robin_success"
 	// APIKeyStrategyPriority always uses the first selectable key. This is the
 	// historical "fixed" behavior under a new name: every call re-reads the first

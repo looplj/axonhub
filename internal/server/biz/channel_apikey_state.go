@@ -258,10 +258,7 @@ func (svc *ChannelService) onAPIKeySuccess(channelID int, apiKey string) {
 
 	state.rrSuccessCount++
 
-	per := state.rrSuccessPer
-	if per < 1 {
-		per = 1
-	}
+	per := max(state.rrSuccessPer, 1)
 
 	if state.rrSuccessCount < per {
 		return

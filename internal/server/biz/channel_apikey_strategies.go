@@ -122,7 +122,7 @@ func firstSelectableFrom(all []string, disabled map[string]struct{}, start int) 
 		start = 0
 	}
 
-	for i := 0; i < n; i++ {
+	for i := range n {
 		idx := (start + i) % n
 		if _, isDisabled := disabled[all[idx]]; !isDisabled {
 			return all[idx], idx
@@ -250,6 +250,7 @@ func (p *RoundRobinKeyProvider) Get(ctx context.Context) string {
 	} else {
 		enabled := selectableKeys(ch)
 
+		//nolint:gosec // G115 - per is normalized to >= 1 at construction.
 		index := (p.fallback.Add(1) - 1) / uint64(p.per) % uint64(len(enabled))
 		selectedKey = enabled[index]
 	}
