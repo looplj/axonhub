@@ -17,14 +17,13 @@ import { useRoutePermissions } from '@/hooks/useRoutePermissions';
 const METRIC_STORAGE_KEY = 'analytics-distribution-metric';
 const METRICS: DistributionMetric[] = ['requestCount', 'totalTokens', 'cost'];
 
-/** Cost is the default: it carries the most decision value, so the page opens on the
- * question "where is my money concentrated" rather than on raw volume. */
+/** Token usage is the best default measure of concentration. */
 function readStoredMetric(): DistributionMetric {
   try {
     const stored = localStorage.getItem(METRIC_STORAGE_KEY);
-    return stored === 'requestCount' || stored === 'totalTokens' || stored === 'cost' ? stored : 'cost';
+    return stored === 'requestCount' || stored === 'totalTokens' || stored === 'cost' ? stored : 'totalTokens';
   } catch {
-    return 'cost';
+    return 'totalTokens';
   }
 }
 
