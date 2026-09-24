@@ -1,12 +1,16 @@
 package gql
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
@@ -218,4 +222,65 @@ func TestChannelPerformanceStats_CountsExecutionWhenANewerOneIsOutsideTheWindow(
 		total += s.RequestCount
 	}
 	assert.Equal(t, 1, total, "the in-window execution must count even though a newer one exists outside the window")
+}
+
+func TestAnalyticsDimensionStats_UserRequiresProjectOwnership(t *testing.T) {
+	resolver, ctx, client := setupRecentPerformanceResolver(t)
+	defer client.Close()
+
+	owner := client.User.Create().SetEmail("owner@example.com").SetPassword("password").SaveX(ctx)
+	owned := client.Project.Create().SetName("owned").SetStatus(project.StatusActive).SaveX(ctx)
+	other := client.Project.Create().SetName("other").SetStatus(project.StatusActive).SaveX(ctx)
+	for _, p := range []*ent.Project{owned, other} {
+		key := client.APIKey.Create().SetKey(p.Name).SetName(p.Name).SetProjectID(p.ID).SetUserID(owner.ID).SaveX(ctx)
+		req := client.Request.Create().SetProjectID(p.ID).SetAPIKeyID(key.ID).
+			SetModelID("model").SetStatus(request.StatusCompleted).SetRequestBody(objects.JSONRawMessage(`{}`)).SaveX(ctx)
+		client.UsageLog.Create().SetRequestID(req.ID).SetProjectID(p.ID).SetAPIKeyID(key.ID).
+			SetModelID("model").SetChannelID(1).SetTotalTokens(100).SaveX(ctx)
+	}
+
+	ctx = contexts.WithProjectID(ctx, owned.ID)
+	ctx = contexts.WithUser(ctx, &ent.User{
+		ID: owner.ID,
+		Edges: ent.UserEdges{ProjectUsers: []*ent.UserProject{
+			{ProjectID: owned.ID, IsOwner: true},
+			{ProjectID: other.ID, IsOwner: false},
+		}},
+	})
+
+	stats, err := resolver.AnalyticsDimensionStats(ctx, nil, "user")
+	require.NoError(t, err)
+	require.Len(t, stats, 1)
+	require.Equal(t, 1, stats[0].RequestCount, "an unfiltered query must not include other projects")
+
+	_, err = resolver.AnalyticsDimensionStats(ctx, &AnalyticsFilter{ProjectIDs: []*objects.GUID{{ID: other.ID}}}, "user")
+	require.ErrorContains(t, err, "permission denied")
+
+	_, err = resolver.AnalyticsDimensionStats(ctx, &AnalyticsFilter{ProjectIDs: []*objects.GUID{{ID: owned.ID}, {ID: other.ID}}}, "user")
+	require.ErrorContains(t, err, "permission denied")
+
+	stats, err = resolver.AnalyticsDimensionStats(ctx, &AnalyticsFilter{ProjectIDs: []*objects.GUID{{ID: owned.ID}}}, "user")
+	require.NoError(t, err)
+	require.Len(t, stats, 1)
+	require.Equal(t, 1, stats[0].RequestCount)
+
+	ctx = contexts.WithProjectID(ctx, other.ID)
+	_, err = resolver.AnalyticsDimensionStats(ctx, nil, "user")
+	require.ErrorContains(t, err, "permission denied")
+	ctx = authz.NewUserContext(ent.NewContext(context.Background(), client), owner.ID)
+	ctx = contexts.WithProjectID(ctx, owned.ID)
+	ctx = contexts.WithUser(ctx, &ent.User{
+		ID: owner.ID,
+		Edges: ent.UserEdges{ProjectUsers: []*ent.UserProject{
+			{ProjectID: owned.ID, Scopes: []string{"read_dashboard"}},
+		}},
+	})
+	_, err = resolver.AnalyticsDimensionStats(ctx, nil, "user")
+	require.ErrorContains(t, err, "permission denied")
+
+	ctx = contexts.WithUser(ctx, &ent.User{ID: owner.ID, IsOwner: true})
+	stats, err = resolver.AnalyticsDimensionStats(ctx, nil, "user")
+	require.NoError(t, err)
+	require.Len(t, stats, 1)
+	require.Equal(t, 2, stats[0].RequestCount, "system owners retain cross-project analytics")
 }
