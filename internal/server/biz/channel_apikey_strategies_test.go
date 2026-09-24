@@ -342,6 +342,28 @@ func TestFixedKeyProvider_UsesItsOwnSnapshot(t *testing.T) {
 	require.Equal(t, "k2", NewFixedKeyProvider(reloaded).Get(context.Background()), "a rebuilt provider moves on")
 }
 
+// Same scenario as the round_robin_success case above, for the fixed strategy:
+// a stale provider must not overwrite the cursor the served provider chose.
+func TestFixedKeyProvider_StaleProviderDoesNotRewindCursor(t *testing.T) {
+	svc := &ChannelService{}
+	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2"}), objects.APIKeyStrategyFixed)
+	stale, state := newFixedProvider(t, svc, ch)
+
+	setFixedCursor(state, "k2", 1)
+
+	// Rebuilt with k3 appended and k2 disabled, and served from now on.
+	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}, "k2"), objects.APIKeyStrategyFixed)
+	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
+	svc.publishAPIKeySelectionSnapshot(reloaded)
+
+	current := NewFixedKeyProvider(reloaded)
+	require.Equal(t, "k3", current.Get(context.Background()), "the served provider moves on to k3")
+
+	require.Equal(t, "k1", stale.Get(context.Background()), "the stale provider answers from its own snapshot")
+
+	require.Equal(t, "k3", current.Get(context.Background()), "the cursor must still be on k3")
+}
+
 func TestFixedKeyProvider_KeepsKeyWhenTheArrayShifts(t *testing.T) {
 	svc := &ChannelService{}
 	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}), objects.APIKeyStrategyFixed)
@@ -479,9 +501,11 @@ func TestRoundRobinSuccessKeyProvider_ResetsWhenCursorKeyIsDisabled(t *testing.T
 	setRoundRobinSuccessCursor(state, "k1", 0, 3)
 
 	// k1 is disabled: the cursor moves on and the successes counted for k1 are
-	// discarded.
+	// discarded. The rebuilt channel becomes the served generation, so its
+	// provider owns the cursor.
 	reloaded := withStrategy(newKeyChannel(1, []string{"k1", "k2", "k3"}, "k1"), objects.APIKeyStrategyRoundRobinSuccess, 5)
 	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
+	svc.publishAPIKeySelectionSnapshot(reloaded)
 
 	require.Equal(t, "k2", NewRoundRobinSuccessKeyProvider(reloaded).Get(context.Background()))
 
@@ -520,6 +544,37 @@ func TestRoundRobinSuccessKeyProvider_UsesItsOwnSnapshot(t *testing.T) {
 
 	require.Equal(t, "k1", p.Get(context.Background()), "the in-flight provider keeps its own snapshot")
 	require.Equal(t, "k2", NewRoundRobinSuccessKeyProvider(reloaded).Get(context.Background()), "a rebuilt provider moves on")
+}
+
+// The scenario CodeRabbit flagged: an in-flight provider built from an older
+// snapshot must not step the cursor back after the rebuilt provider moved it on.
+// Here the old array is a prefix of the new one, so without the serving check the
+// stale provider would not find "k3" and would restart the walk at "k1".
+func TestRoundRobinSuccessKeyProvider_StaleProviderDoesNotRewindCursor(t *testing.T) {
+	svc := &ChannelService{}
+	ch := withStrategy(newKeyChannel(1, []string{"k1", "k2"}), objects.APIKeyStrategyRoundRobinSuccess, 1)
+	stale, state := newRoundRobinSuccessProvider(t, svc, ch)
+
+	setRoundRobinSuccessCursor(state, "k2", 1, 0)
+
+	// The channel is rebuilt with k3 appended and k2 disabled; the rebuild is
+	// served from now on.
+	reloaded := withStrategy(
+		newKeyChannel(1, []string{"k1", "k2", "k3"}, "k2"),
+		objects.APIKeyStrategyRoundRobinSuccess,
+		1,
+	)
+	reloaded.apiKeyState = svc.apiKeySelectionStateFor(reloaded)
+	svc.publishAPIKeySelectionSnapshot(reloaded)
+
+	current := NewRoundRobinSuccessKeyProvider(reloaded)
+	require.Equal(t, "k3", current.Get(context.Background()), "the served provider moves on to k3")
+
+	// The stale provider knows nothing about k3. It must answer from its own
+	// snapshot without dragging the shared cursor back.
+	require.Equal(t, "k1", stale.Get(context.Background()))
+
+	require.Equal(t, "k3", current.Get(context.Background()), "the cursor must still be on k3")
 }
 
 func TestRoundRobinSuccessKeyProvider_AdvancesPastDisabledKeys(t *testing.T) {

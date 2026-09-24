@@ -183,6 +183,27 @@ func (st *apiKeySelectionState) stickyKeyFor(ch *Channel, traceID string) string
 	return selected
 }
 
+// isServing reports whether ch is the channel generation this state currently
+// serves, i.e. the latest snapshot published by the enabled-channel cache.
+//
+// A provider built from an older snapshot must not move the cursor of a channel
+// that has been rebuilt since. Its key array is a different one, so walking it
+// can step the cursor backwards (a stale provider does not know the key the
+// current provider just moved to) or reset a counter the current provider
+// already advanced. Reading is always allowed: the provider only ever hands back
+// a key from its own snapshot, which is the generation its outbound transformer
+// belongs to.
+//
+// A state that was never published (the enabled cache starts out empty) has no
+// current generation, so it accepts writes.
+//
+// Callers hold st.mu.
+func (st *apiKeySelectionState) isServing(ch *Channel) bool {
+	serving := st.snapshot.Load()
+
+	return serving == nil || serving == ch
+}
+
 // selectFixedKey returns the key the fixed strategy should use and records it.
 //
 // The key in use wins as long as it is still selectable. Otherwise the walk
@@ -202,15 +223,20 @@ func (st *apiKeySelectionState) selectFixedKey(ch *Channel) string {
 
 	if idx := slices.Index(all, st.fixedCursorKey); idx >= 0 {
 		if _, isDisabled := disabled[st.fixedCursorKey]; !isDisabled {
-			st.fixedCursorIdx = idx
+			if st.isServing(ch) {
+				st.fixedCursorIdx = idx
+			}
 
 			return st.fixedCursorKey
 		}
 	}
 
 	selectedKey, idx := firstSelectableFrom(all, disabled, positionOf(all, st.fixedCursorKey, st.fixedCursorIdx))
-	st.fixedCursorKey = selectedKey
-	st.fixedCursorIdx = idx
+
+	if st.isServing(ch) {
+		st.fixedCursorKey = selectedKey
+		st.fixedCursorIdx = idx
+	}
 
 	return selectedKey
 }
@@ -222,6 +248,9 @@ func (st *apiKeySelectionState) selectFixedKey(ch *Channel) string {
 // The cursor key is reused while it stays selectable. When it is disabled or
 // removed, the cursor moves forward through the full key array (wrapping around)
 // and the success counter restarts.
+//
+// Only the provider built from the currently served snapshot moves the cursor;
+// see isServing.
 func (st *apiKeySelectionState) selectRoundRobinSuccessKey(ch *Channel) string {
 	all := ch.Credentials.GetAllAPIKeys()
 	if len(all) == 0 {
@@ -235,16 +264,21 @@ func (st *apiKeySelectionState) selectRoundRobinSuccessKey(ch *Channel) string {
 
 	if idx := slices.Index(all, st.rrSuccessCursor); idx >= 0 {
 		if _, isDisabled := disabled[st.rrSuccessCursor]; !isDisabled {
-			st.rrSuccessIdx = idx
+			if st.isServing(ch) {
+				st.rrSuccessIdx = idx
+			}
 
 			return st.rrSuccessCursor
 		}
 	}
 
 	selectedKey, idx := firstSelectableFrom(all, disabled, positionOf(all, st.rrSuccessCursor, st.rrSuccessIdx))
-	st.rrSuccessCursor = selectedKey
-	st.rrSuccessIdx = idx
-	st.rrSuccessCount = 0
+
+	if st.isServing(ch) {
+		st.rrSuccessCursor = selectedKey
+		st.rrSuccessIdx = idx
+		st.rrSuccessCount = 0
+	}
 
 	return selectedKey
 }
