@@ -24,6 +24,7 @@ import (
 // credentials, transport headers, and protocol-selection headers are never copied.
 var codexResponsesPassThroughHeaders = []string{
 	"X-Codex-Turn-Metadata",
+	"X-Codex-Turn-State",
 	"X-Codex-Window-Id",
 	"X-Client-Request-Id",
 	"X-Codex-Beta-Features",
@@ -258,7 +259,8 @@ func passThroughBodyNeedsModelPatch(apiFormat llm.APIFormat) bool {
 		// Image edits submitted as application/json carry a top-level model field.
 		// Multipart edit bodies never reach this point (passThroughBodySupported
 		// rejects them), so sjson patching only ever runs on JSON payloads.
-		llm.APIFormatOpenAIImageEdit:
+		llm.APIFormatOpenAIImageEdit,
+		llm.APIFormatTypeSafeSystemOne:
 		return true
 	default:
 		return false
@@ -301,8 +303,10 @@ func applyUserAgentPassThrough(outbound *PersistentOutboundTransformer, systemSe
 					request.Headers.Set("User-Agent", clientUA)
 				}
 			}
-		} else {
-			// Pass-through disabled: use AxonHub's default User-Agent
+		} else if request.Headers.Get("User-Agent") == "" {
+			// Pass-through disabled: use AxonHub's default User-Agent, unless the
+			// outbound transformer already set a provider-required one (e.g.
+			// GitHubCopilotChat on Copilot channels).
 			request.Headers.Set("User-Agent", "axonhub/1.0")
 		}
 

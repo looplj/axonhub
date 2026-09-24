@@ -23,6 +23,8 @@ run:
 linters:
   default: all
   disable:
+    # Protocol strings may require British spelling (e.g. cancelled).
+    - misspell
     - prealloc
     - exhaustive
     - containedctx
@@ -157,11 +159,6 @@ linters:
       line-length: 180
       # tab width in spaces. Default to 1.
       tab-width: 1
-    misspell:
-      # Correct spellings using locale preferences for US or UK.
-      # Default is to use a neutral variety of English.
-      # Setting locale to US will correct the British spelling of 'colour' to 'color'.
-      locale: US
     nakedret:
       # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
       max-func-lines: 30

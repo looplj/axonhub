@@ -8,6 +8,7 @@
 !*.*
 !Makefile
 !LICENSE
+!/NOTICE
 !Dockerfile
 !VERSION
 
@@ -169,3 +170,8 @@ config.schema.json
 .ace-tool/
 .omx/
 deploy_dev.sh
+
+docs/superpowers/
+docs/superpowers/**
+superpowers/
+superpowers/**

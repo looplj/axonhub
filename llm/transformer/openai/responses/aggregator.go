@@ -579,12 +579,11 @@ func (a *streamAggregator) processEvent(ev *StreamEvent) {
 		}
 
 	case StreamEventTypeResponseCompleted:
-		a.status = "completed"
-		if ev.Response != nil {
-			a.previousResponseID = ev.Response.PreviousResponseID
-			if ev.Response.Usage != nil {
-				a.usage = ev.Response.Usage
-			}
+		a.applyResponseSnapshot(ev.Response)
+		// The terminal event wins over a missing or stale in-progress status,
+		// while explicit failed, incomplete, and canceled outcomes are preserved.
+		if ev.Response == nil || ev.Response.Status == nil || a.status == "" || a.status == "in_progress" {
+			a.status = "completed"
 		}
 
 	case StreamEventTypeResponseFailed:

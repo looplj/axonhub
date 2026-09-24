@@ -1,32 +1,58 @@
-import {
-  IconLayoutDashboard,
-  IconPackages,
-  IconSettings,
-  IconUsers,
-  IconRobot,
-  IconShield,
-  IconKey,
-  IconActivity,
-  IconDatabase,
-  IconAB2,
-  IconBaselineDensityMedium,
-  IconAi,
-  IconNote,
-  IconChartBar,
-} from '@tabler/icons-react';
+import { useMemo } from 'react';
+import { NAV_GROUP_DEFS } from '@/config/nav-items';
 import { Command } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/stores/authStore';
-import { useRoutePermissions } from '@/hooks/useRoutePermissions';
+import { useSidebarPrefsStore } from '@/stores/sidebarPrefsStore';
 import { formatUserName, isCJKName } from '@/lib/utils';
+import { useRoutePermissions } from '@/hooks/useRoutePermissions';
 import { useMe } from '@/features/auth/data/auth';
 import { type SidebarData, type NavGroup, type NavLink } from './components/layout/types';
+
+// Translates the structural navigation definition into renderable groups.
+// Shared with the "customize menu" dialog so it can list the same items.
+export function useRawNavGroups(): NavGroup[] {
+  const { t } = useTranslation();
+
+  return useMemo(
+    () =>
+      NAV_GROUP_DEFS.map((group) => ({
+        title: t(group.titleKey),
+        items: group.items.map(
+          (item) =>
+            ({
+              title: t(item.titleKey),
+              url: item.url,
+              icon: item.icon,
+              mobileOnly: item.mobileOnly,
+            }) as NavLink
+        ),
+      })),
+    [t]
+  );
+}
+
+// Removes hidden items and drops groups that become empty. Pure so it can be
+// unit tested without React.
+export function applyHiddenNavItems(groups: NavGroup[], hiddenItems: string[]): NavGroup[] {
+  if (hiddenItems.length === 0) {
+    return groups;
+  }
+
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !('url' in item) || !hiddenItems.includes(item.url as string)),
+    }))
+    .filter((group) => group.items.length > 0);
+}
 
 export function useSidebarData(): SidebarData {
   const { t } = useTranslation();
   const { user: authUser } = useAuthStore((state) => state.auth);
   const { data: meData } = useMe();
   const { filterNavGroups } = useRoutePermissions();
+  const hiddenItems = useSidebarPrefsStore((state) => state.hiddenItems);
 
   // Use data from me query if available, otherwise fall back to auth store
   const user = meData || authUser;
@@ -61,144 +87,13 @@ export function useSidebarData(): SidebarData {
     return 'User';
   };
 
-  // 原始导航组配置
-  const rawNavGroups: NavGroup[] = [
-    {
-      title: t('sidebar.groups.admin'),
-      items: [
-        {
-          title: t('sidebar.items.dashboard'),
-          url: '/',
-          icon: IconLayoutDashboard,
-        } as NavLink,
-        {
-          title: t('sidebar.items.projects'),
-          url: '/projects',
-          icon: IconPackages,
-        } as NavLink,
-        {
-          title: t('sidebar.items.channels'),
-          url: '/channels',
-          icon: IconAi,
-        } as NavLink,
-        {
-          title: t('sidebar.items.models'),
-          url: '/models',
-          icon: IconRobot,
-        } as NavLink,
-        {
-          title: t('sidebar.items.promptProtectionRules'),
-          url: '/prompt-protection-rules',
-          icon: IconShield,
-        } as NavLink,
-        {
-          title: t('sidebar.items.dataStorages'),
-          url: '/data-storages',
-          icon: IconDatabase,
-        } as NavLink,
-        {
-          title: t('sidebar.items.users'),
-          url: '/users',
-          icon: IconUsers,
-        } as NavLink,
-        {
-          title: t('sidebar.items.roles'),
-          url: '/roles',
-          icon: IconShield,
-        } as NavLink,
-        // {
-        //   title: 'Permission Demo',
-        //   url: '/permission-demo',
-        //   icon: IconSettings,
-        // } as NavLink,
-      ],
-    },
-    {
-      title: t('sidebar.groups.project'),
-      items: [
-        {
-          title: t('sidebar.items.apiKeys'),
-          url: '/project/api-keys',
-          icon: IconKey,
-        } as NavLink,
-        {
-          title: t('sidebar.items.prompts'),
-          url: '/project/prompts',
-          icon: IconNote,
-        } as NavLink,
-        {
-          title: t('sidebar.items.requests'),
-          url: '/project/requests',
-          icon: IconActivity,
-        } as NavLink,
-        {
-          title: t('sidebar.items.usageStats'),
-          url: '/project/usage-stats',
-          icon: IconChartBar,
-        } as NavLink,
-        // {
-        //   title: t('sidebar.items.usageLogs'),
-        //   url: '/project/usage-logs',
-        //   icon: IconActivityHeartbeat,
-        // } as NavLink,
-        {
-          title: t('sidebar.items.traces'),
-          url: '/project/traces',
-          icon: IconAB2,
-        } as NavLink,
-        {
-          title: t('sidebar.items.threads'),
-          url: '/project/threads',
-          icon: IconBaselineDensityMedium,
-        } as NavLink,
+  const rawNavGroups = useRawNavGroups();
 
-        {
-          title: t('sidebar.items.users'),
-          url: '/project/users',
-          icon: IconUsers,
-        } as NavLink,
-        {
-          title: t('sidebar.items.roles'),
-          url: '/project/roles',
-          icon: IconShield,
-        } as NavLink,
-        {
-          title: t('sidebar.items.playground'),
-          url: '/project/playground',
-          icon: IconRobot,
-        } as NavLink,
-      ],
-    },
-    {
-      title: t('sidebar.groups.settings'),
-      items: [
-        {
-          title: t('sidebar.items.system'),
-          url: '/system',
-          icon: IconSettings,
-          mobileOnly: true,
-        } as NavLink,
-        // {
-        //   title: 'Account',
-        //   url: '/settings/account',
-        //   icon: IconTool,
-        // } as NavLink,
-        // {
-        //   title: 'Appearance',
-        //   url: '/settings/appearance',
-        //   icon: IconPalette,
-        // } as NavLink,
-        // {
-        //   title: 'Notifications',
-        //   url: '/settings/notifications',
-        //   icon: IconNotification,
-        // } as NavLink,
-      ],
-    },
-  ];
-
-  // 使用权限过滤导航组
-  const filteredNavGroups = filterNavGroups(rawNavGroups);
+  // Filter by permission first, then by the user's own visibility preferences.
+  const filteredNavGroups = useMemo(
+    () => applyHiddenNavItems(filterNavGroups(rawNavGroups), hiddenItems),
+    [filterNavGroups, rawNavGroups, hiddenItems]
+  );
 
   return {
     user: {

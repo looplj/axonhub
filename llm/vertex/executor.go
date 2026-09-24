@@ -101,12 +101,13 @@ func (e *Executor) DoStream(ctx context.Context, request *httpclient.Request) (s
 func (e *Executor) transformRequest(request *httpclient.Request) (*httpclient.Request, error) {
 	// Create a copy of the request
 	transformed := &httpclient.Request{
-		Method:    request.Method,
-		URL:       request.URL,
-		Headers:   request.Headers,
-		Body:      request.Body,
-		Auth:      nil, // Remove auth as it's handled by the HTTP client
-		RequestID: request.RequestID,
+		Method:            request.Method,
+		URL:               request.URL,
+		Headers:           request.Headers,
+		Body:              request.Body,
+		Auth:              nil, // Remove auth as it's handled by the HTTP client
+		RequestID:         request.RequestID,
+		OnResponseHeaders: request.OnResponseHeaders,
 	}
 
 	// Process request body for Vertex AI compatibility

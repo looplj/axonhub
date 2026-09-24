@@ -86,19 +86,7 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 	})
 
 	// Convert ToolChoice
-	if r.ToolChoice != nil {
-		req.ToolChoice = &ToolChoice{
-			ToolChoice: r.ToolChoice.ToolChoice,
-		}
-		if r.ToolChoice.NamedToolChoice != nil {
-			req.ToolChoice.NamedToolChoice = &NamedToolChoice{
-				Type: r.ToolChoice.NamedToolChoice.Type,
-				Function: ToolFunction{
-					Name: r.ToolChoice.NamedToolChoice.Function.Name,
-				},
-			}
-		}
-	}
+	req.ToolChoice = ToolChoiceFromLLM(r.ToolChoice)
 
 	// Convert ResponseFormat
 	if r.ResponseFormat != nil {
@@ -385,6 +373,37 @@ func normalizeContentPartType(partType string) string {
 	default:
 		return partType
 	}
+}
+
+// ToolChoiceFromLLM creates OpenAI ToolChoice from unified llm.ToolChoice.
+func ToolChoiceFromLLM(tc *llm.ToolChoice) *ToolChoice {
+	if tc == nil {
+		return nil
+	}
+
+	choice := &ToolChoice{ToolChoice: tc.ToolChoice}
+
+	if tc.NamedToolChoice != nil {
+		choice.NamedToolChoice = &NamedToolChoice{
+			Type:     tc.NamedToolChoice.Type,
+			Function: ToolFunction{Name: tc.NamedToolChoice.Function.Name},
+		}
+
+		// An allowed_tools choice nests its mode and tool subset; the plain
+		// named shape would emit an empty function name and silently lift the
+		// caller's restriction.
+		if tc.NamedToolChoice.Type == "allowed_tools" {
+			choice.ToolChoice = nil
+			choice.AllowedTools = &AllowedTools{
+				Mode: tc.ToolChoice,
+				Tools: lo.Map(tc.Tools, func(o llm.ToolOption, _ int) NamedToolChoice {
+					return NamedToolChoice{Type: o.Type, Function: ToolFunction{Name: o.Name}}
+				}),
+			}
+		}
+	}
+
+	return choice
 }
 
 // ToolFromLLM creates OpenAI Tool from unified llm.Tool.

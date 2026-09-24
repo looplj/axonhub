@@ -14,17 +14,14 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
-func TestProviderQuotaSelector_FiltersExhaustedZenMuxNativeVideoChannel(t *testing.T) {
+func TestQuotaRoutingGate_filters_exhausted_zenmux_native_video_channel(t *testing.T) {
 	provider := &mockQuotaStatusProvider{
 		statuses: map[int]*biz.QuotaChannelStatus{
 			1: {ProviderType: "zenmux", Status: providerquotastatus.StatusExhausted, Ready: false},
 			2: {ProviderType: "zenmux", Status: providerquotastatus.StatusAvailable, Ready: true},
 		},
 	}
-	settings := &mockQuotaEnforcementSettingsProvider{
-		settings: &biz.QuotaEnforcementSettings{Enabled: true, Mode: biz.QuotaEnforcementModeExhaustedOnly},
-	}
-
+	gate := NewQuotaRoutingGate(provider, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted})
 	inner := &mockSelector{
 		candidates: []*ChannelModelsCandidate{
 			{
@@ -47,14 +44,12 @@ func TestProviderQuotaSelector_FiltersExhaustedZenMuxNativeVideoChannel(t *testi
 		},
 	}
 
-	selector := WithProviderQuotaSelector(inner, provider, settings)
-	result, err := selector.Select(context.Background(), &llm.Request{
+	result, err := WithQuotaRoutingSelector(inner, gate).Select(context.Background(), &llm.Request{
 		Model:       "video-model",
 		RequestType: llm.RequestTypeVideo,
 		Video:       &llm.VideoRequest{Model: "video-model"},
 	})
 
 	require.NoError(t, err)
-	require.Len(t, result, 1)
-	require.Equal(t, 2, result[0].Channel.ID, "exhausted ZenMux quota must filter the native video candidate")
+	require.Equal(t, []int{2}, quotaRoutingIDs(result))
 }

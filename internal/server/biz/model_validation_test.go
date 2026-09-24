@@ -15,6 +15,45 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 )
 
+func TestValidateModelAssociationWhen_ReasoningEffort(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		operator  string
+		value     any
+		wantError bool
+	}{
+		{name: "equal", operator: "eq", value: "high"},
+		{name: "not equal", operator: "ne", value: "low"},
+		{name: "custom effort", operator: "eq", value: "max"},
+		{name: "empty", operator: "eq", value: "", wantError: true},
+		{name: "number", operator: "eq", value: 1, wantError: true},
+		{name: "boolean", operator: "eq", value: true, wantError: true},
+		{name: "missing", operator: "eq", wantError: true},
+		{name: "unsupported operator", operator: "gt", value: "low", wantError: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := validateModelAssociationWhen(&objects.ModelAssociationWhen{
+				Enabled: true,
+				Condition: &objects.Condition{
+					Type:  objects.ConditionTypeGroup,
+					Logic: "and",
+					Conditions: []objects.Condition{{
+						Type:     objects.ConditionTypeCondition,
+						Field:    objects.ModelAssociationConditionFieldReasoningEffort,
+						Operator: tc.operator,
+						Value:    tc.value,
+					}},
+				},
+			})
+			if tc.wantError {
+				require.ErrorContains(t, err, "reasoning_effort")
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestModelService_ValidateModelSettings(t *testing.T) {
 	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
 	defer client.Close()

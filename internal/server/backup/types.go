@@ -77,6 +77,7 @@ func (r BackupUsageRequest) MarshalJSON() ([]byte, error) {
 		ReasoningEffort            string                   `json:"reasoning_effort,omitempty"`
 		Format                     string                   `json:"format,omitempty"`
 		RequestHeaders             objects.JSONRawMessage   `json:"request_headers,omitempty"`
+		ResponseHeaders            objects.JSONRawMessage   `json:"response_headers,omitempty"`
 		RequestBody                objects.JSONRawMessage   `json:"request_body,omitempty"`
 		ResponseBody               objects.JSONRawMessage   `json:"response_body,omitempty"`
 		ResponseChunks             []objects.JSONRawMessage `json:"response_chunks,omitempty"`
@@ -107,6 +108,7 @@ func (r BackupUsageRequest) MarshalJSON() ([]byte, error) {
 		ReasoningEffort:            r.ReasoningEffort,
 		Format:                     r.Format,
 		RequestHeaders:             r.RequestHeaders,
+		ResponseHeaders:            r.ResponseHeaders,
 		RequestBody:                r.RequestBody,
 		ResponseBody:               r.ResponseBody,
 		ResponseChunks:             r.ResponseChunks,

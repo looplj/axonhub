@@ -314,6 +314,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                     <ApiKeyLoadTemplatePopover
                       apiKeyID={apiKeyId}
                       projectID={selectedProjectId}
+                      portalContainer={dialogContent}
                       onLoadComplete={(loadedProfiles) => {
                         const resetData = {
                           activeProfile: loadedProfiles.activeProfile || loadedProfiles.profiles[0]?.name || '',

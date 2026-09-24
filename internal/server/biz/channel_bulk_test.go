@@ -14,6 +14,131 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xcache/live"
 )
 
+func TestChannelService_BulkAddChannelTags(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	createChannel := func(name string, tags []string) *ent.Channel {
+		ch, err := client.Channel.Create().
+			SetType(channel.TypeOpenai).
+			SetName(name).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: name}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetTags(tags).
+			Save(ctx)
+		require.NoError(t, err)
+		return ch
+	}
+
+	ch1 := createChannel("Bulk Tags 1", []string{"existing", "公益"})
+	ch2 := createChannel("Bulk Tags 2", []string{"official"})
+	ch3 := createChannel("Bulk Tags 3", nil)
+
+	err := svc.BulkAddChannelTags(ctx, []int{ch1.ID, ch2.ID, ch3.ID}, []string{" 公益 ", "低价", "低价", " "})
+	require.NoError(t, err)
+
+	updated1, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing", "公益", "低价"}, updated1.Tags)
+	updated2, err := client.Channel.Get(ctx, ch2.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"official", "公益", "低价"}, updated2.Tags)
+	updated3, err := client.Channel.Get(ctx, ch3.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"公益", "低价"}, updated3.Tags)
+
+	err = svc.BulkAddChannelTags(ctx, []int{ch1.ID, 99999}, []string{"should-not-apply"})
+	require.Error(t, err)
+	unchanged, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing", "公益", "低价"}, unchanged.Tags)
+}
+
+func TestChannelService_BulkRemoveChannelTags(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	createChannel := func(name string, tags []string) *ent.Channel {
+		ch, err := client.Channel.Create().
+			SetType(channel.TypeOpenai).
+			SetName(name).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: name}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetTags(tags).
+			Save(ctx)
+		require.NoError(t, err)
+		return ch
+	}
+
+	ch1 := createChannel("Bulk Remove Tags 1", []string{"existing", "公益", "低价"})
+	ch2 := createChannel("Bulk Remove Tags 2", []string{"official", "公益", "低价"})
+	ch3 := createChannel("Bulk Remove Tags 3", []string{"公益", "低价", "other"})
+
+	err := svc.BulkRemoveChannelTags(ctx, []int{ch1.ID, ch2.ID, ch3.ID}, []string{" 公益 ", "低价", "低价"})
+	require.NoError(t, err)
+
+	updated1, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing"}, updated1.Tags)
+	updated2, err := client.Channel.Get(ctx, ch2.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"official"}, updated2.Tags)
+	updated3, err := client.Channel.Get(ctx, ch3.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"other"}, updated3.Tags)
+
+	err = svc.BulkRemoveChannelTags(ctx, []int{ch1.ID, 99999}, []string{"should-not-apply"})
+	require.Error(t, err)
+	unchanged, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing"}, unchanged.Tags)
+}
+
+func TestChannelService_BulkManageChannelTags(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	createChannel := func(name string, tags []string) *ent.Channel {
+		ch, err := client.Channel.Create().
+			SetType(channel.TypeOpenai).
+			SetName(name).
+			SetBaseURL("https://api.openai.com/v1").
+			SetCredentials(objects.ChannelCredentials{APIKey: name}).
+			SetSupportedModels([]string{"gpt-4"}).
+			SetDefaultTestModel("gpt-4").
+			SetTags(tags).
+			Save(ctx)
+		require.NoError(t, err)
+		return ch
+	}
+
+	ch1 := createChannel("Bulk Manage Tags 1", []string{"existing", "公益"})
+	ch2 := createChannel("Bulk Manage Tags 2", []string{"official", "公益"})
+
+	err := svc.BulkManageChannelTags(ctx, []int{ch1.ID, ch2.ID}, []string{" 低价 ", "低价"}, []string{"公益"})
+	require.NoError(t, err)
+
+	updated1, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing", "低价"}, updated1.Tags)
+	updated2, err := client.Channel.Get(ctx, ch2.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"official", "低价"}, updated2.Tags)
+
+	err = svc.BulkManageChannelTags(ctx, []int{ch1.ID, 99999}, []string{"should-not-apply"}, []string{"existing"})
+	require.Error(t, err)
+	unchanged, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"existing", "低价"}, unchanged.Tags)
+}
+
 func TestChannelService_BulkEnableChannels(t *testing.T) {
 	svc, client := setupTestChannelService(t)
 	defer client.Close()
@@ -545,4 +670,213 @@ func TestChannelService_BulkUpdateChannelOrdering_CacheSnapshotUsesCommittedWeig
 	require.Len(t, after, 2)
 	require.Equal(t, ch1.ID, after[0].ID) // weight 100 now ranks first
 	require.Equal(t, ch2.ID, after[1].ID) // weight 50 now ranks second
+}
+
+func createBulkAutoDisableTestChannel(t *testing.T, ctx context.Context, client *ent.Client, name string, policies objects.ChannelPolicies) *ent.Channel {
+	t.Helper()
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName(name).
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key-" + name}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		SetPolicies(policies).
+		Save(ctx)
+	require.NoError(t, err)
+
+	return ch
+}
+
+func TestChannelService_BulkUpdateChannelAutoDisable_WriteRulesKeepsStream(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	existingRule := objects.APIKeyAutoDisableRule{
+		StatusCodes: []int{401},
+		Times:       1,
+		Action:      objects.APIKeyAutoDisableActionPermanent,
+	}
+	ch1 := createBulkAutoDisableTestChannel(t, ctx, client, "AutoDisable Stream 1", objects.ChannelPolicies{
+		Stream:                 objects.CapabilityPolicyUnlimited,
+		APIKeyAutoDisableMode:  objects.APIKeyAutoDisableModeCustom,
+		APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{existingRule},
+	})
+	ch2 := createBulkAutoDisableTestChannel(t, ctx, client, "AutoDisable Stream 2", objects.ChannelPolicies{
+		Stream: objects.CapabilityPolicyRequire,
+	})
+	ch3 := createBulkAutoDisableTestChannel(t, ctx, client, "AutoDisable Stream 3", objects.ChannelPolicies{
+		Stream: objects.CapabilityPolicyForbid,
+	})
+
+	duration := 30
+	rules := []objects.APIKeyAutoDisableRule{{
+		StatusCodes:            []int{429},
+		Times:                  3,
+		Action:                 objects.APIKeyAutoDisableActionTemporary,
+		DisableDurationMinutes: &duration,
+	}}
+
+	updated, err := svc.BulkUpdateChannelAutoDisable(ctx, BulkUpdateChannelAutoDisableInput{
+		ChannelIDs: []int{ch1.ID, ch2.ID, ch3.ID},
+		Action:     BulkAutoDisableActionWriteRules,
+		Rules:      rules,
+	})
+	require.NoError(t, err)
+	require.Len(t, updated, 3)
+
+	for _, id := range []int{ch1.ID, ch2.ID, ch3.ID} {
+		got, err := client.Channel.Get(ctx, id)
+		require.NoError(t, err)
+		require.Equal(t, objects.APIKeyAutoDisableModeCustom, got.Policies.APIKeyAutoDisableMode)
+		require.Len(t, got.Policies.APIKeyAutoDisableRules, 1)
+		require.Equal(t, []int{429}, got.Policies.APIKeyAutoDisableRules[0].StatusCodes)
+		require.Equal(t, 3, got.Policies.APIKeyAutoDisableRules[0].Times)
+		require.Equal(t, objects.APIKeyAutoDisableActionTemporary, got.Policies.APIKeyAutoDisableRules[0].Action)
+	}
+
+	got1, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Equal(t, objects.CapabilityPolicyUnlimited, got1.Policies.Stream)
+
+	got2, err := client.Channel.Get(ctx, ch2.ID)
+	require.NoError(t, err)
+	require.Equal(t, objects.CapabilityPolicyRequire, got2.Policies.Stream)
+
+	got3, err := client.Channel.Get(ctx, ch3.ID)
+	require.NoError(t, err)
+	require.Equal(t, objects.CapabilityPolicyForbid, got3.Policies.Stream)
+}
+
+func TestChannelService_BulkUpdateChannelAutoDisable_InheritClearsRules(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	ch := createBulkAutoDisableTestChannel(t, ctx, client, "AutoDisable Inherit", objects.ChannelPolicies{
+		Stream:                objects.CapabilityPolicyRequire,
+		APIKeyAutoDisableMode: objects.APIKeyAutoDisableModeCustom,
+		APIKeyAutoDisableRules: []objects.APIKeyAutoDisableRule{{
+			StatusCodes: []int{401},
+			Times:       2,
+			Action:      objects.APIKeyAutoDisableActionPermanent,
+		}},
+	})
+
+	_, err := svc.BulkUpdateChannelAutoDisable(ctx, BulkUpdateChannelAutoDisableInput{
+		ChannelIDs: []int{ch.ID},
+		Action:     BulkAutoDisableActionInherit,
+		Rules: []objects.APIKeyAutoDisableRule{{
+			StatusCodes: []int{500},
+			Times:       1,
+			Action:      objects.APIKeyAutoDisableActionPermanent,
+		}},
+	})
+	require.NoError(t, err)
+
+	got, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, objects.APIKeyAutoDisableModeInherit, got.Policies.APIKeyAutoDisableMode)
+	require.Empty(t, got.Policies.APIKeyAutoDisableRules)
+	require.Equal(t, objects.CapabilityPolicyRequire, got.Policies.Stream)
+}
+
+func TestChannelService_BulkUpdateChannelAutoDisable_OffKeepsRules(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	existing := []objects.APIKeyAutoDisableRule{{
+		StatusCodes: []int{401},
+		Times:       2,
+		Action:      objects.APIKeyAutoDisableActionPermanent,
+	}}
+	ch := createBulkAutoDisableTestChannel(t, ctx, client, "AutoDisable Off", objects.ChannelPolicies{
+		Stream:                 objects.CapabilityPolicyForbid,
+		APIKeyAutoDisableMode:  objects.APIKeyAutoDisableModeCustom,
+		APIKeyAutoDisableRules: existing,
+	})
+
+	_, err := svc.BulkUpdateChannelAutoDisable(ctx, BulkUpdateChannelAutoDisableInput{
+		ChannelIDs: []int{ch.ID},
+		Action:     BulkAutoDisableActionOff,
+	})
+	require.NoError(t, err)
+
+	got, err := client.Channel.Get(ctx, ch.ID)
+	require.NoError(t, err)
+	require.Equal(t, objects.APIKeyAutoDisableModeOff, got.Policies.APIKeyAutoDisableMode)
+	require.Len(t, got.Policies.APIKeyAutoDisableRules, 1)
+	require.Equal(t, []int{401}, got.Policies.APIKeyAutoDisableRules[0].StatusCodes)
+	require.Equal(t, objects.CapabilityPolicyForbid, got.Policies.Stream)
+}
+
+func TestChannelService_BulkUpdateChannelAutoDisable_InvalidCronRollsBack(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	original := objects.ChannelPolicies{
+		Stream: objects.CapabilityPolicyUnlimited,
+	}
+	ch1 := createBulkAutoDisableTestChannel(t, ctx, client, "AutoDisable Cron 1", original)
+	ch2 := createBulkAutoDisableTestChannel(t, ctx, client, "AutoDisable Cron 2", original)
+
+	_, err := svc.BulkUpdateChannelAutoDisable(ctx, BulkUpdateChannelAutoDisableInput{
+		ChannelIDs: []int{ch1.ID, ch2.ID},
+		Action:     BulkAutoDisableActionWriteRules,
+		Rules: []objects.APIKeyAutoDisableRule{{
+			StatusCodes:      []int{429},
+			Times:            1,
+			Action:           objects.APIKeyAutoDisableActionUntilCron,
+			DisableUntilCron: "not-a-cron",
+		}},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid cron")
+
+	got1, err := client.Channel.Get(ctx, ch1.ID)
+	require.NoError(t, err)
+	require.Empty(t, got1.Policies.APIKeyAutoDisableMode)
+	require.Empty(t, got1.Policies.APIKeyAutoDisableRules)
+
+	got2, err := client.Channel.Get(ctx, ch2.ID)
+	require.NoError(t, err)
+	require.Empty(t, got2.Policies.APIKeyAutoDisableMode)
+	require.Empty(t, got2.Policies.APIKeyAutoDisableRules)
+}
+
+func TestChannelService_BulkUpdateChannelAutoDisable_ValidationErrors(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	_, err := svc.BulkUpdateChannelAutoDisable(ctx, BulkUpdateChannelAutoDisableInput{
+		Action: BulkAutoDisableActionWriteRules,
+		Rules: []objects.APIKeyAutoDisableRule{{
+			StatusCodes: []int{401},
+			Times:       1,
+			Action:      objects.APIKeyAutoDisableActionPermanent,
+		}},
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "channel IDs are required")
+
+	ch := createBulkAutoDisableTestChannel(t, ctx, client, "AutoDisable Empty Rules", objects.ChannelPolicies{})
+	_, err = svc.BulkUpdateChannelAutoDisable(ctx, BulkUpdateChannelAutoDisableInput{
+		ChannelIDs: []int{ch.ID},
+		Action:     BulkAutoDisableActionWriteRules,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "rules are required")
+
+	_, err = svc.BulkUpdateChannelAutoDisable(ctx, BulkUpdateChannelAutoDisableInput{
+		ChannelIDs: []int{ch.ID, 99999},
+		Action:     BulkAutoDisableActionOff,
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "expected to find")
 }

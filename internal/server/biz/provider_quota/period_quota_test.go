@@ -1,6 +1,7 @@
 package provider_quota
 
 import (
+	"math"
 	"testing"
 	"time"
 
@@ -30,17 +31,25 @@ func TestEstimatePeriodQuota(t *testing.T) {
 	_, ok = EstimatePeriodQuota(-1, 0.5)
 	require.False(t, ok)
 
-	// Ratios below the threshold would amplify noise into an absurd estimate.
 	_, ok = EstimatePeriodQuota(10, 0)
 	require.False(t, ok)
 	_, ok = EstimatePeriodQuota(10, -0.1)
 	require.False(t, ok)
-	_, ok = EstimatePeriodQuota(10, MinPeriodQuotaUsageRatio/2)
-	require.False(t, ok)
 
-	total, ok = EstimatePeriodQuota(10, MinPeriodQuotaUsageRatio)
+	total, ok = EstimatePeriodQuota(10, 0.01)
 	require.True(t, ok)
-	require.InDelta(t, 10/MinPeriodQuotaUsageRatio, total, 1e-9)
+	require.InDelta(t, 1000.0, total, 1e-9)
+
+	_, ok = EstimatePeriodQuota(10, math.NaN())
+	require.False(t, ok)
+	_, ok = EstimatePeriodQuota(10, math.Inf(1))
+	require.False(t, ok)
+	_, ok = EstimatePeriodQuota(math.NaN(), 0.5)
+	require.False(t, ok)
+	_, ok = EstimatePeriodQuota(math.Inf(1), 0.5)
+	require.False(t, ok)
+	_, ok = EstimatePeriodQuota(math.MaxFloat64, math.SmallestNonzeroFloat64)
+	require.False(t, ok)
 }
 
 func TestQuotaLimitStatusFillPeriodQuota(t *testing.T) {
@@ -59,6 +68,18 @@ func TestQuotaLimitStatusFillPeriodQuota(t *testing.T) {
 
 	limit.UsageRatio = 0.5
 	limit.PeriodCost = nil
+	limit.FillPeriodQuota()
+	require.Nil(t, limit.PeriodQuota)
+
+	for _, periodCost := range []float64{math.NaN(), math.Inf(1), math.MaxFloat64} {
+		limit.PeriodCost = lo.ToPtr(periodCost)
+		limit.UsageRatio = 0.5
+		limit.FillPeriodQuota()
+		require.Nil(t, limit.PeriodQuota)
+	}
+
+	limit.PeriodCost = lo.ToPtr(math.MaxFloat64)
+	limit.UsageRatio = math.SmallestNonzeroFloat64
 	limit.FillPeriodQuota()
 	require.Nil(t, limit.PeriodQuota)
 }

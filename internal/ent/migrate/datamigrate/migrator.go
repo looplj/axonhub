@@ -3,8 +3,6 @@ package datamigrate
 import (
 	"context"
 
-	"github.com/Masterminds/semver/v3"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/ent"
@@ -73,19 +71,11 @@ func (m *Migrator) shouldRunMigration(ctx context.Context, migrationVersion stri
 		systemVersion = "v0.2.1"
 	}
 
-	migrationSemver, err := semver.NewVersion(migrationVersion)
+	result, err := biz.CompareVersions(systemVersion, migrationVersion)
 	if err != nil {
-		log.Warn(ctx, "invalid migration version, will run migration",
-			log.String("migration_version", migrationVersion),
-			log.Cause(err))
-
-		return true
-	}
-
-	systemSemver, err := semver.NewVersion(systemVersion)
-	if err != nil {
-		log.Warn(ctx, "invalid system version, will run migration",
+		log.Warn(ctx, "invalid version, will run migration",
 			log.String("system_version", systemVersion),
+			log.String("migration_version", migrationVersion),
 			log.Cause(err))
 
 		return true
@@ -93,7 +83,7 @@ func (m *Migrator) shouldRunMigration(ctx context.Context, migrationVersion stri
 
 	// Compare versions: if system version >= migration version, skip migration
 	// This means the migration has already been applied or a newer version is installed
-	if !systemSemver.LessThan(migrationSemver) {
+	if result >= 0 {
 		log.Info(ctx, "skipping migration: system version is equal or newer than migration version",
 			log.String("system_version", systemVersion),
 			log.String("migration_version", migrationVersion))
@@ -147,10 +137,10 @@ func (m *Migrator) Run(ctx context.Context) error {
 		return err
 	}
 
-	buildSemver, err := semver.NewVersion(build.Version)
-	if err != nil {
+	buildVersion := build.Version
+	if _, err := biz.ParseVersion(buildVersion); err != nil {
 		log.Warn(ctx, "invalid build version, skipping system version update",
-			log.String("build_version", build.Version),
+			log.String("build_version", buildVersion),
 			log.Cause(err))
 
 		return nil
@@ -161,15 +151,15 @@ func (m *Migrator) Run(ctx context.Context) error {
 	if currentVersion == "" {
 		updateSystemVersion = true
 	} else {
-		currentSemver, err := semver.NewVersion(currentVersion)
+		result, err := biz.CompareVersions(currentVersion, buildVersion)
 		if err != nil {
 			log.Warn(ctx, "invalid system version, updating to build version",
 				log.String("system_version", currentVersion),
-				log.String("build_version", build.Version),
+				log.String("build_version", buildVersion),
 				log.Cause(err))
 
 			updateSystemVersion = true
-		} else if currentSemver.LessThan(buildSemver) {
+		} else if result < 0 {
 			updateSystemVersion = true
 		}
 	}

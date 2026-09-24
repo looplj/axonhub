@@ -2,6 +2,9 @@ package responses
 
 import "encoding/json"
 
+const responseMetadataTransformerMetadataKey = "openai_responses_raw_metadata_event"
+const responseHeadersTransformerMetadataKey = "openai_responses_transport_headers"
+
 // StreamEventType defines the type of streaming events for the OpenAI Responses API.
 type StreamEventType string
 
@@ -12,6 +15,7 @@ const (
 
 	StreamEventTypeResponseCreated    StreamEventType = "response.created"
 	StreamEventTypeResponseInProgress StreamEventType = "response.in_progress"
+	StreamEventTypeResponseMetadata   StreamEventType = "response.metadata"
 	StreamEventTypeResponseCompleted  StreamEventType = "response.completed"
 	StreamEventTypeResponseQueued     StreamEventType = "response.queued"
 	StreamEventTypeResponseFailed     StreamEventType = "response.failed"

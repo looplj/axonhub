@@ -186,6 +186,14 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			typ:      channel.TypeCommandcodeAnthropic,
 			expected: []string{llm.APIFormatAnthropicMessage.String()},
 		},
+		{
+			name: "modelscope exposes chat and the native async image format",
+			typ:  channel.TypeModelscope,
+			expected: []string{
+				llm.APIFormatOpenAIChatCompletion.String(),
+				llm.APIFormatModelScopeImage.String(),
+			},
+		},
 	}
 
 	for _, tt := range tests {

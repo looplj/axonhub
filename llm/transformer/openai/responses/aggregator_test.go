@@ -54,6 +54,47 @@ func TestAggregateStreamChunks_CancelledFallbackUsesCanonicalStatus(t *testing.T
 	require.Equal(t, "canceled", *body.Status)
 }
 
+func TestAggregateStreamChunks_CompletedEventPreservesResponseSnapshot(t *testing.T) {
+	tests := []struct {
+		name   string
+		fields string
+		status string
+	}{
+		{"no status", "", "completed"},
+		{"empty status", `,"status":""`, "completed"},
+		{"stale in-progress status", `,"status":"in_progress"`, "completed"},
+		{"completed", `,"status":"completed"`, "completed"},
+		{"incomplete", `,"status":"incomplete","incomplete_details":{"reason":"max_output_tokens"}`, "incomplete"},
+		{"content filter", `,"status":"incomplete","incomplete_details":{"reason":"content_filter"}`, "incomplete"},
+		{"failed", `,"status":"failed","error":{"type":"server_error","code":"provider_error","message":"provider failed"}`, "failed"},
+		{"canceled", `,"status":"canceled"`, "canceled"},
+		{"canceled", `,"status":"canceled"`, "canceled"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			snapshot := `{"id":"resp_terminal","model":"gpt-5","created_at":1700000001,"previous_response_id":"resp_previous","output":[],"usage":{"input_tokens":10,"output_tokens":2,"total_tokens":12}` + tt.fields + `}`
+			body, meta, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
+				{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":` + snapshot + `}`)},
+			})
+			require.NoError(t, err)
+			var expected, actual Response
+			require.NoError(t, json.Unmarshal([]byte(snapshot), &expected))
+			require.NoError(t, json.Unmarshal(body, &actual))
+			require.NotNil(t, actual.Status)
+			require.Equal(t, tt.status, *actual.Status)
+			require.Equal(t, expected.ID, actual.ID)
+			require.Equal(t, expected.Model, actual.Model)
+			require.Equal(t, expected.CreatedAt, actual.CreatedAt)
+			require.Equal(t, expected.PreviousResponseID, actual.PreviousResponseID)
+			require.Equal(t, expected.Error, actual.Error)
+			require.Equal(t, expected.IncompleteDetails, actual.IncompleteDetails)
+			require.Equal(t, expected.Usage, actual.Usage)
+			require.Equal(t, expected.ID, meta.ID)
+			require.Equal(t, expected.Usage.ToUsage(), meta.Usage)
+		})
+	}
+}
+
 func TestAggregateStreamChunks_CancelledSnapshotPreservesStatus(t *testing.T) {
 	resultBytes, _, err := AggregateStreamChunks(t.Context(), []*httpclient.StreamEvent{
 		{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp_canceled","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},

@@ -174,6 +174,12 @@ func (_c *RequestCreate) SetRequestBody(v objects.JSONRawMessage) *RequestCreate
 	return _c
 }
 
+// SetResponseHeaders sets the "response_headers" field.
+func (_c *RequestCreate) SetResponseHeaders(v objects.JSONRawMessage) *RequestCreate {
+	_c.mutation.SetResponseHeaders(v)
+	return _c
+}
+
 // SetResponseBody sets the "response_body" field.
 func (_c *RequestCreate) SetResponseBody(v objects.JSONRawMessage) *RequestCreate {
 	_c.mutation.SetResponseBody(v)
@@ -244,6 +250,20 @@ func (_c *RequestCreate) SetClientIP(v string) *RequestCreate {
 func (_c *RequestCreate) SetNillableClientIP(v *string) *RequestCreate {
 	if v != nil {
 		_c.SetClientIP(*v)
+	}
+	return _c
+}
+
+// SetUserAgent sets the "user_agent" field.
+func (_c *RequestCreate) SetUserAgent(v string) *RequestCreate {
+	_c.mutation.SetUserAgent(v)
+	return _c
+}
+
+// SetNillableUserAgent sets the "user_agent" field if the given value is not nil.
+func (_c *RequestCreate) SetNillableUserAgent(v *string) *RequestCreate {
+	if v != nil {
+		_c.SetUserAgent(*v)
 	}
 	return _c
 }
@@ -472,6 +492,10 @@ func (_c *RequestCreate) defaults() error {
 		v := request.DefaultClientIP
 		_c.mutation.SetClientIP(v)
 	}
+	if _, ok := _c.mutation.UserAgent(); !ok {
+		v := request.DefaultUserAgent
+		_c.mutation.SetUserAgent(v)
+	}
 	if _, ok := _c.mutation.ContentSaved(); !ok {
 		v := request.DefaultContentSaved
 		_c.mutation.SetContentSaved(v)
@@ -519,6 +543,9 @@ func (_c *RequestCreate) check() error {
 	}
 	if _, ok := _c.mutation.ClientIP(); !ok {
 		return &ValidationError{Name: "client_ip", err: errors.New(`ent: missing required field "Request.client_ip"`)}
+	}
+	if _, ok := _c.mutation.UserAgent(); !ok {
+		return &ValidationError{Name: "user_agent", err: errors.New(`ent: missing required field "Request.user_agent"`)}
 	}
 	if _, ok := _c.mutation.ContentSaved(); !ok {
 		return &ValidationError{Name: "content_saved", err: errors.New(`ent: missing required field "Request.content_saved"`)}
@@ -585,6 +612,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 		_spec.SetField(request.FieldRequestBody, field.TypeJSON, value)
 		_node.RequestBody = value
 	}
+	if value, ok := _c.mutation.ResponseHeaders(); ok {
+		_spec.SetField(request.FieldResponseHeaders, field.TypeJSON, value)
+		_node.ResponseHeaders = value
+	}
 	if value, ok := _c.mutation.ResponseBody(); ok {
 		_spec.SetField(request.FieldResponseBody, field.TypeJSON, value)
 		_node.ResponseBody = value
@@ -608,6 +639,10 @@ func (_c *RequestCreate) createSpec() (*Request, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.ClientIP(); ok {
 		_spec.SetField(request.FieldClientIP, field.TypeString, value)
 		_node.ClientIP = value
+	}
+	if value, ok := _c.mutation.UserAgent(); ok {
+		_spec.SetField(request.FieldUserAgent, field.TypeString, value)
+		_node.UserAgent = value
 	}
 	if value, ok := _c.mutation.MetricsLatencyMs(); ok {
 		_spec.SetField(request.FieldMetricsLatencyMs, field.TypeInt64, value)
@@ -833,6 +868,24 @@ func (u *RequestUpsert) UpdateRequestHeaders() *RequestUpsert {
 // ClearRequestHeaders clears the value of the "request_headers" field.
 func (u *RequestUpsert) ClearRequestHeaders() *RequestUpsert {
 	u.SetNull(request.FieldRequestHeaders)
+	return u
+}
+
+// SetResponseHeaders sets the "response_headers" field.
+func (u *RequestUpsert) SetResponseHeaders(v objects.JSONRawMessage) *RequestUpsert {
+	u.Set(request.FieldResponseHeaders, v)
+	return u
+}
+
+// UpdateResponseHeaders sets the "response_headers" field to the value that was provided on create.
+func (u *RequestUpsert) UpdateResponseHeaders() *RequestUpsert {
+	u.SetExcluded(request.FieldResponseHeaders)
+	return u
+}
+
+// ClearResponseHeaders clears the value of the "response_headers" field.
+func (u *RequestUpsert) ClearResponseHeaders() *RequestUpsert {
+	u.SetNull(request.FieldResponseHeaders)
 	return u
 }
 
@@ -1111,6 +1164,9 @@ func (u *RequestUpsertOne) UpdateNewValues() *RequestUpsertOne {
 		if _, exists := u.create.mutation.ClientIP(); exists {
 			s.SetIgnore(request.FieldClientIP)
 		}
+		if _, exists := u.create.mutation.UserAgent(); exists {
+			s.SetIgnore(request.FieldUserAgent)
+		}
 	}))
 	return u
 }
@@ -1174,6 +1230,27 @@ func (u *RequestUpsertOne) UpdateRequestHeaders() *RequestUpsertOne {
 func (u *RequestUpsertOne) ClearRequestHeaders() *RequestUpsertOne {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearRequestHeaders()
+	})
+}
+
+// SetResponseHeaders sets the "response_headers" field.
+func (u *RequestUpsertOne) SetResponseHeaders(v objects.JSONRawMessage) *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetResponseHeaders(v)
+	})
+}
+
+// UpdateResponseHeaders sets the "response_headers" field to the value that was provided on create.
+func (u *RequestUpsertOne) UpdateResponseHeaders() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateResponseHeaders()
+	})
+}
+
+// ClearResponseHeaders clears the value of the "response_headers" field.
+func (u *RequestUpsertOne) ClearResponseHeaders() *RequestUpsertOne {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearResponseHeaders()
 	})
 }
 
@@ -1655,6 +1732,9 @@ func (u *RequestUpsertBulk) UpdateNewValues() *RequestUpsertBulk {
 			if _, exists := b.mutation.ClientIP(); exists {
 				s.SetIgnore(request.FieldClientIP)
 			}
+			if _, exists := b.mutation.UserAgent(); exists {
+				s.SetIgnore(request.FieldUserAgent)
+			}
 		}
 	}))
 	return u
@@ -1719,6 +1799,27 @@ func (u *RequestUpsertBulk) UpdateRequestHeaders() *RequestUpsertBulk {
 func (u *RequestUpsertBulk) ClearRequestHeaders() *RequestUpsertBulk {
 	return u.Update(func(s *RequestUpsert) {
 		s.ClearRequestHeaders()
+	})
+}
+
+// SetResponseHeaders sets the "response_headers" field.
+func (u *RequestUpsertBulk) SetResponseHeaders(v objects.JSONRawMessage) *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.SetResponseHeaders(v)
+	})
+}
+
+// UpdateResponseHeaders sets the "response_headers" field to the value that was provided on create.
+func (u *RequestUpsertBulk) UpdateResponseHeaders() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.UpdateResponseHeaders()
+	})
+}
+
+// ClearResponseHeaders clears the value of the "response_headers" field.
+func (u *RequestUpsertBulk) ClearResponseHeaders() *RequestUpsertBulk {
+	return u.Update(func(s *RequestUpsert) {
+		s.ClearResponseHeaders()
 	})
 }
 

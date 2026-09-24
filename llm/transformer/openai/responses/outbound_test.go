@@ -195,6 +195,34 @@ func TestOutboundTransformer_TransformRequest_OmitsMetadataWhenEmpty(t *testing.
 	require.Nil(t, hreq.Metadata)
 }
 
+func TestOutboundTransformer_TransformRequest_PreservesClientMetadata(t *testing.T) {
+	inboundRequest := &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body: []byte(`{
+			"model":"gpt-5",
+			"input":"hello",
+			"stream":true,
+			"client_metadata":{"x-codex-turn-state":"ts-1","custom":"kept"}
+		}`),
+	}
+
+	llmRequest, err := NewInboundTransformer().TransformRequest(t.Context(), inboundRequest)
+	require.NoError(t, err)
+	llmRequest.RawRequest = inboundRequest
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	outboundRequest, err := outbound.TransformRequest(t.Context(), llmRequest)
+	require.NoError(t, err)
+
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(outboundRequest.Body, &body))
+	metadata, ok := body["client_metadata"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "ts-1", metadata["x-codex-turn-state"])
+	require.Equal(t, "kept", metadata["custom"])
+}
+
 func TestOutboundTransformer_TransformRequest_WebSearchRequiredToolChoice(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

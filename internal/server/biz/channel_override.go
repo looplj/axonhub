@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"net/http"
 	"strings"
 
 	"github.com/samber/lo"
@@ -307,4 +308,58 @@ func deepMergeMap(base, override map[string]any) map[string]any {
 	}
 
 	return result
+}
+
+// ApplyModelFetchHeaderOverrides applies the channel's header override operations to an
+// HTTP request used for model-list probing.
+//
+// Model probing runs outside the LLM request pipeline, so there is no RenderContext to
+// evaluate against: operations guarded by a Condition and set-values containing a template
+// placeholder ("{{") are skipped. Unconditional literal operations use the same semantics as
+// the chat/completion path (applyOverrideOperationToHeaders in
+// internal/server/orchestrator/override.go): set, delete, rename, copy. The legacy
+// "__AXONHUB_CLEAR__" value deletes the header.
+func ApplyModelFetchHeaderOverrides(headers http.Header, ops []objects.OverrideOperation) {
+	if headers == nil || len(ops) == 0 {
+		return
+	}
+
+	for _, op := range ops {
+		if op.Condition != "" {
+			continue
+		}
+
+		switch op.Op {
+		case objects.OverrideOpSet:
+			if strings.Contains(op.Value, "{{") {
+				// A templated value cannot be rendered without an LLM request context;
+				// sending the raw template would corrupt the probe request.
+				continue
+			}
+
+			if op.Value == ClearHeaderDirective {
+				headers.Del(op.Path)
+				continue
+			}
+
+			headers.Set(op.Path, op.Value)
+		case objects.OverrideOpDelete:
+			headers.Del(op.Path)
+		case objects.OverrideOpRename:
+			values := headers.Values(op.From)
+			if len(values) == 0 {
+				continue
+			}
+
+			headers.Del(op.From)
+
+			for _, v := range values {
+				headers.Add(op.To, v)
+			}
+		case objects.OverrideOpCopy:
+			for _, v := range headers.Values(op.From) {
+				headers.Add(op.To, v)
+			}
+		}
+	}
 }

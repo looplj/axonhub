@@ -13,6 +13,7 @@
 [![Lint Status](https://github.com/looplj/axonhub/actions/workflows/lint.yml/badge.svg)](https://github.com/looplj/axonhub/actions/workflows/lint.yml)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
 [![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![Greptile: The War on Bugs](https://www.greptile.com/badge.svg)](https://www.greptile.com/?utm_source=oss_badge&utm_medium=readme&utm_campaign=greptile_for_open_source)
 
 [English](README.en-US.md) | [中文](README.md) | [日本語](README.ja-JP.md)
 
@@ -349,7 +350,7 @@ print(response.choices[0].message.content)
 
 ## 📄 ライセンス
 
-このプロジェクトは複数のライセンス（Apache-2.0およびLGPL-3.0）の下でライセンスされています。詳細なライセンスの概要と条項については、[LICENSE](LICENSE)ファイルを参照してください。
+このプロジェクトは複数のライセンス（Apache-2.0およびLGPL-3.0）の下でライセンスされています。適用範囲は[NOTICE](NOTICE)、ライセンス全文は[LICENSE](LICENSE)および[llm/LICENSE](llm/LICENSE)を参照してください。
 
 ---
 

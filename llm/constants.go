@@ -21,6 +21,9 @@ const (
 	RequestTypeModeration RequestType = "moderation"
 	// RequestTypeAlphaSearch is the Codex/CPA alpha search request type, maps to /v1/alpha/search.
 	RequestTypeAlphaSearch RequestType = "alpha_search"
+
+	// RequestTypeSystemOne represents a System One decision inference request.
+	RequestTypeSystemOne RequestType = "systemone"
 )
 
 func (r RequestType) String() string {
@@ -59,9 +62,17 @@ const (
 	APIFormatJinaRerank    APIFormat = "jina/rerank"
 	APIFormatJinaEmbedding APIFormat = "jina/embeddings"
 
+	APIFormatTypeSafeSystemOne APIFormat = "typesafe/systemone"
+
 	APIFormatOllamaChat    APIFormat = "ollama/chat"
 	APIFormatSeedanceVideo APIFormat = "seedance/video"
 	APIFormatZenmuxVideo   APIFormat = "zenmux/video"
+
+	// APIFormatModelScopeImage is the ModelScope-native image protocol. ModelScope
+	// serves image generation and image editing on one async endpoint, so a single
+	// provider format covers both directions. It is a provider-only default
+	// endpoint and is intentionally absent from the configurable format list.
+	APIFormatModelScopeImage APIFormat = "modelscope/image_generation"
 )
 
 func (f APIFormat) String() string {

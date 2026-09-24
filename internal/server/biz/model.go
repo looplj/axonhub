@@ -212,8 +212,9 @@ func validateFilterLeaf(condition objects.Condition) error {
 		return validatePromptTokensLeaf(condition)
 	case objects.ModelAssociationConditionFieldStream:
 		return validateBoolEqualityLeaf(condition, objects.ModelAssociationConditionFieldStream)
-	case objects.ModelAssociationConditionFieldRequestFormat:
-		return validateStringEqualityLeaf(condition, objects.ModelAssociationConditionFieldRequestFormat)
+	case objects.ModelAssociationConditionFieldRequestFormat,
+		objects.ModelAssociationConditionFieldReasoningEffort:
+		return validateStringEqualityLeaf(condition, condition.Field)
 	case objects.ModelAssociationConditionFieldDailyTime:
 		return validateDailyTimeLeaf(condition)
 	case objects.ModelAssociationConditionFieldHasImage,

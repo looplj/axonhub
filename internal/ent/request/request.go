@@ -42,6 +42,8 @@ const (
 	FieldRequestHeaders = "request_headers"
 	// FieldRequestBody holds the string denoting the request_body field in the database.
 	FieldRequestBody = "request_body"
+	// FieldResponseHeaders holds the string denoting the response_headers field in the database.
+	FieldResponseHeaders = "response_headers"
 	// FieldResponseBody holds the string denoting the response_body field in the database.
 	FieldResponseBody = "response_body"
 	// FieldResponseChunks holds the string denoting the response_chunks field in the database.
@@ -56,6 +58,8 @@ const (
 	FieldStream = "stream"
 	// FieldClientIP holds the string denoting the client_ip field in the database.
 	FieldClientIP = "client_ip"
+	// FieldUserAgent holds the string denoting the user_agent field in the database.
+	FieldUserAgent = "user_agent"
 	// FieldMetricsLatencyMs holds the string denoting the metrics_latency_ms field in the database.
 	FieldMetricsLatencyMs = "metrics_latency_ms"
 	// FieldMetricsFirstTokenLatencyMs holds the string denoting the metrics_first_token_latency_ms field in the database.
@@ -152,6 +156,7 @@ var Columns = []string{
 	FieldFormat,
 	FieldRequestHeaders,
 	FieldRequestBody,
+	FieldResponseHeaders,
 	FieldResponseBody,
 	FieldResponseChunks,
 	FieldChannelID,
@@ -159,6 +164,7 @@ var Columns = []string{
 	FieldStatus,
 	FieldStream,
 	FieldClientIP,
+	FieldUserAgent,
 	FieldMetricsLatencyMs,
 	FieldMetricsFirstTokenLatencyMs,
 	FieldMetricsReasoningDurationMs,
@@ -202,6 +208,8 @@ var (
 	DefaultStream bool
 	// DefaultClientIP holds the default value on creation for the "client_ip" field.
 	DefaultClientIP string
+	// DefaultUserAgent holds the default value on creation for the "user_agent" field.
+	DefaultUserAgent string
 	// DefaultContentSaved holds the default value on creation for the "content_saved" field.
 	DefaultContentSaved bool
 )
@@ -340,6 +348,11 @@ func ByStream(opts ...sql.OrderTermOption) OrderOption {
 // ByClientIP orders the results by the client_ip field.
 func ByClientIP(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldClientIP, opts...).ToFunc()
+}
+
+// ByUserAgent orders the results by the user_agent field.
+func ByUserAgent(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUserAgent, opts...).ToFunc()
 }
 
 // ByMetricsLatencyMs orders the results by the metrics_latency_ms field.

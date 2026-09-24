@@ -148,6 +148,9 @@ models:
   APIKeyAutoDisableAction:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableAction
+  APIKeyAutoDisableMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.APIKeyAutoDisableMode
   ChannelSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelSettings
@@ -172,6 +175,12 @@ models:
   CommandCodeQuotaSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/objects.CommandCodeQuotaSettings
+  OllamaQuotaSettings:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OllamaQuotaSettings
+  OllamaQuotaSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.OllamaQuotaSettings
   ChannelRateLimit:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelRateLimit
@@ -193,9 +202,24 @@ models:
   BulkCreateChannelsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.BulkCreateChannelsInput
+  BulkUpdateChannelAutoDisableInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.BulkUpdateChannelAutoDisableInput
+  BulkAutoDisableAction:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.BulkAutoDisableAction
   SaveChannelEndpointsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SaveChannelEndpointsInput
+  DetectChannelEndpointsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DetectChannelEndpointsInput
+  DetectedChannelEndpoint:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DetectedChannelEndpoint
+  DetectChannelEndpointsPayload:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.DetectChannelEndpointsPayload
   QueryChannelInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.QueryChannelsInput
@@ -238,15 +262,9 @@ models:
   AutoDisableChannel:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel
-  AutoDisableChannelStatus:
-    model:
-      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
   AutoDisableChannelInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannel
-  AutoDisableChannelStatusInput:
-    model:
-      - github.com/looplj/axonhub/internal/server/biz.AutoDisableChannelStatus
   UpstreamErrorPolicy:
     model:
       - github.com/looplj/axonhub/internal/server/biz.UpstreamErrorPolicy
@@ -703,9 +721,15 @@ models:
   AutoSyncFrequency:
     model:
       - github.com/looplj/axonhub/internal/server/biz.AutoSyncFrequency
-  QuotaEnforcementMode:
+  QuotaRoutingMode:
     model:
-      - github.com/looplj/axonhub/internal/server/biz.QuotaEnforcementMode
+      - github.com/looplj/axonhub/internal/objects.QuotaRoutingMode
+  QuotaRoutingSettings:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.QuotaRoutingSettings
+  ChannelQuotaRoutingMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.QuotaRoutingMode
   TraceStickyMode:
     model:
       - github.com/looplj/axonhub/internal/server/biz.TraceStickyMode

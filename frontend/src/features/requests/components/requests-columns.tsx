@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
-import { IconArrowsExchange, IconArrowsJoin2, IconRoute } from '@tabler/icons-react';
+import { IconAlertTriangle, IconArrowsExchange, IconArrowsJoin2, IconCheck, IconQuestionMark, IconRoute } from '@tabler/icons-react';
 import { Ban, FileText } from 'lucide-react';
 import { zhCN, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import { useGeneralSettings, useSecuritySettings, useUpdateSecuritySettings } fr
 import { useRequestPermissions } from '../../../hooks/useRequestPermissions';
 import { Request } from '../data/schema';
 import { calculateTokensPerSecond, getTokensPerSecondValue } from '../utils/tokens-per-second';
+import { getRequestModelAuditTooltip, getUpstreamModelAudit } from '../utils/upstream-model-audit';
 import { getStatusColor } from './help';
 
 interface UseRequestsColumnsOptions {
@@ -26,7 +27,7 @@ interface UseRequestsColumnsOptions {
   onViewDetail?: (requestId: string) => void;
 }
 
-export const DEFAULT_HIDDEN_COLUMN_IDS = ['status', 'source', 'apiFormat', 'clientIP', 'tokensPerSecond', 'writeCache'];
+export const DEFAULT_HIDDEN_COLUMN_IDS = ['status', 'source', 'apiFormat', 'clientIP', 'userAgent', 'tokensPerSecond', 'writeCache'];
 
 export const DEFAULT_MOBILE_HIDDEN_COLUMN_IDS = [
   ...DEFAULT_HIDDEN_COLUMN_IDS,
@@ -145,6 +146,22 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const executionModelIds = Array.from(new Set(executions.map((exe) => exe.modelID || ''))).filter(
           (id) => id && id !== originalModelId
         );
+        // The list query is executions(first: 10). Executions outside that window are not judged.
+        const modelAudit = getUpstreamModelAudit(executions);
+        const upstreamModelMatches = modelAudit.status === 'matched';
+        const requestIsProcessing = request.status === 'pending' || request.status === 'processing';
+        const requestFailed = request.status === 'failed' || request.status === 'canceled';
+        const upstreamModelAuditIconClass = requestIsProcessing
+          ? 'text-sky-600 dark:text-sky-400 motion-safe:animate-pulse'
+          : requestFailed
+            ? 'text-red-600 dark:text-red-400'
+            : modelAudit.status === 'unknown'
+              ? 'text-amber-600 dark:text-amber-400'
+              : upstreamModelMatches
+                ? 'text-emerald-700 dark:text-emerald-300'
+                : 'text-red-700 dark:text-red-400';
+        const upstreamModelAuditTooltip = getRequestModelAuditTooltip(modelAudit, request.status, t);
+
         const reasoningEffort = executions[0]?.reasoningEffort ?? request.reasoningEffort;
         const inboundFormat = request.format;
         const outboundFormat = executions[0]?.format;
@@ -227,6 +244,29 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                 </TooltipTrigger>
                 <TooltipContent>{t(passThroughApplied ? 'requests.tooltips.passThroughApplied' : 'requests.tooltips.passThroughNotApplied')}</TooltipContent>
               </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={`inline-flex h-5 w-5 items-center justify-center ${upstreamModelAuditIconClass}`}
+                    tabIndex={0}
+                    role='img'
+                    aria-label={upstreamModelAuditTooltip}
+                  >
+                    {requestIsProcessing ? (
+                      <IconQuestionMark className='h-3.5 w-3.5' />
+                    ) : requestFailed ? (
+                      <IconAlertTriangle className='h-3.5 w-3.5' />
+                    ) : modelAudit.status === 'unknown' ? (
+                      <IconQuestionMark className='h-3.5 w-3.5' />
+                    ) : upstreamModelMatches ? (
+                      <IconCheck className='h-3.5 w-3.5' />
+                    ) : (
+                      <IconAlertTriangle className='h-3.5 w-3.5' />
+                    )}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{upstreamModelAuditTooltip}</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         );
@@ -308,6 +348,26 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                 </Tooltip>
               ))}
           </div>
+        );
+      },
+    },
+    {
+      id: 'userAgent',
+      accessorKey: 'userAgent',
+      header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.userAgent')} />,
+      enableSorting: false,
+      enableHiding: true,
+      cell: ({ row }) => {
+        const userAgent = row.original.userAgent?.trim() ?? '';
+        if (!userAgent) return <span className='text-muted-foreground text-xs'>-</span>;
+
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className='block max-w-[240px] cursor-help truncate font-mono text-xs'>{userAgent}</span>
+            </TooltipTrigger>
+            <TooltipContent className='max-w-[420px] break-all'>{userAgent}</TooltipContent>
+          </Tooltip>
         );
       },
     },

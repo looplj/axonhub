@@ -35,11 +35,10 @@ func (t Type) SupportsGoogleNativeTools() bool {
 }
 
 // SupportsAnthropicNativeTools returns true if the channel type supports Anthropic native tools.
-// Anthropic native tools (web_search_20250305) are only supported by direct Anthropic API.
-// Note: Bedrock (anthropic_aws) and Vertex (anthropic_gcp) do NOT currently support
-// the web search beta feature, so they are excluded from native tool support.
-// Channels using Anthropic format but not native Anthropic API (e.g., deepseek_anthropic,
-// moonshot_anthropic) also do NOT support these tools.
+// Anthropic native tools (web_search_20250305) are supported by Anthropic-backed
+// channels, Claude Code, and DeepSeek's verified Anthropic-compatible endpoint.
+// Other Anthropic-compatible channels remain excluded until support is verified.
 func (t Type) SupportsAnthropicNativeTools() bool {
-	return t == TypeAnthropic || t == TypeAnthropicAWS || t == TypeAnthropicGcp || t == TypeClaudecode
+	return t == TypeAnthropic || t == TypeAnthropicAWS || t == TypeAnthropicGcp ||
+		t == TypeClaudecode || t == TypeDeepseekAnthropic
 }

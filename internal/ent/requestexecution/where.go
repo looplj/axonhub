@@ -100,6 +100,11 @@ func ModelID(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldModelID, v))
 }
 
+// UpstreamModelID applies equality check predicate on the "upstream_model_id" field. It's identical to UpstreamModelIDEQ.
+func UpstreamModelID(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldUpstreamModelID, v))
+}
+
 // Format applies equality check predicate on the "format" field. It's identical to FormatEQ.
 func Format(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldFormat, v))
@@ -108,6 +113,11 @@ func Format(v string) predicate.RequestExecution {
 // ReasoningEffort applies equality check predicate on the "reasoning_effort" field. It's identical to ReasoningEffortEQ.
 func ReasoningEffort(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldReasoningEffort, v))
+}
+
+// ChannelAPIKeySuffix applies equality check predicate on the "channel_api_key_suffix" field. It's identical to ChannelAPIKeySuffixEQ.
+func ChannelAPIKeySuffix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldChannelAPIKeySuffix, v))
 }
 
 // ErrorMessage applies equality check predicate on the "error_message" field. It's identical to ErrorMessageEQ.
@@ -540,6 +550,81 @@ func ModelIDContainsFold(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldContainsFold(FieldModelID, v))
 }
 
+// UpstreamModelIDEQ applies the EQ predicate on the "upstream_model_id" field.
+func UpstreamModelIDEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDNEQ applies the NEQ predicate on the "upstream_model_id" field.
+func UpstreamModelIDNEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDIn applies the In predicate on the "upstream_model_id" field.
+func UpstreamModelIDIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldUpstreamModelID, vs...))
+}
+
+// UpstreamModelIDNotIn applies the NotIn predicate on the "upstream_model_id" field.
+func UpstreamModelIDNotIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldUpstreamModelID, vs...))
+}
+
+// UpstreamModelIDGT applies the GT predicate on the "upstream_model_id" field.
+func UpstreamModelIDGT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDGTE applies the GTE predicate on the "upstream_model_id" field.
+func UpstreamModelIDGTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDLT applies the LT predicate on the "upstream_model_id" field.
+func UpstreamModelIDLT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDLTE applies the LTE predicate on the "upstream_model_id" field.
+func UpstreamModelIDLTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDContains applies the Contains predicate on the "upstream_model_id" field.
+func UpstreamModelIDContains(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContains(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDHasPrefix applies the HasPrefix predicate on the "upstream_model_id" field.
+func UpstreamModelIDHasPrefix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasPrefix(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDHasSuffix applies the HasSuffix predicate on the "upstream_model_id" field.
+func UpstreamModelIDHasSuffix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasSuffix(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDIsNil applies the IsNil predicate on the "upstream_model_id" field.
+func UpstreamModelIDIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldUpstreamModelID))
+}
+
+// UpstreamModelIDNotNil applies the NotNil predicate on the "upstream_model_id" field.
+func UpstreamModelIDNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldUpstreamModelID))
+}
+
+// UpstreamModelIDEqualFold applies the EqualFold predicate on the "upstream_model_id" field.
+func UpstreamModelIDEqualFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEqualFold(FieldUpstreamModelID, v))
+}
+
+// UpstreamModelIDContainsFold applies the ContainsFold predicate on the "upstream_model_id" field.
+func UpstreamModelIDContainsFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContainsFold(FieldUpstreamModelID, v))
+}
+
 // FormatEQ applies the EQ predicate on the "format" field.
 func FormatEQ(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldFormat, v))
@@ -678,6 +763,91 @@ func ReasoningEffortEqualFold(v string) predicate.RequestExecution {
 // ReasoningEffortContainsFold applies the ContainsFold predicate on the "reasoning_effort" field.
 func ReasoningEffortContainsFold(v string) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldContainsFold(FieldReasoningEffort, v))
+}
+
+// ChannelAPIKeySuffixEQ applies the EQ predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixNEQ applies the NEQ predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixNEQ(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixIn applies the In predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldChannelAPIKeySuffix, vs...))
+}
+
+// ChannelAPIKeySuffixNotIn applies the NotIn predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixNotIn(vs ...string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldChannelAPIKeySuffix, vs...))
+}
+
+// ChannelAPIKeySuffixGT applies the GT predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixGT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixGTE applies the GTE predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixGTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixLT applies the LT predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixLT(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixLTE applies the LTE predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixLTE(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixContains applies the Contains predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixContains(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContains(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixHasPrefix applies the HasPrefix predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixHasPrefix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasPrefix(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixHasSuffix applies the HasSuffix predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixHasSuffix(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldHasSuffix(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixIsNil applies the IsNil predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldChannelAPIKeySuffix))
+}
+
+// ChannelAPIKeySuffixNotNil applies the NotNil predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldChannelAPIKeySuffix))
+}
+
+// ChannelAPIKeySuffixEqualFold applies the EqualFold predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixEqualFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEqualFold(FieldChannelAPIKeySuffix, v))
+}
+
+// ChannelAPIKeySuffixContainsFold applies the ContainsFold predicate on the "channel_api_key_suffix" field.
+func ChannelAPIKeySuffixContainsFold(v string) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldContainsFold(FieldChannelAPIKeySuffix, v))
+}
+
+// ResponseHeadersIsNil applies the IsNil predicate on the "response_headers" field.
+func ResponseHeadersIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldResponseHeaders))
+}
+
+// ResponseHeadersNotNil applies the NotNil predicate on the "response_headers" field.
+func ResponseHeadersNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldResponseHeaders))
 }
 
 // ResponseBodyIsNil applies the IsNil predicate on the "response_body" field.

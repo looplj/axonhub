@@ -905,3 +905,52 @@ func TestRequestFromLLM_MergesSystemMessages_MultipleContentPrecedence(t *testin
 	require.NotContains(t, merged, "STALE SCALAR")
 	require.Equal(t, "user", req.Messages[1].Role)
 }
+
+func TestRequestFromLLM_AllowedToolsToolChoice(t *testing.T) {
+	// An allowed_tools choice must keep its mode and tool subset on the Chat
+	// Completions wire; the plain named shape would emit an empty function
+	// name and silently lift the restriction (issue #2504).
+	req := RequestFromLLM(context.Background(), &llm.Request{
+		Model:    "gpt-4o",
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "tool_a", Parameters: []byte(`{"type":"object"}`)}},
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "tool_b", Parameters: []byte(`{"type":"object"}`)}},
+		},
+		ToolChoice: &llm.ToolChoice{
+			ToolChoice:      lo.ToPtr("required"),
+			NamedToolChoice: &llm.NamedToolChoice{Type: "allowed_tools"},
+			Tools:           []llm.ToolOption{{Type: "function", Name: "tool_a"}},
+		},
+	}, ReasoningFieldNone)
+
+	require.NotNil(t, req)
+	require.NotNil(t, req.ToolChoice)
+
+	data, err := json.Marshal(req.ToolChoice)
+	require.NoError(t, err)
+	require.JSONEq(t,
+		`{"type":"allowed_tools","allowed_tools":{"mode":"required","tools":[{"type":"function","function":{"name":"tool_a"}}]}}`,
+		string(data))
+}
+
+func TestRequestFromLLM_NamedToolChoiceUnchanged(t *testing.T) {
+	// A named function choice keeps its existing single-tool wire shape.
+	req := RequestFromLLM(context.Background(), &llm.Request{
+		Model:    "gpt-4o",
+		Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}}},
+		Tools: []llm.Tool{
+			{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "tool_a", Parameters: []byte(`{"type":"object"}`)}},
+		},
+		ToolChoice: &llm.ToolChoice{
+			NamedToolChoice: &llm.NamedToolChoice{Type: "function", Function: llm.ToolFunction{Name: "tool_a"}},
+		},
+	}, ReasoningFieldNone)
+
+	require.NotNil(t, req)
+	require.NotNil(t, req.ToolChoice)
+
+	data, err := json.Marshal(req.ToolChoice)
+	require.NoError(t, err)
+	require.JSONEq(t, `{"type":"function","function":{"name":"tool_a"}}`, string(data))
+}

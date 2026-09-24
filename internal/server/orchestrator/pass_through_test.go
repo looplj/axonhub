@@ -1588,6 +1588,7 @@ func TestApplyPassThroughBodySkipsWhenOutboundPolicyRejects(t *testing.T) {
 func TestApplyPassThroughRequestHeaders(t *testing.T) {
 	inboundHeaders := http.Header{
 		"X-Codex-Turn-Metadata":                  {`{"session_id":"session-123","turn_id":"turn-456"}`},
+		"X-Codex-Turn-State":                     {"ts-1"},
 		"X-Codex-Window-Id":                      {"window-123"},
 		"X-Client-Request-Id":                    {"request-123"},
 		"X-Codex-Beta-Features":                  {"js_repl"},
@@ -1845,6 +1846,7 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 		channelUASetting *bool // Channel-level override
 		globalUAEnabled  bool  // System-level setting
 		clientUA         string
+		outboundUA       string // User-Agent already set by the outbound transformer
 		wantUAHeader     string
 	}{
 		{
@@ -1881,6 +1883,26 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			globalUAEnabled:  true,
 			clientUA:         "",
 			wantUAHeader:     "",
+		},
+		{
+			// Issue #2303: provider-required UA set by the outbound transformer
+			// (e.g. GitHubCopilotChat for Copilot channels) must survive when
+			// pass-through is disabled; otherwise real upstream calls go out
+			// with the axonhub default while channel checks use the correct UA.
+			name:             "disabled_preserves_transformer_set_ua",
+			channelUASetting: nil,
+			globalUAEnabled:  false,
+			clientUA:         "",
+			outboundUA:       "GitHubCopilotChat/0.26.7",
+			wantUAHeader:     "GitHubCopilotChat/0.26.7",
+		},
+		{
+			name:             "enabled_still_overrides_transformer_set_ua",
+			channelUASetting: new(true),
+			globalUAEnabled:  false,
+			clientUA:         "Client/1.0",
+			outboundUA:       "GitHubCopilotChat/0.26.7",
+			wantUAHeader:     "Client/1.0",
 		},
 	}
 
@@ -1938,6 +1960,9 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			// Execute middleware
 			rawRequest := &httpclient.Request{
 				Headers: make(http.Header),
+			}
+			if tt.outboundUA != "" {
+				rawRequest.Headers.Set("User-Agent", tt.outboundUA)
 			}
 			processedRequest, err := middleware.OnOutboundRawRequest(ctx, rawRequest)
 

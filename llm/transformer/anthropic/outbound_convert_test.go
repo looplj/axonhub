@@ -1137,3 +1137,156 @@ func TestConvertToAnthropicRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveMaxTokens(t *testing.T) {
+	tests := []struct {
+		name     string
+		chatReq  *llm.Request
+		expected int64
+	}{
+		{
+			name: "uses client max_tokens",
+			chatReq: &llm.Request{
+				MaxTokens: lo.ToPtr(int64(1024)),
+			},
+			expected: 1024,
+		},
+		{
+			name: "uses max_completion_tokens when max_tokens is unset",
+			chatReq: &llm.Request{
+				MaxCompletionTokens: lo.ToPtr(int64(2048)),
+			},
+			expected: 2048,
+		},
+		{
+			name: "prefers max_tokens over max_completion_tokens",
+			chatReq: &llm.Request{
+				MaxTokens:           lo.ToPtr(int64(512)),
+				MaxCompletionTokens: lo.ToPtr(int64(2048)),
+			},
+			expected: 512,
+		},
+		{
+			name: "uses model card default when client omitted an output cap",
+			chatReq: &llm.Request{
+				TransformOptions: llm.TransformOptions{
+					DefaultMaxTokens: lo.ToPtr(int64(131072)),
+				},
+			},
+			expected: 131072,
+		},
+		{
+			name: "prefers client max_tokens over model card default",
+			chatReq: &llm.Request{
+				MaxTokens: lo.ToPtr(int64(1024)),
+				TransformOptions: llm.TransformOptions{
+					DefaultMaxTokens: lo.ToPtr(int64(131072)),
+				},
+			},
+			expected: 1024,
+		},
+		{
+			name: "ignores non-positive model card default",
+			chatReq: &llm.Request{
+				TransformOptions: llm.TransformOptions{
+					DefaultMaxTokens: lo.ToPtr(int64(0)),
+				},
+			},
+			expected: 8192,
+		},
+		{
+			name:     "falls back to 8192 when no limit is available",
+			chatReq:  &llm.Request{},
+			expected: 8192,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expected, resolveMaxTokens(tt.chatReq))
+		})
+	}
+}
+
+func TestConvertToAnthropicRequest_ParallelToolCalls(t *testing.T) {
+	tools := []llm.Tool{
+		{Type: llm.ToolTypeFunction, Function: llm.Function{Name: "lookup"}},
+	}
+
+	tests := []struct {
+		name     string
+		chatReq  *llm.Request
+		expected *ToolChoice
+	}{
+		{
+			name: "false without tool_choice -> auto with parallel disabled",
+			chatReq: &llm.Request{
+				Tools:             tools,
+				ParallelToolCalls: lo.ToPtr(false),
+			},
+			expected: &ToolChoice{Type: "auto", DisableParallelToolUse: lo.ToPtr(true)},
+		},
+		{
+			name: "false with required -> any with parallel disabled",
+			chatReq: &llm.Request{
+				Tools:             tools,
+				ToolChoice:        &llm.ToolChoice{ToolChoice: lo.ToPtr("required")},
+				ParallelToolCalls: lo.ToPtr(false),
+			},
+			expected: &ToolChoice{Type: "any", DisableParallelToolUse: lo.ToPtr(true)},
+		},
+		{
+			name: "true with named tool -> explicit parallel enabled",
+			chatReq: &llm.Request{
+				Tools: tools,
+				ToolChoice: &llm.ToolChoice{
+					NamedToolChoice: &llm.NamedToolChoice{
+						Type:     "function",
+						Function: llm.ToolFunction{Name: "lookup"},
+					},
+				},
+				ParallelToolCalls: lo.ToPtr(true),
+			},
+			expected: &ToolChoice{Type: "tool", Name: lo.ToPtr("lookup"), DisableParallelToolUse: lo.ToPtr(false)},
+		},
+		{
+			name: "true without tool_choice -> no tool_choice synthesized",
+			chatReq: &llm.Request{
+				Tools:             tools,
+				ParallelToolCalls: lo.ToPtr(true),
+			},
+			expected: nil,
+		},
+		{
+			name: "none is left untouched",
+			chatReq: &llm.Request{
+				Tools:             tools,
+				ToolChoice:        &llm.ToolChoice{ToolChoice: lo.ToPtr("none")},
+				ParallelToolCalls: lo.ToPtr(false),
+			},
+			expected: &ToolChoice{Type: "none"},
+		},
+		{
+			name: "no tools -> no tool_choice",
+			chatReq: &llm.Request{
+				ParallelToolCalls: lo.ToPtr(false),
+			},
+			expected: nil,
+		},
+		{
+			name: "unset -> tool_choice unchanged",
+			chatReq: &llm.Request{
+				Tools:      tools,
+				ToolChoice: &llm.ToolChoice{ToolChoice: lo.ToPtr("auto")},
+			},
+			expected: &ToolChoice{Type: "auto"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertToAnthropicRequest(tt.chatReq)
+			require.Equal(t, tt.expected, result.ToolChoice)
+		})
+	}
+}

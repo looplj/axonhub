@@ -475,6 +475,12 @@ func (e *WebSocketExecutor) dial(ctx context.Context, request *httpclient.Reques
 	}
 
 	conn, resp, err := dialer.DialContext(ctx, wsURL, headers)
+	if resp != nil {
+		// The WebSocket handshake is an HTTP response. Observe it before
+		// converting a rejected handshake into httpclient.Error so both
+		// successful and failed handshakes retain their provider headers.
+		request.ObserveResponseHeaders(ctx, resp.Header)
+	}
 	if err != nil {
 		return nil, newWebSocketDialError(request, resp, err)
 	}

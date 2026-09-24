@@ -11,6 +11,7 @@ import (
 
 	"entgo.io/contrib/entgql"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/samber/lo"
@@ -102,6 +103,18 @@ func (r *channelResolver) ProviderQuotaStatus(ctx context.Context, obj *ent.Chan
 	}
 	if pqs == nil {
 		return nil, nil
+	}
+	if pqs.ProviderType == "" {
+		provider, err := obj.QueryProviderQuotaStatus().
+			Select(providerquotastatus.FieldProviderType).
+			Only(ctx)
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to load provider quota type: %w", err)
+		}
+		pqs.ProviderType = provider.ProviderType
 	}
 
 	enabled, err := r.systemService.IsProviderQuotaCollectionEnabled(ctx, pqs.ProviderType.String())
@@ -715,6 +728,23 @@ func (r *requestExecutionResolver) DataStorageID(ctx context.Context, obj *ent.R
 		Type: ent.TypeDataStorage,
 		ID:   obj.DataStorageID,
 	}, nil
+}
+
+// ChannelAPIKeySuffix is the resolver for the channelAPIKeySuffix field.
+func (r *requestExecutionResolver) ChannelAPIKeySuffix(ctx context.Context, obj *ent.RequestExecution) (*string, error) {
+	if obj.ChannelAPIKeySuffix == nil || obj.ChannelID == 0 {
+		return nil, nil
+	}
+
+	ch, err := getNilableChannel(ctx, r.client, obj.ChannelID)
+	if err != nil {
+		return nil, err
+	}
+	if ch == nil {
+		return nil, nil
+	}
+
+	return obj.ChannelAPIKeySuffix, nil
 }
 
 // RequestBody is the resolver for the requestBody field.

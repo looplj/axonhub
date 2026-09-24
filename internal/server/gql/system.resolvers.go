@@ -173,30 +173,19 @@ func (r *mutationResolver) UpdateVideoStorageSettings(ctx context.Context, input
 	return true, nil
 }
 
-// UpdateQuotaEnforcementSettings is the resolver for the updateQuotaEnforcementSettings field.
-func (r *mutationResolver) UpdateQuotaEnforcementSettings(ctx context.Context, input UpdateQuotaEnforcementSettingsInput) (bool, error) {
-	current, err := r.systemService.QuotaEnforcementSettings(ctx)
-	if err != nil {
-		return false, fmt.Errorf("failed to read current quota enforcement settings: %w", err)
-	}
-	newSettings := biz.QuotaEnforcementSettings{
-		Enabled:           current.Enabled,
-		Mode:              current.Mode,
-		AllowedChannelIDs: current.AllowedChannelIDs,
-	}
-	if input.Enabled != nil {
-		newSettings.Enabled = *input.Enabled
-	}
-	if input.Mode != nil {
-		newSettings.Mode = *input.Mode
-	}
-	if input.AllowedChannelIDs != nil {
-		newSettings.AllowedChannelIDs = objects.IntGuids(input.AllowedChannelIDs)
+// UpdateQuotaRoutingSettings is the resolver for the updateQuotaRoutingSettings field.
+func (r *mutationResolver) UpdateQuotaRoutingSettings(ctx context.Context, input UpdateQuotaRoutingSettingsInput) (bool, error) {
+	if !authz.HasScope(ctx, scopes.ScopeWriteSettings) {
+		return false, fmt.Errorf("permission denied: requires write_settings scope")
 	}
 
-	err = r.systemService.SetQuotaEnforcementSettings(ctx, newSettings)
-	if err != nil {
-		return false, fmt.Errorf("failed to update quota enforcement settings: %w", err)
+	settings := r.systemService.QuotaRoutingSettingsOrDefault(ctx)
+	if input.DefaultMode != nil {
+		settings.DefaultMode = *input.DefaultMode
+	}
+
+	if err := r.systemService.SetQuotaRoutingSettings(ctx, settings); err != nil {
+		return false, fmt.Errorf("failed to update quota routing settings: %w", err)
 	}
 
 	return true, nil
@@ -637,9 +626,9 @@ func (r *queryResolver) VideoStorageSettings(ctx context.Context) (*biz.VideoSto
 	return r.systemService.VideoStorageSettings(ctx)
 }
 
-// QuotaEnforcementSettings is the resolver for the quotaEnforcementSettings field.
-func (r *queryResolver) QuotaEnforcementSettings(ctx context.Context) (*biz.QuotaEnforcementSettings, error) {
-	return r.systemService.QuotaEnforcementSettings(ctx)
+// QuotaRoutingSettings is the resolver for the quotaRoutingSettings field.
+func (r *queryResolver) QuotaRoutingSettings(ctx context.Context) (*biz.QuotaRoutingSettings, error) {
+	return r.systemService.QuotaRoutingSettings(ctx)
 }
 
 // ProviderQuotaCollectionSettings is the resolver for the providerQuotaCollectionSettings field.
@@ -736,22 +725,9 @@ func (r *queryResolver) GetCacheDiagnostics(ctx context.Context, input *GetCache
 	}, nil
 }
 
-// AllowedChannelIDs is the resolver for the allowedChannelIDs field.
-func (r *quotaEnforcementSettingsResolver) AllowedChannelIDs(ctx context.Context, obj *biz.QuotaEnforcementSettings) ([]*objects.GUID, error) {
-	return lo.Map(obj.AllowedChannelIDs, func(id int, _ int) *objects.GUID {
-		return &objects.GUID{Type: "Channel", ID: id}
-	}), nil
-}
-
 // ProviderQuotaCollectionSettings returns ProviderQuotaCollectionSettingsResolver implementation.
 func (r *Resolver) ProviderQuotaCollectionSettings() ProviderQuotaCollectionSettingsResolver {
 	return &providerQuotaCollectionSettingsResolver{r}
 }
 
-// QuotaEnforcementSettings returns QuotaEnforcementSettingsResolver implementation.
-func (r *Resolver) QuotaEnforcementSettings() QuotaEnforcementSettingsResolver {
-	return &quotaEnforcementSettingsResolver{r}
-}
-
 type providerQuotaCollectionSettingsResolver struct{ *Resolver }
-type quotaEnforcementSettingsResolver struct{ *Resolver }

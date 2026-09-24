@@ -78,6 +78,9 @@ func (Request) Fields() []ent.Field {
 				entgql.Directives(forceResolver()),
 			),
 		// The final response to the user.
+		field.JSON("response_headers", objects.JSONRawMessage{}).
+			Optional().
+			Comment("Response headers sent to the client, with sensitive values masked"),
 		// e.g: the provider response with Claude format, but the user expects the response with OpenAI format, the response_body is the OpenAI response format.
 		field.JSON("response_body", objects.JSONRawMessage{}).Optional().Annotations(
 			entgql.Directives(forceResolver()),
@@ -96,6 +99,8 @@ func (Request) Fields() []ent.Field {
 		// Whether the request is a streaming request
 		field.Bool("stream").Default(false).Immutable(),
 		field.String("client_ip").Default("").Immutable(),
+		// User-Agent header of the client that initiated the request.
+		field.String("user_agent").Default("").Immutable(),
 		// Total latency in milliseconds from request start to completion
 		field.Int64("metrics_latency_ms").Optional().Nillable(),
 		// First token latency in milliseconds (only for streaming requests)

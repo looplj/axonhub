@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -21,6 +22,8 @@ type OIDCHandlers struct {
 	auth      *biz.AuthService
 	publicURL string
 }
+
+var errOIDCPublicURLRequired = errors.New("server.public_url must be configured when OIDC is enabled")
 
 type OIDCHandlerParams struct {
 	fx.In
@@ -74,8 +77,11 @@ func (h *OIDCHandlers) GetAuthorizeURL(c *gin.Context) {
 		return
 	}
 
-	// Get the base URL (priority: config public URL > request host)
-	baseURL := h.getBaseURL(c)
+	baseURL, err := h.getBaseURL()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	authURL, state, err := h.oidc.GetAuthorizeURL(c.Request.Context(), provider, baseURL)
 	if err != nil {
@@ -108,8 +114,11 @@ func (h *OIDCHandlers) GetLinkAuthorizeURL(c *gin.Context) {
 
 	userID := user.ID
 
-	// Get the base URL (priority: config public URL > request host)
-	baseURL := h.getBaseURL(c)
+	baseURL, err := h.getBaseURL()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	authURL, state, err := h.oidc.GetLinkAuthorizeURL(c.Request.Context(), provider, baseURL, userID)
 	if err != nil {
@@ -157,15 +166,18 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 		return
 	}
 
-	exchangeCode, intent, err := h.oidc.Callback(c.Request.Context(), provider, code, state, h.getBaseURL(c))
+	baseURL, err := h.getBaseURL()
 	if err != nil {
-		baseURL := h.getBaseURL(c)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	exchangeCode, intent, err := h.oidc.Callback(c.Request.Context(), provider, code, state, baseURL)
+	if err != nil {
 		c.Redirect(http.StatusFound, fmt.Sprintf("%s/oauth/oidc/idp-callback?error=auth_failed&error_description=%s", baseURL, url.QueryEscape(err.Error())))
 
 		return
 	}
-
-	baseURL := h.getBaseURL(c)
 
 	if intent == "link" {
 		c.Redirect(http.StatusFound, baseURL+"/settings/profile?oidc_link=success")
@@ -175,19 +187,21 @@ func (h *OIDCHandlers) Callback(c *gin.Context) {
 	c.Redirect(http.StatusFound, baseURL+"/oauth/oidc/idp-callback?code="+exchangeCode)
 }
 
-func (h *OIDCHandlers) getBaseURL(c *gin.Context) string {
-	if h.publicURL != "" {
-		return strings.TrimSuffix(h.publicURL, "/")
+func (h *OIDCHandlers) getBaseURL() (string, error) {
+	baseURL := strings.TrimSpace(h.publicURL)
+	if baseURL == "" {
+		return "", errOIDCPublicURLRequired
 	}
 
-	// Fallback to request host if publicURL is not configured.
-	// NOTE: In production, it's highly recommended to configure public_url to prevent Host header attacks.
-	scheme := "http"
-	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
-		scheme = "https"
+	parsed, err := url.Parse(baseURL)
+	if err != nil || parsed.Hostname() == "" || parsed.Scheme == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", fmt.Errorf("invalid server.public_url")
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return "", fmt.Errorf("server.public_url must use http or https")
 	}
 
-	return fmt.Sprintf("%s://%s", scheme, c.Request.Host)
+	return strings.TrimSuffix(baseURL, "/"), nil
 }
 
 func (h *OIDCHandlers) Exchange(c *gin.Context) {

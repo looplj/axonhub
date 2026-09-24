@@ -16,6 +16,29 @@ import i18n from './lib/i18n';
 import { routeTree } from './routeTree.gen';
 
 
+// A deploy replaces the hashed chunk files. A tab that is still running the
+// previous build keeps asking for chunks that no longer exist, and the dynamic
+// import rejects, which leaves the route stuck on a loading state. Reload once to
+// pick up the new build. The flag is session-scoped and never cleared, so a tab
+// can recover at most once instead of reloading in a loop when the build is gone.
+const CHUNK_RELOAD_KEY = 'axonhub:chunk-reload-attempted';
+const recoverFromStaleChunk = () => {
+  if (sessionStorage.getItem(CHUNK_RELOAD_KEY)) return;
+  sessionStorage.setItem(CHUNK_RELOAD_KEY, '1');
+  window.location.reload();
+};
+window.addEventListener('vite:preloadError', () => recoverFromStaleChunk());
+// Some dynamic imports fail without emitting vite:preloadError (for example a
+// modulepreload hit served by a stale CDN entry). Treat those the same way.
+const isChunkLoadFailure = (reason: unknown) =>
+  /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(
+    String((reason as { message?: string })?.message ?? reason)
+  );
+window.addEventListener('unhandledrejection', (event) => {
+  if (!isChunkLoadFailure(event.reason)) return;
+  recoverFromStaleChunk();
+});
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
