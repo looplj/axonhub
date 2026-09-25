@@ -180,6 +180,97 @@ func TestAuthService_GenerateJWTToken(t *testing.T) {
 	require.True(t, exp > float64(time.Now().Unix()))
 }
 
+func TestAuthService_RefreshJWTToken(t *testing.T) {
+	cacheConfig := xcache.Config{Mode: xcache.ModeMemory}
+	authService, client, cleanup := setupTestAuthService(t, cacheConfig)
+	defer cleanup()
+	defer client.Close()
+
+	now := time.Now().Truncate(time.Second)
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	hashedPassword, err := HashPassword("test-password")
+	require.NoError(t, err)
+	testUser, err := client.User.Create().
+		SetEmail("refresh@example.com").
+		SetPassword(hashedPassword).
+		SetFirstName("Refresh").
+		SetLastName("User").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	token, err := authService.GenerateJWTTokenAt(ctx, testUser, now.Add(-25*24*time.Hour), now.Add(-25*24*time.Hour))
+	require.NoError(t, err)
+	_, renewed, err := authService.RefreshJWTToken(ctx, token, now.Add(-10*24*time.Hour))
+	require.NoError(t, err)
+	require.False(t, renewed)
+
+	refreshed, renewed, err := authService.RefreshJWTToken(ctx, token, now)
+	require.NoError(t, err)
+	require.True(t, renewed)
+	require.NotEqual(t, token, refreshed)
+
+	parsed, err := jwt.Parse(refreshed, func(token *jwt.Token) (any, error) {
+		secretKey, secretErr := authService.SystemService.SecretKey(ctx)
+		return []byte(secretKey), secretErr
+	})
+	require.NoError(t, err)
+	claims, ok := parsed.Claims.(jwt.MapClaims)
+	require.True(t, ok)
+	require.Equal(t, float64(now.Add(-25*24*time.Hour).Unix()), claims["auth_time"])
+	require.Equal(t, float64(now.Add(30*24*time.Hour).Unix()), claims["exp"])
+
+	soon := now.Add(90*24*time.Hour - time.Hour)
+	capped, err := authService.GenerateJWTTokenAt(ctx, testUser, soon, now)
+	require.NoError(t, err)
+	parsed, _, err = jwt.NewParser().ParseUnverified(capped, jwt.MapClaims{})
+	require.NoError(t, err)
+	claims, ok = parsed.Claims.(jwt.MapClaims)
+	require.True(t, ok)
+	require.Equal(t, float64(now.Add(90*24*time.Hour).Unix()), claims["exp"])
+
+	secretKey, err := authService.SystemService.SecretKey(ctx)
+	require.NoError(t, err)
+	legacy := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": testUser.ID,
+		"exp":     now.Add(7 * 24 * time.Hour).Unix(),
+	})
+	legacyToken, err := legacy.SignedString([]byte(secretKey))
+	require.NoError(t, err)
+	_, renewed, err = authService.RefreshJWTToken(ctx, legacyToken, now.Add(24*time.Hour))
+	require.NoError(t, err)
+	require.False(t, renewed)
+
+	overAge := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id":   testUser.ID,
+		"auth_time": now.Add(-91 * 24 * time.Hour).Unix(),
+		"exp":       now.Add(24 * time.Hour).Unix(),
+	})
+	overAgeToken, err := overAge.SignedString([]byte(secretKey))
+	require.NoError(t, err)
+	_, err = authService.AuthenticateJWTToken(ctx, overAgeToken)
+	require.ErrorIs(t, err, ErrInvalidJWT)
+}
+
+func TestAuthService_RefreshJWTTokenWithColdUserCache(t *testing.T) {
+	authService, client, cleanup := setupTestAuthService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer cleanup()
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	u, err := client.User.Create().SetEmail("cold-session@example.com").SetPassword("test-password").SetStatus(user.StatusActivated).Save(ctx)
+	require.NoError(t, err)
+	now := time.Now().Truncate(time.Second)
+	token, err := authService.GenerateJWTTokenAt(ctx, u, now.Add(-25*24*time.Hour), now.Add(-25*24*time.Hour))
+	require.NoError(t, err)
+
+	requestCtx := ent.NewContext(context.Background(), client)
+	refreshed, renewed, err := authService.RefreshJWTToken(requestCtx, token, now)
+	require.NoError(t, err)
+	require.True(t, renewed)
+	require.NotEmpty(t, refreshed)
+}
+
 func TestAuthService_AuthenticateUser(t *testing.T) {
 	// Test with Redis cache using miniredis
 	mr := miniredis.RunT(t)
