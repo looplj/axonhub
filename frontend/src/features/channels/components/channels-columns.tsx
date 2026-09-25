@@ -25,6 +25,7 @@ import {
   IconPlugConnected,
   IconClockPlay,
 } from '@tabler/icons-react';
+import { Google } from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -689,17 +690,19 @@ const RELAY_PROTOCOL_ICONS: Record<RelayProtocol, React.ComponentType<{ size?: n
   'openai/chat_completions': ChatProtocolIcon,
   'openai/responses': ResponsesProtocolIcon,
   'anthropic/messages': MessagesProtocolIcon,
+  'gemini/contents': Google,
 };
 
 const RELAY_PROTOCOL_ACTIVE_CLASSES: Record<RelayProtocol, string> = {
   'openai/chat_completions': 'border-sky-500/30 bg-sky-500/15 text-sky-600 dark:text-sky-400',
   'openai/responses': 'border-violet-500/30 bg-violet-500/15 text-violet-600 dark:text-violet-400',
   'anthropic/messages': 'border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400',
+  'gemini/contents': 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
 };
 
 /**
- * Renders the three relay protocols as icons. Configured protocols are colored,
- * the rest are dimmed, so a channel that speaks all three is recognizable at a
+ * Renders the relay protocols as icons. Configured protocols are colored,
+ * the rest are dimmed, so a channel that speaks all of them is recognizable at a
  * glance.
  */
 const EndpointProtocolsCell = memo(({ channel }: { channel: Channel }) => {
@@ -1000,7 +1003,7 @@ export const createColumns = (
       ),
       cell: ({ row }: { row: Row<Channel> }) => <EndpointProtocolsCell channel={row.original} />,
       meta: {
-        className: 'w-24 min-w-24 text-center',
+        className: 'w-32 min-w-32 text-center',
       },
       enableSorting: false,
       enableHiding: true,

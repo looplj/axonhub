@@ -951,6 +951,7 @@
   "channels.endpoints.detect.protocols.chat": "Chat Completions",
   "channels.endpoints.detect.protocols.responses": "Responses",
   "channels.endpoints.detect.protocols.messages": "Messages",
+  "channels.endpoints.detect.protocols.gemini": "Gemini",
   "channels.endpoints.detect.reasons.supported": "Supported",
   "channels.endpoints.detect.reasons.notFound": "Endpoint not found",
   "channels.endpoints.detect.reasons.authError": "Authentication failed",

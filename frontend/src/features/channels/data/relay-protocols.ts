@@ -1,11 +1,11 @@
 import type { ChannelEndpoint } from './schema';
 
 /**
- * The three relay protocols AxonHub can transparently pass through. A channel
+ * The relay protocols AxonHub can transparently pass through. A channel
  * that speaks all of them can serve virtually every client protocol without
  * lossy transformation.
  */
-export const RELAY_PROTOCOLS = ['openai/chat_completions', 'openai/responses', 'anthropic/messages'] as const;
+export const RELAY_PROTOCOLS = ['openai/chat_completions', 'openai/responses', 'anthropic/messages', 'gemini/contents'] as const;
 
 export type RelayProtocol = (typeof RELAY_PROTOCOLS)[number];
 
@@ -37,4 +37,5 @@ export const RELAY_PROTOCOL_LABEL_KEYS: Record<RelayProtocol, string> = {
   'openai/chat_completions': 'channels.endpoints.detect.protocols.chat',
   'openai/responses': 'channels.endpoints.detect.protocols.responses',
   'anthropic/messages': 'channels.endpoints.detect.protocols.messages',
+  'gemini/contents': 'channels.endpoints.detect.protocols.gemini',
 };
