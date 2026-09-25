@@ -71,6 +71,8 @@
   "apikeys.dialogs.view.tabs.codex": "Codex",
   "apikeys.dialogs.view.tabs.claudeCode": "Claude Code",
   "apikeys.dialogs.view.tabs.geminiSDK": "Gemini SDK",
+  "apikeys.dialogs.view.tabs.pi": "Pi",
+  "apikeys.dialogs.view.piHint": "This is a whole models.json document: merge its axonhub entry into the providers object you already have, or use the document as a new ~/.pi/agent/models.json. The provider name is yours to choose, and only the models this key can access are included.",
   "apikeys.dialogs.bulkDisable.title": "Bulk Disable API Keys",
   "apikeys.dialogs.bulkDisable.description": "Are you sure you want to disable {{count}} selected API keys? This action cannot be undone.",
   "apikeys.dialogs.bulkArchive.title": "Bulk Archive API Keys",

@@ -221,6 +221,7 @@
   "models.modelCard.reasoning": "Reasoning",
   "models.modelCard.reasoningSupported": "Supported",
   "models.modelCard.reasoningDefault": "Default",
+  "models.modelCard.reasoningEfforts": "Thinking Levels",
   "models.modelCard.toolCall": "Tool Call",
   "models.modelCard.vision": "Vision",
   "models.modelCard.temperature": "Temperature",
