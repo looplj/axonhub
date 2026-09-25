@@ -5,7 +5,6 @@ import { DefaultChatTransport, type ChatStatus, type FileUIPart } from 'ai';
 import { ImagePlus, MessageSquare, RefreshCcw, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,6 +34,7 @@ import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useQueryModels } from '@/features/models/data/models';
 import { usePermissions } from '@/hooks/usePermissions';
 import { copyTextToClipboard } from '@/lib/clipboard';
+import { wasRecentlyActive } from '@/lib/user-activity';
 import { cn } from '@/lib/utils';
 import { readSelection, resolveSelection, writeSelection, type PlaygroundModelSource } from './selection';
 
@@ -143,8 +143,7 @@ export default function Playground() {
     modelSourceRef.current = modelSource;
   }, [modelSource]);
 
-  const { accessToken } = useAuthStore((state) => state.auth);
-  const { user, hasSystemScope } = usePermissions();
+  const { hasSystemScope } = usePermissions();
   const canUseModelGateway = hasSystemScope('read_channels');
 
   // 获取 channels 数据
@@ -170,9 +169,11 @@ export default function Playground() {
       credentials: 'include',
       headers: () => {
         const headers: Record<string, string> = {
-          Authorization: 'Bearer ' + accessToken,
           'X-Project-ID': selectedProjectId || '',
         };
+        if (wasRecentlyActive()) {
+          headers['X-Admin-Activity'] = '1';
+        }
         if (modelSourceRef.current === 'channel' && selectedChannelRef.current) {
           headers['X-Channel-ID'] = selectedChannelRef.current;
         }

@@ -79,7 +79,7 @@ const queryClient = new QueryClient({
       const status =
         error instanceof Response ? error.status : error && typeof error === 'object' && 'status' in error ? (error as any).status : 0;
 
-      if (status === 401) {
+      if (status === 401 && window.location.pathname !== '/sign-in' && window.location.pathname !== '/initialization') {
         toast.error(i18n.t('common.errors.sessionExpired'));
         useAuthStore.getState().auth.reset();
         const redirect = `${router.history.location.href}`;
