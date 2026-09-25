@@ -4,7 +4,6 @@ import { useParams, useNavigate, useRouterState } from '@tanstack/react-router';
 import { ArrowLeft, Copy, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { getTokenFromStorage } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberID } from '@/lib/utils';
@@ -197,11 +196,6 @@ export default function RequestDetailPage() {
       return;
     }
 
-    const token = getTokenFromStorage();
-    if (!token) {
-      return;
-    }
-
     const requestIdNumber = extractNumberID(requestData.id);
     if (!requestIdNumber) {
       return;
@@ -253,8 +247,8 @@ export default function RequestDetailPage() {
     async function connectPreview() {
       try {
         const response = await fetch(`/admin/requests/${encodeURIComponent(requestIdNumber)}/preview`, {
+          credentials: 'include',
           headers: {
-            Authorization: `Bearer ${token}`,
             'X-Project-ID': selectedProjectId,
           },
           signal: controller.signal,
