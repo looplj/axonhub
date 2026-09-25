@@ -1,27 +1,39 @@
 package codex
 
+type fastModelPair struct {
+	model string
+	alias string
+}
+
+var fastModelPairs = []fastModelPair{
+	{model: "gpt-5.6-sol", alias: "gpt-5.6-sol-fast"},
+	{model: "gpt-5.6-terra", alias: "gpt-5.6-terra-fast"},
+	{model: "gpt-5.6-luna", alias: "gpt-5.6-luna-fast"},
+	{model: "gpt-6-astra", alias: "gpt-6-astra-fast"},
+	{model: "gpt-6-sol", alias: "gpt-6-sol-fast"},
+	{model: "gpt-6-luna", alias: "gpt-6-luna-fast"},
+}
+
 // DefaultModels returns a static list of Codex-capable model IDs.
 //
 // The ChatGPT Codex backend does not provide a stable public /models endpoint.
 // CLIProxyAPI keeps a local registry; we mirror that approach to power AxonHub "Fetch Models".
-// Fast aliases are accepted request models and are resolved to their base model by the outbound
-// transformer before the request is sent upstream.
 func DefaultModels() []string {
-	return []string{
-		"gpt-5.6-sol",
-		"gpt-5.6-sol-fast",
-		"gpt-5.6-terra",
-		"gpt-5.6-terra-fast",
-		"gpt-5.6-luna",
-		"gpt-5.6-luna-fast",
-		"gpt-6-astra",
-		"gpt-6-astra-fast",
-		"gpt-6-sol",
-		"gpt-6-sol-fast",
-		"gpt-6-luna",
-		"gpt-6-luna-fast",
-		"codex-auto-review",
+	models := make([]string, 0, len(fastModelPairs)*2+1)
+	for _, pair := range fastModelPairs {
+		models = append(models, pair.model, pair.alias)
 	}
+	return append(models, "codex-auto-review")
+}
+
+func fastModelBase(model string) (string, bool) {
+	for _, pair := range fastModelPairs {
+		if pair.alias == model {
+			return pair.model, true
+		}
+	}
+
+	return "", false
 }
 
 const (

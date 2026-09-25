@@ -87,7 +87,7 @@ func isOfficialCodexBaseURL(baseURL string) bool {
 }
 
 func resolveFastModel(model string, serviceTier *string) (string, *string) {
-	baseModel, isFast := strings.CutSuffix(model, "-fast")
+	baseModel, isFast := fastModelBase(model)
 	if !isFast {
 		return model, serviceTier
 	}

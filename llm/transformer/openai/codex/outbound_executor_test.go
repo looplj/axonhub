@@ -930,6 +930,11 @@ func TestCodexOutbound_FastModelAlias(t *testing.T) {
 			model:         "codex-auto-review",
 			upstreamModel: "codex-auto-review",
 		},
+		{
+			name:          "unsupported fast suffix stays unchanged",
+			model:         "codex-auto-review-fast",
+			upstreamModel: "codex-auto-review-fast",
+		},
 	}
 
 	for _, tt := range tests {
