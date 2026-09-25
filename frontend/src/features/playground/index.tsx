@@ -393,10 +393,10 @@ export default function Playground() {
           enabled={true}
         />
       )} */}
-      <div className='bg-background flex h-screen w-full flex-col md:flex-row'>
+      <div className='bg-background flex h-full min-h-0 w-full flex-col overflow-y-auto lg:flex-row lg:overflow-hidden'>
         {/* Settings Sidebar */}
 
-        <div className='bg-card shadow-soft border-border m-4 flex max-h-[60vh] w-auto flex-col rounded-2xl border border-r md:max-h-none md:w-[340px] md:min-w-[280px] md:max-w-[400px]'>
+        <div className='bg-card shadow-soft border-border m-4 flex min-h-0 max-h-[60vh] w-auto shrink-0 flex-col rounded-2xl border border-r lg:max-h-none lg:w-[340px] lg:min-w-[280px] lg:max-w-[400px] lg:shrink'>
           <div className='border-b p-4'>
             <h1 className='text-xl font-bold tracking-tight'>{t('playground.title')}</h1>
             <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>{t('playground.description')}</p>
@@ -536,9 +536,9 @@ export default function Playground() {
         </div>
 
         {/* Chat Area */}
-        <div className='flex flex-1 flex-col p-4'>
-          <div className='shadow-soft border-border bg-card flex h-full flex-col rounded-2xl border p-6'>
-            <Conversation className='max-h-[50vh] flex-1 md:max-h-none'>
+        <div className='flex min-h-[50vh] min-w-0 flex-1 flex-col p-4 lg:min-h-0'>
+          <div className='shadow-soft border-border bg-card flex h-full min-h-0 flex-col rounded-2xl border p-6'>
+            <Conversation className='min-h-0 max-h-[50vh] flex-1 lg:max-h-none'>
               <ConversationContent>
                 {messages.length === 0 ? (
                   <ConversationEmptyState
