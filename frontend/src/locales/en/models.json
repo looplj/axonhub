@@ -222,7 +222,6 @@
   "models.modelCard.reasoningSupported": "Supported",
   "models.modelCard.reasoningDefault": "Default",
   "models.modelCard.reasoningEfforts": "Thinking Levels",
-  "models.modelCard.reasoningEffortsHint": "Levels the upstream accepts. Filled from the model catalog when it lists them, otherwise left for you to set.",
   "models.modelCard.toolCall": "Tool Call",
   "models.modelCard.vision": "Vision",
   "models.modelCard.temperature": "Temperature",

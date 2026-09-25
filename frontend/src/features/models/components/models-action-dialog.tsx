@@ -533,7 +533,6 @@ export function ModelsActionDialog() {
 
                   <div className='space-y-2'>
                     <FormLabel>{t('models.modelCard.reasoningEfforts')}</FormLabel>
-                    <p className='text-muted-foreground text-xs'>{t('models.modelCard.reasoningEffortsHint')}</p>
                     <FormField
                       control={form.control}
                       name='modelCard.reasoningEfforts'
