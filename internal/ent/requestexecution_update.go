@@ -405,6 +405,9 @@ func (_u *RequestExecutionUpdate) sqlSave(ctx context.Context) (_node int, err e
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if _u.mutation.ChannelAPIKeyIndexCleared() {
+		_spec.ClearField(requestexecution.FieldChannelAPIKeyIndex, field.TypeInt)
+	}
 	if value, ok := _u.mutation.ExternalID(); ok {
 		_spec.SetField(requestexecution.FieldExternalID, field.TypeString, value)
 	}
@@ -946,6 +949,9 @@ func (_u *RequestExecutionUpdateOne) sqlSave(ctx context.Context) (_node *Reques
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(requestexecution.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.ChannelAPIKeyIndexCleared() {
+		_spec.ClearField(requestexecution.FieldChannelAPIKeyIndex, field.TypeInt)
 	}
 	if value, ok := _u.mutation.ExternalID(); ok {
 		_spec.SetField(requestexecution.FieldExternalID, field.TypeString, value)

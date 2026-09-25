@@ -88,6 +88,20 @@ func (_c *RequestExecutionCreate) SetNillableChannelID(v *int) *RequestExecution
 	return _c
 }
 
+// SetChannelAPIKeyIndex sets the "channel_api_key_index" field.
+func (_c *RequestExecutionCreate) SetChannelAPIKeyIndex(v int) *RequestExecutionCreate {
+	_c.mutation.SetChannelAPIKeyIndex(v)
+	return _c
+}
+
+// SetNillableChannelAPIKeyIndex sets the "channel_api_key_index" field if the given value is not nil.
+func (_c *RequestExecutionCreate) SetNillableChannelAPIKeyIndex(v *int) *RequestExecutionCreate {
+	if v != nil {
+		_c.SetChannelAPIKeyIndex(*v)
+	}
+	return _c
+}
+
 // SetDataStorageID sets the "data_storage_id" field.
 func (_c *RequestExecutionCreate) SetDataStorageID(v int) *RequestExecutionCreate {
 	_c.mutation.SetDataStorageID(v)
@@ -484,6 +498,10 @@ func (_c *RequestExecutionCreate) createSpec() (*RequestExecution, *sqlgraph.Cre
 	if value, ok := _c.mutation.ProjectID(); ok {
 		_spec.SetField(requestexecution.FieldProjectID, field.TypeInt, value)
 		_node.ProjectID = value
+	}
+	if value, ok := _c.mutation.ChannelAPIKeyIndex(); ok {
+		_spec.SetField(requestexecution.FieldChannelAPIKeyIndex, field.TypeInt, value)
+		_node.ChannelAPIKeyIndex = &value
 	}
 	if value, ok := _c.mutation.ExternalID(); ok {
 		_spec.SetField(requestexecution.FieldExternalID, field.TypeString, value)
@@ -966,6 +984,9 @@ func (u *RequestExecutionUpsertOne) UpdateNewValues() *RequestExecutionUpsertOne
 		}
 		if _, exists := u.create.mutation.ChannelID(); exists {
 			s.SetIgnore(requestexecution.FieldChannelID)
+		}
+		if _, exists := u.create.mutation.ChannelAPIKeyIndex(); exists {
+			s.SetIgnore(requestexecution.FieldChannelAPIKeyIndex)
 		}
 		if _, exists := u.create.mutation.DataStorageID(); exists {
 			s.SetIgnore(requestexecution.FieldDataStorageID)
@@ -1528,6 +1549,9 @@ func (u *RequestExecutionUpsertBulk) UpdateNewValues() *RequestExecutionUpsertBu
 			}
 			if _, exists := b.mutation.ChannelID(); exists {
 				s.SetIgnore(requestexecution.FieldChannelID)
+			}
+			if _, exists := b.mutation.ChannelAPIKeyIndex(); exists {
+				s.SetIgnore(requestexecution.FieldChannelAPIKeyIndex)
 			}
 			if _, exists := b.mutation.DataStorageID(); exists {
 				s.SetIgnore(requestexecution.FieldDataStorageID)

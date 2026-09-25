@@ -32,6 +32,7 @@ export const DEFAULT_HIDDEN_COLUMN_IDS = ['status', 'source', 'apiFormat', 'clie
 export const DEFAULT_MOBILE_HIDDEN_COLUMN_IDS = [
   ...DEFAULT_HIDDEN_COLUMN_IDS,
   'channel',
+  'channelAPIKeyIndex',
   'tokens',
   'readCache',
   'writeCache',
@@ -448,6 +449,20 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
               if (value.length === 0) return true;
               const channel = row.original.executions?.edges?.[0]?.node?.channel ?? row.original.channel;
               return !!channel?.id && value.includes(channel.id);
+            },
+          },
+          {
+            id: 'channelAPIKeyIndex',
+            accessorFn: (row) => row.executions?.edges?.[0]?.node?.channelAPIKeyIndex ?? '',
+            header: ({ column }) => <DataTableColumnHeader column={column} title={t('requests.columns.channelAPIKeyIndex')} />,
+            enableSorting: false,
+            enableHiding: true,
+            cell: ({ row }) => {
+              const index = row.original.executions?.edges?.[0]?.node?.channelAPIKeyIndex;
+
+              if (index == null) return <span className='text-muted-foreground font-mono text-xs'>-</span>;
+
+              return <span className='font-mono text-xs'>key{index}</span>;
             },
           },
         ] as ColumnDef<Request>[])

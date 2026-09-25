@@ -443,6 +443,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			requestexecution.FieldProjectID:                  {Type: field.TypeInt, Column: requestexecution.FieldProjectID},
 			requestexecution.FieldRequestID:                  {Type: field.TypeInt, Column: requestexecution.FieldRequestID},
 			requestexecution.FieldChannelID:                  {Type: field.TypeInt, Column: requestexecution.FieldChannelID},
+			requestexecution.FieldChannelAPIKeyIndex:         {Type: field.TypeInt, Column: requestexecution.FieldChannelAPIKeyIndex},
 			requestexecution.FieldDataStorageID:              {Type: field.TypeInt, Column: requestexecution.FieldDataStorageID},
 			requestexecution.FieldExternalID:                 {Type: field.TypeString, Column: requestexecution.FieldExternalID},
 			requestexecution.FieldModelID:                    {Type: field.TypeString, Column: requestexecution.FieldModelID},
@@ -3565,6 +3566,11 @@ func (f *RequestExecutionFilter) WhereRequestID(p entql.IntP) {
 // WhereChannelID applies the entql int predicate on the channel_id field.
 func (f *RequestExecutionFilter) WhereChannelID(p entql.IntP) {
 	f.Where(p.Field(requestexecution.FieldChannelID))
+}
+
+// WhereChannelAPIKeyIndex applies the entql int predicate on the channel_api_key_index field.
+func (f *RequestExecutionFilter) WhereChannelAPIKeyIndex(p entql.IntP) {
+	f.Where(p.Field(requestexecution.FieldChannelAPIKeyIndex))
 }
 
 // WhereDataStorageID applies the entql int predicate on the data_storage_id field.

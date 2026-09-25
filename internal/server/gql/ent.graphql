@@ -4645,6 +4645,10 @@ type RequestExecution implements Node {
   requestID: ID!
   channelID: ID
   """
+  1-based position of the channel API key used for this execution
+  """
+  channelAPIKeyIndex: Int @goField(forceResolver: true)
+  """
   Data Storage ID that this request belongs to
   """
   dataStorageID: ID

@@ -4031,6 +4031,11 @@ func (_q *RequestExecutionQuery) collectField(ctx context.Context, oneNode bool,
 				selectedFields = append(selectedFields, requestexecution.FieldChannelID)
 				fieldSeen[requestexecution.FieldChannelID] = struct{}{}
 			}
+		case "channelAPIKeyIndex":
+			if _, ok := fieldSeen[requestexecution.FieldChannelAPIKeyIndex]; !ok {
+				selectedFields = append(selectedFields, requestexecution.FieldChannelAPIKeyIndex)
+				fieldSeen[requestexecution.FieldChannelAPIKeyIndex] = struct{}{}
+			}
 		case "dataStorageID":
 			if _, ok := fieldSeen[requestexecution.FieldDataStorageID]; !ok {
 				selectedFields = append(selectedFields, requestexecution.FieldDataStorageID)

@@ -80,6 +80,11 @@ func ChannelID(v int) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldChannelID, v))
 }
 
+// ChannelAPIKeyIndex applies equality check predicate on the "channel_api_key_index" field. It's identical to ChannelAPIKeyIndexEQ.
+func ChannelAPIKeyIndex(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldChannelAPIKeyIndex, v))
+}
+
 // DataStorageID applies equality check predicate on the "data_storage_id" field. It's identical to DataStorageIDEQ.
 func DataStorageID(v int) predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldEQ(FieldDataStorageID, v))
@@ -323,6 +328,56 @@ func ChannelIDIsNil() predicate.RequestExecution {
 // ChannelIDNotNil applies the NotNil predicate on the "channel_id" field.
 func ChannelIDNotNil() predicate.RequestExecution {
 	return predicate.RequestExecution(sql.FieldNotNull(FieldChannelID))
+}
+
+// ChannelAPIKeyIndexEQ applies the EQ predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexEQ(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldEQ(FieldChannelAPIKeyIndex, v))
+}
+
+// ChannelAPIKeyIndexNEQ applies the NEQ predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexNEQ(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNEQ(FieldChannelAPIKeyIndex, v))
+}
+
+// ChannelAPIKeyIndexIn applies the In predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexIn(vs ...int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIn(FieldChannelAPIKeyIndex, vs...))
+}
+
+// ChannelAPIKeyIndexNotIn applies the NotIn predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexNotIn(vs ...int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotIn(FieldChannelAPIKeyIndex, vs...))
+}
+
+// ChannelAPIKeyIndexGT applies the GT predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexGT(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGT(FieldChannelAPIKeyIndex, v))
+}
+
+// ChannelAPIKeyIndexGTE applies the GTE predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexGTE(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldGTE(FieldChannelAPIKeyIndex, v))
+}
+
+// ChannelAPIKeyIndexLT applies the LT predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexLT(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLT(FieldChannelAPIKeyIndex, v))
+}
+
+// ChannelAPIKeyIndexLTE applies the LTE predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexLTE(v int) predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldLTE(FieldChannelAPIKeyIndex, v))
+}
+
+// ChannelAPIKeyIndexIsNil applies the IsNil predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexIsNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldIsNull(FieldChannelAPIKeyIndex))
+}
+
+// ChannelAPIKeyIndexNotNil applies the NotNil predicate on the "channel_api_key_index" field.
+func ChannelAPIKeyIndexNotNil() predicate.RequestExecution {
+	return predicate.RequestExecution(sql.FieldNotNull(FieldChannelAPIKeyIndex))
 }
 
 // DataStorageIDEQ applies the EQ predicate on the "data_storage_id" field.
