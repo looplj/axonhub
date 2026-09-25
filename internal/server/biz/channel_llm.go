@@ -171,7 +171,7 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 
 	enabled := ch.cachedEnabledAPIKeys
 	if len(enabled) > 1 {
-		return NewChannelAPIKeyContextProvider(NewTraceStickyKeyProvider(ch))
+		return NewChannelAPIKeyContextProvider(newMultiKeyProvider(ch))
 	}
 
 	if len(enabled) == 1 {
@@ -679,6 +679,11 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		httpClient = httpClient.WithRejectHTTPSDowngrade()
 	}
 	ch := buildChannel(c, httpClient)
+	// Attach the shared key-selection state for the strategies that remember the
+	// key in use (fixed / round_robin_success). Nil otherwise. The snapshot the
+	// state reads from is published separately, by the enabled-channel cache.
+	ch.apiKeyState = svc.apiKeySelectionStateFor(ch)
+
 	if overrideAPIKey != "" {
 		ch.apiKeyOverride = overrideAPIKey
 	}
