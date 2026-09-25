@@ -2,8 +2,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
-import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { PageHeader } from '@/components/layout/page-header';
 import { useDefaultDataStorageID } from '@/features/system/data/system';
 import { DataStorageDialogs } from './components/data-storage-dialogs';
 import { createColumns } from './components/data-storages-columns';
@@ -114,16 +114,11 @@ export default function DataStoragesManagement() {
 
   return (
     <DataStoragesProvider>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('dataStorages.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('dataStorages.description')}</p>
-            <p className='text-sm text-muted-foreground'>{t('dataStorages.llmStorageHint')}</p>
-          </div>
-          <DataStoragesPrimaryButtons />
-        </div>
-      </Header>
+      <PageHeader
+        title={t('dataStorages.title')}
+        description={[t('dataStorages.description'), t('dataStorages.llmStorageHint')]}
+        actions={<DataStoragesPrimaryButtons />}
+      />
 
       <Main fixed>
         <DataStoragesContent />

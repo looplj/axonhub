@@ -9,7 +9,7 @@ export function ProjectsPrimaryButtons() {
   const { setIsCreateDialogOpen } = useProjectsContext();
 
   return (
-    <div className='flex items-center space-x-2'>
+    <div className='flex min-w-0 max-w-full flex-wrap items-center gap-2'>
       {/* Create Project - requires write_projects permission */}
       <PermissionGuard requiredScope='write_projects'>
         <Button onClick={() => setIsCreateDialogOpen(true)}>

@@ -1535,3 +1535,29 @@
   background-color: hsl(var(--muted-foreground) / 0.3);
   border-radius: 2px;
 }
+
+/* ===== RESPONSIVE PAGE HEADER LAYOUT ===== */
+
+/*
+ * Pages using the in-flow responsive page header manage their own vertical space
+ * instead of relying on a fixed header height. Scoped with :has() so pages still
+ * using the legacy fixed header keep their current scrolling behavior.
+ *
+ * The id selector is required to override the Tailwind `overflow-hidden` that
+ * `#content` gets from `has-[main.fixed-main]:overflow-hidden`.
+ */
+#content:has(> .responsive-page-header) {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/*
+ * Reserve a usable minimum height for the page body. On normal viewports the body
+ * still fills the remaining space; on very short viewports (or with a long
+ * expanded description) the body is never squeezed away and the header scrolls
+ * out of the container instead.
+ */
+#content:has(> .responsive-page-header) > main.fixed-main {
+  flex: 1 0 var(--page-body-min-height, 12rem);
+  min-height: var(--page-body-min-height, 12rem);
+}

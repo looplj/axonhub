@@ -6,8 +6,8 @@ import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
 import { type DateTimeRangeValue } from '@/utils/date-range';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { PageHeader } from '@/components/layout/page-header';
 import { createColumns } from './components/apikeys-columns';
 import { ApiKeysDialogs } from './components/apikeys-dialogs';
 import { ApiKeysPrimaryButtons } from './components/apikeys-primary-buttons';
@@ -272,17 +272,9 @@ export default function ApiKeysManagement() {
 
   return (
     <ApiKeysProvider>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('apikeys.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('apikeys.description')}</p>
-          </div>
-          <ApiKeysPrimaryButtons />
-        </div>
-      </Header>
+      <PageHeader title={t('apikeys.title')} description={t('apikeys.description')} actions={<ApiKeysPrimaryButtons />} />
 
-      <Main fixed>
+      <Main fixed className='[--page-body-min-height:22rem]'>
         <ApiKeysContent />
       </Main>
       <ApiKeysDialogs />

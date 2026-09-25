@@ -193,7 +193,7 @@ export function ApiKeysTable({
         onResetFilters={onResetFilters}
         canViewCreators={canViewCreators}
       />
-      <div className='shadow-soft relative mt-4 min-h-0 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div data-testid='api-keys-table-scroll' className='shadow-soft relative mt-4 min-h-0 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
         <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -239,7 +239,7 @@ export function ApiKeysTable({
           </TableBody>
         </Table>
       </div>
-      <div className='mt-4 flex-shrink-0'>
+      <div data-testid='api-keys-pagination' className='mt-4 flex-shrink-0'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}

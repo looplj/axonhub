@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { PageHeader } from '@/components/layout/page-header';
 import { ProjectsDialogs } from './components/projects-action-dialog';
 import { createColumns } from './components/projects-columns';
 import { ProjectsPrimaryButtons } from './components/projects-primary-buttons';
@@ -97,15 +97,7 @@ export default function ProjectsPage() {
 
   return (
     <ProjectsProvider>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('projects.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('projects.description')}</p>
-          </div>
-          <ProjectsPrimaryButtons />
-        </div>
-      </Header>
+      <PageHeader title={t('projects.title')} description={t('projects.description')} actions={<ProjectsPrimaryButtons />} />
 
       <Main fixed>
         <ProjectsContent />

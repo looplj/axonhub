@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type RefCallback } from 'react';
+import { useCallback, useEffect, useRef, type FocusEvent, type RefCallback } from 'react';
 
 function canScrollInDirection(element: Element, deltaY: number): boolean {
   const maxScrollTop = element.scrollHeight - element.clientHeight;
@@ -18,6 +18,20 @@ function hasScrollableVerticalAncestor(element: HTMLElement, deltaY: number): bo
 
   const scrollingElement = element.ownerDocument.scrollingElement;
   return scrollingElement ? canScrollInDirection(scrollingElement, deltaY) : false;
+}
+
+export function revealFocusedHorizontalButton(event: FocusEvent<HTMLDivElement>) {
+  if (!(event.target instanceof HTMLButtonElement)) return;
+  const scroller = event.currentTarget;
+  // Compare viewport coordinates, not offsetLeft (whose offsetParent may be
+  // outside this scroller when the action row is right-aligned).
+  const button = event.target.getBoundingClientRect();
+  const viewport = scroller.getBoundingClientRect();
+  const inset = 4;
+  const left = viewport.left + scroller.clientLeft + inset;
+  const right = viewport.left + scroller.clientLeft + scroller.clientWidth - inset;
+  if (button.left < left) scroller.scrollLeft += button.left - left;
+  else if (button.right > right) scroller.scrollLeft += button.right - right;
 }
 
 export function useHorizontalScroll<T extends HTMLElement>(): RefCallback<T> {
