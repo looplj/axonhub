@@ -896,6 +896,71 @@ func TestCodexOutbound_PreservesMinimalCompatTransforms(t *testing.T) {
 	assert.NotContains(t, string(hreq.Body), "You are Codex")
 }
 
+func TestCodexOutbound_FastModelAlias(t *testing.T) {
+	tests := []struct {
+		name          string
+		model         string
+		serviceTier   *string
+		upstreamModel string
+		wantTier      string
+		wantHint      string
+	}{
+		{
+			name:          "fast alias selects priority",
+			model:         "gpt-6-sol-fast",
+			upstreamModel: "gpt-6-sol",
+			wantTier:      "priority",
+			wantHint:      "model=gpt-6-sol;tier=priority",
+		},
+		{
+			name:          "explicit tier takes precedence",
+			model:         "gpt-6-sol-fast",
+			serviceTier:   lo.ToPtr("flex"),
+			upstreamModel: "gpt-6-sol",
+			wantTier:      "flex",
+			wantHint:      "model=gpt-6-sol;tier=flex",
+		},
+		{
+			name:          "ordinary model stays ordinary",
+			model:         "gpt-6-sol",
+			upstreamModel: "gpt-6-sol",
+		},
+		{
+			name:          "auto review has no fast behavior",
+			model:         "codex-auto-review",
+			upstreamModel: "codex-auto-review",
+		},
+		{
+			name:          "unsupported fast suffix stays unchanged",
+			model:         "codex-auto-review-fast",
+			upstreamModel: "codex-auto-review-fast",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outbound := newTestCodexOutbound(t)
+			hreq, err := outbound.TransformRequest(context.Background(), &llm.Request{
+				Model:       tt.model,
+				Messages:    []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}},
+				ServiceTier: tt.serviceTier,
+			})
+			require.NoError(t, err)
+
+			body := decodeCodexRequestBody(t, hreq)
+			assert.Equal(t, tt.upstreamModel, body["model"])
+			if tt.wantTier == "" {
+				assert.NotContains(t, body, "service_tier")
+				assert.Empty(t, hreq.Headers.Get(codexRoutingHintHeader))
+				return
+			}
+
+			assert.Equal(t, tt.wantTier, body["service_tier"])
+			assert.Equal(t, tt.wantHint, hreq.Headers.Get(codexRoutingHintHeader))
+		})
+	}
+}
+
 func TestCodexOutbound_AppliesReasoningDefaultsWhenMissing(t *testing.T) {
 	ctx := context.Background()
 	outbound := newTestCodexOutbound(t)
