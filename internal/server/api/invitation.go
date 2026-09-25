@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/middleware"
 )
 
 // InvitationHandlersParams contains dependencies for invitation HTTP handlers.
@@ -60,10 +61,9 @@ type RegisterInvitationRequest struct {
 	LastName  string `json:"lastName"`
 }
 
-// RegisterInvitationResponse contains the registered user and session token.
+// RegisterInvitationResponse contains the registered user.
 type RegisterInvitationResponse struct {
-	User  *objects.UserInfo `json:"user"`
-	Token string            `json:"token"`
+	User *objects.UserInfo `json:"user"`
 }
 
 // Create handles invitation creation for a project.
@@ -120,9 +120,9 @@ func (h *InvitationHandlers) Register(c *gin.Context) {
 		return
 	}
 
+	middleware.SetAdminSessionCookie(c, token)
 	c.JSON(http.StatusOK, RegisterInvitationResponse{
-		User:  biz.ConvertUserToUserInfo(c.Request.Context(), registeredUser),
-		Token: token,
+		User: biz.ConvertUserToUserInfo(c.Request.Context(), registeredUser),
 	})
 }
 

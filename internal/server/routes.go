@@ -85,7 +85,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		// Health check endpoint - no authentication required
 		publicGroup.GET("/health", handlers.System.Health)
 		publicGroup.GET("/auth/invitations/:token", handlers.Invitation.Get)
-		publicGroup.POST("/auth/invitations/:token/register", handlers.Invitation.Register)
+		publicGroup.POST("/auth/invitations/:token/register", middleware.WithAdminCookieOrigin(), handlers.Invitation.Register)
 	}
 
 	unSecureAdminGroup := server.Group("/admin", middleware.WithTimeout(server.Config.RequestTimeout))
@@ -94,7 +94,8 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		unSecureAdminGroup.GET("/system/status", handlers.System.GetSystemStatus)
 		unSecureAdminGroup.POST("/system/initialize", handlers.System.InitializeSystem)
 		// User Login - DO NOT AUTH
-		unSecureAdminGroup.POST("/auth/signin", handlers.Auth.SignIn)
+		unSecureAdminGroup.POST("/auth/signin", middleware.WithAdminCookieOrigin(), handlers.Auth.SignIn)
+		unSecureAdminGroup.POST("/auth/signout", middleware.WithAdminCookieOrigin(), handlers.Auth.SignOut)
 	}
 
 	oauthGroup := server.Group("/oauth", middleware.WithTimeout(server.Config.RequestTimeout))
