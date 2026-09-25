@@ -131,7 +131,7 @@ func SetupRoutes(server *Server, handlers Handlers, client *ent.Client, services
 		adminGroup.POST("/copilot/oauth/poll", handlers.Copilot.PollOAuth)
 
 		// OIDC Manual Linking
-		adminGroup.GET("/oidc/link/:provider", handlers.OIDC.GetLinkAuthorizeURL)
+		adminGroup.POST("/oidc/link/:provider", handlers.OIDC.GetLinkAuthorizeURL)
 
 		// Playground API with channel specification support
 		adminGroup.POST(
