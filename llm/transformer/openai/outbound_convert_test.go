@@ -732,6 +732,76 @@ func TestMessageFromLLM_ToolCallOnlyMessageKeepsContentField(t *testing.T) {
 	}
 }
 
+// A reasoning-only assistant turn (thinking echoed back without visible text or
+// tool calls) must still serialize a content field. Without it the message carries
+// neither 'content' nor 'tool_calls', and strict OpenAI-compatible upstreams such
+// as llama.cpp reject it ("Expected 'content' or 'tool_calls'").
+func TestMessageFromLLM_ReasoningOnlyMessageKeepsContentField(t *testing.T) {
+	tests := []struct {
+		name    string
+		message llm.Message
+	}{
+		{
+			name:    "reasoning_content only",
+			message: llm.Message{Role: "assistant", ReasoningContent: lo.ToPtr("thinking step by step")},
+		},
+		{
+			name:    "reasoning only",
+			message: llm.Message{Role: "assistant", Reasoning: lo.ToPtr("thinking step by step")},
+		},
+		{
+			name: "both reasoning fields without content",
+			message: llm.Message{
+				Role:             "assistant",
+				ReasoningContent: lo.ToPtr("thinking step by step"),
+				Reasoning:        lo.ToPtr("thinking step by step"),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			msg := MessageFromLLM(tt.message)
+
+			data, err := json.Marshal(msg)
+			require.NoError(t, err)
+
+			var decoded map[string]any
+			require.NoError(t, json.Unmarshal(data, &decoded))
+
+			content, ok := decoded["content"]
+			require.True(t, ok, "content field must be present, got %s", data)
+			require.NotNil(t, content, "content must not be null, got %s", data)
+			require.Equal(t, "", content)
+
+			// The reasoning payload itself must survive the normalization.
+			require.Contains(t, decoded, "reasoning_content")
+			require.Equal(t, "thinking step by step", decoded["reasoning_content"])
+		})
+	}
+}
+
+// A reasoning-only turn keeps working across the full request conversion, which is
+// the path an OpenAI-compatible channel actually serializes to the wire.
+func TestRequestFromLLM_ReasoningOnlyMessageKeepsContentField(t *testing.T) {
+	req := RequestFromLLM(context.Background(), &llm.Request{
+		Model: "local-model",
+		Messages: []llm.Message{
+			{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hi")}},
+			{Role: "assistant", ReasoningContent: lo.ToPtr("thinking step by step")},
+		},
+	}, ReasoningFieldContent)
+
+	require.NotNil(t, req)
+	require.Len(t, req.Messages, 2)
+
+	assistantMsg := req.Messages[1]
+	require.NotNil(t, assistantMsg.Content.Content, "content must be set for a reasoning-only assistant turn")
+	require.Equal(t, "", *assistantMsg.Content.Content)
+	require.NotNil(t, assistantMsg.ReasoningContent)
+	require.Equal(t, "thinking step by step", *assistantMsg.ReasoningContent)
+}
+
 // Content that survives conversion must be preserved as-is.
 func TestMessageFromLLM_ToolCallMessageKeepsExistingContent(t *testing.T) {
 	msg := MessageFromLLM(llm.Message{

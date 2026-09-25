@@ -244,13 +244,16 @@ func MessageFromLLMWithConfig(m llm.Message, reasoningField ReasoningField) Mess
 		})
 	}
 
-	// An assistant turn that only requests tool calls has no content to send, and
-	// a message whose parts were all filtered out (e.g. compaction) is left with an
-	// empty part list. Both cases would reach the wire as a missing or null content
-	// field, which the OpenAI spec permits but stricter OpenAI-compatible upstreams
-	// reject because their schema only accepts a string or an array. Normalize to an
-	// empty string, which every implementation accepts and OpenAI treats as no content.
-	if len(msg.ToolCalls) > 0 && msg.Content.Content == nil && len(msg.Content.MultipleContent) == 0 {
+	// An assistant turn may carry only reasoning (a thinking-only turn echoed back by
+	// the client) or only tool calls, and a message whose parts were all filtered out
+	// (e.g. compaction) is left with an empty part list. Each of those would reach the
+	// wire as a missing or null content field. The OpenAI spec permits that, but
+	// stricter OpenAI-compatible upstreams reject the message because their schema
+	// requires 'content' or 'tool_calls' (llama.cpp/common_chat rejects an assistant
+	// message that only has reasoning_content). Normalize to an empty string, which
+	// every implementation accepts and OpenAI treats as no content.
+	hasContent := msg.Content.Content != nil || len(msg.Content.MultipleContent) > 0
+	if !hasContent && (msg.Role == "assistant" || len(msg.ToolCalls) > 0) {
 		msg.Content = MessageContent{Content: lo.ToPtr("")}
 	}
 
