@@ -250,6 +250,19 @@ func TestAuthService_RefreshJWTToken(t *testing.T) {
 	require.NoError(t, err)
 	_, err = authService.AuthenticateJWTToken(ctx, overAgeToken)
 	require.ErrorIs(t, err, ErrInvalidJWT)
+
+	malformed := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id":   testUser.ID,
+		"auth_time": "invalid",
+		"exp":       now.Add(24 * time.Hour).Unix(),
+	})
+	malformedToken, err := malformed.SignedString([]byte(secretKey))
+	require.NoError(t, err)
+	_, err = authService.AuthenticateJWTToken(ctx, malformedToken)
+	require.ErrorIs(t, err, ErrInvalidJWT)
+	_, renewed, err = authService.RefreshJWTToken(ctx, malformedToken, now)
+	require.ErrorIs(t, err, ErrInvalidJWT)
+	require.False(t, renewed)
 }
 
 func TestAuthService_RefreshJWTTokenWithColdUserCache(t *testing.T) {

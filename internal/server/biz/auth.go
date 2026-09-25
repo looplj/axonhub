@@ -185,6 +185,9 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 	}
 
 	authTime, err := jwtTimeClaim(claims, "auth_time")
+	if _, present := claims["auth_time"]; present && err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrInvalidJWT, err)
+	}
 	if err == nil && !time.Now().Before(authTime.Add(AdminSessionMaximum)) {
 		return nil, fmt.Errorf("%w: maximum session age exceeded", ErrInvalidJWT)
 	}
@@ -243,12 +246,18 @@ func (s *AuthService) RefreshJWTToken(ctx context.Context, tokenString string, n
 		return "", false, err
 	}
 	expiresAt, err := jwtTimeClaim(claims, "exp")
-	if err != nil || expiresAt.Sub(now) >= AdminSessionRenewal {
+	if err != nil {
+		return "", false, fmt.Errorf("%w: %w", ErrInvalidJWT, err)
+	}
+	if expiresAt.Sub(now) >= AdminSessionRenewal {
+		return "", false, nil
+	}
+	if _, present := claims["auth_time"]; !present {
 		return "", false, nil
 	}
 	authTime, err := jwtTimeClaim(claims, "auth_time")
 	if err != nil {
-		return "", false, nil
+		return "", false, fmt.Errorf("%w: %w", ErrInvalidJWT, err)
 	}
 	if !now.Before(authTime.Add(AdminSessionMaximum)) {
 		return "", false, fmt.Errorf("%w: maximum session age exceeded", ErrInvalidJWT)
