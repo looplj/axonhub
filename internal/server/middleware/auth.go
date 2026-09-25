@@ -132,7 +132,8 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 
 		c.Request = c.Request.WithContext(ctx)
 
-		if fromCookie && c.GetHeader("X-Admin-Activity") == "1" {
+		if fromCookie && c.GetHeader("X-Admin-Activity") == "1" &&
+			(c.Request.TLS != nil || c.GetHeader("Origin") != "" || c.GetHeader("X-Forwarded-Proto") == "https") {
 			if refreshedToken, refreshed, refreshErr := auth.RefreshJWTToken(ctx, token, time.Now()); refreshErr != nil {
 				log.Warn(ctx, "failed to renew admin session cookie", log.Cause(refreshErr))
 			} else if refreshed {
@@ -194,7 +195,7 @@ func safeAdminRequest(r *http.Request) bool {
 	if r.Header.Get("X-Forwarded-Proto") == "https" {
 		return u.Scheme == "https"
 	}
-	return u.Scheme == "http"
+	return true
 }
 
 func WithAdminCookieOrigin() gin.HandlerFunc {
@@ -213,7 +214,11 @@ func ClearAdminSessionCookie(c *gin.Context) {
 }
 
 func requestIsSecure(c *gin.Context) bool {
-	return c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https"
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		return true
+	}
+	origin, err := url.Parse(c.GetHeader("Origin"))
+	return err == nil && origin.Scheme == "https" && strings.EqualFold(origin.Host, c.Request.Host)
 }
 
 var apiKeyAuthConfig = &APIKeyConfig{
