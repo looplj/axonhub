@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/middleware"
 )
 
 type OIDCHandlers struct {
@@ -51,7 +52,7 @@ func (h *OIDCHandlers) RegisterRoutes(r gin.IRouter) {
 	group.GET("/authorize/:provider", h.GetAuthorizeURL)
 	group.GET("/callback", h.Callback)
 	group.GET("/callback/:provider", h.Callback)
-	group.POST("/exchange", h.Exchange)
+	group.POST("/exchange", middleware.WithAdminCookieOrigin(), h.Exchange)
 }
 
 func (h *OIDCHandlers) GetProviders(c *gin.Context) {
@@ -61,6 +62,10 @@ func (h *OIDCHandlers) GetProviders(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	if token, ok := strings.CutPrefix(authHeader, "Bearer "); ok {
 		if u, err := h.auth.AuthenticateJWTToken(ctx, token); err == nil {
+			ctx = contexts.WithUser(ctx, u)
+		}
+	} else if cookie, err := c.Request.Cookie(biz.AdminSessionCookieName); err == nil {
+		if u, err := h.auth.AuthenticateJWTToken(ctx, cookie.Value); err == nil {
 			ctx = contexts.WithUser(ctx, u)
 		}
 	}
@@ -234,10 +239,10 @@ func (h *OIDCHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
+	middleware.SetAdminSessionCookie(c, token)
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
-			"token": token,
-			"user":  user,
+			"user": user,
 		},
 	})
 }

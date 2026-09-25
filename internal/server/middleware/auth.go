@@ -4,9 +4,13 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"net/url"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
@@ -81,12 +85,27 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 
 func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		_, hasAuthorization := c.Request.Header["Authorization"]
 		token, err := ExtractAPIKeyFromRequest(c.Request, &APIKeyConfig{
 			Headers:       []string{"Authorization"},
 			RequireBearer: true,
 		})
+		fromCookie := false
 		if err != nil {
-			AbortWithError(c, http.StatusUnauthorized, err)
+			if hasAuthorization {
+				AbortWithError(c, http.StatusUnauthorized, err)
+				return
+			}
+			cookie, cookieErr := c.Request.Cookie(biz.AdminSessionCookieName)
+			if cookieErr != nil {
+				AbortWithError(c, http.StatusUnauthorized, err)
+				return
+			}
+			token = cookie.Value
+			fromCookie = true
+		}
+		if fromCookie && (!safeAdminRequest(c.Request) || c.Request.Method == http.MethodGet && c.FullPath() == "/admin/graphql") {
+			AbortWithError(c, http.StatusForbidden, errors.New("Cross-origin admin request"))
 			return
 		}
 
@@ -113,8 +132,93 @@ func WithJWTAuth(auth *biz.AuthService) gin.HandlerFunc {
 
 		c.Request = c.Request.WithContext(ctx)
 
+		if fromCookie && c.GetHeader("X-Admin-Activity") == "1" &&
+			(c.Request.TLS != nil || c.GetHeader("Origin") != "" || c.GetHeader("X-Forwarded-Proto") == "https") {
+			if refreshedToken, refreshed, refreshErr := auth.RefreshJWTToken(ctx, token, time.Now()); refreshErr != nil {
+				log.Warn(ctx, "failed to renew admin session cookie", log.Cause(refreshErr))
+			} else if refreshed {
+				SetAdminSessionCookie(c, refreshedToken)
+			}
+		}
+
 		c.Next()
 	}
+}
+
+func SetAdminSessionCookie(c *gin.Context, token string) {
+	parsed, _, err := jwt.NewParser().ParseUnverified(token, jwt.MapClaims{})
+	if err != nil {
+		return
+	}
+	claims, ok := parsed.Claims.(jwt.MapClaims)
+	if !ok {
+		return
+	}
+	exp, err := claims.GetExpirationTime()
+	if err != nil || exp == nil {
+		return
+	}
+	maxAge := int(time.Until(exp.Time).Seconds())
+	if maxAge < 1 {
+		return
+	}
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(
+		biz.AdminSessionCookieName,
+		token,
+		maxAge,
+		"/",
+		"",
+		requestIsSecure(c),
+		true,
+	)
+}
+
+func safeAdminRequest(r *http.Request) bool {
+	if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
+		return true
+	}
+	if site := r.Header.Get("Sec-Fetch-Site"); site == "cross-site" || site == "same-site" {
+		return false
+	}
+	origin := r.Header.Get("Origin")
+	if origin == "" {
+		return r.Header.Get("Sec-Fetch-Site") == "same-origin"
+	}
+	u, err := url.Parse(origin)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || !strings.EqualFold(u.Host, r.Host) {
+		return false
+	}
+	if r.TLS != nil {
+		return u.Scheme == "https"
+	}
+	if r.Header.Get("X-Forwarded-Proto") == "https" {
+		return u.Scheme == "https"
+	}
+	return true
+}
+
+func WithAdminCookieOrigin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !safeAdminRequest(c.Request) {
+			AbortWithError(c, http.StatusForbidden, errors.New("Cross-origin admin request"))
+			return
+		}
+		c.Next()
+	}
+}
+
+func ClearAdminSessionCookie(c *gin.Context) {
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(biz.AdminSessionCookieName, "", -1, "/", "", requestIsSecure(c), true)
+}
+
+func requestIsSecure(c *gin.Context) bool {
+	if c.Request.TLS != nil || c.GetHeader("X-Forwarded-Proto") == "https" {
+		return true
+	}
+	origin, err := url.Parse(c.GetHeader("Origin"))
+	return err == nil && origin.Scheme == "https" && strings.EqualFold(origin.Host, c.Request.Host)
 }
 
 var apiKeyAuthConfig = &APIKeyConfig{

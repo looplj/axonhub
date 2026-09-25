@@ -32,7 +32,7 @@ const formSchema = z
 export function SignUpForm({ className, ...props }: SignUpFormProps) {
   const { t } = useTranslation();
   const router = useRouter();
-  const { setUser, setAccessToken } = useAuthStore((state) => state.auth);
+  const { setUser, startSession } = useAuthStore((state) => state.auth);
   const { setSelectedProjectId } = useProjectStore();
   const invitationToken = new URLSearchParams(window.location.search).get('invite');
   const [projectName, setProjectName] = useState('');
@@ -65,7 +65,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
 
     try {
       const response = await authApi.registerInvitation(invitationToken, values);
-      setAccessToken(response.token);
+      startSession();
       setUser(response.user);
       setSelectedProjectId(response.user.projects[0]?.projectID ?? null);
       toast.success(t('users.messages.invitationRegistrationSuccess'));

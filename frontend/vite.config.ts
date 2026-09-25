@@ -35,11 +35,11 @@ export default defineConfig({
     proxy: {
       '/admin': {
         target: process.env.VITE_API_URL || 'http://localhost:8090',
-        changeOrigin: true,
+        changeOrigin: false,
       },
       '/oauth': {
         target: process.env.VITE_API_URL || 'http://localhost:8090',
-        changeOrigin: true,
+        changeOrigin: false,
         bypass: (req) => {
           if (req.url?.includes('idp-callback')) {
             return req.url;

@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/middleware"
 )
 
 type AuthHandlersParams struct {
@@ -35,8 +36,7 @@ type SignInRequest struct {
 
 // SignInResponse 登录响应.
 type SignInResponse struct {
-	User  *objects.UserInfo `json:"user"`
-	Token string            `json:"token"`
+	User *objects.UserInfo `json:"user"`
 }
 
 // SignIn handles user authentication.
@@ -73,9 +73,14 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 	}
 
 	response := SignInResponse{
-		User:  biz.ConvertUserToUserInfo(ctx, user),
-		Token: token,
+		User: biz.ConvertUserToUserInfo(ctx, user),
 	}
 
+	middleware.SetAdminSessionCookie(c, token)
 	c.JSON(http.StatusOK, response)
+}
+
+func (h *AuthHandlers) SignOut(c *gin.Context) {
+	middleware.ClearAdminSessionCookie(c)
+	c.Status(http.StatusNoContent)
 }

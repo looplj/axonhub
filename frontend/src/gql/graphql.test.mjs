@@ -13,7 +13,8 @@ const transpiled = ts.transpileModule(source, {
   },
 }).outputText
   .replaceAll("import { toast } from 'sonner';", 'const toast = { error() {} };')
-  .replaceAll("import { getTokenFromStorage, removeTokenFromStorage } from '@/stores/authStore';", 'const getTokenFromStorage = () => ""; const removeTokenFromStorage = () => {};')
+  .replaceAll("import { useAuthStore } from '@/stores/authStore';", 'const useAuthStore = { getState: () => ({ auth: { reset() {} } }) };')
+  .replaceAll("import { wasRecentlyActive } from '@/lib/user-activity';", 'const wasRecentlyActive = () => false;')
   .replaceAll("import i18n from '@/lib/i18n';", 'const i18n = { t: (key) => key };');
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(transpiled).toString('base64')}`;
