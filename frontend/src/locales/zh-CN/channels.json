@@ -951,6 +951,7 @@
   "channels.endpoints.detect.protocols.chat": "Chat Completions",
   "channels.endpoints.detect.protocols.responses": "Responses",
   "channels.endpoints.detect.protocols.messages": "Messages",
+  "channels.endpoints.detect.protocols.gemini": "Gemini",
   "channels.endpoints.detect.reasons.supported": "已支持",
   "channels.endpoints.detect.reasons.notFound": "端点不存在",
   "channels.endpoints.detect.reasons.authError": "鉴权失败",
