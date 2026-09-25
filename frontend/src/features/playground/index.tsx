@@ -36,8 +36,7 @@ import { useQueryModels } from '@/features/models/data/models';
 import { usePermissions } from '@/hooks/usePermissions';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
-
-type PlaygroundModelSource = 'channel' | 'model_gateway';
+import { readSelection, resolveSelection, writeSelection, type PlaygroundModelSource } from './selection';
 
 function PlaygroundImageButton() {
   const { t } = useTranslation();
@@ -93,9 +92,20 @@ function PlaygroundSubmit({ input, status, onStop }: { input: string; status: Ch
 
 export default function Playground() {
   const { t } = useTranslation();
-  const [modelSource, setModelSource] = useState<PlaygroundModelSource>('channel');
-  const [selectedChannel, setSelectedChannel] = useState<string>('');
-  const [model, setModel] = useState('');
+  const selectedProjectId = useSelectedProjectId();
+  const [selectionState, setSelectionState] = useState(() => ({
+    projectId: selectedProjectId,
+    ...readSelection(selectedProjectId),
+    ready: false,
+  }));
+  // Reset during render so a project switch never renders or saves the prior project's choice.
+  const selection =
+    selectionState.projectId === selectedProjectId
+      ? selectionState
+      : { projectId: selectedProjectId, ...readSelection(selectedProjectId), ready: false };
+  if (selectionState.projectId !== selectedProjectId) setSelectionState(selection);
+  const { modelSource, selectedChannel, model } = selection;
+  const setModel = (nextModel: string) => setSelectionState((current) => ({ ...current, model: nextModel }));
   const [temperature, setTemperature] = useState(0.6);
   const [maxTokens, setMaxTokens] = useState(4096);
   const [systemPrompt, setSystemPrompt] = useState(t('playground.settings.defaultSystemPrompt'));
@@ -134,8 +144,7 @@ export default function Playground() {
   }, [modelSource]);
 
   const { accessToken } = useAuthStore((state) => state.auth);
-  const selectedProjectId = useSelectedProjectId();
-  const { hasSystemScope } = usePermissions();
+  const { user, hasSystemScope } = usePermissions();
   const canUseModelGateway = hasSystemScope('read_channels');
 
   // 获取 channels 数据
@@ -315,6 +324,35 @@ export default function Playground() {
     });
   }, [modelsData]);
 
+  useEffect(() => {
+    if (!user || !channelsData || (modelSource === 'model_gateway' && canUseModelGateway && !modelsData)) return;
+    const channels = channelOptions.map((option) => ({
+      value: option.value,
+      models:
+        channelsData.edges.find((edge) => edge.node.id === option.value)?.node.allModelEntries.map((entry) => entry.requestModel) ?? [],
+    }));
+    const gatewayModels = modelPageModelOptions.map((option) => option.value);
+    setSelectionState((current) => {
+      if (current.projectId !== selectedProjectId) return current;
+      const resolved = resolveSelection(current, channels, gatewayModels, canUseModelGateway);
+      if (
+        current.ready &&
+        current.modelSource === resolved.modelSource &&
+        current.selectedChannel === resolved.selectedChannel &&
+        current.model === resolved.model
+      ) {
+        return current;
+      }
+      return { ...current, ...resolved, ready: true };
+    });
+  }, [canUseModelGateway, channelOptions, channelsData, modelPageModelOptions, modelSource, modelsData, selectedProjectId, user]);
+
+  useEffect(() => {
+    if (selection.ready && selection.projectId === selectedProjectId) {
+      writeSelection(selectedProjectId, { modelSource, selectedChannel, model });
+    }
+  }, [model, modelSource, selectedChannel, selectedProjectId, selection.projectId, selection.ready]);
+
   // 根据选中渠道过滤出模型列表
   const modelOptions = useMemo(() => {
     if (isModelGatewaySource) return modelPageModelOptions;
@@ -332,10 +370,9 @@ export default function Playground() {
   // 处理渠道选择，自动选第一个模型
   const handleChannelChange = useCallback(
     (channelId: string) => {
-      setSelectedChannel(channelId);
       const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === channelId);
       const firstModel = channelEdge?.node.allModelEntries[0]?.requestModel ?? '';
-      setModel(firstModel);
+      setSelectionState((current) => ({ ...current, selectedChannel: channelId, model: firstModel }));
     },
     [channelsData]
   );
@@ -346,35 +383,24 @@ export default function Playground() {
       if (nextSource === 'model_gateway' && !canUseModelGateway) {
         return;
       }
-      setModelSource(nextSource);
       if (nextSource === 'model_gateway') {
-        setModel(modelPageModelOptions[0]?.value ?? '');
+        setSelectionState((current) => ({
+          ...current,
+          modelSource: nextSource,
+          model: modelPageModelOptions[0]?.value ?? '',
+          ready: current.ready && !!modelsData,
+        }));
         return;
       }
       const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === selectedChannel);
-      setModel(channelEdge?.node.allModelEntries[0]?.requestModel ?? '');
+      setSelectionState((current) => ({
+        ...current,
+        modelSource: nextSource,
+        model: channelEdge?.node.allModelEntries[0]?.requestModel ?? '',
+      }));
     },
-    [canUseModelGateway, channelsData, modelPageModelOptions, selectedChannel]
+    [canUseModelGateway, channelsData, modelPageModelOptions, modelsData, selectedChannel]
   );
-
-  useEffect(() => {
-    if (!canUseModelGateway && modelSource === 'model_gateway') {
-      setModelSource('channel');
-    }
-  }, [canUseModelGateway, modelSource]);
-
-  // 初始化：默认选第一个渠道和第一个模型
-  useEffect(() => {
-    if (!selectedChannel && !channelsLoading && channelOptions.length > 0) {
-      handleChannelChange(channelOptions[0].value);
-    }
-  }, [channelOptions, channelsLoading, handleChannelChange, selectedChannel]);
-
-  useEffect(() => {
-    if (isModelGatewaySource && !model && modelPageModelOptions.length > 0) {
-      setModel(modelPageModelOptions[0].value);
-    }
-  }, [isModelGatewaySource, model, modelPageModelOptions]);
 
   return (
     <TooltipProvider>
