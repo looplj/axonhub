@@ -24,16 +24,19 @@ type ModelCardLimit struct {
 }
 
 type ModelCard struct {
-	Reasoning   ModelCardReasoning  `json:"reasoning"`
-	ToolCall    bool                `json:"toolCall"`
-	Temperature bool                `json:"temperature"`
-	Modalities  ModelCardModalities `json:"modalities"`
-	Vision      bool                `json:"vision"`
-	Cost        ModelCardCost       `json:"cost"`
-	Limit       ModelCardLimit      `json:"limit"`
-	Knowledge   string              `json:"knowledge"`
-	ReleaseDate string              `json:"releaseDate"`
-	LastUpdated string              `json:"lastUpdated"`
+	Reasoning ModelCardReasoning `json:"reasoning"`
+	// ReasoningEfforts lists the reasoning effort levels the model accepts, using the
+	// unified values from llm/reasoning.go. Nil means the levels are unknown.
+	ReasoningEfforts []string            `json:"reasoningEfforts"`
+	ToolCall         bool                `json:"toolCall"`
+	Temperature      bool                `json:"temperature"`
+	Modalities       ModelCardModalities `json:"modalities"`
+	Vision           bool                `json:"vision"`
+	Cost             ModelCardCost       `json:"cost"`
+	Limit            ModelCardLimit      `json:"limit"`
+	Knowledge        string              `json:"knowledge"`
+	ReleaseDate      string              `json:"releaseDate"`
+	LastUpdated      string              `json:"lastUpdated"`
 }
 
 type ModelSettings struct {

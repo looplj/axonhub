@@ -35,6 +35,7 @@ export type ModelLimit = z.infer<typeof modelLimitSchema>;
 
 export const modelCardSchema = z.object({
   reasoning: modelReasoningSchema.optional(),
+  reasoningEfforts: z.array(z.string()).optional().nullable(),
   toolCall: z.boolean().optional(),
   temperature: z.boolean().optional(),
   modalities: modelModalitiesSchema.optional(),

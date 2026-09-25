@@ -23,6 +23,7 @@ import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
 import { useCreateModel, useUpdateModel } from '../data/models';
 import { useDevelopersData } from '../data/providers';
 import { type Provider, type ProviderModel, resolveVision } from '../data/providers.schema';
+import { REASONING_EFFORTS, deriveReasoningEfforts } from '../data/reasoning-efforts';
 import {
   CreateModelInput,
   createModelInputSchema,
@@ -224,6 +225,7 @@ export function ModelsActionDialog() {
             supported: selectedModel.reasoning?.supported || false,
             default: selectedModel.reasoning?.default || false,
           },
+          reasoningEfforts: deriveReasoningEfforts(selectedModel.reasoning_options),
           toolCall: selectedModel.tool_call,
           temperature: selectedModel.temperature,
           modalities: {
@@ -527,6 +529,39 @@ export function ModelsActionDialog() {
                         )}
                       />
                     </div>
+                  </div>
+
+                  <div className='space-y-2'>
+                    <FormLabel>{t('models.modelCard.reasoningEfforts')}</FormLabel>
+                    <p className='text-muted-foreground text-xs'>{t('models.modelCard.reasoningEffortsHint')}</p>
+                    <FormField
+                      control={form.control}
+                      name='modelCard.reasoningEfforts'
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className='grid grid-cols-2 gap-2'>
+                            {REASONING_EFFORTS.map((effort) => (
+                              <FormItem key={effort} className='flex items-center space-y-0 space-x-2'>
+                                <FormControl>
+                                  <Checkbox
+                                    checked={field.value?.includes(effort) || false}
+                                    onCheckedChange={(checked) => {
+                                      const current = field.value || [];
+                                      const next = checked
+                                        ? [...current, effort]
+                                        : current.filter((value) => value !== effort);
+                                      // Clearing every level means "unknown", not "no levels".
+                                      field.onChange(next.length ? next : undefined);
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormLabel className='font-normal'>{effort}</FormLabel>
+                              </FormItem>
+                            ))}
+                          </div>
+                        </FormItem>
+                      )}
+                    />
                   </div>
 
                   <div className='space-y-2'>

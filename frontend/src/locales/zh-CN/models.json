@@ -221,6 +221,8 @@
   "models.modelCard.reasoning": "推理",
   "models.modelCard.reasoningSupported": "支持",
   "models.modelCard.reasoningDefault": "默认",
+  "models.modelCard.reasoningEfforts": "思考等级",
+  "models.modelCard.reasoningEffortsHint": "上游接受的档位，目录里有列出时自动填入，否则留给你自己设置。",
   "models.modelCard.toolCall": "工具调用",
   "models.modelCard.vision": "视觉",
   "models.modelCard.temperature": "温度",

@@ -31,6 +31,7 @@ const MODELS_QUERY = `
               supported
               default
             }
+            reasoningEfforts
             toolCall
             temperature
             modalities {
@@ -152,6 +153,7 @@ const CREATE_MODEL_MUTATION = `
           supported
           default
         }
+        reasoningEfforts
         toolCall
         temperature
         modalities {
@@ -255,6 +257,7 @@ const BULK_CREATE_MODELS_MUTATION = `
           supported
           default
         }
+        reasoningEfforts
         toolCall
         temperature
         modalities {
@@ -358,6 +361,7 @@ const UPDATE_MODEL_MUTATION = `
           supported
           default
         }
+        reasoningEfforts
         toolCall
         temperature
         modalities {
@@ -503,8 +507,9 @@ interface QueryAllModelsArgs {
   where?: Record<string, any>;
 }
 
-export function useQueryAllModels(args: QueryAllModelsArgs) {
+export function useQueryAllModels(args: QueryAllModelsArgs, options?: { enabled?: boolean }) {
   return useQuery({
+    enabled: options?.enabled ?? true,
     queryKey: ['models', 'all', args],
     queryFn: async () => {
       const data = await graphqlRequest<{ models: ModelConnection }>(MODELS_QUERY, {

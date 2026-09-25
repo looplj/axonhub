@@ -14,6 +14,7 @@ import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
 import { useBulkCreateModels } from '../data/models';
 import { useDevelopersData } from '../data/providers';
 import { type Provider, type ProviderModel, resolveVision } from '../data/providers.schema';
+import { deriveReasoningEfforts } from '../data/reasoning-efforts';
 import { CreateModelInput, ModelCard, ModelType, modelTypeSchema } from '../data/schema';
 
 interface ModelRow {
@@ -152,6 +153,7 @@ export function ModelsBatchCreateDialog() {
                 supported: selectedModel.reasoning?.supported || false,
                 default: selectedModel.reasoning?.default || false,
               },
+              reasoningEfforts: deriveReasoningEfforts(selectedModel.reasoning_options),
               toolCall: selectedModel.tool_call || false,
               temperature: selectedModel.temperature || false,
               modalities: {
