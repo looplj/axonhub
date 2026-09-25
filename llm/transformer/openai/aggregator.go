@@ -20,6 +20,11 @@ type choiceAggregator struct {
 	content             strings.Builder
 	reasoningContent    strings.Builder
 	hasReasoningContent bool                  // Tracks whether any delta carried reasoning_content (even an empty string).
+	reasoning           strings.Builder       // Aggregates the reasoning field used by some providers (e.g. Synthetic) instead of reasoning_content.
+	hasReasoning        bool                  // Tracks whether any delta carried reasoning (even an empty string).
+	refusal             strings.Builder       // Aggregates refusal text streamed as delta.refusal.
+	audio               *llm.OutputAudio      // Reassembles audio output streamed as delta.audio chunks.
+	logprobs            []TokenLogprob        // Concatenates per-chunk logprobs content.
 	toolCalls           map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
 	finishReason        *string
 	role                string
@@ -127,6 +132,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		lastChunkResponse *Response
 		usage             *Usage
 		systemFingerprint string
+		serviceTier       string
 		// Map to track choices by their index
 		choicesAggs = make(map[int]*choiceAggregator)
 		// Map to track unique citations
@@ -180,6 +186,36 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 					choiceAgg.reasoningContent.WriteString(*choice.Delta.ReasoningContent)
 				}
 
+				// Handle the reasoning field variant (used by providers such as Synthetic).
+				if choice.Delta.Reasoning != nil {
+					choiceAgg.hasReasoning = true
+					choiceAgg.reasoning.WriteString(*choice.Delta.Reasoning)
+				}
+
+				// Handle refusal streamed as delta.refusal chunks.
+				if choice.Delta.Refusal != "" {
+					choiceAgg.refusal.WriteString(choice.Delta.Refusal)
+				}
+
+				// Handle audio output streamed as delta.audio chunks. The audio ID and
+				// expiry arrive on the first chunk; data and transcript are fragmented.
+				if choice.Delta.Audio != nil {
+					if choiceAgg.audio == nil {
+						choiceAgg.audio = &llm.OutputAudio{}
+					}
+
+					if choiceAgg.audio.ID == "" {
+						choiceAgg.audio.ID = choice.Delta.Audio.ID
+					}
+
+					if choiceAgg.audio.ExpiresAt == 0 {
+						choiceAgg.audio.ExpiresAt = choice.Delta.Audio.ExpiresAt
+					}
+
+					choiceAgg.audio.Data += choice.Delta.Audio.Data
+					choiceAgg.audio.Transcript += choice.Delta.Audio.Transcript
+				}
+
 				// Handle tool calls
 				if len(choice.Delta.ToolCalls) > 0 {
 					for _, deltaToolCall := range choice.Delta.ToolCalls {
@@ -225,6 +261,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			choiceAgg.addAnnotations(choice.Delta)
 			choiceAgg.addAnnotations(choice.Message)
 
+			// Concatenate per-chunk logprobs instead of dropping them.
+			if choice.Logprobs != nil {
+				choiceAgg.logprobs = append(choiceAgg.logprobs, choice.Logprobs.Content...)
+			}
+
 			// Capture finish reason
 			if choice.FinishReason != nil {
 				choiceAgg.finishReason = choice.FinishReason
@@ -244,6 +285,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// Keep the first non-empty system fingerprint
 		if systemFingerprint == "" && chunk.SystemFingerprint != "" {
 			systemFingerprint = chunk.SystemFingerprint
+		}
+
+		// Keep the first non-empty service tier
+		if serviceTier == "" && chunk.ServiceTier != "" {
+			serviceTier = chunk.ServiceTier
 		}
 
 		// Keep the last chunk with valid choices for metadata.
@@ -299,6 +345,22 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			message.ReasoningContent = &reasoningContent
 		}
 
+		// Set the reasoning field variant if any delta carried it.
+		if choiceAgg.hasReasoning {
+			reasoning := choiceAgg.reasoning.String()
+			message.Reasoning = &reasoning
+		}
+
+		// Set refusal if any delta carried refusal text.
+		if choiceAgg.refusal.Len() > 0 {
+			message.Refusal = choiceAgg.refusal.String()
+		}
+
+		// Set audio output if any delta carried audio chunks.
+		if choiceAgg.audio != nil {
+			message.Audio = choiceAgg.audio
+		}
+
 		// Set content if available
 		if choiceAgg.content.Len() > 0 {
 			content := choiceAgg.content.String()
@@ -346,6 +408,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			Message:      message,
 			FinishReason: finishReason,
 		}
+
+		// Attach aggregated logprobs if any chunk carried them.
+		if len(choiceAgg.logprobs) > 0 {
+			choices[i].Logprobs = toLLMLogprobs(&Logprobs{Content: choiceAgg.logprobs})
+		}
 	}
 
 	// Build the final response using llm.Response struct
@@ -360,6 +427,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		Object:            "chat.completion", // Change from "chat.completion.chunk" to "chat.completion"
 		Created:           lastChunkResponse.Created,
 		SystemFingerprint: systemFingerprint,
+		ServiceTier:       serviceTier,
 		Choices:           choices,
 		Usage:             responseUsage,
 	}
