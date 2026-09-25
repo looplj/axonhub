@@ -72,7 +72,7 @@
   "apikeys.dialogs.view.tabs.claudeCode": "Claude Code",
   "apikeys.dialogs.view.tabs.geminiSDK": "Gemini SDK",
   "apikeys.dialogs.view.tabs.pi": "Pi",
-  "apikeys.dialogs.view.piHint": "把这段 provider 复制到 ~/.pi/agent/models.json 的 providers 对象里。provider 名称可以自取，这里只包含该密钥可以访问的模型。",
+  "apikeys.dialogs.view.piHint": "这是一份完整的 models.json：把里面的 axonhub 条目合并进你已有的 providers 对象，或直接作为新的 ~/.pi/agent/models.json。provider 名称可以自取，这里只包含该密钥可以访问的模型。",
   "apikeys.dialogs.bulkDisable.title": "批量禁用 API Keys",
   "apikeys.dialogs.bulkDisable.description": "确定要禁用 {{count}} 个选定的 API Keys 吗？此操作无法撤销。",
   "apikeys.dialogs.bulkArchive.title": "批量归档 API Keys",

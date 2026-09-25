@@ -55,10 +55,10 @@ export function ApiKeysViewDialog() {
   const { data: enabledModels } = useQueryAllModels({ where: { statusIn: ['enabled'] } }, { enabled: !!detailApiKeyId });
 
   const piConfig = useMemo(() => {
-    if (!detailApiKeyId || !apiKey) return undefined;
+    // The list row omits profiles, so wait for the detail before trusting the allowlist.
+    if (!detailApiKeyId || !apiKey || !apiKeyDetail) return undefined;
 
-    const detail = apiKeyDetail ?? selectedApiKey;
-    const profiles = detail?.profiles;
+    const profiles = apiKeyDetail.profiles;
     const modelIDs = profiles?.profiles?.find((profile) => profile.name === profiles.activeProfile)?.modelIDs ?? [];
     const models = (enabledModels?.edges ?? [])
       .map((edge) => edge.node)
@@ -68,7 +68,7 @@ export function ApiKeysViewDialog() {
       config: buildPiModelsConfig({ origin: currentOrigin, apiKey, models }),
       masked: buildPiModelsConfig({ origin: currentOrigin, apiKey: maskedApiKey, models }),
     };
-  }, [detailApiKeyId, apiKeyDetail, selectedApiKey, enabledModels, currentOrigin, apiKey, maskedApiKey]);
+  }, [detailApiKeyId, apiKeyDetail, enabledModels, currentOrigin, apiKey, maskedApiKey]);
 
   const piConfigCode = useMemo(
     () =>

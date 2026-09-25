@@ -550,7 +550,7 @@ export function ModelsActionDialog() {
                                         ? [...current, effort]
                                         : current.filter((value) => value !== effort);
                                       // Clearing every level means "unknown", not "no levels".
-                                      field.onChange(next.length ? next : undefined);
+                                      field.onChange(next.length ? next : null);
                                     }}
                                   />
                                 </FormControl>
