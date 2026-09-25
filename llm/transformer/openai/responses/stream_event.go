@@ -1,6 +1,9 @@
 package responses
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 const responseMetadataTransformerMetadataKey = "openai_responses_raw_metadata_event"
 const responseHeadersTransformerMetadataKey = "openai_responses_transport_headers"
@@ -115,6 +118,32 @@ type StreamEvent struct {
 	Code    string  `json:"code,omitempty"`
 	Message string  `json:"message,omitempty"`
 	Param   *string `json:"param,omitempty"`
+}
+
+func (e *StreamEvent) UnmarshalJSON(data []byte) error {
+	type streamEvent StreamEvent
+
+	wire := struct {
+		*streamEvent
+		Status json.RawMessage `json:"status"`
+	}{streamEvent: (*streamEvent)(e)}
+	if err := json.Unmarshal(data, &wire); err != nil {
+		return err
+	}
+	if len(wire.Status) == 0 || bytes.Equal(wire.Status, []byte("null")) {
+		return nil
+	}
+	if err := json.Unmarshal(wire.Status, &e.Status); err == nil {
+		return nil
+	}
+
+	var status string
+	if err := json.Unmarshal(wire.Status, &status); err != nil {
+		return err
+	}
+	e.Status = 0
+
+	return nil
 }
 
 // StreamEventContentPart represents a content part in streaming events.
