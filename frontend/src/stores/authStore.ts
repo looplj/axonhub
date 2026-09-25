@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 
-export const ACCESS_TOKEN = 'axonhub_access_token';
 const USER_INFO = 'axonhub_user_info';
+
+try {
+  localStorage.removeItem('axonhub_access_token');
+} catch {
+}
 
 interface Role {
   code: string;
@@ -35,35 +39,11 @@ interface AuthState {
   auth: {
     user: AuthUser | null;
     setUser: (user: AuthUser | null) => void;
-    accessToken: string;
-    setAccessToken: (accessToken: string) => void;
-    resetAccessToken: () => void;
+    sessionGeneration: number;
+    startSession: () => void;
     reset: () => void;
   };
 }
-
-// Helper functions for localStorage
-export const getTokenFromStorage = (): string => {
-  try {
-    return localStorage.getItem(ACCESS_TOKEN) || '';
-    } catch (error) {
-      return '';
-    }
-  };
-
-export const setTokenToStorage = (token: string): void => {
-  try {
-    localStorage.setItem(ACCESS_TOKEN, token);
-  } catch (error) {
-  }
-};
-
-export const removeTokenFromStorage = (): void => {
-  try {
-    localStorage.removeItem(ACCESS_TOKEN);
-  } catch (error) {
-  }
-};
 
 const getUserFromStorage = (): AuthUser | null => {
   try {
@@ -93,7 +73,6 @@ const removeUserFromStorage = (): void => {
 };
 
 export const useAuthStore = create<AuthState>()((set) => {
-  const initToken = getTokenFromStorage();
   const initUser = getUserFromStorage();
 
   return {
@@ -104,24 +83,18 @@ export const useAuthStore = create<AuthState>()((set) => {
           setUserToStorage(user);
           return { ...state, auth: { ...state.auth, user } };
         }),
-      accessToken: initToken,
-      setAccessToken: (accessToken) =>
+      sessionGeneration: 0,
+      startSession: () =>
         set((state) => {
-          setTokenToStorage(accessToken);
-          return { ...state, auth: { ...state.auth, accessToken } };
-        }),
-      resetAccessToken: () =>
-        set((state) => {
-          removeTokenFromStorage();
-          return { ...state, auth: { ...state.auth, accessToken: '' } };
+          return { ...state, auth: { ...state.auth, sessionGeneration: state.auth.sessionGeneration + 1 } };
         }),
       reset: () =>
         set((state) => {
-          removeTokenFromStorage();
+          if (!state.auth.user) return state;
           removeUserFromStorage();
           return {
             ...state,
-            auth: { ...state.auth, user: null, accessToken: '' },
+            auth: { ...state.auth, user: null, sessionGeneration: state.auth.sessionGeneration + 1 },
           };
         }),
     },

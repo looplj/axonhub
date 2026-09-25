@@ -1,4 +1,5 @@
-import { AuthUser, getTokenFromStorage } from '@/stores/authStore';
+import { AuthUser } from '@/stores/authStore';
+import { wasRecentlyActive } from '@/lib/user-activity';
 
 // Same domain, no need to add baseURL.
 export const API_BASE_URL = '';
@@ -56,17 +57,14 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
     ...headers,
   };
 
-  // Add Authorization header if auth is required
-  if (requireAuth) {
-    const token = getTokenFromStorage();
-    if (token) {
-      requestHeaders['Authorization'] = `Bearer ${token}`;
-    }
+  if (requireAuth && wasRecentlyActive()) {
+    requestHeaders['X-Admin-Activity'] = '1';
   }
 
   const requestOptions: RequestInit = {
     method,
     headers: requestHeaders,
+    credentials: 'include',
   };
 
   if (body && method !== 'GET') {
@@ -138,11 +136,16 @@ export const authApi = {
     password: string;
   }): Promise<{
     user: AuthUser;
-    token: string;
   }> =>
     apiRequest('/admin/auth/signin', {
       method: 'POST',
       body: data,
+    }),
+
+  signOut: (): Promise<void> =>
+    apiRequest('/admin/auth/signout', {
+      method: 'POST',
+      requireAuth: true,
     }),
 
   getInvitation: (token: string): Promise<{
@@ -155,7 +158,7 @@ export const authApi = {
   registerInvitation: (
     token: string,
     data: { email: string; password: string; firstName: string; lastName: string }
-  ): Promise<{ user: AuthUser; token: string }> =>
+  ): Promise<{ user: AuthUser }> =>
     apiRequest(`/auth/invitations/${encodeURIComponent(token)}/register`, {
       method: 'POST',
       body: data,
@@ -186,7 +189,6 @@ export const authApi = {
   exchangeOIDCCode: (code: string): Promise<{
     data: {
       user: AuthUser;
-      token: string;
     }
   }> =>
     apiRequest('/oauth/oidc/exchange', {
