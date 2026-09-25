@@ -1472,3 +1472,72 @@ func TestValidateAllowedIPs(t *testing.T) {
 		})
 	}
 }
+
+func TestAPIKeyService_UpdateAPIKeyProfiles_PersonalKeyGuard(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	hashedPassword, err := HashPassword("test-password")
+	require.NoError(t, err)
+
+	newUser := func(firstName string, isOwner bool) *ent.User {
+		u, err := client.User.Create().
+			SetEmail(fmt.Sprintf("%s-%d@example.com", firstName, time.Now().UnixNano())).
+			SetPassword(hashedPassword).
+			SetFirstName(firstName).
+			SetLastName("User").
+			SetIsOwner(isOwner).
+			SetStatus(user.StatusActivated).
+			Save(ctx)
+		require.NoError(t, err)
+		return u
+	}
+
+	creator := newUser("Creator", false)
+	otherUser := newUser("Other", false)
+	ownerUser := newUser("Owner", true)
+
+	testProject, err := client.Project.Create().
+		SetName(uuid.NewString()).
+		SetDescription("test").
+		SetStatus(project.StatusActive).
+		Save(ctx)
+	require.NoError(t, err)
+
+	apiKey, err := client.APIKey.Create().
+		SetName("personal-key").
+		SetKey(fmt.Sprintf("ah-test-%d", time.Now().UnixNano())).
+		SetUserID(creator.ID).
+		SetProjectID(testProject.ID).
+		SetType(apikey.TypePersonal).
+		Save(ctx)
+	require.NoError(t, err)
+
+	profiles := objects.APIKeyProfiles{
+		ActiveProfile: "production",
+		Profiles: []objects.APIKeyProfile{
+			{
+				Name:          "production",
+				ModelMappings: []objects.ModelMapping{{From: "gpt-4", To: "claude-3"}},
+			},
+		},
+	}
+
+	// A regular user cannot modify someone else's personal key.
+	_, err = apiKeyService.UpdateAPIKeyProfiles(contexts.WithUser(ctx, otherUser), apiKey.ID, profiles)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "personal API key can only be modified by its creator or a system owner")
+
+	// The creator can.
+	_, err = apiKeyService.UpdateAPIKeyProfiles(contexts.WithUser(ctx, creator), apiKey.ID, profiles)
+	require.NoError(t, err)
+
+	// A system owner can too.
+	_, err = apiKeyService.UpdateAPIKeyProfiles(contexts.WithUser(ctx, ownerUser), apiKey.ID, profiles)
+	require.NoError(t, err)
+}
