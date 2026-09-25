@@ -143,7 +143,7 @@ export default function Playground() {
     modelSourceRef.current = modelSource;
   }, [modelSource]);
 
-  const { hasSystemScope } = usePermissions();
+  const { user, hasSystemScope } = usePermissions();
   const canUseModelGateway = hasSystemScope('read_channels');
 
   // 获取 channels 数据
