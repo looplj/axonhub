@@ -4,28 +4,23 @@ package codex
 //
 // The ChatGPT Codex backend does not provide a stable public /models endpoint.
 // CLIProxyAPI keeps a local registry; we mirror that approach to power AxonHub "Fetch Models".
+// Fast aliases are accepted request models and are resolved to their base model by the outbound
+// transformer before the request is sent upstream.
 func DefaultModels() []string {
 	return []string{
-		"gpt-5",
-		"gpt-5-codex",
-		"gpt-5-codex-mini",
-		"gpt-5.1",
-		"gpt-5.1-codex",
-		"gpt-5.1-codex-mini",
-		"gpt-5.1-codex-max",
-		"gpt-5.2",
-		"gpt-5.2-codex",
-		"gpt-5.3-codex",
-		"gpt-5.3-codex-spark",
-		"gpt-5.4",
-		"gpt-5.4-mini",
-		"gpt-5.5",
 		"gpt-5.6-sol",
+		"gpt-5.6-sol-fast",
 		"gpt-5.6-terra",
+		"gpt-5.6-terra-fast",
 		"gpt-5.6-luna",
+		"gpt-5.6-luna-fast",
 		"gpt-6-astra",
+		"gpt-6-astra-fast",
 		"gpt-6-sol",
+		"gpt-6-sol-fast",
 		"gpt-6-luna",
+		"gpt-6-luna-fast",
+		"codex-auto-review",
 	}
 }
 
