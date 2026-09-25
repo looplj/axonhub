@@ -40,6 +40,7 @@ import { EvolinkIcon } from '../components/evolink-icon';
 import { FennoIcon } from '../components/fenno-icon';
 import { TypeSafeIcon } from '../components/typesafe-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
+import { RequestyIcon } from '../components/requesty-icon';
 import { CHANNEL_CONFIGS } from './config_channels';
 import {
   getApiFormatsForProvider as getApiFormatsForProviderFromConfigs,
@@ -240,6 +241,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     icon: OpenRouter,
     color: 'bg-gray-100 text-gray-800 border-gray-200',
     channelTypes: ['openrouter'],
+  },
+  requesty: {
+    provider: 'requesty',
+    icon: RequestyIcon,
+    color: 'bg-gray-100 text-gray-800 border-gray-200',
+    channelTypes: ['requesty'],
   },
   xiaomi: {
     provider: 'xiaomi',

@@ -43,6 +43,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/opencode"
 	"github.com/looplj/axonhub/llm/transformer/openrouter"
+	"github.com/looplj/axonhub/llm/transformer/requesty"
 	"github.com/looplj/axonhub/llm/transformer/typesafe"
 	"github.com/looplj/axonhub/llm/transformer/xai"
 	xaisubscription "github.com/looplj/axonhub/llm/transformer/xai/subscription"
@@ -393,6 +394,12 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 	if endpointTransport(ep) == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
 		return nil, fmt.Errorf("websocket transport only supports api_format %q", llm.APIFormatOpenAIResponse.String())
 	}
+	if isRequestyChatEndpoint(c.Type, ep) {
+		return requesty.NewOutboundTransformerWithConfig(&requesty.Config{
+			BaseURL:        baseURL,
+			APIKeyProvider: apiKeyProvider(),
+		})
+	}
 	switch ep.APIFormat {
 	case llm.APIFormatOpenAIChatCompletion.String():
 		if c.Type == channel.TypeCline {
@@ -574,6 +581,19 @@ func newProviderChatOutbound(
 	}
 }
 
+// isRequestyChatEndpoint reports whether a configured endpoint must keep the Requesty
+// transformer: Requesty serves image generation through /chat/completions, so a generic
+// OpenAI transformer would send those requests to an /images route Requesty does not have.
+// An explicit path means the user asked for a specific route, so it keeps the generic one.
+func isRequestyChatEndpoint(channelType channel.Type, ep objects.ChannelEndpoint) bool {
+	if channelType != channel.TypeRequesty || ep.Path != "" {
+		return false
+	}
+
+	return ep.APIFormat == llm.APIFormatOpenAIChatCompletion.String() ||
+		ep.APIFormat == llm.APIFormatOpenAIImageGeneration.String()
+}
+
 func providerChatEndpointUsesFamilyVersion(channelType channel.Type, baseURL string) bool {
 	if channelType == channel.TypeXiaomi || channelType == channel.TypeXiaomiAnthropic {
 		// Xiaomi uses v1, so the family and generic transformers have the same
@@ -719,6 +739,18 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		return ch, nil
 	case channel.TypeOpenrouter:
 		transformer, err := openrouter.NewOutboundTransformerWithConfig(&openrouter.Config{
+			BaseURL:        c.BaseURL,
+			APIKeyProvider: getAPIKeyProvider(ch),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
+		}
+
+		ch.Outbound = transformer
+
+		return ch, nil
+	case channel.TypeRequesty:
+		transformer, err := requesty.NewOutboundTransformerWithConfig(&requesty.Config{
 			BaseURL:        c.BaseURL,
 			APIKeyProvider: getAPIKeyProvider(ch),
 		})
