@@ -105,7 +105,7 @@ func (t *InboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
-	return streams.NoNil(streams.MapErr(stream, func(chunk *llm.Response) (*httpclient.StreamEvent, error) {
+	return streams.NoNil(streams.MapErr(newFinishReasonFallbackStream(stream), func(chunk *llm.Response) (*httpclient.StreamEvent, error) {
 		return t.TransformStreamChunk(ctx, chunk)
 	})), nil
 }
@@ -152,8 +152,17 @@ func (t *InboundTransformer) TransformStreamChunk(
 // If the response contains ONLY ReasoningSignature (pure signature event), we skip it.
 // If the chunk also contains other content (text, reasoning_content, tool_calls, etc.),
 // we should NOT skip it (e.g., thinking chunks with both signature and content).
+//
+// Chunks carrying a finish_reason or usage must never be skipped: Gemini-family
+// upstreams (e.g. via antigravity) attach the thought signature to the terminal
+// part of the stream, so dropping a "pure signature" chunk would silently drop
+// finish_reason and usage from the client-visible stream.
 func isReasoningSignatureEvent(resp *llm.Response) bool {
 	if len(resp.Choices) != 1 {
+		return false
+	}
+
+	if resp.Choices[0].FinishReason != nil || resp.Usage != nil {
 		return false
 	}
 
