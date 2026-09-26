@@ -343,7 +343,9 @@ func TestPipeline_Anthropic_to_OpenAIResponses_PreservesFlatURLCitationFields(t 
 	require.Equal(t, "text", finalResponse.Content[0].Type)
 	require.Equal(t, "Source grounded answer", lo.FromPtr(finalResponse.Content[0].Text))
 	require.Len(t, finalResponse.Content[0].Citations, 1)
-	require.Equal(t, "url_citation", finalResponse.Content[0].Citations[0].Type)
+	// URL-shaped annotations from any upstream are normalized to the only URL
+	// citation type the Anthropic Messages API accepts.
+	require.Equal(t, "web_search_result_location", finalResponse.Content[0].Citations[0].Type)
 	require.Equal(t, "https://example.com/flat", finalResponse.Content[0].Citations[0].URL)
 	require.Equal(t, "Flat Citation", finalResponse.Content[0].Citations[0].Title)
 }

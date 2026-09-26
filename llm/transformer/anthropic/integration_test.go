@@ -352,11 +352,15 @@ func TestAnthropicTransformResponse_CitationRoundTripIntegration(t *testing.T) {
 	require.Len(t, finalAnthropicResp.Content[0].Citations, 1)
 
 	citation := finalAnthropicResp.Content[0].Citations[0]
-	require.Equal(t, "url_citation", citation.Type)
+	require.Equal(t, "web_search_result_location", citation.Type)
 	require.Equal(t, "https://example.com/anthropic", citation.URL)
 	require.Equal(t, "Anthropic Source", citation.Title)
-	require.Nil(t, citation.EncryptedIndex)
-	require.Nil(t, citation.CitedText)
+	// web_search_result_location citations always serialize the required string
+	// fields, even when the upstream did not provide them.
+	require.NotNil(t, citation.EncryptedIndex)
+	require.NotNil(t, citation.CitedText)
+	require.Empty(t, lo.FromPtr(citation.EncryptedIndex))
+	require.Empty(t, lo.FromPtr(citation.CitedText))
 }
 
 func TestAnthropicTransformResponse_WebSearchBlocks_RoundTripIntegration(t *testing.T) {

@@ -420,7 +420,11 @@ func citationFromLLMAnnotation(annotation llm.Annotation, metadata map[string]an
 	}
 
 	citationType := annotation.Type
-	if citationType == "" || (citationType == "url_citation" && hasOpenAIResponsesWebSearchCallMetadata(metadata)) {
+	// Anthropic Messages API only accepts web_search_result_location / page_location /
+	// char_location citation types. Upstream providers (Gemini grounding, OpenAI
+	// responses, ...) express URL citations as "url_citation", so normalize every
+	// url-shaped annotation to the Anthropic wire type regardless of its origin.
+	if citationType == "" || citationType == "url_citation" {
 		citationType = "web_search_result_location"
 	}
 

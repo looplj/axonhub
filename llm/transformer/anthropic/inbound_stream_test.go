@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -546,14 +547,18 @@ func TestInboundStream_EmitsCitationsDeltaBeforeContentBlockStop(t *testing.T) {
 
 	assertCitationsDeltaBeforeContentBlockStop(t, events, []TextCitation{
 		{
-			Type:  "url_citation",
-			URL:   "https://example.com/1",
-			Title: "Source One",
+			Type:           "web_search_result_location",
+			URL:            "https://example.com/1",
+			Title:          "Source One",
+			EncryptedIndex: lo.ToPtr(""),
+			CitedText:      lo.ToPtr(""),
 		},
 		{
-			Type:  "url_citation",
-			URL:   "https://example.com/2",
-			Title: "Source Two",
+			Type:           "web_search_result_location",
+			URL:            "https://example.com/2",
+			Title:          "Source Two",
+			EncryptedIndex: lo.ToPtr(""),
+			CitedText:      lo.ToPtr(""),
 		},
 	})
 }
@@ -692,9 +697,11 @@ func TestInboundStream_EmitsCitationsDeltaWhenAnnotationsArriveBeforeText(t *tes
 	events := collectInboundStreamEvents(t, transformer, input)
 
 	assertCitationsDeltaBeforeContentBlockStop(t, events, []TextCitation{{
-		Type:  "url_citation",
-		URL:   "https://example.com/metadata-first",
-		Title: "Metadata First",
+		Type:           "web_search_result_location",
+		URL:            "https://example.com/metadata-first",
+		Title:          "Metadata First",
+		EncryptedIndex: lo.ToPtr(""),
+		CitedText:      lo.ToPtr(""),
 	}})
 }
 
@@ -745,9 +752,11 @@ func TestInboundStream_EmitsCitationsDeltaFromChoiceMessageAnnotations(t *testin
 	events := collectInboundStreamEvents(t, transformer, input)
 
 	assertCitationsDeltaBeforeContentBlockStop(t, events, []TextCitation{{
-		Type:  "url_citation",
-		URL:   "https://example.com/message-annotations",
-		Title: "Message Annotation",
+		Type:           "web_search_result_location",
+		URL:            "https://example.com/message-annotations",
+		Title:          "Message Annotation",
+		EncryptedIndex: lo.ToPtr(""),
+		CitedText:      lo.ToPtr(""),
 	}})
 }
 
@@ -784,8 +793,13 @@ func assertCitationsDeltaBeforeContentBlockStop(t *testing.T, events []StreamEve
 			citationEventIndexes = append(citationEventIndexes, i)
 			require.NotNil(t, event.Delta.Citation)
 			actualCitations = append(actualCitations, *event.Delta.Citation)
-			require.Nil(t, event.Delta.Citation.EncryptedIndex)
-			require.Nil(t, event.Delta.Citation.CitedText)
+			// Strict clients require these fields to be present strings on
+			// web_search_result_location citations, so they must survive the
+			// JSON round-trip even when the upstream did not provide them.
+			require.NotNil(t, event.Delta.Citation.EncryptedIndex)
+			require.NotNil(t, event.Delta.Citation.CitedText)
+			require.Empty(t, lo.FromPtr(event.Delta.Citation.EncryptedIndex))
+			require.Empty(t, lo.FromPtr(event.Delta.Citation.CitedText))
 		}
 		if event.Type == "content_block_stop" && event.Index != nil && *event.Index == 0 && contentBlockStopIndex == -1 {
 			contentBlockStopIndex = i
@@ -854,9 +868,11 @@ func TestInboundStream_NormalizesOpenAIWebSearchCitationTypeFromChunkMetadata(t 
 	events := collectInboundStreamEvents(t, transformer, input)
 
 	assertCitationsDeltaBeforeContentBlockStop(t, events, []TextCitation{{
-		Type:  "web_search_result_location",
-		URL:   "https://example.com/result",
-		Title: "Example Result",
+		Type:           "web_search_result_location",
+		URL:            "https://example.com/result",
+		Title:          "Example Result",
+		EncryptedIndex: lo.ToPtr(""),
+		CitedText:      lo.ToPtr(""),
 	}})
 }
 

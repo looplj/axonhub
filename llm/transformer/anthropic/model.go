@@ -406,6 +406,33 @@ type TextCitation struct {
 	CitedText      *string `json:"cited_text,omitempty"`
 }
 
+// MarshalJSON always emits the required string fields for web_search_result_location
+// citations. Strict clients (Anthropic SDKs, Vercel AI SDK) validate that type, url,
+// title, cited_text and encrypted_index are all present strings, so the omitempty
+// pointer fields must never be dropped for that citation type.
+func (c TextCitation) MarshalJSON() ([]byte, error) {
+	if c.Type == "web_search_result_location" {
+		type webSearchCitation struct {
+			Type           string `json:"type"`
+			URL            string `json:"url"`
+			Title          string `json:"title"`
+			EncryptedIndex string `json:"encrypted_index"`
+			CitedText      string `json:"cited_text"`
+		}
+
+		return json.Marshal(webSearchCitation{
+			Type:           c.Type,
+			URL:            c.URL,
+			Title:          c.Title,
+			EncryptedIndex: lo.FromPtr(c.EncryptedIndex),
+			CitedText:      lo.FromPtr(c.CitedText),
+		})
+	}
+
+	type citationAlias TextCitation
+	return json.Marshal(citationAlias(c))
+}
+
 func (b MessageContentBlock) MarshalJSON() ([]byte, error) {
 	type blockAlias MessageContentBlock
 

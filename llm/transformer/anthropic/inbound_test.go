@@ -1838,12 +1838,12 @@ func TestConvertToAnthropicResponse_WithAnnotations(t *testing.T) {
 	require.Len(t, resp.Content[1].Citations, 2)
 	require.Equal(t, []TextCitation{
 		{
-			Type:  "url_citation",
+			Type:  "web_search_result_location",
 			URL:   "https://example.com/a",
 			Title: "Example A",
 		},
 		{
-			Type:  "url_citation",
+			Type:  "web_search_result_location",
 			URL:   "https://example.com/b",
 			Title: "Example B",
 		},
@@ -1885,7 +1885,7 @@ func TestConvertToAnthropicResponse_WithAnnotationsAndNoTextBlock(t *testing.T) 
 	require.Equal(t, "text", resp.Content[1].Type)
 	require.Equal(t, "", lo.FromPtr(resp.Content[1].Text))
 	require.Equal(t, []TextCitation{{
-		Type:  "url_citation",
+		Type:  "web_search_result_location",
 		URL:   "https://example.com/only",
 		Title: "Only Citation",
 	}}, resp.Content[1].Citations)
