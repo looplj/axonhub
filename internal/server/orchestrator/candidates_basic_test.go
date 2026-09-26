@@ -203,6 +203,29 @@ func TestSpecifiedChannelSelector_Select_ModelMapping(t *testing.T) {
 	}, result[0].Models[0])
 }
 
+func TestSpecifiedChannelSelector_Select_HiddenDirectModel(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Hidden Model Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4-turbo"}).
+		SetSettings(&objects.ChannelSettings{HideOriginalModels: true}).
+		SetDefaultTestModel("gpt-4-turbo").
+		SetStatus(channel.StatusDisabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	selector := NewSpecifiedChannelSelector(newTestChannelServiceForChannels(client), objects.GUID{ID: ch.ID})
+
+	result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4-turbo"})
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	require.Equal(t, "gpt-4-turbo", result[0].Models[0].ActualModel)
+}
+
 // TestSpecifiedChannelSelector_Select_ModelNotSupported tests SpecifiedChannelSelector with unsupported model.
 func TestSpecifiedChannelSelector_Select_ModelNotSupported(t *testing.T) {
 	ctx, client := setupTest(t)

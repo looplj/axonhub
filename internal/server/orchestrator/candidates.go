@@ -1055,6 +1055,9 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 
 	entry, ok := entries[req.Model]
 	if !ok {
+		entry, ok = channel.GetDirectModelEntries()[req.Model]
+	}
+	if !ok {
 		return nil, fmt.Errorf("model %s not supported in channel %s", req.Model, channel.Name)
 	}
 
