@@ -7,6 +7,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -171,6 +172,58 @@ func TestSpecifiedChannelSelector_Select_ValidChannel(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, result, 1)
 	require.Equal(t, ch.ID, result[0].Channel.ID)
+}
+
+func TestSpecifiedChannelSelector_Select_ModelMapping(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Mapped Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4-turbo"}).
+		SetSettings(&objects.ChannelSettings{
+			ModelMappings: []objects.ModelMapping{{From: "gpt-4-fast", To: "gpt-4-turbo"}},
+		}).
+		SetDefaultTestModel("gpt-4-fast").
+		SetStatus(channel.StatusDisabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	selector := NewSpecifiedChannelSelector(newTestChannelServiceForChannels(client), objects.GUID{ID: ch.ID})
+
+	result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4-fast"})
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	require.Equal(t, biz.ChannelModelEntry{
+		RequestModel: "gpt-4-fast",
+		ActualModel:  "gpt-4-turbo",
+		Source:       "mapping",
+	}, result[0].Models[0])
+}
+
+func TestSpecifiedChannelSelector_Select_HiddenDirectModel(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("Hidden Model Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"gpt-4-turbo"}).
+		SetSettings(&objects.ChannelSettings{HideOriginalModels: true}).
+		SetDefaultTestModel("gpt-4-turbo").
+		SetStatus(channel.StatusDisabled).
+		Save(ctx)
+	require.NoError(t, err)
+
+	selector := NewSpecifiedChannelSelector(newTestChannelServiceForChannels(client), objects.GUID{ID: ch.ID})
+
+	result, err := selector.Select(ctx, &llm.Request{Model: "gpt-4-turbo"})
+	require.NoError(t, err)
+	require.Len(t, result, 1)
+	require.Equal(t, "gpt-4-turbo", result[0].Models[0].ActualModel)
 }
 
 // TestSpecifiedChannelSelector_Select_ModelNotSupported tests SpecifiedChannelSelector with unsupported model.
