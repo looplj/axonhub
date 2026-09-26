@@ -34,10 +34,11 @@ func (m *quotaRoutingMigrator) Migrate(ctx context.Context) error {
 
 func (m *quotaRoutingMigrator) migrateInTransaction(ctx context.Context) error {
 	claim := uuid.NewString()
+	// PostgreSQL requires a conflict target for ON CONFLICT DO UPDATE.
 	if err := m.system.entFromContext(ctx).System.Create().
 		SetKey(SystemKeyQuotaRoutingMigrationDone).
 		SetValue(claim).
-		OnConflict(sql.ResolveWithIgnore()).
+		OnConflict(sql.ConflictColumns(system.FieldKey), sql.ResolveWithIgnore()).
 		Exec(ctx); err != nil {
 		return fmt.Errorf("failed to claim quota routing migration: %w", err)
 	}
