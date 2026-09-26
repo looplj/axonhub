@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channeloverridetemplate"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 // ChannelOverrideTemplateService handles CRUD and application of channel override templates.
@@ -62,6 +63,12 @@ func (svc *ChannelOverrideTemplateService) CreateTemplate(
 		SetBodyOverrideOperations(input.BodyOverrideOperations).
 		Save(ctx)
 	if err != nil {
+		// Name uniqueness is enforced by the (user_id, name, deleted_at) unique
+		// index; surface a friendly error instead of a raw constraint violation.
+		if ent.IsConstraintError(err) {
+			return nil, xerrors.DuplicateNameError("Template", input.Name)
+		}
+
 		return nil, fmt.Errorf("failed to create channel override template: %w", err)
 	}
 
@@ -120,6 +127,13 @@ func (svc *ChannelOverrideTemplateService) UpdateTemplate(
 
 	template, err := mut.Save(ctx)
 	if err != nil {
+		// Renaming onto another template's name violates the
+		// (user_id, name, deleted_at) unique index; report it as a name conflict
+		// so the client can show which name is already taken.
+		if ent.IsConstraintError(err) && input.Name != nil {
+			return nil, xerrors.DuplicateNameError("Template", *input.Name)
+		}
+
 		return nil, fmt.Errorf("failed to update channel override template: %w", err)
 	}
 

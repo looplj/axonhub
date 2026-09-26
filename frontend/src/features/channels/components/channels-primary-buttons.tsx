@@ -1,4 +1,4 @@
-import { IconPlus, IconUpload, IconArrowsSort, IconSettings, IconScale } from '@tabler/icons-react';
+import { IconPlus, IconUpload, IconArrowsSort, IconSettings, IconScale, IconTemplate } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,17 @@ export function ChannelsPrimaryButtons() {
           <span>{t('channels.actions.settings')}</span> <IconSettings size={18} />
         </Button>
       </PermissionGuard>
+
+      {/* Templates are private to the current user, so this is not gated on
+          channel write scope — it matches the per-channel override entry. */}
+      <Button
+        variant='outline'
+        className='shrink-0 space-x-1'
+        onClick={() => setOpen('templates')}
+        data-testid='manage-templates-button'
+      >
+        <span>{t('channels.templates.manager.button')}</span> <IconTemplate size={18} />
+      </Button>
 
       <PermissionGuard requiredScope='write_channels'>
         <>

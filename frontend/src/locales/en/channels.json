@@ -958,5 +958,18 @@
   "channels.endpoints.detect.reasons.rateLimited": "Rate limited",
   "channels.endpoints.detect.reasons.serverError": "Upstream error",
   "channels.endpoints.detect.reasons.unreachable": "Unreachable",
-  "channels.endpoints.detect.reasons.invalidRequest": "Not supported"
+  "channels.endpoints.detect.reasons.invalidRequest": "Not supported",
+  "channels.templates.manager.button": "Override Templates",
+  "channels.templates.manager.title": "Override Templates",
+  "channels.templates.manager.description": "Create, edit, and delete reusable header and body override templates. Applying a template to channels is still done explicitly, so editing never changes channels silently.",
+  "channels.templates.manager.createButton": "New Template",
+  "channels.templates.manager.selectHint": "Select a template on the left to edit it.",
+  "channels.templates.manager.emptyState": "No templates yet. Create one to reuse header and body overrides across channels.",
+  "channels.templates.manager.operationSummary": "{{headers}} header op(s), {{body}} body op(s)",
+  "channels.templates.manager.deleteTitle": "Delete Template",
+  "channels.templates.manager.deleteDescription": "Delete template \"{{name}}\"? Channels that already applied it keep their current configuration.",
+  "channels.templates.manager.deleting": "Deleting...",
+  "channels.templates.dialogs.edit.title": "Edit Template",
+  "channels.templates.dialogs.edit.description": "Update the template configuration. Changes do not affect channels until you apply the template again.",
+  "channels.templates.validation.duplicateName": "A template named \"{{name}}\" already exists. Choose a different name."
 }
