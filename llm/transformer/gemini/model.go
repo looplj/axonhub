@@ -215,6 +215,13 @@ type UrlContext struct{}
 type ToolConfig struct {
 	// FunctionCallingConfig is the function calling config.
 	FunctionCallingConfig *FunctionCallingConfig `json:"functionCallingConfig,omitempty"`
+
+	// IncludeServerSideToolInvocations must be enabled on Gemini 3.x models when
+	// a request combines built-in server-side tools (googleSearch, codeExecution,
+	// urlContext, ...) with functionDeclarations; otherwise the upstream rejects
+	// the request with "Please enable tool_config.include_server_side_tool_invocations
+	// to use Built-in tools with Function calling".
+	IncludeServerSideToolInvocations *bool `json:"includeServerSideToolInvocations,omitempty"`
 }
 
 // FunctionCallingConfig is the function calling config.

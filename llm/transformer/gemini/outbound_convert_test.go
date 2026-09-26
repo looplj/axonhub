@@ -996,6 +996,125 @@ func TestConvertLLMToGeminiRequest_Tools(t *testing.T) {
 			},
 		},
 		{
+			name: "mixed builtin and function tools set includeServerSideToolInvocations",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Search and call tools"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:       "get_weather",
+							Parameters: json.RawMessage(`{"type":"object"}`),
+						},
+					},
+					{
+						Type: llm.ToolTypeWebSearch,
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.ToolConfig)
+				require.NotNil(t, result.ToolConfig.IncludeServerSideToolInvocations)
+				require.True(t, *result.ToolConfig.IncludeServerSideToolInvocations)
+			},
+		},
+		{
+			name: "function-only tools do not set includeServerSideToolInvocations",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Call tools"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:       "get_weather",
+							Parameters: json.RawMessage(`{"type":"object"}`),
+						},
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				if result.ToolConfig != nil {
+					require.Nil(t, result.ToolConfig.IncludeServerSideToolInvocations)
+				}
+			},
+		},
+		{
+			name: "builtin-only tools do not set includeServerSideToolInvocations",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Search"),
+						},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: llm.ToolTypeWebSearch,
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				if result.ToolConfig != nil {
+					require.Nil(t, result.ToolConfig.IncludeServerSideToolInvocations)
+				}
+			},
+		},
+		{
+			name: "tool choice config is preserved when mixing builtin and function tools",
+			input: &llm.Request{
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: lo.ToPtr("Search and call tools"),
+						},
+					},
+				},
+				ToolChoice: &llm.ToolChoice{
+					ToolChoice: lo.ToPtr("auto"),
+				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:       "get_weather",
+							Parameters: json.RawMessage(`{"type":"object"}`),
+						},
+					},
+					{
+						Type: llm.ToolTypeWebSearch,
+					},
+				},
+			},
+			validate: func(t *testing.T, result *GenerateContentRequest) {
+				t.Helper()
+				require.NotNil(t, result.ToolConfig)
+				require.NotNil(t, result.ToolConfig.FunctionCallingConfig)
+				require.Equal(t, "AUTO", result.ToolConfig.FunctionCallingConfig.Mode)
+				require.NotNil(t, result.ToolConfig.IncludeServerSideToolInvocations)
+				require.True(t, *result.ToolConfig.IncludeServerSideToolInvocations)
+			},
+		},
+		{
 			name: "request with tool choice auto",
 			input: &llm.Request{
 				Messages: []llm.Message{

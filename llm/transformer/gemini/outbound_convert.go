@@ -234,6 +234,9 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	req.Contents = contents
 
 	// Convert tools
+	hasBuiltinTool := false
+	hasFunctionDeclaration := false
+
 	if len(chatReq.Tools) > 0 {
 		tools := make([]*Tool, 0)
 		functionDeclarations := make([]*FunctionDeclaration, 0)
@@ -255,6 +258,7 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 				}
 
 				functionDeclarations = append(functionDeclarations, fd)
+				hasFunctionDeclaration = true
 
 				if functionTool == nil {
 					functionTool = &Tool{}
@@ -266,15 +270,18 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 					break
 				}
 				tools = append(tools, &Tool{GoogleSearch: &GoogleSearch{}})
+				hasBuiltinTool = true
 
 			case llm.ToolTypeGoogleCodeExecution:
 				if tool.Google != nil && tool.Google.CodeExecution != nil {
 					tools = append(tools, &Tool{CodeExecution: &CodeExecution{}})
+					hasBuiltinTool = true
 				}
 
 			case llm.ToolTypeGoogleUrlContext:
 				if tool.Google != nil && tool.Google.UrlContext != nil {
 					tools = append(tools, &Tool{UrlContext: &UrlContext{}})
+					hasBuiltinTool = true
 				}
 			}
 		}
@@ -291,6 +298,15 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	// Convert tool choice
 	if chatReq.ToolChoice != nil {
 		req.ToolConfig = convertLLMToolChoiceToGeminiToolConfig(chatReq.ToolChoice)
+	}
+
+	// Gemini 3.x rejects mixed built-in + function tool requests unless
+	// toolConfig.includeServerSideToolInvocations is explicitly enabled.
+	if hasBuiltinTool && hasFunctionDeclaration {
+		if req.ToolConfig == nil {
+			req.ToolConfig = &ToolConfig{}
+		}
+		req.ToolConfig.IncludeServerSideToolInvocations = lo.ToPtr(true)
 	}
 
 	// Convert safety settings from TransformerMetadata
