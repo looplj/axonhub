@@ -5,6 +5,11 @@ Filter input for analytics queries. All fields are optional and support multi-se
 When multiple dimensions are specified, they are combined with AND logic.
 """
 input AnalyticsFilter {
+  """
+  Relative window measured back from the moment the query runs, so the server owns
+  the boundary. Overrides startTime/endTime. Supported: last24Hours.
+  """
+  timeWindow: String
   "Start date (inclusive, YYYY-MM-DD, parsed in system timezone)"
   startTime: String
   "End date (inclusive, YYYY-MM-DD, parsed in system timezone)"
@@ -40,6 +45,10 @@ type AnalyticsOverview {
   totalOutputTokens: Int!
   totalRequests: Int!
   totalCost: Float!
+  "Failed request executions within the filter (from request_executions)"
+  failedRequests: Int!
+  "Success rate of request executions (completed / (completed + failed)) within the filter, 0-100"
+  successRate: Float!
 }
 
 """

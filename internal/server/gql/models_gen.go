@@ -85,6 +85,9 @@ type AnalyticsDimensionStat struct {
 // Filter input for analytics queries. All fields are optional and support multi-select.
 // When multiple dimensions are specified, they are combined with AND logic.
 type AnalyticsFilter struct {
+	// Relative window measured back from the moment the query runs, so the server owns
+	// the boundary. Overrides startTime/endTime. Supported: last24Hours.
+	TimeWindow *string `json:"timeWindow,omitempty"`
 	// Start date (inclusive, YYYY-MM-DD, parsed in system timezone)
 	StartTime *string `json:"startTime,omitempty"`
 	// End date (inclusive, YYYY-MM-DD, parsed in system timezone)
@@ -116,6 +119,10 @@ type AnalyticsOverview struct {
 	TotalOutputTokens        int     `json:"totalOutputTokens"`
 	TotalRequests            int     `json:"totalRequests"`
 	TotalCost                float64 `json:"totalCost"`
+	// Failed request executions within the filter (from request_executions)
+	FailedRequests int `json:"failedRequests"`
+	// Success rate of request executions (completed / (completed + failed)) within the filter, 0-100
+	SuccessRate float64 `json:"successRate"`
 }
 
 type ApplyChannelOverrideTemplateInput struct {
@@ -189,7 +196,8 @@ type ChannelLimiterStats struct {
 	QueueSize int `json:"queueSize"`
 }
 
-// Performance statistics for a specific channel on a given date
+// Performance statistics for a specific channel in a single time bucket.
+// The date is "YYYY-MM-DD" for daily buckets and "YYYY-MM-DD HH:00" for hourly ones.
 type ChannelPerformanceStat struct {
 	Date         string   `json:"date"`
 	ChannelID    string   `json:"channelId"`
@@ -279,10 +287,27 @@ type DailyRequestStats struct {
 }
 
 type DashboardOverview struct {
-	TotalRequests       int           `json:"totalRequests"`
-	RequestStats        *RequestStats `json:"requestStats"`
-	FailedRequests      int           `json:"failedRequests"`
-	AverageResponseTime *float64      `json:"averageResponseTime,omitempty"`
+	// All-time attempts from the requests table, counting every status. That table is
+	// pruned by the request GC retention policy, so this is whatever has survived it
+	// and never an all-time total. Use usage_logs for a request count that means
+	// anything.
+	TotalRequests int           `json:"totalRequests"`
+	RequestStats  *RequestStats `json:"requestStats"`
+	// Failed attempts from the requests table, same pruning caveat as totalRequests.
+	FailedRequests      int      `json:"failedRequests"`
+	AverageResponseTime *float64 `json:"averageResponseTime,omitempty"`
+	// Throughput and first-token latency over the trailing 24 hours.
+	Last24HoursPerformance *RecentPerformanceStats `json:"last24HoursPerformance"`
+	// Terminal execution outcomes over the trailing 24 hours.
+	Last24HoursExecutions *ExecutionOutcomeStats `json:"last24HoursExecutions"`
+}
+
+// Terminal execution outcomes over the trailing 24 hours. Success rate cannot come
+// from usage_logs, which has no status column.
+type ExecutionOutcomeStats struct {
+	Succeeded   int     `json:"succeeded"`
+	Failed      int     `json:"failed"`
+	SuccessRate float64 `json:"successRate"`
 }
 
 type FastestChannel struct {
@@ -351,7 +376,8 @@ type LoadAPIKeyProfileTemplateInput struct {
 	APIKeyID   objects.GUID `json:"apiKeyID"`
 }
 
-// Performance statistics for a specific model on a given date
+// Performance statistics for a specific model in a single time bucket.
+// The date is "YYYY-MM-DD" for daily buckets and "YYYY-MM-DD HH:00" for hourly ones.
 type ModelPerformanceStat struct {
 	Date         string   `json:"date"`
 	ModelID      string   `json:"modelId"`
@@ -415,6 +441,19 @@ type QueryModelsInput struct {
 	IncludeMapping          *bool            `json:"includeMapping,omitempty"`
 	IncludePrefix           *bool            `json:"includePrefix,omitempty"`
 	IncludeAllChannelModels *bool            `json:"includeAllChannelModels,omitempty"`
+}
+
+// Throughput and first-token latency over the trailing 24 hours, from
+// request_execution. Every field is null when the window holds no completed
+// generation; that is what an empty install and an idle one look like, and it is
+// deliberately not the same as a measured zero.
+type RecentPerformanceStats struct {
+	// Weighted tokens per second of generation time over the window
+	Throughput *float64 `json:"throughput,omitempty"`
+	// Median first-token latency in ms; streaming executions only
+	FirstTokenP50Ms *int `json:"firstTokenP50Ms,omitempty"`
+	// 90th percentile first-token latency in ms; streaming executions only
+	FirstTokenP90Ms *int `json:"firstTokenP90Ms,omitempty"`
 }
 
 type RemoveUserFromProjectInput struct {

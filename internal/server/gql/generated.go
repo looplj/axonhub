@@ -260,6 +260,8 @@ type ComplexityRoot struct {
 	}
 
 	AnalyticsOverview struct {
+		FailedRequests           func(childComplexity int) int
+		SuccessRate              func(childComplexity int) int
 		TotalCachedInputTokens   func(childComplexity int) int
 		TotalCost                func(childComplexity int) int
 		TotalInputTokens         func(childComplexity int) int
@@ -671,10 +673,12 @@ type ComplexityRoot struct {
 	}
 
 	DashboardOverview struct {
-		AverageResponseTime func(childComplexity int) int
-		FailedRequests      func(childComplexity int) int
-		RequestStats        func(childComplexity int) int
-		TotalRequests       func(childComplexity int) int
+		AverageResponseTime    func(childComplexity int) int
+		FailedRequests         func(childComplexity int) int
+		Last24HoursExecutions  func(childComplexity int) int
+		Last24HoursPerformance func(childComplexity int) int
+		RequestStats           func(childComplexity int) int
+		TotalRequests          func(childComplexity int) int
 	}
 
 	DataStorage struct {
@@ -748,6 +752,12 @@ type ComplexityRoot struct {
 		ChannelIds         func(childComplexity int) int
 		ChannelNamePattern func(childComplexity int) int
 		ChannelTags        func(childComplexity int) int
+	}
+
+	ExecutionOutcomeStats struct {
+		Failed      func(childComplexity int) int
+		Succeeded   func(childComplexity int) int
+		SuccessRate func(childComplexity int) int
 	}
 
 	FastestChannel struct {
@@ -1404,7 +1414,7 @@ type ComplexityRoot struct {
 		BrandSettings                   func(childComplexity int) int
 		CatalogSettings                 func(childComplexity int) int
 		ChannelOverrideTemplates        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOverrideTemplateOrder, where *ent.ChannelOverrideTemplateWhereInput) int
-		ChannelPerformanceStats         func(childComplexity int) int
+		ChannelPerformanceStats         func(childComplexity int, timeWindow *string, startTime *string, endTime *string) int
 		ChannelProbeData                func(childComplexity int, input biz.GetChannelProbeDataInput) int
 		ChannelSuccessRates             func(childComplexity int, timeWindow *string, limit *int) int
 		Channels                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
@@ -1422,7 +1432,7 @@ type ComplexityRoot struct {
 		FetchModels                     func(childComplexity int, input biz.FetchModelsInput) int
 		GetCacheDiagnostics             func(childComplexity int, input *GetCacheDiagnosticsInput) int
 		Me                              func(childComplexity int) int
-		ModelPerformanceStats           func(childComplexity int) int
+		ModelPerformanceStats           func(childComplexity int, timeWindow *string, startTime *string, endTime *string) int
 		Models                          func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ModelOrder, where *ent.ModelWhereInput) int
 		MyProjects                      func(childComplexity int) int
 		Node                            func(childComplexity int, id objects.GUID) int
@@ -1480,6 +1490,12 @@ type ComplexityRoot struct {
 	ReasoningEffortMapping struct {
 		From func(childComplexity int) int
 		To   func(childComplexity int) int
+	}
+
+	RecentPerformanceStats struct {
+		FirstTokenP50Ms func(childComplexity int) int
+		FirstTokenP90Ms func(childComplexity int) int
+		Throughput      func(childComplexity int) int
 	}
 
 	RegexAssociation struct {
@@ -2440,8 +2456,8 @@ type QueryResolver interface {
 	ChannelSuccessRates(ctx context.Context, timeWindow *string, limit *int) ([]*ChannelSuccessRate, error)
 	FastestChannels(ctx context.Context, input FastestChannelsInput) ([]*FastestChannel, error)
 	FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error)
-	ModelPerformanceStats(ctx context.Context) ([]*ModelPerformanceStat, error)
-	ChannelPerformanceStats(ctx context.Context) ([]*ChannelPerformanceStat, error)
+	ModelPerformanceStats(ctx context.Context, timeWindow *string, startTime *string, endTime *string) ([]*ModelPerformanceStat, error)
+	ChannelPerformanceStats(ctx context.Context, timeWindow *string, startTime *string, endTime *string) ([]*ChannelPerformanceStat, error)
 	TokenStatsByChannel(ctx context.Context, timeWindow *string) ([]*TokenStatsByChannel, error)
 	TokenStatsByModel(ctx context.Context, timeWindow *string) ([]*TokenStatsByModel, error)
 	CostStatsByChannel(ctx context.Context, timeWindow *string) ([]*CostStatsByChannel, error)
@@ -3205,6 +3221,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.AnalyticsMetadata.EarliestDate(childComplexity), true
 
+	case "AnalyticsOverview.failedRequests":
+		if e.complexity.AnalyticsOverview.FailedRequests == nil {
+			break
+		}
+
+		return e.complexity.AnalyticsOverview.FailedRequests(childComplexity), true
+	case "AnalyticsOverview.successRate":
+		if e.complexity.AnalyticsOverview.SuccessRate == nil {
+			break
+		}
+
+		return e.complexity.AnalyticsOverview.SuccessRate(childComplexity), true
 	case "AnalyticsOverview.totalCachedInputTokens":
 		if e.complexity.AnalyticsOverview.TotalCachedInputTokens == nil {
 			break
@@ -4763,6 +4791,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DashboardOverview.FailedRequests(childComplexity), true
+	case "DashboardOverview.last24HoursExecutions":
+		if e.complexity.DashboardOverview.Last24HoursExecutions == nil {
+			break
+		}
+
+		return e.complexity.DashboardOverview.Last24HoursExecutions(childComplexity), true
+	case "DashboardOverview.last24HoursPerformance":
+		if e.complexity.DashboardOverview.Last24HoursPerformance == nil {
+			break
+		}
+
+		return e.complexity.DashboardOverview.Last24HoursPerformance(childComplexity), true
 	case "DashboardOverview.requestStats":
 		if e.complexity.DashboardOverview.RequestStats == nil {
 			break
@@ -5036,6 +5076,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ExcludeAssociation.ChannelTags(childComplexity), true
+
+	case "ExecutionOutcomeStats.failed":
+		if e.complexity.ExecutionOutcomeStats.Failed == nil {
+			break
+		}
+
+		return e.complexity.ExecutionOutcomeStats.Failed(childComplexity), true
+	case "ExecutionOutcomeStats.succeeded":
+		if e.complexity.ExecutionOutcomeStats.Succeeded == nil {
+			break
+		}
+
+		return e.complexity.ExecutionOutcomeStats.Succeeded(childComplexity), true
+	case "ExecutionOutcomeStats.successRate":
+		if e.complexity.ExecutionOutcomeStats.SuccessRate == nil {
+			break
+		}
+
+		return e.complexity.ExecutionOutcomeStats.SuccessRate(childComplexity), true
 
 	case "FastestChannel.channelId":
 		if e.complexity.FastestChannel.ChannelID == nil {
@@ -8444,7 +8503,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.ChannelPerformanceStats(childComplexity), true
+		args, err := ec.field_Query_channelPerformanceStats_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ChannelPerformanceStats(childComplexity, args["timeWindow"].(*string), args["startTime"].(*string), args["endTime"].(*string)), true
 	case "Query.channelProbeData":
 		if e.complexity.Query.ChannelProbeData == nil {
 			break
@@ -8617,7 +8681,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			break
 		}
 
-		return e.complexity.Query.ModelPerformanceStats(childComplexity), true
+		args, err := ec.field_Query_modelPerformanceStats_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ModelPerformanceStats(childComplexity, args["timeWindow"].(*string), args["startTime"].(*string), args["endTime"].(*string)), true
 	case "Query.models":
 		if e.complexity.Query.Models == nil {
 			break
@@ -9056,6 +9125,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ReasoningEffortMapping.To(childComplexity), true
+
+	case "RecentPerformanceStats.firstTokenP50Ms":
+		if e.complexity.RecentPerformanceStats.FirstTokenP50Ms == nil {
+			break
+		}
+
+		return e.complexity.RecentPerformanceStats.FirstTokenP50Ms(childComplexity), true
+	case "RecentPerformanceStats.firstTokenP90Ms":
+		if e.complexity.RecentPerformanceStats.FirstTokenP90Ms == nil {
+			break
+		}
+
+		return e.complexity.RecentPerformanceStats.FirstTokenP90Ms(childComplexity), true
+	case "RecentPerformanceStats.throughput":
+		if e.complexity.RecentPerformanceStats.Throughput == nil {
+			break
+		}
+
+		return e.complexity.RecentPerformanceStats.Throughput(childComplexity), true
 
 	case "RegexAssociation.exclude":
 		if e.complexity.RegexAssociation.Exclude == nil {
@@ -14488,6 +14576,27 @@ func (ec *executionContext) field_Query_channelOverrideTemplates_args(ctx contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_channelPerformanceStats_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "startTime", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["startTime"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "endTime", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["endTime"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_channelProbeData_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14683,6 +14792,27 @@ func (ec *executionContext) field_Query_getCacheDiagnostics_args(ctx context.Con
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_modelPerformanceStats_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeWindow", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["timeWindow"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "startTime", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["startTime"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "endTime", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["endTime"] = arg2
 	return args, nil
 }
 
@@ -18997,6 +19127,64 @@ func (ec *executionContext) _AnalyticsOverview_totalCost(ctx context.Context, fi
 }
 
 func (ec *executionContext) fieldContext_AnalyticsOverview_totalCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnalyticsOverview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnalyticsOverview_failedRequests(ctx context.Context, field graphql.CollectedField, obj *AnalyticsOverview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AnalyticsOverview_failedRequests,
+		func(ctx context.Context) (any, error) {
+			return obj.FailedRequests, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AnalyticsOverview_failedRequests(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AnalyticsOverview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AnalyticsOverview_successRate(ctx context.Context, field graphql.CollectedField, obj *AnalyticsOverview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AnalyticsOverview_successRate,
+		func(ctx context.Context) (any, error) {
+			return obj.SuccessRate, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AnalyticsOverview_successRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AnalyticsOverview",
 		Field:      field,
@@ -27288,6 +27476,80 @@ func (ec *executionContext) fieldContext_DashboardOverview_averageResponseTime(_
 	return fc, nil
 }
 
+func (ec *executionContext) _DashboardOverview_last24HoursPerformance(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DashboardOverview_last24HoursPerformance,
+		func(ctx context.Context) (any, error) {
+			return obj.Last24HoursPerformance, nil
+		},
+		nil,
+		ec.marshalNRecentPerformanceStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRecentPerformanceStats,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DashboardOverview_last24HoursPerformance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardOverview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "throughput":
+				return ec.fieldContext_RecentPerformanceStats_throughput(ctx, field)
+			case "firstTokenP50Ms":
+				return ec.fieldContext_RecentPerformanceStats_firstTokenP50Ms(ctx, field)
+			case "firstTokenP90Ms":
+				return ec.fieldContext_RecentPerformanceStats_firstTokenP90Ms(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RecentPerformanceStats", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DashboardOverview_last24HoursExecutions(ctx context.Context, field graphql.CollectedField, obj *DashboardOverview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_DashboardOverview_last24HoursExecutions,
+		func(ctx context.Context) (any, error) {
+			return obj.Last24HoursExecutions, nil
+		},
+		nil,
+		ec.marshalNExecutionOutcomeStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐExecutionOutcomeStats,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_DashboardOverview_last24HoursExecutions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DashboardOverview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "succeeded":
+				return ec.fieldContext_ExecutionOutcomeStats_succeeded(ctx, field)
+			case "failed":
+				return ec.fieldContext_ExecutionOutcomeStats_failed(ctx, field)
+			case "successRate":
+				return ec.fieldContext_ExecutionOutcomeStats_successRate(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExecutionOutcomeStats", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _DataStorage_id(ctx context.Context, field graphql.CollectedField, obj *ent.DataStorage) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -28593,6 +28855,93 @@ func (ec *executionContext) fieldContext_ExcludeAssociation_channelTags(_ contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExecutionOutcomeStats_succeeded(ctx context.Context, field graphql.CollectedField, obj *ExecutionOutcomeStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ExecutionOutcomeStats_succeeded,
+		func(ctx context.Context) (any, error) {
+			return obj.Succeeded, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ExecutionOutcomeStats_succeeded(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExecutionOutcomeStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExecutionOutcomeStats_failed(ctx context.Context, field graphql.CollectedField, obj *ExecutionOutcomeStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ExecutionOutcomeStats_failed,
+		func(ctx context.Context) (any, error) {
+			return obj.Failed, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ExecutionOutcomeStats_failed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExecutionOutcomeStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExecutionOutcomeStats_successRate(ctx context.Context, field graphql.CollectedField, obj *ExecutionOutcomeStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ExecutionOutcomeStats_successRate,
+		func(ctx context.Context) (any, error) {
+			return obj.SuccessRate, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ExecutionOutcomeStats_successRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExecutionOutcomeStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -45937,6 +46286,10 @@ func (ec *executionContext) fieldContext_Query_dashboardOverview(_ context.Conte
 				return ec.fieldContext_DashboardOverview_failedRequests(ctx, field)
 			case "averageResponseTime":
 				return ec.fieldContext_DashboardOverview_averageResponseTime(ctx, field)
+			case "last24HoursPerformance":
+				return ec.fieldContext_DashboardOverview_last24HoursPerformance(ctx, field)
+			case "last24HoursExecutions":
+				return ec.fieldContext_DashboardOverview_last24HoursExecutions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DashboardOverview", field.Name)
 		},
@@ -46555,7 +46908,8 @@ func (ec *executionContext) _Query_modelPerformanceStats(ctx context.Context, fi
 		field,
 		ec.fieldContext_Query_modelPerformanceStats,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().ModelPerformanceStats(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().ModelPerformanceStats(ctx, fc.Args["timeWindow"].(*string), fc.Args["startTime"].(*string), fc.Args["endTime"].(*string))
 		},
 		nil,
 		ec.marshalNModelPerformanceStat2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐModelPerformanceStatᚄ,
@@ -46564,7 +46918,7 @@ func (ec *executionContext) _Query_modelPerformanceStats(ctx context.Context, fi
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_modelPerformanceStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_modelPerformanceStats(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -46586,6 +46940,17 @@ func (ec *executionContext) fieldContext_Query_modelPerformanceStats(_ context.C
 			return nil, fmt.Errorf("no field named %q was found under type ModelPerformanceStat", field.Name)
 		},
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_modelPerformanceStats_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
 	return fc, nil
 }
 
@@ -46596,7 +46961,8 @@ func (ec *executionContext) _Query_channelPerformanceStats(ctx context.Context, 
 		field,
 		ec.fieldContext_Query_channelPerformanceStats,
 		func(ctx context.Context) (any, error) {
-			return ec.resolvers.Query().ChannelPerformanceStats(ctx)
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().ChannelPerformanceStats(ctx, fc.Args["timeWindow"].(*string), fc.Args["startTime"].(*string), fc.Args["endTime"].(*string))
 		},
 		nil,
 		ec.marshalNChannelPerformanceStat2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelPerformanceStatᚄ,
@@ -46605,7 +46971,7 @@ func (ec *executionContext) _Query_channelPerformanceStats(ctx context.Context, 
 	)
 }
 
-func (ec *executionContext) fieldContext_Query_channelPerformanceStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_channelPerformanceStats(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -46628,6 +46994,17 @@ func (ec *executionContext) fieldContext_Query_channelPerformanceStats(_ context
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelPerformanceStat", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_channelPerformanceStats_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -48409,6 +48786,10 @@ func (ec *executionContext) fieldContext_Query_analyticsOverview(ctx context.Con
 				return ec.fieldContext_AnalyticsOverview_totalRequests(ctx, field)
 			case "totalCost":
 				return ec.fieldContext_AnalyticsOverview_totalCost(ctx, field)
+			case "failedRequests":
+				return ec.fieldContext_AnalyticsOverview_failedRequests(ctx, field)
+			case "successRate":
+				return ec.fieldContext_AnalyticsOverview_successRate(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AnalyticsOverview", field.Name)
 		},
@@ -48735,6 +49116,93 @@ func (ec *executionContext) fieldContext_ReasoningEffortMapping_to(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecentPerformanceStats_throughput(ctx context.Context, field graphql.CollectedField, obj *RecentPerformanceStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecentPerformanceStats_throughput,
+		func(ctx context.Context) (any, error) {
+			return obj.Throughput, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecentPerformanceStats_throughput(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecentPerformanceStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecentPerformanceStats_firstTokenP50Ms(ctx context.Context, field graphql.CollectedField, obj *RecentPerformanceStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecentPerformanceStats_firstTokenP50Ms,
+		func(ctx context.Context) (any, error) {
+			return obj.FirstTokenP50Ms, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecentPerformanceStats_firstTokenP50Ms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecentPerformanceStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RecentPerformanceStats_firstTokenP90Ms(ctx context.Context, field graphql.CollectedField, obj *RecentPerformanceStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RecentPerformanceStats_firstTokenP90Ms,
+		func(ctx context.Context) (any, error) {
+			return obj.FirstTokenP90Ms, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RecentPerformanceStats_firstTokenP90Ms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RecentPerformanceStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -66436,13 +66904,20 @@ func (ec *executionContext) unmarshalInputAnalyticsFilter(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"startTime", "endTime", "projectIDs", "channelIDs", "modelIDs", "apiKeyIDs", "userIDs"}
+	fieldsInOrder := [...]string{"timeWindow", "startTime", "endTime", "projectIDs", "channelIDs", "modelIDs", "apiKeyIDs", "userIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "timeWindow":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeWindow"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TimeWindow = data
 		case "startTime":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("startTime"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -93417,6 +93892,16 @@ func (ec *executionContext) _AnalyticsOverview(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "failedRequests":
+			out.Values[i] = ec._AnalyticsOverview_failedRequests(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "successRate":
+			out.Values[i] = ec._AnalyticsOverview_successRate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -97276,6 +97761,16 @@ func (ec *executionContext) _DashboardOverview(ctx context.Context, sel ast.Sele
 			}
 		case "averageResponseTime":
 			out.Values[i] = ec._DashboardOverview_averageResponseTime(ctx, field, obj)
+		case "last24HoursPerformance":
+			out.Values[i] = ec._DashboardOverview_last24HoursPerformance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "last24HoursExecutions":
+			out.Values[i] = ec._DashboardOverview_last24HoursExecutions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -97901,6 +98396,55 @@ func (ec *executionContext) _ExcludeAssociation(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ExcludeAssociation_channelIds(ctx, field, obj)
 		case "channelTags":
 			out.Values[i] = ec._ExcludeAssociation_channelTags(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var executionOutcomeStatsImplementors = []string{"ExecutionOutcomeStats"}
+
+func (ec *executionContext) _ExecutionOutcomeStats(ctx context.Context, sel ast.SelectionSet, obj *ExecutionOutcomeStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, executionOutcomeStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExecutionOutcomeStats")
+		case "succeeded":
+			out.Values[i] = ec._ExecutionOutcomeStats_succeeded(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "failed":
+			out.Values[i] = ec._ExecutionOutcomeStats_failed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "successRate":
+			out.Values[i] = ec._ExecutionOutcomeStats_successRate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -105146,6 +105690,46 @@ func (ec *executionContext) _ReasoningEffortMapping(ctx context.Context, sel ast
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var recentPerformanceStatsImplementors = []string{"RecentPerformanceStats"}
+
+func (ec *executionContext) _RecentPerformanceStats(ctx context.Context, sel ast.SelectionSet, obj *RecentPerformanceStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, recentPerformanceStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RecentPerformanceStats")
+		case "throughput":
+			out.Values[i] = ec._RecentPerformanceStats_throughput(ctx, field, obj)
+		case "firstTokenP50Ms":
+			out.Values[i] = ec._RecentPerformanceStats_firstTokenP50Ms(ctx, field, obj)
+		case "firstTokenP90Ms":
+			out.Values[i] = ec._RecentPerformanceStats_firstTokenP90Ms(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -115045,6 +115629,16 @@ func (ec *executionContext) unmarshalNExcludeAssociationInput2ᚖgithubᚗcomᚋ
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNExecutionOutcomeStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐExecutionOutcomeStats(ctx context.Context, sel ast.SelectionSet, v *ExecutionOutcomeStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExecutionOutcomeStats(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNFastestChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐFastestChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*FastestChannel) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -117195,6 +117789,16 @@ func (ec *executionContext) marshalNReasoningEffortMapping2githubᚗcomᚋlooplj
 func (ec *executionContext) unmarshalNReasoningEffortMappingInput2githubᚗcomᚋloopljᚋaxonhubᚋllmᚐReasoningEffortMapping(ctx context.Context, v any) (llm.ReasoningEffortMapping, error) {
 	res, err := ec.unmarshalInputReasoningEffortMappingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRecentPerformanceStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRecentPerformanceStats(ctx context.Context, sel ast.SelectionSet, v *RecentPerformanceStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RecentPerformanceStats(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRemoveUserFromProjectInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐRemoveUserFromProjectInput(ctx context.Context, v any) (RemoveUserFromProjectInput, error) {

@@ -8,6 +8,7 @@ function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
 import { useGeneralSettings } from '@/features/system/data/system';
+import { useRoutePermissions } from '@/hooks/useRoutePermissions';
 import type { AnalyticsDimensionStat } from '../data/analytics';
 
 type Dimension = 'channel' | 'model' | 'apiKey' | 'user';
@@ -30,6 +31,7 @@ export function DimensionDetailTable({
   const { t, i18n } = useTranslation();
   const [dimension, setDimension] = useState<Dimension>('channel');
   const { data: generalSettings } = useGeneralSettings();
+  const { isProjectOwner } = useRoutePermissions();
 
   const currencyCode = generalSettings?.currencyCode || 'USD';
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
@@ -53,7 +55,9 @@ export function DimensionDetailTable({
     user: userStats,
   };
 
-  const currentData = dimensionData[dimension] || [];
+  const visibleDimensions: Dimension[] = isProjectOwner ? ['channel', 'model', 'apiKey', 'user'] : ['channel', 'model', 'apiKey'];
+  const activeDimension = visibleDimensions.includes(dimension) ? dimension : 'channel';
+  const currentData = dimensionData[activeDimension] || [];
 
   if (isLoading) {
     return (
@@ -72,20 +76,13 @@ export function DimensionDetailTable({
     <Card className='hover-card'>
       <CardHeader className='flex flex-row items-center justify-between'>
         <CardTitle>{t('analytics.table.title')}</CardTitle>
-        <Tabs value={dimension} onValueChange={(v) => setDimension(v as Dimension)}>
+        <Tabs value={activeDimension} onValueChange={(v) => setDimension(v as Dimension)}>
           <TabsList className='h-8'>
-            <TabsTrigger value='channel' className='text-xs'>
-              {t('analytics.table.channel')}
-            </TabsTrigger>
-            <TabsTrigger value='model' className='text-xs'>
-              {t('analytics.table.model')}
-            </TabsTrigger>
-            <TabsTrigger value='apiKey' className='text-xs'>
-              {t('analytics.table.apiKey')}
-            </TabsTrigger>
-            <TabsTrigger value='user' className='text-xs'>
-              {t('analytics.table.user')}
-            </TabsTrigger>
+            {visibleDimensions.map((value) => (
+              <TabsTrigger key={value} value={value} className='text-xs'>
+                {t(`analytics.table.${value}`)}
+              </TabsTrigger>
+            ))}
           </TabsList>
         </Tabs>
       </CardHeader>

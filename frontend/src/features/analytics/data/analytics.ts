@@ -1,10 +1,14 @@
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
-
+import { useSelectedProjectId } from '@/stores/projectStore';
 // --- Zod Schemas ---
 
+/** Analytics filter: time range plus the optional dimension selectors. */
 export const analyticsFilterSchema = z.object({
+  // A rolling window the backend measures from the moment the query runs; it overrides
+  // startTime/endTime, which are calendar dates and cannot express it.
+  timeWindow: z.string().nullable().optional(),
   startTime: z.string().nullable().optional(), // 'YYYY-MM-DD' 或 ISO timestamp
   endTime: z.string().nullable().optional(),
   projectIDs: z.array(z.string()).optional(),
@@ -16,6 +20,8 @@ export const analyticsFilterSchema = z.object({
 
 export type AnalyticsFilter = z.infer<typeof analyticsFilterSchema>;
 
+/** Aggregate totals for the filtered range, including the success rate computed
+ * from request_executions. */
 export const analyticsOverviewSchema = z.object({
   totalTokens: z.number(),
   totalInputTokens: z.number(),
@@ -24,10 +30,13 @@ export const analyticsOverviewSchema = z.object({
   totalOutputTokens: z.number(),
   totalRequests: z.number(),
   totalCost: z.number(),
+  failedRequests: z.number(),
+  successRate: z.number(),
 });
 
 export type AnalyticsOverview = z.infer<typeof analyticsOverviewSchema>;
 
+/** One row of the daily trend series. */
 export const analyticsDailyStatSchema = z.object({
   date: z.string(),
   inputTokens: z.number(),
@@ -41,6 +50,7 @@ export const analyticsDailyStatSchema = z.object({
 
 export type AnalyticsDailyStat = z.infer<typeof analyticsDailyStatSchema>;
 
+/** One row of a grouped breakdown (channel, model, API key or user). */
 export const analyticsDimensionStatSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -54,6 +64,7 @@ export const analyticsDimensionStatSchema = z.object({
 
 export type AnalyticsDimensionStat = z.infer<typeof analyticsDimensionStatSchema>;
 
+/** Earliest date with data, used to bound the "all time" preset. */
 export const analyticsMetadataSchema = z.object({
   earliestDate: z.string().nullable().optional(),
 });
@@ -80,6 +91,8 @@ const ANALYTICS_OVERVIEW_QUERY = `
       totalOutputTokens
       totalRequests
       totalCost
+      failedRequests
+      successRate
     }
   }
 `;
@@ -116,12 +129,14 @@ const ANALYTICS_DIMENSION_STATS_QUERY = `
 
 // --- Helper: convert filter to GraphQL input ---
 
-// 直接发 YYYY-MM-DD 字符串，后端用系统时区解析（同仪表盘模式）
+/** Forward the filter as GraphQL input, dropping empty dimensions so the backend
+ * does not receive empty arrays that would narrow the query to nothing. */
 export function toGraphQLFilter(filter: AnalyticsFilter | null): Record<string, unknown> | null {
   if (!filter) return null;
 
   const result: Record<string, unknown> = {};
 
+  if (filter.timeWindow) result.timeWindow = filter.timeWindow;
   if (filter.startTime) result.startTime = filter.startTime;
   if (filter.endTime) result.endTime = filter.endTime;
   if (filter.projectIDs && filter.projectIDs.length > 0) result.projectIDs = filter.projectIDs;
@@ -135,6 +150,7 @@ export function toGraphQLFilter(filter: AnalyticsFilter | null): Record<string, 
 
 // --- React Query Hooks ---
 
+/** Earliest date with data; cached for 5 minutes because it changes rarely. */
 export function useAnalyticsMetadata() {
   return useQuery({
     queryKey: ['analyticsMetadata'],
@@ -148,6 +164,7 @@ export function useAnalyticsMetadata() {
   });
 }
 
+/** Aggregate totals for the filtered range. */
 export function useAnalyticsOverview(filter: AnalyticsFilter | null) {
   return useQuery({
     queryKey: ['analyticsOverview', filter],
@@ -164,6 +181,7 @@ export function useAnalyticsOverview(filter: AnalyticsFilter | null) {
   });
 }
 
+/** Daily trend series for the filtered range. */
 export function useAnalyticsDailyStats(filter: AnalyticsFilter | null) {
   return useQuery({
     queryKey: ['analyticsDailyStats', filter],
@@ -180,19 +198,23 @@ export function useAnalyticsDailyStats(filter: AnalyticsFilter | null) {
   });
 }
 
-export function useAnalyticsDimensionStats(filter: AnalyticsFilter | null, dimension: string) {
+/** Breakdown for one dimension; disabled until a dimension is selected. */
+export function useAnalyticsDimensionStats(filter: AnalyticsFilter | null, dimension: string, enabled = true) {
+  const selectedProjectId = useSelectedProjectId();
+
   return useQuery({
-    queryKey: ['analyticsDimensionStats', filter, dimension],
+    queryKey: ['analyticsDimensionStats', filter, dimension, selectedProjectId],
     queryFn: async () => {
       const gqlFilter = toGraphQLFilter(filter);
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
       const data = await graphqlRequest<{ analyticsDimensionStats: AnalyticsDimensionStat[] }>(
         ANALYTICS_DIMENSION_STATS_QUERY,
-        { filter: gqlFilter, dimension }
+        { filter: gqlFilter, dimension },
+        headers
       );
       return data.analyticsDimensionStats.map((item) => analyticsDimensionStatSchema.parse(item));
     },
-    enabled: !!dimension,
+    enabled: enabled && !!dimension,
     refetchInterval: 60000,
-    placeholderData: (previousData) => previousData,
   });
 }

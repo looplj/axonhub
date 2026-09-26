@@ -2,15 +2,18 @@
 
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { UseQueryResult } from '@tanstack/react-query';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell, type TooltipProps } from 'recharts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Loader2 } from 'lucide-react';
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber } from '@/utils/format-number';
-import { TimePeriodSelector, type FastestTimeWindow } from '@/components/time-period-selector';
 import { safeNumber, safeToFixed, sanitizeChartData, type ChartData } from '../utils/chart-helpers';
 import { ChartLegend, type ChartLegendItem } from './chart-legend';
+import { RangeBadge } from './range-badge';
+import { useFastestChannels, useFastestModels } from '../data/fastest-performers';
+import type { FastestChannel, FastestModel } from '../data/fastest-performers';
+import { performanceWindowFromRange, type CoarseTimeWindow, type RelativeTimeWindow } from '../utils/time-window';
 
 // 5 colors matches the slice limit in chartData processing (.slice(0, 5))
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
@@ -22,6 +25,8 @@ interface HorizontalBarChartProps {
   noDataLabel: string;
 }
 
+/** Horizontal throughput bars with a custom tooltip; labels are hidden because the
+ * rows are rendered as a list beside the chart. */
 function HorizontalBarChart({ data, total, height = 280, noDataLabel }: HorizontalBarChartProps) {
   const safeData = sanitizeChartData(data);
   const safeTotal = safeNumber(total);
@@ -60,14 +65,7 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
       <BarChart data={safeData} layout='vertical' barSize={32} margin={{ left: 20, right: 20, top: 10, bottom: 10 }}>
         <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' horizontal={false} />
         <XAxis type='number' hide />
-        <YAxis
-          type='category'
-          dataKey='name'
-          width={10}
-          tick={false}
-          tickLine={false}
-          axisLine={false}
-        />
+        <YAxis type='category' dataKey='name' width={10} tick={false} tickLine={false} axisLine={false} />
         <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
         <Bar dataKey='throughput' radius={[0, 4, 4, 0]}>
           {safeData.map((_, index) => (
@@ -79,39 +77,55 @@ function HorizontalBarChart({ data, total, height = 280, noDataLabel }: Horizont
   );
 }
 
-interface ThroughputData {
-  throughput?: number;
-  requestCount?: number;
+interface FastestPerformersCardProps {
+  startTime: string | null;
+  endTime: string | null;
+  timeWindow?: RelativeTimeWindow;
 }
 
-interface FastestPerformersCardProps<T extends ThroughputData> {
-  title: string;
-  description: (totalRequests: number) => string;
-  noDataLabel: string;
-  useData: (timeWindow: string) => UseQueryResult<T[], Error>;
-  getName: (item: T) => string | null;
-}
+type FastestDimension = 'channel' | 'model';
 
-export function FastestPerformersCard<T extends ThroughputData>({
-  title,
-  description,
-  noDataLabel,
-  useData,
-  getName,
-}: FastestPerformersCardProps<T>) {
+/** Throughput leaderboard with a model/channel switch; the time window is derived
+ * from the shared time range filter. */
+export function FastestPerformersCard({ startTime, endTime, timeWindow }: FastestPerformersCardProps) {
   const { t } = useTranslation();
-  const [timeWindow, setTimeWindow] = useState<FastestTimeWindow>('month');
+  const [dimension, setDimension] = useState<FastestDimension>('channel');
+  const coarseWindow: CoarseTimeWindow = performanceWindowFromRange(startTime, endTime, timeWindow);
 
-  const { data: items, isLoading, isFetching, error } = useData(timeWindow);
+  const channelsQuery = useFastestChannels(coarseWindow);
+  const modelsQuery = useFastestModels(coarseWindow);
 
-  if (isLoading && !items) {
+  const isModel = dimension === 'model';
+  const { data, isLoading, isFetching, error } = isModel ? modelsQuery : channelsQuery;
+
+  const title = isModel ? t('dashboard.cards.fastestPerformers.models') : t('dashboard.cards.fastestPerformers.channels');
+  const description = t('dashboard.cards.fastestPerformers.description', {
+    type: isModel ? t('dashboard.cards.fastestPerformers.modelType') : t('dashboard.cards.fastestPerformers.channelType'),
+    count: formatNumber((data ?? []).reduce((sum, item) => sum + safeNumber(item.requestCount), 0)),
+  });
+  const noDataLabel = t('dashboard.cards.fastestPerformers.noData');
+
+  const dimensionSwitch = (
+    <Tabs value={dimension} onValueChange={(value) => setDimension(value as FastestDimension)}>
+      <TabsList className='h-8'>
+        <TabsTrigger value='channel' className='text-xs'>
+          {t('dashboard.stats.channel')}
+        </TabsTrigger>
+        <TabsTrigger value='model' className='text-xs'>
+          {t('dashboard.stats.model')}
+        </TabsTrigger>
+      </TabsList>
+    </Tabs>
+  );
+
+  if (isLoading && !data) {
     return (
-      <Card className='hover-card'>
-        <CardHeader>
+      <Card className='hover-card flex h-full flex-col'>
+        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
           <Skeleton className='h-5 w-[180px]' />
-          <Skeleton className='h-4 w-[120px]' />
+          {dimensionSwitch}
         </CardHeader>
-        <CardContent>
+        <CardContent className='flex-1'>
           <div className='flex h-[250px] items-center justify-center'>
             <Skeleton className='h-[200px] w-full' />
           </div>
@@ -122,11 +136,12 @@ export function FastestPerformersCard<T extends ThroughputData>({
 
   if (error) {
     return (
-      <Card className='hover-card'>
-        <CardHeader>
-          <CardTitle>{title}</CardTitle>
+      <Card className='hover-card flex h-full flex-col'>
+        <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+          <CardTitle className='text-base font-medium'>{title}</CardTitle>
+          {dimensionSwitch}
         </CardHeader>
-        <CardContent>
+        <CardContent className='flex-1'>
           <div className='text-sm text-red-500'>
             {t('common.loadError')}: {error.message}
           </div>
@@ -135,39 +150,42 @@ export function FastestPerformersCard<T extends ThroughputData>({
     );
   }
 
-  const chartData: ChartData[] = (items || [])
-    .slice(0, 5)
+  const rows = (data ?? [])
     .filter((item) => item != null)
+    .slice(0, 5)
     .map((item) => ({
-      name: getName(item) ?? 'Unknown',
+      name: (isModel ? (item as FastestModel).modelName : (item as FastestChannel).channelName) || 'Unknown',
       throughput: safeNumber(item.throughput ?? 0),
       requestCount: safeNumber(item.requestCount ?? 0),
     }))
     .sort((a, b) => b.throughput - a.throughput);
 
-  const total = chartData.reduce((sum, item) => sum + safeNumber(item.throughput), 0);
-  const totalRequests = chartData.reduce((sum, item) => sum + item.requestCount, 0);
+  const total = rows.reduce((sum, row) => sum + row.throughput, 0);
+  const totalRequests = rows.reduce((sum, row) => sum + row.requestCount, 0);
 
-  const legendItems: ChartLegendItem[] = chartData.map((item, index) => ({
-    name: item.name,
+  const legendItems: ChartLegendItem[] = rows.map((row, index) => ({
+    name: row.name,
     index: index + 1,
     color: COLORS[index % COLORS.length],
-    primaryValue: `${safeToFixed(item.throughput, 0)} tok/s`,
-    secondaryValue: `${formatNumber(item.requestCount)} req`,
+    primaryValue: `${safeToFixed(row.throughput, 0)} tok/s`,
+    secondaryValue: `${formatNumber(row.requestCount)} req`,
   }));
 
   return (
-    <Card className='hover-card h-full'>
-      <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+    <Card className='hover-card flex h-full flex-col'>
+      <CardHeader className='flex flex-row items-start justify-between space-y-0 pb-2'>
         <div className='space-y-1'>
           <CardTitle className='text-base font-medium'>{title}</CardTitle>
-          <CardDescription>{description(totalRequests)}</CardDescription>
+          <CardDescription>{description}</CardDescription>
         </div>
-        <TimePeriodSelector value={timeWindow} onChange={setTimeWindow} periods={['month', 'week', 'day']} />
+        <CardAction className='flex items-center gap-2'>
+          <RangeBadge timeWindow={coarseWindow} />
+          {dimensionSwitch}
+        </CardAction>
       </CardHeader>
-      <CardContent className='relative'>
+      <CardContent className='relative flex-1'>
         <div className='space-y-4'>
-          <HorizontalBarChart data={chartData} total={total} noDataLabel={noDataLabel} />
+          <HorizontalBarChart data={rows} total={total} noDataLabel={noDataLabel} />
           <ChartLegend items={legendItems} columns={1} />
         </div>
         {isFetching && (

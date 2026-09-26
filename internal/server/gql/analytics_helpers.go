@@ -12,6 +12,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/request"
+	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
 )
@@ -43,30 +45,128 @@ func parseDateStr(dateStr string, loc *time.Location) time.Time {
 	return time.Date(y, time.Month(m), d, 0, 0, 0, 0, loc)
 }
 
-func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) {
+// buildAnalyticsExecutionWhere mirrors buildAnalyticsWhere against request_executions,
+// whose columns are a subset of usage_logs and which has no api_key_id column.
+// The API key filter is therefore resolved through the request each execution belongs to
+// rather than through usage_logs, so a failure that never produced a log still counts.
+func (r *queryResolver) buildAnalyticsExecutionWhere(s *sql.Selector, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) {
 	if filter == nil {
 		return
 	}
 
-	if filter.StartTime != nil {
-		startDate := parseDateStr(*filter.StartTime, loc)
-		if !startDate.IsZero() {
-			// 同仪表盘：本地午夜转 UTC 再比较，数据库 created_at 是 UTC
-			s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), startDate.UTC()))
+	// A relative window replaces both dates rather than narrowing them, so the date
+	// branches below are skipped instead of being applied alongside it.
+	if since, ok := relativeSince(filter.TimeWindow); ok {
+		s.Where(sql.GTE(s.C(requestexecution.FieldCreatedAt), since))
+	} else {
+		if filter.StartTime != nil {
+			startDate := parseDateStr(*filter.StartTime, loc)
+			if !startDate.IsZero() {
+				s.Where(sql.GTE(s.C(requestexecution.FieldCreatedAt), startDate.UTC()))
+			}
 		}
-	}
 
-	if filter.EndTime != nil {
-		endDate := parseDateStr(*filter.EndTime, loc)
-		if !endDate.IsZero() {
-			endDateNext := endDate.AddDate(0, 0, 1)
-			s.Where(sql.LT(s.C(usagelog.FieldCreatedAt), endDateNext.UTC()))
+		if filter.EndTime != nil {
+			endDate := parseDateStr(*filter.EndTime, loc)
+			if !endDate.IsZero() {
+				s.Where(sql.LT(s.C(requestexecution.FieldCreatedAt), endDate.AddDate(0, 0, 1).UTC()))
+			}
 		}
 	}
 
 	if len(filter.ProjectIDs) > 0 {
 		ids := lo.Map(filter.ProjectIDs, func(g *objects.GUID, _ int) int { return g.ID })
-		s.Where(sql.InInts(usagelog.FieldProjectID, ids...))
+		s.Where(sql.InInts(requestexecution.FieldProjectID, ids...))
+	}
+
+	if len(filter.ChannelIDs) > 0 {
+		ids := lo.Map(filter.ChannelIDs, func(g *objects.GUID, _ int) int { return g.ID })
+		s.Where(sql.InInts(requestexecution.FieldChannelID, ids...))
+	}
+
+	if len(filter.ModelIDs) > 0 {
+		vals := make([]any, len(filter.ModelIDs))
+		for i, v := range filter.ModelIDs {
+			vals[i] = v
+		}
+		s.Where(sql.In(requestexecution.FieldModelID, vals...))
+	}
+
+	if len(apiKeyIDs) > 0 {
+		// Scoped through requests rather than usage_logs: a transport failure can mark an
+		// execution failed without ever writing a usage log, and keying off the log would
+		// drop exactly those failures from the success rate's denominator.
+		s.Where(sql.In(
+			requestexecution.FieldRequestID,
+			sql.Select(request.FieldID).
+				From(sql.Table(request.Table)).
+				Where(sql.InInts(request.FieldAPIKeyID, apiKeyIDs...)),
+		))
+	} else if hasUserFilter {
+		s.Where(sql.False())
+	}
+}
+
+// queryExecutionSuccessCounts counts completed / failed request executions under the
+// same filter as the analytics usage-log queries. Success rate lives in request_executions
+// while tokens and cost live in usage_logs, so the two are queried separately.
+func (r *queryResolver) queryExecutionSuccessCounts(ctx context.Context, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) (success int, failed int, err error) {
+	var results []struct {
+		SuccessCount int `json:"success_count"`
+		FailedCount  int `json:"failed_count"`
+	}
+
+	err = r.client.RequestExecution.Query().
+		Modify(func(s *sql.Selector) {
+			r.buildAnalyticsExecutionWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
+
+			s.Select(
+				// SUM over an empty table returns NULL rather than 0, so zero it
+				// explicitly to match the other aggregates in this file.
+				sql.As("COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0)", "success_count"),
+				sql.As("COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0)", "failed_count"),
+			)
+		}).
+		Scan(ctx, &results)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to get execution success counts: %w", err)
+	}
+
+	if len(results) == 0 {
+		return 0, 0, nil
+	}
+
+	return results[0].SuccessCount, results[0].FailedCount, nil
+}
+
+func (r *queryResolver) buildAnalyticsWhere(s *sql.Selector, filter *AnalyticsFilter, apiKeyIDs []int, hasUserFilter bool, loc *time.Location) {
+	if filter == nil {
+		return
+	}
+
+	if since, ok := relativeSince(filter.TimeWindow); ok {
+		s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
+	} else {
+		if filter.StartTime != nil {
+			startDate := parseDateStr(*filter.StartTime, loc)
+			if !startDate.IsZero() {
+				// 同仪表盘：本地午夜转 UTC 再比较，数据库 created_at 是 UTC
+				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), startDate.UTC()))
+			}
+		}
+
+		if filter.EndTime != nil {
+			endDate := parseDateStr(*filter.EndTime, loc)
+			if !endDate.IsZero() {
+				endDateNext := endDate.AddDate(0, 0, 1)
+				s.Where(sql.LT(s.C(usagelog.FieldCreatedAt), endDateNext.UTC()))
+			}
+		}
+	}
+
+	if len(filter.ProjectIDs) > 0 {
+		ids := lo.Map(filter.ProjectIDs, func(g *objects.GUID, _ int) int { return g.ID })
+		s.Where(sql.InInts(s.C(usagelog.FieldProjectID), ids...))
 	}
 
 	if len(filter.ChannelIDs) > 0 {
