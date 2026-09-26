@@ -713,3 +713,104 @@ func TestInboundTransformer_TransformStream_UsageBeforeFinishReasonKeepsMappedSt
 	require.NotNil(t, completed.IncompleteDetails)
 	require.Equal(t, "max_output_tokens", completed.IncompleteDetails.Reason)
 }
+
+// Some upstreams end the stream without ever sending a finish_reason chunk
+// (the terminal chunk may be dropped between transformers). A strict Responses
+// client still requires the full terminal sequence, so the stream must close
+// open items and emit response.completed instead of truncating the connection.
+func TestInboundTransformer_TransformStream_EmitsCompletedWithoutFinishReason(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_no_finish_reason",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("hello")}},
+			}},
+		},
+		// Stream ends without any finish_reason and without a usage chunk.
+	}))
+	require.NoError(t, err)
+
+	var (
+		completed  *Response
+		eventTypes []StreamEventType
+	)
+	for stream.Next() {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
+		eventTypes = append(eventTypes, ev.Type)
+		if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
+			completed = ev.Response
+		}
+	}
+	require.NoError(t, stream.Err())
+
+	require.NotNil(t, completed, "response.completed must be emitted even without a finish_reason")
+	require.NotNil(t, completed.Status)
+	require.Equal(t, "completed", *completed.Status)
+	require.NotEmpty(t, completed.Output, "output items must be closed into the final response")
+}
+
+// Gemini-family upstreams attach the thought signature to a trailing empty
+// part AFTER the reasoning text item has been closed. The signature-only item
+// must inherit the most recent reasoning text as its summary so clients see a
+// complete thinking card (summary + encrypted_content), not an empty one.
+func TestInboundTransformer_TransformStream_SignatureItemInheritsReasoningText(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_sig_inherit",
+			Created: 1700000000,
+			Model:   "gemini-flash-latest",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{Role: "assistant", ReasoningContent: lo.ToPtr("thinking about goldbach")},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_sig_inherit",
+			Created: 1700000000,
+			Model:   "gemini-flash-latest",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("Goldbach conjecture: ...")}},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_sig_inherit",
+			Created: 1700000000,
+			Model:   "gemini-flash-latest",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{Role: "assistant", ReasoningSignature: lo.ToPtr("THOUGHT_SIGNATURE_BLOB")},
+			}},
+		},
+	}))
+	require.NoError(t, err)
+
+	var reasoningItems []Item
+	for stream.Next() {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
+		if ev.Type == StreamEventTypeOutputItemDone && ev.Item != nil && ev.Item.Type == "reasoning" {
+			reasoningItems = append(reasoningItems, *ev.Item)
+		}
+	}
+	require.NoError(t, stream.Err())
+
+	require.NotEmpty(t, reasoningItems)
+	last := reasoningItems[len(reasoningItems)-1]
+	require.NotNil(t, last.EncryptedContent)
+	require.Equal(t, "THOUGHT_SIGNATURE_BLOB", *last.EncryptedContent)
+	require.NotEmpty(t, last.Summary, "signature item must inherit the reasoning text as summary")
+	require.Equal(t, "thinking about goldbach", last.Summary[0].Text)
+}

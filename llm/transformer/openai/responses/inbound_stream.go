@@ -63,6 +63,11 @@ type responsesInboundStream struct {
 	sequenceNumber int
 	currentItemID  string
 
+	// lastReasoningText keeps the most recent closed reasoning item's text so a
+	// trailing signature-only item (Gemini thought signatures arrive on the last
+	// part, after the reasoning text) can inherit it as its summary.
+	lastReasoningText string
+
 	// Content accumulation for items (used for emitting done events)
 	accumulatedText               strings.Builder
 	accumulatedReasoning          strings.Builder
@@ -140,7 +145,30 @@ func (s *responsesInboundStream) Next() bool {
 
 	// Try to get the next chunk from source
 	if !s.source.Next() {
-		if s.err == nil && !s.errorEventEmitted && s.source.Err() == nil && s.hasFinished {
+		if s.err == nil && !s.errorEventEmitted && s.source.Err() == nil && !s.responseCompleted {
+			// Some upstreams end the stream without ever sending a finish_reason
+			// (the terminal chunk may be dropped between transformers). A strict
+			// Responses client still requires the full terminal sequence, so
+			// finalize any open items and emit the terminal response here.
+			if !s.hasFinished {
+				s.hasFinished = true
+
+				if err := s.flushPendingReasoning(); err != nil {
+					s.err = err
+					return false
+				}
+
+				if err := s.closeCurrentContentPart(); err != nil {
+					s.err = err
+					return false
+				}
+
+				if err := s.closeCurrentOutputItem(); err != nil {
+					s.err = err
+					return false
+				}
+			}
+
 			if err := s.enqueueTerminalResponse(); err != nil {
 				s.err = err
 				return false
@@ -555,6 +583,17 @@ func (s *responsesInboundStream) handleReasoningSignature(delta *llm.Message, me
 
 	if err := s.ensureReasoningItemStarted(sourceID); err != nil {
 		return err
+	}
+
+	// Gemini-family upstreams deliver the thought signature on a trailing empty
+	// part AFTER the reasoning text has already been closed into its own item.
+	// The signature-only item would otherwise carry an empty summary, which
+	// clients (Codex app) render as no thinking card at all. Re-attach the most
+	// recent reasoning text so the signature item remains a complete, faithful
+	// thinking item with both summary and encrypted_content.
+	if sourceID == "" && delta.ReasoningContent == nil &&
+		s.accumulatedReasoning.Len() == 0 && s.lastReasoningText != "" {
+		s.accumulatedReasoning.WriteString(s.lastReasoningText)
 	}
 
 	if itemScoped {
@@ -1035,7 +1074,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 	}
 
 	var summary []ReasoningSummary
-	if hadSummaryPart {
+	if hadSummaryPart || fullReasoning != "" {
 		summary = []ReasoningSummary{{
 			Type: "summary_text",
 			Text: fullReasoning,
@@ -1061,6 +1100,7 @@ func (s *responsesInboundStream) closeReasoningItem() error {
 	}
 
 	s.outputIndex++
+	s.lastReasoningText = fullReasoning
 	s.accumulatedReasoning.Reset()
 	s.accumulatedReasoningSignature.Reset()
 	s.currentReasoningSourceID = ""
