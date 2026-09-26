@@ -84,6 +84,37 @@ func TestOverrideParametersWithTemplate(t *testing.T) {
 	require.Equal(t, "header-gpt-4", processedRequestWithHeaders.Headers.Get("X-Custom-Model"))
 }
 
+func TestOverrideParametersWithMappedRequestModel(t *testing.T) {
+	ctx := context.Background()
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "mapped-model-test",
+			Settings: &objects.ChannelSettings{
+				BodyOverrideOperations: []objects.OverrideOperation{{
+					Op:        "set",
+					Path:      "service_tier",
+					Value:     "priority",
+					Condition: `{{or (eq .RequestModel "gpt-4-fast") (eq .RequestModel "gpt-4-priority")}}`,
+				}},
+			},
+		},
+		Outbound: &mockTransformer{},
+	}
+	outbound := &PersistentOutboundTransformer{
+		wrapped: &mockTransformer{},
+		state: &PersistenceState{
+			CurrentCandidate: &ChannelModelsCandidate{Channel: channel},
+			LlmRequest:       &llm.Request{Model: "gpt-4"},
+			OriginalModel:    "gpt-4-fast",
+		},
+	}
+
+	processedRequest, err := applyOverrideRequestBody(outbound).OnOutboundRawRequest(ctx, &httpclient.Request{Body: []byte(`{"model":"gpt-4"}`)})
+	require.NoError(t, err)
+	require.Equal(t, "priority", gjson.GetBytes(processedRequest.Body, "service_tier").String())
+}
+
 func TestOverrideParametersWithRequestHeaderTemplate(t *testing.T) {
 	ctx := context.Background()
 
