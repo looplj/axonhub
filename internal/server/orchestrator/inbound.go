@@ -261,22 +261,6 @@ func (ts *InboundPersistentStream) Close() error {
 		return ts.stream.Close()
 	}
 
-	// If there's an explicit stream error (not just context cancellation), treat as failure
-	// regardless of what chunks we have. Stream errors indicate the upstream response
-	// was incomplete or corrupted.
-	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) {
-		persistCtx := context.WithoutCancel(ctx)
-		ts.persistFailureChunks(persistCtx)
-
-		if ts.request != nil {
-			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, streamErr); err != nil {
-				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
-			}
-		}
-
-		return ts.stream.Close()
-	}
-
 	// If we haven't received a terminal event, check if the chunks we DO have form a complete response.
 	// This handles models that aggregate internally (like Codex) or upstream proxy hung connections
 	// where the provider sent the full JSON payload but failed to send [DONE] before dropping.
@@ -290,6 +274,22 @@ func (ts *InboundPersistentStream) Close() error {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			ts.state.StreamCompleted = true
 		}
+	}
+
+	// If there's an explicit stream error (not just context cancellation), treat as failure
+	// only when the buffered chunks do not form a complete response. A trailing transport
+	// error can arrive after the provider has delivered a complete response.
+	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) && !ts.state.StreamCompleted {
+		persistCtx := context.WithoutCancel(ctx)
+		ts.persistFailureChunks(persistCtx)
+
+		if ts.request != nil {
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, streamErr); err != nil {
+				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
+			}
+		}
+
+		return ts.stream.Close()
 	}
 
 	// Check if context was canceled (client disconnected before [DONE]).
