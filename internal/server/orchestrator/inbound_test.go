@@ -286,6 +286,59 @@ func TestInboundPersistentStream_Close_ErrorAfterTerminalKeepsRequestCompleted(t
 	require.Equal(t, request.StatusCompleted, dbReq.Status)
 }
 
+func TestInboundPersistentStream_Close_CompleteAggregateAfterStreamErrorKeepsRequestCompleted(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	_, requestService, _, _ := setupTestServices(t, client)
+	req, err := client.Request.Create().
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("claude-opus-5-5").
+		SetStatus(request.StatusProcessing).
+		SetRequestBody([]byte(`{"stream":true}`)).
+		SetStream(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	stream := &mockStream{
+		events: []*httpclient.StreamEvent{{
+			Type: "content_block_delta",
+			Data: []byte(`{"type":"content_block_delta","delta":{"text":"complete"}}`),
+		}},
+		err: io.ErrUnexpectedEOF,
+	}
+	mockTransformer := &mockInboundTransformer{
+		aggregateResponseBody: []byte(`{"id":"msg_123","type":"message","role":"assistant","content":[{"type":"text","text":"complete"}],"stop_reason":"end_turn"}`),
+		aggregateMeta:         llm.ResponseMeta{ID: "msg_123", Completed: true},
+	}
+	state := &PersistenceState{}
+	persistentStream := NewInboundPersistentStream(
+		ctx,
+		stream,
+		req,
+		&ent.RequestExecution{ID: 1},
+		requestService,
+		mockTransformer,
+		nil,
+		state,
+	)
+
+	require.True(t, persistentStream.Next())
+	persistentStream.Current()
+	require.False(t, persistentStream.Next())
+	require.ErrorIs(t, persistentStream.Err(), io.ErrUnexpectedEOF)
+	require.NoError(t, persistentStream.Close())
+	require.True(t, state.StreamCompleted)
+
+	savedRequest, err := client.Request.Get(ctx, req.ID)
+	require.NoError(t, err)
+	require.Equal(t, request.StatusCompleted, savedRequest.Status)
+}
+
 func TestInboundPersistentStream_Close_ResponsesFailureTerminalPersistsOutcome(t *testing.T) {
 	tests := []struct {
 		name           string
