@@ -158,6 +158,11 @@ func newQuotaRoutingMigrationFixture(t *testing.T) *quotaRoutingMigrationFixture
 	t.Helper()
 	client := enttest.NewEntClient(t, "sqlite3", "file:quota-routing-migration-"+t.Name()+"?mode=memory&_fk=1")
 	t.Cleanup(func() { _ = client.Close() })
+	return newQuotaRoutingMigrationFixtureWithClient(t, client)
+}
+
+func newQuotaRoutingMigrationFixtureWithClient(t *testing.T, client *ent.Client) *quotaRoutingMigrationFixture {
+	t.Helper()
 	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
 	systemService := NewSystemService(SystemServiceParams{Ent: client, CacheConfig: xcache.Config{Mode: xcache.ModeMemory}})
 	channelService := NewChannelServiceForTest(client)
