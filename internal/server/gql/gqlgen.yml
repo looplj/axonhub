@@ -187,6 +187,15 @@ models:
   ChannelRateLimitInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelRateLimit
+  ChannelResponseTimeout:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelResponseTimeoutSettings
+  ChannelResponseTimeoutInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelResponseTimeoutSettings
+  ChannelResponseTimeoutMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelResponseTimeoutMode
   ChannelCredentials:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelCredentials

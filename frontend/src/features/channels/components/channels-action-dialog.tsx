@@ -30,6 +30,7 @@ import {
   usePassThroughSettings,
   useProxyPresets,
   useQuotaRoutingSettings,
+  useRetryPolicy,
   useSaveProxyPreset,
   useUserAgentPassThroughSettings,
 } from '@/features/system/data/system';
@@ -157,6 +158,32 @@ function parseRetryableStatusCodesInput(value: string): number[] | null {
 
 function formatRetryableErrorPatterns(patterns: RetryableErrorPattern[] | null | undefined): string {
   return (patterns ?? []).map(({ pattern, regex }) => (regex ? `regex:${pattern}` : pattern)).join('\n');
+}
+
+function formatResponseTimeoutSeconds(value: number | null | undefined): string {
+  return value === null || value === undefined ? '' : String(value);
+}
+
+// Parses one optional response timeout input.
+// - empty string => null (inherit the global timeout)
+// - undefined   => invalid input
+// - number      => override in seconds
+function parseResponseTimeoutSeconds(value: string): number | null | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  if (!/^\d+$/.test(trimmed)) {
+    return undefined;
+  }
+
+  const seconds = Number(trimmed);
+  if (seconds > 600) {
+    return undefined;
+  }
+
+  return seconds;
 }
 
 function parseRetryableErrorPatternsInput(value: string): RetryableErrorPattern[] | null {
@@ -357,6 +384,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const canReadSystemSettings = hasSystemScope('read_settings');
   const { data: userAgentPassThroughSettings } = useUserAgentPassThroughSettings({ enabled: canReadSystemSettings });
   const { data: passThroughSettings } = usePassThroughSettings({ enabled: canReadSystemSettings });
+  const { data: globalRetryPolicy } = useRetryPolicy({ enabled: canReadSystemSettings });
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
@@ -423,6 +451,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
   );
+  const [responseTimeoutMode, setResponseTimeoutMode] = useState<'INHERIT' | 'CUSTOM'>(() =>
+    initialRow?.settings?.responseTimeout?.mode === 'CUSTOM' ? 'CUSTOM' : 'INHERIT'
+  );
+  const [streamFirstEventTimeoutText, setStreamFirstEventTimeoutText] = useState(() =>
+    formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.streamFirstEventTimeoutSeconds)
+  );
+  const [nonStreamResponseTimeoutText, setNonStreamResponseTimeoutText] = useState(() =>
+    formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.nonStreamResponseTimeoutSeconds)
+  );
   const userAgentInheritLabel = userAgentPassThroughSettings
     ? t('channels.dialogs.userAgentPassThrough.inheritWithValue', {
         value: t(
@@ -437,6 +474,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         value: t(passThroughSettings.enabled ? 'channels.dialogs.bodyPassThrough.enabled' : 'channels.dialogs.bodyPassThrough.disabled'),
       })
     : t('channels.dialogs.bodyPassThrough.inherit');
+
+  // Describes the global timeout a channel field inherits when left empty.
+  const formatGlobalTimeoutSeconds = (seconds: number | undefined): string => {
+    if (seconds === undefined) {
+      return t('channels.dialogs.responseTimeout.valueUnset');
+    }
+    if (seconds <= 0) {
+      return t('channels.dialogs.responseTimeout.valueDisabled');
+    }
+    return `${seconds}s`;
+  };
+  const formatGlobalTimeoutPlaceholder = (seconds: number | undefined): string =>
+    t('channels.dialogs.responseTimeout.inheritWithValue', { value: formatGlobalTimeoutSeconds(seconds) });
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -1313,6 +1363,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         return;
       }
 
+      const streamFirstEventTimeoutSeconds =
+        responseTimeoutMode === 'CUSTOM' ? parseResponseTimeoutSeconds(streamFirstEventTimeoutText) : null;
+      const nonStreamResponseTimeoutSeconds =
+        responseTimeoutMode === 'CUSTOM' ? parseResponseTimeoutSeconds(nonStreamResponseTimeoutText) : null;
+      if (streamFirstEventTimeoutSeconds === undefined || nonStreamResponseTimeoutSeconds === undefined) {
+        toast.error(t('channels.dialogs.responseTimeout.validation'));
+        return;
+      }
+
+      const responseTimeout: ChannelSettings['responseTimeout'] =
+        responseTimeoutMode === 'CUSTOM'
+          ? {
+              mode: 'CUSTOM',
+              streamFirstEventTimeoutSeconds,
+              nonStreamResponseTimeoutSeconds,
+            }
+          : null;
+
       const valuesForSubmit = isEdit
         ? values
         : {
@@ -1381,6 +1449,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          responseTimeout,
           // Cookie edits (including clearing the saved cookie) travel through
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
@@ -1448,6 +1517,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          responseTimeout,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
@@ -1895,6 +1965,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+            setResponseTimeoutMode(initialRow?.settings?.responseTimeout?.mode === 'CUSTOM' ? 'CUSTOM' : 'INHERIT');
+            setStreamFirstEventTimeoutText(
+              formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.streamFirstEventTimeoutSeconds)
+            );
+            setNonStreamResponseTimeoutText(
+              formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.nonStreamResponseTimeoutSeconds)
+            );
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -3058,6 +3135,89 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             placeholder={t('channels.dialogs.retryableErrorPatterns.placeholder')}
                             className='min-h-[88px] resize-y font-mono text-sm'
                           />
+                        </div>
+                      </FormItem>
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
+                          <FormLabel className='font-medium'>{t('channels.dialogs.responseTimeout.label')}</FormLabel>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type='button'
+                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                aria-label={t('channels.dialogs.responseTimeout.tooltip')}
+                              >
+                                <Info className='h-3.5 w-3.5' />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className='max-w-sm'>
+                              <p>{t('channels.dialogs.responseTimeout.tooltip')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className='space-y-3 md:col-span-6'>
+                          <Select
+                            value={responseTimeoutMode}
+                            onValueChange={(value) => setResponseTimeoutMode(value as 'INHERIT' | 'CUSTOM')}
+                          >
+                            <SelectTrigger data-testid='response-timeout-mode'>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value='INHERIT'>
+                                {globalRetryPolicy
+                                  ? t('channels.dialogs.responseTimeout.inheritWithValues', {
+                                      stream: formatGlobalTimeoutSeconds(globalRetryPolicy.streamFirstEventTimeoutSeconds),
+                                      nonStream: formatGlobalTimeoutSeconds(globalRetryPolicy.nonStreamResponseTimeoutSeconds),
+                                    })
+                                  : t('channels.dialogs.responseTimeout.inherit')}
+                              </SelectItem>
+                              <SelectItem value='CUSTOM'>{t('channels.dialogs.responseTimeout.custom')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {responseTimeoutMode === 'CUSTOM' && (
+                            <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+                              <div className='space-y-1'>
+                                <span className='text-sm font-medium'>{t('channels.dialogs.responseTimeout.streamFirstEvent.label')}</span>
+                                <div className='flex items-center gap-2'>
+                                  <Input
+                                    type='number'
+                                    min={0}
+                                    max={600}
+                                    value={streamFirstEventTimeoutText}
+                                    onChange={(event) => setStreamFirstEventTimeoutText(event.target.value)}
+                                    placeholder={formatGlobalTimeoutPlaceholder(globalRetryPolicy?.streamFirstEventTimeoutSeconds)}
+                                    className='w-32'
+                                    data-testid='response-timeout-stream-first-event'
+                                  />
+                                  <span className='text-muted-foreground text-sm'>s</span>
+                                </div>
+                                <p className='text-muted-foreground text-xs'>
+                                  {t('channels.dialogs.responseTimeout.streamFirstEvent.description')}
+                                </p>
+                              </div>
+                              <div className='space-y-1'>
+                                <span className='text-sm font-medium'>{t('channels.dialogs.responseTimeout.nonStream.label')}</span>
+                                <div className='flex items-center gap-2'>
+                                  <Input
+                                    type='number'
+                                    min={0}
+                                    max={600}
+                                    value={nonStreamResponseTimeoutText}
+                                    onChange={(event) => setNonStreamResponseTimeoutText(event.target.value)}
+                                    placeholder={formatGlobalTimeoutPlaceholder(globalRetryPolicy?.nonStreamResponseTimeoutSeconds)}
+                                    className='w-32'
+                                    data-testid='response-timeout-non-stream'
+                                  />
+                                  <span className='text-muted-foreground text-sm'>s</span>
+                                </div>
+                                <p className='text-muted-foreground text-xs'>
+                                  {t('channels.dialogs.responseTimeout.nonStream.description')}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </FormItem>
 

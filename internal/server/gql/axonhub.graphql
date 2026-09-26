@@ -209,6 +209,7 @@ type ChannelSettings {
   rateLimit: ChannelRateLimit
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPattern!]
+  responseTimeout: ChannelResponseTimeout
   modelProtocols: [ModelProtocol!]
   providerQuota: ChannelProviderQuotaSettings @goField(forceResolver: true)
   quotaRoutingMode: ChannelQuotaRoutingMode
@@ -219,6 +220,23 @@ enum ChannelQuotaRoutingMode {
   IGNORE_QUOTA
   REMOVE_ON_EXHAUSTED
   BACKPRESSURE
+}
+
+enum ChannelResponseTimeoutMode {
+  INHERIT
+  CUSTOM
+}
+
+type ChannelResponseTimeout {
+  mode: ChannelResponseTimeoutMode
+  streamFirstEventTimeoutSeconds: Int
+  nonStreamResponseTimeoutSeconds: Int
+}
+
+input ChannelResponseTimeoutInput {
+  mode: ChannelResponseTimeoutMode
+  streamFirstEventTimeoutSeconds: Int
+  nonStreamResponseTimeoutSeconds: Int
 }
 
 enum CapabilityPolicy {
@@ -293,6 +311,7 @@ input ChannelSettingsInput {
   rateLimit: ChannelRateLimitInput
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]
+  responseTimeout: ChannelResponseTimeoutInput
   modelProtocols: [ModelProtocolInput!]
   providerQuota: ChannelProviderQuotaSettingsInput
   quotaRoutingMode: ChannelQuotaRoutingMode

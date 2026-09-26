@@ -556,11 +556,12 @@ export async function previewGcCleanup(input: TriggerGcCleanupInput, signal?: Ab
   return data.previewGcCleanup;
 }
 
-export function useRetryPolicy() {
+export function useRetryPolicy(options?: { enabled?: boolean }) {
   const { handleError } = useErrorHandler();
 
   return useQuery({
     queryKey: ['retryPolicy'],
+    enabled: options?.enabled ?? true,
     queryFn: async () => {
       try {
         const data = await graphqlRequest<{ retryPolicy: RetryPolicy }>(RETRY_POLICY_QUERY);

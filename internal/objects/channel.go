@@ -238,6 +238,12 @@ type ChannelSettings struct {
 	// case-sensitive substring of the error text.
 	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
 
+	// ResponseTimeout overrides the global retry policy response timeouts for
+	// this channel. When nil (or mode inherit), the channel follows the global
+	// system settings. When mode is custom, the non-nil fields override the
+	// corresponding global values and a nil field still inherits.
+	ResponseTimeout *ChannelResponseTimeoutSettings `json:"responseTimeout,omitempty"`
+
 	// ModelProtocols force-specifies the outbound protocols for specific models of
 	// this channel. Each entry's apiFormats must reference api_formats the channel
 	// already has endpoints for. When set for a model, endpoint selection is
@@ -297,6 +303,70 @@ func (s OllamaQuotaSettings) String() string {
 type RetryableErrorPattern struct {
 	Pattern string `json:"pattern"`
 	Regex   bool   `json:"regex,omitempty"`
+}
+
+// ChannelResponseTimeoutMode selects whether a channel follows the global retry
+// policy response timeouts or overrides them with its own values.
+type ChannelResponseTimeoutMode string
+
+const (
+	// ChannelResponseTimeoutModeInherit keeps the global retry policy timeouts.
+	// It is the zero value so channels saved before this setting existed inherit.
+	ChannelResponseTimeoutModeInherit ChannelResponseTimeoutMode = ""
+
+	// ChannelResponseTimeoutModeCustom overrides the global timeouts with the
+	// values configured on the channel.
+	ChannelResponseTimeoutModeCustom ChannelResponseTimeoutMode = "custom"
+)
+
+// MarshalGQL writes the GraphQL enum value. The zero value maps to INHERIT.
+func (m ChannelResponseTimeoutMode) MarshalGQL(w io.Writer) {
+	value := "INHERIT"
+	if m == ChannelResponseTimeoutModeCustom {
+		value = "CUSTOM"
+	}
+
+	_, _ = io.WriteString(w, strconv.Quote(value))
+}
+
+// UnmarshalGQL reads the GraphQL enum value. INHERIT maps to the zero value.
+func (m *ChannelResponseTimeoutMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("ChannelResponseTimeoutMode must be a string")
+	}
+
+	switch str {
+	case "INHERIT":
+		*m = ChannelResponseTimeoutModeInherit
+	case "CUSTOM":
+		*m = ChannelResponseTimeoutModeCustom
+	default:
+		return fmt.Errorf("invalid ChannelResponseTimeoutMode: %s", str)
+	}
+
+	return nil
+}
+
+// ChannelResponseTimeoutSettings overrides the global retry policy response
+// timeouts for a single channel.
+type ChannelResponseTimeoutSettings struct {
+	// Mode selects whether the channel inherits the global timeouts or uses the
+	// overrides below. An empty mode is treated as inherit.
+	Mode ChannelResponseTimeoutMode `json:"mode,omitempty"`
+
+	// StreamFirstEventTimeoutSeconds overrides the timeout for the first
+	// streaming response event. nil inherits the global value; 0 disables it.
+	StreamFirstEventTimeoutSeconds *int `json:"streamFirstEventTimeoutSeconds,omitempty"`
+
+	// NonStreamResponseTimeoutSeconds overrides the timeout for non-streaming
+	// responses. nil inherits the global value; 0 disables it.
+	NonStreamResponseTimeoutSeconds *int `json:"nonStreamResponseTimeoutSeconds,omitempty"`
+}
+
+// IsCustom reports whether the channel overrides the global timeouts.
+func (s *ChannelResponseTimeoutSettings) IsCustom() bool {
+	return s != nil && s.Mode == ChannelResponseTimeoutModeCustom
 }
 
 type ChannelRateLimit struct {

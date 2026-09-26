@@ -6,8 +6,9 @@ import (
 )
 
 var (
-	_ transformer.Inbound  = &PersistentInboundTransformer{}
-	_ transformer.Outbound = &PersistentOutboundTransformer{}
+	_ transformer.Inbound              = &PersistentInboundTransformer{}
+	_ transformer.Outbound             = &PersistentOutboundTransformer{}
+	_ pipeline.ResponseTimeoutProvider = &PersistentOutboundTransformer{}
 )
 
 // NewPersistentTransformers creates enhanced persistent transformers with pre-constructed state.

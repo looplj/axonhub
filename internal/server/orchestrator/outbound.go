@@ -698,6 +698,35 @@ func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
 	return p.state.CurrentCandidate.Channel
 }
 
+// ResponseTimeouts implements pipeline.ResponseTimeoutProvider. It returns the
+// channel-level response timeout overrides for the current attempt, or nil for a
+// timeout the channel inherits from the global retry policy. Resolving here (per
+// attempt) keeps the overrides correct when a retry switches channels.
+func (p *PersistentOutboundTransformer) ResponseTimeouts(_ context.Context) (*time.Duration, *time.Duration) {
+	channel := p.GetCurrentChannel()
+	if channel == nil || channel.Settings == nil {
+		return nil, nil
+	}
+
+	settings := channel.Settings.ResponseTimeout
+	if !settings.IsCustom() {
+		return nil, nil
+	}
+
+	return secondsToDuration(settings.StreamFirstEventTimeoutSeconds),
+		secondsToDuration(settings.NonStreamResponseTimeoutSeconds)
+}
+
+func secondsToDuration(seconds *int) *time.Duration {
+	if seconds == nil {
+		return nil
+	}
+
+	timeout := time.Duration(*seconds) * time.Second
+
+	return &timeout
+}
+
 // trackCurrentChannelSelection records an actual retry attempt. Initial
 // attempts are tracked by LoadBalancedSelector after it assembles the final
 // priority-ordered candidate list.

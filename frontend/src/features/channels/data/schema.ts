@@ -344,6 +344,16 @@ export const channelProviderQuotaSettingsSchema = z.object({
 });
 export type ChannelProviderQuotaSettings = z.infer<typeof channelProviderQuotaSettingsSchema>;
 
+// Per-channel overrides for the global retry policy response timeouts. A null
+// object (or INHERIT mode) follows the global settings; CUSTOM overrides the
+// corresponding value when set and inherits it when null.
+export const channelResponseTimeoutSchema = z.object({
+  mode: z.enum(['INHERIT', 'CUSTOM']).optional().nullable(),
+  streamFirstEventTimeoutSeconds: z.number().int().min(0).max(600).optional().nullable(),
+  nonStreamResponseTimeoutSeconds: z.number().int().min(0).max(600).optional().nullable(),
+});
+export type ChannelResponseTimeout = z.infer<typeof channelResponseTimeoutSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -361,6 +371,7 @@ export const channelSettingsSchema = z.object({
   rateLimit: channelRateLimitSchema.optional().nullable(),
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
+  responseTimeout: channelResponseTimeoutSchema.optional().nullable(),
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
   quotaRoutingMode: z.enum(['INHERIT', 'IGNORE_QUOTA', 'REMOVE_ON_EXHAUSTED', 'BACKPRESSURE']).optional(),
