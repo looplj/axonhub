@@ -166,6 +166,12 @@ func (ts *OutboundPersistentStream) Close() error {
 	} else {
 		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
 	}
+	if ts.state.CleanEOFCompletionEvidence && streamErr == nil && ctxErr == nil && aggErr == nil && len(responseBody) > 0 {
+		aggregatedCompleted = true
+		ts.outcome.observeAggregatedCompletion(true)
+		ts.markPerformanceTerminal(streamTerminalCompleted, "")
+		enqueueCompletedPerformance(ts.ctx, ts.state)
+	}
 	if ts.outcome.hasFinalEvidence() {
 		ts.terminalState = ts.outcome.finalState()
 	}
@@ -508,6 +514,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	p.state.CurrentCandidate = candidate
 	p.state.StreamCompleted = false
 	p.state.OutboundStreamTerminal = streamTerminalNone
+	p.state.CleanEOFCompletionEvidence = false
 	p.refreshCandidateAPIFormat(ctx, candidate, p.state.CurrentModelIndex, llmRequest)
 
 	p.wrapped = selectOutboundForCandidate(candidate)
@@ -714,6 +721,7 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.state.CurrentCandidate = candidate
 	p.state.StreamCompleted = false
 	p.state.OutboundStreamTerminal = streamTerminalNone
+	p.state.CleanEOFCompletionEvidence = false
 	p.trackCurrentChannelSelection()
 	p.refreshCandidateAPIFormat(ctx, candidate, p.state.CurrentModelIndex, p.state.LlmRequest)
 	p.wrapped = selectOutboundForCandidate(candidate)
@@ -794,6 +802,7 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	// Reset request execution for the same channel.
 	p.state.RequestExec = nil
 	p.state.PassThroughApplied = false
+	p.state.CleanEOFCompletionEvidence = false
 	p.state.StreamCompleted = false
 	p.state.OutboundStreamTerminal = streamTerminalNone
 

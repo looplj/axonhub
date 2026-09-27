@@ -91,6 +91,9 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 		// summary to avoid buffering the full audio payload in memory.
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 		if ts.terminalState == streamTerminalNone {
+			if event.CompletionEvidence == httpclient.CleanEOFCompletionEvidence {
+				ts.state.CleanEOFCompletionEvidence = true
+			}
 			ts.terminalState = classifyStreamTerminalEvent(event)
 			if ts.terminalState != streamTerminalNone {
 				ts.terminalState = ts.finalTerminalState()
