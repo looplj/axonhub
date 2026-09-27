@@ -528,6 +528,22 @@ function sortModelsByDate(data) {
 	return data;
 }
 
+function sortObjectKeys(value) {
+	if (Array.isArray(value)) {
+		return value.map(sortObjectKeys);
+	}
+
+	if (isObject(value)) {
+		const sorted = {};
+		for (const key of Object.keys(value).sort()) {
+			sorted[key] = sortObjectKeys(value[key]);
+		}
+		return sorted;
+	}
+
+	return value;
+}
+
 function mergeWithModelsJson(data, modelsJsonPath) {
 	if (!fs.existsSync(modelsJsonPath)) {
 		console.log("models.json does not exist, skipping merge");
@@ -591,7 +607,10 @@ async function main() {
 		console.log("Sorting models by release date...");
 		sortModelsByDate(filtered);
 
-		const serialized = `${JSON.stringify(filtered, null, 2)}\n`;
+		console.log("Sorting object keys...");
+		const stable = sortObjectKeys(filtered);
+
+		const serialized = `${JSON.stringify(stable, null, 2)}\n`;
 		console.log("Writing to:", OUTPUT_PATH);
 		fs.writeFileSync(OUTPUT_PATH, serialized);
 
