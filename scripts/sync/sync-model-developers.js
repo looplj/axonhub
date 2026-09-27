@@ -537,7 +537,8 @@ function sortObjectKeys(value) {
 	}
 
 	if (isObject(value)) {
-		const sorted = {};
+		// null prototype: a source "__proto__" key must survive as an own property
+		const sorted = Object.create(null);
 		for (const key of Object.keys(value).sort()) {
 			sorted[key] = sortObjectKeys(value[key]);
 		}
