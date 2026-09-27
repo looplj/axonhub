@@ -189,24 +189,16 @@ func TestAggregateStreamChunks_WithCitations(t *testing.T) {
 	require.NotNil(t, got.Choices[0].Message.Content.Content)
 	require.Equal(t, "The meaning of life is...", *got.Choices[0].Message.Content.Content)
 
-	// Verify citations are aggregated and deduplicated
-	require.NotNil(t, got.TransformerMetadata)
-	citationsRaw, ok := got.TransformerMetadata[TransformerMetadataKeyCitations]
-	require.True(t, ok)
+	// Verify citations are aggregated, deduplicated, and projected to the
+	// top-level citations field — the same wire position used by the streaming
+	// chunks themselves and by the direct non-streaming path (ResponseFromLLM) —
+	// without leaking the internal transformer_metadata envelope, which is
+	// documented as never serialized.
+	require.NotContains(t, string(gotBytes), "transformer_metadata")
 
-	// After JSON marshaling/unmarshaling, the citations will be []interface{}
-	citationsSlice, ok := citationsRaw.([]any)
-	require.True(t, ok)
-	require.Len(t, citationsSlice, 2)
-
-	// Convert to []string for easier assertion
-	citations := make([]string, len(citationsSlice))
-	for i, v := range citationsSlice {
-		citations[i] = v.(string)
-	}
-
-	require.Contains(t, citations, "https://example.com/source1")
-	require.Contains(t, citations, "https://example.com/source2")
+	var gotResp Response
+	require.NoError(t, json.Unmarshal(gotBytes, &gotResp))
+	require.Equal(t, []string{"https://example.com/source1", "https://example.com/source2"}, gotResp.Citations)
 }
 
 func TestAggregateStreamChunks_WithoutCitations(t *testing.T) {

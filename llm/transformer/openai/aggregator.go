@@ -364,23 +364,18 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		Usage:             responseUsage,
 	}
 
-	// Add citations to response if any were collected
+	// Collect the deduplicated, sorted citations for the final response.
+	var citations []string
 	if len(citationsMap) > 0 {
-		citations := make([]string, 0, len(citationsMap))
+		citations = make([]string, 0, len(citationsMap))
 		for citation := range citationsMap {
 			citations = append(citations, citation)
 		}
 
 		sort.Strings(citations)
-
-		if response.TransformerMetadata == nil {
-			response.TransformerMetadata = make(map[string]any)
-		}
-
-		response.TransformerMetadata[TransformerMetadataKeyCitations] = citations
 	}
 
-	data, err := json.Marshal(response)
+	data, err := json.Marshal(aggregatedChatResponse{Response: response, Citations: citations})
 	if err != nil {
 		return nil, llm.ResponseMeta{}, err
 	}
@@ -389,4 +384,14 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		ID:    response.ID,
 		Usage: responseUsage,
 	}, nil
+}
+
+// aggregatedChatResponse is the client-facing shape of an aggregated chat
+// completion. Response-level provider extensions that the unified model
+// carries internally in TransformerMetadata (e.g. Perplexity/OpenRouter
+// citations) are projected back to their OpenAI wire position here; the
+// internal metadata envelope is never serialized to clients.
+type aggregatedChatResponse struct {
+	*llm.Response
+	Citations []string `json:"citations,omitempty"`
 }
