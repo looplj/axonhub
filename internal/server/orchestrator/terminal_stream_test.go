@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -131,6 +132,79 @@ func TestInboundPersistentStream_ProviderSuccessDoesNotHideConversionFailure(t *
 	require.True(t, stream.Next())
 	stream.Current()
 	require.Equal(t, request.StatusFailed, stream.finalTerminalState().requestStatus())
+	require.False(t, state.StreamCompleted)
+}
+
+type conversionErrorStream struct {
+	source streams.Stream[*llm.Response]
+	err    error
+	read   bool
+	closed bool
+}
+
+func (s *conversionErrorStream) Next() bool {
+	if s.read {
+		return false
+	}
+	s.read = true
+	if s.source.Next() {
+		_ = s.source.Current()
+	}
+	return false
+}
+
+func (s *conversionErrorStream) Current() *httpclient.StreamEvent {
+	return nil
+}
+
+func (s *conversionErrorStream) Err() error {
+	return s.err
+}
+
+func (s *conversionErrorStream) Close() error {
+	s.closed = true
+	return s.source.Close()
+}
+
+type conversionErrorInbound struct {
+	transformer.Inbound
+	err error
+}
+
+func (t *conversionErrorInbound) TransformStream(
+	ctx context.Context,
+	stream streams.Stream[*llm.Response],
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	return &conversionErrorStream{source: stream, err: t.err}, nil
+}
+
+func TestPersistentStreams_ProviderCompletionDoesNotHideDownstreamConversionError(t *testing.T) {
+	// Given: the provider emits a real terminal completion, but downstream
+	// protocol conversion fails before it emits a client terminal event.
+	ctx := t.Context()
+	outbound, err := responses.NewOutboundTransformer("https://example.test", "test-key")
+	require.NoError(t, err)
+	state := &PersistenceState{}
+	provider := NewOutboundPersistentStream(ctx, streams.SliceStream([]*httpclient.StreamEvent{
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_complete","status":"completed"}}`)},
+	}), nil, nil, nil, nil, outbound, nil, state)
+	normalized, err := outbound.TransformStream(ctx, nil, provider)
+	require.NoError(t, err)
+
+	conversionErr := errors.New("downstream conversion failed")
+	inbound := &conversionErrorInbound{Inbound: responses.NewInboundTransformer(), err: conversionErr}
+	converted, err := inbound.TransformStream(ctx, normalized)
+	require.NoError(t, err)
+	stream := NewInboundPersistentStream(ctx, converted, nil, nil, nil, inbound, nil, state)
+
+	// When: the downstream wrapper finalizes after observing the conversion error.
+	require.False(t, stream.Next())
+	require.ErrorIs(t, stream.Err(), conversionErr)
+	require.NoError(t, stream.Close())
+
+	// Then: provider execution completion does not become request completion.
+	require.Equal(t, streamTerminalCompleted, state.OutboundStreamTerminal)
+	require.Equal(t, streamTerminalFailed, stream.terminalState)
 	require.False(t, state.StreamCompleted)
 }
 
