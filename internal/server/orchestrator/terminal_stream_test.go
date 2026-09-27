@@ -208,6 +208,53 @@ func TestPersistentStreams_ProviderCompletionDoesNotHideDownstreamConversionErro
 	require.False(t, state.StreamCompleted)
 }
 
+func TestPersistentStreams_ProviderCompletionPersistsExecutionButConversionFailureFailsRequest(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	project := createTestProject(t, ctx, client)
+	channel := createTestChannel(t, ctx, client)
+	_, requestService, systemService, usageLogService := setupTestServices(t, client)
+	require.NoError(t, systemService.SetStoragePolicy(ctx, &biz.StoragePolicy{
+		StoreChunks: true, StoreRequestBody: true, StoreResponseBody: true,
+	}))
+
+	req, err := client.Request.Create().
+		SetProjectID(project.ID).SetChannelID(channel.ID).SetModelID("gpt-5").
+		SetStatus(request.StatusProcessing).SetRequestBody([]byte(`{"stream":true}`)).SetStream(true).Save(ctx)
+	require.NoError(t, err)
+	execution, err := client.RequestExecution.Create().
+		SetRequestID(req.ID).SetProjectID(project.ID).SetChannelID(channel.ID).SetModelID("gpt-5").
+		SetFormat(llm.APIFormatOpenAIResponse.String()).SetStatus(requestexecution.StatusProcessing).
+		SetRequestBody([]byte(`{"stream":true}`)).SetStream(true).Save(ctx)
+	require.NoError(t, err)
+
+	outbound, err := responses.NewOutboundTransformer("https://example.test", "test-key")
+	require.NoError(t, err)
+	state := &PersistenceState{}
+	provider := NewOutboundPersistentStream(ctx, streams.SliceStream([]*httpclient.StreamEvent{
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_complete","status":"completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`)},
+	}), req, execution, requestService, usageLogService, outbound, nil, state)
+	normalized, err := outbound.TransformStream(ctx, nil, provider)
+	require.NoError(t, err)
+
+	conversionErr := errors.New("downstream conversion failed")
+	inbound := &conversionErrorInbound{Inbound: responses.NewInboundTransformer(), err: conversionErr}
+	converted, err := inbound.TransformStream(ctx, normalized)
+	require.NoError(t, err)
+	stream := NewInboundPersistentStream(ctx, converted, req, execution, requestService, inbound, nil, state)
+	require.False(t, stream.Next())
+	require.ErrorIs(t, stream.Err(), conversionErr)
+	require.NoError(t, stream.Close())
+
+	savedRequest, err := client.Request.Get(ctx, req.ID)
+	require.NoError(t, err)
+	savedExecution, err := client.RequestExecution.Get(ctx, execution.ID)
+	require.NoError(t, err)
+	require.Equal(t, request.StatusFailed, savedRequest.Status)
+	require.Equal(t, requestexecution.StatusCompleted, savedExecution.Status)
+}
+
 func TestPersistentStreams_DisconnectBeforeConvertedTerminal(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

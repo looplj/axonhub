@@ -915,7 +915,7 @@ func TestShouldForceStreamingForCandidate(t *testing.T) {
 
 func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
 	t.Run("usage with completion tokens means completed", func(t *testing.T) {
-		require.True(t, isCompletedAggregated(llm.ResponseMeta{Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}}))
+		require.False(t, isCompletedAggregated(llm.ResponseMeta{Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}}))
 	})
 
 	t.Run("usage with zero completion tokens is not completed", func(t *testing.T) {
@@ -924,6 +924,7 @@ func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
 
 	t.Run("response id without usage is not completed", func(t *testing.T) {
 		require.False(t, isCompletedAggregated(llm.ResponseMeta{ID: "resp_123"}))
+		require.True(t, isCompletedAggregated(llm.ResponseMeta{Completed: true}))
 	})
 
 	t.Run("explicit completed flag is completed", func(t *testing.T) {
@@ -1140,7 +1141,8 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 			apiFormat:          llm.APIFormatOpenAIResponse,
 			aggregatedResponse: aggregated,
 			aggregatedMeta: llm.ResponseMeta{
-				ID: "resp_456",
+				ID:        "resp_456",
+				Completed: true,
 				Usage: &llm.Usage{
 					PromptTokens:     10,
 					CompletionTokens: 2,
@@ -1164,7 +1166,7 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 		require.False(t, state.StreamCompleted)
 	})
 
-	t.Run("canceled client with aggregated completed response is still completed", func(t *testing.T) {
+	t.Run("canceled client with aggregated response remains canceled", func(t *testing.T) {
 		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 		defer client.Close()
 
@@ -1224,13 +1226,12 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 
 		dbExec, err := client.RequestExecution.Get(baseCtx, exec.ID)
 		require.NoError(t, err)
-		require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
-		require.JSONEq(t, string(aggregated), string(dbExec.ResponseBody))
-		require.Equal(t, "resp_codex_like", dbExec.ExternalID)
+		require.Equal(t, requestexecution.StatusCanceled, dbExec.Status)
+		require.NotEqual(t, "resp_codex_like", dbExec.ExternalID)
 		require.False(t, state.StreamCompleted)
 	})
 
-	t.Run("canceled client after finish reason is still completed without done or usage", func(t *testing.T) {
+	t.Run("canceled client after finish reason remains completed from terminal evidence", func(t *testing.T) {
 		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 		defer client.Close()
 
@@ -1291,7 +1292,7 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 	})
 }
 
-func TestOutboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorCompletesExecution(t *testing.T) {
+func TestOutboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorFailsExecution(t *testing.T) {
 	ctx := authz.WithTestBypass(context.Background())
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -1341,9 +1342,8 @@ func TestOutboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorCompl
 
 	savedExec, err := client.RequestExecution.Get(ctx, exec.ID)
 	require.NoError(t, err)
-	require.Equal(t, requestexecution.StatusCompleted, savedExec.Status)
-	require.Equal(t, "msg_stop", savedExec.ExternalID)
-	require.Contains(t, string(savedExec.ResponseBody), `"stop_reason":"end_turn"`)
+	require.Equal(t, requestexecution.StatusFailed, savedExec.Status)
+	require.Empty(t, savedExec.ExternalID)
 	require.False(t, state.StreamCompleted)
 }
 

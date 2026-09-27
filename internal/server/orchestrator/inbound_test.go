@@ -287,7 +287,7 @@ func TestInboundPersistentStream_Close_ErrorAfterTerminalKeepsRequestCompleted(t
 	require.Equal(t, request.StatusCompleted, dbReq.Status)
 }
 
-func TestInboundPersistentStream_Close_CompleteAggregateAfterStreamErrorKeepsRequestCompleted(t *testing.T) {
+func TestInboundPersistentStream_Close_CompleteAggregateAfterStreamErrorFailsRequest(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
@@ -333,11 +333,11 @@ func TestInboundPersistentStream_Close_CompleteAggregateAfterStreamErrorKeepsReq
 	require.False(t, persistentStream.Next())
 	require.ErrorIs(t, persistentStream.Err(), io.ErrUnexpectedEOF)
 	require.NoError(t, persistentStream.Close())
-	require.True(t, state.StreamCompleted)
+	require.False(t, state.StreamCompleted)
 
 	savedRequest, err := client.Request.Get(ctx, req.ID)
 	require.NoError(t, err)
-	require.Equal(t, request.StatusCompleted, savedRequest.Status)
+	require.Equal(t, request.StatusFailed, savedRequest.Status)
 }
 
 func TestInboundPersistentStream_Close_UsageWithoutCompletionAfterStreamErrorFailsRequest(t *testing.T) {
@@ -396,7 +396,7 @@ func TestInboundPersistentStream_Close_UsageWithoutCompletionAfterStreamErrorFai
 	require.Equal(t, request.StatusFailed, savedRequest.Status)
 }
 
-func TestInboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorCompletesRequest(t *testing.T) {
+func TestInboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorFailsRequest(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
@@ -442,10 +442,8 @@ func TestInboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorComple
 
 	savedRequest, err := client.Request.Get(ctx, req.ID)
 	require.NoError(t, err)
-	require.Equal(t, request.StatusCompleted, savedRequest.Status)
-	require.Equal(t, "msg_stop", savedRequest.ExternalID)
-	require.Contains(t, string(savedRequest.ResponseBody), `"stop_reason":"end_turn"`)
-	require.True(t, state.StreamCompleted)
+	require.Equal(t, request.StatusFailed, savedRequest.Status)
+	require.False(t, state.StreamCompleted)
 }
 
 func TestInboundPersistentStream_Close_ResponsesFailureTerminalPersistsOutcome(t *testing.T) {
