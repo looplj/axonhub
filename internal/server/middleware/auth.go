@@ -176,6 +176,89 @@ func WithOpenAPIAuth(auth *biz.AuthService) gin.HandlerFunc {
 	}
 }
 
+// WithAdminGraphqlAuth gates /admin/graphql. It accepts either a user JWT, the
+// admin UI's normal credential, or a service_account API key so automation can
+// read the management data. Service account keys stay read-only: the admin
+// GraphQL handler refuses their mutations, and the ent privacy layer plus the
+// authz scope checks decide which queries they may run.
+func WithAdminGraphqlAuth(auth *biz.AuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token, err := ExtractAPIKeyFromRequest(c.Request, &APIKeyConfig{
+			Headers:       []string{"Authorization"},
+			RequireBearer: true,
+		})
+		if err != nil {
+			AbortWithError(c, http.StatusUnauthorized, err)
+			return
+		}
+
+		user, jwtErr := auth.AuthenticateJWTToken(c.Request.Context(), token)
+		if jwtErr == nil {
+			ctx := contexts.WithUser(c.Request.Context(), user)
+			ctx = shared.WithSessionScope(ctx, "user:"+strconv.Itoa(user.ID))
+
+			ctx, err = withUserPrincipal(ctx, user)
+			if err != nil {
+				AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
+				return
+			}
+
+			c.Request = c.Request.WithContext(ctx)
+			c.Next()
+
+			return
+		}
+
+		// Only a token that fails JWT parsing falls through to API key auth. A
+		// server-side JWT failure (for example an unreadable secret key) is not
+		// an API key concern, so report it as such instead of a bogus 401.
+		if !errors.Is(jwtErr, biz.ErrInvalidJWT) {
+			AbortWithError(c, http.StatusInternalServerError, errors.New("Failed to validate token"))
+			return
+		}
+
+		apiKey, keyErr := auth.AuthenticateAPIKey(c.Request.Context(), token)
+		if keyErr != nil {
+			if ent.IsNotFound(keyErr) || errors.Is(keyErr, biz.ErrInvalidAPIKey) {
+				AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid token"))
+			} else {
+				AbortWithError(c, http.StatusInternalServerError, errors.New("Failed to validate token"))
+			}
+
+			return
+		}
+
+		if apiKey.Type != apikey.TypeServiceAccount {
+			AbortWithError(c, http.StatusForbidden, errors.New("Only service account API keys may access the admin GraphQL API"))
+			return
+		}
+
+		if len(apiKey.AllowedIps) > 0 {
+			clientIPs := clientIPCandidates(c)
+			if !isAnyAllowedIP(clientIPs, apiKey.AllowedIps) {
+				AbortWithError(c, http.StatusForbidden, errors.New("IP address is not allowed for this API key"))
+				return
+			}
+		}
+
+		ctx := contexts.WithAPIKey(c.Request.Context(), apiKey)
+		if apiKey.Edges.Project != nil {
+			ctx = contexts.WithProjectID(ctx, apiKey.Edges.Project.ID)
+		}
+
+		ctx = withSessionScopeForAPIKey(ctx, apiKey)
+
+		ctx, err = withAPIKeyPrincipal(ctx, apiKey)
+		if err != nil {
+			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid authentication context"))
+			return
+		}
+
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	}
+}
+
 // WithGeminiKeyAuth be compatible with Gemini query key authentication.
 // https://ai.google.dev/api/generate-content?hl=zh-cn#text_gen_text_only_prompt-SHELL
 func WithGeminiKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
