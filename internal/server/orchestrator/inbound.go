@@ -1,7 +1,6 @@
 package orchestrator
 
 import (
-	"bytes"
 	"context"
 	"errors"
 
@@ -38,18 +37,19 @@ const (
 //
 //nolint:containedctx // Checked.
 type InboundPersistentStream struct {
-	ctx            context.Context
-	stream         streams.Stream[*httpclient.StreamEvent]
-	request        *ent.Request
-	requestExec    *ent.RequestExecution
-	requestService *biz.RequestService
-	transformer    transformer.Inbound
-	perf           *biz.PerformanceRecord
-	responseChunks []*httpclient.StreamEvent
-	terminalState  streamTerminalState
-	outcome        streamOutcome
-	closed         bool
-	state          *PersistenceState
+	ctx             context.Context
+	stream          streams.Stream[*httpclient.StreamEvent]
+	request         *ent.Request
+	requestExec     *ent.RequestExecution
+	requestService  *biz.RequestService
+	transformer     transformer.Inbound
+	perf            *biz.PerformanceRecord
+	responseChunks  []*httpclient.StreamEvent
+	terminalState   streamTerminalState
+	outcome         streamOutcome
+	closed          bool
+	state           *PersistenceState
+	terminalTracker *StreamTerminalTracker
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*InboundPersistentStream)(nil)
@@ -65,16 +65,17 @@ func NewInboundPersistentStream(
 	state *PersistenceState,
 ) *InboundPersistentStream {
 	s := &InboundPersistentStream{
-		ctx:            ctx,
-		stream:         stream,
-		request:        request,
-		requestExec:    requestExec,
-		requestService: requestService,
-		transformer:    transformer,
-		perf:           perf,
-		responseChunks: make([]*httpclient.StreamEvent, 0),
-		closed:         false,
-		state:          state,
+		ctx:             ctx,
+		stream:          stream,
+		request:         request,
+		requestExec:     requestExec,
+		requestService:  requestService,
+		transformer:     transformer,
+		perf:            perf,
+		responseChunks:  make([]*httpclient.StreamEvent, 0),
+		closed:          false,
+		state:           state,
+		terminalTracker: NewStreamTerminalTrackerForRequest(request),
 	}
 
 	return s
@@ -91,11 +92,11 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 		// summary to avoid buffering the full audio payload in memory.
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 		if ts.terminalState == streamTerminalNone {
-			if event.CompletionEvidence == httpclient.CleanEOFCompletionEvidence {
+			if event.CleanEOFCompletionEvidence {
 				ts.state.CleanEOFCompletionEvidence = true
 			}
-			ts.terminalState = classifyStreamTerminalEvent(event)
-			if ts.terminalState != streamTerminalNone {
+			if ts.terminalTracker.Observe(event) {
+				ts.terminalState = classifyStreamTerminalEvent(event)
 				ts.terminalState = ts.finalTerminalState()
 				ts.outcome.observeTerminal(ts.terminalState)
 				ts.state.StreamCompleted = ts.outcome.finalState() == streamTerminalCompleted
@@ -111,46 +112,7 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 // client already received the stream outcome, so this must stay the single source
 // of truth for "the stream ended properly".
 func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
-	if event == nil {
-		return false
-	}
-
-	// For chat completions, check for [DONE] event
-	if bytes.Equal(event.Data, llm.DoneStreamEvent.Data) ||
-		// For Responses API, check for all terminal response events
-		isResponsesTerminalEvent(event.Type) ||
-		// For Anthropic Messages API, check for message_stop event
-		event.Type == "message_stop" ||
-		// For OpenAI audio APIs (TTS sse / STT stream) which have no [DONE] sentinel:
-		// rely on the terminal *.done event surfaced as StreamEvent.Type.
-		event.Type == "speech.audio.done" ||
-		event.Type == "transcript.text.done" ||
-		event.Type == httpclient.BinaryStreamDoneEventType {
-		return true
-	}
-
-	// Compatible SSE providers do not always populate the SSE `event` field and
-	// instead carry the event type only in the JSON data. Also recognize a chat
-	// completion's finish_reason as semantic completion: clients commonly close
-	// the connection immediately after consuming that final useful chunk, before
-	// the trailing [DONE] marker is read by the server.
-	eventType := gjson.GetBytes(event.Data, "type").String()
-	switch eventType {
-	case "message_stop", "speech.audio.done", "transcript.text.done":
-		return true
-	}
-	if isResponsesTerminalEvent(eventType) {
-		return true
-	}
-
-	// OpenAI chat completions: choices[].finish_reason
-	if hasNonEmptyJSONStringField(event.Data, "choices", "finish_reason") {
-		return true
-	}
-
-	// Gemini generateContent streams have no [DONE] sentinel. Completion is
-	// signaled by candidates[].finishReason (e.g. STOP, MAX_TOKENS, SAFETY).
-	return hasNonEmptyJSONStringField(event.Data, "candidates", "finishReason")
+	return NewStreamTerminalTracker(0).Observe(event)
 }
 
 func isResponsesTerminalEvent(eventType string) bool {

@@ -49,6 +49,7 @@ type OutboundPersistentStream struct {
 	outcome         streamOutcome
 	closed          bool
 	state           *PersistenceState
+	terminalTracker *StreamTerminalTracker
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*OutboundPersistentStream)(nil)
@@ -81,6 +82,7 @@ func NewOutboundPersistentStream(
 		responseChunks:  make([]*httpclient.StreamEvent, 0),
 		closed:          false,
 		state:           state,
+		terminalTracker: NewStreamTerminalTrackerForRequest(request),
 	}
 
 	return s
@@ -100,8 +102,8 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 		// summary to avoid buffering the full audio payload in memory.
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 		if ts.terminalState == streamTerminalNone {
-			ts.terminalState = classifyStreamTerminalEvent(event)
-			if ts.terminalState != streamTerminalNone {
+			if ts.terminalTracker.Observe(event) {
+				ts.terminalState = classifyStreamTerminalEvent(event)
 				ts.state.OutboundStreamTerminal = ts.terminalState
 				if ts.terminalState != streamTerminalCompleted {
 					ts.terminalError = streamTerminalErrorMessage(event, ts.terminalState)
@@ -153,7 +155,7 @@ func (ts *OutboundPersistentStream) Close() error {
 	var meta llm.ResponseMeta
 	var aggErr error
 	aggregatedCompleted := false
-	if len(ts.responseChunks) > 0 && streamErr == nil && ctxErr == nil {
+	if len(ts.responseChunks) > 0 && streamErr == nil && (ctxErr == nil || ts.state.CleanEOFCompletionEvidence) {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.state.RawProviderRequest, ts.responseChunks)
 		aggregatedCompleted = aggErr == nil && isCompletedAggregated(meta)
 		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
@@ -166,9 +168,9 @@ func (ts *OutboundPersistentStream) Close() error {
 	} else {
 		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
 	}
-	if ts.state.CleanEOFCompletionEvidence && streamErr == nil && ctxErr == nil && aggErr == nil && len(responseBody) > 0 {
+	if ts.state.CleanEOFCompletionEvidence && streamErr == nil && aggErr == nil && len(responseBody) > 0 {
 		aggregatedCompleted = true
-		ts.outcome.observeAggregatedCompletion(true)
+		ts.outcome.observeValidatedCompletion()
 		ts.markPerformanceTerminal(streamTerminalCompleted, "")
 		enqueueCompletedPerformance(ts.ctx, ts.state)
 	}
