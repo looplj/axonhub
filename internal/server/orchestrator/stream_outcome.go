@@ -39,9 +39,14 @@ func (o *streamOutcome) observeAggregatedCompletion(completed bool) {
 }
 
 func (o *streamOutcome) observeTransportError(err error) {
-	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
-		o.transportErr = err
+	if err == nil {
+		return
 	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		o.observeContextError(err)
+		return
+	}
+	o.transportErr = err
 }
 
 func (o *streamOutcome) observeContextError(err error) {

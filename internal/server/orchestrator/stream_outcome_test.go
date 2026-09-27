@@ -109,6 +109,22 @@ func TestStreamOutcomeFinalDecisionSelectsCause(t *testing.T) {
 			wantState: streamTerminalCanceled,
 			wantCause: context.Canceled,
 		},
+		{
+			name: "source cancellation is the selected cause when wrapper context is alive",
+			configure: func(outcome *streamOutcome) {
+				outcome.observeTransportError(context.Canceled)
+			},
+			wantState: streamTerminalCanceled,
+			wantCause: context.Canceled,
+		},
+		{
+			name: "source deadline is failed when wrapper context is alive",
+			configure: func(outcome *streamOutcome) {
+				outcome.observeTransportError(context.DeadlineExceeded)
+			},
+			wantState: streamTerminalFailed,
+			wantCause: context.DeadlineExceeded,
+		},
 	}
 
 	for _, tt := range tests {
