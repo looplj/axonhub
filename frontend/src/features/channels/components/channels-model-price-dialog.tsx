@@ -515,6 +515,7 @@ const PriceCard = memo(function PriceCard({
   priceIndex,
   currencyCode,
   defaultTimezone,
+  portalContainer,
   onAddItem,
   onModelSelected,
   onDuplicatePrice,
@@ -529,6 +530,7 @@ const PriceCard = memo(function PriceCard({
   priceIndex: number;
   currencyCode?: string;
   defaultTimezone?: string;
+  portalContainer?: HTMLElement | null;
   onAddItem: (priceIndex: number) => void;
   onModelSelected: (priceIndex: number, modelId: string) => void;
   onDuplicatePrice: (priceIndex: number) => void;
@@ -633,6 +635,7 @@ const PriceCard = memo(function PriceCard({
               priceIndex={priceIndex}
               currencyCode={currencyCode}
               defaultTimezone={defaultTimezone}
+              portalContainer={portalContainer}
             />
           </div>
 
@@ -1140,6 +1143,7 @@ export function ChannelsModelPriceDialog() {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent
         ref={setDialogContent}
+        data-testid='channel-price-dialog'
         className='flex h-[85vh] max-h-[800px] flex-col overflow-hidden sm:max-w-4xl'
       >
         <DialogHeader>
@@ -1251,7 +1255,11 @@ export function ChannelsModelPriceDialog() {
                 </div>
               </CardContent>
             </Card>
-            <div ref={priceListRef} className='min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-4 pr-4'>
+            <div
+              ref={priceListRef}
+              data-testid='price-list'
+              className='min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden pt-4 pr-4'
+            >
               {fields.length === 0 && !isLoading && (
                 <div className='text-muted-foreground flex flex-col items-center justify-center py-12'>
                   <p>{t('price.noPrices')}</p>
@@ -1277,6 +1285,7 @@ export function ChannelsModelPriceDialog() {
                         priceIndex={index}
                         currencyCode={settings?.currencyCode}
                         defaultTimezone={settings?.timezone || 'UTC'}
+                        portalContainer={dialogContent}
                         onAddItem={addItem}
                         onModelSelected={onModelSelected}
                         onDuplicatePrice={duplicatePrice}
@@ -1293,7 +1302,7 @@ export function ChannelsModelPriceDialog() {
 
             <DialogFooter className='mt-6 shrink-0 gap-2 sm:justify-between'>
               <div className='flex flex-wrap items-center gap-2'>
-                <Button type='button' variant='outline' onClick={addPrice}>
+                <Button type='button' variant='outline' data-testid='price-add-button' onClick={addPrice}>
                   <IconPlus className='mr-2 h-4 w-4' />
                   {t('price.addPrice')}
                 </Button>
