@@ -528,6 +528,9 @@ function sortModelsByDate(data) {
 	return data;
 }
 
+// Upstream (models.dev via PublicProviderConf) reshuffles provider keys every few
+// weeks, which turns a one-line data change into a whole-file git diff. Sorting keys
+// keeps unchanged data byte-identical, so sync PRs only show real changes.
 function sortObjectKeys(value) {
 	if (Array.isArray(value)) {
 		return value.map(sortObjectKeys);
