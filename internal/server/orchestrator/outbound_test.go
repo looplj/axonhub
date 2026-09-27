@@ -1227,6 +1227,62 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 	})
 }
 
+func TestOutboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorCompletesExecution(t *testing.T) {
+	ctx := authz.WithTestBypass(context.Background())
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx = ent.NewContext(ctx, client)
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	_, requestService, _, usageLogService := setupTestServices(t, client)
+	req, err := client.Request.Create().
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("claude-opus-5-5").
+		SetStatus(request.StatusPending).
+		SetRequestBody([]byte(`{"stream":true}`)).
+		Save(ctx)
+	require.NoError(t, err)
+	exec, err := client.RequestExecution.Create().
+		SetRequestID(req.ID).
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("claude-opus-5-5").
+		SetRequestBody([]byte(`{"stream":true}`)).
+		SetFormat("anthropic/messages").
+		SetStatus(requestexecution.StatusPending).
+		SetStream(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	stream := &sliceEventStream{
+		events: []*httpclient.StreamEvent{
+			{Data: []byte(`{"type":"message_start","message":{"id":"msg_stop","type":"message","role":"assistant","content":[],"model":"claude-opus-5-5"}}`)},
+			{Data: []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"done"}}`)},
+			{Data: []byte(`{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":10,"output_tokens":1}}`)},
+		},
+		err: io.ErrUnexpectedEOF,
+	}
+	outbound, err := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+	state := &PersistenceState{}
+	persistentStream := NewOutboundPersistentStream(ctx, stream, req, exec, requestService, usageLogService, outbound, nil, state)
+
+	for persistentStream.Next() {
+		_ = persistentStream.Current()
+	}
+	require.ErrorIs(t, persistentStream.Err(), io.ErrUnexpectedEOF)
+	require.NoError(t, persistentStream.Close())
+
+	savedExec, err := client.RequestExecution.Get(ctx, exec.ID)
+	require.NoError(t, err)
+	require.Equal(t, requestexecution.StatusCompleted, savedExec.Status)
+	require.Equal(t, "msg_stop", savedExec.ExternalID)
+	require.Contains(t, string(savedExec.ResponseBody), `"stop_reason":"end_turn"`)
+	require.True(t, state.StreamCompleted)
+}
+
 func TestOutboundPersistentStream_Close_ResponsesTerminalPersistsOutcome(t *testing.T) {
 	tests := []struct {
 		name             string
