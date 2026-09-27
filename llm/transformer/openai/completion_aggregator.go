@@ -70,6 +70,7 @@ func AggregateCompletionStreamChunks(ctx context.Context, chunks []*httpclient.S
 		return data, llm.ResponseMeta{}, err
 	}
 
+	completed := finishReason != nil
 	if finishReason == nil {
 		finishReason = lo.ToPtr("stop")
 	}
@@ -99,7 +100,8 @@ func AggregateCompletionStreamChunks(ctx context.Context, chunks []*httpclient.S
 	}
 
 	return data, llm.ResponseMeta{
-		ID:    id,
-		Usage: usage,
+		ID:        id,
+		Usage:     usage,
+		Completed: completed,
 	}, nil
 }
