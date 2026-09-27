@@ -127,7 +127,7 @@ func (ts *OutboundPersistentStream) Close() error {
 	ts.closed = true
 	ctx := ts.ctx
 
-	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
+	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("execution_completed", ts.terminalState == streamTerminalCompleted))
 
 	streamErr := ts.stream.Err()
 	ctxErr := ctx.Err()
@@ -153,19 +153,9 @@ func (ts *OutboundPersistentStream) Close() error {
 	var meta llm.ResponseMeta
 	var aggErr error
 	aggregatedCompleted := false
-	explicitStreamError := streamErr != nil &&
-		!errors.Is(streamErr, context.Canceled) &&
-		!errors.Is(streamErr, context.DeadlineExceeded)
-
-	if len(ts.responseChunks) > 0 {
+	if len(ts.responseChunks) > 0 && streamErr == nil && ctxErr == nil {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.state.RawProviderRequest, ts.responseChunks)
 		aggregatedCompleted = aggErr == nil && isCompletedAggregated(meta)
-		if explicitStreamError {
-			// Usage can be reported before a stream reaches its terminal event.
-			// An explicit transport error therefore requires the transformer to
-			// prove completion independently of usage accounting.
-			aggregatedCompleted = aggErr == nil && meta.Completed
-		}
 		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		if aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
@@ -179,46 +169,23 @@ func (ts *OutboundPersistentStream) Close() error {
 	if ts.outcome.hasFinalEvidence() {
 		ts.terminalState = ts.outcome.finalState()
 	}
-	if ts.terminalState == streamTerminalNone && (streamErr != nil || ctxErr != nil) {
-		ts.terminalState = ts.outcome.finalState()
+	decision := ts.outcome.finalDecision()
+	if ts.terminalState == streamTerminalNone {
+		ts.terminalState = decision.state
 	}
 
-	// An explicit stream error is recoverable only when aggregation found a
-	// provider completion marker. Otherwise preserve the failed execution.
-	if explicitStreamError && ts.outcome.finalState() != streamTerminalCompleted {
-		ts.logFinalizationDecision(ctx, "explicit_stream_error", streamErr, ctxErr, false, aggErr)
+	if decision.state != streamTerminalCompleted && (streamErr != nil || ctxErr != nil) {
+		ts.logFinalizationDecision(ctx, "stream_error_or_context", streamErr, ctxErr, false, aggErr)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
 
 		ts.persistFailureChunks(persistCtx)
-		ts.persistExecutionFailure(persistCtx, streamErr)
+		ts.persistExecutionFailure(persistCtx, decision.cause)
 
 		return ts.stream.Close()
 	}
 
-	// ended without a terminal event / complete aggregated response.
-	if (ctxErr != nil || streamErr != nil) && ts.outcome.finalState() != streamTerminalCompleted {
-		ts.logFinalizationDecision(ctx, "incomplete_stream_with_error", streamErr, ctxErr, aggregatedCompleted, aggErr)
-		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		// Keep partial chunks for debugging even when the request fails/cancels.
-		ts.persistFailureChunks(persistCtx)
-
-		errToReport := streamErr
-		if errToReport == nil {
-			errToReport = ctxErr
-		}
-		if errToReport == nil {
-			errToReport = ErrStreamIncomplete
-		}
-
-		ts.persistExecutionFailure(persistCtx, errToReport)
-
-		return ts.stream.Close()
-	}
-
-	if ts.outcome.finalState() != streamTerminalCompleted {
+	if decision.state != streamTerminalCompleted {
 		ts.logFinalizationDecision(ctx, "incomplete_stream_without_terminal_event", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
@@ -227,19 +194,18 @@ func (ts *OutboundPersistentStream) Close() error {
 		// buffered so operators can inspect the truncated generation.
 		ts.persistFailureChunks(persistCtx)
 
-		errToReport := ErrStreamIncomplete
-		ts.persistExecutionFailure(persistCtx, errToReport)
+		ts.persistExecutionFailure(persistCtx, decision.cause)
 
 		return ts.stream.Close()
 	}
 
 	// Stream completed successfully - perform final persistence
 	log.Debug(ctx, "Stream completed successfully, performing final persistence")
-	decision := "completed_after_aggregation"
+	logDecision := "completed_after_aggregation"
 	if len(responseBody) == 0 {
-		decision = "completed_via_chunk_persistence"
+		logDecision = "completed_via_chunk_persistence"
 	}
-	ts.logFinalizationDecision(ctx, decision, streamErr, ctxErr, aggregatedCompleted, aggErr)
+	ts.logFinalizationDecision(ctx, logDecision, streamErr, ctxErr, aggregatedCompleted, aggErr)
 
 	if len(responseBody) > 0 {
 		ts.persistAggregatedResponse(context.WithoutCancel(ctx), responseBody, meta)
@@ -438,8 +404,7 @@ func (s streamTerminalState) executionStatus() requestexecution.Status {
 }
 
 func isCompletedAggregated(meta llm.ResponseMeta) bool {
-	return meta.Completed ||
-		(meta.Usage != nil && meta.Usage.CompletionTokens > 0)
+	return meta.Completed
 }
 
 var errSkipCandidateByCircuitBreaker = errors.New("skip candidate by circuit breaker")

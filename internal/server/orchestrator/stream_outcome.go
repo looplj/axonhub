@@ -14,7 +14,13 @@ type streamOutcome struct {
 	providerTerminal    bool
 	aggregatedCompleted bool
 	transportErr        error
+	contextErr          error
 	contextState        streamTerminalState
+}
+
+type streamOutcomeDecision struct {
+	state streamTerminalState
+	cause error
 }
 
 func (o *streamOutcome) observeTerminal(state streamTerminalState) {
@@ -42,26 +48,38 @@ func (o *streamOutcome) observeContextError(err error) {
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			o.contextState = streamTerminalFailed
+			o.contextErr = err
 			return
 		}
-		o.contextState = streamTerminalCanceled
+		if o.contextState == streamTerminalNone {
+			o.contextState = streamTerminalCanceled
+			o.contextErr = err
+		}
 	}
 }
 
-func (o streamOutcome) finalState() streamTerminalState {
+func (o streamOutcome) finalDecision() streamOutcomeDecision {
 	if o.providerTerminal {
-		return o.terminalState
+		return streamOutcomeDecision{state: o.terminalState}
 	}
-	if o.aggregatedCompleted {
-		return streamTerminalCompleted
-	}
-	if o.contextState != streamTerminalNone {
-		return o.contextState
+	if o.contextState == streamTerminalFailed {
+		return streamOutcomeDecision{state: streamTerminalFailed, cause: o.contextErr}
 	}
 	if o.transportErr != nil {
-		return streamTerminalFailed
+		return streamOutcomeDecision{state: streamTerminalFailed, cause: o.transportErr}
 	}
-	return streamTerminalIncomplete
+	if o.contextState == streamTerminalCanceled {
+		return streamOutcomeDecision{state: streamTerminalCanceled, cause: o.contextErr}
+	}
+	if o.aggregatedCompleted {
+		return streamOutcomeDecision{state: streamTerminalCompleted}
+	}
+
+	return streamOutcomeDecision{state: streamTerminalIncomplete, cause: ErrStreamIncomplete}
+}
+
+func (o streamOutcome) finalState() streamTerminalState {
+	return o.finalDecision().state
 }
 
 func (o streamOutcome) hasFinalEvidence() bool {

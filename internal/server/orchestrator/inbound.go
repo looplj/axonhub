@@ -247,7 +247,7 @@ func (ts *InboundPersistentStream) Close() error {
 	ts.closed = true
 	ctx := ts.ctx
 
-	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("received_done", ts.state.StreamCompleted))
+	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("request_completed", ts.state.StreamCompleted))
 
 	streamErr := ts.stream.Err()
 	ctxErr := ctx.Err()
@@ -275,19 +275,9 @@ func (ts *InboundPersistentStream) Close() error {
 	var responseBody []byte
 	var meta llm.ResponseMeta
 	var aggErr error
-	explicitStreamError := streamErr != nil &&
-		!errors.Is(streamErr, context.Canceled) &&
-		!errors.Is(streamErr, context.DeadlineExceeded)
-
-	if len(ts.responseChunks) > 0 && !ts.outcome.hasFinalEvidence() {
+	if len(ts.responseChunks) > 0 && !ts.outcome.hasFinalEvidence() && streamErr == nil && ctxErr == nil {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
 		aggregatedCompleted := isCompletedAggregated(meta)
-		if explicitStreamError {
-			// Usage can be reported before a stream reaches its terminal event.
-			// An explicit transport error therefore requires the transformer to
-			// prove completion independently of usage accounting.
-			aggregatedCompleted = meta.Completed
-		}
 		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			ts.outcome.observeAggregatedCompletion(true)
@@ -298,39 +288,17 @@ func (ts *InboundPersistentStream) Close() error {
 		ts.terminalState = ts.outcome.finalState()
 		ts.state.StreamCompleted = ts.terminalState == streamTerminalCompleted
 	}
-	if ts.terminalState == streamTerminalNone && (streamErr != nil || ctxErr != nil) {
-		ts.terminalState = ts.outcome.finalState()
+	decision := ts.outcome.finalDecision()
+	if ts.terminalState == streamTerminalNone {
+		ts.terminalState = decision.state
 	}
 
-	// If there's an explicit stream error (not just context cancellation), treat as failure
-	// only when the buffered chunks do not form a complete response. A trailing transport
-	// error can arrive after the provider has delivered a complete response.
-	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) && ts.outcome.finalState() != streamTerminalCompleted {
+	if decision.state != streamTerminalCompleted && (streamErr != nil || ctxErr != nil) {
 		persistCtx := context.WithoutCancel(ctx)
 		ts.persistFailureChunks(persistCtx)
 
 		if ts.request != nil {
-			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, streamErr); err != nil {
-				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
-			}
-		}
-
-		return ts.stream.Close()
-	}
-
-	// Check if context was canceled (client disconnected before [DONE]).
-	// Skip the error path if we determined the stream actually completed successfully above.
-	if (ctxErr != nil || streamErr != nil) && ts.outcome.finalState() != streamTerminalCompleted {
-		persistCtx := context.WithoutCancel(ctx)
-		ts.persistFailureChunks(persistCtx)
-
-		if ts.request != nil {
-			errToReport := ctxErr
-			if errToReport == nil {
-				errToReport = streamErr
-			}
-
-			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, decision.cause); err != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
 			}
 		}
@@ -342,7 +310,7 @@ func (ts *InboundPersistentStream) Close() error {
 	// completed through aggregation, mark it as incomplete/failed. This handles the case
 	// where the upstream connection drops silently (EOF) without sending a terminal event,
 	// which would otherwise fall through and incorrectly mark the request as "completed".
-	if ts.outcome.finalState() != streamTerminalCompleted {
+	if decision.state != streamTerminalCompleted {
 		log.Debug(ctx, "Stream ended without terminal event or completed response, treating as incomplete")
 
 		persistCtx := context.WithoutCancel(ctx)
@@ -350,9 +318,7 @@ func (ts *InboundPersistentStream) Close() error {
 		ts.persistFailureChunks(persistCtx)
 
 		if ts.request != nil {
-			errToReport := ErrStreamIncomplete
-
-			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, errToReport); err != nil {
+			if err := ts.requestService.UpdateRequestStatusFromError(persistCtx, ts.request.ID, decision.cause); err != nil {
 				log.Warn(persistCtx, "Failed to update request status from error", log.Cause(err))
 			}
 		}
