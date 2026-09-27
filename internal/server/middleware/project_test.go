@@ -12,8 +12,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 )
 
-const testProjectIDHeader = "X-Project-ID"
-
 func TestWithProjectID_APIKeyIsPinnedToItsProject(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
@@ -48,7 +46,7 @@ func TestWithProjectID_APIKeyIsPinnedToItsProject(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodPost, "/admin/graphql", nil)
 			if tc.header != "" {
-				req.Header.Set(testProjectIDHeader, tc.header)
+				req.Header.Set("X-Project-Id", tc.header)
 			}
 
 			recorder := httptest.NewRecorder()
@@ -75,7 +73,7 @@ func TestWithProjectID_UserSelectsProject(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodPost, "/admin/graphql", nil)
-	req.Header.Set(testProjectIDHeader, "gid://axonhub/Project/9")
+	req.Header.Set("X-Project-Id", "gid://axonhub/Project/9")
 
 	recorder := httptest.NewRecorder()
 	engine.ServeHTTP(recorder, req)
