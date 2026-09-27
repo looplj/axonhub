@@ -25,6 +25,13 @@ func WithProjectID() gin.HandlerFunc {
 			return
 		}
 
+		// An API key is pinned to its own project. The header selects a project
+		// for user JWTs, but must not let a key read another project's data.
+		if apiKey, ok := contexts.GetAPIKey(c.Request.Context()); ok && apiKey != nil && apiKey.ProjectID != projectID.ID {
+			AbortWithError(c, http.StatusForbidden, errors.New("Project ID is not allowed for this API key"))
+			return
+		}
+
 		ctx := contexts.WithProjectID(c.Request.Context(), projectID.ID)
 		c.Request = c.Request.WithContext(ctx)
 
