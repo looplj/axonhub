@@ -143,29 +143,23 @@ func (ts *OutboundPersistentStream) Close() error {
 		return ts.stream.Close()
 	}
 
-	// If there's an explicit stream error (not just context cancellation), treat as failure
-	// regardless of what chunks we have. Stream errors indicate the upstream response
-	// was incomplete or corrupted.
-	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) {
-		ts.logFinalizationDecision(ctx, "explicit_stream_error", streamErr, ctxErr, false, nil)
-		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
-		defer cancel()
-
-		ts.persistFailureChunks(persistCtx)
-
-		ts.persistExecutionFailure(persistCtx, streamErr)
-
-		return ts.stream.Close()
-	}
-
 	var responseBody []byte
 	var meta llm.ResponseMeta
 	var aggErr error
 	aggregatedCompleted := false
+	explicitStreamError := streamErr != nil &&
+		!errors.Is(streamErr, context.Canceled) &&
+		!errors.Is(streamErr, context.DeadlineExceeded)
 
 	if len(ts.responseChunks) > 0 {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.state.RawProviderRequest, ts.responseChunks)
 		aggregatedCompleted = aggErr == nil && isCompletedAggregated(meta)
+		if explicitStreamError {
+			// Usage can be reported before a stream reaches its terminal event.
+			// An explicit transport error therefore requires the transformer to
+			// prove completion independently of usage accounting.
+			aggregatedCompleted = aggErr == nil && meta.Completed
+		}
 		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		if aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
@@ -175,6 +169,19 @@ func (ts *OutboundPersistentStream) Close() error {
 		}
 	} else {
 		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
+	}
+
+	// An explicit stream error is recoverable only when aggregation found a
+	// provider completion marker. Otherwise preserve the failed execution.
+	if explicitStreamError && !ts.state.StreamCompleted {
+		ts.logFinalizationDecision(ctx, "explicit_stream_error", streamErr, ctxErr, false, aggErr)
+		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
+		defer cancel()
+
+		ts.persistFailureChunks(persistCtx)
+		ts.persistExecutionFailure(persistCtx, streamErr)
+
+		return ts.stream.Close()
 	}
 
 	// ended without a terminal event / complete aggregated response.
