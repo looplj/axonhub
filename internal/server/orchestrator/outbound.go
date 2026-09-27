@@ -46,6 +46,7 @@ type OutboundPersistentStream struct {
 	upstreamModelID string
 	terminalState   streamTerminalState
 	terminalError   string
+	outcome         streamOutcome
 	closed          bool
 	state           *PersistenceState
 }
@@ -105,7 +106,7 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 				if ts.terminalState != streamTerminalCompleted {
 					ts.terminalError = streamTerminalErrorMessage(event, ts.terminalState)
 				}
-				ts.state.StreamCompleted = ts.terminalState == streamTerminalCompleted
+				ts.outcome.observeTerminal(ts.terminalState)
 				ts.markPerformanceTerminal(ts.terminalState, ts.terminalError)
 			}
 		}
@@ -130,6 +131,11 @@ func (ts *OutboundPersistentStream) Close() error {
 
 	streamErr := ts.stream.Err()
 	ctxErr := ctx.Err()
+	ts.outcome.observeTransportError(streamErr)
+	ts.outcome.observeContextError(ctxErr)
+	if ts.outcome.hasFinalEvidence() {
+		ts.terminalState = ts.outcome.finalState()
+	}
 
 	// A terminal event carries the final stream outcome. Persist its structured
 	// response even if a transport or context error arrives afterward.
@@ -163,17 +169,23 @@ func (ts *OutboundPersistentStream) Close() error {
 		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		if aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
-			ts.state.StreamCompleted = true
+			ts.outcome.observeAggregatedCompletion(true)
 			ts.markPerformanceTerminal(streamTerminalCompleted, "")
 			enqueueCompletedPerformance(ts.ctx, ts.state)
 		}
 	} else {
 		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
 	}
+	if ts.outcome.hasFinalEvidence() {
+		ts.terminalState = ts.outcome.finalState()
+	}
+	if ts.terminalState == streamTerminalNone && (streamErr != nil || ctxErr != nil) {
+		ts.terminalState = ts.outcome.finalState()
+	}
 
 	// An explicit stream error is recoverable only when aggregation found a
 	// provider completion marker. Otherwise preserve the failed execution.
-	if explicitStreamError && !ts.state.StreamCompleted {
+	if explicitStreamError && ts.outcome.finalState() != streamTerminalCompleted {
 		ts.logFinalizationDecision(ctx, "explicit_stream_error", streamErr, ctxErr, false, aggErr)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
@@ -185,7 +197,7 @@ func (ts *OutboundPersistentStream) Close() error {
 	}
 
 	// ended without a terminal event / complete aggregated response.
-	if (ctxErr != nil || streamErr != nil) && !ts.state.StreamCompleted {
+	if (ctxErr != nil || streamErr != nil) && ts.outcome.finalState() != streamTerminalCompleted {
 		ts.logFinalizationDecision(ctx, "incomplete_stream_with_error", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
@@ -206,7 +218,7 @@ func (ts *OutboundPersistentStream) Close() error {
 		return ts.stream.Close()
 	}
 
-	if !ts.state.StreamCompleted {
+	if ts.outcome.finalState() != streamTerminalCompleted {
 		ts.logFinalizationDecision(ctx, "incomplete_stream_without_terminal_event", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, 10*time.Second)
 		defer cancel()
@@ -735,6 +747,8 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
+	p.state.StreamCompleted = false
+	p.state.OutboundStreamTerminal = streamTerminalNone
 	p.trackCurrentChannelSelection()
 	p.refreshCandidateAPIFormat(ctx, candidate, p.state.CurrentModelIndex, p.state.LlmRequest)
 	p.wrapped = selectOutboundForCandidate(candidate)
@@ -815,6 +829,8 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	// Reset request execution for the same channel.
 	p.state.RequestExec = nil
 	p.state.PassThroughApplied = false
+	p.state.StreamCompleted = false
+	p.state.OutboundStreamTerminal = streamTerminalNone
 
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.

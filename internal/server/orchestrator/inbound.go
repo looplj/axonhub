@@ -47,6 +47,7 @@ type InboundPersistentStream struct {
 	perf           *biz.PerformanceRecord
 	responseChunks []*httpclient.StreamEvent
 	terminalState  streamTerminalState
+	outcome        streamOutcome
 	closed         bool
 	state          *PersistenceState
 }
@@ -93,7 +94,8 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 			ts.terminalState = classifyStreamTerminalEvent(event)
 			if ts.terminalState != streamTerminalNone {
 				ts.terminalState = ts.finalTerminalState()
-				ts.state.StreamCompleted = ts.terminalState == streamTerminalCompleted
+				ts.outcome.observeTerminal(ts.terminalState)
+				ts.state.StreamCompleted = ts.outcome.finalState() == streamTerminalCompleted
 			}
 		}
 	}
@@ -249,7 +251,13 @@ func (ts *InboundPersistentStream) Close() error {
 
 	streamErr := ts.stream.Err()
 	ctxErr := ctx.Err()
+	ts.outcome.observeTransportError(streamErr)
+	ts.outcome.observeContextError(ctxErr)
 	ts.terminalState = ts.finalTerminalState()
+	if ts.outcome.hasFinalEvidence() {
+		ts.terminalState = ts.outcome.finalState()
+		ts.state.StreamCompleted = ts.terminalState == streamTerminalCompleted
+	}
 
 	// A terminal event carries the final stream outcome. Persist its structured
 	// response even if a transport or context error arrives afterward.
@@ -271,7 +279,7 @@ func (ts *InboundPersistentStream) Close() error {
 		!errors.Is(streamErr, context.Canceled) &&
 		!errors.Is(streamErr, context.DeadlineExceeded)
 
-	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
+	if len(ts.responseChunks) > 0 && !ts.outcome.hasFinalEvidence() {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
 		aggregatedCompleted := isCompletedAggregated(meta)
 		if explicitStreamError {
@@ -282,14 +290,22 @@ func (ts *InboundPersistentStream) Close() error {
 		}
 		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
+			ts.outcome.observeAggregatedCompletion(true)
 			ts.state.StreamCompleted = true
 		}
+	}
+	if ts.outcome.hasFinalEvidence() {
+		ts.terminalState = ts.outcome.finalState()
+		ts.state.StreamCompleted = ts.terminalState == streamTerminalCompleted
+	}
+	if ts.terminalState == streamTerminalNone && (streamErr != nil || ctxErr != nil) {
+		ts.terminalState = ts.outcome.finalState()
 	}
 
 	// If there's an explicit stream error (not just context cancellation), treat as failure
 	// only when the buffered chunks do not form a complete response. A trailing transport
 	// error can arrive after the provider has delivered a complete response.
-	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) && !ts.state.StreamCompleted {
+	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) && ts.outcome.finalState() != streamTerminalCompleted {
 		persistCtx := context.WithoutCancel(ctx)
 		ts.persistFailureChunks(persistCtx)
 
@@ -304,7 +320,7 @@ func (ts *InboundPersistentStream) Close() error {
 
 	// Check if context was canceled (client disconnected before [DONE]).
 	// Skip the error path if we determined the stream actually completed successfully above.
-	if (ctxErr != nil || streamErr != nil) && !ts.state.StreamCompleted {
+	if (ctxErr != nil || streamErr != nil) && ts.outcome.finalState() != streamTerminalCompleted {
 		persistCtx := context.WithoutCancel(ctx)
 		ts.persistFailureChunks(persistCtx)
 
@@ -326,7 +342,7 @@ func (ts *InboundPersistentStream) Close() error {
 	// completed through aggregation, mark it as incomplete/failed. This handles the case
 	// where the upstream connection drops silently (EOF) without sending a terminal event,
 	// which would otherwise fall through and incorrectly mark the request as "completed".
-	if !ts.state.StreamCompleted {
+	if ts.outcome.finalState() != streamTerminalCompleted {
 		log.Debug(ctx, "Stream ended without terminal event or completed response, treating as incomplete")
 
 		persistCtx := context.WithoutCancel(ctx)
