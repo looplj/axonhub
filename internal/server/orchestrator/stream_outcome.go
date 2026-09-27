@@ -14,7 +14,7 @@ type streamOutcome struct {
 	providerTerminal    bool
 	aggregatedCompleted bool
 	transportErr        error
-	contextErr          error
+	contextState        streamTerminalState
 }
 
 func (o *streamOutcome) observeTerminal(state streamTerminalState) {
@@ -40,7 +40,11 @@ func (o *streamOutcome) observeTransportError(err error) {
 
 func (o *streamOutcome) observeContextError(err error) {
 	if err != nil {
-		o.contextErr = err
+		if errors.Is(err, context.DeadlineExceeded) {
+			o.contextState = streamTerminalFailed
+			return
+		}
+		o.contextState = streamTerminalCanceled
 	}
 }
 
@@ -51,11 +55,15 @@ func (o streamOutcome) finalState() streamTerminalState {
 	if o.aggregatedCompleted {
 		return streamTerminalCompleted
 	}
-	if o.contextErr != nil {
-		return streamTerminalCanceled
+	if o.contextState != streamTerminalNone {
+		return o.contextState
 	}
 	if o.transportErr != nil {
 		return streamTerminalFailed
 	}
 	return streamTerminalIncomplete
+}
+
+func (o streamOutcome) hasFinalEvidence() bool {
+	return o.providerTerminal || o.aggregatedCompleted
 }

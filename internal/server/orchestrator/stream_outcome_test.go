@@ -54,6 +54,13 @@ func TestStreamOutcomeFinalState(t *testing.T) {
 			},
 			want: streamTerminalCanceled,
 		},
+		{
+			name: "server deadline is failed rather than canceled",
+			configure: func(outcome *streamOutcome) {
+				outcome.observeContextError(context.DeadlineExceeded)
+			},
+			want: streamTerminalFailed,
+		},
 	}
 
 	for _, tt := range tests {
