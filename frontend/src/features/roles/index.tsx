@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
-import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { PageHeader } from '@/components/layout/page-header';
 import { RolesDialogs } from './components/roles-action-dialog';
 import { createColumns } from './components/roles-columns';
 import { RolesPrimaryButtons } from './components/roles-primary-buttons';
@@ -98,15 +98,7 @@ export default function RolesPage() {
 
   return (
     <RolesProvider>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('roles.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('roles.description')}</p>
-          </div>
-          <RolesPrimaryButtons />
-        </div>
-      </Header>
+      <PageHeader title={t('roles.title')} description={t('roles.description')} actions={<RolesPrimaryButtons />} />
 
       <Main fixed>
         <RolesContent />

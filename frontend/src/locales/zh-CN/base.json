@@ -282,6 +282,8 @@
   "common.success.signedOut": "退出登录成功！",
   "common.success.userDeleted": "用户删除成功",
   "common.success.systemUpdated": "系统设置更新成功",
+  "common.pageHeader.expandDescription": "展开说明",
+  "common.pageHeader.collapseDescription": "收起说明",
   "initialization.title": "初始化系统",
   "initialization.description": "欢迎使用 AxonHub！请通过创建所有者账户来设置系统。",
   "initialization.form.ownerEmail": "管理员邮箱",
