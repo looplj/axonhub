@@ -142,9 +142,18 @@ func (t *InboundTransformer) TransformStreamChunk(
 	}
 
 	return &httpclient.StreamEvent{
-		Type: "",
-		Data: eventData,
+		Type:               "",
+		Data:               eventData,
+		CompletionEvidence: streamCompletionEvidence(chatResp),
 	}, nil
+}
+
+func streamCompletionEvidence(response *llm.Response) string {
+	if response == nil || response.TransformerMetadata == nil {
+		return ""
+	}
+	evidence, _ := response.TransformerMetadata[streamCompletionEvidenceKey].(string)
+	return evidence
 }
 
 // isReasoningSignatureEvent checks if the response contains ONLY ReasoningSignature.

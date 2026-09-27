@@ -7,8 +7,11 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 )
+
+const streamCompletionEvidenceKey = "stream_completion_evidence"
 
 type openAIInboundChoice struct {
 	output   bool
@@ -139,4 +142,7 @@ func (s *openAIInboundStream) finalize() {
 		choices = append(choices, llm.Choice{Index: index, Delta: &llm.Message{}, FinishReason: &reason})
 	}
 	s.queue = []*llm.Response{{ID: s.id, Model: s.model, Created: s.created, Object: "chat.completion.chunk", Choices: choices}, llm.DoneResponse}
+	s.queue[0].TransformerMetadata = map[string]any{
+		streamCompletionEvidenceKey: httpclient.CleanEOFCompletionEvidence,
+	}
 }

@@ -84,7 +84,8 @@ const (
 	AuthTypeAPIKey = "api_key"
 
 	// BinaryStreamDoneEventType marks EOF for non-SSE streaming responses.
-	BinaryStreamDoneEventType = "binary.done"
+	BinaryStreamDoneEventType  = "binary.done"
+	CleanEOFCompletionEvidence = "openai_chat_clean_eof"
 )
 
 // Response represents a generic HTTP response.
@@ -112,9 +113,10 @@ type Response struct {
 }
 
 type StreamEvent struct {
-	LastEventID string `json:"last_event_id,omitempty"`
-	Type        string `json:"type"`
-	Data        []byte `json:"data"`
+	LastEventID        string `json:"last_event_id,omitempty"`
+	Type               string `json:"type"`
+	Data               []byte `json:"data"`
+	CompletionEvidence string `json:"-"`
 	// Size optionally carries the byte size of a binary chunk that was elided
 	// from Data for persistence (e.g. raw TTS audio chunks). It lets stream
 	// aggregators report total bytes without retaining the audio payload.
