@@ -211,6 +211,7 @@ func TestAuthService_RefreshJWTToken(t *testing.T) {
 	require.NoError(t, err)
 	claims, ok := parsed.Claims.(jwt.MapClaims)
 	require.True(t, ok)
+	require.Equal(t, float64(testUser.ID), claims["user_id"])
 	require.Equal(t, float64(authTime.Unix()), claims["auth_time"])
 	require.Equal(t, float64(now.Add(AdminSessionIdle).Unix()), claims["exp"])
 
