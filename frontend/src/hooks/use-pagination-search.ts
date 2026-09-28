@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { buildPaginationArgs, updateCursorHistory, type CursorDirection, type PaginationVariables } from './pagination-search-state';
 
 interface UsePaginationSearchOptions {
   defaultPageSize?: number;
@@ -21,15 +22,6 @@ interface PaginationState {
   cursorDirection: CursorDirection;
   cursorHistory: string[];
 }
-
-interface PaginationVariables {
-  first?: number;
-  after?: string;
-  last?: number;
-  before?: string;
-}
-
-type CursorDirection = 'after' | 'before';
 
 export interface UsePaginationSearchResult {
   startCursor: string | undefined;
@@ -150,42 +142,19 @@ export function usePaginationSearch(options: UsePaginationSearchOptions = {}): U
     [navigate, replace]
   );
 
-  const paginationArgs = useMemo<PaginationVariables>(() => {
-    if (cursorDirection === 'before') {
-      // When going backward, use the cursor from history with 'after' direction
-      // to get the exact previous page
-      const previousCursor = cursorHistory.length > 0 ? cursorHistory[cursorHistory.length - 1] : undefined;
-      return {
-        first: pageSize,
-        after: previousCursor,
-      };
-    }
-
-    return {
-      first: pageSize,
-      after: endCursor,
-    };
-  }, [endCursor, cursorDirection, cursorHistory, pageSize]);
+  const paginationArgs = useMemo<PaginationVariables>(
+    () => buildPaginationArgs(cursorDirection, cursorHistory, endCursor, pageSize),
+    [endCursor, cursorDirection, cursorHistory, pageSize]
+  );
 
   const setCursors = useCallback(
     (nextStartCursor: string | undefined, nextEndCursor: string | undefined, direction: CursorDirection = DEFAULT_DIRECTION) => {
       if (startCursor === nextStartCursor && endCursor === nextEndCursor && cursorDirection === direction) return;
 
       updateSearch((draft) => {
-        // Update cursor history based on direction
-        const newHistory = [...cursorHistory];
-
-        if (direction === 'after' && nextEndCursor) {
-          // Moving forward: push current endCursor to history
-          if (endCursor && !newHistory.includes(endCursor)) {
-            newHistory.push(endCursor);
-          }
-        } else if (direction === 'before') {
-          // Moving backward: pop from history
-          if (newHistory.length > 0) {
-            newHistory.pop();
-          }
-        }
+        // Forward pushes the displayed page's end cursor (the boundary that
+        // fetches the incoming page); backward pops it again.
+        const newHistory = updateCursorHistory(cursorHistory, direction, nextEndCursor);
 
         if (nextStartCursor && nextStartCursor.length > 0) {
           draft[startCursorKey] = nextStartCursor;
