@@ -1,5 +1,5 @@
-import { AuthUser } from '@/stores/authStore';
-import { wasRecentlyActive } from '@/lib/user-activity';
+import { ensureFreshAccessToken } from '@/lib/auth-session';
+import type { AuthUser } from '@/stores/authStore';
 
 // Same domain, no need to add baseURL.
 export const API_BASE_URL = '';
@@ -57,14 +57,17 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
     ...headers,
   };
 
-  if (requireAuth && wasRecentlyActive()) {
-    requestHeaders['X-Admin-Activity'] = '1';
+  // Add Authorization header if auth is required
+  if (requireAuth) {
+    const token = await ensureFreshAccessToken();
+    if (token) {
+      requestHeaders['Authorization'] = `Bearer ${token}`;
+    }
   }
 
   const requestOptions: RequestInit = {
     method,
     headers: requestHeaders,
-    credentials: 'include',
   };
 
   if (body && method !== 'GET') {
@@ -136,16 +139,11 @@ export const authApi = {
     password: string;
   }): Promise<{
     user: AuthUser;
+    token: string;
   }> =>
     apiRequest('/admin/auth/signin', {
       method: 'POST',
       body: data,
-    }),
-
-  signOut: (): Promise<void> =>
-    apiRequest('/admin/auth/signout', {
-      method: 'POST',
-      requireAuth: true,
     }),
 
   getInvitation: (token: string): Promise<{
@@ -158,7 +156,7 @@ export const authApi = {
   registerInvitation: (
     token: string,
     data: { email: string; password: string; firstName: string; lastName: string }
-  ): Promise<{ user: AuthUser }> =>
+  ): Promise<{ user: AuthUser; token: string }> =>
     apiRequest(`/auth/invitations/${encodeURIComponent(token)}/register`, {
       method: 'POST',
       body: data,
@@ -184,11 +182,12 @@ export const authApi = {
     apiRequest(`/oauth/oidc/authorize/${provider}`),
 
   getOIDCLinkAuthorizeURL: (provider: string): Promise<{ data: { url: string; state: string } }> =>
-    apiRequest(`/admin/oidc/link/${provider}`, { method: 'POST', requireAuth: true }),
+    apiRequest(`/admin/oidc/link/${provider}`, { requireAuth: true }),
 
   exchangeOIDCCode: (code: string): Promise<{
     data: {
       user: AuthUser;
+      token: string;
     }
   }> =>
     apiRequest('/oauth/oidc/exchange', {

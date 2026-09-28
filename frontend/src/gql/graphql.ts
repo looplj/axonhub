@@ -1,6 +1,6 @@
 import { toast } from 'sonner';
-import { useAuthStore } from '@/stores/authStore';
-import { wasRecentlyActive } from '@/lib/user-activity';
+import { getTokenFromStorage, removeTokenFromStorage } from '@/stores/authStore';
+import { ensureFreshAccessToken } from '@/lib/auth-session';
 import i18n from '@/lib/i18n';
 
 export class GraphQLRequestError extends Error {
@@ -8,10 +8,7 @@ export class GraphQLRequestError extends Error {
   isAuthError: boolean;
   extensions?: Record<string, any>;
 
-  constructor(
-    message: string,
-    options?: { status?: number; isAuthError?: boolean; extensions?: Record<string, any> }
-  ) {
+  constructor(message: string, options?: { status?: number; isAuthError?: boolean; extensions?: Record<string, any> }) {
     super(message);
     this.name = 'GraphQLRequestError';
     this.status = options?.status;
@@ -53,12 +50,16 @@ export async function graphqlRequest<T>(
   customHeaders?: Record<string, string>,
   init?: { signal?: AbortSignal }
 ): Promise<T> {
+  // Get token from localStorage
+  const token = await ensureFreshAccessToken();
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  if (wasRecentlyActive()) {
-    headers['X-Admin-Activity'] = '1';
+  // Add Authorization header if token exists
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   // Merge custom headers
@@ -75,7 +76,6 @@ export async function graphqlRequest<T>(
     response = await fetch(GRAPHQL_ENDPOINT, {
       method: 'POST',
       headers,
-      credentials: 'include',
       signal: init?.signal,
       body: JSON.stringify({
         query,
@@ -92,8 +92,9 @@ export async function graphqlRequest<T>(
 
   // Handle explicit auth failures (401 only — 403 is a permission denial, not a session issue)
   if (response.status === 401) {
-    useAuthStore.getState().auth.reset();
-    if (window.location.pathname !== '/sign-in' && window.location.pathname !== '/initialization') {
+    // Clear token and redirect to login
+    if (getTokenFromStorage() === token) {
+      removeTokenFromStorage();
       toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
       window.location.href = '/sign-in';
     }
@@ -113,7 +114,7 @@ export async function graphqlRequest<T>(
     });
   }
 
-  let result;
+  let result: { data: T; errors?: Array<{ message?: string; extensions?: Record<string, unknown> }> };
   try {
     result = await response.json();
   } catch (_error) {
@@ -135,8 +136,9 @@ export async function graphqlRequest<T>(
     const authError = result.errors.find(isUnauthorizedGraphQLError);
 
     if (authError) {
-      useAuthStore.getState().auth.reset();
-      if (window.location.pathname !== '/sign-in' && window.location.pathname !== '/initialization') {
+      // Clear token and redirect to login
+      if (getTokenFromStorage() === token) {
+        removeTokenFromStorage();
         toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
         window.location.href = '/sign-in';
       }

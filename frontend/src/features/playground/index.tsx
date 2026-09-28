@@ -5,6 +5,8 @@ import { DefaultChatTransport, type ChatStatus, type FileUIPart } from 'ai';
 import { ImagePlus, MessageSquare, RefreshCcw, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
+import { ensureFreshAccessToken } from '@/lib/auth-session';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,7 +36,6 @@ import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useQueryModels } from '@/features/models/data/models';
 import { usePermissions } from '@/hooks/usePermissions';
 import { copyTextToClipboard } from '@/lib/clipboard';
-import { wasRecentlyActive } from '@/lib/user-activity';
 import { cn } from '@/lib/utils';
 import { readSelection, resolveSelection, writeSelection, type PlaygroundModelSource } from './selection';
 
@@ -143,6 +144,7 @@ export default function Playground() {
     modelSourceRef.current = modelSource;
   }, [modelSource]);
 
+  const { accessToken } = useAuthStore((state) => state.auth);
   const { user, hasSystemScope } = usePermissions();
   const canUseModelGateway = hasSystemScope('read_channels');
 
@@ -169,11 +171,9 @@ export default function Playground() {
       credentials: 'include',
       headers: () => {
         const headers: Record<string, string> = {
+          Authorization: 'Bearer ' + accessToken,
           'X-Project-ID': selectedProjectId || '',
         };
-        if (wasRecentlyActive()) {
-          headers['X-Admin-Activity'] = '1';
-        }
         if (modelSourceRef.current === 'channel' && selectedChannelRef.current) {
           headers['X-Channel-ID'] = selectedChannelRef.current;
         }
@@ -188,7 +188,10 @@ export default function Playground() {
         };
       },
       fetch: async (url, init) => {
-        const res = await fetch(url, init);
+        const token = await ensureFreshAccessToken();
+        const headers = new Headers(init?.headers);
+        if (token) headers.set('Authorization', `Bearer ${token}`);
+        const res = await fetch(url, { ...init, headers });
         if (!res.ok) {
           let message = res.statusText || 'Request failed';
           let code: number | undefined = res.status;
