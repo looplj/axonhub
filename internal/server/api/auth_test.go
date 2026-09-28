@@ -33,6 +33,7 @@ func TestAuthHandlers_RefreshErrorClassification(t *testing.T) {
 		t.Run(scenario.name, func(t *testing.T) {
 			// Given
 			client := enttest.NewEntClient(t, "sqlite3", "file:auth-refresh?mode=memory&_fk=1")
+			t.Cleanup(func() { _ = client.Close() })
 			ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
 			_, err := client.System.Create().SetKey(biz.SystemKeySecretKey).SetValue("test-secret").Save(ctx)
 			require.NoError(t, err)
