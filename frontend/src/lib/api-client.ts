@@ -1,4 +1,5 @@
-import { AuthUser, getTokenFromStorage } from '@/stores/authStore';
+import { ensureFreshAccessToken } from '@/lib/auth-session';
+import type { AuthUser } from '@/stores/authStore';
 
 // Same domain, no need to add baseURL.
 export const API_BASE_URL = '';
@@ -58,7 +59,7 @@ export async function apiRequest<T>(endpoint: string, options: ApiRequestOptions
 
   // Add Authorization header if auth is required
   if (requireAuth) {
-    const token = getTokenFromStorage();
+    const token = await ensureFreshAccessToken();
     if (token) {
       requestHeaders['Authorization'] = `Bearer ${token}`;
     }

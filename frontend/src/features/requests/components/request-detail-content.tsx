@@ -14,6 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { JsonViewer } from '@/components/json-tree-view';
 import { useGeneralSettings } from '@/features/system/data/system';
 import { getTokenFromStorage } from '@/stores/authStore';
+import { ensureFreshAccessToken } from '@/lib/auth-session';
 import { useUsageLogs } from '../data/usage-logs';
 import { type Request, useRequest, useRequestExecutions } from '../data';
 import { ChunksDialog } from './chunks-dialog';
@@ -162,7 +163,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
     const requestIdNumber = extractNumberID(request.id);
     if (!requestIdNumber) return null;
 
-    const token = getTokenFromStorage();
+    const token = await ensureFreshAccessToken();
     if (!token) {
       toast.error(t('common.errors.sessionExpiredSignIn'));
       return null;
