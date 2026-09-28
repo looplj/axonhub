@@ -513,8 +513,8 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 // (first-event timeout, empty-response detection, retry before the first content event)
 // and nothing drains RawStreamCh, so blocking on it would stall the pre-read as soon as
 // the channel buffer fills. Every event reaches pipelineCh before it is held, so the
-// backlog stays within the pipelineCh buffer of what the pre-read consumed, and the
-// pre-read enforces its own pre-commit limits.
+// backlog runs at most the pipelineCh buffer ahead of what the pre-read has consumed,
+// and OutboundPersistentStream already retains the consumed events as response chunks.
 type rawStreamBacklog struct {
 	mu       sync.Mutex
 	attached bool
