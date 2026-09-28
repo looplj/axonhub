@@ -287,8 +287,8 @@ func TestExtractDocument(t *testing.T) {
 }
 
 func TestRedactCredentials(t *testing.T) {
-	redacted := RedactCredentials("Invalid API key provided: sk-live-9f2b7c1d4e5a6b8c9d0e1f2a3b4c5d6e and Bearer abcdefghijklmnop")
-	require.NotContains(t, redacted, "sk-live-9f2b7c1d4e5a6b8c9d0e1f2a3b4c5d6e")
+	redacted := RedactCredentials("Invalid API key provided: sk-test-placeholder-not-a-real-key and Bearer abcdefghijklmnop")
+	require.NotContains(t, redacted, "sk-test-placeholder-not-a-real-key")
 	require.NotContains(t, redacted, "abcdefghijklmnop")
 	require.Contains(t, redacted, "Invalid API key provided")
 }
