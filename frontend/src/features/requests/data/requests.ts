@@ -84,10 +84,11 @@ function buildRequestsQuery(permissions: { canViewApiKeys: boolean; canViewChann
                 cursor
               }
             }
-            usageLogs(first: 1) {
+            usageLogs(first: 1, orderBy: { field: CREATED_AT, direction: DESC }) {
               edges {
                 node {
                   id
+                  createdAt
                   promptTokens
                   completionTokens
                   completionReasoningTokens
@@ -156,10 +157,11 @@ function buildRequestDetailQuery(permissions: { canViewApiKeys: boolean; canView
           status
           format
           metricsReasoningDurationMs
-          usageLogs(first: 1) {
+          usageLogs(first: 1, orderBy: { field: CREATED_AT, direction: DESC }) {
             edges {
               node {
                   id
+                  createdAt
                   promptTokens
                   completionTokens
                   completionReasoningTokens

@@ -100,6 +100,17 @@ export const requestSchema = z.object({
     })
     .optional()
     .nullable(),
+}).transform((req) => {
+  // usage_logs are linked to a request by request_id. If request IDs were reused
+  // after a cleanup, an old stale usage log can point at this request. A genuine
+  // usage log is always written after the request, so drop any association whose
+  // creation time predates the request. This avoids showing a wrong cost while the
+  // request's own usage log has not been written yet.
+  const edges = req.usageLogs?.edges;
+  if (!edges || edges.length === 0) return req;
+  const validEdges = edges.filter((edge) => !edge.node?.createdAt || edge.node.createdAt >= req.createdAt);
+  if (validEdges.length === edges.length) return req;
+  return { ...req, usageLogs: { ...req.usageLogs!, edges: validEdges } };
 });
 
 export type Request = z.infer<typeof requestSchema>;

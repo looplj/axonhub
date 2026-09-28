@@ -87,10 +87,13 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
   const { data: usageLogs } = useUsageLogs(
     {
       first: 1,
-      where: { requestID: requestId },
+      where: {
+        requestID: requestId,
+        ...(request?.createdAt ? { createdAtGTE: request.createdAt } : {}),
+      },
       orderBy: { field: 'CREATED_AT', direction: 'DESC' },
     },
-    { projectId, enabled: true }
+    { projectId, enabled: !!request }
   );
 
   const parsedResponse = useMemo(() => {
