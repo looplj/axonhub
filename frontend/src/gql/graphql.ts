@@ -43,6 +43,15 @@ export function isUnauthorizedGraphQLError(error: any): boolean {
   return error?.extensions?.code === 'UNAUTHENTICATED';
 }
 
+function redirectToSignIn() {
+  const { pathname, search, hash } = window.location;
+  if (pathname.startsWith('/sign-in')) {
+    window.location.href = '/sign-in';
+    return;
+  }
+  window.location.href = `/sign-in?redirect=${encodeURIComponent(pathname + search + hash)}`;
+}
+
 // GraphQL client function with token support
 export async function graphqlRequest<T>(
   query: string,
@@ -96,7 +105,7 @@ export async function graphqlRequest<T>(
     if (getTokenFromStorage() === token) {
       removeTokenFromStorage();
       toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
-      window.location.href = '/sign-in';
+      redirectToSignIn();
     }
     throw new GraphQLRequestError('Unauthorized', { status: response.status, isAuthError: true });
   }
@@ -140,7 +149,7 @@ export async function graphqlRequest<T>(
       if (getTokenFromStorage() === token) {
         removeTokenFromStorage();
         toast.error(i18n.t('common.errors.sessionExpiredSignIn'));
-        window.location.href = '/sign-in';
+        redirectToSignIn();
       }
       throw new GraphQLRequestError('Unauthorized', { status: 401, isAuthError: true });
     }

@@ -1,8 +1,7 @@
-import { HTMLAttributes, useState } from 'react';
+import { HTMLAttributes } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { passwordSchema } from '@/lib/validation';
@@ -13,21 +12,25 @@ import { PasswordInput } from '@/components/password-input';
 import { useSignIn, useOIDCProviders, useOIDCAuthorize } from '@/features/auth/data/auth';
 import { LogIn } from 'lucide-react';
 
-type UserAuthFormProps = HTMLAttributes<HTMLFormElement>;
+type UserAuthFormProps = HTMLAttributes<HTMLFormElement> & {
+  redirect?: string;
+};
 
 // Create form schema with dynamic validation messages
 const createFormSchema = (t: (key: string) => string) =>
   z.object({
-    email: z.email().min(1, { message: t('auth.signIn.validation.emailRequired') }),
+    email: z
+      .string()
+      .min(1, { message: t('auth.signIn.validation.emailRequired') })
+      .pipe(z.email({ message: t('auth.signIn.validation.emailInvalid') })),
     password: passwordSchema(t),
   });
 
-export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
+export function UserAuthForm({ className, redirect, ...props }: UserAuthFormProps) {
   const { t } = useTranslation();
-  const signInMutation = useSignIn();
-  const [rememberMe, setRememberMe] = useState(false);
+  const signInMutation = useSignIn(redirect);
   const { data: oidcProviders } = useOIDCProviders();
-  const oidcAuthorizeMutation = useOIDCAuthorize();
+  const oidcAuthorizeMutation = useOIDCAuthorize(redirect);
 
   const formSchema = createFormSchema(t);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -57,8 +60,9 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 <FormControl>
                   <Input
                     type='email'
+                    autoComplete='username'
                     placeholder={t('auth.signIn.form.email.placeholder')}
-                    className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white'
+                    className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white'
                     data-testid='sign-in-email'
                     {...field}
                   />
@@ -73,19 +77,12 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             name='password'
             render={({ field }) => (
               <FormItem className='relative'>
-                <div className='flex items-center justify-between'>
-                  <FormLabel className='text-sm font-medium text-slate-700'>{t('auth.signIn.form.password.label')}</FormLabel>
-                  <Link
-                    to='/forgot-password'
-                    className='text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 hover:underline'
-                  >
-                    {t('auth.signIn.links.forgotPassword')}
-                  </Link>
-                </div>
+                <FormLabel className='text-sm font-medium text-slate-700'>{t('auth.signIn.form.password.label')}</FormLabel>
                 <FormControl>
                   <PasswordInput
+                    autoComplete='current-password'
                     placeholder={t('auth.signIn.form.password.placeholder')}
-                    className='border-slate-300 bg-white text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:bg-white'
+                    className='border-slate-300 bg-white text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-[#A8844E] focus:bg-white'
                     data-testid='sign-in-password'
                     {...field}
                   />
@@ -95,27 +92,10 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             )}
           />
 
-          {/* Remember Me Toggle */}
-          <div className='flex items-center justify-between'>
-            <label className='flex cursor-pointer items-center space-x-3'>
-              <div className='relative'>
-                <input type='checkbox' checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className='sr-only' />
-                <div
-                  className={`h-6 w-12 rounded-full border-2 transition-all duration-300 ${rememberMe ? 'border-slate-600 bg-slate-600' : 'border-slate-300 bg-slate-100'}`}
-                >
-                  <div
-                    className={`mt-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${rememberMe ? 'ml-0.5 translate-x-6' : 'translate-x-0.5'}`}
-                  ></div>
-                </div>
-              </div>
-              <span className='text-sm text-slate-700'>{t('auth.signIn.form.rememberMe')}</span>
-            </label>
-          </div>
-
           {/* Submit Button */}
           <Button
             type='submit'
-            className='mt-6 w-full rounded-lg bg-slate-800 px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-slate-700 hover:shadow-xl focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50'
+            className='mt-2 w-full rounded-lg bg-[#1A2023] px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-[#2A3138] hover:shadow-xl focus:ring-2 focus:ring-[#A8844E] focus:ring-offset-2 disabled:opacity-50'
             disabled={signInMutation.isPending}
             data-testid='sign-in-submit'
           >
@@ -139,7 +119,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                   <span className='w-full border-t border-slate-300' />
                 </div>
                 <div className='relative flex justify-center text-xs uppercase'>
-                  <span className='bg-white px-2 text-slate-500'>Or continue with</span>
+                  <span className='bg-white px-2 text-slate-500'>{t('auth.signIn.oidc.divider')}</span>
                 </div>
               </div>
             )}
