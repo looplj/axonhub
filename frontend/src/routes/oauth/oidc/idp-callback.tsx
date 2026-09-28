@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useOIDCExchange } from '@/features/auth/data/auth';
+import { consumeOIDCRedirect } from '@/lib/auth-redirect';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -29,13 +30,13 @@ function OIDCCallback() {
     if (error) {
       console.error('OIDC Error:', error, error_description);
       toast.error(error_description || error || 'Authentication failed');
-      navigate({ to: '/sign-in' });
+      navigate({ to: '/sign-in', search: { redirect: consumeOIDCRedirect() } });
       return;
     }
 
     if (!code) {
       toast.error('Missing authorization code');
-      navigate({ to: '/sign-in' });
+      navigate({ to: '/sign-in', search: { redirect: consumeOIDCRedirect() } });
       return;
     }
 

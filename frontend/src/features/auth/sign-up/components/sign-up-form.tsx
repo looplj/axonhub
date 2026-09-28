@@ -96,7 +96,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             <FormItem>
               <FormLabel>{t('users.form.email')}</FormLabel>
               <FormControl>
-                <Input type='email' placeholder='name@example.com' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                <Input type='email' placeholder='name@example.com' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -110,7 +110,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               <FormItem>
                 <FormLabel>{t('users.form.firstName')}</FormLabel>
                 <FormControl>
-                  <Input className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                  <Input className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -123,7 +123,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               <FormItem>
                 <FormLabel>{t('users.form.lastName')}</FormLabel>
                 <FormControl>
-                  <Input className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                  <Input className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -137,7 +137,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             <FormItem>
               <FormLabel>{t('users.form.password')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                <PasswordInput placeholder='********' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -150,14 +150,14 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             <FormItem>
               <FormLabel>{t('users.form.confirmPassword')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
+                <PasswordInput placeholder='********' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         <Button
-          className='mt-2 w-full rounded-lg bg-slate-800 px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-slate-700 hover:shadow-xl focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50'
+          className='mt-2 w-full rounded-lg bg-[#1A2023] px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-[#2A3138] hover:shadow-xl focus:ring-2 focus:ring-[#A8844E] focus:ring-offset-2 disabled:opacity-50'
           disabled={form.formState.isSubmitting}
         >
           {t('users.buttons.completeRegistration')}

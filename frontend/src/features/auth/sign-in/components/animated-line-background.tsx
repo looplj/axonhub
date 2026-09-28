@@ -54,6 +54,8 @@ const getParticleChecksum = (particles: Particle[]): number => {
   }, 0);
 };
 
+const prefersReducedMotion = (): boolean => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
 const shouldExposeAnimationDiagnostics = (): boolean => {
   if (!import.meta.env.DEV || typeof window === 'undefined') {
     return false;
@@ -319,8 +321,14 @@ const AnimatedLineBackground: FC = () => {
       return;
     }
 
+    // Draw a single static frame when the user prefers reduced motion.
+    if (prefersReducedMotion()) {
+      renderFrame();
+      return;
+    }
+
     animationRef.current = requestAnimationFrame(animate);
-  }, [animate]);
+  }, [animate, renderFrame]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     mouseAreaRef.current.x = e.clientX;
@@ -333,25 +341,31 @@ const AnimatedLineBackground: FC = () => {
   }, []);
 
   useEffect(() => {
+    // Resizing clears the canvas, so redraw the static frame when not animating.
+    const onResize = () => {
+      handleResize();
+      if (animationRef.current === null && prefersReducedMotion()) {
+        renderFrame();
+      }
+    };
+
     handleResize();
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', onResize);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseout', handleMouseOut);
 
     const el = document.getElementById('auth-card-wrapper');
     let observer: ResizeObserver | null = null;
     if (el) {
-      observer = new ResizeObserver(() => {
-        handleResize();
-      });
+      observer = new ResizeObserver(onResize);
       observer.observe(el);
     }
 
     startAnimation();
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', onResize);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseout', handleMouseOut);
       if (observer) {
@@ -359,7 +373,23 @@ const AnimatedLineBackground: FC = () => {
       }
       stopAnimation();
     };
-  }, [handleResize, handleMouseMove, handleMouseOut, startAnimation, stopAnimation]);
+  }, [handleResize, handleMouseMove, handleMouseOut, renderFrame, startAnimation, stopAnimation]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    const handleMotionChange = () => {
+      stopAnimation();
+      resetFrameTimingState();
+      if (mediaQuery?.matches) {
+        renderFrame();
+      } else {
+        startAnimation();
+      }
+    };
+
+    mediaQuery?.addEventListener('change', handleMotionChange);
+    return () => mediaQuery?.removeEventListener('change', handleMotionChange);
+  }, [renderFrame, resetFrameTimingState, startAnimation, stopAnimation]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
