@@ -1292,7 +1292,7 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 	})
 }
 
-func TestOutboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorFailsExecution(t *testing.T) {
+func TestOutboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorCompletesExecution(t *testing.T) {
 	ctx := authz.WithTestBypass(context.Background())
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
@@ -1342,8 +1342,8 @@ func TestOutboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorFails
 
 	savedExec, err := client.RequestExecution.Get(ctx, exec.ID)
 	require.NoError(t, err)
-	require.Equal(t, requestexecution.StatusFailed, savedExec.Status)
-	require.Empty(t, savedExec.ExternalID)
+	require.Equal(t, requestexecution.StatusCompleted, savedExec.Status)
+	require.Equal(t, "msg_stop", savedExec.ExternalID)
 	require.False(t, state.StreamCompleted)
 }
 

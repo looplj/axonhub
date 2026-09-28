@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -31,11 +32,35 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 		rawEvents        []string
 		cancelBeforeEOF  bool
 		cancelAfter      string
+		sourceErr        error
+		requestBody      string
+		wantErrorFrame   bool
 		wantRequest      request.Status
 		wantExecution    requestexecution.Status
 		wantFinishReason []string
 		wantDone         bool
 	}{
+		{
+			name:        "first choice finishes before second choice and transport fails",
+			requestBody: `{"stream":true,"n":2}`,
+			rawEvents: []string{
+				`{"id":"chatcmpl-split","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"first"},"finish_reason":"stop"}]}`,
+				`{"id":"chatcmpl-split","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":1,"delta":{"content":"second"},"finish_reason":null}]}`,
+			},
+			sourceErr:   io.ErrUnexpectedEOF,
+			wantRequest: request.StatusFailed, wantExecution: requestexecution.StatusFailed,
+			wantFinishReason: []string{"stop"}, wantErrorFrame: true,
+		},
+		{
+			name:        "two choices finish in separate chunks",
+			requestBody: `{"stream":true,"n":2}`,
+			rawEvents: []string{
+				`{"id":"chatcmpl-split-ok","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"first"},"finish_reason":"stop"}]}`,
+				`{"id":"chatcmpl-split-ok","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":1,"delta":{"content":"second"},"finish_reason":"stop"}]}`,
+			},
+			wantRequest: request.StatusCompleted, wantExecution: requestexecution.StatusCompleted,
+			wantFinishReason: []string{"stop"},
+		},
 		{
 			name: "text clean EOF",
 			rawEvents: []string{
@@ -136,8 +161,12 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 			requestService := biz.NewRequestService(client, systemService.CacheConfig, systemService, usageLogService, dataStorageService, biz.NewLiveStreamRegistry())
 			require.NoError(t, systemService.SetStoragePolicy(baseCtx, &biz.StoragePolicy{StoreChunks: true, StoreRequestBody: true, StoreResponseBody: true}))
 
+			requestBody := tt.requestBody
+			if requestBody == "" {
+				requestBody = `{"stream":true}`
+			}
 			req, err := client.Request.Create().SetProjectID(project.ID).SetModelID("gpt-test").SetFormat(llm.APIFormatOpenAIChatCompletion.String()).
-				SetStatus(request.StatusProcessing).SetStream(true).SetRequestBody(objects.JSONRawMessage(`{"stream":true}`)).Save(baseCtx)
+				SetStatus(request.StatusProcessing).SetStream(true).SetRequestBody(objects.JSONRawMessage(requestBody)).Save(baseCtx)
 			require.NoError(t, err)
 			execution, err := client.RequestExecution.Create().SetRequestID(req.ID).SetProjectID(project.ID).SetModelID("gpt-test").
 				SetFormat(llm.APIFormatOpenAIChatCompletion.String()).SetStatus(requestexecution.StatusProcessing).SetStream(true).
@@ -159,7 +188,11 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 			for _, event := range tt.rawEvents {
 				raw = append(raw, &httpclient.StreamEvent{Data: []byte(event)})
 			}
-			provider := orchestrator.NewOutboundPersistentStream(streamCtx, streams.SliceStream(raw), req, execution, requestService, usageLogService, outbound, nil, state)
+			var source streams.Stream[*httpclient.StreamEvent] = streams.SliceStream(raw)
+			if tt.sourceErr != nil {
+				source = &errorAfterStream{items: raw, err: tt.sourceErr}
+			}
+			provider := orchestrator.NewOutboundPersistentStream(streamCtx, source, req, execution, requestService, usageLogService, outbound, nil, state)
 			normalized, err := outbound.TransformStream(streamCtx, nil, provider)
 			require.NoError(t, err)
 			converted, err := openai.NewInboundTransformer().TransformStream(streamCtx, normalized)
@@ -184,8 +217,17 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 			require.Equal(t, tt.wantExecution, savedExecution.Status)
 			body := writer.Body.String()
 			require.Equal(t, tt.wantDone, strings.Contains(body, "data: [DONE]"))
+			if tt.wantErrorFrame {
+				require.Contains(t, body, "event:error", body)
+			}
 			for _, reason := range tt.wantFinishReason {
 				require.Contains(t, body, `"finish_reason":"`+reason+`"`)
+			}
+			if tt.wantRequest == request.StatusCompleted {
+				require.NotContains(t, body, "event:error")
+			}
+			if tt.name == "two choices finish in separate chunks" || tt.name == "partially finished multi choice" {
+				require.Equal(t, 2, strings.Count(body, `"finish_reason":"stop"`), body)
 			}
 		})
 	}
@@ -198,6 +240,10 @@ type cancelOnEventStream struct {
 }
 
 func (s *cancelOnEventStream) Next() bool { return s.source.Next() }
+
+func (s *cancelOnEventStream) ExpectedStreamChoices() int {
+	return streamExpectedChoices(s.source)
+}
 
 func (s *cancelOnEventStream) Current() *httpclient.StreamEvent {
 	event := s.source.Current()

@@ -103,7 +103,7 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 		ts.responseChunks = append(ts.responseChunks, httpclient.SummarizeBinaryChunk(event))
 		if ts.terminalState == streamTerminalNone {
 			if ts.terminalTracker.Observe(event) {
-				ts.terminalState = classifyStreamTerminalEvent(event)
+				ts.terminalState = classifyAcceptedTerminalEvent(event)
 				ts.state.OutboundStreamTerminal = ts.terminalState
 				if ts.terminalState != streamTerminalCompleted {
 					ts.terminalError = streamTerminalErrorMessage(event, ts.terminalState)
@@ -155,13 +155,20 @@ func (ts *OutboundPersistentStream) Close() error {
 	var meta llm.ResponseMeta
 	var aggErr error
 	aggregatedCompleted := false
-	if len(ts.responseChunks) > 0 && streamErr == nil && (ctxErr == nil || ts.state.CleanEOFCompletionEvidence) {
+	if len(ts.responseChunks) > 0 {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.state.RawProviderRequest, ts.responseChunks)
-		aggregatedCompleted = aggErr == nil && isCompletedAggregated(meta)
+		aggregatedCompleted = aggErr == nil && len(responseBody) > 0 && meta.ID != "" && isCompletedAggregated(meta)
+		if ts.apiFormat == llm.APIFormatOpenAIChatCompletion && (streamErr != nil || ctxErr != nil) {
+			aggregatedCompleted = aggregatedCompleted && ts.terminalTracker.AllChoicesFinished()
+		}
 		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		if aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
-			ts.outcome.observeAggregatedCompletion(true)
+			if streamErr != nil || ctxErr != nil {
+				ts.outcome.observeValidatedCompletion()
+			} else {
+				ts.outcome.observeAggregatedCompletion(true)
+			}
 			ts.markPerformanceTerminal(streamTerminalCompleted, "")
 			enqueueCompletedPerformance(ts.ctx, ts.state)
 		}

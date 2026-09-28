@@ -85,6 +85,10 @@ func (ts *InboundPersistentStream) Next() bool {
 	return ts.stream.Next()
 }
 
+func (ts *InboundPersistentStream) ExpectedStreamChoices() int {
+	return ts.terminalTracker.expectedChoices
+}
+
 func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	event := ts.stream.Current()
 	if event != nil {
@@ -96,7 +100,7 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 				ts.state.CleanEOFCompletionEvidence = true
 			}
 			if ts.terminalTracker.Observe(event) {
-				ts.terminalState = classifyStreamTerminalEvent(event)
+				ts.terminalState = classifyAcceptedTerminalEvent(event)
 				ts.terminalState = ts.finalTerminalState()
 				ts.outcome.observeTerminal(ts.terminalState)
 				ts.state.StreamCompleted = ts.outcome.finalState() == streamTerminalCompleted
@@ -107,12 +111,10 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 	return event
 }
 
-// IsTerminalStreamEvent checks both SSE metadata and JSON data for a
-// protocol-level terminal marker. The SSE writers use it to decide whether the
-// client already received the stream outcome, so this must stay the single source
-// of truth for "the stream ended properly".
+// IsTerminalStreamEvent classifies one event with the default single-choice
+// contract. Stream consumers use StreamTerminalTracker for multi-choice streams.
 func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
-	return NewStreamTerminalTracker(0).Observe(event)
+	return NewStreamTerminalTracker(1).Observe(event)
 }
 
 func isResponsesTerminalEvent(eventType string) bool {
@@ -128,6 +130,10 @@ func classifyStreamTerminalEvent(event *httpclient.StreamEvent) streamTerminalSt
 	if !IsTerminalStreamEvent(event) {
 		return streamTerminalNone
 	}
+	return classifyAcceptedTerminalEvent(event)
+}
+
+func classifyAcceptedTerminalEvent(event *httpclient.StreamEvent) streamTerminalState {
 	const responseStatusCanceledBritish = "cancelled" //nolint:misspell // OpenAI protocol spelling.
 
 	eventType := event.Type
@@ -240,12 +246,19 @@ func (ts *InboundPersistentStream) Close() error {
 	var responseBody []byte
 	var meta llm.ResponseMeta
 	var aggErr error
-	if len(ts.responseChunks) > 0 && !ts.outcome.hasFinalEvidence() && streamErr == nil && ctxErr == nil {
+	if len(ts.responseChunks) > 0 && !ts.outcome.hasFinalEvidence() {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
 		aggregatedCompleted := isCompletedAggregated(meta)
+		if ts.request != nil && ts.request.Format == llm.APIFormatOpenAIChatCompletion.String() && (streamErr != nil || ctxErr != nil) {
+			aggregatedCompleted = aggregatedCompleted && ts.terminalTracker.AllChoicesFinished()
+		}
 		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
-			ts.outcome.observeAggregatedCompletion(true)
+			if streamErr != nil || ctxErr != nil {
+				ts.outcome.observeValidatedCompletion()
+			} else {
+				ts.outcome.observeAggregatedCompletion(true)
+			}
 			ts.state.StreamCompleted = true
 		}
 	}

@@ -29,8 +29,24 @@ func NewStreamTerminalTrackerForRequest(request *ent.Request) *StreamTerminalTra
 	if request == nil {
 		return NewStreamTerminalTracker(0)
 	}
-	expected := int(gjson.GetBytes(request.RequestBody, "n").Int())
+	expected := ExpectedStreamChoices(request)
 	return NewStreamTerminalTracker(expected)
+}
+
+func ExpectedStreamChoices(request *ent.Request) int {
+	if request == nil {
+		return 0
+	}
+	if n := gjson.GetBytes(request.RequestBody, "n"); n.Exists() {
+		if n.Int() > 0 {
+			return int(n.Int())
+		}
+		return 0
+	}
+	if gjson.GetBytes(request.RequestBody, "stream").Bool() {
+		return 1
+	}
+	return 0
 }
 
 func (t *StreamTerminalTracker) Observe(event *httpclient.StreamEvent) bool {
@@ -52,10 +68,7 @@ func (t *StreamTerminalTracker) Observe(event *httpclient.StreamEvent) bool {
 			}
 			return true
 		})
-		if len(t.choices) > t.expectedChoices {
-			t.expectedChoices = len(t.choices)
-		}
-		if t.expectedChoices > 0 && len(t.finished) >= t.expectedChoices {
+		if t.expectedChoices > 0 && len(t.finished) >= t.expectedChoices && len(t.choices) == t.expectedChoices {
 			t.terminal = true
 		}
 	}
@@ -68,6 +81,10 @@ func (t *StreamTerminalTracker) Observe(event *httpclient.StreamEvent) bool {
 	}
 
 	return t.terminal
+}
+
+func (t *StreamTerminalTracker) AllChoicesFinished() bool {
+	return t.expectedChoices > 0 && len(t.choices) == t.expectedChoices && len(t.finished) == t.expectedChoices
 }
 
 func isNonChoiceTerminalEvent(event *httpclient.StreamEvent) bool {
