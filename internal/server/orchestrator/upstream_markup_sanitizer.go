@@ -49,12 +49,14 @@ func (m *upstreamMarkupSanitizerMiddleware) OnOutboundLlmStream(
 	return &markupSanitizerStream{ctx: ctx, inner: stream, carry: map[int]string{}}, nil
 }
 
-// maxTagHold bounds the split-tag tail buffered per choice so that a stray
-// '<' in prose can never pin memory. It is a memory/latency bound only: the
-// previous 128-byte limit doubled as a "does this look like a tag" test, and
-// a real DSML tag head longer than that (a parameter tag carrying a long
-// string attribute) failed it, so the whole tag head was released as content.
-const maxTagHold = 4096
+// maxTagHold is the maximum amount of an already recognizable, incomplete
+// DSML tag that the stream will wait for. Past this point the malformed output
+// is aborted so callers receive a retryable error without an excessive delay.
+const maxTagHold = 1024
+
+// maxPendingChunks bounds how long stripped markup may wait for a real tool
+// call before the turn is treated as irrecoverably corrupted.
+const maxPendingChunks = 256
 
 var (
 	// Complete markup tags, e.g. "<｜DSML｜parameter name=\"x\" string=\"true\">",
@@ -80,38 +82,62 @@ var (
 // the text ends with what could be the start of a tag split across chunks,
 // that tail is held back (returned as hold) instead of emitted.
 func scrubText(text string, flush bool) (emit, hold string, stripped bool) {
+	emit, hold, stripped, _ = scrubTextChecked(text, flush)
+	return emit, hold, stripped
+}
+
+// scrubTextChecked additionally reports an incomplete, confirmed internal tag
+// that must abort the stream instead of being released as content.
+func scrubTextChecked(text string, flush bool) (emit, hold string, stripped, fatal bool) {
 	emit = leakedToolCallTagRe.ReplaceAllString(text, "")
 	stripped = emit != text
 
-	if flush {
-		return emit, "", stripped
-	}
-
-	lt := strings.LastIndexByte(emit, '<')
-	if lt < 0 || lt < strings.LastIndexByte(emit, '>') {
-		return emit, "", stripped
+	lt := incompleteTagStart(emit)
+	if lt < 0 {
+		return emit, "", stripped, false
 	}
 
 	tail := emit[lt:]
+	confirmed := dsmlHeadRe.MatchString(tail) || strings.HasPrefix(tail, "<small_placeholder") || strings.HasPrefix(tail, "</small_placeholder")
+	if flush {
+		if confirmed {
+			return emit[:lt], "", true, true
+		}
+		return emit, "", stripped, false
+	}
 
 	if len(tail) <= maxTagHold {
-		if tagPrefixRe.MatchString(tail) {
-			return emit[:lt], tail, stripped
+		return emit[:lt], tail, stripped, false
+	}
+
+	if confirmed {
+		return emit[:lt], "", true, true
+	}
+	return emit, "", stripped, false
+}
+
+// incompleteTagStart selects the first confirmed internal-tag head after the
+// last closing bracket. If none is confirmed yet, the last '<' is retained so
+// a short prefix split across chunks can resolve without pinning earlier prose.
+func incompleteTagStart(text string) int {
+	start := strings.LastIndexByte(text, '>') + 1
+	for offset := start; offset < len(text); {
+		rel := strings.IndexByte(text[offset:], '<')
+		if rel < 0 {
+			break
 		}
-
-		return emit, "", stripped
+		candidate := offset + rel
+		tail := text[candidate:]
+		if dsmlHeadRe.MatchString(tail) || strings.HasPrefix(tail, "<small_placeholder") || strings.HasPrefix(tail, "</small_placeholder") {
+			return candidate
+		}
+		offset = candidate + 1
 	}
-
-	// Past the hold limit the prefix can no longer be resolved in place. A tail
-	// that already starts as a DSML tag head is markup by definition: drop it and
-	// report the strip, because releasing it would hand the client the very
-	// markup this middleware exists to remove. Prose that merely follows a stray
-	// '<' is still emitted untouched.
-	if dsmlHeadRe.MatchString(tail) {
-		return emit[:lt], "", true
+	rel := strings.LastIndexByte(text[start:], '<')
+	if rel < 0 {
+		return -1
 	}
-
-	return emit, "", stripped
+	return start + rel
 }
 
 // markupSanitizerStream filters a unified LLM response stream. Chunks are
@@ -159,7 +185,10 @@ func (s *markupSanitizerStream) Next() bool {
 
 		s.last = resp
 		s.trackToolCalls(resp)
-		stripped := s.cleanChunk(resp)
+		stripped, fatal := s.cleanChunk(resp)
+		if fatal {
+			return s.abortMarkupLeak()
+		}
 
 		if stripped && !s.scrubbing {
 			s.scrubbing = true
@@ -168,6 +197,9 @@ func (s *markupSanitizerStream) Next() bool {
 
 		if s.scrubbing {
 			s.pending = append(s.pending, resp)
+			if len(s.pending) > maxPendingChunks {
+				return s.abortMarkupLeak()
+			}
 
 			if s.sawToolCalls {
 				// The turn produced real tool calls: the leak was cosmetic.
@@ -211,26 +243,17 @@ func (s *markupSanitizerStream) finish() bool {
 	}
 
 	if s.scrubbing && !s.sawToolCalls {
-		// Markup was stripped but no tool call ever arrived: the model's tool
-		// invocation was swallowed. Abort with a retryable in-stream error
-		// instead of letting the client consume a silently corrupted turn.
-		s.pending = nil
-		s.err = &llm.ResponseError{
-			// 502 semantics: retry.go classifies by StatusCode, so a zero value
-			// would make the abort invisible to retryable-server-error handling.
-			StatusCode: http.StatusInternalServerError,
-			Detail: llm.ErrorDetail{
-				Type:    "server_error",
-				Code:    "upstream_tool_call_markup_leak",
-				Message: "upstream provider leaked internal tool-call markup into the content stream and produced no tool calls; the response was aborted and is safe to retry",
-			},
-		}
-		log.Warn(s.ctx, "aborted stream: tool-call markup leak swallowed the turn's tool calls")
-
-		return false
+		return s.abortMarkupLeak()
 	}
 
-	// Flush any tail text held back as a potential split tag prefix.
+	// Flush ordinary tail text, but never release a confirmed internal-tag
+	// fragment merely because the upstream stream ended.
+	for _, held := range s.carry {
+		if _, _, _, fatal := scrubTextChecked(held, true); fatal {
+			return s.abortMarkupLeak()
+		}
+	}
+
 	if len(s.carry) > 0 && s.last != nil {
 		tail := *s.last
 		tail.Usage = nil
@@ -260,6 +283,23 @@ func (s *markupSanitizerStream) finish() bool {
 	return false
 }
 
+// abortMarkupLeak stops a corrupted turn with the existing retryable error.
+func (s *markupSanitizerStream) abortMarkupLeak() bool {
+	s.pending = nil
+	s.carry = map[int]string{}
+	s.err = &llm.ResponseError{
+		StatusCode: http.StatusInternalServerError,
+		Detail: llm.ErrorDetail{
+			Type:    "server_error",
+			Code:    "upstream_tool_call_markup_leak",
+			Message: "upstream provider leaked internal tool-call markup into the content stream and produced no tool calls; the response was aborted and is safe to retry",
+		},
+	}
+	_ = s.inner.Close()
+	log.Warn(s.ctx, "aborted stream: tool-call markup leak swallowed the turn's tool calls")
+	return false
+}
+
 // trackToolCalls records whether any real tool call appeared in the stream.
 func (s *markupSanitizerStream) trackToolCalls(resp *llm.Response) {
 	if s.sawToolCalls {
@@ -281,8 +321,9 @@ func (s *markupSanitizerStream) trackToolCalls(resp *llm.Response) {
 
 // cleanChunk strips markup from every content field of resp in place and
 // reports whether anything was stripped.
-func (s *markupSanitizerStream) cleanChunk(resp *llm.Response) bool {
+func (s *markupSanitizerStream) cleanChunk(resp *llm.Response) (bool, bool) {
 	strippedAny := false
+	fatalAny := false
 
 	for i := range resp.Choices {
 		choice := &resp.Choices[i]
@@ -299,9 +340,10 @@ func (s *markupSanitizerStream) cleanChunk(resp *llm.Response) bool {
 		flush := choice.FinishReason != nil
 
 		if msg.Content.Content != nil {
-			text, stripped := s.scrubChoiceText(choice.Index, *msg.Content.Content, flush)
+			text, stripped, fatal := s.scrubChoiceText(choice.Index, *msg.Content.Content, flush)
 			msg.Content.Content = &text
 			strippedAny = strippedAny || stripped
+			fatalAny = fatalAny || fatal
 		}
 
 		for j := range msg.Content.MultipleContent {
@@ -310,9 +352,10 @@ func (s *markupSanitizerStream) cleanChunk(resp *llm.Response) bool {
 				continue
 			}
 
-			text, stripped := s.scrubChoiceText(choice.Index, *part.Text, flush)
+			text, _, stripped, fatal := scrubTextChecked(*part.Text, true)
 			part.Text = &text
 			strippedAny = strippedAny || stripped
+			fatalAny = fatalAny || fatal
 		}
 
 		// A finishing choice may carry no text at all (empty final delta), so the
@@ -320,8 +363,9 @@ func (s *markupSanitizerStream) cleanChunk(resp *llm.Response) bool {
 		// chunk so the text is delivered with the chunk carrying finish_reason;
 		// otherwise it would surface as an extra chunk after the terminal one.
 		if flush && s.carry[choice.Index] != "" {
-			emit, stripped := s.scrubChoiceText(choice.Index, "", true)
+			emit, stripped, fatal := s.scrubChoiceText(choice.Index, "", true)
 			strippedAny = strippedAny || stripped
+			fatalAny = fatalAny || fatal
 
 			if emit != "" {
 				if msg.Content.Content == nil && len(msg.Content.MultipleContent) == 0 {
@@ -336,13 +380,13 @@ func (s *markupSanitizerStream) cleanChunk(resp *llm.Response) bool {
 		}
 	}
 
-	return strippedAny
+	return strippedAny, fatalAny
 }
 
 // scrubChoiceText scrubs a text fragment together with any held split-tag
 // tail for the same choice index; when flush is true the tail is released.
-func (s *markupSanitizerStream) scrubChoiceText(index int, text string, flush bool) (string, bool) {
-	emit, hold, stripped := scrubText(s.carry[index]+text, flush)
+func (s *markupSanitizerStream) scrubChoiceText(index int, text string, flush bool) (string, bool, bool) {
+	emit, hold, stripped, fatal := scrubTextChecked(s.carry[index]+text, flush)
 
 	if hold != "" {
 		s.carry[index] = hold
@@ -350,5 +394,5 @@ func (s *markupSanitizerStream) scrubChoiceText(index int, text string, flush bo
 		delete(s.carry, index)
 	}
 
-	return emit, stripped
+	return emit, stripped, fatal
 }

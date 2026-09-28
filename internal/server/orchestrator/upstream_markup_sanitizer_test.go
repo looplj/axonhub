@@ -13,9 +13,10 @@ import (
 
 // stubMarkupStream is a minimal in-memory streams.Stream for sanitizer tests.
 type stubMarkupStream struct {
-	items []*llm.Response
-	idx   int
-	err   error
+	items  []*llm.Response
+	idx    int
+	err    error
+	closed bool
 }
 
 // Next advances to the next queued response.
@@ -33,8 +34,11 @@ func (s *stubMarkupStream) Current() *llm.Response { return s.items[s.idx-1] }
 // Err returns the preset stream error, if any.
 func (s *stubMarkupStream) Err() error { return s.err }
 
-// Close releases the stub stream (no-op).
-func (s *stubMarkupStream) Close() error { return nil }
+// Close records that the wrapped stream was terminated.
+func (s *stubMarkupStream) Close() error {
+	s.closed = true
+	return nil
+}
 
 // textChunk builds a streamed assistant delta carrying the given text.
 func textChunk(t *testing.T, text string) *llm.Response {
@@ -219,6 +223,13 @@ func TestScrubText_HoldsIncompleteTagPrefix(t *testing.T) {
 	}
 }
 
+func TestScrubText_PreservesPlainTextAfterClosingBracket(t *testing.T) {
+	emit, hold, stripped := scrubText("prefix>plain text", false)
+	if emit != "prefix>plain text" || hold != "" || stripped {
+		t.Fatalf("emit=%q hold=%q stripped=%v", emit, hold, stripped)
+	}
+}
+
 // A tag head whose attribute value carries a character the old whitelist
 // omitted (a POSIX path) must be held, not released: releasing it handed the
 // whole tag head to the client as content and suppressed the abort.
@@ -330,5 +341,133 @@ func TestMarkupSanitizer_SplitTagWithColonAttributeKeepsToolCallTurn(t *testing.
 	}
 	if text != "startdone" {
 		t.Fatalf("unexpected text: %q", text)
+	}
+}
+
+// TestMarkupSanitizer_AbortsOverlongRecognizableTail verifies that a clearly
+// recognizable malformed marker is rejected at the size bound, without
+// consuming a later continuation chunk.
+func TestMarkupSanitizer_AbortsOverlongRecognizableTail(t *testing.T) {
+	marker := "<" + "｜DSML｜invoke value=\"" + strings.Repeat("x", maxTagHold)
+	inner := &stubMarkupStream{items: []*llm.Response{
+		textChunk(t, marker),
+		textChunk(t, "must not be consumed"),
+	}}
+	wrapped, err := withUpstreamMarkupSanitizer().(interface {
+		OnOutboundLlmStream(context.Context, streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
+	}).OnOutboundLlmStream(context.Background(), inner)
+	if err != nil {
+		t.Fatalf("wrap: %v", err)
+	}
+
+	if wrapped.Next() {
+		t.Fatal("overlong malformed marker was emitted")
+	}
+	if wrapped.Err() == nil {
+		t.Fatal("overlong malformed marker did not return an error")
+	}
+	if !inner.closed {
+		t.Fatal("inner stream was not closed on abort")
+	}
+	if inner.idx != 1 {
+		t.Fatalf("consumed %d chunks; want exactly the malformed chunk", inner.idx)
+	}
+}
+
+// TestMarkupSanitizer_AbortsRecognizableTailAtEOF verifies that stream end
+// removes any reason to wait for even a short recognizable marker to close.
+func TestMarkupSanitizer_AbortsRecognizableTailAtEOF(t *testing.T) {
+	marker := "prefix<" + "｜DSML｜invoke value=\"unfinished"
+	inner := &stubMarkupStream{items: []*llm.Response{textChunk(t, marker)}}
+	wrapped, err := withUpstreamMarkupSanitizer().(interface {
+		OnOutboundLlmStream(context.Context, streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
+	}).OnOutboundLlmStream(context.Background(), inner)
+	if err != nil {
+		t.Fatalf("wrap: %v", err)
+	}
+
+	text, streamErr := collectText(t, wrapped)
+	if streamErr == nil {
+		t.Fatal("recognizable marker left at EOF did not return an error")
+	}
+	if strings.Contains(text, "DSML") {
+		t.Fatalf("malformed marker leaked into output: %q", text)
+	}
+	if !inner.closed {
+		t.Fatal("inner stream was not closed on EOF abort")
+	}
+}
+
+// TestMarkupSanitizer_UsesOpeningMarkerAnchor verifies that a less-than sign
+// inside an attribute cannot replace the actual opening marker as the held
+// tail anchor.
+func TestMarkupSanitizer_UsesOpeningMarkerAnchor(t *testing.T) {
+	marker := "<" + "｜DSML｜invoke value=\"a<b" + strings.Repeat("x", maxTagHold)
+	_, hold, _, fatal := scrubTextChecked(marker, false)
+	if hold != "" {
+		t.Fatalf("fatal marker unexpectedly remained buffered: %q", hold)
+	}
+	if !fatal {
+		t.Fatal("attribute less-than sign hid the overlong opening marker")
+	}
+}
+
+// TestMarkupSanitizer_BoundsPendingChunks verifies that complete cosmetic
+// markup cannot buffer an unbounded turn while waiting for a real tool call.
+func TestMarkupSanitizer_BoundsPendingChunks(t *testing.T) {
+	items := []*llm.Response{textChunk(t, "<"+"｜DSML｜invoke>")}
+	for i := 0; i < maxPendingChunks; i++ {
+		items = append(items, textChunk(t, "x"))
+	}
+	items = append(items, textChunk(t, "must not be consumed"))
+	inner := &stubMarkupStream{items: items}
+	wrapped, err := withUpstreamMarkupSanitizer().(interface {
+		OnOutboundLlmStream(context.Context, streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
+	}).OnOutboundLlmStream(context.Background(), inner)
+	if err != nil {
+		t.Fatalf("wrap: %v", err)
+	}
+
+	if wrapped.Next() {
+		t.Fatal("pending overflow unexpectedly emitted a chunk")
+	}
+	if wrapped.Err() == nil {
+		t.Fatal("pending overflow did not return an error")
+	}
+	if !inner.closed {
+		t.Fatal("inner stream was not closed on pending overflow")
+	}
+	if inner.idx != maxPendingChunks+1 {
+		t.Fatalf("consumed %d chunks; want %d", inner.idx, maxPendingChunks+1)
+	}
+}
+
+// TestMarkupSanitizer_DoesNotJoinMultipartText verifies that adjacent text
+// parts are independent fields rather than fragments of one split marker.
+func TestMarkupSanitizer_DoesNotJoinMultipartText(t *testing.T) {
+	left, right := "left<", "right"
+	resp := &llm.Response{Choices: []llm.Choice{{
+		Index: 0,
+		Delta: &llm.Message{Content: llm.MessageContent{MultipleContent: []llm.MessageContentPart{
+			{Type: "text", Text: &left},
+			{Type: "text", Text: &right},
+		}}},
+	}}}
+	inner := &stubMarkupStream{items: []*llm.Response{resp}}
+	wrapped, err := withUpstreamMarkupSanitizer().(interface {
+		OnOutboundLlmStream(context.Context, streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
+	}).OnOutboundLlmStream(context.Background(), inner)
+	if err != nil {
+		t.Fatalf("wrap: %v", err)
+	}
+	if !wrapped.Next() {
+		t.Fatalf("missing multipart chunk: %v", wrapped.Err())
+	}
+	parts := wrapped.Current().Choices[0].Delta.Content.MultipleContent
+	if got := *parts[0].Text; got != left {
+		t.Fatalf("first part changed: %q", got)
+	}
+	if got := *parts[1].Text; got != right {
+		t.Fatalf("second part changed: %q", got)
 	}
 }
