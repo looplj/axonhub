@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"time"
 
@@ -21,6 +20,12 @@ import (
 )
 
 const OIDC_ONLY_PLACEHOLDER = "!OIDC_SSO_ONLY!"
+
+const (
+	AdminSessionIdle    = 30 * 24 * time.Hour
+	AdminSessionMaximum = 90 * 24 * time.Hour
+	AdminSessionRenewal = 7 * 24 * time.Hour
+)
 
 // HashPassword hashes a password using bcrypt.
 func HashPassword(password string) (string, error) {
@@ -98,16 +103,28 @@ func GenerateSecretKey() (string, error) {
 
 // GenerateJWTToken generates a JWT token for a user.
 func (s *AuthService) GenerateJWTToken(ctx context.Context, user *ent.User) (string, error) {
+	now := time.Now()
+	return s.GenerateJWTTokenAt(ctx, user, now, now)
+}
+
+func (s *AuthService) GenerateJWTTokenAt(ctx context.Context, user *ent.User, now, authTime time.Time) (string, error) {
 	secretKey, err := authz.RunWithSystemBypass(ctx, "auth-get-secret-key", func(bypassCtx context.Context) (string, error) {
 		return s.SystemService.SecretKey(bypassCtx)
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to get secret key: %w", err)
 	}
+	expiresAt := now.Add(AdminSessionIdle)
+	maximumExpiresAt := authTime.Add(AdminSessionMaximum)
+	if expiresAt.After(maximumExpiresAt) {
+		expiresAt = maximumExpiresAt
+	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
+		"user_id":   user.ID,
+		"iat":       now.Unix(),
+		"auth_time": authTime.Unix(),
+		"exp":       expiresAt.Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(secretKey))
@@ -158,13 +175,36 @@ func (s *AuthService) AuthenticateUser(
 
 // AuthenticateJWTToken validates a JWT token and returns the user.
 func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString string) (*ent.User, error) {
+	claims, err := s.parseJWTClaims(ctx, tokenString)
+	if err != nil {
+		return nil, err
+	}
+	if authTime, ok := jwtTimeClaim(claims, "auth_time"); ok && !time.Now().Before(authTime.Add(AdminSessionMaximum)) {
+		return nil, fmt.Errorf("%w: maximum session age exceeded", ErrInvalidJWT)
+	}
+
+	userID, ok := claims["user_id"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("%w: invalid token claims", ErrInvalidJWT)
+	}
+
+	u, err := authz.RunWithSystemBypass(ctx, "auth-lookup", func(bypassCtx context.Context) (*ent.User, error) {
+		return s.UserService.GetUserByID(bypassCtx, int(userID))
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: failed to get user: %w", ErrInvalidJWT, err)
+	}
+	if u.Status != user.StatusActivated {
+		return nil, fmt.Errorf("%w: user not activated", ErrInvalidJWT)
+	}
+	return u, nil
+}
+
+func (s *AuthService) parseJWTClaims(ctx context.Context, tokenString string) (jwt.MapClaims, error) {
 	secretKey, err := authz.RunWithSystemBypass(ctx, "auth-get-secret-key", func(bypassCtx context.Context) (string, error) {
 		return s.SystemService.SecretKey(bypassCtx)
 	})
 	if err != nil {
-		if errors.Is(err, ErrSystemNotInitialized) {
-			return nil, fmt.Errorf("%w: system not initialized", ErrInvalidJWT)
-		}
 		return nil, fmt.Errorf("failed to get secret key: %w", err)
 	}
 
@@ -183,24 +223,57 @@ func (s *AuthService) AuthenticateJWTToken(ctx context.Context, tokenString stri
 	if !ok || !token.Valid {
 		return nil, fmt.Errorf("%w: invalid token", ErrInvalidJWT)
 	}
+	return claims, nil
+}
 
+func (s *AuthService) RefreshJWTToken(ctx context.Context, tokenString string, now time.Time) (string, bool, error) {
+	claims, err := s.parseJWTClaims(ctx, tokenString)
+	if err != nil {
+		return "", false, err
+	}
+	expiresAt, ok := jwtTimeClaim(claims, "exp")
+	if !ok || expiresAt.Sub(now) >= AdminSessionRenewal {
+		return "", false, nil
+	}
+	authTime, ok := jwtTimeClaim(claims, "auth_time")
+	if !ok {
+		return "", false, nil
+	}
+	if !now.Before(authTime.Add(AdminSessionMaximum)) {
+		return "", false, fmt.Errorf("%w: maximum session age exceeded", ErrInvalidJWT)
+	}
+	if !now.Add(AdminSessionIdle).Before(authTime.Add(AdminSessionMaximum)) && !expiresAt.Before(authTime.Add(AdminSessionMaximum)) {
+		return "", false, nil
+	}
 	userID, ok := claims["user_id"].(float64)
 	if !ok {
-		return nil, fmt.Errorf("%w: invalid token claims", ErrInvalidJWT)
+		return "", false, fmt.Errorf("%w: invalid token claims", ErrInvalidJWT)
 	}
-
-	u, err := authz.RunWithSystemBypass(ctx, "auth-lookup", func(bypassCtx context.Context) (*ent.User, error) {
+	authenticatedUser, err := authz.RunWithSystemBypass(ctx, "auth-lookup", func(bypassCtx context.Context) (*ent.User, error) {
 		return s.UserService.GetUserByID(bypassCtx, int(userID))
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%w: failed to get user: %w", ErrInvalidJWT, err)
+		if ent.IsNotFound(err) {
+			return "", false, fmt.Errorf("%w: failed to get user: %w", ErrInvalidJWT, err)
+		}
+		return "", false, fmt.Errorf("failed to get user: %w", err)
 	}
-
-	if u.Status != user.StatusActivated {
-		return nil, fmt.Errorf("%w: user not activated", ErrInvalidJWT)
+	if authenticatedUser.Status != user.StatusActivated {
+		return "", false, fmt.Errorf("%w: user not activated", ErrInvalidJWT)
 	}
+	refreshed, err := s.GenerateJWTTokenAt(ctx, authenticatedUser, now, authTime)
+	if err != nil {
+		return "", false, err
+	}
+	return refreshed, true, nil
+}
 
-	return u, nil
+func jwtTimeClaim(claims jwt.MapClaims, name string) (time.Time, bool) {
+	value, ok := claims[name].(float64)
+	if !ok || value <= 0 {
+		return time.Time{}, false
+	}
+	return time.Unix(int64(value), 0), true
 }
 
 func (s *AuthService) AuthenticateAPIKey(ctx context.Context, key string) (*ent.APIKey, error) {

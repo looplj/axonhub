@@ -424,17 +424,6 @@ func writeSSEStreamEnd(
 	clientDisconnected *bool,
 ) {
 	switch {
-	case terminalSeen:
-		if streamErr != nil {
-			log.Warn(ctx, "Stream error after terminal event was delivered, suppressing trailing error event",
-				log.Cause(streamErr))
-		}
-	case errors.Is(ctx.Err(), context.Canceled):
-		*clientDisconnected = true
-
-		if streamErr != nil && !errors.Is(streamErr, context.Canceled) {
-			log.Warn(ctx, "Stream error after client disconnected", log.Cause(streamErr))
-		}
 	case errors.Is(ctx.Err(), context.DeadlineExceeded) &&
 		(streamErr == nil || errors.Is(streamErr, context.Canceled) || errors.Is(streamErr, context.DeadlineExceeded)):
 		streamErr = ctx.Err()
@@ -444,12 +433,29 @@ func writeSSEStreamEnd(
 			log.Warn(ctx, "Failed to write SSE deadline error", log.Cause(err))
 		}
 	case streamErr != nil:
-		log.Error(ctx, "Error in stream", log.Cause(streamErr))
-		if err := writeSSEErrorEvent(ctx, c.Writer, formatErr, streamErr); err != nil {
+		if errors.Is(streamErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
 			*clientDisconnected = true
-			log.Warn(ctx, "Failed to write SSE stream error", log.Cause(err))
+
+			if !errors.Is(streamErr, context.Canceled) {
+				log.Warn(ctx, "Stream error after client disconnected", log.Cause(streamErr))
+			}
+		} else if terminalSeen {
+			log.Warn(ctx, "Stream error after terminal event was delivered, suppressing trailing error event",
+				log.Cause(streamErr))
+		} else {
+			log.Error(ctx, "Error in stream", log.Cause(streamErr))
+			if err := writeSSEErrorEvent(ctx, c.Writer, formatErr, streamErr); err != nil {
+				*clientDisconnected = true
+				log.Warn(ctx, "Failed to write SSE stream error", log.Cause(err))
+			}
 		}
-	default:
+	case errors.Is(ctx.Err(), context.Canceled):
+		*clientDisconnected = true
+
+		if streamErr != nil && !errors.Is(streamErr, context.Canceled) {
+			log.Warn(ctx, "Stream error after client disconnected", log.Cause(streamErr))
+		}
+	case !terminalSeen:
 		log.Error(ctx, "Stream ended without terminal event, reporting incomplete stream to client",
 			log.Cause(orchestrator.ErrStreamIncomplete))
 		if err := writeSSEErrorEvent(ctx, c.Writer, formatErr, orchestrator.ErrStreamIncomplete); err != nil {

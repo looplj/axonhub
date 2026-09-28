@@ -64,5 +64,3 @@ func TestWithAPIKeyConfig_AllowsMissingAuthorizationWhenNoAuthAllowed(t *testing
 		t.Fatalf("expected status %d, got %d", http.StatusNoContent, recorder.Code)
 	}
 }
-
-

@@ -1,0 +1,193 @@
+/*
+ * Styles for the responsive page header.
+ *
+ * The header participates in normal layout flow (no `fixed` positioning, no hard
+ * coded height) so a wrapping description or a wrapping action row always pushes
+ * the page body down instead of overlapping it.
+ *
+ * Layout switches on the *container* width, not the viewport width, so collapsing
+ * or expanding the sidebar is reflected immediately.
+ */
+
+.root {
+  --page-header-description-line-height: 1.25rem;
+
+  box-sizing: border-box;
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 1rem;
+
+  container-type: inline-size;
+  container-name: page-header;
+}
+
+.layout {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.title {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.descriptionArea {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.description {
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(var(--page-header-description-line-height) * 2);
+  overflow: hidden;
+}
+
+.description[data-expanded='true'] {
+  max-height: none;
+}
+
+.line {
+  margin: 0;
+  line-height: var(--page-header-description-line-height);
+  overflow-wrap: anywhere;
+}
+
+/* Keep the collapsed height deterministic regardless of utility-class order. */
+.description .line,
+.probe .line {
+  margin: 0;
+  line-height: var(--page-header-description-line-height);
+}
+
+/*
+ * Invisible, unclamped copy of the description used only to detect whether the
+ * visible text needs more than the collapsed number of lines. It is absolutely
+ * positioned so it never contributes to layout, and hidden from assistive tech.
+ */
+.probe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-height: none;
+  overflow: visible;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.probeInner {
+  display: block;
+  min-width: 0;
+  max-height: none;
+}
+
+.toggle {
+  /* Hug the label instead of stretching across the header row; without this the
+     button spans the full width and the UA-default `text-align: center` would
+     float the label in the middle of the row. */
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  display: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.125rem;
+  background: none;
+  color: var(--muted-foreground);
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  text-align: start;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  color: var(--foreground);
+}
+
+.toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.metadata {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.actions {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.actionsWrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/*
+ * Scroll mode keeps the nested scroll container in the owning feature component
+ * (it also owns the wheel-to-horizontal handler), so this wrapper only constrains
+ * the available width.
+ */
+.actionsScroll {
+  display: block;
+}
+
+/* Disclose overflowing descriptions by default. The wide override uses the
+ * same boundary as unclamping, so fractional widths cannot leave clipped text
+ * without a toggle. */
+.toggle[data-overflowing='true'] {
+  display: block;
+}
+
+/* Wide container: description is never clipped and actions may sit beside the text. */
+@container page-header (min-width: 64rem) {
+  .layout {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .text {
+    flex: 1 1 20rem;
+  }
+
+  .actions {
+    flex: 0 1 auto;
+    /* Keeps actions right-aligned both beside the text and when they wrap onto
+       their own row. */
+    margin-inline-start: auto;
+  }
+
+  .description {
+    max-height: none;
+  }
+
+  .toggle[data-overflowing='true'] {
+    display: none;
+  }
+}

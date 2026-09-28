@@ -29,20 +29,15 @@ export default function TwoColumnAuth({
     <div className='flex min-h-screen'>
       {/* Left Side - Brand/Welcome Section */}
       <div className='relative hidden overflow-hidden bg-gradient-to-br from-slate-900/60 via-slate-800/40 to-slate-900/60 backdrop-blur-[1.5px] lg:flex lg:w-1/2'>
-        {/* Elegant background pattern */}
-        <div className='absolute inset-0 opacity-10'>
-          <div className='absolute top-0 left-0 h-full w-full bg-[radial-gradient(circle_at_25%_25%,rgba(255,255,255,0.1)_0%,transparent_50%)]'></div>
-          <div className='absolute right-0 bottom-0 h-full w-full bg-[radial-gradient(circle_at_75%_75%,rgba(255,255,255,0.05)_0%,transparent_50%)]'></div>
-        </div>
-
         {/* Content */}
         <div className='relative z-10 flex flex-col justify-center px-12 py-16 text-white'>
           <div className='w-full max-w-lg'>
             <div className='mb-8'>
               <h1 className='mb-4 text-4xl font-light text-slate-100'>{t('auth.brand.title')}</h1>
-              <h2 className='mb-6 bg-gradient-to-r from-emerald-300 to-teal-200 bg-clip-text text-5xl font-bold text-transparent'>
+              <h2 className='mb-6 bg-gradient-to-r from-[#F3EEE3] via-[#E6D3AE] to-[#D4B98A] bg-clip-text text-5xl font-semibold tracking-tight text-transparent'>
                 AxonHub
               </h2>
+              <div className='mb-6 h-px w-16 bg-[#D4B98A]/60' />
               <p className='text-lg leading-relaxed text-slate-300'>{t('auth.brand.description')}</p>
             </div>
 
@@ -51,22 +46,18 @@ export default function TwoColumnAuth({
             </div>
           </div>
         </div>
-
-        {/* Decorative elements */}
-        <div className='absolute bottom-0 left-0 h-32 w-32 -translate-x-16 translate-y-16 rounded-full bg-gradient-to-tr from-slate-700/10 to-transparent'></div>
-        <div className='absolute top-0 right-0 h-48 w-48 translate-x-24 -translate-y-24 rounded-full bg-gradient-to-bl from-slate-600/5 to-transparent'></div>
       </div>
 
       {/* Right Side - Card/Form */}
-      <div className='relative flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 lg:w-1/2'>
+      <div className='relative flex min-h-screen w-full items-center justify-center bg-gradient-to-br from-[#F7F4EE] to-[#EDE7DC] lg:w-1/2'>
         {/* Subtle background texture */}
         <div className='absolute inset-0 opacity-30'>
-          <div className='absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(148,163,184,0.1)_0%,transparent_70%)]'></div>
+          <div className='absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,132,78,0.08)_0%,transparent_70%)]'></div>
         </div>
 
         <div id='auth-card-wrapper' data-testid='auth-card-wrapper' className={`relative z-10 w-full ${rightMaxWidthClassName} px-6 py-8 sm:px-8 sm:py-12`}>
           <Card
-            className='animate-fade-in-up border-slate-200/60 bg-white/90 text-slate-800 shadow-xl shadow-slate-900/10 backdrop-blur-sm transition-all duration-500 hover:shadow-2xl hover:shadow-slate-900/15'
+            className='animate-fade-in-up border-[#E6DFD2] bg-white/90 text-slate-800 shadow-xl shadow-slate-900/10 backdrop-blur-sm transition-all duration-500 hover:shadow-2xl hover:shadow-slate-900/15'
             style={
               {
                 // Ensure shadcn variable-based components render with dark-on-light colors inside the white card

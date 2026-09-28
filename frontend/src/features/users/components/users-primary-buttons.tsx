@@ -8,7 +8,7 @@ export function UsersPrimaryButtons() {
   const { t } = useTranslation();
   const { setOpen } = useUsers();
   return (
-    <div className='flex gap-2'>
+    <div className='flex min-w-0 max-w-full flex-wrap items-center gap-2'>
       <PermissionGuard requiredScope='write_users'>
         <Button className='space-x-1' onClick={() => setOpen('add')}>
           <span>{t('users.addUser')}</span> <IconUserPlus size={18} />

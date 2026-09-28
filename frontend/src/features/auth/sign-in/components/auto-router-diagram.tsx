@@ -1,3 +1,5 @@
+import { AxonHubLogo } from '@/components/axonhub-logo';
+
 /**
  * AutoRouterDiagram
  * A lightweight, dependency-free animated SVG matching the look of the provided mock:
@@ -52,7 +54,7 @@ export default function AutoRouterDiagram() {
         <g className='ar-pulse'>
           <circle cx='360' cy='180' r='78' fill='none' stroke='#ffffff22' strokeWidth='1.5' />
           <circle cx='360' cy='180' r='52' fill='none' stroke='#ffffff33' strokeWidth='1.5' />
-          <circle cx='360' cy='180' r='30' fill='rgba(34,211,238,0.06)' stroke='#99f6e4' strokeWidth='1.5' />
+          <circle cx='360' cy='180' r='30' fill='rgba(212,185,138,0.08)' stroke='#D4B98A' strokeWidth='1.5' />
         </g>
 
         {/* Curved text: Auto Router */}
@@ -68,13 +70,8 @@ export default function AutoRouterDiagram() {
           </textPath>
         </text>
 
-        {/* Center icon placeholder (Axon monogram) */}
-        <g transform='translate(360 180)'>
-          <g transform='translate(-10 -10)'>
-            <circle cx='10' cy='10' r='10' fill='#0ea5e9' opacity='0.12' />
-            <path d='M3 16 L10 4 L17 16 M6.5 10.5 H13.5' fill='none' stroke='#99f6e4' strokeWidth='1.6' strokeLinecap='round' />
-          </g>
-        </g>
+        {/* Center AxonHub mark */}
+        <AxonHubLogo x='346' y='166' width='28' height='28' className='size-[28px] text-[#F3EEE3] [--logo-accent:#D4B98A]' />
 
         {/* Left source badges (no fade) */}
         <g>

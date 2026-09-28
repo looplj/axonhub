@@ -180,6 +180,57 @@ func TestAuthService_GenerateJWTToken(t *testing.T) {
 	require.True(t, exp > float64(time.Now().Unix()))
 }
 
+func TestAuthService_RefreshJWTToken(t *testing.T) {
+	authService, client, cleanup := setupTestAuthService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer cleanup()
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	testUser, err := client.User.Create().
+		SetEmail("refresh@example.com").
+		SetPassword("test-password").
+		SetStatus(user.StatusActivated).
+		Save(ctx)
+	require.NoError(t, err)
+
+	now := time.Now().Truncate(time.Second)
+	authTime := now.Add(-25 * 24 * time.Hour)
+	token, err := authService.GenerateJWTTokenAt(ctx, testUser, authTime, authTime)
+	require.NoError(t, err)
+
+	_, renewed, err := authService.RefreshJWTToken(ctx, token, now.Add(-10*24*time.Hour))
+	require.NoError(t, err)
+	require.False(t, renewed)
+
+	refreshed, renewed, err := authService.RefreshJWTToken(ctx, token, now)
+	require.NoError(t, err)
+	require.True(t, renewed)
+	require.NotEqual(t, token, refreshed)
+
+	parsed, _, err := jwt.NewParser().ParseUnverified(refreshed, jwt.MapClaims{})
+	require.NoError(t, err)
+	claims, ok := parsed.Claims.(jwt.MapClaims)
+	require.True(t, ok)
+	require.Equal(t, float64(testUser.ID), claims["user_id"])
+	require.Equal(t, float64(authTime.Unix()), claims["auth_time"])
+	require.Equal(t, float64(now.Add(AdminSessionIdle).Unix()), claims["exp"])
+
+	legacy, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": testUser.ID,
+		"exp":     now.Add(24 * time.Hour).Unix(),
+	}).SignedString([]byte(mustTestSecretKey(t, authService, ctx)))
+	require.NoError(t, err)
+	_, renewed, err = authService.RefreshJWTToken(ctx, legacy, now)
+	require.NoError(t, err)
+	require.False(t, renewed)
+}
+
+func mustTestSecretKey(t *testing.T, authService *AuthService, ctx context.Context) string {
+	secretKey, err := authService.SystemService.SecretKey(ctx)
+	require.NoError(t, err)
+	return secretKey
+}
+
 func TestAuthService_AuthenticateUser(t *testing.T) {
 	// Test with Redis cache using miniredis
 	mr := miniredis.RunT(t)

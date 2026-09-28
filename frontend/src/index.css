@@ -5,6 +5,7 @@
 
 :root {
   --radius: 0.75rem;
+  --logo-accent: #a8844e; /* AxonHub logo champagne gold */
   --background: oklch(0.95 0.005 90);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(0.97 0.003 90);
@@ -56,6 +57,7 @@
 }
 
 .dark {
+  --logo-accent: #d4b98a;
   --background: oklch(0.16 0.03 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.22 0.03 260);
@@ -1243,7 +1245,7 @@
 /* Tech grid background */
 .tech-grid {
   background-image:
-    linear-gradient(rgba(0, 255, 157, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 255, 157, 0.1) 1px, transparent 1px);
+    linear-gradient(rgba(212, 185, 138, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(212, 185, 138, 0.08) 1px, transparent 1px);
   background-size: 50px 50px;
   animation: grid-pulse 6s ease-in-out infinite;
 }
@@ -1251,8 +1253,8 @@
 /* Low-poly network pattern */
 .low-poly-network {
   background-image:
-    radial-gradient(circle at 25% 25%, rgba(0, 255, 157, 0.1) 0%, transparent 50%),
-    radial-gradient(circle at 75% 75%, rgba(255, 46, 77, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 25% 25%, rgba(212, 185, 138, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(243, 238, 227, 0.06) 0%, transparent 50%),
     radial-gradient(circle at 50% 50%, rgba(240, 240, 240, 0.05) 0%, transparent 50%);
 }
 
@@ -1534,4 +1536,30 @@
 .scrollbar-thin::-webkit-scrollbar-thumb {
   background-color: hsl(var(--muted-foreground) / 0.3);
   border-radius: 2px;
+}
+
+/* ===== RESPONSIVE PAGE HEADER LAYOUT ===== */
+
+/*
+ * Pages using the in-flow responsive page header manage their own vertical space
+ * instead of relying on a fixed header height. Scoped with :has() so pages still
+ * using the legacy fixed header keep their current scrolling behavior.
+ *
+ * The id selector is required to override the Tailwind `overflow-hidden` that
+ * `#content` gets from `has-[main.fixed-main]:overflow-hidden`.
+ */
+#content:has(> .responsive-page-header) {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/*
+ * Reserve a usable minimum height for the page body. On normal viewports the body
+ * still fills the remaining space; on very short viewports (or with a long
+ * expanded description) the body is never squeezed away and the header scrolls
+ * out of the container instead.
+ */
+#content:has(> .responsive-page-header) > main.fixed-main {
+  flex: 1 0 var(--page-body-min-height, 12rem);
+  min-height: var(--page-body-min-height, 12rem);
 }

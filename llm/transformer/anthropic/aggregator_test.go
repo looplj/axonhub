@@ -148,6 +148,33 @@ func TestAggregateStreamChunks(t *testing.T) {
 	}
 }
 
+func TestAggregateStreamChunks_SetsCompletedForStopReason(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"message_start","message":{"id":"msg_stop","type":"message","role":"assistant","content":[],"model":"claude-sonnet-4-6"}}`)},
+		{Data: []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"done"}}`)},
+		{Data: []byte(`{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":10,"output_tokens":1}}`)},
+	}
+
+	_, meta, err := AggregateStreamChunks(t.Context(), chunks, PlatformDirect)
+
+	require.NoError(t, err)
+	require.Equal(t, "msg_stop", meta.ID)
+	require.True(t, meta.Completed)
+}
+
+func TestAggregateStreamChunks_DoesNotCompleteWithoutMessageStart(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"partial"}}`)},
+		{Data: []byte(`{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"input_tokens":10,"output_tokens":1}}`)},
+	}
+
+	_, meta, err := AggregateStreamChunks(t.Context(), chunks, PlatformDirect)
+
+	require.NoError(t, err)
+	require.Equal(t, "msg_unknown", meta.ID)
+	require.False(t, meta.Completed)
+}
+
 func TestAggregateStreamChunks_EdgeCases(t *testing.T) {
 	t.Run("Streaming edge cases", func(t *testing.T) {
 		tests := []struct {

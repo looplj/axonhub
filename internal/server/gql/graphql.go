@@ -18,6 +18,7 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
@@ -136,6 +137,7 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		Cache: lru.New[string](1024),
 	})
 	gqlSrv.Use(&loggingTracer{})
+	gqlSrv.AroundOperations(apiKeyReadOnly)
 	skipTestChannelTransaction := entgql.SkipOperations("TestChannel", "TestChannelAPIKeys")
 	skipBulkImportTransaction := entgql.SkipIfHasFields("bulkImportChannels")
 	gqlSrv.Use(entgql.Transactioner{
@@ -180,6 +182,25 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 		Graphql:    gqlSrv,
 		Playground: playground.Handler("AxonHub", "/admin/graphql"),
 	}
+}
+
+// apiKeyReadOnly keeps service-account API keys read-only on the admin GraphQL
+// surface. Admin mutations are normally gated by ent privacy and authz scopes,
+// but several custom mutations have side effects — outbound provider requests,
+// cache and storage maintenance — without an ent mutation for the privacy layer
+// to gate, so the whole mutation class is refused for API-key principals.
+func apiKeyReadOnly(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
+	principal, ok := authz.GetPrincipal(ctx)
+	if !ok || principal.Type != authz.PrincipalTypeAPIKey {
+		return next(ctx)
+	}
+
+	opCtx := graphql.GetOperationContext(ctx)
+	if opCtx == nil || opCtx.Operation == nil || opCtx.Operation.Operation == ast.Query {
+		return next(ctx)
+	}
+
+	return graphql.OneShot(graphql.ErrorResponse(ctx, "service account API keys are read-only"))
 }
 
 var guidTypeToNodeType = map[string]string{

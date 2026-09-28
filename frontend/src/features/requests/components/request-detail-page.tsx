@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { getTokenFromStorage } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { ensureFreshAccessToken } from '@/lib/auth-session';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberID } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -252,9 +253,15 @@ export default function RequestDetailPage() {
 
     async function connectPreview() {
       try {
+        const currentToken = await ensureFreshAccessToken();
+        if (!currentToken) {
+          setIsPreviewStreaming(false);
+          setPreviewRequest(null);
+          return;
+        }
         const response = await fetch(`/admin/requests/${encodeURIComponent(requestIdNumber)}/preview`, {
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${currentToken}`,
             'X-Project-ID': selectedProjectId,
           },
           signal: controller.signal,
@@ -397,7 +404,13 @@ export default function RequestDetailPage() {
                 </h1>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant='ghost' size='icon-sm' className='h-7 w-7' onClick={() => void copyRequestID()} aria-label={t('requests.actions.copyRequestId')}>
+                    <Button
+                      variant='ghost'
+                      size='icon-sm'
+                      className='h-7 w-7'
+                      onClick={() => void copyRequestID()}
+                      aria-label={t('requests.actions.copyRequestId')}
+                    >
                       <Copy className='h-3.5 w-3.5' />
                     </Button>
                   </TooltipTrigger>

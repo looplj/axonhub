@@ -18,7 +18,7 @@ AxonHub 提供了一个专用的 GraphQL 端点 `/openapi/v1/graphql` 用于程�
 
 | Mutation | 作用 |
 |---|---|
-| `createLLMAPIKey(name)` | 程序化签发一把 user 类型的 LLM API Key（默认 scopes：`read_channels`、`write_requests`）。名称在项目内必须唯一，重名会被拒绝 |
+| `createLLMAPIKey(name)` | 程序化签发一把 user 类型的 LLM API Key（默认 scopes：`read_channels`、`write_requests`）。非个人 Key 名称在项目内必须唯一，重名会被拒绝 |
 | `updateAPIKeyProfiles(id, name, input)` | 整体替换某把 API Key 的 profiles 列表（包含 `activeProfile`）。`id` 与 `name` 二选一定位目标 Key |
 | `loadApiKeyProfileTemplate(input)` | 把项目下的某个 `APIKeyProfileTemplate` 追加到目标 API Key 的 profiles（自动重命名避冲突，不动 `activeProfile`）。模板用 `templateID`/`templateName` 二选一、目标 Key 用 `apiKeyID`/`apiKeyName` 二选一定位，可混用（如 `templateName` + `apiKeyID`） |
 
@@ -87,7 +87,7 @@ go run main.go
 ### 接口行为
 
 - **默认 LLM Key 权限**: 通过 `createLLMAPIKey` 创建的新 Key 将默认拥有 `read_channels` 和 `write_requests` 权限，适用于常规的 LLM 调用。
-- **名称即标识符**: API Key 的 `name` 在项目内唯一（`createLLMAPIKey` 重名会被拒绝），模板的 `name` 同样在项目内唯一。因此凡是接受标识参数的接口，都支持 id 与 name 并存、按其一定位（`updateAPIKeyProfiles` 二选一、`apiKey` / `apiKeyQuotaUsages` 三选一、`loadApiKeyProfileTemplate` 的模板与目标 Key 各二选一）。同时提供多个或一个都不提供都会报错。
+- **名称即标识符**: 非个人 API Key 的 `name` 在项目内唯一；个人 Key 名称按创建者区分。若调用方可见多把同名 Key，按名称查询会报歧义，需改用 id 或 key。模板的 `name` 同样在项目内唯一。因此凡是接受标识参数的接口，都支持 id 与 name 并存、按其一定位（`updateAPIKeyProfiles` 二选一、`apiKey` / `apiKeyQuotaUsages` 三选一、`loadApiKeyProfileTemplate` 的模板与目标 Key 各二选一）。同时提供多个或一个都不提供都会报错。
 - **同项目约束**: 所有 mutation 与 query 仅能作用于调用方 service account 所属的项目；跨项目的 `apiKeyID` / `key` / `name` / `templateID` / `templateName` 会被拒绝（查不到）。
 - **GUID 类型校验**: 所有 `ID` 参数必须是对应类型的 GUID（如 `gid://axonhub/APIKey/123`、`gid://axonhub/APIKeyProfileTemplate/45`）；类型不匹配会被直接拒绝。
 - **Profile 命名冲突**: `loadApiKeyProfileTemplate` 在追加时若发现同名 profile，会自动加 `(1)` / `(2)` 后缀，不会覆盖。

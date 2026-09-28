@@ -528,6 +528,26 @@ function sortModelsByDate(data) {
 	return data;
 }
 
+// Upstream (models.dev via PublicProviderConf) reshuffles provider keys every few
+// weeks, which turns a one-line data change into a whole-file git diff. Sorting keys
+// keeps unchanged data byte-identical, so sync PRs only show real changes.
+function sortObjectKeys(value) {
+	if (Array.isArray(value)) {
+		return value.map(sortObjectKeys);
+	}
+
+	if (isObject(value)) {
+		// null prototype: a source "__proto__" key must survive as an own property
+		const sorted = Object.create(null);
+		for (const key of Object.keys(value).sort()) {
+			sorted[key] = sortObjectKeys(value[key]);
+		}
+		return sorted;
+	}
+
+	return value;
+}
+
 function mergeWithModelsJson(data, modelsJsonPath) {
 	if (!fs.existsSync(modelsJsonPath)) {
 		console.log("models.json does not exist, skipping merge");
@@ -591,7 +611,10 @@ async function main() {
 		console.log("Sorting models by release date...");
 		sortModelsByDate(filtered);
 
-		const serialized = `${JSON.stringify(filtered, null, 2)}\n`;
+		console.log("Sorting object keys...");
+		const stable = sortObjectKeys(filtered);
+
+		const serialized = `${JSON.stringify(stable, null, 2)}\n`;
 		console.log("Writing to:", OUTPUT_PATH);
 		fs.writeFileSync(OUTPUT_PATH, serialized);
 

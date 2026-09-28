@@ -261,10 +261,35 @@ func (ts *InboundPersistentStream) Close() error {
 		return ts.stream.Close()
 	}
 
+	// If we haven't received a terminal event, check if the chunks we DO have form a complete response.
+	// This handles models that aggregate internally (like Codex) or upstream proxy hung connections
+	// where the provider sent the full JSON payload but failed to send [DONE] before dropping.
+	var responseBody []byte
+	var meta llm.ResponseMeta
+	var aggErr error
+	explicitStreamError := streamErr != nil &&
+		!errors.Is(streamErr, context.Canceled) &&
+		!errors.Is(streamErr, context.DeadlineExceeded)
+
+	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
+		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
+		aggregatedCompleted := isCompletedAggregated(meta)
+		if explicitStreamError {
+			// Usage can be reported before a stream reaches its terminal event.
+			// An explicit transport error therefore requires the transformer to
+			// prove completion independently of usage accounting.
+			aggregatedCompleted = meta.Completed
+		}
+		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && aggregatedCompleted {
+			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
+			ts.state.StreamCompleted = true
+		}
+	}
+
 	// If there's an explicit stream error (not just context cancellation), treat as failure
-	// regardless of what chunks we have. Stream errors indicate the upstream response
-	// was incomplete or corrupted.
-	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) {
+	// only when the buffered chunks do not form a complete response. A trailing transport
+	// error can arrive after the provider has delivered a complete response.
+	if streamErr != nil && !errors.Is(streamErr, context.Canceled) && !errors.Is(streamErr, context.DeadlineExceeded) && !ts.state.StreamCompleted {
 		persistCtx := context.WithoutCancel(ctx)
 		ts.persistFailureChunks(persistCtx)
 
@@ -275,21 +300,6 @@ func (ts *InboundPersistentStream) Close() error {
 		}
 
 		return ts.stream.Close()
-	}
-
-	// If we haven't received a terminal event, check if the chunks we DO have form a complete response.
-	// This handles models that aggregate internally (like Codex) or upstream proxy hung connections
-	// where the provider sent the full JSON payload but failed to send [DONE] before dropping.
-	var responseBody []byte
-	var meta llm.ResponseMeta
-	var aggErr error
-
-	if len(ts.responseChunks) > 0 && !ts.state.StreamCompleted {
-		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
-		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && isCompletedAggregated(meta) {
-			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
-			ts.state.StreamCompleted = true
-		}
 	}
 
 	// Check if context was canceled (client disconnected before [DONE]).

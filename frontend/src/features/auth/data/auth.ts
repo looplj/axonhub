@@ -12,6 +12,7 @@ import { getHiddenNavItems } from '@/stores/sidebarPrefsStore';
 import { authApi } from '@/lib/api-client';
 import i18n from '@/lib/i18n';
 import { isProjectSelectionValid } from '@/lib/project-membership';
+import { consumeOIDCRedirect, getSafeRedirect, storeOIDCRedirect } from '@/lib/auth-redirect';
 
 export interface SignInInput {
   email: string;
@@ -65,7 +66,7 @@ export function useMe(enabled = true) {
   return query;
 }
 
-export function useSignIn() {
+export function useSignIn(redirect?: string) {
   const { setUser, setAccessToken } = useAuthStore((state) => state.auth);
   const router = useRouter();
 
@@ -94,6 +95,14 @@ export function useSignIn() {
       }
 
       toast.success(i18n.t('common.success.signedIn'));
+
+      // Return to the page that triggered the sign-in, if any.
+      consumeOIDCRedirect();
+      const safeRedirect = getSafeRedirect(redirect);
+      if (safeRedirect) {
+        router.history.push(safeRedirect);
+        return;
+      }
 
       // Redirect based on user role, skipping routes the user hid from the sidebar.
       // Owner users go to dashboard, non-owner users go to requests page.
@@ -141,13 +150,14 @@ export function useOIDCProviders() {
   });
 }
 
-export function useOIDCAuthorize() {
+export function useOIDCAuthorize(redirect?: string) {
   return useMutation({
     mutationFn: async (providerId: string) => {
       return await authApi.getOIDCAuthorizeURL(providerId);
     },
     onSuccess: (response) => {
       if (response && response.data && response.data.url) {
+        storeOIDCRedirect(redirect);
         window.location.href = response.data.url;
       } else {
         toast.error('Invalid authorization URL received');
@@ -192,6 +202,12 @@ export function useOIDCExchange() {
 
       toast.success(i18n.t('common.success.signedIn'));
 
+      const safeRedirect = consumeOIDCRedirect();
+      if (safeRedirect) {
+        router.history.push(safeRedirect);
+        return;
+      }
+
       // Redirect based on user role
       const redirectPath = data.user.isOwner ? '/' : '/project/playground';
       router.navigate({ to: redirectPath });
@@ -199,7 +215,7 @@ export function useOIDCExchange() {
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'SSO login failed';
       toast.error(errorMessage);
-      router.navigate({ to: '/sign-in' });
+      router.navigate({ to: '/sign-in', search: { redirect: consumeOIDCRedirect() } });
     },
   });
 }
