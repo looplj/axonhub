@@ -6,8 +6,11 @@ import { ImagePlus, MessageSquare, RefreshCcw, Copy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
-import { ensureFreshAccessToken } from '@/lib/auth-session';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { ensureFreshAccessToken } from '@/lib/auth-session';
+import { copyTextToClipboard } from '@/lib/clipboard';
+import { cn } from '@/lib/utils';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,9 +37,6 @@ import { Response as UIResponse } from '@/components/ai-elements/response';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { useQueryModels } from '@/features/models/data/models';
-import { usePermissions } from '@/hooks/usePermissions';
-import { copyTextToClipboard } from '@/lib/clipboard';
-import { cn } from '@/lib/utils';
 import { readSelection, resolveSelection, writeSelection, type PlaygroundModelSource } from './selection';
 
 function PlaygroundImageButton() {
@@ -64,9 +64,7 @@ function PlaygroundAttachments() {
 
   return (
     <PromptInputHeader>
-      <PromptInputAttachments>
-        {(attachment) => <PromptInputAttachment data={attachment} />}
-      </PromptInputAttachments>
+      <PromptInputAttachments>{(attachment) => <PromptInputAttachment data={attachment} />}</PromptInputAttachments>
     </PromptInputHeader>
   );
 }
@@ -190,7 +188,11 @@ export default function Playground() {
       fetch: async (url, init) => {
         const token = await ensureFreshAccessToken();
         const headers = new Headers(init?.headers);
-        if (token) headers.set('Authorization', `Bearer ${token}`);
+        if (token) {
+          headers.set('Authorization', `Bearer ${token}`);
+        } else {
+          headers.delete('Authorization');
+        }
         const res = await fetch(url, { ...init, headers });
         if (!res.ok) {
           let message = res.statusText || 'Request failed';
@@ -426,7 +428,7 @@ export default function Playground() {
       <div className='bg-background flex h-full min-h-0 w-full flex-col overflow-y-auto lg:flex-row lg:overflow-hidden'>
         {/* Settings Sidebar */}
 
-        <div className='bg-card shadow-soft border-border m-4 flex min-h-0 max-h-[60vh] w-auto shrink-0 flex-col rounded-2xl border border-r lg:max-h-none lg:w-[340px] lg:min-w-[280px] lg:max-w-[400px] lg:shrink'>
+        <div className='bg-card shadow-soft border-border m-4 flex max-h-[60vh] min-h-0 w-auto shrink-0 flex-col rounded-2xl border border-r lg:max-h-none lg:w-[340px] lg:max-w-[400px] lg:min-w-[280px] lg:shrink'>
           <div className='border-b p-4'>
             <h1 className='text-xl font-bold tracking-tight'>{t('playground.title')}</h1>
             <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>{t('playground.description')}</p>
@@ -568,7 +570,7 @@ export default function Playground() {
         {/* Chat Area */}
         <div className='flex min-h-[50vh] min-w-0 flex-1 flex-col p-4 lg:min-h-0'>
           <div className='shadow-soft border-border bg-card flex h-full min-h-0 flex-col rounded-2xl border p-6'>
-            <Conversation className='min-h-0 max-h-[50vh] flex-1 lg:max-h-none'>
+            <Conversation className='max-h-[50vh] min-h-0 flex-1 lg:max-h-none'>
               <ConversationContent>
                 {messages.length === 0 ? (
                   <ConversationEmptyState
@@ -615,13 +617,7 @@ export default function Playground() {
                                     src={part.url}
                                   />
                                 ) : (
-                                  <a
-                                    key={index}
-                                    className='text-primary underline'
-                                    href={part.url}
-                                    rel='noreferrer'
-                                    target='_blank'
-                                  >
+                                  <a key={index} className='text-primary underline' href={part.url} rel='noreferrer' target='_blank'>
                                     {part.filename || 'attachment'}
                                   </a>
                                 );
@@ -670,7 +666,7 @@ export default function Playground() {
                 value={input}
                 placeholder={t('playground.chat.typeMessage')}
                 onChange={(e) => setInput(e.currentTarget.value)}
-                className='pl-12 pr-16'
+                className='pr-16 pl-12'
               />
               <PlaygroundImageButton />
               <PlaygroundSubmit input={input} status={status} onStop={stop} />
