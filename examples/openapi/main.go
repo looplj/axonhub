@@ -78,7 +78,7 @@ func main() {
 }
 
 // lookupAPIKeyByName 演示 apiKey 查询: 按 id / key / name 三选一定位一把 Key。
-// name 在调用方所属项目内唯一，跨项目的 Key 一律不可见（表现为查不到）。
+// 非个人 Key 的 name 在调用方所属项目内唯一；个人 Key 名称按创建者区分。跨项目的 Key 一律不可见（表现为查不到）。
 func lookupAPIKeyByName(ctx context.Context, client graphql.Client, name string) {
 	fmt.Printf("\n正在按名称查询 API Key: %s...\n", name)
 

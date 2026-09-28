@@ -8,7 +8,8 @@ mutation CreateAPIKey($name: String!) {
 }
 
 # Provide exactly one of $id or $name to identify the target key. $name resolves
-# within the service account's own project, where API key names are unique.
+# within the service account's own project; non-personal key names are project-wide
+# unique, while personal key names are scoped to their creator.
 mutation UpdateAPIKeyProfiles($id: ID, $name: String, $input: UpdateAPIKeyProfilesInput!) {
   updateAPIKeyProfiles(id: $id, name: $name, input: $input) {
     id
