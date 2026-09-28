@@ -13,6 +13,7 @@ type streamOutcome struct {
 	terminalState       streamTerminalState
 	providerTerminal    bool
 	aggregatedCompleted bool
+	validatedCompleted  bool
 	transportErr        error
 	contextErr          error
 	contextState        streamTerminalState
@@ -35,6 +36,12 @@ func (o *streamOutcome) observeTerminal(state streamTerminalState) {
 func (o *streamOutcome) observeAggregatedCompletion(completed bool) {
 	if !o.providerTerminal && completed {
 		o.aggregatedCompleted = true
+	}
+}
+
+func (o *streamOutcome) observeValidatedCompletion() {
+	if !o.providerTerminal {
+		o.validatedCompleted = true
 	}
 }
 
@@ -67,6 +74,9 @@ func (o streamOutcome) finalDecision() streamOutcomeDecision {
 	if o.providerTerminal {
 		return streamOutcomeDecision{state: o.terminalState}
 	}
+	if o.validatedCompleted {
+		return streamOutcomeDecision{state: streamTerminalCompleted}
+	}
 	if o.contextState == streamTerminalFailed {
 		return streamOutcomeDecision{state: streamTerminalFailed, cause: o.contextErr}
 	}
@@ -88,5 +98,5 @@ func (o streamOutcome) finalState() streamTerminalState {
 }
 
 func (o streamOutcome) hasFinalEvidence() bool {
-	return o.providerTerminal || o.aggregatedCompleted
+	return o.providerTerminal || o.aggregatedCompleted || o.validatedCompleted
 }

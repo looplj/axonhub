@@ -267,6 +267,7 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 	// its buffer is drained; eventsAfterCancel bounds streams that violate it.
 	eventsAfterCancel := 0
 	terminalSeen := false
+	terminalTracker := orchestrator.NewStreamTerminalTracker(0)
 
 	for {
 		if !stream.Next() {
@@ -287,7 +288,7 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 		}
 
 		cur := stream.Current()
-		if orchestrator.IsTerminalStreamEvent(cur) {
+		if terminalTracker.Observe(cur) {
 			terminalSeen = true
 		}
 
@@ -342,6 +343,7 @@ func writeSSEStreamWithHeartbeat(
 	ctxDone := ctx.Done()
 	eventsAfterCancel := 0
 	terminalSeen := false
+	terminalTracker := orchestrator.NewStreamTerminalTracker(0)
 	heartbeatCount := 0
 
 	for {
@@ -371,7 +373,7 @@ func writeSSEStreamWithHeartbeat(
 			}
 
 			cur := result.event
-			if orchestrator.IsTerminalStreamEvent(cur) {
+			if terminalTracker.Observe(cur) {
 				terminalSeen = true
 			}
 

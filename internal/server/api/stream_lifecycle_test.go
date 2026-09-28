@@ -30,6 +30,7 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 		name             string
 		rawEvents        []string
 		cancelBeforeEOF  bool
+		cancelAfter      string
 		wantRequest      request.Status
 		wantExecution    requestexecution.Status
 		wantFinishReason []string
@@ -81,6 +82,41 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 			wantFinishReason: nil,
 			wantDone:         false,
 		},
+		{
+			name: "two choices trailing provider error",
+			rawEvents: []string{
+				`{"id":"chatcmpl-error","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"first"},"finish_reason":"stop"},{"index":1,"delta":{"content":"second"},"finish_reason":null}]}`,
+				`{"error":{"message":"provider disconnected"}}`,
+			},
+			wantRequest:      request.StatusFailed,
+			wantExecution:    requestexecution.StatusFailed,
+			wantFinishReason: []string{"stop"},
+			wantDone:         false,
+		},
+		{
+			name: "cancel after synthetic finish",
+			rawEvents: []string{
+				`{"id":"chatcmpl-after-finish","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"hello"},"finish_reason":null}]}`,
+				`{"id":"chatcmpl-after-finish","object":"chat.completion.chunk","model":"gpt-test","choices":[],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`,
+			},
+			cancelAfter:      "finish",
+			wantRequest:      request.StatusCompleted,
+			wantExecution:    requestexecution.StatusCompleted,
+			wantFinishReason: []string{"stop"},
+			wantDone:         true,
+		},
+		{
+			name: "cancel after done",
+			rawEvents: []string{
+				`{"id":"chatcmpl-after-done","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"hello"},"finish_reason":null}]}`,
+				`{"id":"chatcmpl-after-done","object":"chat.completion.chunk","model":"gpt-test","choices":[],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`,
+			},
+			cancelAfter:      "done",
+			wantRequest:      request.StatusCompleted,
+			wantExecution:    requestexecution.StatusCompleted,
+			wantFinishReason: []string{"stop"},
+			wantDone:         true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -110,9 +146,11 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 
 			streamCtx := baseCtx
 			var cancel context.CancelFunc
-			if tt.cancelBeforeEOF {
+			if tt.cancelBeforeEOF || tt.cancelAfter != "" {
 				streamCtx, cancel = context.WithCancel(baseCtx)
-				cancel()
+				if tt.cancelBeforeEOF {
+					cancel()
+				}
 			}
 			outbound, err := openai.NewOutboundTransformer("https://provider.test", "provider-key")
 			require.NoError(t, err)
@@ -127,11 +165,15 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 			converted, err := openai.NewInboundTransformer().TransformStream(streamCtx, normalized)
 			require.NoError(t, err)
 			clientStream := orchestrator.NewInboundPersistentStream(streamCtx, converted, req, execution, requestService, openai.NewInboundTransformer(), nil, state)
+			var writerStream streams.Stream[*httpclient.StreamEvent] = clientStream
+			if tt.cancelAfter != "" {
+				writerStream = &cancelOnEventStream{source: clientStream, cancel: cancel, trigger: tt.cancelAfter}
+			}
 
 			writer := httptest.NewRecorder()
 			ginContext, _ := gin.CreateTestContext(writer)
 			ginContext.Request = httptest.NewRequest(http.MethodGet, "/", nil)
-			WriteSSEStream(ginContext, clientStream)
+			WriteSSEStream(ginContext, writerStream)
 			require.NoError(t, clientStream.Close())
 
 			savedRequest, err := client.Request.Get(baseCtx, req.ID)
@@ -148,3 +190,23 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 		})
 	}
 }
+
+type cancelOnEventStream struct {
+	source  streams.Stream[*httpclient.StreamEvent]
+	cancel  context.CancelFunc
+	trigger string
+}
+
+func (s *cancelOnEventStream) Next() bool { return s.source.Next() }
+
+func (s *cancelOnEventStream) Current() *httpclient.StreamEvent {
+	event := s.source.Current()
+	if event != nil && ((s.trigger == "finish" && strings.Contains(string(event.Data), `"finish_reason":"stop"`)) ||
+		(s.trigger == "done" && strings.EqualFold(string(event.Data), "[DONE]"))) {
+		s.cancel()
+	}
+	return event
+}
+
+func (s *cancelOnEventStream) Err() error   { return s.source.Err() }
+func (s *cancelOnEventStream) Close() error { return s.source.Close() }
