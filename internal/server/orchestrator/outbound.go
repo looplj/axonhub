@@ -723,6 +723,7 @@ func (p *PersistentOutboundTransformer) resetPassThroughStreamState() {
 	}
 
 	p.state.RawStreamCh = nil
+	p.state.RawStreamBacklog = nil
 	p.state.RawStreamErrRef = nil
 }
 
