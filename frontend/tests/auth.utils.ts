@@ -105,7 +105,11 @@ export async function ensureSignedIn(page: Page) {
     await signInAsAdmin(page)
   }
 
-  const hasToken = (await page.context().cookies()).some((cookie) => cookie.name === 'axonhub_session')
+  // Verify we have a valid token
+  const hasToken = await page.evaluate(() => {
+    const token = localStorage.getItem('axonhub_access_token')
+    return !!token && token.length > 0
+  })
 
   if (!hasToken) {
     console.warn('Warning: No valid auth token found, attempting to sign in')
@@ -164,7 +168,11 @@ export async function gotoAndEnsureAuth(page: Page, path: string) {
     await page.waitForTimeout(1000)
   }
 
-  const hasToken = (await page.context().cookies()).some((cookie) => cookie.name === 'axonhub_session')
+  // Verify we have a valid token after login
+  const hasToken = await page.evaluate(() => {
+    const token = localStorage.getItem('axonhub_access_token')
+    return !!token && token.length > 0
+  })
 
   if (!hasToken) {
     console.warn('Warning: No valid auth token found after login')

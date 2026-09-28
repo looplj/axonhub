@@ -5,7 +5,7 @@ import { pickFallbackNavUrl } from '@/config/nav-items';
 import { graphqlRequest } from '@/gql/graphql';
 import { ME_QUERY } from '@/gql/users';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore, setTokenToStorage, removeTokenFromStorage } from '@/stores/authStore';
 import { AuthUser } from '@/stores/authStore';
 import { useProjectStore } from '@/stores/projectStore';
 import { getHiddenNavItems } from '@/stores/sidebarPrefsStore';
@@ -24,15 +24,18 @@ interface MeResponse {
 
 export function useMe(enabled = true) {
   const { setUser } = useAuthStore((state) => state.auth);
-  const sessionGeneration = useAuthStore((state) => state.auth.sessionGeneration);
+  const accessToken = useAuthStore((state) => state.auth.accessToken);
 
   const query = useQuery({
-    queryKey: ['me', sessionGeneration],
+    // Keying by token keeps account switches (including the 401-expiry path,
+    // which doesn't clear the query cache) from reusing another account's
+    // cached memberships.
+    queryKey: ['me', accessToken],
     queryFn: async () => {
       const data = await graphqlRequest<MeResponse>(ME_QUERY);
       return data.me;
     },
-    enabled,
+    enabled: enabled && !!accessToken,
     retry: false,
   });
 
@@ -63,7 +66,7 @@ export function useMe(enabled = true) {
 }
 
 export function useSignIn() {
-  const { setUser, startSession } = useAuthStore((state) => state.auth);
+  const { setUser, setAccessToken } = useAuthStore((state) => state.auth);
   const router = useRouter();
 
   return useMutation({
@@ -71,10 +74,13 @@ export function useSignIn() {
       return await authApi.signIn(input);
     },
     onSuccess: (data) => {
+      // Store token in localStorage
+      setTokenToStorage(data.token);
+
       const userLanguage = data.user.preferLanguage || 'en';
 
       // Update auth store
-      startSession();
+      setAccessToken(data.token);
       setUser(data.user);
 
       // Do not clear the persisted project here: the AuthGuard gates
@@ -107,16 +113,18 @@ export function useSignOut() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  return async () => {
-    try {
-      await authApi.signOut();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : i18n.t('common.errors.internalServerError'));
-      return;
-    }
+  return () => {
+    // Clear token from localStorage
+    removeTokenFromStorage();
+
+    // Clear auth store
     reset();
+
     queryClient.clear();
+
     toast.success(i18n.t('common.success.signedOut'));
+
+    // Redirect to sign in page
     router.navigate({ to: '/sign-in' });
   };
 }
@@ -153,7 +161,7 @@ export function useOIDCAuthorize() {
 }
 
 export function useOIDCExchange() {
-  const { setUser, startSession } = useAuthStore((state) => state.auth);
+  const { setUser, setAccessToken } = useAuthStore((state) => state.auth);
   const router = useRouter();
 
   return useMutation({
@@ -163,10 +171,13 @@ export function useOIDCExchange() {
     onSuccess: (response) => {
       const data = response.data;
 
+      // Store token in localStorage
+      setTokenToStorage(data.token);
+
       const userLanguage = data.user.preferLanguage || 'en';
 
       // Update auth store
-      startSession();
+      setAccessToken(data.token);
       setUser(data.user);
 
       // Do not clear the persisted project here: the AuthGuard gates

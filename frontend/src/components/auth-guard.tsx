@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { isAuthError } from '@/gql/graphql';
+import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { isProjectSelectionValid } from '@/lib/project-membership';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,8 +13,10 @@ interface AuthGuardProps {
 
 export function AuthGuard({ children }: AuthGuardProps) {
   const router = useRouter();
+  const { accessToken } = useAuthStore((state) => state.auth);
   const selectedProjectId = useSelectedProjectId();
 
+  // Automatically fetch user info when token is available
   const { isLoading: isMeLoading, error: meError, data: meData } = useMe();
 
   // The selected project is persisted per browser. Until `me` has resolved and
@@ -25,13 +28,56 @@ export function AuthGuard({ children }: AuthGuardProps) {
   const projectReady = isProjectSelectionValid(meData, selectedProjectId);
 
   useEffect(() => {
-    if (meError && isAuthError(meError)) {
+    // If no token, redirect to sign-in
+    if (!accessToken) {
+      const currentPath = window.location.pathname;
+      // Don't redirect if already on auth pages
+      if (
+        !currentPath.startsWith('/sign-in') &&
+        !currentPath.startsWith('/sign-up') &&
+        !currentPath.startsWith('/initialization') &&
+        !currentPath.startsWith('/forgot-password') &&
+        !currentPath.startsWith('/otp')
+      ) {
+        router.navigate({ to: '/sign-in' });
+      }
+    }
+  }, [accessToken, router]);
+
+  // Handle me query error (e.g., token expired)
+  useEffect(() => {
+    if (meError && accessToken && isAuthError(meError)) {
+      // Token might be expired, redirect to sign-in
       router.navigate({ to: '/sign-in' });
     }
-  }, [meError, router]);
+  }, [meError, accessToken, router]);
 
   // Show loading while checking auth
-  if (isMeLoading || !meData || !projectReady) {
+  if (!accessToken) {
+    const currentPath = window.location.pathname;
+    // Don't show loading on auth pages
+    if (
+      currentPath.startsWith('/sign-in') ||
+      currentPath.startsWith('/sign-up') ||
+      currentPath.startsWith('/initialization') ||
+      currentPath.startsWith('/forgot-password') ||
+      currentPath.startsWith('/otp')
+    ) {
+      return <>{children}</>;
+    }
+
+    return (
+      <div className='flex h-screen items-center justify-center'>
+        <div className='space-y-4'>
+          <Skeleton className='h-8 w-48' />
+          <Skeleton className='h-4 w-32' />
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading while fetching user info or validating the persisted project
+  if (accessToken && (isMeLoading || !projectReady)) {
     return (
       <div className='flex h-screen items-center justify-center'>
         <div className='space-y-4'>

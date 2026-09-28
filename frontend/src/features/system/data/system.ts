@@ -1,9 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest, GraphQLRequestError } from '@/gql/graphql';
 import { toast } from 'sonner';
-import { useAuthStore } from '@/stores/authStore';
+import { getTokenFromStorage, useAuthStore } from '@/stores/authStore';
 import i18n from '@/lib/i18n';
-import { wasRecentlyActive } from '@/lib/user-activity';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { usePermissions } from '@/hooks/usePermissions';
 import type { ProxyConfig, APIKeyAutoDisableRule } from '@/features/channels/data/schema';
@@ -1317,10 +1316,12 @@ export function useRestore() {
       formData.append('map', JSON.stringify({ '0': ['variables.file'] }));
       formData.append('0', file);
 
+      const token = getTokenFromStorage();
       const response = await fetch('/admin/graphql', {
         method: 'POST',
-        credentials: 'include',
-        headers: wasRecentlyActive() ? { 'X-Admin-Activity': '1' } : {},
+        headers: {
+          Authorization: token ? `Bearer ${token}` : '',
+        },
         body: formData,
       });
 

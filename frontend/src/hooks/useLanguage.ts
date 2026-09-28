@@ -54,7 +54,7 @@ export function useLanguage() {
       await i18n.changeLanguage(language);
 
       // Update user preference in the backend if user is authenticated
-      if (auth.user) {
+      if (auth.user && auth.accessToken) {
         updateLanguageMutation.mutate(language);
       }
     } catch (error) {

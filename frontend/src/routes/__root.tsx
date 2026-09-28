@@ -13,7 +13,8 @@ import NotFoundError from '@/features/errors/not-found-error';
 import { useAuthStore } from '@/stores/authStore';
 
 function DocumentTitleSync() {
-  const hasToken = useAuthStore((state) => Boolean(state.auth.user));
+  const accessToken = useAuthStore((state) => state.auth.accessToken);
+  const hasToken = Boolean(accessToken);
   const { data: brandSettings } = useBrandSettings({ enabled: hasToken });
 
   useEffect(() => {
