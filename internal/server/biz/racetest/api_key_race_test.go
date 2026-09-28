@@ -49,21 +49,14 @@ var raceDialects = []struct {
 	{name: "sqlite", dialect: "sqlite3", envVar: "AXONHUB_TEST_SQLITE_DSN"},
 }
 
-// TestAPIKeyNameRace proves API key name uniqueness is race-safe WITHOUT any DB
-// unique constraint (Path A') on every supported dialect: the per-project row lock
-// closes the race on PostgreSQL/MySQL/TiDB, and SQLite's single-writer semantics
-// close it on SQLite (where the lock is a no-op).
+// TestAPIKeyNameRace proves same-creator API key name uniqueness is race-safe
+// without a DB unique constraint: the per-project row lock closes the race on
+// PostgreSQL/MySQL/TiDB, and SQLite's single-writer semantics close it on SQLite.
 //
-// Many clients concurrently create an LLM API key with the SAME name in the SAME
-// project. There is no unique index on (project_id, name); the only thing closing
-// the check-then-write race is the SELECT ... FOR UPDATE on the parent project row
-// taken in CreateLLMAPIKey's transaction. The lock must serialize the burst so
-// exactly one create succeeds, every other gets DuplicateNameError, exactly one
-// live row remains, and the name-based lookup (the feature this PR ships) resolves
-// to it.
-//
-// Without the lock, this same burst would leave duplicate live rows and break
-// GetForRead's .Only() with a not-singular error.
+// Many clients concurrently create an LLM API key with the same name and
+// creator in the same project. The lock ensures exactly one create succeeds,
+// every other create gets DuplicateNameError, and one live row remains.
+// Without it, the name-based lookup could return a not-singular error.
 //
 // NOTE for TiDB: FOR UPDATE only locks eagerly in pessimistic transaction mode
 // (the cluster default since 3.0.8); an optimistic-mode cluster would defer the

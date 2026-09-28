@@ -1140,10 +1140,8 @@ func TestAPIKeyService_CreateLLMAPIKey(t *testing.T) {
 	})
 }
 
-// TestAPIKeyService_NameUniqueness verifies application-level name uniqueness
-// (Path A', no DB unique index): names are unique per project, reusable after
-// soft-delete, and still occupied by archived (not deleted) keys. It drives
-// CreateLLMAPIKey, whose post-insert live-count check enforces the invariant.
+// TestAPIKeyService_NameUniqueness verifies names are unique for a creator in
+// a project, reusable after soft-delete, and occupied by archived keys.
 func TestAPIKeyService_NameUniqueness(t *testing.T) {
 	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
 	defer apiKeyService.Stop()
@@ -1188,7 +1186,30 @@ func TestAPIKeyService_NameUniqueness(t *testing.T) {
 	ctx := ent.NewContext(context.Background(), client)
 	ctx = contexts.WithAPIKey(ctx, ownerAPIKey)
 
-	t.Run("rejects duplicate name in same project", func(t *testing.T) {
+	t.Run("allows another creator's name", func(t *testing.T) {
+		otherUser, err := client.User.Create().
+			SetEmail(uuid.NewString() + "@example.com").
+			SetPassword(hashedPassword).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		_, err = client.APIKey.Create().
+			SetName("shared-name").
+			SetKey("ah-other-creator").
+			SetUserID(otherUser.ID).
+			SetProjectID(ownerProject.ID).
+			SetType(apikey.TypePersonal).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		created, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "shared-name")
+		require.NoError(t, err)
+		require.Equal(t, ownerUser.ID, created.UserID)
+
+		_, err = apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "shared-name")
+		require.ErrorContains(t, err, "already exists")
+	})
+	t.Run("rejects duplicate name for same creator", func(t *testing.T) {
 		_, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "dup-name")
 		require.NoError(t, err)
 
@@ -1236,6 +1257,71 @@ func TestAPIKeyService_NameUniqueness(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "already exists")
 	})
+}
+
+func TestAPIKeyService_NameUniquenessForProjectOwner(t *testing.T) {
+	apiKeyService, client := setupTestAPIKeyService(t, xcache.Config{Mode: xcache.ModeMemory})
+	defer apiKeyService.Stop()
+	defer client.Close()
+
+	setupCtx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+	owner, err := client.User.Create().
+		SetEmail(uuid.NewString() + "@example.com").
+		SetPassword("password").
+		SetIsOwner(true).
+		Save(setupCtx)
+	require.NoError(t, err)
+	otherUser, err := client.User.Create().
+		SetEmail(uuid.NewString() + "@example.com").
+		SetPassword("password").
+		Save(setupCtx)
+	require.NoError(t, err)
+	project, err := client.Project.Create().
+		SetName(uuid.NewString()).
+		SetStatus(project.StatusActive).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	for _, name := range []string{"codex-high", "renamed"} {
+		_, err = client.APIKey.Create().
+			SetName(name).
+			SetKey("ah-foreign-" + name).
+			SetUserID(otherUser.ID).
+			SetProjectID(project.ID).
+			SetType(apikey.TypePersonal).
+			Save(setupCtx)
+		require.NoError(t, err)
+	}
+
+	ctx := contexts.WithProjectID(ent.NewContext(context.Background(), client), project.ID)
+	ctx = contexts.WithUser(ctx, owner)
+	personal := apikey.TypePersonal
+	created, err := apiKeyService.CreateAPIKey(ctx, ent.CreateAPIKeyInput{
+		Name: "codex-high", ProjectID: project.ID, Type: &personal,
+	})
+	require.NoError(t, err)
+	require.Equal(t, owner.ID, created.UserID)
+
+	_, err = apiKeyService.CreateAPIKey(ctx, ent.CreateAPIKeyInput{
+		Name: "codex-high", ProjectID: project.ID, Type: &personal,
+	})
+	require.ErrorContains(t, err, "already exists")
+
+	toRename, err := apiKeyService.CreateAPIKey(ctx, ent.CreateAPIKeyInput{
+		Name: "original", ProjectID: project.ID, Type: &personal,
+	})
+	require.NoError(t, err)
+	otherName := "renamed"
+	updated, err := apiKeyService.UpdateAPIKey(ctx, toRename.ID, ent.UpdateAPIKeyInput{Name: &otherName})
+	require.NoError(t, err)
+	require.Equal(t, otherName, updated.Name)
+
+	duplicateName := "codex-high"
+	_, err = apiKeyService.UpdateAPIKey(ctx, toRename.ID, ent.UpdateAPIKeyInput{Name: &duplicateName})
+	require.ErrorContains(t, err, "already exists")
+	unchanged, err := client.APIKey.Get(ctx, toRename.ID)
+	require.NoError(t, err)
+	require.Equal(t, otherName, unchanged.Name)
 }
 
 func TestAPIKeyService_RotateAPIKey(t *testing.T) {

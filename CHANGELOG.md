@@ -4,6 +4,10 @@
 
 - Added per-channel API key rules with status/keyword matching, configurable error thresholds, temporary auto-recovery, and permanent disable/delete actions.
 
+### Fixed
+
+- API Key names now conflict only with live keys created by the same user in the same project, regardless of who can view other users' keys.
+
 v0.4.0
 
 - Introduced thread-aware tracing with zero-SDK integration and configurable trace headers
