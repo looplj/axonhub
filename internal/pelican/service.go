@@ -230,16 +230,17 @@ func (s *Service) runScheduled(ctx context.Context) {
 		return
 	}
 
-	if config.ProjectID <= 0 {
-		log.Warn(ctx, "pelican schedule skipped: open the page and save the configuration once first")
-		return
-	}
 	if s.runner.IsRunning() {
 		log.Info(ctx, "pelican schedule skipped: a round is still running")
 		return
 	}
 
-	roundCtx := withProject(ctx, config.ProjectID)
+	// The project only scopes project-level settings such as prompt injection, and admin requests
+	// never carry one, so the round runs with the plain context when it was never recorded.
+	roundCtx := ctx
+	if config.ProjectID > 0 {
+		roundCtx = withProject(ctx, config.ProjectID)
+	}
 	if _, err := s.runner.Run(roundCtx); err != nil {
 		log.Error(ctx, "pelican scheduled round failed", log.Cause(err))
 	}
