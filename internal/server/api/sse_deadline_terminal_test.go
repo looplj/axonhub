@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
-	"github.com/stretchr/testify/require"
 )
 
 type singleChoiceSSEStream struct {
@@ -23,6 +24,7 @@ func (s *singleChoiceSSEStream) ExpectedStreamChoices() int { return 1 }
 
 type triggeredDeadlineContext struct {
 	context.Context
+
 	done chan struct{}
 }
 
@@ -38,6 +40,7 @@ func (c *triggeredDeadlineContext) Err() error {
 
 type deadlineAfterFrameWriter struct {
 	*httptest.ResponseRecorder
+
 	ctx       *triggeredDeadlineContext
 	triggered bool
 }
