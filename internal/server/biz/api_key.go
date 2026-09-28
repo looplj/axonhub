@@ -261,18 +261,13 @@ func (s *APIKeyService) CreateLLMAPIKey(ctx context.Context, owner *ent.APIKey, 
 			return fmt.Errorf("failed to create api key: %w", err)
 		}
 
-		// LLM keys are non-personal and visible to every service-account reader
-		// in the project, so their names remain project-wide unique. Personal
-		// keys use a separate creator-scoped namespace.
-		bypassCtx := authz.WithSystemBypass(ctx, "api key name uniqueness")
-
-		dupCount, err := client.APIKey.Query().
-			Where(
-				apikey.NameEQ(name),
-				apikey.ProjectIDEQ(owner.ProjectID),
-				apikey.TypeNEQ(apikey.TypePersonal),
-			).
-			Count(bypassCtx)
+		// Service-account callers cannot read personal keys, so duplicate
+		// responses must only depend on non-personal keys in their project.
+		dupCount, err := client.APIKey.Query().Where(
+			apikey.NameEQ(name),
+			apikey.ProjectIDEQ(owner.ProjectID),
+			apikey.TypeNEQ(apikey.TypePersonal),
+		).Count(authz.WithSystemBypass(ctx, "api key name uniqueness"))
 		if err != nil {
 			return fmt.Errorf("failed to check api key name uniqueness: %w", err)
 		}
@@ -324,33 +319,8 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 	err = s.RunInTransaction(ctx, func(ctx context.Context) error {
 		client := s.entFromContext(ctx)
 
-		// Personal keys have a creator-scoped namespace; other keys are visible
-		// to project readers and remain project-wide unique.
-		nameQuery := client.APIKey.Query().Where(
-			apikey.NameEQ(input.Name),
-			apikey.ProjectIDEQ(input.ProjectID),
-			apikey.TypeNEQ(apikey.TypePersonal),
-		)
-		if apiKeyType == apikey.TypePersonal {
-			nameQuery = client.APIKey.Query().Where(
-				apikey.NameEQ(input.Name),
-				apikey.ProjectIDEQ(input.ProjectID),
-				apikey.UserIDEQ(user.ID),
-				apikey.TypeEQ(apikey.TypePersonal),
-			)
-		}
-
 		if err := s.lockProjectForAPIKeyName(ctx, input.ProjectID); err != nil {
 			return err
-		}
-
-		exists, err := nameQuery.Exist(authz.WithSystemBypass(ctx, "api key name uniqueness"))
-		if err != nil {
-			return fmt.Errorf("failed to check API key name uniqueness: %w", err)
-		}
-
-		if exists {
-			return xerrors.DuplicateNameError("API Key", input.Name)
 		}
 
 		create := client.APIKey.Create().
@@ -383,6 +353,20 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 		created, err := create.Save(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to create API key: %w", err)
+		}
+
+		// Save runs the mutation policy before the bypassed uniqueness query;
+		// returning an error rolls the insert back with this transaction.
+		dupCount, err := client.APIKey.Query().Where(
+			apikey.NameEQ(input.Name),
+			apikey.ProjectIDEQ(input.ProjectID),
+			apikey.Or(apikey.TypeNEQ(apikey.TypePersonal), apikey.UserIDEQ(user.ID)),
+		).Count(authz.WithSystemBypass(ctx, "api key name uniqueness"))
+		if err != nil {
+			return fmt.Errorf("failed to check API key name uniqueness: %w", err)
+		}
+		if dupCount > 1 {
+			return xerrors.DuplicateNameError("API Key", input.Name)
 		}
 
 		apiKey = created
@@ -451,36 +435,9 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 			}
 		}
 
-		// Personal keys have a creator-scoped namespace. Non-personal keys are
-		// visible to project readers and keep project-wide unique names.
 		if input.Name != nil && *input.Name != apiKey.Name {
 			if err := s.lockProjectForAPIKeyName(ctx, apiKey.ProjectID); err != nil {
 				return err
-			}
-
-			nameQuery := client.APIKey.Query().Where(
-				apikey.NameEQ(*input.Name),
-				apikey.ProjectIDEQ(apiKey.ProjectID),
-				apikey.IDNEQ(id),
-				apikey.TypeNEQ(apikey.TypePersonal),
-			)
-			if apiKey.Type == apikey.TypePersonal {
-				nameQuery = client.APIKey.Query().Where(
-					apikey.NameEQ(*input.Name),
-					apikey.ProjectIDEQ(apiKey.ProjectID),
-					apikey.UserIDEQ(apiKey.UserID),
-					apikey.IDNEQ(id),
-					apikey.TypeEQ(apikey.TypePersonal),
-				)
-			}
-
-			exists, err := nameQuery.Exist(authz.WithSystemBypass(ctx, "api key name uniqueness"))
-			if err != nil {
-				return fmt.Errorf("failed to check api key name uniqueness: %w", err)
-			}
-
-			if exists {
-				return xerrors.DuplicateNameError("API Key", *input.Name)
 			}
 		}
 
@@ -521,6 +478,24 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 		updated, err := update.Save(ctx)
 		if err != nil {
 			return fmt.Errorf("failed to update API key: %w", err)
+		}
+
+		if input.Name != nil && *input.Name != apiKey.Name {
+			nameScope := apikey.TypeNEQ(apikey.TypePersonal)
+			if user, ok := contexts.GetUser(ctx); ok {
+				nameScope = apikey.Or(nameScope, apikey.UserIDEQ(user.ID))
+			}
+			duplicateCount, err := client.APIKey.Query().Where(
+				apikey.NameEQ(*input.Name),
+				apikey.ProjectIDEQ(apiKey.ProjectID),
+				nameScope,
+			).Count(authz.WithSystemBypass(ctx, "api key name uniqueness"))
+			if err != nil {
+				return fmt.Errorf("failed to check api key name uniqueness: %w", err)
+			}
+			if duplicateCount > 1 {
+				return xerrors.DuplicateNameError("API Key", *input.Name)
+			}
 		}
 
 		result = updated

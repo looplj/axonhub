@@ -6,7 +6,7 @@
 
 ### Fixed
 
-- API Key names are unique per creator for personal keys and project-wide for non-personal keys.
+- Personal API Key names can be reused by different creators in a project; creating or renaming a key rejects collisions with non-personal keys visible to its creator. Duplicate checks run after create authorization.
 
 v0.4.0
 

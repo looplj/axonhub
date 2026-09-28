@@ -87,7 +87,7 @@ go run main.go
 ### 接口行为
 
 - **默认 LLM Key 权限**: 通过 `createLLMAPIKey` 创建的新 Key 将默认拥有 `read_channels` 和 `write_requests` 权限，适用于常规的 LLM 调用。
-- **名称即标识符**: 非个人 API Key 的 `name` 在项目内唯一；个人 Key 名称按创建者区分。模板的 `name` 同样在项目内唯一。因此凡是接受标识参数的接口，都支持 id 与 name 并存、按其一定位（`updateAPIKeyProfiles` 二选一、`apiKey` / `apiKeyQuotaUsages` 三选一、`loadApiKeyProfileTemplate` 的模板与目标 Key 各二选一）。同时提供多个或一个都不提供都会报错。
+- **名称即标识符**: 非个人 API Key 的 `name` 在项目内唯一；个人 Key 名称按创建者区分。若调用方可见多把同名 Key，按名称查询会报歧义，需改用 id 或 key。模板的 `name` 同样在项目内唯一。因此凡是接受标识参数的接口，都支持 id 与 name 并存、按其一定位（`updateAPIKeyProfiles` 二选一、`apiKey` / `apiKeyQuotaUsages` 三选一、`loadApiKeyProfileTemplate` 的模板与目标 Key 各二选一）。同时提供多个或一个都不提供都会报错。
 - **同项目约束**: 所有 mutation 与 query 仅能作用于调用方 service account 所属的项目；跨项目的 `apiKeyID` / `key` / `name` / `templateID` / `templateName` 会被拒绝（查不到）。
 - **GUID 类型校验**: 所有 `ID` 参数必须是对应类型的 GUID（如 `gid://axonhub/APIKey/123`、`gid://axonhub/APIKeyProfileTemplate/45`）；类型不匹配会被直接拒绝。
 - **Profile 命名冲突**: `loadApiKeyProfileTemplate` 在追加时若发现同名 profile，会自动加 `(1)` / `(2)` 后缀，不会覆盖。
