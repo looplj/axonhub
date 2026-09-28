@@ -3,13 +3,14 @@ package api
 import (
 	"errors"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/looplj/axonhub/internal/server/middleware"
 )
 
 type AuthHandlersParams struct {
@@ -36,7 +37,12 @@ type SignInRequest struct {
 
 // SignInResponse 登录响应.
 type SignInResponse struct {
-	User *objects.UserInfo `json:"user"`
+	User  *objects.UserInfo `json:"user"`
+	Token string            `json:"token"`
+}
+
+type RefreshResponse struct {
+	Token string `json:"token"`
 }
 
 // SignIn handles user authentication.
@@ -73,14 +79,29 @@ func (h *AuthHandlers) SignIn(c *gin.Context) {
 	}
 
 	response := SignInResponse{
-		User: biz.ConvertUserToUserInfo(ctx, user),
+		User:  biz.ConvertUserToUserInfo(ctx, user),
+		Token: token,
 	}
 
-	middleware.SetAdminSessionCookie(c, token)
 	c.JSON(http.StatusOK, response)
 }
 
-func (h *AuthHandlers) SignOut(c *gin.Context) {
-	middleware.ClearAdminSessionCookie(c)
-	c.Status(http.StatusNoContent)
+func (h *AuthHandlers) Refresh(c *gin.Context) {
+	authorization := c.GetHeader("Authorization")
+	token, ok := strings.CutPrefix(authorization, "Bearer ")
+	if !ok || strings.TrimSpace(token) == "" {
+		JSONError(c, http.StatusUnauthorized, errors.New("Invalid authorization token"))
+		return
+	}
+
+	refreshed, renewed, err := h.AuthService.RefreshJWTToken(c.Request.Context(), strings.TrimSpace(token), time.Now())
+	if err != nil {
+		JSONError(c, http.StatusUnauthorized, errors.New("Invalid authorization token"))
+		return
+	}
+	if !renewed {
+		c.Status(http.StatusNoContent)
+		return
+	}
+	c.JSON(http.StatusOK, RefreshResponse{Token: refreshed})
 }
