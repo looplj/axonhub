@@ -6,7 +6,7 @@
 
 ### Fixed
 
-- API Key names now conflict only with live keys created by the same user in the same project, regardless of who can view other users' keys.
+- API Key names are unique per creator for personal keys and project-wide for non-personal keys.
 
 v0.4.0
 

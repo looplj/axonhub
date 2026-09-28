@@ -1178,8 +1178,7 @@ func TestAPIKeyService_NameUniqueness(t *testing.T) {
 		SetKey(serviceKey).
 		SetUserID(ownerUser.ID).
 		SetProjectID(ownerProject.ID).
-		SetType(apikey.TypeServiceAccount).
-		SetScopes([]string{string(scopes.ScopeWriteAPIKeys)}).
+		SetScopes([]string{string(scopes.ScopeWriteAPIKeys), string(scopes.ScopeReadAPIKeys)}).
 		Save(setupCtx)
 	require.NoError(t, err)
 
@@ -1208,6 +1207,58 @@ func TestAPIKeyService_NameUniqueness(t *testing.T) {
 
 		_, err = apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "shared-name")
 		require.ErrorContains(t, err, "already exists")
+	})
+	t.Run("rejects another creator's non-personal name", func(t *testing.T) {
+		otherUser, err := client.User.Create().
+			SetEmail(uuid.NewString() + "@example.com").
+			SetPassword(hashedPassword).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		otherKeyValue, err := GenerateAPIKey("ah")
+		require.NoError(t, err)
+		otherKey, err := client.APIKey.Create().
+			SetName("Other service account").
+			SetKey(otherKeyValue).
+			SetUserID(otherUser.ID).
+			SetProjectID(ownerProject.ID).
+			SetType(apikey.TypeServiceAccount).
+			SetScopes([]string{string(scopes.ScopeWriteAPIKeys)}).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		otherCtx := contexts.WithAPIKey(ent.NewContext(context.Background(), client), otherKey)
+		_, err = apiKeyService.CreateLLMAPIKey(otherCtx, otherKey, "llm-shared")
+		require.NoError(t, err)
+
+		name := "llm-shared"
+		_, err = apiKeyService.GetForRead(ctx, nil, nil, &name)
+		require.NoError(t, err)
+
+		_, err = apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "llm-shared")
+		require.ErrorContains(t, err, "already exists")
+	})
+	t.Run("non-personal rename ignores private personal names", func(t *testing.T) {
+		otherUser, err := client.User.Create().
+			SetEmail(uuid.NewString() + "@example.com").
+			SetPassword(hashedPassword).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		_, err = client.APIKey.Create().
+			SetName("private-personal-name").
+			SetKey("ah-private-personal-name").
+			SetUserID(otherUser.ID).
+			SetProjectID(ownerProject.ID).
+			SetType(apikey.TypePersonal).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		created, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "rename-source")
+		require.NoError(t, err)
+		privateName := "private-personal-name"
+		_, err = apiKeyService.UpdateAPIKey(ctx, created.ID, ent.UpdateAPIKeyInput{Name: &privateName})
+		require.NoError(t, err)
 	})
 	t.Run("rejects duplicate name for same creator", func(t *testing.T) {
 		_, err := apiKeyService.CreateLLMAPIKey(ctx, ownerAPIKey, "dup-name")
