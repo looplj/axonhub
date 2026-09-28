@@ -37,30 +37,29 @@ const readNumberClaim = (claims: Record<string, unknown>, name: string): number 
 };
 
 const refreshAccessToken = async (token: string): Promise<string | null> => {
-  let response: Response;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5_000);
   try {
-    response = await fetch('/admin/auth/refresh', {
+    const response = await fetch('/admin/auth/refresh', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
     });
+
+    if (response.status === 204) return token;
+    if (!response.ok) return null;
+
+    const body: unknown = await response.json();
+    if (typeof body !== 'object' || body === null || !('token' in body) || typeof body.token !== 'string') return null;
+
+    if (getTokenFromStorage() !== token) return getTokenFromStorage() || null;
+    useAuthStore.getState().auth.setAccessToken(body.token);
+    return body.token;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
-
-  if (response.status === 204) return token;
-  if (!response.ok) return null;
-
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    return null;
-  }
-  if (typeof body !== 'object' || body === null || !('token' in body) || typeof body.token !== 'string') return null;
-
-  if (getTokenFromStorage() !== token) return getTokenFromStorage() || null;
-  useAuthStore.getState().auth.setAccessToken(body.token);
-  return body.token;
 };
 
 export const ensureFreshAccessToken = async (): Promise<string> => {

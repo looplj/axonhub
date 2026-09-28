@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"time"
 
@@ -206,9 +205,6 @@ func (s *AuthService) parseJWTClaims(ctx context.Context, tokenString string) (j
 		return s.SystemService.SecretKey(bypassCtx)
 	})
 	if err != nil {
-		if errors.Is(err, ErrSystemNotInitialized) {
-			return nil, fmt.Errorf("%w: system not initialized", ErrInvalidJWT)
-		}
 		return nil, fmt.Errorf("failed to get secret key: %w", err)
 	}
 
@@ -257,7 +253,10 @@ func (s *AuthService) RefreshJWTToken(ctx context.Context, tokenString string, n
 		return s.UserService.GetUserByID(bypassCtx, int(userID))
 	})
 	if err != nil {
-		return "", false, fmt.Errorf("%w: failed to get user: %w", ErrInvalidJWT, err)
+		if ent.IsNotFound(err) {
+			return "", false, fmt.Errorf("%w: failed to get user: %w", ErrInvalidJWT, err)
+		}
+		return "", false, fmt.Errorf("failed to get user: %w", err)
 	}
 	if authenticatedUser.Status != user.StatusActivated {
 		return "", false, fmt.Errorf("%w: user not activated", ErrInvalidJWT)

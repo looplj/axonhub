@@ -96,7 +96,12 @@ func (h *AuthHandlers) Refresh(c *gin.Context) {
 
 	refreshed, renewed, err := h.AuthService.RefreshJWTToken(c.Request.Context(), strings.TrimSpace(token), time.Now())
 	if err != nil {
-		JSONError(c, http.StatusUnauthorized, errors.New("Invalid authorization token"))
+		if errors.Is(err, biz.ErrInvalidJWT) {
+			JSONError(c, http.StatusUnauthorized, errors.New("Invalid authorization token"))
+			return
+		}
+
+		JSONError(c, http.StatusInternalServerError, errors.New("Internal server error"))
 		return
 	}
 	if !renewed {

@@ -110,6 +110,8 @@ func TestAdminGraphqlServiceAccount(t *testing.T) {
 	})
 	t.Cleanup(apiKeySvc.Stop)
 	systemSvc := biz.NewSystemService(biz.SystemServiceParams{CacheConfig: cacheCfg, Ent: db})
+	// Admin authentication checks JWTs before falling back to service-account keys.
+	require.NoError(t, systemSvc.SetSecretKey(setupCtx, "test-admin-graphql-secret"))
 	authSvc := biz.NewAuthService(biz.AuthServiceParams{
 		SystemService: systemSvc, APIKeyService: apiKeySvc, Ent: db,
 	})
@@ -126,7 +128,7 @@ func TestAdminGraphqlServiceAccount(t *testing.T) {
 	t.Run("reads channels and models", func(t *testing.T) {
 		code, body := adminGraphqlPost(t, server.URL, readKey,
 			`query { channels(first: 5) { edges { node { id name } } } models(first: 5) { edges { node { id name } } } }`)
-		require.Equal(t, http.StatusOK, code)
+		require.Equal(t, http.StatusOK, code, "body: %s", body)
 		require.NotContains(t, string(body), `"errors"`, "body: %s", body)
 		require.Contains(t, string(body), "seeded channel")
 		require.Contains(t, string(body), "GPT-4")
@@ -135,14 +137,14 @@ func TestAdminGraphqlServiceAccount(t *testing.T) {
 	t.Run("mutation is refused", func(t *testing.T) {
 		code, body := adminGraphqlPost(t, server.URL, readKey,
 			fmt.Sprintf(`mutation { deleteChannel(id: "gid://axonhub/Channel/%d") }`, ch.ID))
-		require.Equal(t, http.StatusOK, code)
+		require.Equal(t, http.StatusOK, code, "body: %s", body)
 		require.Contains(t, string(body), "read-only", "body: %s", body)
 	})
 
 	t.Run("missing scope is denied", func(t *testing.T) {
 		code, body := adminGraphqlPost(t, server.URL, noScopeKey,
 			`query { channels(first: 5) { edges { node { id } } } }`)
-		require.Equal(t, http.StatusOK, code)
+		require.Equal(t, http.StatusOK, code, "body: %s", body)
 		require.Contains(t, string(body), `"errors"`, "body: %s", body)
 	})
 }

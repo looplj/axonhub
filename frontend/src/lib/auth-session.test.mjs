@@ -91,6 +91,44 @@ test('network failure preserves the current token', async (t) => {
   assert.equal(await session.ensureFreshAccessToken(), session.token);
 });
 
+for (const stage of ['fetch', 'body']) {
+  test(`refresh timeout preserves the token and allows retry when ${stage} stalls`, async (t) => {
+    // Given
+    const session = await setup(t);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    session.activate();
+    let started;
+    const stageStarted = new Promise((resolve) => {
+      started = resolve;
+    });
+    let signal;
+    globalThis.fetch = async (_url, options) => {
+      signal = options.signal;
+      if (!signal) {
+        started();
+        throw new Error('missing timeout signal');
+      }
+      const stalled = () =>
+        new Promise((_resolve, reject) => {
+          options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true });
+          started();
+        });
+      return stage === 'fetch' ? stalled() : { ok: true, status: 200, json: stalled };
+    };
+
+    // When
+    const pending = session.ensureFreshAccessToken();
+    await stageStarted;
+    assert.ok(signal instanceof AbortSignal);
+    t.mock.timers.tick(5_000);
+
+    // Then
+    assert.equal(await pending, session.token);
+    globalThis.fetch = async () => Response.json({ token: 'renewed-after-timeout' });
+    assert.equal(await session.ensureFreshAccessToken(), 'renewed-after-timeout');
+  });
+}
+
 for (const [name, token] of [
   ['legacy', makeToken(86400, false)],
   ['expired', makeToken(-1)],
