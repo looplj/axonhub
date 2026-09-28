@@ -168,6 +168,7 @@ func (s *conversionErrorStream) Close() error {
 
 type conversionErrorInbound struct {
 	transformer.Inbound
+
 	err error
 }
 

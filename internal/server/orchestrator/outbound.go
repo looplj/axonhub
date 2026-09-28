@@ -168,7 +168,7 @@ func (ts *OutboundPersistentStream) Close() error {
 	} else {
 		ts.logFinalizationDecision(ctx, "no_outbound_chunks_to_aggregate", streamErr, ctxErr, false, nil)
 	}
-	if ts.state.CleanEOFCompletionEvidence && streamErr == nil && aggErr == nil && len(responseBody) > 0 {
+	if !aggregatedCompleted && ts.state.CleanEOFCompletionEvidence && streamErr == nil && aggErr == nil && len(responseBody) > 0 {
 		aggregatedCompleted = true
 		ts.outcome.observeValidatedCompletion()
 		ts.markPerformanceTerminal(streamTerminalCompleted, "")
