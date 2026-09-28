@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/looplj/axonhub/llm"
@@ -215,5 +216,119 @@ func TestScrubText_HoldsIncompleteTagPrefix(t *testing.T) {
 	emit, _, stripped = scrubText("</\uFF5C\uFF5CDSML\uFF5C\uFF5C parameter>x", false)
 	if emit != "x" || !stripped {
 		t.Fatalf("tag: emit=%q stripped=%v", emit, stripped)
+	}
+}
+
+// A tag head whose attribute value carries a character the old whitelist
+// omitted (a POSIX path) must be held, not released: releasing it handed the
+// whole tag head to the client as content and suppressed the abort.
+func TestScrubText_HoldsTagHeadWithColonInAttribute(t *testing.T) {
+	head := "answer <\uFF5CDSML\uFF5Cinvoke name=\"path:C:\\tools\""
+	emit, hold, stripped := scrubText(head, false)
+	if emit != "answer " || hold != "<\uFF5CDSML\uFF5Cinvoke name=\"path:C:\\tools\"" || stripped {
+		t.Fatalf("emit=%q hold=%q stripped=%v", emit, hold, stripped)
+	}
+
+	// The next chunk completes the tag: all of it is dropped and reported.
+	emit, hold, stripped = scrubText(hold+` extra="1">done`, false)
+	if emit != "done" || hold != "" || !stripped {
+		t.Fatalf("resolved: emit=%q hold=%q stripped=%v", emit, hold, stripped)
+	}
+}
+
+// A tag head longer than the old 128-byte hold limit (a parameter tag with a
+// long string attribute) must still be held instead of emitted.
+func TestScrubText_HoldsLongTagHead(t *testing.T) {
+	head := "t<\uFF5CDSML\uFF5Cparameter name=\"p\" string=\"" + strings.Repeat("x", 600) + "\""
+	emit, hold, stripped := scrubText(head, false)
+	if emit != "t" || hold != head[1:] || stripped {
+		t.Fatalf("emit=%q hold=%q stripped=%v", emit, hold, stripped)
+	}
+	if len(hold) > maxTagHold {
+		t.Fatalf("held %d bytes, over the %d limit", len(hold), maxTagHold)
+	}
+}
+
+// Past the hold limit a DSML head can no longer be resolved in place, so it
+// must be dropped and reported as stripped rather than handed to the client.
+func TestScrubText_DiscardsOverCapDSMLHead(t *testing.T) {
+	head := "<\uFF5CDSML\uFF5Cparameter string=\"" + strings.Repeat("y", maxTagHold+64) + "\""
+	emit, hold, stripped := scrubText("t"+head, false)
+	if emit != "t" || hold != "" || !stripped {
+		t.Fatalf("emit=%q hold=%q stripped=%v", emit, hold, stripped)
+	}
+}
+
+// Prose that merely follows a stray '<' must survive untouched however long
+// it runs: the hold limit is a memory bound, not a licence to drop text.
+func TestScrubText_KeepsLongProseAfterStrayLt(t *testing.T) {
+	prose := "if a < b then " + strings.Repeat("z", maxTagHold+64)
+	emit, hold, stripped := scrubText(prose, false)
+	if emit != prose || hold != "" || stripped {
+		t.Fatalf("long prose lost: emit=%q hold=%q stripped=%v", emit, hold, stripped)
+	}
+
+	// Short prose after '<' is still held (it may be a tag head) and returns
+	// on flush.
+	emit, hold, stripped = scrubText("2 < 3", false)
+	if emit != "2 " || hold != "< 3" || stripped {
+		t.Fatalf("short prose: emit=%q hold=%q stripped=%v", emit, hold, stripped)
+	}
+	emit, hold, stripped = scrubText(hold, true)
+	if emit != "< 3" || hold != "" || stripped {
+		t.Fatalf("flush: emit=%q hold=%q stripped=%v", emit, hold, stripped)
+	}
+}
+
+// End-to-end regression for the cross-chunk leak: a tag head carrying a colon
+// in an attribute value used to reach the client verbatim, so the turn ended
+// silently corrupted instead of aborting.
+func TestMarkupSanitizer_SplitTagWithColonAttributeAborts(t *testing.T) {
+	inner := &stubMarkupStream{items: []*llm.Response{
+		textChunk(t, "start<\uFF5CDSML\uFF5Cinvoke name=\"path:C:\\tools\""),
+		textChunk(t, ` extra="1">done`),
+	}}
+	wrapped, err := withUpstreamMarkupSanitizer().(interface {
+		OnOutboundLlmStream(context.Context, streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
+	}).OnOutboundLlmStream(context.Background(), inner)
+	if err != nil {
+		t.Fatalf("wrap: %v", err)
+	}
+
+	_, err = collectText(t, wrapped)
+
+	var respErr *llm.ResponseError
+	if !errors.As(err, &respErr) {
+		t.Fatalf("expected leak abort, got %v", err)
+	}
+	if respErr.Detail.Code != "upstream_tool_call_markup_leak" {
+		t.Fatalf("unexpected error code: %q", respErr.Detail.Code)
+	}
+}
+
+// The same split tag with a real tool call behind it stays cosmetic: the
+// turn completes and only the markup disappears.
+func TestMarkupSanitizer_SplitTagWithColonAttributeKeepsToolCallTurn(t *testing.T) {
+	inner := &stubMarkupStream{items: []*llm.Response{
+		textChunk(t, "start<\uFF5CDSML\uFF5Cinvoke name=\"path:C:\\tools\""),
+		textChunk(t, ` extra="1">done`),
+		{Choices: []llm.Choice{{
+			Index: 0,
+			Delta: &llm.Message{ToolCalls: []llm.ToolCall{{ID: "call_1"}}},
+		}}},
+	}}
+	wrapped, err := withUpstreamMarkupSanitizer().(interface {
+		OnOutboundLlmStream(context.Context, streams.Stream[*llm.Response]) (streams.Stream[*llm.Response], error)
+	}).OnOutboundLlmStream(context.Background(), inner)
+	if err != nil {
+		t.Fatalf("wrap: %v", err)
+	}
+
+	text, err := collectText(t, wrapped)
+	if err != nil {
+		t.Fatalf("unexpected stream error: %v", err)
+	}
+	if text != "startdone" {
+		t.Fatalf("unexpected text: %q", text)
 	}
 }

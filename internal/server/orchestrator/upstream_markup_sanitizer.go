@@ -49,7 +49,12 @@ func (m *upstreamMarkupSanitizerMiddleware) OnOutboundLlmStream(
 	return &markupSanitizerStream{ctx: ctx, inner: stream, carry: map[int]string{}}, nil
 }
 
-const maxTagHold = 128
+// maxTagHold bounds the split-tag tail buffered per choice so that a stray
+// '<' in prose can never pin memory. It is a memory/latency bound only: the
+// previous 128-byte limit doubled as a "does this look like a tag" test, and
+// a real DSML tag head longer than that (a parameter tag carrying a long
+// string attribute) failed it, so the whole tag head was released as content.
+const maxTagHold = 4096
 
 var (
 	// Complete markup tags, e.g. "<｜DSML｜parameter name=\"x\" string=\"true\">",
@@ -58,9 +63,17 @@ var (
 	leakedToolCallTagRe = regexp.MustCompile(
 		"</?[|\\x{FF5C}]+\\s*DSML[|\\x{FF5C}][^>]*>|</?small_placeholder>",
 	)
-	// Suffix that could be the beginning of a tag split across chunks: only
-	// tag-ish characters after the last '<' (bars, letters, quotes, ...).
-	tagPrefixRe = regexp.MustCompile(`^</?[|\x{FF5C}\w\s"=.-]*$`)
+	// Suffix that could be the beginning of a tag split across chunks: "<" or
+	// "</" plus whatever has not reached its closing '>' yet. Attribute values
+	// may hold almost any character (POSIX paths, JSON, ':' inside
+	// name="path:C:\tools"), so this deliberately does not whitelist
+	// characters: the previous whitelist missed ':' and silently released
+	// unresolvable markup as content instead of holding it.
+	tagPrefixRe = regexp.MustCompile(`^</?[^>]*$`)
+
+	// Head of a DSML tag, used to tell an over-long markup fragment (drop) from
+	// over-long prose that merely follows a stray '<' (keep).
+	dsmlHeadRe = regexp.MustCompile("^</?[|\\x{FF5C}]+\\s*DSML[|\\x{FF5C}]")
 )
 
 // scrubText removes complete markup tags from text. When flush is false and
@@ -79,8 +92,23 @@ func scrubText(text string, flush bool) (emit, hold string, stripped bool) {
 		return emit, "", stripped
 	}
 
-	if tail := emit[lt:]; len(tail) <= maxTagHold && tagPrefixRe.MatchString(tail) {
-		return emit[:lt], tail, stripped
+	tail := emit[lt:]
+
+	if len(tail) <= maxTagHold {
+		if tagPrefixRe.MatchString(tail) {
+			return emit[:lt], tail, stripped
+		}
+
+		return emit, "", stripped
+	}
+
+	// Past the hold limit the prefix can no longer be resolved in place. A tail
+	// that already starts as a DSML tag head is markup by definition: drop it and
+	// report the strip, because releasing it would hand the client the very
+	// markup this middleware exists to remove. Prose that merely follows a stray
+	// '<' is still emitted untouched.
+	if dsmlHeadRe.MatchString(tail) {
+		return emit[:lt], "", true
 	}
 
 	return emit, "", stripped
