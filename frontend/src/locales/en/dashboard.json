@@ -1,5 +1,5 @@
 {
-  "dashboard.cards.tokenStats": "Token Usage",
+  "dashboard.cards.tokenStats": "Token Statistics",
   "dashboard.cards.fastestPerformers.channels": "Fastest Channels",
   "dashboard.cards.fastestPerformers.models": "Fastest Models",
   "dashboard.cards.fastestPerformers.noData": "No data available",
@@ -43,8 +43,8 @@
   "dashboard.stats.cached": "Cached",
   "dashboard.stats.updated": "Updated {{time}}",
   "dashboard.stats.all": "All",
-  "dashboard.stats.month": "Month",
-  "dashboard.stats.week": "Week",
+  "dashboard.stats.month": "MO",
+  "dashboard.stats.week": "WK",
   "dashboard.stats.day": "Day",
   "dashboard.stats.throughput": "tok/s",
   "dashboard.stats.ttft": "TTFT",
