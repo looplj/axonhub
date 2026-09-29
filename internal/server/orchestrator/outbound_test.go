@@ -909,6 +909,43 @@ func TestShouldForceStreamingForCandidate(t *testing.T) {
 	})
 }
 
+func TestPersistentOutboundTransformer_TransformRequest_PreservesNonStreaming(t *testing.T) {
+	outbound, err := anthropic.NewOutboundTransformer("https://api.example.com", "test-api-key")
+	require.NoError(t, err)
+
+	channel := &biz.Channel{
+		Channel:  &ent.Channel{ID: 1, Name: "custom-anthropic"},
+		Outbound: outbound,
+		Outbounds: map[string]transformer.Outbound{
+			llm.APIFormatAnthropicMessage.String(): outbound,
+		},
+	}
+	processor := &PersistentOutboundTransformer{
+		wrapped: outbound,
+		state: &PersistenceState{
+			OriginalModel: "MiniMax-M2.7",
+			ChannelModelsCandidates: []*ChannelModelsCandidate{{
+				Channel:   channel,
+				Models:    []biz.ChannelModelEntry{{RequestModel: "MiniMax-M2.7", ActualModel: "MiniMax-M2.7"}},
+				APIFormat: llm.APIFormatAnthropicMessage.String(),
+			}},
+		},
+	}
+	request := &llm.Request{
+		Model:     "MiniMax-M2.7",
+		APIFormat: llm.APIFormatAnthropicMessage,
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("Hi")},
+		}},
+	}
+
+	httpRequest, err := processor.TransformRequest(context.Background(), request)
+	require.NoError(t, err)
+	require.True(t, gjson.GetBytes(httpRequest.Body, "stream").Exists())
+	require.False(t, gjson.GetBytes(httpRequest.Body, "stream").Bool())
+}
+
 func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
 	t.Run("usage with completion tokens means completed", func(t *testing.T) {
 		require.True(t, isCompletedAggregated(llm.ResponseMeta{Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}}))
