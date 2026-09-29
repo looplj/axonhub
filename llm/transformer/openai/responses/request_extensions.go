@@ -268,7 +268,7 @@ func buildRawOnlyInputFragments(input Input, rawItems []json.RawMessage) []llm.O
 func isStructurallyRepresentedInputItem(itemType string) bool {
 	switch itemType {
 	case "", "message", "input_text", "input_image", "function_call", "function_call_output",
-		"custom_tool_call", "custom_tool_call_output", "reasoning", "compaction", "compaction_summary":
+		"custom_tool_call", "custom_tool_call_output", "reasoning", "compaction", "compaction_summary", "additional_tools":
 		return true
 	default:
 		return false
