@@ -1148,7 +1148,9 @@ func (r *queryResolver) FastestChannels(ctx context.Context, input FastestChanne
 
 // FastestModels is the resolver for the fastestModels field.
 // Returns the fastest models by throughput (tokens per second) based on completed request executions.
-// Groups by request.model_id (AxonHub model) and calculates throughput from usage_log.completion_tokens and request_execution.metrics_latency_ms.
+// Groups by request_executions.model_id — the channel model actually executed after model mapping,
+// so a requested model alias is attributed to the real model behind it — and calculates throughput
+// from usage_log.completion_tokens and request_execution.metrics_latency_ms.
 func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannelsInput) ([]*FastestModel, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 
@@ -1289,9 +1291,9 @@ func (r *queryResolver) FastestModels(ctx context.Context, input FastestChannels
 
 // ModelPerformanceStats is the resolver for the modelPerformanceStats field.
 // Returns performance statistics for the top models over the requested range, bucketed by
-// hour for short ranges and by day otherwise. Aggregates by bucket and model_id,
-// calculating throughput (tokens per second). Only includes successful (completed)
-// requests with valid latency metrics.
+// hour for short ranges and by day otherwise. Aggregates by bucket and the channel model
+// actually executed after model mapping (request_executions.model_id), calculating throughput
+// (tokens per second). Only includes successful (completed) requests with valid latency metrics.
 func (r *queryResolver) ModelPerformanceStats(ctx context.Context, timeWindow *string, startTime *string, endTime *string) ([]*ModelPerformanceStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
 

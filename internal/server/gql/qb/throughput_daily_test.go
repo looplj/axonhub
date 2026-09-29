@@ -125,9 +125,8 @@ func TestBuildDailyModelThroughputQuery(t *testing.T) {
 			wantContains: []string{
 				"WITH successful_execs AS",
 				"ROW_NUMBER()",
-				"JOIN requests r ON",
-				"JOIN models m ON",
-				"r.model_id",
+				"LEFT JOIN models m ON se.model_id",
+				"se.model_id",
 				"model_name",
 				"to_char",
 				"throughput",
@@ -135,7 +134,7 @@ func TestBuildDailyModelThroughputQuery(t *testing.T) {
 				"daily_rn <= 10",
 				"ORDER BY date DESC, throughput DESC",
 			},
-			wantNotContains: []string{"MAX(re2.id)"},
+			wantNotContains: []string{"MAX(re2.id)", "JOIN requests r ON"},
 		},
 		{
 			name:          "model query with MAX_ID mode mysql",
@@ -146,13 +145,12 @@ func TestBuildDailyModelThroughputQuery(t *testing.T) {
 			mode:          ThroughputModeMaxID,
 			wantContains: []string{
 				"MAX(re2.id)",
-				"JOIN requests r ON",
-				"JOIN models m ON",
+				"LEFT JOIN models m ON se.model_id",
 				"DATE_FORMAT",
 				"throughput",
 				"daily_rn <= 10",
 			},
-			wantNotContains: []string{"WITH successful_execs"},
+			wantNotContains: []string{"WITH successful_execs", "JOIN requests r ON"},
 		},
 		{
 			name:          "model query with sqlite",
@@ -163,7 +161,7 @@ func TestBuildDailyModelThroughputQuery(t *testing.T) {
 			mode:          ThroughputModeRowNumber,
 			wantContains: []string{
 				"strftime",
-				"r.model_id",
+				"se.model_id",
 				"model_name",
 			},
 		},
@@ -411,11 +409,11 @@ func TestAllowedDailyQueryConfigs(t *testing.T) {
 	// date is added separately via dateExpr in GROUP BY clauses
 
 	modelConfig := AllowedDailyQueryConfigs[DailyThroughputByModel]
-	assert.Contains(t, modelConfig.IDColumn, "model_id", "should include model_id")
+	assert.Contains(t, modelConfig.IDColumn, "se.model_id", "should key on the executed model id")
 	assert.Contains(t, modelConfig.NameColumn, "model_name", "should include model_name")
-	assert.Contains(t, modelConfig.JoinClause, "requests r ON", "should join requests table")
+	assert.NotContains(t, modelConfig.JoinClause, "requests r ON", "should not join requests; the executed model is on request_executions")
 	assert.Contains(t, modelConfig.JoinClause, "models m ON", "should join models table")
-	assert.Contains(t, modelConfig.GroupByFields, "model_id", "should group by model_id")
+	assert.Contains(t, modelConfig.GroupByFields, "se.model_id", "should group by the executed model id")
 	// date is added separately via dateExpr in GROUP BY clauses
 }
 
@@ -449,7 +447,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 		wantNotContains []string
 	}{
 		{
-			name:           "model query with postgres includes requests join",
+			name:           "model query with postgres keys on the executed model",
 			dialect:        "postgres",
 			timezone:       "UTC",
 			offsetSeconds:  0,
@@ -459,8 +457,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			mode:           ThroughputModeRowNumber,
 			wantContains: []string{
 				"WITH successful_execs AS",
-				"JOIN requests r ON se.request_id = r.id",
-				"r.model_id",
+				"se.model_id",
 				"to_char",
 				"AT TIME ZONE",
 				"NULLIF(",
@@ -470,7 +467,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 				"AND daily.throughput > 0",
 				"ORDER BY date DESC, throughput DESC",
 			},
-			wantNotContains: []string{},
+			wantNotContains: []string{"JOIN requests r ON", "r.model_id"},
 		},
 		{
 			name:           "channel query with postgres excludes requests join",
@@ -509,8 +506,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			mode:           ThroughputModeRowNumber,
 			wantContains: []string{
 				"WITH successful_execs AS",
-				"JOIN requests r ON se.request_id = r.id",
-				"r.model_id",
+				"se.model_id",
 				"DATE_FORMAT",
 				"CONVERT_TZ",
 				"-04:00",
@@ -520,6 +516,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 				"WHERE daily.throughput IS NOT NULL",
 				"AND daily.throughput > 0",
 			},
+			wantNotContains: []string{"JOIN requests r ON", "r.model_id"},
 		},
 		{
 			name:           "channel query with mysql",
@@ -555,8 +552,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			mode:           ThroughputModeRowNumber,
 			wantContains: []string{
 				"WITH successful_execs AS",
-				"JOIN requests r ON se.request_id = r.id",
-				"r.model_id",
+				"se.model_id",
 				"strftime",
 				"NULLIF(",
 				", 0)",
@@ -564,6 +560,7 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 				"WHERE daily.throughput IS NOT NULL",
 				"AND daily.throughput > 0",
 			},
+			wantNotContains: []string{"JOIN requests r ON", "r.model_id"},
 		},
 		{
 			name:           "channel query with sqlite3",
@@ -599,13 +596,14 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			wantContains: []string{
 				"MAX(se2.id)",
 				"latest_execs",
-				"JOIN requests r ON se.request_id = r.id",
-				"r.model_id",
+				"se.model_id",
 				"strftime",
 			},
 			wantNotContains: []string{
 				"successful_execs",
 				"ROW_NUMBER() OVER (PARTITION BY request_id",
+				"JOIN requests r ON",
+				"r.model_id",
 			},
 		},
 		{
@@ -619,9 +617,9 @@ func TestBuildDailyPerformanceStatsQuery(t *testing.T) {
 			mode:           ThroughputModeRowNumber,
 			wantContains: []string{
 				"AT TIME ZONE 'Europe/London'",
-				"JOIN requests r ON se.request_id = r.id",
-				"r.model_id",
+				"se.model_id",
 			},
+			wantNotContains: []string{"JOIN requests r ON", "r.model_id"},
 		},
 		{
 			name:           "hourly buckets use the hour format and an exclusive upper bound",
@@ -702,10 +700,14 @@ func TestBuildDailyPerformanceStatsQuery_PostFilter(t *testing.T) {
 	assert.Contains(t, got, "AND daily.throughput > 0", "should filter zero/negative throughput")
 }
 
-func TestBuildDailyPerformanceStatsQuery_ConditionalJoinRequests(t *testing.T) {
+// TestBuildDailyPerformanceStatsQuery_ExecutedModelKey checks that the model query
+// keys on the model actually executed after channel model mapping (se.model_id)
+// without joining requests, which only holds the requested model (e.g. an alias).
+func TestBuildDailyPerformanceStatsQuery_ExecutedModelKey(t *testing.T) {
 	modelQuery := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1", "$2", ThroughputModeRowNumber, ResolutionDay)
-	assert.Contains(t, modelQuery, "JOIN requests r ON se.request_id = r.id", "model query should join requests")
-	assert.Contains(t, modelQuery, "r.model_id", "model query should reference r.model_id")
+	assert.NotContains(t, modelQuery, "JOIN requests r ON se.request_id = r.id", "model query should not join requests")
+	assert.NotContains(t, modelQuery, "r.model_id", "model query should not reference the requested model r.model_id")
+	assert.Contains(t, modelQuery, "se.model_id", "model query should reference the executed model se.model_id")
 
 	channelQuery := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByChannel, "$1", "$2", ThroughputModeRowNumber, ResolutionDay)
 	assert.NotContains(t, channelQuery, "JOIN requests r ON se.request_id = r.id", "channel query should not join requests")

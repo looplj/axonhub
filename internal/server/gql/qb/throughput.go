@@ -16,8 +16,10 @@ const (
 	// ThroughputQueryByChannel groups throughput statistics by channel.
 	// Uses channels table for channel metadata.
 	ThroughputQueryByChannel ThroughputQueryType = iota
-	// ThroughputQueryByModel groups throughput statistics by model.
-	// Uses requests and models tables for model metadata.
+	// ThroughputQueryByModel groups throughput statistics by the model actually
+	// executed after channel model mapping (request_executions.model_id), with the
+	// models catalog as an optional display-name lookup. Requested model aliases
+	// resolve to the real model behind them.
 	ThroughputQueryByModel
 )
 
@@ -50,9 +52,9 @@ var AllowedQueryConfigs = map[ThroughputQueryType]QueryFragmentConfig{
 		GroupBy:       "se.channel_id, c.name, c.type",
 	},
 	ThroughputQueryByModel: {
-		SelectColumns: "r.model_id,\n    COALESCE(m.name, r.model_id) as model_name,",
-		JoinClause:    "JOIN requests r ON se.request_id = r.id\nLEFT JOIN models m ON r.model_id = m.model_id",
-		GroupBy:       "r.model_id, m.name",
+		SelectColumns: "se.model_id,\n    COALESCE(m.name, se.model_id) as model_name,",
+		JoinClause:    "LEFT JOIN models m ON se.model_id = m.model_id",
+		GroupBy:       "se.model_id, m.name",
 	},
 }
 
@@ -110,6 +112,7 @@ WITH successful_execs AS (
     SELECT
         request_id,
         channel_id,
+        model_id,
         metrics_latency_ms,
         metrics_first_token_latency_ms,
         stream,
