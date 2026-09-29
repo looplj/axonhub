@@ -59,6 +59,11 @@ type OutboundTransformer struct {
 	webSocketExecutors map[pipeline.Executor]*responses.WebSocketExecutor
 }
 
+// SupportsCodexResponseHeaders identifies the official Codex response-header contract.
+func (*OutboundTransformer) SupportsCodexResponseHeaders() bool {
+	return true
+}
+
 var (
 	_ transformer.Outbound                  = (*OutboundTransformer)(nil)
 	_ transformer.PassThroughBodyPolicy     = (*OutboundTransformer)(nil)
