@@ -1,6 +1,8 @@
 package anthropic
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -278,10 +280,16 @@ func convertToolsAnthropic(tools []llm.Tool, config *Config) []Tool {
 	for _, tool := range tools {
 		switch tool.Type {
 		case llm.ToolTypeFunction:
+			inputSchema := tool.Function.Parameters
+			trimmedSchema := bytes.TrimSpace(inputSchema)
+			if len(trimmedSchema) == 0 || bytes.Equal(trimmedSchema, []byte("null")) {
+				inputSchema = json.RawMessage(`{"type":"object","properties":{}}`)
+			}
+
 			anthropicTools = append(anthropicTools, Tool{
 				Name:         tool.Function.Name,
 				Description:  tool.Function.Description,
-				InputSchema:  tool.Function.Parameters,
+				InputSchema:  inputSchema,
 				CacheControl: convertToAnthropicCacheControl(tool.CacheControl),
 			})
 		case llm.ToolTypeWebSearch:
