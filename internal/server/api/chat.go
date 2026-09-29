@@ -143,7 +143,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 }
 
 func writeForwardResponseHeaders(c *gin.Context, request *httpclient.Request, result orchestrator.ChatCompletionResult) {
-	if request == nil || !strings.HasSuffix(request.Path, "/responses") || codex.GetSessionIDFromHeaders(request.Headers) == "" {
+	if !result.CodexResponseHeadersSupported || request == nil || !strings.HasSuffix(request.Path, "/responses") || codex.GetSessionIDFromHeaders(request.Headers) == "" {
 		return
 	}
 

@@ -329,6 +329,7 @@ func TestWriteForwardResponseHeadersOnlyForCodexResponses(t *testing.T) {
 		ChatCompletion: &httpclient.Response{
 			Headers: http.Header{httpclient.ReasoningIncludedHeader: []string{"true"}},
 		},
+		CodexResponseHeadersSupported: true,
 	}
 
 	tests := []struct {
@@ -366,6 +367,26 @@ func TestWriteForwardResponseHeadersOnlyForCodexResponses(t *testing.T) {
 			require.Equal(t, tt.want, w.Header().Get(httpclient.ReasoningIncludedHeader))
 		})
 	}
+}
+
+func TestWriteForwardResponseHeadersRejectsUnsupportedOutbound(t *testing.T) {
+	result := orchestrator.ChatCompletionResult{
+		ChatCompletion: &httpclient.Response{
+			Headers: http.Header{httpclient.ReasoningIncludedHeader: []string{"true"}},
+		},
+	}
+	request := &httpclient.Request{
+		Path: "/v1/responses",
+		Headers: http.Header{
+			codex.TurnMetadataHeader: []string{`{"session_id":"session-1"}`},
+		},
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	writeForwardResponseHeaders(c, request, result)
+
+	require.Empty(t, w.Header().Get(httpclient.ReasoningIncludedHeader))
 }
 
 func TestWriteSSEStream_WriteErrorStopsConsuming(t *testing.T) {
