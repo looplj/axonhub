@@ -35,6 +35,19 @@ func TestMergeForwardResponseHeaders(t *testing.T) {
 	}
 }
 
+func TestMergeForwardResponseHeadersRemovesCaseVariants(t *testing.T) {
+	dst := http.Header{
+		"x-reasoning-included": []string{"stale"},
+		"X-REASONING-INCLUDED": []string{"also-stale"},
+	}
+
+	got := MergeForwardResponseHeaders(dst, http.Header{ReasoningIncludedHeader: []string{"true"}})
+
+	require.Equal(t, []string{"true"}, got[ReasoningIncludedHeader])
+	require.NotContains(t, got, "x-reasoning-included")
+	require.NotContains(t, got, "X-REASONING-INCLUDED")
+}
+
 func TestResponseHeadersStreamCopiesHeaders(t *testing.T) {
 	headers := http.Header{ReasoningIncludedHeader: []string{"true"}}
 	stream := WithResponseHeaders(streams.SliceStream([]*StreamEvent{}), headers)

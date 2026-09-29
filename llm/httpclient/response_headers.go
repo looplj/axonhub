@@ -52,7 +52,11 @@ func GetResponseHeaders(stream streams.Stream[*StreamEvent]) http.Header {
 func MergeForwardResponseHeaders(dst, src http.Header) http.Header {
 	forward := hasOnlyTrueHeaderValues(src, ReasoningIncludedHeader)
 	if dst != nil {
-		dst.Del(ReasoningIncludedHeader)
+		for key := range dst {
+			if strings.EqualFold(key, ReasoningIncludedHeader) {
+				delete(dst, key)
+			}
+		}
 	}
 	if !forward {
 		return dst
