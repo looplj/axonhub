@@ -399,3 +399,16 @@ func TestResponsesSessionStoreRestoresNamespaceHistoryOnMemoryMiss(t *testing.T)
 		}
 	}
 }
+
+func TestResponsesSessionStoreWrapStreamPreservesResponseHeaders(t *testing.T) {
+	store := newResponsesSessionStore()
+	headers := http.Header{httpclient.ReasoningIncludedHeader: []string{"true"}}
+	stream := httpclient.WithResponseHeaders(
+		streams.SliceStream([]*httpclient.StreamEvent{{Data: []byte(`{"type":"response.completed"}`)}}),
+		headers,
+	)
+
+	wrapped := store.wrapStream(context.Background(), []byte(`{"model":"gpt-5"}`), stream)
+
+	require.Equal(t, headers, httpclient.GetResponseHeaders(wrapped))
+}

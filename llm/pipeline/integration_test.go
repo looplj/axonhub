@@ -92,7 +92,9 @@ func TestPipeline_OpenAI_to_OpenAI(t *testing.T) {
 			return &httpclient.Response{
 				StatusCode: http.StatusOK,
 				Headers: http.Header{
-					"Content-Type": []string{"application/json"},
+					"Content-Type":                     []string{"application/json"},
+					httpclient.ReasoningIncludedHeader: []string{"true"},
+					"Set-Cookie":                       []string{"secret=1"},
 				},
 				Body: responseBody,
 			}, nil
@@ -136,6 +138,8 @@ func TestPipeline_OpenAI_to_OpenAI(t *testing.T) {
 	// Verify response
 	require.Equal(t, http.StatusOK, result.Response.StatusCode)
 	require.Equal(t, "application/json", result.Response.Headers.Get("Content-Type"))
+	require.Equal(t, "true", result.Response.Headers.Get(httpclient.ReasoningIncludedHeader))
+	require.Empty(t, result.Response.Headers.Get("Set-Cookie"))
 
 	var finalResponse llm.Response
 

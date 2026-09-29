@@ -101,6 +101,8 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 		return
 	}
 
+	writeForwardResponseHeaders(c, genericReq, result)
+
 	if result.ChatCompletion != nil {
 		resp := result.ChatCompletion
 		copyCodexTurnStateHeader(c.Writer.Header(), resp.Headers)
@@ -138,6 +140,21 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 
 		writeSSEStream(c, stream, FormatStreamError, handlers.sseKeepAlive, handlers.sseHeartbeatFormat)
 	}
+}
+
+func writeForwardResponseHeaders(c *gin.Context, request *httpclient.Request, result orchestrator.ChatCompletionResult) {
+	if !result.CodexResponseHeadersSupported || request == nil || !strings.HasSuffix(request.Path, "/responses") || codex.GetSessionIDFromHeaders(request.Headers) == "" {
+		return
+	}
+
+	var headers http.Header
+	if result.ChatCompletion != nil {
+		headers = result.ChatCompletion.Headers
+	} else {
+		headers = httpclient.GetResponseHeaders(result.ChatCompletionStream)
+	}
+
+	_ = httpclient.MergeForwardResponseHeaders(c.Writer.Header(), headers)
 }
 
 func copyCodexTurnStateHeader(dst, src http.Header) {

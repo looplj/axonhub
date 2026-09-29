@@ -164,8 +164,9 @@ func (processor *ChatCompletionOrchestrator) WithProxy(proxy *httpclient.ProxyCo
 }
 
 type ChatCompletionResult struct {
-	ChatCompletion       *httpclient.Response
-	ChatCompletionStream streams.Stream[*httpclient.StreamEvent]
+	ChatCompletion                *httpclient.Response
+	ChatCompletionStream          streams.Stream[*httpclient.StreamEvent]
+	CodexResponseHeadersSupported bool
 }
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
@@ -357,8 +358,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			result.EventStream = processor.responsesSessions.wrapStream(ctx, preparedResponsesBody, result.EventStream)
 		}
 		return ChatCompletionResult{
-			ChatCompletion:       nil,
-			ChatCompletionStream: result.EventStream,
+			ChatCompletion:                nil,
+			ChatCompletionStream:          result.EventStream,
+			CodexResponseHeadersSupported: outbound.SupportsCodexResponseHeaders(),
 		}, nil
 	}
 	if preparedResponsesBody != nil && result.Response != nil {
@@ -366,8 +368,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	}
 
 	return ChatCompletionResult{
-		ChatCompletion:       result.Response,
-		ChatCompletionStream: nil,
+		ChatCompletion:                result.Response,
+		ChatCompletionStream:          nil,
+		CodexResponseHeadersSupported: outbound.SupportsCodexResponseHeaders(),
 	}, nil
 }
 

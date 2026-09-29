@@ -36,6 +36,7 @@ func (p *pipeline) notStream(
 
 		return nil, fmt.Errorf("failed to apply raw response middlewares: %w", err)
 	}
+	responseHeaders := httpclient.MergeForwardResponseHeaders(nil, httpResp.Headers)
 
 	llmResp, err := p.Outbound.TransformResponse(ctx, httpResp)
 	if err != nil {
@@ -76,6 +77,7 @@ func (p *pipeline) notStream(
 
 		return nil, fmt.Errorf("failed to apply inbound raw response middlewares: %w", err)
 	}
+	finalResp.Headers = httpclient.MergeForwardResponseHeaders(finalResp.Headers, responseHeaders)
 
 	return finalResp, nil
 }
@@ -90,6 +92,7 @@ func (p *pipeline) autoAggregateStream(
 		return nil, err
 	}
 	defer inboundStream.Close()
+	upstreamHeaders := httpclient.GetResponseHeaders(inboundStream)
 
 	chunks := make([]*httpclient.StreamEvent, 0, 8)
 	for inboundStream.Next() {
@@ -124,6 +127,7 @@ func (p *pipeline) autoAggregateStream(
 		"Content-Type":  []string{"application/json"},
 		"Cache-Control": []string{"no-cache"},
 	}
+	responseHeaders = httpclient.MergeForwardResponseHeaders(responseHeaders, upstreamHeaders)
 	for _, chunk := range chunks {
 		if chunk == nil {
 			continue
@@ -145,6 +149,7 @@ func (p *pipeline) autoAggregateStream(
 		p.applyRawErrorResponseMiddlewares(ctx, err)
 		return nil, fmt.Errorf("failed to apply inbound raw response middlewares: %w", err)
 	}
+	resp.Headers = httpclient.MergeForwardResponseHeaders(resp.Headers, responseHeaders)
 
 	return resp, nil
 }

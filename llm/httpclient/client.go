@@ -439,7 +439,7 @@ func (hc *HttpClient) DoStream(ctx context.Context, request *Request) (streams.S
 		return event
 	})
 
-	return stream, nil
+	return WithResponseHeaders(stream, MergeForwardResponseHeaders(nil, rawResp.Header)), nil
 }
 
 func urlForLog(value *url.URL) string {

@@ -72,7 +72,10 @@ func TestPipeline_Streaming_OpenAI_to_OpenAI(t *testing.T) {
 			require.Equal(t, "Bearer test-api-key", request.Headers.Get("Authorization"))
 
 			// Return mock stream
-			return streams.SliceStream(streamEvents), nil
+			return httpclient.WithResponseHeaders(streams.SliceStream(streamEvents), http.Header{
+				httpclient.ReasoningIncludedHeader: []string{"true"},
+				"Set-Cookie":                       []string{"secret=1"},
+			}), nil
 		},
 	}
 
@@ -128,6 +131,8 @@ func TestPipeline_Streaming_OpenAI_to_OpenAI(t *testing.T) {
 	require.NotNil(t, result)
 	require.True(t, result.Stream)
 	require.NotNil(t, result.EventStream)
+	require.Equal(t, "true", httpclient.GetResponseHeaders(result.EventStream).Get(httpclient.ReasoningIncludedHeader))
+	require.Empty(t, httpclient.GetResponseHeaders(result.EventStream).Get("Set-Cookie"))
 
 	// Collect all events from the stream
 	var collectedEvents []*httpclient.StreamEvent
@@ -461,7 +466,10 @@ func TestPipeline_NonStreaming_AutoAggregateUpgradedStream(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, true, reqBody["stream"])
 
-			return streams.SliceStream(streamEvents), nil
+			return httpclient.WithResponseHeaders(streams.SliceStream(streamEvents), http.Header{
+				httpclient.ReasoningIncludedHeader: []string{"true"},
+				"Set-Cookie":                       []string{"secret=1"},
+			}), nil
 		},
 	}
 
@@ -515,6 +523,8 @@ func TestPipeline_NonStreaming_AutoAggregateUpgradedStream(t *testing.T) {
 	require.NotNil(t, result.Response)
 	require.Equal(t, http.StatusOK, result.Response.StatusCode)
 	require.Equal(t, "application/json", result.Response.Headers.Get("Content-Type"))
+	require.Equal(t, "true", result.Response.Headers.Get(httpclient.ReasoningIncludedHeader))
+	require.Empty(t, result.Response.Headers.Get("Set-Cookie"))
 
 	var finalResponse map[string]any
 	err = json.Unmarshal(result.Response.Body, &finalResponse)

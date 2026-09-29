@@ -324,6 +324,71 @@ func TestWriteSSEStream_Success(t *testing.T) {
 	assert.Contains(t, body, `[DONE]`)
 }
 
+func TestWriteForwardResponseHeadersOnlyForCodexResponses(t *testing.T) {
+	result := orchestrator.ChatCompletionResult{
+		ChatCompletion: &httpclient.Response{
+			Headers: http.Header{httpclient.ReasoningIncludedHeader: []string{"true"}},
+		},
+		CodexResponseHeadersSupported: true,
+	}
+
+	tests := []struct {
+		name    string
+		request *httpclient.Request
+		want    string
+	}{
+		{
+			name:    "chat completions",
+			request: &httpclient.Request{Path: "/v1/chat/completions"},
+		},
+		{
+			name:    "responses without codex session",
+			request: &httpclient.Request{Path: "/v1/responses"},
+		},
+		{
+			name: "codex responses",
+			request: &httpclient.Request{
+				Path: "/v1/responses",
+				Headers: http.Header{
+					codex.TurnMetadataHeader: []string{`{"session_id":"session-1"}`},
+				},
+			},
+			want: "true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+
+			writeForwardResponseHeaders(c, tt.request, result)
+
+			require.Equal(t, tt.want, w.Header().Get(httpclient.ReasoningIncludedHeader))
+		})
+	}
+}
+
+func TestWriteForwardResponseHeadersRejectsUnsupportedOutbound(t *testing.T) {
+	result := orchestrator.ChatCompletionResult{
+		ChatCompletion: &httpclient.Response{
+			Headers: http.Header{httpclient.ReasoningIncludedHeader: []string{"true"}},
+		},
+	}
+	request := &httpclient.Request{
+		Path: "/v1/responses",
+		Headers: http.Header{
+			codex.TurnMetadataHeader: []string{`{"session_id":"session-1"}`},
+		},
+	}
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	writeForwardResponseHeaders(c, request, result)
+
+	require.Empty(t, w.Header().Get(httpclient.ReasoningIncludedHeader))
+}
+
 func TestWriteSSEStream_WriteErrorStopsConsuming(t *testing.T) {
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
