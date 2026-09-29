@@ -510,6 +510,13 @@ func (p *PersistentOutboundTransformer) APIFormat() llm.APIFormat {
 	return p.wrapped.APIFormat()
 }
 
+// SupportsCodexResponseHeaders reports whether the selected outbound transformer
+// owns the Codex response-header contract.
+func (p *PersistentOutboundTransformer) SupportsCodexResponseHeaders() bool {
+	supports, ok := p.wrapped.(interface{ SupportsCodexResponseHeaders() bool })
+	return ok && supports.SupportsCodexResponseHeaders()
+}
+
 func (p *PersistentOutboundTransformer) TransformError(ctx context.Context, rawErr *httpclient.Error) *llm.ResponseError {
 	return p.wrapped.TransformError(ctx, rawErr)
 }
