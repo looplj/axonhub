@@ -69,6 +69,13 @@ type ImageGenerationRequest struct {
 	PartialImages     *int64          `json:"partial_images,omitempty"`
 	Stream            bool            `json:"stream,omitempty"`
 	Image             json.RawMessage `json:"image,omitempty"`
+	// Provider-specific image generation controls accepted by MiniMax.
+	SubjectReference json.RawMessage `json:"subject_reference,omitempty"`
+	AspectRatio      string          `json:"aspect_ratio,omitempty"`
+	Width            *int64          `json:"width,omitempty"`
+	Height           *int64          `json:"height,omitempty"`
+	Seed             *int64          `json:"seed,omitempty"`
+	PromptOptimizer  *bool           `json:"prompt_optimizer,omitempty"`
 }
 
 type ImageInboundTransformer struct {
@@ -231,6 +238,7 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 	}
 
 	imageReq := &llm.ImageRequest{
+		ModelSpecified:    genReq.Model != "",
 		Prompt:            genReq.Prompt,
 		Images:            images,
 		N:                 genReq.N,
@@ -244,10 +252,16 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 		Moderation:        genReq.Moderation,
 		PartialImages:     genReq.PartialImages,
 		Style:             genReq.Style,
+		SubjectReference:  genReq.SubjectReference,
+		AspectRatio:       genReq.AspectRatio,
+		Width:             genReq.Width,
+		Height:            genReq.Height,
+		PromptOptimizer:   genReq.PromptOptimizer,
 	}
 
 	llmReq := &llm.Request{
 		Model:       model,
+		Seed:        genReq.Seed,
 		Modalities:  []string{"image"},
 		Stream:      lo.ToPtr(false),
 		RawRequest:  httpReq,
