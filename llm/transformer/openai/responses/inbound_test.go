@@ -524,6 +524,24 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "request ignores additional_tools input item",
+			httpReq: &httpclient.Request{
+				Body: []byte(`{
+					"model": "gpt-4o",
+					"input": [
+						{"type": "additional_tools", "tools": [{"type": "function", "name": "shell"}]},
+						{"type": "message", "role": "user", "content": "Hello"}
+					]
+				}`),
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *llm.Request) {
+				require.Len(t, result.Messages, 1)
+				require.Equal(t, "user", result.Messages[0].Role)
+				require.Nil(t, result.ProviderExtensions)
+			},
+		},
+		{
 			name: "request with previous_response_id",
 			httpReq: &httpclient.Request{
 				Body: []byte(`{
