@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 )
 
 // parseDateStr 解析 YYYY-MM-DD 日期字符串为系统时区午夜时间（保持 loc 时区）
@@ -246,26 +247,27 @@ func (r *queryResolver) queryDimensionPerformanceStats(
 				return
 			}
 
-			completionTokens := fmt.Sprintf(
-				"COALESCE(%s, 0) + COALESCE(%s, 0) + COALESCE(%s, 0)",
-				s.C(usagelog.FieldCompletionTokens),
-				s.C(usagelog.FieldCompletionReasoningTokens),
-				s.C(usagelog.FieldCompletionAudioTokens),
-			)
-			effectiveLatency := fmt.Sprintf(
-				"CASE WHEN %s AND %s IS NOT NULL THEN CASE WHEN %s >= %s THEN 0 ELSE %s - %s END ELSE %s END",
+			// Throughput follows the requests table and biz.PerformanceRecord.Calculate:
+			// only completion_tokens count (reasoning/audio tokens are a breakdown of it), streaming
+			// requests exclude TTFT, and the generation time is clamped to biz.MinLatencyMs so cache
+			// hits (TTFT >= latency) cannot contribute a zero duration.
+			generationLatency := fmt.Sprintf(
+				"CASE WHEN %s AND %s IS NOT NULL THEN %s - %s ELSE %s END",
 				executionTable.C(requestexecution.FieldStream),
 				executionTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
-				executionTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
-				executionTable.C(requestexecution.FieldMetricsLatencyMs),
 				executionTable.C(requestexecution.FieldMetricsLatencyMs),
 				executionTable.C(requestexecution.FieldMetricsFirstTokenLatencyMs),
 				executionTable.C(requestexecution.FieldMetricsLatencyMs),
+			)
+			effectiveLatency := fmt.Sprintf(
+				"CASE WHEN %[1]s < %[2]d THEN %[2]d ELSE %[1]s END",
+				generationLatency,
+				biz.MinLatencyMs,
 			)
 			throughput := fmt.Sprintf(
 				"CASE WHEN SUM(%[1]s) > 0 THEN SUM(%[2]s) * 1000.0 / SUM(%[1]s) ELSE NULL END",
 				effectiveLatency,
-				completionTokens,
+				s.C(usagelog.FieldCompletionTokens),
 			)
 			ttft := fmt.Sprintf(
 				"AVG(CASE WHEN %s AND %s IS NOT NULL AND %s > 0 THEN %s END)",

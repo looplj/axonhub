@@ -44,8 +44,11 @@ func TestAnalyticsDimensionStatsIncludesPerformanceMetrics(t *testing.T) {
 		latencyMs        int64
 		firstTokenMs     int64
 	}{
+		// Reasoning and audio tokens are a breakdown of completion tokens and must not be re-added.
 		{completionTokens: 100, reasoningTokens: 20, audioTokens: 30, latencyMs: 2500, firstTokenMs: 500},
 		{completionTokens: 100, latencyMs: 2500, firstTokenMs: 1500},
+		// Cache hit: TTFT equals latency, so the generation time is clamped to biz.MinLatencyMs.
+		{completionTokens: 50, latencyMs: 2500, firstTokenMs: 2500},
 	} {
 		req, createErr := client.Request.Create().
 			SetModelID("performance-model").
@@ -72,27 +75,32 @@ func TestAnalyticsDimensionStatsIncludesPerformanceMetrics(t *testing.T) {
 			SetRequestID(req.ID).
 			SetChannelID(ch.ID).
 			SetModelID("performance-model").
+			SetPromptTokens(10).
 			SetCompletionTokens(sample.completionTokens).
 			SetCompletionReasoningTokens(sample.reasoningTokens).
 			SetCompletionAudioTokens(sample.audioTokens).
-			SetTotalTokens(sample.completionTokens + sample.reasoningTokens + sample.audioTokens).
+			SetTotalTokens(10 + sample.completionTokens).
 			Save(ctx)
 		require.NoError(t, createErr)
 	}
+
+	// 250 completion tokens over 2000 + 1000 + MinLatencyMs milliseconds of generation time.
+	expectedTokensPerSecond := 250.0 * 1000 / float64(3000+biz.MinLatencyMs)
+	expectedTTFTMs := 1500.0
 
 	stats, err := resolver.AnalyticsDimensionStats(ctx, nil, "model")
 	require.NoError(t, err)
 	require.Len(t, stats, 1)
 	require.NotNil(t, stats[0].TokensPerSecond)
-	require.InDelta(t, 250.0/3.0, *stats[0].TokensPerSecond, 0.001)
+	require.InDelta(t, expectedTokensPerSecond, *stats[0].TokensPerSecond, 0.001)
 	require.NotNil(t, stats[0].TtftMs)
-	require.InDelta(t, 1000.0, *stats[0].TtftMs, 0.001)
+	require.InDelta(t, expectedTTFTMs, *stats[0].TtftMs, 0.001)
 
 	channelStats, err := resolver.AnalyticsDimensionStats(ctx, nil, "channel")
 	require.NoError(t, err)
 	require.Len(t, channelStats, 1)
 	require.NotNil(t, channelStats[0].TokensPerSecond)
-	require.InDelta(t, 250.0/3.0, *channelStats[0].TokensPerSecond, 0.001)
+	require.InDelta(t, expectedTokensPerSecond, *channelStats[0].TokensPerSecond, 0.001)
 	require.NotNil(t, channelStats[0].TtftMs)
-	require.InDelta(t, 1000.0, *channelStats[0].TtftMs, 0.001)
+	require.InDelta(t, expectedTTFTMs, *channelStats[0].TtftMs, 0.001)
 }
