@@ -11,6 +11,16 @@ export const associationPrioritySchema = z
   .min(0, 'Priority must be at least 0')
   .max(MAX_ASSOCIATION_PRIORITY, `Priority cannot exceed ${MAX_ASSOCIATION_PRIORITY}`);
 
+// The preview query forwards the entered rules to a GraphQL Int input, so a
+// value the priority field would reject (fractional, out of range) must not be
+// sent. A cleared input (null) is pending rather than invalid, and its rule is
+// incomplete anyway, so it does not block the preview.
+export function hasInvalidAssociationPriority(priorities: ReadonlyArray<number | null | undefined>): boolean {
+  return priorities.some(
+    (priority) => priority !== null && priority !== undefined && !associationPrioritySchema.safeParse(priority).success
+  );
+}
+
 // Priority for a newly added rule: one after the current highest priority so
 // match order stays predictable. Once the cap is reached, further rules share
 // priority 100 (same tier); the backend keeps a stable order within a tier.

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { MAX_ASSOCIATION_PRIORITY, associationPrioritySchema, nextAssociationPriority } from './association-priority.ts';
+import { MAX_ASSOCIATION_PRIORITY, associationPrioritySchema, hasInvalidAssociationPriority, nextAssociationPriority } from './association-priority.ts';
 
 function firstIssue(value) {
   const result = associationPrioritySchema.safeParse(value);
@@ -54,6 +54,17 @@ test('new rules ignore cleared inputs and normalize pending invalid values', () 
   assert.equal(nextAssociationPriority([-5]), 0);
 });
 
+test('the preview gate only stops on invalid priorities', () => {
+  assert.equal(hasInvalidAssociationPriority([]), false);
+  assert.equal(hasInvalidAssociationPriority([0, 60, 100]), false);
+  // An empty input is pending, not invalid: the rule itself is incomplete too.
+  assert.equal(hasInvalidAssociationPriority([20, null, undefined]), false);
+  assert.equal(hasInvalidAssociationPriority([1.5]), true);
+  assert.equal(hasInvalidAssociationPriority([101]), true);
+  assert.equal(hasInvalidAssociationPriority([-1]), true);
+  assert.equal(hasInvalidAssociationPriority([20, 1.5]), true);
+});
+
 test('the dialog and the shared model schema agree on the priority cap', () => {
   const componentsDir = join(import.meta.dirname, '..', 'components');
   const dialog = readFileSync(join(componentsDir, 'models-association-dialog.tsx'), 'utf8');
@@ -63,5 +74,7 @@ test('the dialog and the shared model schema agree on the priority cap', () => {
   assert.match(dialog, /priority: nextAssociationPriority\(/);
   // The input must hand the raw value to the schema; clamping would hide the error.
   assert.doesNotMatch(dialog, /Math\.min\(MAX_ASSOCIATION_PRIORITY/);
+  // The preview request must be skipped while a priority fails validation.
+  assert.match(dialog, /hasInvalidAssociationPriority\(/);
   assert.match(sharedSchema, new RegExp(`priority: z\\.number\\(\\)\\.min\\(0\\)\\.max\\(${MAX_ASSOCIATION_PRIORITY}\\)`));
 });

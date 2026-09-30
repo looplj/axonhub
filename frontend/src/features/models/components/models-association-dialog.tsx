@@ -26,7 +26,12 @@ import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
 import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/schema';
-import { MAX_ASSOCIATION_PRIORITY, associationPrioritySchema, nextAssociationPriority } from '../data/association-priority';
+import {
+  MAX_ASSOCIATION_PRIORITY,
+  associationPrioritySchema,
+  hasInvalidAssociationPriority,
+  nextAssociationPriority,
+} from '../data/association-priority';
 import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
 
@@ -799,6 +804,18 @@ export function ModelsAssociationDialog() {
   // Serialize to string for stable comparison in debounce
   const associationsString = JSON.stringify(watchedAssociations);
   const debouncedAssociationsString = useDebounce(associationsString, 500);
+  const debouncedPriorities = useDebounce(
+    JSON.stringify(watchedAssociations.map((assoc) => assoc.priority ?? null)),
+    500
+  );
+  const debouncedAssociations = useMemo(() => {
+    try {
+      const rows: AssociationFormRow[] = JSON.parse(debouncedAssociationsString) || [];
+      return { rows, hasInvalidPriority: hasInvalidAssociationPriority(JSON.parse(debouncedPriorities) || []) };
+    } catch {
+      return { rows: [], hasInvalidPriority: true };
+    }
+  }, [debouncedAssociationsString, debouncedPriorities]);
 
   // Query connections when associations change
   useEffect(() => {
@@ -807,23 +824,23 @@ export function ModelsAssociationDialog() {
       return;
     }
 
-    let debouncedAssociations: AssociationFormRow[];
-    try {
-      debouncedAssociations = JSON.parse(debouncedAssociationsString) || [];
-    } catch {
-      setConnections([]);
+    const { rows, hasInvalidPriority } = debouncedAssociations;
+
+    // A fractional or out-of-range priority is rejected by the GraphQL Int input,
+    // so the preview stays on the last valid result until the input is corrected.
+    if (hasInvalidPriority) {
       return;
     }
 
     const fetchConnections = async () => {
       try {
         if (isDeveloperMode) {
-          setConnections(buildDeveloperChannelPreview(debouncedAssociations, channelOptions));
+          setConnections(buildDeveloperChannelPreview(rows, channelOptions));
           return;
         }
 
         const inheritedInputs = inheritedAssociations.map((assoc) => modelAssociationToInput(assoc, currentRow?.modelID));
-        const formInputs = sortAssociationsByPriority(debouncedAssociations)
+        const formInputs = sortAssociationsByPriority(rows)
           .map((assoc) => formAssociationToInput(assoc))
           .filter((item): item is ModelAssociationInput => item !== undefined);
         const associations = sortAssociationsByPriority([...formInputs, ...inheritedInputs]);
@@ -841,7 +858,7 @@ export function ModelsAssociationDialog() {
     };
 
     fetchConnections();
-  }, [channelOptions, currentRow?.modelID, debouncedAssociationsString, inheritedAssociations, isOpen, isDeveloperMode, queryConnections]);
+  }, [channelOptions, currentRow?.modelID, debouncedAssociations, inheritedAssociations, isOpen, isDeveloperMode, queryConnections]);
 
   useEffect(() => {
     if (isOpen) {
