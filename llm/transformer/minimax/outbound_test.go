@@ -96,7 +96,9 @@ func TestImageGeneration_usesVersionedCustomPath_whenBaseIsHost(t *testing.T) {
 		name, baseURL, path, want string
 	}{
 		{"versioned path", "https://api.minimax.io", "/v1/image_generation", "https://api.minimax.io/v1/image_generation"},
+		{"unversioned path", "https://api.minimax.io", "/image_generation", "https://api.minimax.io/v1/image_generation"},
 		{"versioned base", "https://api.minimax.io/v1", "/image_generation", "https://api.minimax.io/v1/image_generation"},
+		{"both versioned", "https://api.minimax.io/v1", "/v1/image_generation", "https://api.minimax.io/v1/image_generation"},
 		{"default path", "https://api.minimax.io", "", "https://api.minimax.io/v1/image_generation"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

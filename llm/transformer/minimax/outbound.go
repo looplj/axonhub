@@ -51,11 +51,7 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	if err != nil {
 		return nil, fmt.Errorf("invalid MiniMax transformer configuration: %w", err)
 	}
-	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v1")
-	if config.EndpointPath != "" {
-		baseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
-	}
-	return &OutboundTransformer{Outbound: oai, baseURL: baseURL, endpointPath: config.EndpointPath, apiKeys: config.APIKeyProvider}, nil
+	return &OutboundTransformer{Outbound: oai, baseURL: transformer.NormalizeBaseURL(config.BaseURL, "v1"), endpointPath: config.EndpointPath, apiKeys: config.APIKeyProvider}, nil
 }
 
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
@@ -119,6 +115,9 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 		path = "/image_generation"
 	}
 	url := t.baseURL + path
+	if strings.HasPrefix(path, "/v1/") && strings.HasSuffix(t.baseURL, "/v1") {
+		url = strings.TrimSuffix(t.baseURL, "/v1") + path
+	}
 	h := make(http.Header)
 	h.Set("Content-Type", "application/json")
 	h.Set("Accept", "application/json")
