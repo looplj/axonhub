@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
@@ -87,6 +88,59 @@ func TestImageGeneration_preservesModel_whenExplicitOrMapped(t *testing.T) {
 			}
 			require.NoError(t, json.Unmarshal(request.Body, &payload))
 			require.Equal(t, tc.model, payload.Model)
+		})
+	}
+}
+
+func TestImageGeneration_mapsSize_whenDimensionsAreAbsent(t *testing.T) {
+	// Given an OpenAI size and optional MiniMax dimension overrides.
+	for _, tc := range []struct {
+		name, body    string
+		width, height int64
+	}{
+		{"size only", `{"prompt":"cat","size":"1536x1024"}`, 1536, 1024},
+		{"explicit width", `{"prompt":"cat","size":"1536x1024","width":768}`, 768, 1024},
+		{"explicit dimensions", `{"prompt":"cat","size":"1536x1024","width":768,"height":1280}`, 768, 1280},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			inbound := openai.NewImageGenerationInboundTransformer()
+			req, err := inbound.TransformRequest(ctx, &httpclient.Request{Headers: http.Header{"Content-Type": []string{"application/json"}}, Body: []byte(tc.body)})
+			require.NoError(t, err)
+			outbound, err := NewOutboundTransformer("https://api.minimax.io", "key")
+			require.NoError(t, err)
+
+			// When the provider request is built.
+			request, err := outbound.TransformRequest(ctx, req)
+
+			// Then the provider receives the requested dimensions.
+			require.NoError(t, err)
+			var payload struct {
+				Width  int64 `json:"width"`
+				Height int64 `json:"height"`
+			}
+			require.NoError(t, json.Unmarshal(request.Body, &payload))
+			require.Equal(t, tc.width, payload.Width)
+			require.Equal(t, tc.height, payload.Height)
+		})
+	}
+}
+
+func TestImageGeneration_rejectsUnsupportedSize_whenDimensionsAreAbsent(t *testing.T) {
+	// Given sizes that cannot be sent as MiniMax dimensions.
+	for _, size := range []string{"auto", "bad", "511x1024", "1025x1024", "2048x2056"} {
+		t.Run(size, func(t *testing.T) {
+			outbound, err := NewOutboundTransformer("https://api.minimax.io", "key")
+			require.NoError(t, err)
+
+			// When the provider request is built.
+			request, err := outbound.TransformRequest(context.Background(), &llm.Request{
+				RequestType: llm.RequestTypeImage, Image: &llm.ImageRequest{Prompt: "cat", Size: size},
+			})
+
+			// Then unsupported sizes fail before sending the request.
+			require.Nil(t, request)
+			require.ErrorIs(t, err, transformer.ErrInvalidRequest)
 		})
 	}
 }

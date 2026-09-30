@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -82,6 +83,20 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 	}
 	if req.Image.AspectRatio != "" {
 		body["aspect_ratio"] = req.Image.AspectRatio
+	}
+	if req.Image.Size != "" && (req.Image.Width == nil || req.Image.Height == nil) {
+		widthText, heightText, ok := strings.Cut(req.Image.Size, "x")
+		width, widthErr := strconv.ParseInt(widthText, 10, 64)
+		height, heightErr := strconv.ParseInt(heightText, 10, 64)
+		if !ok || widthErr != nil || heightErr != nil || width < 512 || width > 2048 || width%8 != 0 || height < 512 || height > 2048 || height%8 != 0 {
+			return nil, fmt.Errorf("%w: unsupported MiniMax image size %q", transformer.ErrInvalidRequest, req.Image.Size)
+		}
+		if req.Image.Width == nil {
+			body["width"] = width
+		}
+		if req.Image.Height == nil {
+			body["height"] = height
+		}
 	}
 	if req.Image.Width != nil {
 		body["width"] = *req.Image.Width
