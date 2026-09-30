@@ -51,7 +51,11 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 	if err != nil {
 		return nil, fmt.Errorf("invalid MiniMax transformer configuration: %w", err)
 	}
-	return &OutboundTransformer{Outbound: oai, baseURL: transformer.NormalizeBaseURL(config.BaseURL, "v1"), endpointPath: config.EndpointPath, apiKeys: config.APIKeyProvider}, nil
+	baseURL := transformer.NormalizeBaseURL(config.BaseURL, "v1")
+	if config.EndpointPath != "" {
+		baseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+	}
+	return &OutboundTransformer{Outbound: oai, baseURL: baseURL, endpointPath: config.EndpointPath, apiKeys: config.APIKeyProvider}, nil
 }
 
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
@@ -68,7 +72,11 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 	if strings.TrimSpace(req.Image.Prompt) == "" {
 		return nil, fmt.Errorf("%w: prompt is required for image generation", transformer.ErrInvalidRequest)
 	}
-	body := map[string]any{"model": req.Model, "prompt": req.Image.Prompt}
+	model := req.Model
+	if model == "" || model == "dall-e-2" && !req.Image.ModelSpecified {
+		model = "image-01"
+	}
+	body := map[string]any{"model": model, "prompt": req.Image.Prompt}
 	if len(req.Image.SubjectReference) > 0 {
 		var refs any
 		if err := json.Unmarshal(req.Image.SubjectReference, &refs); err != nil {
@@ -94,12 +102,14 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 	if req.Image.PromptOptimizer != nil {
 		body["prompt_optimizer"] = *req.Image.PromptOptimizer
 	}
-	if req.Image.ResponseFormat != "" {
-		body["response_format"] = req.Image.ResponseFormat
+	format := req.Image.ResponseFormat
+	if format == "b64_json" {
+		format = "base64"
 	}
-	if _, ok := body["response_format"]; !ok {
-		body["response_format"] = "url"
+	if format == "" {
+		format = "url"
 	}
+	body["response_format"] = format
 	raw, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal MiniMax image request: %w", err)
@@ -116,7 +126,7 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 		Method: http.MethodPost, URL: url, Headers: h, Body: raw,
 		Auth:        &httpclient.AuthConfig{Type: "bearer", APIKey: t.apiKeys.Get(ctx)},
 		RequestType: llm.RequestTypeImage.String(), APIFormat: llm.APIFormatOpenAIImageGeneration.String(),
-		TransformerMetadata: map[string]any{"model": req.Model},
+		TransformerMetadata: map[string]any{"model": model},
 	}, nil
 }
 
@@ -128,14 +138,22 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, resp *httpc
 		return nil, fmt.Errorf("MiniMax image API returned HTTP %d", resp.StatusCode)
 	}
 	var payload struct {
-		Created int64 `json:"created"`
-		Data    struct {
+		ID       string `json:"id"`
+		Created  int64  `json:"created"`
+		BaseResp struct {
+			StatusCode int    `json:"status_code"`
+			StatusMsg  string `json:"status_msg"`
+		} `json:"base_resp"`
+		Data struct {
 			ImageURLs   []string `json:"image_urls"`
 			ImageBase64 []string `json:"image_base64"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(resp.Body, &payload); err != nil {
 		return nil, fmt.Errorf("failed to decode MiniMax image response: %w", err)
+	}
+	if payload.BaseResp.StatusCode != 0 {
+		return nil, fmt.Errorf("%w: MiniMax image API status %d: %s", transformer.ErrInvalidResponse, payload.BaseResp.StatusCode, payload.BaseResp.StatusMsg)
 	}
 	created := payload.Created
 	if created == 0 {
@@ -155,5 +173,9 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, resp *httpc
 	if len(data) == 0 {
 		return nil, fmt.Errorf("%w: MiniMax image response contained no images", transformer.ErrInvalidResponse)
 	}
-	return &llm.Response{ID: fmt.Sprintf("minimax-img-%d", created), Object: "image.generation", Created: created, Model: model, RequestType: llm.RequestTypeImage, APIFormat: llm.APIFormatOpenAIImageGeneration, Image: &llm.ImageResponse{Created: created, Data: data}}, nil
+	id := payload.ID
+	if id == "" {
+		id = fmt.Sprintf("minimax-img-%d", created)
+	}
+	return &llm.Response{ID: id, Object: "image.generation", Created: created, Model: model, RequestType: llm.RequestTypeImage, APIFormat: llm.APIFormatOpenAIImageGeneration, Image: &llm.ImageResponse{Created: created, Data: data}}, nil
 }
