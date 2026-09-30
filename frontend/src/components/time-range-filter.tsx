@@ -210,7 +210,7 @@ function useRangeSummary(value: TimeRangeValue, presets: Preset[]): string {
 
     // Floored to local midnight, not left as the current instant: after local noon the
     // elapsed hours round the span of a single day up to two.
-    const end = value.endTime ? localMidnight(value.endTime) : localMidnight(new Date());
+    const end = value.endTime ? localMidnight(value.endTime) : localMidnight(formatDate(new Date()));
     const days = Math.round((end.getTime() - localMidnight(value.startTime).getTime()) / 86_400_000) + 1;
     return `${span} · ${t('timeRange.days', { count: days })}`;
   }, [presets, t, value.endTime, value.startTime, value.timeWindow]);
