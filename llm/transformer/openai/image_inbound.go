@@ -238,6 +238,7 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 	}
 
 	imageReq := &llm.ImageRequest{
+		ModelSpecified:    genReq.Model != "",
 		Prompt:            genReq.Prompt,
 		Images:            images,
 		N:                 genReq.N,

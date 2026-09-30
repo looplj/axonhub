@@ -5,6 +5,7 @@ import "encoding/json"
 // ImageRequest is the unified image request structure (similar to EmbeddingRequest).
 // Note: Common fields like Model are in the parent Request struct, not here.
 type ImageRequest struct {
+	ModelSpecified bool `json:"-"`
 	// Prompt is the text prompt for image generation.
 	Prompt string `json:"prompt,omitempty"`
 
