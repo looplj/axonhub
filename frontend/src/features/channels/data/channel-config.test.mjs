@@ -57,7 +57,7 @@ test('Fenno exposes a third-party Codex channel', () => {
   assert.ok(providersConfig.indexOf('qiniu:') < providersConfig.indexOf('fenno:'));
 });
 
-test('Bailian exposes native Responses with the documented Beijing models', () => {
+test('Bailian exposes native Responses with the officially documented fully compatible models', () => {
   const schema = read('features/channels/data/schema.ts');
   const channelsConfig = read('features/channels/data/config_channels.ts');
   const providersConfig = read('features/channels/data/config_providers.ts');
@@ -74,9 +74,16 @@ test('Bailian exposes native Responses with the documented Beijing models', () =
   const models = [...modelsBlock.matchAll(/'([^']+)'/g)].map((match) => match[1]);
   assert.deepEqual(models, [
     'qwen3.8-max',
+    'qwen3.8-max-0902',
+    'qwen3.8-flash',
+    'qwen3.8-2.4t-a95b',
+    'qwen3.8-27b',
+    'qwen3.8-omni-flash',
     'qwen3.7-max',
     'qwen3.7-max-2026-05-20',
     'qwen3.7-max-2026-06-08',
+    'qwen3.7-max-2026-05-17',
+    'qwen3.7-max-preview',
     'qwen3-max',
     'qwen3-max-2026-01-23',
     'qwen3.7-plus',
@@ -92,25 +99,19 @@ test('Bailian exposes native Responses with the documented Beijing models', () =
     'qwen3.6-flash-2026-04-16',
     'qwen3.5-flash',
     'qwen3.5-flash-2026-02-23',
-    'qwen3.8-2.4t-a95b',
-    'qwen3.8-27b',
     'qwen3.6-35b-a3b',
     'qwen3.5-397b-a17b',
     'qwen3.5-122b-a10b',
     'qwen3.5-27b',
     'qwen3.5-35b-a3b',
-    'qwen-plus',
-    'qwen-flash',
-    'qwen3-coder-plus',
-    'qwen3-coder-flash',
-    'qwen3.5-ocr',
-    'qwen-plus-character',
-    'qwen-flash-character',
+    'deepseek-v4.1-flash',
     'deepseek-v4-pro',
     'deepseek-v4-pro-0813',
     'deepseek-v4-flash',
     'deepseek-v4-flash-0731',
+    'glm-5.3',
     'glm-5.2',
+    'kimi-k3',
   ]);
 
   const en = parseLocale('en');
