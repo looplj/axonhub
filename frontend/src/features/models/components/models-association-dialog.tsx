@@ -26,10 +26,9 @@ import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
 import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/schema';
+import { MAX_ASSOCIATION_PRIORITY, associationPrioritySchema, nextAssociationPriority } from '../data/association-priority';
 import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
-
-const MAX_ASSOCIATION_PRIORITY = 100;
 
 const requestFormatConditionOptions = [
   'openai/chat_completions',
@@ -377,7 +376,7 @@ const associationFormSchema = z.object({
     .array(
       z.object({
         type: z.enum(['channel_model', 'channel_regex', 'model', 'regex', 'channel_tags_model', 'channel_tags_regex']),
-        priority: z.number().min(0, 'Priority must be at least 0').max(MAX_ASSOCIATION_PRIORITY, `Priority cannot exceed ${MAX_ASSOCIATION_PRIORITY}`),
+        priority: associationPrioritySchema,
         disabled: z.boolean().default(false),
         whenEnabled: z.boolean().default(false),
         whenCondition: z.custom<FilterBuilderGroupListValue>().default(DEFAULT_WHEN_CONDITION),
@@ -919,14 +918,11 @@ export function ModelsAssociationDialog() {
   const handleAddAssociation = useCallback(() => {
     if (fields.length >= 10) return;
 
-    // Get the priority of the last rule (highest priority)
     const currentAssociations = form.getValues('associations') || [];
-    const lastPriority =
-      currentAssociations.length > 0 ? Math.max(...currentAssociations.map((a) => a.priority ?? 0)) : -1;
 
     append({
       type: 'channel_model',
-      priority: Math.min(lastPriority + 1, MAX_ASSOCIATION_PRIORITY),
+      priority: nextAssociationPriority(currentAssociations.map((a) => a.priority)),
       disabled: false,
       whenEnabled: false,
       whenCondition: DEFAULT_WHEN_CONDITION,
@@ -1432,8 +1428,14 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                   min={0}
                   max={MAX_ASSOCIATION_PRIORITY}
                   {...field}
-                  value={field.value ?? 0}
-                  onChange={(e) => field.onChange(Math.max(0, Math.min(MAX_ASSOCIATION_PRIORITY, Number(e.target.value) || 0)))}
+                  value={field.value ?? ''}
+                  onChange={(e) => {
+                    // Keep the raw input so the schema reports out-of-range values instead of clamping them.
+                    // An empty input becomes null (not undefined) so react-hook-form does not fall back to the default value.
+                    field.onChange(e.target.value ? Number(e.target.value) : null);
+                    // The form only validates on submit, but Save is disabled while invalid, so surface the error now.
+                    void form.trigger(field.name);
+                  }}
                   className='h-10 sm:h-9 text-center [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
                   placeholder='0'
                 />

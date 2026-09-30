@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import test from 'node:test';
 import { MAX_ASSOCIATION_PRIORITY, associationPrioritySchema, nextAssociationPriority } from './association-priority.ts';
 
@@ -50,4 +52,16 @@ test('new rules ignore cleared inputs and normalize pending invalid values', () 
   assert.equal(nextAssociationPriority([3, null, undefined]), 4);
   assert.equal(nextAssociationPriority([1.5]), 2);
   assert.equal(nextAssociationPriority([-5]), 0);
+});
+
+test('the dialog and the shared model schema agree on the priority cap', () => {
+  const componentsDir = join(import.meta.dirname, '..', 'components');
+  const dialog = readFileSync(join(componentsDir, 'models-association-dialog.tsx'), 'utf8');
+  const sharedSchema = readFileSync(join(import.meta.dirname, 'schema.ts'), 'utf8');
+
+  assert.match(dialog, /priority: associationPrioritySchema,/);
+  assert.match(dialog, /priority: nextAssociationPriority\(/);
+  // The input must hand the raw value to the schema; clamping would hide the error.
+  assert.doesNotMatch(dialog, /Math\.min\(MAX_ASSOCIATION_PRIORITY/);
+  assert.match(sharedSchema, new RegExp(`priority: z\\.number\\(\\)\\.min\\(0\\)\\.max\\(${MAX_ASSOCIATION_PRIORITY}\\)`));
 });
