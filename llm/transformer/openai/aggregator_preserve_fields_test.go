@@ -11,8 +11,8 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
-// streamEvents builds stream events from raw SSE data payloads.
-func streamEvents(payloads ...string) []*httpclient.StreamEvent {
+// fieldPreservationStreamEvents builds stream events from raw SSE data payloads.
+func fieldPreservationStreamEvents(payloads ...string) []*httpclient.StreamEvent {
 	events := make([]*httpclient.StreamEvent, 0, len(payloads))
 	for _, p := range payloads {
 		events = append(events, &httpclient.StreamEvent{Data: []byte(p)})
@@ -26,7 +26,7 @@ func streamEvents(payloads ...string) []*httpclient.StreamEvent {
 // On stream-required channels the aggregated body is what the client receives;
 // dropping the refusal turns a model refusal into an empty successful message.
 func TestAggregateStreamChunks_PreservesRefusal(t *testing.T) {
-	chunks := streamEvents(
+	chunks := fieldPreservationStreamEvents(
 		`{"id":"chatcmpl-ref","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}`,
 		`{"id":"chatcmpl-ref","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"refusal":"I'm sorry, but I "},"finish_reason":null}]}`,
 		`{"id":"chatcmpl-ref","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"refusal":"can't help with that."},"finish_reason":"stop"}]}`,
@@ -50,7 +50,7 @@ func TestAggregateStreamChunks_PreservesRefusal(t *testing.T) {
 // delta.audio chunks (id/expires_at on the first chunk, data and transcript
 // split across chunks) is reassembled into message.audio.
 func TestAggregateStreamChunks_PreservesAudio(t *testing.T) {
-	chunks := streamEvents(
+	chunks := fieldPreservationStreamEvents(
 		`{"id":"chatcmpl-aud","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4o-audio-preview","choices":[{"index":0,"delta":{"role":"assistant","audio":{"id":"audio_abc","expires_at":1730000000,"data":"QUJD","transcript":"Hello"}},"finish_reason":null}]}`,
 		`{"id":"chatcmpl-aud","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4o-audio-preview","choices":[{"index":0,"delta":{"audio":{"data":"REVG","transcript":" world"}},"finish_reason":"stop"}]}`,
 		`[DONE]`,
@@ -74,7 +74,7 @@ func TestAggregateStreamChunks_PreservesAudio(t *testing.T) {
 // concatenated instead of dropped when a client requested logprobs on a
 // stream-required channel.
 func TestAggregateStreamChunks_PreservesLogprobs(t *testing.T) {
-	chunks := streamEvents(
+	chunks := fieldPreservationStreamEvents(
 		`{"id":"chatcmpl-lp","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"role":"assistant","content":"Hi"},"logprobs":{"content":[{"token":"Hi","logprob":-0.1,"bytes":[72,105]}]},"finish_reason":null}]}`,
 		`{"id":"chatcmpl-lp","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4o","choices":[{"index":0,"delta":{"content":" there"},"logprobs":{"content":[{"token":" there","logprob":-0.2,"bytes":[32,116,104,101,114,101],"top_logprobs":[{"token":" here","logprob":-1.5}]}]},"finish_reason":"stop"}]}`,
 		`[DONE]`,
@@ -102,7 +102,7 @@ func TestAggregateStreamChunks_PreservesLogprobs(t *testing.T) {
 // reasoning field (used by providers such as Synthetic instead of
 // reasoning_content) and the response-level service_tier survive aggregation.
 func TestAggregateStreamChunks_PreservesReasoningAndServiceTier(t *testing.T) {
-	chunks := streamEvents(
+	chunks := fieldPreservationStreamEvents(
 		`{"id":"chatcmpl-rea","object":"chat.completion.chunk","created":1720000000,"model":"hf:synthetic-model","service_tier":"default","choices":[{"index":0,"delta":{"role":"assistant","reasoning":"thinking "},"finish_reason":null}]}`,
 		`{"id":"chatcmpl-rea","object":"chat.completion.chunk","created":1720000000,"model":"hf:synthetic-model","service_tier":"default","choices":[{"index":0,"delta":{"reasoning":"hard","content":"done"},"finish_reason":"stop"}]}`,
 		`[DONE]`,
@@ -122,7 +122,7 @@ func TestAggregateStreamChunks_PreservesReasoningAndServiceTier(t *testing.T) {
 
 func TestAggregateStreamChunks_PreservesAudio_whenChoicesInterleave(t *testing.T) {
 	// Given: audio metadata can arrive after data, and belongs to each choice.
-	chunks := streamEvents(
+	chunks := fieldPreservationStreamEvents(
 		`{"id":"audio","choices":[{"index":1,"delta":{"audio":{"data":"REVG","transcript":"world"}}},{"index":0,"delta":{"audio":{}}}]}`,
 		`{"id":"audio","choices":[{"index":0,"delta":{"audio":{"id":"zero","expires_at":10,"data":"QUJD","transcript":"Hello"}}},{"index":1,"delta":{"audio":{"id":"one","expires_at":20,"data":"R0hJ","transcript":"!"}}}]}`,
 		`{"id":"audio","choices":[{"index":0,"delta":{"audio":{"id":"ignored","expires_at":99,"data":"SktM","transcript":" there"}}},{"index":2,"delta":{"audio":{}}}]}`,
