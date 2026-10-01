@@ -982,6 +982,27 @@
 }
 
 @theme inline {
+  --animate-dialog-in: dialog-fade-in var(--tw-duration, 150ms) ease;
+  --animate-dialog-out: dialog-fade-out var(--tw-duration, 150ms) ease;
+
+  @keyframes dialog-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes dialog-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
   /* Color System */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
