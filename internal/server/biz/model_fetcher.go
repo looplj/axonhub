@@ -409,7 +409,11 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			}, nil
 		}
 
-		if ch.Credentials.IsOAuth() {
+		if ch.Credentials.IsOAuth() && (ch.Type != channel.TypeCodex ||
+			(apiKey == "" && fetchModelsInputMatchesChannel(input, ch))) {
+			if ch.Type == channel.TypeCodex && codex.SupportsModelCatalog(ch.BaseURL) {
+				return f.fetchCodexModels(ctx, ch), nil
+			}
 			if models := f.getDefaultModelsByType(ctx, ch.Type); models != nil {
 				return &FetchModelsResult{Models: models}, nil
 			}
@@ -465,6 +469,15 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	if isOAuthJSON(apiKey) {
+		if channelType == channel.TypeCodex && codex.SupportsModelCatalog(input.BaseURL) {
+			return f.fetchCodexModels(ctx, &ent.Channel{
+				Type: channelType, BaseURL: input.BaseURL,
+				Credentials: objects.ChannelCredentials{APIKey: apiKey},
+				Settings: &objects.ChannelSettings{
+					Proxy: proxyConfig, HeaderOverrideOperations: headerOverrideOps,
+				},
+			}), nil
+		}
 		// OAuth credentials indicate an official channel; return default models directly.
 		if models := f.getDefaultModelsByType(ctx, channel.Type(input.ChannelType)); models != nil {
 			return &FetchModelsResult{Models: models}, nil
