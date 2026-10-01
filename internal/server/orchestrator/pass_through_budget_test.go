@@ -34,9 +34,9 @@ func TestPassThroughAnthropicStream_RawBudget(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// Given: filtered raw pings exceed a pre-attachment budget.
-			events := make([]*httpclient.StreamEvent, tc.count)
-			for i := range events {
-				events[i] = &httpclient.StreamEvent{Type: "ping", Data: []byte(tc.data)}
+			events := make([]*httpclient.StreamEvent, 0, tc.count+9)
+			for range tc.count {
+				events = append(events, &httpclient.StreamEvent{Type: "ping", Data: []byte(tc.data)})
 			}
 			events = append(events, anthropicEmptyThinkingEvents(0)...)
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -160,6 +160,7 @@ func TestPassThroughAnthropicStream_HTTPCancel(t *testing.T) {
 
 type rawCancelObserver struct {
 	pipeline.Executor
+
 	observed chan struct{}
 }
 
