@@ -6,26 +6,14 @@ package codex
 // CLIProxyAPI keeps a local registry; we mirror that approach to power AxonHub "Fetch Models".
 func DefaultModels() []string {
 	return []string{
-		"gpt-5",
-		"gpt-5-codex",
-		"gpt-5-codex-mini",
-		"gpt-5.1",
-		"gpt-5.1-codex",
-		"gpt-5.1-codex-mini",
-		"gpt-5.1-codex-max",
-		"gpt-5.2",
-		"gpt-5.2-codex",
-		"gpt-5.3-codex",
-		"gpt-5.3-codex-spark",
-		"gpt-5.4",
-		"gpt-5.4-mini",
-		"gpt-5.5",
 		"gpt-5.6-sol",
 		"gpt-5.6-terra",
 		"gpt-5.6-luna",
 		"gpt-6-astra",
 		"gpt-6-sol",
 		"gpt-6-luna",
+		"gpt-6.1-sol",
+		"codex-auto-review",
 	}
 }
 
@@ -40,7 +28,7 @@ const (
 	RedirectURI = "http://localhost:1455/auth/callback"
 	Scopes      = "openid profile email offline_access"
 
-	codexDefaultVersion = "0.156.0"
+	codexDefaultVersion = "0.159.0"
 
 	// fabricatedBetaFeatures mirrors the X-Codex-Beta-Features value the current
 	// Codex CLI sends, used when a non-Codex inbound client omits the header.
