@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 )
 
 // SupportsModelCatalog reports whether the base URL uses the official Codex catalog.
@@ -23,10 +24,13 @@ func SupportsModelCatalog(baseURL string) bool {
 }
 
 // ModelsRequest uses the same OAuth provider and client version as inference.
-func (t *OutboundTransformer) ModelsRequest(ctx context.Context) (*httpclient.Request, error) {
-	creds, err := t.tokens.Get(ctx)
+func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string) (*httpclient.Request, error) {
+	creds, err := tokens.Get(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if baseURL == "" || baseURL == "https://api.openai.com/v1" {
+		baseURL = codexBaseURL
 	}
 	headers := make(http.Header)
 	headers.Set("Authorization", "Bearer "+creds.AccessToken)
@@ -39,7 +43,7 @@ func (t *OutboundTransformer) ModelsRequest(ctx context.Context) (*httpclient.Re
 	}
 	return &httpclient.Request{
 		Method:  http.MethodGet,
-		URL:     strings.TrimRight(t.baseURL, "/#") + "/models?client_version=" + codexDefaultVersion,
+		URL:     strings.TrimRight(baseURL, "/#") + "/models?client_version=" + codexDefaultVersion,
 		Headers: headers,
 	}, nil
 }
