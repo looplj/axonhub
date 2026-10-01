@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
 	"github.com/looplj/axonhub/llm"
@@ -64,24 +63,25 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 // TransformRequest applies Bailian-specific request normalization before delegating to OpenAI-compatible transformer.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	llmReq = mergeConsecutiveToolCallMessages(llmReq)
+	reasoningNone := llmReq != nil && llmReq.ReasoningEffort == "none"
+	if reasoningNone {
+		updated := *llmReq
+		updated.ReasoningEffort = ""
+		llmReq = &updated
+	}
 
 	httpReq, err := t.Outbound.TransformRequest(ctx, llmReq)
 	if err != nil {
 		return nil, err
 	}
 
-	if llmReq == nil || llmReq.APIFormat != llm.APIFormatOpenAIChatCompletion || llmReq.RawRequest == nil {
+	if !reasoningNone {
 		return httpReq, nil
 	}
 
-	enableThinking := gjson.GetBytes(llmReq.RawRequest.Body, "enable_thinking")
-	if enableThinking.Type != gjson.True && enableThinking.Type != gjson.False {
-		return httpReq, nil
-	}
-
-	httpReq.Body, err = sjson.SetBytes(httpReq.Body, "enable_thinking", enableThinking.Bool())
+	httpReq.Body, err = sjson.SetBytes(httpReq.Body, "enable_thinking", false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to preserve Bailian enable_thinking: %w", err)
+		return nil, fmt.Errorf("failed to set Bailian enable_thinking: %w", err)
 	}
 
 	return httpReq, nil
