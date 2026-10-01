@@ -482,7 +482,9 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 
 		if input.Name != nil && *input.Name != apiKey.Name {
 			nameScope := apikey.TypeNEQ(apikey.TypePersonal)
-			if user, ok := contexts.GetUser(ctx); ok {
+			if apiKey.Type == apikey.TypePersonal {
+				nameScope = apikey.Or(nameScope, apikey.UserIDEQ(apiKey.UserID))
+			} else if user, ok := contexts.GetUser(ctx); ok {
 				nameScope = apikey.Or(nameScope, apikey.UserIDEQ(user.ID))
 			}
 			duplicateCount, err := client.APIKey.Query().Where(

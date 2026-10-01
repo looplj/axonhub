@@ -1388,6 +1388,21 @@ func TestAPIKeyService_NameUniquenessForProjectOwner(t *testing.T) {
 	require.Equal(t, freeErr.Error(), occupiedErr.Error())
 	require.NotContains(t, occupiedErr.Error(), "already exists")
 
+	foreignKey, err := client.APIKey.Create().
+		SetName("foreign-original").
+		SetKey("ah-foreign-original").
+		SetUserID(otherUser.ID).
+		SetProjectID(project.ID).
+		SetType(apikey.TypePersonal).
+		Save(setupCtx)
+	require.NoError(t, err)
+	foreignDuplicateName := "renamed"
+	_, err = apiKeyService.UpdateAPIKey(ctx, foreignKey.ID, ent.UpdateAPIKeyInput{Name: &foreignDuplicateName})
+	require.ErrorContains(t, err, "already exists")
+	unchangedForeignKey, err := client.APIKey.Get(setupCtx, foreignKey.ID)
+	require.NoError(t, err)
+	require.Equal(t, "foreign-original", unchangedForeignKey.Name)
+
 	toRename, err := apiKeyService.CreateAPIKey(ctx, ent.CreateAPIKeyInput{
 		Name: "original", ProjectID: project.ID, Type: &personal,
 	})
