@@ -44,19 +44,17 @@ func (m *apiKeyModelMappingMiddleware) OnInboundLlmRequest(ctx context.Context, 
 	}
 
 	// Apply model mapping from API key profiles if active profile exists
-	if m.inbound.state.APIKey == nil {
-		return llmRequest, nil
-	}
+	if m.inbound.state.APIKey != nil {
+		originalModel := llmRequest.Model
+		mappedModel := m.inbound.state.ModelMapper.MapModel(ctx, m.inbound.state.APIKey, originalModel)
 
-	originalModel := llmRequest.Model
-	mappedModel := m.inbound.state.ModelMapper.MapModel(ctx, m.inbound.state.APIKey, originalModel)
-
-	if mappedModel != originalModel {
-		llmRequest.Model = mappedModel
-		log.Debug(ctx, "applied model mapping from API key profile",
-			log.String("api_key_name", m.inbound.state.APIKey.Name),
-			log.String("original_model", originalModel),
-			log.String("mapped_model", mappedModel))
+		if mappedModel != originalModel {
+			llmRequest.Model = mappedModel
+			log.Debug(ctx, "applied model mapping from API key profile",
+				log.String("api_key_name", m.inbound.state.APIKey.Name),
+				log.String("original_model", originalModel),
+				log.String("mapped_model", mappedModel))
+		}
 	}
 
 	// Save the model for later use, e.g. retry from next channels, should use the original model to choose channel model.
