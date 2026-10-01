@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { signInAsAdmin } from './auth.utils'
+import { signInAsAdmin, waitForGraphQLOperation } from './auth.utils'
 
 const CREATE_OPERATION = 'mutation CreateChannelOverrideTemplate('
 
@@ -155,7 +155,6 @@ test.describe('Channel override template manager', () => {
   })
 })
 
-
 test.describe('Channel override template manager layout', () => {
   test.beforeEach(() => {
     test.setTimeout(60000)
@@ -194,5 +193,48 @@ test.describe('Channel override template manager layout', () => {
     const list = await boxOf(page, 'template-manager-create')
     const name = await boxOf(page, 'template-form-name')
     expect(name.x).toBeGreaterThan(list.x + list.width)
+  })
+
+  test('keeps the inline template editor usable on a phone', async ({ page }) => {
+    const channelName = uniqueName('channel')
+    await openManager(page)
+    await submitNewTemplate(page, uniqueName('inline'))
+    await expect(managerDialog(page).getByTestId(/^template-manager-item-/).first()).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(managerDialog(page)).toBeHidden()
+
+    // The create form is desktop sized, so the channel is created before the viewport shrinks.
+    await page.getByTestId('add-channel-button').click()
+    const createDialog = page.getByRole('dialog')
+    await createDialog.getByTestId('channel-name-input').fill(channelName)
+    await createDialog.getByTestId('provider-openai').click()
+    await createDialog.getByTestId('channel-base-url-input').fill(`https://api.${channelName}.example.com`)
+    await createDialog.getByTestId('channel-api-key-input').fill('sk-test-key')
+    await createDialog.getByTestId('quick-model-gpt-4o').click()
+    await createDialog.getByTestId('add-selected-models-button').click()
+    await createDialog.getByTestId('default-test-model-select').click()
+    await page.getByRole('option').first().click()
+    await Promise.all([waitForGraphQLOperation(page, 'CreateChannel'), createDialog.getByTestId('channel-submit-button').click()])
+    await expect(createDialog).toBeHidden()
+
+    await page.setViewportSize({ width: 375, height: 667 })
+    const row = page.getByTestId('channels-table').locator('tbody tr').filter({ hasText: channelName })
+    await row.getByTestId('row-actions').click()
+    await page.getByRole('menu').getByRole('menuitem', { name: /Overrides|覆盖设置/i }).click()
+    const overrideDialog = page.getByRole('dialog').filter({ has: page.getByTestId('override-dialog-title') })
+    await overrideDialog.getByRole('combobox').first().click()
+    await page.getByTestId(/^template-edit-/).first().click()
+
+    // Stacked name, description and tabs must not squeeze the operations area to nothing: Add Operation
+    // stays reachable and the new row stays inside the dialog.
+    const editor = page.getByRole('dialog').filter({ has: page.getByTestId('template-form-name') })
+    await editor.getByTestId('template-add-header-op').click()
+    const key = editor.getByTestId('header-op-path-0')
+    await expect(key).toBeVisible()
+    const frame = (await editor.boundingBox())!
+    const box = (await key.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(frame.x)
+    expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width + 1)
+    expect(box.width).toBeGreaterThan(150)
   })
 })

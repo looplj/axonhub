@@ -48,7 +48,7 @@ export function ChannelOverrideTemplateEditDialog({ open, onOpenChange, template
           <DialogDescription>{t('channels.templates.dialogs.edit.description')}</DialogDescription>
         </DialogHeader>
 
-        <div className='flex min-h-0 flex-1 flex-col px-6 py-4'>
+        <div className='flex min-h-0 shrink-0 flex-col px-6 py-4 sm:flex-1'>
           {open && template && (
             <ChannelOverrideTemplateForm
               key={template.id}
