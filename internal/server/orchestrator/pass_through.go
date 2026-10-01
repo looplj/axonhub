@@ -389,15 +389,20 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 
 		go func() {
 			defer func() {
+				backlog.mu.Lock()
 				if r := recover(); r != nil {
 					log.Warn(ctx, "captureRawProviderStream goroutine panicked, recovering",
 						log.Any("panic", r),
 						log.String("channel", channel.Name),
 					)
 					rawStreamErr = fmt.Errorf("passthrough stream panic: %v", r)
-				} else {
+				} else if rawStreamErr == nil {
 					rawStreamErr = stream.Err()
+					if rawStreamErr == nil {
+						rawStreamErr = ctx.Err()
+					}
 				}
+				backlog.mu.Unlock()
 
 				close(pipelineCh)
 				close(rawStreamCh)
@@ -421,6 +426,14 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 				}
 
 				event := stream.Current()
+				held, err := backlog.hold(event)
+				if err != nil {
+					backlog.mu.Lock()
+					rawStreamErr = err
+					backlog.mu.Unlock()
+
+					return
+				}
 				// Use blocking sends so events are not silently dropped when a
 				// consumer is slower than the upstream provider. Bail out on
 				// attempt cancellation (retry) or request cancellation to avoid
@@ -435,7 +448,7 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 				}
 
 				// Nothing drains rawStreamCh until the pass-through consumer attaches.
-				if backlog.hold(event) {
+				if held {
 					continue
 				}
 
@@ -450,7 +463,7 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 			}
 		}()
 
-		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: &rawStreamErr, cancel: closeStream}, nil
+		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: &rawStreamErr, errMu: &backlog.mu, cancel: closeStream}, nil
 	})
 }
 
@@ -475,8 +488,10 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 
 		// Events captured while the pipeline pre-read the attempt precede the channel.
 		var held []*httpclient.StreamEvent
+		var errMu *sync.Mutex
 		if backlog := outbound.state.RawStreamBacklog; backlog != nil {
 			held = backlog.attach()
+			errMu = &backlog.mu
 		}
 
 		channel := outbound.GetCurrentChannel()
@@ -502,7 +517,7 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 			}
 		}()
 
-		rawStream := &passThroughChannelStream{ctx: ctx, ch: rawCh, errRef: errRef, cancel: cancel}
+		rawStream := &passThroughChannelStream{ctx: ctx, ch: rawCh, errRef: errRef, errMu: errMu, cancel: cancel}
 
 		return streams.PrependStream(rawStream, held...), nil
 	})
@@ -512,28 +527,43 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 // consumer attaches. Before that point the pipeline may still be pre-reading the attempt
 // (first-event timeout, empty-response detection, retry before the first content event)
 // and nothing drains RawStreamCh, so blocking on it would stall the pre-read as soon as
-// the channel buffer fills. Every event reaches pipelineCh before it is held, so the
-// backlog runs at most the pipelineCh buffer ahead of what the pre-read has consumed,
-// and OutboundPersistentStream already retains the consumed events as response chunks.
+// the channel buffer fills. Raw count and bytes are bounded before pipeline delivery,
+// including events filtered by the transformer and retained by persistence.
 type rawStreamBacklog struct {
 	mu       sync.Mutex
 	attached bool
 	events   []*httpclient.StreamEvent
+	bytes    int
 }
+
+const (
+	maxRawPreAttachEvents = 1024
+	maxRawPreAttachBytes  = 8 * 1024 * 1024
+)
+
+var errRawPreAttachBudgetExceeded = fmt.Errorf("pass-through pre-attachment raw event budget exceeded: %w", pipeline.ErrPreCommitBufferExceeded)
 
 // hold keeps event for a consumer that has not attached yet. It reports false once the
 // consumer is attached, in which case the caller delivers the event via RawStreamCh.
-func (b *rawStreamBacklog) hold(event *httpclient.StreamEvent) bool {
+func (b *rawStreamBacklog) hold(event *httpclient.StreamEvent) (bool, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
 	if b.attached {
-		return false
+		return false, nil
 	}
 
+	size := 0
+	if event != nil {
+		size = len(event.Data) + len(event.Type) + len(event.LastEventID)
+	}
+	if len(b.events) >= maxRawPreAttachEvents || size > maxRawPreAttachBytes-b.bytes {
+		return false, errRawPreAttachBudgetExceeded
+	}
+	b.bytes += size
 	b.events = append(b.events, event)
 
-	return true
+	return true, nil
 }
 
 // attach hands the held events over to the consumer; every later event is delivered
@@ -557,6 +587,7 @@ type passThroughChannelStream struct {
 	ch      <-chan *httpclient.StreamEvent
 	current *httpclient.StreamEvent
 	errRef  *error
+	errMu   *sync.Mutex
 	cancel  context.CancelFunc
 	once    sync.Once
 	ctxDone bool
@@ -626,8 +657,15 @@ func (s *passThroughChannelStream) nextBuffered() bool {
 func (s *passThroughChannelStream) Current() *httpclient.StreamEvent { return s.current }
 
 func (s *passThroughChannelStream) Err() error {
-	if s.errRef != nil {
+	if s.errMu != nil {
+		s.errMu.Lock()
+		defer s.errMu.Unlock()
+	}
+	if s.errRef != nil && *s.errRef != nil {
 		return *s.errRef
+	}
+	if s.ctx != nil {
+		return s.ctx.Err()
 	}
 
 	return nil
