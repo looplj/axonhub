@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	responsestransformer "github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -464,7 +465,12 @@ func TestCaptureRawProviderStream_NilLlmRequest(t *testing.T) {
 }
 
 func TestCaptureRawProviderStream_FansOut(t *testing.T) {
-	ctx := context.Background()
+	// Nothing drains RawStreamCh before the pass-through consumer attaches, so a fan-out
+	// that blocks on it stalls the pipeline reads below; the deadline turns that into a
+	// failed assertion instead of a hung test.
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
 	channel := &biz.Channel{
 		Channel: &ent.Channel{
 			ID:   1,
@@ -494,12 +500,15 @@ func TestCaptureRawProviderStream_FansOut(t *testing.T) {
 		state:   state,
 	}
 
-	events := []*httpclient.StreamEvent{
-		{Data: json.RawMessage(`{"id":"evt1"}`)},
-		{Data: json.RawMessage(`{"id":"evt2"}`)},
-		{Data: json.RawMessage(`{"id":"evt3"}`)},
+	// The pipeline pre-reads more events than RawStreamCh buffers before the pass-through
+	// consumer attaches; the rest of the stream is produced after it attached.
+	const preReadCount = 100
+	events := make([]*httpclient.StreamEvent, preReadCount+3)
+	for i := range events {
+		events[i] = &httpclient.StreamEvent{Data: fmt.Appendf(nil, `{"id":"evt%d"}`, i+1)}
 	}
-	src := testHTTPStream(events)
+	release := make(chan struct{})
+	src := &gatedStream{events: events, gateAt: preReadCount, release: release}
 
 	mw := captureRawProviderStream(outbound, nil)
 	result, err := mw.OnOutboundRawStream(ctx, src)
@@ -507,34 +516,26 @@ func TestCaptureRawProviderStream_FansOut(t *testing.T) {
 	require.NotNil(t, result)
 	assert.NotNil(t, state.RawStreamCh)
 
-	var (
-		wg                sync.WaitGroup
-		pipelineEvents    []*httpclient.StreamEvent
-		passthroughEvents []*httpclient.StreamEvent
-	)
+	var pipelineEvents []*httpclient.StreamEvent
+	for range preReadCount {
+		require.True(t, result.Next())
+		pipelineEvents = append(pipelineEvents, result.Current())
+	}
 
-	wg.Add(2)
+	passThrough, err := applyPassThroughStream(outbound, nil).OnInboundRawStream(ctx, testHTTPStream(nil))
+	require.NoError(t, err)
 
-	go func() {
-		defer wg.Done()
+	close(release)
 
-		for result.Next() {
-			pipelineEvents = append(pipelineEvents, result.Current())
-		}
-	}()
+	for result.Next() {
+		pipelineEvents = append(pipelineEvents, result.Current())
+	}
 
-	go func() {
-		defer wg.Done()
+	var passthroughEvents []*httpclient.StreamEvent
+	for passThrough.Next() {
+		passthroughEvents = append(passthroughEvents, passThrough.Current())
+	}
 
-		for ev := range state.RawStreamCh {
-			passthroughEvents = append(passthroughEvents, ev)
-		}
-	}()
-
-	wg.Wait()
-
-	assert.Len(t, pipelineEvents, 3)
-	assert.Len(t, passthroughEvents, 3)
 	assert.Equal(t, events, pipelineEvents)
 	assert.Equal(t, events, passthroughEvents)
 }
@@ -719,6 +720,33 @@ func (s *blockingStream) Close() error {
 
 	return nil
 }
+
+// gatedStream yields events up to gateAt, then waits for release before yielding the
+// rest, so a test can order pipeline steps around upstream progress.
+type gatedStream struct {
+	events  []*httpclient.StreamEvent
+	gateAt  int
+	release <-chan struct{}
+	next    int
+}
+
+func (s *gatedStream) Next() bool {
+	if s.next == s.gateAt {
+		<-s.release
+	}
+
+	if s.next >= len(s.events) {
+		return false
+	}
+
+	s.next++
+
+	return true
+}
+
+func (s *gatedStream) Current() *httpclient.StreamEvent { return s.events[s.next-1] }
+func (s *gatedStream) Err() error                       { return nil }
+func (s *gatedStream) Close() error                     { return nil }
 
 // === applyPassThroughStream tests ===
 
@@ -1204,57 +1232,177 @@ func TestPassThroughResponsesStream_DeepSeekReasoningDoesNotDeadlock(t *testing.
 	})
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	type processOutcome struct {
-		result *pipeline.Result
-		err    error
-	}
-	resultCh := make(chan processOutcome, 1)
-	go func() {
-		result, processErr := pipe.Process(ctx, &httpclient.Request{
-			Method:      http.MethodPost,
-			URL:         "/v1/responses",
-			ContentType: "application/json",
-			Headers:     http.Header{"Content-Type": []string{"application/json"}},
-			Body:        requestBody,
-		})
-		resultCh <- processOutcome{result: result, err: processErr}
-	}()
-
-	var outcome processOutcome
-	select {
-	case outcome = <-resultCh:
-	case <-time.After(2 * time.Second):
-		cancel()
-		select {
-		case stopped := <-resultCh:
-			if stopped.result != nil && stopped.result.EventStream != nil {
-				_ = stopped.result.EventStream.Close()
-			}
-		case <-time.After(time.Second):
-			t.Fatal("responses pass-through pipeline did not stop after cancellation")
-		}
-		t.Fatal("responses pass-through pipeline blocked before the raw stream consumer was attached")
-	}
-
-	require.NoError(t, outcome.err)
-	require.NotNil(t, outcome.result)
-	require.True(t, outcome.result.Stream)
+	events := processPassThroughStream(t, pipe.Process, &httpclient.Request{
+		Method:      http.MethodPost,
+		URL:         "/v1/responses",
+		ContentType: "application/json",
+		Headers:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:        requestBody,
+	})
 
 	var eventTypes []string
 	reasoningDeltaCount := 0
-	for outcome.result.EventStream.Next() {
-		eventType := outcome.result.EventStream.Current().Type
-		eventTypes = append(eventTypes, eventType)
-		if eventType == "response.reasoning_text.delta" {
+	for _, event := range events {
+		eventTypes = append(eventTypes, event.Type)
+		if event.Type == "response.reasoning_text.delta" {
 			reasoningDeltaCount++
 		}
 	}
-	require.NoError(t, outcome.result.EventStream.Err())
 	require.Equal(t, reasoningEventCount, reasoningDeltaCount)
 	require.Contains(t, eventTypes, "response.output_text.delta")
+}
+
+// processPassThroughStream runs a streaming pass-through pipeline and drains its
+// event stream within a deadline, so a blocked raw-stream fan-out fails the test
+// instead of hanging it.
+func processPassThroughStream(
+	t *testing.T,
+	process func(context.Context, *httpclient.Request) (*pipeline.Result, error),
+	request *httpclient.Request,
+) []*httpclient.StreamEvent {
+	t.Helper()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	type streamOutcome struct {
+		events []*httpclient.StreamEvent
+		err    error
+	}
+
+	outcomeCh := make(chan streamOutcome, 1)
+	go func() {
+		result, err := process(ctx, request)
+		if err != nil {
+			outcomeCh <- streamOutcome{err: err}
+			return
+		}
+		if !result.Stream {
+			outcomeCh <- streamOutcome{err: errors.New("pipeline returned a non-stream result")}
+			return
+		}
+
+		defer result.EventStream.Close()
+
+		var events []*httpclient.StreamEvent
+		for result.EventStream.Next() {
+			events = append(events, result.EventStream.Current())
+		}
+
+		outcomeCh <- streamOutcome{events: events, err: result.EventStream.Err()}
+	}()
+
+	select {
+	case outcome := <-outcomeCh:
+		require.NoError(t, outcome.err)
+
+		return outcome.events
+	case <-time.After(2 * time.Second):
+		cancel()
+
+		select {
+		case <-outcomeCh:
+		case <-time.After(time.Second):
+			t.Fatal("pass-through pipeline did not stop after cancellation")
+		}
+
+		t.Fatal("pass-through pipeline blocked while streaming raw provider events")
+
+		return nil
+	}
+}
+
+// TestPassThroughAnthropicStream_RetryPreReadDoesNotDeadlock verifies that a retry
+// budget, which makes the pipeline pre-read until the first content event, can consume
+// more raw events than the pass-through channel buffers before the inbound raw-stream
+// consumer is attached.
+func TestPassThroughAnthropicStream_RetryPreReadDoesNotDeadlock(t *testing.T) {
+	const (
+		model              = "claude-opus-4-7"
+		thinkingDeltaCount = 200
+	)
+
+	provider, err := anthropic.NewOutboundTransformer("https://api.anthropic.com", "test-api-key")
+	require.NoError(t, err)
+
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "anthropic",
+			Settings: &objects.ChannelSettings{
+				PassThroughBody: lo.ToPtr(true),
+			},
+		},
+		Outbound: provider,
+	}
+	candidate := &ChannelModelsCandidate{
+		Channel: channel,
+		Models: []biz.ChannelModelEntry{
+			{RequestModel: model, ActualModel: model, Source: "direct"},
+		},
+		APIFormat: string(llm.APIFormatAnthropicMessage),
+	}
+	state := &PersistenceState{
+		OriginalModel:           model,
+		ChannelModelsCandidates: []*ChannelModelsCandidate{candidate},
+	}
+	inbound, outbound := NewPersistentTransformers(state, anthropic.NewInboundTransformer())
+	upstreamEvents := anthropicEmptyThinkingEvents(thinkingDeltaCount)
+	pipe := pipeline.NewFactory(&mockExecutor{streamEvents: upstreamEvents}).Pipeline(
+		inbound,
+		outbound,
+		pipeline.WithRetry(0, 1, 0),
+		pipeline.WithMiddlewares(
+			applyPassThroughStream(outbound, nil),
+			applyPassThroughRequestBody(outbound, nil),
+			captureRawProviderStream(outbound, nil),
+		),
+	)
+
+	requestBody, err := json.Marshal(map[string]any{
+		"model":      model,
+		"max_tokens": 1024,
+		"stream":     true,
+		"messages":   []map[string]any{{"role": "user", "content": "Reply with OK"}},
+	})
+	require.NoError(t, err)
+
+	events := processPassThroughStream(t, pipe.Process, &httpclient.Request{
+		Method:      http.MethodPost,
+		URL:         "/v1/messages",
+		ContentType: "application/json",
+		Headers:     http.Header{"Content-Type": []string{"application/json"}},
+		Body:        requestBody,
+	})
+
+	require.Equal(t, upstreamEvents, events)
+}
+
+// anthropicEmptyThinkingEvents builds a Claude stream whose thinking block carries no
+// text, as sent when the thinking display is omitted: the empty thinking deltas are not
+// response content, so only the closing signature_delta commits a pre-read attempt.
+func anthropicEmptyThinkingEvents(thinkingDeltaCount int) []*httpclient.StreamEvent {
+	event := func(eventType, data string) *httpclient.StreamEvent {
+		return &httpclient.StreamEvent{Type: eventType, Data: []byte(data)}
+	}
+
+	events := []*httpclient.StreamEvent{
+		event("message_start", `{"type":"message_start","message":{"id":"msg_test","type":"message","role":"assistant","model":"claude-opus-4-7","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":10,"output_tokens":1}}}`),
+		event("content_block_start", `{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":""}}`),
+	}
+	for range thinkingDeltaCount {
+		events = append(events, event("content_block_delta", `{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":""}}`))
+	}
+
+	return append(events,
+		event("content_block_delta", `{"type":"content_block_delta","index":0,"delta":{"type":"signature_delta","signature":"c2lnbmF0dXJl"}}`),
+		event("content_block_stop", `{"type":"content_block_stop","index":0}`),
+		event("content_block_start", `{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}`),
+		event("content_block_delta", `{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"OK"}}`),
+		event("content_block_stop", `{"type":"content_block_stop","index":1}`),
+		event("message_delta", `{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":5}}`),
+		event("message_stop", `{"type":"message_stop"}`),
+	)
 }
 
 // deepSeekResponsesReasoningEvents builds the provider-specific event ordering that

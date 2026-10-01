@@ -76,8 +76,15 @@ type PersistenceState struct {
 	// RawProviderRequest stores the actual outbound provider request for pass-through checks.
 	RawProviderRequest *httpclient.Request
 
-	// RawStreamCh receives raw provider stream events for stream response pass-through.
+	// RawStreamCh receives raw provider stream events for stream response pass-through
+	// once the pass-through consumer is attached; earlier events are held on
+	// RawStreamBacklog.
 	RawStreamCh chan *httpclient.StreamEvent
+
+	// RawStreamBacklog holds the current attempt's raw provider stream events until
+	// applyPassThroughStream attaches the pass-through consumer, so the pipeline can
+	// pre-read the attempt without the fan-out goroutine blocking on RawStreamCh.
+	RawStreamBacklog *rawStreamBacklog
 
 	// RawStreamErrRef points to the current attempt's local error variable used by the
 	// captureRawProviderStream fan-out goroutine. Using a per-attempt pointer (instead of
