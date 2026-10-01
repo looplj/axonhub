@@ -747,6 +747,7 @@ func convertToolToLLM(tool Tool) (llm.Tool, bool) {
 				Name:        tool.Name,
 				Description: tool.Description,
 				Parameters:  tool.InputSchema,
+				Strict:      tool.Strict,
 			},
 			CacheControl: convertToLLMCacheControl(tool.CacheControl),
 		}, true
