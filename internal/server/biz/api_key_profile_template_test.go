@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/ent/apikeyprofiletemplate"
@@ -16,6 +17,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/project"
 	"github.com/looplj/axonhub/internal/ent/user"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
 )
 
 func setupTestTemplateService(t *testing.T) (*APIKeyProfileTemplateService, *ent.Client) {
@@ -685,4 +687,91 @@ func TestLoadTemplate_DifferentProject(t *testing.T) {
 	// Try to load template from project 2 into API key in project 1
 	_, err = svc.LoadTemplate(ctx, template.ID, apiKey.ID)
 	require.Error(t, err)
+}
+
+// TestLoadTemplate_PersonalKeyGuard runs LoadTemplate under the real privacy
+// policy. A project owner can read another member's personal key but must not
+// load a template into it; the creator and a system owner can.
+func TestLoadTemplate_PersonalKeyGuard(t *testing.T) {
+	svc, client := setupTestTemplateService(t)
+	defer client.Close()
+
+	setupCtx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
+
+	testProject, err := client.Project.Create().
+		SetName(fmt.Sprintf("test-project-%d", time.Now().UnixNano())).
+		SetDescription("test").
+		SetStatus(project.StatusActive).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	newUser := func(name string, isSystemOwner bool, membership *ent.UserProjectCreate) *ent.User {
+		u, err := client.User.Create().
+			SetEmail(fmt.Sprintf("%s-%d@example.com", name, time.Now().UnixNano())).
+			SetPassword("password").
+			SetIsOwner(isSystemOwner).
+			SetStatus(user.StatusActivated).
+			Save(setupCtx)
+		require.NoError(t, err)
+
+		if membership != nil {
+			_, err = membership.SetUserID(u.ID).SetProjectID(testProject.ID).Save(setupCtx)
+			require.NoError(t, err)
+		}
+
+		u, err = client.User.Query().Where(user.IDEQ(u.ID)).WithProjectUsers().Only(setupCtx)
+		require.NoError(t, err)
+
+		return u
+	}
+
+	creator := newUser("creator", false, client.UserProject.Create().
+		SetScopes([]string{string(scopes.ScopeReadAPIKeys), string(scopes.ScopeWriteAPIKeys)}))
+	projectOwner := newUser("project-owner", false, client.UserProject.Create().SetIsOwner(true))
+	systemOwner := newUser("system-owner", true, nil)
+
+	apiKey, err := client.APIKey.Create().
+		SetName("personal-api-key").
+		SetKey(fmt.Sprintf("ah-test-%d", time.Now().UnixNano())).
+		SetUserID(creator.ID).
+		SetProjectID(testProject.ID).
+		SetType(apikey.TypePersonal).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	template, err := client.APIKeyProfileTemplate.Create().
+		SetName("prod-template").
+		SetDescription("Production template").
+		SetProject(testProject).
+		SetProfile(&objects.APIKeyProfile{Name: "Production"}).
+		Save(setupCtx)
+	require.NoError(t, err)
+
+	userCtx := func(u *ent.User) context.Context {
+		ctx := contexts.WithProjectID(ent.NewContext(context.Background(), client), testProject.ID)
+		return contexts.WithUser(ctx, u)
+	}
+
+	// The project owner can read the personal key through privacy...
+	projectOwnerCtx := userCtx(projectOwner)
+	visible, err := client.APIKey.Get(projectOwnerCtx, apiKey.ID)
+	require.NoError(t, err)
+	require.Equal(t, apiKey.ID, visible.ID)
+
+	// ...but cannot load a template into it.
+	_, err = svc.LoadTemplate(projectOwnerCtx, template.ID, apiKey.ID)
+	require.ErrorContains(t, err, "personal API key can only be modified by its creator or a system owner")
+	unchanged, err := client.APIKey.Get(setupCtx, apiKey.ID)
+	require.NoError(t, err)
+	require.True(t, unchanged.Profiles == nil || len(unchanged.Profiles.Profiles) == 0)
+
+	// The creator can.
+	updatedKey, err := svc.LoadTemplate(userCtx(creator), template.ID, apiKey.ID)
+	require.NoError(t, err)
+	require.Len(t, updatedKey.Profiles.Profiles, 1)
+
+	// A system owner can too.
+	updatedKey, err = svc.LoadTemplate(userCtx(systemOwner), template.ID, apiKey.ID)
+	require.NoError(t, err)
+	require.Len(t, updatedKey.Profiles.Profiles, 2)
 }

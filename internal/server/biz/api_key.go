@@ -430,8 +430,8 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 			if !ok {
 				return fmt.Errorf("user not found in context")
 			}
-			if apiKey.UserID != user.ID {
-				return fmt.Errorf("personal API key can only be modified by its creator")
+			if apiKey.UserID != user.ID && !user.IsOwner {
+				return fmt.Errorf("personal API key can only be modified by its creator or a system owner")
 			}
 		}
 
@@ -482,7 +482,9 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 
 		if input.Name != nil && *input.Name != apiKey.Name {
 			nameScope := apikey.TypeNEQ(apikey.TypePersonal)
-			if user, ok := contexts.GetUser(ctx); ok {
+			if apiKey.Type == apikey.TypePersonal {
+				nameScope = apikey.Or(nameScope, apikey.UserIDEQ(apiKey.UserID))
+			} else if user, ok := contexts.GetUser(ctx); ok {
 				nameScope = apikey.Or(nameScope, apikey.UserIDEQ(user.ID))
 			}
 			duplicateCount, err := client.APIKey.Query().Where(
@@ -529,8 +531,8 @@ func (s *APIKeyService) UpdateAPIKeyStatus(ctx context.Context, id int, status a
 		if !ok {
 			return nil, fmt.Errorf("user not found in context")
 		}
-		if existing.UserID != user.ID {
-			return nil, fmt.Errorf("personal API key can only be modified by its creator")
+		if existing.UserID != user.ID && !user.IsOwner {
+			return nil, fmt.Errorf("personal API key can only be modified by its creator or a system owner")
 		}
 	}
 
@@ -634,8 +636,8 @@ func (s *APIKeyService) UpdateAPIKeyProfiles(ctx context.Context, id int, profil
 		if !ok {
 			return nil, fmt.Errorf("user not found in context")
 		}
-		if existing.UserID != user.ID {
-			return nil, fmt.Errorf("personal API key can only be modified by its creator")
+		if existing.UserID != user.ID && !user.IsOwner {
+			return nil, fmt.Errorf("personal API key can only be modified by its creator or a system owner")
 		}
 	}
 
@@ -1047,7 +1049,7 @@ func (s *APIKeyService) bulkUpdateAPIKeyStatus(ctx context.Context, ids []int, s
 		return fmt.Errorf("noauth type API key cannot be bulk %sd", action)
 	}
 
-	// Personal API keys can only be managed by their creator
+	// Personal API keys can only be managed by their creator or a system owner
 	personalKeys, err := client.APIKey.Query().
 		Where(apikey.IDIn(ids...), apikey.TypeEQ(apikey.TypePersonal)).
 		All(ctx)
@@ -1061,8 +1063,8 @@ func (s *APIKeyService) bulkUpdateAPIKeyStatus(ctx context.Context, ids []int, s
 			return fmt.Errorf("user not found in context")
 		}
 		for _, k := range personalKeys {
-			if k.UserID != user.ID {
-				return fmt.Errorf("personal API key %q can only be %sd by its creator", k.Name, action)
+			if k.UserID != user.ID && !user.IsOwner {
+				return fmt.Errorf("personal API key %q can only be %sd by its creator or a system owner", k.Name, action)
 			}
 		}
 	}
@@ -1120,8 +1122,8 @@ func (s *APIKeyService) RotateAPIKey(ctx context.Context, id int) (*ent.APIKey, 
 		if !ok {
 			return nil, fmt.Errorf("user not found in context")
 		}
-		if existing.UserID != user.ID {
-			return nil, fmt.Errorf("personal API key can only be rotated by its creator")
+		if existing.UserID != user.ID && !user.IsOwner {
+			return nil, fmt.Errorf("personal API key can only be rotated by its creator or a system owner")
 		}
 	}
 
