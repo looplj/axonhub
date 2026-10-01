@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -27,13 +28,18 @@ import (
 func TestChatCompletionOrchestrator_PreservesFields_whenChannelRequiresStream(t *testing.T) {
 	// Given: a real HTTP SSE upstream and a channel with the supported require policy.
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "/v1/chat/completions", r.URL.Path)
-		require.Equal(t, "Bearer test-api-key", r.Header.Get("Authorization"))
+		if !assert.Equal(t, "/v1/chat/completions", r.URL.Path) ||
+			!assert.Equal(t, "Bearer test-api-key", r.Header.Get("Authorization")) {
+			http.Error(w, "unexpected upstream request", http.StatusBadRequest)
+			return
+		}
 		var body struct {
 			Stream bool `json:"stream"`
 		}
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
-		require.True(t, body.Stream)
+		if !assert.NoError(t, json.NewDecoder(r.Body).Decode(&body)) || !assert.True(t, body.Stream) {
+			http.Error(w, "expected streaming JSON request", http.StatusBadRequest)
+			return
+		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		for _, chunk := range []string{
 			`{"id":"fields","object":"chat.completion.chunk","created":1720000000,"model":"gpt-4","service_tier":"priority","choices":[{"index":0,"delta":{"role":"assistant","content":"Hi","refusal":"Cannot ","reasoning":"think ","reasoning_content":"plan ","audio":{"id":"audio_1","expires_at":1730000000,"data":"QUJD","transcript":"Hello"}},"logprobs":{"content":[{"token":"Hi","logprob":-0.1,"bytes":[72,105],"top_logprobs":[{"token":"Hey","logprob":-1.5,"bytes":[72,101,121]}]}]}}]}`,
@@ -42,7 +48,9 @@ func TestChatCompletionOrchestrator_PreservesFields_whenChannelRequiresStream(t 
 			`[DONE]`,
 		} {
 			_, err := fmt.Fprintf(w, "data: %s\n\n", chunk)
-			require.NoError(t, err)
+			if !assert.NoError(t, err) {
+				return
+			}
 		}
 	}))
 	defer upstream.Close()
@@ -76,15 +84,23 @@ func TestChatCompletionOrchestrator_PreservesFields_whenChannelRequiresStream(t 
 	ctx = contexts.WithProjectID(ctx, project.ID)
 	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
+		if !assert.NoError(t, err) {
+			http.Error(w, "failed to read request", http.StatusBadRequest)
+			return
+		}
 		result, err := o.Process(ctx, &httpclient.Request{Method: r.Method, URL: r.URL.Path, Headers: r.Header, Body: body})
-		require.NoError(t, err)
-		require.Nil(t, result.ChatCompletionStream)
-		require.NotNil(t, result.ChatCompletion)
+		if !assert.NoError(t, err) {
+			http.Error(w, "orchestration failed", http.StatusInternalServerError)
+			return
+		}
+		if !assert.Nil(t, result.ChatCompletionStream) || !assert.NotNil(t, result.ChatCompletion) {
+			http.Error(w, "expected non-streaming completion", http.StatusInternalServerError)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(result.ChatCompletion.StatusCode)
 		_, err = w.Write(result.ChatCompletion.Body)
-		require.NoError(t, err)
+		assert.NoError(t, err)
 	}))
 	defer gateway.Close()
 
