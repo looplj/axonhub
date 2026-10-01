@@ -141,6 +141,8 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
       'gpt-6-sol-fast',
       'gpt-6-luna',
       'gpt-6-luna-fast',
+      'gpt-6.1-sol',
+      'gpt-6.1-sol-fast',
       'codex-auto-review',
     ],
     apiFormat: OPENAI_RESPONSES,
