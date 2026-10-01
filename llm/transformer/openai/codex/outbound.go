@@ -30,9 +30,6 @@ import (
 const (
 	codexBaseURL = "https://chatgpt.com/backend-api/codex#"
 	codexAPIURL  = "https://chatgpt.com/backend-api/codex/responses"
-
-	codexRoutingHintHeader = "x-codex-routing-hint"
-	codexFastServiceTier   = "priority"
 )
 
 // OutboundTransformer implements transformer.Outbound for Codex proxy.
@@ -89,19 +86,6 @@ type Params struct {
 // completed JSON response instead of SSE.
 func isOfficialCodexBaseURL(baseURL string) bool {
 	return strings.Contains(strings.ToLower(baseURL), "chatgpt.com")
-}
-
-func resolveFastModel(model string, serviceTier *string) (string, *string) {
-	baseModel, isFast := fastModelBase(model)
-	if !isFast {
-		return model, serviceTier
-	}
-
-	if serviceTier != nil && strings.TrimSpace(*serviceTier) != "" {
-		return baseModel, serviceTier
-	}
-
-	return baseModel, lo.ToPtr(codexFastServiceTier)
 }
 
 // isOfficialCodex reports whether the transformer targets the official Codex backend.
@@ -247,8 +231,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if isImageRequest {
 		reqCopy.Model = defaultImageMainModel
 		reqCopy.TransformerMetadata[responses.ImageGenerationToolModelMetadataKey] = llmReq.Model
-	} else {
-		reqCopy.Model, reqCopy.ServiceTier = resolveFastModel(reqCopy.Model, reqCopy.ServiceTier)
 	}
 
 	// Ask for encrypted reasoning content so the downstream can surface reasoning blocks.
@@ -285,8 +267,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	if isImageRequest {
 		hreq.RequestType = originalRequestType.String()
 		hreq.APIFormat = originalAPIFormat.String()
-	} else if t.isOfficialCodex() && reqCopy.ServiceTier != nil && strings.TrimSpace(*reqCopy.ServiceTier) != "" {
-		hreq.Headers.Set(codexRoutingHintHeader, fmt.Sprintf("model=%s;tier=%s", reqCopy.Model, *reqCopy.ServiceTier))
 	}
 
 	// Overwrite auth.
