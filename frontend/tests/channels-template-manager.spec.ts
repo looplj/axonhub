@@ -154,3 +154,45 @@ test.describe('Channel override template manager', () => {
     await expect(dialog.getByTestId('template-form-name')).toHaveCount(0)
   })
 })
+
+
+test.describe('Channel override template manager layout', () => {
+  test.beforeEach(() => {
+    test.setTimeout(60000)
+  })
+
+  async function boxOf(page: Page, testId: string) {
+    const box = await managerDialog(page).getByTestId(testId).boundingBox()
+    expect(box, `${testId} should be rendered`).not.toBeNull()
+    return box!
+  }
+
+  test('keeps the editor and its operation rows inside the dialog on a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 })
+    const dialog = managerDialog(page)
+    await openManager(page)
+    await dialog.getByTestId('template-manager-create').click()
+    await dialog.getByTestId('template-add-header-op').click()
+
+    const frame = (await dialog.boundingBox())!
+    for (const testId of ['template-form-name', 'template-form-description', 'header-op-path-0', 'remove-header-op-0']) {
+      const box = await boxOf(page, testId)
+      expect(box.x, `${testId} left edge`).toBeGreaterThanOrEqual(frame.x)
+      expect(box.x + box.width, `${testId} right edge`).toBeLessThanOrEqual(frame.x + frame.width + 1)
+    }
+
+    // The panes are stacked: the editor starts below the list and the key input keeps a usable width.
+    expect((await boxOf(page, 'template-form-name')).y).toBeGreaterThan((await boxOf(page, 'template-manager-create')).y)
+    expect((await boxOf(page, 'header-op-path-0')).width).toBeGreaterThan(150)
+  })
+
+  test('keeps the list beside the editor on a wide screen', async ({ page }) => {
+    const dialog = managerDialog(page)
+    await openManager(page)
+    await dialog.getByTestId('template-manager-create').click()
+
+    const list = await boxOf(page, 'template-manager-create')
+    const name = await boxOf(page, 'template-form-name')
+    expect(name.x).toBeGreaterThan(list.x + list.width)
+  })
+})

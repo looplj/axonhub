@@ -144,8 +144,8 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
           <DialogDescription>{t('channels.templates.manager.description')}</DialogDescription>
         </DialogHeader>
 
-        <div className='flex min-h-0 flex-1'>
-          <div className='flex w-[280px] shrink-0 flex-col border-r'>
+        <div className='flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-visible'>
+          <div className='flex h-64 shrink-0 flex-col border-b md:h-auto md:w-[280px] md:border-r md:border-b-0'>
             <div className='space-y-3 p-4'>
               <div className='relative'>
                 <Search className='text-muted-foreground absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2' />
@@ -245,7 +245,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
             </ScrollArea>
           </div>
 
-          <div className='flex min-h-0 flex-1 flex-col p-6'>
+          <div className='flex min-h-0 shrink-0 flex-col p-6 md:flex-1'>
             {!showEditor && (
               <div className='text-muted-foreground flex flex-1 items-center justify-center text-center text-sm'>
                 {templates.length === 0

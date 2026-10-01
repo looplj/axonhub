@@ -46,8 +46,8 @@ export function OperationRow({ index, control, fieldName, onUpdate, onRemove }: 
 
   return (
     <div className='space-y-3 rounded-lg border p-3'>
-      <div className='flex items-center gap-3'>
-        <div className='w-36'>
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
+        <div className='sm:w-36'>
           <Label className='text-sm font-medium'>{t('channels.dialogs.settings.overrides.body.op')}</Label>
           <Select
             value={field.op}
@@ -130,7 +130,7 @@ export function OperationRow({ index, control, fieldName, onUpdate, onRemove }: 
           </div>
         )}
 
-        <div className='pt-5'>
+        <div className='sm:pt-5'>
           <Button
             type='button'
             variant='outline'
@@ -244,8 +244,8 @@ export function HeaderOperationRow({ index, control, onUpdate, onRemove }: Heade
 
   return (
     <div className='space-y-3 rounded-lg border p-3'>
-      <div className='flex items-center gap-3'>
-        <div className='w-36'>
+      <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
+        <div className='sm:w-36'>
           <Label className='text-sm font-medium'>{t('channels.dialogs.settings.overrides.body.op')}</Label>
           <Select
             value={opType}
@@ -307,7 +307,7 @@ export function HeaderOperationRow({ index, control, onUpdate, onRemove }: Heade
           </>
         )}
 
-        <div className='pt-5'>
+        <div className='sm:pt-5'>
           <Button
             type='button'
             variant='outline'

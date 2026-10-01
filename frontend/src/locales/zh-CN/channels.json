@@ -964,7 +964,7 @@
   "channels.templates.manager.title": "覆盖模板管理",
   "channels.templates.manager.description": "统一创建、编辑和删除可复用的请求头与请求体覆盖模板。模板仍需要显式应用到渠道，因此编辑模板不会静默影响已有渠道。",
   "channels.templates.manager.createButton": "新建模板",
-  "channels.templates.manager.selectHint": "在左侧选择一个模板即可编辑。",
+  "channels.templates.manager.selectHint": "从列表中选择一个模板即可编辑。",
   "channels.templates.manager.emptyState": "暂无模板。创建一个模板即可在多个渠道间复用请求头和请求体覆盖配置。",
   "channels.templates.manager.operationSummary": "{{headers}} 条请求头操作，{{body}} 条请求体操作",
   "channels.templates.manager.deleteTitle": "删除模板",

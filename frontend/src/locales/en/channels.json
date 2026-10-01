@@ -964,7 +964,7 @@
   "channels.templates.manager.title": "Override Templates",
   "channels.templates.manager.description": "Create, edit, and delete reusable header and body override templates. Applying a template to channels is still done explicitly, so editing never changes channels silently.",
   "channels.templates.manager.createButton": "New Template",
-  "channels.templates.manager.selectHint": "Select a template on the left to edit it.",
+  "channels.templates.manager.selectHint": "Select a template from the list to edit it.",
   "channels.templates.manager.emptyState": "No templates yet. Create one to reuse header and body overrides across channels.",
   "channels.templates.manager.operationSummary": "{{headers}} header op(s), {{body}} body op(s)",
   "channels.templates.manager.deleteTitle": "Delete Template",
