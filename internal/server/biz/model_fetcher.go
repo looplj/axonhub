@@ -394,6 +394,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		apiKey            string
 		proxyConfig       *httpclient.ProxyConfig
 		headerOverrideOps []objects.OverrideOperation
+		codexChannel      *ent.Channel
 	)
 
 	if input.APIKey != nil && *input.APIKey != "" {
@@ -409,8 +410,11 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			}, nil
 		}
 
-		if ch.Credentials.IsOAuth() {
-			if models := f.getDefaultModelsByType(ctx, ch.Type); models != nil {
+		if ch.Credentials.IsOAuth() && (ch.Type != channel.TypeCodex ||
+			(apiKey == "" && fetchModelsInputMatchesChannel(input, ch))) {
+			if ch.Type == channel.TypeCodex && codex.SupportsModelCatalog(ch.BaseURL) {
+				codexChannel = ch
+			} else if models := f.getDefaultModelsByType(ctx, ch.Type); models != nil {
 				return &FetchModelsResult{Models: models}, nil
 			}
 		}
@@ -447,7 +451,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	channelType := channel.Type(input.ChannelType)
 
-	if apiKey == "" {
+	if apiKey == "" && codexChannel == nil {
 		if isQiniuChannelType(channelType) {
 			return &FetchModelsResult{
 				Models: qiniuFallbackModels,
@@ -464,9 +468,13 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}, nil
 	}
 
-	if isOAuthJSON(apiKey) {
-		// OAuth credentials indicate an official channel; return default models directly.
-		if models := f.getDefaultModelsByType(ctx, channel.Type(input.ChannelType)); models != nil {
+	if codexChannel == nil && isOAuthJSON(apiKey) {
+		if channelType == channel.TypeCodex && codex.SupportsModelCatalog(input.BaseURL) {
+			codexChannel = &ent.Channel{
+				Type: channelType, BaseURL: input.BaseURL,
+				Credentials: objects.ChannelCredentials{APIKey: apiKey},
+			}
+		} else if models := f.getDefaultModelsByType(ctx, channelType); models != nil {
 			return &FetchModelsResult{Models: models}, nil
 		}
 	}
@@ -509,8 +517,26 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		URL:     modelsURL,
 		Headers: authHeaders,
 	}
+	httpClient := f.httpClient
+	if proxyConfig != nil {
+		httpClient = httpClient.WithProxy(proxyConfig)
+	}
+	if isCommandCodeChannelType(channelType) || codexChannel != nil {
+		httpClient = httpClient.WithRejectHTTPSDowngrade()
+	}
 
-	if isCommandCodeChannelType(channelType) {
+	parse := f.parseModelsResponse
+	if codexChannel != nil {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, 15*time.Second)
+		defer cancel()
+		var err error
+		req, err = f.prepareCodexModelsRequest(ctx, codexChannel, httpClient)
+		if err != nil {
+			return &FetchModelsResult{Models: f.getDefaultModelsByType(ctx, channel.TypeCodex), Fallback: true}, nil
+		}
+		parse = parseCodexModels
+	} else if isCommandCodeChannelType(channelType) {
 		// Command Code authenticates with a Bearer API key, never X-Api-Key.
 		req.Headers.Set("Authorization", "Bearer "+apiKey)
 	} else if channelType.UsesAnthropicModelAPI() {
@@ -528,14 +554,6 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	// chat/completion path.
 	ApplyModelFetchHeaderOverrides(req.Headers, headerOverrideOps)
 
-	httpClient := f.httpClient
-	if proxyConfig != nil {
-		httpClient = f.httpClient.WithProxy(proxyConfig)
-	}
-	if isCommandCodeChannelType(channelType) {
-		httpClient = httpClient.WithRejectHTTPSDowngrade()
-	}
-
 	if channelType.IsGemini() {
 		models, err := f.fetchGeminiModels(ctx, httpClient, req)
 		if err != nil {
@@ -551,23 +569,23 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}, nil
 	}
 
-	var (
-		resp *httpclient.Response
-		err  error
-	)
-
+	execute := httpClient.Do
 	if channelType.UsesAnthropicModelAPI() && !isCommandCodeChannelType(channelType) {
-		resp, err = httpClient.Do(ctx, req)
-		if err != nil || resp.StatusCode != http.StatusOK {
-			req.Headers.Del("X-Api-Key")
-			req.Headers.Set("Authorization", "Bearer "+apiKey)
-			resp, err = httpClient.Do(ctx, req)
+		execute = func(ctx context.Context, req *httpclient.Request) (*httpclient.Response, error) {
+			resp, err := httpClient.Do(ctx, req)
+			if err != nil || resp.StatusCode != http.StatusOK {
+				req.Headers.Del("X-Api-Key")
+				req.Headers.Set("Authorization", "Bearer "+apiKey)
+				return httpClient.Do(ctx, req)
+			}
+			return resp, nil
 		}
-	} else {
-		resp, err = httpClient.Do(ctx, req)
 	}
-
+	models, err := fetchModels(ctx, req, execute, parse)
 	if err != nil {
+		if codexChannel != nil {
+			return &FetchModelsResult{Models: f.getDefaultModelsByType(ctx, channel.TypeCodex), Fallback: true}, nil
+		}
 		if isQiniuChannelType(channelType) {
 			return &FetchModelsResult{
 				Models: qiniuFallbackModels,
@@ -579,39 +597,54 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}, nil
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		if isQiniuChannelType(channelType) {
-			return &FetchModelsResult{
-				Models: qiniuFallbackModels,
-			}, nil
-		}
-		return &FetchModelsResult{
-			Models: []ModelIdentify{},
-			Error:  lo.ToPtr(fmt.Sprintf("failed to fetch models: %v", resp.StatusCode)),
-		}, nil
-	}
-
-	models, err := f.parseModelsResponse(resp.Body)
-	if err != nil {
-		if isQiniuChannelType(channelType) {
-			return &FetchModelsResult{
-				Models: qiniuFallbackModels,
-			}, nil
-		}
-		return &FetchModelsResult{
-			Models: []ModelIdentify{},
-			Error:  lo.ToPtr(fmt.Sprintf("failed to parse models response: %v", err)),
-		}, nil
-	}
-
 	if isCommandCodeChannelType(channelType) {
 		models = filterCommandCodeModels(channelType, models)
 	}
 
 	return &FetchModelsResult{
-		Models: lo.Uniq(models),
+		Models: models,
 		Error:  nil,
 	}, nil
+}
+
+func fetchModels(
+	ctx context.Context,
+	req *httpclient.Request,
+	execute func(context.Context, *httpclient.Request) (*httpclient.Response, error),
+	parse func([]byte) ([]ModelIdentify, error),
+) ([]ModelIdentify, error) {
+	resp, err := execute(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
+	}
+	models, err := parse(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse models response: %w", err)
+	}
+	return lo.Uniq(models), nil
+}
+
+func (f *ModelFetcher) prepareCodexModelsRequest(ctx context.Context, ch *ent.Channel, client *httpclient.HttpClient) (*httpclient.Request, error) {
+	creds, err := ch.Credentials.ResolveOAuthCredentials()
+	if err != nil {
+		return nil, err
+	}
+	params := codex.TokenProviderParams{Credentials: creds, HTTPClient: client}
+	if ch.ID != 0 {
+		params.OnRefreshed = f.channelService.onTokenRefreshed(ch)
+	}
+	return codex.ModelsRequest(ctx, codex.NewTokenProvider(params), ch.BaseURL)
+}
+
+func parseCodexModels(body []byte) ([]ModelIdentify, error) {
+	ids, err := codex.ParseModelCatalog(body)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Map(ids, func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} }), nil
 }
 
 type geminiListModelsResponse struct {
