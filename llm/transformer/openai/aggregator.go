@@ -19,11 +19,13 @@ type choiceAggregator struct {
 	index               int
 	content             strings.Builder
 	reasoningContent    strings.Builder
-	hasReasoningContent bool                  // Tracks whether any delta carried reasoning_content (even an empty string).
-	reasoning           strings.Builder       // Aggregates the reasoning field used by some providers (e.g. Synthetic) instead of reasoning_content.
-	hasReasoning        bool                  // Tracks whether any delta carried reasoning (even an empty string).
-	refusal             strings.Builder       // Aggregates refusal text streamed as delta.refusal.
-	audio               *llm.OutputAudio      // Reassembles audio output streamed as delta.audio chunks.
+	hasReasoningContent bool             // Tracks whether any delta carried reasoning_content (even an empty string).
+	reasoning           strings.Builder  // Aggregates the reasoning field used by some providers (e.g. Synthetic) instead of reasoning_content.
+	hasReasoning        bool             // Tracks whether any delta carried reasoning (even an empty string).
+	refusal             strings.Builder  // Aggregates refusal text streamed as delta.refusal.
+	audio               *llm.OutputAudio // Reassembles audio output streamed as delta.audio chunks.
+	audioData           strings.Builder
+	audioTranscript     strings.Builder
 	logprobs            []TokenLogprob        // Concatenates per-chunk logprobs content.
 	toolCalls           map[int]*llm.ToolCall // Map to track tool calls by their index within the choice
 	finishReason        *string
@@ -212,8 +214,8 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 						choiceAgg.audio.ExpiresAt = choice.Delta.Audio.ExpiresAt
 					}
 
-					choiceAgg.audio.Data += choice.Delta.Audio.Data
-					choiceAgg.audio.Transcript += choice.Delta.Audio.Transcript
+					choiceAgg.audioData.WriteString(choice.Delta.Audio.Data)
+					choiceAgg.audioTranscript.WriteString(choice.Delta.Audio.Transcript)
 				}
 
 				// Handle tool calls
@@ -359,6 +361,8 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// Set audio output if any delta carried audio chunks.
 		if choiceAgg.audio != nil {
 			message.Audio = choiceAgg.audio
+			message.Audio.Data = choiceAgg.audioData.String()
+			message.Audio.Transcript = choiceAgg.audioTranscript.String()
 		}
 
 		// Set content if available

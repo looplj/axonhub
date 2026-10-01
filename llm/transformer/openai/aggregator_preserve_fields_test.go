@@ -3,6 +3,7 @@ package openai
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -117,4 +118,54 @@ func TestAggregateStreamChunks_PreservesReasoningAndServiceTier(t *testing.T) {
 	require.NotNil(t, resp.Choices[0].Message)
 	require.NotNil(t, resp.Choices[0].Message.Reasoning)
 	require.Equal(t, "thinking hard", *resp.Choices[0].Message.Reasoning)
+}
+
+func TestAggregateStreamChunks_PreservesAudio_whenChoicesInterleave(t *testing.T) {
+	// Given: audio metadata can arrive after data, and belongs to each choice.
+	chunks := streamEvents(
+		`{"id":"audio","choices":[{"index":1,"delta":{"audio":{"data":"REVG","transcript":"world"}}},{"index":0,"delta":{"audio":{}}}]}`,
+		`{"id":"audio","choices":[{"index":0,"delta":{"audio":{"id":"zero","expires_at":10,"data":"QUJD","transcript":"Hello"}}},{"index":1,"delta":{"audio":{"id":"one","expires_at":20,"data":"R0hJ","transcript":"!"}}}]}`,
+		`{"id":"audio","choices":[{"index":0,"delta":{"audio":{"id":"ignored","expires_at":99,"data":"SktM","transcript":" there"}}},{"index":2,"delta":{"audio":{}}}]}`,
+		`[DONE]`,
+	)
+
+	// When
+	body, _, err := AggregateStreamChunks(t.Context(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+
+	// Then: fragments stay ordered, first populated metadata wins, empty audio survives.
+	var resp Response
+	require.NoError(t, json.Unmarshal(body, &resp))
+	require.Len(t, resp.Choices, 3)
+	require.Equal(t, &OutputAudio{ID: "zero", ExpiresAt: 10, Data: "QUJDSktM", Transcript: "Hello there"}, resp.Choices[0].Message.Audio)
+	require.Equal(t, &OutputAudio{ID: "one", ExpiresAt: 20, Data: "REVGR0hJ", Transcript: "world!"}, resp.Choices[1].Message.Audio)
+	require.Equal(t, &OutputAudio{}, resp.Choices[2].Message.Audio)
+}
+
+func TestAggregateStreamChunks_BoundsAudioAllocations_whenHighlyFragmented(t *testing.T) {
+	// Given: isolate accumulation from the chunk parser's allocations.
+	chunks := make([]*httpclient.StreamEvent, 1024)
+	for i := range chunks {
+		chunks[i] = &httpclient.StreamEvent{}
+	}
+	fragment := &Response{ID: "audio", Choices: []Choice{{Index: 0, Delta: &Message{
+		Audio: &OutputAudio{Data: "QUJD", Transcript: "text"},
+	}}}}
+	transform := func(context.Context, *httpclient.StreamEvent) (*Response, error) {
+		return fragment, nil
+	}
+
+	// When
+	allocations := testing.AllocsPerRun(3, func() {
+		body, _, err := AggregateStreamChunks(t.Context(), chunks, transform)
+		require.NoError(t, err)
+		var resp Response
+		require.NoError(t, json.Unmarshal(body, &resp))
+		require.Equal(t, strings.Repeat("QUJD", len(chunks)), resp.Choices[0].Message.Audio.Data)
+		require.Equal(t, strings.Repeat("text", len(chunks)), resp.Choices[0].Message.Audio.Transcript)
+	})
+
+	// Then: allow ample overhead, but reject one allocation per audio fragment.
+	require.Less(t, allocations, float64(len(chunks)/2))
+	t.Logf("audio aggregation allocations for %d fragments: %.0f", len(chunks), allocations)
 }
