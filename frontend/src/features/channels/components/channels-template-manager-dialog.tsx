@@ -1,6 +1,6 @@
 // Standalone manager for channel override templates: list, create, edit, and
 // delete reusable header/body override configurations in one place.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ClipboardList, Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -40,6 +40,9 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
   const [selectedSnapshot, setSelectedSnapshot] = useState<ChannelOverrideTemplate | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<ChannelOverrideTemplate | null>(null);
+  // Bumped when a template is selected or the dialog closes. A create that finishes after that no
+  // longer owns the editor. "New template" keeps an already open create form, so it does not bump.
+  const editorVersion = useRef(0);
 
   const createTemplate = useCreateChannelOverrideTemplate();
   const updateTemplate = useUpdateChannelOverrideTemplate();
@@ -58,6 +61,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
 
   useEffect(() => {
     if (!open) {
+      editorVersion.current += 1;
       setSearchValue('');
       setSelectedTemplateId(null);
       setSelectedSnapshot(null);
@@ -68,6 +72,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
 
   const handleCreate = useCallback(
     async (value: ChannelOverrideTemplateFormValue) => {
+      const version = editorVersion.current;
       try {
         const created = await createTemplate.mutateAsync({
           name: value.name,
@@ -75,9 +80,11 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
           headerOverrideOperations: value.headerOverrideOperations,
           bodyOverrideOperations: value.bodyOverrideOperations,
         });
-        setIsCreating(false);
-        setSelectedTemplateId(created.id);
-        setSelectedSnapshot(created);
+        if (editorVersion.current === version) {
+          setIsCreating(false);
+          setSelectedTemplateId(created.id);
+          setSelectedSnapshot(created);
+        }
       } catch (_error) {
         // Error already handled by mutation
       }
@@ -189,6 +196,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
                         className='min-w-0 flex-1 text-left'
                         data-testid={`template-manager-item-${template.id}`}
                         onClick={() => {
+                          editorVersion.current += 1;
                           setIsCreating(false);
                           setSelectedTemplateId(template.id);
                           setSelectedSnapshot(template);
@@ -211,6 +219,7 @@ export function ChannelsTemplateManagerDialog({ open, onOpenChange }: Props) {
                           className='h-6 w-6'
                           title={t('common.buttons.edit')}
                           onClick={() => {
+                            editorVersion.current += 1;
                             setIsCreating(false);
                             setSelectedTemplateId(template.id);
                             setSelectedSnapshot(template);
