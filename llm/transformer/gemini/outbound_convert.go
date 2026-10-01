@@ -291,9 +291,15 @@ func convertLLMToGeminiRequestWithConfig(chatReq *llm.Request, config *Config) *
 	// Convert tool choice
 	if chatReq.ToolChoice != nil {
 		req.ToolConfig = convertLLMToolChoiceToGeminiToolConfig(chatReq.ToolChoice)
-	} else if hasStrictFunctionTool(chatReq.Tools) {
-		req.ToolConfig = &ToolConfig{
-			FunctionCallingConfig: &FunctionCallingConfig{Mode: "VALIDATED"},
+	}
+
+	if hasStrictFunctionTool(chatReq.Tools) {
+		if req.ToolConfig == nil {
+			req.ToolConfig = &ToolConfig{
+				FunctionCallingConfig: &FunctionCallingConfig{Mode: "VALIDATED"},
+			}
+		} else if req.ToolConfig.FunctionCallingConfig.Mode == "AUTO" {
+			req.ToolConfig.FunctionCallingConfig.Mode = "VALIDATED"
 		}
 	}
 
