@@ -27,6 +27,7 @@ func DefaultModels() []string {
 		"gpt-6-sol",
 		"gpt-6-luna",
 		"gpt-6.1-sol",
+		"codex-auto-review",
 	}
 }
 
