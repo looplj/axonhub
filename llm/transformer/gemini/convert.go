@@ -337,6 +337,12 @@ func convertGeminiFunctionCallingConfigToToolChoice(fcc *FunctionCallingConfig) 
 			}
 		} else {
 			tc.ToolChoice = lo.ToPtr("required")
+			if len(fcc.AllowedFunctionNames) > 1 {
+				tc.NamedToolChoice = &llm.NamedToolChoice{Type: "allowed_tools"}
+				for _, name := range fcc.AllowedFunctionNames {
+					tc.Tools = append(tc.Tools, llm.ToolOption{Type: llm.ToolTypeFunction, Name: name})
+				}
+			}
 		}
 	case "NONE":
 		tc.ToolChoice = lo.ToPtr("none")
@@ -361,7 +367,7 @@ func convertLLMToolChoiceToGeminiToolConfig(tc *llm.ToolChoice) *ToolConfig {
 			fcc.Mode = "AUTO"
 		case "none":
 			fcc.Mode = "NONE"
-		case "required":
+		case "required", "any":
 			fcc.Mode = "ANY"
 		default:
 			fcc.Mode = "AUTO"
@@ -374,6 +380,14 @@ func convertLLMToolChoiceToGeminiToolConfig(tc *llm.ToolChoice) *ToolConfig {
 		}
 	} else {
 		fcc.Mode = "AUTO"
+	}
+
+	if fcc.Mode == "ANY" {
+		for _, tool := range tc.Tools {
+			if tool.Type == llm.ToolTypeFunction {
+				fcc.AllowedFunctionNames = append(fcc.AllowedFunctionNames, tool.Name)
+			}
+		}
 	}
 
 	return &ToolConfig{FunctionCallingConfig: fcc}

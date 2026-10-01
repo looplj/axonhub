@@ -219,7 +219,7 @@ type ToolConfig struct {
 
 // FunctionCallingConfig is the function calling config.
 type FunctionCallingConfig struct {
-	// Mode is the function calling mode. One of: AUTO, ANY, NONE.
+	// Mode is the function calling mode. One of: AUTO, ANY, NONE, VALIDATED.
 	Mode string `json:"mode,omitempty"`
 
 	// AllowedFunctionNames is the function names to call.

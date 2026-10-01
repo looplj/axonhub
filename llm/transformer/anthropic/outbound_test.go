@@ -1801,6 +1801,49 @@ func TestOutboundTransformer_WebSearchParameters(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_FunctionToolPreservesStrict(t *testing.T) {
+	outbound, err := NewOutboundTransformerWithConfig(&Config{
+		Type:           PlatformDirect,
+		BaseURL:        "https://api.anthropic.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test-key"),
+	})
+	require.NoError(t, err)
+
+	req := &llm.Request{
+		Model:     "claude-3-sonnet-20240229",
+		MaxTokens: lo.ToPtr(int64(1024)),
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Use the tool"),
+				},
+			},
+		},
+		Tools: []llm.Tool{
+			{
+				Type: llm.ToolTypeFunction,
+				Function: llm.Function{
+					Name:        "get_weather",
+					Description: "Get the weather",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Strict:      lo.ToPtr(true),
+				},
+			},
+		},
+	}
+
+	result, err := outbound.TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+
+	var anthropicReq MessageRequest
+	err = json.Unmarshal(result.Body, &anthropicReq)
+	require.NoError(t, err)
+	require.Len(t, anthropicReq.Tools, 1)
+	require.NotNil(t, anthropicReq.Tools[0].Strict)
+	require.True(t, *anthropicReq.Tools[0].Strict)
+}
+
 // TestOutboundTransformer_OllamaBearerAuth verifies that PlatformOllama uses Bearer
 // token authentication (Authorization header) instead of X-API-Key, matching the
 // LongCat Anthropic pattern. Ollama expects Authorization: Bearer <key> when a key
