@@ -669,6 +669,13 @@ type ResponseFormat struct {
 //   - Video: VideoResponse for video generation responses
 //   - Compact: CompactResponse for compact responses
 //   - Completion: CompletionResponse for legacy completion responses
+type StreamCompletionEvidence string
+
+const (
+	StreamCompletionEvidenceNone          StreamCompletionEvidence = ""
+	StreamCompletionEvidenceOpenAIChatEOF StreamCompletionEvidence = "openai_chat_clean_eof"
+)
+
 type Response struct {
 	ID string `json:"id"`
 
@@ -762,7 +769,8 @@ type Response struct {
 
 	// TransformerMetadata stores metadata from transformers that process the response.
 	// This field is ignored when serializing to JSON and is only used internally by transformers.
-	TransformerMetadata map[string]any `json:"transformer_metadata,omitempty"`
+	TransformerMetadata      map[string]any           `json:"transformer_metadata,omitempty"`
+	StreamCompletionEvidence StreamCompletionEvidence `json:"-"`
 }
 
 // Choice represents a choice in the response.

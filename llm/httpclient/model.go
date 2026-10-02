@@ -112,9 +112,10 @@ type Response struct {
 }
 
 type StreamEvent struct {
-	LastEventID string `json:"last_event_id,omitempty"`
-	Type        string `json:"type"`
-	Data        []byte `json:"data"`
+	LastEventID                string `json:"last_event_id,omitempty"`
+	Type                       string `json:"type"`
+	Data                       []byte `json:"data"`
+	CleanEOFCompletionEvidence bool   `json:"-"`
 	// Size optionally carries the byte size of a binary chunk that was elided
 	// from Data for persistence (e.g. raw TTS audio chunks). It lets stream
 	// aggregators report total bytes without retaining the audio payload.

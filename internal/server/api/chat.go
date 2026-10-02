@@ -288,6 +288,7 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 	// its buffer is drained; eventsAfterCancel bounds streams that violate it.
 	eventsAfterCancel := 0
 	terminalSeen := false
+	terminalTracker := orchestrator.NewStreamTerminalTracker(streamExpectedChoices(stream))
 
 	for {
 		if !stream.Next() {
@@ -308,7 +309,7 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 		}
 
 		cur := stream.Current()
-		if orchestrator.IsTerminalStreamEvent(cur) {
+		if terminalTracker.Observe(cur) {
 			terminalSeen = true
 		}
 
@@ -320,6 +321,13 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 		}
 		log.Debug(ctx, "write stream event", log.Any("event", cur))
 	}
+}
+
+func streamExpectedChoices(stream streams.Stream[*httpclient.StreamEvent]) int {
+	if s, ok := stream.(interface{ ExpectedStreamChoices() int }); ok {
+		return s.ExpectedStreamChoices()
+	}
+	return 0
 }
 
 func writeSSEStreamWithHeartbeat(
@@ -363,6 +371,7 @@ func writeSSEStreamWithHeartbeat(
 	ctxDone := ctx.Done()
 	eventsAfterCancel := 0
 	terminalSeen := false
+	terminalTracker := orchestrator.NewStreamTerminalTracker(streamExpectedChoices(stream))
 	heartbeatCount := 0
 
 	for {
@@ -392,7 +401,7 @@ func writeSSEStreamWithHeartbeat(
 			}
 
 			cur := result.event
-			if orchestrator.IsTerminalStreamEvent(cur) {
+			if terminalTracker.Observe(cur) {
 				terminalSeen = true
 			}
 
@@ -446,12 +455,8 @@ func writeSSEStreamEnd(
 ) {
 	switch {
 	case terminalSeen:
-		if errors.Is(streamErr, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
-			*clientDisconnected = true
-		}
-		if streamErr != nil {
-			log.Warn(ctx, "Stream error after terminal event was delivered, suppressing trailing error event",
-				log.Cause(streamErr))
+		if streamErr != nil && !errors.Is(streamErr, context.Canceled) {
+			log.Warn(ctx, "Stream error after terminal event was delivered, suppressing trailing error event", log.Cause(streamErr))
 		}
 	case errors.Is(ctx.Err(), context.DeadlineExceeded) &&
 		(streamErr == nil || errors.Is(streamErr, context.Canceled) || errors.Is(streamErr, context.DeadlineExceeded)):
