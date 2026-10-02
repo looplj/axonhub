@@ -31,9 +31,9 @@ func TestResponsesStream_ProtocolError_when_Interrupted(t *testing.T) {
 				stream := &errorAfterStream{items: []*httpclient.StreamEvent{
 					{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","sequence_number":41,"delta":"hello"}`)},
 				}, err: streamErr}
-				h := &ChatCompletionHandlers{sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
+				h := &ChatCompletionHandlers{streamAdapterFactory: newResponsesStreamAdapter, sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
 				// When
-				h.writeResponsesSSEStream(c, stream)
+				h.writeSSEStream(c, stream)
 				// Then the partial output is followed by exactly one Responses error.
 				require.Equal(t, 2, strings.Count(w.Body.String(), "data:"))
 				event := parseSSEErrorEvent(t, w.Body.String())
@@ -63,9 +63,9 @@ func TestResponsesStream_ContextOutcome_when_Interrupted(t *testing.T) {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil).WithContext(ctx)
 				stream := &errorAfterStream{items: []*httpclient.StreamEvent{{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","sequence_number":4,"delta":"hello"}`)}}, err: ctx.Err()}
-				h := &ChatCompletionHandlers{sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
+				h := &ChatCompletionHandlers{streamAdapterFactory: newResponsesStreamAdapter, sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
 				// When
-				h.writeResponsesSSEStream(c, stream)
+				h.writeSSEStream(c, stream)
 				// Then cancellation is silent and a server deadline is a protocol error.
 				if deadline {
 					event := parseSSEErrorEvent(t, w.Body.String())
@@ -89,9 +89,9 @@ func TestResponsesStream_Policy_when_Interrupted(t *testing.T) {
 				c, _ := gin.CreateTestContext(w)
 				c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil).WithContext(ctx)
 				stream := newUpstreamErrorStream(ctx, &errorAfterStream{err: syscall.ECONNRESET}, svc)
-				h := &ChatCompletionHandlers{ChatCompletionOrchestrator: &orchestrator.ChatCompletionOrchestrator{SystemService: svc}, sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
+				h := &ChatCompletionHandlers{streamAdapterFactory: newResponsesStreamAdapter, ChatCompletionOrchestrator: &orchestrator.ChatCompletionOrchestrator{SystemService: svc}, sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
 				// When
-				h.writeResponsesSSEStream(c, stream)
+				h.writeSSEStream(c, stream)
 				// Then redaction preserves the transport classification.
 				event := parseSSEErrorEvent(t, w.Body.String())
 				require.Equal(t, "error", event["type"])
@@ -101,6 +101,7 @@ func TestResponsesStream_Policy_when_Interrupted(t *testing.T) {
 					expected = "safe custom failure"
 				}
 				require.Equal(t, expected, event["message"])
+				require.ErrorIs(t, stream.Err(), syscall.ECONNRESET)
 			})
 		}
 	}
@@ -119,9 +120,9 @@ func TestResponsesStream_NoTrailingError_when_TerminalPrecedesDeadline(t *testin
 				data, err := json.Marshal(map[string]string{"type": terminal})
 				require.NoError(t, err)
 				stream := &errorAfterStream{items: []*httpclient.StreamEvent{{Type: terminal, Data: data}}, err: context.DeadlineExceeded}
-				h := &ChatCompletionHandlers{sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
+				h := &ChatCompletionHandlers{streamAdapterFactory: newResponsesStreamAdapter, sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
 				// When
-				h.writeResponsesSSEStream(c, stream)
+				h.writeSSEStream(c, stream)
 				// Then
 				require.Equal(t, 1, strings.Count(w.Body.String(), "data:"))
 			})

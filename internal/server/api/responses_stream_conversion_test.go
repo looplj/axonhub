@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -40,14 +41,14 @@ func TestResponsesStream_ConversionOutcome_when_SourceEnds(t *testing.T) {
 					w := httptest.NewRecorder()
 					c, _ := gin.CreateTestContext(w)
 					c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil).WithContext(ctx)
-					h := &ChatCompletionHandlers{ChatCompletionOrchestrator: &orchestrator.ChatCompletionOrchestrator{SystemService: svc}, sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
+					h := &ChatCompletionHandlers{streamAdapterFactory: newResponsesStreamAdapter, ChatCompletionOrchestrator: &orchestrator.ChatCompletionOrchestrator{SystemService: svc}, sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour}, sseHeartbeatFormat: sseHeartbeatOpenAI}
 					// When
-					h.writeResponsesSSEStream(c, newUpstreamErrorStream(ctx, converted, svc))
+					h.writeSSEStream(c, newUpstreamErrorStream(ctx, converted, svc))
 					// Then partial content is retained and cancellation produces no error.
 					body := w.Body.String()
 					require.Contains(t, body, `"delta":"hello"`)
 					failures := strings.Count(body, "event:error\n") + strings.Count(body, "event:response.failed\n")
-					if sourceErr == context.Canceled {
+					if errors.Is(sourceErr, context.Canceled) {
 						require.Zero(t, failures)
 						return
 					}

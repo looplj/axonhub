@@ -117,6 +117,7 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 			),
 		},
 		ResponseCompletionHandlers: &ChatCompletionHandlers{
+			streamAdapterFactory: newResponsesStreamAdapter,
 			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
 				params.ChannelService,
 				params.DefaultSelector,
