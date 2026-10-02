@@ -44,6 +44,10 @@ type PersistenceState struct {
 	// provider-specific fields that are not represented by the unified request.
 	PromptProtectionMaskRules []*ent.PromptProtectionRule
 
+	// PromptProtectionBodyCheck verifies raw replay against the protected prompt
+	// snapshot using the actual inbound mapping, including legacy protectors.
+	PromptProtectionBodyCheck *promptProtectionBodyCheck
+
 	// Persistence state
 	Request     *ent.Request
 	RequestExec *ent.RequestExecution

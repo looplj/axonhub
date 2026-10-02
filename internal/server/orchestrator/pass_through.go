@@ -122,6 +122,9 @@ func applyPassThroughRequestBody(outbound *PersistentOutboundTransformer, system
 			llmReq.Model,
 			outbound.state.PromptProtectionMaskRules,
 		)
+		if err == nil && outbound.state.PromptProtectionBodyCheck != nil {
+			err = outbound.state.PromptProtectionBodyCheck.validate(ctx, body)
+		}
 		if err != nil {
 			log.Warn(ctx, "failed to merge pass-through body, keeping outbound body",
 				log.String("channel", channel.Name),

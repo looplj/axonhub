@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"slices"
@@ -13,7 +14,74 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer"
 )
+
+// protectedPromptText is an immutable snapshot of a normalized prompt value.
+type protectedPromptText struct {
+	role string
+	text string
+}
+
+// promptProtectionBodyCheck ties raw replay to the inbound mapping that was
+// actually protected, rather than trusting a second interpretation of the schema.
+type promptProtectionBodyCheck struct {
+	inbound  transformer.Inbound
+	raw      *httpclient.Request
+	expected []protectedPromptText
+}
+
+// validate rejects partial patches and regex semantics that cannot be represented
+// safely in native fields, retaining the already-protected generated body instead.
+func (check *promptProtectionBodyCheck) validate(ctx context.Context, body []byte) error {
+	if check.inbound == nil || check.raw == nil {
+		return fmt.Errorf("protected pass-through body has no inbound mapping")
+	}
+
+	raw := *check.raw
+	raw.Body = body
+	raw.Headers = check.raw.Headers.Clone()
+	replayed, err := check.inbound.TransformRequest(ctx, &raw)
+	if err != nil {
+		// Decoder errors may contain user content; do not include them in logs.
+		return fmt.Errorf("protected pass-through body cannot be decoded by inbound mapping")
+	}
+	if !slices.Equal(promptProtectionTexts(replayed), check.expected) {
+		return fmt.Errorf("pass-through prompt values differ from protected request")
+	}
+
+	return nil
+}
+
+// promptProtectionTexts copies the role and text values inspected by prompt
+// protection before its in-place changes can overwrite the original snapshot.
+func promptProtectionTexts(request *llm.Request) []protectedPromptText {
+	if request == nil {
+		return nil
+	}
+
+	var texts []protectedPromptText
+	messages := request.Messages
+	if request.Compact != nil {
+		if request.Compact.Instructions != "" {
+			texts = append(texts, protectedPromptText{role: "system", text: request.Compact.Instructions})
+		}
+		messages = request.Compact.Input
+	}
+	for _, message := range messages {
+		if message.Content.Content != nil {
+			texts = append(texts, protectedPromptText{role: message.Role, text: *message.Content.Content})
+		}
+		for _, part := range message.Content.MultipleContent {
+			if strings.EqualFold(part.Type, "text") && part.Text != nil {
+				texts = append(texts, protectedPromptText{role: message.Role, text: *part.Text})
+			}
+		}
+	}
+
+	return texts
+}
 
 // rawPromptTextField identifies a scalar string or structured JSON value in an
 // API-native request body and its unified message role.
@@ -260,13 +328,16 @@ func openAIResponsesPromptTextFields(body []byte) []rawPromptTextField {
 		itemType := strings.ToLower(gjson.GetBytes(body, itemPath+".type").String())
 		role := gjson.GetBytes(body, itemPath+".role").String()
 
-		if itemType == "input_text" {
-			fields = append(fields, rawStringField(body, itemPath+".text", role)...)
-		}
-
-		fields = append(fields, rawContentTextFields(body, itemPath+".content", role, "input_text", "output_text", "text")...)
-
-		if itemType == "function_call_output" || itemType == "custom_tool_call_output" {
+		switch itemType {
+		case "message", "input_text", "":
+			// Inbound prefers content over text for all three message forms. The
+			// text fallback must be patched even after another field matched a rule.
+			if gjson.GetBytes(body, itemPath+".content").Exists() {
+				fields = append(fields, rawContentTextFields(body, itemPath+".content", role, "input_text", "output_text", "text")...)
+			} else {
+				fields = append(fields, rawStringField(body, itemPath+".text", role)...)
+			}
+		case "function_call_output", "custom_tool_call_output":
 			fields = append(fields, rawContentTextFields(body, itemPath+".output", "tool", "input_text", "output_text", "text")...)
 		}
 	}

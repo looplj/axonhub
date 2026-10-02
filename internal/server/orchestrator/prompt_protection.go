@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
@@ -15,12 +16,14 @@ import (
 
 const promptProtectionRejectedMessage = "request blocked by prompt protection policy"
 
+// protectPrompts masks or rejects prompts and snapshots the result for safe raw replay.
 func protectPrompts(inbound *PersistentInboundTransformer) pipeline.Middleware {
 	return pipeline.OnLlmRequest("protect-prompts", func(ctx context.Context, llmRequest *llm.Request) (*llm.Request, error) {
 		if inbound.state.PromptProtecter == nil {
 			return llmRequest, nil
 		}
 
+		originalTexts := promptProtectionTexts(llmRequest)
 		protected, matchedRules, err := protectPromptRequest(ctx, inbound.state.PromptProtecter, llmRequest)
 		if err != nil {
 			if errors.Is(err, biz.ErrPromptProtectionRejected) {
@@ -35,8 +38,25 @@ func protectPrompts(inbound *PersistentInboundTransformer) pipeline.Middleware {
 		inbound.state.PromptProtectionMaskRules = matchedRules
 
 		if protected == nil {
-			return llmRequest, nil
+			protected = llmRequest
 		}
+		if protected.RawRequest == nil {
+			// A legacy protector may return a new request without transport metadata.
+			// Keep the inbound source available for safe replay and model mapping.
+			protected.RawRequest = llmRequest.RawRequest
+		}
+
+		protectedTexts := promptProtectionTexts(protected)
+		if len(matchedRules) > 0 || !slices.Equal(originalTexts, protectedTexts) {
+			// Legacy protectors can change prompts without reporting rules. They must
+			// also validate raw replay instead of silently restoring the original text.
+			inbound.state.PromptProtectionBodyCheck = &promptProtectionBodyCheck{
+				inbound:  inbound.wrapped,
+				raw:      llmRequest.RawRequest,
+				expected: protectedTexts,
+			}
+		}
+		inbound.state.LlmRequest = protected
 
 		return protected, nil
 	})
