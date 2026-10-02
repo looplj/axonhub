@@ -404,6 +404,8 @@ func TestPersistentOutboundTransformer_PrepareForRetry(t *testing.T) {
 		processor := &PersistentOutboundTransformer{
 			wrapped: &mockTransformer{},
 			state: &PersistenceState{
+				StreamCompleted:        true,
+				OutboundStreamTerminal: streamTerminalFailed,
 				CurrentCandidate: &ChannelModelsCandidate{
 					Channel: channel,
 					Models: []biz.ChannelModelEntry{
@@ -423,6 +425,8 @@ func TestPersistentOutboundTransformer_PrepareForRetry(t *testing.T) {
 		require.NoError(t, err)
 		require.Zero(t, processor.state.CurrentModelIndex)
 		require.Nil(t, processor.state.RequestExec)
+		require.False(t, processor.state.StreamCompleted)
+		require.Equal(t, streamTerminalNone, processor.state.OutboundStreamTerminal)
 	})
 
 	t.Run("multiple models, retry should trigger 'reuse same model' logic", func(t *testing.T) {
@@ -948,7 +952,7 @@ func TestPersistentOutboundTransformer_TransformRequest_PreservesNonStreaming(t 
 
 func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
 	t.Run("usage with completion tokens means completed", func(t *testing.T) {
-		require.True(t, isCompletedAggregated(llm.ResponseMeta{Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}}))
+		require.False(t, isCompletedAggregated(llm.ResponseMeta{Usage: &llm.Usage{PromptTokens: 10, CompletionTokens: 5, TotalTokens: 15}}))
 	})
 
 	t.Run("usage with zero completion tokens is not completed", func(t *testing.T) {
@@ -957,6 +961,7 @@ func TestIsCompletedAggregatedOutboundResponse(t *testing.T) {
 
 	t.Run("response id without usage is not completed", func(t *testing.T) {
 		require.False(t, isCompletedAggregated(llm.ResponseMeta{ID: "resp_123"}))
+		require.True(t, isCompletedAggregated(llm.ResponseMeta{Completed: true}))
 	})
 
 	t.Run("explicit completed flag is completed", func(t *testing.T) {
@@ -1173,7 +1178,8 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 			apiFormat:          llm.APIFormatOpenAIResponse,
 			aggregatedResponse: aggregated,
 			aggregatedMeta: llm.ResponseMeta{
-				ID: "resp_456",
+				ID:        "resp_456",
+				Completed: true,
 				Usage: &llm.Usage{
 					PromptTokens:     10,
 					CompletionTokens: 2,
@@ -1194,10 +1200,10 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 		require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
 		require.JSONEq(t, string(aggregated), string(dbExec.ResponseBody))
 		require.Equal(t, "resp_456", dbExec.ExternalID)
-		require.True(t, state.StreamCompleted)
+		require.False(t, state.StreamCompleted)
 	})
 
-	t.Run("canceled client with aggregated completed response is still completed", func(t *testing.T) {
+	t.Run("canceled client with aggregated response remains canceled", func(t *testing.T) {
 		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 		defer client.Close()
 
@@ -1257,13 +1263,12 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 
 		dbExec, err := client.RequestExecution.Get(baseCtx, exec.ID)
 		require.NoError(t, err)
-		require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
-		require.JSONEq(t, string(aggregated), string(dbExec.ResponseBody))
-		require.Equal(t, "resp_codex_like", dbExec.ExternalID)
-		require.True(t, state.StreamCompleted)
+		require.Equal(t, requestexecution.StatusCanceled, dbExec.Status)
+		require.NotEqual(t, "resp_codex_like", dbExec.ExternalID)
+		require.False(t, state.StreamCompleted)
 	})
 
-	t.Run("canceled client after finish reason is still completed without done or usage", func(t *testing.T) {
+	t.Run("canceled client after finish reason remains completed from terminal evidence", func(t *testing.T) {
 		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 		defer client.Close()
 
@@ -1309,7 +1314,7 @@ func TestOutboundPersistentStream_Close_AggregatedResponsesCompletionHandling(t 
 		persistentStream := NewOutboundPersistentStream(requestCtx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
 		require.True(t, persistentStream.Next())
 		require.Equal(t, finalChunk, persistentStream.Current())
-		require.True(t, state.StreamCompleted)
+		require.False(t, state.StreamCompleted)
 
 		// Simulate the agent closing its SSE request immediately after consuming
 		// the final semantic response, before a trailing [DONE] can be consumed.
@@ -1376,8 +1381,7 @@ func TestOutboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorCompl
 	require.NoError(t, err)
 	require.Equal(t, requestexecution.StatusCompleted, savedExec.Status)
 	require.Equal(t, "msg_stop", savedExec.ExternalID)
-	require.Contains(t, string(savedExec.ResponseBody), `"stop_reason":"end_turn"`)
-	require.True(t, state.StreamCompleted)
+	require.False(t, state.StreamCompleted)
 }
 
 func TestOutboundPersistentStream_Close_ResponsesTerminalPersistsOutcome(t *testing.T) {

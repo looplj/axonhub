@@ -1100,7 +1100,7 @@ func TestWriteSSEStream_FinishReasonWithoutDoneIsNotIncomplete(t *testing.T) {
 		{Data: []byte(`{"id":"1","choices":[{"delta":{},"finish_reason":"stop"}]}`)},
 	}
 
-	WriteSSEStream(c, streams.SliceStream(events))
+	WriteSSEStream(c, &singleChoiceSSEStream{Stream: streams.SliceStream(events)})
 
 	body := w.Body.String()
 	require.NotContains(t, body, "event:error")

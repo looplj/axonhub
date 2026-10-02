@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -132,6 +133,199 @@ func TestInboundPersistentStream_ProviderSuccessDoesNotHideConversionFailure(t *
 	stream.Current()
 	require.Equal(t, request.StatusFailed, stream.finalTerminalState().requestStatus())
 	require.False(t, state.StreamCompleted)
+}
+
+type conversionErrorStream struct {
+	source streams.Stream[*llm.Response]
+	err    error
+	read   bool
+	closed bool
+}
+
+func (s *conversionErrorStream) Next() bool {
+	if s.read {
+		return false
+	}
+	s.read = true
+	if s.source.Next() {
+		_ = s.source.Current()
+	}
+	return false
+}
+
+func (s *conversionErrorStream) Current() *httpclient.StreamEvent {
+	return nil
+}
+
+func (s *conversionErrorStream) Err() error {
+	return s.err
+}
+
+func (s *conversionErrorStream) Close() error {
+	s.closed = true
+	return s.source.Close()
+}
+
+type conversionErrorInbound struct {
+	transformer.Inbound
+
+	err error
+}
+
+func (t *conversionErrorInbound) TransformStream(
+	ctx context.Context,
+	stream streams.Stream[*llm.Response],
+) (streams.Stream[*httpclient.StreamEvent], error) {
+	return &conversionErrorStream{source: stream, err: t.err}, nil
+}
+
+func TestPersistentStreams_ProviderCompletionDoesNotHideDownstreamConversionError(t *testing.T) {
+	// Given: the provider emits a real terminal completion, but downstream
+	// protocol conversion fails before it emits a client terminal event.
+	ctx := t.Context()
+	outbound, err := responses.NewOutboundTransformer("https://example.test", "test-key")
+	require.NoError(t, err)
+	state := &PersistenceState{}
+	provider := NewOutboundPersistentStream(ctx, streams.SliceStream([]*httpclient.StreamEvent{
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_complete","status":"completed"}}`)},
+	}), nil, nil, nil, nil, outbound, nil, state)
+	normalized, err := outbound.TransformStream(ctx, nil, provider)
+	require.NoError(t, err)
+
+	conversionErr := errors.New("downstream conversion failed")
+	inbound := &conversionErrorInbound{Inbound: responses.NewInboundTransformer(), err: conversionErr}
+	converted, err := inbound.TransformStream(ctx, normalized)
+	require.NoError(t, err)
+	stream := NewInboundPersistentStream(ctx, converted, nil, nil, nil, inbound, nil, state)
+
+	// When: the downstream wrapper finalizes after observing the conversion error.
+	require.False(t, stream.Next())
+	require.ErrorIs(t, stream.Err(), conversionErr)
+	require.NoError(t, stream.Close())
+
+	// Then: provider execution completion does not become request completion.
+	require.Equal(t, streamTerminalCompleted, state.OutboundStreamTerminal)
+	require.Equal(t, streamTerminalFailed, stream.terminalState)
+	require.False(t, state.StreamCompleted)
+}
+
+func TestPersistentStreams_ProviderCompletionPersistsExecutionButConversionFailureFailsRequest(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	project := createTestProject(t, ctx, client)
+	channel := createTestChannel(t, ctx, client)
+	_, requestService, systemService, usageLogService := setupTestServices(t, client)
+	require.NoError(t, systemService.SetStoragePolicy(ctx, &biz.StoragePolicy{
+		StoreChunks: true, StoreRequestBody: true, StoreResponseBody: true,
+	}))
+
+	req, err := client.Request.Create().
+		SetProjectID(project.ID).SetChannelID(channel.ID).SetModelID("gpt-5").
+		SetStatus(request.StatusProcessing).SetRequestBody([]byte(`{"stream":true}`)).SetStream(true).Save(ctx)
+	require.NoError(t, err)
+	execution, err := client.RequestExecution.Create().
+		SetRequestID(req.ID).SetProjectID(project.ID).SetChannelID(channel.ID).SetModelID("gpt-5").
+		SetFormat(llm.APIFormatOpenAIResponse.String()).SetStatus(requestexecution.StatusProcessing).
+		SetRequestBody([]byte(`{"stream":true}`)).SetStream(true).Save(ctx)
+	require.NoError(t, err)
+
+	outbound, err := responses.NewOutboundTransformer("https://example.test", "test-key")
+	require.NoError(t, err)
+	state := &PersistenceState{}
+	provider := NewOutboundPersistentStream(ctx, streams.SliceStream([]*httpclient.StreamEvent{
+		{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp_complete","status":"completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`)},
+	}), req, execution, requestService, usageLogService, outbound, nil, state)
+	normalized, err := outbound.TransformStream(ctx, nil, provider)
+	require.NoError(t, err)
+
+	conversionErr := errors.New("downstream conversion failed")
+	inbound := &conversionErrorInbound{Inbound: responses.NewInboundTransformer(), err: conversionErr}
+	converted, err := inbound.TransformStream(ctx, normalized)
+	require.NoError(t, err)
+	stream := NewInboundPersistentStream(ctx, converted, req, execution, requestService, inbound, nil, state)
+	require.False(t, stream.Next())
+	require.ErrorIs(t, stream.Err(), conversionErr)
+	require.NoError(t, stream.Close())
+
+	savedRequest, err := client.Request.Get(ctx, req.ID)
+	require.NoError(t, err)
+	savedExecution, err := client.RequestExecution.Get(ctx, execution.ID)
+	require.NoError(t, err)
+	require.Equal(t, request.StatusFailed, savedRequest.Status)
+	require.Equal(t, requestexecution.StatusCompleted, savedExecution.Status)
+}
+
+func TestInboundPersistentStream_SourceContextErrorsPersistRequestStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		source error
+		want   request.Status
+	}{
+		{name: "canceled", source: context.Canceled, want: request.StatusCanceled},
+		{name: "deadline", source: context.DeadlineExceeded, want: request.StatusFailed},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			defer client.Close()
+			ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+			project := createTestProject(t, ctx, client)
+			_, requestService, _, _ := setupTestServices(t, client)
+			req, err := client.Request.Create().SetProjectID(project.ID).SetModelID("gpt-test").
+				SetStatus(request.StatusProcessing).SetStream(true).SetRequestBody([]byte(`{"stream":true}`)).Save(ctx)
+			require.NoError(t, err)
+
+			stream := &mockStream{err: tt.source}
+			persistent := NewInboundPersistentStream(ctx, stream, req, nil, requestService, &mockInboundTransformer{}, nil, &PersistenceState{})
+			require.False(t, persistent.Next())
+			require.ErrorIs(t, persistent.Err(), tt.source)
+			require.NoError(t, persistent.Close())
+
+			saved, err := client.Request.Get(ctx, req.ID)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, saved.Status)
+		})
+	}
+}
+
+func TestOutboundPersistentStream_SourceContextErrorsPersistExecutionStatus(t *testing.T) {
+	tests := []struct {
+		name   string
+		source error
+		want   requestexecution.Status
+	}{
+		{name: "canceled", source: context.Canceled, want: requestexecution.StatusCanceled},
+		{name: "deadline", source: context.DeadlineExceeded, want: requestexecution.StatusFailed},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+			defer client.Close()
+			ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+			project := createTestProject(t, ctx, client)
+			_, requestService, _, usageLogService := setupTestServices(t, client)
+			req, err := client.Request.Create().SetProjectID(project.ID).SetModelID("gpt-test").
+				SetStatus(request.StatusProcessing).SetStream(true).SetRequestBody([]byte(`{"stream":true}`)).Save(ctx)
+			require.NoError(t, err)
+			execution, err := client.RequestExecution.Create().SetRequestID(req.ID).SetProjectID(project.ID).SetModelID("gpt-test").
+				SetFormat(llm.APIFormatOpenAIChatCompletion.String()).SetStatus(requestexecution.StatusProcessing).SetStream(true).
+				SetRequestBody([]byte(`{"stream":true}`)).Save(ctx)
+			require.NoError(t, err)
+			outbound, err := openai.NewOutboundTransformer("https://provider.test", "key")
+			require.NoError(t, err)
+			persistent := NewOutboundPersistentStream(ctx, &sliceEventStream{err: tt.source}, req, execution, requestService, usageLogService, outbound, nil, &PersistenceState{})
+			require.False(t, persistent.Next())
+			require.ErrorIs(t, persistent.Err(), tt.source)
+			require.NoError(t, persistent.Close())
+
+			saved, err := client.RequestExecution.Get(ctx, execution.ID)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, saved.Status)
+		})
+	}
 }
 
 func TestPersistentStreams_DisconnectBeforeConvertedTerminal(t *testing.T) {

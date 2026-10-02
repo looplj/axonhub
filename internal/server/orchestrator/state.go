@@ -78,6 +78,9 @@ type PersistenceState struct {
 	// Request/execution status and channel health intentionally interpret this
 	// outcome differently, as described by StreamCompleted and Perf above.
 	OutboundStreamTerminal streamTerminalState
+	// CleanEOFCompletionEvidence is set only by a protocol transformer after it
+	// has exhausted a clean source and emitted validated terminal evidence.
+	CleanEOFCompletionEvidence bool
 
 	// RawProviderResponse stores the raw provider response for non-stream response pass-through.
 	RawProviderResponse *httpclient.Response
