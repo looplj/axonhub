@@ -130,9 +130,14 @@ func (c *NeuralWattQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		}
 	}
 
-	limits := []QuotaLimitStatus{
-		NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt).WithWindow("kwh", 0),
-	}
+	limit := NewTokenLimitStatus(normalizedStatus, usageRatio, nextResetAt)
+	limit.Window = "kwh"
+	// The kWh window resets monthly at kwh_reset_date; stamping the period
+	// start is what enables the on-track marker and the period cost/quota
+	// estimate shared with the other windowed providers.
+	limit.PeriodStart = PeriodStartFromMonthlyReset(nextResetAt)
+
+	limits := []QuotaLimitStatus{limit}
 
 	return NormalizeQuotaData(QuotaData{
 		Status:       normalizedStatus,

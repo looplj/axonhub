@@ -101,6 +101,49 @@ func TestNeuralWatt_CheckQuota_WarningState(t *testing.T) {
 	require.True(t, quota.Ready)
 	require.NotNil(t, quota.NextResetAt)
 	require.Equal(t, expectedResetAt, *quota.NextResetAt)
+	require.Len(t, quota.Limits, 1)
+	require.Equal(t, "kwh", quota.Limits[0].Window)
+	require.NotNil(t, quota.Limits[0].NextResetAt)
+	expectedPeriodStart := PeriodStartFromMonthlyReset(&expectedResetAt)
+	require.NotNil(t, expectedPeriodStart)
+	require.NotNil(t, quota.Limits[0].PeriodStart)
+	require.Equal(t, *expectedPeriodStart, *quota.Limits[0].PeriodStart)
+}
+
+func TestNeuralWatt_CheckQuota_MissingResetDate(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{
+				"subscription": {
+					"plan": "standard",
+					"status": "active",
+					"kwh_included": 20.0,
+					"kwh_used": 5.0,
+					"kwh_remaining": 15.0,
+					"in_overage": false
+				}
+			}`
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewNeuralWattQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, quota.NextResetAt)
+	require.Len(t, quota.Limits, 1)
+	require.Equal(t, "kwh", quota.Limits[0].Window)
+	require.Nil(t, quota.Limits[0].NextResetAt)
+	require.Nil(t, quota.Limits[0].PeriodStart)
 }
 
 func TestNeuralWatt_CheckQuota_ExhaustedState(t *testing.T) {
