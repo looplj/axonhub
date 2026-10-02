@@ -2,12 +2,12 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
 	"sync/atomic"
 
-	"github.com/gin-gonic/gin"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
@@ -20,19 +20,15 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
-func (h *ChatCompletionHandlers) writeResponsesSSEStream(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent]) {
-	var systemService *biz.SystemService
-	if h.ChatCompletionOrchestrator != nil {
-		systemService = h.ChatCompletionOrchestrator.SystemService
-	}
+func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent], systemService *biz.SystemService) (streams.Stream[*httpclient.StreamEvent], StreamErrorEncoder) {
 	var nextSequence atomic.Int64
 	stream = streams.MapErr(stream, func(event *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
 		if seq := gjson.GetBytes(event.Data, "sequence_number"); seq.Type == gjson.Number && seq.Int() >= nextSequence.Load() {
 			nextSequence.Store(seq.Int() + 1)
 		}
-		return applyResponsesEventErrorPolicy(c.Request.Context(), event, systemService)
+		return applyResponsesEventErrorPolicy(ctx, event, systemService)
 	})
-	formatErr := func(ctx context.Context, err error) any {
+	encodeErr := func(ctx context.Context, err error) (*httpclient.StreamEvent, error) {
 		err = applyUpstreamErrorPolicy(ctx, pipeline.WrapUpstreamError(orchestrator.ClassifyUpstreamTransportError(err)), systemService)
 		code := "stream_error"
 		message := orchestrator.ExtractErrorMessage(err)
@@ -48,15 +44,20 @@ func (h *ChatCompletionHandlers) writeResponsesSSEStream(c *gin.Context, stream 
 			code = firstNonEmpty(upstreamErrorCodeFromHTTP(httpErr), code)
 			requestID = upstreamRequestIDFromHTTP(httpErr)
 		}
-		return struct {
+		data, marshalErr := json.Marshal(struct {
 			responses.StreamEvent
+
 			Param     *string `json:"param"`
 			RequestID string  `json:"request_id,omitempty"`
 		}{StreamEvent: responses.StreamEvent{
 			Type: responses.StreamEventTypeError, SequenceNumber: int(nextSequence.Load()), Code: code, Message: message,
-		}, RequestID: streamErrorRequestID(ctx, requestID)}
+		}, RequestID: streamErrorRequestID(ctx, requestID)})
+		if marshalErr != nil {
+			return nil, marshalErr
+		}
+		return &httpclient.StreamEvent{Type: "error", Data: data}, nil
 	}
-	writeSSEStream(c, stream, formatErr, h.sseKeepAlive, h.sseHeartbeatFormat)
+	return stream, encodeErr
 }
 
 func applyResponsesEventErrorPolicy(ctx context.Context, event *httpclient.StreamEvent, systemService *biz.SystemService) (*httpclient.StreamEvent, error) {

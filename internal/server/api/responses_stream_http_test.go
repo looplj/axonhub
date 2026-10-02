@@ -63,7 +63,7 @@ func TestResponsesStream_HTTPReset_when_ContentDelivered(t *testing.T) {
 					}
 				}))
 				defer upstream.Close()
-				h := &ChatCompletionHandlers{sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Millisecond}, sseHeartbeatFormat: sseHeartbeatOpenAI}
+				h := &ChatCompletionHandlers{streamAdapterFactory: newResponsesStreamAdapter, sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Millisecond}, sseHeartbeatFormat: sseHeartbeatOpenAI}
 				gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					c, _ := gin.CreateTestContext(w)
 					c.Request = r
@@ -96,7 +96,7 @@ func TestResponsesStream_HTTPReset_when_ContentDelivered(t *testing.T) {
 							return
 						}
 					}
-					h.writeResponsesSSEStream(c, stream)
+					h.writeSSEStream(c, stream)
 				}))
 				defer gateway.Close()
 				client := &http.Client{Timeout: 10 * time.Second}
@@ -142,7 +142,7 @@ func TestResponsesStream_HTTPReset_when_ContentDelivered(t *testing.T) {
 				require.NoError(t, decoder.Close())
 				t.Logf("wire %s:\n%s", name, body)
 				if dir := os.Getenv("AXONHUB_RESPONSES_QA_DIR"); dir != "" {
-					require.NoError(t, os.WriteFile(filepath.Join(dir, fmt.Sprintf("conversion_%t_heartbeat_%t.sse", conversion, heartbeat)), body, 0600))
+					require.NoError(t, os.WriteFile(filepath.Join(dir, fmt.Sprintf("conversion_%t_heartbeat_%t.sse", conversion, heartbeat)), body, 0o600))
 				}
 			})
 		}
@@ -151,16 +151,16 @@ func TestResponsesStream_HTTPReset_when_ContentDelivered(t *testing.T) {
 
 func TestResponsesStream_Policy_when_ConversionFailed(t *testing.T) {
 	for _, mode := range []string{biz.UpstreamErrorModeHidden, biz.UpstreamErrorModeCustom} {
-		t.Run(string(mode), func(t *testing.T) {
+		t.Run(mode, func(t *testing.T) {
 			// Given a conversion failure whose message contains upstream detail.
 			ctx, svc := setupUpstreamErrorPolicyTest(t, biz.UpstreamErrorPolicy{Mode: mode, CustomMessage: "custom safe message"})
 			w := httptest.NewRecorder()
 			c, _ := gin.CreateTestContext(w)
 			c.Request = httptest.NewRequest(http.MethodPost, "/v1/responses", nil).WithContext(ctx)
-			h := &ChatCompletionHandlers{ChatCompletionOrchestrator: &orchestrator.ChatCompletionOrchestrator{SystemService: svc}}
+			h := &ChatCompletionHandlers{streamAdapterFactory: newResponsesStreamAdapter, ChatCompletionOrchestrator: &orchestrator.ChatCompletionOrchestrator{SystemService: svc}}
 			stream := &errorAfterStream{items: []*httpclient.StreamEvent{{Type: "response.failed", Data: []byte(`{"type":"response.failed","sequence_number":8,"response":{"id":"resp_policy","status":"failed","output":[],"error":{"code":"stream_error","message":"private upstream detail"}}}`)}}}
 			// When
-			h.writeResponsesSSEStream(c, stream)
+			h.writeSSEStream(c, stream)
 			// Then the configured safe message replaces only the upstream message.
 			require.NotContains(t, w.Body.String(), "private upstream detail")
 			require.Contains(t, w.Body.String(), "resp_policy")
