@@ -308,11 +308,11 @@ export default function Playground() {
     }
   }, [messages, regenerate, setMessages]);
 
-  // 渠道选项列表
+  // 渠道选项列表（仅展示启用中的渠道，已关闭的渠道不可用）
   const channelOptions = useMemo(() => {
     if (!channelsData?.edges) return [];
     return channelsData.edges
-      .filter((edge) => edge.node.allModelEntries.length > 0)
+      .filter((edge) => edge.node.status === 'enabled' && edge.node.allModelEntries.length > 0)
       .map((edge) => ({
         value: edge.node.id,
         label: edge.node.name,
@@ -359,12 +359,12 @@ export default function Playground() {
     }
   }, [model, modelSource, selectedChannel, selectedProjectId, selection.projectId, selection.ready]);
 
-  // 根据选中渠道过滤出模型列表
+  // 根据选中渠道过滤出模型列表（渠道已关闭时不展示其模型）
   const modelOptions = useMemo(() => {
     if (isModelGatewaySource) return modelPageModelOptions;
     if (!channelsData?.edges || !selectedChannel) return [];
     const channelEdge = channelsData.edges.find((edge) => edge.node.id === selectedChannel);
-    if (!channelEdge) return [];
+    if (!channelEdge || channelEdge.node.status !== 'enabled') return [];
     return channelEdge.node.allModelEntries.map((entry) => ({
       value: entry.requestModel,
       label: entry.requestModel,
@@ -376,7 +376,7 @@ export default function Playground() {
   // 处理渠道选择，自动选第一个模型
   const handleChannelChange = useCallback(
     (channelId: string) => {
-      const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === channelId);
+      const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === channelId && edge.node.status === 'enabled');
       const firstModel = channelEdge?.node.allModelEntries[0]?.requestModel ?? '';
       setSelectionState((current) => ({ ...current, selectedChannel: channelId, model: firstModel }));
     },
@@ -398,7 +398,7 @@ export default function Playground() {
         }));
         return;
       }
-      const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === selectedChannel);
+      const channelEdge = channelsData?.edges?.find((edge) => edge.node.id === selectedChannel && edge.node.status === 'enabled');
       setSelectionState((current) => ({
         ...current,
         modelSource: nextSource,
