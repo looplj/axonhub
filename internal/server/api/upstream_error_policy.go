@@ -129,6 +129,9 @@ func (s *upstreamErrorStream) Err() error {
 	if err == nil {
 		return nil
 	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return err
+	}
 
 	// Classify transport-level interruptions before the policy runs so the stable
 	// code and 502 semantics survive a hidden/custom message rewrite.
