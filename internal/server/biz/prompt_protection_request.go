@@ -22,6 +22,9 @@ type PromptProtectionResult struct {
 
 // ApplyPromptProtectionRules applies prompt protection rules to a request.
 func ApplyPromptProtectionRules(req *llm.Request, rules []*ent.PromptProtectionRule) PromptProtectionResult {
+	if req != nil && req.Compact != nil && len(rules) > 0 {
+		return applyCompactPromptProtectionRules(req, rules)
+	}
 	if req == nil || len(req.Messages) == 0 || len(rules) == 0 {
 		return PromptProtectionResult{Request: req}
 	}
@@ -71,18 +74,51 @@ func ApplyPromptProtectionRules(req *llm.Request, rules []*ent.PromptProtectionR
 	}
 }
 
-func (svc *PromptProtectionRuleService) Protect(ctx context.Context, req *llm.Request) (*llm.Request, error) {
+// applyCompactPromptProtectionRules protects Compact's separate input and
+// instructions; its Messages slice is empty and cannot carry these masks.
+func applyCompactPromptProtectionRules(req *llm.Request, rules []*ent.PromptProtectionRule) PromptProtectionResult {
+	view := *req
+	view.Compact = nil
+	view.Messages = make([]llm.Message, 0, len(req.Compact.Input)+1)
+	inputOffset := 0
+	if req.Compact.Instructions != "" {
+		view.Messages = append(view.Messages, llm.Message{
+			Role: "system",
+			Content: llm.MessageContent{
+				Content: &req.Compact.Instructions,
+			},
+		})
+		inputOffset = 1
+	}
+	view.Messages = append(view.Messages, req.Compact.Input...)
+
+	result := ApplyPromptProtectionRules(&view, rules)
+	if result.Rejected {
+		return result
+	}
+	if inputOffset > 0 {
+		req.Compact.Instructions = *view.Messages[0].Content.Content
+	}
+	req.Compact.Input = view.Messages[inputOffset:]
+	result.Request = req
+
+	return result
+}
+
+// ProtectWithResult applies enabled prompt-protection rules and preserves the
+// matched rules for callers that must patch a provider-native request body.
+func (svc *PromptProtectionRuleService) ProtectWithResult(ctx context.Context, req *llm.Request) (PromptProtectionResult, error) {
 	rules, err := svc.ListEnabledRules(ctx)
 	if err != nil {
 		log.Warn(ctx, "failed to load enabled prompt protection rules", log.Cause(err))
-		return nil, err
+		return PromptProtectionResult{}, err
 	}
 
 	if len(rules) == 0 {
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "no enabled prompt protection rules")
 		}
-		return req, nil
+		return PromptProtectionResult{Request: req}, nil
 	}
 
 	result := ApplyPromptProtectionRules(req, rules)
@@ -90,7 +126,7 @@ func (svc *PromptProtectionRuleService) Protect(ctx context.Context, req *llm.Re
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "prompt protection passed without rule match", log.Int("rule_count", len(rules)))
 		}
-		return req, nil
+		return result, nil
 	}
 
 	if result.Rejected {
@@ -98,14 +134,21 @@ func (svc *PromptProtectionRuleService) Protect(ctx context.Context, req *llm.Re
 			log.String("rule_name", result.MatchedRules[0].Name),
 		)
 
-		return result.Request, ErrPromptProtectionRejected
+		return result, ErrPromptProtectionRejected
 	}
 
 	if log.DebugEnabled(ctx) {
 		log.Debug(ctx, "prompt protection masked request", log.Any("rules", result.MatchedRules))
 	}
 
-	return result.Request, nil
+	return result, nil
+}
+
+// Protect applies enabled prompt-protection rules and returns the protected request.
+func (svc *PromptProtectionRuleService) Protect(ctx context.Context, req *llm.Request) (*llm.Request, error) {
+	result, err := svc.ProtectWithResult(ctx, req)
+
+	return result.Request, err
 }
 
 func applyPromptProtectionRuleToMessage(msg llm.Message, rule *ent.PromptProtectionRule) (llm.Message, bool) {
