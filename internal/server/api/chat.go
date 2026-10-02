@@ -49,6 +49,7 @@ type ChatCompletionHandlers struct {
 	StreamWriter               StreamWriter
 	sseKeepAlive               SSEKeepAliveConfig
 	sseHeartbeatFormat         sseHeartbeatFormat
+	streamAdapterFactory       streamAdapterFactory
 }
 
 func NewChatCompletionHandlers(orchestrator *orchestrator.ChatCompletionOrchestrator) *ChatCompletionHandlers {
@@ -130,7 +131,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 		c.Header("Access-Control-Allow-Origin", "*")
 
 		stream := newUpstreamErrorStream(ctx, result.ChatCompletionStream, handlers.ChatCompletionOrchestrator.SystemService)
-		if genericReq != nil && strings.HasSuffix(genericReq.Path, "/responses") {
+		if strings.HasSuffix(genericReq.Path, "/responses") {
 			stream = primeCodexTurnStateHeader(c.Writer.Header(), stream)
 		}
 		if handlers.StreamWriter != nil {
@@ -138,7 +139,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 			return
 		}
 
-		writeSSEStream(c, stream, FormatStreamError, handlers.sseKeepAlive, handlers.sseHeartbeatFormat)
+		handlers.writeSSEStream(c, stream)
 	}
 }
 
@@ -211,6 +212,10 @@ func (s *primedStream) Err() error {
 	return s.stream.Err()
 }
 
+func (s *primedStream) ExpectedStreamChoices() int {
+	return streamExpectedChoices(s.stream)
+}
+
 func (s *primedStream) Close() error {
 	return s.stream.Close()
 }
@@ -244,21 +249,27 @@ func writeSSEStream(
 	keepAlive SSEKeepAliveConfig,
 	heartbeatFormat sseHeartbeatFormat,
 ) {
+	writeEncodedSSEStream(c, stream, encodeStreamError(formatErr), keepAlive, heartbeatFormat)
+}
+
+func writeEncodedSSEStream(
+	c *gin.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+	encodeErr StreamErrorEncoder,
+	keepAlive SSEKeepAliveConfig,
+	heartbeatFormat sseHeartbeatFormat,
+) {
 	if !keepAlive.Enabled || keepAlive.Interval <= 0 || heartbeatFormat == sseHeartbeatNone {
-		writeSSEStreamWithoutHeartbeat(c, stream, formatErr)
+		writeSSEStreamWithoutHeartbeat(c, stream, encodeErr)
 		return
 	}
 
-	writeSSEStreamWithHeartbeat(c, stream, formatErr, keepAlive.Interval, heartbeatFormat)
+	writeEncodedSSEStreamWithHeartbeat(c, stream, encodeErr, keepAlive.Interval, heartbeatFormat)
 }
 
-func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent], formatErr StreamErrorFormatter) {
+func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpclient.StreamEvent], formatErr StreamErrorEncoder) {
 	ctx := c.Request.Context()
 	clientDisconnected := false
-
-	if formatErr == nil {
-		formatErr = FormatStreamError
-	}
 
 	defer func() {
 		clearSSEWriteDeadline(ctx, c.Writer)
@@ -284,6 +295,7 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 	// its buffer is drained; eventsAfterCancel bounds streams that violate it.
 	eventsAfterCancel := 0
 	terminalSeen := false
+	terminalTracker := orchestrator.NewStreamTerminalTracker(streamExpectedChoices(stream))
 
 	for {
 		if !stream.Next() {
@@ -304,7 +316,7 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 		}
 
 		cur := stream.Current()
-		if orchestrator.IsTerminalStreamEvent(cur) {
+		if terminalTracker.Observe(cur) {
 			terminalSeen = true
 		}
 
@@ -318,6 +330,13 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 	}
 }
 
+func streamExpectedChoices(stream streams.Stream[*httpclient.StreamEvent]) int {
+	if s, ok := stream.(interface{ ExpectedStreamChoices() int }); ok {
+		return s.ExpectedStreamChoices()
+	}
+	return 0
+}
+
 func writeSSEStreamWithHeartbeat(
 	c *gin.Context,
 	stream streams.Stream[*httpclient.StreamEvent],
@@ -325,12 +344,18 @@ func writeSSEStreamWithHeartbeat(
 	interval time.Duration,
 	heartbeatFormat sseHeartbeatFormat,
 ) {
+	writeEncodedSSEStreamWithHeartbeat(c, stream, encodeStreamError(formatErr), interval, heartbeatFormat)
+}
+
+func writeEncodedSSEStreamWithHeartbeat(
+	c *gin.Context,
+	stream streams.Stream[*httpclient.StreamEvent],
+	formatErr StreamErrorEncoder,
+	interval time.Duration,
+	heartbeatFormat sseHeartbeatFormat,
+) {
 	ctx := c.Request.Context()
 	clientDisconnected := false
-
-	if formatErr == nil {
-		formatErr = FormatStreamError
-	}
 
 	defer func() {
 		clearSSEWriteDeadline(ctx, c.Writer)
@@ -359,6 +384,7 @@ func writeSSEStreamWithHeartbeat(
 	ctxDone := ctx.Done()
 	eventsAfterCancel := 0
 	terminalSeen := false
+	terminalTracker := orchestrator.NewStreamTerminalTracker(streamExpectedChoices(stream))
 	heartbeatCount := 0
 
 	for {
@@ -388,7 +414,7 @@ func writeSSEStreamWithHeartbeat(
 			}
 
 			cur := result.event
-			if orchestrator.IsTerminalStreamEvent(cur) {
+			if terminalTracker.Observe(cur) {
 				terminalSeen = true
 			}
 
@@ -436,11 +462,15 @@ func writeSSEStreamEnd(
 	c *gin.Context,
 	ctx context.Context,
 	streamErr error,
-	formatErr StreamErrorFormatter,
+	formatErr StreamErrorEncoder,
 	terminalSeen bool,
 	clientDisconnected *bool,
 ) {
 	switch {
+	case terminalSeen:
+		if streamErr != nil && !errors.Is(streamErr, context.Canceled) {
+			log.Warn(ctx, "Stream error after terminal event was delivered, suppressing trailing error event", log.Cause(streamErr))
+		}
 	case errors.Is(ctx.Err(), context.DeadlineExceeded) &&
 		(streamErr == nil || errors.Is(streamErr, context.Canceled) || errors.Is(streamErr, context.DeadlineExceeded)):
 		streamErr = ctx.Err()
@@ -456,9 +486,6 @@ func writeSSEStreamEnd(
 			if !errors.Is(streamErr, context.Canceled) {
 				log.Warn(ctx, "Stream error after client disconnected", log.Cause(streamErr))
 			}
-		} else if terminalSeen {
-			log.Warn(ctx, "Stream error after terminal event was delivered, suppressing trailing error event",
-				log.Cause(streamErr))
 		} else {
 			log.Error(ctx, "Error in stream", log.Cause(streamErr))
 			if err := writeSSEErrorEvent(ctx, c.Writer, formatErr, streamErr); err != nil {
@@ -468,10 +495,6 @@ func writeSSEStreamEnd(
 		}
 	case errors.Is(ctx.Err(), context.Canceled):
 		*clientDisconnected = true
-
-		if streamErr != nil && !errors.Is(streamErr, context.Canceled) {
-			log.Warn(ctx, "Stream error after client disconnected", log.Cause(streamErr))
-		}
 	case !terminalSeen:
 		log.Error(ctx, "Stream ended without terminal event, reporting incomplete stream to client",
 			log.Cause(orchestrator.ErrStreamIncomplete))
@@ -482,8 +505,12 @@ func writeSSEStreamEnd(
 	}
 }
 
-func writeSSEErrorEvent(ctx context.Context, writer http.ResponseWriter, formatErr StreamErrorFormatter, err error) error {
-	return writeSSEEvent(ctx, writer, "error", formatErr(ctx, orchestrator.ClassifyUpstreamTransportError(err)))
+func writeSSEErrorEvent(ctx context.Context, writer http.ResponseWriter, encodeErr StreamErrorEncoder, err error) error {
+	event, encodeError := encodeErr(ctx, orchestrator.ClassifyUpstreamTransportError(err))
+	if encodeError != nil {
+		return encodeError
+	}
+	return writeSSEEvent(ctx, writer, event.Type, event.Data)
 }
 
 func writeSSEEvent(ctx context.Context, writer http.ResponseWriter, event string, data any) error {
