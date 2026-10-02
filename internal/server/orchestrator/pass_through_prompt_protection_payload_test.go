@@ -49,8 +49,8 @@ func TestPromptProtectedPassThroughPayload(t *testing.T) {
 		},
 		{
 			name: "OpenAI Responses message text fallbacks", format: llm.APIFormatOpenAIResponse,
-			body:   `{"model":"alias","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"secret-content"}]},{"type":"message","role":"user","text":"secret-message"},{"role":"user","text":"secret-default"},{"type":"input_text","role":"user","text":"secret-flat"}],"provider_option":{"keep":true}}`,
-			masked: []string{"input.0.content.0.text", "input.1.text", "input.2.text", "input.3.text"},
+			body:   `{"model":"alias","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"secret-content"}]},{"type":"message","role":"user","text":"secret-message"},{"role":"user","text":"secret-default"},{"type":"input_text","role":"user","text":"secret-flat"},{"type":"message","role":"user","content":null,"text":"secret-null"}],"provider_option":{"keep":true}}`,
+			masked: []string{"input.0.content.0.text", "input.1.text", "input.2.text", "input.3.text", "input.4.text"},
 		},
 		{
 			name: "OpenAI Responses tool outputs", format: llm.APIFormatOpenAIResponse,

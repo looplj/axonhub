@@ -330,9 +330,9 @@ func openAIResponsesPromptTextFields(body []byte) []rawPromptTextField {
 
 		switch itemType {
 		case "message", "input_text", "":
-			// Inbound prefers content over text for all three message forms. The
-			// text fallback must be patched even after another field matched a rule.
-			if gjson.GetBytes(body, itemPath+".content").Exists() {
+			// Inbound prefers non-null content over text for all three message forms.
+			// Missing or null content must still patch the text fallback after other matches.
+			if gjson.GetBytes(body, itemPath+".content").Type != gjson.Null {
 				fields = append(fields, rawContentTextFields(body, itemPath+".content", role, "input_text", "output_text", "text")...)
 			} else {
 				fields = append(fields, rawStringField(body, itemPath+".text", role)...)
