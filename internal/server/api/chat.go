@@ -138,6 +138,10 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 			return
 		}
 
+		if strings.HasSuffix(genericReq.Path, "/responses") {
+			handlers.writeResponsesSSEStream(c, stream)
+			return
+		}
 		writeSSEStream(c, stream, FormatStreamError, handlers.sseKeepAlive, handlers.sseHeartbeatFormat)
 	}
 }
@@ -469,9 +473,6 @@ func writeSSEStreamEnd(
 			if !errors.Is(streamErr, context.Canceled) {
 				log.Warn(ctx, "Stream error after client disconnected", log.Cause(streamErr))
 			}
-		} else if terminalSeen {
-			log.Warn(ctx, "Stream error after terminal event was delivered, suppressing trailing error event",
-				log.Cause(streamErr))
 		} else {
 			log.Error(ctx, "Error in stream", log.Cause(streamErr))
 			if err := writeSSEErrorEvent(ctx, c.Writer, formatErr, streamErr); err != nil {
