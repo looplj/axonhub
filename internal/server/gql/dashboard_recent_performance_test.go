@@ -202,6 +202,61 @@ func TestLast24HoursPerformance_SingleStreamingExecution(t *testing.T) {
 	assert.Equal(t, 400, *stats.FirstTokenP90Ms)
 }
 
+// A cache hit can report a first-token latency at or beyond the total latency. The
+// generation time clamps to biz.MinLatencyMs instead of contributing a zero duration:
+// otherwise the request's tokens enter the numerator with no time in the denominator
+// and inflate the rate of the whole window.
+func TestLast24HoursPerformance_ClampsCacheHitGenerationTime(t *testing.T) {
+	resolver, ctx, client := setupRecentPerformanceResolver(t)
+	defer client.Close()
+
+	now := time.Now().UTC()
+
+	p, err := client.Project.Create().SetName("test-project").SetStatus(project.StatusActive).Save(ctx)
+	require.NoError(t, err)
+
+	req, err := client.Request.Create().
+		SetProjectID(p.ID).
+		SetAPIKeyID(1).
+		SetModelID("gpt-4").
+		SetFormat("openai/chat_completions").
+		SetStatus(request.StatusCompleted).
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetCreatedAt(now.Add(-time.Hour)).
+		Save(ctx)
+	require.NoError(t, err)
+
+	client.UsageLog.Create().
+		SetRequestID(req.ID).
+		SetAPIKeyID(1).
+		SetProjectID(p.ID).
+		SetChannelID(1).
+		SetModelID("gpt-4").
+		SetCompletionTokens(500).
+		SetCreatedAt(now.Add(-time.Hour)).
+		SaveX(ctx)
+
+	client.RequestExecution.Create().
+		SetProjectID(p.ID).
+		SetRequestID(req.ID).
+		SetChannelID(1).
+		SetModelID("gpt-4").
+		SetRequestBody(objects.JSONRawMessage(`{}`)).
+		SetStatus(requestexecution.StatusCompleted).
+		SetStream(true).
+		SetMetricsLatencyMs(50).
+		SetMetricsFirstTokenLatencyMs(80).
+		SetCreatedAt(now.Add(-time.Hour)).
+		SetUpdatedAt(now).
+		SaveX(ctx)
+
+	stats := resolver.last24HoursPerformance(ctx)
+
+	// 500 tokens over the 10ms floor the clamp guarantees.
+	require.NotNil(t, stats.Throughput)
+	assert.InDelta(t, 50000.0, *stats.Throughput, 0.001)
+}
+
 // Nearest rank is the value at index ceil(n*percent/100)-1, so a two-sample window reports
 // the lower of the two at p50 and the higher one at p90.
 func TestNearestRankOffset(t *testing.T) {
