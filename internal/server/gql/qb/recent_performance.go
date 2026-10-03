@@ -2,20 +2,20 @@ package qb
 
 import "fmt"
 
-// recentThroughputCoreSQL is the effective generation time of one completed execution:
+// recentGenerationSQL is the effective generation time of one completed execution:
 // the full latency for non-streaming calls, and the latency minus the first-token wait
-// for streaming ones. The result is clamped to biz.MinLatencyMs, matching
+// for streaming ones.
+const recentGenerationSQL = `CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
+                 THEN se.metrics_latency_ms - se.metrics_first_token_latency_ms
+                 ELSE se.metrics_latency_ms END`
+
+// recentThroughputCoreSQL clamps that generation time to biz.MinLatencyMs, matching
 // biz.PerformanceRecord.Calculate, the requests table and the analytics tok/s: a cache
 // hit can report a first-token latency at or beyond the total latency, and letting that
 // contribute a zero duration inflates every rate that sums these durations.
-const recentThroughputCoreSQL = `CASE WHEN se.stream AND se.metrics_first_token_latency_ms IS NOT NULL
-                 THEN CASE WHEN se.metrics_latency_ms - se.metrics_first_token_latency_ms < 10
-                      THEN 10
-                      ELSE se.metrics_latency_ms - se.metrics_first_token_latency_ms END
-                 ELSE CASE WHEN se.metrics_latency_ms < 10
-                      THEN 10
-                      ELSE se.metrics_latency_ms END
-            END`
+const recentThroughputCoreSQL = `CASE WHEN ` + recentGenerationSQL + ` < 10
+                 THEN 10
+                 ELSE ` + recentGenerationSQL + ` END`
 
 // BuildRecentThroughputTotalsQuery returns the window's summed completion tokens and
 // summed effective generation time. Both are returned raw and divided in Go so the
