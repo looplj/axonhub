@@ -50,17 +50,19 @@ export function ApiKeysEditDialog() {
 
     setIsSubmitting(true);
     try {
-      const allowedIps = ipRestrictionEnabled
-        ? ipInput
-            .split(',')
-            .map((s) => s.trim())
-            .filter((s) => s !== '')
-        : [];
+      const input: UpdateApiKeyInput = { name: data.name };
 
-      const input: UpdateApiKeyInput = {
-        name: data.name,
-        allowedIps,
-      };
+      if (ipRestrictionEnabled) {
+        input.allowedIps = ipInput
+          .split(',')
+          .map((s) => s.trim())
+          .filter((s) => s !== '');
+      } else {
+        // An empty allowedIps array means "leave unchanged" on the backend, so
+        // turning the switch off must clear the list explicitly. Without this the
+        // mutation reports success while the stored restriction survives.
+        input.clearAllowedIps = true;
+      }
 
       if (selectedApiKey.type === 'service_account') {
         input.scopes = data.scopes;

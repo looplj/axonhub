@@ -149,6 +149,9 @@ export const updateApiKeyInputSchemaFactory = (t: (key: string) => string) =>
     name: z.string().min(1, t('apikeys.validation.nameRequired')).optional(),
     scopes: z.array(z.string()).optional(),
     allowedIps: z.array(z.string()).optional(),
+    // The backend treats an empty allowedIps array as "leave unchanged", so a
+    // cleared restriction must be signalled explicitly.
+    clearAllowedIps: z.boolean().optional(),
   });
 
 // Default schema for backward compatibility
@@ -156,6 +159,7 @@ export const updateApiKeyInputSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
   scopes: z.array(z.string()).optional(),
   allowedIps: z.array(z.string()).optional(),
+  clearAllowedIps: z.boolean().optional(),
 });
 export type UpdateApiKeyInput = z.infer<typeof updateApiKeyInputSchema>;
 
