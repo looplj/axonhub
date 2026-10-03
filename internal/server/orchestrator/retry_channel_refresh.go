@@ -41,10 +41,14 @@ var errChannelUnavailableForRetry = errors.New("current channel is no longer ava
 //   - the channel is still enabled, the credential this attempt used carries an
 //     active disable record, and another usable credential remains: rebuild the
 //     candidate from the stored channel, so that retries authenticate with the
-//     currently enabled credentials;
-//   - anything else — no database in the context, a transient lookup failure, a
-//     channel served without credentials (local Ollama deployments) — leaves the
-//     candidate untouched and keeps retry behavior identical to upstream.
+//     currently enabled credentials. A rebuild that cannot produce a usable
+//     transformer leaves the candidate unable to authenticate with anything the
+//     channel still accepts: give up on it, exactly as when no credential is
+//     left;
+//   - anything else — no database in the context, a transient lookup failure of
+//     the pinned channel itself, a channel served without credentials (local
+//     Ollama deployments) — leaves the candidate untouched and keeps retry
+//     behavior identical to upstream.
 func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Context) error {
 	if p == nil || p.state == nil {
 		return nil
@@ -112,10 +116,14 @@ func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Co
 
 	fresh, err := p.state.ChannelService.GetChannel(ctx, entity.ID)
 	if err != nil || fresh == nil {
-		// Degraded rebuild: the channel changed under us, or it lost its remaining
-		// credentials between the read and the rebuild. Keep the pinned candidate
-		// instead of failing the whole retry, exactly as before this guard existed.
-		return nil //nolint:nilerr // deliberate degradation: retry with the pinned snapshot
+		// The refresh was required because the credential this attempt used is
+		// gone, and the refreshed snapshot is the only way this candidate can
+		// authenticate with an enabled one. Without it, retrying would send that
+		// credential again, so stop the retry for this candidate instead of
+		// spending the remaining same-channel budget on a request that cannot
+		// succeed. The pipeline switches to the next candidate, or ends the
+		// request when there is none.
+		return errChannelUnavailableForRetry
 	}
 
 	previous := candidate.Channel
@@ -123,11 +131,13 @@ func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Co
 
 	rebuilt := selectOutboundForCandidate(candidate)
 	if rebuilt == nil {
-		// The refreshed channel offers no transformer for this protocol; keep the
-		// previous one rather than leaving the request without a transformer.
+		// The refreshed channel offers no transformer for this protocol, so the
+		// pinned candidate — and the credential it carries — is still the only one
+		// available. Restore the candidate and stop retrying it for the same
+		// reason as above.
 		candidate.Channel = previous
 
-		return nil
+		return errChannelUnavailableForRetry
 	}
 
 	p.wrapped = rebuilt

@@ -358,4 +358,32 @@ func TestRefreshChannelBeforeRetryChannelUnavailable(t *testing.T) {
 		require.NoError(t, transformer.refreshChannelBeforeRetry(bareCtx))
 		require.Same(t, snapshot, transformer.state.CurrentCandidate.Channel)
 	})
+
+	t.Run("a refresh that cannot be rebuilt ends the retry", func(t *testing.T) {
+		// A github-copilot channel is only usable with OAuth credentials, so the
+		// stored channel cannot be rebuilt into an outbound transformer even though
+		// its credentials still list another usable API key. The candidate can only
+		// keep authenticating with the credential that was just disabled, so the
+		// retry stops instead of spending the remaining budget on it.
+		entity := client.Channel.Create().
+			SetType(channel.TypeGithubCopilot).
+			SetName("guard-unbuildable").
+			SetBaseURL("https://example.com").
+			SetCredentials(objects.ChannelCredentials{APIKeys: []string{"key-1", "key-2"}}).
+			SetSupportedModels([]string{"test-model"}).
+			SetDefaultTestModel("test-model").
+			SetStatus(channel.StatusEnabled).
+			SaveX(ctx)
+
+		client.Channel.UpdateOneID(entity.ID).
+			SetDisabledAPIKeys([]objects.DisabledAPIKey{{Key: "key-1"}}).
+			SaveX(ctx)
+
+		snapshot := pinnedRetryGuardChannel(t, entity.ID, []string{"key-1"})
+		transformer := newRetryGuardTransformer(channelService, snapshot, "key-1")
+
+		err := transformer.refreshChannelBeforeRetry(ctx)
+		require.ErrorIs(t, err, errChannelUnavailableForRetry)
+		require.Same(t, snapshot, transformer.state.CurrentCandidate.Channel)
+	})
 }
