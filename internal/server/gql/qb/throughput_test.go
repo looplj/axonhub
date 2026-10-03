@@ -225,15 +225,17 @@ func TestBuildThroughputQuery(t *testing.T) {
 			wantNotContains:       []string{"$1", "ROW_NUMBER()"},
 		},
 
-		// ThroughputQueryByModel tests
+		// ThroughputQueryByModel tests. The model key is the model actually executed
+		// after channel model mapping (se.model_id), never the requested model on the
+		// requests row, so no query mode may join requests.
 		{
 			name:                  "by model with dollar placeholders and ROW_NUMBER",
 			useDollarPlaceholders: true,
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
 			mode:                  ThroughputModeRowNumber,
-			wantContains:          []string{"$1", "JOIN requests r ON", "LEFT JOIN models m ON", "r.model_id", "model_name", "COALESCE", "ROW_NUMBER()", "LIMIT 10"},
-			wantNotContains:       []string{},
+			wantContains:          []string{"$1", "LEFT JOIN models m ON se.model_id = m.model_id", "se.model_id", "model_name", "COALESCE", "ROW_NUMBER()", "LIMIT 10"},
+			wantNotContains:       []string{"JOIN requests r ON", "r.model_id"},
 		},
 		{
 			name:                  "by model with question mark placeholders and ROW_NUMBER",
@@ -241,8 +243,8 @@ func TestBuildThroughputQuery(t *testing.T) {
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
 			mode:                  ThroughputModeRowNumber,
-			wantContains:          []string{"?", "JOIN requests r ON", "LEFT JOIN models m ON", "r.model_id", "model_name", "COALESCE", "ROW_NUMBER()", "LIMIT 10"},
-			wantNotContains:       []string{"$1"},
+			wantContains:          []string{"?", "LEFT JOIN models m ON se.model_id = m.model_id", "se.model_id", "model_name", "COALESCE", "ROW_NUMBER()", "LIMIT 10"},
+			wantNotContains:       []string{"$1", "JOIN requests r ON", "r.model_id"},
 		},
 		{
 			name:                  "by model with dollar placeholders and MAX_ID",
@@ -250,8 +252,8 @@ func TestBuildThroughputQuery(t *testing.T) {
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
 			mode:                  ThroughputModeMaxID,
-			wantContains:          []string{"$1", "JOIN requests r ON", "LEFT JOIN models m ON", "r.model_id", "model_name", "COALESCE", "MAX(re2.id)", "LIMIT 10"},
-			wantNotContains:       []string{"ROW_NUMBER()"},
+			wantContains:          []string{"$1", "LEFT JOIN models m ON se.model_id = m.model_id", "se.model_id", "model_name", "COALESCE", "MAX(re2.id)", "LIMIT 10"},
+			wantNotContains:       []string{"ROW_NUMBER()", "JOIN requests r ON", "r.model_id"},
 		},
 		{
 			name:                  "by model with question mark placeholders and MAX_ID",
@@ -259,8 +261,8 @@ func TestBuildThroughputQuery(t *testing.T) {
 			queryType:             ThroughputQueryByModel,
 			limit:                 10,
 			mode:                  ThroughputModeMaxID,
-			wantContains:          []string{"?", "JOIN requests r ON", "LEFT JOIN models m ON", "r.model_id", "model_name", "COALESCE", "MAX(re2.id)", "LIMIT 10"},
-			wantNotContains:       []string{"$1", "ROW_NUMBER()"},
+			wantContains:          []string{"?", "LEFT JOIN models m ON se.model_id = m.model_id", "se.model_id", "model_name", "COALESCE", "MAX(re2.id)", "LIMIT 10"},
+			wantNotContains:       []string{"$1", "ROW_NUMBER()", "JOIN requests r ON", "r.model_id"},
 		},
 
 		// Limit edge cases
@@ -610,9 +612,9 @@ func TestAllowedQueryConfigs(t *testing.T) {
 
 	// Test ByModel config
 	modelConfig := AllowedQueryConfigs[ThroughputQueryByModel]
-	assert.Contains(t, modelConfig.SelectColumns, "model_id", "should include model_id")
+	assert.Contains(t, modelConfig.SelectColumns, "se.model_id", "should group by the executed model id")
 	assert.Contains(t, modelConfig.SelectColumns, "model_name", "should include model_name")
-	assert.Contains(t, modelConfig.JoinClause, "requests r ON", "should join requests table")
+	assert.NotContains(t, modelConfig.JoinClause, "requests r ON", "should not join requests; the executed model is on request_executions")
 	assert.Contains(t, modelConfig.JoinClause, "models m ON", "should join models table")
-	assert.Contains(t, modelConfig.GroupBy, "model_id", "should group by model_id")
+	assert.Contains(t, modelConfig.GroupBy, "se.model_id", "should group by the executed model id")
 }
