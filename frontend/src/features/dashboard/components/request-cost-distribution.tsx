@@ -94,21 +94,24 @@ export function RequestCostDistribution({ startTime, endTime, timeWindow, curren
       row.requests += count;
       byKey.set(key, row);
     };
-    const addCost = (key: string, cost: number) => {
-      const row = byKey.get(key) ?? { key, name: key, requests: 0, cost: 0 };
+    // A name is passed alongside the key because the two resolvers take their top rows
+    // independently: a key can rank in cost without ranking in requests, and a row that
+    // starts in the cost list has no other source for its display name.
+    const addCost = (key: string, name: string | undefined, cost: number) => {
+      const row = byKey.get(key) ?? { key, name: name || key, requests: 0, cost: 0 };
       row.cost += cost;
       byKey.set(key, row);
     };
 
     if (dimension === 'channel') {
       for (const item of channelsRequests.data ?? []) addRequests(item.channelName, item.channelName, item.count);
-      for (const item of channelsCost.data ?? []) addCost(item.channelName, item.cost);
+      for (const item of channelsCost.data ?? []) addCost(item.channelName, item.channelName, item.cost);
     } else if (dimension === 'model') {
       for (const item of modelsRequests.data ?? []) addRequests(item.modelId, item.modelId, item.count);
-      for (const item of modelsCost.data ?? []) addCost(item.modelId, item.cost);
+      for (const item of modelsCost.data ?? []) addCost(item.modelId, item.modelId, item.cost);
     } else {
       for (const item of apiKeysRequests.data ?? []) addRequests(item.apiKeyId, item.apiKeyName, item.count);
-      for (const item of apiKeysCost.data ?? []) addCost(item.apiKeyId, item.cost);
+      for (const item of apiKeysCost.data ?? []) addCost(item.apiKeyId, item.apiKeyName, item.cost);
     }
 
     return [...byKey.values()].sort((a, b) => b.requests - a.requests);
