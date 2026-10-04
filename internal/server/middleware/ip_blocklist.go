@@ -73,7 +73,12 @@ func isBlockedAddr(clientAddr netip.Addr, blockedIPs []string) bool {
 				continue
 			}
 
-			if prefix.Contains(clientAddr) {
+			// Only prefixes within the IPv4-mapped address space can be
+			// represented as IPv4 prefixes without changing their range.
+			if prefix.Addr().Is4In6() && prefix.Bits() >= 96 {
+				prefix = netip.PrefixFrom(prefix.Addr().Unmap(), prefix.Bits()-96)
+			}
+			if prefix.Contains(clientAddr) || prefix.Contains(clientAddr.Unmap()) {
 				return true
 			}
 
@@ -86,7 +91,7 @@ func isBlockedAddr(clientAddr netip.Addr, blockedIPs []string) bool {
 			continue
 		}
 
-		if blockedAddr == clientAddr {
+		if blockedAddr.Unmap() == clientAddr.Unmap() {
 			return true
 		}
 	}
