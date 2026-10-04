@@ -581,6 +581,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 			return nil, err
 		}
 
+		if err := NormalizeChannelTimeouts(input.Settings); err != nil {
+			return nil, err
+		}
+
 		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
 			return nil, err
 		}
@@ -668,6 +672,34 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateCh
 	svc.reloadChannelsAfterCommit(ctx)
 
 	return created, nil
+}
+
+// NormalizeChannelTimeouts validates per-channel response timeout overrides.
+// nil (or non-positive) values inherit the system retry policy; positive
+// values are capped at maxRetryResponseTimeoutSeconds like the global policy.
+func NormalizeChannelTimeouts(settings *objects.ChannelSettings) error {
+	if settings == nil {
+		return nil
+	}
+
+	normalize := func(name string, v **int) error {
+		if *v == nil || **v <= 0 {
+			*v = nil
+			return nil
+		}
+
+		if **v > maxRetryResponseTimeoutSeconds {
+			return fmt.Errorf("invalid %s %d: must be between 1 and %d", name, **v, maxRetryResponseTimeoutSeconds)
+		}
+
+		return nil
+	}
+
+	if err := normalize("streamFirstEventTimeoutSeconds", &settings.StreamFirstEventTimeoutSeconds); err != nil {
+		return err
+	}
+
+	return normalize("nonStreamResponseTimeoutSeconds", &settings.NonStreamResponseTimeoutSeconds)
 }
 
 // NormalizeRetryableStatusCodes validates, deduplicates, and sorts additional
@@ -976,6 +1008,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 
 		if err := NormalizeRetryableStatusCodes(input.Settings); err != nil {
+			return nil, err
+		}
+
+		if err := NormalizeChannelTimeouts(input.Settings); err != nil {
 			return nil, err
 		}
 

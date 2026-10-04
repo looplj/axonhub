@@ -681,6 +681,27 @@ func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
 	return p.state.CurrentCandidate.Channel
 }
 
+// ResponseTimeoutOverride implements pipeline.ChannelTimeoutProvider. Channels
+// may override the global response timeouts via their settings (e.g. a slow
+// relay that needs longer than the global stream first-event timeout).
+// Non-positive values mean "inherit the pipeline default".
+func (p *PersistentOutboundTransformer) ResponseTimeoutOverride() (streamFirstEvent, nonStream time.Duration) {
+	channel := p.GetCurrentChannel()
+	if channel == nil || channel.Channel == nil || channel.Settings == nil {
+		return 0, 0
+	}
+
+	if v := channel.Settings.StreamFirstEventTimeoutSeconds; v != nil && *v > 0 {
+		streamFirstEvent = time.Duration(*v) * time.Second
+	}
+
+	if v := channel.Settings.NonStreamResponseTimeoutSeconds; v != nil && *v > 0 {
+		nonStream = time.Duration(*v) * time.Second
+	}
+
+	return streamFirstEvent, nonStream
+}
+
 // trackCurrentChannelSelection records an actual retry attempt. Initial
 // attempts are tracked by LoadBalancedSelector after it assembles the final
 // priority-ordered candidate list.

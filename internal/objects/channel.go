@@ -238,6 +238,18 @@ type ChannelSettings struct {
 	// case-sensitive substring of the error text.
 	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
 
+	// StreamFirstEventTimeoutSeconds overrides the global stream first-event
+	// timeout for this channel, in seconds. nil (or <= 0) inherits the system
+	// retry policy. Providers slower than the global timeout (e.g. relays
+	// with 60s+ TTFT) need a larger value here instead of raising the
+	// global timeout for every channel.
+	StreamFirstEventTimeoutSeconds *int `json:"streamFirstEventTimeoutSeconds,omitempty"`
+
+	// NonStreamResponseTimeoutSeconds overrides the global non-streaming
+	// response timeout for this channel, in seconds. nil (or <= 0) inherits
+	// the system retry policy.
+	NonStreamResponseTimeoutSeconds *int `json:"nonStreamResponseTimeoutSeconds,omitempty"`
+
 	// ModelProtocols force-specifies the outbound protocols for specific models of
 	// this channel. Each entry's apiFormats must reference api_formats the channel
 	// already has endpoints for. When set for a model, endpoint selection is
