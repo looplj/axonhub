@@ -280,7 +280,7 @@ func TestUpstreamModelPersistence_CodexImageResponsesStream(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			require.Equal(t, string(format), providerRequest.APIFormat)
+			require.Equal(t, llm.APIFormatOpenAIResponse.String(), providerRequest.APIFormat)
 			require.Equal(t, llm.APIFormatOpenAIResponse, outbound.APIFormat())
 			state.RawProviderRequest = providerRequest
 			execution := createUpstreamModelTestExecution(t, ctx, db, state.Request, "gpt-image-2", format, true)

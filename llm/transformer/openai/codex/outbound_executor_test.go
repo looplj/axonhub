@@ -215,7 +215,7 @@ func TestCodexOutbound_ImageGenerationRequestUsesResponsesImageTool(t *testing.T
 	require.NoError(t, err)
 
 	require.Equal(t, llm.RequestTypeImage.String(), req.RequestType)
-	require.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), req.APIFormat)
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), req.APIFormat)
 	require.Equal(t, "text/event-stream", req.Headers.Get("Accept"))
 	require.Equal(t, accessToken, req.Auth.APIKey)
 
@@ -239,6 +239,45 @@ func TestCodexOutbound_ImageGenerationRequestUsesResponsesImageTool(t *testing.T
 	require.Equal(t, "input_text", payload.Input.Items[0].Content.Items[0].Type)
 	require.Equal(t, "draw a circuit board city", *payload.Input.Items[0].Content.Items[0].Text)
 	require.Equal(t, "You are a helpful assistant that can generate images based on user requests. Must use the image generation tool.", payload.Instructions)
+}
+
+func TestCodexOutbound_ImageMainModel(t *testing.T) {
+	for _, tt := range []struct {
+		name, configured, want, tier string
+	}{
+		{name: "unset", want: "gpt-6-luna"},
+		{name: "blank", configured: "  ", want: "gpt-6-luna"},
+		{name: "custom", configured: " gpt-6-sol ", want: "gpt-6-sol"},
+		{name: "image model", configured: "gpt-image-2", want: "gpt-6-luna"},
+		{name: "image model case", configured: " GPT-IMAGE-1 ", want: "gpt-6-luna"},
+		{name: "fast suffix preserved", configured: "gpt-6-sol-fast", want: "gpt-6-sol-fast"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			outbound, err := NewOutboundTransformer(Params{
+				ImageMainModel: tt.configured,
+				TokenProvider:  oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{AccessToken: "test-token"}),
+			})
+			require.NoError(t, err)
+			for _, format := range []llm.APIFormat{llm.APIFormatOpenAIImageGeneration, llm.APIFormatOpenAIImageEdit} {
+				req, err := outbound.TransformRequest(t.Context(), &llm.Request{
+					Model: "gpt-image-2", RequestType: llm.RequestTypeImage, APIFormat: format,
+					Image: &llm.ImageRequest{Prompt: "draw a tree", Images: [][]byte{[]byte("image")}},
+				})
+				require.NoError(t, err)
+				require.Equal(t, tt.want, gjson.GetBytes(req.Body, "model").String())
+				require.Equal(t, "gpt-image-2", gjson.GetBytes(req.Body, "tools.0.model").String())
+				require.Equal(t, tt.tier, gjson.GetBytes(req.Body, "service_tier").String())
+			}
+
+			// The setting only changes Images-to-Responses conversion.
+			req, err := outbound.TransformRequest(t.Context(), &llm.Request{
+				Model: "gpt-6-astra", RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIResponse,
+				Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
+			})
+			require.NoError(t, err)
+			require.Equal(t, "gpt-6-astra", gjson.GetBytes(req.Body, "model").String())
+		})
+	}
 }
 
 func TestCodexOutbound_ImageEditRequestUsesResponsesImageTool(t *testing.T) {
@@ -278,7 +317,7 @@ func TestCodexOutbound_ImageEditRequestUsesResponsesImageTool(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, llm.RequestTypeImage.String(), req.RequestType)
-	require.Equal(t, llm.APIFormatOpenAIImageEdit.String(), req.APIFormat)
+	require.Equal(t, llm.APIFormatOpenAIResponse.String(), req.APIFormat)
 
 	var payload responses.Request
 	require.NoError(t, json.Unmarshal(req.Body, &payload))

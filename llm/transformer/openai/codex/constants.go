@@ -18,7 +18,7 @@ func DefaultModels() []string {
 }
 
 const (
-	defaultImageMainModel = "gpt-5.4-mini"
+	defaultImageMainModel = "gpt-6-luna"
 
 	AxonHubOriginator = "axonhub"
 	AuthorizeURL      = "https://auth.openai.com/oauth/authorize"
