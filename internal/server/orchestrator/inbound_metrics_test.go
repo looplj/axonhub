@@ -83,6 +83,7 @@ func TestHasClientVisibleOutput(t *testing.T) {
 		{"gemini final output", "", `{"candidates":[{"content":{"parts":[{"text":"hello"}]},"finishReason":"STOP"}]}`, true},
 		{"audio", "audio/mpeg", "binary", true},
 		{"ai sdk text", "text-delta", `{"delta":"hello"}`, true},
+		{"ai sdk tool input", "tool-input-delta", `{"inputTextDelta":"{\\"query\\":\\"hello\\"}"}`, true},
 	}
 	require.False(t, hasClientVisibleOutput(nil))
 	for _, tt := range tests {

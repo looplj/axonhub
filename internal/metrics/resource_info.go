@@ -43,6 +43,7 @@ func RegisterResourceInfo(meter metric.Meter, load func(context.Context) (Resour
 	}
 	var snapshot struct {
 		sync.RWMutex
+
 		names ResourceNames
 	}
 	refresh := func() {
@@ -107,6 +108,7 @@ func RegisterResourceInfo(meter metric.Meter, load func(context.Context) (Resour
 
 type resourceInfoRegistration struct {
 	embedded.Registration
+
 	registration metric.Registration
 	stop         chan struct{}
 }

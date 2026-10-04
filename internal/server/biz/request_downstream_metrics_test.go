@@ -170,7 +170,6 @@ func TestConcurrentAsyncCompletionEmitsDownstreamMetricsOnce(t *testing.T) {
 	})
 	var group errgroup.Group
 	for _, value := range []string{"first", "second"} {
-		value := value
 		group.Go(func() (err error) {
 			defer func() {
 				if recovered := recover(); recovered != nil {

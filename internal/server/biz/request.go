@@ -831,10 +831,8 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 	}
 	recordDownstreamCompletionMetrics(ctx, req, request.StatusCompleted)
 
-	if _, transactional := client.Driver().(dialect.Tx); transactional {
-		return nil
-	}
-	if storeResponseBody && s.shouldUseExternalStorage(ctx, dataStorage) {
+	_, transactional := client.Driver().(dialect.Tx)
+	if !transactional && storeResponseBody && s.shouldUseExternalStorage(ctx, dataStorage) {
 		key := GenerateResponseBodyKey(req.ProjectID, requestID)
 		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
 			log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))

@@ -148,6 +148,8 @@ func hasClientVisibleOutput(event *httpclient.StreamEvent) bool {
 		return item.Get("type").String() == "function_call" && hasOutputString(item, "name")
 	case "text-delta", "reasoning-delta": // AI SDK data stream
 		return hasOutputString(data, "delta")
+	case "tool-input-delta": // AI SDK tool input stream
+		return hasOutputString(data, "inputTextDelta")
 	}
 
 	for _, choice := range data.Get("choices").Array() {
