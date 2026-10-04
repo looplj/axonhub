@@ -8,6 +8,8 @@
   "playground.settings.model": "Model",
   "playground.settings.selectModel": "Select a model",
   "playground.settings.temperature": "Temperature",
+  "playground.settings.sendTemperature": "Send temperature",
+  "playground.settings.temperatureOmitted": "Temperature is omitted. The model uses its default.",
   "playground.settings.maxTokens": "Max Tokens",
   "playground.settings.systemPrompt": "System Prompt",
   "playground.settings.defaultSystemPrompt": "You are a helpful assistant.",
