@@ -102,11 +102,25 @@ func clineErrorMessage(raw any) string {
 	}
 }
 
+// isClineBalanceExhausted reports whether an error message indicates the
+// Cline credits balance is exhausted (e.g. "Insufficient balance. Your Cline
+// Credits balance is $-0.00"). Such failures are permanent until topped up.
+func isClineBalanceExhausted(message string) bool {
+	lower := strings.ToLower(message)
+	if strings.Contains(lower, "insufficient balance") {
+		return true
+	}
+	if strings.Contains(lower, "balance") &&
+		(strings.Contains(lower, "cline") || strings.Contains(lower, "credit")) {
+		return true
+	}
+	return false
+}
+
 func clineResponseError(statusCode int, raw any) *llm.ResponseError {
 	if statusCode == 0 {
 		statusCode = http.StatusBadGateway
 	}
-
 	detail := llm.ErrorDetail{Type: "api_error"}
 
 	switch v := raw.(type) {
@@ -138,6 +152,12 @@ func clineResponseError(statusCode int, raw any) *llm.ResponseError {
 	}
 	if detail.Message == "" {
 		detail.Message = "Cline API error"
+	}
+
+	// Balance/credit exhaustion is permanent: map it to 402 Payment Required
+	// so it fails fast instead of entering the 5xx retry/failover loop.
+	if statusCode != http.StatusPaymentRequired && isClineBalanceExhausted(detail.Message) {
+		statusCode = http.StatusPaymentRequired
 	}
 
 	return &llm.ResponseError{
