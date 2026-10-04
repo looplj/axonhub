@@ -38,7 +38,7 @@ func TestFailedExecutionEmitsLatency(t *testing.T) {
 	require.NoError(t, err)
 	svc := &RequestService{AbstractService: &AbstractService{db: client}}
 	latency := &LatencyMetrics{LatencyMs: lo.ToPtr(int64(2500)), FirstTokenLatencyMs: lo.ToPtr(int64(500))}
-	require.NoError(t, svc.UpdateRequestExecutionStatusWithMetrics(ctx, execution.ID, requestexecution.StatusFailed, "stream failed", nil, latency))
+	require.NoError(t, svc.UpdateRequestExecutionStatusWithMetrics(ctx, execution.ID, requestexecution.StatusFailed, "stream failed", nil, latency, ""))
 	var collected metricdata.ResourceMetrics
 	require.NoError(t, reader.Collect(ctx, &collected))
 	want := map[string]float64{"axonhub_upstream_request_duration_seconds": 2.5, "axonhub_upstream_ttft_seconds": 0.5}

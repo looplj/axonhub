@@ -84,7 +84,7 @@ func TestConcurrentFinalizationKeepsWinningExternalBody(t *testing.T) {
 					log.Error(ctx, "external finalization test panic", log.Cause(err))
 				}
 			}()
-			return svc.UpdateRequestExecutionFinalized(ctx, execution.ID, requestexecution.StatusCompleted, "", id, map[string]string{"winner": id}, nil)
+			return svc.UpdateRequestExecutionFinalized(ctx, execution.ID, requestexecution.StatusCompleted, "", id, map[string]string{"winner": id}, nil, "")
 		})
 	}
 	require.NoError(t, group.Wait())
@@ -174,7 +174,7 @@ func TestExternalFinalizationRetainsBodyOnOffloadFailure(t *testing.T) {
 				})
 			}
 			body := []byte(`{"result":"keep me"}`)
-			require.NoError(t, svc.UpdateRequestExecutionFinalized(ctx, execution.ID, requestexecution.StatusCompleted, "", "response", body, nil))
+			require.NoError(t, svc.UpdateRequestExecutionFinalized(ctx, execution.ID, requestexecution.StatusCompleted, "", "response", body, nil, ""))
 			stored, err := client.RequestExecution.Get(ctx, execution.ID)
 			require.NoError(t, err)
 			require.Equal(t, requestexecution.StatusCompleted, stored.Status)
@@ -192,7 +192,7 @@ func TestExternalFinalizationRollbackDoesNotPublishFile(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = tx.Rollback() })
 	txCtx := ent.NewContext(ctx, tx.Client())
-	require.NoError(t, svc.UpdateRequestExecutionFinalized(txCtx, execution.ID, requestexecution.StatusCompleted, "", "response", []byte(`{"result":"rollback"}`), nil))
+	require.NoError(t, svc.UpdateRequestExecutionFinalized(txCtx, execution.ID, requestexecution.StatusCompleted, "", "response", []byte(`{"result":"rollback"}`), nil, ""))
 	key := GenerateExecutionResponseBodyKey(execution.ProjectID, execution.RequestID, execution.ID)
 	_, err = svc.DataStorageService.LoadData(ctx, ds, key)
 	require.Error(t, err)

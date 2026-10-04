@@ -729,7 +729,7 @@ func (s *RequestService) UpdateRequestFinalized(
 		return nil
 	}
 
-	recordDownstreamCompletionMetrics(ctx, req, request.StatusCompleted)
+	recordDownstreamCompletionMetrics(ctx, req, status)
 
 	if _, transactional := client.Driver().(dialect.Tx); transactional {
 		return nil
@@ -780,6 +780,9 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 		log.Error(ctx, "Failed to get request", log.Cause(err))
 		return err
 	}
+	if isTerminalRequestStatus(req.Status) {
+		return nil
+	}
 
 	var dataStorage *ent.DataStorage
 	if req.DataStorageID != 0 {
@@ -807,47 +810,45 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 		}
 	}
 
-	savedExternalKey := ""
-
+	var responseBodyBytes objects.JSONRawMessage
 	if storeResponseBody {
-		responseBodyBytes, err := xjson.Marshal(responseBody)
+		responseBodyBytes, err = xjson.Marshal(responseBody)
 		if err != nil {
 			log.Error(ctx, "Failed to serialize response body", log.Cause(err))
 			return err
 		}
 
-		if s.shouldUseExternalStorage(ctx, dataStorage) {
-			key := GenerateResponseBodyKey(req.ProjectID, requestID)
-			if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
-				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
-			} else {
-				savedExternalKey = key
-				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
-			}
-		} else {
-			upd = upd.SetResponseBody(responseBodyBytes)
-		}
+		upd = upd.SetResponseBody(responseBodyBytes)
 	}
 
-	// Persist the binary audio to external storage when one is configured.
+	updated, err := s.saveRequestTransition(ctx, upd, requestID)
+	if err != nil {
+		log.Error(ctx, "Failed to update audio request status to completed", log.Cause(err))
+		return err
+	}
+	if !updated {
+		return nil
+	}
+	recordDownstreamCompletionMetrics(ctx, req, request.StatusCompleted)
+
+	if _, transactional := client.Driver().(dialect.Tx); transactional {
+		return nil
+	}
+	if storeResponseBody && s.shouldUseExternalStorage(ctx, dataStorage) {
+		key := GenerateResponseBodyKey(req.ProjectID, requestID)
+		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
+			log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
+		} else if err := client.Request.UpdateOneID(requestID).SetResponseBody(ExternalResponseBodyMarker).Exec(ctx); err != nil {
+			log.Error(ctx, "Failed to mark offloaded response body", log.Cause(err))
+		}
+	}
 	if len(audio) > 0 && s.shouldUseExternalStorage(ctx, dataStorage) {
 		key := GenerateAudioKey(req.ProjectID, requestID, filename)
 		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, audio); err != nil {
 			log.Error(ctx, "Failed to save audio to external storage", log.Cause(err))
-		} else {
-			upd = upd.
-				SetContentSaved(true).
-				SetContentStorageID(dataStorage.ID).
-				SetContentStorageKey(key).
-				SetContentSavedAt(time.Now().UTC())
+		} else if _, err := client.Request.UpdateOneID(requestID).SetContentSaved(true).SetContentStorageID(dataStorage.ID).SetContentStorageKey(key).SetContentSavedAt(time.Now().UTC()).Save(ctx); err != nil {
+			log.Error(ctx, "Failed to record external audio", log.Cause(err))
 		}
-	}
-
-	_, err = upd.Save(ctx)
-	if err != nil {
-		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
-		log.Error(ctx, "Failed to update audio request status to completed", log.Cause(err))
-		return err
 	}
 
 	return nil
@@ -908,42 +909,35 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 		}
 	}
 
-	savedExternalKey := ""
-
+	var responseBodyBytes objects.JSONRawMessage
 	if storeResponseBody {
-		responseBodyBytes, err := xjson.Marshal(responseBody)
+		responseBodyBytes, err = xjson.Marshal(responseBody)
 		if err != nil {
 			log.Error(ctx, "Failed to serialize response body", log.Cause(err))
 			return err
 		}
 
-		// Check if we should use external storage
-		if s.shouldUseExternalStorage(ctx, dataStorage) {
-			// Save to external storage
-			key := GenerateResponseBodyKey(req.ProjectID, requestID)
-
-			err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes)
-			if err != nil {
-				log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
-				// Continue anyway
-			} else {
-				savedExternalKey = key
-				upd = upd.SetResponseBody(ExternalResponseBodyMarker)
-			}
-		} else {
-			// Store in database
-			upd = upd.SetResponseBody(responseBodyBytes)
-		}
+		upd = upd.SetResponseBody(responseBodyBytes)
 	}
 
-	_, err = upd.Save(ctx)
+	updated, err := s.saveRequestTransition(ctx, upd, requestID)
 	if err != nil {
-		s.rollbackExternalPayload(ctx, dataStorage, savedExternalKey)
 		log.Error(ctx, "Failed to update request status", log.Cause(err))
 		return err
 	}
+	if !updated {
+		return nil
+	}
 
 	recordDownstreamCompletionMetrics(ctx, req, status)
+	if isTerminalRequestStatus(status) && storeResponseBody && s.shouldUseExternalStorage(ctx, dataStorage) {
+		key := GenerateResponseBodyKey(req.ProjectID, requestID)
+		if err := s.DataStorageService.SaveData(ctx, dataStorage, key, responseBodyBytes); err != nil {
+			log.Error(ctx, "Failed to save response body to external storage", log.Cause(err))
+		} else if err := client.Request.UpdateOneID(requestID).SetResponseBody(ExternalResponseBodyMarker).Exec(ctx); err != nil {
+			log.Error(ctx, "Failed to mark offloaded response body", log.Cause(err))
+		}
+	}
 
 	return nil
 }
@@ -1028,13 +1022,16 @@ func (s *RequestService) UpdateRequestExecutionFinalized(
 		upd = upd.SetResponseBody(responseBodyBytes)
 	}
 
-	_, err = upd.Save(ctx)
+	updated, err := s.saveExecutionTransition(ctx, upd, executionID)
 	if err != nil {
 		log.Error(ctx, "Failed to update finalized request execution", log.Cause(err), log.Any("status", status))
 		return err
 	}
+	if !updated {
+		return nil
+	}
 
-	recordUpstreamCompletionMetrics(ctx, execution, requestexecution.StatusCompleted, wasTerminal, metrics, req)
+	recordUpstreamCompletionMetrics(ctx, execution, status, wasTerminal, metrics, req)
 
 	// A caller-owned transaction has not committed the winning body yet. Keep
 	// it inline rather than publishing an external file for a possible rollback.
@@ -1144,10 +1141,22 @@ func (s *RequestService) UpdateRequestExecutionStatusWithMetrics(
 		}
 	}
 
-	_, err = upd.Save(ctx)
+	var updated bool
+	if wasTerminal {
+		// Terminal executions may receive a later error correction (for example,
+		// empty-response detection after a provisional response). It must not emit
+		// a second completion metric.
+		_, err = upd.Save(ctx)
+		updated = err == nil
+	} else {
+		updated, err = s.saveExecutionTransition(ctx, upd, executionID)
+	}
 	if err != nil {
 		log.Error(ctx, "Failed to update request execution status", log.Cause(err), log.Any("status", status))
 		return err
+	}
+	if !updated {
+		return nil
 	}
 
 	recordUpstreamCompletionMetrics(ctx, execution, status, wasTerminal, metrics, req)
@@ -1459,6 +1468,23 @@ func (s *RequestService) saveRequestTransition(ctx context.Context, upd *ent.Req
 	if ent.IsNotFound(err) {
 		current, readErr := s.entFromContext(ctx).Request.Get(ctx, id)
 		if readErr == nil && isTerminalRequestStatus(current.Status) {
+			return false, nil
+		}
+	}
+	return false, err
+}
+
+// saveExecutionTransition atomically claims a non-terminal execution transition.
+// Only the caller that changes pending/processing to a terminal state may emit
+// completion metrics or publish an external response.
+func (s *RequestService) saveExecutionTransition(ctx context.Context, upd *ent.RequestExecutionUpdateOne, id int) (bool, error) {
+	_, err := upd.Where(requestexecution.StatusIn(requestexecution.StatusPending, requestexecution.StatusProcessing)).Save(ctx)
+	if err == nil {
+		return true, nil
+	}
+	if ent.IsNotFound(err) {
+		current, readErr := s.entFromContext(ctx).RequestExecution.Get(ctx, id)
+		if readErr == nil && isTerminalExecutionStatus(current.Status) {
 			return false, nil
 		}
 	}

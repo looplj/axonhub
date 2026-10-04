@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -33,7 +34,7 @@ func TestMetricResourceNamesRefresh(t *testing.T) {
 	names, err := svc.snapshot(t.Context())
 	require.NoError(t, err)
 	require.Contains(t, names.Projects, metrics.ResourceName{ID: p.ID, Name: "研发项目"})
-	require.Contains(t, names.Users, metrics.ResourceName{ID: u.ID, Name: "Alice Lee"})
+	require.Contains(t, names.Users, metrics.ResourceName{ID: u.ID, Name: fmt.Sprintf("%d", u.ID)})
 	require.Contains(t, names.APIKeys, metrics.ResourceName{ID: k.ID, Name: "生产调用"})
 	require.Contains(t, names.Channels, metrics.ResourceName{ID: c.ID, Name: "主渠道"})
 
@@ -55,6 +56,12 @@ func TestMetricResourceNamesRefresh(t *testing.T) {
 	require.NoError(t, client.Channel.UpdateOneID(c.ID).SetName("新渠道").Exec(ctx))
 	require.Contains(t, fmtResourceNames(collect()), "主渠道")
 	svc.loadedAt = time.Now().Add(-2 * time.Minute)
+	refreshed, err := svc.snapshot(t.Context())
+	require.NoError(t, err)
+	require.Contains(t, refreshed.Channels, metrics.ResourceName{ID: c.ID, Name: "新渠道"})
+	require.NoError(t, reg.Unregister())
+	reg, err = metrics.RegisterResourceInfo(provider.Meter("test"), svc.snapshot)
+	require.NoError(t, err)
 	after := fmtResourceNames(collect())
 	require.Contains(t, after, "新渠道")
 	require.NotContains(t, after, "主渠道")

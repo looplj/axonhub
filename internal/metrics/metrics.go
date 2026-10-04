@@ -365,8 +365,6 @@ func requestAttrs(attrs RequestAttributes) []attribute.KeyValue {
 		attribute.Int("channel_id", attrs.ChannelID),
 		attribute.String("request_model_id", attrs.RequestModelID),
 		attribute.String("model_id", attrs.ModelID),
-		attribute.Int("api_key_id", attrs.APIKeyID),
-		attribute.Int("user_id", attrs.UserID),
 		attribute.String("source", attrs.Source),
 		attribute.String("format", attrs.Format),
 		attribute.Bool("stream", attrs.Stream),

@@ -3,7 +3,6 @@ package biz
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -55,10 +54,12 @@ type metricResourceInfo struct {
 
 func (s *metricResourceInfo) snapshot(ctx context.Context) (metrics.ResourceNames, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if !s.loadedAt.IsZero() && time.Since(s.loadedAt) < time.Minute {
-		return s.names, nil
+		names := s.names
+		s.mu.Unlock()
+		return names, nil
 	}
+	s.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	names, err := authz.RunWithSystemBypass(ctx, "export-metric-display-names", func(ctx context.Context) (metrics.ResourceNames, error) {
@@ -67,7 +68,9 @@ func (s *metricResourceInfo) snapshot(ctx context.Context) (metrics.ResourceName
 	if err != nil {
 		return metrics.ResourceNames{}, err
 	}
+	s.mu.Lock()
 	s.names, s.loadedAt = names, time.Now()
+	s.mu.Unlock()
 	return names, nil
 }
 
@@ -94,16 +97,12 @@ func (s *metricResourceInfo) load(ctx context.Context) (metrics.ResourceNames, e
 	for _, item := range keys {
 		result.APIKeys = append(result.APIKeys, metrics.ResourceName{ID: item.ID, Name: item.Name})
 	}
-	users, err := s.client.User.Query().Select(user.FieldID, user.FieldFirstName, user.FieldLastName).All(ctx)
+	users, err := s.client.User.Query().Select(user.FieldID).All(ctx)
 	if err != nil {
 		return result, fmt.Errorf("load user metric names: %w", err)
 	}
 	for _, item := range users {
-		name := strings.TrimSpace(item.FirstName + " " + item.LastName)
-		if name == "" {
-			name = fmt.Sprintf("User %d", item.ID)
-		}
-		result.Users = append(result.Users, metrics.ResourceName{ID: item.ID, Name: name})
+		result.Users = append(result.Users, metrics.ResourceName{ID: item.ID, Name: fmt.Sprintf("%d", item.ID)})
 	}
 	return result, nil
 }
