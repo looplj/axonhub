@@ -1965,6 +1965,41 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithMultipleModels(t *testin
 	})
 }
 
+func TestPersistentOutboundTransformer_CanRetry_520_WithMultipleModels(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	t.Run("520 edge error should switch channel instead of iterating models", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models: []biz.ChannelModelEntry{
+						{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+						{RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo"},
+					},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		// 520 with empty body from a Cloudflare-fronted relay
+		httpErr := &httpclient.Error{
+			StatusCode: 520,
+		}
+
+		// Should skip same-channel model iteration so the pipeline switches
+		// to the next candidate instead of grinding aliases on a dead edge.
+		require.False(t, outbound.CanRetry(httpErr))
+	})
+}
+
 // A transport failure after content was delivered must keep the latency metrics that
 // were already captured and persist a classified error, so operators can tell "stalled
 // before the first byte" from "cut after N tokens" and the status code is not lost.
