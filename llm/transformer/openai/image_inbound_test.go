@@ -546,7 +546,7 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON_RequiresImage(t *tes
 	assert.Contains(t, err.Error(), "at least one image is required")
 }
 
-func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsStream(t *testing.T) {
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_Stream(t *testing.T) {
 	inbound := NewImageEditInboundTransformer()
 
 	pngBytes := []byte{0x89, 0x50, 0x4E, 0x47}
@@ -554,7 +554,7 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsStream(t *tes
 
 	reqBody, err := json.Marshal(map[string]any{
 		"prompt": "make it blue",
-		"model":  "sensenova-u1.5-lite",
+		"model":  "gpt-image-1",
 		"image":  dataURL,
 		"stream": true,
 	})
@@ -567,9 +567,11 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsStream(t *tes
 		Body:    reqBody,
 	}
 
-	_, err = inbound.TransformRequest(context.Background(), httpReq)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "does not support streaming")
+	request, err := inbound.TransformRequest(context.Background(), httpReq)
+	require.NoError(t, err)
+	require.NotNil(t, request.Stream)
+	assert.True(t, *request.Stream)
+	assert.Equal(t, llm.APIFormatOpenAIImageEdit, request.APIFormat)
 }
 
 func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsNonDataURLImage(t *testing.T) {

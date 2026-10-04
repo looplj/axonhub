@@ -122,6 +122,10 @@ type StreamEvent struct {
 	// Headers is populated only on the first event by HTTP stream executors.
 	// It carries transport metadata such as Codex turn-state headers.
 	Headers http.Header `json:"-"`
+	// ImageStreamCompleted carries validated request-level Images completion.
+	// A non-nil false also prevents other protocol markers (e.g. [DONE]) from
+	// ending an Images request. This internal metadata is never emitted in SSE.
+	ImageStreamCompleted *bool `json:"-"`
 }
 
 // IsBinaryAudioChunk reports whether the event carries a raw binary audio payload

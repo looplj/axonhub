@@ -299,6 +299,8 @@ func (t *OutboundTransformer) TransformStream(ctx context.Context, req *httpclie
 	// chat-completion parsing is not applied to transcript.text.delta / speech.audio.delta.
 	if req != nil {
 		switch req.APIFormat {
+		case string(llm.APIFormatOpenAIImageGeneration), string(llm.APIFormatOpenAIImageEdit):
+			return newImageOutboundStream(ctx, req, stream), nil
 		case string(llm.APIFormatOpenAISpeech):
 			return streams.MapErr(stream, speechStreamChunkTransformFor(req)), nil
 		case string(llm.APIFormatOpenAITranscription):
@@ -502,6 +504,8 @@ func (t *OutboundTransformer) AggregateStreamChunks(
 ) ([]byte, llm.ResponseMeta, error) {
 	if req != nil {
 		switch req.APIFormat {
+		case string(llm.APIFormatOpenAIImageGeneration), string(llm.APIFormatOpenAIImageEdit):
+			return aggregateImageStream(ctx, req, chunks)
 		case string(llm.APIFormatOpenAISpeech):
 			return aggregateSpeechStreamChunks(chunks)
 		case string(llm.APIFormatOpenAITranscription), string(llm.APIFormatOpenAITranslation):

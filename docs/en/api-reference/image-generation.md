@@ -4,7 +4,7 @@
 
 AxonHub supports image generation via the OpenAI-compatible `/v1/images/generations` endpoint.
 
-**Note**: Streaming is not currently supported for image generation.
+**Streaming**: The `/v1/images/generations` and `/v1/images/edits` endpoints support Images SSE with `stream: true` through native OpenAI-compatible Images channels. The upstream model and channel must support image streaming.
 
 ## API Usage
 
@@ -108,7 +108,8 @@ if (result.data) {
 | `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
 | `output_compression` | number | Compression level (0-100%). | 100 |
 | `moderation` | string | Content moderation level: `"low"` or `"auto"`. | - |
-| `partial_images` | number | Number of partial images to generate. | 1 |
+| `stream` | boolean | Return Images SSE events. Requires a streaming-capable model. | `false` |
+| `partial_images` | integer | Requested preview count when streaming, from 0 to 3. The upstream may return fewer previews. | Upstream default |
 
 ## Image Edit (Inpainting)
 
@@ -140,6 +141,23 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
     result = response.json()
 ```
 
+JSON editing accepts data URLs in `images[].image_url`, for example:
+
+```json
+{
+  "model": "gpt-image-1",
+  "prompt": "Change the blue circle to red; keep the white background",
+  "images": [{"image_url": "data:image/png;base64,..."}],
+  "stream": true,
+  "partial_images": 2,
+  "n": 2
+}
+```
+
+AxonHub decodes these images and sends multipart/form-data to the native Images
+upstream. Remote image URLs, file IDs and JSON mask objects are not supported by
+the existing input parser; this streaming change does not add those input types.
+
 ### Image Edit Parameters
 
 | Parameter | Type | Description | Default |
@@ -157,13 +175,63 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
 | `output_compression` | number | Compression level (0-100%). | 100 |
 | `input_fidelity` | string | Input fidelity level. | - |
-| `partial_images` | number | Number of partial images. | 1 |
+| `stream` | boolean | Return Images SSE events; send `true` as a form field for multipart requests. | `false` |
+| `partial_images` | integer | Requested preview count when streaming, from 0 to 3. | Upstream default |
+
+## Streaming generation and editing
+
+Set `stream` to `true` and explicitly select a streaming-capable image model.
+Native OpenAI-compatible Images SSE supports `n` from 1 to 10, subject to the
+upstream model's limits; omitting `n` requests one image. DALL-E models and
+`/v1/images/variations` do not support streaming. Non-streaming requests retain
+their existing response format and image-count behavior.
+
+For streaming multipart edits, non-empty `n` and `partial_images` must be
+valid integers within the ranges above. Malformed strings, decimals and integer
+overflow are rejected as invalid requests; omitted or blank values stay optional.
+
+```sh
+curl -N "$AXONHUB_BASE_URL/v1/images/generations" \
+  -H "Authorization: Bearer $AXONHUB_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"gpt-image-1","prompt":"a cat","stream":true,"partial_images":2,"n":2}'
+```
+
+Generation may emit `image_generation.partial_image` previews and emits one
+`image_generation.completed` per final image. Editing uses `image_edit.partial_image` and
+`image_edit.completed`. JSON editing and multipart editing both accept the
+streaming options.
+
+```text
+event: image_generation.partial_image
+data: {"type":"image_generation.partial_image","b64_json":"...","partial_image_index":0,"created_at":123}
+
+event: image_generation.completed
+data: {"type":"image_generation.completed","b64_json":"...","created_at":123,"usage":{"input_tokens":10,"output_tokens":20,"total_tokens":30}}
+
+event: image_generation.completed
+data: {"type":"image_generation.completed","b64_json":"...second image...","created_at":124,"usage":{"input_tokens":10,"output_tokens":21,"total_tokens":31}}
+```
+
+Each event contains a base64 image in `b64_json`. The preview index starts at
+zero and identifies a preview, not an image in a multi-image batch. The
+completed event carries the final image, resolved image options when
+provided upstream, and usage when reported. This is an Images event stream,
+with no Chat Completions `[DONE]` marker. Count completed events until `n` final
+images arrive. EOF, an early `[DONE]`, or an error before that is an incomplete or failed request,
+even if an earlier image completed. Previews are never substituted for final
+results. Aggregated records retain all final images and sum the usage reported
+by their completed events. Preview delivery depends on the upstream; accepting
+`partial_images` does not guarantee previews will be sent.
+
+Other provider-specific image streams are not converted to Images SSE by this
+implementation. Use non-streaming requests on those channels.
 
 ## Supported Providers
 
 | Provider             | Status  | Supported Models                                              | Notes                 |
 | -------------------- | ------- | ------------------------------------------------------------- | --------------------- |
-| **OpenAI**           | ✅ Done | gpt-image-1, dall-e-2, dall-e-3, etc.                         | No streaming support  |
+| **OpenAI**           | ✅ Done | gpt-image-1, dall-e-2, dall-e-3, etc.                         | Images SSE for supported GPT Image models; DALL-E is non-streaming |
 | **ByteDance Doubao** | ✅ Done | doubao-seed-dream-4-0, etc.                                   | No streaming support  |
 | **OpenRouter**       | ✅ Done | gpt-image-1, gemini-2.5-flash-image-preview, etc.             | No streaming support  |
 | **Gemini**           | ✅ Done | gemini-2.5-flash-image, gemini-2.0-flash-preview-image-generation, etc. | No streaming support  |
