@@ -54,10 +54,10 @@ func TestResponsesStream_ConversionOutcome_when_SourceEnds(t *testing.T) {
 					}
 					require.Equal(t, 1, failures)
 					require.NotContains(t, body, "event:response.completed")
-					if mode == biz.UpstreamErrorModeCustom {
+					if mode == biz.UpstreamErrorModeCustom && !errors.Is(sourceErr, context.DeadlineExceeded) {
 						require.Contains(t, body, "safe conversion failure")
 					}
-					if mode == biz.UpstreamErrorModeHidden {
+					if mode == biz.UpstreamErrorModeHidden && !errors.Is(sourceErr, context.DeadlineExceeded) {
 						require.Contains(t, body, biz.DefaultUpstreamErrorMessage)
 					}
 					decoder := httpclient.NewDefaultSSEDecoder(ctx, io.NopCloser(strings.NewReader(body)))

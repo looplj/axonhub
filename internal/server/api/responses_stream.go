@@ -29,7 +29,9 @@ func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpc
 		return applyResponsesEventErrorPolicy(ctx, event, systemService)
 	})
 	encodeErr := func(ctx context.Context, err error) (*httpclient.StreamEvent, error) {
-		err = applyUpstreamErrorPolicy(ctx, pipeline.WrapUpstreamError(orchestrator.ClassifyUpstreamTransportError(err)), systemService)
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+			err = applyUpstreamErrorPolicy(ctx, pipeline.WrapUpstreamError(orchestrator.ClassifyUpstreamTransportError(err)), systemService)
+		}
 		code := "stream_error"
 		message := orchestrator.ExtractErrorMessage(err)
 		requestID := ""
