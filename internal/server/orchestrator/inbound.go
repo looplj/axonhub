@@ -248,11 +248,32 @@ func (ts *InboundPersistentStream) Close() error {
 	var aggErr error
 	if len(ts.responseChunks) > 0 && !ts.outcome.hasFinalEvidence() {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
-		aggregatedCompleted := isCompletedAggregated(meta)
+
+		explicitStreamError := streamErr != nil &&
+			!errors.Is(streamErr, context.Canceled) &&
+			!errors.Is(streamErr, context.DeadlineExceeded)
+		deadlineEvidence := (ctxErr != nil && errors.Is(ctxErr, context.DeadlineExceeded)) ||
+			(streamErr != nil && errors.Is(streamErr, context.DeadlineExceeded))
+		usageEvidence := meta.Usage != nil && meta.Usage.CompletionTokens > 0
+		aggregatedCompleted := false
 		if ts.request != nil && ts.request.Format == llm.APIFormatOpenAIChatCompletion.String() && (streamErr != nil || ctxErr != nil) {
-			aggregatedCompleted = aggregatedCompleted && ts.terminalTracker.AllChoicesFinished()
+			if deadlineEvidence || explicitStreamError {
+				// Server deadline / explicit transport error: require protocol completion.
+				aggregatedCompleted = aggErr == nil && len(responseBody) > 0 && meta.ID != "" &&
+					meta.Completed && ts.terminalTracker.AllChoicesFinished()
+			} else {
+				// Plain client cancel: provider usage is sufficient completion evidence.
+				aggregatedCompleted = aggErr == nil && len(responseBody) > 0 && meta.ID != "" &&
+					(meta.Completed || usageEvidence)
+				log.Debug(ctx, "Stream canceled with aggregated usage evidence",
+					log.Bool("aggregated_completed", aggregatedCompleted),
+					log.Bool("usage_evidence", usageEvidence))
+			}
+		} else {
+			aggregatedCompleted = aggErr == nil && len(responseBody) > 0 && meta.ID != "" &&
+				isCompletedAggregated(meta)
 		}
-		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && aggregatedCompleted {
+		if aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")
 			if streamErr != nil || ctxErr != nil {
 				ts.outcome.observeValidatedCompletion()

@@ -96,10 +96,21 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 			wantDone:         true,
 		},
 		{
-			name: "canceled before clean EOF",
+			name: "canceled before clean EOF with delivered usage persists completed",
 			rawEvents: []string{
 				`{"id":"chatcmpl-canceled","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}`,
 				`{"id":"chatcmpl-canceled","object":"chat.completion.chunk","model":"gpt-test","choices":[],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`,
+			},
+			cancelBeforeEOF:  true,
+			wantRequest:      request.StatusCompleted,
+			wantExecution:    requestexecution.StatusCompleted,
+			wantFinishReason: nil,
+			wantDone:         false,
+		},
+		{
+			name: "canceled before clean EOF without usage persists canceled",
+			rawEvents: []string{
+				`{"id":"chatcmpl-canceled-trunc","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}`,
 			},
 			cancelBeforeEOF:  true,
 			wantRequest:      request.StatusCanceled,
@@ -205,7 +216,12 @@ func TestRawOpenAIChatStreamLifecyclePersistsAndWritesProtocolOutcomes(t *testin
 
 			writer := httptest.NewRecorder()
 			ginContext, _ := gin.CreateTestContext(writer)
-			ginContext.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+			ginRequest := httptest.NewRequest(http.MethodGet, "/", nil)
+			if tt.cancelBeforeEOF {
+				// A client disconnect cancels the HTTP request context too.
+				ginRequest = ginRequest.WithContext(streamCtx)
+			}
+			ginContext.Request = ginRequest
 			WriteSSEStream(ginContext, writerStream)
 			require.NoError(t, clientStream.Close())
 

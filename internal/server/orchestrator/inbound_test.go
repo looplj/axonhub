@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -809,4 +810,145 @@ func TestPersistentStreams_StandaloneErrorPersistsFailure(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestInboundPersistentStream_Close_CancelWithDeliveredUsageCompletesRequest
+// pins the client-cancel-after-content regression fix: a plain client
+// cancellation (no transport error) with a provider usage chunk in the
+// aggregated response counts as completion evidence, so the request is
+// persisted as completed instead of canceled.
+func TestInboundPersistentStream_Close_CancelWithDeliveredUsageCompletesRequest(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := ent.NewContext(authz.WithTestBypass(context.Background()), client)
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	_, requestService, _, _ := setupTestServices(t, client)
+	req, err := client.Request.Create().
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-test").
+		SetFormat(llm.APIFormatOpenAIChatCompletion.String()).
+		SetStatus(request.StatusProcessing).
+		SetRequestBody([]byte(`{"stream":true}`)).
+		SetStream(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	stream := &mockStream{
+		events: []*httpclient.StreamEvent{{
+			Data: []byte(`{"id":"chatcmpl-cancel-usage","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}`),
+		}},
+	}
+	transformer := &mockInboundTransformer{
+		aggregateResponseBody: []byte(`{"id":"chatcmpl-cancel-usage","choices":[{"message":{"content":"partial"}}]}`),
+		aggregateMeta: llm.ResponseMeta{
+			ID:    "chatcmpl-cancel-usage",
+			Usage: &llm.Usage{CompletionTokens: 1},
+		},
+	}
+	state := &PersistenceState{}
+	streamCtx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	persistentStream := NewInboundPersistentStream(
+		streamCtx,
+		stream,
+		req,
+		&ent.RequestExecution{ID: 1},
+		requestService,
+		transformer,
+		nil,
+		state,
+	)
+
+	for persistentStream.Next() {
+		_ = persistentStream.Current()
+	}
+	require.NoError(t, persistentStream.Err())
+	require.NoError(t, persistentStream.Close())
+	require.True(t, state.StreamCompleted)
+
+	savedRequest, err := client.Request.Get(ctx, req.ID)
+	require.NoError(t, err)
+	require.Equal(t, request.StatusCompleted, savedRequest.Status)
+}
+
+// TestInboundPersistentStream_Close_DeadlineWithUsageWithoutCompletionFailsRequest
+// pins the deadline precedence: a server deadline (as ctx error and separately
+// as stream error) with usage but no protocol completion is never rescued and
+// must persist failed.
+func TestInboundPersistentStream_Close_DeadlineWithUsageWithoutCompletionFailsRequest(t *testing.T) {
+	run := func(t *testing.T, asStreamErr bool) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := ent.NewContext(authz.WithTestBypass(context.Background()), client)
+		project := createTestProject(t, ctx, client)
+		ch := createTestChannel(t, ctx, client)
+		_, requestService, _, _ := setupTestServices(t, client)
+		req, err := client.Request.Create().
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-test").
+			SetFormat(llm.APIFormatOpenAIChatCompletion.String()).
+			SetStatus(request.StatusProcessing).
+			SetRequestBody([]byte(`{"stream":true}`)).
+			SetStream(true).
+			Save(ctx)
+		require.NoError(t, err)
+
+		stream := &mockStream{
+			events: []*httpclient.StreamEvent{{
+				Data: []byte(`{"id":"chatcmpl-deadline","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}`),
+			}},
+		}
+		if asStreamErr {
+			stream.err = context.DeadlineExceeded
+		}
+		transformer := &mockInboundTransformer{
+			aggregateResponseBody: []byte(`{"id":"chatcmpl-deadline","choices":[{"message":{"content":"partial"}}]}`),
+			aggregateMeta: llm.ResponseMeta{
+				ID:    "chatcmpl-deadline",
+				Usage: &llm.Usage{CompletionTokens: 1},
+			},
+		}
+		state := &PersistenceState{}
+		var streamCtx context.Context
+		if asStreamErr {
+			streamCtx = ctx
+		} else {
+			deadlineCtx, cancel := context.WithDeadline(ctx, time.Now().Add(-time.Second))
+			defer cancel()
+			streamCtx = deadlineCtx
+		}
+
+		persistentStream := NewInboundPersistentStream(
+			streamCtx,
+			stream,
+			req,
+			&ent.RequestExecution{ID: 1},
+			requestService,
+			transformer,
+			nil,
+			state,
+		)
+
+		for persistentStream.Next() {
+			_ = persistentStream.Current()
+		}
+		if asStreamErr {
+			require.ErrorIs(t, persistentStream.Err(), context.DeadlineExceeded)
+		}
+		require.NoError(t, persistentStream.Close())
+		require.False(t, state.StreamCompleted)
+
+		savedRequest, err := client.Request.Get(ctx, req.ID)
+		require.NoError(t, err)
+		require.Equal(t, request.StatusFailed, savedRequest.Status)
+	}
+
+	t.Run("deadline as ctx error", func(t *testing.T) { run(t, false) })
+	t.Run("deadline as stream error", func(t *testing.T) { run(t, true) })
 }

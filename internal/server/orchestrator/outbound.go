@@ -157,9 +157,30 @@ func (ts *OutboundPersistentStream) Close() error {
 	aggregatedCompleted := false
 	if len(ts.responseChunks) > 0 {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.state.RawProviderRequest, ts.responseChunks)
-		aggregatedCompleted = aggErr == nil && len(responseBody) > 0 && meta.ID != "" && isCompletedAggregated(meta)
+
+		explicitStreamError := streamErr != nil &&
+			!errors.Is(streamErr, context.Canceled) &&
+			!errors.Is(streamErr, context.DeadlineExceeded)
+		deadlineEvidence := (ctxErr != nil && errors.Is(ctxErr, context.DeadlineExceeded)) ||
+			(streamErr != nil && errors.Is(streamErr, context.DeadlineExceeded))
+		usageEvidence := meta.Usage != nil && meta.Usage.CompletionTokens > 0
+
 		if ts.apiFormat == llm.APIFormatOpenAIChatCompletion && (streamErr != nil || ctxErr != nil) {
-			aggregatedCompleted = aggregatedCompleted && ts.terminalTracker.AllChoicesFinished()
+			if deadlineEvidence || explicitStreamError {
+				// Server deadline / explicit transport error: require protocol completion.
+				aggregatedCompleted = aggErr == nil && len(responseBody) > 0 && meta.ID != "" &&
+					meta.Completed && ts.terminalTracker.AllChoicesFinished()
+			} else {
+				// Plain client cancel: provider usage is sufficient completion evidence.
+				aggregatedCompleted = aggErr == nil && len(responseBody) > 0 && meta.ID != "" &&
+					(meta.Completed || usageEvidence)
+				log.Debug(ctx, "Stream canceled with aggregated usage evidence",
+					log.Bool("aggregated_completed", aggregatedCompleted),
+					log.Bool("usage_evidence", usageEvidence))
+			}
+		} else {
+			aggregatedCompleted = aggErr == nil && len(responseBody) > 0 && meta.ID != "" &&
+				isCompletedAggregated(meta)
 		}
 		ts.logFinalizationDecision(ctx, "aggregated_outbound_chunks", streamErr, ctxErr, aggregatedCompleted, aggErr)
 		if aggregatedCompleted {

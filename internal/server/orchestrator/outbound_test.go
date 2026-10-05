@@ -2081,3 +2081,145 @@ func TestPersistentOutboundTransformer_RetrySelectionCounts(t *testing.T) {
 	require.Error(t, processor.NextChannel(ctx)) // exhausted candidates are not attempts
 	assertCounts(3, 2)
 }
+
+// TestOutboundPersistentStream_Close_CancelWithDeliveredUsageCompletesExecution
+// pins the client-cancel-after-content regression fix: a plain client
+// cancellation (no transport error) with a provider usage chunk in the
+// aggregated response counts as completion evidence, so the execution is
+// persisted as completed instead of canceled.
+func TestOutboundPersistentStream_Close_CancelWithDeliveredUsageCompletesExecution(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := ent.NewContext(authz.WithTestBypass(context.Background()), client)
+	project := createTestProject(t, ctx, client)
+	ch := createTestChannel(t, ctx, client)
+	_, requestService, _, usageLogService := setupTestServices(t, client)
+	req, err := client.Request.Create().
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-test").
+		SetFormat(llm.APIFormatOpenAIChatCompletion.String()).
+		SetStatus(request.StatusProcessing).
+		SetRequestBody([]byte(`{"stream":true}`)).
+		Save(ctx)
+	require.NoError(t, err)
+	exec, err := client.RequestExecution.Create().
+		SetRequestID(req.ID).
+		SetProjectID(project.ID).
+		SetChannelID(ch.ID).
+		SetModelID("gpt-test").
+		SetFormat(llm.APIFormatOpenAIChatCompletion.String()).
+		SetRequestBody([]byte(`{"stream":true}`)).
+		SetStatus(requestexecution.StatusProcessing).
+		SetStream(true).
+		Save(ctx)
+	require.NoError(t, err)
+
+	stream := &sliceEventStream{
+		events: []*httpclient.StreamEvent{{
+			Data: []byte(`{"id":"chatcmpl-cancel-usage","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}`),
+		}},
+	}
+	transformer := &mockTransformer{
+		apiFormat: llm.APIFormatOpenAIChatCompletion,
+		aggregatedResponse: []byte(`{"id":"chatcmpl-cancel-usage","choices":[{"message":{"content":"partial"}}]}`),
+		aggregatedMeta: llm.ResponseMeta{
+			ID:    "chatcmpl-cancel-usage",
+			Usage: &llm.Usage{CompletionTokens: 1},
+		},
+	}
+	state := &PersistenceState{}
+	streamCtx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	persistentStream := NewOutboundPersistentStream(streamCtx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
+	for persistentStream.Next() {
+		_ = persistentStream.Current()
+	}
+	require.NoError(t, persistentStream.Err())
+	require.NoError(t, persistentStream.Close())
+
+	dbExec, err := client.RequestExecution.Get(ctx, exec.ID)
+	require.NoError(t, err)
+	require.Equal(t, requestexecution.StatusCompleted, dbExec.Status)
+}
+
+// TestOutboundPersistentStream_Close_DeadlineWithUsageWithoutCompletionFailsExecution
+// pins the deadline precedence: a server deadline (as ctx error and separately
+// as stream error) with usage but no protocol completion is never rescued and
+// must persist failed.
+func TestOutboundPersistentStream_Close_DeadlineWithUsageWithoutCompletionFailsExecution(t *testing.T) {
+	run := func(t *testing.T, asStreamErr bool) {
+		client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := ent.NewContext(authz.WithTestBypass(context.Background()), client)
+		project := createTestProject(t, ctx, client)
+		ch := createTestChannel(t, ctx, client)
+		_, requestService, _, usageLogService := setupTestServices(t, client)
+		req, err := client.Request.Create().
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-test").
+			SetFormat(llm.APIFormatOpenAIChatCompletion.String()).
+			SetStatus(request.StatusProcessing).
+			SetRequestBody([]byte(`{"stream":true}`)).
+			Save(ctx)
+		require.NoError(t, err)
+		exec, err := client.RequestExecution.Create().
+			SetRequestID(req.ID).
+			SetProjectID(project.ID).
+			SetChannelID(ch.ID).
+			SetModelID("gpt-test").
+			SetFormat(llm.APIFormatOpenAIChatCompletion.String()).
+			SetRequestBody([]byte(`{"stream":true}`)).
+			SetStatus(requestexecution.StatusProcessing).
+			SetStream(true).
+			Save(ctx)
+		require.NoError(t, err)
+
+		stream := &sliceEventStream{
+			events: []*httpclient.StreamEvent{{
+				Data: []byte(`{"id":"chatcmpl-deadline","object":"chat.completion.chunk","model":"gpt-test","choices":[{"index":0,"delta":{"content":"partial"},"finish_reason":null}]}`),
+			}},
+		}
+		if asStreamErr {
+			stream.err = context.DeadlineExceeded
+		}
+		transformer := &mockTransformer{
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			aggregatedResponse: []byte(`{"id":"chatcmpl-deadline","choices":[{"message":{"content":"partial"}}]}`),
+			aggregatedMeta: llm.ResponseMeta{
+				ID:    "chatcmpl-deadline",
+				Usage: &llm.Usage{CompletionTokens: 1},
+			},
+		}
+		state := &PersistenceState{}
+		var streamCtx context.Context
+		if asStreamErr {
+			streamCtx = ctx
+		} else {
+			deadlineCtx, cancel := context.WithDeadline(ctx, time.Now().Add(-time.Second))
+			defer cancel()
+			streamCtx = deadlineCtx
+		}
+
+		persistentStream := NewOutboundPersistentStream(streamCtx, stream, req, exec, requestService, usageLogService, transformer, nil, state)
+		for persistentStream.Next() {
+			_ = persistentStream.Current()
+		}
+		if asStreamErr {
+			require.ErrorIs(t, persistentStream.Err(), context.DeadlineExceeded)
+		}
+		require.NoError(t, persistentStream.Close())
+		require.False(t, state.StreamCompleted)
+
+		dbExec, err := client.RequestExecution.Get(ctx, exec.ID)
+		require.NoError(t, err)
+		require.Equal(t, requestexecution.StatusFailed, dbExec.Status)
+	}
+
+	t.Run("deadline as ctx error", func(t *testing.T) { run(t, false) })
+	t.Run("deadline as stream error", func(t *testing.T) { run(t, true) })
+}
