@@ -155,6 +155,26 @@ function parseRetryableStatusCodesInput(value: string): number[] | null {
   return Array.from(new Set(codes)).sort((a, b) => a - b);
 }
 
+function formatTimeoutSeconds(value: number | null | undefined): string {
+  return value === null || value === undefined ? '' : String(value);
+}
+
+// Returns the parsed seconds, null for "inherit" (empty), or undefined for invalid input.
+function parseTimeoutSecondsInput(value: string): number | null | undefined {
+  const trimmed = value.trim();
+  if (trimmed === '') {
+    return null;
+  }
+  if (!/^\d+$/.test(trimmed)) {
+    return undefined;
+  }
+  const seconds = Number(trimmed);
+  if (seconds < 0 || seconds > 600) {
+    return undefined;
+  }
+  return seconds;
+}
+
 function formatRetryableErrorPatterns(patterns: RetryableErrorPattern[] | null | undefined): string {
   return (patterns ?? []).map(({ pattern, regex }) => (regex ? `regex:${pattern}` : pattern)).join('\n');
 }
@@ -422,6 +442,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   );
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
+  );
+  const [streamFirstEventTimeoutText, setStreamFirstEventTimeoutText] = useState(() =>
+    formatTimeoutSeconds(initialRow?.settings?.streamFirstEventTimeoutSeconds)
+  );
+  const [nonStreamResponseTimeoutText, setNonStreamResponseTimeoutText] = useState(() =>
+    formatTimeoutSeconds(initialRow?.settings?.nonStreamResponseTimeoutSeconds)
   );
   const userAgentInheritLabel = userAgentPassThroughSettings
     ? t('channels.dialogs.userAgentPassThrough.inheritWithValue', {
@@ -1313,6 +1339,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         return;
       }
 
+      const streamFirstEventTimeoutSeconds = parseTimeoutSecondsInput(streamFirstEventTimeoutText);
+      if (streamFirstEventTimeoutSeconds === undefined) {
+        toast.error(t('channels.dialogs.streamFirstEventTimeoutSeconds.validation'));
+        return;
+      }
+
+      const nonStreamResponseTimeoutSeconds = parseTimeoutSecondsInput(nonStreamResponseTimeoutText);
+      if (nonStreamResponseTimeoutSeconds === undefined) {
+        toast.error(t('channels.dialogs.nonStreamResponseTimeoutSeconds.validation'));
+        return;
+      }
+
       const valuesForSubmit = isEdit
         ? values
         : {
@@ -1381,6 +1419,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          streamFirstEventTimeoutSeconds,
+          nonStreamResponseTimeoutSeconds,
           // Cookie edits (including clearing the saved cookie) travel through
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
@@ -1448,6 +1488,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          streamFirstEventTimeoutSeconds,
+          nonStreamResponseTimeoutSeconds,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
@@ -1895,6 +1937,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+            setStreamFirstEventTimeoutText(formatTimeoutSeconds(initialRow?.settings?.streamFirstEventTimeoutSeconds));
+            setNonStreamResponseTimeoutText(formatTimeoutSeconds(initialRow?.settings?.nonStreamResponseTimeoutSeconds));
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -3058,6 +3102,74 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             placeholder={t('channels.dialogs.retryableErrorPatterns.placeholder')}
                             className='min-h-[88px] resize-y font-mono text-sm'
                           />
+                        </div>
+                      </FormItem>
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
+                          <FormLabel className='font-medium'>{t('channels.dialogs.streamFirstEventTimeoutSeconds.label')}</FormLabel>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type='button'
+                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                aria-label={t('channels.dialogs.streamFirstEventTimeoutSeconds.description')}
+                              >
+                                <Info className='h-3.5 w-3.5' />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className='max-w-sm'>
+                              <p>{t('channels.dialogs.streamFirstEventTimeoutSeconds.description')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className='md:col-span-6'>
+                          <div className='flex items-center gap-2'>
+                            <Input
+                              type='number'
+                              min='0'
+                              max='600'
+                              value={streamFirstEventTimeoutText}
+                              onChange={(event) => setStreamFirstEventTimeoutText(event.target.value)}
+                              placeholder={t('channels.dialogs.streamFirstEventTimeoutSeconds.placeholder')}
+                              className='w-32 font-mono text-sm'
+                            />
+                            <span className='text-muted-foreground text-sm'>s</span>
+                          </div>
+                        </div>
+                      </FormItem>
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
+                          <FormLabel className='font-medium'>{t('channels.dialogs.nonStreamResponseTimeoutSeconds.label')}</FormLabel>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type='button'
+                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                aria-label={t('channels.dialogs.nonStreamResponseTimeoutSeconds.description')}
+                              >
+                                <Info className='h-3.5 w-3.5' />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className='max-w-sm'>
+                              <p>{t('channels.dialogs.nonStreamResponseTimeoutSeconds.description')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className='md:col-span-6'>
+                          <div className='flex items-center gap-2'>
+                            <Input
+                              type='number'
+                              min='0'
+                              max='600'
+                              value={nonStreamResponseTimeoutText}
+                              onChange={(event) => setNonStreamResponseTimeoutText(event.target.value)}
+                              placeholder={t('channels.dialogs.nonStreamResponseTimeoutSeconds.placeholder')}
+                              className='w-32 font-mono text-sm'
+                            />
+                            <span className='text-muted-foreground text-sm'>s</span>
+                          </div>
                         </div>
                       </FormItem>
 
