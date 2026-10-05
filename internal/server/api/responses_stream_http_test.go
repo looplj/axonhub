@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -34,6 +35,9 @@ func TestResponsesStream_HTTPReset_when_ContentDelivered(t *testing.T) {
 			t.Run(name, func(t *testing.T) {
 				// Given a TCP upstream that resets only after the client receives content.
 				consumed := make(chan struct{})
+				var releaseOnce sync.Once
+				release := func() { releaseOnce.Do(func() { close(consumed) }) }
+				defer release()
 				var attempts atomic.Int32
 				upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					attempts.Add(1)
@@ -62,7 +66,7 @@ func TestResponsesStream_HTTPReset_when_ContentDelivered(t *testing.T) {
 						}
 					}
 				}))
-				defer upstream.Close()
+				t.Cleanup(upstream.Close)
 				h := &ChatCompletionHandlers{streamAdapterFactory: newResponsesStreamAdapter, sseKeepAlive: SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Millisecond}, sseHeartbeatFormat: sseHeartbeatOpenAI}
 				gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					c, _ := gin.CreateTestContext(w)
@@ -98,7 +102,7 @@ func TestResponsesStream_HTTPReset_when_ContentDelivered(t *testing.T) {
 					}
 					h.writeSSEStream(c, stream)
 				}))
-				defer gateway.Close()
+				t.Cleanup(gateway.Close)
 				client := &http.Client{Timeout: 10 * time.Second}
 				// When the real HTTP client consumes the gateway stream.
 				resp, err := client.Get(gateway.URL + "/v1/responses")
@@ -114,7 +118,7 @@ func TestResponsesStream_HTTPReset_when_ContentDelivered(t *testing.T) {
 					contentSeen = contentSeen || strings.Contains(line, `"delta":"hello"`)
 					heartbeatSeen = heartbeatSeen || strings.HasPrefix(line, ": keep-alive")
 				}
-				close(consumed)
+				release()
 				suffix, err := io.ReadAll(reader)
 				require.NoError(t, err)
 				body := []byte(prefix.String() + string(suffix))

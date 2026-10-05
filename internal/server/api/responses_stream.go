@@ -66,10 +66,6 @@ func applyResponsesEventErrorPolicy(ctx context.Context, event *httpclient.Strea
 	if systemService == nil {
 		return event, nil
 	}
-	policy := systemService.RetryPolicyOrDefault(ctx).UpstreamErrorPolicy
-	if policy.Mode == "" || policy.Mode == biz.UpstreamErrorModePassthrough {
-		return event, nil
-	}
 	messagePath := ""
 	switch firstNonEmpty(event.Type, gjson.GetBytes(event.Data, "type").String()) {
 	case "response.failed":
@@ -80,6 +76,10 @@ func applyResponsesEventErrorPolicy(ctx context.Context, event *httpclient.Strea
 			messagePath = "error.message"
 		}
 	default:
+		return event, nil
+	}
+	policy := systemService.RetryPolicyOrDefault(ctx).UpstreamErrorPolicy
+	if policy.Mode == "" || policy.Mode == biz.UpstreamErrorModePassthrough {
 		return event, nil
 	}
 	if !gjson.GetBytes(event.Data, messagePath).Exists() {
