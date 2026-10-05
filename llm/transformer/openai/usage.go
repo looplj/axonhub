@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 )
 
 // PromptTokensDetails Breakdown of tokens used in the prompt.
@@ -46,11 +47,6 @@ type Usage struct {
 	Cost *float64 `json:"cost,omitempty"`
 }
 
-// UnmarshalJSON tolerates provider-specific usage.cost values. AxonHub does not
-// trust or propagate upstream cost values, and some compatible providers encode
-// cost as an object instead of a number. Preserve numeric values for JSON
-// round-trips, but ignore other valid JSON shapes without dropping the usage
-// token counts.
 func (u *Usage) UnmarshalJSON(data []byte) error {
 	type usageAlias Usage
 
@@ -66,18 +62,7 @@ func (u *Usage) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	if len(decoded.Cost) == 0 {
-		return nil
-	}
-
-	// A present null or non-number cost is an upstream extension that should not
-	// affect usage parsing. ToLLMUsage intentionally does not propagate it.
-	u.Cost = nil
-
-	var cost float64
-	if err := json.Unmarshal(decoded.Cost, &cost); err == nil {
-		u.Cost = &cost
-	}
+	u.Cost = xjson.ParseOptionalFloat64(decoded.Cost)
 
 	return nil
 }
