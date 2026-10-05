@@ -4,13 +4,37 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/openai"
 )
+
+func TestWriteSSEStream_OpenAIChatCleanEOFIncludesSyntheticTerminal(t *testing.T) {
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodGet, "/", nil)
+
+	content := "hello"
+	stream, err := openai.NewInboundTransformer().TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{ID: "chatcmpl-sse", Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Content: llm.MessageContent{Content: &content}}}}},
+		{ID: "chatcmpl-sse", Usage: &llm.Usage{PromptTokens: 1, CompletionTokens: 1, TotalTokens: 2}},
+	}))
+	require.NoError(t, err)
+
+	WriteSSEStream(c, stream)
+	body := w.Body.String()
+	assert.Contains(t, body, `"finish_reason":"stop"`)
+	assert.Contains(t, body, "data: [DONE]")
+	assert.Less(t, strings.Index(body, `"finish_reason":"stop"`), strings.Index(body, "data: [DONE]"))
+}
 
 // TestWriteSSEStream_ResponsesTerminalEventThenError reproduces the production
 // incident (pi client "unexpected EOF"): the upstream delivers a full Responses

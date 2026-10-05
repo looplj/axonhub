@@ -105,6 +105,7 @@ func (t *InboundTransformer) TransformStream(
 	ctx context.Context,
 	stream streams.Stream[*llm.Response],
 ) (streams.Stream[*httpclient.StreamEvent], error) {
+	stream = newOpenAIInboundStream(stream, ctx)
 	return streams.NoNil(streams.MapErr(stream, func(chunk *llm.Response) (*httpclient.StreamEvent, error) {
 		return t.TransformStreamChunk(ctx, chunk)
 	})), nil
@@ -141,8 +142,9 @@ func (t *InboundTransformer) TransformStreamChunk(
 	}
 
 	return &httpclient.StreamEvent{
-		Type: "",
-		Data: eventData,
+		Type:                       "",
+		Data:                       eventData,
+		CleanEOFCompletionEvidence: chatResp.StreamCompletionEvidence == llm.StreamCompletionEvidenceOpenAIChatEOF,
 	}, nil
 }
 
