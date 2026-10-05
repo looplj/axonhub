@@ -149,27 +149,7 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 	oaiResp.Quality = img.Quality
 	oaiResp.Size = img.Size
 
-	if llmResp.Usage != nil {
-		oaiResp.Usage = &ImagesResponseUsage{
-			InputTokens:  llmResp.Usage.PromptTokens,
-			OutputTokens: llmResp.Usage.CompletionTokens,
-			TotalTokens:  llmResp.Usage.TotalTokens,
-			Cost:         llmResp.Usage.Cost,
-		}
-		if llmResp.Usage.PromptTokensDetails != nil {
-			oaiResp.Usage.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{
-				ImageTokens:  llmResp.Usage.PromptTokensDetails.ImageTokens,
-				TextTokens:   llmResp.Usage.PromptTokensDetails.TextTokens,
-				CachedTokens: llmResp.Usage.PromptTokensDetails.CachedTokens,
-			}
-		}
-
-		if llmResp.Usage.CompletionTokensDetails != nil {
-			oaiResp.Usage.OutputTokensDetails = &ImagesResponseUsageOutputTokensDetails{
-				ReasoningTokens: llmResp.Usage.CompletionTokensDetails.ReasoningTokens,
-			}
-		}
-	}
+	oaiResp.Usage = imageUsageFromLLM(llmResp.Usage)
 
 	for _, data := range img.Data {
 		oaiResp.Data = append(oaiResp.Data, ImageData{
@@ -195,7 +175,7 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 }
 
 func (t *ImageInboundTransformer) TransformStream(ctx context.Context, stream streams.Stream[*llm.Response]) (streams.Stream[*httpclient.StreamEvent], error) {
-	return nil, fmt.Errorf("%w: image request does not support streaming", transformer.ErrInvalidRequest)
+	return t.transformImageStream(ctx, stream)
 }
 
 func (t *ImageInboundTransformer) TransformError(ctx context.Context, rawErr error) *httpclient.Error {
@@ -204,7 +184,7 @@ func (t *ImageInboundTransformer) TransformError(ctx context.Context, rawErr err
 }
 
 func (t *ImageInboundTransformer) AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error) {
-	return nil, llm.ResponseMeta{}, fmt.Errorf("%w: image request does not support streaming", transformer.ErrInvalidRequest)
+	return aggregateImageStream(ctx, &httpclient.Request{APIFormat: t.apiFormat.String()}, chunks)
 }
 
 func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient.Request) (*llm.Request, error) {
@@ -219,8 +199,8 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 		return nil, fmt.Errorf("%w: failed to decode generation request: %w", transformer.ErrInvalidRequest, err)
 	}
 
-	if genReq.Stream {
-		return nil, fmt.Errorf("%w: image generation does not support streaming", transformer.ErrInvalidRequest)
+	if err := validateImageStreamOptions(genReq.Stream, genReq.Model, genReq.N, genReq.PartialImages); err != nil {
+		return nil, err
 	}
 
 	model := genReq.Model
@@ -263,7 +243,7 @@ func (t *ImageInboundTransformer) transformGenerationRequest(httpReq *httpclient
 		Model:       model,
 		Seed:        genReq.Seed,
 		Modalities:  []string{"image"},
-		Stream:      lo.ToPtr(false),
+		Stream:      lo.ToPtr(genReq.Stream),
 		RawRequest:  httpReq,
 		RequestType: llm.RequestTypeImage,
 		APIFormat:   t.apiFormat,
@@ -289,8 +269,17 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 		return nil, err
 	}
 
-	if strings.EqualFold(strings.TrimSpace(formData.Fields["stream"]), "true") {
-		return nil, fmt.Errorf("%w: image edit does not support streaming", transformer.ErrInvalidRequest)
+	useStream := strings.EqualFold(strings.TrimSpace(formData.Fields["stream"]), "true")
+	n, err := parseOptionalImageInt64("n", formData.Fields["n"], useStream)
+	if err != nil {
+		return nil, err
+	}
+	partialImages, err := parseOptionalImageInt64("partial_images", formData.Fields["partial_images"], useStream)
+	if err != nil {
+		return nil, err
+	}
+	if err := validateImageStreamOptions(useStream, formData.Fields["model"], n, partialImages); err != nil {
+		return nil, err
 	}
 
 	prompt := strings.TrimSpace(formData.Fields["prompt"])
@@ -329,7 +318,7 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 		Prompt:            prompt,
 		Images:            images,
 		Mask:              mask,
-		N:                 parseOptionalInt64(formData.Fields["n"]),
+		N:                 n,
 		Size:              strings.TrimSpace(formData.Fields["size"]),
 		Quality:           strings.TrimSpace(formData.Fields["quality"]),
 		ResponseFormat:    strings.TrimSpace(formData.Fields["response_format"]),
@@ -338,13 +327,13 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 		OutputFormat:      strings.TrimSpace(formData.Fields["output_format"]),
 		OutputCompression: parseOptionalInt64(formData.Fields["output_compression"]),
 		InputFidelity:     strings.TrimSpace(formData.Fields["input_fidelity"]),
-		PartialImages:     parseOptionalInt64(formData.Fields["partial_images"]),
+		PartialImages:     partialImages,
 	}
 
 	llmReq := &llm.Request{
 		Model:       model,
 		Modalities:  []string{"image"},
-		Stream:      lo.ToPtr(false),
+		Stream:      lo.ToPtr(useStream),
 		RawRequest:  httpReq,
 		RequestType: llm.RequestTypeImage,
 		APIFormat:   t.apiFormat,
@@ -390,8 +379,8 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 		return nil, fmt.Errorf("%w: failed to decode image edit request: %w", transformer.ErrInvalidRequest, err)
 	}
 
-	if editReq.Stream {
-		return nil, fmt.Errorf("%w: image edit does not support streaming", transformer.ErrInvalidRequest)
+	if err := validateImageStreamOptions(editReq.Stream, editReq.Model, editReq.N, editReq.PartialImages); err != nil {
+		return nil, err
 	}
 
 	prompt := strings.TrimSpace(editReq.Prompt)
@@ -445,7 +434,7 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 	llmReq := &llm.Request{
 		Model:       model,
 		Modalities:  []string{"image"},
-		Stream:      lo.ToPtr(false),
+		Stream:      lo.ToPtr(editReq.Stream),
 		RawRequest:  httpReq,
 		RequestType: llm.RequestTypeImage,
 		APIFormat:   t.apiFormat,
@@ -814,4 +803,30 @@ func decodeDataURLToBytes(dataURL string) ([]byte, error) {
 	}
 
 	return data, nil
+}
+
+func imageUsageFromLLM(usage *llm.Usage) *ImagesResponseUsage {
+	if usage == nil {
+		return nil
+	}
+	result := &ImagesResponseUsage{
+		InputTokens:  usage.PromptTokens,
+		OutputTokens: usage.CompletionTokens,
+		TotalTokens:  usage.TotalTokens,
+		Cost:         usage.Cost,
+	}
+	if usage.PromptTokensDetails != nil {
+		result.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{
+			ImageTokens:  usage.PromptTokensDetails.ImageTokens,
+			TextTokens:   usage.PromptTokensDetails.TextTokens,
+			CachedTokens: usage.PromptTokensDetails.CachedTokens,
+		}
+	}
+
+	if usage.CompletionTokensDetails != nil {
+		result.OutputTokensDetails = &ImagesResponseUsageOutputTokensDetails{
+			ReasoningTokens: usage.CompletionTokensDetails.ReasoningTokens,
+		}
+	}
+	return result
 }

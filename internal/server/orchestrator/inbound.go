@@ -109,6 +109,19 @@ func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 	if event == nil {
 		return false
 	}
+	// Images completion is annotated using the request's image count. This
+	// applies to every raw event, so foreign terminal markers such as [DONE]
+	// cannot complete a truncated Images request. Explicit errors remain terminal.
+	eventType := gjson.GetBytes(event.Data, "type").String()
+	if event.Type != "error" && eventType != "error" {
+		if event.ImageStreamCompleted != nil {
+			return *event.ImageStreamCompleted
+		}
+		if event.Type == "image_generation.completed" || event.Type == "image_edit.completed" ||
+			eventType == "image_generation.completed" || eventType == "image_edit.completed" {
+			return false
+		}
+	}
 
 	// For chat completions, check for [DONE] event
 	if bytes.Equal(event.Data, llm.DoneStreamEvent.Data) ||
@@ -129,7 +142,6 @@ func IsTerminalStreamEvent(event *httpclient.StreamEvent) bool {
 	// completion's finish_reason as semantic completion: clients commonly close
 	// the connection immediately after consuming that final useful chunk, before
 	// the trailing [DONE] marker is read by the server.
-	eventType := gjson.GetBytes(event.Data, "type").String()
 	switch eventType {
 	case "message_stop", "speech.audio.done", "transcript.text.done":
 		return true

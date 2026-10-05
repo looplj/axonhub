@@ -63,15 +63,25 @@ type ImageRequest struct {
 	PromptOptimizer *bool `json:"prompt_optimizer,omitempty"`
 }
 
+const (
+	ImageEventPartial   = "partial_image"
+	ImageEventCompleted = "completed"
+)
+
 // ImageResponse represents the unified image response model.
-// Note: Common fields like Usage are in the parent Response struct, not here.
+// Common fields like Usage are in the parent Response struct.
+// EventType and PartialImageIndex distinguish previews from final stream images
+// and are omitted from non-streaming responses.
 type ImageResponse struct {
-	Created      int64       `json:"created"`
-	Data         []ImageData `json:"data"`
-	Background   string      `json:"background,omitempty"`
-	OutputFormat string      `json:"output_format,omitempty"`
-	Quality      string      `json:"quality,omitempty"`
-	Size         string      `json:"size,omitempty"`
+	StreamCompleted   bool        `json:"stream_completed,omitempty"`
+	EventType         string      `json:"event_type,omitempty"`
+	PartialImageIndex *int        `json:"partial_image_index,omitempty"`
+	Created           int64       `json:"created"`
+	Data              []ImageData `json:"data"`
+	Background        string      `json:"background,omitempty"`
+	OutputFormat      string      `json:"output_format,omitempty"`
+	Quality           string      `json:"quality,omitempty"`
+	Size              string      `json:"size,omitempty"`
 }
 
 // ImageData represents a single image in the response.

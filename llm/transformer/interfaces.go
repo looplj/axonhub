@@ -61,6 +61,26 @@ type Outbound interface {
 	AggregateStreamChunks(ctx context.Context, req *httpclient.Request, chunks []*httpclient.StreamEvent) ([]byte, llm.ResponseMeta, error)
 }
 
+// StreamEventObserver annotates validated provider events with request-level
+// state before persistence or concurrent fan-out. It must not mutate the input.
+type StreamEventObserver interface {
+	Observe(event *httpclient.StreamEvent) *httpclient.StreamEvent
+}
+
+// StreamEventObserverProvider is an optional outbound capability. The provider
+// selects an observer for its actual wire protocol; logical request APIFormat
+// may retain the original client format after conversion to a different API.
+type StreamEventObserverProvider interface {
+	NewStreamEventObserver(request *httpclient.Request) StreamEventObserver
+}
+
+func NewStreamEventObserver(outbound Outbound, request *httpclient.Request) StreamEventObserver {
+	if provider, ok := outbound.(StreamEventObserverProvider); ok {
+		return provider.NewStreamEventObserver(request)
+	}
+	return nil
+}
+
 // PassThroughBodyPolicy lets outbound transformers veto raw body pass-through.
 type PassThroughBodyPolicy interface {
 	AllowPassThroughBody(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool

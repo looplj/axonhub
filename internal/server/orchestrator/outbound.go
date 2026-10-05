@@ -48,6 +48,8 @@ type OutboundPersistentStream struct {
 	terminalError   string
 	closed          bool
 	state           *PersistenceState
+	eventObserver   transformer.StreamEventObserver
+	current         *httpclient.StreamEvent
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*OutboundPersistentStream)(nil)
@@ -80,18 +82,26 @@ func NewOutboundPersistentStream(
 		responseChunks:  make([]*httpclient.StreamEvent, 0),
 		closed:          false,
 		state:           state,
+		eventObserver:   transformer.NewStreamEventObserver(outboundTransformer, state.RawProviderRequest),
 	}
 
 	return s
 }
 
 func (ts *OutboundPersistentStream) Next() bool {
+	ts.current = nil
 	return ts.stream.Next()
 }
 
 func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
+	if ts.eventObserver != nil && ts.current != nil {
+		return ts.current
+	}
 	event := ts.stream.Current()
 	if event != nil {
+		if ts.eventObserver != nil {
+			event = ts.eventObserver.Observe(event)
+		}
 		if ts.upstreamModelID == "" {
 			ts.upstreamModelID = modelname.FromEvent(event, ts.apiFormat)
 		}
@@ -109,6 +119,9 @@ func (ts *OutboundPersistentStream) Current() *httpclient.StreamEvent {
 				ts.markPerformanceTerminal(ts.terminalState, ts.terminalError)
 			}
 		}
+	}
+	if ts.eventObserver != nil {
+		ts.current = event
 	}
 
 	return event

@@ -23,10 +23,15 @@ import (
 // buildImageGenerationAPIRequest builds the HTTP request to call the OpenAI Image Generation API.
 // based on whether images are present in the request.
 func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
-	chatReq.Stream = lo.ToPtr(false)
-
 	if chatReq.Image == nil {
 		return nil, fmt.Errorf("image request is required")
+	}
+
+	if err := validateImageStreamOptions(lo.FromPtr(chatReq.Stream), chatReq.Model, chatReq.Image.N, chatReq.Image.PartialImages); err != nil {
+		return nil, err
+	}
+	if lo.FromPtr(chatReq.Stream) && chatReq.APIFormat == llm.APIFormatOpenAIImageVariation {
+		return nil, fmt.Errorf("%w: image variations do not support streaming", transformer.ErrInvalidRequest)
 	}
 
 	// Get API key from provider
@@ -55,6 +60,9 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 		return nil, err
 	}
 
+	if lo.FromPtr(chatReq.Stream) {
+		rawReq.Headers.Set("Accept", "text/event-stream")
+	}
 	rawReq.RequestType = llm.RequestTypeImage.String()
 	rawReq.APIFormat = fmtType.String()
 	// Save model to TransformerMetadata for response transformation
@@ -63,6 +71,10 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 	}
 
 	rawReq.TransformerMetadata["model"] = chatReq.Model
+	rawReq.TransformerMetadata[imageCountMetadataKey] = int64(1)
+	if chatReq.Image.N != nil {
+		rawReq.TransformerMetadata[imageCountMetadataKey] = *chatReq.Image.N
+	}
 
 	return rawReq, nil
 }
@@ -92,6 +104,10 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 	reqBody := map[string]any{
 		"prompt": prompt,
 		"model":  model,
+	}
+
+	if lo.FromPtr(chatReq.Stream) {
+		reqBody["stream"] = true
 	}
 
 	// Extract image generation parameters from Image field
@@ -233,6 +249,13 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 		}
 
 		jsonBody["model"] = model
+	}
+
+	if lo.FromPtr(chatReq.Stream) {
+		if err := writer.WriteField("stream", "true"); err != nil {
+			return nil, fmt.Errorf("failed to write stream field: %w", err)
+		}
+		jsonBody["stream"] = true
 	}
 
 	imageFieldName := "image"
@@ -571,11 +594,15 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 		return nil, fmt.Errorf("failed to unmarshal images response: %w", err)
 	}
 
+	return imageResponseFromPayload(&imgResp, httpResp.Request), nil
+}
+
+func imageResponseFromPayload(imgResp *ImagesResponse, req *httpclient.Request) *llm.Response {
 	// Read model from request TransformerMetadata
 	model := "image-generation"
 
-	if httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
-		if m, ok := httpResp.Request.TransformerMetadata["model"].(string); ok && m != "" {
+	if req != nil && req.TransformerMetadata != nil {
+		if m, ok := req.TransformerMetadata["model"].(string); ok && m != "" {
 			model = m
 		}
 	}
@@ -605,6 +632,7 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 			PromptTokens:     imgResp.Usage.InputTokens,
 			CompletionTokens: imgResp.Usage.OutputTokens,
 			TotalTokens:      imgResp.Usage.TotalTokens,
+			Cost:             imgResp.Usage.Cost,
 		}
 		if imgResp.Usage.InputTokensDetails != nil {
 			resp.Usage.PromptTokensDetails = &llm.PromptTokensDetails{
@@ -632,7 +660,7 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 
 	resp.Image = imageResponse
 
-	return resp, nil
+	return resp
 }
 
 // ImagesResponse represents the response from OpenAI Image Generation/Edit API.

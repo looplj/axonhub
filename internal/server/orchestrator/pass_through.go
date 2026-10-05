@@ -386,6 +386,7 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 		// to unblock the goroutine's channel sends and release the upstream HTTP connection
 		// before the next attempt starts, preventing goroutine leaks.
 		attemptCtx, cancel := context.WithCancel(ctx)
+		eventObserver := transformer.NewStreamEventObserver(outbound.wrapped, outbound.state.RawProviderRequest)
 		var closeStreamOnce sync.Once
 		closeStream := func() {
 			closeStreamOnce.Do(func() {
@@ -434,6 +435,9 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 				}
 
 				event := stream.Current()
+				if eventObserver != nil {
+					event = eventObserver.Observe(event)
+				}
 				held, err := backlog.hold(event)
 				if err != nil {
 					backlog.mu.Lock()
