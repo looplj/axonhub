@@ -8,6 +8,8 @@
   "playground.settings.model": "模型",
   "playground.settings.selectModel": "选择模型",
   "playground.settings.temperature": "温度",
+  "playground.settings.sendTemperature": "发送温度参数",
+  "playground.settings.temperatureOmitted": "不发送 temperature 参数，使用模型默认设置。",
   "playground.settings.maxTokens": "最大词元数",
   "playground.settings.systemPrompt": "系统提示",
   "playground.settings.defaultSystemPrompt": "你是一个有用的助手。",

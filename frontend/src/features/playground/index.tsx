@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -106,12 +107,13 @@ export default function Playground() {
   const { modelSource, selectedChannel, model } = selection;
   const setModel = (nextModel: string) => setSelectionState((current) => ({ ...current, model: nextModel }));
   const [temperature, setTemperature] = useState(0.6);
+  const [sendTemperature, setSendTemperature] = useState(true);
   const [maxTokens, setMaxTokens] = useState(4096);
   const [systemPrompt, setSystemPrompt] = useState(t('playground.settings.defaultSystemPrompt'));
 
   // useRef hooks for direct access to current values
   const modelRef = useRef(model);
-  const temperatureRef = useRef(temperature);
+  const temperatureRef = useRef<number | undefined>(temperature);
   const maxTokensRef = useRef(maxTokens);
   const systemPromptRef = useRef(systemPrompt);
   const selectedChannelRef = useRef(selectedChannel);
@@ -123,8 +125,8 @@ export default function Playground() {
   }, [model]);
 
   useEffect(() => {
-    temperatureRef.current = temperature;
-  }, [temperature]);
+    temperatureRef.current = sendTemperature ? temperature : undefined;
+  }, [temperature, sendTemperature]);
 
   useEffect(() => {
     maxTokensRef.current = maxTokens;
@@ -180,7 +182,7 @@ export default function Playground() {
       body: () => {
         return {
           model: modelRef.current,
-          temperature: temperatureRef.current,
+          ...(temperatureRef.current !== undefined ? { temperature: temperatureRef.current } : {}),
           max_tokens: maxTokensRef.current,
           system: systemPromptRef.current,
         };
@@ -490,9 +492,16 @@ export default function Playground() {
               </div>
 
               <div className='space-y-3'>
-                <Label htmlFor='temperature' className='text-xs font-semibold'>
-                  {t('playground.settings.temperature')}: {temperature}
-                </Label>
+                <div className='flex items-center justify-between gap-2'>
+                  <Label htmlFor='temperature' className='text-xs font-semibold'>
+                    {t('playground.settings.temperature')}: {temperature}
+                  </Label>
+                  <Switch
+                    aria-label={t('playground.settings.sendTemperature')}
+                    checked={sendTemperature}
+                    onCheckedChange={setSendTemperature}
+                  />
+                </div>
                 <div className='px-1'>
                   <Input
                     id='temperature'
@@ -501,6 +510,7 @@ export default function Playground() {
                     max='2'
                     step='0.1'
                     value={temperature}
+                    disabled={!sendTemperature}
                     onChange={(e) => setTemperature(parseFloat(e.target.value))}
                     className='bg-muted h-2 w-full cursor-pointer appearance-none rounded-lg'
                   />
@@ -510,6 +520,7 @@ export default function Playground() {
                     <span>2</span>
                   </div>
                 </div>
+                {!sendTemperature && <p className='text-muted-foreground text-xs'>{t('playground.settings.temperatureOmitted')}</p>}
               </div>
 
               <div className='space-y-3'>
