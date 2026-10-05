@@ -217,3 +217,112 @@ func TestIsAnyAllowedIP(t *testing.T) {
 		})
 	}
 }
+
+func TestIPMatchersMappedIPv4(t *testing.T) {
+	tests := []struct {
+		name   string
+		client string
+		entry  string
+		want   bool
+	}{
+		{name: "mapped client matches IPv4", client: "::ffff:203.0.113.10", entry: "203.0.113.10", want: true},
+		{name: "mapped client matches IPv4 CIDR", client: "::ffff:203.0.113.10", entry: "203.0.113.0/24", want: true},
+		{name: "IPv4 client matches mapped entry", client: "203.0.113.10", entry: "::ffff:203.0.113.10", want: true},
+		{name: "IPv4 client matches mapped CIDR", client: "203.0.113.10", entry: "::ffff:203.0.113.0/120", want: true},
+		{name: "mapped client matches mapped CIDR", client: "::ffff:203.0.113.10", entry: "::ffff:203.0.113.0/120", want: true},
+		{name: "mapped CIDR with host bits", client: "203.0.113.10", entry: "::ffff:203.0.113.99/120", want: true},
+		{name: "mapped zero-length IPv4 prefix", client: "198.51.100.10", entry: "::ffff:0.0.0.0/96", want: true},
+		{name: "mapped single-address prefix", client: "203.0.113.10", entry: "::ffff:203.0.113.10/128", want: true},
+		{name: "mapped single-address prefix rejects other address", client: "203.0.113.11", entry: "::ffff:203.0.113.10/128"},
+		{name: "mapped IPv4 outside IPv4 CIDR", client: "::ffff:198.51.100.10", entry: "203.0.113.0/24"},
+		{name: "IPv4 outside mapped CIDR", client: "198.51.100.10", entry: "::ffff:203.0.113.0/120"},
+		{name: "IPv4 does not match native IPv6 prefix", client: "203.0.113.10", entry: "2001:db8::/64"},
+		{name: "native IPv6 does not match mapped prefix", client: "2001:db8::10", entry: "::ffff:0.0.0.0/96"},
+		{name: "IPv4 does not match wider IPv6 prefix", client: "203.0.113.10", entry: "::ffff:203.0.113.0/95"},
+		{name: "mapped client retains wider IPv6 prefix match", client: "::ffff:203.0.113.10", entry: "::ffff:203.0.113.0/95", want: true},
+		{name: "mapped client retains IPv6 all-addresses match", client: "::ffff:203.0.113.10", entry: "::/0", want: true},
+		{name: "IPv4 does not match IPv6 all-addresses prefix", client: "203.0.113.10", entry: "::/0"},
+	}
+	matchers := map[string]func([]string, []string) bool{
+		"allowlist": isAnyAllowedIP,
+		"blocklist": isBlockedIP,
+	}
+	for name, match := range matchers {
+		t.Run(name, func(t *testing.T) {
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					if got := match([]string{tt.client}, []string{tt.entry}); got != tt.want {
+						t.Fatalf("matching %q against %q = %v, want %v", tt.client, tt.entry, got, tt.want)
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestIPMatchersWithTrustedProxy(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	tests := []struct {
+		name       string
+		remoteAddr string
+		header     string
+		forwarded  string
+		clientIP   string
+		entry      string
+		matches    bool
+	}{
+		{name: "forwarded mapped IPv4 matches exact IPv4", remoteAddr: "10.0.0.1:12345", header: "X-Forwarded-For", forwarded: "::ffff:203.0.113.10", clientIP: "::ffff:203.0.113.10", entry: "203.0.113.10", matches: true},
+		{name: "forwarded mapped IPv4 matches IPv4 CIDR", remoteAddr: "10.0.0.1:12345", header: "X-Forwarded-For", forwarded: "::ffff:203.0.113.10", clientIP: "::ffff:203.0.113.10", entry: "203.0.113.0/24", matches: true},
+		{name: "forwarded IPv4 matches mapped CIDR", remoteAddr: "10.0.0.1:12345", header: "X-Forwarded-For", forwarded: "203.0.113.10", clientIP: "203.0.113.10", entry: "::ffff:203.0.113.0/120", matches: true},
+		{name: "real IP mapped IPv4 matches exact IPv4", remoteAddr: "10.0.0.1:12345", header: "X-Real-IP", forwarded: "::ffff:203.0.113.10", clientIP: "::ffff:203.0.113.10", entry: "203.0.113.10", matches: true},
+		{name: "direct mapped remote matches mapped entry", remoteAddr: "[::ffff:203.0.113.10]:12345", clientIP: "203.0.113.10", entry: "::ffff:203.0.113.10", matches: true},
+		{name: "untrusted peer cannot spoof forwarded address", remoteAddr: "198.51.100.10:12345", header: "X-Forwarded-For", forwarded: "::ffff:203.0.113.10", clientIP: "198.51.100.10", entry: "203.0.113.0/24"},
+	}
+	for _, blocklist := range []bool{false, true} {
+		name := "allowlist"
+		if blocklist {
+			name = "blocklist"
+		}
+		t.Run(name, func(t *testing.T) {
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					engine := gin.New()
+					if err := engine.SetTrustedProxies([]string{"10.0.0.0/8"}); err != nil {
+						t.Fatal(err)
+					}
+					engine.GET("/", func(c *gin.Context) {
+						if got := c.ClientIP(); got != tt.clientIP {
+							t.Fatalf("ClientIP() = %q, want %q", got, tt.clientIP)
+						}
+						clients := clientIPCandidates(c)
+						entries := []string{tt.entry}
+						denied := !isAnyAllowedIP(clients, entries)
+						if blocklist {
+							denied = isBlockedIP(clients, entries)
+						}
+						if denied {
+							c.AbortWithStatus(http.StatusForbidden)
+							return
+						}
+						c.Status(http.StatusOK)
+					})
+					req := httptest.NewRequest(http.MethodGet, "/", nil)
+					req.RemoteAddr = tt.remoteAddr
+					if tt.header != "" {
+						req.Header.Set(tt.header, tt.forwarded)
+					}
+					recorder := httptest.NewRecorder()
+					engine.ServeHTTP(recorder, req)
+					want := http.StatusOK
+					if (blocklist && tt.matches) || (!blocklist && !tt.matches) {
+						want = http.StatusForbidden
+					}
+					if recorder.Code != want {
+						t.Fatalf("status = %d, want %d", recorder.Code, want)
+					}
+				})
+			}
+		})
+	}
+}
