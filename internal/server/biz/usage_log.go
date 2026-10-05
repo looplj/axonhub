@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
+	appmetrics "github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 )
@@ -95,14 +96,16 @@ func NewUsageLogService(ent *ent.Client, systemService *SystemService, channelSe
 
 // CreateUsageLogParams represents the parameters for creating a usage log.
 type CreateUsageLogParams struct {
-	RequestID     int
-	ProjectID     int
-	ChannelID     int
-	ActualModelID string // The channel actual model ID, not the request model ID.
-	Usage         *llm.Usage
-	Source        usagelog.Source
-	Format        string
-	APIKeyID      *int
+	RequestID      int
+	ProjectID      int
+	ChannelID      int
+	RequestModelID string
+	ActualModelID  string // The channel actual model ID, not the request model ID.
+	Usage          *llm.Usage
+	Source         usagelog.Source
+	Format         string
+	APIKeyID       *int
+	Stream         bool
 }
 
 // CreateUsageLog creates a new usage log record from LLM response usage data.
@@ -112,6 +115,20 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 	}
 
 	client := s.entFromContext(ctx)
+
+	apiKeyID := 0
+	userID := 0
+	hasAPIKeyID := false
+	if params.APIKeyID != nil {
+		apiKeyID = *params.APIKeyID
+		hasAPIKeyID = true
+	} else if ctxAPIKey, ok := contexts.GetAPIKey(ctx); ok && ctxAPIKey != nil {
+		apiKeyID = ctxAPIKey.ID
+		hasAPIKeyID = true
+	}
+	if ctxAPIKey, ok := contexts.GetAPIKey(ctx); ok && ctxAPIKey != nil && ctxAPIKey.ID == apiKeyID {
+		userID = ctxAPIKey.UserID
+	}
 
 	mut := client.UsageLog.Create().
 		SetRequestID(params.RequestID).
@@ -124,10 +141,8 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		SetSource(params.Source).
 		SetFormat(params.Format)
 
-	if params.APIKeyID != nil {
-		mut = mut.SetAPIKeyID(*params.APIKeyID)
-	} else if ctxAPIKey, ok := contexts.GetAPIKey(ctx); ok && ctxAPIKey != nil {
-		mut = mut.SetAPIKeyID(ctxAPIKey.ID)
+	if hasAPIKeyID {
+		mut = mut.SetAPIKeyID(apiKeyID)
 	}
 
 	// Set prompt tokens details if available
@@ -180,6 +195,26 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		)
 	}
 
+	appmetrics.Metrics.RecordLLMUsage(
+		ctx,
+		appmetrics.RequestAttributes{
+			ProjectID:      params.ProjectID,
+			ChannelID:      params.ChannelID,
+			RequestModelID: params.RequestModelID,
+			ModelID:        params.ActualModelID,
+			APIKeyID:       apiKeyID,
+			UserID:         userID,
+			Source:         string(params.Source),
+			Format:         params.Format,
+			Stream:         params.Stream,
+		},
+		params.Usage.PromptTokens,
+		params.Usage.CompletionTokens,
+		promptCachedTokens(params.Usage),
+		completionReasoningTokens(params.Usage),
+		totalCost,
+	)
+
 	if s.OnUsageLogCreated != nil {
 		s.OnUsageLogCreated()
 	}
@@ -199,13 +234,31 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 	}
 
 	return s.CreateUsageLog(ctx, CreateUsageLogParams{
-		RequestID:     request.ID,
-		ProjectID:     request.ProjectID,
-		ChannelID:     requestExec.ChannelID,
-		ActualModelID: requestExec.ModelID,
-		Usage:         usage,
-		Source:        usagelog.Source(request.Source),
-		Format:        request.Format,
-		APIKeyID:      lo.ToPtr(request.APIKeyID),
+		RequestID:      request.ID,
+		ProjectID:      request.ProjectID,
+		ChannelID:      requestExec.ChannelID,
+		RequestModelID: request.ModelID,
+		ActualModelID:  requestExec.ModelID,
+		Usage:          usage,
+		Source:         usagelog.Source(request.Source),
+		Format:         request.Format,
+		APIKeyID:       lo.ToPtr(request.APIKeyID),
+		Stream:         request.Stream,
 	})
+}
+
+func promptCachedTokens(usage *llm.Usage) int64 {
+	if usage == nil || usage.PromptTokensDetails == nil {
+		return 0
+	}
+
+	return usage.PromptTokensDetails.CachedTokens
+}
+
+func completionReasoningTokens(usage *llm.Usage) int64 {
+	if usage == nil || usage.CompletionTokensDetails == nil {
+		return 0
+	}
+
+	return usage.CompletionTokensDetails.ReasoningTokens
 }

@@ -74,6 +74,7 @@ func startServer() {
 		}),
 		conf.Module,
 		fx.Provide(metrics.NewProvider),
+		fx.Invoke(biz.RegisterMetricResourceInfo),
 		fx.Invoke(func(lc fx.Lifecycle, cfg server.Config) {
 			lc.Append(fx.Hook{
 				OnStart: func(ctx context.Context) error {
