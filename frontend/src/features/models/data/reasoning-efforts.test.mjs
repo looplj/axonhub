@@ -40,7 +40,7 @@ test('effort options map to the levels they enumerate, in canonical order', () =
     { modelID: 'glm-5.3-flash', expected: ['low', 'high', 'max'] },
     { modelID: 'gpt-5.6-sol', expected: ['none', 'low', 'medium', 'high', 'xhigh', 'max'] },
     { modelID: 'gpt-6-astra', expected: ['low', 'medium', 'high', 'xhigh', 'max'] },
-    { modelID: 'qwen3.8-flash', expected: ['low', 'medium', 'xhigh'] },
+		{ modelID: 'qwen3.8-flash', expected: ['none', 'low', 'medium', 'xhigh'] },
   ];
 
   for (const { modelID, expected } of cases) {

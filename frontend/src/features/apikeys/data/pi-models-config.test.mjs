@@ -84,7 +84,7 @@ test('levels the model form fills from the catalog export as pi thinking levels'
     },
     {
       modelID: 'qwen3.8-flash',
-      expected: { off: null, minimal: null, low: 'low', medium: 'medium', high: null, xhigh: 'xhigh', max: null },
+			expected: { off: 'none', minimal: null, low: 'low', medium: 'medium', high: null, xhigh: 'xhigh', max: null },
     },
   ];
 
