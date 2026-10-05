@@ -329,7 +329,9 @@ func buildCodexQuotaLimit(name string, window *CodeUsageWindow, rateLimitExhaust
 		}
 	}
 
-	if rateLimitExhausted {
+	// The flags apply to the whole account; infer usage only when this window
+	// does not report its own percentage.
+	if rateLimitExhausted && window.UsedPercent == nil {
 		status = "exhausted"
 		usageRatio = 1
 	}
