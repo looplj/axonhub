@@ -116,12 +116,20 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		imageMainModel = defaultImageMainModel
 	}
 
+	official := isOfficialCodexBaseURL(baseURL)
+
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
 	// Use a dummy config and then override URL/auth.
 	ro, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
 		BaseURL:        baseURL,
 		APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
 		Transport:      params.Transport,
+		// Responses Lite keeps its tool definitions in an `additional_tools` input
+		// item instead of the top-level `tools` array. That item belongs to the
+		// private Codex protocol, so it is replayed only to the official backend;
+		// relays are not assumed to implement it. The same rule drops the Responses
+		// Lite header for relays in TransformRequest.
+		PreserveAdditionalTools: official,
 	})
 	if err != nil {
 		return nil, err
@@ -133,7 +141,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		baseURL:           strings.TrimSuffix(baseURL, "##"),
 		alphaSearchPath:   alphaSearchPath,
 		imageMainModel:    imageMainModel,
-		official:          isOfficialCodexBaseURL(baseURL),
+		official:          official,
 		responsesOutbound: ro,
 	}, nil
 }

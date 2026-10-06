@@ -265,10 +265,19 @@ func buildRawOnlyInputFragments(input Input, rawItems []json.RawMessage) []llm.O
 	return fragments
 }
 
+// additionalToolsInputItemType is a private Codex construct used by Responses
+// Lite: the tool definitions travel inside a `developer` input item instead of
+// the top-level `tools` array. It is not part of the public Responses API, so
+// OpenAI-compatible upstreams reject it as an unsupported input item type.
+const additionalToolsInputItemType = "additional_tools"
+
+// isStructurallyRepresentedInputItem reports whether an input item type is
+// rebuilt from the unified request. Types that are not rebuilt are replayed
+// verbatim from the raw body; see buildRawOnlyInputFragments.
 func isStructurallyRepresentedInputItem(itemType string) bool {
 	switch itemType {
 	case "", "message", "input_text", "input_image", "function_call", "function_call_output",
-		"custom_tool_call", "custom_tool_call_output", "reasoning", "compaction", "compaction_summary", "additional_tools":
+		"custom_tool_call", "custom_tool_call_output", "reasoning", "compaction", "compaction_summary":
 		return true
 	default:
 		return false
@@ -284,7 +293,7 @@ func openAIResponsesRequestExtensions(llmReq *llm.Request) *llm.OpenAIResponsesR
 	return requestExt
 }
 
-func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error) {
+func marshalRequestPayload(payload Request, llmReq *llm.Request, preserveAdditionalTools bool) ([]byte, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
@@ -313,7 +322,7 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
 	}
 
-	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt); ok {
+	if input, ok := mergeRawOnlyInputItems(obj["input"], requestExt, preserveAdditionalTools); ok {
 		inputRaw, err := json.Marshal(input)
 		if err != nil {
 			return nil, err
@@ -356,9 +365,22 @@ func marshalCompactRequestPayload(payload CompactAPIRequest, llmReq *llm.Request
 	return json.Marshal(obj)
 }
 
-func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {
+// mergeRawOnlyInputItems replays the input items that are not rebuilt from the
+// unified request. `additional_tools` carries the tool definitions of Responses
+// Lite, so it is replayed only when the upstream speaks that private protocol
+// (the official Codex backend). Everywhere else it stays dropped: an
+// OpenAI-compatible upstream rejects the item type outright.
+func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions, preserveAdditionalTools bool) ([]json.RawMessage, bool) {
 	if requestExt == nil || len(requestExt.RawInputItems) == 0 {
 		return nil, false
+	}
+
+	fragments := requestExt.RawInputItems
+	if !preserveAdditionalTools {
+		fragments = withoutInputFragmentsOfType(fragments, additionalToolsInputItemType)
+		if len(fragments) == 0 {
+			return nil, false
+		}
 	}
 
 	var structuredItems []json.RawMessage
@@ -368,11 +390,11 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 		}
 	}
 
-	total := len(structuredItems) + len(requestExt.RawInputItems)
+	total := len(structuredItems) + len(fragments)
 	items := make([]json.RawMessage, 0, total)
 	structuredIndex := 0
-	rawByIndex := make(map[int]json.RawMessage, len(requestExt.RawInputItems))
-	for _, fragment := range requestExt.RawInputItems {
+	rawByIndex := make(map[int]json.RawMessage, len(fragments))
+	for _, fragment := range fragments {
 		if len(fragment.Raw) == 0 || fragment.OriginalIndex < 0 {
 			return nil, false
 		}
@@ -396,6 +418,22 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 	}
 
 	return items, true
+}
+
+// withoutInputFragmentsOfType returns the fragments that do not carry the given
+// item type. The input slice is not modified in place: it is owned by the
+// request extensions and may be replayed on a retry.
+func withoutInputFragmentsOfType(fragments []llm.OpenAIResponsesRawFragment, itemType string) []llm.OpenAIResponsesRawFragment {
+	kept := make([]llm.OpenAIResponsesRawFragment, 0, len(fragments))
+	for _, fragment := range fragments {
+		if fragment.Type == itemType {
+			continue
+		}
+
+		kept = append(kept, fragment)
+	}
+
+	return kept
 }
 
 func mergeRawOnlyTools(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {

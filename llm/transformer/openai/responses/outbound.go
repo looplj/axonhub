@@ -50,6 +50,14 @@ type Config struct {
 	// Must start with "/". Skips default version normalization when set.
 	EndpointPath string `json:"endpoint_path,omitempty"`
 
+	// PreserveAdditionalTools replays `additional_tools` input items upstream.
+	// The item belongs to Codex's private Responses Lite protocol: it carries the
+	// tool definitions that Lite keeps out of the top-level `tools` array, and an
+	// OpenAI-compatible upstream rejects it as an unsupported input item type.
+	// It is therefore dropped by default and replayed only for upstreams that
+	// speak that protocol; see the Codex outbound transformer.
+	PreserveAdditionalTools bool `json:"preserve_additional_tools,omitempty"`
+
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`
 
@@ -167,6 +175,10 @@ type OutboundTransformer struct {
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIResponse
+}
+
+func (t *OutboundTransformer) preserveAdditionalTools() bool {
+	return t != nil && t.config != nil && t.config.PreserveAdditionalTools
 }
 
 // TransformError transforms HTTP error response to unified error response.
@@ -326,7 +338,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		payload.MaxOutputTokens = llmReq.MaxTokens
 	}
 
-	body, err := marshalRequestPayload(payload, llmReq)
+	body, err := marshalRequestPayload(payload, llmReq, t.preserveAdditionalTools())
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal responses api request: %w", err)
 	}
