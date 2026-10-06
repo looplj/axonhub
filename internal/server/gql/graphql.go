@@ -89,6 +89,15 @@ type GraphqlHandler struct {
 	Playground http.Handler
 }
 
+// maxBackupUploadSize bounds what the restore mutation accepts through the
+// multipart transport. gqlgen defaults MaxUploadSize to 32 MiB, but a real
+// backup exceeds that as soon as the instance has history: the request and
+// response bodies live in external storage, yet usage rows alone run to tens of
+// MiB (2026-10-05: a 108 MiB production backup was rejected with "failed to
+// parse multipart form, request body too large"). This is a guard against
+// unbounded request bodies, not a target size.
+const maxBackupUploadSize = 1 << 30 // 1 GiB
+
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv := handler.New(
 		NewSchema(
@@ -128,7 +137,9 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.AddTransport(transport.Options{})
 	gqlSrv.AddTransport(transport.GET{})
 	gqlSrv.AddTransport(transport.POST{})
-	gqlSrv.AddTransport(transport.MultipartForm{})
+	// The restore mutation uploads a whole backup file here; MaxMemory keeps the
+	// default so the body spools to disk instead of being held in memory.
+	gqlSrv.AddTransport(transport.MultipartForm{MaxUploadSize: maxBackupUploadSize})
 
 	gqlSrv.SetQueryCache(lru.New[*ast.QueryDocument](1024))
 
