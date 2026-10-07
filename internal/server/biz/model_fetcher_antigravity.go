@@ -47,8 +47,9 @@ func (f *ModelFetcher) fetchAntigravityModels(ctx context.Context, input FetchMo
 			// Create/update/restore may retain OAuth data from a different account.
 			// Only reuse and persist a verified pair; otherwise resolve the APIKey
 			// independently without writing the saved account's credentials.
+			// Without a legacy APIKey, saved OAuth is the channel's sole identity.
 			if saved == nil || (saved.AccessToken == "" && saved.RefreshToken == "") ||
-				(refreshToken != "" && saved.RefreshToken == refreshToken) {
+				(refreshToken != "" && saved.RefreshToken == refreshToken) || ch.Credentials.APIKey == "" {
 				credentials = saved
 				onRefreshed = f.channelService.onTokenRefreshed(ch)
 			}

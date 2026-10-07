@@ -26,6 +26,67 @@ func (f antigravityCatalogTransport) RoundTrip(r *http.Request) (*http.Response,
 	return f(r)
 }
 
+// TestFetchModelsAntigravityOAuthOnlyChannel checks keyless account discovery and endpoint-change protection.
+func TestFetchModelsAntigravityOAuthOnlyChannel(t *testing.T) {
+	for _, tc := range []struct {
+		name, refreshToken string
+		expired            bool
+	}{
+		{"valid saved OAuth", "saved-refresh", false},
+		{"valid access token only", "", false},
+		{"expired saved OAuth", "saved-refresh", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:antigravity_catalog_oauth_only?mode=memory&_fk=0")
+			defer client.Close()
+			ctx := authz.WithSystemBypass(t.Context(), "test")
+			expiresAt := time.Now().Add(time.Hour).UTC()
+			if tc.expired {
+				expiresAt = time.Now().Add(-time.Hour).UTC()
+			}
+			ch, err := client.Channel.Create().
+				SetName("oauth-only-account").SetType(channel.TypeAntigravity).
+				SetBaseURL(antigravity.EndpointDaily).
+				SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{AccessToken: "saved-access", RefreshToken: tc.refreshToken, ExpiresAt: expiresAt}}).
+				SetSupportedModels([]string{"old-model"}).SetDefaultTestModel("old-model").Save(ctx)
+			require.NoError(t, err)
+			refreshCalls, catalogCalls := 0, 0
+			transport := antigravityCatalogTransport(func(r *http.Request) (*http.Response, error) {
+				if r.URL.String() == antigravity.TokenURL {
+					refreshCalls++
+					require.NoError(t, r.ParseForm())
+					require.Equal(t, "saved-refresh", r.Form.Get("refresh_token"))
+					return antigravityCatalogResponse(r, 200, `{"access_token":"fresh-access","expires_in":3600,"token_type":"Bearer"}`), nil
+				}
+				catalogCalls++
+				accessToken := "saved-access"
+				if tc.expired {
+					accessToken = "fresh-access"
+				}
+				require.Equal(t, "Bearer "+accessToken, r.Header.Get("Authorization"))
+				return antigravityCatalogResponse(r, 200, `{"models":{"oauth-account-model":{}}}`), nil
+			})
+			fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(&http.Client{Transport: transport}), &ChannelService{AbstractService: &AbstractService{db: client}})
+			input := FetchModelsInput{ChannelType: "antigravity", BaseURL: ch.BaseURL, ChannelID: &ch.ID}
+			result, err := fetcher.FetchModels(ctx, input)
+			require.NoError(t, err)
+			require.Nil(t, result.Error)
+			require.Equal(t, []ModelIdentify{{ID: "oauth-account-model"}}, result.Models)
+			if tc.expired {
+				require.Equal(t, 1, refreshCalls)
+			} else {
+				require.Zero(t, refreshCalls)
+			}
+			require.Equal(t, 1, catalogCalls)
+			input.BaseURL = "https://changed.example"
+			result, err = fetcher.FetchModels(ctx, input)
+			require.NoError(t, err)
+			require.NotNil(t, result.Error)
+			require.Equal(t, 1, catalogCalls, "an edited endpoint must not reuse saved OAuth")
+		})
+	}
+}
+
 // TestFetchModelsAntigravitySavedCredentialsAndRefreshPersistence checks verified token reuse and storage.
 func TestFetchModelsAntigravitySavedCredentialsAndRefreshPersistence(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:antigravity_catalog_persistence?mode=memory&_fk=0")
