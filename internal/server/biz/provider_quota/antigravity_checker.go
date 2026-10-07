@@ -60,11 +60,9 @@ func (c *AntigravityQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channe
 		WithURL(antigravityQuotaURL).
 		WithBearerToken(accessToken).
 		WithHeader("Content-Type", "application/json").
-		WithHeader("User-Agent", antigravity.GetUserAgent()).
-		WithHeader("X-Client-Name", "antigravity").
-		WithHeader("X-Client-Version", antigravity.GetVersion()).
 		WithBody(body).
 		Build()
+	antigravity.SetClientHeaders(request.Headers)
 
 	response, err := httpClient.Do(ctx, request)
 	if err != nil {

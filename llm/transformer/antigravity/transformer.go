@@ -197,9 +197,7 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 	// 5. Build new Headers
 	headers := make(http.Header)
 	headers.Set("Content-Type", "application/json")
-	headers.Set("User-Agent", GetUserAgent())
-	headers.Set("X-Goog-Api-Client", ApiClient)
-	headers.Set("Client-Metadata", ClientMetadata)
+	SetClientHeaders(headers)
 	headers.Set("X-Opencode-Tools-Debug", "1")
 	// DO NOT set X-Goog-Api-Key header when using OAuth - it must be absent entirely
 	// Setting it to empty string triggers license error #3501

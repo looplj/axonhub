@@ -6,28 +6,33 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
 
 const (
 	// UserAgentVersionFallback is the hardcoded fallback version used when remote fetch fails.
-	UserAgentVersionFallback = "1.20.4"
+	UserAgentVersionFallback = "2.5.5"
 
 	// defaultVersionURL is the auto-updater endpoint that returns the latest Antigravity version as plain text.
 	defaultVersionURL = "https://antigravity-auto-updater-974169037036.us-central1.run.app"
 
 	// defaultChangelogURL is a fallback page to scrape the version from.
-	defaultChangelogURL = "https://antigravity.google/changelog"
+	defaultChangelogURL = "https://antigravity.google/docs/changelog"
 
 	// versionFetchTimeout is the maximum time allowed per fetch attempt.
 	versionFetchTimeout = 5 * time.Second
 
 	// changelogScanBytes is the number of bytes to read from the changelog page.
-	changelogScanBytes = 5000
+	changelogScanBytes = 2 * 1024 * 1024
 )
 
 var versionRegex = regexp.MustCompile(`\d+\.\d+\.\d+`)
+
+// Match IDE releases explicitly: the page also lists unrelated CLI, SDK and 2.0 versions.
+var ideVersionRegex = regexp.MustCompile(`id="rel-ide-(\d+\.\d+\.\d+)"`)
 
 var (
 	versionMu      sync.RWMutex
@@ -47,6 +52,16 @@ func GetVersion() string {
 	defer versionMu.RUnlock()
 
 	return currentVersion
+}
+
+// SetClientHeaders keeps model discovery and inference on the same client identity.
+func SetClientHeaders(headers http.Header) {
+	version := GetVersion()
+	headers.Set("User-Agent", "antigravity/"+version+" windows/amd64")
+	headers.Set("X-Client-Name", "antigravity")
+	headers.Set("X-Client-Version", version)
+	headers.Set("X-Goog-Api-Client", ApiClient)
+	headers.Set("Client-Metadata", ClientMetadata)
 }
 
 func setVersion(v string) {
@@ -77,26 +92,16 @@ func InitVersion(ctx context.Context) {
 func (f *versionFetcher) init(ctx context.Context) {
 	fallback := UserAgentVersionFallback
 
-	if v := f.fetchVersion(ctx, f.versionURL, 0); v != "" {
-		if v != fallback {
-			slog.InfoContext(ctx, "antigravity: version updated from auto-updater", "version", v, "previous", fallback)
-		} else {
-			slog.DebugContext(ctx, "antigravity: version unchanged", "version", v, "source", "api")
-		}
-
-		setVersion(v)
-
+	// Prefer the official IDE changelog over the updater's potentially stale fixed version.
+	if v := f.fetchVersion(ctx, f.changelogURL, changelogScanBytes); v != "" {
+		setVersion(newerVersion(fallback, v))
+		slog.InfoContext(ctx, "antigravity: IDE version resolved", "version", GetVersion())
 		return
 	}
 
-	if v := f.fetchVersion(ctx, f.changelogURL, changelogScanBytes); v != "" {
-		if v != fallback {
-			slog.InfoContext(ctx, "antigravity: version updated from changelog", "version", v, "previous", fallback)
-		} else {
-			slog.DebugContext(ctx, "antigravity: version unchanged", "version", v, "source", "changelog")
-		}
-
-		setVersion(v)
+	if v := f.fetchVersion(ctx, f.versionURL, 0); v != "" {
+		setVersion(newerVersion(fallback, v))
+		slog.InfoContext(ctx, "antigravity: version resolved from auto-updater", "version", GetVersion(), "reported", v)
 
 		return
 	}
@@ -138,11 +143,33 @@ func (f *versionFetcher) fetchVersion(ctx context.Context, url string, maxBytes 
 		}
 	}
 
-	match := versionRegex.Find(body)
+	var match []byte
+	if maxBytes > 0 {
+		if matches := ideVersionRegex.FindSubmatch(body); len(matches) == 2 {
+			match = matches[1]
+		}
+	} else {
+		match = versionRegex.Find(body)
+	}
 	if match == nil {
 		slog.DebugContext(ctx, "antigravity: no version found in response", "url", url)
 		return ""
 	}
 
 	return string(match)
+}
+
+func newerVersion(current, candidate string) string {
+	currentParts, candidateParts := strings.Split(current, "."), strings.Split(candidate, ".")
+	for i := range 3 {
+		a, _ := strconv.Atoi(currentParts[i])
+		b, _ := strconv.Atoi(candidateParts[i])
+		if b > a {
+			return candidate
+		}
+		if b < a {
+			return current
+		}
+	}
+	return current
 }
