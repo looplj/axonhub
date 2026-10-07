@@ -24,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	"github.com/looplj/axonhub/llm/transformer/openai/decisions"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
 )
@@ -61,6 +62,7 @@ type OpenAIHandlers struct {
 	EmbeddingHandlers          *ChatCompletionHandlers
 	ModerationHandlers         *ChatCompletionHandlers
 	AlphaSearchHandlers        *ChatCompletionHandlers
+	DecisionsHandlers          *ChatCompletionHandlers
 	ImageGenerationHandlers    *ChatCompletionHandlers
 	ImageEditHandlers          *ChatCompletionHandlers
 	ImageVariationHandlers     *ChatCompletionHandlers
@@ -192,6 +194,23 @@ func NewOpenAIHandlers(params OpenAIHandlersParams) *OpenAIHandlers {
 				params.RequestService,
 				params.HttpClient,
 				openai.NewAlphaSearchInboundTransformer(),
+				params.SystemService,
+				params.UsageLogService,
+				params.PromptService,
+				params.QuotaService,
+				params.PromptProtectionRuleService,
+				params.LiveStreamRegistry,
+				params.ChannelLimiterManager,
+				params.ProviderQuotaStatusProvider,
+			),
+		},
+		DecisionsHandlers: &ChatCompletionHandlers{
+			ChatCompletionOrchestrator: orchestrator.NewChatCompletionOrchestrator(
+				params.ChannelService,
+				params.DefaultSelector,
+				params.RequestService,
+				params.HttpClient,
+				decisions.NewInboundTransformer(),
 				params.SystemService,
 				params.UsageLogService,
 				params.PromptService,
@@ -389,6 +408,10 @@ func (handlers *OpenAIHandlers) CreateModeration(c *gin.Context) {
 // CreateAlphaSearch handles POST /v1/alpha/search.
 func (handlers *OpenAIHandlers) CreateAlphaSearch(c *gin.Context) {
 	handlers.AlphaSearchHandlers.ChatCompletion(c)
+}
+
+func (handlers *OpenAIHandlers) CreateDecisions(c *gin.Context) {
+	handlers.DecisionsHandlers.ChatCompletion(c)
 }
 
 // CreateSpeech handles POST /v1/audio/speech (text-to-speech). The response is binary audio.
