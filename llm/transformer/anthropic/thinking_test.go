@@ -296,6 +296,27 @@ func TestNativeBudgetRoundTrip(t *testing.T) {
 	require.Nil(t, anthropicReq.OutputConfig)
 }
 
+// TestEnabledWithoutBudget covers Z.AI/GLM-style clients that send thinking.type=enabled
+// without budget_tokens: the Anthropic outbound must fill in the channel's medium budget.
+func TestEnabledWithoutBudget(t *testing.T) {
+	chatReq, err := NewInboundTransformer().TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    []byte(`{"model":"glm-4.6","max_tokens":32000,"messages":[{"role":"user","content":"hi"}],"thinking":{"type":"enabled"}}`),
+	})
+	require.NoError(t, err)
+
+	anthropicReq := convertToAnthropicRequestWithConfig(chatReq, nil)
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, "enabled", anthropicReq.Thinking.Type)
+	require.Equal(t, int64(15000), anthropicReq.Thinking.BudgetTokens)
+
+	anthropicReq = convertToAnthropicRequestWithConfig(chatReq, &Config{
+		ReasoningEffortToBudget: map[string]int64{"medium": 4096},
+	})
+	require.NotNil(t, anthropicReq.Thinking)
+	require.Equal(t, int64(4096), anthropicReq.Thinking.BudgetTokens)
+}
+
 func TestNativeBudgetRoundTrip_DeepSeekUsesOutputConfig(t *testing.T) {
 	chatReq := &llm.Request{
 		Model:           "deepseek-chat",

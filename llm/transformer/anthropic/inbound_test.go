@@ -321,7 +321,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 			expectError: true,
 		},
 		{
-			name: "thinking enabled without budget_tokens",
+			name: "thinking enabled with negative budget_tokens",
 			httpReq: &httpclient.Request{
 				Headers: http.Header{
 					"Content-Type": []string{"application/json"},
@@ -330,7 +330,7 @@ func TestInboundTransformer_TransformRequest(t *testing.T) {
 					"model": "claude-sonnet-4-5-20250929",
 					"max_tokens": 16000,
 					"messages": [{"role": "user", "content": "Hello"}],
-					"thinking": {"type": "enabled"}
+					"thinking": {"type": "enabled", "budget_tokens": -1}
 				}`),
 			},
 			expectError: true,
@@ -573,18 +573,36 @@ func TestInboundTransformer_TransformRequest_ThinkingValidation(t *testing.T) {
 		require.Nil(t, got.ReasoningBudget)
 	})
 
-	t.Run("thinking enabled requires positive budget_tokens", func(t *testing.T) {
+	t.Run("thinking enabled without budget_tokens defaults to medium", func(t *testing.T) {
+		for _, thinking := range []string{`{"type": "enabled"}`, `{"type": "enabled", "budget_tokens": 0}`} {
+			req := mkReq(`{
+				"model": "glm-4.6",
+				"max_tokens": 1024,
+				"messages": [{"role": "user", "content": "Hello"}],
+				"thinking": ` + thinking + `
+			}`)
+
+			got, err := transformer.TransformRequest(t.Context(), req)
+			require.NoError(t, err)
+			require.NotNil(t, got)
+			require.Equal(t, "medium", got.ReasoningEffort)
+			require.Nil(t, got.ReasoningBudget)
+			require.Equal(t, "enabled", got.TransformerMetadata[TransformerMetadataKeyThinkingType])
+		}
+	})
+
+	t.Run("thinking enabled requires non-negative budget_tokens", func(t *testing.T) {
 		req := mkReq(`{
 			"model": "claude-sonnet-4-5-20250929",
 			"max_tokens": 1024,
 			"messages": [{"role": "user", "content": "Hello"}],
-			"thinking": {"type": "enabled", "budget_tokens": 0}
+			"thinking": {"type": "enabled", "budget_tokens": -1}
 		}`)
 
 		got, err := transformer.TransformRequest(t.Context(), req)
 		require.Error(t, err)
 		require.Nil(t, got)
-		require.Contains(t, err.Error(), "budget_tokens is required and must be positive")
+		require.Contains(t, err.Error(), "budget_tokens must be positive")
 	})
 
 	t.Run("thinking enabled with positive budget_tokens is accepted", func(t *testing.T) {
