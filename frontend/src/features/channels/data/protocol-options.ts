@@ -50,6 +50,8 @@ export function getApiFormatsForProvider(provider: string, configs: ProtocolConf
 /**
  * Custom endpoint formats the endpoints dialog may offer for a channel.
  * Native video is available as a custom endpoint on every ZenMux channel type.
+ * The OpenAI Decisions endpoint is opt-in for the OpenAI channel only; the
+ * backend still accepts manual configuration for other channel types.
  * Other custom endpoint formats remain available everywhere.
  */
 export function getConfigurableApiFormatsForChannelType(
@@ -59,7 +61,9 @@ export function getConfigurableApiFormatsForChannelType(
   if (channelType === 'typesafe') {
     return ['typesafe/systemone'];
   }
-  const filtered = configurableFormats.filter((format) => format !== 'typesafe/systemone');
+  const filtered = configurableFormats
+    .filter((format) => format !== 'typesafe/systemone')
+    .filter((format) => channelType === 'openai' || format !== 'openai/decisions');
   if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {
     return [...filtered];
   }
