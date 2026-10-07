@@ -7,12 +7,13 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/sjson"
 )
 
 var ErrPromptProtectionRejected = errors.New("prompt protection rejected request")

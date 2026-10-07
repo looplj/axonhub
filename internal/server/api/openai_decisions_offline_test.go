@@ -204,13 +204,13 @@ func TestOpenAIHandlers_CreateDecisions_persistsTraceHeaderAndRedactedImageSpan(
 	body := `{"model":"gpt-6-luna","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"choose"},{"type":"input_image","image_url":"data:image/png;base64,secret"}]}],"questions":[{"type":"choice","name":"route","choices":[{"value":"yes"}]}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/decisions", strings.NewReader(body))
 	req.Header.Set("Authorization", "Bearer "+harness.apiKey)
-	req.Header.Set("AH-Trace-Id", traceID)
+	req.Header.Set("Ah-Trace-Id", traceID)
 	req.Header.Set("Content-Type", "application/json")
 	response := httptest.NewRecorder()
 	harness.router.ServeHTTP(response, req)
 
 	require.Equal(t, http.StatusOK, response.Code)
-	require.Equal(t, traceID, response.Header().Get("AH-Trace-Id"))
+	require.Equal(t, traceID, response.Header().Get("Ah-Trace-Id"))
 	ctx := authz.WithTestBypass(ent.NewContext(context.Background(), harness.client))
 	var traceRows []*ent.Trace
 	traceRows, err := harness.client.Trace.Query().All(ctx)
