@@ -341,7 +341,11 @@ func (s *responsesInboundStream) Next() bool {
 	}
 
 	// Usage follows the finish_reason; emit the final outcome once both arrive.
-	if chunk.Usage != nil && s.hasFinished && !s.responseCompleted {
+	// The terminal event must wait for the choices-less usage-only chunk that carries the
+	// real counts. Some providers (e.g. ModelScope) attach a zeroed usage object to every
+	// chunk, including the one carrying finish_reason; finalizing there would emit the
+	// placeholder zeros and drop the real counts arriving afterwards.
+	if chunk.Usage != nil && len(chunk.Choices) == 0 && s.hasFinished && !s.responseCompleted {
 		if err := s.enqueueTerminalResponse(); err != nil {
 			s.err = err
 			return false
