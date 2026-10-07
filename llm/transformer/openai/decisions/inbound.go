@@ -56,8 +56,8 @@ func (t *InboundTransformer) TransformRequest(_ context.Context, request *httpcl
 	if strings.TrimSpace(wire.Model) == "" {
 		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
-	if len(wire.Input) == 0 || bytes.Equal(wire.Input, []byte("null")) {
-		return nil, fmt.Errorf("%w: input is required", transformer.ErrInvalidRequest)
+	if err := validateDecisionsInput(wire.Input); err != nil {
+		return nil, fmt.Errorf("%w: %w", transformer.ErrInvalidRequest, err)
 	}
 	if len(wire.Questions) == 0 {
 		return nil, fmt.Errorf("%w: questions are required", transformer.ErrInvalidRequest)
@@ -75,6 +75,96 @@ func (t *InboundTransformer) TransformRequest(_ context.Context, request *httpcl
 			Questions: append([]json.RawMessage(nil), wire.Questions...),
 		},
 	}, nil
+}
+
+func validateDecisionsInput(input json.RawMessage) error {
+	input = bytes.TrimSpace(input)
+	if len(input) == 0 || bytes.Equal(input, []byte("null")) {
+		return fmt.Errorf("input is required")
+	}
+
+	switch input[0] {
+	case '"':
+		var text string
+		if err := json.Unmarshal(input, &text); err != nil {
+			return fmt.Errorf("input must be a string or supported message structure")
+		}
+		if text == "" {
+			return fmt.Errorf("input string cannot be empty")
+		}
+		return nil
+	case '[':
+		var items []json.RawMessage
+		if err := json.Unmarshal(input, &items); err != nil {
+			return fmt.Errorf("input must be a string or supported message structure")
+		}
+		if len(items) == 0 {
+			return fmt.Errorf("input array cannot be empty")
+		}
+		for i, item := range items {
+			if err := validateDecisionsInputItem(item); err != nil {
+				return fmt.Errorf("input[%d]: %w", i, err)
+			}
+		}
+		return nil
+	default:
+		return fmt.Errorf("input must be a string or supported message structure")
+	}
+}
+
+func validateDecisionsInputItem(item json.RawMessage) error {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(item, &object); err != nil || object == nil {
+		return fmt.Errorf("item must be an object")
+	}
+
+	var itemType string
+	if err := json.Unmarshal(object["type"], &itemType); err != nil {
+		return fmt.Errorf("type is required")
+	}
+
+	switch itemType {
+	case "message":
+		return validateDecisionsMessageContent(object["content"])
+	case "input_text":
+		return validateDecisionsNonEmptyString(object["text"], "text")
+	case "input_image":
+		return validateDecisionsNonEmptyString(object["image_url"], "image_url")
+	default:
+		return fmt.Errorf("unsupported item type %q", itemType)
+	}
+}
+
+func validateDecisionsMessageContent(content json.RawMessage) error {
+	content = bytes.TrimSpace(content)
+	if len(content) == 0 || bytes.Equal(content, []byte("null")) {
+		return fmt.Errorf("message content is required")
+	}
+	if content[0] == '"' {
+		return validateDecisionsNonEmptyString(content, "content")
+	}
+	if content[0] != '[' {
+		return fmt.Errorf("message content must be a string or content array")
+	}
+
+	var parts []json.RawMessage
+	if err := json.Unmarshal(content, &parts); err != nil || len(parts) == 0 {
+		return fmt.Errorf("message content array cannot be empty")
+	}
+	for i, part := range parts {
+		if err := validateDecisionsInputItem(part); err != nil {
+			return fmt.Errorf("content[%d]: %w", i, err)
+		}
+	}
+	return nil
+}
+
+func validateDecisionsNonEmptyString(value json.RawMessage, field string) error {
+	var text string
+	if err := json.Unmarshal(value, &text); err != nil || text == "" {
+		return fmt.Errorf("%s must be a non-empty string", field)
+	}
+	return nil
 }
 
 func (t *InboundTransformer) TransformResponse(_ context.Context, response *llm.Response) (*httpclient.Response, error) {
