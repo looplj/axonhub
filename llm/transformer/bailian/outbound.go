@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/tidwall/sjson"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/auth"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -61,8 +63,28 @@ func NewOutboundTransformerWithConfig(config *Config) (transformer.Outbound, err
 // TransformRequest applies Bailian-specific request normalization before delegating to OpenAI-compatible transformer.
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	llmReq = mergeConsecutiveToolCallMessages(llmReq)
+	reasoningNone := llmReq != nil && llmReq.ReasoningEffort == "none"
+	if reasoningNone {
+		updated := *llmReq
+		updated.ReasoningEffort = ""
+		llmReq = &updated
+	}
 
-	return t.Outbound.TransformRequest(ctx, llmReq)
+	httpReq, err := t.Outbound.TransformRequest(ctx, llmReq)
+	if err != nil {
+		return nil, err
+	}
+
+	if !reasoningNone {
+		return httpReq, nil
+	}
+
+	httpReq.Body, err = sjson.SetBytes(httpReq.Body, "enable_thinking", false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set Bailian enable_thinking: %w", err)
+	}
+
+	return httpReq, nil
 }
 
 func mergeConsecutiveToolCallMessages(req *llm.Request) *llm.Request {
