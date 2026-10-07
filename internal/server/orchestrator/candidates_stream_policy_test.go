@@ -42,15 +42,16 @@ func TestStreamPolicySelector_Select(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		reqStream  *bool
-		reqType    llm.RequestType
-		apiFormat  llm.APIFormat
-		candidates []*ChannelModelsCandidate
-		mockErr    error
-		wantCount  int
-		wantModels []string
-		wantErr    bool
+		name                     string
+		reqStream                *bool
+		reqType                  llm.RequestType
+		apiFormat                llm.APIFormat
+		candidates               []*ChannelModelsCandidate
+		mockErr                  error
+		wantCount                int
+		wantModels               []string
+		wantErr                  bool
+		wantStreamPolicyConflict bool
 	}{
 		{
 			name:      "require stream, want stream - keep",
@@ -204,6 +205,29 @@ func TestStreamPolicySelector_Select(t *testing.T) {
 			apiFormat:  llm.APIFormatOpenAIResponseCompact,
 		},
 		{
+			name:      "require-only fallback reports Decisions stream policy conflict",
+			reqStream: nil,
+			candidates: []*ChannelModelsCandidate{
+				newCandidate("require", objects.CapabilityPolicyRequire),
+			},
+			reqType:                  llm.RequestTypeDecisions,
+			apiFormat:                llm.APIFormatOpenAIDecisions,
+			wantErr:                  true,
+			wantStreamPolicyConflict: true,
+		},
+		{
+			name:      "mixed Decisions candidates keep native channel",
+			reqStream: nil,
+			candidates: []*ChannelModelsCandidate{
+				newCandidate("require", objects.CapabilityPolicyRequire),
+				newCandidate("unlimited", objects.CapabilityPolicyUnlimited),
+			},
+			reqType:    llm.RequestTypeDecisions,
+			apiFormat:  llm.APIFormatOpenAIDecisions,
+			wantCount:  1,
+			wantModels: []string{"unlimited"},
+		},
+		{
 			name:      "mixed candidates for supported non-stream request keep native candidates ahead of require fallback",
 			reqStream: nil,
 			candidates: []*ChannelModelsCandidate{
@@ -276,6 +300,11 @@ func TestStreamPolicySelector_Select(t *testing.T) {
 
 			if tt.wantErr {
 				require.Error(t, err)
+				if tt.wantStreamPolicyConflict {
+					var conflict *StreamPolicyConflictError
+					require.ErrorAs(t, err, &conflict)
+					require.Contains(t, err.Error(), "matching channels require streaming")
+				}
 				return
 			}
 

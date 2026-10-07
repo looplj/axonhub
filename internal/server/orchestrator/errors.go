@@ -14,3 +14,20 @@ func (e *QuotaExhaustedError) Error() string {
 func NewQuotaExhaustedError(modelName string) error {
 	return &QuotaExhaustedError{ModelName: modelName}
 }
+
+// StreamPolicyConflictError indicates that matching channels require streaming
+// for a request type that cannot be auto-aggregated.
+type StreamPolicyConflictError struct {
+	ModelName string
+}
+
+func (e *StreamPolicyConflictError) Error() string {
+	return fmt.Sprintf(
+		"no eligible channel for model %s: matching channels require streaming, but Decisions requests are non-streaming",
+		e.ModelName,
+	)
+}
+
+func NewStreamPolicyConflictError(modelName string) error {
+	return &StreamPolicyConflictError{ModelName: modelName}
+}

@@ -46,6 +46,10 @@ func (s *StreamPolicySelector) Select(ctx context.Context, req *llm.Request) ([]
 		return candidates, nil
 	}
 
+	if req != nil && req.RequestType == llm.RequestTypeDecisions {
+		return nil, NewStreamPolicyConflictError(req.Model)
+	}
+
 	return nil, nil
 }
 
