@@ -1,0 +1,9 @@
+{
+  "model": "gpt-6-luna",
+  "answers": [
+    {"type": "choice", "name": "department", "choice": "billing"},
+    {"type": "refusal", "name": "safety_check", "refusal": "not evaluated"}
+  ],
+  "usage": {"input_tokens": 120, "output_tokens": 999, "x_beta": "preserve me"},
+  "x_beta": null
+}

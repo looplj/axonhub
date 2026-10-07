@@ -1,0 +1,17 @@
+{
+  "model": "gpt-6-luna",
+  "input": "I was charged twice for my order.",
+  "questions": [
+    {
+      "type": "choice",
+      "name": "department",
+      "instructions": "Which department should handle this complaint?",
+      "choices": [
+        {"value": "billing", "description": "Payments."},
+        {"value": true, "description": "A boolean choice must stay boolean."}
+      ],
+      "x_beta": null
+    }
+  ],
+  "x_beta": {"ordered": ["first", "second"]}
+}

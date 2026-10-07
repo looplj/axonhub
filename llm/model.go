@@ -272,6 +272,9 @@ type Request struct {
 	// AlphaSearch is the raw Codex/CPA /v1/alpha/search request payload.
 	AlphaSearch *AlphaSearchRequest `json:"alpha_search_request,omitempty"`
 
+	// Decisions is the raw OpenAI /v1/decisions request payload.
+	Decisions *DecisionsRequest `json:"decisions_request,omitempty"`
+
 	// RawRequest is the raw request from the client.
 	RawRequest *httpclient.Request `json:"raw_request,omitempty"`
 
@@ -756,6 +759,9 @@ type Response struct {
 
 	// AlphaSearch is the raw Codex/CPA /v1/alpha/search response payload.
 	AlphaSearch *AlphaSearchResponse `json:"alpha_search_response,omitempty"`
+
+	// Decisions is the raw OpenAI /v1/decisions response payload.
+	Decisions *DecisionsResponse `json:"decisions_response,omitempty"`
 
 	// RequestType is the outbound request type from the llm service.
 	// e.g. the request from the chat/completions endpoint is in the chat type.
