@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 )
@@ -187,10 +190,54 @@ func (t *InboundTransformer) AggregateStreamChunks(context.Context, []*httpclien
 }
 
 func (t *InboundTransformer) TransformError(_ context.Context, err error) *httpclient.Error {
-	if err == nil {
+	errValue := reflect.ValueOf(err)
+	if err == nil || (errValue.Kind() == reflect.Pointer && errValue.IsNil()) {
 		return &httpclient.Error{StatusCode: http.StatusInternalServerError, Body: []byte(`{"error":{"message":"Internal server error","type":"api_error"}}`)}
 	}
-	return &httpclient.Error{StatusCode: http.StatusBadRequest, Body: []byte(fmt.Sprintf(`{"error":{"message":%q,"type":"invalid_request_error"}}`, err.Error()))}
+
+	if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
+		if httpErr == nil {
+			return &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Status:     http.StatusText(http.StatusInternalServerError),
+				Body:       xjson.MustMarshal(&openAIError{Detail: llm.ErrorDetail{Message: "An unexpected error occurred", Type: "unexpected_error"}}),
+			}
+		}
+		return httpErr
+	}
+
+	if errors.Is(err, transformer.ErrInvalidRequest) {
+		return &httpclient.Error{
+			StatusCode: http.StatusBadRequest,
+			Status:     http.StatusText(http.StatusBadRequest),
+			Body:       xjson.MustMarshal(&openAIError{Detail: llm.ErrorDetail{Message: err.Error(), Type: "invalid_request_error"}}),
+		}
+	}
+
+	if responseErr, ok := errors.AsType[*llm.ResponseError](err); ok {
+		if responseErr == nil {
+			return &httpclient.Error{
+				StatusCode: http.StatusInternalServerError,
+				Status:     http.StatusText(http.StatusInternalServerError),
+				Body:       xjson.MustMarshal(&openAIError{Detail: llm.ErrorDetail{Message: "An unexpected error occurred", Type: "unexpected_error"}}),
+			}
+		}
+		return &httpclient.Error{
+			StatusCode: responseErr.StatusCode,
+			Status:     http.StatusText(responseErr.StatusCode),
+			Body:       xjson.MustMarshal(&openAIError{Detail: responseErr.Detail}),
+		}
+	}
+
+	return &httpclient.Error{
+		StatusCode: http.StatusInternalServerError,
+		Status:     http.StatusText(http.StatusInternalServerError),
+		Body:       xjson.MustMarshal(&openAIError{Detail: llm.ErrorDetail{Message: err.Error(), Type: "internal_server_error"}}),
+	}
+}
+
+type openAIError struct {
+	Detail llm.ErrorDetail `json:"error"`
 }
 
 var _ transformer.Inbound = (*InboundTransformer)(nil)
