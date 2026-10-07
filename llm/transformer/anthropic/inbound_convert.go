@@ -347,8 +347,14 @@ func convertToLLMRequest(anthropicReq *MessageRequest) (*llm.Request, error) {
 			// outbound transformer round-trips the budget verbatim instead of
 			// re-deriving a thinking config from the derived effort level.
 			chatReq.TransformerMetadata[TransformerMetadataKeyThinkingType] = "enabled"
-			chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(anthropicReq.Thinking.BudgetTokens)
-			chatReq.ReasoningBudget = lo.ToPtr(anthropicReq.Thinking.BudgetTokens)
+			if budget := anthropicReq.Thinking.BudgetTokens; budget > 0 {
+				chatReq.ReasoningEffort = thinkingBudgetToReasoningEffort(budget)
+				chatReq.ReasoningBudget = lo.ToPtr(budget)
+			} else {
+				// No budget given: fall back to the medium level so the outbound side uses
+				// the channel's budget mapping instead of sending budget_tokens=0.
+				chatReq.ReasoningEffort = llm.ReasoningEffortMedium
+			}
 
 			if anthropicReq.Thinking.Display != "" {
 				chatReq.TransformerMetadata[TransformerMetadataKeyThinkingDisplay] = anthropicReq.Thinking.Display
