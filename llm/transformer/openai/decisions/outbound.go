@@ -25,6 +25,7 @@ type Config struct {
 
 type OutboundTransformer struct {
 	config *Config
+	rawURL bool
 }
 
 func NewOutboundTransformer(baseURL, apiKey string) (*OutboundTransformer, error) {
@@ -41,8 +42,15 @@ func NewOutboundTransformerWithConfig(config *Config) (*OutboundTransformer, err
 	if config.BaseURL == "" {
 		return nil, errors.New("base URL is required")
 	}
-	config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
-	return &OutboundTransformer{config: config}, nil
+	rawURL := strings.HasSuffix(config.BaseURL, "##")
+	if rawURL {
+		config.BaseURL = strings.TrimSuffix(config.BaseURL, "##")
+	} else if config.EndpointPath != "" {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "")
+	} else {
+		config.BaseURL = transformer.NormalizeBaseURL(config.BaseURL, "v1")
+	}
+	return &OutboundTransformer{config: config, rawURL: rawURL}, nil
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
@@ -79,6 +87,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, request *llm
 }
 
 func (t *OutboundTransformer) buildURL() string {
+	if t.rawURL {
+		return strings.TrimRight(t.config.BaseURL, "/")
+	}
 	if t.config.EndpointPath != "" {
 		return t.config.BaseURL + t.config.EndpointPath
 	}
@@ -89,10 +100,21 @@ func (t *OutboundTransformer) TransformResponse(ctx context.Context, response *h
 	if response == nil {
 		return nil, fmt.Errorf("http response is nil")
 	}
-	if response.StatusCode >= 400 {
-		return nil, t.TransformError(ctx, &httpclient.Error{StatusCode: response.StatusCode, Body: response.Body})
+	if response.StatusCode >= http.StatusMultipleChoices {
+		return nil, t.TransformError(ctx, &httpclient.Error{
+			StatusCode: response.StatusCode,
+			Body:       response.Body,
+			Headers:    response.Headers,
+		})
 	}
-	if len(response.Body) == 0 || !json.Valid(response.Body) {
+	if len(response.Body) == 0 {
+		return &llm.Response{
+			RequestType: llm.RequestTypeDecisions,
+			APIFormat:   llm.APIFormatOpenAIDecisions,
+			Decisions:   &llm.DecisionsResponse{},
+		}, nil
+	}
+	if !json.Valid(response.Body) {
 		return nil, fmt.Errorf("%w: invalid decisions response body", transformer.ErrInvalidResponse)
 	}
 	var wire struct {
