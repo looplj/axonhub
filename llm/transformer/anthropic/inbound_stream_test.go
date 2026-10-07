@@ -452,6 +452,9 @@ func TestInboundStream_UsesUsageFromFinalUsageOnlyChunk(t *testing.T) {
 				PromptTokens:     338678,
 				CompletionTokens: 5795,
 				TotalTokens:      344473,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 100,
+				},
 			},
 		},
 	})
@@ -468,7 +471,9 @@ func TestInboundStream_UsesUsageFromFinalUsageOnlyChunk(t *testing.T) {
 	}
 
 	require.NotNil(t, deltaUsage)
-	require.EqualValues(t, 338678, deltaUsage.InputTokens)
+	// Anthropic reports cached tokens separately and excludes them from input_tokens.
+	require.EqualValues(t, 338578, deltaUsage.InputTokens)
+	require.EqualValues(t, 100, deltaUsage.CacheReadInputTokens)
 	require.EqualValues(t, 5795, deltaUsage.OutputTokens)
 }
 

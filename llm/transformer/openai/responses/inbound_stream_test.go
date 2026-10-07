@@ -634,6 +634,9 @@ func TestInboundTransformer_TransformStream_UsesUsageFromFinalUsageOnlyChunk(t *
 				PromptTokens:     338678,
 				CompletionTokens: 5795,
 				TotalTokens:      344473,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 100,
+				},
 			},
 		},
 	}))
@@ -651,7 +654,9 @@ func TestInboundTransformer_TransformStream_UsesUsageFromFinalUsageOnlyChunk(t *
 
 	require.NotNil(t, terminal)
 	require.NotNil(t, terminal.Usage)
+	// Responses keeps cached tokens inside input_tokens and reports them separately.
 	require.EqualValues(t, 338678, terminal.Usage.InputTokens)
+	require.EqualValues(t, 100, terminal.Usage.InputTokenDetails.CachedTokens)
 	require.EqualValues(t, 5795, terminal.Usage.OutputTokens)
 }
 
