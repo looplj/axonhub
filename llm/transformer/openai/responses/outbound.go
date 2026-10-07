@@ -177,6 +177,8 @@ func (t *OutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatOpenAIResponse
 }
 
+// preserveAdditionalTools reports whether the private Responses Lite tool
+// definitions may be replayed to this upstream.
 func (t *OutboundTransformer) preserveAdditionalTools() bool {
 	return t != nil && t.config != nil && t.config.PreserveAdditionalTools
 }

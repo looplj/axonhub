@@ -293,6 +293,10 @@ func openAIResponsesRequestExtensions(llmReq *llm.Request) *llm.OpenAIResponsesR
 	return requestExt
 }
 
+// marshalRequestPayload marshals the unified request and replays the raw fields,
+// tools and input items the caller sent so they survive the round trip.
+// preserveAdditionalTools decides whether the Responses Lite tool definitions
+// travel along; see mergeRawOnlyInputItems.
 func marshalRequestPayload(payload Request, llmReq *llm.Request, preserveAdditionalTools bool) ([]byte, error) {
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -370,6 +374,9 @@ func marshalCompactRequestPayload(payload CompactAPIRequest, llmReq *llm.Request
 // Lite, so it is replayed only when the upstream speaks that private protocol
 // (the official Codex backend). Everywhere else it stays dropped: an
 // OpenAI-compatible upstream rejects the item type outright.
+// mergeRawOnlyInputItems rebuilds the outgoing `input` array from the merged
+// request: items rebuilt from messages and raw items that had no representation
+// are interleaved back into the positions they were sent in.
 func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions, preserveAdditionalTools bool) ([]json.RawMessage, bool) {
 	if requestExt == nil || len(requestExt.RawInputItems) == 0 {
 		return nil, false
