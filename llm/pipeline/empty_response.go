@@ -126,6 +126,10 @@ func hasResponseContent(resp *llm.Response) bool {
 		return true
 	}
 
+	if resp.Decisions != nil && len(resp.Decisions.Answers) > 0 {
+		return true
+	}
+
 	if resp.Completion != nil {
 		for _, choice := range resp.Completion.Choices {
 			if choice.Text != "" {

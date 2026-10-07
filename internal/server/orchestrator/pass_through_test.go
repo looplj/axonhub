@@ -2089,6 +2089,16 @@ func TestMergePassThroughBodyPatchesModerationModel(t *testing.T) {
 	require.Equal(t, "hello", gjson.GetBytes(merged, "input").String())
 }
 
+func TestMergePassThroughBodyPatchesDecisionsModel(t *testing.T) {
+	rawBody := []byte(`{"model":"client-model","input":"context","x_beta":{"choice":true}}`)
+
+	merged, err := mergePassThroughRequestBody(rawBody, llm.APIFormatOpenAIDecisions, "provider-model")
+	require.NoError(t, err)
+	require.Equal(t, "provider-model", gjson.GetBytes(merged, "model").String())
+	require.Equal(t, "context", gjson.GetBytes(merged, "input").String())
+	require.True(t, gjson.GetBytes(merged, "x_beta.choice").Bool())
+}
+
 // TestApplyUserAgentPassThrough tests the User-Agent pass-through middleware.
 func TestApplyUserAgentPassThrough(t *testing.T) {
 	tests := []struct {

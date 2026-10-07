@@ -36,6 +36,10 @@ func CapableAPIFormats(requestType RequestType) map[string]struct{} {
 		return map[string]struct{}{
 			APIFormatOpenAIAlphaSearch.String(): {},
 		}
+	case RequestTypeDecisions:
+		return map[string]struct{}{
+			APIFormatOpenAIDecisions.String(): {},
+		}
 	case RequestTypeImage:
 		return map[string]struct{}{
 			APIFormatOpenAIImageGeneration.String(): {},

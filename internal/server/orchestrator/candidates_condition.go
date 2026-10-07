@@ -86,13 +86,13 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 			selectedModels := make([]biz.ChannelModelEntry, 0, len(c.Models))
 			selectedFormats := make([]string, 0, len(c.Models))
 			for _, entry := range c.Models {
-				endpoints := applyForcedAPIFormats(ctx, c.Channel, []biz.ChannelModelEntry{entry}, req.Model, baseEndpoints)
+				endpoints := applyForcedAPIFormatsForRequest(ctx, c.Channel, []biz.ChannelModelEntry{entry}, req.Model, req.RequestType, baseEndpoints)
 				format := SelectAPIFormat(endpoints, req)
-				// Alpha Search has no generic fallback. A model whose forced protocol
-				// list cannot serve Alpha Search must not remain as the first retry
+				// Explicit protocols have no generic fallback. A model whose forced protocol
+				// list cannot serve the requested protocol must not remain as the first retry
 				// entry, otherwise an empty candidate format falls back to the channel's
 				// primary (usually chat) outbound.
-				if req.RequestType == llm.RequestTypeAlphaSearch && format == "" {
+				if requiresExplicitEndpoint(req.RequestType) && format == "" {
 					continue
 				}
 
@@ -104,18 +104,18 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 				continue
 			}
 
-			if req.RequestType == llm.RequestTypeAlphaSearch {
+			if requiresExplicitEndpoint(req.RequestType) {
 				c.Models = selectedModels
 			}
 			c.modelAPIFormats = selectedFormats
 			c.APIFormat = selectedFormats[0]
 		} else {
 			c.modelAPIFormats = nil
-			endpoints := applyForcedAPIFormats(ctx, c.Channel, c.Models, req.Model, baseEndpoints)
+			endpoints := applyForcedAPIFormatsForRequest(ctx, c.Channel, c.Models, req.Model, req.RequestType, baseEndpoints)
 			c.APIFormat = SelectAPIFormat(endpoints, req)
 		}
 
-		if req.RequestType == llm.RequestTypeAlphaSearch && c.APIFormat == "" {
+		if requiresExplicitEndpoint(req.RequestType) && c.APIFormat == "" {
 			continue
 		}
 

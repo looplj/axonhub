@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -455,6 +456,20 @@ func TestTraceService_ImageGenerationTrace(t *testing.T) {
 	require.Equal(t, int64(34), *traceRoot.Metadata.OutputTokens)
 	require.NotNil(t, traceRoot.Metadata.TotalTokens)
 	require.Equal(t, int64(46), *traceRoot.Metadata.TotalTokens)
+}
+
+func TestDecisionsTraceRedactsInlineImages(t *testing.T) {
+	requestSpans := extractSpansFromDecisionsRequestBody([]byte(`{"input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"choose a department"},{"type":"input_image","image_url":"data:image/png;base64,secret"}]}],"questions":[{"type":"choice","name":"department"},{"type":"ranking","name":"priority"}]}`), "request-1")
+	require.NotEmpty(t, requestSpans)
+	encoded, err := json.Marshal(requestSpans)
+	require.NoError(t, err)
+	assert.Contains(t, string(encoded), "[image]")
+	assert.NotContains(t, string(encoded), "data:image")
+
+	responseSpans, usage := extractSpansFromDecisionsResponseBody([]byte(`{"answers":[{"type":"choice","name":"department","choice":"billing","score":0.9}],"usage":{"input_tokens":120}}`), "response-1")
+	require.NotEmpty(t, responseSpans)
+	require.NotNil(t, usage)
+	assert.Equal(t, int64(120), usage.PromptTokens)
 }
 
 func TestGetOutboundTransformer_ImageFormats(t *testing.T) {

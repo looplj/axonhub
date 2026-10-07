@@ -1,0 +1,8 @@
+{
+  "error": {
+    "message": "decision rate limit",
+    "type": "rate_limit_error",
+    "code": "rate_limit",
+    "x_beta": null
+  }
+}

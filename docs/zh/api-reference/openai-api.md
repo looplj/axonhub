@@ -150,6 +150,129 @@ if err := stream.Err(); err != nil {
 fmt.Println("\n完整响应:", fullContent.String())
 ```
 
+### OpenAI Decisions API
+
+AxonHub 以原生方式支持 OpenAI Decisions 协议，并提供独立的非流式端点。
+请求发送到 `POST /v1/decisions`，保留 Decisions JSON 结构，不会转换为 Chat
+Completions、Responses 或 SystemOne。
+
+**端点：**
+
+- `POST /v1/decisions` - 使用带类型的问题评估共享输入
+
+**渠道端点配置：**
+
+在需要接收 Decisions 请求的渠道中添加自定义端点，并设置
+`api_format: openai/decisions`。端点可以继承渠道的 `base_url`，也可以提供
+自己的 `base_url`。可选的 `path` 会替换默认路径，且必须以 `/` 开头，例如
+`/v1/decisions`。Decisions 不会回退到 Chat 端点。渠道必须配置兼容的
+`openai/decisions` 端点，才能接收此类请求。
+
+```json
+{
+  "api_format": "openai/decisions",
+  "base_url": "https://decisions.example.test/api",
+  "path": "/v1/decisions"
+}
+```
+
+**请求协议：**
+
+原生请求必须包含 `model`、`input` 和非空的 `questions` 数组。`input` 可以是
+非空字符串，也可以是受支持的消息项数组。文本部分使用 `input_text`，图片
+部分使用 `input_image`；`message` 项可以包含文本或嵌套内容部分。问题和答案
+对象保持原生 JSON 结构，包括未知字段和带类型的 choice 值。
+
+```json
+{
+  "model": "example-decisions-model",
+  "input": "一条虚构的客户报告称包裹完好送达。",
+  "questions": [
+    {
+      "type": "choice",
+      "name": "route",
+      "instructions": "选择最合适的虚构路由标签。",
+      "choices": [
+        { "value": "review", "description": "需要人工审核。" },
+        { "value": "complete", "description": "不需要后续处理。" }
+      ]
+    }
+  ]
+}
+```
+
+**响应和限制：**
+
+- 成功响应以原生 Decisions JSON 返回，并包含 `answers` 数组。答案可以是
+  `choice`、`predicate` 或 `score` 等带类型结果，也可以包含 `refusal` 答案。
+- 第一阶段的 Decisions 仅支持非流式请求。请设置 `stream` 为 `false` 或省略
+  该字段。带有 `"stream": true` 的请求会在本地被拒绝，并返回无效请求错误。
+  此端点不支持 SSE 客户端和 SDK 的流式辅助方法。
+- 如果响应包含 `usage`，只有 `usage.input_tokens` 会映射为 AxonHub 的 prompt
+  用量。output、total、cache 和 reasoning token 字段不会由此协议映射。缺少
+  `usage` 或其值为 null 时，相关用量保持缺失。
+- 提示词保护会按请求应用已配置的提示词保护规则：匹配的规则可以遮盖命中的文本，
+  也可以直接拒绝请求。遮盖分为主路径和条件性的原始回放路径：
+  - 主路径：字符串形式的 `input`，以及 `input[].content[]` 中 `type` 为
+    `input_text` 的部分的 `text`。
+  - 条件性原始回放路径：仅当请求体透传已启用且实际应用、主路径命中的遮盖规则
+    可用，并且额外字段本身也匹配这些规则及其作用域时，遮盖才会作用于独立的
+    `input[].text` 和字符串形式的 `message.content`。透传禁用时，仅遮盖主路径的
+    字符串 `input` 和嵌套 `input_text` 字段。额外形式单独出现时不会产生主路径
+    命中，因而会原样返回。
+  内联图片值和无关的上游字段会保留，但追踪数据不会暴露内联图片字节。
+- 原生 Decisions 请求和响应不会转换为 SystemOne。SystemOne 端点配置属于独立
+  的协议边界，不是 `/v1/decisions` 的回退或兼容路径。
+
+**虚构响应示例：**
+
+```json
+{
+  "model": "example-decisions-model",
+  "answers": [
+    { "type": "choice", "name": "route", "choice": "complete" },
+    { "type": "refusal", "name": "safety_check", "refusal": "not evaluated" }
+  ],
+  "usage": { "input_tokens": 12, "output_tokens": 99 }
+}
+```
+
+**虚构错误示例：**
+
+```json
+{
+  "error": {
+    "message": "decision rate limit",
+    "type": "rate_limit_error",
+    "code": "rate_limit",
+    "x_beta": null
+  }
+}
+```
+
+**虚构的条件性提示词保护示例：**
+
+遮盖 `secret-*` 的规则命中了嵌套的 `input_text` 部分，因此主路径会遮盖它。
+如果请求体透传已启用且实际应用、该命中的遮盖规则可用于原始回放，并且独立的
+`input[].text` 本身也匹配该规则及其作用域，条件性原始回放路径才会同时遮盖它：
+
+```json
+{
+  "input": [
+    {
+      "type": "message",
+      "role": "user",
+      "content": [{ "type": "input_text", "text": "secret-nested" }]
+    },
+    { "type": "input_text", "text": "secret-standalone" }
+  ]
+}
+```
+
+满足这些条件时，两处 `secret-*` 都会被遮盖。透传禁用时，仅遮盖嵌套的
+`input_text` 字段。如果只存在独立的 `input[].text`，则没有任何主路径
+字段命中，请求会原样返回。
+
 ## API 转换能力
 
 AxonHub 自动在 API 格式之间进行转换，实现以下强大场景：

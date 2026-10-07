@@ -47,7 +47,7 @@ func protectPrompts(inbound *PersistentInboundTransformer) pipeline.Middleware {
 		}
 
 		protectedTexts := promptProtectionTexts(protected)
-		if len(matchedRules) > 0 || !slices.Equal(originalTexts, protectedTexts) {
+		if llmRequest.APIFormat != llm.APIFormatOpenAIDecisions && (len(matchedRules) > 0 || !slices.Equal(originalTexts, protectedTexts)) {
 			// Legacy protectors can change prompts without reporting rules. They must
 			// also validate raw replay instead of silently restoring the original text.
 			inbound.state.PromptProtectionBodyCheck = &promptProtectionBodyCheck{

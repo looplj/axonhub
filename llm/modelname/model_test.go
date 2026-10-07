@@ -25,6 +25,7 @@ func TestFromResponse(t *testing.T) {
 		{"Responses", llm.APIFormatOpenAIResponse, `{"model":"gpt-version"}`, "application/json", "gpt-version"},
 		{"Compact", llm.APIFormatOpenAIResponseCompact, `{"model":"gpt-version"}`, "application/json", "gpt-version"},
 		{"TypeSafe", llm.APIFormatTypeSafeSystemOne, `{"model":"jev-1.13.0","answers":{}}`, "application/json", "jev-1.13.0"},
+		{"Decisions", llm.APIFormatOpenAIDecisions, `{"model":"gpt-decisions","answers":[]}`, "application/json", "gpt-decisions"},
 		{"TypeSafe answers are not metadata", llm.APIFormatTypeSafeSystemOne, `{"answers":{"model":"generated"}}`, "application/json", ""},
 		{"Alpha Search results are not metadata", llm.APIFormatOpenAIAlphaSearch, `{"results":[{"model":"search-result"}]}`, "application/json", ""},
 		{"Gemini model version", llm.APIFormatGeminiContents, `{"modelVersion":"gemini-version","candidates":[]}`, "application/json", "gemini-version"},
