@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -27,6 +28,15 @@ func TestHasResponseContent_ReasoningSignature(t *testing.T) {
 func TestHasResponseContent(t *testing.T) {
 	t.Run("empty response", func(t *testing.T) {
 		require.False(t, hasResponseContent(&llm.Response{}))
+	})
+
+	t.Run("decisions answers", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Decisions: &llm.DecisionsResponse{Answers: []json.RawMessage{json.RawMessage(`{"type":"refusal"}`)}},
+		}))
+		require.False(t, hasResponseContent(&llm.Response{
+			Decisions: &llm.DecisionsResponse{Answers: []json.RawMessage{}},
+		}))
 	})
 
 	t.Run("alpha search response", func(t *testing.T) {
