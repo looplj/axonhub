@@ -69,6 +69,26 @@ func promptProtectionTexts(request *llm.Request) []protectedPromptText {
 		}
 		messages = request.Compact.Input
 	}
+	if request.Decisions != nil {
+		input := gjson.GetBytes(request.Decisions.Body, "input")
+		if input.Type == gjson.String {
+			return []protectedPromptText{{role: "user", text: input.String()}}
+		}
+		for i := range jsonArrayLength(request.Decisions.Body, "input") {
+			itemPath := fmt.Sprintf("input.%d", i)
+			role := gjson.GetBytes(request.Decisions.Body, itemPath+".role").String()
+			if role == "" {
+				role = "user"
+			}
+			for j := range jsonArrayLength(request.Decisions.Body, itemPath+".content") {
+				partPath := fmt.Sprintf("%s.content.%d", itemPath, j)
+				if strings.EqualFold(gjson.GetBytes(request.Decisions.Body, partPath+".type").String(), "input_text") {
+					text := gjson.GetBytes(request.Decisions.Body, partPath+".text").String()
+					texts = append(texts, protectedPromptText{role: role, text: text})
+				}
+			}
+		}
+	}
 	for _, message := range messages {
 		if message.Content.Content != nil {
 			texts = append(texts, protectedPromptText{role: message.Role, text: *message.Content.Content})
@@ -297,9 +317,30 @@ func rawPromptTextFields(body []byte, apiFormat llm.APIFormat) ([]rawPromptTextF
 		return anthropicPromptTextFields(body), nil
 	case llm.APIFormatGeminiContents:
 		return geminiPromptTextFields(body), nil
+	case llm.APIFormatOpenAIDecisions:
+		return decisionsPromptTextFields(body), nil
 	default:
 		return nil, fmt.Errorf("API format %q does not support raw prompt protection patches", apiFormat)
 	}
+}
+
+func decisionsPromptTextFields(body []byte) []rawPromptTextField {
+	if gjson.GetBytes(body, "input").Type == gjson.String {
+		return []rawPromptTextField{{path: "input", role: "user"}}
+	}
+
+	fields := make([]rawPromptTextField, 0)
+	for i := range jsonArrayLength(body, "input") {
+		itemPath := fmt.Sprintf("input.%d", i)
+		role := gjson.GetBytes(body, itemPath+".role").String()
+		if role == "" {
+			role = "user"
+		}
+		fields = append(fields, rawContentTextFields(body, itemPath+".content", role, "input_text", "text")...)
+		fields = append(fields, rawStringField(body, itemPath+".text", role)...)
+	}
+
+	return fields
 }
 
 // openAIChatPromptTextFields returns string and text-part content from chat-style bodies.

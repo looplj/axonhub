@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
 )
 
 var ErrPromptProtectionRejected = errors.New("prompt protection rejected request")
@@ -22,6 +25,9 @@ type PromptProtectionResult struct {
 
 // ApplyPromptProtectionRules applies prompt protection rules to a request.
 func ApplyPromptProtectionRules(req *llm.Request, rules []*ent.PromptProtectionRule) PromptProtectionResult {
+	if req != nil && req.Decisions != nil && len(rules) > 0 {
+		return applyDecisionsPromptProtectionRules(req, rules)
+	}
 	if req != nil && req.Compact != nil && len(rules) > 0 {
 		return applyCompactPromptProtectionRules(req, rules)
 	}
@@ -72,6 +78,65 @@ func ApplyPromptProtectionRules(req *llm.Request, rules []*ent.PromptProtectionR
 		Request:      req,
 		MatchedRules: matchedRules,
 	}
+}
+
+func applyDecisionsPromptProtectionRules(req *llm.Request, rules []*ent.PromptProtectionRule) PromptProtectionResult {
+	body := append([]byte(nil), req.Decisions.Body...)
+	var matchedRules []*ent.PromptProtectionRule
+	for _, rule := range rules {
+		if rule == nil || rule.Settings == nil {
+			continue
+		}
+		matched := false
+		for _, field := range decisionsPromptFields(body) {
+			if !promptProtectionRuleAppliesToRole(rule.Settings.Scopes, field.role) || !MatchPromptProtectionRule(rule.Pattern, field.text) {
+				continue
+			}
+			matched = true
+			if rule.Settings.Action == objects.PromptProtectionActionReject {
+				return PromptProtectionResult{Request: req, MatchedRules: []*ent.PromptProtectionRule{rule}, Rejected: true}
+			}
+			masked := ReplacePromptProtectionRule(rule.Pattern, field.text, rule.Settings.Replacement)
+			var err error
+			body, err = sjson.SetBytes(body, field.path, masked)
+			if err != nil {
+				return PromptProtectionResult{Request: req}
+			}
+		}
+		if matched {
+			matchedRules = append(matchedRules, rule)
+		}
+	}
+	req.Decisions.Body = body
+	return PromptProtectionResult{Request: req, MatchedRules: matchedRules}
+}
+
+type decisionsPromptField struct {
+	path string
+	role string
+	text string
+}
+
+func decisionsPromptFields(body []byte) []decisionsPromptField {
+	if gjson.GetBytes(body, "input").Type == gjson.String {
+		return []decisionsPromptField{{path: "input", role: "user", text: gjson.GetBytes(body, "input").String()}}
+	}
+	var fields []decisionsPromptField
+	for i := range int(gjson.GetBytes(body, "input.#").Int()) {
+		itemPath := fmt.Sprintf("input.%d", i)
+		role := gjson.GetBytes(body, itemPath+".role").String()
+		if role == "" {
+			role = "user"
+		}
+		for j := range int(gjson.GetBytes(body, itemPath+".content.#").Int()) {
+			partPath := fmt.Sprintf("%s.content.%d", itemPath, j)
+			if !strings.EqualFold(gjson.GetBytes(body, partPath+".type").String(), "input_text") {
+				continue
+			}
+			fields = append(fields, decisionsPromptField{path: partPath + ".text", role: role, text: gjson.GetBytes(body, partPath+".text").String()})
+		}
+	}
+	return fields
 }
 
 // applyCompactPromptProtectionRules protects Compact's separate input and

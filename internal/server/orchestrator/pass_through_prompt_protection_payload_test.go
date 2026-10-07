@@ -20,6 +20,7 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/gemini"
 	"github.com/looplj/axonhub/llm/transformer/ollama"
 	"github.com/looplj/axonhub/llm/transformer/openai"
+	decisions "github.com/looplj/axonhub/llm/transformer/openai/decisions"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -96,6 +97,18 @@ func TestPromptProtectedPassThroughPayload(t *testing.T) {
 			scopes:    []objects.PromptProtectionScope{objects.PromptProtectionScopeUser},
 			masked:    []string{"contents.0.parts.0.text"},
 			unchanged: map[string]string{"systemInstruction.parts.0.text": "secret-system", "contents.0.parts.1.functionResponse.response.token": "secret-tool", "contents.1.parts.0.text": "secret-assistant"},
+		},
+		{
+			name: "Decisions string input", format: llm.APIFormatOpenAIDecisions,
+			body:      `{"model":"alias","input":"secret-user","questions":[{"type":"choice","name":"kind"}],"x_beta":{"keep":true},"provider_option":{"keep":true}}`,
+			masked:    []string{"input"},
+			unchanged: map[string]string{},
+		},
+		{
+			name: "Decisions input text and image", format: llm.APIFormatOpenAIDecisions,
+			body:      `{"model":"alias","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"secret-user"},{"type":"input_image","image_url":"data:image/png;base64,secret"}]}],"questions":[{}],"provider_option":{"keep":true}}`,
+			masked:    []string{"input.0.content.0.text"},
+			unchanged: map[string]string{"input.0.content.1.image_url": "data:image/png;base64,secret"},
 		},
 	}
 
@@ -275,6 +288,9 @@ func promptProtectionPayloadTransformers(t *testing.T, format llm.APIFormat) (tr
 	case llm.APIFormatOpenAIResponseCompact:
 		inbound = responses.NewCompactInboundTransformer()
 		outbound, err = responses.NewOutboundTransformer("https://provider.example", "test-key")
+	case llm.APIFormatOpenAIDecisions:
+		inbound = decisions.NewInboundTransformer()
+		outbound, err = decisions.NewOutboundTransformer("https://provider.example", "test-key")
 	case llm.APIFormatAnthropicMessage:
 		inbound = anthropic.NewInboundTransformer()
 		outbound, err = anthropic.NewOutboundTransformer("https://provider.example", "test-key")
