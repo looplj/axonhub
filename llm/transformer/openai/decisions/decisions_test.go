@@ -97,6 +97,15 @@ func TestDecisionsStreamIsRejected(t *testing.T) {
 	require.True(t, errors.Is(err, transformer.ErrInvalidRequest))
 }
 
+func TestDecisionsRejectsTrailingJSONData(t *testing.T) {
+	rawRequest, err := os.ReadFile("testdata/trailing_data.json")
+	require.NoError(t, err)
+
+	_, err = NewInboundTransformer().TransformRequest(context.Background(), &httpclient.Request{Body: rawRequest})
+	require.Error(t, err)
+	require.True(t, errors.Is(err, transformer.ErrInvalidRequest))
+}
+
 func TestDecisionsUsageCanBeNull(t *testing.T) {
 	outbound, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	require.NoError(t, err)

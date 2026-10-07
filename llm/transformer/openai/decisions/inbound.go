@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -41,6 +42,13 @@ func (t *InboundTransformer) TransformRequest(_ context.Context, request *httpcl
 	decoder := json.NewDecoder(bytes.NewReader(request.Body))
 	if err := decoder.Decode(&wire); err != nil {
 		return nil, fmt.Errorf("%w: failed to decode decisions request: %w", transformer.ErrInvalidRequest, err)
+	}
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		if err == nil {
+			return nil, fmt.Errorf("%w: trailing data after decisions request", transformer.ErrInvalidRequest)
+		}
+		return nil, fmt.Errorf("%w: invalid trailing data after decisions request: %w", transformer.ErrInvalidRequest, err)
 	}
 	if wire.Stream != nil && *wire.Stream {
 		return nil, fmt.Errorf("%w: streaming is not supported for decisions requests", transformer.ErrInvalidRequest)
