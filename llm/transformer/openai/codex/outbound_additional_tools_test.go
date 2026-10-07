@@ -32,7 +32,11 @@ func TestOutboundTransformer_AdditionalToolsScope(t *testing.T) {
 		preserve bool
 	}{
 		{name: "official backend", baseURL: "https://chatgpt.com/backend-api/codex#", preserve: true},
+		{name: "official backend without scheme", baseURL: "chatgpt.com/backend-api/codex", preserve: true},
 		{name: "compatible relay", baseURL: "https://relay.example.com/v1", preserve: false},
+		{name: "relay with the official host in its path", baseURL: "https://relay.example.com/chatgpt.com/v1", preserve: false},
+		{name: "relay whose hostname ends with the official host", baseURL: "https://chatgpt.com.relay.example/v1", preserve: false},
+		{name: "relay whose hostname starts with the official host", baseURL: "https://chatgpt.com-evil.example/v1", preserve: false},
 	}
 
 	for _, tt := range tests {

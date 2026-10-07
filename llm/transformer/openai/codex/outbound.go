@@ -9,6 +9,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -87,9 +88,27 @@ type Params struct {
 
 // isOfficialCodexBaseURL reports whether baseURL points at the official Codex
 // backend. Everything else is treated as a compatible relay that may return a
-// completed JSON response instead of SSE.
+// completed JSON response instead of SSE, and that must not receive the private
+// Responses Lite constructs.
+//
+// The host is compared as a whole: a relay reached through a path or hostname
+// that merely mentions the official domain is still a relay.
 func isOfficialCodexBaseURL(baseURL string) bool {
-	return strings.Contains(strings.ToLower(baseURL), "chatgpt.com")
+	host := ""
+	if parsed, err := url.Parse(baseURL); err == nil && parsed.Host != "" {
+		host = parsed.Hostname()
+	} else {
+		// Tolerate a base URL written without a scheme, e.g. "chatgpt.com/v1".
+		remainder := strings.TrimPrefix(strings.TrimPrefix(baseURL, "//"), "/")
+		host = strings.SplitN(remainder, "/", 2)[0]
+		if idx := strings.Index(host, ":"); idx >= 0 {
+			host = host[:idx]
+		}
+	}
+
+	host = strings.ToLower(host)
+
+	return host == "chatgpt.com" || strings.HasSuffix(host, ".chatgpt.com")
 }
 
 // isOfficialCodex reports whether the transformer targets the official Codex backend.

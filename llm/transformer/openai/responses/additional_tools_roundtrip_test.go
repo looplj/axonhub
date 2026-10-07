@@ -92,3 +92,44 @@ func TestAdditionalTools_ReplayedForOfficialCodex(t *testing.T) {
 	require.Contains(t, string(input[0]), `"shell"`)
 	require.Contains(t, string(input[1]), "Hello")
 }
+
+// additionalToolsMixedRequest is the lite request with a second raw-only input
+// item after the message: the tool definitions are not the only item that has to
+// be replayed verbatim.
+const additionalToolsMixedRequest = `{
+	"model": "gpt-6-luna",
+	"input": [
+		{"type": "additional_tools", "id": "at_1", "role": "developer", "tools": []},
+		{"type": "message", "role": "user", "content": "Hello"},
+		{"type": "web_search_call", "id": "ws_1", "status": "completed"}
+	]
+}`
+
+func additionalToolsMixedInput(t *testing.T, preserve bool) []json.RawMessage {
+	t.Helper()
+
+	req, err := NewInboundTransformer().TransformRequest(
+		t.Context(), &httpclient.Request{Body: []byte(additionalToolsMixedRequest)})
+	require.NoError(t, err)
+
+	wire, err := additionalToolsOutbound(t, preserve).TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+
+	var body struct {
+		Input []json.RawMessage `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(wire.Body, &body))
+
+	return body.Input
+}
+
+// TestAdditionalTools_MixedRawItemsKeepTheirPlace pins that dropping the lite
+// item must not disturb the other raw-only items: they are replayed verbatim and
+// in the position they had in the incoming request.
+func TestAdditionalTools_MixedRawItemsKeepTheirPlace(t *testing.T) {
+	input := additionalToolsMixedInput(t, false)
+
+	require.Len(t, input, 2)
+	require.Contains(t, string(input[0]), "Hello")
+	require.Contains(t, string(input[1]), "web_search_call")
+}

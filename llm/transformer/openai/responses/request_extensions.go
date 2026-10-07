@@ -421,13 +421,24 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 }
 
 // withoutInputFragmentsOfType returns the fragments that do not carry the given
-// item type. The input slice is not modified in place: it is owned by the
-// request extensions and may be replayed on a retry.
+// item type. The kept fragments are reindexed to their position in the compacted
+// sequence: the merge that follows places items by their original index, so a
+// fragment left at its old index after an earlier one was dropped would land
+// outside the range the merge can fill. The input slice is not modified in
+// place: it is owned by the request extensions and may be replayed on a retry.
 func withoutInputFragmentsOfType(fragments []llm.OpenAIResponsesRawFragment, itemType string) []llm.OpenAIResponsesRawFragment {
 	kept := make([]llm.OpenAIResponsesRawFragment, 0, len(fragments))
+	dropped := 0
+
 	for _, fragment := range fragments {
 		if fragment.Type == itemType {
+			dropped++
+
 			continue
+		}
+
+		if dropped > 0 {
+			fragment.OriginalIndex -= dropped
 		}
 
 		kept = append(kept, fragment)
