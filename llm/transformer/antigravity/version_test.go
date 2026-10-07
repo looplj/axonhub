@@ -23,6 +23,7 @@ func resetVersionState(t *testing.T) {
 	initOnce = sync.Once{}
 }
 
+// newFetcher directs both version sources to test servers.
 func newFetcher(versionSrv, changelogSrv *httptest.Server) *versionFetcher {
 	vURL := ""
 	if versionSrv != nil {
@@ -41,6 +42,7 @@ func newFetcher(versionSrv, changelogSrv *httptest.Server) *versionFetcher {
 	}
 }
 
+// TestFetchVersion_AutoUpdaterSuccess checks the updater path when the IDE changelog is unavailable.
 func TestFetchVersion_AutoUpdaterSuccess(t *testing.T) {
 	resetVersionState(t)
 
@@ -180,6 +182,7 @@ func TestFetchVersion_ChangelogMaxBytes(t *testing.T) {
 	assert.Equal(t, UserAgentVersionFallback, GetVersion())
 }
 
+// TestFetchVersion_PrefersIDEAndNeverDowngrades excludes other clients and stale version sources.
 func TestFetchVersion_PrefersIDEAndNeverDowngrades(t *testing.T) {
 	for _, tc := range []struct {
 		name, changelog, updater, expected string
@@ -200,6 +203,28 @@ func TestFetchVersion_PrefersIDEAndNeverDowngrades(t *testing.T) {
 			SetClientHeaders(headers)
 			require.Equal(t, GetUserAgent(), headers.Get("User-Agent"))
 			require.Equal(t, tc.expected, headers.Get("X-Client-Version"))
+		})
+	}
+}
+
+// TestNewerVersionMalformedInputs checks startup safety and numeric comparison across release components.
+func TestNewerVersionMalformedInputs(t *testing.T) {
+	for _, tc := range []struct{ current, candidate, expected string }{
+		{"2.5.5", "2.5", "2.5.5"},
+		{"2.5", "3.0.0", "2.5"},
+		{"2.5.5", "3.0.bad", "2.5.5"},
+		{"2.5.bad", "3.0.0", "2.5.bad"},
+		{"2.5.5", "2.5.5-beta", "2.5.5"},
+		{"2.5.5", "2.5.5.1", "2.5.5"},
+		{"2.5.5", "-3.0.0", "2.5.5"},
+		{"2.5.5", "", "2.5.5"},
+		{"2.5.5", "2.10.0", "2.10.0"},
+		{"2.5.5", "3.0.0", "3.0.0"},
+		{"2.5.5", "2.5.6", "2.5.6"},
+		{"2.5.5", "2.0.6", "2.5.5"},
+	} {
+		t.Run(tc.current+"/"+tc.candidate, func(t *testing.T) {
+			require.Equal(t, tc.expected, newerVersion(tc.current, tc.candidate))
 		})
 	}
 }

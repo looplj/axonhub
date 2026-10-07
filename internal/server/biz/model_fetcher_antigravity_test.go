@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -20,10 +21,12 @@ import (
 
 type antigravityCatalogTransport func(*http.Request) (*http.Response, error)
 
+// RoundTrip intercepts OAuth and catalog requests without contacting Google.
 func (f antigravityCatalogTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	return f(r)
 }
 
+// TestFetchModelsAntigravitySavedCredentialsAndRefreshPersistence checks verified token reuse and storage.
 func TestFetchModelsAntigravitySavedCredentialsAndRefreshPersistence(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:antigravity_catalog_persistence?mode=memory&_fk=0")
 	defer client.Close()
@@ -76,10 +79,12 @@ func TestFetchModelsAntigravitySavedCredentialsAndRefreshPersistence(t *testing.
 	require.Equal(t, 2, catalogCalls, "changed input must not silently reuse saved credentials")
 }
 
+// antigravityCatalogResponse constructs a JSON response for the intercepted request.
 func antigravityCatalogResponse(r *http.Request, status int, body string) *http.Response {
 	return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}
 }
 
+// TestFetchModelsAntigravityAccountCatalog checks client identity and preservation of public effort variants.
 func TestFetchModelsAntigravityAccountCatalog(t *testing.T) {
 	key := `{"access_token":"test-access","refresh_token":"test-refresh","expires_at":"2099-01-01T00:00:00Z","project_id":"test-project"}`
 	calls := 0
@@ -109,6 +114,7 @@ func TestFetchModelsAntigravityAccountCatalog(t *testing.T) {
 	require.Nil(t, fetcher.getDefaultModelsByType(t.Context(), channel.TypeAntigravity))
 }
 
+// TestFetchModelsAntigravityLegacyRefresh checks refreshToken|projectID credential compatibility.
 func TestFetchModelsAntigravityLegacyRefresh(t *testing.T) {
 	key := "test-refresh|test-project"
 	calls := 0
@@ -133,6 +139,7 @@ func TestFetchModelsAntigravityLegacyRefresh(t *testing.T) {
 	require.Equal(t, 2, calls)
 }
 
+// TestFetchModelsAntigravityFailuresDoNotReturnStaticModels ensures discovery failures remain visible.
 func TestFetchModelsAntigravityFailuresDoNotReturnStaticModels(t *testing.T) {
 	for _, tc := range []struct {
 		name, key, body string
@@ -154,6 +161,58 @@ func TestFetchModelsAntigravityFailuresDoNotReturnStaticModels(t *testing.T) {
 			require.NotNil(t, result.Error)
 			require.Empty(t, result.Models)
 			require.False(t, result.Fallback)
+		})
+	}
+}
+
+// TestFetchModelsAntigravityMismatchedSavedOAuth isolates the APIKey account from unverified cached tokens.
+func TestFetchModelsAntigravityMismatchedSavedOAuth(t *testing.T) {
+	for _, tc := range []struct {
+		name, savedRefresh string
+		expiresAt          time.Time
+	}{
+		{"valid token for another account", "old-refresh", time.Now().Add(time.Hour).UTC()},
+		{"expired token for another account", "old-refresh", time.Now().Add(-time.Hour).UTC()},
+		{"unverifiable saved token", "", time.Now().Add(time.Hour).UTC()},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client := enttest.NewEntClient(t, "sqlite3", "file:antigravity_catalog_mismatch?mode=memory&_fk=0")
+			defer client.Close()
+			ctx := authz.WithSystemBypass(t.Context(), "test")
+			original := objects.ChannelCredentials{
+				APIKey: "new-refresh|new-project",
+				OAuth:  &objects.OAuthCredentials{AccessToken: "old-access", RefreshToken: tc.savedRefresh, ExpiresAt: tc.expiresAt},
+			}
+			ch, err := client.Channel.Create().
+				SetName("mismatched-account").SetType(channel.TypeAntigravity).
+				SetBaseURL(antigravity.EndpointDaily).SetCredentials(original).
+				SetSupportedModels([]string{"old-model"}).SetDefaultTestModel("old-model").Save(ctx)
+			require.NoError(t, err)
+			refreshCalls, catalogCalls := 0, 0
+			transport := antigravityCatalogTransport(func(r *http.Request) (*http.Response, error) {
+				if r.URL.String() == antigravity.TokenURL {
+					refreshCalls++
+					require.NoError(t, r.ParseForm())
+					require.Equal(t, "new-refresh", r.Form.Get("refresh_token"))
+					return antigravityCatalogResponse(r, 200, `{"access_token":"new-access","refresh_token":"new-rotated-refresh","expires_in":3600,"token_type":"Bearer"}`), nil
+				}
+				catalogCalls++
+				require.Equal(t, "Bearer new-access", r.Header.Get("Authorization"))
+				var body map[string]string
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
+				require.Equal(t, "new-project", body["project"])
+				return antigravityCatalogResponse(r, 200, `{"models":{"new-account-model":{}}}`), nil
+			})
+			fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(&http.Client{Transport: transport}), &ChannelService{AbstractService: &AbstractService{db: client}})
+			result, err := fetcher.FetchModels(ctx, FetchModelsInput{ChannelType: "antigravity", BaseURL: ch.BaseURL, ChannelID: &ch.ID})
+			require.NoError(t, err)
+			require.Nil(t, result.Error)
+			require.Equal(t, []ModelIdentify{{ID: "new-account-model"}}, result.Models)
+			require.Equal(t, 1, refreshCalls)
+			require.Equal(t, 1, catalogCalls)
+			updated, err := client.Channel.Get(ctx, ch.ID)
+			require.NoError(t, err)
+			require.Equal(t, original, updated.Credentials, "unverified OAuth pairs must not be overwritten by discovery")
 		})
 	}
 }

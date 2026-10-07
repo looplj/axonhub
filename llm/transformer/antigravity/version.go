@@ -40,6 +40,7 @@ var (
 	initOnce       sync.Once
 )
 
+// GetUserAgent returns the resolved IDE client identity for OAuth requests.
 func GetUserAgent() string {
 	versionMu.RLock()
 	defer versionMu.RUnlock()
@@ -47,6 +48,7 @@ func GetUserAgent() string {
 	return "antigravity/" + currentVersion + " windows/amd64"
 }
 
+// GetVersion returns the current IDE version under the shared version lock.
 func GetVersion() string {
 	versionMu.RLock()
 	defer versionMu.RUnlock()
@@ -64,6 +66,7 @@ func SetClientHeaders(headers http.Header) {
 	headers.Set("Client-Metadata", ClientMetadata)
 }
 
+// setVersion publishes the resolved version to all Antigravity request paths.
 func setVersion(v string) {
 	versionMu.Lock()
 	defer versionMu.Unlock()
@@ -83,12 +86,14 @@ var defaultFetcher = &versionFetcher{
 	httpClient:   &http.Client{Timeout: versionFetchTimeout},
 }
 
+// InitVersion resolves the IDE version once per process, retaining the fallback on failure.
 func InitVersion(ctx context.Context) {
 	initOnce.Do(func() {
 		defaultFetcher.init(ctx)
 	})
 }
 
+// init selects an IDE release without downgrading below the supported fallback.
 func (f *versionFetcher) init(ctx context.Context) {
 	fallback := UserAgentVersionFallback
 
@@ -110,6 +115,7 @@ func (f *versionFetcher) init(ctx context.Context) {
 	setVersion(fallback)
 }
 
+// fetchVersion reads a bounded IDE changelog or the updater's version response.
 func (f *versionFetcher) fetchVersion(ctx context.Context, url string, maxBytes int) string {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -159,11 +165,26 @@ func (f *versionFetcher) fetchVersion(ctx context.Context, url string, maxBytes 
 	return string(match)
 }
 
+// newerVersion preserves current for malformed versions and otherwise selects the newer release.
 func newerVersion(current, candidate string) string {
 	currentParts, candidateParts := strings.Split(current, "."), strings.Split(candidate, ".")
+	if len(currentParts) != 3 || len(candidateParts) != 3 {
+		return current
+	}
+	var currentNumbers, candidateNumbers [3]int
 	for i := range 3 {
-		a, _ := strconv.Atoi(currentParts[i])
-		b, _ := strconv.Atoi(candidateParts[i])
+		var err error
+		currentNumbers[i], err = strconv.Atoi(currentParts[i])
+		if err != nil || currentNumbers[i] < 0 {
+			return current
+		}
+		candidateNumbers[i], err = strconv.Atoi(candidateParts[i])
+		if err != nil || candidateNumbers[i] < 0 {
+			return current
+		}
+	}
+	for i := range 3 {
+		a, b := currentNumbers[i], candidateNumbers[i]
 		if b > a {
 			return candidate
 		}
