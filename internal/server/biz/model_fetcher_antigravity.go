@@ -42,7 +42,7 @@ func (f *ModelFetcher) fetchAntigravityModels(ctx context.Context, input FetchMo
 		}
 		// Edited credentials must not refresh or overwrite the saved account.
 		if raw == ch.Credentials.APIKey && fetchModelsInputMatchesChannel(input, ch) {
-			refreshToken := strings.SplitN(strings.TrimSpace(raw), "|", 2)[0]
+			refreshToken, _, _ := strings.Cut(strings.TrimSpace(raw), "|")
 			saved := ch.Credentials.OAuth
 			// Create/update/restore may retain OAuth data from a different account.
 			// Only reuse and persist a verified pair; otherwise resolve the APIKey
