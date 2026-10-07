@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/samber/lo"
@@ -12,6 +13,8 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/httpclient"
+	decisions "github.com/looplj/axonhub/llm/transformer/openai/decisions"
 )
 
 func TestInjectPrompts_NoProjectID(t *testing.T) {
@@ -74,6 +77,33 @@ func TestInjectPrompts_WithMatchingPrompts(t *testing.T) {
 	assert.Equal(t, "system", result.Messages[0].Role)
 	assert.Equal(t, "You are a helpful assistant.", *result.Messages[0].Content.Content)
 	assert.Equal(t, "user", result.Messages[1].Role)
+}
+
+func TestInjectPrompts_DecisionsMutatesRawInput(t *testing.T) {
+	ctx := contexts.WithProjectID(context.Background(), 1)
+	inbound := &PersistentInboundTransformer{
+		wrapped: decisions.NewInboundTransformer(),
+		state: &PersistenceState{PromptProvider: &stubPromptProvider{prompts: []*ent.Prompt{{
+			Role:     "system",
+			Content:  "Answer only from the supplied policy.",
+			Settings: objects.PromptSettings{Action: objects.PromptAction{Type: objects.PromptActionTypePrepend}},
+		}}}},
+	}
+
+	request, err := inbound.TransformRequest(ctx, &httpclient.Request{Body: []byte(`{"model":"gpt-6-luna","input":"customer question","questions":[{}]}`)})
+	require.NoError(t, err)
+	_, err = injectPrompts(inbound).OnInboundLlmRequest(ctx, request)
+	require.NoError(t, err)
+
+	outbound, err := decisions.NewOutboundTransformer("https://provider.example", "test-key")
+	require.NoError(t, err)
+	providerRequest, err := outbound.TransformRequest(ctx, request)
+	require.NoError(t, err)
+	var body struct {
+		Input string `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(providerRequest.Body, &body))
+	assert.Contains(t, body.Input, "Answer only from the supplied policy.")
 }
 
 func TestInjectPrompts_WithModelCondition(t *testing.T) {
