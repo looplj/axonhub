@@ -20,7 +20,6 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
-	"github.com/looplj/axonhub/llm/transformer/antigravity"
 	"github.com/looplj/axonhub/llm/transformer/cline"
 	"github.com/looplj/axonhub/llm/transformer/gemini/vertex"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
@@ -208,8 +207,6 @@ func filterCommandCodeModels(channelType channel.Type, models []ModelIdentify) [
 func (f *ModelFetcher) getDefaultModelsByType(ctx context.Context, typ channel.Type) []ModelIdentify {
 	//nolint:exhaustive // only supports default model fetching for specific channel types.
 	switch typ {
-	case channel.TypeAntigravity:
-		return lo.Map(antigravity.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeCodex:
 		return lo.Map(codex.DefaultModels(), func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} })
 	case channel.TypeClaudecode:
@@ -361,6 +358,13 @@ func fetchModelsInputMatchesChannel(input FetchModelsInput, ch *ent.Channel) boo
 }
 
 func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) (*FetchModelsResult, error) {
+	if input.ChannelType == channel.TypeAntigravity.String() {
+		models, err := f.fetchAntigravityModels(ctx, input)
+		if err != nil {
+			return &FetchModelsResult{Models: []ModelIdentify{}, Error: lo.ToPtr(err.Error())}, nil
+		}
+		return &FetchModelsResult{Models: models}, nil
+	}
 	if input.ChannelType == channel.TypeVolcengine.String() {
 		return &FetchModelsResult{
 			Models: []ModelIdentify{},

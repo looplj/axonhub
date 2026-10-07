@@ -23,6 +23,7 @@ func resetVersionState(t *testing.T) {
 	initOnce = sync.Once{}
 }
 
+// newFetcher directs both version sources to test servers.
 func newFetcher(versionSrv, changelogSrv *httptest.Server) *versionFetcher {
 	vURL := ""
 	if versionSrv != nil {
@@ -41,19 +42,20 @@ func newFetcher(versionSrv, changelogSrv *httptest.Server) *versionFetcher {
 	}
 }
 
+// TestFetchVersion_AutoUpdaterSuccess checks the updater path when the IDE changelog is unavailable.
 func TestFetchVersion_AutoUpdaterSuccess(t *testing.T) {
 	resetVersionState(t)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "1.99.0")
+		fmt.Fprint(w, "3.99.0")
 	}))
 	defer srv.Close()
 
 	f := newFetcher(srv, nil)
 	f.init(context.Background())
 
-	assert.Equal(t, "1.99.0", GetVersion())
-	assert.Equal(t, "antigravity/1.99.0 windows/amd64", GetUserAgent())
+	assert.Equal(t, "3.99.0", GetVersion())
+	assert.Equal(t, "antigravity/3.99.0 windows/amd64", GetUserAgent())
 }
 
 // TestFetchVersion_ChangelogFallback verifies the changelog scrape path is used
@@ -67,14 +69,14 @@ func TestFetchVersion_ChangelogFallback(t *testing.T) {
 	defer vSrv.Close()
 
 	cSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `<html>...Antigravity 1.21.0 released...</html>`)
+		fmt.Fprint(w, `<html><article id="rel-ide-3.21.0">IDE</article></html>`)
 	}))
 	defer cSrv.Close()
 
 	f := newFetcher(vSrv, cSrv)
 	f.init(context.Background())
 
-	assert.Equal(t, "1.21.0", GetVersion())
+	assert.Equal(t, "3.21.0", GetVersion())
 }
 
 // TestFetchVersion_HardcodedFallback verifies the hardcoded fallback is used when
@@ -109,14 +111,14 @@ func TestFetchVersion_NoSemverInResponse(t *testing.T) {
 	defer vSrv.Close()
 
 	cSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "release: 2.0.1")
+		fmt.Fprint(w, `<article id="rel-ide-3.0.1">IDE</article>`)
 	}))
 	defer cSrv.Close()
 
 	f := newFetcher(vSrv, cSrv)
 	f.init(context.Background())
 
-	assert.Equal(t, "2.0.1", GetVersion())
+	assert.Equal(t, "3.0.1", GetVersion())
 }
 
 // TestInitVersion_OnceGuard verifies that InitVersion only initializes once even
@@ -129,7 +131,7 @@ func TestInitVersion_OnceGuard(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
 
-		fmt.Fprint(w, "1.50.0")
+		fmt.Fprint(w, "3.50.0")
 	}))
 	defer srv.Close()
 
@@ -148,9 +150,9 @@ func TestInitVersion_OnceGuard(t *testing.T) {
 
 	wg.Wait()
 
-	assert.Equal(t, "1.50.0", GetVersion())
-	// auto-updater should have been contacted exactly once
-	require.Equal(t, 1, callCount, "version endpoint should only be called once")
+	assert.Equal(t, "3.50.0", GetVersion())
+	// One initialization queries the changelog, then the updater when no IDE release is present.
+	require.Equal(t, 2, callCount, "version sources should only be queried once each")
 }
 
 // TestFetchVersion_ChangelogMaxBytes verifies that only the first changelogScanBytes
@@ -170,7 +172,7 @@ func TestFetchVersion_ChangelogMaxBytes(t *testing.T) {
 
 	cSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write(padding)
-		fmt.Fprint(w, "9.9.9")
+		fmt.Fprint(w, `<article id="rel-ide-9.9.9">IDE</article>`)
 	}))
 	defer cSrv.Close()
 
@@ -178,4 +180,51 @@ func TestFetchVersion_ChangelogMaxBytes(t *testing.T) {
 	f.init(context.Background())
 
 	assert.Equal(t, UserAgentVersionFallback, GetVersion())
+}
+
+// TestFetchVersion_PrefersIDEAndNeverDowngrades excludes other clients and stale version sources.
+func TestFetchVersion_PrefersIDEAndNeverDowngrades(t *testing.T) {
+	for _, tc := range []struct {
+		name, changelog, updater, expected string
+	}{
+		{"IDE only", `<article id="rel-agy-9.0.0"></article><article id="rel-ide-2.10.0"></article>`, "2.0.6", "2.10.0"},
+		{"stale updater", `<article id="rel-cli-9.0.0"></article>`, "2.0.6", UserAgentVersionFallback},
+		{"stale changelog", `<article id="rel-ide-1.23.2"></article>`, "2.0.6", UserAgentVersionFallback},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resetVersionState(t)
+			cSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, tc.changelog) }))
+			defer cSrv.Close()
+			vSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, tc.updater) }))
+			defer vSrv.Close()
+			newFetcher(vSrv, cSrv).init(t.Context())
+			require.Equal(t, tc.expected, GetVersion())
+			headers := http.Header{}
+			SetClientHeaders(headers)
+			require.Equal(t, GetUserAgent(), headers.Get("User-Agent"))
+			require.Equal(t, tc.expected, headers.Get("X-Client-Version"))
+		})
+	}
+}
+
+// TestNewerVersionMalformedInputs checks startup safety and numeric comparison across release components.
+func TestNewerVersionMalformedInputs(t *testing.T) {
+	for _, tc := range []struct{ current, candidate, expected string }{
+		{"2.5.5", "2.5", "2.5.5"},
+		{"2.5", "3.0.0", "2.5"},
+		{"2.5.5", "3.0.bad", "2.5.5"},
+		{"2.5.bad", "3.0.0", "2.5.bad"},
+		{"2.5.5", "2.5.5-beta", "2.5.5"},
+		{"2.5.5", "2.5.5.1", "2.5.5"},
+		{"2.5.5", "-3.0.0", "2.5.5"},
+		{"2.5.5", "", "2.5.5"},
+		{"2.5.5", "2.10.0", "2.10.0"},
+		{"2.5.5", "3.0.0", "3.0.0"},
+		{"2.5.5", "2.5.6", "2.5.6"},
+		{"2.5.5", "2.0.6", "2.5.5"},
+	} {
+		t.Run(tc.current+"/"+tc.candidate, func(t *testing.T) {
+			require.Equal(t, tc.expected, newerVersion(tc.current, tc.candidate))
+		})
+	}
 }
