@@ -127,9 +127,18 @@ func buildChannelTestRequest(model string, useStream bool, systemPrompt string, 
 	return req
 }
 
-func channelTestAPIFormat(channel *biz.Channel) llm.APIFormat {
+func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 	if channel != nil {
-		for _, endpoint := range channel.ResolveEndpoints() {
+		endpoints := channel.ResolveEndpoints()
+		entry, ok := channel.GetModelEntries()[model]
+		if !ok {
+			entry = channel.GetDirectModelEntries()[model]
+		}
+		forced := forcedAPIFormatsForCandidate(channel, []biz.ChannelModelEntry{entry}, model)
+		if filtered := FilterEndpointsByAPIFormats(endpoints, forced); len(filtered) > 0 {
+			endpoints = filtered[:1]
+		}
+		for _, endpoint := range endpoints {
 			if endpoint.APIFormat == llm.APIFormatOpenAIDecisions.String() {
 				return llm.APIFormatOpenAIDecisions
 			}
@@ -278,7 +287,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 		return nil, err
 	}
 	useStream := channel.Policies.Stream == objects.CapabilityPolicyRequire
-	apiFormat := channelTestAPIFormat(channel)
+	apiFormat := channelTestAPIFormat(channel, testModel)
 	inbound, body, err := processor.buildChannelTestInput(ctx, testModel, useStream, systemPrompt, userPrompt, usesResponsesWebSocket(channel), apiFormat)
 	if err != nil {
 		return nil, err
@@ -501,7 +510,7 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 	}
 
 	useStream := ch.Policies.Stream == objects.CapabilityPolicyRequire
-	apiFormat := channelTestAPIFormat(ch)
+	apiFormat := channelTestAPIFormat(ch, testModel)
 	responsesWebSocket := usesResponsesWebSocket(ch)
 	systemPrompt, userPrompt, err := processor.systemService.ChannelTestPrompts(ctx)
 	if err != nil {
@@ -598,7 +607,7 @@ func (processor *TestChannelOrchestrator) TestSingleAPIKey(
 	}
 
 	useStream := ch.Policies.Stream == objects.CapabilityPolicyRequire
-	apiFormat := channelTestAPIFormat(ch)
+	apiFormat := channelTestAPIFormat(ch, testModel)
 	responsesWebSocket := usesResponsesWebSocket(ch)
 	systemPrompt, userPrompt, err := processor.systemService.ChannelTestPrompts(ctx)
 	if err != nil {

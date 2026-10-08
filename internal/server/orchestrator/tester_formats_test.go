@@ -17,21 +17,24 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestChannelTestRequestFormats(t *testing.T) {
 	tests := []struct {
-		name        string
-		channelType channel.Type
-		path        string
-		response    string
-		status      int
-		stream      bool
-		wantSuccess bool
+		name         string
+		channelType  channel.Type
+		path         string
+		response     string
+		status       int
+		stream       bool
+		wantSuccess  bool
+		forcedFormat string
 	}{
 		{name: "systemone", channelType: channel.TypeTypesafe, path: "/v1/systemone", response: `{"model":"test-model","answers":{"connection":{"type":"noul","noul":0.95}},"usage":{"input_tokens":10,"output_tokens":0}}`, wantSuccess: true},
 		{name: "openai", channelType: channel.TypeOpenai, path: "/v1/chat/completions", response: `{"id":"test","model":"test-model","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`, wantSuccess: true},
+		{name: "mixed endpoints forced chat", channelType: channel.TypeOpenai, forcedFormat: llm.APIFormatOpenAIChatCompletion.String(), path: "/v1/chat/completions", response: `{"id":"test","model":"test-model","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}]}`, wantSuccess: true},
 		{name: "openai required stream", channelType: channel.TypeOpenai, path: "/v1/chat/completions", stream: true, response: "data: {\"id\":\"test\",\"model\":\"test-model\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"hello\"}}]}\n\ndata: {\"id\":\"test\",\"model\":\"test-model\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1,\"total_tokens\":2}}\n\ndata: [DONE]\n\n", wantSuccess: true},
 		{name: "anthropic", channelType: channel.TypeAnthropic, path: "/v1/messages", response: `{"id":"test","type":"message","role":"assistant","model":"test-model","content":[{"type":"text","text":"hello"}],"stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`, wantSuccess: true},
 		{name: "gemini", channelType: channel.TypeGemini, path: "/v1beta/models/test-model:generateContent", response: `{"candidates":[{"content":{"role":"model","parts":[{"text":"hello"}]},"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":1,"totalTokenCount":2},"modelVersion":"test-model"}`, wantSuccess: true},
@@ -107,6 +110,14 @@ func TestChannelTestRequestFormats(t *testing.T) {
 				SetBaseURL(baseURL).SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-1", "test-key-2"}}).
 				SetSupportedModels([]string{"test-model"}).SetDefaultTestModel("test-model").SetPolicies(policies).Save(ctx)
 			require.NoError(t, err)
+			if tt.forcedFormat != "" {
+				ch, err = client.Channel.UpdateOne(ch).SetEndpoints([]objects.ChannelEndpoint{
+					{APIFormat: llm.APIFormatTypeSafeSystemOne.String(), Path: "/systemone"},
+				}).SetSettings(&objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+					{Model: "test-model", APIFormats: []string{tt.forcedFormat}},
+				}}).Save(ctx)
+				require.NoError(t, err)
+			}
 			channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
 			require.NoError(t, systemService.SetChannelSetting(ctx, biz.SystemChannelSettings{TestSystemPrompt: "system prompt", TestUserPrompt: "user prompt"}))
 			require.NoError(t, systemService.SetRetryPolicy(ctx, &biz.RetryPolicy{}))
