@@ -10,6 +10,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 
@@ -94,6 +95,13 @@ type Params struct {
 // The host is compared as a whole: a relay reached through a path or hostname
 // that merely mentions the official domain is still a relay.
 func isOfficialCodexBaseURL(baseURL string) bool {
+	host := codexBaseURLHost(baseURL)
+
+	return host == "chatgpt.com" || strings.HasSuffix(host, ".chatgpt.com")
+}
+
+// codexBaseURLHost returns the lower-cased host of baseURL without the port.
+func codexBaseURLHost(baseURL string) string {
 	host := ""
 	if parsed, err := url.Parse(baseURL); err == nil && parsed.Host != "" {
 		host = parsed.Hostname()
@@ -106,9 +114,25 @@ func isOfficialCodexBaseURL(baseURL string) bool {
 		}
 	}
 
-	host = strings.ToLower(host)
+	return strings.ToLower(host)
+}
 
-	return host == "chatgpt.com" || strings.HasSuffix(host, ".chatgpt.com")
+const codexPreserveAdditionalToolsHostsEnv = "AXONHUB_CODEX_PRESERVE_ADDITIONAL_TOOLS_HOSTS"
+
+// isPreserveAdditionalToolsHost matches whole hosts only, so a relay is opted in explicitly, never by suffix or path.
+func isPreserveAdditionalToolsHost(baseURL string) bool {
+	host := codexBaseURLHost(baseURL)
+	if host == "" {
+		return false
+	}
+
+	for _, entry := range strings.Split(os.Getenv(codexPreserveAdditionalToolsHostsEnv), ",") {
+		if codexBaseURLHost(strings.TrimSpace(entry)) == host {
+			return true
+		}
+	}
+
+	return false
 }
 
 // isOfficialCodex reports whether the transformer targets the official Codex backend.
@@ -148,7 +172,7 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		// private Codex protocol, so it is replayed only to the official backend;
 		// relays are not assumed to implement it. The same rule drops the Responses
 		// Lite header for relays in TransformRequest.
-		PreserveAdditionalTools: official,
+		PreserveAdditionalTools: official || isPreserveAdditionalToolsHost(baseURL),
 	})
 	if err != nil {
 		return nil, err
