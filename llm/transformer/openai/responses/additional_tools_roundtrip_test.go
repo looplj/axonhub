@@ -15,6 +15,7 @@ import (
 // instead of the top-level `tools` array.
 const additionalToolsLiteRequest = `{
 	"model": "gpt-6-luna",
+	"tools": [{"type":"function","name":"top_level","parameters":{"type":"object"}}],
 	"input": [
 		{
 			"type": "additional_tools",
@@ -25,7 +26,7 @@ const additionalToolsLiteRequest = `{
 					"type": "namespace",
 					"name": "functions",
 					"tools": [
-						{"type": "custom", "name": "exec", "description": "run a script"},
+						{"type": "custom", "name": "exec", "description": "run a script", "x_nested": {"enabled": true}},
 						{"type": "function", "name": "shell", "parameters": {"type": "object", "properties": {}}}
 					]
 				}
@@ -35,13 +36,12 @@ const additionalToolsLiteRequest = `{
 	]
 }`
 
-func additionalToolsOutbound(t *testing.T, preserve bool) *OutboundTransformer {
+func additionalToolsOutbound(t *testing.T) *OutboundTransformer {
 	t.Helper()
 
 	out, err := NewOutboundTransformerWithConfig(&Config{
-		BaseURL:                 "https://example.com",
-		APIKeyProvider:          auth.NewStaticKeyProvider("test"),
-		PreserveAdditionalTools: preserve,
+		BaseURL:        "https://example.com",
+		APIKeyProvider: auth.NewStaticKeyProvider("test"),
 	})
 	require.NoError(t, err)
 
@@ -68,23 +68,40 @@ func additionalToolsInput(t *testing.T, out *OutboundTransformer) []json.RawMess
 	return body.Input
 }
 
-// TestAdditionalTools_DroppedForCompatibleUpstreams pins the behaviour of the
-// OpenAI-compatible path: an upstream that is not the official Codex backend
-// rejects `additional_tools` as an unsupported input item type, so the item must
-// not be replayed there.
-func TestAdditionalTools_DroppedForCompatibleUpstreams(t *testing.T) {
-	input := additionalToolsInput(t, additionalToolsOutbound(t, false))
+func TestAdditionalTools_ReplayedForEveryResponsesUpstream(t *testing.T) {
+	input := additionalToolsInput(t, additionalToolsOutbound(t))
 
-	require.Len(t, input, 1)
-	require.NotContains(t, string(input[0]), "additional_tools")
-	require.Contains(t, string(input[0]), "Hello")
+	require.Len(t, input, 2)
+	require.Contains(t, string(input[0]), `"additional_tools"`)
+	require.Contains(t, string(input[0]), `"exec"`)
+	require.Contains(t, string(input[0]), `"shell"`)
+	require.Contains(t, string(input[0]), `"x_nested":{"enabled":true}`)
+	require.Contains(t, string(input[1]), "Hello")
 }
 
-// TestAdditionalTools_ReplayedForOfficialCodex is the counterpart: for the
-// upstream that does speak the private protocol the item is where a Lite request
-// keeps its tool definitions, so it has to come through verbatim, in place.
-func TestAdditionalTools_ReplayedForOfficialCodex(t *testing.T) {
-	input := additionalToolsInput(t, additionalToolsOutbound(t, true))
+func TestAdditionalTools_RepeatedTransformDoesNotDuplicateItems(t *testing.T) {
+	req, err := NewInboundTransformer().TransformRequest(
+		t.Context(), &httpclient.Request{Body: []byte(additionalToolsLiteRequest)})
+	require.NoError(t, err)
+	out := additionalToolsOutbound(t)
+
+	first, err := out.TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+	second, err := out.TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+
+	var firstBody, secondBody struct {
+		Input []json.RawMessage `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(first.Body, &firstBody))
+	require.NoError(t, json.Unmarshal(second.Body, &secondBody))
+	require.Len(t, firstBody.Input, 2)
+	require.Len(t, secondBody.Input, 2)
+	require.Equal(t, firstBody.Input, secondBody.Input)
+}
+
+func TestAdditionalTools_ReplayedForResponsesUpstream(t *testing.T) {
+	input := additionalToolsInput(t, additionalToolsOutbound(t))
 
 	require.Len(t, input, 2)
 	require.Contains(t, string(input[0]), `"additional_tools"`)
@@ -93,9 +110,6 @@ func TestAdditionalTools_ReplayedForOfficialCodex(t *testing.T) {
 	require.Contains(t, string(input[1]), "Hello")
 }
 
-// additionalToolsMixedRequest is the lite request with a second raw-only input
-// item after the message: the tool definitions are not the only item that has to
-// be replayed verbatim.
 const additionalToolsMixedRequest = `{
 	"model": "gpt-6-luna",
 	"input": [
@@ -105,14 +119,14 @@ const additionalToolsMixedRequest = `{
 	]
 }`
 
-func additionalToolsMixedInput(t *testing.T, preserve bool) []json.RawMessage {
+func additionalToolsMixedInput(t *testing.T) []json.RawMessage {
 	t.Helper()
 
 	req, err := NewInboundTransformer().TransformRequest(
 		t.Context(), &httpclient.Request{Body: []byte(additionalToolsMixedRequest)})
 	require.NoError(t, err)
 
-	wire, err := additionalToolsOutbound(t, preserve).TransformRequest(t.Context(), req)
+	wire, err := additionalToolsOutbound(t).TransformRequest(t.Context(), req)
 	require.NoError(t, err)
 
 	var body struct {
@@ -123,13 +137,37 @@ func additionalToolsMixedInput(t *testing.T, preserve bool) []json.RawMessage {
 	return body.Input
 }
 
-// TestAdditionalTools_MixedRawItemsKeepTheirPlace pins that dropping the lite
-// item must not disturb the other raw-only items: they are replayed verbatim and
-// in the position they had in the incoming request.
 func TestAdditionalTools_MixedRawItemsKeepTheirPlace(t *testing.T) {
-	input := additionalToolsMixedInput(t, false)
+	input := additionalToolsMixedInput(t)
 
-	require.Len(t, input, 2)
-	require.Contains(t, string(input[0]), "Hello")
-	require.Contains(t, string(input[1]), "web_search_call")
+	require.Len(t, input, 3)
+	require.Contains(t, string(input[0]), "additional_tools")
+	require.Contains(t, string(input[1]), "Hello")
+	require.Contains(t, string(input[2]), "web_search_call")
+}
+
+func TestAdditionalToolsAfterSkippedReasoningItemIsPreserved(t *testing.T) {
+	const request = `{
+		"model": "gpt-6-luna",
+		"input": [
+			{"type": "reasoning", "summary": []},
+			{"type": "message", "role": "user", "content": "Hello"},
+			{"type": "additional_tools", "id": "at_1", "role": "developer", "tools": [{"type": "custom", "name": "exec"}]}
+		]
+	}`
+
+	req, err := NewInboundTransformer().TransformRequest(
+		t.Context(), &httpclient.Request{Body: []byte(request)})
+	require.NoError(t, err)
+
+	wire, err := additionalToolsOutbound(t).TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+
+	var body struct {
+		Input []json.RawMessage `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(wire.Body, &body))
+	require.Len(t, body.Input, 2)
+	require.Contains(t, string(body.Input[0]), "Hello")
+	require.Contains(t, string(body.Input[1]), "additional_tools")
 }

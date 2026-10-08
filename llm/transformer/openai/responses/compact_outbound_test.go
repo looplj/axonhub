@@ -160,6 +160,31 @@ func TestCompactTransformRequest_PreservesOfficialOptionalFields(t *testing.T) {
 	require.Equal(t, "auto", gjson.GetBytes(outboundRequest.Body, "service_tier").String())
 }
 
+func TestCompactTransformRequest_PreservesRawInputItems(t *testing.T) {
+	inbound := NewCompactInboundTransformer()
+	outbound, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	body := []byte(`{"model":"gpt-5.6","input":[{"type":"additional_tools","id":"at_1","tools":[{"type":"custom","name":"exec","x_nested":{"enabled":true}}]},{"type":"message","role":"user","content":"Hello"}]}`)
+	llmRequest, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+
+	outboundRequest, err := outbound.TransformRequest(t.Context(), llmRequest)
+	require.NoError(t, err)
+
+	var payload struct {
+		Input []json.RawMessage `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(outboundRequest.Body, &payload))
+	require.Len(t, payload.Input, 2)
+	assert.Equal(t, "additional_tools", gjson.GetBytes(payload.Input[0], "type").String())
+	assert.True(t, gjson.GetBytes(payload.Input[0], "tools.0.x_nested.enabled").Bool())
+	assert.Equal(t, "message", gjson.GetBytes(payload.Input[1], "type").String())
+}
+
 func TestOutboundTransformer_TransformCompactResponse(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	require.NoError(t, err)

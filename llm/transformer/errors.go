@@ -5,7 +5,8 @@ import (
 )
 
 var (
-	ErrInvalidRequest  = errors.New("invalid request")
-	ErrInvalidModel    = errors.New("model not found")
-	ErrInvalidResponse = errors.New("invalid response")
+	ErrInvalidRequest        = errors.New("invalid request")
+	ErrUnsupportedConversion = errors.New("unsupported conversion")
+	ErrInvalidModel          = errors.New("model not found")
+	ErrInvalidResponse       = errors.New("invalid response")
 )

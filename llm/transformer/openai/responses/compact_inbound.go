@@ -53,6 +53,7 @@ func (t *CompactInboundTransformer) TransformRequest(ctx context.Context, httpRe
 	if req.Model == "" {
 		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
+	rawInputItems := parseRawRequestFragments(httpReq.Body).InputItems
 
 	// Convert compact input to unified messages with flat function names.
 	inputMessages, err := convertCompactInputToMessages(&req.Input)
@@ -71,6 +72,14 @@ func (t *CompactInboundTransformer) TransformRequest(ctx context.Context, httpRe
 			Instructions:   req.Instructions,
 			PromptCacheKey: req.PromptCacheKey,
 		},
+	}
+	if len(rawInputItems) > 0 {
+		ext := llm.EnsureOpenAIResponsesProviderExtensions(llmReq)
+		if ext != nil {
+			ext.Request = &llm.OpenAIResponsesRequestExtensions{
+				RawInputItems: buildRawOnlyInputFragments(req.Input, rawInputItems),
+			}
+		}
 	}
 	attachOpenAIResponsesRawRequestFields(llmReq, httpReq.Body, rawCompactRequestFields)
 
