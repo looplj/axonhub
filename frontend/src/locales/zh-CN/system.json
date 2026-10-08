@@ -343,6 +343,7 @@
   "quota.label.plan": "套餐",
   "quota.label.shared_account_channels_other": "{{count}} 个渠道共享该账号",
   "quota.label.commandcode.top_up": "充值额度",
+  "quota.label.ollama.purchased_credits": "已购额度",
   "quota.label.commandcode.no_windows": "未报告配额窗口",
   "quota.window.5h": "5小时窗口",
   "quota.window.7d": "7天窗口",

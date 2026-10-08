@@ -344,6 +344,7 @@
   "quota.label.shared_account_channels_one": "{{count}} channel shares this account",
   "quota.label.shared_account_channels_other": "{{count}} channels share this account",
   "quota.label.commandcode.top_up": "Top-up credits",
+  "quota.label.ollama.purchased_credits": "Purchased credits",
   "quota.label.commandcode.no_windows": "No quota windows reported",
   "quota.window.5h": "5h window",
   "quota.window.7d": "7d window",

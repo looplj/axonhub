@@ -922,7 +922,7 @@
   "channels.dialogs.apiKeyRules.actions.permanentDisable": "Disable permanently (keep credential)",
   "channels.dialogs.fields.ollamaQuota.authCookie.label": "Web Cookie",
   "channels.dialogs.fields.ollamaQuota.authCookie.placeholder": "__Secure-session=... (paste from ollama.com/settings)",
-  "channels.dialogs.fields.ollamaQuota.authCookie.description": "Visit ollama.com/settings, open the Plan & Billing usage page and copy the Cookie request header. Only the __Secure-session cookie is used.",
+  "channels.dialogs.fields.ollamaQuota.authCookie.description": "Optional when the channel has an API key: quota is read from the Ollama balance API. Otherwise visit ollama.com/settings, open the Plan & Billing usage page and copy the Cookie request header. Only the __Secure-session cookie is used.",
   "channels.bulkAutoDisable.button": "Auto disable",
   "channels.bulkAutoDisable.title": "Bulk update auto-disable rules",
   "channels.bulkAutoDisable.description": "Write the same auto-disable mode or rules to {{count}} selected channel(s).",
