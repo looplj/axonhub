@@ -69,9 +69,8 @@ func additionalToolsInput(t *testing.T, out *OutboundTransformer) []json.RawMess
 }
 
 // TestAdditionalTools_DroppedForCompatibleUpstreams pins the behaviour of the
-// OpenAI-compatible path: an upstream that is not the official Codex backend
-// rejects `additional_tools` as an unsupported input item type, so the item must
-// not be replayed there.
+// ordinary OpenAI-compatible path: `additional_tools` is not a standard
+// Responses input item type, so it is dropped unless preservation is enabled.
 func TestAdditionalTools_DroppedForCompatibleUpstreams(t *testing.T) {
 	input := additionalToolsInput(t, additionalToolsOutbound(t, false))
 

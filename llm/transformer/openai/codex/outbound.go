@@ -88,8 +88,7 @@ type Params struct {
 
 // isOfficialCodexBaseURL reports whether baseURL points at the official Codex
 // backend. Everything else is treated as a compatible relay that may return a
-// completed JSON response instead of SSE, and that must not receive the private
-// Responses Lite constructs.
+// completed JSON response instead of SSE.
 //
 // The host is compared as a whole: a relay reached through a path or hostname
 // that merely mentions the official domain is still a relay.
@@ -144,11 +143,9 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
 		Transport:      params.Transport,
 		// Responses Lite keeps its tool definitions in an `additional_tools` input
-		// item instead of the top-level `tools` array. That item belongs to the
-		// private Codex protocol, so it is replayed only to the official backend;
-		// relays are not assumed to implement it. The same rule drops the Responses
-		// Lite header for relays in TransformRequest.
-		PreserveAdditionalTools: official,
+		// item instead of the top-level `tools` array. Every Codex channel needs
+		// these definitions, including relays using custom backend URLs.
+		PreserveAdditionalTools: true,
 	})
 	if err != nil {
 		return nil, err
