@@ -212,6 +212,10 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
       qd?.windows?.['5h']?.usage_percent ?? 0,
       qd?.windows?.weekly?.usage_percent ?? 0
     );
+    // Purchased credits keep the channel usable, so the battery stops at "low" instead of "empty".
+    if ((qd?.credits?.purchased_usd ?? 0) > 0) {
+      percentage = Math.min(percentage, 94);
+    }
   } else if (isCommandCodeType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderCommandCodeQuotaData | undefined;
     percentage = Math.max(
