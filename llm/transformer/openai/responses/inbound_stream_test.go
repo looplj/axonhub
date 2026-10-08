@@ -593,6 +593,73 @@ func (s *errorResponseStream) Close() error {
 
 // Chat Completions finish_reason must be propagated onto the Responses
 // terminal event and status, including truncation and provider failure.
+// TestInboundTransformer_TransformStream_UsesUsageFromFinalUsageOnlyChunk reproduces the
+// ModelScope streaming shape on the Responses path: every chunk carries a zeroed usage
+// object, including the one carrying finish_reason, and only the trailing usage-only
+// chunk reports the real counts. Finalizing on the finish_reason chunk would emit the
+// placeholder zeros and drop the real counts that arrive afterwards.
+func TestInboundTransformer_TransformStream_UsesUsageFromFinalUsageOnlyChunk(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_modelscope_usage",
+			Created: 1700000000,
+			Model:   "deepseek-v4.1-flash",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{Role: "assistant"},
+			}},
+			Usage: &llm.Usage{},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_modelscope_usage",
+			Created: 1700000000,
+			Model:   "deepseek-v4.1-flash",
+			Choices: []llm.Choice{{
+				Index:        0,
+				Delta:        &llm.Message{},
+				FinishReason: lo.ToPtr("stop"),
+			}},
+			Usage: &llm.Usage{},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_modelscope_usage",
+			Created: 1700000000,
+			Model:   "deepseek-v4.1-flash",
+			Usage: &llm.Usage{
+				PromptTokens:     338678,
+				CompletionTokens: 5795,
+				TotalTokens:      344473,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 100,
+				},
+			},
+		},
+	}))
+	require.NoError(t, err)
+
+	var terminal *Response
+	for stream.Next() {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
+		if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
+			terminal = ev.Response
+		}
+	}
+	require.NoError(t, stream.Err())
+
+	require.NotNil(t, terminal)
+	require.NotNil(t, terminal.Usage)
+	// Responses keeps cached tokens inside input_tokens and reports them separately.
+	require.EqualValues(t, 338678, terminal.Usage.InputTokens)
+	require.EqualValues(t, 100, terminal.Usage.InputTokenDetails.CachedTokens)
+	require.EqualValues(t, 5795, terminal.Usage.OutputTokens)
+}
+
 func TestInboundTransformer_TransformStream_MapsFinishReasonToTerminalEvent(t *testing.T) {
 	tests := []struct {
 		name               string

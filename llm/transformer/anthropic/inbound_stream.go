@@ -1127,7 +1127,11 @@ func (s *anthropicInboundStream) Next() bool {
 		}
 	}
 
-	if chunk.Usage != nil && s.hasFinished && !s.messageStoped {
+	// The terminal event must wait for the choices-less usage-only chunk that carries the
+	// real counts. Some providers (e.g. ModelScope) attach a zeroed usage object to every
+	// chunk, including the one carrying finish_reason; finalizing there would emit the
+	// placeholder zeros and drop the real counts arriving afterwards.
+	if chunk.Usage != nil && len(chunk.Choices) == 0 && s.hasFinished && !s.messageStoped {
 		// Usage-only chunk after finish_reason - generate message_delta with both stop reason and usage.
 		if err := s.enqueueTerminalEvents(); err != nil {
 			s.err = err

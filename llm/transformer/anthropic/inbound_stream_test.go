@@ -409,6 +409,128 @@ func TestInboundStream_PreservesExplicitFinishReasonWithoutUsage(t *testing.T) {
 	}
 }
 
+// TestInboundStream_UsesUsageFromFinalUsageOnlyChunk reproduces the ModelScope
+// streaming shape, where every chunk carries a zeroed usage object and only the
+// trailing usage-only chunk (empty choices) reports the real counts. The
+// finish_reason chunk must not finalize the message with the placeholder zero
+// usage, otherwise the real counts that arrive afterwards are dropped.
+func TestInboundStream_UsesUsageFromFinalUsageOnlyChunk(t *testing.T) {
+	transformer := NewInboundTransformer()
+	text := "Hi"
+	finishReason := "stop"
+
+	events := collectInboundStreamEvents(t, transformer, []*llm.Response{
+		{
+			ID:     "chatcmpl-modelscope",
+			Object: "chat.completion.chunk",
+			Model:  "deepseek-v4.1-flash",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:    "assistant",
+					Content: llm.MessageContent{Content: &text},
+				},
+			}},
+			Usage: &llm.Usage{},
+		},
+		{
+			ID:     "chatcmpl-modelscope",
+			Object: "chat.completion.chunk",
+			Model:  "deepseek-v4.1-flash",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &finishReason,
+			}},
+			Usage: &llm.Usage{},
+		},
+		{
+			ID:     "chatcmpl-modelscope",
+			Object: "chat.completion.chunk",
+			Model:  "deepseek-v4.1-flash",
+			Choices: []llm.Choice{},
+			Usage: &llm.Usage{
+				PromptTokens:     338678,
+				CompletionTokens: 5795,
+				TotalTokens:      344473,
+				PromptTokensDetails: &llm.PromptTokensDetails{
+					CachedTokens: 100,
+				},
+			},
+		},
+	})
+
+	require.Equal(t, 1, countStreamEvents(events, "message_delta"))
+	require.Equal(t, 1, countStreamEvents(events, "message_stop"))
+
+	var deltaUsage *Usage
+
+	for _, event := range events {
+		if event.Type == "message_delta" {
+			deltaUsage = event.Usage
+		}
+	}
+
+	require.NotNil(t, deltaUsage)
+	// Anthropic reports cached tokens separately and excludes them from input_tokens.
+	require.EqualValues(t, 338578, deltaUsage.InputTokens)
+	require.EqualValues(t, 100, deltaUsage.CacheReadInputTokens)
+	require.EqualValues(t, 5795, deltaUsage.OutputTokens)
+}
+
+// TestInboundStream_UsesUsageFromFinishChunkWithoutUsageOnlyChunk covers providers
+// that report usage only on the chunk carrying finish_reason and never send a
+// separate usage-only chunk. The terminal event is emitted at clean stream end,
+// so the usage collected along the way must still reach message_delta.
+func TestInboundStream_UsesUsageFromFinishChunkWithoutUsageOnlyChunk(t *testing.T) {
+	transformer := NewInboundTransformer()
+	text := "Hi"
+	finishReason := "stop"
+
+	events := collectInboundStreamEvents(t, transformer, []*llm.Response{
+		{
+			ID:     "chatcmpl-standard",
+			Object: "chat.completion.chunk",
+			Model:  "gpt-4o",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:    "assistant",
+					Content: llm.MessageContent{Content: &text},
+				},
+			}},
+		},
+		{
+			ID:     "chatcmpl-standard",
+			Object: "chat.completion.chunk",
+			Model:  "gpt-4o",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &finishReason,
+			}},
+			Usage: &llm.Usage{
+				PromptTokens:     120,
+				CompletionTokens: 8,
+				TotalTokens:      128,
+			},
+		},
+	})
+
+	require.Equal(t, 1, countStreamEvents(events, "message_delta"))
+	require.Equal(t, 1, countStreamEvents(events, "message_stop"))
+
+	var deltaUsage *Usage
+
+	for _, event := range events {
+		if event.Type == "message_delta" {
+			deltaUsage = event.Usage
+		}
+	}
+
+	require.NotNil(t, deltaUsage)
+	require.EqualValues(t, 120, deltaUsage.InputTokens)
+	require.EqualValues(t, 8, deltaUsage.OutputTokens)
+}
+
 func TestInboundStream_DoesNotDuplicateTerminalEvents(t *testing.T) {
 	transformer := NewInboundTransformer()
 	text := "Done"
