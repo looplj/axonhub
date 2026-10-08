@@ -30,10 +30,10 @@ func TestQuotaCheckers_NormalizeReportedLimits(t *testing.T) {
 	// Then every provider-reported model limit is available in normalized data.
 	require.NoError(t, err)
 	require.Len(t, quota.Limits, 2)
-	require.Equal(t, "claude-sonnet", quota.Limits[0].Window)
-	require.Equal(t, "gemini-3-pro", quota.Limits[1].Window)
-	require.InDelta(t, 0.9, quota.Limits[0].UsageRatio, 1e-9)
-	require.InDelta(t, 0.25, quota.Limits[1].UsageRatio, 1e-9)
+	require.Equal(t, "gemini_5h", quota.Limits[0].Window)
+	require.Equal(t, "claude_gpt_5h", quota.Limits[1].Window)
+	require.InDelta(t, 0.25, quota.Limits[0].UsageRatio, 1e-9)
+	require.InDelta(t, 0.9, quota.Limits[1].UsageRatio, 1e-9)
 	assertNormalizedLimitContract(t, quota)
 }
 

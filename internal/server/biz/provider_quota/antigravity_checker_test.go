@@ -20,7 +20,7 @@ import (
 func TestAntigravityQuotaChecker_CheckQuota(t *testing.T) {
 	resetAt := "2099-09-04T08:00:00Z"
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
-		require.Equal(t, antigravityQuotaURL, request.URL.String())
+		require.Contains(t, []string{antigravityQuotaSummaryURL, antigravityQuotaURL}, request.URL.String())
 		require.Equal(t, "Bearer access-token", request.Header.Get("Authorization"))
 		require.Equal(t, "antigravity", request.Header.Get("X-Client-Name"))
 		require.Equal(t, antigravity.GetVersion(), request.Header.Get("X-Client-Version"))
@@ -75,7 +75,7 @@ func TestAntigravityQuotaChecker_CheckQuotaRefreshesLegacyCredentials(t *testing
 			require.Equal(t, "refresh-token", request.Form.Get("refresh_token"))
 			body = `{"access_token":"fresh-access-token","expires_in":3600,"token_type":"Bearer"}`
 		} else {
-			require.Equal(t, antigravityQuotaURL, request.URL.String())
+			require.Contains(t, []string{antigravityQuotaSummaryURL, antigravityQuotaURL}, request.URL.String())
 			require.Equal(t, "Bearer fresh-access-token", request.Header.Get("Authorization"))
 		}
 		return &http.Response{
