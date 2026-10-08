@@ -197,8 +197,8 @@ func buildChannelTestInput(model string, useStream bool, systemPrompt, userPromp
 			return nil, nil, fmt.Errorf("systemone does not support streaming")
 		}
 		body, err := json.Marshal(struct {
-			Model string `json:"model"`
 			llm.SystemOneRequest
+			Model string `json:"model"`
 		}{
 			Model: model,
 			SystemOneRequest: llm.SystemOneRequest{
@@ -223,6 +223,9 @@ func channelTestResponseMessage(body []byte, apiFormat llm.APIFormat) (*string, 
 		}
 		if len(response.Answers) == 0 {
 			return nil, fmt.Errorf("no answers in System One response")
+		}
+		if _, ok := response.Answers["connection"]; !ok {
+			return nil, fmt.Errorf("no connection answer in System One response")
 		}
 		answers, err := json.Marshal(response.Answers)
 		if err != nil {
@@ -493,7 +496,6 @@ func (processor *TestChannelOrchestrator) TestChannelAPIKeys(
 	useStream := ch.Policies.Stream == objects.CapabilityPolicyRequire
 	apiFormat := channelTestAPIFormat(ch)
 	responsesWebSocket := usesResponsesWebSocket(ch)
-	apiFormat := channelTestAPIFormat(ch)
 	systemPrompt, userPrompt, err := processor.systemService.ChannelTestPrompts(ctx)
 	if err != nil {
 		return nil, err

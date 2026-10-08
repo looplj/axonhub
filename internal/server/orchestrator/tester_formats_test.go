@@ -36,6 +36,7 @@ func TestChannelTestRequestFormats(t *testing.T) {
 		{name: "anthropic", channelType: channel.TypeAnthropic, path: "/v1/messages", response: `{"id":"test","type":"message","role":"assistant","model":"test-model","content":[{"type":"text","text":"hello"}],"stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}`, wantSuccess: true},
 		{name: "gemini", channelType: channel.TypeGemini, path: "/v1beta/models/test-model:generateContent", response: `{"candidates":[{"content":{"role":"model","parts":[{"text":"hello"}]},"finishReason":"STOP","index":0}],"usageMetadata":{"promptTokenCount":1,"candidatesTokenCount":1,"totalTokenCount":2},"modelVersion":"test-model"}`, wantSuccess: true},
 		{name: "systemone empty answers", channelType: channel.TypeTypesafe, path: "/v1/systemone", response: `{"model":"test-model","answers":{}}`},
+		{name: "systemone unrelated answer", channelType: channel.TypeTypesafe, path: "/v1/systemone", response: `{"model":"test-model","answers":{"other":{"type":"noul","noul":0.95}}}`},
 		{name: "systemone invalid JSON", channelType: channel.TypeTypesafe, path: "/v1/systemone", response: `not-json`},
 		{name: "systemone upstream error", channelType: channel.TypeTypesafe, path: "/v1/systemone", status: http.StatusUnauthorized, response: `{"error":{"message":"upstream rejected test request","type":"invalid_api_key"}}`},
 	}
