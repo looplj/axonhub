@@ -185,6 +185,30 @@ func TestCompactTransformRequest_PreservesRawInputItems(t *testing.T) {
 	assert.Equal(t, "message", gjson.GetBytes(payload.Input[1], "type").String())
 }
 
+func TestCompactTransformRequest_PreservesRawInputOrderAfterSkippedReasoning(t *testing.T) {
+	inbound := NewCompactInboundTransformer()
+	outbound, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
+	require.NoError(t, err)
+
+	body := []byte(`{"model":"gpt-5.6","input":[{"type":"reasoning","summary":[]},{"type":"additional_tools","id":"at_1","tools":[{"type":"custom","name":"exec"}]},{"type":"message","role":"user","content":"Hello"}]}`)
+	llmRequest, err := inbound.TransformRequest(t.Context(), &httpclient.Request{
+		Headers: http.Header{"Content-Type": []string{"application/json"}},
+		Body:    body,
+	})
+	require.NoError(t, err)
+
+	outboundRequest, err := outbound.TransformRequest(t.Context(), llmRequest)
+	require.NoError(t, err)
+
+	var payload struct {
+		Input []json.RawMessage `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(outboundRequest.Body, &payload))
+	require.Len(t, payload.Input, 2)
+	assert.Equal(t, "additional_tools", gjson.GetBytes(payload.Input[0], "type").String())
+	assert.Equal(t, "message", gjson.GetBytes(payload.Input[1], "type").String())
+}
+
 func TestOutboundTransformer_TransformCompactResponse(t *testing.T) {
 	transformer, err := NewOutboundTransformer("https://api.openai.com/v1", "test-key")
 	require.NoError(t, err)

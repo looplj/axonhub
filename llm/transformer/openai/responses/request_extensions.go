@@ -34,15 +34,16 @@ func attachOpenAIResponsesRequestExtensions(chatReq *llm.Request, req *Request, 
 		reasoningContext = req.Reasoning.Context
 	}
 	requestExt := &llm.OpenAIResponsesRequestExtensions{
-		ReasoningContext: reasoningContext,
-		RawFields:        selectRawRequestFields(raw.Fields, rawCreateRequestFields),
-		RawTools:         buildRawOnlyToolFragments(req.Tools, raw.Tools),
-		ToolSignatures:   buildRepresentedToolSignatures(req.Tools),
-		RawToolChoice:    rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
-		RawInputItems:    buildRawOnlyInputFragments(req.Input, raw.InputItems),
+		ReasoningContext:        reasoningContext,
+		RawFields:               selectRawRequestFields(raw.Fields, rawCreateRequestFields),
+		RawTools:                buildRawOnlyToolFragments(req.Tools, raw.Tools),
+		ToolSignatures:          buildRepresentedToolSignatures(req.Tools),
+		RawToolChoice:           rawUnsupportedToolChoice(req.ToolChoice, raw.ToolChoice),
+		RawInputItems:           buildRawOnlyInputFragments(req.Input, raw.InputItems),
+		OmittedInputItemIndices: buildOmittedInputItemIndices(req.Input),
 	}
 
-	if requestExt.ReasoningContext == "" && len(requestExt.RawFields) == 0 && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 {
+	if requestExt.ReasoningContext == "" && len(requestExt.RawFields) == 0 && len(requestExt.RawTools) == 0 && len(requestExt.RawToolChoice) == 0 && len(requestExt.RawInputItems) == 0 && len(requestExt.OmittedInputItemIndices) == 0 {
 		return
 	}
 
@@ -265,6 +266,21 @@ func buildRawOnlyInputFragments(input Input, rawItems []json.RawMessage) []llm.O
 	return fragments
 }
 
+func buildOmittedInputItemIndices(input Input) []int {
+	if len(input.Items) == 0 {
+		return nil
+	}
+
+	omitted := make([]int, 0)
+	for i, item := range input.Items {
+		if item.Type == "reasoning" && item.EncryptedContent == nil {
+			omitted = append(omitted, i)
+		}
+	}
+
+	return omitted
+}
+
 // isStructurallyRepresentedInputItem reports whether an input item type is
 // rebuilt from the unified request. Types that are not rebuilt are replayed
 // verbatim from the raw body; see buildRawOnlyInputFragments.
@@ -372,7 +388,7 @@ func marshalCompactRequestPayload(payload CompactAPIRequest, llmReq *llm.Request
 // request: items rebuilt from messages and raw items that had no representation
 // are interleaved back into the positions they were sent in.
 func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenAIResponsesRequestExtensions) ([]json.RawMessage, bool) {
-	if requestExt == nil || len(requestExt.RawInputItems) == 0 {
+	if requestExt == nil || (len(requestExt.RawInputItems) == 0 && len(requestExt.OmittedInputItemIndices) == 0) {
 		return nil, false
 	}
 
@@ -385,23 +401,38 @@ func mergeRawOnlyInputItems(structuredRaw json.RawMessage, requestExt *llm.OpenA
 		}
 	}
 
-	maxOriginalIndex := len(structuredItems) + len(fragments) - 1
+	maxOriginalIndex := len(structuredItems) + len(fragments) + len(requestExt.OmittedInputItemIndices) - 1
 	for _, fragment := range fragments {
 		if fragment.OriginalIndex > maxOriginalIndex {
 			maxOriginalIndex = fragment.OriginalIndex
 		}
 	}
+	for _, index := range requestExt.OmittedInputItemIndices {
+		if index < 0 {
+			return nil, false
+		}
+		if index > maxOriginalIndex {
+			maxOriginalIndex = index
+		}
+	}
 	items := make([]json.RawMessage, 0, len(structuredItems)+len(fragments))
 	structuredIndex := 0
 	rawByIndex := make(map[int]json.RawMessage, len(fragments))
+	omittedByIndex := make(map[int]struct{}, len(requestExt.OmittedInputItemIndices))
 	for _, fragment := range fragments {
 		if len(fragment.Raw) == 0 || fragment.OriginalIndex < 0 {
 			return nil, false
 		}
 		rawByIndex[fragment.OriginalIndex] = cloneRaw(fragment.Raw)
 	}
+	for _, index := range requestExt.OmittedInputItemIndices {
+		omittedByIndex[index] = struct{}{}
+	}
 
 	for i := 0; i <= maxOriginalIndex; i++ {
+		if _, omitted := omittedByIndex[i]; omitted {
+			continue
+		}
 		if raw, ok := rawByIndex[i]; ok {
 			items = append(items, raw)
 			continue

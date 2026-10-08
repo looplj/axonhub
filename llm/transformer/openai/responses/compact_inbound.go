@@ -77,7 +77,8 @@ func (t *CompactInboundTransformer) TransformRequest(ctx context.Context, httpRe
 		ext := llm.EnsureOpenAIResponsesProviderExtensions(llmReq)
 		if ext != nil {
 			ext.Request = &llm.OpenAIResponsesRequestExtensions{
-				RawInputItems: buildRawOnlyInputFragments(req.Input, rawInputItems),
+				RawInputItems:           buildRawOnlyInputFragments(req.Input, rawInputItems),
+				OmittedInputItemIndices: buildOmittedInputItemIndices(req.Input),
 			}
 		}
 	}

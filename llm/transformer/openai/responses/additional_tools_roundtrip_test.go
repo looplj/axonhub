@@ -171,3 +171,29 @@ func TestAdditionalToolsAfterSkippedReasoningItemIsPreserved(t *testing.T) {
 	require.Contains(t, string(body.Input[0]), "Hello")
 	require.Contains(t, string(body.Input[1]), "additional_tools")
 }
+
+func TestAdditionalToolsBeforeMessageStaysBeforeMessageAfterSkippedReasoning(t *testing.T) {
+	const request = `{
+		"model": "gpt-6-luna",
+		"input": [
+			{"type": "reasoning", "summary": []},
+			{"type": "additional_tools", "id": "at_1", "role": "developer", "tools": [{"type": "custom", "name": "exec"}]},
+			{"type": "message", "role": "user", "content": "Hello"}
+		]
+	}`
+
+	req, err := NewInboundTransformer().TransformRequest(
+		t.Context(), &httpclient.Request{Body: []byte(request)})
+	require.NoError(t, err)
+
+	wire, err := additionalToolsOutbound(t).TransformRequest(t.Context(), req)
+	require.NoError(t, err)
+
+	var body struct {
+		Input []json.RawMessage `json:"input"`
+	}
+	require.NoError(t, json.Unmarshal(wire.Body, &body))
+	require.Len(t, body.Input, 2)
+	require.Contains(t, string(body.Input[0]), "additional_tools")
+	require.Contains(t, string(body.Input[1]), "Hello")
+}
