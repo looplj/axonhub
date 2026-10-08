@@ -41,16 +41,35 @@ func antigravityModelPool(id string) string {
 	return ""
 }
 
+// antigravityCadenceTokens splits a provider-supplied cadence, bucket ID or
+// display name into lower-case alphanumeric tokens. Only complete tokens are
+// matched later, because substring matching misreads near misses such as
+// "15h" or "biweekly".
+func antigravityCadenceTokens(value string) []string {
+	return strings.FieldsFunc(strings.ToLower(value), func(r rune) bool {
+		return (r < 'a' || r > 'z') && (r < '0' || r > '9')
+	})
+}
+
 // antigravitySummaryWindow recognizes only cadences the provider names, never reset-time guesses.
 func antigravitySummaryWindow(window, id, displayName string) (string, time.Duration) {
 	for _, value := range []string{window, id, displayName} {
-		value = strings.ToLower(strings.TrimSpace(value))
-		switch {
-		case value == "7d" || strings.Contains(value, "weekly"):
-			return "7d", 7 * 24 * time.Hour
-		case strings.Contains(value, "5h") || strings.Contains(value, "5-hour") ||
-			strings.Contains(value, "five hour") || strings.Contains(value, "session"):
-			return "5h", 5 * time.Hour
+		tokens := antigravityCadenceTokens(value)
+		for i, token := range tokens {
+			switch {
+			case token == "7d" || token == "week" || token == "weekly":
+				// "bi-weekly" and "semi-weekly" name a different cadence.
+				if i > 0 && (tokens[i-1] == "bi" || tokens[i-1] == "semi") {
+					continue
+				}
+				return "7d", 7 * 24 * time.Hour
+			case token == "5h" || token == "session":
+				return "5h", 5 * time.Hour
+			case i+1 < len(tokens) && (token == "5" || token == "five") && tokens[i+1] == "hour":
+				return "5h", 5 * time.Hour
+			case i+1 < len(tokens) && (token == "7" || token == "seven") && tokens[i+1] == "day":
+				return "7d", 7 * 24 * time.Hour
+			}
 		}
 	}
 	return "", 0
