@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -338,4 +339,222 @@ func TestOllama_CheckQuota_RejectsHTTPSDowngrade(t *testing.T) {
 	_, err := checker.CheckQuota(context.Background(), ollamaChannel("__Secure-session=aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789"))
 	require.Error(t, err)
 	require.ErrorContains(t, err, "refusing HTTPS to HTTP redirect")
+}
+
+const ollamaTestCookie = "__Secure-session=aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789"
+
+// ollamaMonthlyBalanceJSON is the documented /api/balance example for a
+// monthly allowance plan with purchased credits.
+const ollamaMonthlyBalanceJSON = `{
+  "included": {
+    "balance_usd": 72.5,
+    "allowance_usd": 100,
+    "period": {"from": "2026-09-15T09:30:00Z", "until": "2026-10-15T09:30:00Z"}
+  },
+  "purchased": {"balance_usd": 25}
+}`
+
+func ollamaAPIKeyChannel(apiKey, authCookie string) *ent.Channel {
+	ch := ollamaChannel(authCookie)
+	ch.Credentials = objects.ChannelCredentials{APIKey: apiKey}
+	return ch
+}
+
+func ollamaBalanceChecker(t *testing.T, handler func(req *http.Request) (*http.Response, error)) *OllamaQuotaChecker {
+	t.Helper()
+
+	checker := NewOllamaQuotaChecker(httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(handler),
+	}))
+	checker.now = func() time.Time { return time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC) }
+
+	return checker
+}
+
+func ollamaJSONResponse(status int, body string) *http.Response {
+	return &http.Response{
+		StatusCode: status,
+		Body:       io.NopCloser(strings.NewReader(body)),
+		Header:     make(http.Header),
+	}
+}
+
+func ollamaLimitByWindow(t *testing.T, limits []QuotaLimitStatus, window string) QuotaLimitStatus {
+	t.Helper()
+
+	for _, limit := range limits {
+		if limit.Window == window {
+			return limit
+		}
+	}
+	require.Failf(t, "limit not found", "window %q", window)
+
+	return QuotaLimitStatus{}
+}
+
+func TestOllama_CheckQuota_BalanceMonthly(t *testing.T) {
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		require.Equal(t, http.MethodGet, req.Method)
+		require.Equal(t, "https://ollama.com/api/balance", req.URL.String())
+		require.Equal(t, "Bearer ollama-key", req.Header.Get("Authorization"))
+		require.Empty(t, req.Header.Get("Cookie"))
+		return ollamaJSONResponse(http.StatusOK, ollamaMonthlyBalanceJSON), nil
+	})
+
+	quota, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("ollama-key", ""))
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+	require.Equal(t, ollamaProviderType, quota.ProviderType)
+	require.Len(t, quota.Limits, 2)
+
+	monthly := ollamaLimitByWindow(t, quota.Limits, QuotaWindowMonthly)
+	require.InDelta(t, 0.275, monthly.UsageRatio, 0.0001)
+	require.Equal(t, "available", monthly.Status)
+	require.Equal(t, time.Date(2026, 10, 15, 9, 30, 0, 0, time.UTC), *monthly.NextResetAt)
+	require.Equal(t, time.Date(2026, 9, 15, 9, 30, 0, 0, time.UTC), *monthly.PeriodStart)
+
+	credits := ollamaLimitByWindow(t, quota.Limits, QuotaWindowCredits)
+	require.True(t, IsBalanceLimit(credits))
+	require.Equal(t, "available", credits.Status)
+
+	windows := quota.RawData["windows"].(map[string]any)
+	require.InDelta(t, 27.5, windows[QuotaWindowMonthly].(map[string]any)["usage_percent"], 0.001)
+	require.InDelta(t, 25.0, quota.RawData["credits"].(map[string]any)["purchased_usd"], 0.001)
+}
+
+func TestOllama_CheckQuota_BalanceFreeAllowanceExhausted(t *testing.T) {
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		return ollamaJSONResponse(http.StatusOK, `{
+  "included": {
+    "balance_usd": 0,
+    "allowance_usd": 2.5,
+    "period": {"from": "2026-09-22T14:45:33.799639Z", "until": "2026-10-22T14:45:33.799639Z"}
+  },
+  "purchased": {"balance_usd": 0}
+}`), nil
+	})
+
+	quota, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("ollama-key", ""))
+	require.NoError(t, err)
+	require.Equal(t, "exhausted", quota.Status)
+	require.False(t, quota.Ready)
+	require.Len(t, quota.Limits, 1)
+	require.Equal(t, QuotaWindowMonthly, quota.Limits[0].Window)
+	require.NotContains(t, quota.RawData, "credits")
+}
+
+// Ollama spends purchased credits once the included allowance runs out, so an
+// exhausted allowance with credits left keeps the channel usable.
+func TestOllama_CheckQuota_BalanceExhaustedAllowanceFallsBackToCredits(t *testing.T) {
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		return ollamaJSONResponse(http.StatusOK, `{
+  "included": {
+    "balance_usd": 0,
+    "allowance_usd": 100,
+    "period": {"from": "2026-09-15T09:30:00Z", "until": "2026-10-15T09:30:00Z"}
+  },
+  "purchased": {"balance_usd": 5}
+}`), nil
+	})
+
+	quota, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("ollama-key", ""))
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.Equal(t, "exhausted", ollamaLimitByWindow(t, quota.Limits, QuotaWindowMonthly).Status)
+
+	state, reason := EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeToken, checker.now())
+	require.Equal(t, RoutingStickyOnly, state)
+	require.Equal(t, "window_exhausted_balance_fallback", reason)
+}
+
+func TestOllama_CheckQuota_BalanceLegacyWindows(t *testing.T) {
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		return ollamaJSONResponse(http.StatusOK, `{
+  "included": {
+    "session": {"remaining_percent": 75, "resets_at": "2026-10-08T05:00:00Z"},
+    "weekly": {"remaining_percent": 15, "resets_at": "2026-10-12T00:00:00Z"}
+  },
+  "purchased": {"balance_usd": 0}
+}`), nil
+	})
+
+	quota, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("ollama-key", ""))
+	require.NoError(t, err)
+	require.Equal(t, "warning", quota.Status)
+	require.Len(t, quota.Limits, 2)
+
+	session := ollamaLimitByWindow(t, quota.Limits, QuotaWindow5h)
+	require.InDelta(t, 0.25, session.UsageRatio, 0.0001)
+	require.Equal(t, time.Date(2026, 10, 8, 5, 0, 0, 0, time.UTC), *session.NextResetAt)
+	require.Equal(t, time.Date(2026, 10, 8, 0, 0, 0, 0, time.UTC), *session.PeriodStart)
+
+	weekly := ollamaLimitByWindow(t, quota.Limits, QuotaWindowWeekly)
+	require.InDelta(t, 0.85, weekly.UsageRatio, 0.0001)
+	require.Equal(t, "warning", weekly.Status)
+	require.Equal(t, time.Date(2026, 10, 12, 0, 0, 0, 0, time.UTC), *weekly.NextResetAt)
+}
+
+func TestOllama_CheckQuota_BalanceNoQuota(t *testing.T) {
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		return ollamaJSONResponse(http.StatusOK, `{"included": {}, "purchased": {"balance_usd": 0}}`), nil
+	})
+
+	_, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("ollama-key", ""))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no Ollama quota found")
+}
+
+func TestOllama_CheckQuota_BalanceUnauthorized(t *testing.T) {
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		return ollamaJSONResponse(http.StatusUnauthorized, `{"error":"invalid credentials"}`), nil
+	})
+
+	_, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("bad-key", ""))
+	require.ErrorIs(t, err, ErrInvalidCredentials)
+}
+
+func TestOllama_CheckQuota_BalanceUnauthorizedFallsBackToCookie(t *testing.T) {
+	var requested []string
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		requested = append(requested, req.URL.String())
+		if req.URL.String() == "https://ollama.com/api/balance" {
+			return ollamaJSONResponse(http.StatusUnauthorized, `{"error":"invalid credentials"}`), nil
+		}
+		require.Contains(t, req.Header.Get("Cookie"), "__Secure-session=")
+		require.Empty(t, req.Header.Get("Authorization"))
+		return ollamaJSONResponse(http.StatusOK, ollamaSettingsHTML()), nil
+	})
+
+	quota, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("bad-key", ollamaTestCookie))
+	require.NoError(t, err)
+	require.Equal(t, []string{"https://ollama.com/api/balance", "https://ollama.com/settings"}, requested)
+	require.Len(t, quota.Limits, 2)
+	require.Equal(t, QuotaWindow5h, quota.Limits[0].Window)
+}
+
+func TestOllama_CheckQuota_BalanceServerErrorDoesNotFallBack(t *testing.T) {
+	calls := 0
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		calls++
+		return ollamaJSONResponse(http.StatusBadGateway, "bad gateway"), nil
+	})
+
+	_, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("ollama-key", ollamaTestCookie))
+	require.Error(t, err)
+	require.NotErrorIs(t, err, ErrInvalidCredentials)
+	require.Contains(t, err.Error(), "502")
+	require.Equal(t, 1, calls)
+}
+
+func TestOllama_SupportsChannel_APIKey(t *testing.T) {
+	checker := NewOllamaQuotaChecker(nil)
+
+	require.True(t, checker.SupportsChannel(ollamaAPIKeyChannel("ollama-key", "")))
+
+	ch := ollamaAPIKeyChannel("ollama-key", "")
+	ch.Settings = nil
+	require.True(t, checker.SupportsChannel(ch))
+
+	require.False(t, checker.SupportsChannel(ollamaAPIKeyChannel("  ", "")))
 }
