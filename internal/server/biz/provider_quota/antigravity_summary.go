@@ -60,6 +60,7 @@ func antigravitySummaryWindow(window, id, displayName string) (string, time.Dura
 func parseAntigravityQuotaSummary(body []byte) (QuotaData, error) {
 	var response struct {
 		antigravitySummary
+
 		Response *antigravitySummary `json:"response"`
 		Summary  *antigravitySummary `json:"summary"`
 	}
