@@ -143,12 +143,6 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		BaseURL:        baseURL,
 		APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
 		Transport:      params.Transport,
-		// Responses Lite keeps its tool definitions in an `additional_tools` input
-		// item instead of the top-level `tools` array. That item belongs to the
-		// private Codex protocol, so it is replayed only to the official backend;
-		// relays are not assumed to implement it. The same rule drops the Responses
-		// Lite header for relays in TransformRequest.
-		PreserveAdditionalTools: official,
 	})
 	if err != nil {
 		return nil, err
