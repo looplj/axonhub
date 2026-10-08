@@ -191,18 +191,25 @@ func usesResponsesWebSocket(channel *biz.Channel) bool {
 	return false
 }
 
-func buildChannelTestInput(model string, useStream bool, systemPrompt, userPrompt string, responsesWebSocket bool, apiFormat llm.APIFormat) (transformer.Inbound, []byte, error) {
+func (processor *TestChannelOrchestrator) buildChannelTestInput(ctx context.Context, model string, useStream bool, systemPrompt, userPrompt string, responsesWebSocket bool, apiFormat llm.APIFormat) (transformer.Inbound, []byte, error) {
 	if apiFormat == llm.APIFormatTypeSafeSystemOne {
 		if useStream {
 			return nil, nil, fmt.Errorf("systemone does not support streaming")
 		}
+		// Protect role-scoped prompts before System One combines them into State.
+		prompts := buildChannelTestRequest(model, false, systemPrompt, userPrompt, false, llm.APIFormatOpenAIChatCompletion)
+		protected, err := processor.promptProtectionRuleService.Protect(ctx, prompts)
+		if err != nil {
+			return nil, nil, err
+		}
 		body, err := json.Marshal(struct {
 			llm.SystemOneRequest
+
 			Model string `json:"model"`
 		}{
 			Model: model,
 			SystemOneRequest: llm.SystemOneRequest{
-				State: systemPrompt + "\n\n" + userPrompt,
+				State: lo.FromPtr(protected.Messages[0].Content.Content) + "\n\n" + lo.FromPtr(protected.Messages[1].Content.Content),
 				Questions: map[string]llm.SystemOneQuestion{
 					"connection": {Type: "noul", Instructions: "Does the state contain a test prompt?"},
 				},
@@ -272,7 +279,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 	}
 	useStream := channel.Policies.Stream == objects.CapabilityPolicyRequire
 	apiFormat := channelTestAPIFormat(channel)
-	inbound, body, err := buildChannelTestInput(testModel, useStream, systemPrompt, userPrompt, usesResponsesWebSocket(channel), apiFormat)
+	inbound, body, err := processor.buildChannelTestInput(ctx, testModel, useStream, systemPrompt, userPrompt, usesResponsesWebSocket(channel), apiFormat)
 	if err != nil {
 		return nil, err
 	}
@@ -625,7 +632,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 ) *TestAPIKeyResult {
 	keyPrefix := maskAPIKey(key)
 
-	inbound, body, err := buildChannelTestInput(testModel, useStream, systemPrompt, userPrompt, responsesWebSocket, apiFormat)
+	inbound, body, err := processor.buildChannelTestInput(ctx, testModel, useStream, systemPrompt, userPrompt, responsesWebSocket, apiFormat)
 	if err != nil {
 		return &TestAPIKeyResult{
 			KeyPrefix: keyPrefix,
