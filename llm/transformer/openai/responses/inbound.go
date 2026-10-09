@@ -358,9 +358,17 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 
 	// If input is an array of items
 	messages := make([]llm.Message, 0, len(input.Items))
+	// Items already turned into a message. A tool output hoisted next to its
+	// assistant message must not be appended again when the scan reaches it.
+	emitted := make([]bool, len(input.Items))
 	i := 0
 
 	for i < len(input.Items) {
+		if emitted[i] {
+			i++
+			continue
+		}
+
 		item := &input.Items[i]
 
 		// Handle reasoning item - merge with subsequent function_call or text items
@@ -370,8 +378,18 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 				return nil, err
 			}
 
+			for j := i; j < i+consumed; j++ {
+				emitted[j] = true
+			}
+
 			if msg != nil {
 				messages = append(messages, *msg)
+
+				outputs, err := collectToolCallOutputs(input.Items, emitted, i+consumed, msg.ToolCalls)
+				if err != nil {
+					return nil, err
+				}
+				messages = append(messages, outputs...)
 			}
 
 			i += consumed
@@ -395,10 +413,17 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 				if callMsg != nil {
 					msg.ToolCalls = append(msg.ToolCalls, callMsg.ToolCalls...)
 				}
+				emitted[i] = true
 				i++
 			}
 
 			messages = append(messages, msg)
+
+			outputs, err := collectToolCallOutputs(input.Items, emitted, i, msg.ToolCalls)
+			if err != nil {
+				return nil, err
+			}
+			messages = append(messages, outputs...)
 
 			continue
 		}
@@ -413,10 +438,54 @@ func convertInputToMessages(input *Input) ([]llm.Message, error) {
 			messages = append(messages, *msg)
 		}
 
+		emitted[i] = true
 		i++
 	}
 
 	return messages, nil
+}
+
+// collectToolCallOutputs returns the tool results belonging to toolCalls, in input
+// order, and marks them emitted. Chat-compatible upstreams reject a tool message
+// that is not adjacent to the assistant message carrying its tool_calls, while the
+// Responses API lets a client place a message item between a call and its output.
+// Outputs belonging to a different assistant message are left where they are.
+func collectToolCallOutputs(items []Item, emitted []bool, from int, toolCalls []llm.ToolCall) ([]llm.Message, error) {
+	pending := lo.KeyBy(
+		lo.Filter(toolCalls, func(toolCall llm.ToolCall, _ int) bool { return toolCall.ID != "" }),
+		func(toolCall llm.ToolCall) string { return toolCall.ID },
+	)
+	if len(pending) == 0 {
+		return nil, nil
+	}
+
+	var outputs []llm.Message
+	for j := from; j < len(items) && len(pending) > 0; j++ {
+		if emitted[j] {
+			continue
+		}
+
+		item := &items[j]
+		if item.Type != "function_call_output" && item.Type != "custom_tool_call_output" {
+			continue
+		}
+		if _, ok := pending[item.CallID]; !ok {
+			continue
+		}
+
+		msg, err := convertItemToMessage(item)
+		if err != nil {
+			return nil, err
+		}
+		if msg != nil {
+			outputs = append(outputs, *msg)
+		}
+
+		emitted[j] = true
+		delete(pending, item.CallID)
+	}
+
+	return outputs, nil
 }
 
 // convertReasoningWithFollowing converts a reasoning item and merges it with subsequent
