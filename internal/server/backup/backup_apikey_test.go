@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -94,7 +95,7 @@ func TestBackupService_Restore_APIKeys_NewKeys(t *testing.T) {
 	data, err := json.MarshalIndent(backupData, "", "  ")
 	require.NoError(t, err)
 
-	err = service.Restore(ctx, data, RestoreOptions{
+	err = service.Restore(ctx, bytes.NewReader(data), RestoreOptions{
 		IncludeAPIKeys:         true,
 		APIKeyConflictStrategy: ConflictStrategyOverwrite,
 	})
@@ -158,7 +159,7 @@ func TestBackupService_Restore_APIKeys_DefaultProject(t *testing.T) {
 	data, err := json.MarshalIndent(backupData, "", "  ")
 	require.NoError(t, err)
 
-	err = service.Restore(ctx, data, RestoreOptions{
+	err = service.Restore(ctx, bytes.NewReader(data), RestoreOptions{
 		IncludeAPIKeys:         true,
 		APIKeyConflictStrategy: ConflictStrategyOverwrite,
 	})
@@ -207,7 +208,7 @@ func TestBackupService_Restore_APIKeys_ProjectNotFound(t *testing.T) {
 	data, err := json.MarshalIndent(backupData, "", "  ")
 	require.NoError(t, err)
 
-	err = service.Restore(ctx, data, RestoreOptions{
+	err = service.Restore(ctx, bytes.NewReader(data), RestoreOptions{
 		IncludeAPIKeys:         true,
 		APIKeyConflictStrategy: ConflictStrategyOverwrite,
 	})
@@ -256,7 +257,7 @@ func TestBackupService_Restore_APIKeys_ConflictSkip(t *testing.T) {
 	data, err := json.MarshalIndent(backupData, "", "  ")
 	require.NoError(t, err)
 
-	err = service.Restore(ctx, data, RestoreOptions{
+	err = service.Restore(ctx, bytes.NewReader(data), RestoreOptions{
 		IncludeAPIKeys:         true,
 		APIKeyConflictStrategy: ConflictStrategySkip,
 	})
@@ -309,7 +310,7 @@ func TestBackupService_Restore_APIKeys_ConflictOverwrite(t *testing.T) {
 	data, err := json.MarshalIndent(backupData, "", "  ")
 	require.NoError(t, err)
 
-	err = service.Restore(ctx, data, RestoreOptions{
+	err = service.Restore(ctx, bytes.NewReader(data), RestoreOptions{
 		IncludeAPIKeys:         true,
 		APIKeyConflictStrategy: ConflictStrategyOverwrite,
 	})
@@ -364,7 +365,7 @@ func TestBackupService_Restore_APIKeys_ConflictError(t *testing.T) {
 	data, err := json.MarshalIndent(backupData, "", "  ")
 	require.NoError(t, err)
 
-	err = service.Restore(ctx, data, RestoreOptions{
+	err = service.Restore(ctx, bytes.NewReader(data), RestoreOptions{
 		IncludeAPIKeys:         true,
 		APIKeyConflictStrategy: ConflictStrategyError,
 	})
@@ -420,7 +421,7 @@ func TestBackupService_Restore_APIKeys_MultipleProjects(t *testing.T) {
 	data, err := json.MarshalIndent(backupData, "", "  ")
 	require.NoError(t, err)
 
-	err = service.Restore(ctx, data, RestoreOptions{
+	err = service.Restore(ctx, bytes.NewReader(data), RestoreOptions{
 		IncludeAPIKeys:         true,
 		APIKeyConflictStrategy: ConflictStrategyOverwrite,
 	})

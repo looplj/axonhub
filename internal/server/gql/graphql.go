@@ -94,9 +94,16 @@ type GraphqlHandler struct {
 // backup exceeds that as soon as the instance has history: the request and
 // response bodies live in external storage, yet usage rows alone run to tens of
 // MiB (2026-10-05: a 108 MiB production backup was rejected with "failed to
-// parse multipart form, request body too large"). This is a guard against
-// unbounded request bodies, not a target size.
-const maxBackupUploadSize = 1 << 30 // 1 GiB
+// parse multipart form, request body too large").
+//
+// The transport spools the body to disk, but Restore still decodes the whole
+// backup into memory-backed structures, so this is a memory budget as much as
+// a transport guard: it has to leave headroom under the container limit the
+// deployment ships with (1 GiB in docker-compose and the default Helm values).
+// A cap near that limit would trade the clean "request body too large" error
+// for an OOM kill. Raising it further needs a streaming Restore, not a bigger
+// constant.
+const maxBackupUploadSize = 256 << 20 // 256 MiB
 
 func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv := handler.New(
@@ -138,7 +145,8 @@ func NewGraphqlHandlers(deps Dependencies) *GraphqlHandler {
 	gqlSrv.AddTransport(transport.GET{})
 	gqlSrv.AddTransport(transport.POST{})
 	// The restore mutation uploads a whole backup file here; MaxMemory keeps the
-	// default so the body spools to disk instead of being held in memory.
+	// default so the body spools to disk instead of being held in memory by the
+	// transport.
 	gqlSrv.AddTransport(transport.MultipartForm{MaxUploadSize: maxBackupUploadSize})
 
 	gqlSrv.SetQueryCache(lru.New[*ast.QueryDocument](1024))
