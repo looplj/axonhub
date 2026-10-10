@@ -558,3 +558,68 @@ func TestOllama_SupportsChannel_APIKey(t *testing.T) {
 
 	require.False(t, checker.SupportsChannel(ollamaAPIKeyChannel("  ", "")))
 }
+
+func TestOllama_CheckQuota_BalanceSkipsDisabledKey(t *testing.T) {
+	var used []string
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		used = append(used, req.Header.Get("Authorization"))
+		return ollamaJSONResponse(http.StatusOK, ollamaMonthlyBalanceJSON), nil
+	})
+
+	ch := ollamaAPIKeyChannel("", "")
+	ch.Credentials = objects.ChannelCredentials{APIKeys: []string{"revoked-key", "good-key"}}
+	ch.DisabledAPIKeys = []objects.DisabledAPIKey{{Key: "revoked-key"}}
+
+	quota, err := checker.CheckQuota(context.Background(), ch)
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.Equal(t, []string{"Bearer good-key"}, used)
+}
+
+func TestOllama_CheckQuota_BalanceLegacyExhaustedWindow(t *testing.T) {
+	legacyBalance := func(purchased string) string {
+		return `{
+  "included": {
+    "session": {"remaining_percent": 0, "resets_at": "2026-10-08T05:00:00Z"},
+    "weekly": {"remaining_percent": 60, "resets_at": "2026-10-12T00:00:00Z"}
+  },
+  "purchased": {"balance_usd": ` + purchased + `}
+}`
+	}
+
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		return ollamaJSONResponse(http.StatusOK, legacyBalance("0")), nil
+	})
+	quota, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("ollama-key", ""))
+	require.NoError(t, err)
+	require.Equal(t, "exhausted", quota.Status)
+	require.False(t, quota.Ready)
+
+	checker = ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		return ollamaJSONResponse(http.StatusOK, legacyBalance("5")), nil
+	})
+	quota, err = checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("ollama-key", ""))
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+}
+
+// The bearer key must never follow an HTTPS-to-HTTP redirect.
+func TestOllama_CheckQuota_BalanceRejectsHTTPSDowngrade(t *testing.T) {
+	var cleartext []string
+	checker := ollamaBalanceChecker(t, func(req *http.Request) (*http.Response, error) {
+		if req.URL.Scheme == "http" {
+			cleartext = append(cleartext, req.Header.Get("Authorization"))
+			return ollamaJSONResponse(http.StatusOK, ollamaMonthlyBalanceJSON), nil
+		}
+		return &http.Response{
+			StatusCode: http.StatusFound,
+			Header:     http.Header{"Location": []string{"http://ollama.com/api/balance"}},
+			Body:       io.NopCloser(strings.NewReader("")),
+		}, nil
+	})
+
+	_, err := checker.CheckQuota(context.Background(), ollamaAPIKeyChannel("ollama-key", ""))
+	require.ErrorContains(t, err, "refusing HTTPS to HTTP redirect")
+	require.Empty(t, cleartext)
+}
