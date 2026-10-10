@@ -190,8 +190,10 @@ type ChannelService struct {
 	apiKeyErrorCountsLock     sync.Mutex
 	apiKeyOpsLock             sync.Mutex
 
-	modelSyncMu    sync.Mutex
-	codexCatalogSF singleflight.Group
+	modelSyncMu            sync.Mutex
+	codexCatalogSF         singleflight.Group
+	codexCatalogProviderSF singleflight.Group
+	codexCatalogOutbounds  sync.Map
 
 	lastModelSyncExecutionTime time.Time
 

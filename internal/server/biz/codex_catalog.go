@@ -11,8 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 )
 
@@ -80,6 +84,7 @@ func (svc *ChannelService) FetchCodexCatalog(ctx context.Context, channelID int,
 	result := svc.codexCatalogSF.DoChan(fmt.Sprintf("%d:%s", channelID, version), func() (any, error) {
 		fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
+		fetchCtx = ent.NewContext(fetchCtx, svc.db)
 		return svc.fetchCodexCatalog(fetchCtx, channelID, version)
 	})
 	select {
@@ -98,20 +103,25 @@ func (svc *ChannelService) FetchCodexCatalog(ctx context.Context, channelID int,
 }
 
 func (svc *ChannelService) fetchCodexCatalog(ctx context.Context, channelID int, version string) (*CodexCatalog, error) {
-	entity, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
+	entity, err := svc.db.Channel.Get(ctx, channelID)
 	if err != nil || entity.Type != channel.TypeCodex {
 		return nil, &CodexCatalogError{Status: 503, Message: "Codex catalog source is unavailable"}
 	}
 	source := svc.GetEnabledChannel(channelID)
-	if source == nil {
-		source, err = svc.GetChannel(ctx, channelID)
+	var outbound *codex.OutboundTransformer
+	var httpClient *httpclient.HttpClient
+	if source != nil {
+		var ok bool
+		outbound, ok = source.Outbound.(*codex.OutboundTransformer)
+		if !ok {
+			return nil, &CodexCatalogError{Status: 502, Message: "Codex catalog provider is unavailable"}
+		}
+		httpClient = source.HTTPClient
+	} else {
+		outbound, httpClient, err = svc.codexCatalogOutbound(ctx, entity)
 		if err != nil {
 			return nil, &CodexCatalogError{Status: 502, Message: "Codex catalog credentials are unavailable"}
 		}
-	}
-	outbound, ok := source.Outbound.(*codex.OutboundTransformer)
-	if !ok {
-		return nil, &CodexCatalogError{Status: 502, Message: "Codex catalog provider is unavailable"}
 	}
 	baseURL := entity.BaseURL
 	switch {
@@ -134,7 +144,7 @@ func (svc *ChannelService) fetchCodexCatalog(ctx context.Context, channelID int,
 	}
 	parsed.RawQuery = query.Encode()
 	req.URL = parsed.String()
-	native := *source.HTTPClient.GetNativeClient()
+	native := *httpClient.GetNativeClient()
 	previous := native.CheckRedirect
 	native.CheckRedirect = func(next *http.Request, via []*http.Request) error {
 		if len(via) > 0 && (next.URL.Scheme != via[0].URL.Scheme || next.URL.Host != via[0].URL.Host) {
@@ -159,4 +169,83 @@ func (svc *ChannelService) fetchCodexCatalog(ctx context.Context, channelID int,
 		return nil, &CodexCatalogError{Status: 502, UpstreamStatus: resp.StatusCode, Message: fmt.Sprintf("Codex catalog upstream HTTP %d", resp.StatusCode)}
 	}
 	return ParseCodexCatalog(resp.Body)
+}
+
+type codexCatalogOutboundEntry struct {
+	signature string
+	outbound  *codex.OutboundTransformer
+}
+
+func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent.Channel) (*codex.OutboundTransformer, *httpclient.HttpClient, error) {
+	httpClient := svc.getHttpClient(entity.Settings)
+	if !entity.Credentials.IsOAuth() {
+		source, err := svc.buildChannelWithOutbounds(entity)
+		if err != nil {
+			return nil, nil, err
+		}
+		outbound, ok := source.Outbound.(*codex.OutboundTransformer)
+		if !ok {
+			return nil, nil, errors.New("codex catalog provider is unavailable")
+		}
+		return outbound, httpClient, nil
+	}
+
+	credentials, err := entity.Credentials.ResolveOAuthCredentials()
+	if err != nil {
+		return nil, nil, err
+	}
+	signature := credentials.AccessToken + "\x00" + credentials.RefreshToken + "\x00" + credentials.ExpiresAt.String()
+	if cached, ok := svc.codexCatalogOutbounds.Load(entity.ID); ok {
+		entry, ok := cached.(codexCatalogOutboundEntry)
+		if ok && entry.signature == signature {
+			return entry.outbound, httpClient, nil
+		}
+	}
+
+	result := svc.codexCatalogProviderSF.DoChan(fmt.Sprintf("%d:%s", entity.ID, signature), func() (any, error) {
+		if cached, ok := svc.codexCatalogOutbounds.Load(entity.ID); ok {
+			entry, ok := cached.(codexCatalogOutboundEntry)
+			if ok && entry.signature == signature {
+				return entry.outbound, nil
+			}
+		}
+		outbound, err := svc.buildCodexOutboundWithRefresh(
+			entity,
+			nil,
+			entity.BaseURL,
+			primaryEndpointTransport(entity, llm.APIFormatOpenAIResponse.String()),
+			"",
+			httpClient,
+			svc.onTokenRefreshedDetached(entity),
+		)
+		if err != nil {
+			return nil, err
+		}
+		codexOutbound, ok := outbound.(*codex.OutboundTransformer)
+		if !ok {
+			return nil, errors.New("codex catalog provider is unavailable")
+		}
+		svc.codexCatalogOutbounds.Store(entity.ID, codexCatalogOutboundEntry{signature: signature, outbound: codexOutbound})
+		return codexOutbound, nil
+	})
+	select {
+	case <-ctx.Done():
+		return nil, nil, ctx.Err()
+	case response := <-result:
+		if response.Err != nil {
+			return nil, nil, response.Err
+		}
+		outbound, ok := response.Val.(*codex.OutboundTransformer)
+		if !ok {
+			return nil, nil, errors.New("codex catalog provider is unavailable")
+		}
+		return outbound, httpClient, nil
+	}
+}
+
+func (svc *ChannelService) onTokenRefreshedDetached(ch *ent.Channel) func(context.Context, *oauth.OAuthCredentials) error {
+	return func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
+		ctx = authz.WithSystemBypass(context.WithoutCancel(ctx), "codex-catalog-refresh")
+		return svc.refreshOAuthTokenWithClient(ctx, svc.db, ch, refreshed)
+	}
 }
