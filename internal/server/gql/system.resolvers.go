@@ -44,8 +44,7 @@ func (r *mutationResolver) TestCodexCatalog(ctx context.Context, channelID int) 
 	catalog, err := r.channelService.FetchCodexCatalog(ctx, channelID, "")
 	if err != nil {
 		result := &CodexCatalogTestResult{Error: lo.ToPtr("Codex catalog request failed")}
-		var catalogErr *biz.CodexCatalogError
-		if errors.As(err, &catalogErr) {
+		if catalogErr, ok := errors.AsType[*biz.CodexCatalogError](err); ok {
 			result.Error = lo.ToPtr(catalogErr.Message)
 			if catalogErr.UpstreamStatus != 0 {
 				result.UpstreamStatus = lo.ToPtr(catalogErr.UpstreamStatus)

@@ -3,11 +3,13 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent/apikey"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCodexRoutes_LegacyModelsFormatAndNoAuth(t *testing.T) {
@@ -30,12 +32,17 @@ func TestCodexRoutes_KeyIPRestriction(t *testing.T) {
 
 func TestCodexRoutes_CallerPermissionDenied(t *testing.T) {
 	h := newCodexRouteHarness(t)
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte(`{"models":[]}`)) }))
+	var catalogCalls atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		catalogCalls.Add(1)
+		_, _ = w.Write([]byte(`{"models":[]}`))
+	}))
 	defer upstream.Close()
 	h.db.Channel.UpdateOneID(h.source.ID).SetBaseURL(upstream.URL).SaveX(h.ctx)
 	require.NoError(t, h.system.SetCodexCompatibilitySettings(h.ctx, biz.CodexCompatibilitySettings{Enabled: true, ChannelID: &h.source.ID}))
 	restricted := h.db.APIKey.Create().SetName("restricted").SetKey("ah-restricted").SetType(apikey.TypeUser).SetUserID(h.key.UserID).SetProjectID(h.key.ProjectID).SetScopes([]string{"write_requests"}).SaveX(h.ctx)
 	require.Equal(t, 403, h.request("GET", "/codex/models", restricted.Key).Code)
+	require.Zero(t, catalogCalls.Load())
 }
 
 func TestCodexRoutes_IPBlocklistPrecedesSwitch(t *testing.T) {

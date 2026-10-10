@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent/privacy"
@@ -54,6 +55,15 @@ func (h *CodexCompatibilityHandlers) Whoami(c *gin.Context) {
 func (h *CodexCompatibilityHandlers) ListModels(c *gin.Context) {
 	ctx := c.Request.Context()
 	c.Header("Cache-Control", "no-store")
+	models, err := h.Models.ListEnabledModels(ctx)
+	if err != nil {
+		status := http.StatusInternalServerError
+		if errors.Is(err, privacy.Deny) {
+			status = http.StatusForbidden
+		}
+		middleware.AbortWithError(c, status, errors.New("failed to list visible models"))
+		return
+	}
 	catalog, err := authz.RunWithSystemBypass(ctx, "codex-catalog-source", func(bypassCtx context.Context) (*biz.CodexCatalog, error) {
 		settings, err := h.System.CodexCompatibilitySettings(bypassCtx)
 		if err != nil {
@@ -65,21 +75,11 @@ func (h *CodexCompatibilityHandlers) ListModels(c *gin.Context) {
 		return h.Channels.FetchCodexCatalog(bypassCtx, *settings.ChannelID, c.Query("client_version"))
 	})
 	if err != nil {
-		var catalogErr *biz.CodexCatalogError
-		if errors.As(err, &catalogErr) {
+		if catalogErr, ok := errors.AsType[*biz.CodexCatalogError](err); ok {
 			middleware.AbortWithError(c, catalogErr.Status, catalogErr)
 		} else {
-			middleware.AbortWithError(c, 500, errors.New("failed to read Codex catalog settings"))
+			middleware.AbortWithError(c, http.StatusInternalServerError, errors.New("failed to read Codex catalog settings"))
 		}
-		return
-	}
-	models, err := h.Models.ListEnabledModels(ctx)
-	if err != nil {
-		status := 500
-		if errors.Is(err, privacy.Deny) {
-			status = 403
-		}
-		middleware.AbortWithError(c, status, errors.New("failed to list visible models"))
 		return
 	}
 	ids := make([]string, len(models))

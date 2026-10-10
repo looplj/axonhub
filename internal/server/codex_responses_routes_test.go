@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 )
 
 const codexFixtureEvents = "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_test\",\"object\":\"response\",\"model\":\"gpt-test\",\"status\":\"in_progress\",\"output\":[]}}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"compaction\",\"id\":\"cmp_test\",\"encrypted_content\":\"synthetic\"}}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_test\",\"object\":\"response\",\"model\":\"gpt-test\",\"status\":\"completed\",\"output\":[{\"type\":\"compaction\",\"id\":\"cmp_test\",\"encrypted_content\":\"synthetic\"}],\"usage\":{\"input_tokens\":1,\"output_tokens\":1,\"total_tokens\":2}}}\n\n"
@@ -46,7 +47,7 @@ func TestCodexRoutes_HTTPParity(t *testing.T) {
 	calls := setupCodexResponsesUpstream(t, h)
 	var bodies []string
 	for _, path := range []string{"/v1/responses", "/codex/responses"} {
-		req := httptest.NewRequest("POST", path, strings.NewReader(`{"model":"gpt-test","instructions":"synthetic","stream":true,"input":[{"type":"compaction_trigger"}]}`))
+		req := httptest.NewRequest(http.MethodPost, path, strings.NewReader(`{"model":"gpt-test","instructions":"synthetic","stream":true,"input":[{"type":"compaction_trigger"}]}`))
 		req.Header.Set("Authorization", "Bearer "+h.key.Key)
 		req.Header.Set("Content-Type", "application/json")
 		result := httptest.NewRecorder()
@@ -103,7 +104,7 @@ func TestCodexRoutes_CompactionV2(t *testing.T) {
 	setupCodexResponsesUpstream(t, h)
 	surface := httptest.NewServer(h.router)
 	defer surface.Close()
-	req, err := http.NewRequest("POST", surface.URL+"/codex/responses", strings.NewReader(`{"model":"gpt-test","instructions":"synthetic","stream":true,"input":[{"type":"compaction_trigger"}]}`))
+	req, err := http.NewRequest(http.MethodPost, surface.URL+"/codex/responses", strings.NewReader(`{"model":"gpt-test","instructions":"synthetic","stream":true,"input":[{"type":"compaction_trigger"}]}`))
 	require.NoError(t, err)
 	req.Header.Set("Authorization", "Bearer "+h.key.Key)
 	req.Header.Set("Content-Type", "application/json")

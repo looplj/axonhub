@@ -15,12 +15,13 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
-	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 )
 
 type task6Result struct {
@@ -63,14 +64,11 @@ func task6Surface(t *testing.T, h *codexRouteHarness, baseURL, model string) {
 func task6CLI(t *testing.T, h *codexRouteHarness, baseURL, model string) {
 	t.Helper()
 	home := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), []byte(`{"personal_access_token":"ah-codex-test"}`), 0600))
+	require.NoError(t, os.WriteFile(filepath.Join(home, "auth.json"), []byte(`{"personal_access_token":"ah-codex-test"}`), 0o600))
 	config := "model_provider = \"openai\"\nopenai_base_url = \"" + baseURL + "/codex\"\nchatgpt_base_url = \"" + baseURL + "/codex\"\nmodel = \"" + model + "\"\n"
-	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0600))
-	binary := "/root/.npm/_npx/2833e320b4896841/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex"
-	if _, err := os.Stat(binary); err != nil {
-		binary, err = exec.LookPath("codex")
-		require.NoError(t, err)
-	}
+	require.NoError(t, os.WriteFile(filepath.Join(home, "config.toml"), []byte(config), 0o600))
+	binary, err := exec.LookPath("codex")
+	require.NoError(t, err)
 	cmd := exec.CommandContext(t.Context(), binary, "exec", "--skip-git-repo-check", "--json", "Reply exactly OK.")
 	cmd.Env = append(os.Environ(), "CODEX_HOME="+home, "CODEX_AUTHAPI_BASE_URL="+baseURL+"/codex")
 	output, err := cmd.CombinedOutput()
@@ -102,7 +100,7 @@ func task6Body(model string, input []json.RawMessage) []byte {
 
 func task6Parse(status int, raw []byte) task6Result {
 	result := task6Result{status: status, overloaded: bytes.Contains(raw, []byte("server_is_overloaded"))}
-	for _, line := range strings.Split(string(raw), "\n") {
+	for line := range strings.SplitSeq(string(raw), "\n") {
 		if !strings.HasPrefix(line, "data: ") {
 			continue
 		}
@@ -213,7 +211,7 @@ func TestTask6LiveAcceptance(t *testing.T) {
 			}
 			headers := nativeReq.Headers.Clone()
 			headers.Set("Content-Type", "application/json")
-			headers.Set("originator", "codex_cli_rs")
+			headers.Set("Originator", "codex_cli_rs")
 			headers.Set("User-Agent", "codex_cli_rs/0.162.1")
 			t.Logf("DIRECT source=%s candidate_model=%s", source.Name, selected)
 			direct := task6Post(t, strings.TrimRight(source.BaseURL, "/#")+"/responses", headers, task6Body(selected, input))
@@ -226,7 +224,7 @@ func TestTask6LiveAcceptance(t *testing.T) {
 			t.Logf("CONFIG source=%s channel_id=%d type=codex enabled_inference_count=1 supported_model=%s mapping=identity catalog_id=%d", source.Name, source.ID, selected, source.ID)
 			surface := httptest.NewServer(h.router)
 			defer surface.Close()
-			gatewayHeaders := http.Header{"Authorization": []string{"Bearer " + h.key.Key}, "Content-Type": []string{"application/json"}, "originator": []string{"codex_cli_rs"}}
+			gatewayHeaders := http.Header{"Authorization": []string{"Bearer " + h.key.Key}, "Content-Type": []string{"application/json"}, "Originator": []string{"codex_cli_rs"}}
 			task6Whoami(t, surface.URL, h.key.Key, source.Name)
 			t.Log("GATEWAY SSE")
 			sse := task6Post(t, surface.URL+"/codex/responses", gatewayHeaders, task6Body(selected, input))

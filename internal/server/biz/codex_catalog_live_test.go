@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCodexCatalog_RealSources(t *testing.T) {
@@ -65,7 +66,7 @@ func TestCodexCatalog_RealSources(t *testing.T) {
 		temp, err := os.CreateTemp(home+"codex-home", ".rotated-auth-*")
 		require.NoError(t, err)
 		defer os.Remove(temp.Name())
-		require.NoError(t, temp.Chmod(0600))
+		require.NoError(t, temp.Chmod(0o600))
 		_, err = temp.Write(encoded)
 		require.NoError(t, err)
 		require.NoError(t, temp.Close())
