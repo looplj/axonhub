@@ -533,6 +533,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
     return false;
   });
+  const [useAnthropicGcp, setUseAnthropicGcp] = useState(() => {
+    if (initialRow) {
+      return initialRow.type === 'anthropic_gcp';
+    }
+    return false;
+  });
   const [useKimiCoding, setUseKimiCoding] = useState(() => {
     if (initialRow) {
       return initialRow.type === 'moonshot_coding';
@@ -554,6 +560,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setResponsesTransport(getResponsesTransportFromChannel(initialRow));
     setUseGeminiVertex(initialRow.type === 'gemini_vertex');
     setUseAnthropicAws(initialRow.type === 'anthropic_aws');
+    setUseAnthropicGcp(initialRow.type === 'anthropic_gcp');
     setUseKimiCoding(initialRow.type === 'moonshot_coding');
 
     // Detect authMode for codex and claudecode
@@ -710,11 +717,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     // If anthropic/messages is selected, check which variant is selected
     if (selectedApiFormat === 'anthropic/messages') {
       if (useAnthropicAws) return 'anthropic_aws';
+      if (useAnthropicGcp) return 'anthropic_gcp';
       if (useKimiCoding) return 'moonshot_coding';
     }
 
     return getChannelTypeForApiFormat(selectedProvider, selectedApiFormat) || 'openai';
-  }, [selectedProvider, selectedApiFormat, useGeminiVertex, useAnthropicAws, useKimiCoding]);
+  }, [selectedProvider, selectedApiFormat, useGeminiVertex, useAnthropicAws, useAnthropicGcp, useKimiCoding]);
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema;
 
@@ -961,9 +969,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           ? 'gemini_vertex'
           : provider === 'anthropic' && newFormat === 'anthropic/messages' && useAnthropicAws
             ? 'anthropic_aws'
-            : provider === 'moonshot' && newFormat === 'anthropic/messages' && useKimiCoding
-              ? 'moonshot_coding'
-              : getChannelTypeForApiFormat(provider, newFormat);
+            : provider === 'anthropic' && newFormat === 'anthropic/messages' && useAnthropicGcp
+              ? 'anthropic_gcp'
+              : provider === 'moonshot' && newFormat === 'anthropic/messages' && useKimiCoding
+                ? 'moonshot_coding'
+                : getChannelTypeForApiFormat(provider, newFormat);
       if (newChannelType) {
         form.setValue('type', newChannelType);
         if (!isEdit) {
@@ -978,7 +988,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [form, useGeminiVertex, useAnthropicAws, useKimiCoding, isDuplicate, isEdit, selectedApiFormat, isOAuthChannel, responsesTransport]
+    [form, useGeminiVertex, useAnthropicAws, useAnthropicGcp, useKimiCoding, isDuplicate, isEdit, selectedApiFormat, isOAuthChannel, responsesTransport]
   );
 
   const handleApiFormatChange = useCallback(
@@ -999,6 +1009,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       // Reset anthropic/kimi checkboxes if not anthropic/messages
       if (format !== 'anthropic/messages') {
         setUseAnthropicAws(false);
+        setUseAnthropicGcp(false);
         setUseKimiCoding(false);
       }
 
@@ -1008,9 +1019,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           ? 'gemini_vertex'
           : format === 'anthropic/messages' && useAnthropicAws
             ? 'anthropic_aws'
-            : format === 'anthropic/messages' && useKimiCoding
-              ? 'moonshot_coding'
-              : channelTypeFromFormat;
+            : format === 'anthropic/messages' && useAnthropicGcp
+              ? 'anthropic_gcp'
+              : format === 'anthropic/messages' && useKimiCoding
+                ? 'moonshot_coding'
+                : channelTypeFromFormat;
       if (newChannelType) {
         form.setValue('type', newChannelType);
 
@@ -1030,7 +1043,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }
       }
     },
-    [selectedProvider, form, useGeminiVertex, useAnthropicAws, useKimiCoding, isDuplicate, isEdit, isOAuthChannel]
+    [selectedProvider, form, useGeminiVertex, useAnthropicAws, useAnthropicGcp, useKimiCoding, isDuplicate, isEdit, isOAuthChannel]
   );
 
   const handleResponsesTransportChange = useCallback(
@@ -1076,9 +1089,34 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     (checked: boolean) => {
       if (isOAuthChannel) return;
       setUseAnthropicAws(checked);
+      if (checked) setUseAnthropicGcp(false);
 
       if (selectedApiFormat === 'anthropic/messages') {
         const newChannelType = checked ? 'anthropic_aws' : 'anthropic';
+        form.setValue('type', newChannelType);
+
+        if (!isEdit) {
+          const baseURLFieldState = form.getFieldState('baseURL', form.formState);
+          if (!baseURLFieldState.isDirty && !isDuplicate) {
+            const baseURL = getDefaultBaseURL(newChannelType);
+            if (baseURL) {
+              form.resetField('baseURL', { defaultValue: baseURL });
+            }
+          }
+        }
+      }
+    },
+    [selectedApiFormat, form, isDuplicate, isEdit, isOAuthChannel]
+  );
+
+  const handleAnthropicGcpChange = useCallback(
+    (checked: boolean) => {
+      if (isOAuthChannel) return;
+      setUseAnthropicGcp(checked);
+      if (checked) setUseAnthropicAws(false);
+
+      if (selectedApiFormat === 'anthropic/messages') {
+        const newChannelType = checked ? 'anthropic_gcp' : 'anthropic';
         form.setValue('type', newChannelType);
 
         if (!isEdit) {
@@ -1908,6 +1946,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               setResponsesTransport(getResponsesTransportFromChannel(initialRow));
               setUseGeminiVertex(initialRow.type === 'gemini_vertex');
               setUseAnthropicAws(initialRow.type === 'anthropic_aws');
+              setUseAnthropicGcp(initialRow.type === 'anthropic_gcp');
               setUseKimiCoding(initialRow.type === 'moonshot_coding');
             } else {
               setSelectedProvider('openai');
@@ -1915,6 +1954,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               setResponsesTransport('http');
               setUseGeminiVertex(false);
               setUseAnthropicAws(false);
+              setUseAnthropicGcp(false);
               setUseKimiCoding(false);
             }
           }
@@ -2037,6 +2077,16 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     disabled={!!isOAuthChannel}
                                   />
                                   <span>{t('channels.dialogs.fields.apiFormat.anthropicAWS.label')}</span>
+                                </label>
+                                <label
+                                  className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                >
+                                  <Checkbox
+                                    checked={useAnthropicGcp}
+                                    onCheckedChange={(checked) => handleAnthropicGcpChange(checked === true)}
+                                    disabled={!!isOAuthChannel}
+                                  />
+                                  <span>{t('channels.dialogs.fields.apiFormat.anthropicGCP.label')}</span>
                                 </label>
                               </div>
                             )}
@@ -2416,6 +2466,83 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </FormItem>
                         )}
                       />
+
+                      {selectedType === 'anthropic_gcp' && (
+                        <>
+                          <FormField
+                            control={form.control}
+                            name='credentials.gcp.region'
+                            render={({ field, fieldState }) => (
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                  {t('channels.dialogs.fields.gcp.region.label')}
+                                </FormLabel>
+                                <div className='space-y-1 md:col-span-6'>
+                                  <Input
+                                    placeholder={t('channels.dialogs.fields.gcp.region.placeholder')}
+                                    autoComplete='new-password'
+                                    data-form-type='other'
+                                    aria-invalid={!!fieldState.error}
+                                    data-testid='channel-gcp-region-input'
+                                    {...field}
+                                  />
+                                  <FormMessage />
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name='credentials.gcp.projectID'
+                            render={({ field, fieldState }) => (
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                  {t('channels.dialogs.fields.gcp.projectID.label')}
+                                </FormLabel>
+                                <div className='space-y-1 md:col-span-6'>
+                                  <Input
+                                    placeholder={t('channels.dialogs.fields.gcp.projectID.placeholder')}
+                                    autoComplete='new-password'
+                                    data-form-type='other'
+                                    aria-invalid={!!fieldState.error}
+                                    data-testid='channel-gcp-project-input'
+                                    {...field}
+                                  />
+                                  <FormMessage />
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name='credentials.gcp.jsonData'
+                            render={({ field, fieldState }) => (
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                  {t('channels.dialogs.fields.gcp.jsonData.label')}
+                                </FormLabel>
+                                <div className='space-y-1 md:col-span-6'>
+                                  <Textarea
+                                    placeholder={t('channels.dialogs.fields.gcp.jsonData.placeholder')}
+                                    className='min-h-[120px] resize-y font-mono text-sm'
+                                    autoComplete='new-password'
+                                    data-form-type='other'
+                                    spellCheck={false}
+                                    aria-invalid={!!fieldState.error}
+                                    data-testid='channel-gcp-json-input'
+                                    {...field}
+                                    value={field.value ?? ''}
+                                  />
+                                  <p className='text-muted-foreground text-xs'>
+                                    {t('channels.dialogs.fields.gcp.jsonData.description')}
+                                  </p>
+                                  <FormMessage />
+                                </div>
+                              </FormItem>
+                            )}
+                          />
+                        </>
+                      )}
 
                       {(!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party') &&
                         selectedProvider !== 'antigravity' &&
