@@ -18,7 +18,13 @@ import (
 )
 
 func TestCodexCatalog_TransportTimeout(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { <-r.Context().Done() }))
+	release := make(chan struct{})
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-release:
+		case <-r.Context().Done():
+		}
+	}))
 	defer upstream.Close()
 	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer db.Close()
@@ -29,10 +35,11 @@ func TestCodexCatalog_TransportTimeout(t *testing.T) {
 	deadline, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 	defer cancel()
 	_, err := svc.FetchCodexCatalog(deadline, source.ID, "")
+	close(release)
 	var catalogErr *CodexCatalogError
 	require.ErrorAs(t, err, &catalogErr)
 	require.Equal(t, 502, catalogErr.Status)
-	require.Equal(t, "Codex catalog transport failed", catalogErr.Message)
+	require.Equal(t, "Codex catalog request was cancelled", catalogErr.Message)
 }
 
 func TestCodexCatalog_UsesRuntimeProviderOnCacheHit(t *testing.T) {

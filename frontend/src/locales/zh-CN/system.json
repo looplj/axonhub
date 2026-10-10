@@ -465,6 +465,7 @@
   "system.quota.collection.providers.antigravity": "Antigravity",
   "system.quota.collection.providers.xai_subscription": "xAI 订阅",
   "system.quota.collection.providers.github_copilot": "GitHub Copilot",
+  "system.quota.collection.providers.ollama": "Ollama",
   "system.quota.collection.providers.nanogpt": "NanoGPT",
   "system.quota.collection.providers.cline": "Cline",
   "system.quota.collection.providers.wafer": "Wafer",
