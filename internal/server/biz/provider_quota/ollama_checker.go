@@ -54,8 +54,10 @@ func NewOllamaQuotaChecker(httpClient *httpclient.HttpClient) *OllamaQuotaChecke
 }
 
 func ollamaAPIKey(ch *ent.Channel) string {
+	disabled := zhipuDisabledKeySet(ch)
+
 	for _, candidate := range ch.Credentials.GetAllAPIKeys() {
-		if trimmed := strings.TrimSpace(candidate); trimmed != "" {
+		if trimmed := strings.TrimSpace(candidate); trimmed != "" && !disabled[trimmed] {
 			return trimmed
 		}
 	}
@@ -107,6 +109,9 @@ func (c *OllamaQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Q
 	if ch.Settings != nil && ch.Settings.Proxy != nil {
 		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
 	}
+	// Reject HTTPS-to-HTTP redirects so neither the API key nor the session
+	// cookie is forwarded over a downgraded (cleartext) connection.
+	hc = hc.WithRejectHTTPSDowngrade()
 
 	if apiKey != "" {
 		quota, err := c.fetchBalance(ctx, hc, apiKey)
@@ -123,9 +128,7 @@ func (c *OllamaQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (Q
 		return QuotaData{}, fmt.Errorf("%w: invalid Ollama auth cookie: %w", ErrInvalidCredentials, err)
 	}
 
-	// Reject HTTPS-to-HTTP redirects so the session cookie is never forwarded
-	// over a downgraded (cleartext) connection.
-	return c.fetchSettings(ctx, hc.WithRejectHTTPSDowngrade(), cookie)
+	return c.fetchSettings(ctx, hc, cookie)
 }
 
 func (c *OllamaQuotaChecker) fetchBalance(ctx context.Context, hc *httpclient.HttpClient, apiKey string) (QuotaData, error) {
@@ -328,11 +331,10 @@ func (c *OllamaQuotaChecker) parseBalance(body []byte) (QuotaData, error) {
 		data.RawData["credits"] = map[string]any{
 			"purchased_usd": purchased,
 		}
+		// Ollama draws from purchased credits once the included allowance is
+		// spent, so the overall status comes from the best usable limit.
+		data.Status = ""
 	}
-
-	// Ollama draws from purchased credits once the included allowance is spent,
-	// so the overall status comes from the best usable limit.
-	data.Status = ""
 
 	return normalizeQuotaDataAt(data, c.now()), nil
 }

@@ -94,7 +94,7 @@ test('Codex reset can be attempted after a transient reset-list failure', () => 
   );
 });
 
-test('Ollama badge derives percentage from the heavier of the 5h/weekly windows', () => {
+test('Ollama badge derives percentage from the heaviest of the monthly/5h/weekly windows', () => {
   const source = read('components/quota-badges.tsx');
   const start = source.indexOf('} else if (isOllamaType(channel.type)) {');
   const end = source.indexOf('} else if (', start + 5);
@@ -102,8 +102,21 @@ test('Ollama badge derives percentage from the heavier of the 5h/weekly windows'
 
   assert.match(
     percentBlock,
-    /Math\.max\(\s*qd\?\.windows\?\.\[['"]5h['"]\]\?\.usage_percent \?\? 0,\s*qd\?\.windows\?\.weekly\?\.usage_percent \?\? 0\s*\)/,
-    'ollama badge percentage should be the max of the 5h and weekly window usage'
+    /Math\.max\(\s*qd\?\.windows\?\.monthly\?\.usage_percent \?\? 0,\s*qd\?\.windows\?\.\[['"]5h['"]\]\?\.usage_percent \?\? 0,\s*qd\?\.windows\?\.weekly\?\.usage_percent \?\? 0\s*\)/,
+    'ollama badge percentage should be the max of the monthly, 5h and weekly window usage'
+  );
+});
+
+test('Ollama badge stays out of empty while purchased credits remain', () => {
+  const source = read('components/quota-badges.tsx');
+  const start = source.indexOf('} else if (isOllamaType(channel.type)) {');
+  const end = source.indexOf('} else if (', start + 5);
+  const percentBlock = source.slice(start, end);
+
+  assert.match(
+    percentBlock,
+    /if \(\(qd\?\.credits\?\.purchased_usd \?\? 0\) > 0\) \{\s*percentage = Math\.min\(percentage, 94\);/,
+    'purchased credits should cap the ollama badge percentage below the empty threshold'
   );
 });
 
