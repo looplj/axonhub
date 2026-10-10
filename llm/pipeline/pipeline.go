@@ -36,6 +36,17 @@ type ChannelRetryable interface {
 	PrepareForRetry(ctx context.Context) error
 }
 
+// ChannelTimeoutProvider is implemented by outbound transformers that carry
+// per-channel response timeout overrides (e.g. a slow relay that needs longer
+// than the global timeout). Each returned value <= 0 means "inherit the
+// pipeline default" for that timeout. It is consulted on every attempt, so
+// channel switches transparently pick up the new channel's values.
+type ChannelTimeoutProvider interface {
+	// ResponseTimeoutOverride returns the stream first-event and non-streaming
+	// response timeouts for the current channel.
+	ResponseTimeoutOverride() (streamFirstEvent, nonStream time.Duration)
+}
+
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
@@ -394,6 +405,8 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 
 	effectiveWantStream := request.Stream != nil && *request.Stream
 
+	streamTimeout, nonStreamTimeout := p.effectiveTimeouts()
+
 	var result *Result
 	switch {
 	case originalWantStream:
@@ -401,7 +414,7 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 			Stream: true,
 		}
 
-		stream, err := p.stream(ctx, executor, httpReq, p.streamFirstEventTimeout)
+		stream, err := p.stream(ctx, executor, httpReq, streamTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed to stream request: %w", err)
 		}
@@ -412,11 +425,11 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 			Stream: false,
 		}
 
-		timeoutCtx, cancel := p.withNonStreamTimeout(ctx)
+		timeoutCtx, cancel := p.withNonStreamTimeout(ctx, nonStreamTimeout)
 		response, err := p.autoAggregateStream(timeoutCtx, executor, httpReq)
 		cancel()
 		if err != nil {
-			if p.isNonStreamTimeout(timeoutCtx) {
+			if p.isNonStreamTimeout(timeoutCtx, nonStreamTimeout) {
 				return nil, ErrNonStreamResponseTimeout
 			}
 
@@ -429,11 +442,11 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 			Stream: false,
 		}
 
-		timeoutCtx, cancel := p.withNonStreamTimeout(ctx)
+		timeoutCtx, cancel := p.withNonStreamTimeout(ctx, nonStreamTimeout)
 		response, err := p.notStream(timeoutCtx, executor, httpReq)
 		cancel()
 		if err != nil {
-			if p.isNonStreamTimeout(timeoutCtx) {
+			if p.isNonStreamTimeout(timeoutCtx, nonStreamTimeout) {
 				return nil, ErrNonStreamResponseTimeout
 			}
 
@@ -455,14 +468,36 @@ func isResponseTimeoutError(err error) bool {
 	return errors.Is(err, ErrStreamFirstEventTimeout) || errors.Is(err, ErrNonStreamResponseTimeout)
 }
 
-func (p *pipeline) withNonStreamTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
-	if p.nonStreamTimeout <= 0 {
+func (p *pipeline) withNonStreamTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout <= 0 {
 		return ctx, func() {}
 	}
 
-	return context.WithTimeoutCause(ctx, p.nonStreamTimeout, ErrNonStreamResponseTimeout)
+	return context.WithTimeoutCause(ctx, timeout, ErrNonStreamResponseTimeout)
 }
 
-func (p *pipeline) isNonStreamTimeout(ctx context.Context) bool {
-	return p.nonStreamTimeout > 0 && errors.Is(context.Cause(ctx), ErrNonStreamResponseTimeout)
+func (p *pipeline) isNonStreamTimeout(ctx context.Context, timeout time.Duration) bool {
+	return timeout > 0 && errors.Is(context.Cause(ctx), ErrNonStreamResponseTimeout)
+}
+
+// effectiveTimeouts resolves the timeouts for the current attempt. A channel
+// may override either value via ChannelTimeoutProvider; non-positive override
+// values fall back to the pipeline (global) defaults.
+func (p *pipeline) effectiveTimeouts() (streamFirstEvent, nonStream time.Duration) {
+	streamFirstEvent, nonStream = p.streamFirstEventTimeout, p.nonStreamTimeout
+
+	provider, ok := p.Outbound.(ChannelTimeoutProvider)
+	if !ok {
+		return streamFirstEvent, nonStream
+	}
+
+	overrideStream, overrideNonStream := provider.ResponseTimeoutOverride()
+	if overrideStream > 0 {
+		streamFirstEvent = overrideStream
+	}
+	if overrideNonStream > 0 {
+		nonStream = overrideNonStream
+	}
+
+	return streamFirstEvent, nonStream
 }

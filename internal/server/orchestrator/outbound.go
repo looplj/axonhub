@@ -698,6 +698,27 @@ func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
 	return p.state.CurrentCandidate.Channel
 }
 
+// ResponseTimeoutOverride implements pipeline.ChannelTimeoutProvider. Channels
+// may override the global response timeouts via their settings (e.g. a slow
+// relay that needs longer than the global stream first-event timeout).
+// Non-positive values mean "inherit the pipeline default".
+func (p *PersistentOutboundTransformer) ResponseTimeoutOverride() (streamFirstEvent, nonStream time.Duration) {
+	channel := p.GetCurrentChannel()
+	if channel == nil || channel.Channel == nil || channel.Settings == nil {
+		return 0, 0
+	}
+
+	if v := channel.Settings.StreamFirstEventTimeoutSeconds; v != nil && *v > 0 {
+		streamFirstEvent = time.Duration(*v) * time.Second
+	}
+
+	if v := channel.Settings.NonStreamResponseTimeoutSeconds; v != nil && *v > 0 {
+		nonStream = time.Duration(*v) * time.Second
+	}
+
+	return streamFirstEvent, nonStream
+}
+
 // trackCurrentChannelSelection records an actual retry attempt. Initial
 // attempts are tracked by LoadBalancedSelector after it assembles the final
 // priority-ordered candidate list.
@@ -823,6 +844,19 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	// recover as the rate-limit window resets.
 	if httpclient.IsRateLimitErr(err) || ExtractStatusCodeFromError(err) == http.StatusTooManyRequests {
 		log.Debug(context.Background(), "429 rate limit, skipping same-channel retry to switch to next channel",
+			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
+		)
+
+		return false
+	}
+
+	// 520 Unknown Error (typically a Cloudflare edge failure with an empty
+	// body): the whole backend edge is unresponsive, so iterating model aliases
+	// on the same channel just burns attempts without any chance of success.
+	// Force a channel switch instead of grinding through the candidate's model
+	// list on a dead backend.
+	if ExtractStatusCodeFromError(err) == 520 {
+		log.Debug(context.Background(), "520 edge error, skipping same-channel retry to switch to next channel",
 			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
 		)
 
