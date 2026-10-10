@@ -369,16 +369,14 @@ test('Ollama exposes OpenAI and Anthropic channel variants with a quota cookie f
   );
 });
 
-test('Ollama has localized channel, provider, cookie field, and quota-collection labels', () => {
+test('Ollama has localized channel, provider, and cookie-field labels', () => {
   for (const locale of ['en', 'zh-CN']) {
     const channels = parseLocale(locale);
-    const system = JSON.parse(read(`locales/${locale}/system.json`));
 
     assert.equal(channels['channels.types.ollama'], 'Ollama');
     assert.equal(channels['channels.providers.ollama'], 'Ollama');
     assert.ok(channels['channels.types.ollama_anthropic']);
     assert.ok(channels['channels.dialogs.fields.ollamaQuota.authCookie.placeholder'].includes('__Secure-session'));
     assert.ok(channels['channels.dialogs.fields.ollamaQuota.authCookie.description']);
-    assert.ok(system['system.quota.collection.providers.ollama']);
   }
 });

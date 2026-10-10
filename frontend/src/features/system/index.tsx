@@ -3,10 +3,8 @@
 import { useTranslation } from 'react-i18next';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
-import { SystemSettingsTabs } from './components/tabs';
+import { SystemSettingsTabs, type SystemTabKey } from './components/tabs';
 import SystemProvider from './context/system-context';
-
-type SystemTabKey = 'brand' | 'security' | 'storage' | 'retry' | 'webhook' | 'about' | 'general' | 'proxy' | 'backup' | 'diagnostics';
 
 interface SystemContentProps {
   initialTab?: SystemTabKey;

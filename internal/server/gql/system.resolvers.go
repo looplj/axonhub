@@ -7,18 +7,53 @@ package gql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/build"
 	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/samber/lo"
 )
+
+// UpdateCodexCompatibilitySettings is the resolver for the updateCodexCompatibilitySettings field.
+func (r *mutationResolver) UpdateCodexCompatibilitySettings(ctx context.Context, input biz.CodexCompatibilitySettings) (bool, error) {
+	if err := r.systemService.SetCodexCompatibilitySettings(ctx, input); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// TestCodexCatalog is the resolver for the testCodexCatalog field.
+func (r *mutationResolver) TestCodexCatalog(ctx context.Context, channelID int) (*CodexCatalogTestResult, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeWriteSettings); err != nil {
+		return nil, err
+	}
+	if err := authz.RequireScope(ctx, scopes.ScopeReadChannels); err != nil {
+		return nil, err
+	}
+	if _, err := r.client.Channel.Get(ctx, channelID); err != nil {
+		return nil, fmt.Errorf("catalog channel is unavailable or inaccessible")
+	}
+	catalog, err := r.channelService.FetchCodexCatalog(ctx, channelID, "")
+	if err != nil {
+		result := &CodexCatalogTestResult{Error: lo.ToPtr("Codex catalog request failed")}
+		if catalogErr, ok := errors.AsType[*biz.CodexCatalogError](err); ok {
+			result.Error = lo.ToPtr(catalogErr.Message)
+			if catalogErr.UpstreamStatus != 0 {
+				result.UpstreamStatus = lo.ToPtr(catalogErr.UpstreamStatus)
+			}
+		}
+		return result, nil
+	}
+	return &CodexCatalogTestResult{Success: true, ModelCount: catalog.Count()}, nil
+}
 
 // UpdateBrandSettings is the resolver for the updateBrandSettings field.
 func (r *mutationResolver) UpdateBrandSettings(ctx context.Context, input UpdateBrandSettingsInput) (bool, error) {
@@ -418,6 +453,30 @@ func (r *providerQuotaCollectionSettingsResolver) Providers(ctx context.Context,
 	}
 
 	return providers, nil
+}
+
+// CodexCompatibilitySettings is the resolver for the codexCompatibilitySettings field.
+func (r *queryResolver) CodexCompatibilitySettings(ctx context.Context) (*biz.CodexCompatibilitySettings, error) {
+	return r.systemService.CodexCompatibilitySettings(ctx)
+}
+
+// CodexCatalogChannels is the resolver for the codexCatalogChannels field.
+func (r *queryResolver) CodexCatalogChannels(ctx context.Context) ([]*CodexCatalogChannel, error) {
+	if err := authz.RequireScope(ctx, scopes.ScopeReadSettings); err != nil {
+		return nil, err
+	}
+	if err := authz.RequireScope(ctx, scopes.ScopeReadChannels); err != nil {
+		return nil, err
+	}
+	channels, err := r.client.Channel.Query().Where(channel.TypeEQ(channel.TypeCodex)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*CodexCatalogChannel, 0, len(channels))
+	for _, source := range channels {
+		result = append(result, &CodexCatalogChannel{ID: source.ID, Name: source.Name, Status: source.Status})
+	}
+	return result, nil
 }
 
 // PreviewGcCleanup is the resolver for the previewGcCleanup field.
