@@ -117,7 +117,7 @@ func TestCodexRoutes_WhoamiStableID(t *testing.T) {
 	var first map[string]json.RawMessage
 	require.NoError(t, json.Unmarshal(result.Body.Bytes(), &first))
 	require.JSONEq(t, `"display name"`, string(first["email"]))
-	require.JSONEq(t, `"plus"`, string(first["chatgpt_plan_type"]))
+	require.JSONEq(t, `"promax"`, string(first["chatgpt_plan_type"]))
 	require.Equal(t, "false", string(first["chatgpt_account_is_fedramp"]))
 	require.NotContains(t, result.Body.String(), h.key.Key)
 	_, err := h.keys.UpdateAPIKey(h.ctx, h.key.ID, ent.UpdateAPIKeyInput{Name: lo.ToPtr("renamed")})

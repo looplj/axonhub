@@ -48,7 +48,7 @@ func (h *CodexCompatibilityHandlers) Whoami(c *gin.Context) {
 	}
 	id := fmt.Sprintf("axonhub-key-%d", key.ID)
 	c.Header("Cache-Control", "no-store")
-	c.JSON(http.StatusOK, gin.H{"email": key.Name, "chatgpt_user_id": id, "chatgpt_account_id": id, "chatgpt_plan_type": "plus", "chatgpt_account_is_fedramp": false})
+	c.JSON(http.StatusOK, gin.H{"email": key.Name, "chatgpt_user_id": id, "chatgpt_account_id": id, "chatgpt_plan_type": "promax", "chatgpt_account_is_fedramp": false})
 }
 
 func (h *CodexCompatibilityHandlers) ListModels(c *gin.Context) {
