@@ -30,6 +30,15 @@ const (
 
 	codexDefaultVersion = "0.159.0"
 
+	// codexDefaultUserAgent is the Codex-client-like User-Agent the transformer
+	// presents upstream when it owns the outbound identity (i.e. when the
+	// user-agent pass-through switch is off). It mirrors the Codex CLI
+	// fingerprint style and tracks codexDefaultVersion so the fabricated
+	// identity stays consistent with the Version header. Client UA forwarding
+	// belongs solely to the orchestrator's user-agent pass-through middleware,
+	// which overwrites this value when the switch is enabled.
+	codexDefaultUserAgent = "codex_cli_rs/" + codexDefaultVersion
+
 	// fabricatedBetaFeatures mirrors the X-Codex-Beta-Features value the current
 	// Codex CLI sends, used when a non-Codex inbound client omits the header.
 	fabricatedBetaFeatures = "remote_compaction_v2"

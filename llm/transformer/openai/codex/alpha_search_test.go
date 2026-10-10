@@ -85,6 +85,30 @@ func TestAlphaSearchRequestSessionIDPrecedence(t *testing.T) {
 	}
 }
 
+// TestAlphaSearchDoesNotForwardInboundUserAgent mirrors the Response path:
+// the alpha-search request presents the Codex default UA and never copies the
+// inbound client UA (issue #2635).
+func TestAlphaSearchDoesNotForwardInboundUserAgent(t *testing.T) {
+	ctx := context.Background()
+	outbound := newAlphaSearchTestTransformer(t)
+
+	const clientUA = "ZCode/3.14.4 (darwin arm64)"
+
+	request, err := outbound.TransformRequest(ctx, &llm.Request{
+		Model:       "mapped-model",
+		RequestType: llm.RequestTypeAlphaSearch,
+		APIFormat:   llm.APIFormatOpenAIAlphaSearch,
+		RawRequest: &httpclient.Request{Headers: http.Header{
+			"User-Agent": []string{clientUA},
+		}},
+		AlphaSearch: &llm.AlphaSearchRequest{Body: []byte(`{"model":"client-model","commands":{"search_query":[]}}`)},
+	})
+	require.NoError(t, err)
+
+	require.Equal(t, codexDefaultUserAgent, request.Headers.Get("User-Agent"))
+	require.NotEqual(t, clientUA, request.Headers.Get("User-Agent"))
+}
+
 func newAlphaSearchTestTransformer(t *testing.T) *OutboundTransformer {
 	t.Helper()
 
