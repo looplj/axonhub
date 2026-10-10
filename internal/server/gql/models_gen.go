@@ -239,6 +239,19 @@ type ClearChannelOverrideTemplatesPayload struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+type CodexCatalogChannel struct {
+	ID     int            `json:"id"`
+	Name   string         `json:"name"`
+	Status channel.Status `json:"status"`
+}
+
+type CodexCatalogTestResult struct {
+	Success        bool    `json:"success"`
+	ModelCount     int     `json:"modelCount"`
+	UpstreamStatus *int    `json:"upstreamStatus,omitempty"`
+	Error          *string `json:"error,omitempty"`
+}
+
 type CompleteAutoDisableChannelOnboardingInput struct {
 	Dummy *string `json:"dummy,omitempty"`
 }

@@ -406,7 +406,37 @@ input UpdateCatalogSettingsInput {
   refreshSeconds: Int
 }
 
+type CodexCompatibilitySettings {
+  enabled: Boolean!
+  channelID: Int
+}
+
+input UpdateCodexCompatibilitySettingsInput {
+  enabled: Boolean!
+  channelID: Int
+}
+
+type CodexCatalogChannel {
+  id: Int!
+  name: String!
+  status: ChannelStatus!
+}
+
+type CodexCatalogTestResult {
+  success: Boolean!
+  modelCount: Int!
+  upstreamStatus: Int
+  error: String
+}
+
+extend type Query {
+  codexCompatibilitySettings: CodexCompatibilitySettings!
+  codexCatalogChannels: [CodexCatalogChannel!]!
+}
+
 extend type Mutation {
+  updateCodexCompatibilitySettings(input: UpdateCodexCompatibilitySettingsInput!): Boolean!
+  testCodexCatalog(channelID: Int!): CodexCatalogTestResult!
   updateBrandSettings(input: UpdateBrandSettingsInput!): Boolean!
   updateStoragePolicy(input: UpdateStoragePolicyInput!): Boolean!
   updateRetryPolicy(input: UpdateRetryPolicyInput!): Boolean!
