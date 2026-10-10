@@ -71,7 +71,7 @@ func TestCodexOutbound_StreamAcceptHeader(t *testing.T) {
 	assert.Equal(t, "text/event-stream", headers.Get("Accept"))
 	assert.Equal(t, "application/json", headers.Get("Content-Type"))
 	assert.Equal(t, AxonHubOriginator, headers.Get("Originator"))
-	assert.Equal(t, "axonhub/1.0", headers.Get("User-Agent"))
+	assert.Equal(t, codexDefaultUserAgent, headers.Get("User-Agent"))
 	assert.Equal(t, testChatAccountID, headers.Get("Chatgpt-Account-Id"))
 	assert.Equal(t, "Bearer "+accessToken, headers.Get("Authorization"))
 	assert.Equal(t, "ts-1", headers.Get(TurnStateHeader))
@@ -135,7 +135,11 @@ func TestCodexOutbound_AllowsPassThroughBodyWithoutTokenLimitFields(t *testing.T
 	require.True(t, outbound.AllowPassThroughBody(context.Background(), llmReq, &httpclient.Request{}))
 }
 
-func TestCodexOutbound_StreamAllowsDownstreamIdentityOverrides(t *testing.T) {
+// TestCodexOutbound_StreamAllowsOriginatorOverrideButNotClientUA pins the
+// split of ownership: the inbound Originator is still honoured, but the client
+// User-Agent is never copied upstream. Client-UA forwarding is opt-in via the
+// orchestrator user-agent pass-through switch.
+func TestCodexOutbound_StreamAllowsOriginatorOverrideButNotClientUA(t *testing.T) {
 	ctx := context.Background()
 	accessToken := testAccessTokenWithAccountID(t)
 	capturedHeaders := make(chan http.Header, 1)
@@ -177,8 +181,8 @@ func TestCodexOutbound_StreamAllowsDownstreamIdentityOverrides(t *testing.T) {
 	}
 
 	assert.Equal(t, legacyCodexOriginator(), headers.Get("Originator"))
-	assert.Equal(t, legacyCodexUserAgent(), headers.Get("User-Agent"))
-	assert.Contains(t, strings.ToLower(headers.Get("User-Agent")), legacyCodexOriginator())
+	assert.Equal(t, codexDefaultUserAgent, headers.Get("User-Agent"))
+	assert.NotEqual(t, legacyCodexUserAgent(), headers.Get("User-Agent"))
 	assert.Equal(t, testChatAccountID, headers.Get("Chatgpt-Account-Id"))
 	assert.Equal(t, "Bearer "+accessToken, headers.Get("Authorization"))
 }

@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strings"
 	"testing"
 	"time"
 
@@ -61,7 +60,7 @@ func TestCodexOutbound_MinimalIdentityHeaders(t *testing.T) {
 	assert.Equal(t, codexAPIURL, finalReq.URL.String())
 	assert.Equal(t, "application/json", finalReq.Header.Get("Content-Type"))
 	assert.Equal(t, AxonHubOriginator, finalReq.Header.Get("Originator"))
-	assert.Equal(t, "axonhub/1.0", finalReq.Header.Get("User-Agent"))
+	assert.Equal(t, codexDefaultUserAgent, finalReq.Header.Get("User-Agent"))
 	assert.Equal(t, "provided-session", finalReq.Header.Get("Session-Id"))
 	assert.Empty(t, finalReq.Header.Get("Session_id"))
 	assert.Equal(t, testChatAccountID, finalReq.Header.Get("Chatgpt-Account-Id"))
@@ -70,7 +69,11 @@ func TestCodexOutbound_MinimalIdentityHeaders(t *testing.T) {
 	assert.Equal(t, "9.9.9", finalReq.Header.Get("Version"))
 }
 
-func TestCodexOutbound_AllowsInboundIdentityOverrides(t *testing.T) {
+// TestCodexOutbound_AllowsInboundOriginatorOverride pins the identity override
+// split: Originator is still taken from the inbound client, while the client
+// User-Agent is not copied (forwarding it is opt-in via the orchestrator's
+// user-agent pass-through switch).
+func TestCodexOutbound_AllowsInboundOriginatorOverride(t *testing.T) {
 	ctx := context.Background()
 	sim := newCodexSimulator(t)
 	req := newCodexChatCompletionRequest(t)
@@ -81,8 +84,8 @@ func TestCodexOutbound_AllowsInboundIdentityOverrides(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, legacyCodexOriginator(), finalReq.Header.Get("Originator"))
-	assert.Equal(t, legacyCodexUserAgent(), finalReq.Header.Get("User-Agent"))
-	assert.Contains(t, strings.ToLower(finalReq.Header.Get("User-Agent")), legacyCodexOriginator())
+	assert.Equal(t, codexDefaultUserAgent, finalReq.Header.Get("User-Agent"))
+	assert.NotEqual(t, legacyCodexUserAgent(), finalReq.Header.Get("User-Agent"))
 }
 
 func TestCodexOutbound_PassthroughModernCodexHeaders(t *testing.T) {
