@@ -62,6 +62,10 @@ const MAX_WEIGHT = 100;
 const QUOTA_VISIBLE_LIMIT = 5;
 
 const QUOTA_WINDOW_LABEL_KEYS: Record<string, string> = {
+  gemini_5h: 'quota.window.gemini_5h',
+  gemini_7d: 'quota.window.gemini_7d',
+  claude_gpt_5h: 'quota.window.claude_gpt_5h',
+  claude_gpt_7d: 'quota.window.claude_gpt_7d',
   '5h': 'quota.window.5h',
   '7d': 'quota.window.7d',
   '30d': 'quota.window.30d',
@@ -524,7 +528,9 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
         const accountLabel = limit.account ? ` · ${limit.account}` : '';
         return (
           <div key={`${label}-${index}`} className='flex min-w-0 items-center gap-1'>
-            <span className='text-muted-foreground w-20 shrink-0 truncate text-left'>{`${label}${accountLabel}`}</span>
+            <span className='text-muted-foreground w-28 shrink-0 truncate text-left' title={`${label}${accountLabel}`}>
+              {`${label}${accountLabel}`}
+            </span>
             <div className='bg-muted h-1.5 min-w-0 flex-1 overflow-hidden rounded-full'>
               <div
                 className={`h-full ${remaining <= 20 ? 'bg-red-500' : remaining <= 50 ? 'bg-yellow-500' : 'bg-green-500'}`}

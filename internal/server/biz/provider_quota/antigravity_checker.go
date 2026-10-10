@@ -3,6 +3,7 @@ package provider_quota
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 )
 
 const antigravityQuotaURL = antigravity.EndpointProd + "/v1internal:fetchAvailableModels"
+const antigravityQuotaSummaryURL = antigravity.EndpointProd + "/v1internal:retrieveUserQuotaSummary"
 
 type antigravityQuotaResponse struct {
 	Models map[string]struct {
@@ -57,7 +59,7 @@ func (c *AntigravityQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channe
 
 	request := httpclient.NewRequestBuilder().
 		WithMethod(http.MethodPost).
-		WithURL(antigravityQuotaURL).
+		WithURL(antigravityQuotaSummaryURL).
 		WithBearerToken(accessToken).
 		WithHeader("Content-Type", "application/json").
 		WithBody(body).
@@ -66,7 +68,28 @@ func (c *AntigravityQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channe
 
 	response, err := httpClient.Do(ctx, request)
 	if err != nil {
-		return QuotaData{}, fmt.Errorf("fetch Antigravity quota: %w", err)
+		var upstreamError *httpclient.Error
+		if !errors.As(err, &upstreamError) ||
+			(upstreamError.StatusCode != http.StatusNotFound && upstreamError.StatusCode != http.StatusNotImplemented) {
+			return QuotaData{}, fmt.Errorf("fetch Antigravity quota summary: %w", err)
+		}
+	} else if response.StatusCode == http.StatusOK {
+		if quota, parseErr := parseAntigravityQuotaSummary(response.Body); parseErr == nil {
+			return quota, nil
+		}
+	} else if response.StatusCode != http.StatusNotFound && response.StatusCode != http.StatusNotImplemented {
+		return QuotaData{}, fmt.Errorf("fetch Antigravity quota summary: status %d", response.StatusCode)
+	}
+
+	// Older servers expose only per-model session quotas. Never infer weekly
+	// allowances from those responses or label model IDs as time windows.
+	request.URL = antigravityQuotaURL
+	response, err = httpClient.Do(ctx, request)
+	if err != nil {
+		return QuotaData{}, fmt.Errorf("fetch legacy Antigravity quota: %w", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		return QuotaData{}, fmt.Errorf("fetch legacy Antigravity quota: status %d", response.StatusCode)
 	}
 
 	return parseAntigravityQuota(response.Body)
@@ -138,6 +161,7 @@ func parseAntigravityQuota(body []byte) (QuotaData, error) {
 	limits := make([]QuotaLimitStatus, 0, len(response.Models))
 	maxRemaining := 0.0
 	var nextResetAt *time.Time
+	poolLimits := make(map[string]QuotaLimitStatus)
 
 	modelIDs := make([]string, 0, len(response.Models))
 	for modelID := range response.Models {
@@ -160,7 +184,6 @@ func parseAntigravityQuota(body []byte) (QuotaData, error) {
 		if resetAt != nil && (nextResetAt == nil || resetAt.Before(*nextResetAt)) {
 			nextResetAt = resetAt
 		}
-		maxRemaining = max(maxRemaining, remaining)
 
 		modelData := map[string]any{
 			"displayName":         model.DisplayName,
@@ -171,11 +194,27 @@ func parseAntigravityQuota(body []byte) (QuotaData, error) {
 			modelData["resetAt"] = resetAt.Format(time.RFC3339)
 		}
 		models[modelID] = modelData
-		limits = append(limits, NewTokenLimitStatus(status, usageRatio, resetAt).WithWindow(modelID, 0))
+		pool := antigravityModelPool(modelID)
+		if pool == "" {
+			continue
+		}
+		window := pool + "_5h"
+		if current, exists := poolLimits[window]; !exists || usageRatio > current.UsageRatio {
+			poolLimits[window] = NewTokenLimitStatus(status, usageRatio, resetAt).WithWindow(window, 5*time.Hour)
+		}
 	}
 
 	if len(models) == 0 {
 		return QuotaData{}, fmt.Errorf("Antigravity quota response has no quota data")
+	}
+	for _, pool := range []string{"gemini", "claude_gpt"} {
+		if limit, ok := poolLimits[pool+"_5h"]; ok {
+			limits = append(limits, limit)
+			maxRemaining = max(maxRemaining, 1-limit.UsageRatio)
+		}
+	}
+	if len(limits) == 0 {
+		return QuotaData{}, fmt.Errorf("Antigravity quota response has no recognized model pools")
 	}
 	overallStatus := antigravityQuotaStatus(1 - maxRemaining)
 
