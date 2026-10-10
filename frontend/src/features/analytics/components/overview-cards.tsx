@@ -1,20 +1,23 @@
 import { useTranslation } from 'react-i18next';
-import { BarChart4, Activity, DollarSign } from 'lucide-react';
+import { BarChart4, Activity, DollarSign, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatNumber } from '@/utils/format-number';
 import type { AnalyticsOverview } from '../data/analytics';
+import { useGeneralSettings } from '@/features/system/data/system';
+import { useCallback } from 'react';
 
+/** Thousands-separated integer, for counts that stay short enough to read exactly. */
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
-import { useGeneralSettings } from '@/features/system/data/system';
-import { useCallback } from 'react';
 
 interface OverviewCardsProps {
   overview: AnalyticsOverview | undefined;
   isLoading: boolean;
 }
 
+/** Overview stat cards: requests, tokens, cost and success rate. */
 export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
   const { t, i18n } = useTranslation();
   const { data: generalSettings } = useGeneralSettings();
@@ -36,7 +39,8 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
 
   if (isLoading) {
     return (
-      <div className='grid gap-4 md:grid-cols-3'>
+      <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
+        <Skeleton className='h-[120px]' />
         <Skeleton className='h-[120px]' />
         <Skeleton className='h-[120px]' />
         <Skeleton className='h-[120px]' />
@@ -48,12 +52,18 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
     ? ((overview.totalCachedInputTokens / overview.totalInputTokens) * 100).toFixed(1)
     : '0';
 
+  // Zero failures with a zero rate means the window held no executions at all, not that
+  // every request failed. The dashboard's success-rate card renders a dash for this same
+  // case, and the two cards must not disagree.
+  const hasExecutions = (overview?.failedRequests ?? 0) > 0 || (overview?.successRate ?? 0) > 0;
+  const successRateValue = hasExecutions ? `${(overview?.successRate ?? 0).toFixed(1)}%` : '—';
+
   const cards = [
     {
       title: t('analytics.overview.totalTokens'),
-      value: formatExactNumber(overview?.totalTokens || 0),
+      value: formatNumber(overview?.totalTokens || 0),
       icon: BarChart4,
-      description: `${formatExactNumber(overview?.totalInputTokens || 0)} ${t('dashboard.stats.input')} / ${formatExactNumber(overview?.totalOutputTokens || 0)} ${t('dashboard.stats.output')} · ${t('analytics.overview.cacheHitRate')}: ${cacheHitRate}%`,
+      description: `${formatNumber(overview?.totalInputTokens || 0)} ${t('dashboard.stats.input')} / ${formatNumber(overview?.totalOutputTokens || 0)} ${t('dashboard.stats.output')} · ${t('analytics.overview.cacheHitRate')}: ${cacheHitRate}%`,
     },
     {
       title: t('analytics.overview.totalRequests'),
@@ -67,10 +77,16 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
       icon: DollarSign,
       description: null,
     },
+    {
+      title: t('analytics.overview.successRate'),
+      value: successRateValue,
+      icon: ShieldCheck,
+      description: `${formatExactNumber(overview?.failedRequests || 0)} ${t('dashboard.stats.failedRequests')}`,
+    },
   ];
 
   return (
-    <div className='grid gap-4 md:grid-cols-3'>
+    <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-4'>
       {cards.map((card) => (
         <Card key={card.title} className='hover-card'>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>

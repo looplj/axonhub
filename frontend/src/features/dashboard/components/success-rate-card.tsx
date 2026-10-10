@@ -36,7 +36,7 @@ export function SuccessRateCard() {
             <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
               <ShieldCheck className='h-4 w-4' />
             </div>
-            <CardTitle className='text-sm font-medium'>{t('dashboard.cards.successRate')}</CardTitle>
+            <CardTitle className='text-sm font-medium'>{t('dashboard.stats.last24hSuccessRate')}</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -46,8 +46,14 @@ export function SuccessRateCard() {
     );
   }
 
-  const successRate =
-    stats && stats.totalRequests > 0 ? (((stats.totalRequests - stats.failedRequests) / stats.totalRequests) * 100).toFixed(1) : '0.0';
+  // Terminal outcomes of request_executions over the trailing 24 hours: pending and
+  // canceled attempts are not failures, so the denominator matches the channel health
+  // card and the analytics page.
+  const executions = stats?.last24HoursExecutions;
+  const succeeded = executions?.succeeded ?? 0;
+  const failed = executions?.failed ?? 0;
+  const total = succeeded + failed;
+  const successRate = executions?.successRate ?? 0;
 
   return (
     <Card className='hover-card'>
@@ -56,25 +62,34 @@ export function SuccessRateCard() {
           <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
             <ShieldCheck className='h-4 w-4' />
           </div>
-          <CardTitle className='text-sm font-medium'>{t('dashboard.cards.successRate')}</CardTitle>
+          <CardTitle className='text-sm font-medium'>{t('dashboard.stats.last24hSuccessRate')}</CardTitle>
         </div>
       </CardHeader>
       <CardContent>
-        <div className='space-y-3'>
-          <div className='flex items-end justify-between'>
-            <div className='font-mono text-3xl font-bold'>
-              {successRate}
-              <span className='text-muted-foreground text-lg'>%</span>
+        {total === 0 ? (
+          <div className='space-y-3'>
+            <div className='text-muted-foreground font-mono text-3xl font-bold'>&mdash;</div>
+            <div className='text-muted-foreground text-xs'>{t('dashboard.stats.noData')}</div>
+          </div>
+        ) : (
+          <div className='space-y-3'>
+            <div className='flex items-end justify-between'>
+              <div className='font-mono text-3xl font-bold'>
+                {successRate.toFixed(1)}
+                <span className='text-muted-foreground text-lg'>%</span>
+              </div>
+            </div>
+            <Progress value={successRate} className='h-2' />
+            <div className='flex justify-between text-xs'>
+              <span className='text-muted-foreground'>
+                {formatNumber(failed)} {t('dashboard.stats.failedRequests')}
+              </span>
+              <span className='text-primary font-medium'>
+                {formatNumber(total)} {t('dashboard.stats.requests')}
+              </span>
             </div>
           </div>
-          <Progress value={parseFloat(successRate)} className='h-2' />
-          <div className='flex justify-between text-xs'>
-            <span className='text-muted-foreground'>
-              {formatNumber(stats?.failedRequests || 0)} {t('dashboard.stats.failedRequests')}
-            </span>
-            <span className='text-primary font-medium'>{t('dashboard.stats.average')}</span>
-          </div>
-        </div>
+        )}
       </CardContent>
     </Card>
   );

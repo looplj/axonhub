@@ -1,0 +1,18 @@
+{
+  "timeRange.label": "Time Range",
+  "timeRange.today": "Today",
+  "timeRange.last7Days": "Last 7 Days",
+  "timeRange.last30Days": "Last 30 Days",
+  "timeRange.thisMonth": "This Month",
+  "timeRange.thisWeek": "This Week",
+  "timeRange.thisYear": "This Year",
+  "timeRange.allTime": "Since First Use",
+  "timeRange.startDate": "Start Date",
+  "timeRange.endDate": "End Date",
+  "timeRange.startDateAfterEndError": "Start date cannot be later than end date. Please select again.",
+  "timeRange.endDateBeforeStartError": "End date cannot be earlier than start date. Please select again.",
+  "timeRange.reset": "Reset",
+  "timeRange.days_one": "{{count}} day",
+  "timeRange.days_other": "{{count}} days",
+  "timeRange.last24Hours": "Last 24 Hours"
+}

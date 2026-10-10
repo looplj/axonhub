@@ -1,367 +1,134 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
-import { BarChart3, Brain, Key, Users, Zap, ChevronDown, ChevronRight, TrendingUp } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Header } from '@/components/layout/header';
-import { formatNumber } from '@/utils/format-number';
-import { TimePeriodSelector, type TimePeriod } from '@/components/time-period-selector';
-import { ChannelSuccessRate } from './components/channel-success-rate';
-import { DailyRequestStats } from './components/daily-requests-stats';
-import { RequestsByChannelChart } from './components/requests-by-channel-chart';
-import { RequestsByModelChart } from './components/requests-by-model-chart';
-import { RequestsByAPIKeyChart } from './components/requests-by-api-key-chart';
-import { TokensByUserChart } from './components/tokens-by-user-chart';
-import { TokensByAPIKeyChart } from './components/tokens-by-api-key-chart';
-import { TokensByChannelChart } from './components/tokens-by-channel-chart';
-import { TokensByModelChart } from './components/tokens-by-model-chart';
-import { SuccessRateCard } from './components/success-rate-card';
-import { TodayRequestsCard } from './components/today-requests-card';
-import { TokenStatsCard } from './components/token-stats-card';
-import { TotalRequestsCard } from './components/total-requests-card';
-import { FastestChannelsCard } from './components/fastest-channels-card';
-import { FastestModelsCard } from './components/fastest-models-card';
-import { ModelPerformanceStats } from './components/model-performance-stats';
-import { ChannelPerformanceStats } from './components/channel-performance-stats';
-import { useDashboardStats } from './data/dashboard';
+import { ChevronRight, TrendingUp } from 'lucide-react';
+import { Main } from '@/components/layout/main';
+import { TimeRangeFilter } from '@/components/time-range-filter';
+import { DEFAULT_TIME_RANGE, useDashboardTimeStore } from '@/stores/dashboardStore';
+import { useGeneralSettings } from '@/features/system/data/system';
+import { useAnalyticsDailyStats, useAnalyticsMetadata, useAnalyticsOverview, type AnalyticsFilter } from '@/features/analytics/data/analytics';
 import { useRoutePermissions } from '@/hooks/useRoutePermissions';
+import { ChannelHealthCard } from './components/channel-health-card';
+import { DailyOverviewChart } from './components/daily-overview-chart';
+import { FastestPerformersCard } from './components/fastest-performers-card';
+import { PerformanceCard } from './components/performance-card';
+import { PulseStrip } from './components/pulse-strip';
+import { RangeBadge } from './components/range-badge';
+import { RequestCostDistribution } from './components/request-cost-distribution';
+import { TokenComposition } from './components/token-composition';
+import { todayLocalDate } from './utils/time-window';
+import { formatNumber } from '@/utils/format-number';
 
-interface CollapsibleSectionProps {
-  title: string;
-  icon: React.ReactNode;
-  children: React.ReactNode;
-  storageKey: string;
-  defaultOpen?: boolean;
-}
-
-function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = false }: CollapsibleSectionProps) {
-  const [isOpen, setIsOpen] = useState(() => {
-    try {
-      const stored = localStorage.getItem(`dashboard-section-${storageKey}`);
-      return stored !== null ? stored === 'true' : defaultOpen;
-    } catch {
-      return defaultOpen;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(`dashboard-section-${storageKey}`, isOpen.toString());
-    } catch {
-      // Silently fail - persistence is a nice-to-have, not critical
-    }
-  }, [isOpen, storageKey]);
-
-  return (
-    <div className='space-y-4'>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className='flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent/50'
-      >
-        <div className='flex items-center gap-3'>
-          <div className='flex h-8 w-8 items-center justify-center rounded-md bg-primary/10'>
-            {icon}
-          </div>
-          <span className='text-lg font-semibold'>{title}</span>
-        </div>
-        <motion.div
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-        >
-          <ChevronDown className='h-5 w-5 text-muted-foreground' />
-        </motion.div>
-      </button>
-      <AnimatePresence initial={false}>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15, ease: 'easeInOut' }}
-          >
-            <div className='space-y-4'>{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
+/** Dashboard page: a fixed pulse strip first, then the analysis range drives
+ * everything below it — trend, performance, distribution and composition. */
 export default function DashboardPage() {
   const { t } = useTranslation();
-  const { isLoading, error } = useDashboardStats();
+  const { startTime, endTime, timeWindow, setRange } = useDashboardTimeStore();
+  const { data: generalSettings } = useGeneralSettings();
+  const { data: metadata } = useAnalyticsMetadata();
   const { isProjectOwner } = useRoutePermissions();
-  const [modelTotalRequests, setModelTotalRequests] = useState(0);
-  const [channelTotalRequests, setChannelTotalRequests] = useState(0);
 
-  const [channelTimePeriod, setChannelTimePeriod] = useState<TimePeriod>('allTime');
-  const [channelTokensTimePeriod, setChannelTokensTimePeriod] = useState<TimePeriod>('allTime');
-  const [modelTimePeriod, setModelTimePeriod] = useState<TimePeriod>('allTime');
-  const [modelTokensTimePeriod, setModelTokensTimePeriod] = useState<TimePeriod>('allTime');
-  const [apiKeyTimePeriod, setApiKeyTimePeriod] = useState<TimePeriod>('allTime');
-  const [apiKeyTokensTimePeriod, setApiKeyTokensTimePeriod] = useState<TimePeriod>('allTime');
-  const [userTokensTimePeriod, setUserTokensTimePeriod] = useState<TimePeriod>('day');
+  const filter = useMemo<AnalyticsFilter>(() => ({ startTime, endTime, timeWindow }), [startTime, endTime, timeWindow]);
 
-  const modelPerformanceDescription = useMemo(() => {
-    return t('dashboard.charts.performanceDescription', { count: formatNumber(modelTotalRequests) });
-  }, [t, modelTotalRequests]);
+  const { data: overview, isLoading: isOverviewLoading, error: overviewError } = useAnalyticsOverview(filter);
+  const { data: dailyStats, isLoading: isDailyLoading, error: dailyError } = useAnalyticsDailyStats(filter);
 
-  const channelPerformanceDescription = useMemo(() => {
-    return t('dashboard.charts.performanceDescription', { count: formatNumber(channelTotalRequests) });
-  }, [t, channelTotalRequests]);
+  const currencyCode = generalSettings?.currencyCode || 'USD';
+  const loadError = overviewError || dailyError;
 
-  if (isLoading) {
-    return (
-      <div className='flex-1 space-y-4 p-8 pt-6'>
-        <div className='flex items-center justify-between space-y-2'>
-          <Skeleton className='h-8 w-[200px]' />
-        </div>
-        <div className='space-y-4'>
-          <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-4'>
-            <Skeleton className='h-[180px]' />
-            <Skeleton className='h-[180px]' />
-            <Skeleton className='h-[180px]' />
-            <Skeleton className='h-[180px]' />
-          </div>
-          <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
-            <Skeleton className='col-span-1 h-[300px] lg:col-span-4' />
-            <Skeleton className='col-span-1 h-[300px] lg:col-span-3' />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // The trend query applies no time filter at all when it gets neither dates nor a
+  // relative window, so "since first use" is what the badge has to say in that case.
+  const rangeBadgeLabel = startTime ? `${startTime} – ${endTime ?? todayLocalDate()}` : t(`timeRange.${timeWindow ?? 'allTime'}`);
 
-  if (error) {
-    return (
-      <div className='flex-1 space-y-4 p-8 pt-6'>
-        <div className='text-red-500'>
-          {t('common.loadError')} {error.message}
-        </div>
-      </div>
-    );
-  }
+  const rangeSummary = [
+    { key: 'requests', label: t('analytics.overview.totalRequests'), value: formatNumber(overview?.totalRequests) },
+    { key: 'tokens', label: t('analytics.overview.totalTokens'), value: formatNumber(overview?.totalTokens) },
+    {
+      key: 'cost',
+      label: t('analytics.overview.totalCost'),
+      value: t('currencies.format', {
+        val: overview?.totalCost || 0,
+        currency: currencyCode,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }),
+    },
+  ];
 
   return (
-    <div className='flex-1 space-y-6 p-8 pt-6'>
-      <Header />
+    <div className='flex flex-1 flex-col overflow-hidden'>
+      <Main fixed className='px-0 py-0'>
+        <div className='flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-8 pt-6 pb-8'>
+          <PulseStrip />
 
-      {/* 概览部分 - 始终展示 */}
-      <section className='space-y-4'>
-        {/* <h2 className='text-2xl font-bold tracking-tight'>{t('dashboard.sections.overview')}</h2> */}
-        <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4'>
-          <TotalRequestsCard />
-          <SuccessRateCard />
-          <TokenStatsCard />
-          <TodayRequestsCard />
-        </div>
-        <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
-          <Card className='hover-card col-span-1 lg:col-span-4'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.dailyRequestOverview')}</CardTitle>
-            </CardHeader>
-            <CardContent className='pl-2'>
-              <DailyRequestStats />
-            </CardContent>
-          </Card>
-          <Card className='hover-card col-span-1 lg:col-span-3'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.channelSuccessRate')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.channelSuccessRateDescription')}</CardDescription>
-              <CardAction>
-                <Link to='/dashboard/channel-success-rates' className='text-sm text-primary hover:underline'>
-                  {t('dashboard.viewAll')}
-                </Link>
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <ChannelSuccessRate />
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+          <TimeRangeFilter
+            variant='compact'
+            value={{ startTime, endTime, timeWindow }}
+            onChange={setRange}
+            earliestDate={metadata?.earliestDate}
+            defaultValue={DEFAULT_TIME_RANGE}
+          />
 
-      {/* 使用详情分析 - 导航卡片 */}
-      <Link
-        to='/analytics'
-        className='flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent/50'
-      >
-        <div className='flex items-center gap-3'>
-          <div className='flex h-8 w-8 items-center justify-center rounded-md bg-primary/10'>
-            <TrendingUp className='h-4 w-4 text-primary' />
-          </div>
-          <div>
-            <span className='text-lg font-semibold'>{t('dashboard.sections.analytics')}</span>
-            <p className='text-sm text-muted-foreground'>{t('dashboard.sections.analyticsDescription')}</p>
-          </div>
-        </div>
-        <ChevronRight className='h-5 w-5 text-muted-foreground' />
-      </Link>
+          {loadError ? (
+            <div className='text-sm text-red-500'>
+              {t('common.loadError')} {loadError.message}
+            </div>
+          ) : (
+            <>
+              <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-7'>
+                <div className='col-span-1 lg:col-span-4'>
+                  <DailyOverviewChart
+                    data={dailyStats || []}
+                    isLoading={isDailyLoading}
+                    currencyCode={currencyCode}
+                    isOverviewLoading={isOverviewLoading}
+                    rangeSummary={rangeSummary}
+                    badge={<RangeBadge label={rangeBadgeLabel} />}
+                  />
+                </div>
+                <div className='col-span-1 lg:col-span-3'>
+                  <ChannelHealthCard startTime={startTime} endTime={endTime} timeWindow={timeWindow} />
+                </div>
+              </div>
 
-      {/* 渠道分析 - 可折叠 */}
-      <CollapsibleSection
-        title={t('dashboard.sections.channels')}
-        icon={<BarChart3 className='h-4 w-4 text-primary' />}
-        storageKey='channels'
-      >
-        <div className='grid gap-4 md:grid-cols-2'>
-          <Card className='hover-card'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.requestsCostByChannel')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.requestsCostByChannelDescription')}</CardDescription>
-              <CardAction>
-                <TimePeriodSelector value={channelTimePeriod} onChange={setChannelTimePeriod} />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <RequestsByChannelChart timePeriod={channelTimePeriod} />
-            </CardContent>
-          </Card>
-          <Card className='hover-card'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.tokensByChannel')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.tokensByChannelDescription')}</CardDescription>
-              <CardAction>
-                <TimePeriodSelector value={channelTokensTimePeriod} onChange={setChannelTokensTimePeriod} />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <TokensByChannelChart timePeriod={channelTokensTimePeriod} />
-            </CardContent>
-          </Card>
-        </div>
-      </CollapsibleSection>
+              <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-7'>
+                <div className='col-span-1 lg:col-span-4'>
+                  <PerformanceCard startTime={startTime} endTime={endTime} timeWindow={timeWindow} />
+                </div>
+                <div className='col-span-1 lg:col-span-3'>
+                  <FastestPerformersCard startTime={startTime} endTime={endTime} timeWindow={timeWindow} />
+                </div>
+              </div>
 
-      {/* 模型分析 - 可折叠 */}
-      <CollapsibleSection
-        title={t('dashboard.sections.models')}
-        icon={<Brain className='h-4 w-4 text-primary' />}
-        storageKey='models'
-      >
-        <div className='grid gap-4 md:grid-cols-2'>
-          <Card className='hover-card'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.requestsCostByModel')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.requestsCostByModelDescription')}</CardDescription>
-              <CardAction>
-                <TimePeriodSelector value={modelTimePeriod} onChange={setModelTimePeriod} />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <RequestsByModelChart timePeriod={modelTimePeriod} />
-            </CardContent>
-          </Card>
-          <Card className='hover-card'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.tokensByModel')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.tokensByModelDescription')}</CardDescription>
-              <CardAction>
-                <TimePeriodSelector value={modelTokensTimePeriod} onChange={setModelTokensTimePeriod} />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <TokensByModelChart timePeriod={modelTokensTimePeriod} />
-            </CardContent>
-          </Card>
-        </div>
-      </CollapsibleSection>
+              <RequestCostDistribution startTime={startTime} endTime={endTime} timeWindow={timeWindow} currencyCode={currencyCode} />
 
-      {/* API密钥分析 - 可折叠 */}
-      <CollapsibleSection
-        title={t('dashboard.sections.apiKeys')}
-        icon={<Key className='h-4 w-4 text-primary' />}
-        storageKey='apiKeys'
-      >
-        <div className='grid gap-4 md:grid-cols-2'>
-          <Card className='hover-card'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.requestsCostByAPIKey')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.requestsCostByAPIKeyDescription')}</CardDescription>
-              <CardAction>
-                <TimePeriodSelector value={apiKeyTimePeriod} onChange={setApiKeyTimePeriod} />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <RequestsByAPIKeyChart timePeriod={apiKeyTimePeriod} />
-            </CardContent>
-          </Card>
-          <Card className='hover-card'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.tokensByAPIKey')}</CardTitle>
-              <CardDescription>{t('dashboard.charts.tokensByAPIKeyDescription')}</CardDescription>
-              <CardAction>
-                <TimePeriodSelector value={apiKeyTokensTimePeriod} onChange={setApiKeyTokensTimePeriod} />
-              </CardAction>
-            </CardHeader>
-            <CardContent>
-              <TokensByAPIKeyChart timePeriod={apiKeyTokensTimePeriod} />
-            </CardContent>
-          </Card>
-        </div>
-      </CollapsibleSection>
+              <TokenComposition
+                startTime={startTime}
+                endTime={endTime}
+                timeWindow={timeWindow}
+                currencyCode={currencyCode}
+                isProjectOwner={isProjectOwner}
+              />
+            </>
+          )}
 
-      {/* 用户分析 - 可折叠 */}
-      {isProjectOwner && (
-        <CollapsibleSection
-          title={t('dashboard.sections.users')}
-          icon={<Users className='h-4 w-4 text-primary' />}
-          storageKey='users'
-        >
-          <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
-            <Card className='hover-card col-span-1 lg:col-span-4'>
-              <CardHeader>
-                <CardTitle>{t('dashboard.charts.tokensByUser')}</CardTitle>
-                <CardDescription>{t('dashboard.charts.tokensByUserDescription')}</CardDescription>
-                <CardAction>
-                  <TimePeriodSelector value={userTokensTimePeriod} onChange={setUserTokensTimePeriod} />
-                </CardAction>
-              </CardHeader>
-              <CardContent>
-                <TokensByUserChart timePeriod={userTokensTimePeriod} />
-              </CardContent>
-            </Card>
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* 性能分析 - 可折叠 */}
-      <CollapsibleSection
-        title={t('dashboard.sections.performance')}
-        icon={<Zap className='h-4 w-4 text-primary' />}
-        storageKey='performance'
-      >
-        <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
-          <Card className='hover-card col-span-1 lg:col-span-4'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.modelPerformance')}</CardTitle>
-              <CardDescription>{modelPerformanceDescription}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ModelPerformanceStats onTotalRequestsChange={setModelTotalRequests} />
-            </CardContent>
-          </Card>
-          <div className='col-span-1 lg:col-span-3'>
-            <FastestModelsCard />
-          </div>
+          <Link
+            to='/analytics'
+            className='flex w-full shrink-0 items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent/50'
+          >
+            <div className='flex items-center gap-3'>
+              <div className='flex h-8 w-8 items-center justify-center rounded-md bg-primary/10'>
+                <TrendingUp className='h-4 w-4 text-primary' />
+              </div>
+              <div>
+                <span className='text-lg font-semibold'>{t('analytics.title')}</span>
+                <p className='text-sm text-muted-foreground'>{t('dashboard.sections.analyticsDescription')}</p>
+              </div>
+            </div>
+            <ChevronRight className='h-5 w-5 text-muted-foreground' />
+          </Link>
         </div>
-        <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
-          <Card className='hover-card col-span-1 lg:col-span-4'>
-            <CardHeader>
-              <CardTitle>{t('dashboard.charts.channelPerformance')}</CardTitle>
-              <CardDescription>{channelPerformanceDescription}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ChannelPerformanceStats onTotalRequestsChange={setChannelTotalRequests} />
-            </CardContent>
-          </Card>
-          <div className='col-span-1 lg:col-span-3'>
-            <FastestChannelsCard />
-          </div>
-        </div>
-      </CollapsibleSection>
+      </Main>
     </div>
   );
 }

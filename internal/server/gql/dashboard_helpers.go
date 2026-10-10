@@ -50,6 +50,136 @@ func InvalidateAllTimeTokenStatsCache() {
 	allTimeCacheMu.Unlock()
 }
 
+// defaultPerformanceWindowDays bounds the performance queries when no range is supplied.
+const defaultPerformanceWindowDays = 30
+
+// hourlyResolutionMaxDays is the widest range served at hourly resolution. Beyond it the
+// bucket count grows past what a single chart can show legibly, so the server falls back
+// to daily buckets.
+const hourlyResolutionMaxDays = 14
+
+// resolutionForSpan picks the bucket granularity for a range spanning the given number of
+// days. Every time series on the dashboard shares this rule so a given range always
+// resolves to the same granularity across charts.
+func resolutionForSpan(days int) qb.DateResolution {
+	if days <= hourlyResolutionMaxDays {
+		return qb.ResolutionHour
+	}
+
+	return qb.ResolutionDay
+}
+
+// performanceWindow is the resolved time range plus the bucket resolution the performance
+// queries should use for it.
+type performanceWindow struct {
+	startLocal time.Time
+	endLocal   time.Time
+	resolution qb.DateResolution
+}
+
+// bucketSequence lists every bucket label in [start, end) at the given resolution. Charts
+// draw a category per label, so the sequence has to be complete: omitting an empty bucket
+// would pull its neighbours together and misrepresent the elapsed time. Both label formats
+// sort lexicographically in time order.
+func bucketSequence(start, end time.Time, resolution qb.DateResolution) []string {
+	layout := "2006-01-02"
+	if resolution == qb.ResolutionHour {
+		layout = "2006-01-02 15:00"
+	}
+
+	labels := make([]string, 0, 64)
+	for d := start; d.Before(end); {
+		label := d.Format(layout)
+
+		// Hourly buckets are stepped in absolute time rather than rebuilt from wall-clock
+		// components: time.Date resolves a skipped hour backwards, so reconstructing the
+		// next hour from the current one never advances across a spring-forward transition.
+		// The same absolute step lands twice in the hour a fall-back transition repeats,
+		// and that duplicate is collapsed so each wall-clock hour is one bucket.
+		if len(labels) == 0 || labels[len(labels)-1] != label {
+			labels = append(labels, label)
+		}
+
+		if resolution == qb.ResolutionHour {
+			d = d.Add(time.Hour)
+		} else {
+			d = d.AddDate(0, 0, 1)
+		}
+	}
+
+	return labels
+}
+
+// resolvePerformanceWindow turns the optional start/end dates into a local time range and
+// picks a bucket resolution for it. Dates are "YYYY-MM-DD" and inclusive; the end becomes
+// the next local midnight so the whole end day is covered by the half-open SQL bound.
+// A relative window, when given, takes precedence over the dates.
+// An unparseable or empty range falls back to the trailing default window.
+func (r *queryResolver) resolvePerformanceWindow(ctx context.Context, timeWindow, startTime, endTime *string) performanceWindow {
+	loc := r.systemService.TimeLocation(ctx)
+	nowLocal := xtime.UTCNow().In(loc)
+	todayLocal := time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+
+	window := performanceWindow{
+		startLocal: todayLocal.AddDate(0, 0, -defaultPerformanceWindowDays+1),
+		endLocal:   todayLocal.AddDate(0, 0, 1),
+		resolution: qb.ResolutionDay,
+	}
+
+	// A relative window ends at the current instant, so endLocal is not a midnight and
+	// the caller must not treat the range as covering whole days.
+	if since, ok := relativeSince(timeWindow); ok {
+		start := localHourFloor(since.In(loc))
+		window.startLocal = start
+		window.endLocal = nowLocal
+		window.resolution = qb.ResolutionHour
+
+		return window
+	}
+
+	parsedStart, okStart := parseWindowDate(startTime, loc, todayLocal)
+	parsedEnd, okEnd := parseWindowDate(endTime, loc, todayLocal)
+	if !okStart && !okEnd {
+		return window
+	}
+
+	window.startLocal = parsedStart
+	window.endLocal = parsedEnd.AddDate(0, 0, 1)
+
+	if window.endLocal.Before(window.startLocal) {
+		window.endLocal = window.startLocal.AddDate(0, 0, 1)
+	}
+
+	window.resolution = resolutionForSpan(int(window.endLocal.Sub(window.startLocal).Hours() / 24))
+
+	return window
+}
+
+// parseWindowDate parses an optional "YYYY-MM-DD" date into local midnight, falling back to
+// today when the value is absent or malformed.
+func parseWindowDate(value *string, loc *time.Location, todayLocal time.Time) (time.Time, bool) {
+	if value == nil || *value == "" {
+		return todayLocal, false
+	}
+
+	parsed, err := time.ParseInLocation("2006-01-02", *value, loc)
+	if err != nil {
+		return todayLocal, false
+	}
+
+	return parsed, true
+}
+
+// placeholdersFor returns the bound placeholders for a dialect. Postgres uses numbered
+// parameters, everything else positional "?" markers.
+func placeholdersFor(dialectName string) (start string, end string, dollar bool) {
+	if dialectName == dialect.Postgres {
+		return "$1", "$2", true
+	}
+
+	return "?", "?", false
+}
+
 type scoredItem[T any] struct {
 	stats      T
 	confidence string
@@ -73,15 +203,30 @@ func safeIntFromInt64(v int64) int {
 	return int(v)
 }
 
-func buildDateExpression(dialectName string, timestampCol string, offsetSeconds int, locName string) string {
+// buildEpochDateExpression builds a bucket-label expression for a Unix-epoch integer
+// column, which channel_probes.timestamp is. A native timestamp column must not use this:
+// qb.GetDateExpression is the builder for those, and mixing the two up yields
+// to_timestamp(timestamptz) on Postgres, which does not exist.
+func buildEpochDateExpression(dialectName string, timestampCol string, offsetSeconds int, locName string, resolution qb.DateResolution) string {
 	switch dialectName {
 	case dialect.SQLite:
+		if resolution == qb.ResolutionHour {
+			return fmt.Sprintf("strftime('%%Y-%%m-%%d %%H:00', datetime(%s, 'unixepoch', '%+d seconds'))", timestampCol, offsetSeconds)
+		}
 		return fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(%s, 'unixepoch', '%+d seconds'))", timestampCol, offsetSeconds)
 	case dialect.MySQL:
 		offsetStr := xtime.FormatUTCOffset(offsetSeconds)
-		return fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(FROM_UNIXTIME(%s), '+00:00', '%s'), '%%Y-%%m-%%d')", timestampCol, offsetStr)
+		layout := "%Y-%m-%d"
+		if resolution == qb.ResolutionHour {
+			layout = "%Y-%m-%d %H:00"
+		}
+		return fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(FROM_UNIXTIME(%s), '+00:00', '%s'), '%s')", timestampCol, offsetStr, layout)
 	case dialect.Postgres:
-		return fmt.Sprintf("to_char(to_timestamp(%s) AT TIME ZONE '%s', 'YYYY-MM-DD')", timestampCol, locName)
+		layout := "YYYY-MM-DD"
+		if resolution == qb.ResolutionHour {
+			layout = "YYYY-MM-DD HH24:00"
+		}
+		return fmt.Sprintf("to_char(to_timestamp(%s) AT TIME ZONE '%s', '%s')", timestampCol, locName, layout)
 	default:
 		return fmt.Sprintf("DATE(%s)", timestampCol)
 	}
@@ -248,9 +393,36 @@ func (r *queryResolver) getTopModelsForAPIKeys(ctx context.Context, apiKeyIDs []
 	return resultMap
 }
 
+// relativeWindowLast24Hours is the one relative window the stat queries accept. It is
+// not a calendar period: the boundary is now minus 24 hours, so it never lines up with
+// any preset on the filter bar.
+const relativeWindowLast24Hours = "last24Hours"
+
+// relativeSince resolves the one supported relative window, "last24Hours", against
+// the current instant. Relative windows are resolved here rather than from a client
+// supplied boundary: a timestamp computed on the client changes on every render and
+// would defeat the query cache.
+func relativeSince(timeWindow *string) (time.Time, bool) {
+	if timeWindow == nil || *timeWindow != relativeWindowLast24Hours {
+		return time.Time{}, false
+	}
+
+	return xtime.UTCNow().Add(-24 * time.Hour), true
+}
+
+// localHourFloor drops the minutes and seconds of t in its own zone. Truncate(time.Hour)
+// cannot be used for this: it rounds the absolute duration since the zero time, which in
+// a zone whose offset is not a whole hour (UTC+05:30, Australia/Darwin) lands on :30
+// instead of :00. The SQL groups by the local wall-clock hour, so a start on :30 both
+// mislabels the first bucket and shifts the sequence far enough to drop the current
+// hour's usage from the response entirely.
+func localHourFloor(t time.Time) time.Time {
+	return t.Add(-time.Duration(t.Minute())*time.Minute - time.Duration(t.Second())*time.Second - time.Duration(t.Nanosecond()))
+}
+
 // parseTimeWindow parses a time window string and returns the start time and a flag indicating
 // if a filter should be applied. It returns the since time (zero if no filter) and applyFilter.
-// Supported timeWindow values: "day", "week", "month", "allTime", or empty string.
+// Supported timeWindow values: "day", "week", "month", "last24Hours", "allTime", or empty string.
 // Defaults to "allTime" behavior (no filtering) for unknown or empty values.
 func (r *queryResolver) parseTimeWindow(ctx context.Context, timeWindow *string) (since time.Time, applyFilter bool) {
 	loc := r.systemService.TimeLocation(ctx)
@@ -260,6 +432,8 @@ func (r *queryResolver) parseTimeWindow(ctx context.Context, timeWindow *string)
 		applyFilter = true
 
 		switch *timeWindow {
+		case relativeWindowLast24Hours:
+			since, _ = relativeSince(timeWindow)
 		case "day":
 			since = period.Today.Start
 		case "week":
