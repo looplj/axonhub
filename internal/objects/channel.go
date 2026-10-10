@@ -244,6 +244,20 @@ type ChannelSettings struct {
 	// restricted to those formats; otherwise all channel endpoints are eligible.
 	ModelProtocols []ModelProtocol `json:"modelProtocols,omitempty"`
 
+	// APIKeyStrategy selects how an API key is chosen when a channel has multiple
+	// enabled keys. Nil defaults to APIKeyStrategySticky (trace affinity + random
+	// fallback), preserving the historical behavior. Pointer so GQL emits null
+	// instead of a zero-value string for channels saved before the field existed.
+	APIKeyStrategy *string `json:"apiKeyStrategy,omitempty"`
+
+	// APIKeyRoundRobinSwitchAfter is the number of times a key is reused before
+	// round-robin advances to the next key. Only meaningful for the two
+	// round-robin strategies: APIKeyStrategyRoundRobin counts every request,
+	// APIKeyStrategyRoundRobinSuccess counts only successful ones. Values below 1
+	// are treated as 1 (switch immediately). Pointer so GQL emits null instead of
+	// 0 for legacy channels.
+	APIKeyRoundRobinSwitchAfter *int `json:"apiKeyRoundRobinSwitchAfter,omitempty"`
+
 	// ProviderQuota holds provider-specific quota collection credentials and
 	// options. Fields are sensitive (e.g. auth cookies) and only exposed to
 	// operators holding channel write permission.
@@ -277,6 +291,47 @@ func (s CommandCodeQuotaSettings) String() string {
 		return "CommandCodeQuotaSettings{AuthCookie: \"\"}"
 	}
 	return "CommandCodeQuotaSettings{AuthCookie: <redacted>}"
+}
+
+// API key selection strategies for channels with multiple enabled keys.
+const (
+	// APIKeyStrategySticky keeps the same key for a given trace and picks randomly
+	// when there is no trace. This is the default / historical behavior.
+	APIKeyStrategySticky = "sticky"
+	// APIKeyStrategyRandom picks a key at random regardless of trace.
+	APIKeyStrategyRandom = "random"
+	// APIKeyStrategyRoundRobin advances through keys in order, reusing each key for
+	// APIKeyRoundRobinSwitchAfter consecutive requests before moving on. Every
+	// request counts, whatever its outcome.
+	APIKeyStrategyRoundRobin = "round_robin"
+	// APIKeyStrategyRoundRobinSuccess is round-robin that only counts successful
+	// calls: each key is reused until it has served APIKeyRoundRobinSwitchAfter
+	// successful requests, then the cursor moves on to the next key. Failed and
+	// canceled requests do not advance it.
+	//
+	//nolint:gosec // G101 - a strategy identifier, not a credential.
+	APIKeyStrategyRoundRobinSuccess = "round_robin_success"
+	// APIKeyStrategyPriority always uses the first selectable key. This is the
+	// historical "fixed" behavior under a new name: every call re-reads the first
+	// key, so a disabled leading key hands over to the next one immediately.
+	APIKeyStrategyPriority = "priority"
+	// APIKeyStrategyFixed remembers the key currently in use and keeps using it
+	// until that key stops being selectable (disabled or removed from the
+	// channel). It then walks the full key array forward from the remembered
+	// position, skipping disabled keys and wrapping around at the end.
+	APIKeyStrategyFixed = "fixed"
+)
+
+// IsValidAPIKeyStrategy reports whether value is a known strategy (empty is valid
+// and means the default sticky behavior).
+func IsValidAPIKeyStrategy(value string) bool {
+	switch value {
+	case "", APIKeyStrategySticky, APIKeyStrategyRandom, APIKeyStrategyRoundRobin,
+		APIKeyStrategyRoundRobinSuccess, APIKeyStrategyPriority, APIKeyStrategyFixed:
+		return true
+	default:
+		return false
+	}
 }
 
 // OllamaQuotaSettings holds the credentials used to query the Ollama Cloud

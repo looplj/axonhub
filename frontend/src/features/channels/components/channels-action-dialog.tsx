@@ -423,6 +423,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
   );
+  const [apiKeyStrategy, setApiKeyStrategy] = useState<APIKeyStrategyValue>(() => initialRow?.settings?.apiKeyStrategy ?? 'sticky');
+  const [apiKeyRoundRobinSwitchAfter, setApiKeyRoundRobinSwitchAfter] = useState<number>(
+    () => initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1
+  );
   const userAgentInheritLabel = userAgentPassThroughSettings
     ? t('channels.dialogs.userAgentPassThrough.inheritWithValue', {
         value: t(
@@ -1381,6 +1385,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          apiKeyStrategy,
+          apiKeyRoundRobinSwitchAfter:
+            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success' ? apiKeyRoundRobinSwitchAfter : null,
           // Cookie edits (including clearing the saved cookie) travel through
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
@@ -1448,6 +1455,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          apiKeyStrategy,
+          apiKeyRoundRobinSwitchAfter:
+            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success' ? apiKeyRoundRobinSwitchAfter : null,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
@@ -1895,6 +1905,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+            setApiKeyStrategy(initialRow?.settings?.apiKeyStrategy ?? 'sticky');
+            setApiKeyRoundRobinSwitchAfter(initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1);
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -2538,6 +2550,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             )}
                           />
                         )}
+
+                      <ApiKeyStrategyFields
+                        value={apiKeyStrategy}
+                        switchAfter={apiKeyRoundRobinSwitchAfter}
+                        onChange={(value) => setApiKeyStrategy(value)}
+                        onSwitchAfterChange={(value) => setApiKeyRoundRobinSwitchAfter(value)}
+                      />
 
                       {isZenmuxType && (
                         <FormField
