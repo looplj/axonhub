@@ -26,7 +26,7 @@ func TestCodexGraphQLSurface(t *testing.T) {
 	defer db.Close()
 	setup := authz.WithTestBypass(ent.NewContext(t.Context(), db))
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte("private-secret"))
 	}))
 	defer upstream.Close()

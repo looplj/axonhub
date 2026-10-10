@@ -62,7 +62,7 @@ func TestCodexCatalog_DefaultClientRedirectGap(t *testing.T) {
 		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer target.Close()
-	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, target.URL, 302) }))
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, target.URL, http.StatusFound) }))
 	defer origin.Close()
 	_, err := httpclient.NewHttpClient().Do(t.Context(), &httpclient.Request{Method: "GET", URL: origin.URL, Headers: http.Header{"Authorization": []string{"Bearer synthetic"}}})
 	require.NoError(t, err)
