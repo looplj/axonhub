@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -29,13 +30,52 @@ type CodexHandlersParams struct {
 type CodexHandlers struct {
 	stateCache      xcache.Cache[codexOAuthState]
 	httpClient      *httpclient.HttpClient
-	exchangeStateMu sync.Mutex
+	exchangeLocksMu sync.Mutex
+	exchangeLocks   map[string]*codexExchangeLock
+}
+
+type codexExchangeLock struct {
+	sem  chan struct{}
+	refs int
 }
 
 func NewCodexHandlers(params CodexHandlersParams) *CodexHandlers {
 	return &CodexHandlers{
-		stateCache: xcache.NewFromConfig[codexOAuthState](params.CacheConfig),
-		httpClient: params.HttpClient,
+		stateCache:    xcache.NewFromConfig[codexOAuthState](params.CacheConfig),
+		httpClient:    params.HttpClient,
+		exchangeLocks: make(map[string]*codexExchangeLock),
+	}
+}
+
+func (h *CodexHandlers) acquireExchangeLock(ctx context.Context, sessionID string) (func(), error) {
+	h.exchangeLocksMu.Lock()
+	lock, ok := h.exchangeLocks[sessionID]
+	if !ok {
+		lock = &codexExchangeLock{sem: make(chan struct{}, 1)}
+		h.exchangeLocks[sessionID] = lock
+	}
+	lock.refs++
+	h.exchangeLocksMu.Unlock()
+
+	select {
+	case lock.sem <- struct{}{}:
+		return func() {
+			<-lock.sem
+			h.exchangeLocksMu.Lock()
+			lock.refs--
+			if lock.refs == 0 {
+				delete(h.exchangeLocks, sessionID)
+			}
+			h.exchangeLocksMu.Unlock()
+		}, nil
+	case <-ctx.Done():
+		h.exchangeLocksMu.Lock()
+		lock.refs--
+		if lock.refs == 0 {
+			delete(h.exchangeLocks, sessionID)
+		}
+		h.exchangeLocksMu.Unlock()
+		return nil, ctx.Err()
 	}
 }
 
@@ -187,8 +227,12 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 	}
 
 	cacheKey := codexOAuthCacheKey(req.SessionID)
-	h.exchangeStateMu.Lock()
-	defer h.exchangeStateMu.Unlock()
+	release, err := h.acquireExchangeLock(ctx, req.SessionID)
+	if err != nil {
+		JSONError(c, http.StatusRequestTimeout, err)
+		return
+	}
+	defer release()
 
 	state, err := h.stateCache.Get(ctx, cacheKey)
 	if err != nil {
@@ -217,7 +261,9 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		HTTPClient: httpClient,
 	})
 
-	creds, err := tokenProvider.Exchange(ctx, oauth.ExchangeParams{
+	exchangeCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+	creds, err := tokenProvider.Exchange(exchangeCtx, oauth.ExchangeParams{
 		Code:         code,
 		CodeVerifier: state.CodeVerifier,
 		ClientID:     codex.ClientID,
@@ -228,10 +274,10 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
-	if err := h.stateCache.Delete(ctx, cacheKey); err != nil {
+	cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cleanupCancel()
+	if err := h.stateCache.Delete(cleanupCtx, cacheKey); err != nil {
 		log.Warn(ctx, "failed to delete used oauth state from cache", log.String("session_id", req.SessionID), log.Cause(err))
-		JSONError(c, http.StatusInternalServerError, fmt.Errorf("failed to invalidate oauth session: %w", err))
-		return
 	}
 
 	output, err := creds.ToJSON()
