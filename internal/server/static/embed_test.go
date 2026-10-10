@@ -79,8 +79,8 @@ func TestCodexPrefixAPINotFound(t *testing.T) {
 	router := gin.New()
 	router.NoRoute(Handler())
 	result := httptest.NewRecorder()
-	router.ServeHTTP(result, httptest.NewRequest("GET", "/codex/alpha/notes/v2/unknown", nil))
-	require.Equal(t, 404, result.Code)
+	router.ServeHTTP(result, httptest.NewRequest(http.MethodGet, "/codex/alpha/notes/v2/unknown", nil))
+	require.Equal(t, http.StatusNotFound, result.Code)
 	require.Contains(t, result.Header().Get("Content-Type"), "application/json")
 }
 

@@ -115,7 +115,7 @@ func TestCodexRoutes_CompactionV2(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 200, response.StatusCode)
 	done, completed := 0, 0
-	for _, line := range strings.Split(string(body), "\n") {
+	for line := range strings.SplitSeq(string(body), "\n") {
 		if !strings.HasPrefix(line, "data: ") {
 			continue
 		}

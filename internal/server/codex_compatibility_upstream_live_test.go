@@ -130,7 +130,7 @@ func task6HTTP(t *testing.T, client *http.Client, req *http.Request) task6Result
 func task6Post(t *testing.T, destination string, headers http.Header, body []byte) task6Result {
 	t.Helper()
 	for attempt := 1; attempt <= 6; attempt++ {
-		req, err := http.NewRequestWithContext(t.Context(), "POST", destination, bytes.NewReader(body))
+		req, err := http.NewRequestWithContext(t.Context(), http.MethodPost, destination, bytes.NewReader(body))
 		require.NoError(t, err)
 		req.Header = headers.Clone()
 		result := task6HTTP(t, &http.Client{Timeout: 90 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}, req)
@@ -192,7 +192,7 @@ func TestTask6LiveAcceptance(t *testing.T) {
 			_ = encoded
 			nativeReq, err := codex.ModelsRequest(t.Context(), built.Outbound.(*codex.OutboundTransformer).TokenProvider(), source.BaseURL)
 			require.NoError(t, err)
-			request, err := http.NewRequestWithContext(t.Context(), "GET", nativeReq.URL, nil)
+			request, err := http.NewRequestWithContext(t.Context(), http.MethodGet, nativeReq.URL, nil)
 			require.NoError(t, err)
 			request.Header = nativeReq.Headers
 			response, err := built.HTTPClient.GetNativeClient().Do(request)

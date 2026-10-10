@@ -49,7 +49,7 @@ func TestCodexCompatibilitySettingsAuthorization(t *testing.T) {
 
 func TestCodexCatalogTestAuthorization(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(404)
+		w.WriteHeader(http.StatusNotFound)
 		_, _ = w.Write([]byte("private-secret"))
 	}))
 	defer upstream.Close()
