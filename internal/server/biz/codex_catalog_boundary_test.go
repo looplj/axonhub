@@ -62,6 +62,25 @@ func TestCodexCatalog_UsesRuntimeProviderOnCacheHit(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestCodexCatalog_ReusesOAuthProviderForDisabledChannel(t *testing.T) {
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer db.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	source := db.Channel.Create().SetName("catalog").SetType(channel.TypeCodex).SetBaseURL("https://example.com/codex").SetDefaultTestModel("test").SetSupportedModels([]string{"test"}).SetStatus(channel.StatusDisabled).SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{
+		AccessToken:  "access-token",
+		RefreshToken: "refresh-token",
+		ExpiresAt:    time.Now().Add(-time.Hour),
+	}}).SaveX(ctx)
+	svc := NewChannelServiceForTest(db)
+	defer svc.Stop()
+
+	first, _, err := svc.codexCatalogOutbound(ctx, source)
+	require.NoError(t, err)
+	second, _, err := svc.codexCatalogOutbound(ctx, source)
+	require.NoError(t, err)
+	require.Same(t, first, second)
+}
+
 func TestCodexCatalog_DefaultClientRedirectGap(t *testing.T) {
 	var propagated bool
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

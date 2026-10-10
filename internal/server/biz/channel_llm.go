@@ -328,9 +328,36 @@ func (svc *ChannelService) buildCodexOutbound(
 	httpClient *httpclient.HttpClient,
 	endpointPath ...string,
 ) (transformer.Outbound, error) {
+	return svc.buildCodexOutboundWithRefresh(c, ch, baseURL, transport, alphaSearchPath, httpClient, svc.onTokenRefreshed(c), endpointPath...)
+}
+
+func (svc *ChannelService) buildCodexOutboundWithRefresh(
+	c *ent.Channel,
+	ch *Channel,
+	baseURL string,
+	transport string,
+	alphaSearchPath string,
+	httpClient *httpclient.HttpClient,
+	onRefreshed func(context.Context, *oauth.OAuthCredentials) error,
+	endpointPath ...string,
+) (transformer.Outbound, error) {
 	path := ""
 	if len(endpointPath) > 0 {
 		path = endpointPath[0]
+	}
+	imageMainModel := strings.TrimSpace(c.DefaultTestModel)
+	if imageMainModel != "" {
+		modelChannel := ch
+		if modelChannel == nil {
+			modelChannel = &Channel{Channel: c}
+		}
+		modelKey := imageMainModel
+		if c.Settings != nil && c.Settings.LowercaseModelID {
+			modelKey = strings.ToLower(modelKey)
+		}
+		if mapped, err := modelChannel.ChooseModel(modelKey); err == nil {
+			imageMainModel = mapped
+		}
 	}
 	if c.Credentials.IsOAuth() {
 		if ch != nil {
@@ -342,6 +369,7 @@ func (svc *ChannelService) buildCodexOutbound(
 						Transport:       transport,
 						AlphaSearchPath: alphaSearchPath,
 						EndpointPath:    path,
+						ImageMainModel:  imageMainModel,
 					})
 				}
 			}
@@ -374,7 +402,7 @@ func (svc *ChannelService) buildCodexOutbound(
 		p := codex.NewTokenProvider(codex.TokenProviderParams{
 			Credentials: creds,
 			HTTPClient:  httpClient,
-			OnRefreshed: svc.onTokenRefreshed(c),
+			OnRefreshed: onRefreshed,
 		})
 
 		if ch != nil && ch.startTokenProvider == nil {
@@ -387,6 +415,7 @@ func (svc *ChannelService) buildCodexOutbound(
 			Transport:       transport,
 			AlphaSearchPath: alphaSearchPath,
 			EndpointPath:    path,
+			ImageMainModel:  imageMainModel,
 		})
 	}
 
@@ -399,6 +428,7 @@ func (svc *ChannelService) buildCodexOutbound(
 		Transport:       transport,
 		AlphaSearchPath: alphaSearchPath,
 		EndpointPath:    path,
+		ImageMainModel:  imageMainModel,
 	})
 }
 
@@ -1467,6 +1497,10 @@ func extractProjectIDFromAntigravityCreds(apiKey string) (string, error) {
 }
 
 func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channel, refreshed *oauth.OAuthCredentials) error {
+	return svc.refreshOAuthTokenWithClient(ctx, svc.entFromContext(ctx), ch, refreshed)
+}
+
+func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *ent.Client, ch *ent.Channel, refreshed *oauth.OAuthCredentials) error {
 	if refreshed == nil {
 		return nil
 	}
@@ -1493,7 +1527,7 @@ func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channe
 
 	updated.OAuth = refreshed
 
-	_, err := svc.entFromContext(ctx).Channel.UpdateOneID(ch.ID).SetCredentials(updated).Save(ctx)
+	_, err := db.Channel.UpdateOneID(ch.ID).SetCredentials(updated).Save(ctx)
 
 	return err
 }
