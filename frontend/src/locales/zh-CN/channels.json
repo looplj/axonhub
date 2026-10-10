@@ -922,7 +922,7 @@
   "channels.dialogs.apiKeyRules.actions.permanentDisable": "永久禁用（保留凭证）",
   "channels.dialogs.fields.ollamaQuota.authCookie.label": "Web Cookie",
   "channels.dialogs.fields.ollamaQuota.authCookie.placeholder": "__Secure-session=...（从 ollama.com/settings 复制）",
-  "channels.dialogs.fields.ollamaQuota.authCookie.description": "访问 ollama.com/settings 的 Plan & Billing 用量页面，复制 Cookie 请求头。仅使用 __Secure-session 这个 Cookie。",
+  "channels.dialogs.fields.ollamaQuota.authCookie.description": "渠道已配置 API Key 时可不填，额度将通过 Ollama 余额 API 获取。否则请访问 ollama.com/settings 的 Plan & Billing 用量页面，复制 Cookie 请求头。仅使用 __Secure-session 这个 Cookie。",
   "channels.bulkAutoDisable.button": "自动禁用",
   "channels.bulkAutoDisable.title": "批量写入自动禁用规则",
   "channels.bulkAutoDisable.description": "将同一套自动禁用模式或规则写入 {{count}} 个选中渠道。",

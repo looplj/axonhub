@@ -208,9 +208,14 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
   } else if (isOllamaType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderOllamaQuotaData | undefined;
     percentage = Math.max(
+      qd?.windows?.monthly?.usage_percent ?? 0,
       qd?.windows?.['5h']?.usage_percent ?? 0,
       qd?.windows?.weekly?.usage_percent ?? 0
     );
+    // Purchased credits keep the channel usable, so the battery stops at "low" instead of "empty".
+    if ((qd?.credits?.purchased_usd ?? 0) > 0) {
+      percentage = Math.min(percentage, 94);
+    }
   } else if (isCommandCodeType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderCommandCodeQuotaData | undefined;
     percentage = Math.max(
@@ -1265,38 +1270,61 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             const qd = channel.quotaStatus.quotaData as ProviderOllamaQuotaData | undefined;
             if (!qd) return null;
 
-            const entries: Array<['5h' | 'weekly', string]> = [
+            const entries: Array<['monthly' | '5h' | 'weekly', string]> = [
+              ['monthly', 'quota.window.monthly'],
               ['5h', 'quota.window.5h'],
               ['weekly', 'quota.window.weekly'],
             ];
 
-            return entries
-              .map(([key, labelKey], index) => {
-                const window = qd.windows?.[key];
-                if (!window) return null;
+            const windows = entries.flatMap(([key, labelKey]) => {
+              const window = qd.windows?.[key];
+              return window ? [{ key, labelKey, window }] : [];
+            });
 
-                const usedPct = window.usage_percent ?? 0;
-                const resetText = window.reset_time ? formatTimeToReset(window.reset_time) : '';
-                return (
-                  <div key={key} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
-                    <div className='flex items-center justify-between text-xs'>
-                      <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
-                      <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
-                    </div>
-                    <UsageTimeBar
-                      usagePercent={usedPct}
-                      tooltip={
-                        <div className='space-y-0.5'>
-                          <div className='font-medium'>{t(labelKey)}</div>
-                          <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
-                          {resetText && <div>{resetText}</div>}
-                        </div>
-                      }
-                    />
+            const items: React.ReactNode[] = windows.map(({ key, labelKey, window }, index) => {
+              const usedPct = window.usage_percent ?? 0;
+              const resetText = window.reset_time ? formatTimeToReset(window.reset_time) : '';
+              return (
+                <div key={key} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                  <div className='flex items-center justify-between text-xs'>
+                    <span className='text-muted-foreground font-medium'>{t(labelKey)}</span>
+                    <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
                   </div>
-                );
-              })
-              .filter(Boolean);
+                  <UsageTimeBar
+                    usagePercent={usedPct}
+                    tooltip={
+                      <div className='space-y-0.5'>
+                        <div className='font-medium'>{t(labelKey)}</div>
+                        <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
+                        {resetText && <div>{resetText}</div>}
+                      </div>
+                    }
+                  />
+                </div>
+              );
+            });
+
+            const purchased = qd.credits?.purchased_usd;
+            if (purchased != null && purchased > 0) {
+              items.push(
+                <div
+                  key='purchased'
+                  className={`flex items-center justify-between text-xs ${items.length > 0 ? 'border-border/60 border-t border-dashed pt-3' : ''}`}
+                >
+                  <span className='text-muted-foreground font-medium'>{t('quota.label.ollama.purchased_credits')}</span>
+                  <span className='text-foreground font-medium'>
+                    {t('currencies.format', {
+                      val: purchased,
+                      currency: 'USD',
+                      locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
+                      minimumFractionDigits: 2,
+                    })}
+                  </span>
+                </div>
+              );
+            }
+
+            return items;
           })()}
         </div>
       )}

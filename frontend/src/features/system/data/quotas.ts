@@ -484,8 +484,12 @@ export type OllamaQuotaWindow = {
 
 export type ProviderOllamaQuotaData = ProviderQuotaDataCommon & {
   windows?: {
+    monthly?: OllamaQuotaWindow;
     '5h'?: OllamaQuotaWindow;
     weekly?: OllamaQuotaWindow;
+  };
+  credits?: {
+    purchased_usd?: number;
   };
 };
 
