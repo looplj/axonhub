@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,7 +43,8 @@ type codexRouteHarness struct {
 func newCodexRouteHarness(t *testing.T) *codexRouteHarness {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	dsn := "file:codex_routes_" + strings.NewReplacer("/", "_", " ", "_").Replace(t.Name()) + "?mode=memory&_fk=0"
+	db := enttest.NewEntClient(t, "sqlite3", dsn)
 	t.Cleanup(func() { require.NoError(t, db.Close()) })
 	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
 	owner := db.User.Create().SetEmail("codex@example.invalid").SetPassword("test").SetIsOwner(true).SaveX(ctx)
