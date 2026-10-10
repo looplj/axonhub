@@ -192,10 +192,6 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 		return
 	}
 
-	if err := h.stateCache.Delete(ctx, cacheKey); err != nil {
-		log.Warn(ctx, "failed to delete used oauth state from cache", log.String("session_id", req.SessionID), log.Cause(err))
-	}
-
 	code, callbackState, err := parseCodexCallbackURL(req.CallbackURL)
 	if err != nil {
 		JSONError(c, http.StatusBadRequest, err)
@@ -226,6 +222,10 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 	if err != nil {
 		JSONError(c, http.StatusBadGateway, fmt.Errorf("token exchange failed: %w", err))
 		return
+	}
+
+	if err := h.stateCache.Delete(ctx, cacheKey); err != nil {
+		log.Warn(ctx, "failed to delete used oauth state from cache", log.String("session_id", req.SessionID), log.Cause(err))
 	}
 
 	output, err := creds.ToJSON()
