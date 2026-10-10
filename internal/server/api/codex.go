@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,8 +27,9 @@ type CodexHandlersParams struct {
 }
 
 type CodexHandlers struct {
-	stateCache xcache.Cache[codexOAuthState]
-	httpClient *httpclient.HttpClient
+	stateCache      xcache.Cache[codexOAuthState]
+	httpClient      *httpclient.HttpClient
+	exchangeStateMu sync.Mutex
 }
 
 func NewCodexHandlers(params CodexHandlersParams) *CodexHandlers {
@@ -185,6 +187,8 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 	}
 
 	cacheKey := codexOAuthCacheKey(req.SessionID)
+	h.exchangeStateMu.Lock()
+	defer h.exchangeStateMu.Unlock()
 
 	state, err := h.stateCache.Get(ctx, cacheKey)
 	if err != nil {
@@ -226,6 +230,8 @@ func (h *CodexHandlers) Exchange(c *gin.Context) {
 
 	if err := h.stateCache.Delete(ctx, cacheKey); err != nil {
 		log.Warn(ctx, "failed to delete used oauth state from cache", log.String("session_id", req.SessionID), log.Cause(err))
+		JSONError(c, http.StatusInternalServerError, fmt.Errorf("failed to invalidate oauth session: %w", err))
+		return
 	}
 
 	output, err := creds.ToJSON()

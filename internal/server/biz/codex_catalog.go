@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/url"
-	"sync"
+	"strings"
 	"time"
+
+	"golang.org/x/sync/semaphore"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -66,9 +69,7 @@ func (c *CodexCatalog) Intersect(ids []string) ([]byte, error) {
 		}
 	}
 	fields := make(map[string]json.RawMessage, len(c.fields))
-	for key, value := range c.fields {
-		fields[key] = value
-	}
+	maps.Copy(fields, c.fields)
 	raw, err := json.Marshal(models)
 	if err != nil {
 		return nil, fmt.Errorf("encode catalog intersection: %w", err)
@@ -78,12 +79,17 @@ func (c *CodexCatalog) Intersect(ids []string) ([]byte, error) {
 }
 
 func (svc *ChannelService) FetchCodexCatalog(ctx context.Context, channelID int, version string) (*CodexCatalog, error) {
-	mutex, _ := svc.codexCatalogLocks.LoadOrStore(channelID, new(sync.Mutex))
-	lock := mutex.(*sync.Mutex)
-	lock.Lock()
-	defer lock.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
+	entry, _ := svc.codexCatalogLocks.LoadOrStore(channelID, semaphore.NewWeighted(1))
+	lock, ok := entry.(*semaphore.Weighted)
+	if !ok {
+		return nil, &CodexCatalogError{Status: http.StatusBadGateway, Message: "Codex catalog lock is invalid"}
+	}
+	if err := lock.Acquire(ctx, 1); err != nil {
+		return nil, &CodexCatalogError{Status: http.StatusBadGateway, Message: "Codex catalog request was cancelled"}
+	}
+	defer lock.Release(1)
 	entity, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
 	if err != nil || entity.Type != channel.TypeCodex {
 		return nil, &CodexCatalogError{Status: 503, Message: "Codex catalog source is unavailable"}
@@ -99,7 +105,14 @@ func (svc *ChannelService) FetchCodexCatalog(ctx context.Context, channelID int,
 	if !ok {
 		return nil, &CodexCatalogError{Status: 502, Message: "Codex catalog provider is unavailable"}
 	}
-	req, err := codex.ModelsRequest(ctx, outbound.TokenProvider(), entity.BaseURL)
+	baseURL := entity.BaseURL
+	switch {
+	case strings.HasPrefix(baseURL, "wss://"):
+		baseURL = "https://" + strings.TrimPrefix(baseURL, "wss://")
+	case strings.HasPrefix(baseURL, "ws://"):
+		baseURL = "http://" + strings.TrimPrefix(baseURL, "ws://")
+	}
+	req, err := codex.ModelsRequest(ctx, outbound.TokenProvider(), baseURL)
 	if err != nil {
 		return nil, &CodexCatalogError{Status: 502, Message: "Codex catalog authentication failed"}
 	}
@@ -129,9 +142,8 @@ func (svc *ChannelService) FetchCodexCatalog(ctx context.Context, channelID int,
 	}
 	resp, err := httpclient.NewHttpClientWithClient(&native).Do(ctx, req)
 	if err != nil {
-		var upstream *httpclient.Error
-		if errors.As(err, &upstream) {
-			return nil, &CodexCatalogError{Status: 502, UpstreamStatus: upstream.StatusCode, Message: fmt.Sprintf("Codex catalog upstream HTTP %d", upstream.StatusCode)}
+		if upstreamErr, ok := errors.AsType[*httpclient.Error](err); ok {
+			return nil, &CodexCatalogError{Status: 502, UpstreamStatus: upstreamErr.StatusCode, Message: fmt.Sprintf("Codex catalog upstream HTTP %d", upstreamErr.StatusCode)}
 		}
 		return nil, &CodexCatalogError{Status: 502, Message: "Codex catalog transport failed"}
 	}

@@ -3,12 +3,16 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
@@ -21,8 +25,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/internal/server/static"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
 )
 
 type codexRouteHarness struct {
@@ -81,7 +83,7 @@ func (h *codexRouteHarness) request(method, path, key string) *httptest.Response
 	if key != "" {
 		req.Header.Set("Authorization", "Bearer "+key)
 	}
-	req.Header.Set("ChatGPT-Account-ID", "untrusted")
+	req.Header.Set("Chatgpt-Account-Id", "untrusted")
 	req.Header.Set("If-None-Match", "caller-etag")
 	req.Header.Set("Cookie", "caller-cookie=synthetic")
 	result := httptest.NewRecorder()
@@ -122,12 +124,16 @@ func TestCodexRoutes_WhoamiStableID(t *testing.T) {
 	require.NotContains(t, result.Body.String(), h.key.Key)
 	_, err := h.keys.UpdateAPIKey(h.ctx, h.key.ID, ent.UpdateAPIKeyInput{Name: lo.ToPtr("renamed")})
 	require.NoError(t, err)
-	second := h.request("GET", "/codex/v1/user-auth-credential/whoami", h.key.Key)
 	var after map[string]json.RawMessage
-	require.NoError(t, json.Unmarshal(second.Body.Bytes(), &after))
+	require.Eventually(t, func() bool {
+		second := h.request(http.MethodGet, "/codex/v1/user-auth-credential/whoami", h.key.Key)
+		if second.Code != http.StatusOK || json.Unmarshal(second.Body.Bytes(), &after) != nil {
+			return false
+		}
+		return string(after["email"]) == `"renamed"`
+	}, time.Second, 10*time.Millisecond)
 	require.Equal(t, first["chatgpt_user_id"], after["chatgpt_user_id"])
 	require.Equal(t, first["chatgpt_account_id"], after["chatgpt_account_id"])
-	require.JSONEq(t, `"renamed"`, string(after["email"]))
 }
 
 func TestCodexRoutes_UnknownPaths404(t *testing.T) {

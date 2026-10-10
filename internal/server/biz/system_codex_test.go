@@ -3,12 +3,13 @@ package biz
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCodexCompatibilitySettings_DefaultDisabled(t *testing.T) {

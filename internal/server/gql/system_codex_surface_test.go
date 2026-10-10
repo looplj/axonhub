@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/99designs/gqlgen/graphql/handler"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -17,7 +19,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCodexGraphQLSurface(t *testing.T) {

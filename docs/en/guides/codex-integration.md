@@ -34,6 +34,13 @@ The switch is off by default. Saving an enabled configuration requires a selecte
    model_provider = "openai"
    openai_base_url = "https://gateway.example/codex"
    chatgpt_base_url = "https://gateway.example/codex"
+
+   web_search = "live"
+   suppress_unstable_features_warning = true
+
+   [features]
+   fast_mode = true
+   context_management = true
    ```
 3. Set the required auth API base in the same shell that starts Codex:
    ```bash
@@ -74,7 +81,7 @@ server:
 - Confirm that the model list loads from `/codex/models` and that the selected channel remains available for inference.
 - Enable tracing in AxonHub to inspect prompts, responses, and latency.
 
-PR1 uses the ordinary Responses path for remote compaction-v2: a `compaction_trigger` is sent to `/codex/responses`, and the returned compaction item can be used in a later Responses request. PR1 does not implement the alpha history/notes APIs, a standalone `/codex/responses/compact` route, or a claim of complete context-management support; those unsupported paths return JSON 404. Existing `/v1` routes are unchanged.
+The current version uses the ordinary Responses path for remote compaction-v2: a `compaction_trigger` is sent to `/codex/responses`, and the returned compaction item can be used in a later Responses request. It does not implement the history/notes APIs or a standalone `/codex/responses/compact` route; those unsupported paths return JSON 404. `context_management` enables Codex's Responses compaction flow, while history notes remain part of future compatibility work. `fast_mode` selects the Responses `service_tier` requested by the client; the upstream model catalog and response determine whether that tier is available. There is no separate `ultrafast` endpoint or local capability probe. Existing `/v1` routes are unchanged.
 
 ### Working with Model Profiles
 AxonHub model profiles remap incoming model names to provider-specific equivalents:

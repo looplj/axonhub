@@ -34,6 +34,13 @@ AxonHub 可以作为 OpenAI 接口的直接替代方案，使 Codex 能够通过
    model_provider = "openai"
    openai_base_url = "https://gateway.example/codex"
    chatgpt_base_url = "https://gateway.example/codex"
+
+   web_search = "live"
+   suppress_unstable_features_warning = true
+
+   [features]
+   fast_mode = true
+   context_management = true
    ```
 3. 在启动 Codex 的同一个 shell 中设置必需的认证 API 地址：
    ```bash
@@ -74,7 +81,7 @@ server:
 - 确认模型列表从 `/codex/models` 加载，且选定渠道仍可用于推理。
 - 启用 AxonHub 的追踪功能可查看提示词、回复及延迟信息。
 
-PR1 的远程 compaction-v2 复用普通 Responses 路径：向 `/codex/responses` 发送 `compaction_trigger`，再把返回的压缩项用于后续 Responses 请求。PR1 不实现 alpha history/notes API，不新增独立的 `/codex/responses/compact` 路由，也不宣称完整支持 context management；这些未支持路径返回 JSON 404。既有 `/v1` 路由保持不变。
+当前版本的远程 compaction-v2 复用普通 Responses 路径：向 `/codex/responses` 发送 `compaction_trigger`，再把返回的压缩项用于后续 Responses 请求。不实现 history/notes API，也不新增独立的 `/codex/responses/compact` 路由；这些未支持路径返回 JSON 404。`context_management` 会启用 Codex 的 Responses 压缩流程，history notes 仍属于后续兼容工作范围。`fast_mode` 会让客户端请求 Responses 的 `service_tier`；该等级是否可用由上游模型目录和响应决定。当前没有独立的 `ultrafast` 接口或本地能力探测。既有 `/v1` 路由保持不变。
 
 ### 使用模型配置文件
 AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型：

@@ -90,6 +90,15 @@ export function CodexCompatibilitySettings() {
     );
   }
 
+  if (!saved || !resolved || !form) {
+    return (
+      <Alert variant='destructive'>
+        <AlertCircle />
+        <AlertDescription>{t('system.codex.loadFailed')}</AlertDescription>
+      </Alert>
+    );
+  }
+
   const controls = codexFormControls({ access, form, saved, saving: update.isPending, test: test.state });
   const missingWrite = !hasSystemScope('write_settings');
   const missingChannels = !hasSystemScope('read_channels');

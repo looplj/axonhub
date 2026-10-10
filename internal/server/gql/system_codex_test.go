@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -12,7 +14,6 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCodexCompatibilitySettingsAuthorization(t *testing.T) {
@@ -26,7 +27,8 @@ func TestCodexCompatibilitySettingsAuthorization(t *testing.T) {
 		scopes  []string
 		allowed bool
 	}{
-		{"none", nil, false}, {"settings only", []string{"write_settings"}, false},
+		{"none", nil, false},
+		{"settings only", []string{"write_settings"}, false},
 		{"channel only", []string{"read_channels"}, false},
 		{"both non-owner", []string{"write_settings", "read_channels"}, true},
 	} {

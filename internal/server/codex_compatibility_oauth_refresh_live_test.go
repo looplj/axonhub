@@ -4,22 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
-	"github.com/stretchr/testify/require"
 )
-
-const task6Home = "/root/.local/share/axonhub-codex-testing/"
 
 func task6Sources(t *testing.T, h *codexRouteHarness) []*ent.Channel {
 	t.Helper()
-	raw, err := os.ReadFile(task6Home + "codex-home/auth.json")
+	task6Home := os.Getenv("AXONHUB_CODEX_TASK6_HOME")
+	if task6Home == "" {
+		t.Skip("AXONHUB_CODEX_TASK6_HOME is not set")
+	}
+	codexHome := filepath.Join(task6Home, "codex-home")
+	raw, err := os.ReadFile(filepath.Join(codexHome, "auth.json"))
 	require.NoError(t, err)
 	creds, err := codex.DecodeAuthJSON(string(raw))
 	require.NoError(t, err)
@@ -27,7 +32,7 @@ func task6Sources(t *testing.T, h *codexRouteHarness) []*ent.Channel {
 		APIKey  string `json:"api_key"`
 		BaseURL string `json:"base_url"`
 	}
-	relayRaw, err := os.ReadFile(task6Home + "krill.json")
+	relayRaw, err := os.ReadFile(filepath.Join(task6Home, "krill.json"))
 	require.NoError(t, err)
 	require.NoError(t, json.Unmarshal(relayRaw, &relay))
 	// The Codex transformer uses the trailing raw-base marker to avoid adding /v1
@@ -59,15 +64,15 @@ func task6Sources(t *testing.T, h *codexRouteHarness) []*ent.Channel {
 		require.NoError(t, err)
 		encoded, err := json.MarshalIndent(document, "", "  ")
 		require.NoError(t, err)
-		temp, err := os.CreateTemp(task6Home+"codex-home", ".task6-auth-*")
+		temp, err := os.CreateTemp(codexHome, ".task6-auth-*")
 		require.NoError(t, err)
 		defer os.Remove(temp.Name())
-		require.NoError(t, temp.Chmod(0600))
+		require.NoError(t, temp.Chmod(0o600))
 		_, err = temp.Write(encoded)
 		require.NoError(t, err)
 		require.NoError(t, temp.Sync())
 		require.NoError(t, temp.Close())
-		require.NoError(t, os.Rename(temp.Name(), task6Home+"codex-home/auth.json"))
+		require.NoError(t, os.Rename(temp.Name(), filepath.Join(codexHome, "auth.json")))
 		t.Log("OAuth export: latest DB rotation atomically persisted mode600")
 	})
 	return []*ent.Channel{official, krill}

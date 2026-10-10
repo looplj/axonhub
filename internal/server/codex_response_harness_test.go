@@ -3,6 +3,8 @@ package server
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/datastorage"
 	"github.com/looplj/axonhub/internal/objects"
@@ -12,7 +14,6 @@ import (
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
-	"github.com/stretchr/testify/require"
 )
 
 func setupCodexResponseHandlers(t *testing.T, h *codexRouteHarness, models *biz.ModelService) (*api.OpenAIHandlers, *biz.RequestService) {
