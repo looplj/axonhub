@@ -88,6 +88,21 @@ func (p *PersistentOutboundTransformer) refreshChannelBeforeRetry(ctx context.Co
 		return errChannelUnavailableForRetry
 	}
 
+	// A channel that authenticates without any credential has nothing to refresh.
+	// Check it on the snapshot rather than on the stored entity: a channel that was
+	// served with a credential but has since lost it must still fall through to the
+	// "no usable credential left" branch below and end the retry.
+	//
+	// This also keeps the request context out of the decision for such a channel.
+	// The context key is shared by every candidate of the request and is rewritten
+	// only by the credential the current channel used, so a credentialless channel
+	// (a local Ollama) still carries the previous channel's key. Reading it here
+	// would mark a perfectly healthy channel as unavailable and drop its remaining
+	// retries.
+	if len(candidate.Channel.Credentials.GetAllCredentialRefs()) == 0 {
+		return nil
+	}
+
 	// Identify the credential this attempt authenticated with. OAuth channels are
 	// tracked by the fixed OAuth credential reference, the same identity the
 	// auto-disable bookkeeping uses; a channel served without credentials carries

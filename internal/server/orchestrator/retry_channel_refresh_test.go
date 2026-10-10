@@ -387,3 +387,42 @@ func TestRefreshChannelBeforeRetryChannelUnavailable(t *testing.T) {
 		require.Same(t, snapshot, transformer.state.CurrentCandidate.Channel)
 	})
 }
+
+// TestRefreshChannelBeforeRetry_CredentiallessChannelAfterKeyedChannel reproduces
+// the case greptile flagged on PR #2545: a request starts on an API-key channel,
+// which leaves its key in the shared request context, then fails over to a channel
+// that authenticates without any credential (a local Ollama). Such a channel never
+// rewrites the context key, so the leftover key survives into its same-channel
+// retry. The guard must not read that leftover as this channel's credential: doing
+// so marks the credentialless channel as unavailable and drops its remaining
+// retries even though it is perfectly healthy.
+func TestRefreshChannelBeforeRetry_CredentiallessChannelAfterKeyedChannel(t *testing.T) {
+	ctx, client := setupTest(t)
+
+	channelService := newTestChannelServiceForChannels(client)
+
+	// A local Ollama deployment: enabled and reachable, deliberately without
+	// credentials.
+	entity := client.Channel.Create().
+		SetType(channel.TypeOllama).
+		SetName("guard-ollama-no-key").
+		SetBaseURL("http://localhost:11434").
+		SetCredentials(objects.ChannelCredentials{}).
+		SetSupportedModels([]string{"test-model"}).
+		SetDefaultTestModel("test-model").
+		SetStatus(channel.StatusEnabled).
+		SaveX(ctx)
+
+	snapshot := retryGuardSnapshot(t, ctx, channelService, entity.ID)
+
+	// This attempt authenticated with no credential at all, so nothing was
+	// recorded for it.
+	transformer := newRetryGuardTransformer(channelService, snapshot, "")
+
+	// The previous candidate was an API-key channel and its key is still in the
+	// shared request context, because the credentialless channel never rewrote it.
+	requestCtx := contexts.WithChannelAPIKey(ctx, "key-1")
+
+	require.NoError(t, transformer.refreshChannelBeforeRetry(requestCtx))
+	require.Same(t, snapshot, transformer.state.CurrentCandidate.Channel)
+}
