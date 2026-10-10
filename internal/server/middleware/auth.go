@@ -25,8 +25,20 @@ func WithAPIKeyAuth(auth *biz.AuthService) gin.HandlerFunc {
 
 // WithAPIKeyConfig 中间件用于验证 API key，支持自定义配置.
 func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFunc {
+	return withAPIKeyConfig(auth, config, true)
+}
+
+func WithStrictAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFunc {
+	return withAPIKeyConfig(auth, config, false)
+}
+
+func withAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig, allowNoAuth bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key, err := ExtractAPIKeyFromRequest(c.Request, config)
+		if err != nil && !allowNoAuth {
+			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid API key"))
+			return
+		}
 		// DO NOT ALLOW USE NO AUTH API KEY DIRECTLY.
 		if key == biz.NoAuthAPIKeyValue {
 			AbortWithError(c, http.StatusUnauthorized, errors.New("Invalid API key"))
@@ -37,7 +49,7 @@ func WithAPIKeyConfig(auth *biz.AuthService, config *APIKeyConfig) gin.HandlerFu
 		if err == nil {
 			apiKey, err = auth.AuthenticateAPIKey(c.Request.Context(), key)
 		}
-		if err != nil {
+		if err != nil && allowNoAuth {
 			apiKey, err = auth.AuthenticateNoAuth(c.Request.Context())
 		}
 		if err != nil {
