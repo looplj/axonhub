@@ -9,30 +9,45 @@ AxonHub can act as a drop-in replacement for OpenAI endpoints, letting Codex con
 - AxonHub performs AI protocol/format transformation. You can configure multiple upstream channels (providers) and expose a single OpenAI-compatible interface for Codex.
 - You can aggregate Codex requests from the same conversation by enabling `server.trace.codex_trace_enabled` (uses `Session_id`) or adding extra headers via `server.trace.extra_trace_headers`.
 
-### Prerequisites
+### Prerequisites and AxonHub setup
 - AxonHub instance reachable from your development machine.
 - Valid AxonHub API key with project access.
 - Access to Codex (OpenAI compatible) application.
-- Optional: one or more model profiles configured in the AxonHub console.
+- An existing Codex channel in AxonHub. The channel supplies the upstream base URL, credentials, and HTTP transport.
 
-### Configure Codex
-1. Edit `${HOME}/.codex/config.toml` and register AxonHub as a provider:
+Before configuring Codex, open the **Codex Compatibility** settings in AxonHub:
+
+1. Enable the compatibility switch.
+2. Select the Codex channel to use for the native model catalog.
+3. Use the channel's **Test** action to verify that its `/models` endpoint is reachable. Testing does not save the setting, enable the channel, or change its status.
+
+The switch is off by default. Saving an enabled configuration requires a selected existing Codex channel. The catalog test can be run while the switch is off, and a failed test does not prevent saving. Catalog results are filtered to the models visible to the caller; this does not authorize a manually selected model, which is still checked by the normal inference permission path.
+
+### Configure Codex authentication and routes
+1. Create `${HOME}/.codex/auth.json` with the AxonHub API key as the Codex personal access token. Keep the value in this file; do not use `CODEX_ACCESS_TOKEN`, `login --with-access-token`, or an `api_key` auth mode:
+   ```json
+   {"personal_access_token":"<your-axonhub-api-key>"}
+   ```
+2. Edit `${HOME}/.codex/config.toml` and point the provider and auth API at the same `/codex` compatibility surface:
    ```toml
    model = "gpt-5"
-   model_provider = "axonhub-responses"
-
-   [model_providers.axonhub-responses]
-   name = "AxonHub using Chat Completions"
-   base_url = "http://127.0.0.1:8090/v1"
-   env_key = "AXONHUB_API_KEY"
-   wire_api = "responses"
-   query_params = {}
+   model_provider = "openai"
+   openai_base_url = "https://gateway.example/codex"
+   chatgpt_base_url = "https://gateway.example/codex"
    ```
-2. Export the API key for Codex to read:
+3. Set the required auth API base in the same shell that starts Codex:
    ```bash
-   export AXONHUB_API_KEY="<your-axonhub-api-key>"
+   export CODEX_AUTHAPI_BASE_URL="https://gateway.example/codex"
    ```
-3. Restart Codex to apply the configuration.
+   Replace the example host with your AxonHub address. Do not set a separate catalog URL; the `/codex` base is used for whoami, models, and Responses requests.
+4. Restart Codex to apply the configuration.
+
+The compatibility surface used by this guide is:
+
+- `GET /codex/v1/user-auth-credential/whoami` — local API-key identity.
+- `GET /codex/models` — selected-channel native catalog, intersected with caller-visible model IDs.
+- `POST /codex/responses` — Responses HTTP/SSE inference.
+- `GET /codex/responses` — Responses WebSocket inference.
 
 #### Trace aggregation by conversation (important)
 Enable the built-in Codex trace extraction to reuse the `Session_id` header as the trace ID:
@@ -55,8 +70,11 @@ server:
 **Note**: Enabling this also ensures that requests from the same trace are prioritized to be sent to the same upstream channel, significantly improving provider-side cache hit rates (e.g., Anthropic Prompt Caching).
 
 #### Testing
-- Send a sample prompt; AxonHub's request logs should show a `/v1/chat/completions` call.
+- Start Codex and send a sample prompt; AxonHub's request logs should show `/codex/responses`.
+- Confirm that the model list loads from `/codex/models` and that the selected channel remains available for inference.
 - Enable tracing in AxonHub to inspect prompts, responses, and latency.
+
+PR1 uses the ordinary Responses path for remote compaction-v2: a `compaction_trigger` is sent to `/codex/responses`, and the returned compaction item can be used in a later Responses request. PR1 does not implement the alpha history/notes APIs, a standalone `/codex/responses/compact` route, or a claim of complete context-management support; those unsupported paths return JSON 404. Existing `/v1` routes are unchanged.
 
 ### Working with Model Profiles
 AxonHub model profiles remap incoming model names to provider-specific equivalents:
@@ -81,7 +99,8 @@ AxonHub model profiles remap incoming model names to provider-specific equivalen
 - Request `gpt-3.5-turbo` → mapped to `deepseek-chat` for reducing costs.
 
 ### Troubleshooting
-- **Codex reports authentication errors**: ensure `AXONHUB_API_KEY` is exported in the same shell session that launches Codex.
+- **Codex reports authentication errors**: ensure `${HOME}/.codex/auth.json` contains a valid AxonHub API key in `personal_access_token`, and that `CODEX_AUTHAPI_BASE_URL` points to the same `/codex` base as `openai_base_url` and `chatgpt_base_url`.
+- **The model list is empty or unavailable**: confirm that the compatibility switch is enabled, a Codex channel is selected, and the channel's `/models` endpoint passes the settings-page test. Catalog filtering is not a substitute for inference authorization.
 - **Unexpected model responses**: review active profile mappings in the AxonHub console; disable or adjust rules if necessary.
 
 ---
