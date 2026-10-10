@@ -215,6 +215,10 @@ type Tool struct {
 	MaxUses *int64 `json:"max_uses,omitempty"`
 	// When true, guarantees schema validation on tool names and inputs
 	Strict *bool `json:"strict,omitempty"`
+	// AllowedCallers restricts which callers may invoke this tool, e.g.
+	// ["direct"] or ["code_execution_20250825"]. Anthropic documents it on
+	// custom/function tool definitions; keep it off the wire when unset.
+	AllowedCallers []string `json:"allowed_callers,omitempty"`
 	// AllowedDomains If provided, only these domains will be included in results. Cannot be used
 	// alongside `blocked_domains`.
 	AllowedDomains []string `json:"allowed_domains,omitempty"`
