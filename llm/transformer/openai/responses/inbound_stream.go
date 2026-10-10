@@ -70,6 +70,9 @@ type responsesInboundStream struct {
 	currentReasoningSourceID      string
 	pendingReasoning              map[string][]string
 	pendingReasoningOrder         []string
+	heldReasoningSet              bool   // 一拍压住槽：暂扣最新一条带条目标识的思考增量
+	heldReasoningSourceID         string
+	heldReasoningContent          string
 
 	// Tool call tracking
 	toolCalls           map[int]*llm.ToolCall
@@ -488,15 +491,95 @@ func (s *responsesInboundStream) handleReasoningContent(content *string, metadat
 	if item, ok := getResponsesReasoningItemMetadata(metadata); ok {
 		sourceID = item.ID
 	}
-	if sourceID != "" {
-		if _, exists := s.pendingReasoning[sourceID]; !exists {
-			s.pendingReasoningOrder = append(s.pendingReasoningOrder, sourceID)
+	if sourceID == "" {
+		// An unassociated delta cannot confirm the held delta's ownership:
+		// batch it, then emit the unassociated one immediately.
+		if err := s.settleHeldReasoning(""); err != nil {
+			return err
 		}
-		s.pendingReasoning[sourceID] = append(s.pendingReasoning[sourceID], *content)
-		return nil
+		// Unassociated deltas have no pairing to protect: emit immediately.
+		return s.emitReasoningContent(content, sourceID)
 	}
 
-	return s.emitReasoningContent(content, sourceID)
+	// Hold the newest delta for one event and let the next event settle it:
+	// same item (or its signature) releases immediately, a different item
+	// moves it to the batch so a late signature still pairs with its own
+	// content. Sequential streams only ever lag by one event.
+	if s.heldReasoningSet {
+		if s.heldReasoningSourceID == sourceID {
+			if err := s.releaseHeldReasoning(); err != nil {
+				return err
+			}
+		} else {
+			s.holdToBatch()
+			// The previous item is still awaiting its signature. Starting this
+			// item now would close the unsigned one, so batch this content too
+			// until that signature (or a boundary) flushes it.
+			s.batchReasoning(sourceID, *content)
+			return nil
+		}
+	}
+	if len(s.pendingReasoningOrder) > 0 {
+		// An earlier item is still unflushed: keep later content ordered
+		// behind it instead of starting a new item.
+		s.batchReasoning(sourceID, *content)
+		return nil
+	}
+	s.heldReasoningSet = true
+	s.heldReasoningSourceID = sourceID
+	s.heldReasoningContent = *content
+	return nil
+}
+
+// batchReasoning queues content for an item in emission order.
+func (s *responsesInboundStream) batchReasoning(sourceID, content string) {
+	if _, exists := s.pendingReasoning[sourceID]; !exists {
+		s.pendingReasoningOrder = append(s.pendingReasoningOrder, sourceID)
+	}
+	s.pendingReasoning[sourceID] = append(s.pendingReasoning[sourceID], content)
+}
+
+// releaseHeldReasoning emits the held delta now that its item ownership is
+// confirmed by the event that followed it.
+func (s *responsesInboundStream) releaseHeldReasoning() error {
+	content := s.heldReasoningContent
+	sourceID := s.heldReasoningSourceID
+	s.heldReasoningSet = false
+	s.heldReasoningSourceID = ""
+	s.heldReasoningContent = ""
+	return s.emitReasoningContent(&content, sourceID)
+}
+
+// holdToBatch moves the held delta into the per-item batch. It is used when a
+// different item (or an unassociated event) arrives before the held delta's
+// own item could be confirmed, and at flush boundaries so the held delta is
+// never left behind.
+func (s *responsesInboundStream) holdToBatch() {
+	if !s.heldReasoningSet {
+		return
+	}
+	if _, exists := s.pendingReasoning[s.heldReasoningSourceID]; !exists {
+		s.pendingReasoningOrder = append(s.pendingReasoningOrder, s.heldReasoningSourceID)
+	}
+	s.pendingReasoning[s.heldReasoningSourceID] = append(s.pendingReasoning[s.heldReasoningSourceID], s.heldReasoningContent)
+	s.heldReasoningSet = false
+	s.heldReasoningSourceID = ""
+	s.heldReasoningContent = ""
+}
+
+// settleHeldReasoning resolves the held delta against an arriving signature:
+// a signature for the same item proves the held delta belongs to it, so it is
+// released immediately; any other signature sends it to the batch to keep the
+// pairing with its own (later) signature intact.
+func (s *responsesInboundStream) settleHeldReasoning(sourceID string) error {
+	if !s.heldReasoningSet {
+		return nil
+	}
+	if sourceID != "" && s.heldReasoningSourceID == sourceID {
+		return s.releaseHeldReasoning()
+	}
+	s.holdToBatch()
+	return nil
 }
 
 func (s *responsesInboundStream) emitReasoningContent(content *string, sourceID string) error {
@@ -545,6 +628,9 @@ func (s *responsesInboundStream) handleReasoningSignature(delta *llm.Message, me
 	if itemScoped {
 		sourceID = itemMetadata.ID
 	}
+	if err := s.settleHeldReasoningOnSignature(sourceID); err != nil {
+		return err
+	}
 	if sourceID != "" {
 		if contents, ok := s.pendingReasoning[sourceID]; ok {
 			for _, content := range contents {
@@ -582,6 +668,28 @@ func (s *responsesInboundStream) handleReasoningSignature(delta *llm.Message, me
 	return nil
 }
 
+// settleHeldReasoningOnSignature resolves the held delta when a signature
+// arrives. Same item: release the held delta first, then any batched content
+// for that item keeps its original order ahead of the signature. Another
+// item's signature: the held delta moves to the batch so it still pairs with
+// its own signature later.
+func (s *responsesInboundStream) settleHeldReasoningOnSignature(sourceID string) error {
+	if !s.heldReasoningSet {
+		return nil
+	}
+	if sourceID == "" || s.heldReasoningSourceID != sourceID {
+		s.holdToBatch()
+		return nil
+	}
+	// Same item: the held delta goes out, but batched content queued for this
+	// item earlier must precede it, so emit from the batch first.
+	if len(s.pendingReasoning[sourceID]) > 0 {
+		s.holdToBatch()
+		return nil
+	}
+	return s.releaseHeldReasoning()
+}
+
 func (s *responsesInboundStream) removePendingReasoningID(sourceID string) {
 	for i, id := range s.pendingReasoningOrder {
 		if id == sourceID {
@@ -592,6 +700,9 @@ func (s *responsesInboundStream) removePendingReasoningID(sourceID string) {
 }
 
 func (s *responsesInboundStream) flushPendingReasoning() error {
+	// The held delta must never outlive a semantic boundary: fold it into the
+	// batch first so the existing flush loop drains everything in order.
+	s.holdToBatch()
 	for len(s.pendingReasoningOrder) > 0 {
 		sourceID := s.pendingReasoningOrder[0]
 		contents, ok := s.pendingReasoning[sourceID]
