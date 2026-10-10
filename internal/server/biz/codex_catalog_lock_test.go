@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/semaphore"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -50,31 +49,41 @@ func TestCodexCatalog_HTTPRequest_when_WebSocketBase(t *testing.T) {
 	}
 }
 
-func TestCodexCatalog_Error_when_InvalidLock(t *testing.T) {
-	// Given a malformed lock entry.
-	svc := &ChannelService{}
-	svc.codexCatalogLocks.Store(1, "invalid")
-	// When fetching a catalog.
-	_, err := svc.FetchCodexCatalog(t.Context(), 1, "")
-	// Then it returns a typed error instead of panicking.
-	var catalogErr *CodexCatalogError
-	require.ErrorAs(t, err, &catalogErr)
-	require.Equal(t, http.StatusBadGateway, catalogErr.Status)
-}
+func TestCodexCatalog_Cancelled_whenWaitingForFetch(t *testing.T) {
+	started := make(chan struct{})
+	release := make(chan struct{})
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(started)
+		select {
+		case <-release:
+			_, _ = w.Write([]byte(`{"models":[]}`))
+		case <-r.Context().Done():
+		}
+	}))
+	defer upstream.Close()
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer db.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	source := db.Channel.Create().SetName("catalog").SetType(channel.TypeCodex).SetBaseURL(upstream.URL).SetDefaultTestModel("test").SetSupportedModels([]string{"test"}).SetCredentials(objects.ChannelCredentials{APIKey: "synthetic"}).SaveX(ctx)
+	svc := NewChannelServiceForTest(db)
+	defer svc.Stop()
+	built, err := svc.GetChannel(ctx, source.ID)
+	require.NoError(t, err)
+	built.HTTPClient.GetNativeClient().Transport = upstream.Client().Transport
+	svc.SetEnabledChannelsForTest([]*Channel{built})
+	firstDone := make(chan error, 1)
+	go func() {
+		_, firstErr := svc.FetchCodexCatalog(ctx, source.ID, "")
+		firstDone <- firstErr
+	}()
+	<-started
 
-func TestCodexCatalog_Cancelled_when_WaitingForLock(t *testing.T) {
-	// Given an occupied channel lock and a cancelled request.
-	svc := &ChannelService{}
-	lock := semaphore.NewWeighted(1)
-	require.NoError(t, lock.Acquire(t.Context(), 1))
-	defer lock.Release(1)
-	svc.codexCatalogLocks.Store(1, lock)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	// When fetching while another request owns the channel lock.
-	_, err := svc.FetchCodexCatalog(ctx, 1, "")
-	// Then the request exits without waiting or touching the database.
+	_, err = svc.FetchCodexCatalog(ctx, source.ID, "")
 	var catalogErr *CodexCatalogError
 	require.ErrorAs(t, err, &catalogErr)
 	require.Equal(t, http.StatusBadGateway, catalogErr.Status)
+	close(release)
+	require.NoError(t, <-firstDone)
 }

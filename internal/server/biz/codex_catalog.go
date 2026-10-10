@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/sync/semaphore"
-
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
@@ -79,17 +77,27 @@ func (c *CodexCatalog) Intersect(ids []string) ([]byte, error) {
 }
 
 func (svc *ChannelService) FetchCodexCatalog(ctx context.Context, channelID int, version string) (*CodexCatalog, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-	defer cancel()
-	entry, _ := svc.codexCatalogLocks.LoadOrStore(channelID, semaphore.NewWeighted(1))
-	lock, ok := entry.(*semaphore.Weighted)
-	if !ok {
-		return nil, &CodexCatalogError{Status: http.StatusBadGateway, Message: "Codex catalog lock is invalid"}
-	}
-	if err := lock.Acquire(ctx, 1); err != nil {
+	result := svc.codexCatalogSF.DoChan(fmt.Sprintf("%d:%s", channelID, version), func() (any, error) {
+		fetchCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		return svc.fetchCodexCatalog(fetchCtx, channelID, version)
+	})
+	select {
+	case <-ctx.Done():
 		return nil, &CodexCatalogError{Status: http.StatusBadGateway, Message: "Codex catalog request was cancelled"}
+	case response := <-result:
+		if response.Err != nil {
+			return nil, response.Err
+		}
+		catalog, ok := response.Val.(*CodexCatalog)
+		if !ok {
+			return nil, &CodexCatalogError{Status: http.StatusBadGateway, Message: "Codex catalog response is invalid"}
+		}
+		return catalog, nil
 	}
-	defer lock.Release(1)
+}
+
+func (svc *ChannelService) fetchCodexCatalog(ctx context.Context, channelID int, version string) (*CodexCatalog, error) {
 	entity, err := svc.entFromContext(ctx).Channel.Get(ctx, channelID)
 	if err != nil || entity.Type != channel.TypeCodex {
 		return nil, &CodexCatalogError{Status: 503, Message: "Codex catalog source is unavailable"}

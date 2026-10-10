@@ -14,6 +14,7 @@ import (
 	"github.com/aptible/supercronic/cronexpr"
 	"github.com/samber/lo"
 	"go.uber.org/fx"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -190,8 +191,8 @@ type ChannelService struct {
 	apiKeyErrorCountsLock     sync.Mutex
 	apiKeyOpsLock             sync.Mutex
 
-	modelSyncMu       sync.Mutex
-	codexCatalogLocks sync.Map
+	modelSyncMu    sync.Mutex
+	codexCatalogSF singleflight.Group
 
 	lastModelSyncExecutionTime time.Time
 
