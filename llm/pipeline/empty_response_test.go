@@ -78,6 +78,46 @@ func TestHasResponseContent(t *testing.T) {
 		}))
 	})
 
+	t.Run("message audio data", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Choices: []llm.Choice{{
+				Message: &llm.Message{
+					Audio: &llm.OutputAudio{ID: "audio_1", Data: "UklGRiQAAABX"},
+				},
+			}},
+		}))
+	})
+
+	t.Run("message audio transcript only", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Choices: []llm.Choice{{
+				Message: &llm.Message{
+					Audio: &llm.OutputAudio{Transcript: "spoken answer"},
+				},
+			}},
+		}))
+	})
+
+	t.Run("empty message audio object", func(t *testing.T) {
+		require.False(t, hasResponseContent(&llm.Response{
+			Choices: []llm.Choice{{
+				Message: &llm.Message{
+					Audio: &llm.OutputAudio{},
+				},
+			}},
+		}))
+	})
+
+	t.Run("streamed delta audio", func(t *testing.T) {
+		require.True(t, hasResponseContent(&llm.Response{
+			Choices: []llm.Choice{{
+				Delta: &llm.Message{
+					Audio: &llm.OutputAudio{Data: "UklGRiQAAABX"},
+				},
+			}},
+		}))
+	})
+
 	t.Run("speech response audio", func(t *testing.T) {
 		require.True(t, hasResponseContent(&llm.Response{
 			Speech: &llm.SpeechResponse{Audio: []byte{0x01, 0x02}},
