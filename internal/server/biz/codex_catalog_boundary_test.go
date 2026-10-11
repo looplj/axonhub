@@ -79,6 +79,12 @@ func TestCodexCatalog_ReusesOAuthProviderForDisabledChannel(t *testing.T) {
 	second, _, err := svc.codexCatalogOutbound(ctx, source)
 	require.NoError(t, err)
 	require.Same(t, first, second)
+	updated := db.Channel.UpdateOneID(source.ID).SetSettings(&objects.ChannelSettings{
+		Proxy: &httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled},
+	}).SaveX(ctx)
+	third, _, err := svc.codexCatalogOutbound(ctx, updated)
+	require.NoError(t, err)
+	require.NotSame(t, first, third)
 }
 
 func TestCodexCatalog_DefaultClientRedirectGap(t *testing.T) {

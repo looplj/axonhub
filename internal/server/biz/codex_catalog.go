@@ -176,6 +176,8 @@ type codexCatalogOutboundEntry struct {
 	outbound  *codex.OutboundTransformer
 }
 
+const codexCatalogCredentialSaveTimeout = 5 * time.Second
+
 func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent.Channel) (*codex.OutboundTransformer, *httpclient.HttpClient, error) {
 	httpClient := svc.getHttpClient(entity.Settings)
 	if !entity.Credentials.IsOAuth() {
@@ -194,7 +196,11 @@ func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent
 	if err != nil {
 		return nil, nil, err
 	}
-	signature := credentials.AccessToken + "\x00" + credentials.RefreshToken + "\x00" + credentials.ExpiresAt.String()
+	settingsJSON, err := json.Marshal(entity.Settings)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to serialize Codex catalog transport settings: %w", err)
+	}
+	signature := credentials.AccessToken + "\x00" + credentials.RefreshToken + "\x00" + credentials.ExpiresAt.String() + "\x00" + string(settingsJSON)
 	if cached, ok := svc.codexCatalogOutbounds.Load(entity.ID); ok {
 		entry, ok := cached.(codexCatalogOutboundEntry)
 		if ok && entry.signature == signature {
@@ -245,7 +251,9 @@ func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent
 
 func (svc *ChannelService) onTokenRefreshedDetached(ch *ent.Channel) func(context.Context, *oauth.OAuthCredentials) error {
 	return func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
-		ctx = authz.WithSystemBypass(context.WithoutCancel(ctx), "codex-catalog-refresh")
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), codexCatalogCredentialSaveTimeout)
+		defer cancel()
+		ctx = authz.WithSystemBypass(ctx, "codex-catalog-refresh")
 		return svc.refreshOAuthTokenWithClient(ctx, svc.db, ch, refreshed)
 	}
 }
