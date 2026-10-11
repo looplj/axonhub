@@ -383,8 +383,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 		identityChanged := false
+		nameDelta := ""
 		if streamEvent.Name != "" && streamEvent.Name != tc.Function.Name {
 			tc.Function.Name = streamEvent.Name
+			nameDelta = streamEvent.Name
 			identityChanged = true
 		}
 		if streamEvent.Namespace != "" && streamEvent.Namespace != tc.Function.Namespace {
@@ -423,17 +425,19 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 		toolCallIdx := s.state.toolCallIndex[callID]
+		// ID and type were already emitted with output_item.added. Chat clients
+		// concatenate string deltas, so only emit a name when it changes (e.g.
+		// when the upstream first supplies it in done), not with every argument
+		// suffix. Keep the namespace metadata for late-name normalization.
 		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
 				Delta: &llm.Message{
 					ToolCalls: []llm.ToolCall{
 						{
-							ID:    tc.ID,
-							Type:  tc.Type,
 							Index: toolCallIdx,
 							Function: llm.FunctionCall{
-								Name:      tc.Function.Name,
+								Name:      nameDelta,
 								Namespace: tc.Function.Namespace,
 								Arguments: missingArgs,
 							},
