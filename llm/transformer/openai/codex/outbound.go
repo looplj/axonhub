@@ -199,7 +199,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 
 	rawSessionID := ""
 	rawOriginator := ""
-	rawUserAgent := ""
 	rawTurnMetadata := ""
 
 	var rawHeaders http.Header
@@ -212,8 +211,11 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		}
 		// Remove underscore variant to prevent it from leaking upstream via MergeInboundRequest.
 		llmReq.RawRequest.Headers.Del(SessionHeader)
+		// The ChatGPT Codex backend does not consume client attribution headers,
+		// so drop them before MergeInboundRequest can forward the client's
+		// fingerprint to chatgpt.com.
+		ScrubClientFingerprintHeaders(llmReq.RawRequest.Headers)
 		rawOriginator = llmReq.RawRequest.Headers.Get("Originator")
-		rawUserAgent = llmReq.RawRequest.Headers.Get("User-Agent")
 		rawTurnMetadata = llmReq.RawRequest.Headers.Get(TurnMetadataHeader)
 
 		// Responses Lite selects a private Codex protocol mode. It is not
@@ -309,16 +311,19 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		hreq.Headers.Set("Accept", "text/event-stream")
 	}
 
+	// The transformer owns the outbound User-Agent. The inbound client UA must
+	// not be copied here: client-UA forwarding is owned solely by the
+	// orchestrator's user-agent pass-through middleware, which runs after this
+	// transformer and overwrites this default when the switch is enabled. When
+	// the switch is off the upstream sees this Codex-client-like fingerprint
+	// instead of the client's private identity.
 	hreq.Headers.Del("User-Agent")
+	hreq.Headers.Set("User-Agent", codexDefaultUserAgent)
 
 	if rawOriginator != "" {
 		hreq.Headers.Set("Originator", rawOriginator)
 	} else {
 		hreq.Headers.Set("Originator", AxonHubOriginator)
-	}
-
-	if rawUserAgent != "" {
-		hreq.Headers.Set("User-Agent", rawUserAgent)
 	}
 
 	for _, header := range PassthroughHeaders {

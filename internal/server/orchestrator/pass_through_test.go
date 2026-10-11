@@ -2164,6 +2164,29 @@ func TestApplyUserAgentPassThrough(t *testing.T) {
 			outboundUA:       "GitHubCopilotChat/0.26.7",
 			wantUAHeader:     "Client/1.0",
 		},
+		{
+			// Issue #2635: with the switch off the codex outbound transformer
+			// presents a codex-client-like default UA instead of copying the
+			// client's. That transformer-owned value must survive here, so the
+			// client UA never reaches the upstream. (The literal mirrors the
+			// unexported codexDefaultUserAgent in the codex transformer.)
+			name:             "disabled_preserves_codex_transformer_default_ua",
+			channelUASetting: nil,
+			globalUAEnabled:  false,
+			clientUA:         "ZCode/3.14.4 (darwin arm64)",
+			outboundUA:       "codex_cli_rs/0.159.0",
+			wantUAHeader:     "codex_cli_rs/0.159.0",
+		},
+		{
+			// Issue #2635: with the switch on the client UA overrides the codex
+			// transformer default, which is what makes the switch effective.
+			name:             "enabled_overrides_codex_transformer_default_ua",
+			channelUASetting: new(true),
+			globalUAEnabled:  false,
+			clientUA:         "ZCode/3.14.4 (darwin arm64)",
+			outboundUA:       "codex_cli_rs/0.159.0",
+			wantUAHeader:     "ZCode/3.14.4 (darwin arm64)",
+		},
 	}
 
 	for _, tt := range tests {

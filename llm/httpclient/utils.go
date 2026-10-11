@@ -214,10 +214,14 @@ var blockedHeaders = map[string]bool{
 	"X-Forwarded-Server": true,
 
 	// Browser-only / hop-by-hop-ish headers that should not be forwarded to upstream.
-	"Accept-Language":    true,
-	"Dnt":                true,
-	"Origin":             true,
-	"Referer":            true,
+	"Accept-Language": true,
+	"Dnt":             true,
+	"Origin":          true,
+	"Referer":         true,
+	// NOTE: Http-Referer is deliberately NOT blocked here. It is the header
+	// OpenRouter-style channels use for app attribution, so blocking it globally
+	// would silently disable that feature. Channels that must not leak client
+	// fingerprint headers (e.g. codex) scrub it themselves.
 	"Sec-Fetch-Dest":     true,
 	"Sec-Fetch-Mode":     true,
 	"Sec-Fetch-Site":     true,
