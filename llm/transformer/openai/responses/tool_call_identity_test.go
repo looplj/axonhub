@@ -15,6 +15,8 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai"
 )
 
+// TestResponsesStream_ChatCompletions_ToolIdentityEmittedOnce checks append-only
+// SDK reconstruction across argument and identity completion sequences.
 func TestResponsesStream_ChatCompletions_ToolIdentityEmittedOnce(t *testing.T) {
 	const arguments = `{"query":"alpha"}`
 	for _, tt := range []struct {
@@ -24,12 +26,20 @@ func TestResponsesStream_ChatCompletions_ToolIdentityEmittedOnce(t *testing.T) {
 		lateName      bool
 		lateNamespace bool
 		emptyDone     bool
+		finalize      string
 	}{
 		{name: "arguments_only_in_done"},
 		{name: "partial_arguments", delta: `{"query":`},
 		{name: "complete_arguments", delta: arguments},
 		{name: "empty_done", delta: arguments, emptyDone: true},
 		{name: "late_name", lateName: true},
+		{name: "late_namespace", namespace: "tools", lateNamespace: true},
+		{name: "late_namespace_after_arguments", namespace: "tools", lateNamespace: true, delta: arguments},
+		{name: "late_namespace_empty_done", namespace: "tools", lateNamespace: true, delta: arguments, emptyDone: true},
+		{name: "late_namespace_item_done", namespace: "tools", lateNamespace: true, delta: `{"query":`, finalize: "item"},
+		{name: "late_namespace_response_completed", namespace: "tools", lateNamespace: true, delta: `{"query":`, finalize: "response"},
+		{name: "terminal_without_final_items", delta: arguments, finalize: "no_items"},
+		{name: "incomplete_without_final_items", delta: arguments, finalize: "incomplete"},
 		{name: "namespaced_arguments_only_in_done", namespace: "tools"},
 		{name: "namespaced_late_name", namespace: "tools", lateName: true},
 		{name: "late_identity_after_arguments", namespace: "tools", delta: arguments, lateName: true, lateNamespace: true},
@@ -67,6 +77,7 @@ func TestResponsesStream_ChatCompletions_ToolIdentityEmittedOnce(t *testing.T) {
 						ItemID: lo.ToPtr(fmt.Sprintf("fc_%d", i)), OutputIndex: i, Delta: tt.delta})
 				}
 			}
+			var finalItems []Item
 			for i := 1; i >= 0; i-- {
 				finalArguments := arguments
 				if tt.emptyDone {
@@ -75,11 +86,27 @@ func TestResponsesStream_ChatCompletions_ToolIdentityEmittedOnce(t *testing.T) {
 				done := StreamEvent{Type: StreamEventTypeFunctionCallArgumentsDone,
 					ItemID: lo.ToPtr(fmt.Sprintf("fc_%d", i)), OutputIndex: i,
 					Name: fmt.Sprintf("search_%d", i), Namespace: tt.namespace, Arguments: finalArguments}
-				add(done)
-				add(done) // Repeated final events must not duplicate any field.
+				item := Item{ID: fmt.Sprintf("fc_%d", i), Type: "function_call",
+					CallID: "call_" + strings.Repeat(fmt.Sprint(i), 32), Name: done.Name,
+					Namespace: tt.namespace, Arguments: arguments}
+				finalItems = append(finalItems, item)
+				if tt.finalize == "" {
+					add(done)
+					add(done) // Repeated final events must not duplicate any field.
+				}
+				if tt.finalize == "item" {
+					add(StreamEvent{Type: StreamEventTypeOutputItemDone, OutputIndex: i, Item: &item})
+				}
 			}
-			add(StreamEvent{Type: StreamEventTypeResponseCompleted, Response: &Response{
-				ID: "resp_identity", Model: "test-model", Status: lo.ToPtr("completed"),
+			terminalType := StreamEventTypeResponseCompleted
+			if tt.finalize == "no_items" || tt.finalize == "incomplete" {
+				finalItems = nil
+			}
+			if tt.finalize == "incomplete" {
+				terminalType = StreamEventTypeResponseIncomplete
+			}
+			add(StreamEvent{Type: terminalType, Response: &Response{
+				ID: "resp_identity", Model: "test-model", Status: lo.ToPtr("completed"), Output: finalItems,
 			}})
 
 			outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
@@ -88,6 +115,31 @@ func TestResponsesStream_ChatCompletions_ToolIdentityEmittedOnce(t *testing.T) {
 			require.NoError(t, err)
 			responses, err := streams.All(unified)
 			require.NoError(t, err)
+			// The same unified chunks must still round-trip to native Responses
+			// calls with the local name and namespace kept separate.
+			native, err := NewInboundTransformer().TransformStream(t.Context(), streams.SliceStream(responses))
+			require.NoError(t, err)
+			nativeEvents, err := streams.All(native)
+			require.NoError(t, err)
+			addedItems := make(map[string]Item)
+			for _, event := range nativeEvents {
+				if string(event.Data) == "[DONE]" {
+					continue
+				}
+				var decoded StreamEvent
+				require.NoError(t, json.Unmarshal(event.Data, &decoded))
+				if decoded.Type == StreamEventTypeOutputItemAdded && decoded.Item != nil && decoded.Item.Type == "function_call" {
+					require.Equal(t, tt.namespace, decoded.Item.Namespace)
+					require.Contains(t, []string{"search_0", "search_1"}, decoded.Item.Name)
+					addedItems[decoded.Item.CallID] = *decoded.Item
+				}
+			}
+			require.Len(t, addedItems, 2)
+			for i := range 2 {
+				item := addedItems["call_"+strings.Repeat(fmt.Sprint(i), 32)]
+				require.Equal(t, fmt.Sprintf("search_%d", i), item.Name)
+				require.Equal(t, tt.namespace, item.Namespace)
+			}
 
 			// Namespace is internal to the unified stream, so check it before
 			// converting to the Chat Completions wire format.

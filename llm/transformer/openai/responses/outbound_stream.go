@@ -69,6 +69,11 @@ type outboundStreamState struct {
 	toolCalls     map[string]*llm.ToolCall // callID -> tool call
 	itemToCallID  map[string]string        // item.id -> call_id mapping
 	toolCallIndex map[string]int           // callID -> index in the output
+	// Calls without a complete identity are buffered until a final event. An
+	// absent namespace may still arrive later and cannot be prepended to a name
+	// already consumed by an append-only Chat Completions client.
+	pendingFunctionCalls  map[string]bool
+	pendingFunctionChunks map[string][]*llm.Response
 
 	// Reasoning signature tracking
 	pendingReasoningEncryptedContent map[string]*string
@@ -86,14 +91,84 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 			toolCalls:                        make(map[string]*llm.ToolCall),
 			itemToCallID:                     make(map[string]string),
 			toolCallIndex:                    make(map[string]int),
+			pendingFunctionCalls:             make(map[string]bool),
+			pendingFunctionChunks:            make(map[string][]*llm.Response),
 			pendingReasoningEncryptedContent: make(map[string]*string),
 			transformerMetadata:              make(map[string]any),
 		},
 	}
 }
 
+// finishPendingFunctionCall reconciles final item data when arguments.done was
+// omitted, without replaying calls whose identity has already been emitted.
+func (s *responsesOutboundStream) finishPendingFunctionCall(resp *llm.Response, item Item) error {
+	callID := item.CallID
+	if callID == "" {
+		callID = s.state.itemToCallID[item.ID]
+	}
+	if !s.state.pendingFunctionCalls[callID] {
+		return nil
+	}
+	tc := s.state.toolCalls[callID]
+	if item.Name != "" {
+		tc.Function.Name = item.Name
+	}
+	if item.Namespace != "" {
+		tc.Function.Namespace = item.Namespace
+	}
+	missingArgs := ""
+	if item.Arguments != "" {
+		if tc.Function.Arguments != "" && !strings.HasPrefix(item.Arguments, tc.Function.Arguments) &&
+			!equalJSONValues(tc.Function.Arguments, item.Arguments) {
+			return fmt.Errorf("function call arguments mismatch for call_id %q", callID)
+		}
+		if strings.HasPrefix(item.Arguments, tc.Function.Arguments) {
+			missingArgs = strings.TrimPrefix(item.Arguments, tc.Function.Arguments)
+		}
+		tc.Function.Arguments = item.Arguments
+	}
+	s.emitPendingFunctionCall(callID)
+	if missingArgs != "" {
+		chunk := *resp
+		chunk.Choices = []llm.Choice{{Index: 0, Delta: &llm.Message{ToolCalls: []llm.ToolCall{{
+			Index: s.state.toolCallIndex[callID], Function: llm.FunctionCall{Arguments: missingArgs},
+		}}}}}
+		s.enqueue(&chunk)
+	}
+	return nil
+}
+
+// emitPendingFunctionCall replays the buffered chunks with the resolved identity
+// first, preserving argument chunk boundaries and avoiding duplicate strings.
+func (s *responsesOutboundStream) emitPendingFunctionCall(callID string) {
+	tc := s.state.toolCalls[callID]
+	chunks := s.state.pendingFunctionChunks[callID]
+	if len(chunks) > 0 {
+		first := &chunks[0].Choices[0].Delta.ToolCalls[0]
+		first.Function.Name = tc.Function.Name
+		first.Function.Namespace = tc.Function.Namespace
+		for _, chunk := range chunks {
+			s.enqueue(chunk)
+		}
+	}
+	delete(s.state.pendingFunctionCalls, callID)
+	delete(s.state.pendingFunctionChunks, callID)
+}
+
 func (s *responsesOutboundStream) enqueue(resp *llm.Response) {
 	s.eventQueue = append(s.eventQueue, resp)
+}
+
+// flushPendingFunctionCalls retains partial output on terminal events and stream
+// errors, including the meaningful-output signal used to prevent unsafe retries.
+func (s *responsesOutboundStream) flushPendingFunctionCalls() {
+	for index := 0; index < len(s.state.toolCalls); index++ {
+		for callID := range s.state.pendingFunctionCalls {
+			if s.state.toolCallIndex[callID] == index {
+				s.emitPendingFunctionCall(callID)
+			}
+		}
+	}
 }
 
 func (s *responsesOutboundStream) Next() bool {
@@ -105,6 +180,9 @@ func (s *responsesOutboundStream) Next() bool {
 	// Clear the queue and reset index for new events
 	s.eventQueue = nil
 	s.queueIndex = 0
+	if s.err != nil {
+		return false
+	}
 
 	// The terminal event contains the final outcome and any usage. Once its
 	// queued chunks are drained, finish without reading a later transport error.
@@ -119,10 +197,12 @@ func (s *responsesOutboundStream) Next() bool {
 
 	// Try to get the next chunk from source
 	if !s.stream.Next() {
-		if s.err == nil && s.stream.Err() == nil {
+		s.err = s.stream.Err()
+		if s.err == nil {
 			s.err = ErrStreamIncomplete
 		}
-		return false
+		s.flushPendingFunctionCalls()
+		return len(s.eventQueue) > 0
 	}
 
 	event := s.stream.Current()
@@ -130,7 +210,8 @@ func (s *responsesOutboundStream) Next() bool {
 	err := s.transformStreamChunk(event)
 	if err != nil {
 		s.err = err
-		return false
+		s.flushPendingFunctionCalls()
+		return len(s.eventQueue) > 0
 	}
 
 	// Continue to the next event if no events were enqueued
@@ -276,6 +357,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			// Map item.id to call_id for later lookup
 			s.state.itemToCallID[item.ID] = item.CallID
 			s.state.toolCallIndex[item.CallID] = toolCallIdx
+			if item.Name == "" || item.Namespace == "" {
+				s.state.pendingFunctionCalls[item.CallID] = true
+			}
 
 			resp.Choices = []llm.Choice{
 				{
@@ -382,7 +466,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			return nil // Intentionally skip an unknown tool call.
 		}
 
-		identityChanged := false
+		identityChanged := s.state.pendingFunctionCalls[callID]
 		nameDelta := ""
 		if streamEvent.Name != "" && streamEvent.Name != tc.Function.Name {
 			tc.Function.Name = streamEvent.Name
@@ -425,6 +509,13 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 		toolCallIdx := s.state.toolCallIndex[callID]
+		if s.state.pendingFunctionCalls[callID] {
+			s.emitPendingFunctionCall(callID)
+			if missingArgs == "" {
+				return nil
+			}
+			nameDelta = ""
+		}
 		// ID and type were already emitted with output_item.added. Chat clients
 		// concatenate string deltas, so only emit a name when it changes (e.g.
 		// when the upstream first supplies it in done), not with every argument
@@ -551,6 +642,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	case StreamEventTypeOutputItemDone:
 		if streamEvent.Item == nil {
 			return nil // Intentionally skip this event
+		}
+		if streamEvent.Item.Type == "function_call" {
+			return s.finishPendingFunctionCall(resp, *streamEvent.Item)
 		}
 		if streamEvent.Item.Type == "custom_tool_call" {
 			callID := streamEvent.Item.CallID
@@ -807,6 +901,19 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return nil // Intentionally skip this event
 	}
 
+	if s.responseCompleted {
+		if streamEvent.Response != nil {
+			for _, item := range streamEvent.Response.Output {
+				if item.Type == "function_call" {
+					if err := s.finishPendingFunctionCall(resp, item); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		s.flushPendingFunctionCalls()
+	}
+
 	if s.responseCompleted && streamEvent.Response != nil &&
 		(streamEvent.Response.Error != nil || streamEvent.Response.IncompleteDetails != nil) {
 		if resp.TransformerMetadata == nil {
@@ -818,6 +925,15 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 	}
 
+	if len(resp.Choices) == 1 && resp.Choices[0].Delta != nil && len(resp.Choices[0].Delta.ToolCalls) == 1 {
+		call := resp.Choices[0].Delta.ToolCalls[0]
+		for callID := range s.state.pendingFunctionCalls {
+			if s.state.toolCallIndex[callID] == call.Index {
+				s.state.pendingFunctionChunks[callID] = append(s.state.pendingFunctionChunks[callID], resp)
+				return nil
+			}
+		}
+	}
 	s.enqueue(resp)
 
 	// Preserve usage on every terminal outcome, after its finish_reason chunk.
