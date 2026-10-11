@@ -173,7 +173,7 @@ func (svc *ChannelService) fetchCodexCatalog(ctx context.Context, channelID int,
 
 type codexCatalogOutboundEntry struct {
 	signature string
-	outbound  *codex.OutboundTransformer
+	provider  *oauth.TokenProvider
 }
 
 const codexCatalogCredentialSaveTimeout = 5 * time.Second
@@ -196,15 +196,13 @@ func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent
 	if err != nil {
 		return nil, nil, err
 	}
-	settingsJSON, err := json.Marshal(entity.Settings)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to serialize Codex catalog transport settings: %w", err)
-	}
-	signature := credentials.AccessToken + "\x00" + credentials.RefreshToken + "\x00" + credentials.ExpiresAt.String() + "\x00" + string(settingsJSON)
+	signature := credentials.AccessToken + "\x00" + credentials.RefreshToken + "\x00" + credentials.ClientID
 	if cached, ok := svc.codexCatalogOutbounds.Load(entity.ID); ok {
 		entry, ok := cached.(codexCatalogOutboundEntry)
 		if ok && entry.signature == signature {
-			return entry.outbound, httpClient, nil
+			entry.provider.SetHTTPClient(httpClient)
+			outbound, err := svc.newCodexCatalogOutbound(entity, entry.provider)
+			return outbound, httpClient, err
 		}
 	}
 
@@ -212,7 +210,8 @@ func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent
 		if cached, ok := svc.codexCatalogOutbounds.Load(entity.ID); ok {
 			entry, ok := cached.(codexCatalogOutboundEntry)
 			if ok && entry.signature == signature {
-				return entry.outbound, nil
+				entry.provider.SetHTTPClient(httpClient)
+				return svc.newCodexCatalogOutbound(entity, entry.provider)
 			}
 		}
 		outbound, err := svc.buildCodexOutboundWithRefresh(
@@ -231,7 +230,11 @@ func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent
 		if !ok {
 			return nil, errors.New("codex catalog provider is unavailable")
 		}
-		svc.codexCatalogOutbounds.Store(entity.ID, codexCatalogOutboundEntry{signature: signature, outbound: codexOutbound})
+		provider, ok := codexOutbound.TokenProvider().(*oauth.TokenProvider)
+		if !ok {
+			return nil, errors.New("codex catalog OAuth provider is unavailable")
+		}
+		svc.codexCatalogOutbounds.Store(entity.ID, codexCatalogOutboundEntry{signature: signature, provider: provider})
 		return codexOutbound, nil
 	})
 	select {
@@ -247,6 +250,16 @@ func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent
 		}
 		return outbound, httpClient, nil
 	}
+}
+
+func (svc *ChannelService) newCodexCatalogOutbound(entity *ent.Channel, provider *oauth.TokenProvider) (*codex.OutboundTransformer, error) {
+	outbound, err := codex.NewOutboundTransformer(codex.Params{
+		TokenProvider:  provider,
+		BaseURL:        entity.BaseURL,
+		Transport:      primaryEndpointTransport(entity, llm.APIFormatOpenAIResponse.String()),
+		ImageMainModel: strings.TrimSpace(entity.DefaultTestModel),
+	})
+	return outbound, err
 }
 
 func (svc *ChannelService) onTokenRefreshedDetached(ch *ent.Channel) func(context.Context, *oauth.OAuthCredentials) error {

@@ -92,9 +92,25 @@ func NewTokenProvider(params TokenProviderParams) *TokenProvider {
 	}
 }
 
+// SetHTTPClient updates the transport used by future token requests.
+// An in-flight request keeps the client it already started with.
+func (p *TokenProvider) SetHTTPClient(client *httpclient.HttpClient) {
+	p.mu.Lock()
+	p.httpClient = client
+	p.mu.Unlock()
+}
+
+func (p *TokenProvider) getHTTPClient() *httpclient.HttpClient {
+	p.mu.RLock()
+	client := p.httpClient
+	p.mu.RUnlock()
+	return client
+}
+
 // Exchange performs OAuth2 authorization_code exchange and returns credentials.
 func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*OAuthCredentials, error) {
-	if p.httpClient == nil {
+	httpClient := p.getHTTPClient()
+	if httpClient == nil {
 		return nil, errors.New("http client is nil")
 	}
 
@@ -123,7 +139,7 @@ func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*O
 		return nil, fmt.Errorf("build exchange request: %w", err)
 	}
 
-	resp, err := p.httpClient.Do(ctx, req)
+	resp, err := httpClient.Do(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +486,8 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 		return nil, errors.New("token URL is empty")
 	}
 
-	if p.httpClient == nil {
+	httpClient := p.getHTTPClient()
+	if httpClient == nil {
 		return nil, errors.New("http client is nil")
 	}
 
@@ -479,7 +496,7 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 		return nil, fmt.Errorf("build refresh request: %w", err)
 	}
 
-	resp, err := p.httpClient.Do(ctx, req)
+	resp, err := httpClient.Do(ctx, req)
 	if err != nil {
 		return nil, wrapHttpError(err)
 	}
