@@ -178,3 +178,10 @@ func TestCodexRoutes_UnknownPaths404(t *testing.T) {
 		require.Contains(t, result.Header().Get("Content-Type"), "application/json")
 	}
 }
+
+func TestCodexRoutes_ImageGenerationIsRegistered(t *testing.T) {
+	h := newCodexRouteHarness(t)
+	require.NoError(t, h.system.SetCodexCompatibilitySettings(h.ctx, biz.CodexCompatibilitySettings{Enabled: true, ChannelID: &h.source.ID}))
+	result := h.request(http.MethodPost, "/codex/images/generations", h.key.Key)
+	require.NotEqual(t, http.StatusNotFound, result.Code)
+}
