@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -1526,25 +1527,48 @@ func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *
 	}
 
 	updated.OAuth = refreshed
+	expected, err := json.Marshal(ch.Credentials)
+	if err != nil {
+		return fmt.Errorf("failed to encode expected channel credentials: %w", err)
+	}
 
-	saved, err := db.Channel.UpdateOneID(ch.ID).Where(channel.UpdatedAt(ch.UpdatedAt)).SetCredentials(updated).Save(ctx)
-	if ent.IsNotFound(err) {
-		current, reloadErr := db.Channel.Get(ctx, ch.ID)
-		if reloadErr != nil {
-			return fmt.Errorf("failed to reconcile channel credentials after concurrent update: %w", reloadErr)
+	for {
+		saved, err := db.Channel.UpdateOneID(ch.ID).Where(channel.UpdatedAt(ch.UpdatedAt)).SetCredentials(updated).Save(ctx)
+		if ent.IsNotFound(err) {
+			current, reloadErr := db.Channel.Get(ctx, ch.ID)
+			if reloadErr != nil {
+				return fmt.Errorf("failed to reconcile channel credentials after concurrent update: %w", reloadErr)
+			}
+			actual, encodeErr := json.Marshal(current.Credentials)
+			if encodeErr != nil {
+				return fmt.Errorf("failed to encode current channel credentials: %w", encodeErr)
+			}
+			unchanged := current.Type == ch.Type && string(actual) == string(expected)
+			ch.Credentials = current.Credentials
+			ch.UpdatedAt = current.UpdatedAt
+			if unchanged {
+				// A metadata-only update must not discard a rotated refresh token.
+				continue
+			}
+
+			var winner *oauth.OAuthCredentials
+			if current.Type == ch.Type && current.Credentials.IsOAuth() {
+				winner, reloadErr = current.Credentials.ResolveOAuthCredentials()
+				if reloadErr != nil {
+					return &oauth.CredentialConflictError{}
+				}
+			}
+			return &oauth.CredentialConflictError{Credentials: winner}
 		}
-		ch.Credentials = current.Credentials
-		ch.UpdatedAt = current.UpdatedAt
+		if err != nil {
+			return err
+		}
+
+		ch.Credentials = saved.Credentials
+		ch.UpdatedAt = saved.UpdatedAt
+
 		return nil
 	}
-	if err != nil {
-		return err
-	}
-
-	ch.Credentials = saved.Credentials
-	ch.UpdatedAt = saved.UpdatedAt
-
-	return nil
 }
 
 // GetModelEntries returns all models this channel can handle, RequestModel -> Entry

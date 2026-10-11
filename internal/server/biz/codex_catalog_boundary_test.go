@@ -110,11 +110,69 @@ func TestCodexCatalog_DoesNotOverwriteRotatedCredentials(t *testing.T) {
 		RefreshToken: "refreshed-refresh-token",
 		ExpiresAt:    time.Now().Add(time.Hour),
 	})
-	require.NoError(t, err)
+	var conflict *oauth.CredentialConflictError
+	require.ErrorAs(t, err, &conflict)
+	require.Equal(t, "admin-access-token", conflict.Credentials.AccessToken)
+	require.Equal(t, "admin-refresh-token", conflict.Credentials.RefreshToken)
 	stored := db.Channel.GetX(ctx, source.ID)
 	require.Equal(t, "admin-access-token", stored.Credentials.OAuth.AccessToken)
 	require.Equal(t, "admin-refresh-token", stored.Credentials.OAuth.RefreshToken)
 	require.Equal(t, stored.UpdatedAt, source.UpdatedAt)
+}
+
+func TestCodexCatalog_CredentialConflictReconcilesLegacyOAuthJSON(t *testing.T) {
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer db.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	legacy, err := (&oauth.OAuthCredentials{
+		AccessToken:  "admin-access-token",
+		RefreshToken: "admin-refresh-token",
+		ExpiresAt:    time.Now().Add(time.Hour),
+	}).ToJSON()
+	require.NoError(t, err)
+	source := db.Channel.Create().SetName("catalog").SetType(channel.TypeCodex).SetBaseURL("https://example.com/codex").SetDefaultTestModel("test").SetSupportedModels([]string{"test"}).SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{
+		AccessToken:  "source-access-token",
+		RefreshToken: "source-refresh-token",
+		ExpiresAt:    time.Now().Add(-time.Hour),
+	}}).SaveX(ctx)
+	admin := db.Channel.UpdateOneID(source.ID).SetCredentials(objects.ChannelCredentials{APIKey: legacy}).SaveX(ctx)
+
+	svc := NewChannelServiceForTest(db)
+	defer svc.Stop()
+	err = svc.refreshOAuthTokenWithClient(ctx, db, source, &oauth.OAuthCredentials{
+		AccessToken:  "losing-access-token",
+		RefreshToken: "losing-refresh-token",
+		ExpiresAt:    time.Now().Add(time.Hour),
+	})
+	var conflict *oauth.CredentialConflictError
+	require.ErrorAs(t, err, &conflict)
+	require.Equal(t, "admin-access-token", conflict.Credentials.AccessToken)
+	require.Equal(t, "admin-refresh-token", conflict.Credentials.RefreshToken)
+	require.Equal(t, admin.UpdatedAt, source.UpdatedAt)
+}
+
+func TestCodexCatalog_CredentialConflictWithAPIKeySwitchClearsOAuthWinner(t *testing.T) {
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer db.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	source := db.Channel.Create().SetName("catalog").SetType(channel.TypeCodex).SetBaseURL("https://example.com/codex").SetDefaultTestModel("test").SetSupportedModels([]string{"test"}).SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{
+		AccessToken:  "source-access-token",
+		RefreshToken: "source-refresh-token",
+		ExpiresAt:    time.Now().Add(-time.Hour),
+	}}).SaveX(ctx)
+	admin := db.Channel.UpdateOneID(source.ID).SetCredentials(objects.ChannelCredentials{APIKey: "admin-api-key"}).SaveX(ctx)
+
+	svc := NewChannelServiceForTest(db)
+	defer svc.Stop()
+	err := svc.refreshOAuthTokenWithClient(ctx, db, source, &oauth.OAuthCredentials{
+		AccessToken:  "losing-access-token",
+		RefreshToken: "losing-refresh-token",
+		ExpiresAt:    time.Now().Add(time.Hour),
+	})
+	var conflict *oauth.CredentialConflictError
+	require.ErrorAs(t, err, &conflict)
+	require.Nil(t, conflict.Credentials)
+	require.Equal(t, admin.UpdatedAt, source.UpdatedAt)
 }
 
 func TestCodexCatalog_DefaultClientRedirectGap(t *testing.T) {

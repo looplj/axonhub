@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -263,10 +264,14 @@ func (svc *ChannelService) newCodexCatalogOutbound(entity *ent.Channel, provider
 }
 
 func (svc *ChannelService) onTokenRefreshedDetached(ch *ent.Channel) func(context.Context, *oauth.OAuthCredentials) error {
+	snapshot := *ch
+	var mu sync.Mutex
 	return func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
+		mu.Lock()
+		defer mu.Unlock()
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), codexCatalogCredentialSaveTimeout)
 		defer cancel()
 		ctx = authz.WithSystemBypass(ctx, "codex-catalog-refresh")
-		return svc.refreshOAuthTokenWithClient(ctx, svc.db, ch, refreshed)
+		return svc.refreshOAuthTokenWithClient(ctx, svc.db, &snapshot, refreshed)
 	}
 }

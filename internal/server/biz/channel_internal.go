@@ -3,6 +3,7 @@ package biz
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -64,9 +65,13 @@ func (svc *ChannelService) onCacheRefreshed(ctx context.Context, current []*Chan
 }
 
 func (svc *ChannelService) onTokenRefreshed(ch *ent.Channel) func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
+	snapshot := *ch
+	var mu sync.Mutex
 	return func(ctx context.Context, refreshed *oauth.OAuthCredentials) error {
+		mu.Lock()
+		defer mu.Unlock()
 		ctx = authz.WithSystemBypass(ctx, "channel-refresh-cache")
-		return svc.refreshOAuthToken(ctx, ch, refreshed)
+		return svc.refreshOAuthToken(ctx, &snapshot, refreshed)
 	}
 }
 
