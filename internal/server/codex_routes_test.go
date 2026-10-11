@@ -185,3 +185,10 @@ func TestCodexRoutes_ImageGenerationIsRegistered(t *testing.T) {
 	result := h.request(http.MethodPost, "/codex/images/generations", h.key.Key)
 	require.NotEqual(t, http.StatusNotFound, result.Code)
 }
+
+func TestCodexRoutes_ImageEditIsRegistered(t *testing.T) {
+	h := newCodexRouteHarness(t)
+	require.NoError(t, h.system.SetCodexCompatibilitySettings(h.ctx, biz.CodexCompatibilitySettings{Enabled: true, ChannelID: &h.source.ID}))
+	result := h.request(http.MethodPost, "/codex/images/edits", h.key.Key)
+	require.NotEqual(t, http.StatusNotFound, result.Code)
+}
