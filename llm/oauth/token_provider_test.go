@@ -282,11 +282,6 @@ func TestTokenProviderGetUsesPersistedCredentialsAfterConflict(t *testing.T) {
 
 	got, err := provider.Get(context.Background())
 	require.NoError(t, err)
-	require.Same(t, winner, got)
-	require.Equal(t, int32(1), calls.Load())
-
-	got, err = provider.Get(context.Background())
-	require.NoError(t, err)
 	require.Equal(t, "winner-refreshed-access-token", got.AccessToken)
 	require.Equal(t, "winner-refreshed-refresh-token", got.RefreshToken)
 	require.Equal(t, int32(2), calls.Load())
@@ -324,7 +319,7 @@ func TestTokenProviderEnsureFreshUsesPersistedCredentialsAfterConflict(t *testin
 	winner := &OAuthCredentials{
 		AccessToken:  "winner-access-token",
 		RefreshToken: "winner-refresh-token",
-		ExpiresAt:    time.Now().Add(time.Hour),
+		ExpiresAt:    time.Now().Add(-time.Hour),
 	}
 	provider := NewTokenProvider(TokenProviderParams{
 		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()),
@@ -345,14 +340,75 @@ func TestTokenProviderEnsureFreshUsesPersistedCredentialsAfterConflict(t *testin
 
 	got, err := provider.EnsureFresh(context.Background(), time.Minute)
 	require.NoError(t, err)
-	require.Same(t, winner, got)
-	require.Equal(t, int32(1), calls.Load())
-
-	got, err = provider.EnsureFresh(context.Background(), 2*time.Hour)
-	require.NoError(t, err)
 	require.Equal(t, "winner-refreshed-access-token", got.AccessToken)
 	require.Equal(t, "winner-refreshed-refresh-token", got.RefreshToken)
 	require.Equal(t, int32(2), calls.Load())
+}
+
+func TestTokenProviderEnsureFreshDoesNotRetryFreshShortLivedToken(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if err := writeTokenResponse(w, "short-lived", "next-refresh", 120); err != nil {
+			t.Error(err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	provider := NewTokenProvider(TokenProviderParams{
+		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()),
+		OAuthUrls:  OAuthUrls{TokenUrl: server.URL + "/token"},
+		Credentials: &OAuthCredentials{
+			AccessToken:  "expired",
+			RefreshToken: "source-refresh",
+			ExpiresAt:    time.Now().Add(-time.Hour),
+		},
+	})
+
+	got, err := provider.EnsureFresh(context.Background(), 5*time.Minute)
+	require.NoError(t, err)
+	require.Equal(t, "short-lived", got.AccessToken)
+	require.Equal(t, int32(1), calls.Load())
+}
+
+func TestTokenProviderGetStopsBeforeRetryWhenContextCanceled(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if err := writeTokenResponse(w, "losing", "losing-refresh", 3600); err != nil {
+			t.Error(err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	winner := &OAuthCredentials{
+		AccessToken:  "winner",
+		RefreshToken: "winner-refresh",
+		ExpiresAt:    time.Now().Add(-time.Hour),
+	}
+	provider := NewTokenProvider(TokenProviderParams{
+		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()),
+		OAuthUrls:  OAuthUrls{TokenUrl: server.URL + "/token"},
+		Credentials: &OAuthCredentials{
+			AccessToken:  "source",
+			RefreshToken: "source-refresh",
+			ExpiresAt:    time.Now().Add(-time.Hour),
+		},
+		OnRefreshed: func(context.Context, *OAuthCredentials) error {
+			cancel()
+			return &CredentialConflictError{Credentials: winner}
+		},
+	})
+
+	_, err := provider.Get(ctx)
+	require.ErrorIs(t, err, context.Canceled)
+	require.Equal(t, int32(1), calls.Load())
 }
 
 func TestTokenProviderConflictWithNoOAuthCredentialsFailsClosed(t *testing.T) {
