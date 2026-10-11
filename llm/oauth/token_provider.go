@@ -52,6 +52,17 @@ type TokenProvider struct {
 	autoCancel context.CancelFunc
 }
 
+// CredentialConflictError reports that persistence found newer channel credentials.
+// Credentials is the winner; nil means the channel is no longer OAuth and the
+// refreshing provider must retire its automatic refresh loop.
+type CredentialConflictError struct {
+	Credentials *OAuthCredentials
+}
+
+func (e *CredentialConflictError) Error() string {
+	return "OAuth credentials changed while refreshing"
+}
+
 type TokenProviderParams struct {
 	Credentials *OAuthCredentials
 	// HTTPClient should be pre-configured with proxy settings if needed
@@ -197,14 +208,23 @@ func (p *TokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
 			return nil, err
 		}
 
+		if onRefreshed != nil {
+			if err := onRefreshed(ctx, fresh); err != nil {
+				var conflict *CredentialConflictError
+				if errors.As(err, &conflict) {
+					fresh = conflict.Credentials
+				} else {
+					slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+				}
+			}
+		}
+
 		p.mu.Lock()
 		p.creds = fresh
 		p.mu.Unlock()
-
-		if onRefreshed != nil {
-			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
-			}
+		if fresh == nil {
+			p.StopAutoRefresh()
+			return nil, errors.New("credentials is nil")
 		}
 
 		return fresh, nil
@@ -271,14 +291,23 @@ func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Dura
 			return nil, err
 		}
 
+		if onRefreshed != nil {
+			if err := onRefreshed(ctx, fresh); err != nil {
+				var conflict *CredentialConflictError
+				if errors.As(err, &conflict) {
+					fresh = conflict.Credentials
+				} else {
+					slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+				}
+			}
+		}
+
 		p.mu.Lock()
 		p.creds = fresh
 		p.mu.Unlock()
-
-		if onRefreshed != nil {
-			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
-			}
+		if fresh == nil {
+			p.StopAutoRefresh()
+			return nil, errors.New("credentials is nil")
 		}
 
 		return fresh, nil
