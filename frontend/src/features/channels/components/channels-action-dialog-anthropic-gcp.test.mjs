@@ -17,7 +17,11 @@ const schemaSource = readFileSync(new URL('../data/schema.ts', import.meta.url),
 // Confirm the dialog still parses as TSX, so a syntax slip cannot masquerade as a
 // passing wiring assertion.
 const ast = ts.createSourceFile('channels-action-dialog.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-assert.ok(ast.statements.length > 0, 'channels-action-dialog.tsx must parse');
+assert.deepEqual(
+  ast.parseDiagnostics.map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n')),
+  [],
+  'channels-action-dialog.tsx must parse without diagnostics'
+);
 
 const enLocale = JSON.parse(readFileSync(new URL('../../../locales/en/channels.json', import.meta.url), 'utf8'));
 const zhLocale = JSON.parse(readFileSync(new URL('../../../locales/zh-CN/channels.json', import.meta.url), 'utf8'));
@@ -104,11 +108,52 @@ test('the two anthropic vertex/bedrock variants stay mutually exclusive', () => 
 // not need GCP credentials, so the gcp fields must stay scoped to anthropic_gcp.
 // This guards that ruling against a well-meaning "unify the vertex types" change.
 test('gcp credential fields are not offered for gemini_vertex', () => {
-  const gcpBlock = source.slice(source.indexOf("name='credentials.gcp.region'"));
-  const gate = gcpBlock.slice(0, gcpBlock.indexOf('<FormField'));
-  assert.ok(
-    source.includes("selectedType === 'anthropic_gcp'"),
-    'the gcp fields must be gated on anthropic_gcp'
-  );
-  assert.ok(!gate.includes('gemini_vertex'), 'gemini_vertex must keep using an API key, not gcp credentials');
+  for (const field of requiredGcpFields) {
+    const fieldIdx = source.indexOf(`name='credentials.gcp.${field}'`);
+    assert.ok(fieldIdx > 0, `credentials.gcp.${field} must have a FormField`);
+    // Inspect the actual enclosing JSX condition: the `{ ... && (` gate that wraps
+    // the field, not the text between fields (which never contains the gate).
+    const gateIdx = source.lastIndexOf('&& (', fieldIdx);
+    assert.ok(gateIdx > 0, `credentials.gcp.${field} must sit inside a conditional render`);
+    const condition = source.slice(source.lastIndexOf('{', gateIdx) + 1, gateIdx);
+    assert.match(
+      condition,
+      /selectedType === 'anthropic_gcp'/,
+      `credentials.gcp.${field} must be gated on selectedType === 'anthropic_gcp'`
+    );
+    assert.ok(
+      !condition.includes('gemini_vertex'),
+      'gemini_vertex must keep using an API key, not gcp credentials'
+    );
+  }
+});
+
+// greptile P1 on #2644: the anthropic/messages variants were gated on the API
+// format alone, so a variant checkbox left over from a previous provider leaked
+// across a provider switch whose format list also contains anthropic/messages
+// (anthropic -> moonshot keeps the format, so the format-change reset never
+// fires) and the dialog submitted e.g. a Moonshot form as an anthropic_gcp
+// channel. Each variant must be gated on the provider that owns it.
+test('derivedChannelType gates each anthropic/messages variant on its owning provider', () => {
+  const derived = source.slice(source.indexOf('const derivedChannelType'), source.indexOf('const formSchema'));
+  for (const [provider, flag, type] of [
+    ['anthropic', 'useAnthropicAws', 'anthropic_aws'],
+    ['anthropic', 'useAnthropicGcp', 'anthropic_gcp'],
+    ['moonshot', 'useKimiCoding', 'moonshot_coding'],
+  ]) {
+    assert.match(
+      derived,
+      new RegExp(`selectedProvider === '${provider}' && ${flag}\\) return '${type}'`),
+      `${flag} must only yield ${type} while the ${provider} provider is selected`
+    );
+  }
+});
+
+test('switching providers clears the variant checkboxes owned by the previous provider', () => {
+  const handler = source.slice(source.indexOf('const handleProviderChange'), source.indexOf('const handleApiFormatChange'));
+  const leaveAnthropic = handler.slice(handler.indexOf("provider !== 'anthropic'"), handler.indexOf("provider !== 'moonshot'"));
+  assert.match(leaveAnthropic, /setUseAnthropicAws\(false\)/, 'leaving anthropic must clear the AWS Bedrock variant');
+  assert.match(leaveAnthropic, /setUseAnthropicGcp\(false\)/, 'leaving anthropic must clear the GCP variant');
+  const leaveMoonshot = handler.slice(handler.indexOf("provider !== 'moonshot'"));
+  assert.match(leaveMoonshot, /setUseKimiCoding\(false\)/, 'leaving moonshot must clear the Kimi coding variant');
 });

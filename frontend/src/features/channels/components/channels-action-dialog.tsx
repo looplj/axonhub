@@ -716,9 +716,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
     // If anthropic/messages is selected, check which variant is selected
     if (selectedApiFormat === 'anthropic/messages') {
-      if (useAnthropicAws) return 'anthropic_aws';
-      if (useAnthropicGcp) return 'anthropic_gcp';
-      if (useKimiCoding) return 'moonshot_coding';
+      if (selectedProvider === 'anthropic' && useAnthropicAws) return 'anthropic_aws';
+      if (selectedProvider === 'anthropic' && useAnthropicGcp) return 'anthropic_gcp';
+      if (selectedProvider === 'moonshot' && useKimiCoding) return 'moonshot_coding';
     }
 
     return getChannelTypeForApiFormat(selectedProvider, selectedApiFormat) || 'openai';
@@ -905,6 +905,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
       if (provider !== 'anthropic') {
         setUseAnthropicAws(false);
+        setUseAnthropicGcp(false);
       }
       if (provider !== 'moonshot') {
         setUseKimiCoding(false);
