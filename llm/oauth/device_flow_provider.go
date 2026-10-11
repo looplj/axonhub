@@ -356,14 +356,21 @@ func (p *DeviceFlowProvider) getAccessTokenWithRefresh(ctx context.Context) (str
 			return nil, err
 		}
 
-		p.mu.Lock()
-		p.creds = fresh
-		p.mu.Unlock()
-
 		if onRefreshed != nil {
 			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+				var conflict *CredentialConflictError
+				if errors.As(err, &conflict) {
+					fresh = conflict.Credentials
+				} else {
+					slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+				}
 			}
+		}
+
+		p.UpdateCredentials(fresh)
+		if fresh == nil {
+			p.StopAutoRefresh()
+			return nil, errors.New("credentials is nil")
 		}
 
 		return fresh.AccessToken, nil
