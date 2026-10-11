@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
@@ -26,9 +27,9 @@ func setupCodexResponsesUpstream(t *testing.T, h *codexRouteHarness) *atomic.Int
 	calls := new(atomic.Int32)
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		require.Equal(t, "Bearer upstream", r.Header.Get("Authorization"))
-		require.Equal(t, "compaction_trigger", gjson.GetBytes(body, "input.0.type").String())
+		assert.NoError(t, err)
+		assert.Equal(t, "Bearer upstream", r.Header.Get("Authorization"))
+		assert.Equal(t, "compaction_trigger", gjson.GetBytes(body, "input.0.type").String())
 		calls.Add(1)
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = io.WriteString(w, codexFixtureEvents)
