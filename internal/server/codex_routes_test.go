@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -136,6 +137,37 @@ func TestCodexRoutes_WhoamiStableID(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 	require.Equal(t, first["chatgpt_user_id"], after["chatgpt_user_id"])
 	require.Equal(t, first["chatgpt_account_id"], after["chatgpt_account_id"])
+}
+
+func TestCodexRoutes_AccountsCheckUsesWhoamiIdentity(t *testing.T) {
+	h := newCodexRouteHarness(t)
+	require.NoError(t, h.system.SetCodexCompatibilitySettings(h.ctx, biz.CodexCompatibilitySettings{Enabled: true, ChannelID: &h.source.ID}))
+	result := h.request(http.MethodGet, "/codex/api/codex/accounts/check", h.key.Key)
+	require.Equal(t, http.StatusOK, result.Code)
+	var response struct {
+		Accounts []struct {
+			ID                     string `json:"id"`
+			PlanType               string `json:"plan_type"`
+			WorkspaceBackendOrigin string `json:"workspace_backend_origin"`
+			AccountRoutingOverride string `json:"account_routing_override"`
+			Name                   string `json:"name"`
+			Structure              string `json:"structure"`
+		} `json:"accounts"`
+		AccountOrdering  []string `json:"account_ordering"`
+		DefaultAccountID string   `json:"default_account_id"`
+	}
+	require.NoError(t, json.Unmarshal(result.Body.Bytes(), &response))
+	require.Len(t, response.Accounts, 1)
+	account := response.Accounts[0]
+	require.Equal(t, "axonhub-key-"+strconv.Itoa(h.key.ID), account.ID)
+	require.Equal(t, "promax", account.PlanType)
+	require.Equal(t, "NO_CONSTRAINT", account.WorkspaceBackendOrigin)
+	require.Equal(t, "NO_CONSTRAINT", account.AccountRoutingOverride)
+	require.Equal(t, "display name", account.Name)
+	require.Equal(t, "personal", account.Structure)
+	require.Equal(t, []string{account.ID}, response.AccountOrdering)
+	require.Equal(t, account.ID, response.DefaultAccountID)
+	require.Equal(t, "no-store", result.Header().Get("Cache-Control"))
 }
 
 func TestCodexRoutes_UnknownPaths404(t *testing.T) {

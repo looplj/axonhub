@@ -19,6 +19,7 @@ func registerCodexRoutes(server *Server, handlers Handlers, services Services) {
 	}
 	httpGroup := server.Group("/codex", append(common, middleware.WithTimeout(server.Config.LLMRequestTimeout))...)
 	httpGroup.GET("/v1/user-auth-credential/whoami", handlers.CodexCompatibility.Whoami)
+	httpGroup.GET("/api/codex/accounts/check", handlers.CodexCompatibility.AccountsCheck)
 	httpGroup.GET("/models", handlers.CodexCompatibility.ListModels)
 	httpGroup.POST("/responses", handlers.OpenAI.CreateResponse)
 	websocketGroup := server.Group("/codex", common...)
