@@ -114,6 +114,7 @@ func TestCodexCatalog_DoesNotOverwriteRotatedCredentials(t *testing.T) {
 	stored := db.Channel.GetX(ctx, source.ID)
 	require.Equal(t, "admin-access-token", stored.Credentials.OAuth.AccessToken)
 	require.Equal(t, "admin-refresh-token", stored.Credentials.OAuth.RefreshToken)
+	require.Equal(t, stored.UpdatedAt, source.UpdatedAt)
 }
 
 func TestCodexCatalog_DefaultClientRedirectGap(t *testing.T) {

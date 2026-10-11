@@ -1527,12 +1527,24 @@ func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *
 
 	updated.OAuth = refreshed
 
-	_, err := db.Channel.UpdateOneID(ch.ID).Where(channel.UpdatedAt(ch.UpdatedAt)).SetCredentials(updated).Save(ctx)
+	saved, err := db.Channel.UpdateOneID(ch.ID).Where(channel.UpdatedAt(ch.UpdatedAt)).SetCredentials(updated).Save(ctx)
 	if ent.IsNotFound(err) {
+		current, reloadErr := db.Channel.Get(ctx, ch.ID)
+		if reloadErr != nil {
+			return fmt.Errorf("failed to reconcile channel credentials after concurrent update: %w", reloadErr)
+		}
+		ch.Credentials = current.Credentials
+		ch.UpdatedAt = current.UpdatedAt
 		return nil
 	}
+	if err != nil {
+		return err
+	}
 
-	return err
+	ch.Credentials = saved.Credentials
+	ch.UpdatedAt = saved.UpdatedAt
+
+	return nil
 }
 
 // GetModelEntries returns all models this channel can handle, RequestModel -> Entry
