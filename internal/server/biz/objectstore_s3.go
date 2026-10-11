@@ -34,7 +34,14 @@ type s3ObjectStore struct {
 }
 
 func newS3ObjectStore(ctx context.Context, cfg *objects.S3) (*s3ObjectStore, error) {
-	client, err := newS3Client(ctx, cfg)
+	return newS3ObjectStoreWithHTTPClient(ctx, cfg, nil)
+}
+
+// newS3ObjectStoreWithHTTPClient is newS3ObjectStore with an optional custom HTTP
+// client, mirroring newS3ClientWithHTTPClient so tests can point the real store
+// implementation at an httptest TLS server.
+func newS3ObjectStoreWithHTTPClient(ctx context.Context, cfg *objects.S3, httpClient aws.HTTPClient) (*s3ObjectStore, error) {
+	client, err := newS3ClientWithHTTPClient(ctx, cfg, httpClient)
 	if err != nil {
 		return nil, err
 	}

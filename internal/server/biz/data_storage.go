@@ -400,19 +400,46 @@ func (s *DataStorageService) InvalidateFsCache(id int) error {
 // operations under load. The client is shared by createS3Fs (the afero adapter
 // used by GetFileSystem) and the native s3ObjectStore (byte Save/Load/Delete).
 func newS3Client(ctx context.Context, s3Config *objects.S3) (*awss3.Client, error) {
+	return newS3ClientWithHTTPClient(ctx, s3Config, nil)
+}
+
+// newS3ClientWithHTTPClient is newS3Client with an optional custom HTTP client.
+// Production passes nil so the SDK builds its own client; tests inject the
+// httptest TLS server's client to exercise the real request-signing path.
+func newS3ClientWithHTTPClient(ctx context.Context, s3Config *objects.S3, httpClient aws.HTTPClient) (*awss3.Client, error) {
 	credProvider := awscredentials.NewStaticCredentialsProvider(
 		s3Config.AccessKey,
 		s3Config.SecretKey,
 		"",
 	)
 
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx,
+	loadOptions := []func(*awsconfig.LoadOptions) error{
 		awsconfig.WithRegion(s3Config.Region),
 		awsconfig.WithCredentialsProvider(credProvider),
+		// Disable the SDK's default trailing (streaming) checksums. Since
+		// aws-sdk-go-v2 v1.26 the default is RequestChecksumCalculationWhenSupported,
+		// which makes PutObject compute a CRC32 and, over HTTPS, send it as an
+		// aws-chunked trailer (Content-Encoding: aws-chunked, x-amz-trailer, and
+		// x-amz-content-sha256: STREAMING-UNSIGNED-PAYLOAD-TRAILER). Aliyun OSS's
+		// S3-compatible API does not implement aws-chunked trailers: it accepted
+		// the upload with HTTP 200 but stored a 0-byte object, while Cloudflare R2
+		// (which does support the trailer) worked. WhenRequired keeps checksums
+		// available for callers that explicitly ask for one (e.g.
+		// ChecksumAlgorithm on the input) while sending a plain signed payload by
+		// default, which every S3-compatible store accepts.
+		awsconfig.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired),
+		// Likewise only validate response checksums when the operation requires
+		// it, so stores that omit x-amz-checksum-* headers are not rejected.
+		awsconfig.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired),
 		awsconfig.WithRetryer(func() aws.Retryer {
 			return retry.AddWithMaxAttempts(retry.NewAdaptiveMode(), 3)
 		}),
-	)
+	}
+	if httpClient != nil {
+		loadOptions = append(loadOptions, awsconfig.WithHTTPClient(httpClient))
+	}
+
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, loadOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load AWS config: %w", err)
 	}
