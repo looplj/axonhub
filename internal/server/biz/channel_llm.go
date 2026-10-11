@@ -1527,7 +1527,10 @@ func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *
 
 	updated.OAuth = refreshed
 
-	_, err := db.Channel.UpdateOneID(ch.ID).SetCredentials(updated).Save(ctx)
+	_, err := db.Channel.UpdateOneID(ch.ID).Where(channel.UpdatedAt(ch.UpdatedAt)).SetCredentials(updated).Save(ctx)
+	if ent.IsNotFound(err) {
+		return nil
+	}
 
 	return err
 }

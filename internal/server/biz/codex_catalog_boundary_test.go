@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 )
 
 func TestCodexCatalog_TransportTimeout(t *testing.T) {
@@ -85,6 +86,34 @@ func TestCodexCatalog_ReusesOAuthProviderForDisabledChannel(t *testing.T) {
 	third, _, err := svc.codexCatalogOutbound(ctx, updated)
 	require.NoError(t, err)
 	require.Same(t, first.TokenProvider(), third.TokenProvider())
+}
+
+func TestCodexCatalog_DoesNotOverwriteRotatedCredentials(t *testing.T) {
+	db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer db.Close()
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), db))
+	source := db.Channel.Create().SetName("catalog").SetType(channel.TypeCodex).SetBaseURL("https://example.com/codex").SetDefaultTestModel("test").SetSupportedModels([]string{"test"}).SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{
+		AccessToken:  "source-access-token",
+		RefreshToken: "source-refresh-token",
+		ExpiresAt:    time.Now().Add(-time.Hour),
+	}}).SaveX(ctx)
+	svc := NewChannelServiceForTest(db)
+	defer svc.Stop()
+
+	db.Channel.UpdateOneID(source.ID).SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{
+		AccessToken:  "admin-access-token",
+		RefreshToken: "admin-refresh-token",
+		ExpiresAt:    time.Now().Add(time.Hour),
+	}}).SaveX(ctx)
+	err := svc.refreshOAuthTokenWithClient(ctx, db, source, &oauth.OAuthCredentials{
+		AccessToken:  "refreshed-access-token",
+		RefreshToken: "refreshed-refresh-token",
+		ExpiresAt:    time.Now().Add(time.Hour),
+	})
+	require.NoError(t, err)
+	stored := db.Channel.GetX(ctx, source.ID)
+	require.Equal(t, "admin-access-token", stored.Credentials.OAuth.AccessToken)
+	require.Equal(t, "admin-refresh-token", stored.Credentials.OAuth.RefreshToken)
 }
 
 func TestCodexCatalog_DefaultClientRedirectGap(t *testing.T) {
