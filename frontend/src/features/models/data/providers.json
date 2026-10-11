@@ -2625,8 +2625,8 @@
         {
           "attachment": false,
           "cost": {
-            "input": 0.72,
-            "output": 0.72
+            "input": 0.07,
+            "output": 0.16
           },
           "description": "OCR model for extracting structured text from documents and screenshots",
           "display_name": "Qwen Vl Ocr",
@@ -4209,9 +4209,77 @@
       "models": [
         {
           "attachment": true,
+          "canonical_model_id": "anthropic/claude-haiku-5-5",
+          "cost": {
+            "cache_read": 0.01,
+            "cache_write": 0.125,
+            "input": 0.1,
+            "output": 0.5,
+            "tiers": [
+              {
+                "cache_read": 0.05,
+                "cache_write": 0.625,
+                "input": 0.5,
+                "output": 2.5,
+                "tier": {
+                  "size": 100000,
+                  "type": "context"
+                }
+              }
+            ]
+          },
+          "description": "Fast Claude model for responsive assistance, classification, and lightweight agents",
+          "display_name": "Claude Haiku 5.5",
+          "family": "claude-haiku",
+          "id": "claude-haiku-5-5",
+          "knowledge": "2026-06",
+          "last_updated": "2026-10-07",
+          "limit": {
+            "context": 1000000,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Claude Haiku 5.5",
+          "open_weights": false,
+          "reasoning": {
+            "default": true,
+            "supported": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            },
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ]
+            }
+          ],
+          "release_date": "2026-10-07",
+          "structured_output": true,
+          "temperature": false,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
+          "attachment": true,
           "canonical_model_id": "anthropic/claude-sonnet-5-5",
           "cost": {
-            "cache_read": 0.2,
+            "cache_read": 0.1,
             "cache_write": 2.5,
             "input": 2,
             "output": 10
@@ -5304,7 +5372,7 @@
           "knowledge": "2025-07-31",
           "last_updated": "2025-09-29",
           "limit": {
-            "context": 1000000,
+            "context": 200000,
             "output": 64000
           },
           "modalities": {
@@ -5371,7 +5439,7 @@
           "knowledge": "2025-07-31",
           "last_updated": "2025-09-29",
           "limit": {
-            "context": 1000000,
+            "context": 200000,
             "output": 64000
           },
           "modalities": {
@@ -5418,7 +5486,7 @@
           "attachment": true,
           "display_name": "doubao-embedding-vision-250615",
           "id": "doubao-embedding-vision-250615",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 128000,
             "requests_per_minute": 15000
@@ -5459,7 +5527,7 @@
           "attachment": true,
           "display_name": "doubao-embedding-vision-251215",
           "id": "doubao-embedding-vision-251215",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 128000,
             "requests_per_minute": 15000
@@ -5500,7 +5568,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-code-preview-260215",
           "id": "doubao-seed-2-0-code-preview-260215",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5555,7 +5623,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-lite-260215",
           "id": "doubao-seed-2-0-lite-260215",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5613,7 +5681,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-lite-260428",
           "id": "doubao-seed-2-0-lite-260428",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5670,7 +5738,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-mini-260215",
           "id": "doubao-seed-2-0-mini-260215",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5728,7 +5796,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-mini-260428",
           "id": "doubao-seed-2-0-mini-260428",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5785,7 +5853,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-pro-260215",
           "id": "doubao-seed-2-0-pro-260215",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5843,7 +5911,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-1-lite-260915",
           "id": "doubao-seed-2-1-lite-260915",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 1024000,
             "output": 256000,
@@ -5900,7 +5968,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-1-pro-260628",
           "id": "doubao-seed-2-1-pro-260628",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 256000,
             "output": 256000,
@@ -5957,7 +6025,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-1-pro-260915",
           "id": "doubao-seed-2-1-pro-260915",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 1024000,
             "output": 256000,
@@ -6014,7 +6082,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-1-turbo-260628",
           "id": "doubao-seed-2-1-turbo-260628",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 256000,
             "output": 256000,
@@ -6071,7 +6139,7 @@
           "attachment": false,
           "display_name": "doubao-seed-character-251128",
           "id": "doubao-seed-character-251128",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 128000,
             "output": 32000,
@@ -6119,7 +6187,7 @@
           "attachment": true,
           "display_name": "doubao-seed-character-260628",
           "id": "doubao-seed-character-260628",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 128000,
             "output": 32000,
@@ -6141,7 +6209,7 @@
             "max_input_tokens": 96000,
             "max_thinking_tokens": 128000,
             "raw_limits": [
-              "��下文窗口: 128k 最大输入: 96k 最大回答(默认 4k): 32k 最大思维链: 128k",
+              "上下文窗口: 128k 最大输入: 96k 最大回答(默认 4k): 32k 最大思维链: 128k",
               "最大 RPM: 30000 最大 TPM: 5000000"
             ],
             "section_titles": [
@@ -6175,7 +6243,7 @@
           "attachment": true,
           "display_name": "doubao-seed-evolving",
           "id": "doubao-seed-evolving",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 1024000,
             "output": 256000,
@@ -6232,7 +6300,7 @@
           "attachment": false,
           "display_name": "doubao-seed-translation-250915",
           "id": "doubao-seed-translation-250915",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "context": 4000,
             "output": 3000,
@@ -6274,7 +6342,7 @@
           "attachment": false,
           "display_name": "doubao-seedance-1-0-pro-250528",
           "id": "doubao-seedance-1-0-pro-250528",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "requests_per_day": 500000000000,
             "requests_per_minute": 600
@@ -6314,7 +6382,7 @@
           "attachment": false,
           "display_name": "doubao-seedance-1-0-pro-fast-251015",
           "id": "doubao-seedance-1-0-pro-fast-251015",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "requests_per_day": 500000000000,
             "requests_per_minute": 600
@@ -6354,7 +6422,7 @@
           "attachment": true,
           "display_name": "doubao-seedance-2-0-260128",
           "id": "doubao-seedance-2-0-260128",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "metadata": {
             "canonical_id": "doubao-seedance-2-0",
             "capabilities": [
@@ -6391,7 +6459,7 @@
           "attachment": true,
           "display_name": "doubao-seedance-2-0-fast-260128",
           "id": "doubao-seedance-2-0-fast-260128",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "metadata": {
             "canonical_id": "doubao-seedance-2-0-fast",
             "capabilities": [
@@ -6428,7 +6496,7 @@
           "attachment": true,
           "display_name": "doubao-seedance-2-0-mini-260615",
           "id": "doubao-seedance-2-0-mini-260615",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "metadata": {
             "canonical_id": "doubao-seedance-2-0-mini",
             "capabilities": [
@@ -6465,7 +6533,7 @@
           "attachment": true,
           "display_name": "doubao-seedance-2-5-260628",
           "id": "doubao-seedance-2-5-260628",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "metadata": {
             "canonical_id": "doubao-seedance-2-5",
             "capabilities": [
@@ -6502,7 +6570,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-4-0-250828",
           "id": "doubao-seedream-4-0-250828",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6539,7 +6607,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-4-5-251128",
           "id": "doubao-seedream-4-5-251128",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6576,7 +6644,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-5-0-260128",
           "id": "doubao-seedream-5-0-260128",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6613,7 +6681,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-5-0-flash-260915",
           "id": "doubao-seedream-5-0-flash-260915",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6650,7 +6718,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-5-0-pro-260628",
           "id": "doubao-seedream-5-0-pro-260628",
-          "last_updated": "2026-09-28T03:59:13Z",
+          "last_updated": "2026-10-09T09:49:07Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6769,7 +6837,7 @@
         }
       ],
       "name": "ByteDance",
-      "updated_at": "2026-09-28T03:59:13Z"
+      "updated_at": "2026-10-09T09:49:07Z"
     },
     "deepseek": {
       "api": "https://api.deepseek.com",
@@ -9975,41 +10043,6 @@
         {
           "attachment": false,
           "cost": {
-            "cache_read": 0.05,
-            "input": 0.05,
-            "output": 0.1
-          },
-          "description": "Granite 4.1 8B is a long-context instruct model capable of enhanced tool calling, instruction following, and chat capabilities.",
-          "display_name": "Granite 4.1 8B",
-          "family": "granite",
-          "id": "ibm-granite/granite-4.1-8b",
-          "last_updated": "2026-04-29",
-          "limit": {
-            "context": 131072,
-            "output": 131072
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "name": "Granite 4.1 8B",
-          "open_weights": true,
-          "reasoning": {
-            "supported": false
-          },
-          "release_date": "2026-04-29",
-          "structured_output": true,
-          "temperature": true,
-          "tool_call": true,
-          "type": "chat"
-        },
-        {
-          "attachment": false,
-          "cost": {
             "input": 0.017,
             "output": 0.112
           },
@@ -10920,21 +10953,17 @@
         {
           "attachment": false,
           "cost": {
-            "cache_read": 0.15,
-            "input": 0.74,
-            "output": 2.96
+            "input": 0.3,
+            "output": 1.2
           },
-          "description": "KAT-Coder-Pro V2.5 is a flagship-level Agentic Coding model that can directly hand over an entire issue or an entire business workflow to it, allowing it to autonomously locate and make...",
-          "display_name": "Kwaipilot: KAT-Coder-Pro V2.5",
+          "description": "KAT-Coder-Pro V2 by KwaiKAT is a non-reasoning model optimized for agentic coding. It delivers strong performance on reasoning-style tasks while requiring significantly fewer output tokens than peer models. With the 1210 release, it achieved a score of 64 on the Artificial Analysis Intelligence Index, placing it in the global Top 10 and ranking first among all non-reasoning models.",
+          "display_name": "kat-coder-pro",
           "family": "kat-coder",
-          "id": "kat-coder-pro-v2.5",
-          "last_updated": "2026-07-10",
+          "id": "kat-coder-pro",
+          "last_updated": "2026-03-27",
           "limit": {
-            "context": 262144,
-            "output": 235929
-          },
-          "metadata": {
-            "source": "public-provider-conf"
+            "context": 256000,
+            "output": 256000
           },
           "modalities": {
             "input": [
@@ -10944,50 +10973,13 @@
               "text"
             ]
           },
-          "name": "Kwaipilot: KAT-Coder-Pro V2.5",
+          "name": "kat-coder-pro",
           "open_weights": false,
           "reasoning": {
             "supported": false
           },
-          "release_date": "2026-07-10",
-          "structured_output": true,
-          "temperature": true,
-          "tool_call": true,
-          "type": "chat",
-          "vision": false
-        },
-        {
-          "attachment": false,
-          "cost": {
-            "cache_read": 0.06,
-            "input": 0.3,
-            "output": 1.2
-          },
-          "description": "Coding model for repository understanding, refactors, and agentic engineering tasks",
-          "display_name": "Kat Coder Pro",
-          "family": "kat-coder",
-          "id": "kat-coder-pro",
-          "last_updated": "2026-01-05",
-          "limit": {
-            "context": 256000,
-            "output": 128000
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "name": "Kat Coder Pro",
-          "open_weights": true,
-          "reasoning": {
-            "supported": false
-          },
-          "release_date": "2026-01-05",
-          "structured_output": true,
-          "temperature": true,
+          "release_date": "2026-03-27",
+          "structured_output": false,
           "tool_call": true,
           "type": "chat"
         },
@@ -11762,7 +11754,7 @@
         {
           "attachment": false,
           "cost": {
-            "cache_read": 0.06,
+            "cache_read": 0.03,
             "cache_write": 0.375,
             "input": 0.6,
             "output": 2.4
@@ -11929,6 +11921,54 @@
       "id": "mistral",
       "models": [
         {
+          "attachment": true,
+          "canonical_model_id": "mistral/mistral-large-4",
+          "cost": {
+            "cache_read": 0.07,
+            "input": 0.68,
+            "output": 2.09
+          },
+          "description": "Mistral's 1T-parameter multimodal MoE for reasoning, coding, and agentic work",
+          "display_name": "Mistral Large 4",
+          "family": "mistral-large",
+          "id": "mistral-large-4",
+          "last_updated": "2026-10-06",
+          "limit": {
+            "context": 1048576,
+            "output": 262144
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Mistral Large 4",
+          "open_weights": false,
+          "reasoning": {
+            "default": true,
+            "supported": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "none",
+                "high"
+              ]
+            }
+          ],
+          "release_date": "2026-10-06",
+          "status": "beta",
+          "structured_output": true,
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
           "attachment": false,
           "canonical_model_id": "zhipuai/glm-5.3",
           "cost": {
@@ -11942,7 +11982,7 @@
           "id": "zai-glm-5-3",
           "last_updated": "2026-08-14",
           "limit": {
-            "context": 1000000,
+            "context": 1048576,
             "output": 131072
           },
           "modalities": {
@@ -11976,6 +12016,52 @@
           "type": "chat"
         },
         {
+          "attachment": true,
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "description": "An updated Lean 4 formal proof engineering model optimised for automated theorem proving and autoformalization. 119B total parameters, 6.5B active.",
+          "display_name": "Leanstral 1.5",
+          "family": "leanstral",
+          "id": "labs-leanstral-1-5-1",
+          "last_updated": "2026-06-30",
+          "limit": {
+            "context": 262144,
+            "output": 128000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Leanstral 1.5",
+          "open_weights": true,
+          "reasoning": {
+            "default": true,
+            "supported": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "none",
+                "high"
+              ]
+            }
+          ],
+          "release_date": "2026-06-30",
+          "status": "deprecated",
+          "structured_output": true,
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
           "attachment": false,
           "canonical_model_id": "zhipuai/glm-5.2",
           "cost": {
@@ -11989,7 +12075,7 @@
           "id": "zai-glm-5-2",
           "last_updated": "2026-06-13",
           "limit": {
-            "context": 1000000,
+            "context": 1048576,
             "output": 131072
           },
           "modalities": {
@@ -12017,7 +12103,55 @@
             }
           ],
           "release_date": "2026-06-13",
-          "status": "beta",
+          "status": "deprecated",
+          "structured_output": true,
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
+          "attachment": false,
+          "canonical_model_id": "zhipuai/glm-5.2",
+          "cost": {
+            "cache_read": 0.14,
+            "input": 1.4,
+            "output": 4.4
+          },
+          "description": "Open flagship GLM for long-horizon coding agents and million-token context work",
+          "display_name": "GLM-5.2",
+          "family": "glm",
+          "id": "glm-5-2",
+          "last_updated": "2026-06-13",
+          "limit": {
+            "context": 1048576,
+            "output": 131072
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "GLM-5.2",
+          "open_weights": true,
+          "reasoning": {
+            "default": true,
+            "supported": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "none",
+                "high",
+                "max"
+              ]
+            }
+          ],
+          "release_date": "2026-06-13",
+          "status": "deprecated",
           "structured_output": true,
           "temperature": true,
           "tool_call": true,
@@ -12130,7 +12264,7 @@
           "knowledge": "2025-06",
           "last_updated": "2026-03-16",
           "limit": {
-            "context": 256000,
+            "context": 262144,
             "output": 256000
           },
           "modalities": {
@@ -12176,7 +12310,7 @@
           "knowledge": "2025-06",
           "last_updated": "2026-03-16",
           "limit": {
-            "context": 256000,
+            "context": 262144,
             "output": 256000
           },
           "modalities": {
@@ -12373,6 +12507,43 @@
           "type": "chat"
         },
         {
+          "attachment": true,
+          "canonical_model_id": "mistral/ministral-3-8b-instruct-2512",
+          "cost": {
+            "cache_read": 0.015,
+            "input": 0.15,
+            "output": 0.15
+          },
+          "description": "Compact open vision-language model for edge deployment, instruction following, and tool use",
+          "display_name": "Ministral 3 8B",
+          "family": "ministral",
+          "id": "ministral-8b-2512",
+          "last_updated": "2025-12-02",
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Ministral 3 8B",
+          "open_weights": true,
+          "reasoning": {
+            "supported": false
+          },
+          "release_date": "2025-12-02",
+          "structured_output": true,
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
           "attachment": false,
           "cost": {
             "input": 0.4,
@@ -12409,6 +12580,80 @@
         },
         {
           "attachment": true,
+          "canonical_model_id": "mistral/ministral-3-14b-instruct-2512",
+          "cost": {
+            "cache_read": 0.02,
+            "input": 0.2,
+            "output": 0.2
+          },
+          "description": "Open vision-language model for efficient local deployment, instruction following, and tool use",
+          "display_name": "Ministral 3 14B",
+          "family": "ministral",
+          "id": "ministral-14b-2512",
+          "last_updated": "2025-12-02",
+          "limit": {
+            "context": 262144,
+            "output": 262144
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Ministral 3 14B",
+          "open_weights": true,
+          "reasoning": {
+            "supported": false
+          },
+          "release_date": "2025-12-02",
+          "structured_output": true,
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
+          "attachment": true,
+          "canonical_model_id": "mistral/ministral-3-3b-instruct-2512",
+          "cost": {
+            "cache_read": 0.01,
+            "input": 0.1,
+            "output": 0.1
+          },
+          "description": "Compact open vision-language model for edge deployment, instruction following, and tool use",
+          "display_name": "Ministral 3 3B",
+          "family": "ministral",
+          "id": "ministral-3b-2512",
+          "last_updated": "2025-12-02",
+          "limit": {
+            "context": 131072,
+            "output": 262144
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Ministral 3 3B",
+          "open_weights": true,
+          "reasoning": {
+            "supported": false
+          },
+          "release_date": "2025-12-02",
+          "structured_output": true,
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
+          "attachment": true,
           "cost": {
             "input": 0.4,
             "output": 2
@@ -12438,6 +12683,77 @@
             "supported": false
           },
           "release_date": "2025-08-12",
+          "status": "deprecated",
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
+          "attachment": false,
+          "canonical_model_id": "mistral/codestral-2508",
+          "cost": {
+            "cache_read": 0.03,
+            "input": 0.3,
+            "output": 0.9
+          },
+          "description": "Mistral code model for low-latency completion, fill-in-the-middle, and code generation",
+          "display_name": "Codestral 25.08",
+          "family": "codestral",
+          "id": "codestral-2508",
+          "last_updated": "2025-07-30",
+          "limit": {
+            "context": 256000,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Codestral 25.08",
+          "open_weights": false,
+          "reasoning": {
+            "supported": false
+          },
+          "release_date": "2025-07-30",
+          "structured_output": true,
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
+          "attachment": true,
+          "cost": {
+            "input": 0.1,
+            "output": 0.4
+          },
+          "description": "Instruct model with native audio input for speech understanding and tool use",
+          "display_name": "Voxtral Small",
+          "family": "voxtral",
+          "id": "voxtral-small-2507",
+          "last_updated": "2025-07-15",
+          "limit": {
+            "context": 32768,
+            "output": 32000
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Voxtral Small",
+          "open_weights": true,
+          "reasoning": {
+            "supported": false
+          },
+          "release_date": "2025-07-15",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -12454,7 +12770,7 @@
           "id": "voxtral-small-latest",
           "last_updated": "2025-07-15",
           "limit": {
-            "context": 32000,
+            "context": 32768,
             "output": 32000
           },
           "modalities": {
@@ -12577,6 +12893,7 @@
             "supported": false
           },
           "release_date": "2025-06-20",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -12612,6 +12929,7 @@
             "supported": false
           },
           "release_date": "2025-05-07",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -12652,7 +12970,7 @@
           "type": "chat"
         },
         {
-          "attachment": false,
+          "attachment": true,
           "cost": {
             "input": 2,
             "output": 5
@@ -12664,12 +12982,13 @@
           "knowledge": "2025-06",
           "last_updated": "2025-03-20",
           "limit": {
-            "context": 128000,
+            "context": 262144,
             "output": 16384
           },
           "modalities": {
             "input": [
-              "text"
+              "text",
+              "image"
             ],
             "output": [
               "text"
@@ -12681,8 +13000,17 @@
             "default": true,
             "supported": true
           },
-          "reasoning_options": [],
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "none",
+                "high"
+              ]
+            }
+          ],
           "release_date": "2025-03-17",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -12718,6 +13046,7 @@
             "supported": false
           },
           "release_date": "2024-11-18",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -12825,12 +13154,13 @@
             "supported": false
           },
           "release_date": "2024-11-01",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
         },
         {
-          "attachment": false,
+          "attachment": true,
           "cost": {
             "input": 0.1,
             "output": 0.1
@@ -12842,12 +13172,13 @@
           "knowledge": "2024-10",
           "last_updated": "2024-10-04",
           "limit": {
-            "context": 128000,
+            "context": 262144,
             "output": 128000
           },
           "modalities": {
             "input": [
-              "text"
+              "text",
+              "image"
             ],
             "output": [
               "text"
@@ -12864,7 +13195,7 @@
           "type": "chat"
         },
         {
-          "attachment": false,
+          "attachment": true,
           "cost": {
             "input": 0.04,
             "output": 0.04
@@ -12876,12 +13207,13 @@
           "knowledge": "2024-10",
           "last_updated": "2024-10-04",
           "limit": {
-            "context": 128000,
+            "context": 131072,
             "output": 128000
           },
           "modalities": {
             "input": [
-              "text"
+              "text",
+              "image"
             ],
             "output": [
               "text"
@@ -12928,6 +13260,7 @@
             "supported": false
           },
           "release_date": "2024-09-01",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -12997,6 +13330,7 @@
             "supported": false
           },
           "release_date": "2024-07-01",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -13066,6 +13400,7 @@
             "supported": false
           },
           "release_date": "2024-04-17",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -13133,6 +13468,7 @@
             "supported": false
           },
           "release_date": "2023-12-11",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -13167,6 +13503,7 @@
             "supported": false
           },
           "release_date": "2023-09-27",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -13185,6 +13522,7 @@
           "canonical_model_id": "moonshotai/kimi-k3",
           "cost": {
             "cache_read": 0.3,
+            "cache_write": 3,
             "input": 3,
             "output": 15
           },
@@ -14957,6 +15295,19 @@
                     "reasoning": {
                       "mode": "pro"
                     }
+                  }
+                }
+              },
+              "ultrafast": {
+                "cost": {
+                  "cache_read": 0.6,
+                  "cache_write": 15,
+                  "input": 12,
+                  "output": 60
+                },
+                "provider": {
+                  "body": {
+                    "service_tier": "ultrafast"
                   }
                 }
               }
