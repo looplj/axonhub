@@ -2,7 +2,6 @@ package biz
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -1527,10 +1526,6 @@ func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *
 	}
 
 	updated.OAuth = refreshed
-	expected, err := json.Marshal(ch.Credentials)
-	if err != nil {
-		return fmt.Errorf("failed to encode expected channel credentials: %w", err)
-	}
 
 	for {
 		saved, err := db.Channel.UpdateOneID(ch.ID).Where(channel.UpdatedAt(ch.UpdatedAt)).SetCredentials(updated).Save(ctx)
@@ -1539,11 +1534,7 @@ func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *
 			if reloadErr != nil {
 				return fmt.Errorf("failed to reconcile channel credentials after concurrent update: %w", reloadErr)
 			}
-			actual, encodeErr := json.Marshal(current.Credentials)
-			if encodeErr != nil {
-				return fmt.Errorf("failed to encode current channel credentials: %w", encodeErr)
-			}
-			unchanged := current.Type == ch.Type && string(actual) == string(expected)
+			unchanged := current.Type == ch.Type && channelCredentialsEqual(current.Credentials, ch.Credentials)
 			ch.Credentials = current.Credentials
 			ch.UpdatedAt = current.UpdatedAt
 			if unchanged {
@@ -1569,6 +1560,45 @@ func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *
 
 		return nil
 	}
+}
+
+func channelCredentialsEqual(a, b objects.ChannelCredentials) bool {
+	return a.APIKey == b.APIKey &&
+		oauthCredentialsEqual(a.OAuth, b.OAuth) &&
+		slices.Equal(a.APIKeys, b.APIKeys) &&
+		a.ManagementAPIKey == b.ManagementAPIKey &&
+		azureCredentialsEqual(a.Azure, b.Azure) &&
+		gcpCredentialsEqual(a.GCP, b.GCP)
+}
+
+func oauthCredentialsEqual(a, b *objects.OAuthCredentials) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	return a.ClientID == b.ClientID &&
+		a.AccessToken == b.AccessToken &&
+		a.RefreshToken == b.RefreshToken &&
+		a.IDToken == b.IDToken &&
+		a.ExpiresAt.Equal(b.ExpiresAt) &&
+		a.TokenType == b.TokenType &&
+		slices.Equal(a.Scopes, b.Scopes)
+}
+
+func azureCredentialsEqual(a, b *objects.AzureCredential) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	return a.APIVersion == b.APIVersion
+}
+
+func gcpCredentialsEqual(a, b *objects.GCPCredential) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	return a.Region == b.Region && a.ProjectID == b.ProjectID && a.JSONData == b.JSONData
 }
 
 // GetModelEntries returns all models this channel can handle, RequestModel -> Entry

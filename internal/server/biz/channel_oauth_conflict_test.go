@@ -21,7 +21,7 @@ import (
 
 func TestOAuthProvider_ReconcilesDatabaseThenPersistsNextRefresh(t *testing.T) {
 	for _, detached := range []bool{false, true} {
-		for _, scenario := range []string{"oauth", "legacy", "api-key", "metadata"} {
+		for _, scenario := range []string{"oauth", "legacy", "api-key", "metadata", "expired"} {
 			t.Run(scenario+map[bool]string{false: "/Get", true: "/EnsureFresh"}[detached], func(t *testing.T) {
 				// Given: a provider with an old snapshot and a newer database row.
 				db := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
@@ -35,7 +35,11 @@ func TestOAuthProvider_ReconcilesDatabaseThenPersistsNextRefresh(t *testing.T) {
 				if detached {
 					callback = svc.onTokenRefreshedDetached(source)
 				}
-				winner := &oauth.OAuthCredentials{AccessToken: "winner", RefreshToken: "winner-refresh", ExpiresAt: time.Now().Add(30 * time.Minute)}
+				winnerExpiry := 30 * time.Minute
+				if scenario == "expired" {
+					winnerExpiry = -time.Hour
+				}
+				winner := &oauth.OAuthCredentials{AccessToken: "winner", RefreshToken: "winner-refresh", ExpiresAt: time.Now().Add(winnerExpiry)}
 				update := db.Channel.UpdateOneID(source.ID).SetName("admin-name")
 				switch scenario {
 				case "oauth":
@@ -46,6 +50,8 @@ func TestOAuthProvider_ReconcilesDatabaseThenPersistsNextRefresh(t *testing.T) {
 					update.SetCredentials(objects.ChannelCredentials{APIKey: encoded})
 				case "api-key":
 					update.SetCredentials(objects.ChannelCredentials{APIKey: "admin-key"})
+				case "expired":
+					update.SetCredentials(objects.ChannelCredentials{OAuth: winner})
 				case "metadata":
 				}
 				update.SaveX(ctx)
@@ -97,6 +103,8 @@ func TestOAuthProvider_ReconcilesDatabaseThenPersistsNextRefresh(t *testing.T) {
 				want := "winner"
 				if scenario == "metadata" {
 					want = "rotated"
+				} else if scenario == "expired" {
+					want = "next"
 				}
 				require.Equal(t, want, got.AccessToken)
 				stored, err := db.Channel.GetX(ctx, source.ID).Credentials.ResolveOAuthCredentials()
@@ -104,7 +112,11 @@ func TestOAuthProvider_ReconcilesDatabaseThenPersistsNextRefresh(t *testing.T) {
 				require.Equal(t, got.RefreshToken, stored.RefreshToken)
 
 				// When: the same provider refreshes again without resetting its credentials.
-				got, err = provider.EnsureFresh(context.WithoutCancel(ctx), 2*time.Hour)
+				followUpRefreshBefore := 2 * time.Hour
+				if scenario == "expired" {
+					followUpRefreshBefore = time.Minute
+				}
+				got, err = provider.EnsureFresh(context.WithoutCancel(ctx), followUpRefreshBefore)
 				// Then: the next rotation is persisted and the shared source stays immutable.
 				require.NoError(t, err)
 				require.Equal(t, "next-refresh", got.RefreshToken)
@@ -115,4 +127,22 @@ func TestOAuthProvider_ReconcilesDatabaseThenPersistsNextRefresh(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestChannelCredentialsEqualUsesOAuthInstant(t *testing.T) {
+	location := time.FixedZone("test", 9*60*60)
+	instant := time.Date(2026, 10, 11, 12, 0, 0, 0, location)
+
+	left := objects.ChannelCredentials{OAuth: &oauth.OAuthCredentials{
+		AccessToken:  "access",
+		RefreshToken: "refresh",
+		ExpiresAt:    instant,
+	}}
+	right := objects.ChannelCredentials{OAuth: &oauth.OAuthCredentials{
+		AccessToken:  "access",
+		RefreshToken: "refresh",
+		ExpiresAt:    instant.UTC(),
+	}}
+
+	require.True(t, channelCredentialsEqual(left, right))
 }
