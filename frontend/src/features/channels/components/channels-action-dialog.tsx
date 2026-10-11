@@ -1448,6 +1448,21 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           delete updateInput.credentials.managementApiKey;
         }
 
+        // The provider selector stays enabled in edit mode for non-OAuth channels,
+        // so a channel saved as anthropic_gcp can be switched to another type
+        // while the loaded gcp blob is still in the form state. Strip it from the
+        // update payload, or the backend's whole-object credentials replace would
+        // persist it onto the non-GCP channel.
+        let clearedStaleGcpCredentials = false;
+        if (finalChannelType !== 'anthropic_gcp' && updateInput.credentials?.gcp) {
+          const gcp = updateInput.credentials.gcp;
+          const hasStaleGcp = [gcp.region, gcp.projectID, gcp.jsonData].some((value) => (value || '').trim() !== '');
+          if (hasStaleGcp) {
+            delete updateInput.credentials.gcp;
+            clearedStaleGcpCredentials = true;
+          }
+        }
+
         const apiKey = values.credentials?.apiKey || '';
         const hasApiKey = apiKey.trim().length > 0;
         const apiKeys = values.credentials?.apiKeys || [];
@@ -1461,7 +1476,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           values.credentials?.gcp?.jsonData &&
           values.credentials.gcp.jsonData.trim() !== '';
 
-        if (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials) {
+        if (!clearedStaleGcpCredentials && !hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials) {
           delete updateInput.credentials;
         }
 

@@ -157,3 +157,40 @@ test('switching providers clears the variant checkboxes owned by the previous pr
   const leaveMoonshot = handler.slice(handler.indexOf("provider !== 'moonshot'"));
   assert.match(leaveMoonshot, /setUseKimiCoding\(false\)/, 'leaving moonshot must clear the Kimi coding variant');
 });
+
+// coderabbit Minor on #2644: the provider radio stays enabled in edit mode for
+// non-OAuth channels, so editing an anthropic_gcp channel and switching the
+// provider away leaves the loaded credentials.gcp blob (region/projectID/
+// jsonData) in the form state, and it rides into updateInput.credentials. The
+// backend replaces the whole credentials object, so the stale blob lands on the
+// non-GCP channel. The edit path must strip it.
+test('editing away from anthropic_gcp strips the stale gcp blob from the update payload', () => {
+  const editCleanup = source.slice(source.indexOf('const finalChannelType'), source.indexOf('updateChannelSettings.mutateAsync'));
+  assert.match(
+    editCleanup,
+    /finalChannelType !== 'anthropic_gcp' && updateInput\.credentials\?\.gcp/,
+    'the edit path must inspect updateInput.credentials.gcp when the final type is not anthropic_gcp'
+  );
+  assert.match(
+    editCleanup,
+    /delete updateInput\.credentials\.gcp/,
+    'a stale gcp blob must be removed from the update payload'
+  );
+});
+
+// Stripping the blob is not enough: if the cleared credentials object is then
+// dropped by the all-empty guard, the backend keeps the old credentials object
+// and the stale gcp survives. The guard must stay off right after a strip so the
+// gcp-less credentials object is still sent.
+test('the all-empty credentials guard must not swallow a just-stripped gcp blob', () => {
+  const editCleanup = source.slice(source.indexOf('const finalChannelType'), source.indexOf('updateChannelSettings.mutateAsync'));
+  assert.match(editCleanup, /clearedStaleGcpCredentials = true/, 'the edit path must remember that it stripped a stale gcp blob');
+  const guard = editCleanup.slice(
+    editCleanup.lastIndexOf('if (', editCleanup.indexOf('delete updateInput.credentials;'))
+  );
+  assert.match(
+    guard,
+    /!clearedStaleGcpCredentials/,
+    'the delete updateInput.credentials guard must be disabled when a stale gcp blob was just stripped'
+  );
+});
