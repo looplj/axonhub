@@ -892,10 +892,28 @@ func TestDeviceFlowProvider_OnRefreshed_Error(t *testing.T) {
 func TestDeviceFlowProvider_OnRefreshedConflictUsesWinner(t *testing.T) {
 	t.Parallel()
 
+	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		form, err := url.ParseQuery(string(body))
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		accessToken := "losing-token"
+		refreshToken := "losing-refresh"
+		if form.Get("refresh_token") == "winner-refresh" {
+			accessToken = "winner-refreshed-token"
+			refreshToken = "winner-refreshed-refresh"
+		}
 		resp := TokenResponse{
-			AccessToken:  "losing-token",
-			RefreshToken: "losing-refresh",
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
 			TokenType:    "Bearer",
 			ExpiresIn:    3600,
 		}
@@ -915,7 +933,7 @@ func TestDeviceFlowProvider_OnRefreshedConflictUsesWinner(t *testing.T) {
 	winner := &OAuthCredentials{
 		AccessToken:  "winner-token",
 		RefreshToken: "winner-refresh",
-		ExpiresAt:    time.Now().Add(time.Hour),
+		ExpiresAt:    time.Now().Add(-time.Hour),
 	}
 	provider := NewDeviceFlowProvider(DeviceFlowProviderParams{
 		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()),
@@ -928,15 +946,19 @@ func TestDeviceFlowProvider_OnRefreshedConflictUsesWinner(t *testing.T) {
 			RefreshToken: "source-refresh",
 			ExpiresAt:    time.Now().Add(-time.Hour),
 		},
-		OnRefreshed: func(context.Context, *OAuthCredentials) error {
-			return &CredentialConflictError{Credentials: winner}
+		OnRefreshed: func(_ context.Context, refreshed *OAuthCredentials) error {
+			if refreshed.AccessToken == "losing-token" {
+				return &CredentialConflictError{Credentials: winner}
+			}
+			return nil
 		},
 	})
 
 	token, err := provider.GetToken(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, "winner-token", token)
-	require.Equal(t, winner, provider.GetCredentials())
+	require.Equal(t, "winner-refreshed-token", token)
+	require.Equal(t, "winner-refreshed-token", provider.GetCredentials().AccessToken)
+	require.Equal(t, int32(2), calls.Load())
 }
 
 func TestDeviceFlowProvider_NilConflictStopsAutoRefresh(t *testing.T) {
