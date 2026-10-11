@@ -1182,7 +1182,13 @@ func (s *APIKeyService) EnsureNoAuthAPIKey(ctx context.Context) (*ent.APIKey, er
 		SetScopes([]string{string(scopes.ScopeWriteRequests), string(scopes.ScopeReadChannels)}).
 		Save(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create noauth api key: %w", err)
+		if !ent.IsConstraintError(err) {
+			return nil, fmt.Errorf("failed to create noauth api key: %w", err)
+		}
+		apiKey, err = client.APIKey.Query().Where(apikey.KeyEQ(NoAuthAPIKeyValue)).Only(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create noauth api key: %w", err)
+		}
 	}
 
 	// DO NOT CACHE PROJECT
