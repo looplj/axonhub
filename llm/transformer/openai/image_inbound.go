@@ -437,9 +437,12 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 	var mask []byte
 
 	var maskReference *llm.ImageReference
+	var legacyMask string
+	if json.Unmarshal(editReq.Mask, &legacyMask) == nil && strings.TrimSpace(legacyMask) == "" {
+		editReq.Mask = nil
+	}
 	if len(editReq.Mask) != 0 && string(editReq.Mask) != "null" {
-		ref, data, parseErr := parseEditImageReference(editReq.Mask)
-		err = parseErr
+		ref, data, err := parseEditImageReference(editReq.Mask)
 		if err != nil {
 			return nil, err
 		}
