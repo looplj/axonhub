@@ -12,7 +12,11 @@ func TestCapableAPIFormats(t *testing.T) {
 	chat := CapableAPIFormats(RequestTypeChat)
 	require.Contains(t, chat, APIFormatOpenAIChatCompletion.String())
 	require.Contains(t, chat, APIFormatOpenAIResponse.String())
+	require.Contains(t, chat, APIFormatOpenAIResponseWebSocket.String())
 	require.NotContains(t, chat, APIFormatOpenAIEmbedding.String())
+	for _, requestType := range []RequestType{RequestTypeImage, RequestTypeCompact} {
+		require.NotContains(t, CapableAPIFormats(requestType), APIFormatOpenAIResponseWebSocket.String())
+	}
 
 	embedding := CapableAPIFormats(RequestTypeEmbedding)
 	require.Contains(t, embedding, APIFormatOpenAIEmbedding.String())
