@@ -148,8 +148,15 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 	oaiResp.OutputFormat = img.OutputFormat
 	oaiResp.Quality = img.Quality
 	oaiResp.Size = img.Size
+	oaiResp.SafetyIdentifier = img.SafetyIdentifier
 
-	if llmResp.Usage != nil {
+	if img.Usage != nil {
+		usage := ImagesResponseUsage(*img.Usage)
+		if llmResp.Usage != nil && llmResp.Usage.Cost != nil {
+			usage.Cost = llmResp.Usage.Cost
+		}
+		oaiResp.Usage = &usage
+	} else if llmResp.Usage != nil {
 		oaiResp.Usage = &ImagesResponseUsage{
 			InputTokens:  llmResp.Usage.PromptTokens,
 			OutputTokens: llmResp.Usage.CompletionTokens,
@@ -160,7 +167,7 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 			oaiResp.Usage.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{
 				ImageTokens:  llmResp.Usage.PromptTokensDetails.ImageTokens,
 				TextTokens:   llmResp.Usage.PromptTokensDetails.TextTokens,
-				CachedTokens: llmResp.Usage.PromptTokensDetails.CachedTokens,
+				CachedTokens: lo.EmptyableToPtr(llmResp.Usage.PromptTokensDetails.CachedTokens),
 			}
 		}
 
@@ -176,6 +183,7 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 			B64JSON:       data.B64JSON,
 			URL:           data.URL,
 			RevisedPrompt: data.RevisedPrompt,
+			GenerationID:  data.GenerationID,
 		})
 	}
 
