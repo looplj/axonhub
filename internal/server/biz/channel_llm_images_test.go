@@ -45,8 +45,10 @@ func TestRelayImageEndpointRouting(t *testing.T) {
 						return
 					}
 					require.NoError(t, err)
-					req, err := out.TransformRequest(t.Context(), &llm.Request{Model: "gpt-image-2", RequestType: llm.RequestTypeImage, APIFormat: format,
-						Image: &llm.ImageRequest{Prompt: "draw a square", Images: [][]byte{[]byte("image-fixture")}}, RawRequest: &httpclient.Request{Headers: http.Header{"Session-Id": {"image-session"}}}})
+					req, err := out.TransformRequest(t.Context(), &llm.Request{
+						Model: "gpt-image-2", RequestType: llm.RequestTypeImage, APIFormat: format,
+						Image: &llm.ImageRequest{Prompt: "draw a square", Images: [][]byte{[]byte("image-fixture")}}, RawRequest: &httpclient.Request{Headers: http.Header{"Session-Id": {"image-session"}}},
+					})
 					// Then: native routing retains URL, auth and the requested image model.
 					require.NoError(t, err)
 					require.NotSame(t, built.Outbound, out)
@@ -73,8 +75,10 @@ func TestRelayImageEndpointRoutingOAuth(t *testing.T) {
 	svc := NewChannelServiceForTest(client)
 	for _, typ := range []channel.Type{channel.TypeCodex} {
 		t.Run(string(typ), func(t *testing.T) {
-			built, err := svc.buildChannelWithOutbounds(&ent.Channel{Name: t.Name(), Type: typ, BaseURL: "https://relay.example/backend#",
-				Credentials: objects.ChannelCredentials{APIKey: "wrong-fallback", OAuth: &objects.OAuthCredentials{AccessToken: "oauth-image-token", RefreshToken: "refresh-fixture", ExpiresAt: time.Now().Add(time.Hour)}}})
+			built, err := svc.buildChannelWithOutbounds(&ent.Channel{
+				Name: t.Name(), Type: typ, BaseURL: "https://relay.example/backend#",
+				Credentials: objects.ChannelCredentials{APIKey: "wrong-fallback", OAuth: &objects.OAuthCredentials{AccessToken: "oauth-image-token", RefreshToken: "refresh-fixture", ExpiresAt: time.Now().Add(time.Hour)}},
+			})
 			require.NoError(t, err)
 			t.Cleanup(func() { stopChannelOutbounds(built) })
 			// When
