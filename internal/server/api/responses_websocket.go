@@ -24,7 +24,7 @@ import (
 
 const (
 	responseCreateWebSocketEventType   = "response.create"
-	responsesWebSocketMaxMessageSize   = 128 << 20
+	responsesWebSocketMaxMessageSize   = 128 << 20 // 128 MiB
 	responsesWebSocketIdleTimeout      = 5 * time.Minute
 	responsesWebSocketPingInterval     = responsesWebSocketIdleTimeout / 2
 	responsesWebSocketPingWriteTimeout = 10 * time.Second
