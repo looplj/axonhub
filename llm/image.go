@@ -115,5 +115,5 @@ type ImageCachedTokensDetails struct {
 type ImageOutputTokensDetails struct {
 	ImageTokens     *int64 `json:"image_tokens,omitempty"`
 	TextTokens      *int64 `json:"text_tokens,omitempty"`
-	ReasoningTokens int64  `json:"reasoning_tokens,omitempty"`
+	ReasoningTokens *int64 `json:"reasoning_tokens,omitempty"`
 }

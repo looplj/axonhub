@@ -619,7 +619,7 @@ func transformImageGenerationResponse(httpResp *httpclient.Response) (*llm.Respo
 
 		if imgResp.Usage.OutputTokensDetails != nil {
 			resp.Usage.CompletionTokensDetails = &llm.CompletionTokensDetails{
-				ReasoningTokens: imgResp.Usage.OutputTokensDetails.ReasoningTokens,
+				ReasoningTokens: lo.FromPtr(imgResp.Usage.OutputTokensDetails.ReasoningTokens),
 			}
 		}
 	}

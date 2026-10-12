@@ -19,6 +19,9 @@ func TestImageResponseMetadataRoundTrip(t *testing.T) {
 		{"identifier", `{"created":7,"data":[{"b64_json":"c3ludGhldGlj"}],"safety_identifier":"synthetic-safety","usage":{"input_tokens":0,"output_tokens":0,"total_tokens":0}}`},
 		{"omitted", `{"created":7,"data":[{"url":"https://example.invalid/image"}]}`},
 		{"zero_cached", `{"created":7,"data":[],"usage":{"input_tokens":0,"output_tokens":0,"total_tokens":0,"input_tokens_details":{"image_tokens":0,"text_tokens":0,"cached_tokens":0},"output_tokens_details":{"image_tokens":0,"text_tokens":0}}}`},
+		{"zero_reasoning", `{"created":7,"data":[],"usage":{"input_tokens":0,"output_tokens":0,"total_tokens":0,"output_tokens_details":{"reasoning_tokens":0}}}`},
+		{"omitted_reasoning", `{"created":7,"data":[],"usage":{"input_tokens":0,"output_tokens":0,"total_tokens":0,"output_tokens_details":{}}}`},
+		{"nonzero_reasoning", `{"created":7,"data":[],"usage":{"input_tokens":0,"output_tokens":1,"total_tokens":1,"output_tokens_details":{"reasoning_tokens":1}}}`},
 	} {
 		t.Run(fixture.name, func(t *testing.T) {
 			// Given a native JSON image response with independently specified metadata.

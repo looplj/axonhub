@@ -173,7 +173,7 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 
 		if llmResp.Usage.CompletionTokensDetails != nil {
 			oaiResp.Usage.OutputTokensDetails = &ImagesResponseUsageOutputTokensDetails{
-				ReasoningTokens: llmResp.Usage.CompletionTokensDetails.ReasoningTokens,
+				ReasoningTokens: lo.EmptyableToPtr(llmResp.Usage.CompletionTokensDetails.ReasoningTokens),
 			}
 		}
 	}
