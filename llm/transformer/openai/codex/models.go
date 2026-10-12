@@ -64,13 +64,23 @@ func ParseModelCatalog(body []byte) ([]string, error) {
 		return response.Models[i].Priority < response.Models[j].Priority
 	})
 	models := make([]string, 0, len(response.Models))
+	imageModelIncluded := false
 	for _, model := range response.Models {
 		if model.Visibility == "list" && strings.TrimSpace(model.Slug) != "" {
+			if model.Slug == "gpt-image-2" {
+				if imageModelIncluded {
+					continue
+				}
+				imageModelIncluded = true
+			}
 			models = append(models, model.Slug)
 		}
 	}
 	if len(models) == 0 {
 		return nil, fmt.Errorf("Codex catalog has no visible models")
+	}
+	if !imageModelIncluded {
+		models = append(models, "gpt-image-2")
 	}
 	return models, nil
 }
