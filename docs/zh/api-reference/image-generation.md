@@ -6,7 +6,7 @@ AxonHub 通过 OpenAI 兼容的 `/v1/images/generations` 和 `/v1/images/edits` 
 
 **注意**：目前不支持 Images SSE。请省略 `stream` 或设置为 `false`。生成 JSON、编辑 JSON 和编辑 multipart 请求中的 `stream: true` 会在执行上游请求前被明确拒绝；AxonHub 不会合成图像流式事件。`partial_images` 不会启用流式传输。
 
-Codex 和从 Images→Responses 桥接迁移的渠道使用原生 Images 端点，复用渠道现有 Base URL、认证、代理和端点覆盖配置。现有 URL 标记与路径前缀规则仍然生效；Codex 默认 Base URL 为 `https://chatgpt.com/backend-api/codex#`。Images 请求不再转换为 Responses `image_generation` 工具调用。原生 `/v1/responses` 请求及其图像工具保留各自的行为。
+Codex 默认使用原生 Images 端点，复用渠道 Base URL、认证、代理和显式 Images 端点覆盖配置。现有 URL 标记与路径前缀规则仍然生效；Codex 默认 Base URL 为 `https://chatgpt.com/backend-api/codex#`。Responses 端点不代表相同 Base URL 下存在 Images API，Fenno 和其他非 Codex 渠道也不例外。已有原生图像提供商端点继续可用，用户也可以为其他渠道显式配置 Images 端点。Images 端点不会继承自定义 Responses 的 Base URL 或路径。Images 请求不再转换为 Responses `image_generation` 工具调用。原生 `/v1/responses` 请求及其图像工具保留各自的行为。
 
 ## API 使用
 

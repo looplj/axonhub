@@ -225,35 +225,14 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
-		if (c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String()) && !(isRelayImageChannel(c.Type) && isNativeImageFormat(ep.APIFormat)) {
+		if (c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String()) && (c.Type != channel.TypeCodex || !isNativeImageFormat(ep.APIFormat)) {
 			outbounds[ep.APIFormat] = ch.Outbound
 			continue
 		}
 
-		if isNativeImageFormat(ep.APIFormat) && isRelayImageChannel(c.Type) {
-			for _, effective := range ch.ResolveEndpoints() {
-				if effective.APIFormat == ep.APIFormat {
-					ep = effective
-					break
-				}
-			}
-		}
 		out, err := svc.buildNonDefaultEndpointOutbound(c, ch, ep)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build default outbound for api_format %q on channel %s: %w", ep.APIFormat, c.Name, err)
-		}
-		outbounds[ep.APIFormat] = out
-	}
-	for _, ep := range ch.ResolveEndpoints() {
-		if !isNativeImageFormat(ep.APIFormat) {
-			continue
-		}
-		if _, exists := outbounds[ep.APIFormat]; exists {
-			continue
-		}
-		out, err := buildRelayImageOutbound(c, ch, ep)
-		if err != nil {
-			return nil, err
 		}
 		outbounds[ep.APIFormat] = out
 	}
@@ -421,8 +400,12 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			return nil, err
 		}
 	}
-	if isNativeImageFormat(ep.APIFormat) && isRelayImageChannel(c.Type) && ep.Transport != objects.ChannelEndpointTransportWebSocket {
-		return buildRelayImageOutbound(c, ch, ep)
+	if isNativeImageFormat(ep.APIFormat) && c.Type == channel.TypeCodex && ep.Transport != objects.ChannelEndpointTransportWebSocket {
+		primary, ok := ch.Outbound.(*codex.OutboundTransformer)
+		if !ok {
+			return nil, fmt.Errorf("channel %s requires a Codex outbound for Images", c.Name)
+		}
+		return codex.NewImageOutboundTransformer(codex.ImageParams{TokenProvider: primary.TokenProvider(), BaseURL: baseURL, EndpointPath: ep.Path})
 	}
 	if endpointTransport(ep) == objects.ChannelEndpointTransportWebSocket && !supportsWebSocketTransport(ep.APIFormat) {
 		return nil, fmt.Errorf("websocket transport only supports api_format %q", llm.APIFormatOpenAIResponse.String())

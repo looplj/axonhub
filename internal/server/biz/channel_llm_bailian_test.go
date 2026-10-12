@@ -39,8 +39,6 @@ func TestBailianResponsesChannel_RegistrationAndRequest(t *testing.T) {
 	require.IsType(t, &responses.OutboundTransformer{}, built.Outbound)
 	require.Equal(t, []objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatOpenAIResponse.String()},
-		{APIFormat: llm.APIFormatOpenAIImageGeneration.String()},
-		{APIFormat: llm.APIFormatOpenAIImageEdit.String()},
 	}, built.ResolveEndpoints())
 
 	outbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIResponse.String())

@@ -6,7 +6,7 @@ AxonHub supports non-streaming image generation and editing via the OpenAI-compa
 
 **Note**: Images SSE is not currently supported. Omit `stream` or set it to `false`. Generation JSON, edit JSON, and edit multipart requests with `stream: true` are explicitly rejected before upstream execution; AxonHub does not synthesize image streaming events. `partial_images` does not enable streaming.
 
-Codex and channels migrated from the Images-to-Responses bridge use native Images endpoints. They reuse the channel's existing Base URL, authentication, proxy, and endpoint overrides. Existing URL markers and path-prefix rules still apply; the default Codex Base URL is `https://chatgpt.com/backend-api/codex#`. Images requests are no longer converted to Responses `image_generation` tool calls. Native `/v1/responses` requests and their image tools retain their own behavior.
+Codex uses native Images endpoints by default, reusing the channel's Base URL, authentication, proxy, and explicit Images endpoint overrides. Existing URL markers and path-prefix rules still apply; the default Codex Base URL is `https://chatgpt.com/backend-api/codex#`. Responses endpoints do not imply an Images API at the same Base URL, including on Fenno and other non-Codex channels. Existing native image provider endpoints remain available, and users can explicitly configure Images endpoints on other channels. Images endpoints do not inherit custom Responses Base URLs or paths. Images requests are no longer converted to Responses `image_generation` tool calls. Native `/v1/responses` requests and their image tools retain their own behavior.
 
 ## API Usage
 

@@ -18,7 +18,7 @@ import (
 )
 
 func TestRelayImageEndpointRouting(t *testing.T) {
-	// Given: every default bridge user and a custom-Responses-only channel.
+	// Given: Codex defaults and explicit Images configurations on other channels.
 	client := enttest.NewEntClient(t, "sqlite3", "file:"+t.Name()+"?mode=memory&_fk=0")
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
 	svc := NewChannelServiceForTest(client)
@@ -42,6 +42,10 @@ func TestRelayImageEndpointRouting(t *testing.T) {
 					t.Cleanup(func() { stopChannelOutbounds(built) })
 					// When: the resolved Images capability constructs a request.
 					out, err := BuildOutboundByAPIFormat(built, format.String())
+					if !custom && typ != channel.TypeCodex {
+						require.ErrorContains(t, err, "does not support api_format")
+						return
+					}
 					require.NoError(t, err)
 					req, err := out.TransformRequest(t.Context(), &llm.Request{Model: "gpt-image-2", RequestType: llm.RequestTypeImage, APIFormat: format,
 						Image: &llm.ImageRequest{Prompt: "draw a square", Images: [][]byte{[]byte("image-fixture")}}, RawRequest: &httpclient.Request{Headers: http.Header{"Session-Id": {"image-session"}}}})
@@ -55,7 +59,7 @@ func TestRelayImageEndpointRouting(t *testing.T) {
 					require.NotContains(t, string(req.Body), "image_generation")
 					_, customized := out.(pipeline.ChannelCustomizedExecutor)
 					require.False(t, customized, "Images must use the ordinary HTTP executor")
-					if format == llm.APIFormatOpenAIImageGeneration || typ == channel.TypeCodex || typ == channel.TypeFenno {
+					if format == llm.APIFormatOpenAIImageGeneration || typ == channel.TypeCodex {
 						require.Equal(t, "gpt-image-2", gjson.GetBytes(req.Body, "model").String())
 					}
 				})

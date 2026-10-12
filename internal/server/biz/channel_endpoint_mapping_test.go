@@ -105,14 +105,14 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},
 		},
 		{
-			name:     "nanogpt responses defaults to responses and native images",
+			name:     "nanogpt responses defaults to responses only",
 			typ:      channel.TypeNanogptResponses,
-			expected: []string{llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIImageGeneration.String(), llm.APIFormatOpenAIImageEdit.String()},
+			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
-			name:     "bailian responses defaults to responses and native images",
+			name:     "bailian responses defaults to responses only",
 			typ:      channel.TypeBailianResponses,
-			expected: []string{llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIImageGeneration.String(), llm.APIFormatOpenAIImageEdit.String()},
+			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
 			name: "xai api key exposes chat and responses",
@@ -123,9 +123,9 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
-			name:     "xai responses defaults to responses and native images",
+			name:     "xai responses defaults to responses only",
 			typ:      channel.TypeXaiResponses,
-			expected: []string{llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIImageGeneration.String(), llm.APIFormatOpenAIImageEdit.String()},
+			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
 			name:     "xai subscription defaults to responses",
@@ -143,9 +143,9 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
-			name:     "fenno defaults to responses and native images",
+			name:     "fenno defaults to responses only",
 			typ:      channel.TypeFenno,
-			expected: []string{llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIImageGeneration.String(), llm.APIFormatOpenAIImageEdit.String()},
+			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
 			name:     "jina exposes rerank and embedding",

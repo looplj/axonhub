@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRelayImagesURLMatrix(t *testing.T) {
+func TestCodexImagesURLMatrix(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:"+t.Name()+"?mode=memory&_fk=0")
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
 	svc := NewChannelServiceForTest(client)
-	for _, typ := range []channel.Type{channel.TypeCodex, channel.TypeFenno, channel.TypeOpenaiResponses, channel.TypeZenmuxResponses, channel.TypeNanogptResponses, channel.TypeXaiResponses, channel.TypeBailianResponses, channel.TypeOpencodeGo} {
+	for _, typ := range []channel.Type{channel.TypeCodex} {
 		for _, tc := range []struct {
 			name, base, path, prefix string
 			raw                      bool
@@ -38,10 +38,6 @@ func TestRelayImagesURLMatrix(t *testing.T) {
 						c.Endpoints = []objects.ChannelEndpoint{{APIFormat: format.String(), Path: tc.path}}
 					}
 					built, err := svc.buildChannelWithOutbounds(c)
-					if tc.base == "" && typ != channel.TypeCodex && typ != channel.TypeFenno && typ != channel.TypeZenmuxResponses {
-						require.Error(t, err)
-						return
-					}
 					// When
 					require.NoError(t, err)
 					t.Cleanup(func() { stopChannelOutbounds(built) })
@@ -51,11 +47,8 @@ func TestRelayImagesURLMatrix(t *testing.T) {
 					// Then: exact URLs, including raw URLs and custom paths, are retained.
 					require.NoError(t, err)
 					prefix := tc.prefix
-					if (typ == channel.TypeCodex || typ == channel.TypeFenno) && (tc.base == "" || tc.name == "legacy") {
+					if tc.base == "" || tc.name == "legacy" {
 						prefix = "https://chatgpt.com/backend-api/codex"
-					}
-					if typ == channel.TypeZenmuxResponses && tc.base == "" {
-						prefix = "https://zenmux.ai/api/v1"
 					}
 					path := "/images/generations"
 					if format == llm.APIFormatOpenAIImageEdit {
