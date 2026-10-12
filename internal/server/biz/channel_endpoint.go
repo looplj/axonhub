@@ -377,6 +377,9 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 
 func DefaultEndpointsForChannelType(t channel.Type) []objects.ChannelEndpoint {
 	if eps, ok := defaultEndpointsForChannelType[t]; ok {
+		if isRelayImageChannel(t) {
+			return appendNativeImageEndpoints(eps, "")
+		}
 		return eps
 	}
 
@@ -442,7 +445,8 @@ func (c *Channel) ResolveEndpoints() []objects.ChannelEndpoint {
 		return nil
 	}
 
-	return mergeEndpoints(DefaultEndpointsForChannelType(c.Type), c.Endpoints)
+	endpoints := mergeEndpoints(DefaultEndpointsForChannelType(c.Type), c.Endpoints)
+	return resolveRelayImageEndpoints(c, endpoints)
 }
 
 // ForcedAPIFormats returns the api formats force-specified for the given request

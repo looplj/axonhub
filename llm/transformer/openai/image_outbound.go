@@ -23,7 +23,9 @@ import (
 // buildImageGenerationAPIRequest builds the HTTP request to call the OpenAI Image Generation API.
 // based on whether images are present in the request.
 func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context, chatReq *llm.Request) (*httpclient.Request, error) {
-	chatReq.Stream = lo.ToPtr(false)
+	if chatReq.Stream != nil && *chatReq.Stream {
+		return nil, fmt.Errorf("%w: image request does not support streaming", transformer.ErrInvalidRequest)
+	}
 
 	if chatReq.Image == nil {
 		return nil, fmt.Errorf("image request is required")
@@ -44,7 +46,11 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(ctx context.Context
 		rawReq, err = t.buildImageVariationRequest(chatReq, apiKey)
 		fmtType = llm.APIFormatOpenAIImageVariation
 	case llm.APIFormatOpenAIImageEdit:
-		rawReq, err = t.buildImageEditRequest(chatReq, apiKey)
+		if t.config.ImageEditJSON || len(chatReq.Image.ImageReferences) > len(chatReq.Image.Images) || (chatReq.Image.MaskReference != nil && len(chatReq.Image.Mask) == 0) {
+			rawReq, err = t.buildImageEditJSONRequest(chatReq, apiKey)
+		} else {
+			rawReq, err = t.buildImageEditRequest(chatReq, apiKey)
+		}
 		fmtType = llm.APIFormatOpenAIImageEdit
 	default:
 		rawReq, err = t.buildImageGenerateRequest(chatReq, apiKey)
@@ -168,10 +174,7 @@ func (t *OutboundTransformer) buildImageGenerateRequest(chatReq *llm.Request, ap
 	headers.Set("Accept", "application/json")
 
 	// Build URL
-	url := t.config.BaseURL + "/images/generations"
-	if t.config.EndpointPath != "" {
-		url = t.config.BaseURL + t.config.EndpointPath
-	}
+	url := t.imageRequestURL("/images/generations")
 
 	// Build auth config
 	auth := &httpclient.AuthConfig{
@@ -328,6 +331,13 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 			jsonBody["input_fidelity"] = img.InputFidelity
 		}
 
+		if img.Moderation != "" {
+			if err := writer.WriteField("moderation", img.Moderation); err != nil {
+				return nil, fmt.Errorf("failed to write moderation field: %w", err)
+			}
+			jsonBody["moderation"] = img.Moderation
+		}
+
 		if img.OutputCompression != nil {
 			if err := writer.WriteField("output_compression", fmt.Sprintf("%d", *img.OutputCompression)); err != nil {
 				return nil, fmt.Errorf("failed to write output_compression field: %w", err)
@@ -382,10 +392,7 @@ func (t *OutboundTransformer) buildImageEditRequest(chatReq *llm.Request, apiKey
 	headers.Set("Accept", "application/json")
 
 	// Build URL
-	url := t.config.BaseURL + "/images/edits"
-	if t.config.EndpointPath != "" {
-		url = t.config.BaseURL + t.config.EndpointPath
-	}
+	url := t.imageRequestURL("/images/edits")
 
 	// Build auth config
 	auth := &httpclient.AuthConfig{

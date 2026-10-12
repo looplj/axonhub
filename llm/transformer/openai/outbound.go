@@ -56,7 +56,8 @@ type Config struct {
 	// EndpointPath is an optional custom path override for this endpoint.
 	// When set, it replaces the default API path (e.g., "/chat/completions").
 	// Must start with "/". Skips default version normalization when set.
-	EndpointPath string `json:"endpoint_path,omitempty"`
+	EndpointPath  string `json:"endpoint_path,omitempty"`
+	ImageEditJSON bool   `json:"-"`
 
 	// APIKeyProvider provides API keys for authentication, required.
 	APIKeyProvider auth.APIKeyProvider `json:"-"`

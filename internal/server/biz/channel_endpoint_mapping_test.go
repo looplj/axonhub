@@ -105,14 +105,14 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},
 		},
 		{
-			name:     "nanogpt responses defaults to responses",
+			name:     "nanogpt responses defaults to responses and native images",
 			typ:      channel.TypeNanogptResponses,
-			expected: []string{llm.APIFormatOpenAIResponse.String()},
+			expected: []string{llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIImageGeneration.String(), llm.APIFormatOpenAIImageEdit.String()},
 		},
 		{
-			name:     "bailian responses defaults to responses",
+			name:     "bailian responses defaults to responses and native images",
 			typ:      channel.TypeBailianResponses,
-			expected: []string{llm.APIFormatOpenAIResponse.String()},
+			expected: []string{llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIImageGeneration.String(), llm.APIFormatOpenAIImageEdit.String()},
 		},
 		{
 			name: "xai api key exposes chat and responses",
@@ -123,9 +123,9 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
-			name:     "xai responses defaults to responses",
+			name:     "xai responses defaults to responses and native images",
 			typ:      channel.TypeXaiResponses,
-			expected: []string{llm.APIFormatOpenAIResponse.String()},
+			expected: []string{llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIImageGeneration.String(), llm.APIFormatOpenAIImageEdit.String()},
 		},
 		{
 			name:     "xai subscription defaults to responses",
@@ -143,9 +143,9 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
-			name:     "fenno defaults to responses only",
+			name:     "fenno defaults to responses and native images",
 			typ:      channel.TypeFenno,
-			expected: []string{llm.APIFormatOpenAIResponse.String()},
+			expected: []string{llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIImageGeneration.String(), llm.APIFormatOpenAIImageEdit.String()},
 		},
 		{
 			name:     "jina exposes rerank and embedding",

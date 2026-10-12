@@ -322,13 +322,17 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 
 	// Extract image data for ImageRequest
 	images := make([][]byte, 0, len(formData.Images))
+	references := make([]llm.ImageReference, 0, len(formData.Images))
 	for _, img := range formData.Images {
 		images = append(images, img.Data)
+		references = append(references, llm.ImageReference{ImageURL: multipartFileToDataURL(img)})
 	}
 
 	var mask []byte
+	var maskReference *llm.ImageReference
 	if formData.Mask != nil {
 		mask = formData.Mask.Data
+		maskReference = &llm.ImageReference{ImageURL: multipartFileToDataURL(*formData.Mask)}
 	}
 
 	user := strings.TrimSpace(formData.Fields["user"])
@@ -336,7 +340,10 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 	imageReq := &llm.ImageRequest{
 		Prompt:            prompt,
 		Images:            images,
+		ImageReferences:   references,
 		Mask:              mask,
+		MaskReference:     maskReference,
+		Moderation:        strings.TrimSpace(formData.Fields["moderation"]),
 		N:                 parseOptionalInt64(formData.Fields["n"]),
 		Size:              strings.TrimSpace(formData.Fields["size"]),
 		Quality:           strings.TrimSpace(formData.Fields["quality"]),
@@ -367,11 +374,12 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 // Images accepts an array of data URL strings or of objects carrying image_url;
 // Mask accepts a data URL string.
 type ImageEditJSONRequest struct {
+	Style             string          `json:"style,omitempty"`
 	Prompt            string          `json:"prompt"`
 	Model             string          `json:"model"`
 	Image             json.RawMessage `json:"image,omitempty"`
 	Images            json.RawMessage `json:"images,omitempty"`
-	Mask              string          `json:"mask,omitempty"`
+	Mask              json.RawMessage `json:"mask,omitempty"`
 	N                 *int64          `json:"n,omitempty"`
 	Size              string          `json:"size,omitempty"`
 	Quality           string          `json:"quality,omitempty"`
@@ -381,6 +389,7 @@ type ImageEditJSONRequest struct {
 	OutputFormat      string          `json:"output_format,omitempty"`
 	OutputCompression *int64          `json:"output_compression,omitempty"`
 	InputFidelity     string          `json:"input_fidelity,omitempty"`
+	Moderation        string          `json:"moderation,omitempty"`
 	PartialImages     *int64          `json:"partial_images,omitempty"`
 	Stream            bool            `json:"stream,omitempty"`
 }
@@ -412,12 +421,12 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 		model = "dall-e-2"
 	}
 
-	images, err := parseEditImagesField(editReq.Image, editReq.Images)
+	images, references, err := parseEditImageInputs(editReq.Image, editReq.Images)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(images) == 0 {
+	if len(images) == 0 && len(references) == 0 {
 		return nil, fmt.Errorf("%w: at least one image is required for edits", transformer.ErrInvalidRequest)
 	}
 
@@ -427,17 +436,25 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 
 	var mask []byte
 
-	if maskDataURL := strings.TrimSpace(editReq.Mask); maskDataURL != "" {
-		mask, err = decodeDataURLToBytes(maskDataURL)
+	var maskReference *llm.ImageReference
+	if len(editReq.Mask) != 0 && string(editReq.Mask) != "null" {
+		ref, data, parseErr := parseEditImageReference(editReq.Mask)
+		err = parseErr
 		if err != nil {
 			return nil, err
 		}
+		mask = data
+		maskReference = &ref
 	}
 
 	imageReq := &llm.ImageRequest{
 		Prompt:            prompt,
 		Images:            images,
+		ImageReferences:   references,
 		Mask:              mask,
+		MaskReference:     maskReference,
+		Moderation:        editReq.Moderation,
+		Style:             strings.TrimSpace(editReq.Style),
 		N:                 editReq.N,
 		Size:              strings.TrimSpace(editReq.Size),
 		Quality:           strings.TrimSpace(editReq.Quality),

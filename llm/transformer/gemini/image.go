@@ -20,6 +20,9 @@ func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, l
 	if llmReq.Image == nil {
 		return nil, fmt.Errorf("%w: image request is required", transformer.ErrInvalidRequest)
 	}
+	if err := transformer.ValidateImageBytes(llmReq.Image); err != nil {
+		return nil, err
+	}
 
 	if llmReq.Image.Prompt == "" {
 		return nil, fmt.Errorf("%w: prompt is required for image generation", transformer.ErrInvalidRequest)
