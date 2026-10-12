@@ -22,9 +22,7 @@ func TestRelayImageEndpointRouting(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:"+t.Name()+"?mode=memory&_fk=0")
 	t.Cleanup(func() { require.NoError(t, client.Close()) })
 	svc := NewChannelServiceForTest(client)
-	for _, typ := range []channel.Type{channel.TypeCodex, channel.TypeFenno, channel.TypeOpenaiResponses,
-		channel.TypeZenmuxResponses, channel.TypeNanogptResponses, channel.TypeXaiResponses,
-		channel.TypeBailianResponses, channel.TypeOpencodeGo} {
+	for _, typ := range []channel.Type{channel.TypeCodex, channel.TypeFenno, channel.TypeOpenaiResponses, channel.TypeZenmuxResponses, channel.TypeNanogptResponses, channel.TypeXaiResponses, channel.TypeBailianResponses, channel.TypeOpencodeGo} {
 		for _, custom := range []bool{false, true} {
 			for _, format := range []llm.APIFormat{llm.APIFormatOpenAIImageGeneration, llm.APIFormatOpenAIImageEdit} {
 				t.Run(string(typ)+"/"+format.String()+"/custom="+map[bool]string{false: "false", true: "true"}[custom], func(t *testing.T) {
