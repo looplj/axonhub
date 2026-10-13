@@ -77,7 +77,7 @@ func reportedModel(body []byte, format llm.APIFormat, eventType string, stream b
 		if eventType == "message_start" {
 			return jsonModel(body, "message.model")
 		}
-	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact:
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket, llm.APIFormatOpenAIResponseCompact:
 		if !stream {
 			return jsonModel(body, "model")
 		}

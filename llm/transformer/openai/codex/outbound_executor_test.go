@@ -123,6 +123,21 @@ func TestCodexOutbound_RejectsPassThroughBodyWithTokenLimitFields(t *testing.T) 
 	}
 }
 
+func TestCodexOutbound_RejectsWebSocketPassThroughBodyWithTokenLimitFields(t *testing.T) {
+	for _, field := range []string{"max_output_tokens", "max_completion_tokens", "max_tokens"} {
+		t.Run(field, func(t *testing.T) {
+			llmReq := &llm.Request{
+				APIFormat: llm.APIFormatOpenAIResponseWebSocket,
+				RawRequest: &httpclient.Request{
+					Body: []byte(`{"model":"gpt-5.4-mini","input":"hi","stream":true,"` + field + `":12000}`),
+				},
+			}
+
+			require.False(t, (&OutboundTransformer{}).AllowPassThroughBody(context.Background(), llmReq, &httpclient.Request{}))
+		})
+	}
+}
+
 func TestCodexOutbound_AllowsPassThroughBodyWithoutTokenLimitFields(t *testing.T) {
 	outbound := &OutboundTransformer{}
 	llmReq := &llm.Request{
