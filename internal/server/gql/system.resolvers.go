@@ -460,6 +460,11 @@ func (r *queryResolver) CodexCompatibilitySettings(ctx context.Context) (*biz.Co
 	return r.systemService.CodexCompatibilitySettings(ctx)
 }
 
+// CodexCompatibilityEnabled is the resolver for the codexCompatibilityEnabled field.
+func (r *queryResolver) CodexCompatibilityEnabled(ctx context.Context) (bool, error) {
+	return r.systemService.CodexCompatibilityEnabled(ctx)
+}
+
 // CodexCatalogChannels is the resolver for the codexCatalogChannels field.
 func (r *queryResolver) CodexCatalogChannels(ctx context.Context) ([]*CodexCatalogChannel, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeReadSettings); err != nil {

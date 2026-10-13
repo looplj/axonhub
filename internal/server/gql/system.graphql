@@ -431,6 +431,7 @@ type CodexCatalogTestResult {
 
 extend type Query {
   codexCompatibilitySettings: CodexCompatibilitySettings!
+  codexCompatibilityEnabled: Boolean!
   codexCatalogChannels: [CodexCatalogChannel!]!
 }
 

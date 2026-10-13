@@ -1432,6 +1432,7 @@ type ComplexityRoot struct {
 		Channels                        func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.ChannelOrder, where *ent.ChannelWhereInput) int
 		CheckForUpdate                  func(childComplexity int, includeBeta bool) int
 		CodexCatalogChannels            func(childComplexity int) int
+		CodexCompatibilityEnabled       func(childComplexity int) int
 		CodexCompatibilitySettings      func(childComplexity int) int
 		CostStatsByAPIKey               func(childComplexity int, timeWindow *string) int
 		CostStatsByChannel              func(childComplexity int, timeWindow *string) int
@@ -2478,6 +2479,7 @@ type QueryResolver interface {
 	Me(ctx context.Context) (*objects.UserInfo, error)
 	MyProjects(ctx context.Context) ([]*ent.Project, error)
 	CodexCompatibilitySettings(ctx context.Context) (*biz.CodexCompatibilitySettings, error)
+	CodexCompatibilityEnabled(ctx context.Context) (bool, error)
 	CodexCatalogChannels(ctx context.Context) ([]*CodexCatalogChannel, error)
 	PreviewGcCleanup(ctx context.Context, input gc.TriggerGcCleanupInput) ([]*gc.GcCleanupPreviewItem, error)
 	ProvidersCatalog(ctx context.Context, filtered *bool) (*ProvidersCatalog, error)
@@ -8614,6 +8616,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.CodexCatalogChannels(childComplexity), true
+	case "Query.codexCompatibilityEnabled":
+		if e.complexity.Query.CodexCompatibilityEnabled == nil {
+			break
+		}
+
+		return e.complexity.Query.CodexCompatibilityEnabled(childComplexity), true
 	case "Query.codexCompatibilitySettings":
 		if e.complexity.Query.CodexCompatibilitySettings == nil {
 			break
@@ -47704,6 +47712,35 @@ func (ec *executionContext) fieldContext_Query_codexCompatibilitySettings(_ cont
 				return ec.fieldContext_CodexCompatibilitySettings_channelID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CodexCompatibilitySettings", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_codexCompatibilityEnabled(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_codexCompatibilityEnabled,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().CodexCompatibilityEnabled(ctx)
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_codexCompatibilityEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -105154,6 +105191,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_codexCompatibilitySettings(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "codexCompatibilityEnabled":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_codexCompatibilityEnabled(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
