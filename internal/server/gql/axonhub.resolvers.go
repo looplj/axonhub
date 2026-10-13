@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -25,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/samber/lo"
 )
 
 // LinkedProfilesCount is the resolver for the linkedProfilesCount field.
@@ -1087,6 +1086,16 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
+// APIKeyStrategy is the resolver for the apiKeyStrategy field.
+func (r *updateChannelSettingsInputResolver) APIKeyStrategy(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *string) error {
+	panic(fmt.Errorf("not implemented: APIKeyStrategy - apiKeyStrategy"))
+}
+
+// APIKeyRoundRobinSwitchAfter is the resolver for the apiKeyRoundRobinSwitchAfter field.
+func (r *updateChannelSettingsInputResolver) APIKeyRoundRobinSwitchAfter(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *int) error {
+	panic(fmt.Errorf("not implemented: APIKeyRoundRobinSwitchAfter - apiKeyRoundRobinSwitchAfter"))
+}
+
 // ChannelSettings returns ChannelSettingsResolver implementation.
 func (r *Resolver) ChannelSettings() ChannelSettingsResolver { return &channelSettingsResolver{r} }
 
@@ -1096,6 +1105,12 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
+// UpdateChannelSettingsInput returns UpdateChannelSettingsInputResolver implementation.
+func (r *Resolver) UpdateChannelSettingsInput() UpdateChannelSettingsInputResolver {
+	return &updateChannelSettingsInputResolver{r}
+}
+
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
+type updateChannelSettingsInputResolver struct{ *Resolver }
