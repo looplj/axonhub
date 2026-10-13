@@ -23,6 +23,10 @@ var (
 	// terminal event. Pipelines may retry it only before meaningful output is
 	// committed to the caller.
 	ErrStreamIncomplete = errors.New("stream ended without terminal event")
+
+	// ErrEmptyResponse means a streaming response completed without meaningful
+	// content. Pipelines may retry it before content is committed.
+	ErrEmptyResponse = errors.New("empty response detected")
 )
 
 // Request is the unified llm request model for AxonHub, to keep compatibility with major app and framework.
