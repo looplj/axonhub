@@ -51,6 +51,7 @@ type retryTestOutbound struct {
 	transformer.Outbound
 	real         transformer.Outbound
 	prepareCalls *int
+	canRetry     func(error) bool
 }
 
 func (o *retryTestOutbound) TransformRequest(ctx context.Context, req *llm.Request) (*httpclient.Request, error) {
@@ -59,7 +60,13 @@ func (o *retryTestOutbound) TransformRequest(ctx context.Context, req *llm.Reque
 func (o *retryTestOutbound) TransformStream(ctx context.Context, req *httpclient.Request, stream streams.Stream[*httpclient.StreamEvent]) (streams.Stream[*llm.Response], error) {
 	return o.real.TransformStream(ctx, req, stream)
 }
-func (*retryTestOutbound) CanRetry(err error) bool { return errors.Is(err, llm.ErrStreamIncomplete) }
+func (o *retryTestOutbound) CanRetry(err error) bool {
+	if o.canRetry != nil {
+		return o.canRetry(err)
+	}
+
+	return errors.Is(err, llm.ErrStreamIncomplete) || errors.Is(err, llm.ErrEmptyResponse)
+}
 func (o *retryTestOutbound) PrepareForRetry(context.Context) error {
 	*o.prepareCalls++
 	return nil
@@ -205,4 +212,115 @@ func TestResponsesIncompleteStreamDoesNotRetryAfterMeaningfulOutput(t *testing.T
 			require.NotEmpty(t, events)
 		})
 	}
+}
+
+func TestPipelineResponsesFailedCodeRetry(t *testing.T) {
+	// Given
+	realResponses, err := openairesponses.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	attempts, prepareCalls := 0, 0
+	executor := &retryTestExecutor{
+		attempts: &attempts,
+		streams: [][]*httpclient.StreamEvent{
+			{{Type: "response.failed", Data: []byte(`{"type":"response.failed","response":{"error":{"type":"server_error","code":"server_is_overloaded","message":"server overloaded"}}}`)}},
+			{
+				{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"ok"}`)},
+				{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"status":"completed"}}`)},
+			},
+		},
+	}
+	outbound := &retryTestOutbound{
+		real:         realResponses,
+		prepareCalls: &prepareCalls,
+		canRetry: func(err error) bool {
+			var responseErr *llm.ResponseError
+			return errors.As(err, &responseErr) && responseErr.Detail.Code == "server_is_overloaded"
+		},
+	}
+	p := llmpipeline.NewFactory(executor).Pipeline(&retryTestInbound{}, outbound, llmpipeline.WithRetry(0, 1, 0))
+
+	// When
+	res, err := p.Process(context.Background(), &httpclient.Request{})
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, 2, attempts)
+	require.Equal(t, 1, prepareCalls)
+	events, err := streams.All(res.EventStream)
+	require.NoError(t, err)
+	var payloads []string
+	for _, event := range events {
+		payloads = append(payloads, string(event.Data))
+	}
+	require.Equal(t, 1, countPayload(payloads, "ok"))
+}
+
+func TestPipelineResponsesFailedPreservesEmptyResponseRetry(t *testing.T) {
+	// Given
+	realResponses, err := openairesponses.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	attempts, prepareCalls := 0, 0
+	emptyResponseMatched := false
+	executor := &retryTestExecutor{
+		attempts: &attempts,
+		streams: [][]*httpclient.StreamEvent{
+			{{Type: "response.failed", Data: []byte(`{"type":"response.failed","response":{"error":{"type":"server_error","code":"unrelated_code","message":"provider failed"}}}`)}},
+			{
+				{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"ok"}`)},
+				{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"status":"completed"}}`)},
+			},
+		},
+	}
+	outbound := &retryTestOutbound{
+		real:         realResponses,
+		prepareCalls: &prepareCalls,
+		canRetry: func(err error) bool {
+			emptyResponseMatched = errors.Is(err, llm.ErrEmptyResponse)
+			return emptyResponseMatched
+		},
+	}
+	p := llmpipeline.NewFactory(executor).Pipeline(&retryTestInbound{}, outbound, llmpipeline.WithRetry(0, 1, 0))
+
+	// When
+	res, err := p.Process(context.Background(), &httpclient.Request{})
+
+	// Then
+	require.NoError(t, err)
+	require.Equal(t, 2, attempts)
+	require.Equal(t, 1, prepareCalls)
+	require.True(t, emptyResponseMatched)
+	events, err := streams.All(res.EventStream)
+	require.NoError(t, err)
+	require.NotEmpty(t, events)
+}
+
+func TestPipelineResponsesDeltaThenFailedNoRetry(t *testing.T) {
+	// Given
+	realResponses, err := openairesponses.NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+	attempts, prepareCalls := 0, 0
+	executor := &retryTestExecutor{
+		attempts: &attempts,
+		streams: [][]*httpclient.StreamEvent{{
+			{Type: "response.output_text.delta", Data: []byte(`{"type":"response.output_text.delta","delta":"partial"}`)},
+			{Type: "response.failed", Data: []byte(`{"type":"response.failed","response":{"error":{"type":"server_error","code":"server_is_overloaded","message":"server overloaded"}}}`)},
+		}},
+	}
+	outbound := &retryTestOutbound{real: realResponses, prepareCalls: &prepareCalls}
+	p := llmpipeline.NewFactory(executor).Pipeline(&retryTestInbound{}, outbound, llmpipeline.WithRetry(0, 1, 0))
+
+	// When
+	res, err := p.Process(context.Background(), &httpclient.Request{})
+	require.NoError(t, err)
+	events, streamErr := streams.All(res.EventStream)
+
+	// Then
+	require.NoError(t, streamErr)
+	require.Equal(t, 1, attempts)
+	require.Equal(t, 0, prepareCalls)
+	var payloads []string
+	for _, event := range events {
+		payloads = append(payloads, string(event.Data))
+	}
+	require.Equal(t, 1, countPayload(payloads, "partial"))
 }
