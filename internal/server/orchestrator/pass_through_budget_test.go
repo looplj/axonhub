@@ -30,7 +30,7 @@ func TestPassThroughAnthropicStream_RawBudget(t *testing.T) {
 		data  string
 	}{
 		{name: "filtered event count", count: 1025, data: `{"type":"ping"}`},
-		{name: "filtered event bytes", count: 2, data: `{"type":"ping","padding":"` + strings.Repeat("x", 4*1024*1024) + `"}`},
+		{name: "filtered event bytes", count: 4, data: `{"type":"ping","padding":"` + strings.Repeat("x", 17*1024*1024) + `"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// Given: filtered raw pings exceed a pre-attachment budget.
@@ -82,7 +82,7 @@ func TestRawStreamBacklog_ExactBudgets(t *testing.T) {
 	})
 	t.Run("bytes include type and ID", func(t *testing.T) {
 		backlog := &rawStreamBacklog{}
-		_, err := backlog.hold(&httpclient.StreamEvent{Type: "ping", LastEventID: "1", Data: make([]byte, 8*1024*1024-5)})
+		_, err := backlog.hold(&httpclient.StreamEvent{Type: "ping", LastEventID: "1", Data: make([]byte, 64*1024*1024-5)})
 		require.NoError(t, err)
 		_, err = backlog.hold(&httpclient.StreamEvent{Data: []byte("x")})
 		require.ErrorIs(t, err, pipeline.ErrPreCommitBufferExceeded)
@@ -95,17 +95,18 @@ func TestRawStreamQueue_EnforcesAggregateByteBudgetAfterAttachment(t *testing.T)
 	// provider events accumulate in the fan-out queue.
 	backlog := &rawStreamBacklog{attached: true}
 	queue := newRawStreamQueue(backlog)
-	event := &httpclient.StreamEvent{Data: make([]byte, 4*1024*1024)}
+	event := &httpclient.StreamEvent{Data: make([]byte, 16*1024*1024)}
 
 	// When: the producer queues events without a consumer draining them.
-	require.NoError(t, queue.enqueue(context.Background(), event))
-	require.NoError(t, queue.enqueue(context.Background(), event))
+	for range 4 {
+		require.NoError(t, queue.enqueue(context.Background(), event))
+	}
 	err := queue.enqueue(context.Background(), event)
 
 	// Then: the shared raw fan-out budget rejects the third event before the
 	// channel's count capacity could become the effective limit.
 	require.ErrorIs(t, err, pipeline.ErrPreCommitBufferExceeded)
-	require.Len(t, queue.ch, 2)
+	require.Len(t, queue.ch, 4)
 }
 
 func TestPassThroughAnthropicStream_HTTPRetryIsolation(t *testing.T) {

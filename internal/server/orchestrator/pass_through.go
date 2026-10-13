@@ -161,6 +161,9 @@ func applyResponsesTransportRequestBody(outbound *PersistentOutboundTransformer,
 		}
 
 		llmRequest := outbound.state.LlmRequest
+		if !outbound.allowPassThroughBody(ctx, llmRequest, request) {
+			return request, nil
+		}
 		source := llmRequest.APIFormat
 		target := llm.APIFormat(request.APIFormat)
 		body, err := mergePassThroughRequestBodyWithPromptProtection(
@@ -284,7 +287,7 @@ func (p *PersistentOutboundTransformer) allowPassThroughBody(ctx context.Context
 func applyPassThroughRequestHeaders(outbound *PersistentOutboundTransformer) pipeline.Middleware {
 	return pipeline.OnRawRequest("pass-through-request-headers", func(_ context.Context, request *httpclient.Request) (*httpclient.Request, error) {
 		if !outbound.state.PassThroughApplied || outbound.state.LlmRequest == nil ||
-			outbound.state.LlmRequest.APIFormat != llm.APIFormatOpenAIResponse ||
+			!responsestransformer.IsResponsesFormat(outbound.state.LlmRequest.APIFormat) ||
 			outbound.state.LlmRequest.RawRequest == nil {
 			return request, nil
 		}
@@ -772,7 +775,7 @@ type rawStreamBacklog struct {
 
 const (
 	maxRawPreAttachEvents = 1024
-	maxRawPreAttachBytes  = 8 * 1024 * 1024
+	maxRawPreAttachBytes  = 64 * 1024 * 1024
 )
 
 var errRawPreAttachBudgetExceeded = fmt.Errorf("pass-through pre-attachment raw event budget exceeded: %w", pipeline.ErrPreCommitBufferExceeded)

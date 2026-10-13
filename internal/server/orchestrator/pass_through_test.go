@@ -20,9 +20,11 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
+	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	responsestransformer "github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -293,6 +295,46 @@ func TestResponsesCrossTransportBodyPreservation(t *testing.T) {
 			require.JSONEq(t, string(providerResponse.Body), string(clientResponse.Body))
 		})
 	}
+}
+
+func TestResponsesCrossTransportBodySkipsCodexBlockedPassThroughFields(t *testing.T) {
+	codexOutbound, err := codex.NewOutboundTransformer(codex.Params{
+		BaseURL:       "https://chatgpt.com/backend-api/codex",
+		TokenProvider: oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{AccessToken: "test-token"}),
+	})
+	require.NoError(t, err)
+	state := &PersistenceState{
+		LlmRequest: &llm.Request{
+			APIFormat: llm.APIFormatOpenAIResponseWebSocket,
+			Model:     "mapped-model",
+			RawRequest: &httpclient.Request{
+				APIFormat: llm.APIFormatOpenAIResponseWebSocket.String(),
+				Body:      []byte(`{"model":"client-model","max_output_tokens":32,"input":"hello"}`),
+			},
+		},
+		RawProviderRequest: &httpclient.Request{APIFormat: llm.APIFormatOpenAIResponse.String()},
+	}
+	outbound := &PersistentOutboundTransformer{state: state, wrapped: codexOutbound}
+	request := &httpclient.Request{APIFormat: llm.APIFormatOpenAIResponse.String(), Body: []byte(`{"model":"mapped-model","input":"hello"}`)}
+
+	result, err := applyResponsesTransportRequestBody(outbound, nil).OnOutboundRawRequest(context.Background(), request)
+	require.NoError(t, err)
+	require.Same(t, request, result)
+	require.JSONEq(t, `{"model":"mapped-model","input":"hello"}`, string(result.Body))
+}
+
+func TestPassThroughRequestHeadersSupportsResponsesWebSocket(t *testing.T) {
+	state := &PersistenceState{
+		PassThroughApplied: true,
+		LlmRequest: &llm.Request{
+			APIFormat:  llm.APIFormatOpenAIResponseWebSocket,
+			RawRequest: &httpclient.Request{Headers: http.Header{"X-Codex-Turn-Metadata": {"metadata"}}},
+		},
+	}
+	outbound := &PersistentOutboundTransformer{state: state}
+	result, err := applyPassThroughRequestHeaders(outbound).OnOutboundRawRequest(context.Background(), &httpclient.Request{Headers: make(http.Header)})
+	require.NoError(t, err)
+	require.Equal(t, []string{"metadata"}, result.Headers.Values("X-Codex-Turn-Metadata"))
 }
 
 func TestApplyPassThroughResponse_PreservesIdentityAndBackMapsModel(t *testing.T) {
