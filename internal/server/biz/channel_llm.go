@@ -225,7 +225,9 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
-		if (c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String()) && (c.Type != channel.TypeCodex || !isNativeImageFormat(ep.APIFormat)) {
+		if (c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String()) &&
+			(c.Type != channel.TypeCodex || !isNativeImageFormat(ep.APIFormat)) &&
+			!(c.Type == channel.TypeCodex && isResponsesEndpoint(ep.APIFormat) && ep.APIFormat != ch.Outbound.APIFormat().String()) {
 			outbounds[ep.APIFormat] = ch.Outbound
 			continue
 		}
@@ -261,6 +263,9 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 }
 
 func endpointTransport(ep objects.ChannelEndpoint) string {
+	if ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String() {
+		return objects.ChannelEndpointTransportWebSocket
+	}
 	if ep.Transport != "" {
 		return ep.Transport
 	}
@@ -288,6 +293,13 @@ func primaryEndpointTransport(c *ent.Channel, apiFormat string) string {
 		}
 
 		return endpointTransport(ep)
+	}
+	if apiFormat == llm.APIFormatOpenAIResponse.String() {
+		for _, ep := range c.Endpoints {
+			if ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String() {
+				return objects.ChannelEndpointTransportWebSocket
+			}
+		}
 	}
 
 	return endpointTransport(objects.ChannelEndpoint{BaseURL: c.BaseURL})
@@ -446,9 +458,11 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			EndpointPath:   ep.Path,
 		})
 	case llm.APIFormatOpenAIResponse.String(),
+		llm.APIFormatOpenAIResponseWebSocket.String(),
 		llm.APIFormatOpenAIResponseCompact.String():
 		transport := endpointTransport(ep)
-		if (c.Type == channel.TypeCodex || c.Type == channel.TypeFenno) && ep.APIFormat == llm.APIFormatOpenAIResponse.String() {
+		if (c.Type == channel.TypeCodex || c.Type == channel.TypeFenno) &&
+			(ep.APIFormat == llm.APIFormatOpenAIResponse.String() || ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String()) {
 			return svc.buildCodexOutbound(c, ch, baseURL, transport, "", ch.HTTPClient, ep.Path)
 		}
 

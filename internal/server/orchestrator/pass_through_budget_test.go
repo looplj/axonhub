@@ -90,6 +90,24 @@ func TestRawStreamBacklog_ExactBudgets(t *testing.T) {
 	})
 }
 
+func TestRawStreamQueue_EnforcesAggregateByteBudgetAfterAttachment(t *testing.T) {
+	// Given: the pass-through consumer is attached but has stopped reading, so raw
+	// provider events accumulate in the fan-out queue.
+	backlog := &rawStreamBacklog{attached: true}
+	queue := newRawStreamQueue(backlog)
+	event := &httpclient.StreamEvent{Data: make([]byte, 4*1024*1024)}
+
+	// When: the producer queues events without a consumer draining them.
+	require.NoError(t, queue.enqueue(context.Background(), event))
+	require.NoError(t, queue.enqueue(context.Background(), event))
+	err := queue.enqueue(context.Background(), event)
+
+	// Then: the shared raw fan-out budget rejects the third event before the
+	// channel's count capacity could become the effective limit.
+	require.ErrorIs(t, err, pipeline.ErrPreCommitBufferExceeded)
+	require.Len(t, queue.ch, 2)
+}
+
 func TestPassThroughAnthropicStream_HTTPRetryIsolation(t *testing.T) {
 	var attempts atomic.Int32
 	success := anthropicEmptyThinkingEvents(200)

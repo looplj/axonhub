@@ -15,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // ErrStreamIncomplete reports an upstream stream that ended without a terminal
@@ -408,6 +409,9 @@ func (p *PersistentInboundTransformer) TransformRequest(ctx context.Context, req
 	llmRequest, err := p.wrapped.TransformRequest(ctx, request)
 	if err != nil {
 		return nil, err
+	}
+	if shared.IsResponsesWebSocket(ctx) && llmRequest.APIFormat == llm.APIFormatOpenAIResponse {
+		llmRequest.APIFormat = llm.APIFormatOpenAIResponseWebSocket
 	}
 
 	llmRequest.RawRequest = request

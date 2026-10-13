@@ -52,6 +52,12 @@ func TestExtractOutboundReasoningEffort(t *testing.T) {
 			want:   lo.ToPtr("max"),
 		},
 		{
+			name:   "websocket responses effort",
+			format: llm.APIFormatOpenAIResponseWebSocket,
+			body:   `{"model":"gpt-5","reasoning":{"effort":"high"}}`,
+			want:   lo.ToPtr("high"),
+		},
+		{
 			name:   "anthropic output config effort",
 			format: llm.APIFormatAnthropicMessage,
 			body:   `{"model":"deepseek-v4-flash","output_config":{"effort":"max"}}`,

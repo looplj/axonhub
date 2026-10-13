@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/aptible/supercronic/cronexpr"
+	"github.com/samber/lo"
 	"go.uber.org/fx"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -550,6 +551,12 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	if err := NormalizeAPIKeyAutoDisableRules(input.Policies); err != nil {
 		return nil, err
 	}
+	baseURL := lo.FromPtr(input.BaseURL)
+	if err := validateEndpointsForChannelType(input.Type, input.Endpoints, baseURL); err != nil {
+		return nil, fmt.Errorf("invalid endpoints: %w", err)
+	}
+	input.Settings = normalizeModelProtocols(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints})
+	input.Endpoints = NormalizeEndpoints(input.Endpoints, baseURL)
 
 	if input.Settings != nil {
 		// A new channel may intentionally be created before its model list is
@@ -585,14 +592,8 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 			return nil, err
 		}
 
-		if err := ValidateModelProtocols(input.Settings, input.Type, input.Endpoints); err != nil {
+		if err := validateModelProtocols(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints}); err != nil {
 			return nil, fmt.Errorf("invalid model protocols: %w", err)
-		}
-	}
-
-	if input.Endpoints != nil {
-		if err := validateEndpointsForChannelType(input.Type, input.Endpoints); err != nil {
-			return nil, fmt.Errorf("invalid endpoints: %w", err)
 		}
 	}
 
@@ -984,74 +985,46 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 	}
 
-	// Per-model protocol overrides must always reference the effective endpoint
-	// surface. They can arrive together with the settings, or already be stored in
-	// settings while this update only changes endpoints / channel type.
-	protocolSettings := input.Settings
-	if protocolSettings == nil && (input.Endpoints != nil || input.Type != nil) {
+	if input.Settings != nil || input.Endpoints != nil || input.Type != nil || input.BaseURL != nil {
 		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
 			return svc.entFromContext(queryCtx).Channel.Query().
 				Where(channel.IDEQ(id)).
-				Select(channel.FieldSettings).
-				Only(queryCtx)
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to load channel for model protocol validation: %w", err)
-		}
-
-		protocolSettings = existing.Settings
-	}
-
-	if protocolSettings != nil && len(protocolSettings.ModelProtocols) > 0 {
-		// Validation needs the effective channel type and endpoint surface: the
-		// update may change either of them alongside the settings.
-		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
-			return svc.entFromContext(queryCtx).Channel.Query().
-				Where(channel.IDEQ(id)).
-				Select(channel.FieldType, channel.FieldEndpoints).
-				Only(queryCtx)
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to load channel for model protocol validation: %w", err)
-		}
-
-		channelType := existing.Type
-		if input.Type != nil {
-			channelType = *input.Type
-		}
-
-		endpoints := existing.Endpoints
-		if input.Endpoints != nil {
-			endpoints = input.Endpoints
-		}
-
-		if err := ValidateModelProtocols(protocolSettings, channelType, endpoints); err != nil {
-			return nil, fmt.Errorf("invalid model protocols: %w", err)
-		}
-	}
-
-	if input.Endpoints != nil || input.Type != nil {
-		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
-			return svc.entFromContext(queryCtx).Channel.Query().
-				Where(channel.IDEQ(id)).
-				Select(channel.FieldType, channel.FieldEndpoints).
+				Select(channel.FieldType, channel.FieldBaseURL, channel.FieldEndpoints, channel.FieldSettings).
 				Only(queryCtx)
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to load channel for endpoint validation: %w", err)
 		}
-
 		channelType := existing.Type
 		if input.Type != nil {
 			channelType = *input.Type
+		}
+		baseURL := existing.BaseURL
+		if input.BaseURL != nil {
+			baseURL = *input.BaseURL
 		}
 		endpoints := existing.Endpoints
 		if input.Endpoints != nil {
 			endpoints = input.Endpoints
 		}
-
-		if err := validateEndpointsForChannelType(channelType, endpoints); err != nil {
+		if err := validateEndpointsForChannelType(channelType, endpoints, baseURL); err != nil {
 			return nil, fmt.Errorf("invalid endpoints: %w", err)
+		}
+		protocolSettings := input.Settings
+		protocolSource := &ent.Channel{Type: channelType, BaseURL: baseURL, Endpoints: endpoints}
+		if protocolSettings == nil {
+			protocolSettings = existing.Settings
+			protocolSource = existing
+		}
+		normalizedSettings := normalizeModelProtocols(protocolSettings, protocolSource)
+		if err := validateModelProtocols(normalizedSettings, &ent.Channel{Type: channelType, BaseURL: baseURL, Endpoints: endpoints}); err != nil {
+			return nil, fmt.Errorf("invalid model protocols: %w", err)
+		}
+		if input.Settings != nil || normalizedSettings != protocolSettings {
+			input.Settings = normalizedSettings
+		}
+		if input.Endpoints != nil {
+			input.Endpoints = NormalizeEndpoints(input.Endpoints, baseURL)
 		}
 	}
 
@@ -1248,7 +1221,7 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 	if err != nil {
 		return nil, fmt.Errorf("failed to get channel: %w", err)
 	}
-	if err := validateEndpointsForChannelType(ch.Type, input.Endpoints); err != nil {
+	if err := validateEndpointsForChannelType(ch.Type, input.Endpoints, ch.BaseURL); err != nil {
 		return nil, fmt.Errorf("invalid endpoints: %w", err)
 	}
 	if ch.Type == channel.TypeXaiSubscription {
@@ -1257,13 +1230,15 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 
 	// Endpoint changes can invalidate per-model protocol overrides that reference
 	// removed api formats.
-	if err := ValidateModelProtocols(ch.Settings, ch.Type, input.Endpoints); err != nil {
+	settings := normalizeModelProtocols(ch.Settings, ch)
+	if err := validateModelProtocols(settings, &ent.Channel{Type: ch.Type, BaseURL: ch.BaseURL, Endpoints: input.Endpoints}); err != nil {
 		return nil, fmt.Errorf("invalid endpoints for configured model protocols: %w", err)
 	}
 
 	ch, err = svc.entFromContext(ctx).Channel.UpdateOneID(ch.ID).
 		Where(channel.UpdatedAtEQ(ch.UpdatedAt)).
-		SetEndpoints(input.Endpoints).
+		SetEndpoints(NormalizeEndpoints(input.Endpoints, ch.BaseURL)).
+		SetSettings(settings).
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {

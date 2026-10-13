@@ -165,7 +165,7 @@ func TestOpenAIResponsesCompactEndpoint_RejectsInheritedWebSocketTransport(t *te
 	require.ErrorContains(t, err, "websocket transport only supports api_format \"openai/responses\"")
 }
 
-func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
+func TestCodexDualEndpointSharesCredentials(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
 
@@ -208,6 +208,40 @@ func TestCodexOAuthWebSocketEndpointBuildsWithoutAPIKey(t *testing.T) {
 	custom, ok := outbound.(pipeline.ChannelCustomizedExecutor)
 	require.True(t, ok)
 	require.NotNil(t, custom.CustomizeExecutor(nil))
+}
+
+func TestCodexDualEndpointBuildsActualProtocols(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:codex_dual_protocols?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(context.Background())
+	entChannel := client.Channel.Create().
+		SetName("Codex Dual Protocol Channel").
+		SetType(channel.TypeCodex).
+		SetBaseURL("https://chatgpt.com/backend-api/codex#").
+		SetCredentials(objects.ChannelCredentials{OAuth: &objects.OAuthCredentials{
+			AccessToken:  "access-token",
+			RefreshToken: "refresh-token",
+			ExpiresAt:    time.Now().Add(time.Hour),
+		}}).
+		SetSupportedModels([]string{"gpt-5.5"}).
+		SetDefaultTestModel("gpt-5.5").
+		SetEndpoints([]objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIResponse.String()},
+			{APIFormat: llm.APIFormatOpenAIResponseWebSocket.String()},
+		}).
+		SaveX(ctx)
+
+	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entChannel)
+	require.NoError(t, err)
+	primary, ok := built.Outbound.(*codex.OutboundTransformer)
+	require.True(t, ok)
+	websocketOutbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIResponseWebSocket.String())
+	require.NoError(t, err)
+	websocketTransformer, ok := websocketOutbound.(*codex.OutboundTransformer)
+	require.True(t, ok)
+	require.Equal(t, llm.APIFormatOpenAIResponseWebSocket, websocketTransformer.APIFormat())
+	require.Same(t, primary.TokenProvider(), websocketTransformer.TokenProvider())
 }
 
 func TestCodexAlphaSearchEndpointPreservesCustomPath(t *testing.T) {
