@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -32,7 +33,7 @@ func TestResponsesAdapterBudgetsWarmupSharesConnection64MiB(t *testing.T) {
 	session := &responsesWebSocketSession{budget: budget}
 	frame := []byte(`{"type":"response.create","generate":false,"model":"gpt-5","input":"this warmup exceeds the remaining retained byte budget of the connection"}`)
 	// When
-	_, _, err := session.prepareRequest(httptest.NewRequest("GET", "/responses", nil), frame)
+	_, _, err := session.prepareRequest(httptest.NewRequest(http.MethodGet, "/responses", nil), frame)
 	// Then
 	require.NotNil(t, err)
 	require.Empty(t, session.warmupID)

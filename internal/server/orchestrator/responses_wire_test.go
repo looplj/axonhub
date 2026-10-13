@@ -72,7 +72,10 @@ func responsesCodexHTTPUnavailableWire(t *testing.T, previous string) {
 	t.Helper()
 	// Given
 	var writes atomic.Int32
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { writes.Add(1); w.WriteHeader(500) }))
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writes.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
 	t.Cleanup(server.Close)
 	ctx := shared.WithResponsesAttempt(shared.WithSessionScope(t.Context(), "api_key:1:project:1"), &shared.ResponsesAttempt{})
 	store := newResponsesSessionStore()
