@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { MaskedCodeBlock, MaskedCodeBlockCopyButton, highlightMaskedCode } from '@/components/ai-elements/masked-code-block';
 import { useQueryAllModels } from '@/features/models/data/models';
-import { useCodexCompatibilitySettings } from '@/features/system/data/codex-compatibility-api';
+import { useCodexCompatibilityEnabled } from '@/features/system/data/codex-compatibility-api';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useApiKey } from '../data/apikeys';
 import { buildPiModelsConfig, serializePiModelsConfig } from '../data/pi-models-config';
@@ -44,8 +44,8 @@ export function ApiKeysViewDialog() {
     text: selectedApiKey?.key ?? '',
     copyMessage: t('apikeys.messages.copied'),
   });
-  const { data: codexCompatibilitySettings } = useCodexCompatibilitySettings();
-  const showCodexCompatibility = codexCompatibilitySettings?.enabled === true;
+  const { data: codexCompatibilityEnabled } = useCodexCompatibilityEnabled();
+  const showCodexCompatibility = codexCompatibilityEnabled === true;
 
   const apiKey = selectedApiKey?.key || '';
   const maskedApiKey = selectedApiKey?.key ? selectedApiKey.key.slice(0, 3) + '...' + selectedApiKey.key.slice(-4) : '';

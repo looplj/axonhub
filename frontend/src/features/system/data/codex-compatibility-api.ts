@@ -28,6 +28,12 @@ const CODEX_COMPATIBILITY_SETTINGS_QUERY = `
   }
 `;
 
+const CODEX_COMPATIBILITY_ENABLED_QUERY = `
+  query CodexCompatibilityEnabled {
+    codexCompatibilityEnabled
+  }
+`;
+
 const CODEX_CATALOG_CHANNELS_QUERY = `
   query CodexCatalogChannels {
     codexCatalogChannels {
@@ -81,6 +87,25 @@ export function useCodexCompatibilitySettings() {
   });
 }
 
+export function useCodexCompatibilityEnabled() {
+  const { handleError } = useErrorHandler();
+  const authUserId = useAuthStore((state) => state.auth.user?.id ?? null);
+
+  return useQuery({
+    queryKey: ['codexCompatibilityEnabled', authUserId ?? 'signed-out'],
+    enabled: authUserId !== null,
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{ codexCompatibilityEnabled: boolean }>(CODEX_COMPATIBILITY_ENABLED_QUERY);
+        return data.codexCompatibilityEnabled;
+      } catch (error) {
+        handleError(error, i18n.t('common.errors.internalServerError'));
+        throw error;
+      }
+    },
+  });
+}
+
 export function useCodexCatalogChannels() {
   const { handleError } = useErrorHandler();
   const { authUserId, access } = useCodexQueryIdentity();
@@ -114,6 +139,7 @@ export function useUpdateCodexCompatibilitySettings() {
     // Resolving only after the refetch lets the form drop its draft without flashing the previous values.
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['codexCompatibilitySettings'] });
+      await queryClient.invalidateQueries({ queryKey: ['codexCompatibilityEnabled'] });
       toast.success(i18n.t('common.success.systemUpdated'));
     },
     onError: (error) => {
