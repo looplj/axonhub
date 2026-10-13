@@ -54,8 +54,8 @@ AxonHub 可以作为 OpenAI 接口的直接替代方案，使 Codex 能够通过
 - `GET /codex/v1/user-auth-credential/whoami`：本地 API Key 身份信息。
 - `GET /codex/api/codex/accounts/check`：Codex 账户选择所需的账户元数据。
 - `GET /codex/models`：选定渠道的原生目录与调用者可见模型 ID 的交集。
-- `POST /codex/images/generations`：通过选定 Codex 渠道调用原生图片生成接口。
-- `POST /codex/images/edits`：通过选定 Codex 渠道调用原生图片编辑接口。
+- `POST /codex/images/generations`：通过普通模型/渠道路由调用原生图片生成接口。
+- `POST /codex/images/edits`：通过普通模型/渠道路由调用原生图片编辑接口。
 - `POST /codex/responses`：Responses HTTP/SSE 推理。
 - `GET /codex/responses`：Responses WebSocket 推理。
 
@@ -83,7 +83,7 @@ server:
 - 启动 Codex 并发送测试 Prompt，AxonHub 日志中应出现 `/codex/responses`。
 - 确认模型列表从 `/codex/models` 加载，且选定渠道仍可用于推理。
 - 如果 Codex 客户端使用账户发现功能，请确认使用同一 API Key 可以访问 `/codex/api/codex/accounts/check`。
-- 图片生成和编辑分别使用 `/codex/images/generations` 与 `/codex/images/edits`；选定渠道必须提供对应的原生图片端点和模型。
+- 图片生成和编辑分别使用 `/codex/images/generations` 与 `/codex/images/edits`；实际路由到的推理渠道不一定是目录渠道，但必须提供对应的原生图片端点和模型。
 - 启用 AxonHub 的追踪功能可查看提示词、回复及延迟信息。
 
 当前版本的远程 compaction-v2 复用普通 Responses 路径：向 `/codex/responses` 发送 `compaction_trigger`，再把返回的压缩项用于后续 Responses 请求。不实现 history/notes API，也不新增独立的 `/codex/responses/compact` 路由；这些未支持路径返回 JSON 404。`context_management` 会启用 Codex 的 Responses 压缩流程，history notes 仍属于后续兼容工作范围。`fast_mode` 会让客户端请求 Responses 的 `service_tier`；该等级是否可用由上游模型目录和响应决定。当前没有独立的 `ultrafast` 接口或本地能力探测。既有 `/v1` 路由保持不变。
