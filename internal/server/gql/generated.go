@@ -569,24 +569,26 @@ type ComplexityRoot struct {
 	}
 
 	ChannelSettings struct {
-		AutoTrimedModelPrefixes  func(childComplexity int) int
-		BodyOverrideOperations   func(childComplexity int) int
-		ExtraModelPrefix         func(childComplexity int) int
-		HeaderOverrideOperations func(childComplexity int) int
-		HideMappedModels         func(childComplexity int) int
-		HideOriginalModels       func(childComplexity int) int
-		LowercaseModelID         func(childComplexity int) int
-		ModelMappings            func(childComplexity int) int
-		ModelProtocols           func(childComplexity int) int
-		PassThroughBody          func(childComplexity int) int
-		PassThroughUserAgent     func(childComplexity int) int
-		ProviderQuota            func(childComplexity int) int
-		Proxy                    func(childComplexity int) int
-		QuotaRoutingMode         func(childComplexity int) int
-		RateLimit                func(childComplexity int) int
-		RetryableErrorPatterns   func(childComplexity int) int
-		RetryableStatusCodes     func(childComplexity int) int
-		TransformOptions         func(childComplexity int) int
+		APIKeyRoundRobinSwitchAfter func(childComplexity int) int
+		APIKeyStrategy              func(childComplexity int) int
+		AutoTrimedModelPrefixes     func(childComplexity int) int
+		BodyOverrideOperations      func(childComplexity int) int
+		ExtraModelPrefix            func(childComplexity int) int
+		HeaderOverrideOperations    func(childComplexity int) int
+		HideMappedModels            func(childComplexity int) int
+		HideOriginalModels          func(childComplexity int) int
+		LowercaseModelID            func(childComplexity int) int
+		ModelMappings               func(childComplexity int) int
+		ModelProtocols              func(childComplexity int) int
+		PassThroughBody             func(childComplexity int) int
+		PassThroughUserAgent        func(childComplexity int) int
+		ProviderQuota               func(childComplexity int) int
+		Proxy                       func(childComplexity int) int
+		QuotaRoutingMode            func(childComplexity int) int
+		RateLimit                   func(childComplexity int) int
+		RetryableErrorPatterns      func(childComplexity int) int
+		RetryableStatusCodes        func(childComplexity int) int
+		TransformOptions            func(childComplexity int) int
 	}
 
 	ChannelSuccessRate struct {
@@ -4424,6 +4426,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelRegexAssociation.Pattern(childComplexity), true
 
+	case "ChannelSettings.apiKeyRoundRobinSwitchAfter":
+		if e.complexity.ChannelSettings.APIKeyRoundRobinSwitchAfter == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.APIKeyRoundRobinSwitchAfter(childComplexity), true
+	case "ChannelSettings.apiKeyStrategy":
+		if e.complexity.ChannelSettings.APIKeyStrategy == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.APIKeyStrategy(childComplexity), true
 	case "ChannelSettings.autoTrimedModelPrefixes":
 		if e.complexity.ChannelSettings.AutoTrimedModelPrefixes == nil {
 			break
@@ -21232,6 +21246,10 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_retryableErrorPatterns(ctx, field)
 			case "modelProtocols":
 				return ec.fieldContext_ChannelSettings_modelProtocols(ctx, field)
+			case "apiKeyStrategy":
+				return ec.fieldContext_ChannelSettings_apiKeyStrategy(ctx, field)
+			case "apiKeyRoundRobinSwitchAfter":
+				return ec.fieldContext_ChannelSettings_apiKeyRoundRobinSwitchAfter(ctx, field)
 			case "providerQuota":
 				return ec.fieldContext_ChannelSettings_providerQuota(ctx, field)
 			case "quotaRoutingMode":
@@ -26050,6 +26068,64 @@ func (ec *executionContext) fieldContext_ChannelSettings_modelProtocols(_ contex
 				return ec.fieldContext_ModelProtocol_enabled(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelProtocol", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_apiKeyStrategy(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_apiKeyStrategy,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyStrategy, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_apiKeyStrategy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_apiKeyRoundRobinSwitchAfter(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_apiKeyRoundRobinSwitchAfter,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeyRoundRobinSwitchAfter, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_apiKeyRoundRobinSwitchAfter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -70377,7 +70453,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70496,6 +70572,20 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.ModelProtocols = data
+		case "apiKeyStrategy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyStrategy"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyStrategy = data
+		case "apiKeyRoundRobinSwitchAfter":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyRoundRobinSwitchAfter"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyRoundRobinSwitchAfter = data
 		case "providerQuota":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerQuota"))
 			data, err := ec.unmarshalOChannelProviderQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings(ctx, v)
@@ -97231,6 +97321,10 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_retryableErrorPatterns(ctx, field, obj)
 		case "modelProtocols":
 			out.Values[i] = ec._ChannelSettings_modelProtocols(ctx, field, obj)
+		case "apiKeyStrategy":
+			out.Values[i] = ec._ChannelSettings_apiKeyStrategy(ctx, field, obj)
+		case "apiKeyRoundRobinSwitchAfter":
+			out.Values[i] = ec._ChannelSettings_apiKeyRoundRobinSwitchAfter(ctx, field, obj)
 		case "providerQuota":
 			field := field
 

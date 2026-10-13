@@ -210,6 +210,8 @@ type ChannelSettings {
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPattern!]
   modelProtocols: [ModelProtocol!]
+  apiKeyStrategy: String
+  apiKeyRoundRobinSwitchAfter: Int
   providerQuota: ChannelProviderQuotaSettings @goField(forceResolver: true)
   quotaRoutingMode: ChannelQuotaRoutingMode
 }
@@ -294,6 +296,8 @@ input ChannelSettingsInput {
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]
   modelProtocols: [ModelProtocolInput!]
+  apiKeyStrategy: String
+  apiKeyRoundRobinSwitchAfter: Int
   providerQuota: ChannelProviderQuotaSettingsInput
   quotaRoutingMode: ChannelQuotaRoutingMode
 }
