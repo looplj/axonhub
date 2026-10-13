@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 
 	"github.com/tidwall/gjson"
 
@@ -245,13 +246,42 @@ func prepareResponsesAttempt(ctx context.Context, p *PersistentOutboundTransform
 	if err != nil {
 		return nil, err
 	}
-	original, err := responses.NewInboundTransformer().TransformRequest(ctx, &httpclient.Request{Body: p.state.ResponsesContinuation.original})
-	if err != nil {
+	var expandedPayload map[string]json.RawMessage
+	if err := json.Unmarshal(body, &expandedPayload); err != nil {
 		return nil, err
 	}
-	prefixLength := max(0, len(parsed.Messages)-len(original.Messages))
+	var originalPayload map[string]json.RawMessage
+	if err := json.Unmarshal(p.state.ResponsesContinuation.original, &originalPayload); err != nil {
+		return nil, err
+	}
+	expandedItems := responseSessionInputItems(expandedPayload["input"])
+	originalItems := responseSessionInputItems(originalPayload["input"])
+	if len(expandedItems) < len(originalItems) {
+		return nil, shared.ResponsesRecoveryError()
+	}
+	historyItems := expandedItems[:len(expandedItems)-len(originalItems)]
+	var historyMessages []llm.Message
+	if len(historyItems) > 0 {
+		historyPayload := maps.Clone(expandedPayload)
+		historyInput, err := json.Marshal(historyItems)
+		if err != nil {
+			return nil, err
+		}
+		historyPayload["input"] = historyInput
+		delete(historyPayload, "instructions")
+		historyBody, err := json.Marshal(historyPayload)
+		if err != nil {
+			return nil, err
+		}
+		historyRequest, err := responses.NewInboundTransformer().TransformRequest(ctx, &httpclient.Request{Body: historyBody})
+		if err != nil {
+			return nil, err
+		}
+		historyMessages = historyRequest.Messages
+	}
 	cloned := *request
-	cloned.Messages = append(append([]llm.Message(nil), parsed.Messages[:prefixLength]...), request.Messages...)
+	cloned.Messages = append(append([]llm.Message(nil), historyMessages...), request.Messages...)
+	cloned.ProviderExtensions = parsed.ProviderExtensions
 	return &cloned, nil
 }
 
