@@ -96,9 +96,6 @@ func (m *persistRequestMiddleware) OnOutboundLlmStream(ctx context.Context, stre
 		inject: func(resp *llm.Response) {
 			m.injectUsageCost(ctx, resp)
 		},
-		persist: func(resp *llm.Response) {
-			m.persistFailedStreamUsage(ctx, resp)
-		},
 	}, nil
 }
 
@@ -127,27 +124,9 @@ func (m *persistRequestMiddleware) injectUsageCost(ctx context.Context, resp *ll
 	state.UsageLogService.InjectUsageCost(ctx, state.RequestExec.ChannelID, state.RequestExec.ModelID, resp.Usage)
 }
 
-func (m *persistRequestMiddleware) persistFailedStreamUsage(ctx context.Context, resp *llm.Response) {
-	state := m.inbound.state
-	if state == nil || state.Request == nil || state.RequestExec == nil || state.UsageLogService == nil || resp == nil || resp.Usage == nil {
-		return
-	}
-
-	persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
-	defer cancel()
-
-	_, err := state.UsageLogService.CreateUsageLogFromRequest(persistCtx, state.Request, state.RequestExec, resp.Usage)
-	if err != nil {
-		log.Warn(persistCtx, "Failed to create usage log from failed stream", log.Cause(err))
-	}
-}
-
 type usageCostStream struct {
-	stream               streams.Stream[*llm.Response]
-	inject               func(*llm.Response)
-	persist              func(*llm.Response)
-	current              *llm.Response
-	failedUsagePersisted bool
+	stream streams.Stream[*llm.Response]
+	inject func(*llm.Response)
 }
 
 func (s *usageCostStream) Next() bool {
@@ -157,19 +136,12 @@ func (s *usageCostStream) Next() bool {
 func (s *usageCostStream) Current() *llm.Response {
 	resp := s.stream.Current()
 	s.inject(resp)
-	s.current = resp
 
 	return resp
 }
 
 func (s *usageCostStream) Err() error {
-	err := s.stream.Err()
-	if err != nil && !s.failedUsagePersisted && s.current != nil && s.current.Usage != nil {
-		s.failedUsagePersisted = true
-		s.persist(s.current)
-	}
-
-	return err
+	return s.stream.Err()
 }
 
 func (s *usageCostStream) Close() error {
