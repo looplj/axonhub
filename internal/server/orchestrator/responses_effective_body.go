@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -21,11 +20,11 @@ func applyResponsesContinuationBody(p *PersistentOutboundTransformer) pipeline.M
 		}
 		effective, err := mergePassThroughRequestBodyWithPromptProtection(c.effective, p.state.LlmRequest.APIFormat, p.GetCurrentModelID(), p.state.PromptProtectionMaskRules)
 		if err != nil {
-			return nil, fmt.Errorf("protect Responses replay: %w", err)
+			return request, nil //nolint:nilerr // Keep the already-transformed protected body.
 		}
 		if p.state.PromptProtectionBodyCheck != nil {
 			if err := p.state.PromptProtectionBodyCheck.validateExpanded(ctx, effective); err != nil {
-				return nil, err
+				return request, nil //nolint:nilerr // Keep the already-transformed protected body.
 			}
 		}
 		payload := gjson.ParseBytes(effective)

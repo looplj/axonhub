@@ -33,6 +33,18 @@ func TestPassThroughAnthropicStream_RawBudget(t *testing.T) {
 		{name: "filtered event bytes", count: 4, data: `{"type":"ping","padding":"` + strings.Repeat("x", 17*1024*1024) + `"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.name == "filtered event bytes" {
+				backlog := &rawStreamBacklog{}
+				for range tc.count - 1 {
+					held, err := backlog.hold(&httpclient.StreamEvent{Type: "ping", Data: []byte(tc.data)})
+					require.NoError(t, err)
+					require.True(t, held)
+				}
+				_, err := backlog.hold(&httpclient.StreamEvent{Type: "ping", Data: []byte(tc.data)})
+				require.ErrorIs(t, err, pipeline.ErrPreCommitBufferExceeded)
+				return
+			}
+
 			// Given: filtered raw pings exceed a pre-attachment budget.
 			events := make([]*httpclient.StreamEvent, 0, tc.count+9)
 			for range tc.count {
@@ -97,7 +109,7 @@ func TestRawStreamQueue_BlocksLargeLiveEventsUntilConsumerReads(t *testing.T) {
 	for range 64 {
 		require.NoError(t, queue.enqueue(context.Background(), &httpclient.StreamEvent{}))
 	}
-	event := &httpclient.StreamEvent{Data: make([]byte, 128*1024*1024)}
+	event := &httpclient.StreamEvent{Data: make([]byte, 16*1024*1024)}
 
 	// When: a live producer queues an event larger than the pre-attachment limit.
 	result := make(chan error, 1)

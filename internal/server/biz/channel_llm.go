@@ -211,7 +211,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		return nil, err
 	}
 
-	defaultEndpoints := DefaultEndpointsForChannelType(c.Type)
+	defaultEndpoints := ch.DefaultEndpoints()
 	rawUserEndpoints := c.Endpoints
 	userEndpoints := NormalizeEndpoints(c.Endpoints, c.BaseURL)
 
@@ -220,6 +220,11 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 	}
 
 	outbounds := make(map[string]transformer.Outbound)
+	type outboundAlias struct {
+		format string
+		out    transformer.Outbound
+	}
+	var aliases []outboundAlias
 
 	for _, ep := range defaultEndpoints {
 		if ep.APIFormat == "" {
@@ -253,7 +258,12 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		}
 		outbounds[ep.APIFormat] = out
 		if rawFormat := rawUserEndpoints[i].APIFormat; rawFormat != "" && rawFormat != ep.APIFormat {
-			outbounds[rawFormat] = out
+			aliases = append(aliases, outboundAlias{format: rawFormat, out: out})
+		}
+	}
+	for _, alias := range aliases {
+		if _, exists := outbounds[alias.format]; !exists {
+			outbounds[alias.format] = alias.out
 		}
 	}
 

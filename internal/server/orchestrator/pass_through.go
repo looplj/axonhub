@@ -771,9 +771,11 @@ type rawStreamBacklog struct {
 	events   []*httpclient.StreamEvent
 	bytes    int
 	count    int
+	waitCh   chan struct{}
 }
 
 const (
+	maxRawEventBytes      = 32 * 1024 * 1024
 	maxRawPreAttachEvents = 1024
 	maxRawPreAttachBytes  = 64 * 1024 * 1024
 	maxRawQueueBytes      = 128 * 1024 * 1024
@@ -819,27 +821,49 @@ func (b *rawStreamBacklog) attach() []*httpclient.StreamEvent {
 	return events
 }
 
-func (b *rawStreamBacklog) reserve(size int) error {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	maxBytes := maxRawPreAttachBytes
-	if b.attached {
-		maxBytes = maxRawQueueBytes
-	}
-	if b.count >= maxRawPreAttachEvents || size > maxBytes-b.bytes {
+func (b *rawStreamBacklog) reserve(ctx context.Context, size int) error {
+	if size > maxRawEventBytes {
 		return errRawPreAttachBudgetExceeded
 	}
-	b.bytes += size
-	b.count++
 
-	return nil
+	for {
+		b.mu.Lock()
+		maxBytes := maxRawPreAttachBytes
+		if b.attached {
+			maxBytes = maxRawQueueBytes
+		}
+		if b.count < maxRawPreAttachEvents && size <= maxBytes-b.bytes {
+			b.bytes += size
+			b.count++
+			b.mu.Unlock()
+			return nil
+		}
+		if !b.attached {
+			b.mu.Unlock()
+			return errRawPreAttachBudgetExceeded
+		}
+		if b.waitCh == nil {
+			b.waitCh = make(chan struct{})
+		}
+		waitCh := b.waitCh
+		b.mu.Unlock()
+
+		select {
+		case <-waitCh:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
 }
 
 func (b *rawStreamBacklog) release(size int) {
 	b.mu.Lock()
 	b.bytes -= size
 	b.count--
+	if b.waitCh != nil {
+		close(b.waitCh)
+		b.waitCh = nil
+	}
 	b.mu.Unlock()
 }
 

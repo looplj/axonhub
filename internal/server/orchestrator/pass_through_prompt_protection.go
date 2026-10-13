@@ -51,15 +51,9 @@ func (check *promptProtectionBodyCheck) validateExpanded(ctx context.Context, bo
 	if err != nil {
 		return err
 	}
-	actual := make(map[protectedPromptText]int)
-	for _, text := range promptProtectionTexts(replayed) {
-		actual[text]++
-	}
-	for _, expected := range check.expected {
-		if actual[expected] == 0 {
-			return fmt.Errorf("pass-through prompt values differ from protected request")
-		}
-		actual[expected]--
+	actual := promptProtectionTexts(replayed)
+	if len(actual) < len(check.expected) || !slices.Equal(actual[len(actual)-len(check.expected):], check.expected) {
+		return fmt.Errorf("pass-through prompt values differ from protected request")
 	}
 
 	return nil
