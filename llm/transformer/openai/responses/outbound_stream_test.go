@@ -1543,3 +1543,52 @@ func TestOutboundTransformer_TransformStream_PreservesOfficialWebSocketError(t *
 		})
 	}
 }
+
+func TestResponsesOutboundStreamResponseFailedPreservesCode(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{{
+		Type: "response.failed",
+		Data: []byte(`{"type":"response.failed","response":{"id":"resp_failed","object":"response","created_at":1700000000,"model":"gpt-5","status":"failed","output":[],"error":{"type":"server_error","code":"server_is_overloaded","message":"server overloaded"}}}`),
+	}}))
+	require.NoError(t, err)
+
+	_, err = streams.All(stream)
+	var responseErr *llm.ResponseError
+	require.ErrorAs(t, err, &responseErr)
+	require.Equal(t, "server_is_overloaded", responseErr.Detail.Code)
+	require.ErrorIs(t, err, llm.ErrEmptyResponse)
+	require.EqualError(t, err, "error: server overloaded, code: server_is_overloaded, type: server_error")
+	require.Equal(t, "error: server overloaded, code: server_is_overloaded, type: server_error", responseErr.Error())
+}
+
+func TestResponsesOutboundStreamResponseFailedUnrelatedCode(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{{
+		Type: "response.failed",
+		Data: []byte(`{"type":"response.failed","response":{"id":"resp_failed","object":"response","created_at":1700000000,"model":"gpt-5","status":"failed","output":[],"error":{"type":"server_error","code":"context_length_exceeded","message":"context too long"}}}`),
+	}}))
+	require.NoError(t, err)
+
+	_, err = streams.All(stream)
+	var responseErr *llm.ResponseError
+	require.ErrorAs(t, err, &responseErr)
+	require.Equal(t, "context_length_exceeded", responseErr.Detail.Code)
+}
+
+func TestResponsesOutboundStreamResponseFailedMalformed(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream([]*httpclient.StreamEvent{
+		{Type: "response.failed", Data: []byte(`{"type":"response.failed","response":{}}`)},
+	}))
+	require.NoError(t, err)
+
+	events, err := streams.All(stream)
+	require.NoError(t, err)
+	require.NotEmpty(t, events)
+}
