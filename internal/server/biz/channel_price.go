@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/samber/lo"
@@ -85,6 +87,172 @@ func modelCardToChannelModelPrice(card *objects.ModelCard) (objects.ModelPrice, 
 	}
 
 	return objects.ModelPrice{Items: items}, true
+}
+
+// modelLibraryPriceReferencePrefix marks usage-log cost that fell back to the
+// model library price because the channel had no explicit price for the model.
+const modelLibraryPriceReferencePrefix = "model_library:"
+
+// modelLibraryPriceReferenceID builds the synthetic reference id recorded on
+// usage logs whose cost was resolved from the model library fallback.
+func modelLibraryPriceReferenceID(modelID string) string {
+	return modelLibraryPriceReferencePrefix + modelID
+}
+
+// modelLibraryPriceModelIDCandidates returns the model ids to try, in order,
+// when resolving a model library price. The exact id is tried first, then the
+// base model with a known effort/tier suffix stripped (e.g.
+// "gemini-3.8-flash-high" -> "gemini-3.8-flash"). Providers expose the same
+// underlying model under several suffixed names, and the model library usually
+// only carries the base id.
+func modelLibraryPriceModelIDCandidates(modelID string) []string {
+	candidates := []string{modelID}
+
+	for _, suffix := range modelLibraryPriceSuffixes {
+		if base, ok := strings.CutSuffix(modelID, suffix); ok && base != "" {
+			candidates = append(candidates, base)
+		}
+	}
+
+	return lo.Uniq(candidates)
+}
+
+// modelLibraryPriceSuffixes are the effort/tier suffixes stripped when the exact
+// model library id has no price. Keep this list in sync with the provider model
+// naming conventions (e.g. Antigravity "gemini-3-flash" / "-low" / "-medium" /
+// "-high").
+var modelLibraryPriceSuffixes = []string{"-high", "-medium", "-low"}
+
+// modelLibraryPriceMemo caches model-library price resolutions for the duration
+// of a single request. Cost injection and usage-log creation both resolve the
+// price for the same channel and model; without the memo they repeat the
+// catalog lookup, adding avoidable synchronous database reads on the response
+// path (and once per usage-bearing chunk for streams).
+type modelLibraryPriceMemo struct {
+	mu      sync.RWMutex
+	entries map[string]modelLibraryPriceMemoEntry
+}
+
+type modelLibraryPriceMemoEntry struct {
+	price *objects.ModelPrice
+	found bool
+}
+
+type modelLibraryPriceMemoKey struct{}
+
+// WithModelLibraryPriceMemo installs a request-scoped model-library price memo.
+// Call it once per inbound request so repeated cost calculations reuse a single
+// lookup. It is idempotent: the memo already present (if any) is kept.
+func WithModelLibraryPriceMemo(ctx context.Context) context.Context {
+	if _, ok := ctx.Value(modelLibraryPriceMemoKey{}).(*modelLibraryPriceMemo); ok {
+		return ctx
+	}
+
+	return context.WithValue(ctx, modelLibraryPriceMemoKey{}, &modelLibraryPriceMemo{})
+}
+
+func modelLibraryPriceMemoFromContext(ctx context.Context) *modelLibraryPriceMemo {
+	memo, _ := ctx.Value(modelLibraryPriceMemoKey{}).(*modelLibraryPriceMemo)
+
+	return memo
+}
+
+func (m *modelLibraryPriceMemo) get(modelID string) (*objects.ModelPrice, bool, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	entry, ok := m.entries[modelID]
+	if !ok {
+		return nil, false, false
+	}
+
+	return entry.price, entry.found, true
+}
+
+func (m *modelLibraryPriceMemo) set(modelID string, price *objects.ModelPrice, found bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.entries == nil {
+		m.entries = make(map[string]modelLibraryPriceMemoEntry)
+	}
+
+	m.entries[modelID] = modelLibraryPriceMemoEntry{price: price, found: found}
+}
+
+// resolveModelLibraryPrice resolves a price from the model library by model id.
+// It is used as a billing-time fallback when a channel has no explicit price
+// for the model. The exact model id is matched first; when it has no priceable
+// entry, a known effort/tier suffix is stripped and the base model is tried.
+// Only enabled and disabled models are considered, mirroring the
+// auto-configuration eligibility rules. It returns false when no priceable
+// model library entry exists.
+func (svc *ChannelService) resolveModelLibraryPrice(ctx context.Context, modelID string) (*objects.ModelPrice, bool) {
+	if modelID == "" {
+		return nil, false
+	}
+
+	memo := modelLibraryPriceMemoFromContext(ctx)
+	if memo != nil {
+		if price, found, cached := memo.get(modelID); cached {
+			return price, found
+		}
+	}
+
+	price, found, err := svc.lookupModelLibraryPrice(ctx, modelID)
+	if err != nil {
+		// The lookup failed (e.g. canceled context or a transient database
+		// error). Do not cache the result: a later calculation with a healthy
+		// context (the usage-log write runs with cancellation removed) must be
+		// able to resolve the price instead of reusing this failed attempt.
+		return nil, false
+	}
+
+	if memo != nil {
+		memo.set(modelID, price, found)
+	}
+
+	return price, found
+}
+
+// lookupModelLibraryPrice performs the model-library query used by
+// resolveModelLibraryPrice, without any request-scoped caching. The returned
+// error separates a genuine miss (nil error, found=false) from a failed lookup
+// (non-nil error), so callers can avoid caching results affected by an error.
+func (svc *ChannelService) lookupModelLibraryPrice(ctx context.Context, modelID string) (*objects.ModelPrice, bool, error) {
+	db := svc.entFromContext(ctx)
+
+	var lookupErr error
+
+	for _, candidate := range modelLibraryPriceModelIDCandidates(modelID) {
+		catalogModel, err := db.Model.Query().
+			Where(
+				model.ModelID(candidate),
+				model.StatusIn(model.StatusEnabled, model.StatusDisabled),
+			).
+			First(ctx)
+		if err != nil {
+			if !ent.IsNotFound(err) {
+				log.Warn(ctx, "failed to resolve model library price",
+					log.String("model_id", modelID),
+					log.String("candidate_model_id", candidate),
+					log.Cause(err))
+
+				lookupErr = fmt.Errorf("failed to query model library price for %q: %w", candidate, err)
+			}
+
+			continue
+		}
+
+		price, ok := modelCardToChannelModelPrice(catalogModel.ModelCard)
+		if !ok {
+			continue
+		}
+
+		return &price, true, nil
+	}
+
+	return nil, false, lookupErr
 }
 
 // createChannelModelPriceIfMissing atomically creates a current price when the

@@ -40,6 +40,7 @@ function buildUsageLogsQuery(permissions: { canViewChannels: boolean }) {
             source
             format
             totalCost
+            costPriceReferenceID
             costItems {
               itemCode
               quantity
@@ -92,6 +93,7 @@ function buildUsageLogDetailQuery(permissions: { canViewChannels: boolean }) {
           source
           format
           totalCost
+          costPriceReferenceID
           costItems {
             itemCode
             quantity

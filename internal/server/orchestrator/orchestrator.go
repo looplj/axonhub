@@ -196,6 +196,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// request container before provider selection mutates it.
 	ctx = contexts.EnsureContainer(ctx)
 
+	// Install a request-scoped memo so cost injection and usage-log creation share
+	// a single model-library price lookup instead of repeating it per calculation.
+	ctx = biz.WithModelLibraryPriceMemo(ctx)
+
 	// The context is system bypassed to allow the orchestrator to access the system settings.
 	ctx = authz.WithSystemBypass(ctx, "process-chat-completion")
 

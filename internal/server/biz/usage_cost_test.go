@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/enttest"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
 )
@@ -759,4 +760,419 @@ func TestUsageCost_CacheVariantFallbackToShared(t *testing.T) {
 	require.InDelta(t, 0.0000031, *ul.TotalCost, 1e-12)
 	require.Len(t, ul.CostItems, 2)
 	require.Equal(t, int64(70), ul.PromptWriteCachedTokens)
+}
+
+func createModelLibraryPriceEntry(t *testing.T, ctx context.Context, client *ent.Client, modelID string, status model.Status, cost objects.ModelCardCost) *ent.Model {
+	t.Helper()
+
+	entity, err := client.Model.Create().
+		SetDeveloper("test").
+		SetModelID(modelID).
+		SetName("Test " + modelID).
+		SetIcon("test").
+		SetGroup("test").
+		SetModelCard(&objects.ModelCard{Cost: cost}).
+		SetSettings(&objects.ModelSettings{}).
+		SetStatus(status).
+		Save(ctx)
+	require.NoError(t, err)
+
+	return entity
+}
+
+// TestUsageCost_FallbackToModelLibraryPrice verifies that when a channel has no
+// explicit price for a model, the cost is computed from the model library price
+// configured under the Models menu.
+func TestUsageCost_FallbackToModelLibraryPrice(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Model library has a price, but the channel below has no channel-level price.
+	createModelLibraryPriceEntry(t, ctx, client, "m-fallback", model.StatusEnabled, objects.ModelCardCost{
+		Input:  1,
+		Output: 2,
+	})
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("fallback-channel").
+		SetSupportedModels([]string{"m-fallback"}).
+		SetDefaultTestModel("m-fallback").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	channelService := NewChannelServiceForTest(client)
+	built, err := channelService.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	// Intentionally do NOT preload channel prices: the channel has none.
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
+
+	usageLogService := NewUsageLogService(client, systemService, channelService)
+
+	usage := &llm.Usage{
+		PromptTokens:     100,
+		CompletionTokens: 200,
+		TotalTokens:      300,
+	}
+
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     ch.ID,
+		ActualModelID: "m-fallback",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ul)
+
+	// expected total: (100/1e6)*1 + (200/1e6)*2 = 0.0001 + 0.0004 = 0.0005
+	require.NotNil(t, ul.TotalCost)
+	require.InDelta(t, 0.0005, *ul.TotalCost, 1e-12)
+	require.Len(t, ul.CostItems, 2)
+	require.Equal(t, modelLibraryPriceReferenceID("m-fallback"), ul.CostPriceReferenceID)
+}
+
+// TestUsageCost_ChannelPriceWinsOverModelLibrary verifies that an explicit
+// channel-level price still takes precedence over the model library fallback.
+func TestUsageCost_ChannelPriceWinsOverModelLibrary(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	createModelLibraryPriceEntry(t, ctx, client, "m-precedence", model.StatusEnabled, objects.ModelCardCost{
+		Input: 100,
+	})
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("precedence-channel").
+		SetSupportedModels([]string{"m-precedence"}).
+		SetDefaultTestModel("m-precedence").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	usageUnit := decimal.NewFromFloat(0.01)
+	_, err = client.ChannelModelPrice.Create().
+		SetChannelID(ch.ID).
+		SetModelID("m-precedence").
+		SetPrice(objects.ModelPrice{
+			Items: []objects.ModelPriceItem{
+				{
+					ItemCode: objects.PriceItemCodeUsage,
+					Pricing:  objects.Pricing{Mode: objects.PricingModeUsagePerUnit, UsagePerUnit: &usageUnit},
+				},
+			},
+		}).
+		SetReferenceID("channel-ref").
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	channelService := NewChannelServiceForTest(client)
+	built, err := channelService.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	channelService.preloadModelPrices(ctx, built)
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
+
+	usageLogService := NewUsageLogService(client, systemService, channelService)
+
+	usage := &llm.Usage{
+		PromptTokens:     100,
+		CompletionTokens: 0,
+		TotalTokens:      100,
+	}
+
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     ch.ID,
+		ActualModelID: "m-precedence",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ul)
+
+	// Channel price (0.01/1M) must win over the model library price (100/1M).
+	require.NotNil(t, ul.TotalCost)
+	require.InDelta(t, 0.000001, *ul.TotalCost, 1e-12)
+	require.Equal(t, "channel-ref", ul.CostPriceReferenceID)
+}
+
+// TestUsageCost_FallbackSkipsUnpriceableModelLibraryEntries verifies that the
+// fallback stays inert when the model library entry has no usable cost.
+func TestUsageCost_FallbackSkipsUnpriceableModelLibraryEntries(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Enabled model without cost, archived model with cost: neither is priceable.
+	createModelLibraryPriceEntry(t, ctx, client, "m-no-cost", model.StatusEnabled, objects.ModelCardCost{})
+	createModelLibraryPriceEntry(t, ctx, client, "m-archived", model.StatusArchived, objects.ModelCardCost{Input: 5})
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("unpriceable-channel").
+		SetSupportedModels([]string{"m-no-cost", "m-archived", "m-missing"}).
+		SetDefaultTestModel("m-no-cost").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	channelService := NewChannelServiceForTest(client)
+	built, err := channelService.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
+
+	usageLogService := NewUsageLogService(client, systemService, channelService)
+
+	usage := &llm.Usage{PromptTokens: 100, CompletionTokens: 0, TotalTokens: 100}
+
+	for _, modelID := range []string{"m-no-cost", "m-archived", "m-missing"} {
+		ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+			RequestID:     1,
+			ProjectID:     1,
+			ChannelID:     ch.ID,
+			ActualModelID: modelID,
+			Usage:         usage,
+			Source:        "api",
+			Format:        "openai/chat_completions",
+			APIKeyID:      nil,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, ul)
+		require.Nil(t, ul.TotalCost, "model %s should have no cost", modelID)
+		require.Empty(t, ul.CostItems)
+		require.Empty(t, ul.CostPriceReferenceID)
+	}
+}
+
+// TestUsageCost_FallbackStripsEffortSuffix verifies that when the model library
+// has no exact entry for a suffixed model id, the fallback strips the known
+// effort/tier suffix and bills with the base model price.
+func TestUsageCost_FallbackStripsEffortSuffix(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	// Only the base model "m-suffix" exists in the library; the channel serves
+	// "m-suffix-high".
+	createModelLibraryPriceEntry(t, ctx, client, "m-suffix", model.StatusEnabled, objects.ModelCardCost{
+		Input:  1,
+		Output: 2,
+	})
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("suffix-channel").
+		SetSupportedModels([]string{"m-suffix-high"}).
+		SetDefaultTestModel("m-suffix-high").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	channelService := NewChannelServiceForTest(client)
+	built, err := channelService.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
+
+	usageLogService := NewUsageLogService(client, systemService, channelService)
+
+	usage := &llm.Usage{PromptTokens: 100, CompletionTokens: 200, TotalTokens: 300}
+
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     ch.ID,
+		ActualModelID: "m-suffix-high",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ul)
+
+	// expected total: (100/1e6)*1 + (200/1e6)*2 = 0.0005
+	require.NotNil(t, ul.TotalCost)
+	require.InDelta(t, 0.0005, *ul.TotalCost, 1e-12)
+	// Reference id keeps the requested (suffixed) model id for traceability.
+	require.Equal(t, modelLibraryPriceReferenceID("m-suffix-high"), ul.CostPriceReferenceID)
+}
+
+// TestUsageCost_FallbackPrefersExactModelBeforeSuffix verifies that an exact
+// model library entry for the suffixed id wins over the stripped base model.
+func TestUsageCost_FallbackPrefersExactModelBeforeSuffix(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	createModelLibraryPriceEntry(t, ctx, client, "m-exact", model.StatusEnabled, objects.ModelCardCost{Input: 10})
+	createModelLibraryPriceEntry(t, ctx, client, "m-exact-high", model.StatusEnabled, objects.ModelCardCost{Input: 1})
+	{
+		n, qerr := client.Model.Query().Count(ctx)
+		require.NoError(t, qerr)
+		require.Equal(t, 2, n, "both library entries must exist")
+		m, merr := client.Model.Query().Where(model.ModelID("m-exact-high")).Only(ctx)
+		require.NoError(t, merr, "exact entry must be queryable")
+		require.Equal(t, float64(1), m.ModelCard.Cost.Input)
+	}
+
+	ch, err := client.Channel.Create().
+		SetType(channel.TypeOpenaiFake).
+		SetName("exact-channel").
+		SetSupportedModels([]string{"m-exact-high"}).
+		SetDefaultTestModel("m-exact-high").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	systemService := NewSystemService(SystemServiceParams{Ent: client})
+	channelService := NewChannelServiceForTest(client)
+	built, err := channelService.GetChannel(ctx, ch.ID)
+	require.NoError(t, err)
+	channelService.SetEnabledChannelsForTest([]*Channel{built})
+
+	usageLogService := NewUsageLogService(client, systemService, channelService)
+
+	usage := &llm.Usage{PromptTokens: 100, CompletionTokens: 0, TotalTokens: 100}
+
+	ul, err := usageLogService.CreateUsageLog(ctx, CreateUsageLogParams{
+		RequestID:     1,
+		ProjectID:     1,
+		ChannelID:     ch.ID,
+		ActualModelID: "m-exact-high",
+		Usage:         usage,
+		Source:        "api",
+		Format:        "openai/chat_completions",
+		APIKeyID:      nil,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, ul)
+
+	// Exact "m-exact-high" price (1/1M) must win over base "m-exact" (10/1M).
+	// (100 / 1e6) * 1 = 0.0001; the base price would yield 0.001.
+	require.NotNil(t, ul.TotalCost)
+	require.InDelta(t, 0.0001, *ul.TotalCost, 1e-12)
+}
+
+// TestModelLibraryPriceModelIDCandidates covers candidate ordering and de-dup.
+func TestModelLibraryPriceModelIDCandidates(t *testing.T) {
+	require.Equal(t, []string{"m"}, modelLibraryPriceModelIDCandidates("m"))
+	require.Equal(t, []string{"m-high", "m"}, modelLibraryPriceModelIDCandidates("m-high"))
+	require.Equal(t, []string{"m-low", "m"}, modelLibraryPriceModelIDCandidates("m-low"))
+	require.Equal(t, []string{"m-medium", "m"}, modelLibraryPriceModelIDCandidates("m-medium"))
+	// A trailing dash is not a known suffix; nothing is stripped.
+	require.Equal(t, []string{"m-high-"}, modelLibraryPriceModelIDCandidates("m-high-"))
+}
+
+// TestModelLibraryPriceMemo_ReusesLookupWithinRequest verifies that repeated
+// resolutions inside one request reuse a single catalog lookup, including a
+// miss, while a fresh request re-queries (so later price changes are observed).
+func TestModelLibraryPriceMemo_ReusesLookupWithinRequest(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	createModelLibraryPriceEntry(t, ctx, client, "m-memo", model.StatusEnabled, objects.ModelCardCost{Input: 1})
+
+	channelService := NewChannelServiceForTest(client)
+
+	// --- inside a memoized request: the miss is cached ---
+	memoCtx := WithModelLibraryPriceMemo(ctx)
+
+	price, ok := channelService.resolveModelLibraryPrice(memoCtx, "m-memo")
+	require.True(t, ok)
+	require.Equal(t, "1", price.Items[0].Pricing.UsagePerUnit.String())
+
+	// A model absent from the library is cached as a miss within the request.
+	_, missing := channelService.resolveModelLibraryPrice(memoCtx, "m-absent")
+	require.False(t, missing)
+
+	// Add the previously missing model; the memoized request must not observe it.
+	createModelLibraryPriceEntry(t, ctx, client, "m-absent", model.StatusEnabled, objects.ModelCardCost{Input: 9})
+
+	_, stillMissing := channelService.resolveModelLibraryPrice(memoCtx, "m-absent")
+	require.False(t, stillMissing, "memoized miss must be reused within the request")
+
+	// A fresh request (new memo) sees the newly added price.
+	freshCtx := WithModelLibraryPriceMemo(ctx)
+	added, addedOK := channelService.resolveModelLibraryPrice(freshCtx, "m-absent")
+	require.True(t, addedOK)
+	require.Equal(t, "9", added.Items[0].Pricing.UsagePerUnit.String())
+}
+
+// TestWithModelLibraryPriceMemo_Idempotent verifies the memo is installed once
+// per context chain.
+func TestWithModelLibraryPriceMemo_Idempotent(t *testing.T) {
+	ctx := WithModelLibraryPriceMemo(context.Background())
+	require.NotNil(t, modelLibraryPriceMemoFromContext(ctx))
+
+	second := WithModelLibraryPriceMemo(ctx)
+	require.Same(t, modelLibraryPriceMemoFromContext(ctx), modelLibraryPriceMemoFromContext(second))
+}
+
+// TestModelLibraryPriceMemo_DoesNotCacheLookupErrors verifies that a failed
+// lookup (e.g. a canceled context) is not cached, so a later calculation with a
+// healthy context still resolves the price. This guards the usage-log write,
+// which runs with cancellation removed but shares the request memo.
+func TestModelLibraryPriceMemo_DoesNotCacheLookupErrors(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	createModelLibraryPriceEntry(t, ctx, client, "m-err", model.StatusEnabled, objects.ModelCardCost{Input: 2})
+
+	channelService := NewChannelServiceForTest(client)
+
+	memoCtx := WithModelLibraryPriceMemo(ctx)
+
+	// A canceled context makes the lookup fail; the result must not be memoized.
+	canceledCtx, cancel := context.WithCancel(memoCtx)
+	cancel()
+
+	_, ok := channelService.resolveModelLibraryPrice(canceledCtx, "m-err")
+	require.False(t, ok)
+
+	// The same request, now with a healthy context, must still resolve the price.
+	price, ok := channelService.resolveModelLibraryPrice(memoCtx, "m-err")
+	require.True(t, ok)
+	require.Equal(t, "2", price.Items[0].Pricing.UsagePerUnit.String())
 }
