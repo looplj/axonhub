@@ -301,6 +301,6 @@ test('toggleable channel columns are not hidden by responsive display gates', ()
     const meta = columnMeta(columnId);
     assert.doesNotMatch(meta, /\bhidden\b/, columnId + ' must not be hidden by a responsive display gate');
     assert.doesNotMatch(meta, /(?:xl|2xl):table-cell/, columnId + ' must not be gated by a responsive breakpoint');
-    assert.match(meta, /w-/, columnId + ' needs an explicit width so table-fixed cannot collapse it');
+    assert.match(meta, /(?:^|[\s'"])w-\[/, columnId + ' needs an explicit width so table-fixed cannot collapse it');
   }
 });
