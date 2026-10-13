@@ -279,3 +279,28 @@ test('more than five normalized limits expose the remaining rows for expansion',
   assert.match(columns, /const visibleLimits = isExpanded \? limits : limits\.slice\(0, QUOTA_VISIBLE_LIMIT\)/);
   assert.match(columns, /const hiddenCount = limits\.length - QUOTA_VISIBLE_LIMIT/);
 });
+
+// The column-settings menu is the single source of truth for whether a column
+// renders. Responsive display gates (hidden plus an xl/2xl:table-cell override)
+// on a toggleable column silently ignore column settings, so enabling quota,
+// tags, and proxy made them vanish below the breakpoint.
+test('toggleable channel columns are not hidden by responsive display gates', () => {
+  const columnsSource = read('features/channels/components/channels-columns.tsx');
+
+  const columnMeta = (columnId) => {
+    const idIndex = columnsSource.indexOf("id: '" + columnId + "'");
+    const keyIndex = idIndex === -1 ? columnsSource.indexOf("accessorKey: '" + columnId + "'") : idIndex;
+    assert.notEqual(keyIndex, -1, columnId + ' column should exist');
+    const metaIndex = columnsSource.indexOf('meta: {', keyIndex);
+    const classNameIndex = columnsSource.indexOf('className:', metaIndex);
+    const end = columnsSource.indexOf('\n', classNameIndex);
+    return columnsSource.slice(classNameIndex, end);
+  };
+
+  for (const columnId of ['quota', 'tags', 'proxy']) {
+    const meta = columnMeta(columnId);
+    assert.doesNotMatch(meta, /\bhidden\b/, columnId + ' must not be hidden by a responsive display gate');
+    assert.doesNotMatch(meta, /(?:xl|2xl):table-cell/, columnId + ' must not be gated by a responsive breakpoint');
+    assert.match(meta, /w-/, columnId + ' needs an explicit width so table-fixed cannot collapse it');
+  }
+});
