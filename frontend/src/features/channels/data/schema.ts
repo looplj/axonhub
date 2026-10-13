@@ -347,10 +347,14 @@ export type ChannelProviderQuotaSettings = z.infer<typeof channelProviderQuotaSe
 // Per-channel overrides for the global retry policy response timeouts. A null
 // object (or INHERIT mode) follows the global settings; CUSTOM overrides the
 // corresponding value when set and inherits it when null.
+//
+// The upper bound is deliberately not enforced here: the backend rejects an
+// out-of-range override on save, and a parse that also rejected it would break
+// the whole channel list when the two bounds drift apart.
 export const channelResponseTimeoutSchema = z.object({
   mode: z.enum(['INHERIT', 'CUSTOM']).optional().nullable(),
-  streamFirstEventTimeoutSeconds: z.number().int().min(0).max(600).optional().nullable(),
-  nonStreamResponseTimeoutSeconds: z.number().int().min(0).max(600).optional().nullable(),
+  streamFirstEventTimeoutSeconds: z.number().int().min(0).optional().nullable(),
+  nonStreamResponseTimeoutSeconds: z.number().int().min(0).optional().nullable(),
 });
 export type ChannelResponseTimeout = z.infer<typeof channelResponseTimeoutSchema>;
 
