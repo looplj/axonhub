@@ -22,6 +22,9 @@ func TestCodexCompatibilitySettings_DefaultDisabled(t *testing.T) {
 	// Then no migration or selected channel is required.
 	require.NoError(t, err)
 	require.Equal(t, &CodexCompatibilitySettings{}, settings)
+	enabled, err := svc.CodexCompatibilityEnabled(ctx)
+	require.NoError(t, err)
+	require.False(t, enabled)
 }
 
 func TestCodexCompatibilitySettings_AllChannelStates(t *testing.T) {

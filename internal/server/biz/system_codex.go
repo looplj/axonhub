@@ -37,6 +37,24 @@ func (s *SystemService) CodexCompatibilitySettings(ctx context.Context) (*CodexC
 	return &settings, nil
 }
 
+func (s *SystemService) CodexCompatibilityEnabled(ctx context.Context) (bool, error) {
+	value, err := authz.RunWithSystemBypass(ctx, "codex-compatibility-enabled", func(bypassCtx context.Context) (string, error) {
+		return s.getSystemValue(bypassCtx, SystemKeyCodexCompatibility)
+	})
+	if ent.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("read Codex compatibility enabled state: %w", err)
+	}
+
+	var settings CodexCompatibilitySettings
+	if err := json.Unmarshal([]byte(value), &settings); err != nil {
+		return false, fmt.Errorf("decode Codex compatibility settings: %w", err)
+	}
+	return settings.Enabled, nil
+}
+
 func (s *SystemService) SetCodexCompatibilitySettings(ctx context.Context, settings CodexCompatibilitySettings) error {
 	if err := authz.RequireScope(ctx, scopes.ScopeWriteSettings); err != nil {
 		return err
