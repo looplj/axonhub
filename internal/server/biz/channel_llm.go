@@ -212,7 +212,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 	}
 
 	defaultEndpoints := DefaultEndpointsForChannelType(c.Type)
-	userEndpoints := c.Endpoints
+	userEndpoints := NormalizeEndpoints(c.Endpoints, c.BaseURL)
 
 	if len(defaultEndpoints) == 0 && len(userEndpoints) == 0 {
 		return ch, nil
