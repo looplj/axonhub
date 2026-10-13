@@ -169,7 +169,7 @@
   "system.retry.maxChannelRetries.label": "Max Channel Retries",
   "system.retry.maxChannelRetries.description": "Maximum number of times to retry across different channels (0-10). When a channel fails, the system will try other available channels up to this limit. Higher values increase reliability but may increase latency.",
   "system.retry.maxSingleChannelRetries.label": "Max Single Channel Retries",
-  "system.retry.maxSingleChannelRetries.description": "Maximum number of times to retry on the same channel (0-5). Controls how many times to retry the same channel before switching to a different channel. Useful for temporary glitches.",
+  "system.retry.maxSingleChannelRetries.description": "Maximum number of times to retry on the same channel (0-10). Controls how many times to retry the same channel before switching to a different channel. Useful for temporary glitches.",
   "system.retry.retryDelayMs.label": "Retry Delay (ms)",
   "system.retry.retryDelayMs.description": "Delay between retry attempts in milliseconds (100-10000ms). Shorter delays provide faster recovery but may overwhelm struggling services. Longer delays give services more time to recover.",
   "system.retry.streamFirstEventTimeoutSeconds.label": "Stream First Event Timeout",

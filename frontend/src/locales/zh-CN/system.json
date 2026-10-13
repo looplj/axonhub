@@ -169,7 +169,7 @@
   "system.retry.maxChannelRetries.label": "最大渠道重试次数",
   "system.retry.maxChannelRetries.description": "跨不同渠道的最大重试次数 (0-10)。当某个渠道失败时，系统将尝试其他可用渠道，最多不超过此限制。较高的值可提高可靠性，但可能会增加延迟。",
   "system.retry.maxSingleChannelRetries.label": "单渠道最大重试次数",
-  "system.retry.maxSingleChannelRetries.description": "同一渠道的最大重试次数 (0-5)。控制在同一渠道上重试的次数，然后切换到不同的渠道。对于临时故障很有用。",
+  "system.retry.maxSingleChannelRetries.description": "同一渠道的最大重试次数 (0-10)。控制在同一渠道上重试的次数，然后切换到不同的渠道。对于临时故障很有用。",
   "system.retry.retryDelayMs.label": "重试延迟",
   "system.retry.retryDelayMs.description": "重试间隔时间，单位毫秒 (100-10000ms)。较短的延迟提供更快的恢复速度，但可能会压倒 struggling 服务。较长的延迟给服务更多时间恢复。",
   "system.retry.streamFirstEventTimeoutSeconds.label": "流式首字超时",
