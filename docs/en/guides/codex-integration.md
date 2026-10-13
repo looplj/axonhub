@@ -52,7 +52,10 @@ The switch is off by default. Saving an enabled configuration requires a selecte
 The compatibility surface used by this guide is:
 
 - `GET /codex/v1/user-auth-credential/whoami` — local API-key identity.
+- `GET /codex/api/codex/accounts/check` — account metadata for Codex account selection.
 - `GET /codex/models` — selected-channel native catalog, intersected with caller-visible model IDs.
+- `POST /codex/images/generations` — native image generation through the selected Codex channel.
+- `POST /codex/images/edits` — native image editing through the selected Codex channel.
 - `POST /codex/responses` — Responses HTTP/SSE inference.
 - `GET /codex/responses` — Responses WebSocket inference.
 
@@ -79,6 +82,8 @@ server:
 #### Testing
 - Start Codex and send a sample prompt; AxonHub's request logs should show `/codex/responses`.
 - Confirm that the model list loads from `/codex/models` and that the selected channel remains available for inference.
+- If your Codex client uses account discovery, confirm `/codex/api/codex/accounts/check` is reachable with the same API key.
+- Image generation and editing use `/codex/images/generations` and `/codex/images/edits`; the selected channel must expose the corresponding native image endpoint and model.
 - Enable tracing in AxonHub to inspect prompts, responses, and latency.
 
 The current version uses the ordinary Responses path for remote compaction-v2: a `compaction_trigger` is sent to `/codex/responses`, and the returned compaction item can be used in a later Responses request. It does not implement the history/notes APIs or a standalone `/codex/responses/compact` route; those unsupported paths return JSON 404. `context_management` enables Codex's Responses compaction flow, while history notes remain part of future compatibility work. `fast_mode` selects the Responses `service_tier` requested by the client; the upstream model catalog and response determine whether that tier is available. There is no separate `ultrafast` endpoint or local capability probe. Existing `/v1` routes are unchanged.
