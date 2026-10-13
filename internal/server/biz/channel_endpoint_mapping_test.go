@@ -105,12 +105,12 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIChatCompletion.String()},
 		},
 		{
-			name:     "nanogpt responses defaults to responses",
+			name:     "nanogpt responses defaults to responses only",
 			typ:      channel.TypeNanogptResponses,
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
-			name:     "bailian responses defaults to responses",
+			name:     "bailian responses defaults to responses only",
 			typ:      channel.TypeBailianResponses,
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
@@ -123,7 +123,7 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			},
 		},
 		{
-			name:     "xai responses defaults to responses",
+			name:     "xai responses defaults to responses only",
 			typ:      channel.TypeXaiResponses,
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},

@@ -79,6 +79,9 @@ func (t *OutboundTransformer) buildImageRequest(ctx context.Context, req *llm.Re
 	if req == nil || req.Image == nil {
 		return nil, fmt.Errorf("%w: image request is required", transformer.ErrInvalidRequest)
 	}
+	if err := transformer.ValidateImageBytes(req.Image); err != nil {
+		return nil, err
+	}
 
 	switch req.APIFormat {
 	case llm.APIFormatOpenAIImageGeneration, llm.APIFormatOpenAIImageEdit:
