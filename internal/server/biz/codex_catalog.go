@@ -255,10 +255,9 @@ func (svc *ChannelService) codexCatalogOutbound(ctx context.Context, entity *ent
 
 func (svc *ChannelService) newCodexCatalogOutbound(entity *ent.Channel, provider *oauth.TokenProvider) (*codex.OutboundTransformer, error) {
 	outbound, err := codex.NewOutboundTransformer(codex.Params{
-		TokenProvider:  provider,
-		BaseURL:        entity.BaseURL,
-		Transport:      primaryEndpointTransport(entity, llm.APIFormatOpenAIResponse.String()),
-		ImageMainModel: strings.TrimSpace(entity.DefaultTestModel),
+		TokenProvider: provider,
+		BaseURL:       entity.BaseURL,
+		Transport:     primaryEndpointTransport(entity, llm.APIFormatOpenAIResponse.String()),
 	})
 	return outbound, err
 }
