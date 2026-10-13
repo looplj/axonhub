@@ -647,7 +647,7 @@ func filterResponseCustomToolMessagesForNonResponsesOutbound(
 }
 
 func isResponsesFormat(format llm.APIFormat) bool {
-	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseWebSocket
+	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseWebSocket || format == llm.APIFormatOpenAIResponseCompact
 }
 
 func containsResponseCustomToolMessages(messages []llm.Message) bool {

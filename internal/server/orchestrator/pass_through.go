@@ -173,11 +173,13 @@ func applyResponsesTransportRequestBody(outbound *PersistentOutboundTransformer,
 			outbound.state.PromptProtectionMaskRules,
 		)
 		if err != nil {
-			return request, err
+			log.Warn(ctx, "failed to merge Responses transport body, keeping outbound body", log.Cause(err))
+			return request, nil
 		}
 		if outbound.state.PromptProtectionBodyCheck != nil {
 			if err := outbound.state.PromptProtectionBodyCheck.validate(ctx, body); err != nil {
-				return request, err
+				log.Warn(ctx, "failed to validate Responses transport body, keeping outbound body", log.Cause(err))
+				return request, nil
 			}
 		}
 

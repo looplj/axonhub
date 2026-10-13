@@ -88,7 +88,6 @@ func (q *rawStreamQueue) nextBuffered() (*httpclient.StreamEvent, bool) {
 		q.heldSizes = q.heldSizes[1:]
 		q.heldMu.Unlock()
 		q.backlog.release(size)
-		q.backlog.release(rawStreamEventSize(event))
 		return event, true
 	}
 	q.heldMu.Unlock()
@@ -98,6 +97,7 @@ func (q *rawStreamQueue) nextBuffered() (*httpclient.StreamEvent, bool) {
 		if !ok {
 			return nil, false
 		}
+		q.backlog.release(rawStreamEventSize(event))
 		return event, true
 	default:
 		return nil, false
