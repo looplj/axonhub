@@ -41,6 +41,10 @@ type responsesAttemptTarget struct {
 }
 
 func prepareResponsesAttemptBody(ctx context.Context, p *PersistentOutboundTransformer, target responsesAttemptTarget) ([]byte, error) {
+	return prepareResponsesAttemptBodyWithRequest(ctx, p, nil, target)
+}
+
+func prepareResponsesAttemptBodyWithRequest(ctx context.Context, p *PersistentOutboundTransformer, request *llm.Request, target responsesAttemptTarget) ([]byte, error) {
 	c := p.state.ResponsesContinuation
 	c.releaseCapture()
 	c.capture = &responsesCompletion{}
@@ -227,7 +231,7 @@ func prepareResponsesAttempt(ctx context.Context, p *PersistentOutboundTransform
 	if p.state.CurrentCandidate.APIFormat != "" {
 		origin.Format = p.state.CurrentCandidate.APIFormat
 	}
-	body, err := prepareResponsesAttemptBody(ctx, p, responsesAttemptTarget{origin: origin, forwardsID: forwardsResponsesID(p.wrapped)})
+	body, err := prepareResponsesAttemptBodyWithRequest(ctx, p, request, responsesAttemptTarget{origin: origin, forwardsID: forwardsResponsesID(p.wrapped)})
 	if err != nil {
 		return nil, err
 	}
@@ -241,8 +245,13 @@ func prepareResponsesAttempt(ctx context.Context, p *PersistentOutboundTransform
 	if err != nil {
 		return nil, err
 	}
+	original, err := responses.NewInboundTransformer().TransformRequest(ctx, &httpclient.Request{Body: p.state.ResponsesContinuation.original})
+	if err != nil {
+		return nil, err
+	}
+	prefixLength := max(0, len(parsed.Messages)-len(original.Messages))
 	cloned := *request
-	cloned.Messages, cloned.ProviderExtensions = parsed.Messages, parsed.ProviderExtensions
+	cloned.Messages = append(append([]llm.Message(nil), parsed.Messages[:prefixLength]...), request.Messages...)
 	return &cloned, nil
 }
 
