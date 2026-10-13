@@ -1145,3 +1145,34 @@ func TestWithModelLibraryPriceMemo_Idempotent(t *testing.T) {
 	second := WithModelLibraryPriceMemo(ctx)
 	require.Same(t, modelLibraryPriceMemoFromContext(ctx), modelLibraryPriceMemoFromContext(second))
 }
+
+// TestModelLibraryPriceMemo_DoesNotCacheLookupErrors verifies that a failed
+// lookup (e.g. a canceled context) is not cached, so a later calculation with a
+// healthy context still resolves the price. This guards the usage-log write,
+// which runs with cancellation removed but shares the request memo.
+func TestModelLibraryPriceMemo_DoesNotCacheLookupErrors(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	createModelLibraryPriceEntry(t, ctx, client, "m-err", model.StatusEnabled, objects.ModelCardCost{Input: 2})
+
+	channelService := NewChannelServiceForTest(client)
+
+	memoCtx := WithModelLibraryPriceMemo(ctx)
+
+	// A canceled context makes the lookup fail; the result must not be memoized.
+	canceledCtx, cancel := context.WithCancel(memoCtx)
+	cancel()
+
+	_, ok := channelService.resolveModelLibraryPrice(canceledCtx, "m-err")
+	require.False(t, ok)
+
+	// The same request, now with a healthy context, must still resolve the price.
+	price, ok := channelService.resolveModelLibraryPrice(memoCtx, "m-err")
+	require.True(t, ok)
+	require.Equal(t, "2", price.Items[0].Pricing.UsagePerUnit.String())
+}

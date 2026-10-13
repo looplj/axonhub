@@ -199,7 +199,14 @@ func (svc *ChannelService) resolveModelLibraryPrice(ctx context.Context, modelID
 		}
 	}
 
-	price, found := svc.lookupModelLibraryPrice(ctx, modelID)
+	price, found, err := svc.lookupModelLibraryPrice(ctx, modelID)
+	if err != nil {
+		// The lookup failed (e.g. canceled context or a transient database
+		// error). Do not cache the result: a later calculation with a healthy
+		// context (the usage-log write runs with cancellation removed) must be
+		// able to resolve the price instead of reusing this failed attempt.
+		return nil, false
+	}
 
 	if memo != nil {
 		memo.set(modelID, price, found)
@@ -209,9 +216,13 @@ func (svc *ChannelService) resolveModelLibraryPrice(ctx context.Context, modelID
 }
 
 // lookupModelLibraryPrice performs the model-library query used by
-// resolveModelLibraryPrice, without any request-scoped caching.
-func (svc *ChannelService) lookupModelLibraryPrice(ctx context.Context, modelID string) (*objects.ModelPrice, bool) {
+// resolveModelLibraryPrice, without any request-scoped caching. The returned
+// error separates a genuine miss (nil error, found=false) from a failed lookup
+// (non-nil error), so callers can avoid caching results affected by an error.
+func (svc *ChannelService) lookupModelLibraryPrice(ctx context.Context, modelID string) (*objects.ModelPrice, bool, error) {
 	db := svc.entFromContext(ctx)
+
+	var lookupErr error
 
 	for _, candidate := range modelLibraryPriceModelIDCandidates(modelID) {
 		catalogModel, err := db.Model.Query().
@@ -226,6 +237,8 @@ func (svc *ChannelService) lookupModelLibraryPrice(ctx context.Context, modelID 
 					log.String("model_id", modelID),
 					log.String("candidate_model_id", candidate),
 					log.Cause(err))
+
+				lookupErr = fmt.Errorf("failed to query model library price for %q: %w", candidate, err)
 			}
 
 			continue
@@ -236,10 +249,10 @@ func (svc *ChannelService) lookupModelLibraryPrice(ctx context.Context, modelID 
 			continue
 		}
 
-		return &price, true
+		return &price, true, nil
 	}
 
-	return nil, false
+	return nil, false, lookupErr
 }
 
 // createChannelModelPriceIfMissing atomically creates a current price when the
