@@ -54,15 +54,79 @@ fmt.Println(responseText)
 
 ### OpenAI Responses API
 
-AxonHub provides partial support for the OpenAI Responses API. This API offers a simplified interface for single-turn interactions.
+AxonHub supports the OpenAI Responses API over HTTP and WebSocket. The two
+channel endpoint formats are `openai/responses` for HTTP and
+`openai/responses-ws` for WebSocket. Both use the Responses protocol; the
+transport envelope differs.
 
 **Endpoints:**
 - `POST /v1/responses` - Generate a response
+- WebSocket `/v1/responses` - Create a Responses stream over WebSocket
 
 **Capabilities:**
-- ✅ `previous_response_id` passthrough is supported for continued Responses conversations on the same upstream channel
-- ✅ Basic response generation is fully functional
-- ✅ Streaming responses are supported
+- ✅ Basic response generation and streaming are supported
+- ✅ A same-channel request first uses the endpoint format that matches its inbound transport
+- ✅ If the matching format is unavailable, HTTP and WebSocket Responses conversion is supported
+- ✅ `previous_response_id` continuation is supported when the originating context and identity can be verified
+
+### Endpoint selection and transport conversion
+
+Configure `openai/responses` and `openai/responses-ws` as separate endpoints when
+a channel supports both transports. AxonHub selects the exact inbound format
+first within the same channel. If no allowed endpoint has that format, it uses
+the first allowed endpoint in configured order and converts the HTTP or
+WebSocket Responses envelope. The conversion preserves Responses items,
+provider response and item IDs, tool data, image actions and results, and
+supported unknown fields. It does not convert `/v1/images/generations`,
+`/v1/images/edits`, or `/v1/models` into Responses tool calls.
+
+Model protocol overrides must name endpoint formats that already exist on the
+channel. For example:
+
+```json
+{
+  "model": "gpt-5",
+  "apiFormats": ["openai/responses", "openai/responses-ws"],
+  "enabled": true
+}
+```
+
+### Continuation and recovery
+
+`previous_response_id` is not a portable channel-wide token. AxonHub checks its
+channel, endpoint origin, model, authentication identity, and, for native
+WebSocket continuation, upstream connection generation. A native WebSocket
+turn uses the matching live upstream session and sends only the next delta.
+Switching channel or transport requires a certified complete input history.
+
+If the required history is missing, expired, over budget, or belongs to a
+different origin, AxonHub stops before upstream dispatch and returns HTTP 400,
+or a WebSocket error like:
+
+```json
+{
+  "type": "error",
+  "status": 400,
+  "error": {
+    "type": "invalid_request_error",
+    "code": "previous_response_not_found",
+    "message": "Continuation context is unavailable; resend the full input without previous_response_id."
+  }
+}
+```
+
+This recovery error is not retried through ordinary channel failover. Resend
+the full input without `previous_response_id` to recover. The current bounded
+defaults are 16 MiB per retained HTTP record or stream capture, 64 MiB for
+aggregate retained payload, and 128 MiB for one frame or queued frame per
+downstream connection. These bounds describe gateway recovery behavior, not a
+provider context-window guarantee.
+
+Native Images remains an HTTP boundary. Image generation and editing use the
+OpenAI-compatible `/v1/images/generations` and `/v1/images/edits` endpoints,
+and model discovery uses `/v1/models`; these requests are not wrapped as
+Responses `image_generation` calls. See [Image Generation API](image-generation.md)
+for the native Images request and response contract.
 
 **Example Request:**
 ```go

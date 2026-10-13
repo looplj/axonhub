@@ -16,7 +16,8 @@ export function isRelayProtocol(apiFormat: string): apiFormat is RelayProtocol {
 /**
  * Returns the relay protocols effectively available on a channel by merging the
  * built-in default endpoints with the user-configured overrides, mirroring the
- * backend `ResolveEndpoints` behavior.
+ * backend `ResolveEndpoints` behavior. A WebSocket Responses endpoint relays the
+ * Responses protocol.
  */
 export function getChannelRelayProtocols(
   defaultEndpoints: readonly ChannelEndpoint[] | null | undefined,
@@ -25,8 +26,9 @@ export function getChannelRelayProtocols(
   const protocols = new Set<RelayProtocol>();
 
   for (const endpoint of [...(defaultEndpoints ?? []), ...(endpoints ?? [])]) {
-    if (isRelayProtocol(endpoint.apiFormat)) {
-      protocols.add(endpoint.apiFormat);
+    const apiFormat = endpoint.apiFormat === 'openai/responses-ws' ? 'openai/responses' : endpoint.apiFormat;
+    if (isRelayProtocol(apiFormat)) {
+      protocols.add(apiFormat);
     }
   }
 

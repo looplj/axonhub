@@ -54,15 +54,68 @@ fmt.Println(responseText)
 
 ### OpenAI Responses API
 
-AxonHub 提供对 OpenAI Responses API 的部分支持。该 API 为单轮交互提供了简化的接口。
+AxonHub 支持通过 HTTP 和 WebSocket 使用 OpenAI Responses API。两种渠道端点格式分别为
+HTTP 的 `openai/responses` 和 WebSocket 的 `openai/responses-ws`。两者使用相同的
+Responses 协议，只是传输封装不同。
 
 **端点：**
 - `POST /v1/responses` - 生成响应
+- WebSocket `/v1/responses` - 通过 WebSocket 创建 Responses 流
 
 **能力：**
-- ✅ 支持 `previous_response_id` 透传，可用于同一上游 channel 上的连续 Responses 对话复用
-- ✅ 基本响应生成完全可用
-- ✅ 支持流式响应
+- ✅ 支持基本响应生成和流式响应
+- ✅ 同一渠道内会先选择与入站传输匹配的端点格式
+- ✅ 没有匹配格式时，支持 HTTP 与 WebSocket Responses 之间的转换
+- ✅ 当来源上下文和身份可以验证时，支持通过 `previous_response_id` 继续对话
+
+### 端点选择与传输转换
+
+当一个渠道支持两种传输方式时，请将 `openai/responses` 和
+`openai/responses-ws` 配置为两个独立端点。AxonHub 会在同一渠道内优先选择与入站
+格式完全匹配的端点。如果没有允许的同格式端点，则按配置顺序选择第一个允许的端点，
+并转换 HTTP 或 WebSocket 的 Responses 封装。转换会保留 Responses item、提供商的
+response 和 item ID、工具数据、图像操作与结果，以及支持的未知字段。它不会把
+`/v1/images/generations`、`/v1/images/edits` 或 `/v1/models` 转换为 Responses 工具调用。
+
+模型协议覆盖必须引用渠道中已经存在的端点格式。例如：
+
+```json
+{
+  "model": "gpt-5",
+  "apiFormats": ["openai/responses", "openai/responses-ws"],
+  "enabled": true
+}
+```
+
+### 连续对话与恢复
+
+`previous_response_id` 不是可以跨渠道使用的全局令牌。AxonHub 会检查其渠道、端点来源、
+模型、认证身份，以及原生 WebSocket 续接所需的上游连接代次。原生 WebSocket 下一轮会在
+匹配的上游会话中发送增量内容。切换渠道或传输方式时，必须具备经过确认的完整输入历史。
+
+如果所需历史缺失、过期、超出预算或属于其他来源，AxonHub 会在发送上游请求前停止处理，
+返回 HTTP 400，或返回类似下面的 WebSocket 错误：
+
+```json
+{
+  "type": "error",
+  "status": 400,
+  "error": {
+    "type": "invalid_request_error",
+    "code": "previous_response_not_found",
+    "message": "Continuation context is unavailable; resend the full input without previous_response_id."
+  }
+}
+```
+
+此恢复错误不会进入普通渠道故障转移。恢复时，请删除 `previous_response_id` 并重新发送
+完整输入。当前有界默认值为：每条 HTTP 保留记录或流捕获 16 MiB、保留载荷总量 64 MiB、
+每个下游连接的单帧或排队帧 128 MiB。这些数值描述网关的恢复行为，不代表提供商的上下文窗口上限。
+
+原生 Images 始终使用 HTTP 边界。图像生成和编辑使用 OpenAI 兼容的
+`/v1/images/generations` 与 `/v1/images/edits`，模型发现使用 `/v1/models`；这些请求
+不会包装成 Responses `image_generation` 调用。原生 Images 的请求和响应约定请参阅
+[图像生成 API](image-generation.md)。
 
 **示例请求：**
 ```go

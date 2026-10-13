@@ -35,3 +35,20 @@ test('recognizes Gemini contents and ignores embedding formats', () => {
   );
   assert.equal(getChannelRelayProtocols(undefined, undefined).size, 0);
 });
+
+test('counts WebSocket Responses endpoints as the Responses relay protocol', () => {
+  // Codex WebSocket-only defaults and canonical WebSocket overrides still relay Responses.
+  assert.deepEqual(
+    [...getChannelRelayProtocols([{ apiFormat: 'openai/responses-ws' }, { apiFormat: 'openai/image_generation' }], [])],
+    ['openai/responses']
+  );
+  assert.deepEqual([...getChannelRelayProtocols(null, [{ apiFormat: 'openai/responses-ws' }])], ['openai/responses']);
+  assert.deepEqual(
+    [...getChannelRelayProtocols([{ apiFormat: 'openai/responses' }], [{ apiFormat: 'openai/responses-ws' }])],
+    ['openai/responses']
+  );
+});
+
+test('keeps the WebSocket format out of the relay protocol list used by detection', () => {
+  assert.equal(isRelayProtocol('openai/responses-ws'), false);
+});

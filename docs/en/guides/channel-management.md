@@ -242,6 +242,66 @@ Force the available outbound protocols for a single model in the **Model Protoco
 - Enabled overrides may only reference `api_format`s the channel already provides (default or custom endpoints), validated on save; overrides are cleaned up automatically when a model is removed from the channel's supported list.
 - Endpoints and protocol overrides are committed atomically in a single save.
 
+### Responses HTTP and WebSocket endpoints
+
+Responses has two distinct endpoint formats:
+
+| `api_format` | Transport | Default request path |
+|---|---|---|
+| `openai/responses` | HTTP | `/v1/responses` |
+| `openai/responses-ws` | WebSocket | `/v1/responses` |
+
+Configure both formats on the same channel when the channel can serve both
+transports. The endpoint format is the source of truth for the outbound
+transport. A WebSocket scheme in a legacy endpoint is normalized to
+`openai/responses-ws`; a legacy HTTP Responses endpoint remains
+`openai/responses`. Existing explicit HTTP-only and WebSocket-only endpoint
+sets remain single-mode until they are saved with a new configuration.
+
+For a request whose inbound format matches an allowed endpoint on the selected
+channel, AxonHub selects that exact format first. If no same-format endpoint is
+available, it selects the first allowed endpoint using the configured endpoint
+order and converts the Responses request, response, or event envelope between
+HTTP and WebSocket. This fallback does not change the channel ranking or make
+an Images or Models request a Responses request.
+
+For model protocol overrides, list the exact formats the model may use:
+
+```json
+{
+  "model": "gpt-5",
+  "apiFormats": ["openai/responses", "openai/responses-ws"],
+  "enabled": true
+}
+```
+
+The override may reference only endpoint formats already available on that
+channel. Use the same channel for a Responses continuation whenever possible.
+If the selected transport or channel changes and AxonHub cannot certify the
+complete prior input, the request is rejected before upstream dispatch rather
+than sent with incomplete history.
+
+### Responses continuation and bounded recovery
+
+`previous_response_id` is bound to the channel, endpoint origin, model,
+authentication identity, and WebSocket connection generation that produced it.
+Native WebSocket continuation sends the next delta on its matching live
+upstream session. A stale, missing, expired, or over-budget context cannot be
+silently replayed on another endpoint or channel.
+
+When the complete context is unavailable, AxonHub returns HTTP 400 or a
+WebSocket error with code `previous_response_not_found` and asks the client to
+resend the full input without `previous_response_id`. This recovery error does
+not enter ordinary channel failover. One failed WebSocket lane does not close
+unrelated lanes on the same downstream connection.
+
+The current bounded defaults are 16 MiB for one retained HTTP record or stream
+capture, 64 MiB for aggregate retained payload, and 128 MiB for one frame or
+queued frame per downstream connection. Exceeding a retention budget removes
+optional replay history, but keeps valid native response identity when the
+provider session can continue. If a later turn needs history that was not
+retained, the client must resend the full input.
+
 **Example** (GLM Coding Plan channel, three endpoints + override):
 
 | endpoint | api_format | base_url |
