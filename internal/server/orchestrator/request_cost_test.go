@@ -3,6 +3,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/samber/lo"
@@ -183,6 +184,65 @@ func TestPersistRequestMiddleware_InjectsStreamUsageCost(t *testing.T) {
 	require.NotNil(t, second.Usage.Cost)
 	require.InDelta(t, 0.000005, *second.Usage.Cost, 1e-12)
 	require.False(t, stream.Next())
+}
+
+func TestPersistRequestMiddleware_PersistsUsageBeforeStreamError(t *testing.T) {
+	t.Parallel()
+
+	middleware, ctx, _ := setupUsageCostMiddleware(t, string(llm.APIFormatOpenAIResponse), "m1")
+	usage := &llm.Usage{
+		PromptTokens:     100,
+		CompletionTokens: 200,
+		TotalTokens:      300,
+	}
+	stream, err := middleware.OnOutboundLlmStream(ctx, &failedLlmResponseStream{
+		items: []*llm.Response{{Usage: usage}},
+		err:   errors.New("stream failed after usage"),
+	})
+	require.NoError(t, err)
+
+	// Given: pre-read consumed a usage-only response without content.
+	require.True(t, stream.Next())
+	response := stream.Current()
+	require.Empty(t, response.Choices)
+	require.NotNil(t, response.Usage.Cost)
+
+	// When: pre-read observes the stream error and asks for it again.
+	require.False(t, stream.Next())
+	require.Error(t, stream.Err())
+	require.Error(t, stream.Err())
+
+	// Then: the failed attempt is accounted for exactly once before retry handling.
+	usageLogs, err := ent.FromContext(ctx).UsageLog.Query().All(ctx)
+	require.NoError(t, err)
+	require.Len(t, usageLogs, 1)
+	require.Equal(t, int64(300), usageLogs[0].TotalTokens)
+	require.NotNil(t, usageLogs[0].TotalCost)
+	require.InDelta(t, 0.000005, *usageLogs[0].TotalCost, 1e-12)
+}
+
+type failedLlmResponseStream struct {
+	items []*llm.Response
+	err   error
+	index int
+}
+
+func (s *failedLlmResponseStream) Next() bool {
+	return s.index < len(s.items)
+}
+
+func (s *failedLlmResponseStream) Current() *llm.Response {
+	item := s.items[s.index]
+	s.index++
+	return item
+}
+
+func (s *failedLlmResponseStream) Err() error {
+	return s.err
+}
+
+func (s *failedLlmResponseStream) Close() error {
+	return nil
 }
 
 func TestPersistRequestMiddleware_OmitsCostWithoutPrice(t *testing.T) {
