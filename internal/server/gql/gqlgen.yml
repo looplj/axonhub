@@ -72,6 +72,10 @@ converters:
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:
+  CodexCompatibilitySettings:
+    model: github.com/looplj/axonhub/internal/server/biz.CodexCompatibilitySettings
+  UpdateCodexCompatibilitySettingsInput:
+    model: github.com/looplj/axonhub/internal/server/biz.CodexCompatibilitySettings
   # Defines the ID field as Go 'int'.
   ID:
     model:

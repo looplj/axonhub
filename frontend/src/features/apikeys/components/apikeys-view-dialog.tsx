@@ -1,17 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Copy, Eye, EyeOff, AlertTriangle, Link, CheckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { MaskedCodeBlock, MaskedCodeBlockCopyButton, highlightMaskedCode } from '@/components/ai-elements/masked-code-block';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
+import { MaskedCodeBlock, MaskedCodeBlockCopyButton, highlightMaskedCode } from '@/components/ai-elements/masked-code-block';
 import { useQueryAllModels } from '@/features/models/data/models';
+import { useCodexCompatibilityEnabled } from '@/features/system/data/codex-compatibility-api';
+import { useApiKeysContext } from '../context/apikeys-context';
 import { useApiKey } from '../data/apikeys';
 import { buildPiModelsConfig, serializePiModelsConfig } from '../data/pi-models-config';
-import { useApiKeysContext } from '../context/apikeys-context';
 
 function CopyBaseUrlButton({ baseUrl }: { baseUrl: string }) {
   const { t } = useTranslation();
@@ -43,6 +44,8 @@ export function ApiKeysViewDialog() {
     text: selectedApiKey?.key ?? '',
     copyMessage: t('apikeys.messages.copied'),
   });
+  const { data: codexCompatibilityEnabled } = useCodexCompatibilityEnabled();
+  const showCodexCompatibility = codexCompatibilityEnabled === true;
 
   const apiKey = selectedApiKey?.key || '';
   const maskedApiKey = selectedApiKey?.key ? selectedApiKey.key.slice(0, 3) + '...' + selectedApiKey.key.slice(-4) : '';
@@ -50,7 +53,7 @@ export function ApiKeysViewDialog() {
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:8090';
 
   // The key detail carries the active profile's model allowlist, which the list row omits.
-  const detailApiKeyId = isDialogOpen.view ? selectedApiKey?.id ?? '' : '';
+  const detailApiKeyId = isDialogOpen.view ? (selectedApiKey?.id ?? '') : '';
   const { data: apiKeyDetail } = useApiKey(detailApiKeyId);
   const { data: enabledModels } = useQueryAllModels({ where: { statusIn: ['enabled'] } }, { enabled: !!detailApiKeyId });
 
@@ -81,8 +84,7 @@ export function ApiKeysViewDialog() {
   );
 
   // Highlighting a full model list is expensive, so cache it per rendered content.
-  const piPreRenderedCode =
-    piPreRendered && piConfigCode && piPreRendered.source === piConfigCode.display ? piPreRendered : undefined;
+  const piPreRenderedCode = piPreRendered && piConfigCode && piPreRendered.source === piConfigCode.display ? piPreRendered : undefined;
 
   useEffect(() => {
     if (activeExampleTab !== 'pi' || !piConfigCode || piPreRenderedCode) return;
@@ -133,8 +135,57 @@ env_key = "AXONHUB_API_KEY"
 wire_api = "responses"
 query_params = {}
 
-# Restart Codex to apply the configuration`
+# Restart Codex to apply the configuration`,
       },
+      ...(showCodexCompatibility
+        ? {
+            codexCompatibility: {
+              baseUrl: `${currentOrigin}/codex`,
+              display: `# Store your API key as a Codex personal access token
+mkdir -p \${HOME}/.codex
+cat > \${HOME}/.codex/auth.json <<'EOF'
+{"personal_access_token":"${maskedApiKey}"}
+EOF
+
+# Edit \${HOME}/.codex/config.toml
+model = "gpt-5"
+model_provider = "openai"
+openai_base_url = "${currentOrigin}/codex"
+chatgpt_base_url = "${currentOrigin}/codex"
+
+web_search = "live"
+suppress_unstable_features_warning = true
+
+[features]
+fast_mode = true
+context_management = true
+
+export CODEX_AUTHAPI_BASE_URL="${currentOrigin}/codex"
+codex`,
+              real: `# Store your API key as a Codex personal access token
+mkdir -p \${HOME}/.codex
+cat > \${HOME}/.codex/auth.json <<'EOF'
+{"personal_access_token":"${apiKey}"}
+EOF
+
+# Edit \${HOME}/.codex/config.toml
+model = "gpt-5"
+model_provider = "openai"
+openai_base_url = "${currentOrigin}/codex"
+chatgpt_base_url = "${currentOrigin}/codex"
+
+web_search = "live"
+suppress_unstable_features_warning = true
+
+[features]
+fast_mode = true
+context_management = true
+
+export CODEX_AUTHAPI_BASE_URL="${currentOrigin}/codex"
+codex`,
+            },
+          }
+        : {}),
       claudeCode: {
         baseUrl: `${currentOrigin}/anthropic`,
         display: `# In your terminal, set the API key
@@ -158,7 +209,7 @@ claude
 # Or use the --api-key flag with the base URL
 claude --api-key "${apiKey}" --base-url "${currentOrigin}/anthropic" "Hello, Claude!"
 
-# The configuration will be stored in ~/.config/claude/config.json`
+# The configuration will be stored in ~/.config/claude/config.json`,
       },
       anthropicSDK: {
         baseUrl: `${currentOrigin}/anthropic`,
@@ -199,7 +250,7 @@ message = client.messages.create(
     ]
 )
 
-print(message.content)`
+print(message.content)`,
       },
       openAISDK: {
         baseUrl: `${currentOrigin}/v1`,
@@ -228,7 +279,7 @@ response = client.responses.create(
     input="Hello, Claude!"
 )
 
-print(response.output_text)`
+print(response.output_text)`,
       },
       geminiSDK: {
         baseUrl: `${currentOrigin}/gemini`,
@@ -267,25 +318,32 @@ response = client.models.generate_content(
     ),
 )
 
-print(response.text)`
-      }
+print(response.text)`,
+      },
     };
-  }, [selectedApiKey?.key, apiKey, maskedApiKey]);
+  }, [selectedApiKey?.key, apiKey, maskedApiKey, showCodexCompatibility]);
+
+  useEffect(() => {
+    if (!showCodexCompatibility && activeExampleTab === 'codexCompatibility') {
+      setActiveExampleTab('claudeCode');
+    }
+  }, [activeExampleTab, showCodexCompatibility]);
 
   useEffect(() => {
     if (!selectedApiKey?.key || Object.keys(codeExamples).length === 0) return;
 
     const languages: Record<string, 'bash' | 'python'> = {
       codex: 'bash',
+      codexCompatibility: 'bash',
       claudeCode: 'bash',
       anthropicSDK: 'python',
       openAISDK: 'python',
-      geminiSDK: 'python'
+      geminiSDK: 'python',
     };
 
     const renderAllCodeBlocks = async () => {
       const results: Record<string, { light: string; dark: string }> = {};
-      
+
       await Promise.all(
         Object.entries(codeExamples).map(async ([key, example]) => {
           const [light, dark] = await highlightMaskedCode(example.display, languages[key]);
@@ -309,12 +367,12 @@ print(response.text)`
           <DialogDescription>{t('apikeys.dialogs.view.description')}</DialogDescription>
         </DialogHeader>
 
-        <Alert className='border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950 shrink-0'>
+        <Alert className='shrink-0 border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950'>
           <AlertTriangle className='h-4 w-4 text-orange-600 dark:text-orange-400' />
           <AlertDescription className='text-orange-800 dark:text-orange-200'>{t('apikeys.dialogs.view.warning')}</AlertDescription>
         </Alert>
 
-        <div className='space-y-4 shrink-0'>
+        <div className='shrink-0 space-y-4'>
           <div>
             <label className='text-sm font-medium'>{t('common.columns.name')}</label>
             <div className='bg-muted mt-1 rounded-md p-3'>{selectedApiKey?.name}</div>
@@ -336,58 +394,111 @@ print(response.text)`
           </div>
         </div>
 
-        <div className='flex-1 overflow-hidden flex flex-col'>
+        <div className='flex flex-1 flex-col overflow-hidden'>
           <label className='text-sm font-medium'>{t('apikeys.dialogs.view.usageExamples')}</label>
           {selectedApiKey?.type === 'user' || selectedApiKey?.type === 'personal' ? (
-            <Tabs value={activeExampleTab} onValueChange={setActiveExampleTab} className='mt-2 flex-1 flex flex-col min-h-0'>
-              <TabsList className='grid w-full grid-cols-6 shrink-0'>
+            <Tabs value={activeExampleTab} onValueChange={setActiveExampleTab} className='mt-2 flex min-h-0 flex-1 flex-col'>
+              <TabsList className={`grid w-full ${showCodexCompatibility ? 'grid-cols-7' : 'grid-cols-6'} shrink-0`}>
                 <TabsTrigger value='claudeCode'>{t('apikeys.dialogs.view.tabs.claudeCode')}</TabsTrigger>
                 <TabsTrigger value='codex'>{t('apikeys.dialogs.view.tabs.codex')}</TabsTrigger>
+                {showCodexCompatibility && (
+                  <TabsTrigger value='codexCompatibility'>{t('apikeys.dialogs.view.tabs.codexCompatibility')}</TabsTrigger>
+                )}
                 <TabsTrigger value='pi'>{t('apikeys.dialogs.view.tabs.pi')}</TabsTrigger>
                 <TabsTrigger value='anthropicSDK'>{t('apikeys.dialogs.view.tabs.anthropicSDK')}</TabsTrigger>
                 <TabsTrigger value='openAISDK'>{t('apikeys.dialogs.view.tabs.openAISDK')}</TabsTrigger>
                 <TabsTrigger value='geminiSDK'>{t('apikeys.dialogs.view.tabs.geminiSDK')}</TabsTrigger>
               </TabsList>
-              <TabsContent value='pi' className='mt-3 min-h-0 flex-1 flex flex-col gap-2 overflow-y-auto'>
+              <TabsContent value='pi' className='mt-3 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto'>
                 <p className='text-muted-foreground text-xs'>{t('apikeys.dialogs.view.piHint')}</p>
-                <MaskedCodeBlock displayCode={piConfigCode?.display || ''} realCode={piConfigCode?.real || ''} language='json' className='overflow-visible' preRenderedHtml={piPreRenderedCode}>
+                <MaskedCodeBlock
+                  displayCode={piConfigCode?.display || ''}
+                  realCode={piConfigCode?.real || ''}
+                  language='json'
+                  className='overflow-visible'
+                  preRenderedHtml={piPreRenderedCode}
+                >
                   <CopyBaseUrlButton baseUrl={piConfigCode?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
               <TabsContent value='anthropicSDK' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
-                <MaskedCodeBlock displayCode={codeExamples?.anthropicSDK?.display || ''} realCode={codeExamples?.anthropicSDK?.real || ''} language='python' className='overflow-visible' preRenderedHtml={preRenderedCode.anthropicSDK}>
+                <MaskedCodeBlock
+                  displayCode={codeExamples?.anthropicSDK?.display || ''}
+                  realCode={codeExamples?.anthropicSDK?.real || ''}
+                  language='python'
+                  className='overflow-visible'
+                  preRenderedHtml={preRenderedCode.anthropicSDK}
+                >
                   <CopyBaseUrlButton baseUrl={codeExamples?.anthropicSDK?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
               <TabsContent value='openAISDK' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
-                <MaskedCodeBlock displayCode={codeExamples?.openAISDK?.display || ''} realCode={codeExamples?.openAISDK?.real || ''} language='python' className='overflow-visible' preRenderedHtml={preRenderedCode.openAISDK}>
+                <MaskedCodeBlock
+                  displayCode={codeExamples?.openAISDK?.display || ''}
+                  realCode={codeExamples?.openAISDK?.real || ''}
+                  language='python'
+                  className='overflow-visible'
+                  preRenderedHtml={preRenderedCode.openAISDK}
+                >
                   <CopyBaseUrlButton baseUrl={codeExamples?.openAISDK?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
               <TabsContent value='codex' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
-                <MaskedCodeBlock displayCode={codeExamples?.codex?.display || ''} realCode={codeExamples?.codex?.real || ''} language='bash' className='overflow-visible' preRenderedHtml={preRenderedCode.codex}>
+                <MaskedCodeBlock
+                  displayCode={codeExamples?.codex?.display || ''}
+                  realCode={codeExamples?.codex?.real || ''}
+                  language='bash'
+                  className='overflow-visible'
+                  preRenderedHtml={preRenderedCode.codex}
+                >
                   <CopyBaseUrlButton baseUrl={codeExamples?.codex?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
+              {showCodexCompatibility && (
+                <TabsContent value='codexCompatibility' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
+                  <MaskedCodeBlock
+                    displayCode={codeExamples?.codexCompatibility?.display || ''}
+                    realCode={codeExamples?.codexCompatibility?.real || ''}
+                    language='bash'
+                    className='overflow-visible'
+                    preRenderedHtml={preRenderedCode.codexCompatibility}
+                  >
+                    <CopyBaseUrlButton baseUrl={codeExamples?.codexCompatibility?.baseUrl || ''} />
+                    <MaskedCodeBlockCopyButton />
+                  </MaskedCodeBlock>
+                </TabsContent>
+              )}
               <TabsContent value='claudeCode' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
-                <MaskedCodeBlock displayCode={codeExamples?.claudeCode?.display || ''} realCode={codeExamples?.claudeCode?.real || ''} language='bash' className='overflow-visible' preRenderedHtml={preRenderedCode.claudeCode}>
+                <MaskedCodeBlock
+                  displayCode={codeExamples?.claudeCode?.display || ''}
+                  realCode={codeExamples?.claudeCode?.real || ''}
+                  language='bash'
+                  className='overflow-visible'
+                  preRenderedHtml={preRenderedCode.claudeCode}
+                >
                   <CopyBaseUrlButton baseUrl={codeExamples?.claudeCode?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
               <TabsContent value='geminiSDK' className='mt-3 min-h-0 flex-1 overflow-y-auto'>
-                <MaskedCodeBlock displayCode={codeExamples?.geminiSDK?.display || ''} realCode={codeExamples?.geminiSDK?.real || ''} language='python' className='overflow-visible' preRenderedHtml={preRenderedCode.geminiSDK}>
+                <MaskedCodeBlock
+                  displayCode={codeExamples?.geminiSDK?.display || ''}
+                  realCode={codeExamples?.geminiSDK?.real || ''}
+                  language='python'
+                  className='overflow-visible'
+                  preRenderedHtml={preRenderedCode.geminiSDK}
+                >
                   <CopyBaseUrlButton baseUrl={codeExamples?.geminiSDK?.baseUrl || ''} />
                   <MaskedCodeBlockCopyButton />
                 </MaskedCodeBlock>
               </TabsContent>
             </Tabs>
           ) : (
-            <div className='mt-2 flex-1 flex items-center justify-center text-muted-foreground text-sm'>
+            <div className='text-muted-foreground mt-2 flex flex-1 items-center justify-center text-sm'>
               {t('apikeys.dialogs.view.noExamples')}
             </div>
           )}

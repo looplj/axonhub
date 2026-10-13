@@ -889,6 +889,138 @@ func TestDeviceFlowProvider_OnRefreshed_Error(t *testing.T) {
 	assert.Equal(t, "new-token", token)
 }
 
+func TestDeviceFlowProvider_OnRefreshedConflictUsesWinner(t *testing.T) {
+	t.Parallel()
+
+	var calls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		form, err := url.ParseQuery(string(body))
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		accessToken := "losing-token"
+		refreshToken := "losing-refresh"
+		if form.Get("refresh_token") == "winner-refresh" {
+			accessToken = "winner-refreshed-token"
+			refreshToken = "winner-refreshed-refresh"
+		}
+		resp := TokenResponse{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+			TokenType:    "Bearer",
+			ExpiresIn:    3600,
+		}
+		b, err := json.Marshal(resp)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, err = w.Write(b)
+		if err != nil {
+			t.Error(err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	winner := &OAuthCredentials{
+		AccessToken:  "winner-token",
+		RefreshToken: "winner-refresh",
+		ExpiresAt:    time.Now().Add(-time.Hour),
+	}
+	provider := NewDeviceFlowProvider(DeviceFlowProviderParams{
+		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()),
+		Config: DeviceFlowConfig{
+			TokenURL: server.URL + "/token",
+			ClientID: "test-client",
+		},
+		Credentials: &OAuthCredentials{
+			AccessToken:  "source-token",
+			RefreshToken: "source-refresh",
+			ExpiresAt:    time.Now().Add(-time.Hour),
+		},
+		OnRefreshed: func(_ context.Context, refreshed *OAuthCredentials) error {
+			if refreshed.AccessToken == "losing-token" {
+				return &CredentialConflictError{Credentials: winner}
+			}
+			return nil
+		},
+	})
+
+	token, err := provider.GetToken(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "winner-refreshed-token", token)
+	require.Equal(t, "winner-refreshed-token", provider.GetCredentials().AccessToken)
+	require.Equal(t, int32(2), calls.Load())
+}
+
+func TestDeviceFlowProvider_NilConflictStopsAutoRefresh(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := TokenResponse{
+			AccessToken:  "losing-token",
+			RefreshToken: "losing-refresh",
+			TokenType:    "Bearer",
+			ExpiresIn:    3600,
+		}
+		b, err := json.Marshal(resp)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, err = w.Write(b)
+		if err != nil {
+			t.Error(err)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	provider := NewDeviceFlowProvider(DeviceFlowProviderParams{
+		HTTPClient: httpclient.NewHttpClientWithClient(server.Client()),
+		Config: DeviceFlowConfig{
+			TokenURL: server.URL + "/token",
+			ClientID: "test-client",
+		},
+		Credentials: &OAuthCredentials{
+			AccessToken:  "source-token",
+			RefreshToken: "source-refresh",
+			ExpiresAt:    time.Now().Add(-time.Hour),
+		},
+		OnRefreshed: func(context.Context, *OAuthCredentials) error {
+			return &CredentialConflictError{}
+		},
+	})
+	autoCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	provider.autoMu.Lock()
+	provider.autoCancel = cancel
+	provider.autoMu.Unlock()
+
+	done := make(chan struct{})
+	go func() {
+		_, _ = provider.runAutoRefreshOnce(autoCtx)
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("auto refresh did not retire after nil conflict")
+	}
+	provider.autoMu.Lock()
+	require.Nil(t, provider.autoCancel)
+	provider.autoMu.Unlock()
+}
+
 // Test concurrent credential updates.
 func TestDeviceFlowProvider_ConcurrentCredentials(t *testing.T) {
 	t.Parallel()

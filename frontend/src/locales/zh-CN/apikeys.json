@@ -69,6 +69,7 @@
   "apikeys.dialogs.view.tabs.anthropicSDK": "Anthropic SDK",
   "apikeys.dialogs.view.tabs.openAISDK": "OpenAI SDK",
   "apikeys.dialogs.view.tabs.codex": "Codex",
+  "apikeys.dialogs.view.tabs.codexCompatibility": "Codex（原生兼容）",
   "apikeys.dialogs.view.tabs.claudeCode": "Claude Code",
   "apikeys.dialogs.view.tabs.geminiSDK": "Gemini SDK",
   "apikeys.dialogs.view.tabs.pi": "Pi",

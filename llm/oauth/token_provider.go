@@ -52,6 +52,22 @@ type TokenProvider struct {
 	autoCancel context.CancelFunc
 }
 
+// CredentialConflictError reports that persistence found newer channel credentials.
+// Credentials is the winner; nil means the channel is no longer OAuth and the
+// refreshing provider must retire its automatic refresh loop.
+type CredentialConflictError struct {
+	Credentials *OAuthCredentials
+}
+
+func (e *CredentialConflictError) Error() string {
+	return "OAuth credentials changed while refreshing"
+}
+
+type refreshResult struct {
+	credentials  *OAuthCredentials
+	retryExpired bool
+}
+
 type TokenProviderParams struct {
 	Credentials *OAuthCredentials
 	// HTTPClient should be pre-configured with proxy settings if needed
@@ -92,9 +108,25 @@ func NewTokenProvider(params TokenProviderParams) *TokenProvider {
 	}
 }
 
+// SetHTTPClient updates the transport used by future token requests.
+// An in-flight request keeps the client it already started with.
+func (p *TokenProvider) SetHTTPClient(client *httpclient.HttpClient) {
+	p.mu.Lock()
+	p.httpClient = client
+	p.mu.Unlock()
+}
+
+func (p *TokenProvider) getHTTPClient() *httpclient.HttpClient {
+	p.mu.RLock()
+	client := p.httpClient
+	p.mu.RUnlock()
+	return client
+}
+
 // Exchange performs OAuth2 authorization_code exchange and returns credentials.
 func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*OAuthCredentials, error) {
-	if p.httpClient == nil {
+	httpClient := p.getHTTPClient()
+	if httpClient == nil {
 		return nil, errors.New("http client is nil")
 	}
 
@@ -123,7 +155,7 @@ func (p *TokenProvider) Exchange(ctx context.Context, params ExchangeParams) (*O
 		return nil, fmt.Errorf("build exchange request: %w", err)
 	}
 
-	resp, err := p.httpClient.Do(ctx, req)
+	resp, err := httpClient.Do(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -162,47 +194,67 @@ func (p *TokenProvider) Get(ctx context.Context) (*OAuthCredentials, error) {
 	}
 
 	// Refresh with singleflight to avoid stampede inside the same transformer.
-	v, err, _ := p.sf.Do("refresh", func() (any, error) {
-		p.mu.RLock()
-		current := p.creds
-		onRefreshed := p.onRefreshed
-		p.mu.RUnlock()
+	for {
+		v, err, _ := p.sf.Do("refresh", func() (any, error) {
+			p.mu.RLock()
+			current := p.creds
+			onRefreshed := p.onRefreshed
+			p.mu.RUnlock()
 
-		if current == nil {
-			return nil, fmt.Errorf("credentials is nil")
-		}
+			if current == nil {
+				return nil, fmt.Errorf("credentials is nil")
+			}
 
-		if !current.IsExpired(time.Now()) {
-			return current, nil
-		}
+			if !current.IsExpired(time.Now()) {
+				return refreshResult{credentials: current}, nil
+			}
 
-		fresh, err := p.refresh(ctx, current)
+			fresh, err := p.refresh(ctx, current)
+			if err != nil {
+				return nil, err
+			}
+
+			retryExpired := false
+			if onRefreshed != nil {
+				if err := onRefreshed(ctx, fresh); err != nil {
+					var conflict *CredentialConflictError
+					if errors.As(err, &conflict) {
+						fresh = conflict.Credentials
+						retryExpired = fresh != nil
+					} else {
+						slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+					}
+				}
+			}
+
+			p.mu.Lock()
+			p.creds = fresh
+			p.mu.Unlock()
+			if fresh == nil {
+				p.StopAutoRefresh()
+				return nil, errors.New("credentials is nil")
+			}
+
+			return refreshResult{credentials: fresh, retryExpired: retryExpired}, nil
+		})
 		if err != nil {
 			return nil, err
 		}
 
-		p.mu.Lock()
-		p.creds = fresh
-		p.mu.Unlock()
-
-		if onRefreshed != nil {
-			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+		result, ok := v.(refreshResult)
+		if !ok {
+			return nil, fmt.Errorf("singleflight returned unexpected type %T", v)
+		}
+		fresh := result.credentials
+		if result.retryExpired && fresh.RefreshToken != "" && fresh.IsExpired(time.Now()) {
+			if err := ctx.Err(); err != nil {
+				return nil, err
 			}
+			continue
 		}
 
 		return fresh, nil
-	})
-	if err != nil {
-		return nil, err
 	}
-
-	fresh, ok := v.(*OAuthCredentials)
-	if !ok {
-		return nil, fmt.Errorf("singleflight returned unexpected type %T", v)
-	}
-
-	return fresh, nil
 }
 
 func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Duration) (*OAuthCredentials, error) {
@@ -229,54 +281,74 @@ func (p *TokenProvider) EnsureFresh(ctx context.Context, refreshBefore time.Dura
 		return creds, nil
 	}
 
-	v, err, _ := p.sf.Do("refresh", func() (any, error) {
-		p.mu.RLock()
-		current := p.creds
-		onRefreshed := p.onRefreshed
-		p.mu.RUnlock()
+	for {
+		v, err, _ := p.sf.Do("refresh", func() (any, error) {
+			p.mu.RLock()
+			current := p.creds
+			onRefreshed := p.onRefreshed
+			p.mu.RUnlock()
 
-		if current == nil {
-			return nil, fmt.Errorf("credentials is nil")
-		}
+			if current == nil {
+				return nil, fmt.Errorf("credentials is nil")
+			}
 
-		if current.RefreshToken == "" {
-			return current, nil
-		}
+			if current.RefreshToken == "" {
+				return refreshResult{credentials: current}, nil
+			}
 
-		n := time.Now()
+			n := time.Now()
 
-		need := current.ExpiresAt.IsZero() || n.Add(refreshBefore).After(current.ExpiresAt)
-		if !need {
-			return current, nil
-		}
+			need := current.ExpiresAt.IsZero() || n.Add(refreshBefore).After(current.ExpiresAt)
+			if !need {
+				return refreshResult{credentials: current}, nil
+			}
 
-		fresh, err := p.refresh(ctx, current)
+			fresh, err := p.refresh(ctx, current)
+			if err != nil {
+				return nil, err
+			}
+
+			retryExpired := false
+			if onRefreshed != nil {
+				if err := onRefreshed(ctx, fresh); err != nil {
+					var conflict *CredentialConflictError
+					if errors.As(err, &conflict) {
+						fresh = conflict.Credentials
+						retryExpired = fresh != nil
+					} else {
+						slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+					}
+				}
+			}
+
+			p.mu.Lock()
+			p.creds = fresh
+			p.mu.Unlock()
+			if fresh == nil {
+				p.StopAutoRefresh()
+				return nil, errors.New("credentials is nil")
+			}
+
+			return refreshResult{credentials: fresh, retryExpired: retryExpired}, nil
+		})
 		if err != nil {
 			return nil, err
 		}
 
-		p.mu.Lock()
-		p.creds = fresh
-		p.mu.Unlock()
-
-		if onRefreshed != nil {
-			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+		result, ok := v.(refreshResult)
+		if !ok {
+			return nil, fmt.Errorf("singleflight returned unexpected type %T", v)
+		}
+		fresh := result.credentials
+		if result.retryExpired && fresh.RefreshToken != "" && fresh.IsExpired(time.Now()) {
+			if err := ctx.Err(); err != nil {
+				return nil, err
 			}
+			continue
 		}
 
 		return fresh, nil
-	})
-	if err != nil {
-		return nil, err
 	}
-
-	fresh, ok := v.(*OAuthCredentials)
-	if !ok {
-		return nil, fmt.Errorf("singleflight returned unexpected type %T", v)
-	}
-
-	return fresh, nil
 }
 
 func (p *TokenProvider) StartAutoRefresh(ctx context.Context, opts AutoRefreshOptions) {
@@ -470,7 +542,8 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 		return nil, errors.New("token URL is empty")
 	}
 
-	if p.httpClient == nil {
+	httpClient := p.getHTTPClient()
+	if httpClient == nil {
 		return nil, errors.New("http client is nil")
 	}
 
@@ -479,7 +552,7 @@ func (p *TokenProvider) refresh(ctx context.Context, creds *OAuthCredentials) (*
 		return nil, fmt.Errorf("build refresh request: %w", err)
 	}
 
-	resp, err := p.httpClient.Do(ctx, req)
+	resp, err := httpClient.Do(ctx, req)
 	if err != nil {
 		return nil, wrapHttpError(err)
 	}

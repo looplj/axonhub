@@ -332,52 +332,69 @@ func (p *DeviceFlowProvider) getAccessTokenWithRefresh(ctx context.Context) (str
 	}
 
 	// Need to refresh
-	v, err, _ := p.sf.Do("refresh", func() (any, error) {
-		p.mu.RLock()
-		current := p.creds
-		onRefreshed := p.onRefreshed
-		p.mu.RUnlock()
+	for {
+		v, err, _ := p.sf.Do("refresh", func() (any, error) {
+			p.mu.RLock()
+			current := p.creds
+			onRefreshed := p.onRefreshed
+			p.mu.RUnlock()
 
-		if current == nil {
-			return nil, errors.New("credentials is nil")
-		}
-
-		if current.RefreshToken == "" {
-			return nil, errors.New("refresh_token is empty")
-		}
-
-		// Double-check expiration inside singleflight
-		if !current.IsExpired(time.Now()) {
-			return current.AccessToken, nil
-		}
-
-		fresh, err := p.refresh(ctx, current)
-		if err != nil {
-			return nil, err
-		}
-
-		p.mu.Lock()
-		p.creds = fresh
-		p.mu.Unlock()
-
-		if onRefreshed != nil {
-			if err := onRefreshed(ctx, fresh); err != nil {
-				slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+			if current == nil {
+				return nil, errors.New("credentials is nil")
 			}
+
+			if current.RefreshToken == "" {
+				return nil, errors.New("refresh_token is empty")
+			}
+
+			// Double-check expiration inside singleflight
+			if !current.IsExpired(time.Now()) {
+				return refreshResult{credentials: current}, nil
+			}
+
+			fresh, err := p.refresh(ctx, current)
+			if err != nil {
+				return nil, err
+			}
+
+			retryExpired := false
+			if onRefreshed != nil {
+				if err := onRefreshed(ctx, fresh); err != nil {
+					var conflict *CredentialConflictError
+					if errors.As(err, &conflict) {
+						fresh = conflict.Credentials
+						retryExpired = fresh != nil
+					} else {
+						slog.WarnContext(ctx, "failed to persist refreshed credentials", slog.Any("error", err))
+					}
+				}
+			}
+
+			p.UpdateCredentials(fresh)
+			if fresh == nil {
+				p.StopAutoRefresh()
+				return nil, errors.New("credentials is nil")
+			}
+
+			return refreshResult{credentials: fresh, retryExpired: retryExpired}, nil
+		})
+		if err != nil {
+			return "", err
 		}
 
-		return fresh.AccessToken, nil
-	})
-	if err != nil {
-		return "", err
-	}
+		result, ok := v.(refreshResult)
+		if !ok {
+			return "", fmt.Errorf("singleflight returned unexpected type %T", v)
+		}
+		if result.retryExpired && result.credentials.RefreshToken != "" && result.credentials.IsExpired(time.Now()) {
+			if err := ctx.Err(); err != nil {
+				return "", err
+			}
+			continue
+		}
 
-	token, ok := v.(string)
-	if !ok {
-		return "", fmt.Errorf("singleflight returned unexpected type %T", v)
+		return result.credentials.AccessToken, nil
 	}
-
-	return token, nil
 }
 
 // GetCredentials returns a copy of the current OAuth credentials.

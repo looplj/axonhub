@@ -328,6 +328,19 @@ func (svc *ChannelService) buildCodexOutbound(
 	httpClient *httpclient.HttpClient,
 	endpointPath ...string,
 ) (transformer.Outbound, error) {
+	return svc.buildCodexOutboundWithRefresh(c, ch, baseURL, transport, alphaSearchPath, httpClient, svc.onTokenRefreshed(c), endpointPath...)
+}
+
+func (svc *ChannelService) buildCodexOutboundWithRefresh(
+	c *ent.Channel,
+	ch *Channel,
+	baseURL string,
+	transport string,
+	alphaSearchPath string,
+	httpClient *httpclient.HttpClient,
+	onRefreshed func(context.Context, *oauth.OAuthCredentials) error,
+	endpointPath ...string,
+) (transformer.Outbound, error) {
 	path := ""
 	if len(endpointPath) > 0 {
 		path = endpointPath[0]
@@ -374,7 +387,7 @@ func (svc *ChannelService) buildCodexOutbound(
 		p := codex.NewTokenProvider(codex.TokenProviderParams{
 			Credentials: creds,
 			HTTPClient:  httpClient,
-			OnRefreshed: svc.onTokenRefreshed(c),
+			OnRefreshed: onRefreshed,
 		})
 
 		if ch != nil && ch.startTokenProvider == nil {
@@ -1467,6 +1480,10 @@ func extractProjectIDFromAntigravityCreds(apiKey string) (string, error) {
 }
 
 func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channel, refreshed *oauth.OAuthCredentials) error {
+	return svc.refreshOAuthTokenWithClient(ctx, svc.entFromContext(ctx), ch, refreshed)
+}
+
+func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *ent.Client, ch *ent.Channel, refreshed *oauth.OAuthCredentials) error {
 	if refreshed == nil {
 		return nil
 	}
@@ -1493,9 +1510,78 @@ func (svc *ChannelService) refreshOAuthToken(ctx context.Context, ch *ent.Channe
 
 	updated.OAuth = refreshed
 
-	_, err := svc.entFromContext(ctx).Channel.UpdateOneID(ch.ID).SetCredentials(updated).Save(ctx)
+	for {
+		saved, err := db.Channel.UpdateOneID(ch.ID).Where(channel.UpdatedAt(ch.UpdatedAt)).SetCredentials(updated).Save(ctx)
+		if ent.IsNotFound(err) {
+			current, reloadErr := db.Channel.Get(ctx, ch.ID)
+			if reloadErr != nil {
+				return fmt.Errorf("failed to reconcile channel credentials after concurrent update: %w", reloadErr)
+			}
+			unchanged := current.Type == ch.Type && channelCredentialsEqual(current.Credentials, ch.Credentials)
+			ch.Credentials = current.Credentials
+			ch.UpdatedAt = current.UpdatedAt
+			if unchanged {
+				// A metadata-only update must not discard a rotated refresh token.
+				continue
+			}
 
-	return err
+			var winner *oauth.OAuthCredentials
+			if current.Type == ch.Type && current.Credentials.IsOAuth() {
+				winner, reloadErr = current.Credentials.ResolveOAuthCredentials()
+				if reloadErr != nil {
+					return &oauth.CredentialConflictError{}
+				}
+			}
+			return &oauth.CredentialConflictError{Credentials: winner}
+		}
+		if err != nil {
+			return err
+		}
+
+		ch.Credentials = saved.Credentials
+		ch.UpdatedAt = saved.UpdatedAt
+
+		return nil
+	}
+}
+
+func channelCredentialsEqual(a, b objects.ChannelCredentials) bool {
+	return a.APIKey == b.APIKey &&
+		oauthCredentialsEqual(a.OAuth, b.OAuth) &&
+		slices.Equal(a.APIKeys, b.APIKeys) &&
+		a.ManagementAPIKey == b.ManagementAPIKey &&
+		azureCredentialsEqual(a.Azure, b.Azure) &&
+		gcpCredentialsEqual(a.GCP, b.GCP)
+}
+
+func oauthCredentialsEqual(a, b *objects.OAuthCredentials) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	return a.ClientID == b.ClientID &&
+		a.AccessToken == b.AccessToken &&
+		a.RefreshToken == b.RefreshToken &&
+		a.IDToken == b.IDToken &&
+		a.ExpiresAt.Equal(b.ExpiresAt) &&
+		a.TokenType == b.TokenType &&
+		slices.Equal(a.Scopes, b.Scopes)
+}
+
+func azureCredentialsEqual(a, b *objects.AzureCredential) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	return a.APIVersion == b.APIVersion
+}
+
+func gcpCredentialsEqual(a, b *objects.GCPCredential) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	return a.Region == b.Region && a.ProjectID == b.ProjectID && a.JSONData == b.JSONData
 }
 
 // GetModelEntries returns all models this channel can handle, RequestModel -> Entry
