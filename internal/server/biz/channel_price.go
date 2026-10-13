@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"strings"
 	"time"
 
 	"github.com/samber/lo"
@@ -85,6 +86,83 @@ func modelCardToChannelModelPrice(card *objects.ModelCard) (objects.ModelPrice, 
 	}
 
 	return objects.ModelPrice{Items: items}, true
+}
+
+// modelLibraryPriceReferencePrefix marks usage-log cost that fell back to the
+// model library price because the channel had no explicit price for the model.
+const modelLibraryPriceReferencePrefix = "model_library:"
+
+// modelLibraryPriceReferenceID builds the synthetic reference id recorded on
+// usage logs whose cost was resolved from the model library fallback.
+func modelLibraryPriceReferenceID(modelID string) string {
+	return modelLibraryPriceReferencePrefix + modelID
+}
+
+// modelLibraryPriceModelIDCandidates returns the model ids to try, in order,
+// when resolving a model library price. The exact id is tried first, then the
+// base model with a known effort/tier suffix stripped (e.g.
+// "gemini-3.8-flash-high" -> "gemini-3.8-flash"). Providers expose the same
+// underlying model under several suffixed names, and the model library usually
+// only carries the base id.
+func modelLibraryPriceModelIDCandidates(modelID string) []string {
+	candidates := []string{modelID}
+
+	for _, suffix := range modelLibraryPriceSuffixes {
+		if base, ok := strings.CutSuffix(modelID, suffix); ok && base != "" {
+			candidates = append(candidates, base)
+		}
+	}
+
+	return lo.Uniq(candidates)
+}
+
+// modelLibraryPriceSuffixes are the effort/tier suffixes stripped when the exact
+// model library id has no price. Keep this list in sync with the provider model
+// naming conventions (e.g. Antigravity "gemini-3-flash" / "-low" / "-medium" /
+// "-high").
+var modelLibraryPriceSuffixes = []string{"-high", "-medium", "-low"}
+
+// resolveModelLibraryPrice resolves a price from the model library by model id.
+// It is used as a billing-time fallback when a channel has no explicit price
+// for the model. The exact model id is matched first; when it has no priceable
+// entry, a known effort/tier suffix is stripped and the base model is tried.
+// Only enabled and disabled models are considered, mirroring the
+// auto-configuration eligibility rules. It returns false when no priceable
+// model library entry exists.
+func (svc *ChannelService) resolveModelLibraryPrice(ctx context.Context, modelID string) (*objects.ModelPrice, bool) {
+	if modelID == "" {
+		return nil, false
+	}
+
+	db := svc.entFromContext(ctx)
+
+	for _, candidate := range modelLibraryPriceModelIDCandidates(modelID) {
+		catalogModel, err := db.Model.Query().
+			Where(
+				model.ModelID(candidate),
+				model.StatusIn(model.StatusEnabled, model.StatusDisabled),
+			).
+			First(ctx)
+		if err != nil {
+			if !ent.IsNotFound(err) {
+				log.Warn(ctx, "failed to resolve model library price",
+					log.String("model_id", modelID),
+					log.String("candidate_model_id", candidate),
+					log.Cause(err))
+			}
+
+			continue
+		}
+
+		price, ok := modelCardToChannelModelPrice(catalogModel.ModelCard)
+		if !ok {
+			continue
+		}
+
+		return &price, true
+	}
+
+	return nil, false
 }
 
 // createChannelModelPriceIfMissing atomically creates a current price when the
