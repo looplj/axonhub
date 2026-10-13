@@ -289,7 +289,16 @@ func effectiveResponsesRequestBody(state *PersistenceState) []byte {
 	if state.ResponsesContinuation != nil && state.ResponsesContinuation.effective != nil {
 		return state.ResponsesContinuation.effective
 	}
-	return state.LlmRequest.RawRequest.Body
+	if state.LlmRequest.RawRequest != nil && len(state.LlmRequest.RawRequest.Body) > 0 {
+		return state.LlmRequest.RawRequest.Body
+	}
+	if state.RawRequest != nil && len(state.RawRequest.JSONBody) > 0 {
+		return state.RawRequest.JSONBody
+	}
+	if state.RawRequest != nil {
+		return state.RawRequest.Body
+	}
+	return nil
 }
 
 func verifyResponsesAttempt(p *PersistentOutboundTransformer) pipeline.Middleware {

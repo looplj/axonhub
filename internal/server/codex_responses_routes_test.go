@@ -35,7 +35,7 @@ func setupCodexResponsesUpstream(t *testing.T, h *codexRouteHarness) *atomic.Int
 		_, _ = io.WriteString(w, codexFixtureEvents)
 	}))
 	t.Cleanup(upstream.Close)
-	source := h.db.Channel.Create().SetName("responses").SetType(channel.TypeCodex).SetBaseURL(upstream.URL).SetCredentials(objects.ChannelCredentials{APIKey: "upstream"}).SetDefaultTestModel("gpt-test").SetSupportedModels([]string{"gpt-test"}).SaveX(h.ctx)
+	source := h.db.Channel.Create().SetName("responses").SetType(channel.TypeCodex).SetBaseURL(upstream.URL).SetEndpoints([]objects.ChannelEndpoint{{APIFormat: "openai/responses", Transport: objects.ChannelEndpointTransportHTTP}}).SetCredentials(objects.ChannelCredentials{APIKey: "upstream"}).SetDefaultTestModel("gpt-test").SetSupportedModels([]string{"gpt-test"}).SaveX(h.ctx)
 	built, err := h.channels.GetChannel(h.ctx, source.ID)
 	require.NoError(t, err)
 	h.channels.SetEnabledChannelsForTest([]*biz.Channel{built})
