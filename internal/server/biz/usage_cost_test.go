@@ -1096,3 +1096,52 @@ func TestModelLibraryPriceModelIDCandidates(t *testing.T) {
 	// A trailing dash is not a known suffix; nothing is stripped.
 	require.Equal(t, []string{"m-high-"}, modelLibraryPriceModelIDCandidates("m-high-"))
 }
+
+// TestModelLibraryPriceMemo_ReusesLookupWithinRequest verifies that repeated
+// resolutions inside one request reuse a single catalog lookup, including a
+// miss, while a fresh request re-queries (so later price changes are observed).
+func TestModelLibraryPriceMemo_ReusesLookupWithinRequest(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+
+	createModelLibraryPriceEntry(t, ctx, client, "m-memo", model.StatusEnabled, objects.ModelCardCost{Input: 1})
+
+	channelService := NewChannelServiceForTest(client)
+
+	// --- inside a memoized request: the miss is cached ---
+	memoCtx := WithModelLibraryPriceMemo(ctx)
+
+	price, ok := channelService.resolveModelLibraryPrice(memoCtx, "m-memo")
+	require.True(t, ok)
+	require.Equal(t, "1", price.Items[0].Pricing.UsagePerUnit.String())
+
+	// A model absent from the library is cached as a miss within the request.
+	_, missing := channelService.resolveModelLibraryPrice(memoCtx, "m-absent")
+	require.False(t, missing)
+
+	// Add the previously missing model; the memoized request must not observe it.
+	createModelLibraryPriceEntry(t, ctx, client, "m-absent", model.StatusEnabled, objects.ModelCardCost{Input: 9})
+
+	_, stillMissing := channelService.resolveModelLibraryPrice(memoCtx, "m-absent")
+	require.False(t, stillMissing, "memoized miss must be reused within the request")
+
+	// A fresh request (new memo) sees the newly added price.
+	freshCtx := WithModelLibraryPriceMemo(ctx)
+	added, addedOK := channelService.resolveModelLibraryPrice(freshCtx, "m-absent")
+	require.True(t, addedOK)
+	require.Equal(t, "9", added.Items[0].Pricing.UsagePerUnit.String())
+}
+
+// TestWithModelLibraryPriceMemo_Idempotent verifies the memo is installed once
+// per context chain.
+func TestWithModelLibraryPriceMemo_Idempotent(t *testing.T) {
+	ctx := WithModelLibraryPriceMemo(context.Background())
+	require.NotNil(t, modelLibraryPriceMemoFromContext(ctx))
+
+	second := WithModelLibraryPriceMemo(ctx)
+	require.Same(t, modelLibraryPriceMemoFromContext(ctx), modelLibraryPriceMemoFromContext(second))
+}

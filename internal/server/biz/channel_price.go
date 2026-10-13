@@ -6,6 +6,7 @@ import (
 	"math"
 	"math/rand/v2"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/samber/lo"
@@ -122,6 +123,63 @@ func modelLibraryPriceModelIDCandidates(modelID string) []string {
 // "-high").
 var modelLibraryPriceSuffixes = []string{"-high", "-medium", "-low"}
 
+// modelLibraryPriceMemo caches model-library price resolutions for the duration
+// of a single request. Cost injection and usage-log creation both resolve the
+// price for the same channel and model; without the memo they repeat the
+// catalog lookup, adding avoidable synchronous database reads on the response
+// path (and once per usage-bearing chunk for streams).
+type modelLibraryPriceMemo struct {
+	mu      sync.RWMutex
+	entries map[string]modelLibraryPriceMemoEntry
+}
+
+type modelLibraryPriceMemoEntry struct {
+	price *objects.ModelPrice
+	found bool
+}
+
+type modelLibraryPriceMemoKey struct{}
+
+// WithModelLibraryPriceMemo installs a request-scoped model-library price memo.
+// Call it once per inbound request so repeated cost calculations reuse a single
+// lookup. It is idempotent: the memo already present (if any) is kept.
+func WithModelLibraryPriceMemo(ctx context.Context) context.Context {
+	if _, ok := ctx.Value(modelLibraryPriceMemoKey{}).(*modelLibraryPriceMemo); ok {
+		return ctx
+	}
+
+	return context.WithValue(ctx, modelLibraryPriceMemoKey{}, &modelLibraryPriceMemo{})
+}
+
+func modelLibraryPriceMemoFromContext(ctx context.Context) *modelLibraryPriceMemo {
+	memo, _ := ctx.Value(modelLibraryPriceMemoKey{}).(*modelLibraryPriceMemo)
+
+	return memo
+}
+
+func (m *modelLibraryPriceMemo) get(modelID string) (*objects.ModelPrice, bool, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	entry, ok := m.entries[modelID]
+	if !ok {
+		return nil, false, false
+	}
+
+	return entry.price, entry.found, true
+}
+
+func (m *modelLibraryPriceMemo) set(modelID string, price *objects.ModelPrice, found bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.entries == nil {
+		m.entries = make(map[string]modelLibraryPriceMemoEntry)
+	}
+
+	m.entries[modelID] = modelLibraryPriceMemoEntry{price: price, found: found}
+}
+
 // resolveModelLibraryPrice resolves a price from the model library by model id.
 // It is used as a billing-time fallback when a channel has no explicit price
 // for the model. The exact model id is matched first; when it has no priceable
@@ -134,6 +192,25 @@ func (svc *ChannelService) resolveModelLibraryPrice(ctx context.Context, modelID
 		return nil, false
 	}
 
+	memo := modelLibraryPriceMemoFromContext(ctx)
+	if memo != nil {
+		if price, found, cached := memo.get(modelID); cached {
+			return price, found
+		}
+	}
+
+	price, found := svc.lookupModelLibraryPrice(ctx, modelID)
+
+	if memo != nil {
+		memo.set(modelID, price, found)
+	}
+
+	return price, found
+}
+
+// lookupModelLibraryPrice performs the model-library query used by
+// resolveModelLibraryPrice, without any request-scoped caching.
+func (svc *ChannelService) lookupModelLibraryPrice(ctx context.Context, modelID string) (*objects.ModelPrice, bool) {
 	db := svc.entFromContext(ctx)
 
 	for _, candidate := range modelLibraryPriceModelIDCandidates(modelID) {
