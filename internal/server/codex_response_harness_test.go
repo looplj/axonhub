@@ -26,8 +26,17 @@ func setupCodexResponseHandlers(t *testing.T, h *codexRouteHarness, models *biz.
 	prompts := biz.NewPromptService(biz.PromptServiceParams{Ent: h.db})
 	protection := biz.NewPromptProtectionRuleService(biz.PromptProtectionRuleServiceParams{Ent: h.db, CacheConfig: cache})
 	t.Cleanup(protection.Stop)
+	h.usage = usage
+	h.prompts = prompts
+	h.protect = protection
+	h.requests = requests
 	selector := orchestrator.NewDefaultSelector(h.channels, models, h.system)
 	orch := orchestrator.NewChatCompletionOrchestrator(h.channels, selector, requests, httpclient.NewHttpClient(), responses.NewInboundTransformer(), h.system, usage, prompts, nil, protection, biz.NewLiveStreamRegistry(), orchestrator.NewChannelLimiterManager(), nil)
 	require.NoError(t, h.system.SetModelSettings(h.ctx, biz.SystemModelSettings{QueryAllChannelModels: true, FallbackToChannelsOnModelNotFound: true}))
-	return &api.OpenAIHandlers{ResponseCompletionHandlers: api.NewChatCompletionHandlers(orch), ModelService: models, SystemService: h.system, EntClient: h.db}, requests
+	return &api.OpenAIHandlers{
+		ResponseCompletionHandlers: api.NewChatCompletionHandlers(orch),
+		ModelService:               models,
+		SystemService:              h.system,
+		EntClient:                  h.db,
+	}, requests
 }

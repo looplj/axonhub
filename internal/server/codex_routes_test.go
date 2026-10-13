@@ -39,6 +39,11 @@ type codexRouteHarness struct {
 	keys     *biz.APIKeyService
 	source   *ent.Channel
 	orch     *orchestrator.ChatCompletionOrchestrator
+	openAI   *api.OpenAIHandlers
+	usage    *biz.UsageLogService
+	prompts  *biz.PromptService
+	protect  *biz.PromptProtectionRuleService
+	requests *biz.RequestService
 }
 
 func newCodexRouteHarness(t *testing.T) *codexRouteHarness {
@@ -64,6 +69,7 @@ func newCodexRouteHarness(t *testing.T) *codexRouteHarness {
 	compatibility := api.NewCodexCompatibilityHandlers(system, channels, models)
 	h := &codexRouteHarness{db: db, ctx: ctx, system: system, channels: channels, key: key, keys: keys, source: source}
 	openAI, requests := setupCodexResponseHandlers(t, h, models)
+	h.openAI = openAI
 	router := gin.New()
 	router.Use(middleware.WithEntClient(db))
 	router.NoRoute(static.Handler())
