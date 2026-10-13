@@ -603,7 +603,7 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 			return nil, fmt.Errorf("invalid rate limit: %w", err)
 		}
 
-		if err := ValidateResponseTimeout(input.Settings.ResponseTimeout); err != nil {
+		if err := NormalizeResponseTimeout(input.Settings); err != nil {
 			return nil, fmt.Errorf("invalid response timeout: %w", err)
 		}
 
@@ -1033,7 +1033,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			return nil, fmt.Errorf("invalid rate limit: %w", err)
 		}
 
-		if err := ValidateResponseTimeout(input.Settings.ResponseTimeout); err != nil {
+		if err := NormalizeResponseTimeout(input.Settings); err != nil {
 			return nil, fmt.Errorf("invalid response timeout: %w", err)
 		}
 

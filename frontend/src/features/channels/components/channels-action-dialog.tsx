@@ -8,6 +8,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { RESPONSE_TIMEOUT_MAX_SECONDS } from '@/config/retry-policy';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Badge } from '@/components/ui/badge';
@@ -219,7 +220,7 @@ function parseResponseTimeoutSeconds(value: string): number | null | undefined {
   }
 
   const seconds = Number(trimmed);
-  if (seconds > 600) {
+  if (seconds > RESPONSE_TIMEOUT_MAX_SECONDS) {
     return undefined;
   }
 
@@ -3555,7 +3556,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   <Input
                                     type='number'
                                     min={0}
-                                    max={600}
+                                    max={RESPONSE_TIMEOUT_MAX_SECONDS}
                                     value={streamFirstEventTimeoutText}
                                     onChange={(event) => setStreamFirstEventTimeoutText(event.target.value)}
                                     placeholder={formatGlobalTimeoutPlaceholder(globalRetryPolicy?.streamFirstEventTimeoutSeconds)}
@@ -3574,7 +3575,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   <Input
                                     type='number'
                                     min={0}
-                                    max={600}
+                                    max={RESPONSE_TIMEOUT_MAX_SECONDS}
                                     value={nonStreamResponseTimeoutText}
                                     onChange={(event) => setNonStreamResponseTimeoutText(event.target.value)}
                                     placeholder={formatGlobalTimeoutPlaceholder(globalRetryPolicy?.nonStreamResponseTimeoutSeconds)}

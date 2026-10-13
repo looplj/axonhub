@@ -392,7 +392,15 @@ func (m ChannelResponseTimeoutMode) MarshalGQL(w io.Writer) {
 }
 
 // UnmarshalGQL reads the GraphQL enum value. INHERIT maps to the zero value.
+// The GraphQL input declares mode as nullable, so an explicit null is accepted
+// and means INHERIT rather than being rejected.
 func (m *ChannelResponseTimeoutMode) UnmarshalGQL(v any) error {
+	if v == nil {
+		*m = ChannelResponseTimeoutModeInherit
+
+		return nil
+	}
+
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("ChannelResponseTimeoutMode must be a string")
