@@ -435,6 +435,40 @@ func TestIsRetryableErrorForChannel(t *testing.T) {
 			expected: false,
 		},
 		{
+			name: "structured_code",
+			err: &llm.ResponseError{
+				Detail: llm.ErrorDetail{Code: "server_is_overloaded"},
+			},
+			channel: &biz.Channel{Channel: &ent.Channel{
+				Settings: &objects.ChannelSettings{
+					RetryableErrorPatterns: []objects.RetryableErrorPattern{{Pattern: "server_is_overloaded"}},
+				},
+			}},
+			expected: true,
+		},
+		{
+			name: "unrelated_code",
+			err: &llm.ResponseError{
+				Detail: llm.ErrorDetail{Code: "invalid_api_key"},
+			},
+			channel: &biz.Channel{Channel: &ent.Channel{
+				Settings: &objects.ChannelSettings{
+					RetryableErrorPatterns: []objects.RetryableErrorPattern{{Pattern: "server_is_overloaded"}},
+				},
+			}},
+			expected: false,
+		},
+		{
+			name: "empty_pattern",
+			err: &llm.ResponseError{
+				Detail: llm.ErrorDetail{Code: "server_is_overloaded"},
+			},
+			channel: &biz.Channel{Channel: &ent.Channel{
+				Settings: &objects.ChannelSettings{},
+			}},
+			expected: false,
+		},
+		{
 			name: "configured status is not retryable without channel settings",
 			err: &httpclient.Error{
 				StatusCode: http.StatusBadRequest,
