@@ -166,6 +166,9 @@ type OutboundTransformer struct {
 }
 
 func (t *OutboundTransformer) APIFormat() llm.APIFormat {
+	if t.config != nil && t.config.Transport == TransportWebSocket {
+		return llm.APIFormatOpenAIResponseWebSocket
+	}
 	return llm.APIFormatOpenAIResponse
 }
 
@@ -207,6 +210,13 @@ func (t *OutboundTransformer) TransformError(ctx context.Context, rawErr *httpcl
 func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.Request) (*httpclient.Request, error) {
 	if llmReq == nil {
 		return nil, fmt.Errorf("chat request is nil")
+	}
+	if t.APIFormat() == llm.APIFormatOpenAIResponseWebSocket {
+		switch llmReq.RequestType {
+		case llm.RequestTypeChat, "":
+		default:
+			return nil, fmt.Errorf("%w: WebSocket Responses requires a chat request", transformer.ErrUnsupportedConversion)
+		}
 	}
 
 	//nolint:exhaustive // Checked.
@@ -338,7 +348,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 			Type:   "bearer",
 			APIKey: apiKey,
 		},
-		APIFormat:             string(llm.APIFormatOpenAIResponse),
+		APIFormat:             t.APIFormat().String(),
 		TransformerMetadata:   llmReq.TransformerMetadata,
 		SkipInboundQueryMerge: true,
 		Metadata:              nil,

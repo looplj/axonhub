@@ -42,6 +42,13 @@ func TestPatchPassThroughPromptProtection(t *testing.T) {
 			unchanged: []string{"instructions", "input.1.output"},
 		},
 		{
+			name:      "OpenAI Responses WebSocket",
+			apiFormat: llm.APIFormatOpenAIResponseWebSocket,
+			body:      `{"instructions":"secret-001","input":[{"type":"message","role":"user","content":[{"type":"input_text","text":"secret-002"}]},{"type":"function_call_output","output":"secret-003"}]}`,
+			masked:    []string{"input.0.content.0.text"},
+			unchanged: []string{"instructions", "input.1.output"},
+		},
+		{
 			name:      "Anthropic Messages",
 			apiFormat: llm.APIFormatAnthropicMessage,
 			body:      `{"system":"secret-001","messages":[{"role":"user","content":"secret-002"},{"role":"assistant","content":[{"type":"text","text":"secret-003"}]}]}`,

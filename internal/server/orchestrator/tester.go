@@ -175,6 +175,9 @@ func usesResponsesWebSocket(channel *biz.Channel) bool {
 	}
 
 	for _, endpoint := range channel.ResolveEndpoints() {
+		if endpoint.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String() {
+			return true
+		}
 		if endpoint.APIFormat != llm.APIFormatOpenAIResponse.String() && endpoint.APIFormat != llm.APIFormatOpenAIResponseCompact.String() {
 			continue
 		}

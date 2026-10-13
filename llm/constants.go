@@ -38,9 +38,8 @@ const (
 	APIFormatOpenAIChatCompletion APIFormat = "openai/chat_completions"
 	APIFormatOpenAICompletion     APIFormat = "openai/completions"
 	APIFormatOpenAIResponse       APIFormat = "openai/responses"
-	// APIFormatOpenAIResponseWebSocket identifies a downstream Responses
-	// WebSocket request in persisted request/trace metadata. Upstream channel
-	// selection continues to use APIFormatOpenAIResponse with websocket transport.
+	// APIFormatOpenAIResponseWebSocket identifies the Responses WebSocket protocol
+	// for endpoint selection, transformation and persisted request/trace metadata.
 	APIFormatOpenAIResponseWebSocket APIFormat = "openai/responses-ws"
 	APIFormatOpenAIResponseCompact   APIFormat = "openai/responses_compact"
 	APIFormatOpenAIImageGeneration   APIFormat = "openai/image_generation"

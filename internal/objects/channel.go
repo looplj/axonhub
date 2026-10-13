@@ -15,7 +15,8 @@ import (
 
 // ChannelEndpoint represents an outbound API endpoint configuration within a Channel.
 // Each endpoint specifies the upstream API format and an optional custom path override.
-// Within a single channel, api_format must be unique.
+// Within a single channel, api_format must be unique after legacy normalization.
+// Responses uses distinct HTTP/WS formats; Transport remains a legacy read/input field.
 type ChannelEndpoint struct {
 	APIFormat string `json:"api_format"`
 	Path      string `json:"path,omitempty"`

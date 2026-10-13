@@ -563,7 +563,7 @@ func TestWebSocketExecutorDoesNotPoolWithoutSession(t *testing.T) {
 	require.Equal(t, int32(2), upgrades.Load())
 }
 
-func TestWebSocketExecutorKeepsExplicitPreviousResponseIDOnFreshConnection(t *testing.T) {
+func TestWebSocketExecutorRejectsExplicitPreviousResponseIDOnFreshConnection(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
@@ -571,8 +571,10 @@ func TestWebSocketExecutorKeepsExplicitPreviousResponseIDOnFreshConnection(t *te
 		defer conn.Close()
 
 		var payload map[string]any
-		require.NoError(t, conn.ReadJSON(&payload))
-		require.Equal(t, "client_prev", payload["previous_response_id"])
+		if err := conn.ReadJSON(&payload); err != nil {
+			return
+		}
+		t.Error("fresh lease received an unresolved delta")
 		require.NoError(t, conn.WriteJSON(map[string]any{
 			"type": "response.completed",
 			"response": map[string]any{
@@ -597,15 +599,11 @@ func TestWebSocketExecutorKeepsExplicitPreviousResponseIDOnFreshConnection(t *te
 		Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
 		Body: []byte(`{"model":"gpt-5","previous_response_id":"client_prev","input":[{"id":"first","type":"message"}]}`),
 	})
-	require.NoError(t, err)
-	require.True(t, stream.Next())
-	require.Equal(t, "response.completed", stream.Current().Type)
-	require.False(t, stream.Next())
-	require.NoError(t, stream.Err())
-	require.NoError(t, stream.Close())
+	require.ErrorIs(t, err, shared.ErrResponsesContinuationUnavailable)
+	require.Nil(t, stream)
 }
 
-func TestWebSocketExecutorReconnectsForDifferentExplicitPreviousResponseID(t *testing.T) {
+func TestWebSocketExecutorRejectsDifferentExplicitPreviousResponseID(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	var upgrades atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -653,7 +651,7 @@ func TestWebSocketExecutorReconnectsForDifferentExplicitPreviousResponseID(t *te
 
 	executor := NewWebSocketExecutor(nil)
 	ctx := webSocketTestContext()
-	for _, body := range [][]byte{
+	for index, body := range [][]byte{
 		[]byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user"}]}`),
 		[]byte(`{"model":"gpt-5","previous_response_id":"client_prev","input":[{"id":"first","type":"message","role":"user"},{"id":"second","type":"message","role":"user"}]}`),
 	} {
@@ -666,6 +664,11 @@ func TestWebSocketExecutorReconnectsForDifferentExplicitPreviousResponseID(t *te
 			Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
 			Body: body,
 		})
+		if index == 1 {
+			require.ErrorIs(t, err, shared.ErrResponsesContinuationUnavailable)
+			require.Nil(t, stream)
+			continue
+		}
 		require.NoError(t, err)
 		require.True(t, stream.Next())
 		require.Equal(t, "response.completed", stream.Current().Type)
@@ -674,7 +677,7 @@ func TestWebSocketExecutorReconnectsForDifferentExplicitPreviousResponseID(t *te
 		require.NoError(t, stream.Close())
 	}
 
-	require.Equal(t, int32(2), upgrades.Load())
+	require.Equal(t, int32(1), upgrades.Load())
 }
 
 func TestWebSocketExecutorKeepsConnectionForMatchingExplicitPreviousResponseID(t *testing.T) {
@@ -753,8 +756,7 @@ func TestPrepareWebSocketPayloadChecksExplicitPreviousIDWithEmptyCachedInput(t *
 	}
 
 	err := prepareWebSocketPayloadForLease(payload, lease)
-	var reconnectErr *webSocketReconnectRequiredError
-	require.ErrorAs(t, err, &reconnectErr)
+	require.ErrorIs(t, err, shared.ErrResponsesContinuationUnavailable)
 }
 
 func TestRestorePayloadMapRestoresMutatedPayload(t *testing.T) {

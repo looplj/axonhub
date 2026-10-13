@@ -37,7 +37,7 @@ func (r *channelResolver) DefaultEndpoints(ctx context.Context, obj *ent.Channel
 		return []*objects.ChannelEndpoint{}, nil
 	}
 
-	endpoints := biz.DefaultEndpointsForChannelType(obj.Type)
+	endpoints := (&biz.Channel{Channel: obj}).DefaultEndpoints()
 	if len(endpoints) == 0 {
 		return []*objects.ChannelEndpoint{}, nil
 	}

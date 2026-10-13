@@ -133,10 +133,11 @@ func TestDefaultEndpointsForChannelType_UseLLMAPIFormatValues(t *testing.T) {
 			expected: []string{llm.APIFormatOpenAIResponse.String()},
 		},
 		{
-			name: "codex exposes responses, alpha search, plus image generation and edit",
+			name: "codex exposes HTTP and WS responses, alpha search, plus image generation and edit",
 			typ:  channel.TypeCodex,
 			expected: []string{
 				llm.APIFormatOpenAIResponse.String(),
+				llm.APIFormatOpenAIResponseWebSocket.String(),
 				llm.APIFormatOpenAIAlphaSearch.String(),
 				llm.APIFormatOpenAIImageGeneration.String(),
 				llm.APIFormatOpenAIImageEdit.String(),

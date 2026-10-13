@@ -470,7 +470,7 @@ func extractOutboundReasoningEffort(channelRequest httpclient.Request, format ll
 	switch format {
 	case llm.APIFormatOpenAIChatCompletion:
 		path = "reasoning_effort"
-	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact:
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket, llm.APIFormatOpenAIResponseCompact:
 		path = "reasoning.effort"
 	case llm.APIFormatAnthropicMessage:
 		path = "output_config.effort"
@@ -1448,6 +1448,10 @@ func (s *RequestService) LoadCompletedResponsesSession(
 	if responseID == "" || !ok || apiKey == nil {
 		return nil, nil, false, nil
 	}
+	projectID, hasProject := contexts.GetProjectID(ctx)
+	if !hasProject {
+		return nil, nil, false, nil
+	}
 
 	query := s.entFromContext(ctx).Request.Query().Where(
 		request.ExternalIDEQ(responseID),
@@ -1458,9 +1462,7 @@ func (s *RequestService) LoadCompletedResponsesSession(
 		),
 		request.StatusEQ(request.StatusCompleted),
 	)
-	if projectID, ok := contexts.GetProjectID(ctx); ok {
-		query = query.Where(request.ProjectIDEQ(projectID))
-	}
+	query = query.Where(request.ProjectIDEQ(projectID))
 
 	req, err := query.Order(ent.Desc(request.FieldCreatedAt)).First(ctx)
 	if err != nil {
@@ -1482,6 +1484,9 @@ func (s *RequestService) LoadCompletedResponsesSession(
 		bytes.Equal(storedResponse, xjson.EmptyJSONRawMessage) ||
 		!json.Valid(storedRequest) ||
 		!json.Valid(storedResponse) {
+		return nil, nil, false, nil
+	}
+	if !certifiedResponsesSnapshot(storedRequest, storedResponse, responseID) {
 		return nil, nil, false, nil
 	}
 

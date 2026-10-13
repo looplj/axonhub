@@ -31,9 +31,10 @@ type PersistenceState struct {
 	Proxy *httpclient.ProxyConfig
 
 	// OriginalModel is the model after API key profile mapping, used for channel selection
-	OriginalModel string
-	RawRequest    *httpclient.Request
-	LlmRequest    *llm.Request
+	OriginalModel         string
+	RawRequest            *httpclient.Request
+	LlmRequest            *llm.Request
+	ResponsesContinuation *responsesContinuation
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.
@@ -92,6 +93,10 @@ type PersistenceState struct {
 	// once the pass-through consumer is attached; earlier events are held on
 	// RawStreamBacklog.
 	RawStreamCh chan *httpclient.StreamEvent
+
+	// RawStreamQueue owns aggregate count and byte accounting for raw events
+	// retained after the pass-through consumer attaches.
+	RawStreamQueue *rawStreamQueue
 
 	// RawStreamBacklog holds the current attempt's raw provider stream events until
 	// applyPassThroughStream attaches the pass-through consumer, so the pipeline can

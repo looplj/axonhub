@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -21,7 +22,7 @@ const (
 	responsesSessionTTL         = 2 * time.Hour
 	responsesSessionMaxRecords  = 2048
 	responsesSessionMaxBytes    = 64 << 20
-	responsesSessionMaxResponse = 1 << 20
+	responsesSessionMaxResponse = 16 << 20
 )
 
 type responsesSessionStore struct {
@@ -29,6 +30,7 @@ type responsesSessionStore struct {
 	byResponse map[responsesSessionKey]*responsesSessionRecord
 	totalBytes int
 	load       responsesSessionLoadFunc
+	known      func(context.Context, string) (bool, error)
 }
 
 type responsesSessionLoadFunc func(ctx context.Context, responseID string) (requestBody, responseBody []byte, found bool, err error)
@@ -44,6 +46,8 @@ type responsesSessionRecord struct {
 	sessionID string
 	updatedAt time.Time
 	size      int
+	complete  bool
+	origin    shared.ResponsesOrigin
 }
 
 func newResponsesSessionStore(loaders ...responsesSessionLoadFunc) *responsesSessionStore {
@@ -73,7 +77,7 @@ func (s *responsesSessionStore) prepare(ctx context.Context, body []byte) ([]byt
 	}
 
 	record := s.lookupOrLoad(ctx, previousID)
-	if record == nil {
+	if record == nil || !record.complete {
 		return encodePreparedResponsesBody(body, current, inputChanged), responseSessionID(sessionID)
 	}
 	if record.sessionID != "" {
@@ -140,7 +144,7 @@ func encodePreparedResponsesBody(original []byte, payload map[string]json.RawMes
 }
 
 func (s *responsesSessionStore) record(ctx context.Context, requestBody, responseBody []byte) {
-	if len(responseBody) == 0 || len(responseBody) > responsesSessionMaxResponse {
+	if len(responseBody) == 0 || !json.Valid(responseBody) || gjson.GetBytes(responseBody, "status").String() != "completed" {
 		return
 	}
 
@@ -154,7 +158,8 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 		Status string            `json:"status"`
 		Output []json.RawMessage `json:"output"`
 	}
-	if json.Unmarshal(responseBody, &response) != nil || response.ID == "" {
+	response.ID = gjson.GetBytes(responseBody, "id").String()
+	if response.ID == "" {
 		return
 	}
 	// Both spellings have appeared in Responses-compatible implementations.
@@ -163,11 +168,23 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 		return
 	}
 
-	input := responseSessionInputItems(requestPayload["input"])
-	output := cloneResponseSessionValues(response.Output)
-	size := rawResponseSessionValuesSize(input) + rawResponseSessionValuesSize(output)
-	if size > responsesSessionMaxResponse {
-		return
+	complete := responseSessionString(requestPayload["previous_response_id"]) == "" && len(responseBody) <= responsesSessionMaxResponse && len(requestPayload["input"]) <= responsesSessionMaxResponse+2
+	var input, output []json.RawMessage
+	size := 0
+	if complete {
+		if json.Unmarshal(responseBody, &response) != nil {
+			return
+		}
+		input = responseSessionInputItems(requestPayload["input"])
+		output = response.Output
+		size = rawResponseSessionValuesSize(input) + rawResponseSessionValuesSize(output)
+		if size > responsesSessionMaxResponse {
+			input, output, size, complete = nil, nil, 0, false
+		}
+	}
+	origin := shared.ResponsesOrigin{}
+	if attempt := shared.GetResponsesAttempt(ctx); attempt != nil {
+		origin = attempt.Origin()
 	}
 
 	now := time.Now()
@@ -190,9 +207,24 @@ func (s *responsesSessionStore) record(ctx context.Context, requestBody, respons
 		sessionID: sessionID,
 		updatedAt: now,
 		size:      size,
+		complete:  complete,
+		origin:    origin,
 	}
 	s.totalBytes += size
-	for len(s.byResponse) > responsesSessionMaxRecords || s.totalBytes > responsesSessionMaxBytes {
+	for s.totalBytes > responsesSessionMaxBytes {
+		var oldest *responsesSessionRecord
+		for _, record := range s.byResponse {
+			if record.size > 0 && (oldest == nil || record.updatedAt.Before(oldest.updatedAt)) {
+				oldest = record
+			}
+		}
+		if oldest == nil {
+			break
+		}
+		s.totalBytes -= oldest.size
+		oldest.input, oldest.output, oldest.size, oldest.complete = nil, nil, 0, false
+	}
+	for len(s.byResponse) > responsesSessionMaxRecords {
 		if !s.evictOldestLocked() {
 			s.totalBytes = 0
 			break
@@ -222,6 +254,8 @@ func (s *responsesSessionStore) lookup(ctx context.Context, responseID string) *
 		sessionID: record.sessionID,
 		updatedAt: record.updatedAt,
 		size:      record.size,
+		complete:  record.complete,
+		origin:    record.origin,
 	}
 }
 

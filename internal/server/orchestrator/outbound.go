@@ -520,6 +520,11 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	if len(p.state.ChannelModelsCandidates) == 0 {
 		return nil, errors.New("no candidates available: candidates should be selected by inbound transformer")
 	}
+	if p.state.ResponsesContinuation != nil {
+		if err := selectResponsesContinuationCandidate(ctx, p, llmRequest); err != nil {
+			return nil, err
+		}
+	}
 
 	// Select current candidate for this attempt
 	if p.state.CurrentCandidateIndex >= len(p.state.ChannelModelsCandidates) {
@@ -545,6 +550,11 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	)
 
 	llmRequest.Model = entry.ActualModel
+	var continuationErr error
+	llmRequest, continuationErr = prepareResponsesAttempt(ctx, p, llmRequest)
+	if continuationErr != nil {
+		return nil, continuationErr
+	}
 
 	outboundFormat := p.wrapped.APIFormat()
 	if candidate.APIFormat != "" {
@@ -592,7 +602,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	if httpRequest.APIFormat != "" {
 		outboundFormat = llm.APIFormat(httpRequest.APIFormat)
 	}
-	if hasAdditionalTools && !isResponsesFormat(outboundFormat) {
+	if hasAdditionalTools && !isResponsesFormat(outboundFormat) && outboundFormat != llm.APIFormatOpenAIResponseCompact {
 		return nil, fmt.Errorf(
 			"%w: %w: additional_tools input items cannot be converted to %s",
 			transformer.ErrUnsupportedConversion,
@@ -637,7 +647,7 @@ func filterResponseCustomToolMessagesForNonResponsesOutbound(
 }
 
 func isResponsesFormat(format llm.APIFormat) bool {
-	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseCompact
+	return format == llm.APIFormatOpenAIResponse || format == llm.APIFormatOpenAIResponseWebSocket || format == llm.APIFormatOpenAIResponseCompact
 }
 
 func containsResponseCustomToolMessages(messages []llm.Message) bool {

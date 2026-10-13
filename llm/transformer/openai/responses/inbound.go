@@ -23,15 +23,24 @@ import (
 var _ transformer.Inbound = (*InboundTransformer)(nil)
 
 // InboundTransformer implements transformer.Inbound for OpenAI Responses API format.
-type InboundTransformer struct{}
+type InboundTransformer struct {
+	webSocket bool
+}
 
 // NewInboundTransformer creates a new OpenAI Responses InboundTransformer.
 func NewInboundTransformer() *InboundTransformer {
 	return &InboundTransformer{}
 }
 
+func NewWebSocketInboundTransformer() *InboundTransformer {
+	return &InboundTransformer{webSocket: true}
+}
+
 // APIFormat returns the API format of the transformer.
 func (t *InboundTransformer) APIFormat() llm.APIFormat {
+	if t.webSocket {
+		return llm.APIFormatOpenAIResponseWebSocket
+	}
 	return llm.APIFormatOpenAIResponse
 }
 
@@ -43,6 +52,15 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 
 	if len(httpReq.Body) == 0 {
 		return nil, fmt.Errorf("%w: request body is empty", transformer.ErrInvalidRequest)
+	}
+	if t.webSocket {
+		body, err := AdaptRequestBody(httpReq.Body, t.APIFormat(), llm.APIFormatOpenAIResponse)
+		if err != nil {
+			return nil, err
+		}
+		cloned := *httpReq
+		cloned.Body = body
+		httpReq = &cloned
 	}
 	if gjson.GetBytes(httpReq.Body, "stream_id").Exists() {
 		return nil, &llm.ResponseError{
@@ -71,7 +89,12 @@ func (t *InboundTransformer) TransformRequest(ctx context.Context, httpReq *http
 		return nil, fmt.Errorf("%w: model is required", transformer.ErrInvalidRequest)
 	}
 
-	return convertToLLMRequest(&req, httpReq.Body)
+	converted, err := convertToLLMRequest(&req, httpReq.Body)
+	if err != nil {
+		return nil, err
+	}
+	converted.APIFormat = t.APIFormat()
+	return converted, nil
 }
 
 // TransformResponse transforms llm.Response to OpenAI Responses API HTTP response.
@@ -684,6 +707,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Function call output - convert to tool message
 		msg := &llm.Message{
+			ID:         item.ID,
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
 			Content:    convertToMessageContent(*item.Output),
@@ -700,6 +724,7 @@ func convertItemToMessage(item *Item) (*llm.Message, error) {
 		}
 		// Custom tool call output - convert to tool message
 		msg := &llm.Message{
+			ID:         item.ID,
 			Role:       "tool",
 			ToolCallID: lo.ToPtr(item.CallID),
 			Content:    convertToMessageContent(*item.Output),
