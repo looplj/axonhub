@@ -147,6 +147,9 @@ func (s *responsesOutboundStream) Next() bool {
 		}
 		return false
 	}
+	if s.err != nil {
+		return false
+	}
 
 	// Try to get the next chunk from source
 	if !s.stream.Next() {
@@ -161,7 +164,7 @@ func (s *responsesOutboundStream) Next() bool {
 	err := s.transformStreamChunk(event)
 	if err != nil {
 		s.err = err
-		return false
+		return s.Next()
 	}
 
 	// Continue to the next event if no events were enqueued
@@ -730,6 +733,18 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 		if !s.contentCommitted && streamEvent.Response != nil && streamEvent.Response.Error != nil &&
 			streamEvent.Response.Error.Code != "" {
+			if streamEvent.Response.Usage != nil {
+				s.state.usage = streamEvent.Response.Usage.ToUsage()
+				s.enqueue(&llm.Response{
+					Object:             "chat.completion.chunk",
+					ID:                 s.state.responseID,
+					Model:              s.state.responseModel,
+					Created:            s.state.created,
+					PreviousResponseID: s.state.previousResponseID,
+					Choices:            []llm.Choice{},
+					Usage:              s.state.usage,
+				})
+			}
 			return responseFailedError(streamEvent)
 		}
 		// Response failed
@@ -880,10 +895,19 @@ func responseFailedError(streamEvent StreamEvent) *llm.ResponseError {
 	}
 
 	return &llm.ResponseError{
-		StatusCode: streamEvent.Status,
-		Detail:     detail,
-		Cause:      llm.ErrEmptyResponse,
+		StatusCode:         failedResponseStatus(streamEvent.Status),
+		Detail:             detail,
+		SuppressStatusText: true,
+		Cause:              llm.ErrEmptyResponse,
 	}
+}
+
+func failedResponseStatus(status int) int {
+	if status >= http.StatusBadRequest && status < 600 {
+		return status
+	}
+
+	return http.StatusBadGateway
 }
 
 func (s *responsesOutboundStream) reconcileCustomToolCallInput(

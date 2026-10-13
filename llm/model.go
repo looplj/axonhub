@@ -910,8 +910,9 @@ type PromptTokensDetails struct {
 
 // ResponseError represents an error response.
 type ResponseError struct {
-	StatusCode int         `json:"-"`
-	Detail     ErrorDetail `json:"error"`
+	StatusCode         int         `json:"-"`
+	Detail             ErrorDetail `json:"error"`
+	SuppressStatusText bool        `json:"-"`
 
 	// Cause keeps the underlying error (for example a transport failure) so callers
 	// can still match it with errors.Is / errors.As after classification.
@@ -928,7 +929,7 @@ func (e *ResponseError) Unwrap() error {
 
 func (e ResponseError) Error() string {
 	sb := strings.Builder{}
-	if e.StatusCode != 0 {
+	if e.StatusCode != 0 && !e.SuppressStatusText {
 		fmt.Fprintf(&sb, "Request failed: %s, ", http.StatusText(e.StatusCode))
 	}
 
