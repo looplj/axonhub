@@ -2,14 +2,16 @@ package api
 
 import (
 	"context"
+	"net/http"
+	"testing"
+
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
-	"net/http"
-	"testing"
 )
 
 func TestResponsesRecoveryPreservesSurvivorLane(t *testing.T) {

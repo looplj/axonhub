@@ -675,8 +675,7 @@ func writeResponsesWebSocketResult(
 
 func transformResponsesWebSocketError(ctx context.Context, err error, transformError responsesWebSocketErrorFunc) *httpclient.Error {
 	if errors.Is(err, shared.ErrResponsesContinuationUnavailable) {
-		var recovery *httpclient.Error
-		if errors.As(err, &recovery) {
+		if recovery, ok := errors.AsType[*httpclient.Error](err); ok {
 			return recovery
 		}
 	}

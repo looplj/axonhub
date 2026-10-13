@@ -173,11 +173,11 @@ func applyResponsesTransportRequestBody(outbound *PersistentOutboundTransformer,
 			outbound.state.PromptProtectionMaskRules,
 		)
 		if err != nil {
-			return request, nil
+			return request, err
 		}
 		if outbound.state.PromptProtectionBodyCheck != nil {
 			if err := outbound.state.PromptProtectionBodyCheck.validate(ctx, body); err != nil {
-				return request, nil
+				return request, err
 			}
 		}
 
@@ -776,6 +776,7 @@ type rawStreamBacklog struct {
 const (
 	maxRawPreAttachEvents = 1024
 	maxRawPreAttachBytes  = 64 * 1024 * 1024
+	maxRawQueueBytes      = 128 * 1024 * 1024
 )
 
 var errRawPreAttachBudgetExceeded = fmt.Errorf("pass-through pre-attachment raw event budget exceeded: %w", pipeline.ErrPreCommitBufferExceeded)
@@ -791,7 +792,11 @@ func (b *rawStreamBacklog) hold(event *httpclient.StreamEvent) (bool, error) {
 	}
 
 	size := rawStreamEventSize(event)
-	if b.count >= maxRawPreAttachEvents || size > maxRawPreAttachBytes-b.bytes {
+	maxBytes := maxRawPreAttachBytes
+	if b.attached {
+		maxBytes = maxRawQueueBytes
+	}
+	if b.count >= maxRawPreAttachEvents || size > maxBytes-b.bytes {
 		return false, errRawPreAttachBudgetExceeded
 	}
 	b.bytes += size
@@ -818,7 +823,11 @@ func (b *rawStreamBacklog) reserve(size int) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	if b.count >= maxRawPreAttachEvents || size > maxRawPreAttachBytes-b.bytes {
+	maxBytes := maxRawPreAttachBytes
+	if b.attached {
+		maxBytes = maxRawQueueBytes
+	}
+	if b.count >= maxRawPreAttachEvents || size > maxBytes-b.bytes {
 		return errRawPreAttachBudgetExceeded
 	}
 	b.bytes += size

@@ -3,10 +3,12 @@ package orchestrator
 import (
 	"context"
 	"fmt"
-	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/stretchr/testify/require"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestResponsesAdapterBudgetsHTTPRecord16MiB(t *testing.T) {

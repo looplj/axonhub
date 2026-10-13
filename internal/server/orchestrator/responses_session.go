@@ -8,9 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tidwall/gjson"
-
 	"github.com/google/uuid"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/llm/httpclient"

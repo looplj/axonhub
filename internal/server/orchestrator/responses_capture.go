@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"sync"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/tidwall/gjson"
 )
 
 type responsesCompletion struct {
@@ -56,6 +57,7 @@ func (s *responsesCompletion) observe(event *httpclient.StreamEvent) {
 
 type responsesProviderStream struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	completion *responsesCompletion
 	current    *httpclient.StreamEvent
 }
@@ -78,6 +80,7 @@ func captureResponsesProvider(p *PersistentOutboundTransformer) pipeline.Middlew
 
 type responsesProviderCapture struct {
 	pipeline.DummyMiddleware
+
 	state *PersistenceState
 }
 
@@ -173,6 +176,7 @@ func (c *responsesContinuation) releaseCapture() {
 
 type responsesAcceptedStream struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	ctx          context.Context
 	continuation *responsesContinuation
 	current      *httpclient.StreamEvent

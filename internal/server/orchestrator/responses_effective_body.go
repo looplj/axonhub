@@ -3,12 +3,14 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
-	"github.com/tidwall/gjson"
-	"github.com/tidwall/sjson"
 )
 
 func applyResponsesContinuationBody(p *PersistentOutboundTransformer) pipeline.Middleware {
@@ -22,7 +24,7 @@ func applyResponsesContinuationBody(p *PersistentOutboundTransformer) pipeline.M
 			return nil, fmt.Errorf("protect Responses replay: %w", err)
 		}
 		if p.state.PromptProtectionBodyCheck != nil {
-			if err := p.state.PromptProtectionBodyCheck.validate(ctx, effective); err != nil {
+			if err := p.state.PromptProtectionBodyCheck.validateExpanded(ctx, effective); err != nil {
 				return nil, err
 			}
 		}

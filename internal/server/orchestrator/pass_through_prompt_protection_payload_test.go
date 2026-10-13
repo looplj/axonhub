@@ -204,6 +204,23 @@ func TestPromptProtectedPassThroughFallback(t *testing.T) {
 	}
 }
 
+func TestPromptProtectionExpandedContinuationKeepsCurrentTurn(t *testing.T) {
+	// Given: prompt protection certified the current turn before Responses history expansion.
+	raw := &httpclient.Request{Body: []byte(`{"model":"alias","messages":[{"role":"user","content":"current"}]}`), Headers: http.Header{"Content-Type": {"application/json"}}}
+	check := &promptProtectionBodyCheck{
+		inbound:  openai.NewInboundTransformer(),
+		raw:      raw,
+		expected: []protectedPromptText{{role: "user", text: "[MASKED]"}},
+	}
+
+	// When: the replay body contains certified prior history and the protected current turn.
+	replay := []byte(`{"model":"alias","messages":[{"role":"assistant","content":"prior"},{"role":"user","content":"[MASKED]"}]}`)
+
+	// Then: expanded history is accepted, while strict same-turn validation remains strict.
+	require.NoError(t, check.validateExpanded(context.Background(), replay))
+	require.Error(t, check.validate(context.Background(), replay))
+}
+
 // TestPromptProtectedCompactReject blocks protected Compact input before a
 // provider payload is constructed, including instructions under the system scope.
 func TestPromptProtectedCompactReject(t *testing.T) {

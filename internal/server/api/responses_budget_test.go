@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/stretchr/testify/require"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestResponsesAdapterBudgetsQueue128MiB(t *testing.T) {

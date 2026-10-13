@@ -10,6 +10,10 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -19,9 +23,6 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
-	"github.com/tidwall/gjson"
 )
 
 func TestResponsesCodexHTTPCompleteHistoryExpandsBeforeDispatch(t *testing.T) {

@@ -1,13 +1,15 @@
 package responses
 
 import (
-	"github.com/gorilla/websocket"
-	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func TestResponsesProviderRecoveryUsesNonRetrySentinel(t *testing.T) {

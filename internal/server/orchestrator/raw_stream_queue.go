@@ -40,6 +40,18 @@ func (q *rawStreamQueue) attach() []*httpclient.StreamEvent {
 }
 
 func (q *rawStreamQueue) enqueue(ctx context.Context, event *httpclient.StreamEvent) error {
+	q.backlog.mu.Lock()
+	attached := q.backlog.attached
+	q.backlog.mu.Unlock()
+	if attached {
+		select {
+		case q.ch <- event:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
 	size := rawStreamEventSize(event)
 	if err := q.backlog.reserve(size); err != nil {
 		return err
@@ -72,7 +84,6 @@ func (q *rawStreamQueue) next(ctx context.Context) (*httpclient.StreamEvent, boo
 		if !ok {
 			return nil, false
 		}
-		q.backlog.release(rawStreamEventSize(event))
 		return event, true
 	case <-ctx.Done():
 		return nil, false
@@ -97,7 +108,6 @@ func (q *rawStreamQueue) nextBuffered() (*httpclient.StreamEvent, bool) {
 		if !ok {
 			return nil, false
 		}
-		q.backlog.release(rawStreamEventSize(event))
 		return event, true
 	default:
 		return nil, false

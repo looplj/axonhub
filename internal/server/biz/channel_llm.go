@@ -212,6 +212,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 	}
 
 	defaultEndpoints := DefaultEndpointsForChannelType(c.Type)
+	rawUserEndpoints := c.Endpoints
 	userEndpoints := NormalizeEndpoints(c.Endpoints, c.BaseURL)
 
 	if len(defaultEndpoints) == 0 && len(userEndpoints) == 0 {
@@ -225,9 +226,9 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
-		if (c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String()) &&
+		if (c.Type == channel.TypeXai && ep.APIFormat == ch.Outbound.APIFormat().String() || c.Type != channel.TypeXai) &&
 			(c.Type != channel.TypeCodex || !isNativeImageFormat(ep.APIFormat)) &&
-			!(c.Type == channel.TypeCodex && isResponsesEndpoint(ep.APIFormat) && ep.APIFormat != ch.Outbound.APIFormat().String()) {
+			(c.Type != channel.TypeCodex || !isResponsesEndpoint(ep.APIFormat) || ep.APIFormat == ch.Outbound.APIFormat().String()) {
 			outbounds[ep.APIFormat] = ch.Outbound
 			continue
 		}
@@ -239,7 +240,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 		outbounds[ep.APIFormat] = out
 	}
 
-	for _, ep := range userEndpoints {
+	for i, ep := range userEndpoints {
 		if ep.APIFormat == "" {
 			continue
 		}
@@ -251,6 +252,9 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			out = opencode.WithSessionHeader(out)
 		}
 		outbounds[ep.APIFormat] = out
+		if rawFormat := rawUserEndpoints[i].APIFormat; rawFormat != "" && rawFormat != ep.APIFormat {
+			outbounds[rawFormat] = out
+		}
 	}
 
 	if len(outbounds) == 0 {

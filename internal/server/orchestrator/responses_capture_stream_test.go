@@ -3,9 +3,10 @@ package orchestrator
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
-	"github.com/stretchr/testify/require"
 )
 
 // Responses transformers consume their queued event in Current, not Next.

@@ -90,23 +90,28 @@ func TestRawStreamBacklog_ExactBudgets(t *testing.T) {
 	})
 }
 
-func TestRawStreamQueue_EnforcesAggregateByteBudgetAfterAttachment(t *testing.T) {
-	// Given: the pass-through consumer is attached but has stopped reading, so raw
-	// provider events accumulate in the fan-out queue.
+func TestRawStreamQueue_BlocksLargeLiveEventsUntilConsumerReads(t *testing.T) {
+	// Given: the pass-through consumer is attached but has stopped reading.
 	backlog := &rawStreamBacklog{attached: true}
 	queue := newRawStreamQueue(backlog)
-	event := &httpclient.StreamEvent{Data: make([]byte, 16*1024*1024)}
-
-	// When: the producer queues events without a consumer draining them.
-	for range 4 {
-		require.NoError(t, queue.enqueue(context.Background(), event))
+	for range 64 {
+		require.NoError(t, queue.enqueue(context.Background(), &httpclient.StreamEvent{}))
 	}
-	err := queue.enqueue(context.Background(), event)
+	event := &httpclient.StreamEvent{Data: make([]byte, 128*1024*1024)}
 
-	// Then: the shared raw fan-out budget rejects the third event before the
-	// channel's count capacity could become the effective limit.
-	require.ErrorIs(t, err, pipeline.ErrPreCommitBufferExceeded)
-	require.Len(t, queue.ch, 4)
+	// When: a live producer queues an event larger than the pre-attachment limit.
+	result := make(chan error, 1)
+	go func() { result <- queue.enqueue(context.Background(), event) }()
+
+	// Then: the bounded queue applies backpressure instead of dropping it.
+	select {
+	case err := <-result:
+		t.Fatalf("enqueue completed before consumer read: %v", err)
+	default:
+	}
+	_, ok := <-queue.ch
+	require.True(t, ok)
+	require.NoError(t, <-result)
 }
 
 func TestPassThroughAnthropicStream_HTTPRetryIsolation(t *testing.T) {

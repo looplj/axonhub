@@ -4,12 +4,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRequestServiceLoadCompletedResponsesSessionCertification(t *testing.T) {

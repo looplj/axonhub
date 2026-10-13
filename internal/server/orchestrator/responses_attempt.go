@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/tidwall/gjson"
 )
 
 type responsesContinuation struct {

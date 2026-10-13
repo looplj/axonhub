@@ -3,14 +3,15 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/shared"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestResponsesContinuationSelectsEligibleOwnerBeforeDispatch(t *testing.T) {

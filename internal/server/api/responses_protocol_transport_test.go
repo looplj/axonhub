@@ -6,10 +6,11 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/objects"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
+
+	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/objects"
 )
 
 func TestResponsesProtocolIntegrationUpstreamWebSocket(t *testing.T) {
