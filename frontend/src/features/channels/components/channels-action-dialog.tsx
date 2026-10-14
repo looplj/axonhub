@@ -16,6 +16,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -2450,7 +2451,104 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         )}
                       />
 
-                      {(!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party') &&
+                      {isGeminiVertex && (
+                        <FormField
+                          control={form.control}
+                          name='credentials.vertexApiKeys'
+                          render={({ field, fieldState }) => {
+                            const credentials = field.value || [];
+                            return (
+                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                  {t('channels.dialogs.fields.vertexApiKey.label')}
+                                </FormLabel>
+                                <div className='space-y-3 md:col-span-6'>
+                                  {credentials.map((credential, index) => (
+                                    // Rows are positional and only appended/removed, so the index is a
+                                    // stable identity. Keying on projectID would remount the row on
+                                    // every keystroke and drop input focus.
+                                    <div className='grid gap-3 rounded-md border p-3' key={index}>
+                                      <div className='grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-end'>
+                                        <div className='grid gap-1.5'>
+                                          <Label htmlFor={`vertex-project-id-${index}`} className='text-muted-foreground text-xs font-medium'>
+                                            {t('channels.dialogs.fields.vertexApiKey.projectIDLabel')}
+                                          </Label>
+                                          <Input
+                                            id={`vertex-project-id-${index}`}
+                                            value={credential.projectID}
+                                            onChange={(event) => {
+                                              const next = [...credentials];
+                                              next[index] = { ...credential, projectID: event.target.value };
+                                              field.onChange(next);
+                                            }}
+                                            placeholder={t('channels.dialogs.fields.vertexApiKey.projectIDPlaceholder')}
+                                            aria-invalid={!!fieldState.error}
+                                          />
+                                        </div>
+                                        <div className='grid gap-1.5'>
+                                          <Label htmlFor={`vertex-region-${index}`} className='text-muted-foreground text-xs font-medium'>
+                                            {t('channels.dialogs.fields.vertexApiKey.regionLabel')}
+                                          </Label>
+                                          <Input
+                                            id={`vertex-region-${index}`}
+                                            value={credential.region}
+                                            onChange={(event) => {
+                                              const next = [...credentials];
+                                              next[index] = { ...credential, region: event.target.value };
+                                              field.onChange(next);
+                                            }}
+                                            placeholder='global'
+                                            aria-invalid={!!fieldState.error}
+                                          />
+                                        </div>
+                                        <Button
+                                          type='button'
+                                          variant='ghost'
+                                          size='icon'
+                                          onClick={() => field.onChange(credentials.filter((_, rowIndex) => rowIndex !== index))}
+                                          disabled={credentials.length <= 1}
+                                          aria-label={t('channels.dialogs.fields.vertexApiKey.remove')}
+                                        >
+                                          <Trash2 className='h-4 w-4' />
+                                        </Button>
+                                      </div>
+                                      <div className='grid gap-1.5'>
+                                        <Label htmlFor={`vertex-api-key-${index}`} className='text-muted-foreground text-xs font-medium'>
+                                          {t('channels.dialogs.fields.vertexApiKey.apiKeyLabel')}
+                                        </Label>
+                                        <Input
+                                          id={`vertex-api-key-${index}`}
+                                          type='password'
+                                          value={credential.apiKey}
+                                          onChange={(event) => {
+                                            const next = [...credentials];
+                                            next[index] = { ...credential, apiKey: event.target.value };
+                                            field.onChange(next);
+                                          }}
+                                          placeholder={t('channels.dialogs.fields.vertexApiKey.apiKeyPlaceholder')}
+                                          aria-invalid={!!fieldState.error}
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                  <Button
+                                    type='button'
+                                    variant='secondary'
+                                    onClick={() => field.onChange([...credentials, { projectID: '', apiKey: '', region: 'global' }])}
+                                  >
+                                    <Plus className='mr-2 h-4 w-4' />
+                                    {t('channels.dialogs.fields.vertexApiKey.add')}
+                                  </Button>
+                                  <FormDescription>{t('channels.dialogs.fields.vertexApiKey.description')}</FormDescription>
+                                  <FormMessage />
+                                </div>
+                              </FormItem>
+                            );
+                          }}
+                        />
+                      )}
+
+                      {(!isGeminiVertex && (!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party')) &&
                         selectedProvider !== 'antigravity' &&
                         selectedType !== 'anthropic_gcp' && (
                           <FormField
