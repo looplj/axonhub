@@ -46,7 +46,7 @@ func TestStreamDeliveryWebSocketDisconnectReleasesEveryLane(t *testing.T) {
 				break
 			}
 			lane, laneErr := d.lane(streamID)
-			if laneErr != nil || !d.reserve() {
+			if laneErr != nil || !d.reserve(len(message)) {
 				t.Error("failed to reserve lane")
 				break
 			}

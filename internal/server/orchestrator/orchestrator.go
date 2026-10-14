@@ -395,14 +395,13 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			CodexResponseHeadersSupported: outbound.SupportsCodexResponseHeaders(),
 		}, nil
 	}
-<<<<<<< HEAD
 	if continuation != nil && result.Response != nil {
 		continuation.accept(ctx)
-=======
-	lifecycleOwner.Close()
-	if preparedResponsesBody != nil && result.Response != nil {
-		processor.responsesSessions.record(ctx, preparedResponsesBody, result.Response.Body)
->>>>>>> 047b5e8c (fix(orchestrator): bind delivery lifecycle to execution)
+	} else {
+		lifecycleOwner.Close()
+		if preparedResponsesBody != nil && result.Response != nil {
+			processor.responsesSessions.record(ctx, preparedResponsesBody, result.Response.Body)
+		}
 	}
 
 	return ChatCompletionResult{
