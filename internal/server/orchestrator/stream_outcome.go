@@ -10,14 +10,15 @@ import (
 // after them; a transport error can only be replaced by a completed outcome
 // when aggregation provides explicit completion evidence.
 type streamOutcome struct {
-	terminalState        streamTerminalState
-	providerTerminal     bool
-	aggregatedCompleted  bool
-	validatedCompleted   bool
-	transportErr         error
-	contextErr           error
-	contextState         streamTerminalState
-	deliveryAcknowledged bool
+	terminalState          streamTerminalState
+	providerTerminal       bool
+	aggregatedCompleted    bool
+	validatedCompleted     bool
+	transportErr           error
+	contextErr             error
+	contextState           streamTerminalState
+	deadlineBeforeTerminal bool
+	deliveryAcknowledged   bool
 }
 
 func (o *streamOutcome) observeDeliveryAcknowledgement() {
@@ -82,6 +83,7 @@ func (o *streamOutcome) observeContextError(err error) {
 		if errors.Is(err, context.DeadlineExceeded) {
 			o.contextState = streamTerminalFailed
 			o.contextErr = err
+			o.deadlineBeforeTerminal = o.deadlineBeforeTerminal || !o.providerTerminal
 			return
 		}
 		if o.contextState == streamTerminalNone {
@@ -92,14 +94,14 @@ func (o *streamOutcome) observeContextError(err error) {
 }
 
 func (o streamOutcome) finalDecision() streamOutcomeDecision {
+	if o.contextState == streamTerminalFailed && o.deadlineBeforeTerminal {
+		return streamOutcomeDecision{state: streamTerminalFailed, cause: o.contextErr}
+	}
 	if o.providerTerminal {
 		return streamOutcomeDecision{state: o.terminalState}
 	}
 	if o.validatedCompleted {
 		return streamOutcomeDecision{state: streamTerminalCompleted}
-	}
-	if o.contextState == streamTerminalFailed {
-		return streamOutcomeDecision{state: streamTerminalFailed, cause: o.contextErr}
 	}
 	if o.transportErr != nil {
 		return streamOutcomeDecision{state: streamTerminalFailed, cause: o.transportErr}
