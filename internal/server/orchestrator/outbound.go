@@ -708,6 +708,19 @@ func (p *PersistentOutboundTransformer) GetCurrentChannel() *biz.Channel {
 	return p.state.CurrentCandidate.Channel
 }
 
+// SameChannelRetryLimit implements the optional pipeline.ChannelSameChannelRetryLimit
+// interface: it lets a channel override the global "max single channel retries".
+// ok is false when the channel configures no override, so the pipeline keeps the
+// global retry policy value.
+func (p *PersistentOutboundTransformer) SameChannelRetryLimit() (int, bool) {
+	ch := p.GetCurrentChannel()
+	if ch == nil || ch.Settings == nil || ch.Settings.MaxSingleChannelRetries == nil {
+		return 0, false
+	}
+
+	return *ch.Settings.MaxSingleChannelRetries, true
+}
+
 // trackCurrentChannelSelection records an actual retry attempt. Initial
 // attempts are tracked by LoadBalancedSelector after it assembles the final
 // priority-ordered candidate list.

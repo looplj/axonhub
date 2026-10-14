@@ -37,6 +37,16 @@ type ChannelRetryable interface {
 	PrepareForRetry(ctx context.Context) error
 }
 
+// ChannelSameChannelRetryLimit is an optional interface a ChannelRetryable may
+// also implement to override the global max same-channel retries for the current
+// channel. It is checked on every same-channel retry decision.
+type ChannelSameChannelRetryLimit interface {
+	// SameChannelRetryLimit returns the max same-channel retries for the current
+	// channel. ok is false when the channel sets no override, in which case the
+	// global retry policy value is used.
+	SameChannelRetryLimit() (limit int, ok bool)
+}
+
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
@@ -310,14 +320,14 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		// 1. Try same-channel retry first if supported
 		if !timeoutRetry {
 			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
-				if sameChannelRetries < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
+				if sameChannelRetries < p.maxSameChannelRetriesFor() && channelRetryable.CanRetry(lastErr) {
 					if err := channelRetryable.PrepareForRetry(ctx); err == nil {
 						sameChannelRetries++
 						canRetry = true
 
 						slog.DebugContext(ctx, "retrying same channel",
 							slog.Int("same_channel_attempt", sameChannelRetries),
-							slog.Int("max_same_channel_retries", p.getMaxSameChannelRetries()),
+							slog.Int("max_same_channel_retries", p.maxSameChannelRetriesFor()),
 						)
 					} else {
 						slog.WarnContext(ctx, "failed to prepare same channel retry, will try channel switch", slog.Any("error", err))
@@ -452,6 +462,19 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 
 // getMaxSameChannelRetries returns the maximum number of same-channel retries.
 func (p *pipeline) getMaxSameChannelRetries() int {
+	return p.maxSameChannelRetries
+}
+
+// maxSameChannelRetriesFor returns the effective same-channel retry limit: a
+// channel-level override when the outbound transformer provides one, otherwise
+// the global retry policy value.
+func (p *pipeline) maxSameChannelRetriesFor() int {
+	if override, ok := p.Outbound.(ChannelSameChannelRetryLimit); ok {
+		if limit, ok := override.SameChannelRetryLimit(); ok {
+			return limit
+		}
+	}
+
 	return p.maxSameChannelRetries
 }
 
