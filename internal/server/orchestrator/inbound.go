@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"sync"
 
 	"github.com/tidwall/gjson"
 
@@ -49,8 +50,11 @@ type InboundPersistentStream struct {
 	terminalState   streamTerminalState
 	outcome         streamOutcome
 	closed          bool
+	closeMu         sync.Mutex
+	closeDone       chan struct{}
 	state           *PersistenceState
 	terminalTracker *StreamTerminalTracker
+	lifecycle       *streamLifecycle
 }
 
 var _ streams.Stream[*httpclient.StreamEvent] = (*InboundPersistentStream)(nil)
@@ -75,8 +79,10 @@ func NewInboundPersistentStream(
 		perf:            perf,
 		responseChunks:  make([]*httpclient.StreamEvent, 0),
 		closed:          false,
+		closeDone:       make(chan struct{}),
 		state:           state,
 		terminalTracker: NewStreamTerminalTrackerForRequest(request),
+		lifecycle:       streamLifecycleFromContext(ctx),
 	}
 
 	return s
@@ -104,7 +110,7 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 				ts.terminalState = classifyAcceptedTerminalEvent(event)
 				ts.terminalState = ts.finalTerminalState()
 				ts.outcome.observeTerminal(ts.terminalState)
-				ts.state.StreamCompleted = ts.outcome.finalState() == streamTerminalCompleted
+				ts.state.StreamCompleted = ts.outcome.deliveryState() == streamTerminalCompleted
 			}
 		}
 	}
@@ -198,6 +204,31 @@ func (ts *InboundPersistentStream) Err() error {
 	return ts.stream.Err()
 }
 
+func (ts *InboundPersistentStream) AcknowledgeDelivery() {
+	if ts.lifecycle != nil {
+		ts.lifecycle.AcknowledgeDelivery()
+		if !ts.lifecycle.DeliveryAcknowledged() {
+			return
+		}
+	}
+	ts.outcome.observeDeliveryAcknowledgement()
+	ts.state.DeliveryAcknowledged = true
+}
+
+func (ts *InboundPersistentStream) DeliveryAcknowledged() bool {
+	if ts.lifecycle != nil {
+		return ts.lifecycle.DeliveryAcknowledged()
+	}
+
+	return ts.state != nil && ts.state.DeliveryAcknowledged
+}
+
+func (ts *InboundPersistentStream) WaitForFinalization() {
+	if ts.lifecycle != nil {
+		ts.lifecycle.WaitForFinalization()
+	}
+}
+
 func (ts *InboundPersistentStream) finalTerminalState() streamTerminalState {
 	// Generic finish_reason/message_stop events can lose the provider's failure
 	// or cancellation. Preserve that outcome even if the client disconnects
@@ -212,11 +243,23 @@ func (ts *InboundPersistentStream) finalTerminalState() streamTerminalState {
 }
 
 func (ts *InboundPersistentStream) Close() error {
+	ts.closeMu.Lock()
 	if ts.closed {
+		done := ts.closeDone
+		ts.closeMu.Unlock()
+		<-done
 		return nil
 	}
-
 	ts.closed = true
+	ts.closeMu.Unlock()
+	defer close(ts.closeDone)
+	if ts.lifecycle != nil {
+		defer ts.lifecycle.Close()
+		if ts.lifecycle.DeliveryAcknowledged() {
+			ts.outcome.observeDeliveryAcknowledgement()
+			ts.state.DeliveryAcknowledged = true
+		}
+	}
 	ctx := ts.ctx
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("request_completed", ts.state.StreamCompleted))
@@ -225,15 +268,17 @@ func (ts *InboundPersistentStream) Close() error {
 	ctxErr := ctx.Err()
 	ts.outcome.observeTransportError(streamErr)
 	ts.outcome.observeContextError(ctxErr)
+	decision := ts.outcome.deliveryDecision()
+	deliveryBlocked := ts.outcome.finalDecision().state == streamTerminalCompleted && decision.state != streamTerminalCompleted
 	ts.terminalState = ts.finalTerminalState()
 	if ts.outcome.hasFinalEvidence() {
-		ts.terminalState = ts.outcome.finalState()
+		ts.terminalState = decision.state
 		ts.state.StreamCompleted = ts.terminalState == streamTerminalCompleted
 	}
 
 	// A terminal event carries the final stream outcome. Persist its structured
 	// response even if a transport or context error arrives afterward.
-	if ts.terminalState != streamTerminalNone {
+	if ts.terminalState != streamTerminalNone && !deliveryBlocked {
 		log.Debug(ctx, "Stream terminal event received, performing final persistence",
 			log.String("terminal_state", string(ts.terminalState)))
 		ts.persistResponseChunks(ctx)
@@ -264,10 +309,10 @@ func (ts *InboundPersistentStream) Close() error {
 		}
 	}
 	if ts.outcome.hasFinalEvidence() {
-		ts.terminalState = ts.outcome.finalState()
+		ts.terminalState = ts.outcome.deliveryDecision().state
 		ts.state.StreamCompleted = ts.terminalState == streamTerminalCompleted
 	}
-	decision := ts.outcome.finalDecision()
+	decision = ts.outcome.deliveryDecision()
 	if ts.terminalState == streamTerminalNone {
 		ts.terminalState = decision.state
 	}
