@@ -250,7 +250,12 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 	}
 
 	if err := lease.write(ctx, payload); err != nil {
+		// A write failure is ambiguous: the upstream may already have accepted and
+		// executed the request. Replaying response.create on a fresh connection is
+		// therefore unsafe, so the dead session is evicted and the error is surfaced
+		// for the caller to decide.
 		lease.release(true)
+
 		return nil, fmt.Errorf("failed to write response.create websocket event: %w", err)
 	}
 
@@ -1149,8 +1154,17 @@ func (s *webSocketStream) Next() bool {
 		return false
 	}
 
-	_, msg, err := s.lease.conn.ReadMessage()
+	s.mu.Lock()
+	lease := s.lease
+	s.mu.Unlock()
+	_, msg, err := lease.conn.ReadMessage()
 	if err != nil {
+		s.mu.Lock()
+		closed := s.closed
+		s.mu.Unlock()
+		if closed {
+			return false
+		}
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
 			if ctxErr := s.ctx.Err(); ctxErr != nil {
 				s.setErr(ctxErr)
@@ -1267,7 +1281,11 @@ func (s *webSocketStream) markTerminal() {
 
 func (s *webSocketStream) setErr(err error) {
 	s.mu.Lock()
-	s.err = err
+	if ctxErr := s.ctx.Err(); ctxErr != nil && !s.terminal {
+		s.err = ctxErr
+	} else if !s.closed {
+		s.err = err
+	}
 	s.mu.Unlock()
 }
 
@@ -1275,8 +1293,12 @@ func (s *webSocketStream) finish(evict bool) {
 	s.doneOnce.Do(func() {
 		s.mu.Lock()
 		s.closed = true
+		if ctxErr := s.ctx.Err(); ctxErr != nil && !s.terminal {
+			s.err = ctxErr
+		}
+		lease := s.lease
 		s.mu.Unlock()
-		s.lease.release(evict)
+		lease.release(evict)
 		close(s.done)
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm/auth"
@@ -863,68 +865,84 @@ func TestWebSocketExecutorReconnectsWhenSuffixStartsWithAssistantOutput(t *testi
 	require.Equal(t, int32(2), upgrades.Load())
 }
 
-func TestWebSocketStreamReturnsErrorWhenReusedConnectionClosesBeforeEvent(t *testing.T) {
+func TestWebSocketStreamCloseWhileNextBlockedReportsClosedBeforeResponse(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	pongRead := make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer conn.Close()
+		if _, _, err := conn.ReadMessage(); !assert.NoError(t, err) {
+			return
+		}
+		conn.SetPongHandler(func(string) error { close(pongRead); return nil })
+		if !assert.NoError(t, conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(time.Second))) {
+			return
+		}
+		_, _, err = conn.ReadMessage()
+		assert.Error(t, err)
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Body:   []byte(`{"model":"gpt-5"}`),
+	})
+	require.NoError(t, err)
+	nextDone := make(chan struct{})
+	go func() {
+		defer close(nextDone)
+		assert.False(t, stream.Next())
+	}()
+	select {
+	case <-pongRead:
+	case <-time.After(time.Second):
+		t.Fatal("Next did not enter the real socket read")
+	}
+	require.NoError(t, stream.Close())
+
+	select {
+	case <-nextDone:
+	case <-time.After(time.Second):
+		t.Fatal("Next did not finish after stream.Close")
+	}
+	// Explicit Close terminates an in-flight read cleanly, unlike parent cancellation.
+	require.NoError(t, stream.Err())
+}
+
+func TestWebSocketStreamDoesNotRetryFreshConnectionFailure(t *testing.T) {
 	upgrader := websocket.Upgrader{}
 	var upgrades atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		upgrade := upgrades.Add(1)
+		upgrades.Add(1)
 		conn, err := upgrader.Upgrade(w, r, nil)
-		require.NoError(t, err)
+		if !assert.NoError(t, err) {
+			return
+		}
 		defer conn.Close()
-
-		var payload map[string]any
-		require.NoError(t, conn.ReadJSON(&payload))
-		if upgrade == 1 {
-			require.NoError(t, conn.WriteJSON(map[string]any{
-				"type": "response.completed",
-				"response": map[string]any{
-					"id":         "resp_1",
-					"object":     "response",
-					"created_at": 1700000000,
-					"model":      "gpt-5",
-					"status":     "completed",
-					"output":     []any{},
-				},
-			}))
-			require.NoError(t, conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "")))
+		if _, _, err := conn.ReadMessage(); !assert.NoError(t, err) {
+			return
+		}
+		if !assert.NoError(t, conn.UnderlyingConn().Close()) {
 			return
 		}
 	}))
 	defer server.Close()
 
 	executor := NewWebSocketExecutor(nil)
-	ctx := webSocketTestContext()
-	stream, err := executor.DoStream(ctx, &httpclient.Request{
+	stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
 		Method: http.MethodPost,
 		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
-		Headers: http.Header{
-			webSocketSessionHeader: []string{"stale-close"},
-		},
-		Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
-		Body: []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user"}]}`),
+		Body:   []byte(`{"model":"gpt-5"}`),
 	})
 	require.NoError(t, err)
-	require.True(t, stream.Next())
-	require.Equal(t, "response.completed", stream.Current().Type)
 	require.False(t, stream.Next())
-	require.NoError(t, stream.Err())
-	require.NoError(t, stream.Close())
-
-	stream, err = executor.DoStream(ctx, &httpclient.Request{
-		Method: http.MethodPost,
-		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
-		Headers: http.Header{
-			webSocketSessionHeader: []string{"stale-close"},
-		},
-		Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
-		Body: []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user"},{"id":"second","type":"message","role":"user"}]}`),
-	})
-	if err != nil {
-		return
-	}
-	defer stream.Close()
-	require.False(t, stream.Next())
-	require.ErrorContains(t, stream.Err(), "websocket closed before response event")
+	require.Error(t, stream.Err())
+	require.Equal(t, int32(1), upgrades.Load())
 }
 
 func TestWebSocketExecutorSeparatesPoolByOrganizationHeaders(t *testing.T) {
@@ -1303,6 +1321,164 @@ func TestWebSocketExecutorEvictsPooledConnectionOnEarlyClose(t *testing.T) {
 	require.NoError(t, stream.Err())
 	require.NoError(t, stream.Close())
 	require.Equal(t, int32(2), upgrades.Load())
+}
+
+// A failed write on a reused session is ambiguous: the upstream may already have
+// accepted and executed response.create. The executor must evict the dead session and
+// surface the write error instead of resending the request on a new connection, which
+// would execute it twice.
+func TestWebSocketExecutorDoesNotReplayAfterReusedSessionWriteFailure(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	var upgrades atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrades.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer conn.Close()
+
+		var payload map[string]any
+		if !assert.NoError(t, conn.ReadJSON(&payload)) {
+			return
+		}
+		if !assert.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id": "resp_1", "object": "response", "created_at": 1700000000,
+				"model": "gpt-5", "status": "completed", "output": []any{},
+			},
+		})) {
+			return
+		}
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	ctx := webSocketTestContext()
+	request := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Headers: http.Header{
+			webSocketSessionHeader: []string{"no-replay-write"},
+		},
+		Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body: []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message"}]}`),
+	}
+
+	first, err := executor.DoStream(ctx, request)
+	require.NoError(t, err)
+	require.True(t, first.Next())
+	require.Equal(t, "response.completed", first.Current().Type)
+	require.NoError(t, first.Close())
+	require.Equal(t, int32(1), upgrades.Load())
+
+	// Kill the pooled socket while the pool still believes it is healthy, so the
+	// next write fails before anything reaches the upstream.
+	executor.mu.Lock()
+	var pooled *pooledWebSocketConn
+	for _, candidate := range executor.pool {
+		pooled = candidate
+
+		break
+	}
+	executor.mu.Unlock()
+	require.NotNil(t, pooled)
+	require.False(t, pooled.isClosed())
+	require.NoError(t, pooled.conn.Close())
+
+	secondRequest := *request
+	secondRequest.Body = []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message"},{"id":"second","type":"message"}]}`)
+	second, err := executor.DoStream(ctx, &secondRequest)
+	require.Error(t, err, "a failed write on a reused session must be surfaced")
+	require.Contains(t, err.Error(), "failed to write response.create websocket event")
+	require.Nil(t, second)
+	require.Equal(t, int32(1), upgrades.Load(),
+		"the request must not be resent on a new upstream connection")
+}
+
+// A reused session that dies without a close frame must also surface the failure
+// rather than silently re-establishing a new upstream connection.
+func TestWebSocketExecutorDoesNotReplayAfterReusedSessionReadFailure(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	var upgrades atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrade := upgrades.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if !assert.NoError(t, err) {
+			return
+		}
+		defer conn.Close()
+
+		var payload map[string]any
+		if !assert.NoError(t, conn.ReadJSON(&payload)) {
+			return
+		}
+		if !assert.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id": "resp_1", "object": "response", "created_at": 1700000000,
+				"model": "gpt-5", "status": "completed", "output": []any{},
+			},
+		})) {
+			return
+		}
+
+		if upgrade > 1 {
+			for {
+				if _, _, err := conn.ReadMessage(); err != nil {
+					return
+				}
+			}
+		}
+
+		// Drop the peer without a close frame so the client only notices on read.
+		if tcpConn, ok := conn.UnderlyingConn().(*net.TCPConn); ok {
+			_ = tcpConn.SetLinger(0)
+		}
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	ctx := webSocketTestContext()
+	request := &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+		Headers: http.Header{
+			webSocketSessionHeader: []string{"no-replay-read"},
+		},
+		Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+		Body: []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message"}]}`),
+	}
+
+	first, err := executor.DoStream(ctx, request)
+	require.NoError(t, err)
+	require.True(t, first.Next())
+	require.Equal(t, "response.completed", first.Current().Type)
+	require.False(t, first.Next())
+	require.NoError(t, first.Err())
+	require.NoError(t, first.Close())
+
+	time.Sleep(100 * time.Millisecond)
+
+	secondRequest := *request
+	secondRequest.Body = []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message"},{"id":"second","type":"message"}]}`)
+	second, err := executor.DoStream(ctx, &secondRequest)
+	if err == nil {
+		for second.Next() {
+		}
+		require.Error(t, second.Err(), "a dead upstream session must surface an error")
+		require.NoError(t, second.Close())
+	} else {
+		require.Error(t, err)
+	}
+
+	require.Equal(t, int32(1), upgrades.Load(), "no new upstream session may be opened")
 }
 
 func TestHeaderPoolIdentityIgnoresPerRequestTraceHeaders(t *testing.T) {
