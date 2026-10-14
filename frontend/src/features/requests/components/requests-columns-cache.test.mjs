@@ -35,7 +35,6 @@ test('a cache read shows the cached share of the prompt', () => {
   assert.equal(display.cacheRate, '25.0');
   assert.equal(display.showCacheRate, true);
   assert.equal(display.showReasoning, false);
-  assert.equal(display.showSharedRow, true);
 });
 
 test('no cache read hides the rate even when reasoning tokens exist', () => {
@@ -43,16 +42,14 @@ test('no cache read hides the rate even when reasoning tokens exist', () => {
 
   assert.equal(display.showCacheRate, false);
   assert.equal(display.showReasoning, true);
-  assert.equal(display.showSharedRow, true);
 });
 
-test('cache hits and reasoning tokens share the row', () => {
+test('cache hits and reasoning tokens each report their own line', () => {
   const display = tokensColumnCacheDisplay(1000, 999, 7);
 
   assert.equal(display.cacheRate, '99.9');
   assert.equal(display.showCacheRate, true);
   assert.equal(display.showReasoning, true);
-  assert.equal(display.showSharedRow, true);
 });
 
 test('zero prompt tokens report a zero rate instead of dividing by zero', () => {
@@ -62,10 +59,38 @@ test('zero prompt tokens report a zero rate instead of dividing by zero', () => 
   assert.equal(display.showCacheRate, true);
 });
 
-test('neither reasoning nor cache tokens keep the shared row hidden', () => {
+test('neither reasoning nor cache tokens render a metric', () => {
   const display = tokensColumnCacheDisplay(500, 0, 0);
 
-  assert.equal(display.showSharedRow, false);
   assert.equal(display.showReasoning, false);
   assert.equal(display.showCacheRate, false);
+});
+
+test('the cache rate rides the input line and the reasoning count the output line', () => {
+  const tokensColumn = source.slice(source.indexOf("id: 'tokens'"), source.indexOf("id: 'readCache'"));
+
+  // Each metric sits on the line of the tokens it qualifies: the cache hit rate
+  // qualifies the prompt (input) tokens, the reasoning count the completion
+  // (output) tokens. Order in the source proves the pairing.
+  const inputAt = tokensColumn.indexOf('requests.columns.input');
+  const cacheRateAt = tokensColumn.indexOf('requests.columns.cacheRate');
+  const outputAt = tokensColumn.indexOf('requests.columns.output');
+  const reasoningAt = tokensColumn.indexOf('requests.columns.reasoning');
+
+  assert.ok(inputAt >= 0 && outputAt >= 0, 'both token lines must render');
+  assert.ok(inputAt < cacheRateAt, 'the cache rate follows the input count on the input line');
+  assert.ok(cacheRateAt < outputAt, 'the cache rate stays on the input line, before the output line');
+  assert.ok(outputAt < reasoningAt, 'the reasoning count follows the output count on the output line');
+
+  assert.doesNotMatch(tokensColumn, /showSharedRow/, 'the metrics no longer share a row');
+  assert.equal(
+    (tokensColumn.match(/requests\.columns\.cacheRate/g) ?? []).length,
+    1,
+    'the cache rate must render exactly once'
+  );
+  assert.equal(
+    (tokensColumn.match(/requests\.columns\.reasoning/g) ?? []).length,
+    1,
+    'the reasoning count must render exactly once'
+  );
 });
