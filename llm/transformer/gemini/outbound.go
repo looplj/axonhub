@@ -114,9 +114,9 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	//nolint:exhaustive // Checked.
 	switch llmReq.RequestType {
 	case llm.RequestTypeEmbedding:
-		return t.transformEmbeddingRequest(ctx, llmReq)
+		return t.transformEmbeddingRequest(ctx, llmReq, apiKey)
 	case llm.RequestTypeImage:
-		return t.buildImageGenerationRequest(ctx, llmReq)
+		return t.buildImageGenerationRequest(ctx, llmReq, apiKey)
 	case llm.RequestTypeChat, "":
 		// continue
 	case llm.RequestTypeCompact:

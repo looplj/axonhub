@@ -363,6 +363,16 @@ export const channelSettingsSchema = z.object({
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
+  // The backend stores an empty strategy for "unset" and returns it verbatim, and
+  // an API client may store any string. Normalize every unrecognized value to the
+  // default instead of rejecting it, so such a channel still loads and the
+  // inferred type stays the narrow strategy union the editor expects.
+  apiKeyStrategy: z
+    .enum(['sticky', 'random', 'round_robin', 'round_robin_success', 'priority', 'fixed'])
+    .catch('sticky')
+    .nullable()
+    .optional(),
+  apiKeyRoundRobinSwitchAfter: z.number().int().min(0).max(2147483647).optional().nullable(),
   quotaRoutingMode: z.enum(['INHERIT', 'IGNORE_QUOTA', 'REMOVE_ON_EXHAUSTED', 'BACKPRESSURE']).optional(),
 });
 

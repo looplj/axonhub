@@ -25,6 +25,7 @@ import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
+import { ApiKeyStrategyFields, type APIKeyStrategyValue } from './channel-api-key-strategy';
 import { SelectDropdown } from '@/components/select-dropdown';
 import {
   usePassThroughSettings,
@@ -455,6 +456,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         value: t(passThroughSettings.enabled ? 'channels.dialogs.bodyPassThrough.enabled' : 'channels.dialogs.bodyPassThrough.disabled'),
       })
     : t('channels.dialogs.bodyPassThrough.inherit');
+  const [apiKeyStrategy, setApiKeyStrategy] = useState<APIKeyStrategyValue>(
+    () => initialRow?.settings?.apiKeyStrategy ?? 'sticky'
+  );
+  const [apiKeyRoundRobinSwitchAfter, setApiKeyRoundRobinSwitchAfter] = useState<number>(
+    () => initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1
+  );
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -1398,6 +1405,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          apiKeyStrategy,
+          apiKeyRoundRobinSwitchAfter:
+            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success'
+              ? apiKeyRoundRobinSwitchAfter
+              : null,
           // Cookie edits (including clearing the saved cookie) travel through
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
@@ -1467,6 +1479,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           retryableStatusCodes,
           retryableErrorPatterns,
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
+          apiKeyStrategy,
+          apiKeyRoundRobinSwitchAfter:
+            apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success'
+              ? apiKeyRoundRobinSwitchAfter
+              : null,
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
             ? {
@@ -1914,6 +1931,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+            setApiKeyStrategy(initialRow?.settings?.apiKeyStrategy ?? 'sticky');
+            setApiKeyRoundRobinSwitchAfter(initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1);
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -2571,6 +2590,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             )}
                           />
                         )}
+
+<ApiKeyStrategyFields
+                        value={apiKeyStrategy}
+                        switchAfter={apiKeyRoundRobinSwitchAfter}
+                        onChange={(value) => setApiKeyStrategy(value)}
+                        onSwitchAfterChange={(value) => setApiKeyRoundRobinSwitchAfter(value)}
+                      />
 
                       {isZenmuxType && (
                         <FormField

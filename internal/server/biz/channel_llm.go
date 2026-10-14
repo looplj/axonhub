@@ -172,8 +172,14 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 	}
 
 	enabled := ch.cachedEnabledAPIKeys
-	if len(enabled) > 1 {
-		return NewChannelAPIKeyContextProvider(NewTraceStickyKeyProvider(ch))
+
+	// Keep the configured policy active whenever the channel holds more than one
+	// key, even if only one is selectable right now. Falling back to a static
+	// provider drops the fixed cursor and the success counter, so traffic snaps
+	// back to a re-enabled key and round_robin_success loses the successes
+	// reported while the channel was down to one key.
+	if len(enabled) > 1 || len(ch.Credentials.APIKeys) > 1 {
+		return NewChannelAPIKeyContextProvider(newMultiKeyProvider(ch))
 	}
 
 	if len(enabled) == 1 {
@@ -743,6 +749,11 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 		httpClient = httpClient.WithRejectHTTPSDowngrade()
 	}
 	ch := buildChannel(c, httpClient)
+	// Attach the shared key-selection state for the strategies that remember the
+	// key in use (fixed / round_robin_success). Nil otherwise. The snapshot the
+	// state reads from is published separately, by the enabled-channel cache.
+	ch.apiKeyState = svc.apiKeySelectionStateFor(ch)
+
 	if overrideAPIKey != "" {
 		ch.apiKeyOverride = overrideAPIKey
 	}
@@ -1729,6 +1740,46 @@ func (ch *Channel) GetDirectModelEntries() map[string]ChannelModelEntry {
 				RequestModel: model,
 				ActualModel:  model,
 				Source:       "direct",
+			}
+		}
+	}
+
+	// Prefixed models (ExtraModelPrefix), consistent with GetModelEntries.
+	if ch.Settings == nil {
+		return entries
+	}
+
+	if ch.Settings.ExtraModelPrefix != "" {
+		prefix := ch.Settings.ExtraModelPrefix
+		for _, model := range ch.SupportedModels {
+			prefixedModel := prefix + "/" + model
+			if _, exists := entries[prefixedModel]; !exists {
+				entries[prefixedModel] = ChannelModelEntry{
+					RequestModel: prefixedModel,
+					ActualModel:  model,
+					Source:       "prefix",
+				}
+			}
+		}
+	}
+
+	// Auto-trimmed models (AutoTrimedModelPrefixes), consistent with GetModelEntries.
+	for _, prefix := range ch.Settings.AutoTrimedModelPrefixes {
+		if prefix == "" {
+			continue
+		}
+
+		prefix += "/"
+		for _, model := range ch.SupportedModels {
+			if after, ok := strings.CutPrefix(model, prefix); ok {
+				trimmedModel := after
+				if _, exists := entries[trimmedModel]; !exists {
+					entries[trimmedModel] = ChannelModelEntry{
+						RequestModel: trimmedModel,
+						ActualModel:  model,
+						Source:       "auto_trim",
+					}
+				}
 			}
 		}
 	}
