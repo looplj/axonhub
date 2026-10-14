@@ -746,8 +746,15 @@ export function ChannelsModelPriceDialog() {
     setSelectedProviderId(next);
     setSelectedModelId('');
     setMultiplier(1);
-    setExchangeRate(DEFAULT_EXCHANGE_RATE);
   }, [defaultProviderId, isOpen, providersData]);
+
+  // Reset the exchange rate only when the dialog opens. A separate effect keeps
+  // late-arriving provider data from overwriting a rate the user already typed.
+  useEffect(() => {
+    if (isOpen) {
+      setExchangeRate(DEFAULT_EXCHANGE_RATE);
+    }
+  }, [isOpen]);
 
   const providerModels = useMemo(() => {
     if (!selectedProviderId || !providersData) return [];
@@ -1171,7 +1178,7 @@ export function ChannelsModelPriceDialog() {
                 <div className='mb-3 text-xs text-muted-foreground'>
                   {t('price.apply.usdHint')}
                 </div>
-                <div className='grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_80px_auto] md:items-end'>
+                <div className='grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_80px_80px_auto] md:items-end'>
                   <div className='min-w-0'>
                     <FormLabel className='text-sm'>{t('price.apply.provider')}</FormLabel>
                     <AutoCompleteSelect
@@ -1220,7 +1227,7 @@ export function ChannelsModelPriceDialog() {
                       value={exchangeRate}
                       onChange={(e) => setExchangeRate(parseFloat(e.target.value) || 0)}
                       className='h-8'
-                      step='0.01'
+                      step='any'
                       min='0'
                     />
                   </div>
