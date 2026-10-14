@@ -172,7 +172,13 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 	}
 
 	enabled := ch.cachedEnabledAPIKeys
-	if len(enabled) > 1 {
+
+	// Keep the configured policy active whenever the channel holds more than one
+	// key, even if only one is selectable right now. Falling back to a static
+	// provider drops the fixed cursor and the success counter, so traffic snaps
+	// back to a re-enabled key and round_robin_success loses the successes
+	// reported while the channel was down to one key.
+	if len(enabled) > 1 || len(ch.Credentials.APIKeys) > 1 {
 		return NewChannelAPIKeyContextProvider(newMultiKeyProvider(ch))
 	}
 
