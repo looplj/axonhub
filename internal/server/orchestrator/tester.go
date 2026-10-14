@@ -392,6 +392,12 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 
 	// Accumulate stream chunks
 	var accumulatedContent string
+	expectedChoices := 0
+	if expected, ok := stream.(interface{ ExpectedStreamChoices() int }); ok {
+		expectedChoices = expected.ExpectedStreamChoices()
+	}
+	terminalTracker := NewStreamTerminalTracker(expectedChoices)
+	terminalSeen := false
 
 	for stream.Next() {
 		select {
@@ -408,6 +414,9 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 		event := stream.Current()
 		if event == nil {
 			continue
+		}
+		if !terminalSeen && terminalTracker.Observe(event) {
+			terminalSeen = true
 		}
 
 		// The stream may end with a "[DONE]" message which is not valid JSON.
@@ -456,6 +465,17 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 			Message: lo.ToPtr(""),
 			Error:   lo.ToPtr("No content in stream response"),
 		}, nil
+	}
+	if !terminalSeen {
+		return &TestChannelResult{
+			Latency: latency,
+			Success: false,
+			Message: lo.ToPtr(accumulatedContent),
+			Error:   lo.ToPtr("Stream ended without terminal event"),
+		}, nil
+	}
+	if observer, ok := stream.(streams.DeliveryAcknowledger); ok {
+		observer.AcknowledgeDelivery()
 	}
 
 	return &TestChannelResult{
