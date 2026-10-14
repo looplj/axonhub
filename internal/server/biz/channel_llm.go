@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/log"
@@ -1367,10 +1369,34 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 
 		return ch, nil
 	case channel.TypeGeminiVertex:
+		var baseURLProvider func(context.Context) string
+		if len(c.Credentials.VertexAPIKeys) > 0 {
+			for _, credential := range c.Credentials.VertexAPIKeys {
+				if strings.TrimSpace(credential.APIKey) == "" || !validVertexResourceSegment(credential.ProjectID) || !validVertexResourceSegment(credential.Region) {
+					return nil, fmt.Errorf("vertex api key, project ID, and region are required for channel %s", c.Name)
+				}
+			}
+
+			baseURLProvider = func(ctx context.Context) string {
+				apiKey, ok := contexts.GetChannelAPIKey(ctx)
+				if !ok {
+					return ""
+				}
+
+				credential, ok := c.Credentials.VertexAPIKey(apiKey)
+				if !ok {
+					return ""
+				}
+
+				return fmt.Sprintf("%s/v1/projects/%s/locations/%s", vertexServiceBaseURL(c.BaseURL), credential.ProjectID, strings.TrimSpace(credential.Region))
+			}
+		}
+
 		transformer, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:        c.BaseURL,
-			APIKeyProvider: getAPIKeyProvider(ch),
-			PlatformType:   gemini.PlatformVertex,
+			BaseURL:         c.BaseURL,
+			APIKeyProvider:  getAPIKeyProvider(ch),
+			BaseURLProvider: baseURLProvider,
+			PlatformType:    gemini.PlatformVertex,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to create outbound transformer: %w", err)
@@ -1464,6 +1490,30 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 	default:
 		return nil, errors.New("unknown channel type")
 	}
+}
+
+// Vertex project IDs and regions are interpolated into the upstream request path,
+// so they are validated against the same patterns the form uses. Google project
+// IDs may contain dots, underscores and dashes; regions may contain dashes.
+var vertexResourceSegmentPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+
+func validVertexResourceSegment(value string) bool {
+	return vertexResourceSegmentPattern.MatchString(strings.TrimSpace(value))
+}
+
+// vertexServiceBaseURL reduces a channel Base URL to the Vertex service root.
+// Channels configured before per-key projects stored the full
+// "/v1/projects/<project>/locations/<region>" path in the Base URL, and the
+// per-key project and region replace it. Trimming that path keeps such an existing
+// channel from producing a URL that carries two projects.
+func vertexServiceBaseURL(baseURL string) string {
+	trimmed := strings.TrimRight(strings.TrimSpace(baseURL), "/")
+
+	if idx := strings.Index(trimmed, "/projects/"); idx >= 0 {
+		trimmed = trimmed[:idx]
+	}
+
+	return strings.TrimSuffix(trimmed, "/v1")
 }
 
 func isOAuthJSON(s string) bool {
