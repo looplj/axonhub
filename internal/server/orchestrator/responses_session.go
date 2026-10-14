@@ -335,15 +335,18 @@ func (s *responsesSessionStream) DeliveryAcknowledged() bool {
 	return ok && observer.DeliveryAcknowledged()
 }
 
+func (s *responsesSessionStream) WaitForFinalization() {
+	if waiter, ok := s.inner.(streams.FinalizationWaiter); ok {
+		waiter.WaitForFinalization()
+	}
+}
+
 func (s *responsesSessionStream) Deliver(ctx context.Context, write func() (bool, error)) error {
 	boundary, ok := s.inner.(streams.DeliveryBoundary)
 	if ok {
 		return boundary.Deliver(ctx, write)
 	}
 	terminal, err := write()
-	if err == nil && terminal && ctx.Err() != nil {
-		return nil
-	}
 	if err == nil && terminal {
 		s.AcknowledgeDelivery()
 	}

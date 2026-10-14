@@ -51,6 +51,7 @@ type InboundPersistentStream struct {
 	outcome         streamOutcome
 	closed          bool
 	closeMu         sync.Mutex
+	stateMu         sync.Mutex
 	closeDone       chan struct{}
 	state           *PersistenceState
 	terminalTracker *StreamTerminalTracker
@@ -224,9 +225,6 @@ func (ts *InboundPersistentStream) Deliver(ctx context.Context, write func() (bo
 		return err
 	}
 	terminal, err := write()
-	if err == nil && terminal && ctx.Err() != nil {
-		err = nil
-	}
 	if err == nil && terminal {
 		ts.AcknowledgeDelivery()
 	}
@@ -244,6 +242,8 @@ func deliverAndTrack(write func() (bool, error), deliver func(func() (bool, erro
 }
 
 func (ts *InboundPersistentStream) AcknowledgeDelivery() {
+	ts.stateMu.Lock()
+	defer ts.stateMu.Unlock()
 	if ts.lifecycle != nil {
 		ts.lifecycle.AcknowledgeDelivery()
 		if !ts.lifecycle.DeliveryAcknowledged() {
@@ -292,6 +292,7 @@ func (ts *InboundPersistentStream) Close() error {
 	ts.closed = true
 	ts.closeMu.Unlock()
 	defer close(ts.closeDone)
+	ts.stateMu.Lock()
 	if ts.lifecycle != nil {
 		defer ts.lifecycle.Close()
 		if ts.lifecycle.DeliveryAcknowledged() {
@@ -299,6 +300,7 @@ func (ts *InboundPersistentStream) Close() error {
 			ts.state.DeliveryAcknowledged = true
 		}
 	}
+	ts.stateMu.Unlock()
 	ctx := ts.ctx
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("request_completed", ts.state.StreamCompleted))

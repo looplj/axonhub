@@ -16,6 +16,7 @@ import (
 
 type deliverySocketWriter struct {
 	http.ResponseWriter
+
 	trace *deliverySSETrace
 }
 

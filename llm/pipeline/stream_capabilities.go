@@ -10,6 +10,7 @@ type streamCapabilities[T any] struct {
 	streams.Stream[T]
 	observer       streams.DeliveryAcknowledger
 	boundary       streams.DeliveryBoundary
+	waiter         streams.FinalizationWaiter
 	expectedChoice func() int
 }
 
@@ -21,14 +22,17 @@ func (s *streamCapabilities[T]) DeliveryAcknowledged() bool {
 	return s.observer.DeliveryAcknowledged()
 }
 
+func (s *streamCapabilities[T]) WaitForFinalization() {
+	if s.waiter != nil {
+		s.waiter.WaitForFinalization()
+	}
+}
+
 func (s *streamCapabilities[T]) Deliver(ctx context.Context, write func() (bool, error)) error {
 	if s.boundary != nil {
 		return s.boundary.Deliver(ctx, write)
 	}
 	terminal, err := write()
-	if err == nil && terminal && ctx.Err() != nil {
-		return nil
-	}
 	if err == nil && terminal {
 		s.AcknowledgeDelivery()
 	}
@@ -54,5 +58,6 @@ func preserveStreamCapabilities[T, R any](source streams.Stream[T], adapted stre
 	}
 
 	boundary, _ := source.(streams.DeliveryBoundary)
-	return &streamCapabilities[R]{Stream: adapted, observer: observer, boundary: boundary, expectedChoice: expected}
+	waiter, _ := source.(streams.FinalizationWaiter)
+	return &streamCapabilities[R]{Stream: adapted, observer: observer, boundary: boundary, waiter: waiter, expectedChoice: expected}
 }

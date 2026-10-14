@@ -12,9 +12,6 @@ func writeStreamDelivery(ctx context.Context, stream streams.Stream[*httpclient.
 		return boundary.Deliver(ctx, write)
 	}
 	terminal, err := write()
-	if err == nil && terminal && ctx.Err() != nil {
-		return nil
-	}
 	if err == nil && terminal {
 		if observer, ok := stream.(streams.DeliveryAcknowledger); ok {
 			observer.AcknowledgeDelivery()
@@ -44,15 +41,18 @@ func (s *primedStream) Deliver(ctx context.Context, write func() (bool, error)) 
 	boundary, ok := s.stream.(streams.DeliveryBoundary)
 	if !ok {
 		terminal, err := write()
-		if err == nil && terminal && ctx.Err() != nil {
-			return nil
-		}
 		if err == nil && terminal {
 			s.AcknowledgeDelivery()
 		}
 		return err
 	}
 	return boundary.Deliver(ctx, write)
+}
+
+func (s *primedStream) WaitForFinalization() {
+	if waiter, ok := s.stream.(streams.FinalizationWaiter); ok {
+		waiter.WaitForFinalization()
+	}
 }
 
 func (s *upstreamErrorStream) AcknowledgeDelivery() {
@@ -70,9 +70,6 @@ func (s *upstreamErrorStream) Deliver(ctx context.Context, write func() (bool, e
 	boundary, ok := s.stream.(streams.DeliveryBoundary)
 	if !ok {
 		terminal, err := write()
-		if err == nil && terminal && ctx.Err() != nil {
-			return nil
-		}
 		if err == nil && terminal {
 			s.AcknowledgeDelivery()
 		}
@@ -90,16 +87,25 @@ func (s *upstreamErrorStream) WaitForFinalization() {
 type deliveryStream struct {
 	streams.Stream[*httpclient.StreamEvent]
 	streams.DeliveryAcknowledger
+
 	boundary        streams.DeliveryBoundary
+	waiter          streams.FinalizationWaiter
 	expectedChoices int
 }
 
 func (s *deliveryStream) ExpectedStreamChoices() int { return s.expectedChoices }
 
+func (s *deliveryStream) WaitForFinalization() {
+	if s.waiter != nil {
+		s.waiter.WaitForFinalization()
+	}
+}
+
 func preserveStreamDelivery(adapted, source streams.Stream[*httpclient.StreamEvent]) streams.Stream[*httpclient.StreamEvent] {
 	if observer, ok := source.(streams.DeliveryAcknowledger); ok {
 		boundary, _ := source.(streams.DeliveryBoundary)
-		return &deliveryStream{Stream: adapted, DeliveryAcknowledger: observer, boundary: boundary, expectedChoices: streamExpectedChoices(source)}
+		waiter, _ := source.(streams.FinalizationWaiter)
+		return &deliveryStream{Stream: adapted, DeliveryAcknowledger: observer, boundary: boundary, waiter: waiter, expectedChoices: streamExpectedChoices(source)}
 	}
 	return adapted
 }
@@ -107,9 +113,6 @@ func preserveStreamDelivery(adapted, source streams.Stream[*httpclient.StreamEve
 func (s *deliveryStream) Deliver(ctx context.Context, write func() (bool, error)) error {
 	if s.boundary == nil {
 		terminal, err := write()
-		if err == nil && terminal && ctx.Err() != nil {
-			return nil
-		}
 		if err == nil && terminal {
 			s.AcknowledgeDelivery()
 		}

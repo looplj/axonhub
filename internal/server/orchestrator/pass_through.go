@@ -709,6 +709,7 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 
 type passThroughDeliveryStream struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	observer streams.DeliveryAcknowledger
 	boundary streams.DeliveryBoundary
 	close    func() error
@@ -770,9 +771,6 @@ func (s *passThroughDeliveryStream) Deliver(ctx context.Context, write func() (b
 		return s.boundary.Deliver(ctx, write)
 	}
 	terminal, err := write()
-	if err == nil && terminal && ctx.Err() != nil {
-		return nil
-	}
 	if err == nil && terminal {
 		s.AcknowledgeDelivery()
 	}

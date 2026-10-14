@@ -30,6 +30,7 @@ func (tr *deliverySSETrace) add(step string) {
 
 type deliverySSEStream struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	trace        *deliverySSETrace
 	acknowledged bool
 	choices      int
@@ -53,6 +54,7 @@ func (s *deliverySSEStream) Current() *httpclient.StreamEvent {
 
 type deliverySSEWriter struct {
 	gin.ResponseWriter
+
 	trace        *deliverySSETrace
 	body         strings.Builder
 	writeErr     error
@@ -150,9 +152,13 @@ func TestStreamDeliverySSE(t *testing.T) {
 					}
 					// When
 					runDeliverySSE(c, stream, heartbeat)
-					// Then: acknowledgement is strictly after a full frame and successful flush.
-					require.Equal(t, mode == "success", source.DeliveryAcknowledged())
-					if mode == "success" {
+					// Then: a terminal frame that was written and flushed successfully is
+					// delivered even when the client cancels during that write or flush.
+					// Only a transport failure or an unwritten queued terminal stays
+					// unacknowledged.
+					wantAcknowledged := mode == "success" || mode == "cancel_during_write" || mode == "cancel_during_flush"
+					require.Equal(t, wantAcknowledged, source.DeliveryAcknowledged())
+					if wantAcknowledged {
 						require.Contains(t, writer.body.String(), `"type":"response.completed"`)
 						require.Equal(t, "flush", trace.steps[len(trace.steps)-2])
 						require.Equal(t, "ack", trace.steps[len(trace.steps)-1])
@@ -221,9 +227,10 @@ func TestStreamDeliverySSEHeldWrite(t *testing.T) {
 			case <-time.After(5 * time.Second):
 				t.Fatal("writer did not exit")
 			}
-			// Then
-			require.False(t, source.DeliveryAcknowledged())
-			require.NotContains(t, trace.steps, "ack")
+			// Then: the held terminal frame still reached the transport, so a
+			// cancel that lands before the writer returns cannot erase delivery.
+			require.True(t, source.DeliveryAcknowledged())
+			require.Contains(t, trace.steps, "ack")
 			t.Logf("cancel-before-return driver order: %v", trace.steps)
 		})
 	}

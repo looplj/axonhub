@@ -152,6 +152,7 @@ func TestStreamDeliveryE2E_2616ConvertedAnthropicGuardSensitivity(t *testing.T) 
 
 type codexTurnBarrier struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	ready   chan<- struct{}
 	release <-chan struct{}
 	abort   <-chan struct{}

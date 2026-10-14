@@ -16,6 +16,7 @@ import (
 
 type deliveryRawFlushWriter struct {
 	*httptest.ResponseRecorder
+
 	flushes int
 }
 

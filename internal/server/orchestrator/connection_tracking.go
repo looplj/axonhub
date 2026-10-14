@@ -171,6 +171,7 @@ func (m *channelLimiterMiddleware) releaseSlot(ctx context.Context, slot *limite
 // from Close + OnOutboundRawError are safe.
 type channelLimiterStream struct {
 	streams.Stream[*llm.Response]
+
 	release func()
 }
 

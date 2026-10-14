@@ -56,6 +56,7 @@ func countDeliveryAcks(steps []string) int {
 
 type deliveryPlainFlusher struct {
 	*httptest.ResponseRecorder
+
 	trace *deliverySSETrace
 }
 
@@ -84,6 +85,7 @@ func TestStreamDeliverySSEPlainFlusher(t *testing.T) {
 
 type deliveryHeartbeatStream struct {
 	*deliverySSEStream
+
 	release <-chan struct{}
 }
 

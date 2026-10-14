@@ -136,9 +136,6 @@ func (s *cancelOnCloseStream) Deliver(ctx context.Context, write func() (bool, e
 		return boundary.Deliver(ctx, write)
 	}
 	terminal, err := write()
-	if err == nil && terminal && ctx.Err() != nil {
-		return nil
-	}
 	if err == nil && terminal {
 		s.AcknowledgeDelivery()
 	}

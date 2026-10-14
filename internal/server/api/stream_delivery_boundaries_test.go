@@ -17,6 +17,7 @@ import (
 
 type barrierDeliverySSEStream struct {
 	*deliverySSEStream
+
 	mu sync.Mutex
 }
 

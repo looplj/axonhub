@@ -71,8 +71,10 @@ func TestStreamDeliveryWebSocketWriter(t *testing.T) {
 				}
 				// When
 				err := writeResponsesWebSocketResult(ctx, &responsesWebSocketWriter{conn: transport}, orchestrator.ChatCompletionResult{ChatCompletionStream: stream}, nil, "lane-a")
-				// Then: only a successful terminal write with a live turn is acknowledged.
-				require.Equal(t, mode == "success", source.DeliveryAcknowledged())
+				// Then: a terminal frame that was written successfully is delivered,
+				// including when the client cancels during the write. Failed or
+				// short writes and unwritten queued terminals stay unacknowledged.
+				require.Equal(t, mode == "success" || mode == "cancel_during_write", source.DeliveryAcknowledged())
 				switch mode {
 				case "write_error", "queued_terminal_unwritten", "deadline_error":
 					require.ErrorIs(t, err, io.ErrClosedPipe)
@@ -124,6 +126,7 @@ func TestStreamDeliveryWebSocketHeldWrite(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("writer did not exit")
 	}
-	// Then
-	require.False(t, source.DeliveryAcknowledged())
+	// Then: the released write returned success, so the frame is delivered even
+	// though the downstream context was canceled while it was held.
+	require.True(t, source.DeliveryAcknowledged())
 }
