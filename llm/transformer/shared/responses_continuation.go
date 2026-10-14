@@ -13,19 +13,6 @@ import (
 
 var ErrResponsesContinuationUnavailable = errors.New("Responses continuation unavailable")
 
-var ErrResponsesWebSocketReconnectFailed = errors.New("Responses WebSocket reconnect failed")
-
-func IsResponsesWebSocketReconnectError(err error) bool {
-	return errors.Is(err, ErrResponsesWebSocketReconnectFailed)
-}
-
-func ResponsesWebSocketReconnectError(err error) error {
-	if IsResponsesWebSocketReconnectError(err) {
-		return err
-	}
-	return errors.Join(ErrResponsesWebSocketReconnectFailed, err)
-}
-
 func IsResponsesRecoveryError(err error) bool {
 	if errors.Is(err, ErrResponsesContinuationUnavailable) {
 		return true

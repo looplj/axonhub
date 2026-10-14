@@ -291,9 +291,6 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		if shared.IsResponsesRecoveryError(lastErr) {
 			return nil, shared.ResponsesRecoveryError()
 		}
-		if shared.IsResponsesWebSocketReconnectError(lastErr) {
-			return nil, lastErr
-		}
 		if errors.Is(lastErr, transformer.ErrUnsupportedConversion) {
 			return nil, lastErr
 		}
