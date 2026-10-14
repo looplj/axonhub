@@ -88,7 +88,7 @@ func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, l
 	}
 
 	// Build URL - image generation uses the same generateContent endpoint
-	url := t.buildImageRequestURL(ctx, llmReq)
+	url := t.buildImageRequestURL(llmReq)
 
 	rawReq := &httpclient.Request{
 		Method:                http.MethodPost,
@@ -106,10 +106,9 @@ func (t *OutboundTransformer) buildImageGenerationRequest(ctx context.Context, l
 	return rawReq, nil
 }
 
-// buildImageRequestURL constructs the URL for image generation requests for the
-// credential selected by the API key provider, so a Vertex key resolves to its own
-// project and region. Image generation uses generateContent (not streaming).
-func (t *OutboundTransformer) buildImageRequestURL(ctx context.Context, llmReq *llm.Request) string {
+// buildImageRequestURL constructs the URL for image generation requests.
+// Image generation uses generateContent endpoint (not streaming).
+func (t *OutboundTransformer) buildImageRequestURL(llmReq *llm.Request) string {
 	version := t.config.APIVersion
 	if version == "" {
 		version = DefaultAPIVersion
@@ -117,7 +116,7 @@ func (t *OutboundTransformer) buildImageRequestURL(ctx context.Context, llmReq *
 
 	// For Vertex AI platform
 	if t.config.PlatformType == PlatformVertex {
-		baseURL := strings.TrimSuffix(t.resolveBaseURL(ctx), "/")
+		baseURL := strings.TrimSuffix(t.config.BaseURL, "/")
 		if strings.Contains(baseURL, "/v1/") {
 			return fmt.Sprintf("%s/publishers/google/models/%s:generateContent", baseURL, llmReq.Model)
 		}
@@ -126,7 +125,7 @@ func (t *OutboundTransformer) buildImageRequestURL(ctx context.Context, llmReq *
 	}
 
 	// Standard Gemini API format
-	return fmt.Sprintf("%s/%s/models/%s:generateContent", t.resolveBaseURL(ctx), version, llmReq.Model)
+	return fmt.Sprintf("%s/%s/models/%s:generateContent", t.config.BaseURL, version, llmReq.Model)
 }
 
 // buildImageConfig builds the ImageConfig from ImageRequest parameters.

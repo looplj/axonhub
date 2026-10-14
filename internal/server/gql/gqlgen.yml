@@ -350,12 +350,6 @@ models:
   GCPCredentialInput:
     model:
       - github.com/looplj/axonhub/internal/objects.GCPCredential
-  VertexAPIKey:
-    model:
-      - github.com/looplj/axonhub/internal/objects.VertexAPIKey
-  VertexAPIKeyInput:
-    model:
-      - github.com/looplj/axonhub/internal/objects.VertexAPIKey
   ModelIdentify:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ModelIdentify

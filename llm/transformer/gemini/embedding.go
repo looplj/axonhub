@@ -83,19 +83,30 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 
 	modelRef := "models/" + llmReq.Model
 
-	// The API key is selected before the URL is built: for Vertex a per-request base
-	// URL provider derives the project/region endpoint from the credential this
-	// lookup records in the context.
-	apiKey := t.config.APIKeyProvider.Get(ctx)
-
 	var (
 		body []byte
+		url  string
 		err  error
 	)
 
-	isBatch := len(texts) > 1
+	if len(texts) == 1 {
+		// Single text: use embedContent
+		req := &EmbedContentRequest{
+			Model: modelRef,
+			Content: &Content{
+				Parts: []*Part{{Text: texts[0]}},
+			},
+			TaskType:             taskType,
+			OutputDimensionality: outputDim,
+		}
 
-	if isBatch {
+		body, err = json.Marshal(req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal embed content request: %w", err)
+		}
+
+		url = t.buildEmbeddingURL(llmReq.Model, false)
+	} else {
 		// Multiple texts: use batchEmbedContents
 		requests := make([]*EmbedContentRequest, len(texts))
 		for i, text := range texts {
@@ -109,21 +120,16 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 			}
 		}
 
-		body, err = json.Marshal(&BatchEmbedContentsRequest{Requests: requests})
-	} else {
-		// Single text: use embedContent
-		body, err = json.Marshal(&EmbedContentRequest{
-			Model: modelRef,
-			Content: &Content{
-				Parts: []*Part{{Text: texts[0]}},
-			},
-			TaskType:             taskType,
-			OutputDimensionality: outputDim,
-		})
-	}
+		batchReq := &BatchEmbedContentsRequest{
+			Requests: requests,
+		}
 
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal gemini embedding request: %w", err)
+		body, err = json.Marshal(batchReq)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal batch embed content request: %w", err)
+		}
+
+		url = t.buildEmbeddingURL(llmReq.Model, true)
 	}
 
 	// Prepare headers
@@ -131,13 +137,15 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	headers.Set("Content-Type", "application/json")
 	headers.Set("Accept", "application/json")
 
-	authConfig := &httpclient.AuthConfig{
+	// Prepare authentication
+	var authConfig *httpclient.AuthConfig
+
+	apiKey := t.config.APIKeyProvider.Get(ctx)
+	authConfig = &httpclient.AuthConfig{
 		Type:      "api_key",
 		APIKey:    apiKey,
 		HeaderKey: "x-goog-api-key",
 	}
-
-	url := t.buildEmbeddingURL(ctx, llmReq.Model, isBatch)
 
 	httpReq := &httpclient.Request{
 		Method:                http.MethodPost,
@@ -153,9 +161,8 @@ func (t *OutboundTransformer) transformEmbeddingRequest(
 	return httpReq, nil
 }
 
-// buildEmbeddingURL constructs the embedding API URL for the credential selected by
-// the API key provider, so a Vertex key resolves to its own project and region.
-func (t *OutboundTransformer) buildEmbeddingURL(ctx context.Context, model string, isBatch bool) string {
+// buildEmbeddingURL constructs the embedding API URL.
+func (t *OutboundTransformer) buildEmbeddingURL(model string, isBatch bool) string {
 	version := t.config.APIVersion
 	if version == "" {
 		version = DefaultAPIVersion
@@ -168,7 +175,7 @@ func (t *OutboundTransformer) buildEmbeddingURL(ctx context.Context, model strin
 
 	// For Vertex AI platform
 	if t.config.PlatformType == PlatformVertex {
-		baseURL := strings.TrimSuffix(t.resolveBaseURL(ctx), "/")
+		baseURL := strings.TrimSuffix(t.config.BaseURL, "/")
 		if strings.Contains(baseURL, "/v1/") {
 			return fmt.Sprintf("%s/publishers/google/models/%s:%s", baseURL, model, action)
 		}
@@ -176,7 +183,7 @@ func (t *OutboundTransformer) buildEmbeddingURL(ctx context.Context, model strin
 		return fmt.Sprintf("%s/v1/publishers/google/models/%s:%s", baseURL, model, action)
 	}
 
-	return fmt.Sprintf("%s/%s/models/%s:%s", t.resolveBaseURL(ctx), version, model, action)
+	return fmt.Sprintf("%s/%s/models/%s:%s", t.config.BaseURL, version, model, action)
 }
 
 // transformEmbeddingResponse transforms Gemini embedding HTTP response to unified llm.Response.

@@ -1,7 +1,6 @@
 package gemini
 
 import (
-	"context"
 	"encoding/json"
 	"strings"
 	"testing"
@@ -247,7 +246,7 @@ func TestOutboundTransformer_buildFullRequestURL(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			transformer := &OutboundTransformer{config: tt.config}
-			result := transformer.buildFullRequestURLWithContext(context.Background(), tt.request)
+			result := transformer.buildFullRequestURL(tt.request)
 			require.Equal(t, tt.expected, result)
 		})
 	}
