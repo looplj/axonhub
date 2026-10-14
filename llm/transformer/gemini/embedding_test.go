@@ -225,13 +225,13 @@ func TestTransformEmbeddingResponse_Error(t *testing.T) {
 func TestBuildEmbeddingURL(t *testing.T) {
 	t.Run("standard API", func(t *testing.T) {
 		tr := newTestEmbeddingTransformer()
-		url := tr.buildEmbeddingURL("gemini-embedding-001", false)
+		url := tr.buildEmbeddingURL(context.Background(), "gemini-embedding-001", false)
 		require.Equal(t, "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent", url)
 	})
 
 	t.Run("standard API batch", func(t *testing.T) {
 		tr := newTestEmbeddingTransformer()
-		url := tr.buildEmbeddingURL("gemini-embedding-001", true)
+		url := tr.buildEmbeddingURL(context.Background(), "gemini-embedding-001", true)
 		require.Equal(t, "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents", url)
 	})
 
@@ -242,7 +242,7 @@ func TestBuildEmbeddingURL(t *testing.T) {
 			PlatformType:   PlatformVertex,
 		})
 		tr := vt.(*OutboundTransformer)
-		url := tr.buildEmbeddingURL("gemini-embedding-001", false)
+		url := tr.buildEmbeddingURL(context.Background(), "gemini-embedding-001", false)
 		require.Equal(t, "https://us-central1-aiplatform.googleapis.com/v1/publishers/google/models/gemini-embedding-001:embedContent", url)
 	})
 }

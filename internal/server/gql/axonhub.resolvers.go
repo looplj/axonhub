@@ -70,8 +70,28 @@ func (r *channelResolver) Credentials(ctx context.Context, obj *ent.Channel) (*o
 		return &creds, nil
 	}
 
+	// Vertex credentials are project-bound triples, so they are returned through
+	// vertexApiKeys; folding them into the flat apiKeys list would present them to
+	// the UI as project-less keys and lose the binding on the next save.
+	apiKeys := creds.GetAllAPIKeys()
+	if len(creds.VertexAPIKeys) > 0 {
+		vertexKeys := make(map[string]struct{}, len(creds.VertexAPIKeys))
+		for _, credential := range creds.VertexAPIKeys {
+			vertexKeys[credential.APIKey] = struct{}{}
+		}
+
+		apiKeys = lo.Filter(apiKeys, func(key string, _ int) bool {
+			_, isVertex := vertexKeys[key]
+			return !isVertex
+		})
+
+		if len(apiKeys) == 0 {
+			apiKeys = nil
+		}
+	}
+
 	// For non-OAuth channel types, use api keys array.
-	creds.APIKeys = creds.GetAllAPIKeys()
+	creds.APIKeys = apiKeys
 	creds.APIKey = ""
 
 	return &creds, nil
