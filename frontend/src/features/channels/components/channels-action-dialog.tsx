@@ -3200,7 +3200,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                         <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
-                          <FormLabel className='font-medium'>
+                          <FormLabel className='font-medium whitespace-nowrap'>
                             {t('channels.dialogs.maxSingleChannelRetries.label')}
                           </FormLabel>
                           <Tooltip>
