@@ -324,6 +324,40 @@ type responsesSessionStream struct {
 	overflow    bool
 }
 
+func (s *responsesSessionStream) AcknowledgeDelivery() {
+	if observer, ok := s.inner.(streams.DeliveryAcknowledger); ok {
+		observer.AcknowledgeDelivery()
+	}
+}
+
+func (s *responsesSessionStream) DeliveryAcknowledged() bool {
+	observer, ok := s.inner.(streams.DeliveryAcknowledger)
+	return ok && observer.DeliveryAcknowledged()
+}
+
+func (s *responsesSessionStream) Deliver(ctx context.Context, write func() (bool, error)) error {
+	boundary, ok := s.inner.(streams.DeliveryBoundary)
+	if ok {
+		return boundary.Deliver(ctx, write)
+	}
+	terminal, err := write()
+	if err == nil && terminal && ctx.Err() != nil {
+		return nil
+	}
+	if err == nil && terminal {
+		s.AcknowledgeDelivery()
+	}
+	return err
+}
+
+func (s *responsesSessionStream) ExpectedStreamChoices() int {
+	choices, ok := s.inner.(interface{ ExpectedStreamChoices() int })
+	if !ok {
+		return 0
+	}
+	return choices.ExpectedStreamChoices()
+}
+
 func (s *responsesSessionStream) Next() bool {
 	if !s.inner.Next() {
 		s.current = nil
