@@ -485,6 +485,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const completionTokens = usageLog.completionTokens || 0;
         const reasoningTokens = usageLog.completionReasoningTokens || 0;
         const totalTokens = promptTokens + completionTokens;
+        const cachedTokens = usageLog.promptCachedTokens || 0;
+        const hitRate = promptTokens > 0 ? (cachedTokens / promptTokens) * 100 : 0;
 
         return (
           <div className='space-y-0.5 text-xs'>
@@ -496,9 +498,14 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
               {t('requests.columns.input')}: {promptTokens.toLocaleString()} | {t('requests.columns.output')}:{' '}
               {completionTokens.toLocaleString()}
             </div>
-            {reasoningTokens > 0 && (
-              <div className='text-muted-foreground'>
-                {t('requests.columns.reasoning')}: {reasoningTokens.toLocaleString()}
+            {(reasoningTokens > 0 || cachedTokens > 0) && (
+              <div className='text-muted-foreground flex flex-wrap items-center gap-x-1.5'>
+                {reasoningTokens > 0 && (
+                  <span>
+                    {t('requests.columns.reasoning')}: {reasoningTokens.toLocaleString()}
+                  </span>
+                )}
+                {cachedTokens > 0 && <span>{t('requests.columns.cacheRate', { rate: hitRate.toFixed(1) })}</span>}
               </div>
             )}
           </div>
