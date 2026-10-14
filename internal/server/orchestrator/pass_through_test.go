@@ -1282,23 +1282,90 @@ func TestPassThroughChannelStream_DrainsBufferedEventsAfterCancel(t *testing.T) 
 	assert.True(t, IsTerminalStreamEvent(events[1]))
 }
 
+func TestPassThroughChannelStream_NextWithNilContext_doesNotDeadlock(t *testing.T) {
+	// Given
+	event := &httpclient.StreamEvent{Data: json.RawMessage(`{"id":"chunk"}`)}
+	ch := make(chan *httpclient.StreamEvent, 1)
+	ch <- event
+	stream := &passThroughChannelStream{ch: ch}
+	done := make(chan bool, 1)
+
+	// When
+	go func() {
+		done <- stream.Next()
+	}()
+
+	// Then
+	select {
+	case ok := <-done:
+		require.True(t, ok)
+		require.Same(t, event, stream.Current())
+	case <-time.After(time.Second):
+		t.Fatal("Next deadlocked with a nil context")
+	}
+}
+
+func TestPassThroughChannelStream_NextBuffered_waitsForCurrentLock(t *testing.T) {
+	// Given
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	ch := make(chan *httpclient.StreamEvent, 1)
+	event := &httpclient.StreamEvent{Data: json.RawMessage(`{"id":"chunk"}`)}
+	ch <- event
+	stream := &passThroughChannelStream{ctx: ctx, ch: ch}
+	stream.currentMu.Lock()
+	done := make(chan bool, 1)
+
+	// When
+	go func() {
+		done <- stream.Next()
+	}()
+
+	// Then
+	select {
+	case <-done:
+		t.Fatal("nextBuffered wrote current without currentMu")
+	case <-time.After(50 * time.Millisecond):
+	}
+	stream.currentMu.Unlock()
+
+	select {
+	case ok := <-done:
+		require.True(t, ok)
+		require.Same(t, event, stream.Current())
+	case <-time.After(time.Second):
+		t.Fatal("nextBuffered did not finish after currentMu was released")
+	}
+}
+
 func TestPassThroughChannelStream_StopsAtEmptyBufferAfterCancel(t *testing.T) {
 	// After cancellation Next() must never block waiting for the producer: it drains
-	// buffered events, then ends the stream (canceling upstream via Close) at the
-	// first empty-buffer moment even though the channel is still open.
+	// buffered events, then detaches the client branch at the first empty-buffer
+	// moment even though the fan-out's raw reader remains active.
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan *httpclient.StreamEvent, 2)
 	ch <- &httpclient.StreamEvent{Data: json.RawMessage(`{"id":"chunk"}`)}
 	cancel()
 
-	upstreamCanceled := false
-	stream := &passThroughChannelStream{ctx: ctx, ch: ch, cancel: func() { upstreamCanceled = true }}
+	clientDetached := false
+	rawOwnerCanceled := false
+	stream := &passThroughChannelStream{
+		ctx: ctx,
+		ch:  ch,
+		cancel: func() {
+			rawOwnerCanceled = true
+		},
+		detach: func() {
+			clientDetached = true
+		},
+	}
 
 	require.True(t, stream.Next())
 	assert.Equal(t, []byte(`{"id":"chunk"}`), stream.Current().Data)
 
 	require.False(t, stream.Next())
-	assert.True(t, upstreamCanceled)
+	assert.True(t, clientDetached)
+	assert.False(t, rawOwnerCanceled)
 }
 
 type doneStream struct {

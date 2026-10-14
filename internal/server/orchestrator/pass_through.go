@@ -605,17 +605,29 @@ func captureRawProviderStream(outbound *PersistentOutboundTransformer, systemSer
 					continue
 				}
 
+<<<<<<< HEAD
 				if err := rawQueue.enqueue(attemptCtx, event); err != nil {
 					backlog.mu.Lock()
 					rawStreamErr = err
 					backlog.mu.Unlock()
+=======
+				if detached.Load() {
+					continue
+				}
+				select {
+				case rawStreamCh <- event:
+				case <-rawStreamDetach:
+				case <-attemptCtx.Done():
+					log.Debug(ctx, "context canceled while sending pass-through event",
+						log.String("channel", channel.Name))
+>>>>>>> 18c16d1a (fix(orchestrator): coordinate passthrough reader ownership)
 
 					return
 				}
 			}
 		}()
 
-		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: &rawStreamErr, errMu: &backlog.mu, cancel: closeStream}, nil
+		return &passThroughChannelStream{ctx: ctx, ch: pipelineCh, errRef: &rawStreamErr, errMu: &backlog.mu, cancel: closeStream, owner: true, detach: outbound.state.RawStreamDetach}, nil
 	})
 }
 
@@ -638,7 +650,7 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 		// Snapshot the current attempt's error reference. If a future retry replaces
 		// state.RawStreamErrRef, this stream still reads from the correct variable.
 		errRef := outbound.state.RawStreamErrRef
-		cancel := outbound.state.RawStreamCancel
+		detach := outbound.state.RawStreamDetach
 
 		// Events captured while the pipeline pre-read the attempt precede the channel.
 		var held []*httpclient.StreamEvent
@@ -675,6 +687,7 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 			}
 		}()
 
+<<<<<<< HEAD
 		rawStream := streams.Stream[*httpclient.StreamEvent](&passThroughChannelStream{ctx: ctx, ch: rawCh, queue: queue, errRef: errRef, errMu: errMu, cancel: cancel})
 		if queue == nil {
 			rawStream = streams.PrependStream(rawStream, held...)
@@ -760,6 +773,62 @@ func (s *responsesTransportStream) Err() error {
 }
 
 func (s *responsesTransportStream) Close() error { return s.stream.Close() }
+=======
+		rawStream := &passThroughChannelStream{ctx: ctx, ch: rawCh, errRef: errRef, errMu: errMu, detach: detach}
+		clientStream := streams.PrependStream(rawStream, held...)
+		if observer := streamLifecycleFromContext(ctx); observer != nil {
+			return withPassThroughDeliveryGate(clientStream, observer), nil
+		}
+
+		return clientStream, nil
+	})
+}
+
+type passThroughDeliveryStream struct {
+	streams.Stream[*httpclient.StreamEvent]
+	observer streams.DeliveryAcknowledger
+}
+
+func withPassThroughDeliveryGate(
+	stream streams.Stream[*httpclient.StreamEvent],
+	observer streams.DeliveryAcknowledger,
+) streams.Stream[*httpclient.StreamEvent] {
+	if observer == nil {
+		return stream
+	}
+
+	return &passThroughDeliveryStream{Stream: stream, observer: observer}
+}
+
+func (s *passThroughDeliveryStream) AcknowledgeDelivery() {
+	s.observer.AcknowledgeDelivery()
+}
+
+func (s *passThroughDeliveryStream) DeliveryAcknowledged() bool {
+	return s.observer.DeliveryAcknowledged()
+}
+
+func (s *passThroughDeliveryStream) Deliver(ctx context.Context, write func() (bool, error)) error {
+	boundary, ok := s.Stream.(streams.DeliveryBoundary)
+	if ok {
+		return boundary.Deliver(ctx, write)
+	}
+	terminal, err := write()
+	if err == nil && terminal && ctx.Err() != nil {
+		return nil
+	}
+	if err == nil && terminal {
+		s.AcknowledgeDelivery()
+	}
+	return err
+}
+
+func (s *passThroughDeliveryStream) WaitForFinalization() {
+	if waiter, ok := s.observer.(streams.FinalizationWaiter); ok {
+		waiter.WaitForFinalization()
+	}
+}
+>>>>>>> 18c16d1a (fix(orchestrator): coordinate passthrough reader ownership)
 
 // rawStreamBacklog holds the raw provider events of one attempt until the pass-through
 // consumer attaches. Before that point the pipeline may still be pre-reading the attempt
@@ -873,6 +942,7 @@ func (b *rawStreamBacklog) release(size int) {
 //
 //nolint:containedctx // Required so Next() can observe request cancellation.
 type passThroughChannelStream struct {
+<<<<<<< HEAD
 	ctx     context.Context
 	ch      <-chan *httpclient.StreamEvent
 	queue   *rawStreamQueue
@@ -882,6 +952,19 @@ type passThroughChannelStream struct {
 	cancel  context.CancelFunc
 	once    sync.Once
 	ctxDone bool
+=======
+	ctx       context.Context
+	ch        <-chan *httpclient.StreamEvent
+	current   *httpclient.StreamEvent
+	errRef    *error
+	errMu     *sync.Mutex
+	cancel    context.CancelFunc
+	owner     bool
+	detach    context.CancelFunc
+	once      sync.Once
+	currentMu sync.RWMutex
+	ctxDone   bool
+>>>>>>> 18c16d1a (fix(orchestrator): coordinate passthrough reader ownership)
 }
 
 func (s *passThroughChannelStream) Next() bool {
@@ -906,7 +989,9 @@ func (s *passThroughChannelStream) Next() bool {
 			return false
 		}
 
+		s.currentMu.Lock()
 		s.current = ev
+		s.currentMu.Unlock()
 
 		return true
 	}
@@ -923,7 +1008,9 @@ func (s *passThroughChannelStream) Next() bool {
 			return false
 		}
 
+		s.currentMu.Lock()
 		s.current = ev
+		s.currentMu.Unlock()
 
 		return true
 	case <-s.ctx.Done():
@@ -960,7 +1047,9 @@ func (s *passThroughChannelStream) nextBuffered() bool {
 			return false
 		}
 
+		s.currentMu.Lock()
 		s.current = ev
+		s.currentMu.Unlock()
 
 		return true
 	default:
@@ -970,7 +1059,12 @@ func (s *passThroughChannelStream) nextBuffered() bool {
 	}
 }
 
-func (s *passThroughChannelStream) Current() *httpclient.StreamEvent { return s.current }
+func (s *passThroughChannelStream) Current() *httpclient.StreamEvent {
+	s.currentMu.RLock()
+	defer s.currentMu.RUnlock()
+
+	return s.current
+}
 
 func (s *passThroughChannelStream) Err() error {
 	if s.errMu != nil {
@@ -989,8 +1083,11 @@ func (s *passThroughChannelStream) Err() error {
 
 func (s *passThroughChannelStream) Close() error {
 	s.once.Do(func() {
-		if s.cancel != nil {
+		if s.owner && s.cancel != nil {
 			s.cancel()
+		}
+		if s.detach != nil {
+			s.detach()
 		}
 	})
 
