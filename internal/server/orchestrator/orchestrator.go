@@ -397,8 +397,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	}
 	if continuation != nil && result.Response != nil {
 		continuation.accept(ctx)
-	} else {
-		lifecycleOwner.Close()
+	}
+	lifecycleOwner.Close()
+	if continuation == nil || result.Response == nil {
 		if preparedResponsesBody != nil && result.Response != nil {
 			processor.responsesSessions.record(ctx, preparedResponsesBody, result.Response.Body)
 		}

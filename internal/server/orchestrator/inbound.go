@@ -204,6 +204,45 @@ func (ts *InboundPersistentStream) Err() error {
 	return ts.stream.Err()
 }
 
+func (ts *InboundPersistentStream) Deliver(ctx context.Context, write func() (bool, error)) error {
+	if ts.lifecycle != nil {
+		terminal, err := deliverAndTrack(write, func(write func() (bool, error)) error {
+			return ts.lifecycle.Deliver(ctx, write)
+		})
+		if err == nil && terminal {
+			ts.AcknowledgeDelivery()
+		}
+		return err
+	}
+	if boundary, ok := ts.stream.(streams.DeliveryBoundary); ok {
+		terminal, err := deliverAndTrack(write, func(write func() (bool, error)) error {
+			return boundary.Deliver(ctx, write)
+		})
+		if err == nil && terminal {
+			ts.AcknowledgeDelivery()
+		}
+		return err
+	}
+	terminal, err := write()
+	if err == nil && terminal && ctx.Err() != nil {
+		err = nil
+	}
+	if err == nil && terminal {
+		ts.AcknowledgeDelivery()
+	}
+	return err
+}
+
+func deliverAndTrack(write func() (bool, error), deliver func(func() (bool, error)) error) (bool, error) {
+	terminal := false
+	err := deliver(func() (bool, error) {
+		var writeErr error
+		terminal, writeErr = write()
+		return terminal, writeErr
+	})
+	return terminal, err
+}
+
 func (ts *InboundPersistentStream) AcknowledgeDelivery() {
 	if ts.lifecycle != nil {
 		ts.lifecycle.AcknowledgeDelivery()

@@ -3,10 +3,12 @@ package orchestrator
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"sync"
 	"time"
 
+	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/lifecycle"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -38,10 +40,11 @@ func streamLifecycleFromContext(ctx context.Context) *streamLifecycle {
 type streamLifecycle struct {
 	mu sync.Mutex
 
-	downstream context.Context
-	shutdown   context.Context
-	execution  context.Context
-	cancel     context.CancelCauseFunc
+	downstream     context.Context
+	shutdown       context.Context
+	execution      context.Context
+	cancel         context.CancelCauseFunc
+	deadlineCancel context.CancelFunc
 
 	acknowledged bool
 	canceled     bool
@@ -72,6 +75,11 @@ type streamTailResult struct {
 
 func (o *streamTailOwner) run(ctx context.Context, cause error) {
 	defer close(o.done)
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			log.Warn(ctx, "stream tail owner panicked", log.Any("panic", recovered))
+		}
+	}()
 	if cause != nil {
 		if o.abort != nil {
 			o.abort()
@@ -94,7 +102,17 @@ func (o *streamTailOwner) run(ctx context.Context, cause error) {
 	result := streamTailResult{end: llm.SourceEndCanceled, err: ctx.Err()}
 	if ctx.Err() == nil {
 		resultCh := make(chan streamTailResult, 1)
-		go func() { resultCh <- collectStreamTail(ctx, o.source, o.onEvent) }()
+		go func() {
+			result := streamTailResult{end: llm.SourceEndError}
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					log.Warn(ctx, "stream tail collection panicked", log.Any("panic", recovered))
+					result.err = fmt.Errorf("stream tail collection panic: %v", recovered)
+				}
+				resultCh <- result
+			}()
+			result = collectStreamTail(ctx, o.source, o.onEvent)
+		}()
 		select {
 		case result = <-resultCh:
 		case <-ctx.Done():
@@ -125,8 +143,9 @@ func (o *streamTailOwner) run(ctx context.Context, cause error) {
 
 func newStreamLifecycle(ctx context.Context) (*streamLifecycle, context.Context) {
 	base := context.WithoutCancel(ctx)
+	var deadlineCancel context.CancelFunc
 	if deadline, ok := ctx.Deadline(); ok {
-		base, _ = context.WithDeadlineCause(base, deadline, context.DeadlineExceeded)
+		base, deadlineCancel = context.WithDeadlineCause(base, deadline, context.DeadlineExceeded)
 	}
 	execution, cancel := context.WithCancelCause(base)
 
@@ -136,13 +155,14 @@ func newStreamLifecycle(ctx context.Context) (*streamLifecycle, context.Context)
 	}
 
 	owner := &streamLifecycle{
-		downstream: ctx,
-		shutdown:   shutdown,
-		execution:  execution,
-		cancel:     cancel,
-		done:       make(chan struct{}),
-		finalized:  make(chan struct{}),
-		stopWatch:  make(chan struct{}),
+		downstream:     ctx,
+		shutdown:       shutdown,
+		execution:      execution,
+		cancel:         cancel,
+		deadlineCancel: deadlineCancel,
+		done:           make(chan struct{}),
+		finalized:      make(chan struct{}),
+		stopWatch:      make(chan struct{}),
 	}
 	go owner.watch()
 
@@ -150,6 +170,11 @@ func newStreamLifecycle(ctx context.Context) (*streamLifecycle, context.Context)
 }
 
 func (s *streamLifecycle) watch() {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			log.Warn(s.execution, "stream lifecycle watcher panicked", log.Any("panic", recovered))
+		}
+	}()
 	select {
 	case <-s.downstream.Done():
 		s.downstreamEnded(s.downstream.Err())
@@ -178,7 +203,7 @@ func (s *streamLifecycle) downstreamEnded(cause error) {
 		tail := s.tail
 		s.mu.Unlock()
 		if tail != nil {
-			s.startTail(tail, cause)
+			s.startTail(tail, nil)
 		}
 		return
 	}
@@ -286,7 +311,7 @@ func (s *streamLifecycle) Close() {
 	}
 	s.mu.Unlock()
 	if tail != nil && acknowledged {
-		s.startTail(tail, s.downstream.Err())
+		s.startTail(tail, nil)
 		<-tail.done
 	} else if tail != nil {
 		if tail.abort != nil {
@@ -304,6 +329,9 @@ func (s *streamLifecycle) Close() {
 	}
 	s.stopOnce.Do(func() { close(s.stopWatch) })
 	<-s.done
+	if s.deadlineCancel != nil {
+		s.deadlineCancel()
+	}
 	close(s.finalized)
 }
 

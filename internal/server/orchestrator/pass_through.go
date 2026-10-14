@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
@@ -659,7 +660,13 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 			log.Int("held_events", len(held)),
 		)
 
+		observer := streamLifecycleFromContext(ctx)
+		drainDone := make(chan struct{})
 		go func() {
+			defer close(drainDone)
+			if observer == nil {
+				defer stream.Close()
+			}
 			defer func() {
 				if r := recover(); r != nil {
 					log.Warn(ctx, "pass-through pipeline drain goroutine panicked, recovering",
@@ -668,8 +675,6 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 					)
 				}
 			}()
-			defer stream.Close()
-
 			for stream.Next() {
 				_ = stream.Current()
 			}
@@ -694,8 +699,8 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 			}
 		}
 
-		if observer := streamLifecycleFromContext(ctx); observer != nil {
-			return withPassThroughDeliveryGate(rawStream, observer), nil
+		if observer != nil {
+			return withPassThroughDeliveryGateAndDrain(rawStream, observer, stream.Close, drainDone), nil
 		}
 
 		return rawStream, nil
@@ -705,17 +710,51 @@ func applyPassThroughStream(outbound *PersistentOutboundTransformer, systemServi
 type passThroughDeliveryStream struct {
 	streams.Stream[*httpclient.StreamEvent]
 	observer streams.DeliveryAcknowledger
+	boundary streams.DeliveryBoundary
+	close    func() error
+	done     <-chan struct{}
 }
 
 func withPassThroughDeliveryGate(
 	stream streams.Stream[*httpclient.StreamEvent],
 	observer streams.DeliveryAcknowledger,
+	closeFns ...func() error,
 ) streams.Stream[*httpclient.StreamEvent] {
 	if observer == nil {
 		return stream
 	}
 
-	return &passThroughDeliveryStream{Stream: stream, observer: observer}
+	boundary, _ := observer.(streams.DeliveryBoundary)
+	var close func() error
+	if len(closeFns) > 0 {
+		close = closeFns[0]
+	}
+	return &passThroughDeliveryStream{Stream: stream, observer: observer, boundary: boundary, close: close}
+}
+
+func withPassThroughDeliveryGateAndDrain(
+	stream streams.Stream[*httpclient.StreamEvent],
+	observer streams.DeliveryAcknowledger,
+	close func() error,
+	done <-chan struct{},
+) streams.Stream[*httpclient.StreamEvent] {
+	if observer == nil {
+		return stream
+	}
+
+	boundary, _ := observer.(streams.DeliveryBoundary)
+	return &passThroughDeliveryStream{Stream: stream, observer: observer, boundary: boundary, close: close, done: done}
+}
+
+func (s *passThroughDeliveryStream) Close() error {
+	if s.done != nil {
+		<-s.done
+	}
+	var closeErr error
+	if s.close != nil {
+		closeErr = s.close()
+	}
+	return errors.Join(closeErr, s.Stream.Close())
 }
 
 func (s *passThroughDeliveryStream) AcknowledgeDelivery() {
@@ -727,8 +766,8 @@ func (s *passThroughDeliveryStream) DeliveryAcknowledged() bool {
 }
 
 func (s *passThroughDeliveryStream) Deliver(ctx context.Context, write func() (bool, error)) error {
-	if boundary, ok := s.Stream.(streams.DeliveryBoundary); ok {
-		return boundary.Deliver(ctx, write)
+	if s.boundary != nil {
+		return s.boundary.Deliver(ctx, write)
 	}
 	terminal, err := write()
 	if err == nil && terminal && ctx.Err() != nil {
