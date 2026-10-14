@@ -226,6 +226,7 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 	if err != nil {
 		return nil, err
 	}
+	originalPayload := clonePayloadMap(payload)
 
 	headers := request.Headers.Clone()
 	if headers == nil {
@@ -249,12 +250,41 @@ func (e *WebSocketExecutor) DoStream(ctx context.Context, request *httpclient.Re
 		return nil, err
 	}
 
+	recoveryUsed := false
 	if err := lease.write(ctx, payload); err != nil {
 		lease.release(true)
-		return nil, fmt.Errorf("failed to write response.create websocket event: %w", err)
+		if !lease.reused || explicitPreviousResponseID(originalPayload) != "" {
+			return nil, fmt.Errorf("failed to write response.create websocket event: %w", err)
+		}
+
+		restorePayloadMap(payload, originalPayload)
+		lease, err = e.acquirePreparedLease(ctx, request, wsURL, headers, payload)
+		if err != nil {
+			return nil, shared.ResponsesWebSocketReconnectError(err)
+		}
+		if err := lease.write(ctx, payload); err != nil {
+			lease.release(true)
+			return nil, shared.ResponsesWebSocketReconnectError(fmt.Errorf("failed to write response.create websocket event after reconnect: %w", err))
+		}
+		recoveryUsed = true
 	}
 
-	stream := &webSocketStream{ctx: ctx, lease: lease, done: make(chan struct{})}
+	streamCtx, streamCancel := context.WithCancel(ctx)
+	stream := &webSocketStream{ctx: ctx, cancel: streamCancel, lease: lease, recoveryUsed: recoveryUsed, done: make(chan struct{})}
+	if !recoveryUsed && lease.reused && explicitPreviousResponseID(originalPayload) == "" {
+		stream.reconnect = func() (*webSocketLease, error) {
+			restorePayloadMap(payload, originalPayload)
+			reconnected, err := e.acquirePreparedLease(streamCtx, request, wsURL, headers, payload)
+			if err != nil {
+				return nil, shared.ResponsesWebSocketReconnectError(err)
+			}
+			if err := reconnected.write(streamCtx, payload); err != nil {
+				reconnected.release(true)
+				return nil, shared.ResponsesWebSocketReconnectError(fmt.Errorf("failed to write response.create websocket event after reconnect: %w", err))
+			}
+			return reconnected, nil
+		}
+	}
 	go func() {
 		select {
 		case <-ctx.Done():
@@ -1129,16 +1159,19 @@ func newWebSocketDialError(request *httpclient.Request, resp *http.Response, err
 }
 
 type webSocketStream struct {
-	ctx      context.Context
-	lease    *webSocketLease
-	done     chan struct{}
-	doneOnce sync.Once
-	mu       sync.Mutex
-	current  *httpclient.StreamEvent
-	err      error
-	closed   bool
-	sawEvent bool
-	terminal bool
+	ctx          context.Context
+	cancel       context.CancelFunc
+	lease        *webSocketLease
+	reconnect    func() (*webSocketLease, error)
+	recoveryUsed bool
+	done         chan struct{}
+	doneOnce     sync.Once
+	mu           sync.Mutex
+	current      *httpclient.StreamEvent
+	err          error
+	closed       bool
+	sawEvent     bool
+	terminal     bool
 }
 
 func (s *webSocketStream) Next() bool {
@@ -1149,12 +1182,52 @@ func (s *webSocketStream) Next() bool {
 		return false
 	}
 
-	_, msg, err := s.lease.conn.ReadMessage()
+	s.mu.Lock()
+	lease := s.lease
+	s.mu.Unlock()
+	_, msg, err := lease.conn.ReadMessage()
 	if err != nil {
+		s.mu.Lock()
+		closed := s.closed
+		s.mu.Unlock()
+		if closed {
+			return false
+		}
+		s.mu.Lock()
+		canReconnect := s.reconnect != nil && !s.recoveryUsed && !s.sawEvent && !s.closed
+		if canReconnect {
+			s.recoveryUsed = true
+		}
+		reconnect := s.reconnect
+		s.mu.Unlock()
+		if canReconnect {
+			lease.release(true)
+			newLease, reconnectErr := reconnect()
+			if reconnectErr == nil {
+				s.mu.Lock()
+				closed := s.closed
+				if !closed {
+					s.lease = newLease
+				}
+				s.mu.Unlock()
+				if closed {
+					newLease.release(true)
+					return false
+				}
+				return s.Next()
+			}
+			if ctxErr := s.ctx.Err(); ctxErr != nil {
+				s.setErr(ctxErr)
+			} else {
+				s.setErr(shared.ResponsesWebSocketReconnectError(reconnectErr))
+			}
+			s.finish(true)
+			return false
+		}
 		if websocket.IsCloseError(err, websocket.CloseNormalClosure) || strings.Contains(err.Error(), "use of closed network connection") {
 			if ctxErr := s.ctx.Err(); ctxErr != nil {
 				s.setErr(ctxErr)
-			} else if !s.hasSeenEvent() {
+			} else if !s.hasSeenEvent() || s.recoveryUsed {
 				s.setErr(fmt.Errorf("websocket closed before response event"))
 			}
 			s.finish(true)
@@ -1267,7 +1340,14 @@ func (s *webSocketStream) markTerminal() {
 
 func (s *webSocketStream) setErr(err error) {
 	s.mu.Lock()
-	s.err = err
+	if ctxErr := s.ctx.Err(); ctxErr != nil && !s.terminal {
+		s.err = ctxErr
+	} else if !s.closed {
+		if s.recoveryUsed {
+			err = shared.ResponsesWebSocketReconnectError(err)
+		}
+		s.err = err
+	}
 	s.mu.Unlock()
 }
 
@@ -1275,8 +1355,15 @@ func (s *webSocketStream) finish(evict bool) {
 	s.doneOnce.Do(func() {
 		s.mu.Lock()
 		s.closed = true
+		if ctxErr := s.ctx.Err(); ctxErr != nil && !s.terminal {
+			s.err = ctxErr
+		}
+		lease := s.lease
 		s.mu.Unlock()
-		s.lease.release(evict)
+		if s.cancel != nil {
+			s.cancel()
+		}
+		lease.release(evict)
 		close(s.done)
 	})
 }

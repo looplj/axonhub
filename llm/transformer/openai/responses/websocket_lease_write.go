@@ -39,6 +39,8 @@ func (l *webSocketLease) write(ctx context.Context, payload map[string]any) erro
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	stop := context.AfterFunc(ctx, func() { _ = l.conn.Close() })
+	defer stop()
 	deadline := time.Now().Add(30 * time.Second)
 	if expires, ok := ctx.Deadline(); ok && expires.Before(deadline) {
 		deadline = expires
