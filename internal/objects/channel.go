@@ -230,8 +230,9 @@ type ChannelSettings struct {
 	RateLimit *ChannelRateLimit `json:"rateLimit,omitempty"`
 
 	// RetryableStatusCodes configures additional HTTP status codes that should
-	// trigger retry for this channel. Default retryable codes (429 and 5xx) are
-	// always handled by the retry policy even when this list is empty.
+	// trigger retry for this channel. 5xx codes are retried by default; 429 is
+	// not, because a rate limit normally switches to another channel — listing
+	// 429 here asks for a same-channel retry instead.
 	RetryableStatusCodes []int `json:"retryableStatusCodes,omitempty"`
 
 	// RetryableErrorPatterns configures additional error text patterns that should
