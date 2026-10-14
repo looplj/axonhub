@@ -73,6 +73,7 @@ func NewWebSocketExecutor(inner pipeline.Executor) *WebSocketExecutor {
 		if native := hc.GetNativeClient(); native != nil {
 			if transport, ok := native.Transport.(*http.Transport); ok && transport.TLSClientConfig != nil {
 				dialer.TLSClientConfig = transport.TLSClientConfig.Clone()
+				dialer.TLSClientConfig.NextProtos = []string{"http/1.1"}
 			}
 		}
 	}
