@@ -173,6 +173,10 @@ type ChatCompletionResult struct {
 }
 
 func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, request *httpclient.Request) (ChatCompletionResult, error) {
+	lifecycleOwner, executionCtx := newStreamLifecycle(ctx)
+	ctx = executionCtx
+
+	var preparedResponsesBody []byte
 	var continuation *responsesContinuation
 	if shared.IsResponsesAPI(ctx) && request != nil && processor.responsesSessions != nil {
 		continuation = newResponsesContinuation(processor.responsesSessions, request.Body)
@@ -343,6 +347,7 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 
 	result, err := pipe.Process(ctx, request)
 	if err != nil {
+		lifecycleOwner.Close()
 		persistCtx, cancel := xcontext.DetachWithTimeout(ctx, time.Second*10)
 		defer cancel()
 
@@ -390,8 +395,14 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			CodexResponseHeadersSupported: outbound.SupportsCodexResponseHeaders(),
 		}, nil
 	}
+<<<<<<< HEAD
 	if continuation != nil && result.Response != nil {
 		continuation.accept(ctx)
+=======
+	lifecycleOwner.Close()
+	if preparedResponsesBody != nil && result.Response != nil {
+		processor.responsesSessions.record(ctx, preparedResponsesBody, result.Response.Body)
+>>>>>>> 047b5e8c (fix(orchestrator): bind delivery lifecycle to execution)
 	}
 
 	return ChatCompletionResult{
