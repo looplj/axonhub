@@ -2,6 +2,7 @@ package responses
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -65,6 +66,17 @@ func TestOutboundCustomizeExecutorUsesCurrentExecutor(t *testing.T) {
 	secondProxy, err := second.dialer.Proxy(req)
 	require.NoError(t, err)
 	require.Equal(t, "http://127.0.0.1:18080", secondProxy.String())
+}
+
+func TestNewWebSocketExecutorOffersHTTP11Only(t *testing.T) {
+	transport := &http.Transport{
+		TLSClientConfig: &tls.Config{NextProtos: []string{"h2", "http/1.1"}},
+	}
+	client := httpclient.NewHttpClientWithClient(&http.Client{Transport: transport})
+
+	executor := NewWebSocketExecutor(client)
+
+	require.Equal(t, []string{"http/1.1"}, executor.dialer.TLSClientConfig.NextProtos)
 }
 
 func TestWebSocketExecutorDoStreamSendsResponseCreate(t *testing.T) {
