@@ -10,13 +10,34 @@ import (
 // after them; a transport error can only be replaced by a completed outcome
 // when aggregation provides explicit completion evidence.
 type streamOutcome struct {
-	terminalState       streamTerminalState
-	providerTerminal    bool
-	aggregatedCompleted bool
-	validatedCompleted  bool
-	transportErr        error
-	contextErr          error
-	contextState        streamTerminalState
+	terminalState        streamTerminalState
+	providerTerminal     bool
+	aggregatedCompleted  bool
+	validatedCompleted   bool
+	transportErr         error
+	contextErr           error
+	contextState         streamTerminalState
+	deliveryAcknowledged bool
+}
+
+func (o *streamOutcome) observeDeliveryAcknowledgement() {
+	o.deliveryAcknowledged = true
+}
+
+func (o streamOutcome) deliveryState() streamTerminalState {
+	return o.deliveryDecision().state
+}
+
+func (o streamOutcome) deliveryDecision() streamOutcomeDecision {
+	decision := o.finalDecision()
+	if decision.state != streamTerminalCompleted {
+		return decision
+	}
+	if !o.deliveryAcknowledged {
+		decision.state = streamTerminalIncomplete
+		decision.cause = ErrStreamIncomplete
+	}
+	return decision
 }
 
 type streamOutcomeDecision struct {
