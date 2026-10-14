@@ -484,3 +484,87 @@ func TestStreamDeliveryTailOwnerWaitsForReader(t *testing.T) {
 		t.Fatal("tail reader started before consumer quiescence")
 	}
 }
+
+// handoffProbeTailStream records whether the tail entered the raw source, so a
+// handoff test can prove the consumer barrier — not just the in-flight reader —
+// gates the tail's first read.
+type handoffProbeTailStream struct {
+	entered     chan struct{}
+	enteredOnce sync.Once
+	release     chan struct{}
+	activeNext  atomic.Int32
+	concurrent  atomic.Bool
+}
+
+func (s *handoffProbeTailStream) Next() bool {
+	if s.activeNext.Add(1) != 1 {
+		s.concurrent.Store(true)
+	}
+	defer s.activeNext.Add(-1)
+	s.enteredOnce.Do(func() { close(s.entered) })
+	<-s.release
+	return false
+}
+
+func (s *handoffProbeTailStream) Current() *httpclient.StreamEvent { return nil }
+func (s *handoffProbeTailStream) Err() error                       { return context.Canceled }
+func (s *handoffProbeTailStream) Close() error                     { return nil }
+func (s *handoffProbeTailStream) concurrentNext() bool             { return s.concurrent.Load() }
+
+// TestStreamDeliveryTailOwnerWaitsForConsumerQuiescence locks the handoff
+// contract: the tail owner must await both the consumer barrier and the
+// in-flight reader. Awaiting only the in-flight reader lets the tail call Next
+// on the raw source while the consumer sits between Next and Current, which can
+// skip or duplicate the trailing usage event that accounting depends on.
+func TestStreamDeliveryTailOwnerWaitsForConsumerQuiescence(t *testing.T) {
+	consumerDone := make(chan struct{})
+	activeReader := make(chan struct{})
+	close(activeReader) // the in-flight read has already returned
+	source := &handoffProbeTailStream{
+		entered: make(chan struct{}),
+		release: make(chan struct{}),
+	}
+	finalized := make(chan llm.SourceEndReason, 1)
+	owner := &streamTailOwner{
+		source:         source,
+		readerDone:     consumerDone,
+		readerDoneFunc: func() <-chan struct{} { return activeReader },
+		abort:          func() { _ = source.Close() },
+		finalize: func(end llm.SourceEndReason) error {
+			finalized <- end
+			return nil
+		},
+		done: make(chan struct{}),
+	}
+
+	tailCtx, cancelTail := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancelTail()
+	go owner.run(tailCtx, nil)
+
+	// Then: the consumer still owns the source, so the tail must not read it.
+	select {
+	case <-source.entered:
+		t.Fatalf("tail read the raw source before the consumer quiesced")
+	case <-time.After(100 * time.Millisecond):
+	}
+	if source.concurrentNext() {
+		t.Fatal("tail read the raw source concurrently with the consumer")
+	}
+
+	// When: the consumer finishes iterating.
+	close(consumerDone)
+	select {
+	case <-source.entered:
+	case <-time.After(2 * time.Second):
+		t.Fatal("tail did not read the source after the consumer quiesced")
+	}
+	close(source.release)
+	select {
+	case <-finalized:
+	case <-time.After(2 * time.Second):
+		t.Fatal("tail did not finalize")
+	}
+	if source.concurrentNext() {
+		t.Fatal("tail read the raw source concurrently with the consumer")
+	}
+}

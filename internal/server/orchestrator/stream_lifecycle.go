@@ -73,6 +73,22 @@ type streamTailResult struct {
 	err error
 }
 
+// awaitTailBarrier waits for one quiescence barrier, aborting the source if the
+// tail budget expires first so a blocked reader cannot stall finalization.
+func awaitTailBarrier(ctx context.Context, abort func(), barrier <-chan struct{}) {
+	if barrier == nil {
+		return
+	}
+	select {
+	case <-barrier:
+	case <-ctx.Done():
+		if abort != nil {
+			abort()
+		}
+		<-barrier
+	}
+}
+
 func (o *streamTailOwner) run(ctx context.Context, cause error) {
 	defer close(o.done)
 	defer func() {
@@ -85,19 +101,14 @@ func (o *streamTailOwner) run(ctx context.Context, cause error) {
 			o.abort()
 		}
 	}
-	readerDone := o.readerDone
+	// The tail must not touch the raw source until the consumer has both
+	// finished its in-flight read and stopped iterating. Awaiting only one of
+	// the two barriers lets the tail call Next on the raw source while the
+	// consumer is between Next and Current, which can skip or duplicate the
+	// final usage event.
+	awaitTailBarrier(ctx, o.abort, o.readerDone)
 	if o.readerDoneFunc != nil {
-		readerDone = o.readerDoneFunc()
-	}
-	if readerDone != nil {
-		select {
-		case <-readerDone:
-		case <-ctx.Done():
-			if o.abort != nil {
-				o.abort()
-			}
-			<-readerDone
-		}
+		awaitTailBarrier(ctx, o.abort, o.readerDoneFunc())
 	}
 	result := streamTailResult{end: llm.SourceEndCanceled, err: ctx.Err()}
 	if ctx.Err() == nil {
@@ -317,12 +328,9 @@ func (s *streamLifecycle) Close() {
 		if tail.abort != nil {
 			tail.abort()
 		}
-		readerDone := tail.readerDone
+		awaitTailBarrier(context.Background(), nil, tail.readerDone)
 		if tail.readerDoneFunc != nil {
-			readerDone = tail.readerDoneFunc()
-		}
-		if readerDone != nil {
-			<-readerDone
+			awaitTailBarrier(context.Background(), nil, tail.readerDoneFunc())
 		}
 		s.startTail(tail, context.Canceled)
 		<-tail.done
@@ -357,10 +365,16 @@ func collectStreamTail(ctx context.Context, source streams.Stream[*httpclient.St
 		default:
 		}
 		if !source.Next() {
-			if err := source.Err(); err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, context.Canceled) {
-				return streamTailResult{end: llm.SourceEndError, err: err}
+			err := source.Err()
+			if err == nil || errors.Is(err, io.EOF) {
+				return streamTailResult{end: llm.SourceEndCleanEOF}
 			}
-			return streamTailResult{end: llm.SourceEndCleanEOF}
+			// A source canceled mid-tail is not a clean end: its usage may be a
+			// placeholder, so it must not be certified as final accounting.
+			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+				return streamTailResult{end: llm.SourceEndCanceled, err: err}
+			}
+			return streamTailResult{end: llm.SourceEndError, err: err}
 		}
 		event := source.Current()
 		if event != nil {
