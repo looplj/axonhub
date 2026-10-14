@@ -175,7 +175,8 @@ function formatMaxSingleChannelRetries(value: number | null | undefined): string
 
 // parseMaxSingleChannelRetriesInput parses the override input. An empty input
 // means "inherit the global value" (value null, valid true). A non-negative
-// integer is a valid override; anything else is invalid.
+// integer within the supported range is a valid override; anything else is
+// invalid.
 function parseMaxSingleChannelRetriesInput(value: string): { valid: boolean; value: number | null } {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -186,7 +187,14 @@ function parseMaxSingleChannelRetriesInput(value: string): { valid: boolean; val
     return { valid: false, value: null };
   }
 
-  return { valid: true, value: Number(trimmed) };
+  // The editor bounds the override it accepts; reads stay permissive so an
+  // out-of-range value stored through the API cannot break the channel list.
+  const parsed = Number(trimmed);
+  if (!Number.isSafeInteger(parsed) || parsed > 65535) {
+    return { valid: false, value: null };
+  }
+
+  return { valid: true, value: parsed };
 }
 
 function parseRetryableErrorPatternsInput(value: string): RetryableErrorPattern[] | null {

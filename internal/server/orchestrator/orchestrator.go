@@ -255,6 +255,10 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 			time.Duration(retryPolicy.StreamFirstEventTimeoutSeconds)*time.Second,
 			time.Duration(retryPolicy.NonStreamResponseTimeoutSeconds)*time.Second,
 		))
+	} else {
+		// Retries are switched off globally: a channel-level override must not
+		// turn same-channel retries back on.
+		pipelineOpts = append(pipelineOpts, pipeline.WithRetriesDisabled())
 	}
 
 	var middlewares []pipeline.Middleware

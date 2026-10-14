@@ -69,6 +69,15 @@ func WithRetry(maxChannelRetries, maxSameChannelRetries int, retryDelay time.Dur
 	}
 }
 
+// WithRetriesDisabled marks the pipeline as running with the global retry policy
+// switched off. A channel-level override only adjusts the retry count while the
+// policy is enabled; it must not switch retries back on.
+func WithRetriesDisabled() Option {
+	return func(p *pipeline) {
+		p.retriesDisabled = true
+	}
+}
+
 // WithMiddlewares configures decorators for the pipeline.
 func WithMiddlewares(decorators ...Middleware) Option {
 	return func(p *pipeline) {
@@ -133,6 +142,7 @@ type pipeline struct {
 	middlewares             []Middleware
 	maxChannelRetries       int
 	maxSameChannelRetries   int
+	retriesDisabled         bool
 	retryDelay              time.Duration
 	emptyResponseDetection  bool
 	streamFirstEventTimeout time.Duration
@@ -466,9 +476,14 @@ func (p *pipeline) getMaxSameChannelRetries() int {
 }
 
 // maxSameChannelRetriesFor returns the effective same-channel retry limit: a
-// channel-level override when the outbound transformer provides one, otherwise
-// the global retry policy value.
+// channel-level override when retries are enabled and the outbound transformer
+// provides one, otherwise the global retry policy value. The override only
+// adjusts the count; it cannot enable retries that the global policy disabled.
 func (p *pipeline) maxSameChannelRetriesFor() int {
+	if p.retriesDisabled {
+		return 0
+	}
+
 	if override, ok := p.Outbound.(ChannelSameChannelRetryLimit); ok {
 		if limit, ok := override.SameChannelRetryLimit(); ok {
 			return limit

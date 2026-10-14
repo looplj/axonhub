@@ -49,8 +49,16 @@ test('parseMaxSingleChannelRetriesInput treats empty as inherit and rejects non-
 test('the dialog wires the override into state, reset, and both settings patches', () => {
   assert.match(dialogSource, /useState\(\(\) =>\s*\n?\s*formatMaxSingleChannelRetries\(initialRow\?\.settings\?\.maxSingleChannelRetries\)/, 'initial state must read the channel override');
   assert.match(dialogSource, /setMaxSingleChannelRetriesText\(formatMaxSingleChannelRetries\(initialRow\?\.settings\?\.maxSingleChannelRetries\)\)/, 'reset must restore the override');
-  assert.match(dialogSource, /maxSingleChannelRetries,\s*\n\s*apiKeyStrategy,/, 'the create settings patch must carry the override');
-  assert.match(dialogSource, /maxSingleChannelRetries,\s*\n\s*\.\.\.quotaRoutingModeSettingsPatch/, 'the update settings patch must carry the override');
+  assert.match(
+    dialogSource,
+    /const settingsPatch: Partial<ChannelSettings> = \{[\s\S]*?maxSingleChannelRetries,/,
+    'the edit settings patch must carry the override'
+  );
+  assert.match(
+    dialogSource,
+    /mergeChannelSettingsForUpdate\(settingsForSubmit, \{[\s\S]*?maxSingleChannelRetries,/,
+    'the create settings patch must carry the override'
+  );
 });
 
 test('the override input renders above the retryable status codes field with an inherit placeholder', () => {

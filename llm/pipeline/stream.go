@@ -158,7 +158,7 @@ func isTerminalLlmStreamEvent(resp *llm.Response) bool {
 }
 
 func (p *pipeline) hasStreamRetryBudget() bool {
-	return p.maxSameChannelRetries > 0 || p.maxChannelRetries > 0
+	return p.maxSameChannelRetriesFor() > 0 || p.maxChannelRetries > 0
 }
 
 func shouldWrapPreReadStreamError(err error) bool {

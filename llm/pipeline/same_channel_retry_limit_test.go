@@ -53,6 +53,14 @@ func TestPipeline_MaxSameChannelRetriesFor(t *testing.T) {
 		p := &pipeline{Outbound: outbound, maxSameChannelRetries: 2}
 		require.Equal(t, 2, p.maxSameChannelRetriesFor())
 	})
+
+	t.Run("a disabled retry policy ignores the channel override", func(t *testing.T) {
+		outbound := &mockOutboundWithRetryLimit{
+			sameChannelLimit: func() (int, bool) { return 7, true },
+		}
+		p := &pipeline{Outbound: outbound, maxSameChannelRetries: 0, retriesDisabled: true}
+		require.Equal(t, 0, p.maxSameChannelRetriesFor(), "the override only adjusts the count, it cannot switch retries back on")
+	})
 }
 
 // TestPipeline_Process_ChannelLevelSameChannelRetries pins that a channel-level
