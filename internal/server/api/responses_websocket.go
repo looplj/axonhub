@@ -643,7 +643,10 @@ func writeResponsesWebSocketResult(
 		terminalTracker := orchestrator.NewStreamTerminalTracker(streamExpectedChoices(stream))
 		for stream.Next() {
 			if err := ctx.Err(); err != nil {
-				return err
+				if terminalSeen || errors.Is(err, context.Canceled) {
+					return nil
+				}
+				return writeResponsesWebSocketError(writer, transformResponsesWebSocketError(ctx, err, transformError), streamID)
 			}
 			event := stream.Current()
 			if event == nil || len(event.Data) == 0 {

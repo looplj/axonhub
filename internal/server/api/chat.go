@@ -729,10 +729,12 @@ func WriteBinaryStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 				clientDisconnected = true
 			}
 
-			_ = writeStreamDelivery(ctx, stream, func() (bool, error) {
-				c.Writer.Flush()
-				return terminalDelivered, nil
-			})
+			if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
+				return terminalDelivered, flushResponseWriter(c.Writer)
+			}); err != nil {
+				clientDisconnected = true
+				log.Warn(ctx, "Failed to flush binary stream", log.Cause(err))
+			}
 
 			return
 		}
@@ -771,14 +773,24 @@ func WriteBinaryStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 			headersWritten = true
 		}
 
-		if _, err := c.Writer.Write(cur.Data); err != nil {
+		if n, err := c.Writer.Write(cur.Data); err != nil {
 			clientDisconnected = true
 			log.Warn(ctx, "Failed to write binary stream chunk", log.Cause(err))
 
 			return
+		} else if n != len(cur.Data) {
+			clientDisconnected = true
+			log.Warn(ctx, "Failed to write binary stream chunk", log.Cause(io.ErrShortWrite))
+
+			return
 		}
 
-		c.Writer.Flush()
+		if err := flushResponseWriter(c.Writer); err != nil {
+			clientDisconnected = true
+			log.Warn(ctx, "Failed to flush binary stream", log.Cause(err))
+
+			return
+		}
 	}
 }
 
