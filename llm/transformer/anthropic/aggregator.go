@@ -25,7 +25,7 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		usage             *Usage
 		stopReason        *string
 		messageDeltaUsage bool
-		startUsage        bool
+		streamError       bool
 		usageEvidence     = llm.AccountingEvidenceUnavailable
 	)
 
@@ -45,7 +45,6 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				messageStart = &event
 				if event.Message.Usage != nil {
 					usage = event.Message.Usage
-					startUsage = true
 				}
 			}
 		case "content_block_start":
@@ -187,11 +186,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				}
 			}
 		case "message_stop":
-			if startUsage && messageDeltaUsage {
+			if messageStart != nil && messageDeltaUsage && !streamError {
 				usageEvidence = llm.AccountingEvidenceExplicitFinal
 			}
 		case "error":
-			startUsage = false
+			streamError = true
+			usageEvidence = llm.AccountingEvidenceUnavailable
 		}
 	}
 

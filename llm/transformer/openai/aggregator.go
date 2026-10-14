@@ -293,6 +293,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				usageEvidence = llm.AccountingEvidenceExplicitFinal
 			} else if len(chunk.Choices) > 0 && allChoicesFinished(seenChoices, finishedChoices) {
 				usageEvidence = llm.AccountingEvidenceCleanEndCandidate
+			} else if len(chunk.Choices) == 0 && len(seenChoices) > 0 {
+				// A trailing usage-only chunk after observed output is a clean-EOF
+				// candidate even when the provider omitted finish_reason.
+				usageEvidence = llm.AccountingEvidenceCleanEndCandidate
 			}
 		} else if len(chunk.Choices) > 0 {
 			usageEvidence = llm.AccountingEvidenceUnavailable

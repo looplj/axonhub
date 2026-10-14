@@ -191,6 +191,17 @@ func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 	}
 }
 
+func TestAggregateStreamChunks_CleanEOFUsageWithoutFinishReason(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"}}]}`)},
+		{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+	}
+	_, meta, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+	require.Equal(t, llm.AccountingEvidenceCleanEndCandidate, meta.AccountingEvidence)
+	require.Equal(t, int64(46), meta.Usage.TotalTokens)
+}
+
 func TestAggregateStreamChunks_EmptyChunks(t *testing.T) {
 	gotBytes, _, err := AggregateStreamChunks(context.Background(), nil, DefaultTransformChunk)
 	require.NoError(t, err)
