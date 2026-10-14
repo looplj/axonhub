@@ -205,6 +205,18 @@ function getResponsesTransportFromChannel(channel?: Pick<Channel, 'type' | 'base
   return getResponsesTransportFromBaseURL(channel?.baseURL);
 }
 
+// Vertex credentials are project-bound triples; the form keeps the same shape as
+// the backend contract so project/region stay attached to their key.
+type VertexAPIKeyCredential = NonNullable<NonNullable<Channel['credentials']>['vertexApiKeys']>[number];
+
+function isVertexChannelType(channelType: ChannelType | undefined): boolean {
+  return channelType === 'gemini_vertex';
+}
+
+function emptyVertexAPIKey(): VertexAPIKeyCredential {
+  return { projectID: '', apiKey: '', region: 'global' };
+}
+
 function getResponsesWebSocketBaseURL(channelType: ChannelType): string | undefined {
   if (channelType === 'openai_responses') return OPENAI_RESPONSES_WEBSOCKET_BASE_URL;
   return undefined;
@@ -761,6 +773,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
               apiKey: currentRow.credentials?.apiKey || undefined,
               apiKeys: currentRow.credentials?.apiKeys || [],
+              vertexApiKeys: currentRow.type === 'gemini_vertex' ? (currentRow.credentials?.vertexApiKeys ?? []) : [],
               managementApiKey: currentRow.credentials?.managementApiKey || undefined,
               gcp: {
                 region: currentRow.credentials?.gcp?.region || '',
@@ -787,6 +800,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
                 apiKey: duplicateFromRow.credentials?.apiKey || undefined,
                 apiKeys: duplicateFromRow.credentials?.apiKeys || [],
+                vertexApiKeys: duplicateFromRow.type === 'gemini_vertex' ? (duplicateFromRow.credentials?.vertexApiKeys ?? []) : [],
                 managementApiKey: duplicateFromRow.credentials?.managementApiKey || undefined,
                 gcp: {
                   region: duplicateFromRow.credentials?.gcp?.region || '',
@@ -802,6 +816,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               policies: { stream: 'unlimited' },
               credentials: {
                 apiKeys: [],
+                vertexApiKeys: isVertexChannelType(derivedChannelType) ? [emptyVertexAPIKey()] : [],
                 managementApiKey: undefined,
                 gcp: {
                   region: '',
@@ -851,6 +866,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     hasAutoSetDuplicateNameRef.current = true;
   }, [open, isDuplicate, duplicateFromRow, allChannelNamesLoaded, allChannelNames, form]);
   const selectedType = form.watch('type') as ChannelType | undefined;
+  const isGeminiVertex = (selectedType || derivedChannelType) === 'gemini_vertex';
   const watchedAutoSync = form.watch('autoSyncSupportedModels');
   const watchedAutoSyncPattern = form.watch('autoSyncModelPattern');
 
@@ -1069,6 +1085,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (selectedApiFormat === 'gemini/contents') {
         const newChannelType = checked ? 'gemini_vertex' : 'gemini';
         form.setValue('type', newChannelType);
+
+        // Switching into Vertex mode needs a row to edit: an empty list would
+        // reject the submit with no visible field to fill in.
+        if (checked && !(form.getValues('credentials.vertexApiKeys') ?? []).length) {
+          form.setValue('credentials.vertexApiKeys', [emptyVertexAPIKey()]);
+        }
 
         if (!isEdit) {
           const baseURLFieldState = form.getFieldState('baseURL', form.formState);
@@ -1328,11 +1350,30 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             type: derivedChannelType,
           };
 
+      // Vertex credentials are project-bound triples and are the only credential for
+      // that channel type: a leftover singular apiKey would still be selected at
+      // runtime and would not resolve to a project/region pair. Ordinary channels keep
+      // their flat apiKeys and never carry the Vertex field.
+      const submittedCredentials = valuesForSubmit.credentials;
+      const credentials =
+        valuesForSubmit.type === 'gemini_vertex'
+          ? {
+              ...submittedCredentials,
+              apiKey: undefined,
+              apiKeys: undefined,
+              vertexApiKeys: (submittedCredentials?.vertexApiKeys ?? []).map((credential) => ({
+                projectID: credential.projectID.trim(),
+                apiKey: credential.apiKey.trim(),
+                region: credential.region.trim() || 'global',
+              })),
+            }
+          : { ...submittedCredentials, vertexApiKeys: undefined };
+
       const dataWithModels = {
         ...valuesForSubmit,
         supportedModels,
         manualModels,
-        credentials: valuesForSubmit.credentials,
+        credentials,
       };
       // The Command Code / Ollama quota cookie is a browser-session credential
       // that only belongs on its own channel type. Never let a
@@ -1686,6 +1727,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const baseURL = form.watch('baseURL');
     const apiKeys = form.watch('credentials.apiKeys');
     const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
+    const vertexApiKeys = form.watch('credentials.vertexApiKeys');
+    const hasVertexApiKey = vertexApiKeys?.some((credential) => credential.apiKey.trim().length > 0);
 
     if (isCodexType || isAntigravityType || isClineType || isXAISubscriptionType) {
       return !!baseURL;
@@ -1701,7 +1744,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       return !!baseURL;
     }
 
-    return !!baseURL && hasApiKey;
+    return !!baseURL && (isGeminiVertex ? hasVertexApiKey : hasApiKey);
   };
   // Memoize quick models to avoid re-evaluating on every render
   const currentType = form.watch('type');
