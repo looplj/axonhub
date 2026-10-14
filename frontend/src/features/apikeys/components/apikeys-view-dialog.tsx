@@ -141,48 +141,46 @@ query_params = {}
         ? {
             codexCompatibility: {
               baseUrl: `${currentOrigin}/codex`,
-              display: `# Store your API key as a Codex personal access token
-mkdir -p \${HOME}/.codex
-cat > \${HOME}/.codex/auth.json <<'EOF'
-{"personal_access_token":"${maskedApiKey}"}
-EOF
-
-# Edit \${HOME}/.codex/config.toml
-model = "gpt-5"
+              display: `# \${HOME}/.codex/config.toml
+model = "gpt-6.1-sol"
 model_provider = "openai"
 openai_base_url = "${currentOrigin}/codex"
 chatgpt_base_url = "${currentOrigin}/codex"
-
 web_search = "live"
-suppress_unstable_features_warning = true
 
 [features]
 fast_mode = true
 context_management = true
 
-export CODEX_AUTHAPI_BASE_URL="${currentOrigin}/codex"
-codex`,
-              real: `# Store your API key as a Codex personal access token
-mkdir -p \${HOME}/.codex
-cat > \${HOME}/.codex/auth.json <<'EOF'
-{"personal_access_token":"${apiKey}"}
-EOF
+# \${HOME}/.codex/auth.json
+{
+  "personal_access_token": "${maskedApiKey}",
+  "OPENAI_API_KEY": "${maskedApiKey}"
+}
 
-# Edit \${HOME}/.codex/config.toml
-model = "gpt-5"
+# In the same shell that starts Codex (macOS/Linux)
+export CODEX_AUTHAPI_BASE_URL="${currentOrigin}/codex"
+# Windows: add CODEX_AUTHAPI_BASE_URL=${currentOrigin}/codex in System Environment Variables`,
+              real: `# \${HOME}/.codex/config.toml
+model = "gpt-6.1-sol"
 model_provider = "openai"
 openai_base_url = "${currentOrigin}/codex"
 chatgpt_base_url = "${currentOrigin}/codex"
-
 web_search = "live"
-suppress_unstable_features_warning = true
 
 [features]
 fast_mode = true
 context_management = true
 
+# \${HOME}/.codex/auth.json
+{
+  "personal_access_token": "${apiKey}",
+  "OPENAI_API_KEY": "${apiKey}"
+}
+
+# In the same shell that starts Codex (macOS/Linux)
 export CODEX_AUTHAPI_BASE_URL="${currentOrigin}/codex"
-codex`,
+# Windows: add CODEX_AUTHAPI_BASE_URL=${currentOrigin}/codex in System Environment Variables`,
             },
           }
         : {}),
@@ -398,16 +396,30 @@ print(response.text)`,
           <label className='text-sm font-medium'>{t('apikeys.dialogs.view.usageExamples')}</label>
           {selectedApiKey?.type === 'user' || selectedApiKey?.type === 'personal' ? (
             <Tabs value={activeExampleTab} onValueChange={setActiveExampleTab} className='mt-2 flex min-h-0 flex-1 flex-col'>
-              <TabsList className={`grid w-full ${showCodexCompatibility ? 'grid-cols-7' : 'grid-cols-6'} shrink-0`}>
-                <TabsTrigger value='claudeCode'>{t('apikeys.dialogs.view.tabs.claudeCode')}</TabsTrigger>
-                <TabsTrigger value='codex'>{t('apikeys.dialogs.view.tabs.codex')}</TabsTrigger>
+              <TabsList className='w-full shrink-0 justify-start gap-2 overflow-x-auto'>
+                <TabsTrigger className='flex-none' value='claudeCode'>
+                  {t('apikeys.dialogs.view.tabs.claudeCode')}
+                </TabsTrigger>
+                <TabsTrigger className='flex-none' value='codex'>
+                  {t('apikeys.dialogs.view.tabs.codex')}
+                </TabsTrigger>
                 {showCodexCompatibility && (
-                  <TabsTrigger value='codexCompatibility'>{t('apikeys.dialogs.view.tabs.codexCompatibility')}</TabsTrigger>
+                  <TabsTrigger className='flex-none' value='codexCompatibility'>
+                    {t('apikeys.dialogs.view.tabs.codexCompatibility')}
+                  </TabsTrigger>
                 )}
-                <TabsTrigger value='pi'>{t('apikeys.dialogs.view.tabs.pi')}</TabsTrigger>
-                <TabsTrigger value='anthropicSDK'>{t('apikeys.dialogs.view.tabs.anthropicSDK')}</TabsTrigger>
-                <TabsTrigger value='openAISDK'>{t('apikeys.dialogs.view.tabs.openAISDK')}</TabsTrigger>
-                <TabsTrigger value='geminiSDK'>{t('apikeys.dialogs.view.tabs.geminiSDK')}</TabsTrigger>
+                <TabsTrigger className='flex-none' value='pi'>
+                  {t('apikeys.dialogs.view.tabs.pi')}
+                </TabsTrigger>
+                <TabsTrigger className='flex-none' value='anthropicSDK'>
+                  {t('apikeys.dialogs.view.tabs.anthropicSDK')}
+                </TabsTrigger>
+                <TabsTrigger className='flex-none' value='openAISDK'>
+                  {t('apikeys.dialogs.view.tabs.openAISDK')}
+                </TabsTrigger>
+                <TabsTrigger className='flex-none' value='geminiSDK'>
+                  {t('apikeys.dialogs.view.tabs.geminiSDK')}
+                </TabsTrigger>
               </TabsList>
               <TabsContent value='pi' className='mt-3 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto'>
                 <p className='text-muted-foreground text-xs'>{t('apikeys.dialogs.view.piHint')}</p>
