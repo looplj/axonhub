@@ -491,13 +491,13 @@ func (p *pipeline) stream(
 	}
 
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
-		inboundStream = streams.Map(
+		inboundStream = preserveStreamCapabilities(inboundStream, streams.Map(
 			inboundStream,
 			func(event *httpclient.StreamEvent) *httpclient.StreamEvent {
 				slog.DebugContext(ctx, "Inbound stream event", slog.Any("event", event))
 				return event
 			},
-		)
+		))
 	}
 
 	if firstEventGuard != nil {

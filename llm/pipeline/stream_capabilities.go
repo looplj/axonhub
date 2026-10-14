@@ -9,6 +9,7 @@ import (
 type streamCapabilities[T any] struct {
 	streams.Stream[T]
 	observer       streams.DeliveryAcknowledger
+	boundary       streams.DeliveryBoundary
 	expectedChoice func() int
 }
 
@@ -21,9 +22,8 @@ func (s *streamCapabilities[T]) DeliveryAcknowledged() bool {
 }
 
 func (s *streamCapabilities[T]) Deliver(ctx context.Context, write func() (bool, error)) error {
-	boundary, ok := s.Stream.(streams.DeliveryBoundary)
-	if ok {
-		return boundary.Deliver(ctx, write)
+	if s.boundary != nil {
+		return s.boundary.Deliver(ctx, write)
 	}
 	terminal, err := write()
 	if err == nil && terminal && ctx.Err() != nil {
@@ -53,5 +53,6 @@ func preserveStreamCapabilities[T, R any](source streams.Stream[T], adapted stre
 		expected = choices.ExpectedStreamChoices
 	}
 
-	return &streamCapabilities[R]{Stream: adapted, observer: observer, expectedChoice: expected}
+	boundary, _ := source.(streams.DeliveryBoundary)
+	return &streamCapabilities[R]{Stream: adapted, observer: observer, boundary: boundary, expectedChoice: expected}
 }
