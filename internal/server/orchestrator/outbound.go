@@ -824,14 +824,19 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return true
 	}
 
-	// 429 Too Many Requests: always skip same-channel retry.
+	// 429 Too Many Requests: skip same-channel retry and switch channels.
 	// The upstream is explicitly rate-limiting this channel, so retrying the same
 	// channel would just burn a retry attempt without any chance of success.
 	// Instead, force a channel switch so the next candidate (e.g. a backup channel)
 	// is tried immediately. The load balancer (e.g. ErrorAware strategy) will
 	// deprioritize this channel for subsequent requests and it will naturally
 	// recover as the rate-limit window resets.
-	if httpclient.IsRateLimitErr(err) || ExtractStatusCodeFromError(err) == http.StatusTooManyRequests {
+	//
+	// A channel that lists 429 in RetryableStatusCodes opts out: for that channel
+	// the code means "the upstream endpoint is busy", where a same-channel retry
+	// can win the race, so the error falls through to the per-channel check below.
+	if (httpclient.IsRateLimitErr(err) || ExtractStatusCodeFromError(err) == http.StatusTooManyRequests) &&
+		!channelRetriesOn429(p.state.CurrentCandidate.Channel) {
 		log.Debug(context.Background(), "429 rate limit, skipping same-channel retry to switch to next channel",
 			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
 		)
