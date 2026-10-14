@@ -394,5 +394,7 @@ func collectStreamTail(ctx context.Context, source streams.Stream[*httpclient.St
 	return streamTailResult{end: llm.SourceEndBudget}
 }
 
-var _ streams.DeliveryAcknowledger = (*streamLifecycle)(nil)
-var _ streams.DeliveryBoundary = (*streamLifecycle)(nil)
+var (
+	_ streams.DeliveryAcknowledger = (*streamLifecycle)(nil)
+	_ streams.DeliveryBoundary     = (*streamLifecycle)(nil)
+)

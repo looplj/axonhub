@@ -21,6 +21,7 @@ type responsesWebSocketDeliveryWriter struct {
 }
 
 func (w *responsesWebSocketDeliveryWriter) SetWriteDeadline(time.Time) error { return w.deadlineErr }
+
 func (w *responsesWebSocketDeliveryWriter) WriteMessage(_ int, data []byte) error {
 	return w.write(data)
 }

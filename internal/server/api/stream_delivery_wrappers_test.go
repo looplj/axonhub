@@ -93,6 +93,7 @@ func (s *deliveryHeartbeatStream) Next() bool { <-s.release; return false }
 
 type deliveryHeartbeatWriter struct {
 	*deliverySSEWriter
+
 	release  chan struct{}
 	released bool
 }

@@ -388,8 +388,7 @@ func TestStreamDeliveryLifecycleTailOwner(t *testing.T) {
 
 func TestStreamDeliveryUnacknowledgedCloseWaitsForReaderBeforeFinalizing(t *testing.T) {
 	// Given: an unacknowledged lifecycle owns a source whose reader is still active.
-	downstream, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	downstream := t.Context()
 	owner, _ := newStreamLifecycle(downstream)
 	source := &delayedLifecycleTailStream{
 		release:     make(chan struct{}),
@@ -435,8 +434,7 @@ func TestStreamDeliveryUnacknowledgedCloseWaitsForReaderBeforeFinalizing(t *test
 
 func TestStreamDeliveryLifecycleShutdownCancelsAcknowledgedExecution(t *testing.T) {
 	manager := lifecycle.New()
-	downstream, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	downstream := t.Context()
 	ctx := manager.Attach(downstream)
 	owner, execution := newStreamLifecycle(ctx)
 	owner.AcknowledgeDelivery()

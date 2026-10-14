@@ -8,6 +8,7 @@ import (
 
 type streamCapabilities[T any] struct {
 	streams.Stream[T]
+
 	observer       streams.DeliveryAcknowledger
 	boundary       streams.DeliveryBoundary
 	waiter         streams.FinalizationWaiter

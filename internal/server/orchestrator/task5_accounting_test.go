@@ -91,11 +91,9 @@ func TestStreamDeliveryAccounting_PersistsAuthoritativeUsageOnce(t *testing.T) {
 	var wg sync.WaitGroup
 	errs := make(chan error, 16)
 	for range 16 {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			errs <- stream.Close()
-		}()
+		})
 	}
 	wg.Wait()
 	close(errs)
@@ -262,7 +260,8 @@ func TestStreamDeliveryAccounting_RealAggregatorsPersistTerminalUsage(t *testing
 		out    func() transformer.Outbound
 		events func(int64, int64) []*httpclient.StreamEvent
 	}{
-		{name: "chat choices-less final", format: llm.APIFormatOpenAIChatCompletion,
+		{
+			name: "chat choices-less final", format: llm.APIFormatOpenAIChatCompletion,
 			out: func() transformer.Outbound {
 				out, err := openai.NewOutboundTransformer("https://example.test", "key")
 				require.NoError(t, err)
@@ -273,8 +272,10 @@ func TestStreamDeliveryAccounting_RealAggregatorsPersistTerminalUsage(t *testing
 					{Data: []byte(`{"id":"chat","model":"gpt-5","choices":[{"index":0,"finish_reason":"stop","delta":{}}]}`)},
 					{Data: []byte(fmt.Sprintf(`{"id":"chat","model":"gpt-5","choices":[],"usage":{"prompt_tokens":%d,"completion_tokens":%d,"total_tokens":%d}}`, input, output, input+output))},
 				}
-			}},
-		{name: "responses failed terminal", format: llm.APIFormatOpenAIResponse,
+			},
+		},
+		{
+			name: "responses failed terminal", format: llm.APIFormatOpenAIResponse,
 			out: func() transformer.Outbound {
 				out, err := responses.NewOutboundTransformer("https://example.test", "key")
 				require.NoError(t, err)
@@ -282,8 +283,10 @@ func TestStreamDeliveryAccounting_RealAggregatorsPersistTerminalUsage(t *testing
 			},
 			events: func(input, output int64) []*httpclient.StreamEvent {
 				return []*httpclient.StreamEvent{{Data: []byte(fmt.Sprintf(`{"type":"response.failed","response":{"id":"resp","status":"failed","usage":{"input_tokens":%d,"output_tokens":%d,"total_tokens":%d}}}`, input, output, input+output))}}
-			}},
-		{name: "anthropic message stop", format: llm.APIFormatAnthropicMessage,
+			},
+		},
+		{
+			name: "anthropic message stop", format: llm.APIFormatAnthropicMessage,
 			out: func() transformer.Outbound {
 				out, err := anthropic.NewOutboundTransformer("https://example.test", "key")
 				require.NoError(t, err)
@@ -295,7 +298,8 @@ func TestStreamDeliveryAccounting_RealAggregatorsPersistTerminalUsage(t *testing
 					{Data: []byte(fmt.Sprintf(`{"type":"message_delta","usage":{"input_tokens":%d,"output_tokens":%d},"delta":{"stop_reason":"end_turn"}}`, input, output))},
 					{Data: []byte(`{"type":"message_stop"}`)},
 				}
-			}},
+			},
+		},
 	}
 	for _, tt := range tests {
 		for _, usage := range []struct {
