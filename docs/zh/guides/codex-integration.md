@@ -24,29 +24,30 @@ AxonHub 可以作为 OpenAI 接口的直接替代方案，使 Codex 能够通过
 兼容开关默认关闭。保存开启的配置时必须选择一个现存 Codex 渠道。即使开关关闭，也可以执行目录测试；测试失败不会阻止保存。目录结果只会过滤为当前调用者可见的模型；这不等于允许手工指定该模型，推理请求仍由现有权限链路检查。
 
 ### 配置 Codex 认证与路由
-1. 编辑 `${HOME}/.codex/auth.json`，将 AxonHub API Key 作为 Codex personal access token 保存。请只使用此文件，不要使用 `CODEX_ACCESS_TOKEN`、`login --with-access-token` 或 `api_key` auth mode：
+1. 编辑 `${HOME}/.codex/auth.json`，在两个支持的字段中都填入 AxonHub API Key。保留双字段可以兼容不同 Codex 客户端版本，避免认证字段变化导致不可预期的问题：
    ```json
-   {"personal_access_token":"<your-axonhub-api-key>"}
+   {
+     "personal_access_token": "ah-***",
+     "OPENAI_API_KEY": "ah-***"
+   }
    ```
 2. 编辑 `${HOME}/.codex/config.toml`，让 provider 和认证 API 都指向同一个 `/codex` 兼容入口：
    ```toml
-   model = "gpt-5"
+   model = "gpt-6.1-sol"
    model_provider = "openai"
-   openai_base_url = "https://gateway.example/codex"
-   chatgpt_base_url = "https://gateway.example/codex"
-
+   openai_base_url = "https://your-axonhub-host/codex"
+   chatgpt_base_url = "https://your-axonhub-host/codex"
    web_search = "live"
-   suppress_unstable_features_warning = true
 
    [features]
    fast_mode = true
    context_management = true
    ```
-3. 在启动 Codex 的同一个 shell 中设置必需的认证 API 地址：
+3. 在 macOS/Linux 启动 Codex 的同一个 shell 中设置必需的认证 API 地址：
    ```bash
-   export CODEX_AUTHAPI_BASE_URL="https://gateway.example/codex"
+   export CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex
    ```
-   将示例主机替换为你的 AxonHub 地址。不要设置独立的目录 URL；whoami、models 和 Responses 请求都使用 `/codex` 入口。
+   Windows 用户请在**系统环境变量**中添加 `CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex`。不要设置独立的目录 URL；whoami、models 和 Responses 请求都使用 `/codex` 入口。
 4. 重启 Codex 以加载配置。
 
 本指南使用的兼容入口如下：

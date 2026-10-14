@@ -24,29 +24,30 @@ Before configuring Codex, open the **Codex Compatibility** settings in AxonHub:
 The switch is off by default. Saving an enabled configuration requires a selected existing Codex channel. The catalog test can be run while the switch is off, and a failed test does not prevent saving. Catalog results are filtered to the models visible to the caller; this does not authorize a manually selected model, which is still checked by the normal inference permission path.
 
 ### Configure Codex authentication and routes
-1. Create `${HOME}/.codex/auth.json` with the AxonHub API key as the Codex personal access token. Keep the value in this file; do not use `CODEX_ACCESS_TOKEN`, `login --with-access-token`, or an `api_key` auth mode:
+1. Create `${HOME}/.codex/auth.json` with the AxonHub API key in both supported fields. Keeping both fields provides an API-key fallback across Codex client versions:
    ```json
-   {"personal_access_token":"<your-axonhub-api-key>"}
+   {
+     "personal_access_token": "ah-***",
+     "OPENAI_API_KEY": "ah-***"
+   }
    ```
 2. Edit `${HOME}/.codex/config.toml` and point the provider and auth API at the same `/codex` compatibility surface:
    ```toml
-   model = "gpt-5"
+   model = "gpt-6.1-sol"
    model_provider = "openai"
-   openai_base_url = "https://gateway.example/codex"
-   chatgpt_base_url = "https://gateway.example/codex"
-
+   openai_base_url = "https://your-axonhub-host/codex"
+   chatgpt_base_url = "https://your-axonhub-host/codex"
    web_search = "live"
-   suppress_unstable_features_warning = true
 
    [features]
    fast_mode = true
    context_management = true
    ```
-3. Set the required auth API base in the same shell that starts Codex:
+3. Set the required auth API base in the same shell that starts Codex on macOS/Linux:
    ```bash
-   export CODEX_AUTHAPI_BASE_URL="https://gateway.example/codex"
+   export CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex
    ```
-   Replace the example host with your AxonHub address. Do not set a separate catalog URL; the `/codex` base is used for whoami, models, and Responses requests.
+   On Windows, add `CODEX_AUTHAPI_BASE_URL=https://your-axonhub-host/codex` in **System Environment Variables**. Do not set a separate catalog URL; the `/codex` base is used for whoami, models, and Responses requests.
 4. Restart Codex to apply the configuration.
 
 The compatibility surface used by this guide is:
