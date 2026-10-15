@@ -129,6 +129,20 @@ func (hc *HttpClient) WithRejectHTTPSDowngrade() *HttpClient {
 	}
 }
 
+// WithRejectRedirects returns a client that refuses every redirect.
+func (hc *HttpClient) WithRejectRedirects() *HttpClient {
+	client := *hc.client
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return fmt.Errorf("refusing redirect for credential-bearing request")
+	}
+	return &HttpClient{
+		client:               &client,
+		proxyConfig:          hc.proxyConfig,
+		opts:                 hc.opts,
+		rejectHTTPSDowngrade: hc.rejectHTTPSDowngrade,
+	}
+}
+
 func rejectHTTPSDowngrade(req *http.Request, via []*http.Request) error {
 	if len(via) > 0 && via[len(via)-1].URL.Scheme == "https" && req.URL.Scheme == "http" {
 		return fmt.Errorf("refusing HTTPS to HTTP redirect")

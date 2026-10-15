@@ -32,6 +32,10 @@ func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string
 	if baseURL == "" || baseURL == "https://api.openai.com/v1" {
 		baseURL = codexBaseURL
 	}
+	parsedBaseURL, err := url.Parse(strings.TrimRight(baseURL, "/#"))
+	if err != nil || parsedBaseURL.Scheme != "https" || parsedBaseURL.Host == "" {
+		return nil, fmt.Errorf("Codex catalog URL must use HTTPS")
+	}
 	headers := make(http.Header)
 	headers.Set("Authorization", "Bearer "+creds.AccessToken)
 	headers.Set("Accept", "application/json")
@@ -48,8 +52,17 @@ func ModelsRequest(ctx context.Context, tokens oauth.TokenGetter, baseURL string
 	}, nil
 }
 
+// ParseThirdPartyModelCatalog returns only models explicitly listed by a third-party catalog.
+func ParseThirdPartyModelCatalog(body []byte) ([]string, error) {
+	return parseModelCatalog(body, false)
+}
+
 // ParseModelCatalog returns only picker-visible models in upstream priority order.
 func ParseModelCatalog(body []byte) ([]string, error) {
+	return parseModelCatalog(body, true)
+}
+
+func parseModelCatalog(body []byte, supplementImageModel bool) ([]string, error) {
 	var response struct {
 		Models []struct {
 			Slug       string `json:"slug"`
@@ -79,7 +92,7 @@ func ParseModelCatalog(body []byte) ([]string, error) {
 	if len(models) == 0 {
 		return nil, fmt.Errorf("Codex catalog has no visible models")
 	}
-	if !imageModelIncluded {
+	if supplementImageModel && !imageModelIncluded {
 		models = append(models, "gpt-image-2")
 	}
 	return models, nil

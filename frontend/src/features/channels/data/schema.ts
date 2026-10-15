@@ -881,8 +881,9 @@ export const updateChannelInputSchema = z
 
     // If we have an OAuth key but no type, check if it looks like Copilot credentials
     const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
+    const isThirdPartyCodex = effectiveType === 'codex' && hasApiKeys;
 
-    if (isOAuthType || derivedType === 'github_copilot' || isCopilotKey) {
+    if (!isThirdPartyCodex && (isOAuthType || derivedType === 'github_copilot' || isCopilotKey)) {
       if (isCopilotKey && !derivedType) {
         try {
           const parsed = JSON.parse(data.credentials.apiKey);

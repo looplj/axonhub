@@ -72,7 +72,7 @@ func TestModelFetcher_CodexThirdPartyCatalog_usesSlugModels(t *testing.T) {
 	// Given
 	var requestURL string
 	var authorization string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestURL = r.URL.String()
 		authorization = r.Header.Get("Authorization")
 		w.Header().Set("Content-Type", "application/json")
@@ -81,7 +81,7 @@ func TestModelFetcher_CodexThirdPartyCatalog_usesSlugModels(t *testing.T) {
 	defer server.Close()
 
 	key := "synthetic-api-key"
-	fetcher := NewModelFetcher(httpclient.NewHttpClient(), nil)
+	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil)
 
 	// When
 	result, err := fetcher.FetchModels(t.Context(), FetchModelsInput{
@@ -98,7 +98,7 @@ func TestModelFetcher_CodexThirdPartyCatalog_usesSlugModels(t *testing.T) {
 	require.NotEmpty(t, requestURL)
 	require.NotEmpty(t, strings.Split(requestURL, "client_version=")[1])
 	require.Equal(t, "Bearer synthetic-api-key", authorization)
-	require.Equal(t, []ModelIdentify{{ID: "third-party-model"}, {ID: "gpt-image-2"}}, result.Models)
+	require.Equal(t, []ModelIdentify{{ID: "third-party-model"}}, result.Models)
 }
 
 func TestModelFetcher_CodexAPIKeyWithOfficialBaseURL_usesCatalog(t *testing.T) {
@@ -123,7 +123,41 @@ func TestModelFetcher_CodexAPIKeyWithOfficialBaseURL_usesCatalog(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, result.Error)
 	require.False(t, result.Fallback)
-	require.Equal(t, []ModelIdentify{{ID: "official-url-api-key-model"}, {ID: "gpt-image-2"}}, result.Models)
+	require.Equal(t, []ModelIdentify{{ID: "official-url-api-key-model"}}, result.Models)
+}
+
+func TestModelFetcher_CodexThirdPartyCatalogRejectsHTTP(t *testing.T) {
+	key := "synthetic-api-key"
+	result, err := NewModelFetcher(httpclient.NewHttpClient(), nil).FetchModels(t.Context(), FetchModelsInput{
+		ChannelType: channel.TypeCodex.String(),
+		BaseURL:     "http://relay.example/backend-api/codex",
+		APIKey:      &key,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "failed to prepare Codex models request: Codex catalog URL must use HTTPS", *result.Error)
+	require.Empty(t, result.Models)
+	require.False(t, result.Fallback)
+}
+
+func TestModelFetcher_CodexThirdPartyCatalogRejectsRedirect(t *testing.T) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "https://example.com/redirected", http.StatusFound)
+	}))
+	defer server.Close()
+
+	key := "synthetic-api-key"
+	result, err := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil).FetchModels(t.Context(), FetchModelsInput{
+		ChannelType: channel.TypeCodex.String(),
+		BaseURL:     server.URL + "/backend-api/codex",
+		APIKey:      &key,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, result.Error)
+	require.Contains(t, *result.Error, "refusing redirect for credential-bearing request")
+	require.Empty(t, result.Models)
+	require.False(t, result.Fallback)
 }
 
 func TestModelFetcher_CodexThirdPartyCatalog_returnsErrorsWithoutFallback(t *testing.T) {
@@ -139,7 +173,7 @@ func TestModelFetcher_CodexThirdPartyCatalog_returnsErrorsWithoutFallback(t *tes
 			// Given
 			var requestURL string
 			var authorization string
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				requestURL = r.URL.String()
 				authorization = r.Header.Get("Authorization")
 				w.WriteHeader(tt.status)
@@ -150,7 +184,7 @@ func TestModelFetcher_CodexThirdPartyCatalog_returnsErrorsWithoutFallback(t *tes
 			key := "synthetic-api-key"
 
 			// When
-			result, err := NewModelFetcher(httpclient.NewHttpClient(), nil).FetchModels(t.Context(), FetchModelsInput{
+			result, err := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil).FetchModels(t.Context(), FetchModelsInput{
 				ChannelType: channel.TypeCodex.String(),
 				BaseURL:     server.URL + "/custom",
 				APIKey:      &key,
@@ -236,7 +270,10 @@ func TestModelFetcher_CodexStoredCredentialReplacement(t *testing.T) {
 				require.Nil(t, result.Error)
 				require.Equal(t, 1, calls)
 				require.False(t, result.Fallback)
-				want := []ModelIdentify{{ID: "new-model"}, {ID: "gpt-image-2"}}
+				want := []ModelIdentify{{ID: "new-model"}}
+				if mode != "replace-api-key" {
+					want = append(want, ModelIdentify{ID: "gpt-image-2"})
+				}
 				require.Equal(t, want, result.Models)
 			}
 			saved, err := db.Channel.Get(ctx, ch.ID)
@@ -261,6 +298,6 @@ func TestModelFetcher_CodexRelayModels(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, 1, calls)
-	require.Equal(t, []ModelIdentify{{ID: "relay-model"}, {ID: "gpt-image-2"}}, result.Models)
+	require.Equal(t, []ModelIdentify{{ID: "relay-model"}}, result.Models)
 	require.False(t, result.Fallback)
 }
