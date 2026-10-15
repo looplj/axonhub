@@ -165,6 +165,10 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
 
   /** 批量导入：多行文本，一行一个 key，去重、去空白，追加到渠道密钥列表 */
   const handleBulkImport = async () => {
+    if (isVertexChannel) {
+      return;
+    }
+
     const newKeys = bulkImportText
       .split('\n')
       .map((k) => k.trim())
@@ -369,8 +373,9 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
                 onChange={(e) => setBulkImportText(e.target.value)}
                 placeholder={t('channels.dialogs.keyManagement.importPlaceholder')}
                 className='min-h-[64px] flex-1 font-mono text-xs'
+                disabled={isVertexChannel}
               />
-              <Button onClick={handleBulkImport} disabled={isPending || bulkImportText.trim().length === 0}>
+              <Button onClick={handleBulkImport} disabled={isVertexChannel || isPending || bulkImportText.trim().length === 0}>
                 {updateChannel.isPending ? <IconLoader2 className='mr-2 h-4 w-4 animate-spin' /> : <IconUpload className='mr-2 h-4 w-4' />}
                 {t('channels.dialogs.keyManagement.importButton')}
               </Button>
