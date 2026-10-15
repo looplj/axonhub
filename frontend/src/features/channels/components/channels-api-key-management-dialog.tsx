@@ -109,13 +109,12 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
   useEffect(() => {
     if (open) {
       setBulkImportText('');
-      // Vertex 渠道的密钥存放在 vertexApiKeys 三元组里，平铺的 apiKeys 一定是空的，
-      // 因此列表必须用 Vertex 密钥初始化。
-      setLocalKeys(
-        currentRow?.type === 'gemini_vertex'
-          ? (currentRow?.credentials?.vertexApiKeys ?? []).map((binding) => binding.apiKey)
-          : (currentRow?.credentials?.apiKeys ?? [])
-      );
+      // Vertex 渠道的三元组密钥存在 vertexApiKeys,平铺密钥存在 apiKeys;
+      // 普通渠道只用平铺 apiKeys。初始化时两个来源都读,避免批量导入时
+      // 只读绑定 key 导致平铺 key 从列表消失。
+      const flatKeys = currentRow?.credentials?.apiKeys ?? [];
+      const boundKeys = (currentRow?.credentials?.vertexApiKeys ?? []).map((binding) => binding.apiKey);
+      setLocalKeys([...flatKeys, ...boundKeys]);
       setVertexBindings(currentRow?.credentials?.vertexApiKeys ?? []);
       setSelectedKeys(new Set());
       setTestingKey(null);

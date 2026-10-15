@@ -1480,8 +1480,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           values.credentials.gcp.projectID.trim() !== '' &&
           values.credentials?.gcp?.jsonData &&
           values.credentials.gcp.jsonData.trim() !== '';
+        const hasVertexApiKeys =
+          values.credentials?.vertexApiKeys && values.credentials.vertexApiKeys.some((binding) => binding.apiKey.trim() !== '');
 
-        if (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials) {
+        if (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials && !hasVertexApiKeys) {
           delete updateInput.credentials;
         }
 

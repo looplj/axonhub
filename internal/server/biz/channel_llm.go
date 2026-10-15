@@ -578,7 +578,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			APIKeyProvider:  apiKeyProvider(),
 			EndpointPath:    ep.Path,
 			PlatformType:    ch.platformTypeForGeminiEndpoint(),
-			BaseURLProvider: vertexEndpointBaseURLProvider(c, ch),
+			BaseURLProvider: vertexEndpointBaseURLProvider(c, ch, baseURL),
 		})
 	case llm.APIFormatGeminiEmbedding.String():
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
@@ -586,7 +586,7 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 			APIKeyProvider:  apiKeyProvider(),
 			EndpointPath:    ep.Path,
 			PlatformType:    ch.platformTypeForGeminiEndpoint(),
-			BaseURLProvider: vertexEndpointBaseURLProvider(c, ch),
+			BaseURLProvider: vertexEndpointBaseURLProvider(c, ch, baseURL),
 		})
 	case llm.APIFormatJinaRerank.String(), llm.APIFormatJinaEmbedding.String():
 		return jina.NewOutboundTransformerWithConfig(&jina.Config{
@@ -1561,9 +1561,10 @@ func vertexServiceBaseURL(baseURL string) string {
 // vertexEndpointBaseURLProvider is the override counterpart of
 // vertexBaseURLProvider. A user-configured Gemini endpoint replaces the primary
 // transformer, so it must rebuild the per-key resource root as well; otherwise a
-// saved endpoint silently falls back to the binding-less project root URL.
-// Non-Vertex Gemini endpoints keep their configured Base URL and return "".
-func vertexEndpointBaseURLProvider(c *ent.Channel, ch *Channel) func(context.Context) string {
+// saved endpoint silently falls back to the binding-less project root URL, and the
+// custom host is replaced by the channel Base URL.
+// Non-Vertex Gemini endpoints keep their configured Base URL and return nil.
+func vertexEndpointBaseURLProvider(c *ent.Channel, ch *Channel, resolvedBaseURL string) func(context.Context) string {
 	if c.Type != channel.TypeGeminiVertex && ch.platformTypeForGeminiEndpoint() != gemini.PlatformVertex {
 		return nil
 	}
@@ -1572,13 +1573,14 @@ func vertexEndpointBaseURLProvider(c *ent.Channel, ch *Channel) func(context.Con
 		return nil
 	}
 
-	return vertexBaseURLProvider(c)
+	return vertexBaseURLProviderWithBaseURL(resolvedBaseURL, c)
 }
 
-// vertexBaseURLProvider resolves the Vertex resource root for the API key the
-// outbound pipeline selected for this request. Each key carries its own project
-// and region, so the URL can only be built once that selection is known.
-func vertexBaseURLProvider(c *ent.Channel) func(context.Context) string {
+// vertexBaseURLProviderWithBaseURL resolves the Vertex resource root for the API key
+// the outbound pipeline selected for this request. Each key carries its own project and
+// region, so the URL can only be built once that selection is known. The base URL is
+// passed in because a custom Gemini endpoint supplies its own host and must keep it.
+func vertexBaseURLProviderWithBaseURL(baseURL string, c *ent.Channel) func(context.Context) string {
 	return func(ctx context.Context) string {
 		apiKey, ok := contexts.GetChannelAPIKey(ctx)
 		if !ok {
@@ -1590,8 +1592,14 @@ func vertexBaseURLProvider(c *ent.Channel) func(context.Context) string {
 			return ""
 		}
 
-		return fmt.Sprintf("%s/v1/projects/%s/locations/%s", vertexServiceBaseURL(c.BaseURL), strings.TrimSpace(credential.ProjectID), strings.TrimSpace(credential.Region))
+		return fmt.Sprintf("%s/v1/projects/%s/locations/%s", vertexServiceBaseURL(baseURL), strings.TrimSpace(credential.ProjectID), strings.TrimSpace(credential.Region))
 	}
+}
+
+// vertexBaseURLProvider binds vertexBaseURLProviderWithBaseURL to the channel's own
+// Base URL, which is what the primary gemini_vertex outbound uses.
+func vertexBaseURLProvider(c *ent.Channel) func(context.Context) string {
+	return vertexBaseURLProviderWithBaseURL(c.BaseURL, c)
 }
 
 func isOAuthJSON(s string) bool {
