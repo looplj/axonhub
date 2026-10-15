@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { z } from 'zod';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban } from 'lucide-react';
@@ -772,7 +772,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
               apiKey: currentRow.credentials?.apiKey || undefined,
               apiKeys: currentRow.credentials?.apiKeys || [],
-              vertexApiKeys: currentRow.type === 'gemini_vertex' ? currentRow.credentials?.vertexApiKeys : [],
+              vertexApiKeys: currentRow.type === 'gemini_vertex' ? (currentRow.credentials?.vertexApiKeys ?? undefined) : [],
               managementApiKey: currentRow.credentials?.managementApiKey || undefined,
               gcp: {
                 region: currentRow.credentials?.gcp?.region || '',
@@ -799,7 +799,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
                 apiKey: duplicateFromRow.credentials?.apiKey || undefined,
                 apiKeys: duplicateFromRow.credentials?.apiKeys || [],
-                vertexApiKeys: duplicateFromRow.type === 'gemini_vertex' ? duplicateFromRow.credentials?.vertexApiKeys : [],
+                vertexApiKeys: duplicateFromRow.type === 'gemini_vertex' ? (duplicateFromRow.credentials?.vertexApiKeys ?? undefined) : [],
                 managementApiKey: duplicateFromRow.credentials?.managementApiKey || undefined,
                 gcp: {
                   region: duplicateFromRow.credentials?.gcp?.region || '',
@@ -831,6 +831,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             },
   });
 
+  const vertexApiKeyFields = useFieldArray({ control: form.control, name: 'credentials.vertexApiKeys' });
   const apiKeys = form.watch('credentials.apiKeys');
   const apiKeysCount = useMemo(() => (apiKeys || []).filter((k) => k.trim().length > 0).length, [apiKeys]);
   const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannelSettings.isPending;
@@ -1652,6 +1653,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const baseURL = form.getValues('baseURL');
     const apiKeys = form.getValues('credentials.apiKeys');
     const oauthApiKey = form.getValues('credentials.apiKey');
+    const vertexApiKeys = channelType === 'gemini_vertex' ? form.getValues('credentials.vertexApiKeys') : undefined;
 
     if (!channelType || !baseURL) {
       return;
@@ -1660,7 +1662,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     try {
       // For OAuth-based providers (like Copilot), prefer oauthApiKey first
       let firstApiKey = '';
-      if (oauthApiKey) {
+      if (channelType === 'gemini_vertex') {
+        firstApiKey = vertexApiKeys?.find((credential) => credential.apiKey.trim().length > 0)?.apiKey.trim() || '';
+      }
+      if (!firstApiKey && oauthApiKey) {
         // If it's OAuth JSON, send full JSON so backend detects isOAuthJSON
         if (oauthApiKey.trimStart().startsWith('{')) {
           firstApiKey = oauthApiKey;
@@ -1678,11 +1683,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       // Fall back to Vertex API keys if neither OAuth nor flat apiKeys are present
-      if (!firstApiKey && channelType === 'gemini_vertex') {
-        const vertexApiKeys = form.getValues('credentials.vertexApiKeys');
-        firstApiKey = vertexApiKeys?.find((c) => c.apiKey.trim().length > 0)?.apiKey.trim() || '';
-      }
-
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
@@ -2517,10 +2517,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 </FormLabel>
                                 <div className='space-y-3 md:col-span-6'>
                                   {credentials.map((_, index) => (
-                                    // Rows are positional and only appended/removed, so the index is a
-                                    // stable identity. Keying on projectID would remount the row on
-                                    // every keystroke and drop input focus.
-                                    <div className='grid gap-3 rounded-md border p-3' key={index}>
+                                    <div className='grid gap-3 rounded-md border p-3' key={vertexApiKeyFields.fields[index]?.id ?? index}>
                                       <div className='grid gap-3 sm:grid-cols-[minmax(0,1fr)_11rem_auto] sm:items-end'>
                                         <FormField
                                           control={form.control}
@@ -2564,7 +2561,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                           type='button'
                                           variant='ghost'
                                           size='icon'
-                                          onClick={() => field.onChange(credentials.filter((_, rowIndex) => rowIndex !== index))}
+                                          onClick={() => vertexApiKeyFields.remove(index)}
                                           disabled={credentials.length <= 1}
                                           aria-label={t('channels.dialogs.fields.vertexApiKey.remove')}
                                         >
@@ -2596,7 +2593,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   <Button
                                     type='button'
                                     variant='secondary'
-                                    onClick={() => field.onChange([...credentials, { projectID: '', apiKey: '', region: 'global' }])}
+                                    onClick={() => vertexApiKeyFields.append({ projectID: '', apiKey: '', region: 'global' })}
                                   >
                                     <Plus className='mr-2 h-4 w-4' />
                                     {t('channels.dialogs.fields.vertexApiKey.add')}
