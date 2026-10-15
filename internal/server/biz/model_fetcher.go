@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/cline"
 	"github.com/looplj/axonhub/llm/transformer/gemini/vertex"
@@ -470,6 +471,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	channelType := channel.Type(input.ChannelType)
+	thirdPartyCodexCatalog := channelType == channel.TypeCodex && codexChannel == nil && !isOAuthJSON(apiKey)
 
 	if apiKey == "" && codexChannel == nil {
 		if isQiniuChannelType(channelType) {
@@ -541,7 +543,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	if proxyConfig != nil {
 		httpClient = httpClient.WithProxy(proxyConfig)
 	}
-	if isCommandCodeChannelType(channelType) || codexChannel != nil {
+	if isCommandCodeChannelType(channelType) || codexChannel != nil || thirdPartyCodexCatalog {
 		httpClient = httpClient.WithRejectHTTPSDowngrade()
 	}
 
@@ -556,6 +558,23 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			return &FetchModelsResult{Models: f.getDefaultModelsByType(ctx, channel.TypeCodex), Fallback: true}, nil
 		}
 		parse = parseCodexModels
+	} else if thirdPartyCodexCatalog {
+		httpClient = httpClient.WithRejectRedirects()
+		catalogBaseURL := httpModelsBaseURL(input.BaseURL)
+		parsedCatalogURL, err := url.Parse(strings.TrimRight(catalogBaseURL, "/#"))
+		if err != nil || !strings.EqualFold(parsedCatalogURL.Scheme, "https") || parsedCatalogURL.Host == "" {
+			return &FetchModelsResult{
+				Models: []ModelIdentify{},
+				Error:  lo.ToPtr("failed to prepare Codex models request: Codex catalog URL must use HTTPS"),
+			}, nil
+		}
+		req, err = codex.ModelsRequest(ctx, oauth.NewAPIKeyTokenProvider(func(context.Context) string {
+			return apiKey
+		}), catalogBaseURL)
+		if err != nil {
+			return &FetchModelsResult{Models: []ModelIdentify{}, Error: lo.ToPtr(fmt.Sprintf("failed to prepare Codex models request: %v", err))}, nil
+		}
+		parse = parseThirdPartyCodexModels
 	} else if isCommandCodeChannelType(channelType) {
 		// Command Code authenticates with a Bearer API key, never X-Api-Key.
 		req.Headers.Set("Authorization", "Bearer "+apiKey)
@@ -661,6 +680,14 @@ func (f *ModelFetcher) prepareCodexModelsRequest(ctx context.Context, ch *ent.Ch
 
 func parseCodexModels(body []byte) ([]ModelIdentify, error) {
 	ids, err := codex.ParseModelCatalog(body)
+	if err != nil {
+		return nil, err
+	}
+	return lo.Map(ids, func(id string, _ int) ModelIdentify { return ModelIdentify{ID: id} }), nil
+}
+
+func parseThirdPartyCodexModels(body []byte) ([]ModelIdentify, error) {
+	ids, err := codex.ParseThirdPartyModelCatalog(body)
 	if err != nil {
 		return nil, err
 	}

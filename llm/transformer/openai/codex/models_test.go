@@ -49,3 +49,10 @@ func TestCodexModelsIncludeImageModel(t *testing.T) {
 		})
 	}
 }
+
+func TestThirdPartyModelCatalogKeepsListedSlugsRegardlessOfVisibility(t *testing.T) {
+	models, err := ParseThirdPartyModelCatalog([]byte(`{"models":[{"slug":"visible","visibility":"list","priority":1},{"slug":"hidden","visibility":"hide","priority":2}]}`))
+
+	require.NoError(t, err)
+	require.Equal(t, []string{"visible", "hidden"}, models)
+}

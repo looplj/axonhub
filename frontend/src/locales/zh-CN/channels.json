@@ -7,6 +7,8 @@
   "channels.dialogs.oauth.errors.copilotCredentialsInvalid": "GitHub Copilot 凭据必须是包含 access_token 的有效 JSON",
   "channels.dialogs.oauth.errors.copilotCredentialsRequired": "GitHub Copilot 需要 OAuth 凭据 (API Key)",
   "channels.dialogs.oauth.errors.credentialsInvalid": "无效的 OAuth 凭据格式",
+  "channels.dialogs.oauth.errors.codexThirdPartyApiKeyRequired": "请为第三方 Codex 渠道填写 API Key",
+  "channels.dialogs.oauth.errors.codexThirdPartyApiKeyInvalid": "第三方 Codex 渠道请粘贴普通 API Key，而不是 OAuth/auth.json 凭据",
   "channels.title": "渠道",
   "channels.description": "管理 AI 模型渠道、配置提供商并监控健康状态。",
   "channels.addChannel": "添加渠道",
