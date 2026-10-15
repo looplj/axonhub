@@ -659,10 +659,55 @@ function vertexAPIKeyCredentialSchema(defaultRegion?: string) {
   });
 }
 
-// Reports whether at least one Vertex credential carries a key. Create and update
-// share this so both agree on what counts as a configured Vertex credential.
-function vertexAPIKeysArePresent(credentials: { vertexApiKeys?: { apiKey: string }[] | null } | undefined) {
-  return credentials?.vertexApiKeys?.some((credential) => credential.apiKey.trim().length > 0) ?? false;
+// Shape-only counterpart of vertexAPIKeyCredentialSchema. The write field schemas must
+// accept a row the channel type never submits, so the strict rules are re-applied per
+// channel type in validateVertexAPIKeys instead of on the field itself.
+const vertexAPIKeyShapeSchema = z.object({
+  projectID: z.string(),
+  apiKey: z.string(),
+  region: z.string().default('global'),
+});
+
+// Vertex rows only mean something on a gemini_vertex channel. Validating them behind
+// the type check keeps a leftover row from blocking an ordinary channel, whose submit
+// clears vertexApiKeys for the non-Vertex type.
+function validateVertexAPIKeys(
+  channelType: string | undefined,
+  credentials: { vertexApiKeys?: { projectID: string; apiKey: string; region?: string }[] | null } | undefined,
+  ctx: z.RefinementCtx
+) {
+  if (channelType !== 'gemini_vertex') {
+    return;
+  }
+
+  const rowSchema = vertexAPIKeyCredentialSchema('global');
+  const rows = credentials?.vertexApiKeys;
+
+  // An empty list is itself an error: create always materialises the field, and an
+  // update that sends one is clearing the last binding.
+  if (rows && !rows.length) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'At least one Vertex API key is required',
+      path: ['credentials', 'vertexApiKeys'],
+    });
+    return;
+  }
+
+  (rows ?? []).forEach((row, index) => {
+    const parsed = rowSchema.safeParse(row);
+    if (parsed.success) {
+      return;
+    }
+
+    parsed.error.issues.forEach((issue) => {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: issue.message,
+        path: ['credentials', 'vertexApiKeys', index, ...issue.path],
+      });
+    });
+  });
 }
 
 // Create Channel Input
@@ -689,7 +734,7 @@ export const createChannelInputSchema = z
       // apiKeys is used for regular API keys (multiple keys for load balancing)
       apiKeys: z.array(z.string()).optional().default([]),
       // Vertex credentials are project-bound triples; an omitted region defaults to global.
-      vertexApiKeys: z.array(vertexAPIKeyCredentialSchema('global')).optional().default([]),
+      vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional().default([]),
       // Optional management key used only by the backend for quota checks
       managementApiKey: z.string().optional(),
       gcp: z
@@ -720,11 +765,11 @@ export const createChannelInputSchema = z
       });
     }
 
-    // Validate that at least one credential type is provided
+    // Validate that at least one credential type is provided. A Vertex key only counts
+    // on a gemini_vertex channel, so it must not satisfy an ordinary channel.
     if (
       !hasApiKey &&
       !hasApiKeys &&
-      !vertexAPIKeysArePresent(data.credentials) &&
       data.type !== 'anthropic_aws' &&
       data.type !== 'anthropic_gcp' &&
       data.type !== 'gemini_vertex'
@@ -766,15 +811,9 @@ export const createChannelInputSchema = z
       }
     }
 
-    // Vertex channels carry no flat apiKeys; the per-field rules on
-    // vertexApiKeys already report a missing project, key or region.
-    if (data.type === 'gemini_vertex' && !data.credentials.vertexApiKeys.length) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: 'At least one Vertex API key is required',
-        path: ['credentials', 'vertexApiKeys'],
-      });
-    }
+    // Vertex rows carry project and region, so their own rules report a missing field
+    // or an invalid project/region, and an empty list is rejected.
+    validateVertexAPIKeys(data.type, data.credentials, ctx);
   });
 export type CreateChannelInput = z.infer<typeof createChannelInputSchema>;
 
@@ -802,7 +841,7 @@ export const updateChannelInputSchema = z
         // apiKeys 用于普通 API Key（支持多 key 负载均衡），OAuth 类型不使用此字段
         apiKeys: z.array(z.string()).optional(),
         // Vertex credentials are project-bound triples; an omitted region defaults to global.
-        vertexApiKeys: z.array(vertexAPIKeyCredentialSchema('global')).optional(),
+        vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional(),
         // Optional management key used only by the backend for quota checks
         managementApiKey: z.string().optional(),
         gcp: z
@@ -891,15 +930,8 @@ export const updateChannelInputSchema = z
       }
     }
 
-    // An update may clear the list, so an empty array is itself an error. The
-    // per-field rules on vertexApiKeys report a missing project, key or region.
-    if (data.type === 'gemini_vertex' && data.credentials?.vertexApiKeys && !data.credentials.vertexApiKeys.length) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: 'At least one Vertex API key is required',
-        path: ['credentials', 'vertexApiKeys'],
-      });
-    }
+    // An update may clear the list, so an empty array is itself an error.
+    validateVertexAPIKeys(data.type, data.credentials, ctx);
   });
 
 export type UpdateChannelInput = z.infer<typeof updateChannelInputSchema>;

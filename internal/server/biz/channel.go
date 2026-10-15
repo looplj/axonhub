@@ -601,6 +601,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		}
 	}
 
+	if err := ValidateVertexAPIKeys(input.Type, input.Credentials); err != nil {
+		return nil, err
+	}
+
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
 		SetType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
@@ -1099,6 +1103,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			}
 			if credentials.ManagementAPIKey == "" && isZenmuxChannelType(effectiveType) {
 				credentials.ManagementAPIKey = existing.Credentials.ManagementAPIKey
+			}
+			if err := ValidateVertexAPIKeys(effectiveType, credentials); err != nil {
+				return err
 			}
 			mut.SetCredentials(credentials)
 		}

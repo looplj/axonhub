@@ -119,3 +119,36 @@ func TestChannelCredentialsInput_CarriesVertexKeys(t *testing.T) {
 	}, creds.VertexAPIKeys)
 	require.Equal(t, "sk-mg", creds.ManagementAPIKey)
 }
+
+// A non-Vertex channel must never expose a Vertex key. Legacy rows can still carry
+// one (credentials were accepted before the type rule existed), and returning it
+// would offer a Google-project key in the UI as if it belonged to that provider.
+func TestChannelResolver_Credentials_DropsVertexKeysOnOtherChannelTypes(t *testing.T) {
+	_, ctx, client := setupTestQueryResolver(t)
+	defer client.Close()
+
+	openaiChannel, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("OpenAI Channel").
+		SetBaseURL("https://api.openai.com/v1").
+		SetCredentials(objects.ChannelCredentials{
+			APIKeys: []string{"sk-plain"},
+			VertexAPIKeys: []objects.VertexAPIKey{
+				{ProjectID: "project-alpha", APIKey: "vertex-key-alpha", Region: "global"},
+			},
+		}).
+		SetSupportedModels([]string{"gpt-4"}).
+		SetDefaultTestModel("gpt-4").
+		Save(ctx)
+	require.NoError(t, err)
+
+	ctx = vertexCredentialsContext(t, ctx, client)
+	channelResolver := &channelResolver{&Resolver{client: client}}
+
+	creds, err := channelResolver.Credentials(ctx, openaiChannel)
+	require.NoError(t, err)
+	require.NotNil(t, creds)
+
+	require.Empty(t, creds.VertexAPIKeys, "an ordinary channel must not surface Vertex credentials")
+	require.Equal(t, []string{"sk-plain"}, creds.APIKeys)
+}

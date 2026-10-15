@@ -32,7 +32,7 @@ import {
   useTestChannelAPIKey,
   useUpdateChannel,
 } from '../data/channels';
-import { TestAPIKeyResult } from '../data/schema';
+import { ChannelCredentials, TestAPIKeyResult } from '../data/schema';
 
 interface ChannelsAPIKeyManagementDialogProps {
   open: boolean;
@@ -67,6 +67,9 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
   // 本弹窗独立的 key 列表：基于 currentRow 快照初始化，导入/删除后本地更新，
   // 避免依赖不会随 query 刷新而更新的 currentRow 快照。
   const [localKeys, setLocalKeys] = useState<string[]>([]);
+  // Vertex 密钥是项目绑定的三元组：列表里展示 apiKey，但每次提交都必须把绑定原样带回，
+  // 否则后端整体替换 credentials 时会丢掉 projectID/region。
+  const [vertexBindings, setVertexBindings] = useState<NonNullable<ChannelCredentials['vertexApiKeys']>>([]);
   const abortRef = useRef(false);
 
   const testSingleKey = useTestChannelAPIKey();
@@ -106,7 +109,14 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
   useEffect(() => {
     if (open) {
       setBulkImportText('');
-      setLocalKeys(currentRow?.credentials?.apiKeys ?? []);
+      // Vertex 渠道的密钥存放在 vertexApiKeys 三元组里，平铺的 apiKeys 一定是空的，
+      // 因此列表必须用 Vertex 密钥初始化。
+      setLocalKeys(
+        currentRow?.type === 'gemini_vertex'
+          ? (currentRow?.credentials?.vertexApiKeys ?? []).map((binding) => binding.apiKey)
+          : (currentRow?.credentials?.apiKeys ?? [])
+      );
+      setVertexBindings(currentRow?.credentials?.vertexApiKeys ?? []);
       setSelectedKeys(new Set());
       setTestingKey(null);
       setTestResults({});
@@ -124,6 +134,21 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
   if (!currentRow) {
     return null;
   }
+  const isVertexChannel = currentRow.type === 'gemini_vertex';
+
+  // Vertex 密钥只能作为三元组提交：平铺进 apiKeys 会变成没有项目绑定的密钥，
+  // 所以列表里的 Vertex 密钥要从 apiKeys 里排除，绑定则按存活的 key 过滤后原样带回。
+  const buildCredentials = (keys: string[]) => {
+    if (!isVertexChannel) {
+      return { apiKeys: keys };
+    }
+    const boundKeys = new Set(vertexBindings.map((binding) => binding.apiKey));
+    const keptKeys = new Set(keys);
+    return {
+      apiKeys: keys.filter((key) => !boundKeys.has(key)),
+      vertexApiKeys: vertexBindings.filter((binding) => keptKeys.has(binding.apiKey)),
+    };
+  };
 
   const handleClose = () => {
     abortRef.current = true;
@@ -139,7 +164,7 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
     setConfirmDeleteSelected(false);
   };
 
-  /** 批量导入：多行文本，一行一个 key，去重、去空白，追加到渠道 apiKeys */
+  /** 批量导入：多行文本，一行一个 key，去重、去空白，追加到渠道密钥列表 */
   const handleBulkImport = async () => {
     const newKeys = bulkImportText
       .split('\n')
@@ -161,9 +186,7 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
       await updateChannel.mutateAsync({
         id: currentRow.id,
         input: {
-          credentials: {
-            apiKeys: [...validKeys, ...deduped],
-          },
+          credentials: buildCredentials([...validKeys, ...deduped]),
         },
       });
       // 本地同步更新，避免依赖不会刷新的 currentRow 快照
@@ -193,12 +216,13 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
     if (active.length > 0) {
       await updateChannel.mutateAsync({
         id: currentRow.id,
-        input: { credentials: { apiKeys: remainingKeys } },
+        input: { credentials: buildCredentials(remainingKeys) },
       });
     }
     // 本地同步更新（disabled 删除走 deleteDisabledAPIKeys 不触发 updateChannel，
     // 但同样要从弹窗列表里移除）
     setLocalKeys(remainingKeys);
+    setVertexBindings((prev) => prev.filter((binding) => !removed.has(binding.apiKey)));
   };
 
   const handleDeleteSingle = async (key: string) => {

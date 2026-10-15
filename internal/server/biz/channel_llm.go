@@ -574,17 +574,19 @@ func (svc *ChannelService) buildNonDefaultEndpointOutbound(
 		})
 	case llm.APIFormatGeminiContents.String():
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:        baseURL,
-			APIKeyProvider: apiKeyProvider(),
-			EndpointPath:   ep.Path,
-			PlatformType:   ch.platformTypeForGeminiEndpoint(),
+			BaseURL:         baseURL,
+			APIKeyProvider:  apiKeyProvider(),
+			EndpointPath:    ep.Path,
+			PlatformType:    ch.platformTypeForGeminiEndpoint(),
+			BaseURLProvider: vertexEndpointBaseURLProvider(c, ch),
 		})
 	case llm.APIFormatGeminiEmbedding.String():
 		return gemini.NewOutboundTransformerWithConfig(gemini.Config{
-			BaseURL:        baseURL,
-			APIKeyProvider: apiKeyProvider(),
-			EndpointPath:   ep.Path,
-			PlatformType:   ch.platformTypeForGeminiEndpoint(),
+			BaseURL:         baseURL,
+			APIKeyProvider:  apiKeyProvider(),
+			EndpointPath:    ep.Path,
+			PlatformType:    ch.platformTypeForGeminiEndpoint(),
+			BaseURLProvider: vertexEndpointBaseURLProvider(c, ch),
 		})
 	case llm.APIFormatJinaRerank.String(), llm.APIFormatJinaEmbedding.String():
 		return jina.NewOutboundTransformerWithConfig(&jina.Config{
@@ -1371,25 +1373,11 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 	case channel.TypeGeminiVertex:
 		var baseURLProvider func(context.Context) string
 		if len(c.Credentials.VertexAPIKeys) > 0 {
-			for _, credential := range c.Credentials.VertexAPIKeys {
-				if strings.TrimSpace(credential.APIKey) == "" || !validVertexResourceSegment(credential.ProjectID) || !validVertexResourceSegment(credential.Region) {
-					return nil, fmt.Errorf("vertex api key, project ID, and region are required for channel %s", c.Name)
-				}
+			if err := ValidateVertexAPIKeys(c.Type, c.Credentials); err != nil {
+				return nil, fmt.Errorf("channel %s: %w", c.Name, err)
 			}
 
-			baseURLProvider = func(ctx context.Context) string {
-				apiKey, ok := contexts.GetChannelAPIKey(ctx)
-				if !ok {
-					return ""
-				}
-
-				credential, ok := c.Credentials.VertexAPIKey(apiKey)
-				if !ok {
-					return ""
-				}
-
-				return fmt.Sprintf("%s/v1/projects/%s/locations/%s", vertexServiceBaseURL(c.BaseURL), credential.ProjectID, strings.TrimSpace(credential.Region))
-			}
+			baseURLProvider = vertexBaseURLProvider(c)
 		}
 
 		transformer, err := gemini.NewOutboundTransformerWithConfig(gemini.Config{
@@ -1501,6 +1489,60 @@ func validVertexResourceSegment(value string) bool {
 	return vertexResourceSegmentPattern.MatchString(strings.TrimSpace(value))
 }
 
+// ValidateVertexAPIKeys rejects Vertex credential sets that cannot produce a
+// usable request URL. It is enforced on create and update so an invalid triple
+// never reaches the database: outbound construction also rejects them, and a
+// channel that fails there is skipped during cache reload, which would make a
+// successfully saved channel silently disappear from routing.
+//
+// Duplicate API keys are rejected when they carry different bindings: the
+// runtime looks a key up to find its project and region, so two entries sharing
+// a key would always resolve to whichever comes first.
+func ValidateVertexAPIKeys(channelType channel.Type, credentials objects.ChannelCredentials) error {
+	if len(credentials.VertexAPIKeys) == 0 {
+		return nil
+	}
+
+	// Vertex bindings only mean something on a Vertex channel. Allowing them
+	// elsewhere would let a Vertex key be selected for an unrelated provider and
+	// sent upstream as that provider's credential.
+	if channelType != channel.TypeGeminiVertex {
+		return fmt.Errorf("vertex api keys are only supported by %s channels", channel.TypeGeminiVertex)
+	}
+
+	bindings := make(map[string]objects.VertexAPIKey, len(credentials.VertexAPIKeys))
+
+	for _, credential := range credentials.VertexAPIKeys {
+		apiKey := strings.TrimSpace(credential.APIKey)
+		projectID := strings.TrimSpace(credential.ProjectID)
+		region := strings.TrimSpace(credential.Region)
+
+		if apiKey == "" || projectID == "" || region == "" {
+			return errors.New("vertex api key, project ID, and region are all required")
+		}
+
+		if !validVertexResourceSegment(projectID) {
+			return fmt.Errorf("vertex project ID %q is not a valid Google project ID", projectID)
+		}
+
+		if !validVertexResourceSegment(region) {
+			return fmt.Errorf("vertex region %q is not a valid Google region", region)
+		}
+
+		if existing, found := bindings[apiKey]; found {
+			if strings.TrimSpace(existing.ProjectID) != projectID || strings.TrimSpace(existing.Region) != region {
+				return fmt.Errorf("vertex api key is bound to both %s/%s and %s/%s", existing.ProjectID, existing.Region, projectID, region)
+			}
+
+			continue
+		}
+
+		bindings[apiKey] = objects.VertexAPIKey{ProjectID: projectID, Region: region}
+	}
+
+	return nil
+}
+
 // vertexServiceBaseURL reduces a channel Base URL to the Vertex service root.
 // Channels configured before per-key projects stored the full
 // "/v1/projects/<project>/locations/<region>" path in the Base URL, and the
@@ -1514,6 +1556,42 @@ func vertexServiceBaseURL(baseURL string) string {
 	}
 
 	return strings.TrimSuffix(trimmed, "/v1")
+}
+
+// vertexEndpointBaseURLProvider is the override counterpart of
+// vertexBaseURLProvider. A user-configured Gemini endpoint replaces the primary
+// transformer, so it must rebuild the per-key resource root as well; otherwise a
+// saved endpoint silently falls back to the binding-less project root URL.
+// Non-Vertex Gemini endpoints keep their configured Base URL and return "".
+func vertexEndpointBaseURLProvider(c *ent.Channel, ch *Channel) func(context.Context) string {
+	if c.Type != channel.TypeGeminiVertex && ch.platformTypeForGeminiEndpoint() != gemini.PlatformVertex {
+		return nil
+	}
+
+	if len(c.Credentials.VertexAPIKeys) == 0 {
+		return nil
+	}
+
+	return vertexBaseURLProvider(c)
+}
+
+// vertexBaseURLProvider resolves the Vertex resource root for the API key the
+// outbound pipeline selected for this request. Each key carries its own project
+// and region, so the URL can only be built once that selection is known.
+func vertexBaseURLProvider(c *ent.Channel) func(context.Context) string {
+	return func(ctx context.Context) string {
+		apiKey, ok := contexts.GetChannelAPIKey(ctx)
+		if !ok {
+			return ""
+		}
+
+		credential, ok := c.Credentials.VertexAPIKey(apiKey)
+		if !ok {
+			return ""
+		}
+
+		return fmt.Sprintf("%s/v1/projects/%s/locations/%s", vertexServiceBaseURL(c.BaseURL), strings.TrimSpace(credential.ProjectID), strings.TrimSpace(credential.Region))
+	}
 }
 
 func isOAuthJSON(s string) bool {

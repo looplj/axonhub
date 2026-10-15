@@ -162,7 +162,7 @@ func TestVertexChannelEmptyRegionIsRejected(t *testing.T) {
 	channelSvc := NewChannelServiceForTest(client)
 
 	_, err := channelSvc.buildChannelWithOutbounds(entChannel)
-	require.ErrorContains(t, err, "project ID, and region are required")
+	require.ErrorContains(t, err, "vertex api key, project ID, and region are all required")
 }
 
 // Channels configured before per-key projects stored the project path in the Base URL.
