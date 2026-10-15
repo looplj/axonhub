@@ -748,12 +748,17 @@ func withPassThroughDeliveryGateAndDrain(
 }
 
 func (s *passThroughDeliveryStream) Close() error {
-	if s.done != nil {
-		<-s.done
-	}
+	// Stop the producer before waiting on the drain. A failed downstream write
+	// stops the pass-through consumer, so nothing reads the raw queue, the
+	// producer blocks on it, and the drain blocks on the producer. Only s.close
+	// cancels the producer, so waiting first deadlocks. The drain still consumes
+	// everything already buffered, preserving the background reader's accounting.
 	var closeErr error
 	if s.close != nil {
 		closeErr = s.close()
+	}
+	if s.done != nil {
+		<-s.done
 	}
 	return errors.Join(closeErr, s.Stream.Close())
 }

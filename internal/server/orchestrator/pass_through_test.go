@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -2907,4 +2908,47 @@ func TestApplyPassThroughBodyAppliesSpeechModelPatch(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "tts-1-hd", gjson.GetBytes(processed.Body, "model").String())
 	require.Equal(t, "alloy", gjson.GetBytes(processed.Body, "voice").String())
+}
+
+// closeOrderObserver is a minimal DeliveryAcknowledger for delivery-gate tests.
+type closeOrderObserver struct {
+	acknowledged bool
+}
+
+func (o *closeOrderObserver) AcknowledgeDelivery() { o.acknowledged = true }
+
+func (o *closeOrderObserver) DeliveryAcknowledged() bool { return o.acknowledged }
+
+func TestPassThroughDeliveryStream_CloseStopsProducerBeforeWaitingForDrain(t *testing.T) {
+	// A failed downstream write stops the pass-through consumer while the request
+	// context is still live, so nothing reads the raw queue and the producer blocks
+	// on it. Only the owner close (fan-out cancel plus upstream Close) unblocks the
+	// producer, which is what lets the pipeline drain finish. Waiting for the drain
+	// before stopping the producer deadlocks, and the bounded tail never starts
+	// because the lifecycle has not been closed.
+	var closeCalls atomic.Int32
+	drained := make(chan struct{})
+	stream := withPassThroughDeliveryGateAndDrain(
+		testHTTPStream(nil),
+		&closeOrderObserver{},
+		func() error {
+			closeCalls.Add(1)
+			// Stopping the producer is what releases the drain.
+			close(drained)
+
+			return nil
+		},
+		drained,
+	)
+
+	closed := make(chan error, 1)
+	go func() { closed <- stream.Close() }()
+
+	select {
+	case err := <-closed:
+		require.NoError(t, err)
+	case <-time.After(2 * time.Second):
+		t.Fatal("Close waited on the drain before stopping the producer")
+	}
+	require.Equal(t, int32(1), closeCalls.Load())
 }

@@ -191,7 +191,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			}
 		case "error":
 			streamError = true
-			usageEvidence = llm.AccountingEvidenceUnavailable
+			// An error before message_stop means the message never completed, so
+			// its usage may be partial. An error after message_stop cannot retract
+			// usage the provider already delivered with a completed message.
+			if usageEvidence != llm.AccountingEvidenceExplicitFinal {
+				usageEvidence = llm.AccountingEvidenceUnavailable
+			}
 		}
 	}
 

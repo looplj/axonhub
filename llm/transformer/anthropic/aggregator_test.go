@@ -184,8 +184,22 @@ func TestAggregateStreamChunks_MessageDeltaUsageWithoutStartUsage(t *testing.T) 
 	require.Equal(t, llm.AccountingEvidenceExplicitFinal, meta.AccountingEvidence)
 	require.Equal(t, int64(46), meta.Usage.TotalTokens)
 
+	// A trailing error after the completion boundary cannot retract usage the
+	// provider already delivered with the completed message.
 	withError := append(append([]*httpclient.StreamEvent{}, base...), &httpclient.StreamEvent{Data: []byte(`{"type":"error"}`)})
 	_, meta, err = AggregateStreamChunks(t.Context(), withError, PlatformDirect)
+	require.NoError(t, err)
+	require.Equal(t, llm.AccountingEvidenceExplicitFinal, meta.AccountingEvidence)
+	require.Equal(t, int64(46), meta.Usage.TotalTokens)
+
+	// An error before the completion boundary still invalidates the usage.
+	beforeStop := []*httpclient.StreamEvent{
+		base[0],
+		base[1],
+		{Data: []byte(`{"type":"error"}`)},
+		base[2],
+	}
+	_, meta, err = AggregateStreamChunks(t.Context(), beforeStop, PlatformDirect)
 	require.NoError(t, err)
 	require.Equal(t, llm.AccountingEvidenceUnavailable, meta.AccountingEvidence)
 }
