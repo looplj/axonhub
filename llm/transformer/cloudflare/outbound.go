@@ -32,6 +32,8 @@ type SystemOneOutboundTransformer struct {
 	config *Config
 }
 
+// NewSystemOneOutboundTransformerWithConfig validates the config and returns an
+// outbound that addresses native runs from the account-scoped Workers AI base.
 func NewSystemOneOutboundTransformerWithConfig(config *Config) (*SystemOneOutboundTransformer, error) {
 	if config == nil {
 		return nil, fmt.Errorf("config cannot be nil")
@@ -57,6 +59,7 @@ func NewSystemOneOutboundTransformerWithConfig(config *Config) (*SystemOneOutbou
 	}, nil
 }
 
+// APIFormat reports the typesafe System One format served by this outbound.
 func (t *SystemOneOutboundTransformer) APIFormat() llm.APIFormat {
 	return llm.APIFormatTypeSafeSystemOne
 }
@@ -67,6 +70,13 @@ func (t *SystemOneOutboundTransformer) AllowPassThroughBody(context.Context, *ll
 	return false
 }
 
+// AllowPassThroughResponse disables raw response reuse: Workers AI wraps decision
+// responses in an envelope, while the System One API promises the unwrapped payload.
+func (t *SystemOneOutboundTransformer) AllowPassThroughResponse(context.Context, *llm.Request, *httpclient.Request) bool {
+	return false
+}
+
+// TransformRequest builds the native Workers AI run request for a System One decision.
 func (t *SystemOneOutboundTransformer) TransformRequest(
 	ctx context.Context,
 	llmReq *llm.Request,
@@ -110,6 +120,7 @@ func (t *SystemOneOutboundTransformer) TransformRequest(
 	}, nil
 }
 
+// buildURL returns {base}{prefix}/{model}, where prefix defaults to "/run".
 func (t *SystemOneOutboundTransformer) buildURL(model string) string {
 	prefix := "/run"
 	if t.config.EndpointPath != "" {
@@ -140,6 +151,8 @@ func modelSelector(model string) string {
 	return model
 }
 
+// TransformResponse unwraps the Cloudflare envelope, when present, into a flat
+// System One response and surfaces envelope-reported failures as errors.
 func (t *SystemOneOutboundTransformer) TransformResponse(
 	ctx context.Context,
 	httpResp *httpclient.Response,
@@ -168,10 +181,23 @@ func (t *SystemOneOutboundTransformer) TransformResponse(
 		// Workers AI can report a failure inside a 2xx response, so an unwrapped
 		// body would otherwise decode into an empty answer set and look successful.
 		if (env.Success != nil && !*env.Success) || len(env.Errors) > 0 {
+			// A failure carried by a 2xx response is still an upstream failure; keep
+			// the client from receiving an error body with a success status.
+			statusCode := httpResp.StatusCode
+			if statusCode < http.StatusBadRequest {
+				statusCode = http.StatusBadGateway
+			}
+
 			return nil, t.TransformError(ctx, &httpclient.Error{
-				StatusCode: httpResp.StatusCode,
+				StatusCode: statusCode,
 				Body:       httpResp.Body,
 			})
+		}
+
+		// A successful envelope must carry the payload in result; without it the
+		// envelope itself would decode into an empty answer set.
+		if env.Success != nil && env.Result == nil {
+			return nil, fmt.Errorf("failed to unmarshal systemone response: envelope has no result")
 		}
 
 		if env.Result != nil {
@@ -211,6 +237,8 @@ func (t *SystemOneOutboundTransformer) TransformResponse(
 	return llmResp, nil
 }
 
+// TransformError maps a Workers AI error, preferring the envelope's error messages
+// over the raw body.
 func (t *SystemOneOutboundTransformer) TransformError(
 	ctx context.Context,
 	httpErr *httpclient.Error,
@@ -262,6 +290,7 @@ func (t *SystemOneOutboundTransformer) TransformError(
 	}
 }
 
+// TransformStream is unsupported: System One decisions are not streamed.
 func (t *SystemOneOutboundTransformer) TransformStream(
 	ctx context.Context,
 	req *httpclient.Request,
@@ -270,6 +299,7 @@ func (t *SystemOneOutboundTransformer) TransformStream(
 	return nil, fmt.Errorf("systemone does not support streaming")
 }
 
+// AggregateStreamChunks is unsupported: System One decisions are not streamed.
 func (t *SystemOneOutboundTransformer) AggregateStreamChunks(
 	ctx context.Context, _ *httpclient.Request,
 	chunks []*httpclient.StreamEvent,

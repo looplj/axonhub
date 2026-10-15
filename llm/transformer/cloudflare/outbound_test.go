@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	_ transformer.Outbound              = (*SystemOneOutboundTransformer)(nil)
-	_ transformer.PassThroughBodyPolicy = (*SystemOneOutboundTransformer)(nil)
+	_ transformer.Outbound                  = (*SystemOneOutboundTransformer)(nil)
+	_ transformer.PassThroughBodyPolicy     = (*SystemOneOutboundTransformer)(nil)
+	_ transformer.PassThroughResponsePolicy = (*SystemOneOutboundTransformer)(nil)
 )
 
 const testBaseURL = "https://api.cloudflare.com/client/v4/accounts/<account_id>/ai"
@@ -179,6 +180,11 @@ func TestSystemOneOutboundTransformer_DisallowsPassThroughBody(t *testing.T) {
 	require.False(t, outbound.AllowPassThroughBody(context.Background(), newSystemOneRequest("@cf/cloudflare/clef"), nil))
 }
 
+func TestSystemOneOutboundTransformer_DisallowsPassThroughResponse(t *testing.T) {
+	outbound := newTestOutbound(t, testBaseURL)
+	require.False(t, outbound.AllowPassThroughResponse(context.Background(), newSystemOneRequest("@cf/cloudflare/clef"), nil))
+}
+
 func TestSystemOneOutboundTransformer_TransformResponse(t *testing.T) {
 	tests := []struct {
 		name string
@@ -246,9 +252,23 @@ func TestSystemOneOutboundTransformer_TransformResponse_EnvelopeFailure(t *testi
 
 		var respErr *llm.ResponseError
 		require.ErrorAs(t, err, &respErr)
-		require.Equal(t, http.StatusOK, respErr.StatusCode)
+		require.Equal(t, http.StatusBadGateway, respErr.StatusCode)
 		require.Equal(t, "AiError: Bad input", respErr.Detail.Message)
 		require.Equal(t, "5006", respErr.Detail.Code)
+	})
+
+	t.Run("success false with 4xx keeps status", func(t *testing.T) {
+		_, err := outbound.TransformResponse(context.Background(), &httpclient.Response{
+			StatusCode: http.StatusTooManyRequests,
+			Body:       []byte(`{"success":false,"errors":[{"code":3040,"message":"Capacity temporarily exceeded"}],"messages":[],"result":null}`),
+		})
+		require.Error(t, err)
+
+		var respErr *llm.ResponseError
+		require.ErrorAs(t, err, &respErr)
+		require.Equal(t, http.StatusTooManyRequests, respErr.StatusCode)
+		require.Equal(t, "Capacity temporarily exceeded", respErr.Detail.Message)
+		require.Equal(t, "3040", respErr.Detail.Code)
 	})
 
 	t.Run("errors without success flag", func(t *testing.T) {
@@ -257,6 +277,18 @@ func TestSystemOneOutboundTransformer_TransformResponse_EnvelopeFailure(t *testi
 			Body:       []byte(`{"errors":[{"code":7001,"message":"GET not supported for requested URI."}],"result":null}`),
 		})
 		require.Error(t, err)
+
+		var respErr *llm.ResponseError
+		require.ErrorAs(t, err, &respErr)
+		require.Equal(t, http.StatusBadGateway, respErr.StatusCode)
+	})
+
+	t.Run("success without result", func(t *testing.T) {
+		_, err := outbound.TransformResponse(context.Background(), &httpclient.Response{
+			StatusCode: http.StatusOK,
+			Body:       []byte(`{"success":true,"errors":[],"messages":[]}`),
+		})
+		require.ErrorContains(t, err, "envelope has no result")
 	})
 
 	t.Run("result is not an object", func(t *testing.T) {
