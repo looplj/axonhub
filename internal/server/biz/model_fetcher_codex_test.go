@@ -101,6 +101,28 @@ func TestModelFetcher_CodexThirdPartyCatalog_usesSlugModels(t *testing.T) {
 	require.Equal(t, []ModelIdentify{{ID: "third-party-model"}}, result.Models)
 }
 
+func TestModelFetcher_CodexThirdPartyCatalog_NormalizesSavedWebSocketURL(t *testing.T) {
+	var requestURL string
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestURL = r.URL.String()
+		_, _ = w.Write([]byte(`{"models":[{"slug":"saved-wss-model","visibility":"list"}]}`))
+	}))
+	defer server.Close()
+
+	key := "synthetic-api-key"
+	baseURL := "wss://" + strings.TrimPrefix(server.URL, "https://") + "/custom"
+	result, err := NewModelFetcher(httpclient.NewHttpClientWithClient(server.Client()), nil).FetchModels(t.Context(), FetchModelsInput{
+		ChannelType: channel.TypeCodex.String(),
+		BaseURL:     baseURL,
+		APIKey:      &key,
+	})
+
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	require.Equal(t, "/custom/models", strings.Split(requestURL, "?")[0])
+	require.Equal(t, []ModelIdentify{{ID: "saved-wss-model"}}, result.Models)
+}
+
 func TestModelFetcher_CodexAPIKeyWithOfficialBaseURL_usesCatalog(t *testing.T) {
 	client := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		require.Equal(t, "https://chatgpt.com/backend-api/codex/models", req.URL.Scheme+"://"+req.URL.Host+req.URL.Path)
