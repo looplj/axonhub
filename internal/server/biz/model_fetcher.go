@@ -163,6 +163,8 @@ type FetchModelsInput struct {
 	BaseURL     string
 	//nolint:gosec // G117: Field name contains "APIKey" but this is input data, not a hardcoded secret
 	APIKey    *string
+	ProjectID *string
+	Region    *string
 	ChannelID *int
 }
 
@@ -499,7 +501,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 	}
 
-	modelsURL, authHeaders := f.prepareModelsEndpoint(channelType, input.BaseURL)
+	modelsURL, authHeaders := f.prepareModelsEndpointWithVertexBinding(channelType, input.BaseURL, input.ProjectID, input.Region)
 
 	// GitHub Copilot uses cached provider conf instead of API endpoint
 	if channelType == channel.TypeGithubCopilot {
@@ -734,6 +736,10 @@ func withGeminiModelsPagination(modelsURL string, pageSize int, pageToken string
 
 // prepareModelsEndpoint returns the models endpoint URL and auth headers for the given channel type.
 func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL string) (string, http.Header) {
+	return f.prepareModelsEndpointWithVertexBinding(channelType, baseURL, nil, nil)
+}
+
+func (f *ModelFetcher) prepareModelsEndpointWithVertexBinding(channelType channel.Type, baseURL string, projectID, region *string) (string, http.Header) {
 	headers := make(http.Header)
 
 	baseURL = strings.TrimSuffix(baseURL, "/")
@@ -812,6 +818,19 @@ func (f *ModelFetcher) prepareModelsEndpoint(channelType channel.Type, baseURL s
 		baseURL = strings.TrimSuffix(baseURL, "/anthropic")
 		baseURL = strings.TrimSuffix(baseURL, "/claude")
 
+		if strings.HasSuffix(baseURL, "/v1") {
+			return baseURL + "/models", headers
+		}
+
+		return baseURL + "/v1/models", headers
+	case channelType == channel.TypeGeminiVertex:
+		if projectID != nil && region != nil {
+			project := strings.TrimSpace(*projectID)
+			location := strings.TrimSpace(*region)
+			if project != "" && location != "" {
+				return fmt.Sprintf("%s/projects/%s/locations/%s/publishers/google/models", baseURL, url.PathEscape(project), url.PathEscape(location)), headers
+			}
+		}
 		if strings.HasSuffix(baseURL, "/v1") {
 			return baseURL + "/models", headers
 		}

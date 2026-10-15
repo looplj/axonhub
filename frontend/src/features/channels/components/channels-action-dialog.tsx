@@ -1652,8 +1652,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const channelType = form.getValues('type');
     const baseURL = form.getValues('baseURL');
     const apiKeys = form.getValues('credentials.apiKeys');
-    const oauthApiKey = form.getValues('credentials.apiKey');
-    const vertexApiKeys = channelType === 'gemini_vertex' ? form.getValues('credentials.vertexApiKeys') : undefined;
+      const oauthApiKey = form.getValues('credentials.apiKey');
+      const vertexApiKeys = channelType === 'gemini_vertex' ? form.getValues('credentials.vertexApiKeys') : undefined;
+      const selectedVertexCredential = vertexApiKeys?.find((credential) => credential.apiKey.trim().length > 0);
 
     if (!channelType || !baseURL) {
       return;
@@ -1687,6 +1688,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         channelType,
         baseURL,
         apiKey: firstApiKey || undefined,
+        projectID: selectedVertexCredential?.projectID.trim() || undefined,
+        region: selectedVertexCredential?.region.trim() || undefined,
         channelID: isEdit ? currentRow?.id : undefined,
       });
 
