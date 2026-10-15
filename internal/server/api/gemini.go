@@ -141,8 +141,10 @@ func WriteGeminiStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 				}
 
 				if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
-					if _, err := io.WriteString(c.Writer, "]"); err != nil {
+					if n, err := io.WriteString(c.Writer, "]"); err != nil {
 						return false, err
+					} else if n != 1 {
+						return false, io.ErrShortWrite
 					}
 					if err := flushResponseWriter(c.Writer); err != nil {
 						return false, err
