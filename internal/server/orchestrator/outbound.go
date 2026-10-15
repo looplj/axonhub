@@ -112,8 +112,9 @@ func NewOutboundPersistentStream(
 				defer s.stateMu.Unlock()
 				return s.sourceEnd
 			},
-			finalize: s.FinalizeAccounting,
-			done:     make(chan struct{}),
+			finalize:       s.FinalizeAccounting,
+			done:           make(chan struct{}),
+			accountingDone: make(chan struct{}),
 		})
 	}
 
@@ -587,7 +588,7 @@ func accountingMayBeFinal(format llm.APIFormat, meta llm.ResponseMeta, sourceEnd
 	// The named raw aggregators own provenance. Other adapters retain their
 	// established usage behavior until they provide the same evidence.
 	switch format {
-	case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact, llm.APIFormatAnthropicMessage:
+	case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket, llm.APIFormatOpenAIResponseCompact, llm.APIFormatAnthropicMessage:
 		return false
 	default:
 		return meta.Usage != nil

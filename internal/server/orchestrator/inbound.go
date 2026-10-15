@@ -297,6 +297,7 @@ func (ts *InboundPersistentStream) Close() error {
 
 	// Close the lifecycle first to quiesce the drain goroutine before reading shared state
 	if ts.lifecycle != nil {
+		_ = ts.stream.Close()
 		ts.lifecycle.Close()
 	}
 

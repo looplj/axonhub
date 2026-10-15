@@ -46,16 +46,14 @@ type streamLifecycle struct {
 	cancel         context.CancelCauseFunc
 	deadlineCancel context.CancelFunc
 
-	acknowledged   bool
-	canceled       bool
-	closed         bool
-	done           chan struct{}
-	finalized      chan struct{}
-	accountingDone chan struct{}
-	stopWatch      chan struct{}
-	stopOnce       sync.Once
-	tail           *streamTailOwner
-	tailOnce       sync.Once
+	acknowledged bool
+	canceled     bool
+	closed       bool
+	done         chan struct{}
+	finalized    chan struct{}
+	stopWatch    chan struct{}
+	stopOnce     sync.Once
+	tail         *streamTailOwner
 }
 
 type streamTailOwner struct {
@@ -67,6 +65,8 @@ type streamTailOwner struct {
 	sourceEnd      func() llm.SourceEndReason
 	finalize       func(llm.SourceEndReason) error
 	done           chan struct{}
+	accountingDone chan struct{}
+	startOnce      sync.Once
 }
 
 type streamTailResult struct {
@@ -174,7 +174,6 @@ func newStreamLifecycle(ctx context.Context) (*streamLifecycle, context.Context)
 		deadlineCancel: deadlineCancel,
 		done:           make(chan struct{}),
 		finalized:      make(chan struct{}),
-		accountingDone: make(chan struct{}),
 		stopWatch:      make(chan struct{}),
 	}
 	go owner.watch()
@@ -243,11 +242,14 @@ func (s *streamLifecycle) registerTailOwner(owner *streamTailOwner) {
 }
 
 func (s *streamLifecycle) startTail(owner *streamTailOwner, cause error) {
-	s.tailOnce.Do(func() {
+	owner.startOnce.Do(func() {
+		if owner.accountingDone == nil {
+			owner.accountingDone = make(chan struct{})
+		}
 		tailCtx, cancel := context.WithTimeout(s.execution, streamTailTimeout)
 		go func() {
 			defer cancel()
-			defer close(s.accountingDone)
+			defer close(owner.accountingDone)
 			owner.run(tailCtx, cause)
 		}()
 	})
@@ -262,7 +264,7 @@ func (s *streamLifecycle) waitForAccounting() {
 	}
 
 	s.startTail(tail, context.Canceled)
-	<-s.accountingDone
+	<-tail.accountingDone
 }
 
 func normalizeCancelCause(cause error) error {
