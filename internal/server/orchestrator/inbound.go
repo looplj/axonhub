@@ -343,7 +343,8 @@ func (ts *InboundPersistentStream) Close() error {
 	if len(ts.responseChunks) > 0 && !ts.outcome.hasFinalEvidence() {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
 		aggregatedCompleted := isCompletedAggregated(meta)
-		if ts.request != nil && ts.request.Format == llm.APIFormatOpenAIChatCompletion.String() && (streamErr != nil || ctxErr != nil) {
+		if ts.request != nil && ts.request.Format == llm.APIFormatOpenAIChatCompletion.String() &&
+			(streamErr != nil || ctxErr != nil) && !ts.state.CleanEOFCompletionEvidence {
 			aggregatedCompleted = aggregatedCompleted && ts.terminalTracker.AllChoicesFinished()
 		}
 		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && aggregatedCompleted {
