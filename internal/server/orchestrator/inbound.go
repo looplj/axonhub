@@ -344,8 +344,12 @@ func (ts *InboundPersistentStream) Close() error {
 		responseBody, meta, aggErr = ts.transformer.AggregateStreamChunks(context.WithoutCancel(ctx), ts.responseChunks)
 		aggregatedCompleted := isCompletedAggregated(meta)
 		if ts.request != nil && ts.request.Format == llm.APIFormatOpenAIChatCompletion.String() &&
-			(streamErr != nil || ctxErr != nil) && !ts.state.CleanEOFCompletionEvidence {
-			aggregatedCompleted = aggregatedCompleted && ts.terminalTracker.AllChoicesFinished()
+			(streamErr != nil || ctxErr != nil) {
+			if ts.state.CleanEOFCompletionEvidence {
+				aggregatedCompleted = aggregatedCompleted && ts.terminalTracker.AllChoicesObserved()
+			} else {
+				aggregatedCompleted = aggregatedCompleted && ts.terminalTracker.AllChoicesFinished()
+			}
 		}
 		if aggErr == nil && meta.ID != "" && len(responseBody) > 0 && aggregatedCompleted {
 			log.Debug(ctx, "Stream has valid complete response without terminal event, treating as completed")

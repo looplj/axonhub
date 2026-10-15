@@ -754,11 +754,15 @@ func (s *passThroughDeliveryStream) Close() error {
 	// cancels the producer, so waiting first deadlocks. The drain still consumes
 	// everything already buffered, preserving the background reader's accounting.
 	var closeErr error
-	if s.close != nil {
+	delivered := s.DeliveryAcknowledged()
+	if !delivered && s.close != nil {
 		closeErr = s.close()
 	}
 	if s.done != nil {
 		<-s.done
+	}
+	if delivered && s.close != nil {
+		closeErr = s.close()
 	}
 	return errors.Join(closeErr, s.Stream.Close())
 }
