@@ -126,6 +126,7 @@ export const channelTypeSchema = z.enum([
   'moonshot_coding',
   'jina',
   'typesafe',
+  'cloudflare',
   'github',
   'github_copilot',
   'claudecode',

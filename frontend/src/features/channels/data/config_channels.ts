@@ -33,6 +33,7 @@ import {
   AiHubMix,
   OpenCode,
   Groq,
+  Cloudflare,
 } from '@lobehub/icons';
 import { AtlasCloudIcon } from '../components/atlas-cloud-icon';
 import { CommandCodeIcon } from '../components/commandcode-icon';
@@ -697,6 +698,21 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-blue-100 text-blue-800 border-blue-200',
     icon: TypeSafeIcon,
   },
+  cloudflare: {
+    channelType: 'cloudflare',
+    baseURL: 'https://api.cloudflare.com/client/v4/accounts/<account_id>/ai',
+    defaultModels: [
+      '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+      '@cf/meta/llama-3.1-8b-instruct',
+      '@cf/baai/bge-m3',
+      '@cf/cloudflare/clef',
+      '@cf/cloudflare/clef-flash',
+      '@cf/cloudflare/clef-omni',
+    ],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-orange-100 text-orange-800 border-orange-200',
+    icon: Cloudflare,
+  },
   github: {
     channelType: 'github',
     baseURL: 'https://models.github.ai/inference',
@@ -966,6 +982,7 @@ export type Provider =
   | 'bailian'
   | 'jina'
   | 'typesafe'
+  | 'cloudflare'
   | 'github'
   | 'github_copilot'
   | 'cerebras'
@@ -1035,6 +1052,7 @@ export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   moonshot_coding: 'moonshot',
   jina: 'jina',
   typesafe: 'typesafe',
+  cloudflare: 'cloudflare',
   github: 'github',
   github_copilot: 'github_copilot',
   codex: 'codex',
