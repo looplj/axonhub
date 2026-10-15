@@ -300,6 +300,39 @@ func TestSystemOneOutboundTransformer_TransformResponse_EnvelopeFailure(t *testi
 	})
 }
 
+func TestSystemOneOutboundTransformer_TransformResponse_NoAnswers(t *testing.T) {
+	outbound := newTestOutbound(t, testBaseURL)
+
+	tests := []struct {
+		name string
+		body string
+	}{
+		{
+			name: "envelope result without answers",
+			body: `{"success":true,"result":{"model":"clef"}}`,
+		},
+		{
+			name: "envelope result with empty answers",
+			body: `{"success":true,"result":{"model":"clef","answers":{}}}`,
+		},
+		{
+			name: "flat body without answers",
+			body: `{"model":"clef","usage":{"input_tokens":120,"output_tokens":3}}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, err := outbound.TransformResponse(context.Background(), &httpclient.Response{
+				StatusCode: http.StatusOK,
+				Body:       []byte(tt.body),
+			})
+			require.ErrorContains(t, err, "systemone response has no answers")
+			require.Nil(t, resp)
+		})
+	}
+}
+
 func TestSystemOneOutboundTransformer_TransformResponse_Invalid(t *testing.T) {
 	outbound := newTestOutbound(t, testBaseURL)
 

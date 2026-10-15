@@ -217,6 +217,12 @@ func (t *SystemOneOutboundTransformer) TransformResponse(
 		return nil, fmt.Errorf("failed to unmarshal systemone response: %w", err)
 	}
 
+	// The inbound rejects requests without questions, so a payload without answers
+	// is malformed rather than an empty success.
+	if len(wireResp.Answers) == 0 {
+		return nil, fmt.Errorf("systemone response has no answers")
+	}
+
 	llmResp := &llm.Response{
 		Model:       wireResp.Model,
 		RequestType: llm.RequestTypeSystemOne,
