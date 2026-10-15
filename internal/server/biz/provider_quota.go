@@ -1094,14 +1094,9 @@ func hasCredentialsForProvider(ch *ent.Channel) bool {
 	}
 
 	if ch.Type == channel.TypeOllama || ch.Type == channel.TypeOllamaAnthropic {
-		// Ollama Cloud quota collection is authenticated with the account
-		// session cookie, never the inference API key.
-		if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.Ollama == nil {
-			return false
-		}
-
-		_, err := provider_quota.NormalizeOllamaCookie(ch.Settings.ProviderQuota.Ollama.AuthCookie)
-		return err == nil
+		// Ollama Cloud quota collection authenticates with the account API key
+		// (/api/balance), or with the session cookie as a fallback.
+		return provider_quota.HasOllamaQuotaCredentials(ch)
 	}
 
 	return ch.Credentials.OAuth != nil || isOAuthJSON(ch.Credentials.APIKey) ||

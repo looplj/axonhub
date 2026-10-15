@@ -2,6 +2,7 @@ package provider_quota
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -17,11 +20,11 @@ import (
 
 const (
 	ollamaProviderType = "ollama"
-	// ollamaSettingsURL is the Plan & Billing page that carries the logged-in
-	// Ollama Cloud usage. There is no official usage/quota API today; the
-	// upstream feature request is tracked at
-	// https://github.com/ollama/ollama/issues/15132 (and #17451 / #15663), and
-	// this parser should migrate to the official endpoint when one ships.
+	// ollamaBalanceURL is the official account balance API, authenticated with
+	// the channel API key: https://docs.ollama.com/api/balance
+	ollamaBalanceURL = "https://ollama.com/api/balance"
+	// ollamaSettingsURL is the Plan & Billing page used when the channel only
+	// has the browser session cookie.
 	ollamaSettingsURL  = "https://ollama.com/settings"
 	ollamaQuotaUA      = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 	ollamaCookieName   = "__Secure-session"
@@ -32,54 +35,133 @@ const (
 	ollamaMinCookieLen = 30
 )
 
-// OllamaQuotaChecker reads Ollama Cloud usage from the logged-in settings page
-// using the browser session cookie stored on the channel. Only the
-// `__Secure-session` cookie authenticates the Ollama Web session; everything
-// else in the paste is dropped before forwarding.
+// OllamaQuotaChecker reads Ollama Cloud quota from the balance API using the
+// channel API key, or from the logged-in settings page using the browser
+// session cookie stored on the channel. Only the `__Secure-session` cookie
+// authenticates the Ollama Web session; everything else in the paste is
+// dropped before forwarding.
 type OllamaQuotaChecker struct {
 	httpClient *httpclient.HttpClient
+	now        func() time.Time
 }
 
 // NewOllamaQuotaChecker creates a checker with the shared HTTP client.
 func NewOllamaQuotaChecker(httpClient *httpclient.HttpClient) *OllamaQuotaChecker {
 	return &OllamaQuotaChecker{
 		httpClient: httpClient,
+		now:        time.Now,
 	}
 }
 
-// SupportsChannel reports whether the channel is an Ollama variant that has a
-// quota cookie configured.
+func ollamaAPIKey(ch *ent.Channel) string {
+	disabled := zhipuDisabledKeySet(ch)
+
+	for _, candidate := range ch.Credentials.GetAllAPIKeys() {
+		if trimmed := strings.TrimSpace(candidate); trimmed != "" && !disabled[trimmed] {
+			return trimmed
+		}
+	}
+
+	return ""
+}
+
+func ollamaRawCookie(ch *ent.Channel) string {
+	if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.Ollama == nil {
+		return ""
+	}
+
+	return strings.TrimSpace(ch.Settings.ProviderQuota.Ollama.AuthCookie)
+}
+
+// HasOllamaQuotaCredentials reports whether the channel has the account API
+// key (/api/balance, preferred) or the session cookie (settings page). Cookie
+// format validation stays in CheckQuota so a malformed cookie surfaces as a
+// quota error instead of the channel being silently skipped.
+func HasOllamaQuotaCredentials(ch *ent.Channel) bool {
+	if ch == nil {
+		return false
+	}
+
+	return ollamaAPIKey(ch) != "" || ollamaRawCookie(ch) != ""
+}
+
+// SupportsChannel reports whether the channel is an Ollama variant with quota
+// credentials configured.
 func (c *OllamaQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	if ch.Type != channel.TypeOllama && ch.Type != channel.TypeOllamaAnthropic {
 		return false
 	}
-	if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.Ollama == nil {
-		return false
-	}
-	return strings.TrimSpace(ch.Settings.ProviderQuota.Ollama.AuthCookie) != ""
+
+	return HasOllamaQuotaCredentials(ch)
 }
 
-// CheckQuota fetches and parses Ollama Cloud usage for the channel. Non-2xx
-// responses surface as errors with their status code; expired cookies surface
-// as invalid credentials.
+// CheckQuota fetches and parses Ollama Cloud quota for the channel. Non-2xx
+// responses surface as errors with their status code; rejected API keys and
+// expired cookies surface as invalid credentials.
 func (c *OllamaQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
-	if ch.Settings == nil || ch.Settings.ProviderQuota == nil || ch.Settings.ProviderQuota.Ollama == nil {
-		return QuotaData{}, fmt.Errorf("%w: channel has no Ollama quota cookie", ErrInvalidCredentials)
+	apiKey := ollamaAPIKey(ch)
+	rawCookie := ollamaRawCookie(ch)
+	if apiKey == "" && rawCookie == "" {
+		return QuotaData{}, fmt.Errorf("%w: channel has no Ollama API key or quota cookie", ErrInvalidCredentials)
 	}
 
-	cookie, err := NormalizeOllamaCookie(ch.Settings.ProviderQuota.Ollama.AuthCookie)
+	hc := c.httpClient
+	if ch.Settings != nil && ch.Settings.Proxy != nil {
+		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
+	}
+	// Reject HTTPS-to-HTTP redirects so neither the API key nor the session
+	// cookie is forwarded over a downgraded (cleartext) connection.
+	hc = hc.WithRejectHTTPSDowngrade()
+
+	if apiKey != "" {
+		quota, err := c.fetchBalance(ctx, hc, apiKey)
+		if err == nil {
+			return quota, nil
+		}
+		if rawCookie == "" || !errors.Is(err, ErrInvalidCredentials) {
+			return QuotaData{}, err
+		}
+	}
+
+	cookie, err := NormalizeOllamaCookie(rawCookie)
 	if err != nil {
 		return QuotaData{}, fmt.Errorf("%w: invalid Ollama auth cookie: %w", ErrInvalidCredentials, err)
 	}
 
-	hc := c.httpClient
-	if ch.Settings.Proxy != nil {
-		hc = c.httpClient.WithProxy(ch.Settings.Proxy)
-	}
-	// Reject HTTPS-to-HTTP redirects so the session cookie is never forwarded
-	// over a downgraded (cleartext) connection.
-	hc = hc.WithRejectHTTPSDowngrade()
+	return c.fetchSettings(ctx, hc, cookie)
+}
 
+func (c *OllamaQuotaChecker) fetchBalance(ctx context.Context, hc *httpclient.HttpClient, apiKey string) (QuotaData, error) {
+	request := httpclient.NewRequestBuilder().
+		WithMethod(http.MethodGet).
+		WithURL(ollamaBalanceURL).
+		WithHeader("Authorization", "Bearer "+apiKey).
+		WithHeader("Accept", "application/json").
+		Build()
+
+	resp, err := hc.Do(ctx, request)
+	if err != nil {
+		if httpErr, ok := errors.AsType[*httpclient.Error](err); ok {
+			return QuotaData{}, ollamaBalanceStatusError(httpErr.StatusCode)
+		}
+		return QuotaData{}, fmt.Errorf("Ollama balance request failed: %w", err)
+	}
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return QuotaData{}, ollamaBalanceStatusError(resp.StatusCode)
+	}
+
+	return c.parseBalance(resp.Body)
+}
+
+func ollamaBalanceStatusError(statusCode int) error {
+	if statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden {
+		return fmt.Errorf("%w: Ollama balance API returned %d", ErrInvalidCredentials, statusCode)
+	}
+
+	return fmt.Errorf("Ollama balance API returned %d", statusCode)
+}
+
+func (c *OllamaQuotaChecker) fetchSettings(ctx context.Context, hc *httpclient.HttpClient, cookie string) (QuotaData, error) {
 	request := httpclient.NewRequestBuilder().
 		WithMethod(http.MethodGet).
 		WithURL(ollamaSettingsURL).
@@ -165,9 +247,100 @@ var (
 )
 
 type ollamaUsageWindow struct {
-	key     string
-	percent float64
-	resetAt *time.Time
+	key         string
+	percent     float64
+	resetAt     *time.Time
+	periodStart *time.Time
+}
+
+// ollamaBalanceResponse matches GET /api/balance. Monthly allowance plans
+// report balance_usd of allowance_usd for the included period; legacy plans
+// report session and weekly windows with remaining_percent (0..100).
+type ollamaBalanceResponse struct {
+	Included struct {
+		BalanceUSD   *float64 `json:"balance_usd"`
+		AllowanceUSD *float64 `json:"allowance_usd"`
+		Period       *struct {
+			From  *time.Time `json:"from"`
+			Until *time.Time `json:"until"`
+		} `json:"period"`
+		Session *ollamaBalanceWindow `json:"session"`
+		Weekly  *ollamaBalanceWindow `json:"weekly"`
+	} `json:"included"`
+	Purchased struct {
+		BalanceUSD float64 `json:"balance_usd"`
+	} `json:"purchased"`
+}
+
+type ollamaBalanceWindow struct {
+	RemainingPercent *float64   `json:"remaining_percent"`
+	ResetsAt         *time.Time `json:"resets_at"`
+}
+
+func (c *OllamaQuotaChecker) parseBalance(body []byte) (QuotaData, error) {
+	var parsed ollamaBalanceResponse
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return QuotaData{}, fmt.Errorf("parse Ollama balance response: %w", err)
+	}
+
+	included := parsed.Included
+	var windows []ollamaUsageWindow
+
+	if allowance := lo.FromPtr(included.AllowanceUSD); allowance > 0 {
+		window := ollamaUsageWindow{
+			key:     QuotaWindowMonthly,
+			percent: clampOllamaPercent((1 - lo.FromPtr(included.BalanceUSD)/allowance) * 100),
+		}
+		if included.Period != nil {
+			window.resetAt = included.Period.Until
+			window.periodStart = included.Period.From
+		}
+		windows = append(windows, window)
+	}
+
+	for _, legacy := range []struct {
+		key    string
+		window *ollamaBalanceWindow
+	}{
+		{QuotaWindow5h, included.Session},
+		{QuotaWindowWeekly, included.Weekly},
+	} {
+		if legacy.window == nil || legacy.window.RemainingPercent == nil {
+			continue
+		}
+		windows = append(windows, ollamaUsageWindow{
+			key:     legacy.key,
+			percent: clampOllamaPercent(100 - *legacy.window.RemainingPercent),
+			resetAt: legacy.window.ResetsAt,
+		})
+	}
+
+	purchased := parsed.Purchased.BalanceUSD
+	if len(windows) == 0 && purchased <= 0 {
+		return QuotaData{}, errors.New("no Ollama quota found in balance response")
+	}
+
+	data := buildOllamaQuotaData(windows)
+	if purchased > 0 {
+		data.Limits = append(data.Limits, QuotaLimitStatus{
+			Type:   QuotaLimitTypeToken,
+			Status: "available",
+			Ready:  true,
+			Window: QuotaWindowCredits,
+		})
+		data.RawData["credits"] = map[string]any{
+			"purchased_usd": purchased,
+		}
+		// Ollama draws from purchased credits once the included allowance is
+		// spent, so the overall status comes from the best usable limit.
+		data.Status = ""
+	}
+
+	return normalizeQuotaDataAt(data, c.now()), nil
+}
+
+func clampOllamaPercent(percent float64) float64 {
+	return max(0, min(100, percent))
 }
 
 func (c *OllamaQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
@@ -228,6 +401,10 @@ func (c *OllamaQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		return QuotaData{}, fmt.Errorf("no Ollama usage windows found in settings page (expired cookie or markup change)")
 	}
 
+	return buildOllamaQuotaData(windows), nil
+}
+
+func buildOllamaQuotaData(windows []ollamaUsageWindow) QuotaData {
 	normalizedStatus := "available"
 	var nextResetAt *time.Time
 	limits := make([]QuotaLimitStatus, 0, len(windows))
@@ -259,6 +436,11 @@ func (c *OllamaQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		}
 		rawWindows[w.key] = rawWindow
 
+		periodStart := w.periodStart
+		if periodStart == nil {
+			periodStart = PeriodStartFromReset(resetAt, ollamaWindowDuration(w.key))
+		}
+
 		limits = append(limits, QuotaLimitStatus{
 			Type:        QuotaLimitTypeToken,
 			Status:      status,
@@ -266,7 +448,7 @@ func (c *OllamaQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 			Ready:       IsReadyStatus(status),
 			NextResetAt: resetAt,
 			Window:      w.key,
-			PeriodStart: PeriodStartFromReset(resetAt, ollamaWindowDuration(w.key)),
+			PeriodStart: periodStart,
 		})
 	}
 
@@ -279,7 +461,7 @@ func (c *OllamaQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
 		NextResetAt: nextResetAt,
 		Ready:       IsReadyStatus(normalizedStatus),
 		Limits:      limits,
-	}, nil
+	}
 }
 
 // ollamaWindowDuration returns the fixed window length used to derive period
