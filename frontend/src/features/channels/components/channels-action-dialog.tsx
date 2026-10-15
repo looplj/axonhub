@@ -772,7 +772,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
               apiKey: currentRow.credentials?.apiKey || undefined,
               apiKeys: currentRow.credentials?.apiKeys || [],
-              vertexApiKeys: currentRow.type === 'gemini_vertex' ? (currentRow.credentials?.vertexApiKeys ?? []) : [],
+              vertexApiKeys: currentRow.type === 'gemini_vertex' ? currentRow.credentials?.vertexApiKeys : [],
               managementApiKey: currentRow.credentials?.managementApiKey || undefined,
               gcp: {
                 region: currentRow.credentials?.gcp?.region || '',
@@ -799,7 +799,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
                 apiKey: duplicateFromRow.credentials?.apiKey || undefined,
                 apiKeys: duplicateFromRow.credentials?.apiKeys || [],
-                vertexApiKeys: duplicateFromRow.type === 'gemini_vertex' ? (duplicateFromRow.credentials?.vertexApiKeys ?? []) : [],
+                vertexApiKeys: duplicateFromRow.type === 'gemini_vertex' ? duplicateFromRow.credentials?.vertexApiKeys : [],
                 managementApiKey: duplicateFromRow.credentials?.managementApiKey || undefined,
                 gcp: {
                   region: duplicateFromRow.credentials?.gcp?.region || '',
@@ -1354,18 +1354,21 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       // runtime and would not resolve to a project/region pair. Ordinary channels keep
       // their flat apiKeys and never carry the Vertex field.
       const submittedCredentials = valuesForSubmit.credentials;
+      const vertexApiKeys = submittedCredentials?.vertexApiKeys;
       const credentials =
         valuesForSubmit.type === 'gemini_vertex'
-          ? {
-              ...submittedCredentials,
-              apiKey: undefined,
-              apiKeys: undefined,
-              vertexApiKeys: (submittedCredentials?.vertexApiKeys ?? []).map((credential) => ({
-                projectID: credential.projectID.trim(),
-                apiKey: credential.apiKey.trim(),
-                region: credential.region.trim() || 'global',
-              })),
-            }
+          ? vertexApiKeys?.length
+            ? {
+                ...submittedCredentials,
+                apiKey: undefined,
+                apiKeys: undefined,
+                vertexApiKeys: vertexApiKeys.map((credential) => ({
+                  projectID: credential.projectID.trim(),
+                  apiKey: credential.apiKey.trim(),
+                  region: credential.region.trim() || 'global',
+                })),
+              }
+            : { ...submittedCredentials, vertexApiKeys: undefined }
           : { ...submittedCredentials, vertexApiKeys: undefined };
 
       const dataWithModels = {
