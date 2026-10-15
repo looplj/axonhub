@@ -1675,7 +1675,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       // Fall back to Vertex API keys if neither OAuth nor flat apiKeys are present
-      if (!firstApiKey) {
+      if (!firstApiKey && channelType === 'gemini_vertex') {
         const vertexApiKeys = form.getValues('credentials.vertexApiKeys');
         firstApiKey = vertexApiKeys?.find((c) => c.apiKey.trim().length > 0)?.apiKey.trim() || '';
       }
