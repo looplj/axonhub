@@ -1652,9 +1652,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     const channelType = form.getValues('type');
     const baseURL = form.getValues('baseURL');
     const apiKeys = form.getValues('credentials.apiKeys');
-      const oauthApiKey = form.getValues('credentials.apiKey');
-      const vertexApiKeys = channelType === 'gemini_vertex' ? form.getValues('credentials.vertexApiKeys') : undefined;
-      const selectedVertexCredential = vertexApiKeys?.find((credential) => credential.apiKey.trim().length > 0);
+    const oauthApiKey = form.getValues('credentials.apiKey');
+    const vertexApiKeys = channelType === 'gemini_vertex' ? form.getValues('credentials.vertexApiKeys') : undefined;
+    const selectedVertexCredential = vertexApiKeys?.find(
+      (credential) =>
+        credential.apiKey.trim().length > 0 &&
+        credential.projectID.trim().length > 0 &&
+        credential.region.trim().length > 0,
+    );
 
     if (!channelType || !baseURL) {
       return;
@@ -1664,7 +1669,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       // For OAuth-based providers (like Copilot), prefer oauthApiKey first
       let firstApiKey = '';
       if (channelType === 'gemini_vertex') {
-        firstApiKey = vertexApiKeys?.find((credential) => credential.apiKey.trim().length > 0)?.apiKey.trim() || '';
+        firstApiKey = selectedVertexCredential?.apiKey.trim() || '';
       }
       if (!firstApiKey && oauthApiKey) {
         // If it's OAuth JSON, send full JSON so backend detects isOAuthJSON

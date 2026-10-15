@@ -437,8 +437,22 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			if apiKey == "" && len(ch.Credentials.APIKeys) > 0 {
 				apiKey = ch.Credentials.APIKeys[0]
 			}
+			if apiKey == "" && ch.Type == channel.TypeGeminiVertex && len(ch.Credentials.VertexAPIKeys) > 0 {
+				apiKey = ch.Credentials.VertexAPIKeys[0].APIKey
+			}
 			input.ChannelType = ch.Type.String()
 			input.BaseURL = ch.BaseURL
+		}
+
+		if ch.Type == channel.TypeGeminiVertex {
+			if credential, ok := ch.Credentials.VertexAPIKey(apiKey); ok {
+				if input.ProjectID == nil || strings.TrimSpace(*input.ProjectID) == "" {
+					input.ProjectID = lo.ToPtr(credential.ProjectID)
+				}
+				if input.Region == nil || strings.TrimSpace(*input.Region) == "" {
+					input.Region = lo.ToPtr(credential.Region)
+				}
+			}
 		}
 
 		if ch.Settings != nil {
