@@ -381,6 +381,19 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 export const channelCredentialsSchema = z.object({
   apiKey: z.string().optional().nullable(),
   apiKeys: z.array(z.string()).optional().nullable(),
+  // Read-side shape only: persisted credentials are echoed for the form and may
+  // predate the triple, so this schema must not reject stored data. Strict
+  // validation lives on the write schemas below.
+  vertexApiKeys: z
+    .array(
+      z.object({
+        projectID: z.string(),
+        apiKey: z.string(),
+        region: z.string(),
+      })
+    )
+    .optional()
+    .nullable(),
   // Optional provider management/console API key (e.g. ZenMux) used only for
   // server-side quota checks; inference keeps using apiKey/apiKeys.
   managementApiKey: z.string().optional().nullable(),
@@ -627,6 +640,76 @@ function validateOAuthCredentials(type: string, apiKey: string | undefined, ctx:
   }
 }
 
+// Vertex project and region are interpolated into the upstream request path, so the
+// write schemas constrain them to the characters Google permits. The backend
+// validator applies the same pattern.
+const vertexAPIKeyProjectIDPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const vertexAPIKeyRegionPattern = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
+
+// vertexAPIKeyCredentialSchema validates one project-bound Vertex credential.
+// defaultRegion fills an omitted region; omit it where an empty region must be
+// reported as an error instead.
+function vertexAPIKeyCredentialSchema(defaultRegion?: string) {
+  return z.object({
+    projectID: z.string().trim().regex(vertexAPIKeyProjectIDPattern, 'Vertex Project ID contains invalid characters'),
+    apiKey: z.string().trim().min(1, 'Vertex API key is required'),
+    region: defaultRegion
+      ? z.string().trim().regex(vertexAPIKeyRegionPattern, 'Vertex region contains invalid characters').default(defaultRegion)
+      : z.string().trim().regex(vertexAPIKeyRegionPattern, 'Vertex region contains invalid characters'),
+  });
+}
+
+// Shape-only counterpart of vertexAPIKeyCredentialSchema. The write field schemas must
+// accept a row the channel type never submits, so the strict rules are re-applied per
+// channel type in validateVertexAPIKeys instead of on the field itself.
+const vertexAPIKeyShapeSchema = z.object({
+  projectID: z.string(),
+  apiKey: z.string(),
+  region: z.string().default('global'),
+});
+
+// Vertex rows only mean something on a gemini_vertex channel. Validating them behind
+// the type check keeps a leftover row from blocking an ordinary channel, whose submit
+// clears vertexApiKeys for the non-Vertex type.
+function validateVertexAPIKeys(
+  channelType: string | undefined,
+  credentials: { vertexApiKeys?: { projectID: string; apiKey: string; region?: string }[] | null } | undefined,
+  ctx: z.RefinementCtx
+) {
+  if (channelType !== 'gemini_vertex') {
+    return;
+  }
+
+  const rowSchema = vertexAPIKeyCredentialSchema('global');
+  const rows = credentials?.vertexApiKeys;
+
+  // An empty list is itself an error: create always materialises the field, and an
+  // update that sends one is clearing the last binding.
+  if (rows && !rows.length) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'At least one Vertex API key is required',
+      path: ['credentials', 'vertexApiKeys'],
+    });
+    return;
+  }
+
+  (rows ?? []).forEach((row, index) => {
+    const parsed = rowSchema.safeParse(row);
+    if (parsed.success) {
+      return;
+    }
+
+    parsed.error.issues.forEach((issue) => {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: issue.message,
+        path: ['credentials', 'vertexApiKeys', index, ...issue.path],
+      });
+    });
+  });
+}
+
 // Create Channel Input
 
 export const createChannelInputSchema = z
@@ -650,6 +733,8 @@ export const createChannelInputSchema = z
       apiKey: z.string().optional(),
       // apiKeys is used for regular API keys (multiple keys for load balancing)
       apiKeys: z.array(z.string()).optional().default([]),
+      // Vertex credentials are project-bound triples; an omitted region defaults to global.
+      vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional().default([]),
       // Optional management key used only by the backend for quota checks
       managementApiKey: z.string().optional(),
       gcp: z
@@ -680,8 +765,15 @@ export const createChannelInputSchema = z
       });
     }
 
-    // Validate that at least one credential type is provided
-    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp') {
+    // Validate that at least one credential type is provided. A Vertex key only counts
+    // on a gemini_vertex channel, so it must not satisfy an ordinary channel.
+    if (
+      !hasApiKey &&
+      !hasApiKeys &&
+      data.type !== 'anthropic_aws' &&
+      data.type !== 'anthropic_gcp' &&
+      data.type !== 'gemini_vertex'
+    ) {
       ctx.addIssue({
         code: 'custom' as const,
         message: 'At least one API Key is required',
@@ -718,6 +810,10 @@ export const createChannelInputSchema = z
         });
       }
     }
+
+    // Vertex rows carry project and region, so their own rules report a missing field
+    // or an invalid project/region, and an empty list is rejected.
+    validateVertexAPIKeys(data.type, data.credentials, ctx);
   });
 export type CreateChannelInput = z.infer<typeof createChannelInputSchema>;
 
@@ -744,6 +840,8 @@ export const updateChannelInputSchema = z
         apiKey: z.string().optional(),
         // apiKeys 用于普通 API Key（支持多 key 负载均衡），OAuth 类型不使用此字段
         apiKeys: z.array(z.string()).optional(),
+        // Vertex credentials are project-bound triples; an omitted region defaults to global.
+        vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional(),
         // Optional management key used only by the backend for quota checks
         managementApiKey: z.string().optional(),
         gcp: z
@@ -831,6 +929,9 @@ export const updateChannelInputSchema = z
         });
       }
     }
+
+    // An update may clear the list, so an empty array is itself an error.
+    validateVertexAPIKeys(data.type, data.credentials, ctx);
   });
 
 export type UpdateChannelInput = z.infer<typeof updateChannelInputSchema>;
