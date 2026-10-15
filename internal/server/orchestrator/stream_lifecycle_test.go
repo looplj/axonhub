@@ -386,6 +386,47 @@ func TestStreamDeliveryLifecycleTailOwner(t *testing.T) {
 	}
 }
 
+func TestStreamDeliveryRetryWaitsForPendingAccounting(t *testing.T) {
+	downstream := t.Context()
+	lifecycleOwner, _ := newStreamLifecycle(downstream)
+	releaseAccounting := make(chan struct{})
+	accountingStarted := make(chan struct{})
+	tail := &streamTailOwner{
+		source:     &lifecycleTailStream{},
+		readerDone: closedChannel(),
+		finalize: func(llm.SourceEndReason) error {
+			close(accountingStarted)
+			<-releaseAccounting
+			return nil
+		},
+		done: make(chan struct{}),
+	}
+	lifecycleOwner.registerTailOwner(tail)
+	lifecycleOwner.startTail(tail, nil)
+	<-accountingStarted
+
+	retryReady := make(chan struct{})
+	go func() {
+		lifecycleOwner.waitForAccounting()
+		close(retryReady)
+	}()
+
+	select {
+	case <-retryReady:
+		t.Fatal("retry proceeded before pending accounting completed")
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	close(releaseAccounting)
+	select {
+	case <-retryReady:
+	case <-time.After(time.Second):
+		t.Fatal("retry did not wait for accounting completion")
+	}
+
+	lifecycleOwner.Close()
+}
+
 func TestStreamDeliveryUnacknowledgedCloseWaitsForReaderBeforeFinalizing(t *testing.T) {
 	// Given: an unacknowledged lifecycle owns a source whose reader is still active.
 	downstream := t.Context()
