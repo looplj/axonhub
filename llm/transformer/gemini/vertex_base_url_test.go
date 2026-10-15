@@ -153,4 +153,4 @@ func TestVertexPathsAllUseCredentialBaseURL(t *testing.T) {
 	}
 }
 
-func stringPtrForTest(v string) *string { return &v }
+func stringPtrForTest(v string) *string { return lo.ToPtr(v) }
