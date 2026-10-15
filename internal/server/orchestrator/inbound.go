@@ -108,10 +108,12 @@ func (ts *InboundPersistentStream) Current() *httpclient.StreamEvent {
 				ts.state.CleanEOFCompletionEvidence = true
 			}
 			if ts.terminalTracker.Observe(event) {
+				ts.stateMu.Lock()
 				ts.terminalState = classifyAcceptedTerminalEvent(event)
 				ts.terminalState = ts.finalTerminalState()
 				ts.outcome.observeTerminal(ts.terminalState)
 				ts.state.StreamCompleted = ts.outcome.deliveryState() == streamTerminalCompleted
+				ts.stateMu.Unlock()
 			}
 		}
 	}
@@ -292,15 +294,19 @@ func (ts *InboundPersistentStream) Close() error {
 	ts.closed = true
 	ts.closeMu.Unlock()
 	defer close(ts.closeDone)
-	ts.stateMu.Lock()
+
+	// Close the lifecycle first to quiesce the drain goroutine before reading shared state
 	if ts.lifecycle != nil {
-		defer ts.lifecycle.Close()
-		if ts.lifecycle.DeliveryAcknowledged() {
-			ts.outcome.observeDeliveryAcknowledgement()
-			ts.state.DeliveryAcknowledged = true
-		}
+		ts.lifecycle.Close()
 	}
-	ts.stateMu.Unlock()
+
+	ts.stateMu.Lock()
+	defer ts.stateMu.Unlock()
+
+	if ts.lifecycle != nil && ts.lifecycle.DeliveryAcknowledged() {
+		ts.outcome.observeDeliveryAcknowledgement()
+		ts.state.DeliveryAcknowledged = true
+	}
 	ctx := ts.ctx
 
 	log.Debug(ctx, "Closing persistent stream", log.Int("chunk_count", len(ts.responseChunks)), log.Bool("request_completed", ts.state.StreamCompleted))
