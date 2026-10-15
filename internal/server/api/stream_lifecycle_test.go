@@ -246,13 +246,24 @@ func (s *cancelOnEventStream) ExpectedStreamChoices() int {
 }
 
 func (s *cancelOnEventStream) Current() *httpclient.StreamEvent {
-	event := s.source.Current()
-	if event != nil && ((s.trigger == "finish" && strings.Contains(string(event.Data), `"finish_reason":"stop"`)) ||
-		(s.trigger == "done" && strings.EqualFold(string(event.Data), "[DONE]"))) {
-		s.cancel()
-	}
-	return event
+	return s.source.Current()
 }
 
 func (s *cancelOnEventStream) Err() error   { return s.source.Err() }
 func (s *cancelOnEventStream) Close() error { return s.source.Close() }
+
+func (s *cancelOnEventStream) AcknowledgeDelivery() {
+	if observer, ok := s.source.(streams.DeliveryAcknowledger); ok {
+		observer.AcknowledgeDelivery()
+	}
+	if s.trigger != "" {
+		s.cancel()
+	}
+}
+
+func (s *cancelOnEventStream) DeliveryAcknowledged() bool {
+	if observer, ok := s.source.(streams.DeliveryAcknowledger); ok {
+		return observer.DeliveryAcknowledged()
+	}
+	return false
+}

@@ -98,6 +98,9 @@ func TestPersistentStreams_ResponsesTerminalSurvivesProtocolConversion(t *testin
 					require.NotNil(t, lastEvent)
 					require.Equal(t, "response."+tt.status, lastEvent.Type)
 				}
+				if tt.expectedStatus == request.StatusCompleted {
+					stream.AcknowledgeDelivery()
+				}
 				// Persistence must retain the terminal outcome after client disconnect.
 				cancel()
 				require.NoError(t, stream.Close())

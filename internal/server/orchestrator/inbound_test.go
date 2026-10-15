@@ -175,8 +175,7 @@ func TestInboundPersistentStream_Close_WithCompleteResponse(t *testing.T) {
 	require.True(t, stream.Next(), "Expected Next() to return true")
 	event := stream.Current()
 	require.NotNil(t, event, "Expected current event to not be nil")
-
-	assert.True(t, state.StreamCompleted, "StreamCompleted should be true after consuming finish_reason")
+	stream.AcknowledgeDelivery()
 
 	err := stream.Close()
 	require.NoError(t, err, "Close() should not return an error")
@@ -223,8 +222,7 @@ func TestInboundPersistentStream_Close_WithTerminalEvent(t *testing.T) {
 	require.True(t, stream.Next(), "Expected Next() to return true for [DONE] event")
 	event := stream.Current()
 	require.NotNil(t, event, "Expected current event to not be nil")
-
-	assert.True(t, state.StreamCompleted, "StreamCompleted should be true after [DONE] event")
+	stream.AcknowledgeDelivery()
 
 	err := stream.Close()
 	require.NoError(t, err, "Close() should not return an error")
@@ -279,6 +277,7 @@ func TestInboundPersistentStream_Close_ErrorAfterTerminalKeepsRequestCompleted(t
 	_ = stream.Current()
 	require.False(t, stream.Next())
 	require.ErrorIs(t, stream.Err(), io.ErrUnexpectedEOF)
+	stream.AcknowledgeDelivery()
 	require.NoError(t, stream.Close())
 	require.True(t, state.StreamCompleted)
 
@@ -333,6 +332,7 @@ func TestInboundPersistentStream_Close_CompleteAggregateAfterStreamErrorComplete
 	persistentStream.Current()
 	require.False(t, persistentStream.Next())
 	require.ErrorIs(t, persistentStream.Err(), io.ErrUnexpectedEOF)
+	persistentStream.AcknowledgeDelivery()
 	require.NoError(t, persistentStream.Close())
 	require.True(t, state.StreamCompleted)
 
@@ -440,6 +440,7 @@ func TestInboundPersistentStream_Close_AnthropicStopReasonAfterStreamErrorComple
 		_ = persistentStream.Current()
 	}
 	require.ErrorIs(t, persistentStream.Err(), io.ErrUnexpectedEOF)
+	persistentStream.AcknowledgeDelivery()
 	require.NoError(t, persistentStream.Close())
 
 	savedRequest, err := client.Request.Get(ctx, req.ID)

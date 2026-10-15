@@ -87,6 +87,10 @@ func (t *StreamTerminalTracker) AllChoicesFinished() bool {
 	return t.expectedChoices > 0 && len(t.choices) == t.expectedChoices && len(t.finished) == t.expectedChoices
 }
 
+func (t *StreamTerminalTracker) AllChoicesObserved() bool {
+	return t.expectedChoices > 0 && len(t.choices) == t.expectedChoices
+}
+
 func isNonChoiceTerminalEvent(event *httpclient.StreamEvent) bool {
 	eventType := gjson.GetBytes(event.Data, "type").String()
 	return isResponsesTerminalEvent(event.Type) ||

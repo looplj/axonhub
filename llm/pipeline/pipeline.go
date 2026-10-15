@@ -353,7 +353,15 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 		// Add retry delay if configured
 		if p.retryDelay > 0 {
-			time.Sleep(p.retryDelay)
+			timer := time.NewTimer(p.retryDelay)
+			select {
+			case <-timer.C:
+			case <-ctx.Done():
+				if !timer.Stop() {
+					<-timer.C
+				}
+				return nil, lastErr
+			}
 		}
 
 		slog.WarnContext(ctx, "request process failed, retrying...",

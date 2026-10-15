@@ -826,10 +826,41 @@ type TopLogprob struct {
 	Bytes   []int   `json:"bytes,omitempty"`
 }
 
+type AccountingEvidence string
+
+const (
+	AccountingEvidenceUnavailable       AccountingEvidence = "unavailable"
+	AccountingEvidenceExplicitFinal     AccountingEvidence = "explicit-final"
+	AccountingEvidenceCleanEndCandidate AccountingEvidence = "clean-end-candidate"
+)
+
+type SourceEndReason string
+
+const (
+	SourceEndUnknown  SourceEndReason = "unknown"
+	SourceEndCleanEOF SourceEndReason = "clean-eof"
+	SourceEndSemantic SourceEndReason = "semantic"
+	SourceEndError    SourceEndReason = "error"
+	SourceEndCanceled SourceEndReason = "canceled"
+	SourceEndBudget   SourceEndReason = "budget"
+)
+
+func (m ResponseMeta) AccountingFinal(sourceEnd SourceEndReason) bool {
+	switch m.AccountingEvidence {
+	case AccountingEvidenceExplicitFinal:
+		return true
+	case AccountingEvidenceCleanEndCandidate:
+		return sourceEnd == SourceEndCleanEOF || sourceEnd == SourceEndSemantic
+	default:
+		return false
+	}
+}
+
 type ResponseMeta struct {
-	ID        string `json:"id"`
-	Usage     *Usage `json:"usage"`
-	Completed bool   `json:"completed,omitempty"`
+	ID                 string             `json:"id"`
+	Usage              *Usage             `json:"usage"`
+	Completed          bool               `json:"completed,omitempty"`
+	AccountingEvidence AccountingEvidence `json:"-"`
 }
 
 // Usage Represents the total token usage per request to OpenAI.

@@ -133,6 +133,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	var (
 		lastChunkResponse *Response
 		usage             *Usage
+		usageEvidence     = llm.AccountingEvidenceUnavailable
+		seenChoices       = make(map[int]struct{})
+		finishedChoices   = make(map[int]struct{})
+		zeroChoiceUsages  int
 		systemFingerprint string
 		serviceTier       string
 		// Map to track choices by their index
@@ -155,6 +159,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// Process each choice in the chunk
 		for _, choice := range chunk.Choices {
 			choiceIndex := choice.Index
+			seenChoices[choiceIndex] = struct{}{}
+			if choice.FinishReason != nil {
+				finishedChoices[choiceIndex] = struct{}{}
+			}
 
 			// Initialize choice aggregator if it doesn't exist
 			if _, ok := choicesAggs[choiceIndex]; !ok {
@@ -277,6 +285,21 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// Extract usage information if present
 		if chunk.Usage != nil {
 			usage = chunk.Usage
+			usageEvidence = llm.AccountingEvidenceUnavailable
+			if len(chunk.Choices) > 0 && isZeroUsage(chunk.Usage) {
+				zeroChoiceUsages++
+			}
+			if len(chunk.Choices) == 0 && allChoicesFinished(seenChoices, finishedChoices) {
+				usageEvidence = llm.AccountingEvidenceExplicitFinal
+			} else if len(chunk.Choices) > 0 && allChoicesFinished(seenChoices, finishedChoices) {
+				usageEvidence = llm.AccountingEvidenceCleanEndCandidate
+			} else if len(chunk.Choices) == 0 && len(seenChoices) > 0 {
+				// A trailing usage-only chunk after observed output is a clean-EOF
+				// candidate even when the provider omitted finish_reason.
+				usageEvidence = llm.AccountingEvidenceCleanEndCandidate
+			}
+		} else if len(chunk.Choices) > 0 {
+			usageEvidence = llm.AccountingEvidenceUnavailable
 		}
 
 		// Collect citations from chunk
@@ -426,6 +449,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	if usage != nil {
 		responseUsage = usage.ToLLMUsage()
 	}
+	if usageEvidence == llm.AccountingEvidenceCleanEndCandidate && zeroChoiceUsages > 1 && isZeroUsage(usage) {
+		usageEvidence = llm.AccountingEvidenceUnavailable
+	}
 
 	response := &llm.Response{
 		ID:                lastChunkResponse.ID,
@@ -455,10 +481,23 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	}
 
 	return data, llm.ResponseMeta{
-		ID:        response.ID,
-		Usage:     responseUsage,
-		Completed: completed,
+		ID:                 response.ID,
+		Usage:              responseUsage,
+		Completed:          completed,
+		AccountingEvidence: usageEvidence,
 	}, nil
+}
+
+func allChoicesFinished(seen, finished map[int]struct{}) bool {
+	if len(seen) == 0 || len(seen) != len(finished) {
+		return false
+	}
+
+	return true
+}
+
+func isZeroUsage(usage *Usage) bool {
+	return usage != nil && usage.PromptTokens == 0 && usage.CompletionTokens == 0 && usage.TotalTokens == 0
 }
 
 // aggregatedChatResponse is the client-facing shape of an aggregated chat

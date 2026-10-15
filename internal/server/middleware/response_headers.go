@@ -88,10 +88,20 @@ func (w *responseHeadersWriter) Flush() {
 // detection while still capturing the headers before the first flush.
 func (w *responseHeadersWriter) FlushError() error {
 	w.capture()
-	if flusher, ok := w.ResponseWriter.(interface{ FlushError() error }); ok {
-		return flusher.FlushError()
+	w.ResponseWriter.WriteHeaderNow()
+	var writer http.ResponseWriter = w.ResponseWriter
+	for {
+		if flusher, ok := writer.(interface{ FlushError() error }); ok {
+			return flusher.FlushError()
+		}
+		if unwrapper, ok := writer.(interface{ Unwrap() http.ResponseWriter }); ok {
+			writer = unwrapper.Unwrap()
+			continue
+		}
+		if flusher, ok := writer.(http.Flusher); ok {
+			flusher.Flush()
+			return nil
+		}
+		return http.ErrNotSupported
 	}
-
-	w.ResponseWriter.Flush()
-	return nil
 }

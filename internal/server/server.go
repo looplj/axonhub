@@ -18,6 +18,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/gc"
 	"github.com/looplj/axonhub/internal/server/gql"
 	"github.com/looplj/axonhub/internal/server/gql/openapi"
+	"github.com/looplj/axonhub/internal/server/lifecycle"
 	"github.com/looplj/axonhub/internal/server/middleware"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/internal/server/scheduler"
@@ -31,6 +32,11 @@ func New(config Config) *Server {
 	}
 
 	engine := gin.New()
+	serverLifetime := lifecycle.New()
+	engine.Use(func(c *gin.Context) {
+		c.Request = c.Request.WithContext(serverLifetime.Attach(c.Request.Context()))
+		c.Next()
+	})
 
 	// Gin trusts all proxies by default. Never inherit that unsafe default:
 	// forwarded client IP headers must only be honored for explicitly configured
@@ -49,17 +55,19 @@ func New(config Config) *Server {
 	engine.Use(middleware.Recovery())
 
 	return &Server{
-		Config: config,
-		Engine: engine,
+		Config:   config,
+		Engine:   engine,
+		lifetime: serverLifetime,
 	}
 }
 
 type Server struct {
 	*gin.Engine
 
-	Config Config
-	server *http.Server
-	addr   string
+	Config   Config
+	server   *http.Server
+	addr     string
+	lifetime *lifecycle.Manager
 }
 
 func (srv *Server) Run() error {
@@ -90,6 +98,12 @@ func (srv *Server) Run() error {
 }
 
 func (srv *Server) Shutdown(ctx context.Context) error {
+	if srv.lifetime != nil {
+		srv.lifetime.Shutdown(context.Cause(ctx))
+	}
+	if srv.server == nil {
+		return nil
+	}
 	return srv.server.Shutdown(ctx)
 }
 
