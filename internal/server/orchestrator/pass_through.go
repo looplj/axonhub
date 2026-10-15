@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
@@ -754,14 +755,34 @@ func (s *passThroughDeliveryStream) Close() error {
 	// cancels the producer, so waiting first deadlocks. The drain still consumes
 	// everything already buffered, preserving the background reader's accounting.
 	var closeErr error
+	producerClosed := false
 	delivered := s.DeliveryAcknowledged()
 	if !delivered && s.close != nil {
 		closeErr = s.close()
+		producerClosed = true
 	}
 	if s.done != nil {
-		<-s.done
+		if delivered {
+			timer := time.NewTimer(streamTailTimeout)
+			select {
+			case <-s.done:
+			case <-timer.C:
+				if s.close != nil {
+					closeErr = s.close()
+					producerClosed = true
+				}
+			}
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
+		} else {
+			<-s.done
+		}
 	}
-	if delivered && s.close != nil {
+	if delivered && !producerClosed && s.close != nil {
 		closeErr = s.close()
 	}
 	return errors.Join(closeErr, s.Stream.Close())
