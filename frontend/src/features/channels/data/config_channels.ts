@@ -701,13 +701,13 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   cloudflare: {
     channelType: 'cloudflare',
     baseURL: 'https://api.cloudflare.com/client/v4/accounts/<account_id>/ai',
+    // Only models the default endpoints (chat completions + embeddings) can
+    // serve: decision models need the System One endpoint and a model protocol
+    // pin, so they are added by hand instead of being preset here.
     defaultModels: [
       '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
       '@cf/meta/llama-3.1-8b-instruct',
       '@cf/baai/bge-m3',
-      '@cf/cloudflare/clef',
-      '@cf/cloudflare/clef-flash',
-      '@cf/cloudflare/clef-omni',
     ],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-orange-100 text-orange-800 border-orange-200',

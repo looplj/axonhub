@@ -396,6 +396,16 @@ test('Cloudflare Workers AI is available as a channel type in frontend schemas a
     /channelType === 'cloudflare' \|\| format !== 'typesafe\/systemone'/,
     'System One should be configurable for Cloudflare channels only'
   );
+  assert.match(
+    schema,
+    /Replace placeholders such as <account_id> with real values/,
+    'the channel base URL should reject unresolved placeholders'
+  );
+  assert.doesNotMatch(
+    channelsConfig,
+    /@cf\/cloudflare\/clef/,
+    'Cloudflare default models must be servable by the default endpoints'
+  );
 });
 
 test('Cloudflare has localized channel and provider labels', () => {
