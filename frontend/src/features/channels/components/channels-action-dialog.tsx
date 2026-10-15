@@ -1674,6 +1674,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         firstApiKey = apiKeys.find((key) => key.trim().length > 0)?.trim() || '';
       }
 
+      // Fall back to Vertex API keys if neither OAuth nor flat apiKeys are present
+      if (!firstApiKey) {
+        const vertexApiKeys = form.getValues('credentials.vertexApiKeys');
+        firstApiKey = vertexApiKeys?.find((c) => c.apiKey.trim().length > 0)?.apiKey.trim() || '';
+      }
+
       const result = await fetchModels.mutateAsync({
         channelType,
         baseURL,
