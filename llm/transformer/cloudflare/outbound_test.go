@@ -97,6 +97,20 @@ func TestSystemOneOutboundTransformer_TransformRequest_URL(t *testing.T) {
 			model:        "@cf/cloudflare/clef",
 			want:         testBaseURL + "/custom/run/@cf/cloudflare/clef",
 		},
+		{
+			name:         "custom endpoint path without leading slash",
+			baseURL:      testBaseURL,
+			endpointPath: "custom/run",
+			model:        "@cf/cloudflare/clef",
+			want:         testBaseURL + "/custom/run/@cf/cloudflare/clef",
+		},
+		{
+			name:         "root endpoint path",
+			baseURL:      testBaseURL,
+			endpointPath: "/",
+			model:        "@cf/cloudflare/clef",
+			want:         testBaseURL + "/@cf/cloudflare/clef",
+		},
 	}
 
 	for _, tt := range tests {
@@ -218,6 +232,42 @@ func TestSystemOneOutboundTransformer_TransformResponse(t *testing.T) {
 	}
 }
 
+func TestSystemOneOutboundTransformer_TransformResponse_EnvelopeFailure(t *testing.T) {
+	outbound := newTestOutbound(t, testBaseURL)
+
+	// Workers AI reports failures inside a 2xx envelope; an unwrapped body would
+	// otherwise decode into an empty answer set and look successful.
+	t.Run("success false with 200", func(t *testing.T) {
+		_, err := outbound.TransformResponse(context.Background(), &httpclient.Response{
+			StatusCode: http.StatusOK,
+			Body:       []byte(`{"success":false,"errors":[{"code":5006,"message":"AiError: Bad input"}],"messages":[],"result":null}`),
+		})
+		require.Error(t, err)
+
+		var respErr *llm.ResponseError
+		require.ErrorAs(t, err, &respErr)
+		require.Equal(t, http.StatusOK, respErr.StatusCode)
+		require.Equal(t, "AiError: Bad input", respErr.Detail.Message)
+		require.Equal(t, "5006", respErr.Detail.Code)
+	})
+
+	t.Run("errors without success flag", func(t *testing.T) {
+		_, err := outbound.TransformResponse(context.Background(), &httpclient.Response{
+			StatusCode: http.StatusOK,
+			Body:       []byte(`{"errors":[{"code":7001,"message":"GET not supported for requested URI."}],"result":null}`),
+		})
+		require.Error(t, err)
+	})
+
+	t.Run("result is not an object", func(t *testing.T) {
+		_, err := outbound.TransformResponse(context.Background(), &httpclient.Response{
+			StatusCode: http.StatusOK,
+			Body:       []byte(`{"success":true,"result":null,"errors":[],"messages":[]}`),
+		})
+		require.ErrorContains(t, err, "unexpected result")
+	})
+}
+
 func TestSystemOneOutboundTransformer_TransformResponse_Invalid(t *testing.T) {
 	outbound := newTestOutbound(t, testBaseURL)
 
@@ -272,6 +322,15 @@ func TestSystemOneOutboundTransformer_TransformError(t *testing.T) {
 		require.Equal(t, http.StatusBadGateway, respErr.StatusCode)
 		require.Equal(t, "upstream unavailable", respErr.Detail.Message)
 		require.Equal(t, "api_error", respErr.Detail.Type)
+	})
+
+	t.Run("openai style error body", func(t *testing.T) {
+		respErr := outbound.TransformError(context.Background(), &httpclient.Error{
+			StatusCode: http.StatusBadRequest,
+			Body:       []byte(`{"error":{"message":"upstream boom","type":"invalid_request_error"}}`),
+		})
+		require.Equal(t, http.StatusBadRequest, respErr.StatusCode)
+		require.Contains(t, respErr.Detail.Message, "upstream boom")
 	})
 
 	t.Run("nil error", func(t *testing.T) {

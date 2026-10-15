@@ -26,8 +26,9 @@ type systemOneWireResponse struct {
 // envelope is the Cloudflare API v4 response wrapper:
 // {"success":true,"result":{...},"errors":[],"messages":[]}.
 type envelope struct {
-	Result json.RawMessage `json:"result,omitempty"`
-	Errors []envelopeError `json:"errors,omitempty"`
+	Success *bool           `json:"success,omitempty"`
+	Result  json.RawMessage `json:"result,omitempty"`
+	Errors  []envelopeError `json:"errors,omitempty"`
 }
 
 type envelopeError struct {

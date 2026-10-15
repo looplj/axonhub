@@ -113,7 +113,13 @@ func (t *SystemOneOutboundTransformer) TransformRequest(
 func (t *SystemOneOutboundTransformer) buildURL(model string) string {
 	prefix := "/run"
 	if t.config.EndpointPath != "" {
-		prefix = strings.TrimRight(t.config.EndpointPath, "/")
+		// The model id is always part of the route, so a configured path is a
+		// route prefix rather than a full replacement for the default "/run".
+		if trimmed := strings.Trim(t.config.EndpointPath, "/"); trimmed != "" {
+			prefix = "/" + trimmed
+		} else {
+			prefix = ""
+		}
 	}
 
 	return t.config.BaseURL + prefix + "/" + model
@@ -159,7 +165,21 @@ func (t *SystemOneOutboundTransformer) TransformResponse(
 
 	var env envelope
 	if err := json.Unmarshal(httpResp.Body, &env); err == nil {
-		if result := bytes.TrimSpace(env.Result); len(result) > 0 && result[0] == '{' {
+		// Workers AI can report a failure inside a 2xx response, so an unwrapped
+		// body would otherwise decode into an empty answer set and look successful.
+		if (env.Success != nil && !*env.Success) || len(env.Errors) > 0 {
+			return nil, t.TransformError(ctx, &httpclient.Error{
+				StatusCode: httpResp.StatusCode,
+				Body:       httpResp.Body,
+			})
+		}
+
+		if env.Result != nil {
+			result := bytes.TrimSpace(env.Result)
+			if len(result) == 0 || result[0] != '{' {
+				return nil, fmt.Errorf("failed to unmarshal systemone response: unexpected result %s", result)
+			}
+
 			payload = result
 		}
 	}
