@@ -203,3 +203,85 @@ func TestChannelTestRejectsSystemOneStreamPolicy(t *testing.T) {
 	}
 	require.Zero(t, calls.Load())
 }
+
+func TestChannelTestEmbeddingModel(t *testing.T) {
+	tests := []struct {
+		name        string
+		response    string
+		wantSuccess bool
+		wantMessage string
+		wantError   string
+	}{
+		{
+			name:        "embedding",
+			response:    `{"object":"list","data":[{"object":"embedding","index":0,"embedding":[0.1,0.2,0.3]}],"model":"test-model","usage":{"prompt_tokens":3,"total_tokens":3}}`,
+			wantSuccess: true,
+			wantMessage: "Embedding OK: 3 dimensions",
+		},
+		{
+			name:      "empty data",
+			response:  `{"object":"list","data":[]}`,
+			wantError: "No embedding in response",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, client := setupTest(t)
+			ctx = contexts.WithProjectID(ctx, createTestProject(t, ctx, client).ID)
+			var mu sync.Mutex
+			var paths []string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				mu.Lock()
+				paths = append(paths, r.URL.Path)
+				mu.Unlock()
+				var body map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				if r.Header.Get("Authorization") != "Bearer test-key-1" || body["model"] != "test-model" ||
+					body["input"] != "system prompt\n\nuser prompt" || body["messages"] != nil {
+					http.Error(w, fmt.Sprintf("incorrect embedding payload: %v", body), http.StatusBadRequest)
+					return
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(tt.response))
+			}))
+			t.Cleanup(server.Close)
+
+			ch, err := client.Channel.Create().SetType(channel.TypeOpenai).SetName(tt.name).
+				SetBaseURL(server.URL + "/v1").SetCredentials(objects.ChannelCredentials{APIKeys: []string{"test-key-1"}}).
+				SetSupportedModels([]string{"test-model"}).SetDefaultTestModel("test-model").
+				SetSettings(&objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+					{Model: "test-model", APIFormats: []string{llm.APIFormatOpenAIEmbedding.String()}},
+				}}).Save(ctx)
+			require.NoError(t, err)
+
+			channelService, requestService, systemService, usageLogService := setupTestServices(t, client)
+			require.NoError(t, systemService.SetChannelSetting(ctx, biz.SystemChannelSettings{TestSystemPrompt: "system prompt", TestUserPrompt: "user prompt"}))
+			require.NoError(t, systemService.SetRetryPolicy(ctx, &biz.RetryPolicy{}))
+			protection := biz.NewPromptProtectionRuleService(biz.PromptProtectionRuleServiceParams{Ent: client})
+			t.Cleanup(protection.Stop)
+			processor := NewTestChannelOrchestrator(channelService, requestService, systemService, usageLogService, protection, httpclient.NewHttpClient())
+			id := objects.GUID{Type: "Channel", ID: ch.ID}
+
+			loaded, err := channelService.GetChannel(ctx, ch.ID)
+			require.NoError(t, err)
+			require.Equal(t, llm.APIFormatOpenAIEmbedding, channelTestAPIFormat(loaded, "test-model"))
+
+			result, err := processor.TestChannel(ctx, id, nil, nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.wantSuccess, result.Success, "%s", lo.FromPtr(result.Error))
+			if tt.wantSuccess {
+				require.Equal(t, tt.wantMessage, lo.FromPtr(result.Message))
+			} else {
+				require.Contains(t, lo.FromPtr(result.Error), tt.wantError)
+			}
+
+			mu.Lock()
+			gotPaths := append([]string(nil), paths...)
+			mu.Unlock()
+			require.Equal(t, []string{"/v1/embeddings"}, gotPaths)
+		})
+	}
+}
