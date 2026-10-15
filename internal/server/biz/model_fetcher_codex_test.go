@@ -68,6 +68,106 @@ func TestModelFetcher_CodexCatalog(t *testing.T) {
 	}
 }
 
+func TestModelFetcher_CodexThirdPartyCatalog_usesSlugModels(t *testing.T) {
+	// Given
+	var requestURL string
+	var authorization string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestURL = r.URL.String()
+		authorization = r.Header.Get("Authorization")
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"models":[{"slug":"third-party-model","visibility":"list","priority":1}]}`))
+	}))
+	defer server.Close()
+
+	key := "synthetic-api-key"
+	fetcher := NewModelFetcher(httpclient.NewHttpClient(), nil)
+
+	// When
+	result, err := fetcher.FetchModels(t.Context(), FetchModelsInput{
+		ChannelType: channel.TypeCodex.String(),
+		BaseURL:     server.URL + "/custom",
+		APIKey:      &key,
+	})
+
+	// Then
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	require.False(t, result.Fallback)
+	require.Equal(t, "/custom/models", strings.Split(requestURL, "?")[0])
+	require.NotEmpty(t, requestURL)
+	require.NotEmpty(t, strings.Split(requestURL, "client_version=")[1])
+	require.Equal(t, "Bearer synthetic-api-key", authorization)
+	require.Equal(t, []ModelIdentify{{ID: "third-party-model"}, {ID: "gpt-image-2"}}, result.Models)
+}
+
+func TestModelFetcher_CodexAPIKeyWithOfficialBaseURL_usesCatalog(t *testing.T) {
+	client := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
+		require.Equal(t, "https://chatgpt.com/backend-api/codex/models", req.URL.Scheme+"://"+req.URL.Host+req.URL.Path)
+		require.NotEmpty(t, req.URL.Query().Get("client_version"))
+		require.Equal(t, "Bearer synthetic-api-key", req.Header.Get("Authorization"))
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(`{"models":[{"slug":"official-url-api-key-model","visibility":"list"}]}`)),
+		}, nil
+	})})
+	key := "synthetic-api-key"
+
+	result, err := NewModelFetcher(client, nil).FetchModels(t.Context(), FetchModelsInput{
+		ChannelType: channel.TypeCodex.String(),
+		BaseURL:     "https://chatgpt.com/backend-api/codex#",
+		APIKey:      &key,
+	})
+
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	require.False(t, result.Fallback)
+	require.Equal(t, []ModelIdentify{{ID: "official-url-api-key-model"}, {ID: "gpt-image-2"}}, result.Models)
+}
+
+func TestModelFetcher_CodexThirdPartyCatalog_returnsErrorsWithoutFallback(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		status int
+		body   string
+	}{
+		{name: "unauthorized", status: http.StatusUnauthorized, body: `{}`},
+		{name: "malformed", status: http.StatusOK, body: `{`},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			// Given
+			var requestURL string
+			var authorization string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requestURL = r.URL.String()
+				authorization = r.Header.Get("Authorization")
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer server.Close()
+
+			key := "synthetic-api-key"
+
+			// When
+			result, err := NewModelFetcher(httpclient.NewHttpClient(), nil).FetchModels(t.Context(), FetchModelsInput{
+				ChannelType: channel.TypeCodex.String(),
+				BaseURL:     server.URL + "/custom",
+				APIKey:      &key,
+			})
+
+			// Then
+			require.NoError(t, err)
+			require.NotNil(t, result.Error)
+			require.False(t, result.Fallback)
+			require.Empty(t, result.Models)
+			require.Equal(t, "/custom/models", strings.Split(requestURL, "?")[0])
+			require.NotEmpty(t, strings.Split(requestURL, "client_version=")[1])
+			require.Equal(t, "Bearer synthetic-api-key", authorization)
+		})
+	}
+}
+
 func TestModelFetcher_CodexStoredCredentialReplacement(t *testing.T) {
 	for _, mode := range []string{"replace-oauth", "replace-api-key", "mismatch", "stored-api-key", "proxy"} {
 		t.Run(mode, func(t *testing.T) {
@@ -104,9 +204,9 @@ func TestModelFetcher_CodexStoredCredentialReplacement(t *testing.T) {
 				require.Equal(t, "preserved", req.Header.Get("X-Catalog-Test"))
 				body := `{"models":[{"slug":"new-model","visibility":"list"}]}`
 				if mode == "replace-api-key" {
-					require.Equal(t, "https://relay.example/v1/models", req.URL.String())
+					require.Equal(t, "https://relay.example/v1/models", req.URL.Scheme+"://"+req.URL.Host+req.URL.Path)
+					require.NotEmpty(t, req.URL.Query().Get("client_version"))
 					require.Equal(t, "Bearer replacement-key", req.Header.Get("Authorization"))
-					body = `{"data":[{"id":"new-model"}]}`
 				} else {
 					require.Equal(t, "Bearer replacement-token", req.Header.Get("Authorization"))
 				}
@@ -137,9 +237,6 @@ func TestModelFetcher_CodexStoredCredentialReplacement(t *testing.T) {
 				require.Equal(t, 1, calls)
 				require.False(t, result.Fallback)
 				want := []ModelIdentify{{ID: "new-model"}, {ID: "gpt-image-2"}}
-				if mode == "replace-api-key" {
-					want = []ModelIdentify{{ID: "new-model"}}
-				}
 				require.Equal(t, want, result.Models)
 			}
 			saved, err := db.Channel.Get(ctx, ch.ID)
@@ -153,8 +250,10 @@ func TestModelFetcher_CodexRelayModels(t *testing.T) {
 	calls := 0
 	client := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripperFunc(func(req *http.Request) (*http.Response, error) {
 		calls++
-		require.Equal(t, "https://relay.example/v1/models", req.URL.String())
-		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"data":[{"id":"relay-model"}]}`))}, nil
+		require.Equal(t, "https://relay.example/v1/models", req.URL.Scheme+"://"+req.URL.Host+req.URL.Path)
+		require.NotEmpty(t, req.URL.Query().Get("client_version"))
+		require.Equal(t, "Bearer synthetic-api-key", req.Header.Get("Authorization"))
+		return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"models":[{"slug":"relay-model","visibility":"list"}]}`))}, nil
 	})})
 	key := "synthetic-api-key"
 	result, err := NewModelFetcher(client, nil).FetchModels(t.Context(), FetchModelsInput{
@@ -162,6 +261,6 @@ func TestModelFetcher_CodexRelayModels(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.Equal(t, 1, calls)
-	require.Equal(t, []ModelIdentify{{ID: "relay-model"}}, result.Models)
+	require.Equal(t, []ModelIdentify{{ID: "relay-model"}, {ID: "gpt-image-2"}}, result.Models)
 	require.False(t, result.Fallback)
 }

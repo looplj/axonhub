@@ -747,14 +747,14 @@ export const createChannelInputSchema = z
     }),
   })
   .superRefine((data, ctx) => {
+    const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
+    const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
     const isOAuthType =
-      data.type === 'codex' ||
+      (data.type === 'codex' && !hasApiKeys) ||
       data.type === 'claudecode' ||
       data.type === 'antigravity' ||
       data.type === 'github_copilot' ||
       data.type === 'xai_subscription';
-    const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
-    const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
 
     // github_copilot requires credentials.apiKey (OAuth JSON with access_token)
     if (data.type === 'github_copilot' && !hasApiKey) {
@@ -858,11 +858,12 @@ export const updateChannelInputSchema = z
   .superRefine((data, ctx) => {
     const effectiveType = data.type;
     const hasApiKey = data.credentials?.apiKey && data.credentials.apiKey.trim().length > 0;
+    const hasApiKeys = (data.credentials?.apiKeys?.length ?? 0) > 0;
 
     // For OAuth validation on updates: validate if type is OAuth, or if credentials.apiKey is provided
     // (which indicates OAuth credentials are being set)
     const isOAuthType =
-      effectiveType === 'codex' ||
+      (effectiveType === 'codex' && !hasApiKeys) ||
       effectiveType === 'claudecode' ||
       effectiveType === 'antigravity' ||
       effectiveType === 'github_copilot' ||

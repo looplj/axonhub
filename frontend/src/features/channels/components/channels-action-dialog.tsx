@@ -367,6 +367,81 @@ function getInitialBaseURL(row: Pick<Channel, 'type' | 'baseURL' | 'credentials'
   return isOfficialCodexChannel(row) ? getDefaultBaseURL('codex') : toHttpBaseURL(row.baseURL);
 }
 
+// Used by both the submit path and fetch-models: reads the access_token out of
+// an OAuth/auth.json credential, falling back to the raw string.
+function parseOauthToken(oauthApiKey: string): string {
+  if (!oauthApiKey) return '';
+  try {
+    const parsed = JSON.parse(oauthApiKey);
+    if (parsed.access_token) {
+      return parsed.access_token;
+    }
+    if (parsed.tokens?.access_token) {
+      return parsed.tokens.access_token;
+    }
+  } catch {
+    // Not JSON, use as-is
+  }
+  return oauthApiKey;
+}
+
+// A third-party Codex channel authenticates with a plain API key only. An OAuth
+// or auth.json row that is copied/edited into third-party mode still carries its
+// old JSON in `credentials.apiKey`; the backend replaces credentials wholesale,
+// so the inherited value must be dropped before submit or it silently revives.
+function getCodexThirdPartySubmitCredentials<T extends { apiKey?: string | null; apiKeys?: string[] | null }>(
+  credentials: T,
+  channel: { type?: ChannelType | null; authMode: string }
+): T {
+  if (channel.type !== 'codex' || channel.authMode !== 'third-party') return credentials;
+
+  const { apiKey: _inheritedOAuthCredentials, ...thirdPartyCredentials } = credentials;
+  return thirdPartyCredentials as T;
+}
+
+// Model fetch mirrors submit: third-party Codex uses only the plain key, every
+// other provider keeps preferring an OAuth credential when one is present.
+function getFetchModelsApiKey(input: {
+  type?: string | null;
+  authMode: string;
+  oauthApiKey?: string | null;
+  apiKeys?: (string | null | undefined)[] | null;
+}): string {
+  const plainApiKey = (input.apiKeys || []).find((key) => (key || '').trim().length > 0)?.trim() || '';
+  const oauthApiKey = input.oauthApiKey || '';
+
+  if (input.type === 'codex' && input.authMode === 'third-party') {
+    return plainApiKey;
+  }
+
+  // OAuth JSON is sent whole so the backend can detect isOAuthJSON.
+  if (oauthApiKey.trimStart().startsWith('{')) {
+    return oauthApiKey;
+  }
+
+  return parseOauthToken(oauthApiKey) || plainApiKey;
+}
+
+// Third-party Codex rejects an empty or OAuth-shaped credential so a save can
+// never persist a channel that still authenticates with the inherited JSON.
+function getCodexThirdPartyCredentialError(channel: {
+  type?: string | null;
+  authMode: string;
+  apiKeys?: (string | null | undefined)[] | null;
+}): string | undefined {
+  if (channel.type !== 'codex' || channel.authMode !== 'third-party') return undefined;
+
+  const apiKeys = (channel.apiKeys || []).map((key) => (key || '').trim()).filter((key) => key.length > 0);
+  if (apiKeys.length === 0) {
+    return 'channels.dialogs.oauth.errors.codexThirdPartyApiKeyRequired';
+  }
+  if (apiKeys.some((key) => key.startsWith('{'))) {
+    return 'channels.dialogs.oauth.errors.codexThirdPartyApiKeyInvalid';
+  }
+
+  return undefined;
+}
+
 export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation();
   const isEdit = !!currentRow;
@@ -1372,11 +1447,31 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             : { ...submittedCredentials, vertexApiKeys: undefined }
           : { ...submittedCredentials, vertexApiKeys: undefined };
 
+      // A third-party Codex channel authenticates with a plain API key: reject an
+      // empty or inherited OAuth-shaped credential instead of saving it.
+      const codexThirdPartyCredentialError = getCodexThirdPartyCredentialError({
+        type: values.type || derivedChannelType,
+        authMode,
+        apiKeys: values.credentials?.apiKeys,
+      });
+      if (codexThirdPartyCredentialError) {
+        form.setError('credentials.apiKeys', {
+          type: 'manual',
+          message: t(codexThirdPartyCredentialError),
+        });
+        return;
+      }
+
       const dataWithModels = {
         ...valuesForSubmit,
         supportedModels,
         manualModels,
-        credentials,
+        credentials: credentials
+          ? getCodexThirdPartySubmitCredentials(credentials, {
+               type: valuesForSubmit.type,
+               authMode,
+             })
+          : credentials,
       };
       // The Command Code / Ollama quota cookie is a browser-session credential
       // that only belongs on its own channel type. Never let a
@@ -1631,22 +1726,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setSupportedModels([]);
     setManualModels([]);
   };
-  // Helper function to parse OAuth token from JSON string
-  const parseOauthToken = (oauthApiKey: string): string => {
-    if (!oauthApiKey) return '';
-    try {
-      const parsed = JSON.parse(oauthApiKey);
-      if (parsed.access_token) {
-        return parsed.access_token;
-      }
-      if (parsed.tokens?.access_token) {
-        return parsed.tokens.access_token;
-      }
-    } catch {
-      // Not JSON, use as-is
-    }
-    return oauthApiKey;
-  };
 
   const handleFetchModels = useCallback(async () => {
     const channelType = form.getValues('type');
@@ -1670,22 +1749,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       let firstApiKey = '';
       if (channelType === 'gemini_vertex') {
         firstApiKey = selectedVertexCredential?.apiKey.trim() || '';
-      }
-      if (!firstApiKey && oauthApiKey) {
-        // If it's OAuth JSON, send full JSON so backend detects isOAuthJSON
-        if (oauthApiKey.trimStart().startsWith('{')) {
-          firstApiKey = oauthApiKey;
-        } else {
-          const parsed = parseOauthToken(oauthApiKey || '');
-          if (parsed) {
-            firstApiKey = parsed;
-          }
-        }
-      }
-
-      // Fall back to apiKeys array if no OAuth token
-      if (!firstApiKey && apiKeys?.length) {
-        firstApiKey = apiKeys.find((key) => key.trim().length > 0)?.trim() || '';
+      } else {
+        firstApiKey = getFetchModelsApiKey({
+          type: channelType,
+          authMode,
+          oauthApiKey,
+          apiKeys,
+        });
       }
 
       // Fall back to Vertex API keys if neither OAuth nor flat apiKeys are present
@@ -1718,7 +1788,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     } catch (_error) {
       // Error is already handled by the mutation
     }
-  }, [fetchModels, form, isEdit, currentRow]);
+  }, [fetchModels, form, isEdit, currentRow, authMode]);
 
   const handleSyncNow = useCallback(async () => {
     if (!currentRow) return [];

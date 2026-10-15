@@ -7,6 +7,8 @@
   "channels.dialogs.oauth.errors.copilotCredentialsInvalid": "GitHub Copilot credentials must be valid JSON with access_token",
   "channels.dialogs.oauth.errors.copilotCredentialsRequired": "GitHub Copilot requires OAuth credentials (API Key)",
   "channels.dialogs.oauth.errors.credentialsInvalid": "Invalid OAuth credentials format",
+  "channels.dialogs.oauth.errors.codexThirdPartyApiKeyRequired": "Enter an API Key for the third-party Codex channel",
+  "channels.dialogs.oauth.errors.codexThirdPartyApiKeyInvalid": "Paste a plain API Key, not OAuth/auth.json credentials, for a third-party Codex channel",
   "channels.title": "Channels",
   "channels.description": "Manage AI model channels, configure providers, and monitor health status.",
   "channels.addChannel": "Add Channel",

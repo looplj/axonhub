@@ -19,6 +19,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/cline"
 	"github.com/looplj/axonhub/llm/transformer/gemini/vertex"
@@ -470,6 +471,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	}
 
 	channelType := channel.Type(input.ChannelType)
+	thirdPartyCodexCatalog := channelType == channel.TypeCodex && codexChannel == nil && !isOAuthJSON(apiKey)
 
 	if apiKey == "" && codexChannel == nil {
 		if isQiniuChannelType(channelType) {
@@ -541,7 +543,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 	if proxyConfig != nil {
 		httpClient = httpClient.WithProxy(proxyConfig)
 	}
-	if isCommandCodeChannelType(channelType) || codexChannel != nil {
+	if isCommandCodeChannelType(channelType) || codexChannel != nil || thirdPartyCodexCatalog {
 		httpClient = httpClient.WithRejectHTTPSDowngrade()
 	}
 
@@ -554,6 +556,15 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		req, err = f.prepareCodexModelsRequest(ctx, codexChannel, httpClient)
 		if err != nil {
 			return &FetchModelsResult{Models: f.getDefaultModelsByType(ctx, channel.TypeCodex), Fallback: true}, nil
+		}
+		parse = parseCodexModels
+	} else if thirdPartyCodexCatalog {
+		var err error
+		req, err = codex.ModelsRequest(ctx, oauth.NewAPIKeyTokenProvider(func(context.Context) string {
+			return apiKey
+		}), input.BaseURL)
+		if err != nil {
+			return &FetchModelsResult{Models: []ModelIdentify{}, Error: lo.ToPtr(fmt.Sprintf("failed to prepare Codex models request: %v", err))}, nil
 		}
 		parse = parseCodexModels
 	} else if isCommandCodeChannelType(channelType) {
