@@ -176,3 +176,102 @@ func TestOutboundTransformer_TransformResponse_InvalidJSON(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid json")
 }
+
+func TestOutboundTransformer_TransformResponse_CloudflareEnvelope(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.typesafe.ai/v1", "sk-test")
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	rawResp := []byte(`{
+		"result": {
+			"model": "clef-flash",
+			"answers": {
+				"approve": {
+					"type": "noul",
+					"noul": 0.9328
+				}
+			},
+			"usage": {
+				"input_tokens": 158,
+				"output_tokens": 0
+			}
+		},
+		"success": true,
+		"errors": [],
+		"messages": []
+	}`)
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       rawResp,
+		Request: &httpclient.Request{
+			APIFormat: string(llm.APIFormatTypeSafeSystemOne),
+		},
+	}
+
+	llmResp, err := outbound.TransformResponse(ctx, httpResp)
+	require.NoError(t, err)
+	require.Equal(t, "clef-flash", llmResp.Model)
+	require.NotNil(t, llmResp.SystemOne)
+	require.NotNil(t, llmResp.Usage)
+	require.Equal(t, int64(158), llmResp.Usage.PromptTokens)
+
+	ans, ok := llmResp.SystemOne.Answers["approve"]
+	require.True(t, ok)
+	require.Equal(t, "noul", ans.Type)
+	require.NotNil(t, ans.Noul)
+	require.InDelta(t, 0.9328, *ans.Noul, 1e-9)
+}
+
+func TestOutboundTransformer_TransformResponse_CloudflareEnvelopeFailure(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.typesafe.ai/v1", "sk-test")
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	rawResp := []byte(`{
+		"result": null,
+		"success": false,
+		"errors": [{"code": 7000, "message": "No route for that URI"}],
+		"messages": []
+	}`)
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       rawResp,
+		Request: &httpclient.Request{
+			APIFormat: string(llm.APIFormatTypeSafeSystemOne),
+		},
+	}
+
+	_, err = outbound.TransformResponse(ctx, httpResp)
+	require.Error(t, err)
+
+	var respErr *llm.ResponseError
+	require.True(t, errors.As(err, &respErr))
+	require.Equal(t, http.StatusBadGateway, respErr.StatusCode)
+	require.Contains(t, respErr.Detail.Message, "No route for that URI")
+}
+
+func TestOutboundTransformer_TransformResponse_CloudflareEnvelopeMissingResult(t *testing.T) {
+	outbound, err := NewOutboundTransformer("https://api.typesafe.ai/v1", "sk-test")
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	rawResp := []byte(`{"success": true, "errors": [], "messages": []}`)
+
+	httpResp := &httpclient.Response{
+		StatusCode: http.StatusOK,
+		Body:       rawResp,
+		Request: &httpclient.Request{
+			APIFormat: string(llm.APIFormatTypeSafeSystemOne),
+		},
+	}
+
+	_, err = outbound.TransformResponse(ctx, httpResp)
+	require.Error(t, err)
+
+	var respErr *llm.ResponseError
+	require.True(t, errors.As(err, &respErr))
+	require.Equal(t, http.StatusBadGateway, respErr.StatusCode)
+	require.Contains(t, respErr.Detail.Message, "result")
+}
