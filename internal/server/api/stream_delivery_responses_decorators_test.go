@@ -46,7 +46,9 @@ func TestStreamDeliveryE2E_ResponsesDecorators(t *testing.T) {
 				})
 				server := httptest.NewServer(engine)
 				t.Cleanup(server.Close)
-				resp, err := server.Client().Post(server.URL+"/v1/responses", "application/json", strings.NewReader(`{"model":"gpt-test","input":"hello","stream":true}`))
+				client := server.Client()
+				client.Timeout = 5 * time.Second
+				resp, err := client.Post(server.URL+"/v1/responses", "application/json", strings.NewReader(`{"model":"gpt-test","input":"hello","stream":true}`))
 				require.NoError(t, err)
 				body, err := io.ReadAll(resp.Body)
 				require.NoError(t, err)
