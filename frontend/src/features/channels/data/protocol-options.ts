@@ -63,7 +63,7 @@ export function getConfigurableApiFormatsForChannelType(
     return ['typesafe/systemone'];
   }
   const filtered = configurableFormats
-    .filter((format) => format !== 'typesafe/systemone')
+    .filter((format) => channelType === 'openai' || format !== 'typesafe/systemone')
     .filter((format) => channelType === 'openai' || format !== 'openai/decisions')
     .filter((format) => channelType !== 'codex' || !isResponsesFamilyFormat(format));
   if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {

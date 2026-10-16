@@ -138,6 +138,21 @@ func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 		if filtered := FilterEndpointsByAPIFormats(endpoints, forced); len(filtered) > 0 {
 			endpoints = filtered[:1]
 		}
+		hasChat := false
+		for _, endpoint := range endpoints {
+			if endpoint.APIFormat == llm.APIFormatOpenAIChatCompletion.String() {
+				hasChat = true
+				break
+			}
+		}
+		if hasChat {
+			for _, endpoint := range endpoints {
+				if endpoint.APIFormat == llm.APIFormatOpenAIDecisions.String() {
+					return llm.APIFormatOpenAIDecisions
+				}
+			}
+			return llm.APIFormatOpenAIChatCompletion
+		}
 		for _, endpoint := range endpoints {
 			if endpoint.APIFormat == llm.APIFormatOpenAIDecisions.String() {
 				return llm.APIFormatOpenAIDecisions

@@ -69,6 +69,18 @@ func TestChannelTestAPIFormatPrefersDecisionsEndpoint(t *testing.T) {
 	require.Equal(t, llm.APIFormatOpenAIDecisions, channelTestAPIFormat(ch, "gpt-6-luna"))
 }
 
+func TestChannelTestAPIFormatMixedEndpointsFallback(t *testing.T) {
+	ch := &biz.Channel{Channel: &ent.Channel{
+		Type:            channel.TypeOpenai,
+		SupportedModels: []string{"test-model"},
+		Endpoints: []objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+			{APIFormat: llm.APIFormatTypeSafeSystemOne.String(), Path: "/systemone"},
+		},
+	}}
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, channelTestAPIFormat(ch, "test-model"))
+}
+
 func TestParseDecisionsTestResponseRequiresAnswers(t *testing.T) {
 	message, err := parseDecisionsTestResponse([]byte(`{"model":"gpt-6-luna","answers":[{"name":"answer","probability":1}]}`))
 	require.NoError(t, err)
