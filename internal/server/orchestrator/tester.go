@@ -134,14 +134,32 @@ func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 		if !ok {
 			entry = channel.GetDirectModelEntries()[model]
 		}
-		forced := forcedAPIFormatsForCandidate(channel, []biz.ChannelModelEntry{entry}, model)
-		if filtered := FilterEndpointsByAPIFormats(endpoints, forced); len(filtered) > 0 {
-			endpoints = filtered[:1]
+		// A model pinned by modelProtocols to an endpoint is tested with it: a
+		// model that cannot serve chat (an embedding model on openai/embeddings, a
+		// decision model on typesafe/systemone) would otherwise always fail its own
+		// test.
+		if forced := forcedAPIFormatsForCandidate(channel, []biz.ChannelModelEntry{entry}, model); len(forced) > 0 {
+			if filtered := FilterEndpointsByAPIFormats(endpoints, forced); len(filtered) > 0 {
+				return llm.APIFormat(filtered[0].APIFormat)
+			}
 		}
+
 		for _, endpoint := range endpoints {
 			if endpoint.APIFormat == llm.APIFormatOpenAIDecisions.String() {
 				return llm.APIFormatOpenAIDecisions
 			}
+		}
+
+		// Chat is the default test surface, and it wins over System One unless the
+		// channel serves nothing else. Workers AI hosts System One decision models
+		// next to its OpenAI-compatible API, so an unpinned chat or embedding model
+		// on such a channel must not be tested as System One.
+		for _, endpoint := range endpoints {
+			if endpoint.APIFormat == llm.APIFormatOpenAIChatCompletion.String() {
+				return llm.APIFormatOpenAIChatCompletion
+			}
+		}
+		for _, endpoint := range endpoints {
 			if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() {
 				return llm.APIFormatTypeSafeSystemOne
 			}
@@ -229,12 +247,54 @@ func (processor *TestChannelOrchestrator) buildChannelTestInput(ctx context.Cont
 		})
 		return typesafe.NewSystemOneInboundTransformer(), body, err
 	}
+	if apiFormat == llm.APIFormatOpenAIEmbedding {
+		if useStream {
+			return nil, nil, fmt.Errorf("embeddings do not support streaming")
+		}
+
+		// Protect role-scoped prompts before they are combined into the single
+		// embedding input, mirroring the System One branch.
+		prompts := buildChannelTestRequest(model, false, systemPrompt, userPrompt, false, llm.APIFormatOpenAIChatCompletion)
+		protected, err := processor.promptProtectionRuleService.Protect(ctx, prompts)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Mirror the /v1/embeddings path: the embedding inbound transformer
+		// consumes the OpenAI embedding payload.
+		body, err := json.Marshal(openai.EmbeddingRequest{
+			Model: model,
+			Input: llm.EmbeddingInput{String: lo.FromPtr(protected.Messages[0].Content.Content) + "\n\n" + lo.FromPtr(protected.Messages[1].Content.Content)},
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return openai.NewEmbeddingInboundTransformer(), body, nil
+	}
 	request := buildChannelTestRequest(model, useStream, systemPrompt, userPrompt, responsesWebSocket, apiFormat)
 	body, err := json.Marshal(request)
 	return channelTestInbound(apiFormat), body, err
 }
 
 func channelTestResponseMessage(body []byte, apiFormat llm.APIFormat) (*string, error) {
+	if apiFormat == llm.APIFormatOpenAIEmbedding {
+		response, err := xjson.To[llm.EmbeddingResponse](body)
+		if err != nil {
+			return nil, err
+		}
+		if len(response.Data) == 0 {
+			return nil, fmt.Errorf("No embedding in response")
+		}
+		if dimensions := len(response.Data[0].Embedding.Embedding); dimensions > 0 {
+			return lo.ToPtr(fmt.Sprintf("Embedding OK: %d dimensions", dimensions)), nil
+		}
+		if response.Data[0].Embedding.Base64 != "" {
+			return lo.ToPtr("Embedding OK: base64 encoded vector"), nil
+		}
+
+		return nil, fmt.Errorf("Empty embedding vector in response")
+	}
 	if apiFormat == llm.APIFormatTypeSafeSystemOne {
 		response, err := xjson.To[llm.SystemOneResponse](body)
 		if err != nil {

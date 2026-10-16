@@ -164,6 +164,14 @@ test('keeps the SystemOne endpoint option unchanged when openai/decisions is off
   assert.ok(!getConfigurableApiFormatsForChannelType('openai', configurableFormats).includes('typesafe/systemone'));
 });
 
+test('offers the SystemOne endpoint on Cloudflare Workers AI channels', () => {
+  assert.deepEqual(getConfigurableApiFormatsForChannelType('cloudflare', configurableFormats), [
+    'openai/chat_completions',
+    'openai/responses',
+    'typesafe/systemone',
+  ]);
+});
+
 test('accepts openai/decisions in the API-format schema and configurable endpoint list', () => {
   const schema = read('features/channels/data/schema.ts');
   assert.match(schema, /apiFormatSchema[\s\S]*'openai\/decisions'/, 'apiFormatSchema should accept openai/decisions');

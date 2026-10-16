@@ -126,6 +126,7 @@ export const channelTypeSchema = z.enum([
   'moonshot_coding',
   'jina',
   'typesafe',
+  'cloudflare',
   'github',
   'github_copilot',
   'claudecode',
@@ -712,10 +713,18 @@ function validateVertexAPIKeys(
 
 // Create Channel Input
 
+// A saved base URL must not keep template placeholders such as <account_id>:
+// the channel would be stored unresolved and only fail on its first request,
+// with an upstream error that hides the cause.
+const channelBaseURLSchema = z
+  .string()
+  .url('Please enter a valid URL')
+  .refine((value) => !/[<>]/.test(value), 'Replace placeholders such as <account_id> with real values');
+
 export const createChannelInputSchema = z
   .object({
     type: channelTypeSchema,
-    baseURL: z.url('Please enter a valid URL'),
+    baseURL: channelBaseURLSchema,
     name: z.string().min(1, 'Name is required'),
     policies: channelPoliciesSchema.optional(),
     supportedModels: z.array(z.string()).min(0, 'At least one supported model is required'),
@@ -821,7 +830,7 @@ export type CreateChannelInput = z.infer<typeof createChannelInputSchema>;
 export const updateChannelInputSchema = z
   .object({
     type: channelTypeSchema.optional(),
-    baseURL: z.string().url('Please enter a valid URL').optional(),
+    baseURL: channelBaseURLSchema.optional(),
     name: z.string().min(1, 'Name is required').optional(),
     policies: channelPoliciesSchema.optional(),
     supportedModels: z.array(z.string()).min(1, 'At least one supported model is required').optional(),
@@ -955,7 +964,7 @@ export type ChannelConnection = z.infer<typeof channelConnectionSchema>;
 export const bulkImportChannelItemSchema = z.object({
   type: channelTypeSchema,
   name: z.string().min(1, 'Name is required'),
-  baseURL: z.string().url('Please enter a valid URL').min(1, 'Base URL is required'),
+  baseURL: channelBaseURLSchema,
   apiKey: z.string().min(1, 'API Key is required'),
   supportedModels: z.array(z.string()).min(1, 'At least one supported model is required'),
   defaultTestModel: z.string().min(1, 'Please select a default test model'),

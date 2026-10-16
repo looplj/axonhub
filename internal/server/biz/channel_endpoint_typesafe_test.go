@@ -31,7 +31,7 @@ func TestChannelEndpoint_TypesafeStrictness(t *testing.T) {
 	}
 	err = validateEndpointsForChannelType(channel.TypeOpenai, openaiWithSystemOne)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "only supported by TypeSafe channel types")
+	require.Contains(t, err.Error(), "only supported by TypeSafe and Cloudflare channel types")
 
 	// 4. Default endpoints for TypeSafe channel must only be typesafe/systemone
 	defaults := DefaultEndpointsForChannelType(channel.TypeTypesafe)

@@ -348,6 +348,10 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeTypesafe: {
 		{APIFormat: llm.APIFormatTypeSafeSystemOne.String()},
 	},
+	channel.TypeCloudflare: {
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatOpenAIEmbedding.String()},
+	},
 }
 
 func validateEndpointsForChannelType(channelType channel.Type, endpoints []objects.ChannelEndpoint, baseURL ...string) error {
@@ -364,8 +368,8 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 	}
 
 	for _, endpoint := range endpoints {
-		if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() && channelType != channel.TypeTypesafe {
-			return fmt.Errorf("api_format %q is only supported by TypeSafe channel types", endpoint.APIFormat)
+		if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() && !supportsSystemOneEndpoint(channelType) {
+			return fmt.Errorf("api_format %q is only supported by TypeSafe and Cloudflare channel types", endpoint.APIFormat)
 		}
 	}
 
@@ -380,6 +384,13 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 	}
 
 	return nil
+}
+
+// supportsSystemOneEndpoint reports whether a channel type may serve the
+// typesafe/systemone api format. Cloudflare Workers AI hosts System One decision
+// models alongside its OpenAI-compatible surface.
+func supportsSystemOneEndpoint(channelType channel.Type) bool {
+	return channelType == channel.TypeTypesafe || channelType == channel.TypeCloudflare
 }
 
 func DefaultEndpointsForChannelType(t channel.Type) []objects.ChannelEndpoint {
