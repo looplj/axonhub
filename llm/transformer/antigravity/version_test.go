@@ -41,8 +41,10 @@ func TestFetchVersion_PrefersCLIAndNeverDowngrades(t *testing.T) {
 			SetClientHeaders(headers)
 			require.Equal(t, fmt.Sprintf("antigravity/cli/%s (aidev_client; os_type=%s; arch=%s; auth_method=consumer)", tc.expected, runtime.GOOS, runtime.GOARCH), GetUserAgent())
 			require.Equal(t, GetUserAgent(), headers.Get("User-Agent"))
-			require.Empty(t, headers.Get("Client-Metadata"))
-			require.Empty(t, headers.Get("X-Goog-Api-Client"))
+			require.Equal(t, "antigravity", headers.Get("X-Client-Name"))
+			require.Equal(t, tc.expected, headers.Get("X-Client-Version"))
+			require.Equal(t, ClientMetadata, headers.Get("Client-Metadata"))
+			require.Equal(t, ApiClient, headers.Get("X-Goog-Api-Client"))
 		})
 	}
 }
