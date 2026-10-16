@@ -74,8 +74,8 @@ func TestTransformRequest_Antigravity(t *testing.T) {
 		// Check Headers
 		assert.Equal(t, "application/json", httpReq.Headers.Get("Content-Type"))
 		assert.Equal(t, GetUserAgent(), httpReq.Headers.Get("User-Agent"))
-		assert.Empty(t, httpReq.Headers.Get("X-Goog-Api-Client"))
-		assert.Empty(t, httpReq.Headers.Get("Client-Metadata"))
+		assert.Equal(t, ApiClient, httpReq.Headers.Get("X-Goog-Api-Client"))
+		assert.Equal(t, ClientMetadata, httpReq.Headers.Get("Client-Metadata"))
 		// Since we mocked the token response, we expect the mock access token in Auth config
 		require.NotNil(t, httpReq.Auth)
 		assert.Equal(t, httpclient.AuthTypeBearer, httpReq.Auth.Type)
@@ -451,6 +451,6 @@ func TestOAuthOnlyHeaders(t *testing.T) {
 	// Verify other required headers are present
 	assert.Equal(t, "application/json", httpReq.Headers.Get("Content-Type"))
 	assert.Equal(t, GetUserAgent(), httpReq.Headers.Get("User-Agent"))
-	assert.Empty(t, httpReq.Headers.Get("X-Goog-Api-Client"))
-	assert.Empty(t, httpReq.Headers.Get("Client-Metadata"))
+	assert.Equal(t, ApiClient, httpReq.Headers.Get("X-Goog-Api-Client"))
+	assert.Equal(t, ClientMetadata, httpReq.Headers.Get("Client-Metadata"))
 }
