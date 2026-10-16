@@ -78,7 +78,12 @@ func (c ModelCatalog) Resolve(model, effort string) (string, error) {
 		if id := variants[effort]; id != "" {
 			return id, nil
 		}
-		return "", fmt.Errorf("Antigravity model %q does not offer reasoning effort %q", base, effort)
+		switch effort {
+		case "extra-low", "low", "medium", "high":
+			return "", fmt.Errorf("Antigravity model %q does not offer reasoning effort %q", base, effort)
+		default:
+			return transformModelForAntigravity(model), nil
+		}
 	}
 	defaults := []string{"medium", "low", "high", "extra-low", "minimal", "xhigh"}
 	if strings.HasPrefix(base, "gemini-3") {
@@ -137,40 +142,53 @@ func (t *Transformer) resolveReasoningModel(ctx context.Context, model, effort, 
 	if _, suffix := SplitReasoningModel(NormalizeModelName(model)); suffix != "" && effort == "" {
 		return transformModelForAntigravity(model), nil
 	}
+
 	t.modelCatalogMu.Lock()
-	defer t.modelCatalogMu.Unlock()
 	catalog := t.modelCatalog
-	if catalogVersion != t.modelCatalogVersion || time.Now().After(t.modelCatalogExpiresAt) {
-		client := t.httpClient
+	expiresAt := t.modelCatalogExpiresAt
+	currentVersion := t.modelCatalogVersion
+	needsFetch := catalogVersion != currentVersion || time.Now().After(expiresAt)
+	client := t.httpClient
+	project := t.config.Project
+	t.modelCatalogMu.Unlock()
+
+	if needsFetch {
 		if client == nil {
 			client = httpclient.NewHttpClientWithClient(&http.Client{Timeout: tokenExchangeTimeout})
 		}
-		fetched, err := FetchModelCatalog(ctx, client, accessToken, t.config.Project)
+		fetchCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+		fetched, err := FetchModelCatalog(fetchCtx, client, accessToken, project)
+		cancel()
+
+		t.modelCatalogMu.Lock()
 		if err == nil {
-			catalog = fetched
 			if catalogVersion == t.modelCatalogVersion {
 				t.modelCatalog = fetched
 				t.modelCatalogExpiresAt = time.Now().Add(5 * time.Minute)
+				catalog = fetched
 			}
 		} else {
 			if ctx.Err() != nil {
+				t.modelCatalogMu.Unlock()
 				return "", ctx.Err()
 			}
 			if catalogVersion == t.modelCatalogVersion {
 				catalog = t.modelCatalog
+				t.modelCatalogExpiresAt = time.Now().Add(10 * time.Second)
 			} else {
 				catalog = nil
 			}
 			if catalog == nil && effort != "" {
+				t.modelCatalogMu.Unlock()
 				return "", fmt.Errorf("resolve Antigravity reasoning effort: %w", err)
 			}
-			// Keep legacy, directly accepted model IDs usable during discovery
-			// outages. A previous catalog can still resolve normalized IDs.
-			if catalogVersion == t.modelCatalogVersion {
-				t.modelCatalogExpiresAt = time.Now().Add(10 * time.Second)
-			}
 		}
+		if catalog == nil && catalogVersion == t.modelCatalogVersion {
+			catalog = t.modelCatalog
+		}
+		t.modelCatalogMu.Unlock()
 	}
+
 	if catalog == nil {
 		return transformModelForAntigravity(model), nil
 	}

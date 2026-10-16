@@ -2,15 +2,15 @@ package antigravity
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-	"io"
-	"strings"
 )
 
 func TestReasoningCatalogBaseModels(t *testing.T) {
@@ -79,4 +79,22 @@ func TestTransformerReasoningCatalogCacheAndCredentialIsolation(t *testing.T) {
 	_, err = tr.TransformRequest(t.Context(), &llm.Request{Model: "gemini-4-argon", ReasoningEffort: "high", Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("Hello")}}}})
 	require.ErrorContains(t, err, "does not offer")
 	require.Equal(t, 2, calls, "credentials must not share the previous account's catalog")
+}
+
+func TestModelCatalog_ResolveUnknownOrNoneEffort(t *testing.T) {
+	catalog := ModelCatalog{
+		"gemini-3.8-flash-low":  struct{}{},
+		"gemini-3.8-flash-high": struct{}{},
+	}
+	res, err := catalog.Resolve("gemini-3.8-flash", "none")
+	require.NoError(t, err)
+	require.Equal(t, "gemini-3.8-flash", res)
+
+	res, err = catalog.Resolve("gemini-3.8-flash", "unsupported-effort")
+	require.NoError(t, err)
+	require.Equal(t, "gemini-3.8-flash", res)
+
+	// Supported tier missing still errors
+	_, err = catalog.Resolve("gemini-3.8-flash", "medium")
+	require.ErrorContains(t, err, "does not offer reasoning effort")
 }

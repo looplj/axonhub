@@ -170,8 +170,19 @@ func TestFetchModelsAntigravityAccountCatalog(t *testing.T) {
 	require.NoError(t, err)
 	require.Nil(t, result.Error)
 	require.False(t, result.Fallback)
-	// Request-time effort resolution restores an account-supported wire ID.
-	require.Equal(t, []ModelIdentify{{ID: "claude-opus-5-5"}, {ID: "claude-sonnet-5-5"}, {ID: "gemini-4-argon"}}, result.Models)
+	// Models include base models for dynamic effort mapping and suffixed aliases for legacy routing.
+	require.Equal(t, []ModelIdentify{
+		{ID: "claude-opus-5-5"},
+		{ID: "claude-opus-5-5-high"},
+		{ID: "claude-opus-5-5-low"},
+		{ID: "claude-opus-5-5-medium"},
+		{ID: "claude-sonnet-5-5"},
+		{ID: "claude-sonnet-5-5-high"},
+		{ID: "gemini-4-argon"},
+		{ID: "gemini-4-argon-high"},
+		{ID: "gemini-4-argon-low"},
+		{ID: "gemini-4-argon-medium"},
+	}, result.Models)
 	require.Equal(t, 1, calls)
 	require.Nil(t, fetcher.getDefaultModelsByType(t.Context(), channel.TypeAntigravity))
 }

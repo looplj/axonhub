@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/looplj/axonhub/internal/ent"
@@ -107,9 +108,19 @@ func (f *ModelFetcher) fetchAntigravityModels(ctx context.Context, input FetchMo
 	if err != nil {
 		return nil, err
 	}
-	models := make([]ModelIdentify, 0, len(catalog))
+	allIDs := make(map[string]struct{}, len(catalog)*2)
 	for _, id := range catalog.BaseModels() {
+		allIDs[id] = struct{}{}
+	}
+	for id := range catalog {
+		if strings.TrimSpace(id) != "" {
+			allIDs[id] = struct{}{}
+		}
+	}
+	models := make([]ModelIdentify, 0, len(allIDs))
+	for id := range allIDs {
 		models = append(models, ModelIdentify{ID: id})
 	}
+	sort.Slice(models, func(i, j int) bool { return models[i].ID < models[j].ID })
 	return models, nil
 }
