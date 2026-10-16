@@ -2,10 +2,13 @@ package antigravity
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -14,12 +17,9 @@ import (
 
 const (
 	// UserAgentVersionFallback is the hardcoded fallback version used when remote fetch fails.
-	UserAgentVersionFallback = "2.5.5"
+	UserAgentVersionFallback = "1.3.6"
 
-	// defaultVersionURL is the auto-updater endpoint that returns the latest Antigravity version as plain text.
-	defaultVersionURL = "https://antigravity-auto-updater-974169037036.us-central1.run.app"
-
-	// defaultChangelogURL is a fallback page to scrape the version from.
+	// defaultChangelogURL publishes releases for each Antigravity surface.
 	defaultChangelogURL = "https://antigravity.google/docs/changelog"
 
 	// versionFetchTimeout is the maximum time allowed per fetch attempt.
@@ -29,10 +29,9 @@ const (
 	changelogScanBytes = 2 * 1024 * 1024
 )
 
-var versionRegex = regexp.MustCompile(`\d+\.\d+\.\d+`)
-
-// Match IDE releases explicitly: the page also lists unrelated CLI, SDK and 2.0 versions.
-var ideVersionRegex = regexp.MustCompile(`id="rel-ide-(\d+\.\d+\.\d+)"`)
+// CLI and App versions are independent release streams.
+var cliVersionRegex = regexp.MustCompile(`id="rel-cli-(\d+\.\d+\.\d+)"`)
+var clientSemverRegex = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
 var (
 	versionMu      sync.RWMutex
@@ -40,15 +39,17 @@ var (
 	initOnce       sync.Once
 )
 
-// GetUserAgent returns the resolved IDE client identity for OAuth requests.
+// GetUserAgent uses the CLI identity understood by the account model catalog.
+// A generic antigravity/<App version> identity receives the IDE catalog, which
+// excludes App/CLI-only models even with the same account and access token.
 func GetUserAgent() string {
 	versionMu.RLock()
 	defer versionMu.RUnlock()
 
-	return "antigravity/" + currentVersion + " windows/amd64"
+	return fmt.Sprintf("antigravity/cli/%s (aidev_client; os_type=%s; arch=%s; auth_method=consumer)", currentVersion, runtime.GOOS, runtime.GOARCH)
 }
 
-// GetVersion returns the current IDE version under the shared version lock.
+// GetVersion returns the current CLI version under the shared version lock.
 func GetVersion() string {
 	versionMu.RLock()
 	defer versionMu.RUnlock()
@@ -58,12 +59,7 @@ func GetVersion() string {
 
 // SetClientHeaders keeps model discovery and inference on the same client identity.
 func SetClientHeaders(headers http.Header) {
-	version := GetVersion()
-	headers.Set("User-Agent", "antigravity/"+version+" windows/amd64")
-	headers.Set("X-Client-Name", "antigravity")
-	headers.Set("X-Client-Version", version)
-	headers.Set("X-Goog-Api-Client", ApiClient)
-	headers.Set("Client-Metadata", ClientMetadata)
+	headers.Set("User-Agent", GetUserAgent())
 }
 
 // setVersion publishes the resolved version to all Antigravity request paths.
@@ -75,39 +71,39 @@ func setVersion(v string) {
 }
 
 type versionFetcher struct {
-	versionURL   string
+	manifestURL  string
 	changelogURL string
 	httpClient   *http.Client
 }
 
 var defaultFetcher = &versionFetcher{
-	versionURL:   defaultVersionURL,
+	manifestURL:  fmt.Sprintf("https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/%s_%s.json", runtime.GOOS, runtime.GOARCH),
 	changelogURL: defaultChangelogURL,
 	httpClient:   &http.Client{Timeout: versionFetchTimeout},
 }
 
-// InitVersion resolves the IDE version once per process, retaining the fallback on failure.
+// InitVersion resolves the CLI version once per process, retaining the fallback on failure.
 func InitVersion(ctx context.Context) {
 	initOnce.Do(func() {
 		defaultFetcher.init(ctx)
 	})
 }
 
-// init selects an IDE release without downgrading below the supported fallback.
+// init selects a CLI release without downgrading below the supported fallback.
 func (f *versionFetcher) init(ctx context.Context) {
 	fallback := UserAgentVersionFallback
 
-	// Prefer the official IDE changelog over the updater's potentially stale fixed version.
-	if v := f.fetchVersion(ctx, f.changelogURL, changelogScanBytes); v != "" {
-		setVersion(newerVersion(fallback, v))
-		slog.InfoContext(ctx, "antigravity: IDE version resolved", "version", GetVersion())
-		return
+	if f.manifestURL != "" {
+		if v := f.fetchVersion(ctx, f.manifestURL, changelogScanBytes); v != "" {
+			setVersion(newerVersion(fallback, v))
+			slog.InfoContext(ctx, "antigravity: CLI version resolved from release manifest", "version", GetVersion())
+			return
+		}
 	}
 
-	if v := f.fetchVersion(ctx, f.versionURL, 0); v != "" {
+	if v := f.fetchVersion(ctx, f.changelogURL, changelogScanBytes); v != "" {
 		setVersion(newerVersion(fallback, v))
-		slog.InfoContext(ctx, "antigravity: version resolved from auto-updater", "version", GetVersion(), "reported", v)
-
+		slog.InfoContext(ctx, "antigravity: CLI version resolved", "version", GetVersion())
 		return
 	}
 
@@ -115,7 +111,7 @@ func (f *versionFetcher) init(ctx context.Context) {
 	setVersion(fallback)
 }
 
-// fetchVersion reads a bounded IDE changelog or the updater's version response.
+// fetchVersion reads a bounded CLI release manifest or CLI changelog.
 func (f *versionFetcher) fetchVersion(ctx context.Context, url string, maxBytes int) string {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
@@ -150,12 +146,14 @@ func (f *versionFetcher) fetchVersion(ctx context.Context, url string, maxBytes 
 	}
 
 	var match []byte
-	if maxBytes > 0 {
-		if matches := ideVersionRegex.FindSubmatch(body); len(matches) == 2 {
-			match = matches[1]
-		}
-	} else {
-		match = versionRegex.Find(body)
+	var manifest struct {
+		Version string `json:"version"`
+	}
+	if json.Unmarshal(body, &manifest) == nil && clientSemverRegex.MatchString(manifest.Version) {
+		return manifest.Version
+	}
+	if matches := cliVersionRegex.FindSubmatch(body); len(matches) == 2 {
+		match = matches[1]
 	}
 	if match == nil {
 		slog.DebugContext(ctx, "antigravity: no version found in response", "url", url)
