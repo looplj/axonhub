@@ -9,6 +9,7 @@ import (
 
 type deliveryCapabilitiesStream struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	source   streams.Stream[*httpclient.StreamEvent]
 	observer streams.DeliveryAcknowledger
 }
