@@ -416,15 +416,15 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			return nil // Intentionally skip an unknown tool call.
 		}
 
-		identityChanged := false
-		if streamEvent.Name != "" && streamEvent.Name != tc.Function.Name {
+		nameChanged := streamEvent.Name != "" && streamEvent.Name != tc.Function.Name
+		if nameChanged {
 			tc.Function.Name = streamEvent.Name
-			identityChanged = true
 		}
-		if streamEvent.Namespace != "" && streamEvent.Namespace != tc.Function.Namespace {
+		namespaceChanged := streamEvent.Namespace != "" && streamEvent.Namespace != tc.Function.Namespace
+		if namespaceChanged {
 			tc.Function.Namespace = streamEvent.Namespace
-			identityChanged = true
 		}
+		identityChanged := nameChanged || namespaceChanged
 
 		// Some upstreams provide the complete JSON arguments only in the done event.
 		// Preserve arguments already emitted through delta events and forward only the
@@ -457,13 +457,16 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 		// output_item.added already sent the id and type. Chat Completions clients join string
-		// fields across deltas, so repeat neither, and send the name only when it changed (#2648).
+		// fields across deltas, so repeat neither, and send the name and namespace only when
+		// each changed (#2648).
 		delta := llm.ToolCall{
 			Index:    s.state.toolCallIndex[callID],
 			Function: llm.FunctionCall{Arguments: missingArgs},
 		}
-		if identityChanged {
+		if nameChanged {
 			delta.Function.Name = tc.Function.Name
+		}
+		if namespaceChanged {
 			delta.Function.Namespace = tc.Function.Namespace
 		}
 
