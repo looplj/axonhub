@@ -25,15 +25,23 @@ func TestChannelEndpoint_TypesafeStrictness(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "only supports api_format")
 
-	// 3. Non-typesafe channel (e.g. OpenAI) with typesafe/systemone endpoint should FAIL
+	// 3. OpenAI channel with typesafe/systemone endpoint should PASS
 	openaiWithSystemOne := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
 		{APIFormat: llm.APIFormatTypeSafeSystemOne.String()},
 	}
-	err = validateEndpointsForChannelType(channel.TypeOpenai, openaiWithSystemOne)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "only supported by TypeSafe channel types")
+	require.NoError(t, validateEndpointsForChannelType(channel.TypeOpenai, openaiWithSystemOne))
 
-	// 4. Default endpoints for TypeSafe channel must only be typesafe/systemone
+	// 4. Non-OpenAI and Non-TypeSafe channel (e.g. Anthropic) with typesafe/systemone endpoint should FAIL
+	anthropicWithSystemOne := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatAnthropicMessage.String()},
+		{APIFormat: llm.APIFormatTypeSafeSystemOne.String()},
+	}
+	err = validateEndpointsForChannelType(channel.TypeAnthropic, anthropicWithSystemOne)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "only supported by TypeSafe or OpenAI channel types")
+
+	// 5. Default endpoints for TypeSafe channel must only be typesafe/systemone
 	defaults := DefaultEndpointsForChannelType(channel.TypeTypesafe)
 	require.Len(t, defaults, 1)
 	require.Equal(t, llm.APIFormatTypeSafeSystemOne.String(), defaults[0].APIFormat)
