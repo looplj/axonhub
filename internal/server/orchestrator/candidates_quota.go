@@ -124,8 +124,13 @@ func (g *QuotaRoutingGate) evaluate(
 		return decision
 	}
 
+	limits := status.Limits
+	if len(candidate.Models) > 0 {
+		limits = provider_quota.FilterLimitsForModel(limits, candidate.Models[0].ActualModel)
+	}
+
 	decision.state, decision.reason = provider_quota.EvaluateQuotaRouting(
-		status.Limits,
+		limits,
 		string(status.Status),
 		limitType,
 		time.Now(),
