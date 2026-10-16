@@ -10,13 +10,15 @@ import (
 	"fmt"
 	"time"
 
-	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
+	"github.com/looplj/axonhub/internal/server/gql/qb"
 	"github.com/samber/lo"
 )
 
@@ -78,6 +80,18 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 	}
 
 	r0 := results[0]
+
+	successCount, failedCount, err := r.queryExecutionSuccessCounts(ctx, filter, apiKeyIDs, hasUserFilter, loc)
+	if err != nil {
+		return nil, err
+	}
+
+	executionTotal := successCount + failedCount
+	successRate := 0.0
+	if executionTotal > 0 {
+		successRate = float64(successCount) / float64(executionTotal) * 100
+	}
+
 	return &AnalyticsOverview{
 		TotalTokens:              safeIntFromInt64(r0.TotalTokens),
 		TotalInputTokens:         safeIntFromInt64(r0.TotalInputTokens),
@@ -86,6 +100,8 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 		TotalOutputTokens:        safeIntFromInt64(r0.TotalOutputTokens),
 		TotalRequests:            r0.TotalRequests,
 		TotalCost:                r0.TotalCost,
+		FailedRequests:           failedCount,
+		SuccessRate:              successRate,
 	}, nil
 }
 
@@ -96,29 +112,48 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 
 	loc := r.systemService.TimeLocation(ctx)
 	nowUTC := xtime.UTCNow()
-	_, offsetSeconds := nowUTC.In(loc).Zone()
+	nowLocal := nowUTC.In(loc)
+	_, offsetSeconds := nowLocal.Zone()
+
+	// A relative window is resolved in absolute time, so its boundaries carry a time of
+	// day. Everything below this point assumes whole days: bucketSequence gets a half-open
+	// [start, end) over day or hour labels, and both boundaries are truncated to the
+	// matching granularity rather than to local midnight.
+	relative, isRelative := time.Time{}, false
+	if filter != nil {
+		relative, isRelative = relativeSince(filter.TimeWindow)
+	}
 
 	// Determine date range — 同仪表盘 parseTimeWindow 模式
 	var startDay, endDay time.Time
-	if filter != nil && filter.StartTime != nil {
-		startDay = parseDateStr(*filter.StartTime, loc)
+	if isRelative {
+		startDay = localHourFloor(relative.In(loc))
+		endDay = nowLocal
 	} else {
-		// Default: 30 days ago
-		nowLocal := nowUTC.In(loc)
-		startDay = time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
-		startDay = startDay.AddDate(0, 0, -29)
-	}
+		if filter != nil && filter.StartTime != nil {
+			startDay = parseDateStr(*filter.StartTime, loc)
+		} else {
+			// Default: 30 days ago
+			startDay = time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+			startDay = startDay.AddDate(0, 0, -29)
+		}
 
-	if filter != nil && filter.EndTime != nil {
-		endDay = parseDateStr(*filter.EndTime, loc)
-	} else {
-		endDay = nowUTC.In(loc)
+		if filter != nil && filter.EndTime != nil {
+			endDay = parseDateStr(*filter.EndTime, loc)
+		} else {
+			endDay = time.Date(nowLocal.Year(), nowLocal.Month(), nowLocal.Day(), 0, 0, 0, 0, loc)
+		}
+
+		// 填充缺失日期
+		startDay = time.Date(startDay.Year(), startDay.Month(), startDay.Day(), 0, 0, 0, 0, loc)
 		endDay = time.Date(endDay.Year(), endDay.Month(), endDay.Day(), 0, 0, 0, 0, loc)
 	}
 
-	// 填充缺失日期
-	startDay = time.Date(startDay.Year(), startDay.Month(), startDay.Day(), 0, 0, 0, 0, loc)
-	endDay = time.Date(endDay.Year(), endDay.Month(), endDay.Day(), 0, 0, 0, 0, loc)
+	// Short ranges bucket by hour so a single day still yields a readable curve.
+	resolution := resolutionForSpan(int(endDay.Sub(startDay).Hours()/24) + 1)
+	if isRelative {
+		resolution = qb.ResolutionHour
+	}
 
 	type dailyStats struct {
 		Date         string  `json:"date"`
@@ -138,19 +173,10 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 
 			// Build dialect-specific date expression
 			createdAtCol := s.C(usagelog.FieldCreatedAt)
-			var dateExpr string
-
-			switch s.Dialect() {
-			case dialect.SQLite:
-				dateExpr = fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", createdAtCol, offsetSeconds)
-			case dialect.MySQL:
-				offsetStr := xtime.FormatUTCOffset(offsetSeconds)
-				dateExpr = fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", createdAtCol, offsetStr)
-			case dialect.Postgres:
-				dateExpr = fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", createdAtCol, loc.String())
-			default:
-				dateExpr = fmt.Sprintf("DATE(%s)", createdAtCol)
-			}
+			// usage_logs.created_at is a native timestamp column, so this is the
+			// native-timestamp expression builder and not buildEpochDateExpression, whose
+			// dialect branches assume a Unix-epoch integer column.
+			dateExpr := qb.GetDateExpression(s.Dialect(), createdAtCol, loc.String(), offsetSeconds, resolution)
 
 			s.Select(
 				sql.As(dateExpr, "date"),
@@ -174,35 +200,35 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 		return item.Date, item
 	})
 
-	// Fill in missing dates with zero values
+	// Fill in missing buckets with zero values so the chart's category axis stays evenly
+	// spaced: an omitted bucket would pull its neighbours together.
+	// A day range extends the exclusive upper bound by one day to cover the end day in
+	// full; a relative window already ends at the current instant, so it passes endDay
+	// through and would otherwise gain a full day of empty buckets.
+	bucketEnd := endDay.AddDate(0, 0, 1)
+	if isRelative {
+		bucketEnd = endDay
+	}
+
 	var response []*AnalyticsDailyStat
 
-	for d := startDay; !d.After(endDay); d = d.AddDate(0, 0, 1) {
-		dateStr := d.Format("2006-01-02")
-
-		if stats, exists := statsMap[dateStr]; exists {
-			response = append(response, &AnalyticsDailyStat{
-				Date:                dateStr,
-				InputTokens:         safeIntFromInt64(stats.InputTokens),
-				CachedInputTokens:   safeIntFromInt64(stats.CachedTokens),
-				UncachedInputTokens: safeIntFromInt64(stats.InputTokens - stats.CachedTokens),
-				OutputTokens:        safeIntFromInt64(stats.OutputTokens),
-				TotalTokens:         safeIntFromInt64(stats.TotalTokens),
-				RequestCount:        stats.RequestCount,
-				Cost:                stats.Cost,
-			})
-		} else {
-			response = append(response, &AnalyticsDailyStat{
-				Date:                dateStr,
-				InputTokens:         0,
-				CachedInputTokens:   0,
-				UncachedInputTokens: 0,
-				OutputTokens:        0,
-				TotalTokens:         0,
-				RequestCount:        0,
-				Cost:                0,
-			})
+	for _, dateStr := range bucketSequence(startDay, bucketEnd, resolution) {
+		stats, exists := statsMap[dateStr]
+		if !exists {
+			response = append(response, &AnalyticsDailyStat{Date: dateStr})
+			continue
 		}
+
+		response = append(response, &AnalyticsDailyStat{
+			Date:                dateStr,
+			InputTokens:         safeIntFromInt64(stats.InputTokens),
+			CachedInputTokens:   safeIntFromInt64(stats.CachedTokens),
+			UncachedInputTokens: safeIntFromInt64(stats.InputTokens - stats.CachedTokens),
+			OutputTokens:        safeIntFromInt64(stats.OutputTokens),
+			TotalTokens:         safeIntFromInt64(stats.TotalTokens),
+			RequestCount:        stats.RequestCount,
+			Cost:                stats.Cost,
+		})
 	}
 
 	return response, nil
@@ -211,6 +237,44 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 // AnalyticsDimensionStats is the resolver for the analyticsDimensionStats field.
 func (r *queryResolver) AnalyticsDimensionStats(ctx context.Context, filter *AnalyticsFilter, dimension string) ([]*AnalyticsDimensionStat, error) {
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadDashboard)
+	if dimension == "user" {
+		currentUser, ok := contexts.GetUser(ctx)
+		if !ok || currentUser == nil {
+			return nil, fmt.Errorf("user not found in context")
+		}
+		if !currentUser.IsOwner {
+			var projectIDs []*objects.GUID
+			if filter != nil {
+				projectIDs = filter.ProjectIDs
+			}
+			if len(projectIDs) == 0 {
+				projectID, ok := contexts.GetProjectID(ctx)
+				if !ok {
+					return nil, fmt.Errorf("project ID not found in context")
+				}
+				projectIDs = []*objects.GUID{{ID: projectID}}
+				if filter == nil {
+					filter = &AnalyticsFilter{}
+				} else {
+					copy := *filter
+					filter = &copy
+				}
+				filter.ProjectIDs = projectIDs
+			}
+			for _, projectID := range projectIDs {
+				owned := false
+				for _, membership := range currentUser.Edges.ProjectUsers {
+					if membership.ProjectID == projectID.ID && membership.IsOwner {
+						owned = true
+						break
+					}
+				}
+				if !owned {
+					return nil, fmt.Errorf("permission denied: only project owners can view usage statistics")
+				}
+			}
+		}
+	}
 	apiKeyIDs, hasUserFilter := r.resolveFilterAPIKeyIDs(ctx, filter)
 	loc := r.systemService.TimeLocation(ctx)
 

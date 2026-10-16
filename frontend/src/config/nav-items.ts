@@ -41,6 +41,7 @@ export const NAV_GROUP_DEFS: NavGroupDef[] = [
     titleKey: 'sidebar.groups.admin',
     items: [
       { titleKey: 'sidebar.items.dashboard', url: '/', icon: IconLayoutDashboard },
+      { titleKey: 'analytics.title', url: '/analytics', icon: IconChartBar },
       { titleKey: 'sidebar.items.projects', url: '/projects', icon: IconPackages },
       { titleKey: 'sidebar.items.channels', url: '/channels', icon: IconAi },
       { titleKey: 'sidebar.items.models', url: '/models', icon: IconRobot },
