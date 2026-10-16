@@ -127,10 +127,10 @@ func (g *QuotaRoutingGate) evaluate(
 	now := time.Now()
 	if len(candidate.Models) > 0 {
 		usableModels := make([]biz.ChannelModelEntry, 0, len(candidate.Models))
+		usableStates := make([]provider_quota.RoutingState, 0, len(candidate.Models))
+		usableReasons := make([]string, 0, len(candidate.Models))
 		var usableFormats []string
 		hasFormats := len(candidate.modelAPIFormats) == len(candidate.Models)
-		firstState := provider_quota.RoutingExhausted
-		var firstReason string
 
 		for i, entry := range candidate.Models {
 			limits := provider_quota.FilterLimitsForModel(status.Limits, entry.ActualModel)
@@ -141,11 +141,9 @@ func (g *QuotaRoutingGate) evaluate(
 				now,
 			)
 			if state != provider_quota.RoutingExhausted {
-				if len(usableModels) == 0 || (firstState != provider_quota.RoutingOpen && state == provider_quota.RoutingOpen) {
-					firstState = state
-					firstReason = reason
-				}
 				usableModels = append(usableModels, entry)
+				usableStates = append(usableStates, state)
+				usableReasons = append(usableReasons, reason)
 				if hasFormats {
 					usableFormats = append(usableFormats, candidate.modelAPIFormats[i])
 				}
@@ -162,8 +160,8 @@ func (g *QuotaRoutingGate) evaluate(
 		if hasFormats {
 			candidate.modelAPIFormats = usableFormats
 		}
-		decision.state = firstState
-		decision.reason = firstReason
+		decision.state = usableStates[0]
+		decision.reason = usableReasons[0]
 	} else {
 		decision.state, decision.reason = provider_quota.EvaluateQuotaRouting(
 			status.Limits,
