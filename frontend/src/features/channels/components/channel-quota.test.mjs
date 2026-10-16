@@ -18,7 +18,7 @@ const parserStub = `
 const QUOTA_WINDOW_LABEL_KEYS = {
   '5h': '5h', '7d': '7d', '30d': '30d', daily: 'daily', weekly: 'weekly', monthly: 'monthly', cycle: 'cycle', overage: 'overage',
   gemini_5h: 'quota.window.gemini_5h', gemini_7d: 'quota.window.gemini_7d',
-  claude_gpt_5h: 'quota.window.claude_gpt_5h', claude_gpt_7d: 'quota.window.claude_gpt_7d'
+  claude_gpt_5h: 'quota.window.claude_gpt_5h', claude_gpt_7d: 'quota.window.claude_gpt_7d', argon_7d: 'quota.window.argon_7d'
 };
 function parseQuotaLimits(quotaData) {
   if (!Array.isArray(quotaData?._limits)) return [];
@@ -35,11 +35,11 @@ const { getQuotaLimits, quotaWindowLabel } = await import(
 const t = (key) => key;
 
 test('Antigravity shared pools preserve independent 5h and 7d windows', () => {
-  const windows = ['gemini_5h', 'gemini_7d', 'claude_gpt_5h', 'claude_gpt_7d'];
+  const windows = ['gemini_5h', 'gemini_7d', 'claude_gpt_5h', 'claude_gpt_7d', 'argon_7d'];
   const limits = windows.map((window, i) => ({ type: 'token', status: 'available', ready: true, window, usageRatio: (i + 1) / 10 }));
   const parsed = getQuotaLimits({ type: 'antigravity', providerQuotaStatus: { quotaData: { _limits: limits } } });
   assert.deepEqual(parsed.map((limit) => limit.window), windows);
-  assert.deepEqual(parsed.map((limit) => limit.usageRatio), [0.1, 0.2, 0.3, 0.4]);
+  assert.deepEqual(parsed.map((limit) => limit.usageRatio), [0.1, 0.2, 0.3, 0.4, 0.5]);
   const en = JSON.parse(readFileSync(new URL('../../../locales/en/system.json', import.meta.url), 'utf8'));
   const zh = JSON.parse(readFileSync(new URL('../../../locales/zh-CN/system.json', import.meta.url), 'utf8'));
   for (const window of windows) {

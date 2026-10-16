@@ -131,6 +131,8 @@ test('quota window identifiers resolve to localized labels', () => {
   assert.match(quotaBadges, /gemini_7d:\s*'quota\.window\.gemini_7d'/);
   assert.match(quotaBadges, /claude_gpt_5h:\s*'quota\.window\.claude_gpt_5h'/);
   assert.match(quotaBadges, /claude_gpt_7d:\s*'quota\.window\.claude_gpt_7d'/);
+
+  assert.match(quotaBadges, /argon_7d:\s*'quota\.window\.argon_7d'/);
   assert.match(quotaBadges, /limit\.window === 'primary' \|\| limit\.window === 'secondary'/);
 });
 
@@ -202,7 +204,8 @@ test('Antigravity badge renders its normalized limit windows', () => {
   assert.match(antigravityBlock, /quota\.limits/, 'Antigravity should render normalized limits');
   assert.match(
     antigravityBlock,
-    /preferredWindows = \['gemini_5h', 'gemini_7d', 'claude_gpt_5h', 'claude_gpt_7d'\]/,
+
+    /preferredWindows = \['gemini_5h', 'gemini_7d', 'claude_gpt_5h', 'claude_gpt_7d', 'argon_7d'\]/,
     'Antigravity should map its windows onto the shared pool labels'
   );
   assert.match(antigravityBlock, /WINDOW_LABEL_KEYS\[limit\.window\]/, 'Antigravity labels should resolve through the shared map');

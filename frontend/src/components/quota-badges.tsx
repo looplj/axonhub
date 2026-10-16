@@ -341,6 +341,8 @@ const WINDOW_LABEL_KEYS: Record<string, string> = {
   gemini_7d: 'quota.window.gemini_7d',
   claude_gpt_5h: 'quota.window.claude_gpt_5h',
   claude_gpt_7d: 'quota.window.claude_gpt_7d',
+
+  argon_7d: 'quota.window.argon_7d',
   '5h': 'quota.window.5h',
   '7d': 'quota.window.7d',
   '30d': 'quota.window.30d',
@@ -811,7 +813,8 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
       {channel.type === 'antigravity' && (
         <div className='mt-3 space-y-3'>
           {(() => {
-            const preferredWindows = ['gemini_5h', 'gemini_7d', 'claude_gpt_5h', 'claude_gpt_7d'];
+
+            const preferredWindows = ['gemini_5h', 'gemini_7d', 'claude_gpt_5h', 'claude_gpt_7d', 'argon_7d'];
             const items: React.ReactNode[] = [];
 
             quota.limits
