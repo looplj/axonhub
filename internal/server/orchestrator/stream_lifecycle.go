@@ -47,7 +47,6 @@ type streamLifecycle struct {
 	deadlineCancel context.CancelFunc
 
 	acknowledged bool
-	deliveryOpen bool
 	canceled     bool
 	closed       bool
 	done         chan struct{}
@@ -280,12 +279,12 @@ func (s *streamLifecycle) Context() context.Context { return s.execution }
 func (s *streamLifecycle) AcknowledgeDelivery() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed || s.acknowledged || (s.canceled && !s.deliveryOpen) {
+	if s.closed || s.acknowledged || s.canceled || s.downstream.Err() != nil {
 		return
 	}
-	// AcknowledgeDelivery is valid only for the active delivery attempt. A
-	// downstream cancellation can race between the terminal write and this
-	// method; it must not veto the already-observed write.
+	// Deliver holds this lock across the terminal write and records successful
+	// delivery before releasing it. A direct acknowledgement is valid only
+	// while the downstream is still active.
 	s.acknowledged = true
 }
 
@@ -303,9 +302,7 @@ func (s *streamLifecycle) Deliver(ctx context.Context, write func() (bool, error
 			return err
 		}
 	}
-	s.deliveryOpen = true
 	terminal, err := write()
-	s.deliveryOpen = false
 	if err == nil && terminal {
 		s.acknowledged = true
 	}

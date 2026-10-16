@@ -183,17 +183,18 @@ func TestStreamDeliveryCancelRace(t *testing.T) {
 
 	t.Run("successful terminal write remains acknowledged after cancellation", func(t *testing.T) {
 		downstream, cancel := context.WithCancel(context.Background())
-		owner, execution := newStreamLifecycle(downstream)
-		cancel()
+		owner, _ := newStreamLifecycle(downstream)
+		owner.stopOnce.Do(func() { close(owner.stopWatch) })
 		select {
-		case <-execution.Done():
+		case <-owner.done:
 		case <-time.After(time.Second):
-			t.Fatal("execution context was not canceled")
+			t.Fatal("lifecycle watcher did not stop")
 		}
+		cancel()
 		owner.AcknowledgeDelivery()
 
 		if owner.DeliveryAcknowledged() {
-			t.Fatal("cancelled stream was acknowledged without a delivery attempt")
+			t.Fatal("cancelled downstream was acknowledged without a delivery attempt")
 		}
 		owner.Close()
 	})
