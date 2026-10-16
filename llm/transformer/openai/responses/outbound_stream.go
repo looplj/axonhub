@@ -456,23 +456,22 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			}
 		}
 
-		toolCallIdx := s.state.toolCallIndex[callID]
+		// output_item.added already sent the id and type. Chat Completions clients join string
+		// fields across deltas, so repeat neither, and send the name only when it changed (#2648).
+		delta := llm.ToolCall{
+			Index:    s.state.toolCallIndex[callID],
+			Function: llm.FunctionCall{Arguments: missingArgs},
+		}
+		if identityChanged {
+			delta.Function.Name = tc.Function.Name
+			delta.Function.Namespace = tc.Function.Namespace
+		}
+
 		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
 				Delta: &llm.Message{
-					ToolCalls: []llm.ToolCall{
-						{
-							ID:    tc.ID,
-							Type:  tc.Type,
-							Index: toolCallIdx,
-							Function: llm.FunctionCall{
-								Name:      tc.Function.Name,
-								Namespace: tc.Function.Namespace,
-								Arguments: missingArgs,
-							},
-						},
-					},
+					ToolCalls: []llm.ToolCall{delta},
 				},
 			},
 		}
