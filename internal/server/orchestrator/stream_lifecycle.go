@@ -279,12 +279,12 @@ func (s *streamLifecycle) Context() context.Context { return s.execution }
 func (s *streamLifecycle) AcknowledgeDelivery() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.closed || s.acknowledged {
+	if s.closed || s.acknowledged || s.canceled || s.downstream.Err() != nil {
 		return
 	}
-	// AcknowledgeDelivery is called only after the terminal boundary has
-	// successfully been written. A downstream cancellation can race between
-	// that write and this method; it must not veto the already-observed write.
+	// Deliver holds this lock across the terminal write and records successful
+	// delivery before releasing it. A direct acknowledgement is valid only
+	// while the downstream is still active.
 	s.acknowledged = true
 }
 
