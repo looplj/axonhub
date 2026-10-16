@@ -17,6 +17,8 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
+// TestStreamDeliveryE2E_ResponsesDecorators verifies that Responses decorators
+// preserve delivery finalization and persisted usage across route and live-preview settings.
 func TestStreamDeliveryE2E_ResponsesDecorators(t *testing.T) {
 	for _, realRoute := range []bool{false, true} {
 		for _, livePreview := range []bool{false, true} {
