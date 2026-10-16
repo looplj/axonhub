@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -20,17 +21,17 @@ import (
 type GeminiHandlersParams struct {
 	fx.In
 
-	ChannelService  *biz.ChannelService
-	ModelService    *biz.ModelService
-	DefaultSelector *orchestrator.DefaultSelector
-	RequestService  *biz.RequestService
-	SystemService   *biz.SystemService
-	UsageLogService *biz.UsageLogService
-	PromptService   *biz.PromptService
+	ChannelService              *biz.ChannelService
+	ModelService                *biz.ModelService
+	DefaultSelector             *orchestrator.DefaultSelector
+	RequestService              *biz.RequestService
+	SystemService               *biz.SystemService
+	UsageLogService             *biz.UsageLogService
+	PromptService               *biz.PromptService
 	PromptProtectionRuleService *biz.PromptProtectionRuleService
-	QuotaService    *biz.QuotaService
-	HttpClient      *httpclient.HttpClient
-	LiveStreamRegistry *biz.LiveStreamRegistry
+	QuotaService                *biz.QuotaService
+	HttpClient                  *httpclient.HttpClient
+	LiveStreamRegistry          *biz.LiveStreamRegistry
 	ChannelLimiterManager       *orchestrator.ChannelLimiterManager
 	ProviderQuotaStatusProvider orchestrator.ProviderQuotaStatusProvider
 }
@@ -90,6 +91,8 @@ func WriteGeminiStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 	_, _ = c.Writer.Write([]byte("["))
 
 	first := true
+	terminalSeen := false
+	terminalTracker := orchestrator.NewStreamTerminalTracker(streamExpectedChoices(stream))
 
 	for {
 		select {
@@ -103,21 +106,54 @@ func WriteGeminiStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 			if stream.Next() {
 				cur := stream.Current()
 
-				if !first {
-					_, _ = c.Writer.Write([]byte(","))
+				if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
+					if !first {
+						if n, err := io.WriteString(c.Writer, ","); err != nil {
+							return false, err
+						} else if n != 1 {
+							return false, io.ErrShortWrite
+						}
+					}
+					if n, err := c.Writer.Write(cur.Data); err != nil {
+						return false, err
+					} else if n != len(cur.Data) {
+						return false, io.ErrShortWrite
+					}
+					if err := flushResponseWriter(c.Writer); err != nil {
+						return false, err
+					}
+					first = false
+					terminal := terminalTracker.Observe(cur)
+					if terminal {
+						terminalSeen = true
+					}
+					return false, nil
+				}); err != nil {
+					clientDisconnected = true
+					log.Warn(ctx, "Failed to write Gemini stream event", log.Cause(err))
+					return
 				}
 
-				_, _ = c.Writer.Write(cur.Data)
-				first = false
-
 				log.Debug(ctx, "write stream event", log.Any("event", cur))
-				c.Writer.Flush()
 			} else {
 				if err := stream.Err(); err != nil {
 					log.Error(ctx, "Error in stream", log.Cause(err))
 				}
 
-				_, _ = c.Writer.Write([]byte("]"))
+				if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
+					if n, err := io.WriteString(c.Writer, "]"); err != nil {
+						return false, err
+					} else if n != 1 {
+						return false, io.ErrShortWrite
+					}
+					if err := flushResponseWriter(c.Writer); err != nil {
+						return false, err
+					}
+					return terminalSeen, nil
+				}); err != nil {
+					clientDisconnected = true
+					log.Warn(ctx, "Failed to close Gemini stream JSON array", log.Cause(err))
+				}
 
 				return
 			}

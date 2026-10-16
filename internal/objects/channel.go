@@ -345,6 +345,10 @@ type ChannelCredentials struct {
 	// When multiple keys are provided, they will be used in a round-robin fashion.
 	APIKeys []string `json:"apiKeys,omitempty"`
 
+	// VertexAPIKeys contains the project-bound credentials used by Gemini Vertex.
+	// The project and region must remain paired with the API key when keys rotate.
+	VertexAPIKeys []VertexAPIKey `json:"vertexApiKeys,omitempty"`
+
 	// ManagementAPIKey is an optional provider management/console API key used only
 	// for server-side quota checks (e.g. ZenMux). It is never attached to inference
 	// requests and never exposed to clients beyond credential write APIs.
@@ -355,6 +359,13 @@ type ChannelCredentials struct {
 
 	// GCP is the GCP credentials for the channel.
 	GCP *GCPCredential `json:"gcp,omitempty"`
+}
+
+// VertexAPIKey is a Gemini Vertex API key bound to its Google Cloud resource.
+type VertexAPIKey struct {
+	ProjectID string `json:"projectID"`
+	APIKey    string `json:"apiKey"`
+	Region    string `json:"region"`
 }
 
 // GetAllAPIKeys returns all API keys for the channel, combining APIKey and APIKeys fields.
@@ -373,6 +384,12 @@ func (c *ChannelCredentials) GetAllAPIKeys() []string {
 
 	// Add new APIKeys
 	keys = append(keys, c.APIKeys...)
+
+	for _, credential := range c.VertexAPIKeys {
+		if credential.APIKey != "" {
+			keys = append(keys, credential.APIKey)
+		}
+	}
 
 	return keys
 }
@@ -413,6 +430,20 @@ func (c *ChannelCredentials) GetEnabledCredentialRefs(disabledKeys []DisabledAPI
 // GetEnabledAPIKeys returns API keys that are not disabled.
 func (c *ChannelCredentials) GetEnabledAPIKeys(disabledKeys []DisabledAPIKey) []string {
 	return filterDisabled(c.GetAllAPIKeys(), disabledKeys)
+}
+
+func (c *ChannelCredentials) VertexAPIKey(apiKey string) (VertexAPIKey, bool) {
+	if c == nil {
+		return VertexAPIKey{}, false
+	}
+
+	for _, credential := range c.VertexAPIKeys {
+		if credential.APIKey == apiKey {
+			return credential, true
+		}
+	}
+
+	return VertexAPIKey{}, false
 }
 
 // filterDisabled drops every candidate that carries an active disable record.

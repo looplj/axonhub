@@ -70,7 +70,18 @@ func TestCodexRoutes_WebSocketParity(t *testing.T) {
 	var terminals []string
 	for _, path := range []string{"/v1/responses", "/codex/responses"} {
 		conn, resp, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(surface.URL, "http")+path, http.Header{"Authorization": []string{"Bearer " + h.key.Key}})
-		require.NoError(t, err)
+		if err != nil {
+			status := "no HTTP response"
+			body := ""
+			if resp != nil {
+				status = resp.Status
+				data, readErr := io.ReadAll(resp.Body)
+				body = string(data)
+				_ = resp.Body.Close()
+				require.NoError(t, readErr)
+			}
+			require.Failf(t, "WebSocket handshake failed", "path=%s status=%s body=%q error=%v", path, status, body, err)
+		}
 		require.Equal(t, 101, resp.StatusCode)
 		require.NoError(t, conn.SetReadDeadline(time.Now().Add(5*time.Second)))
 		for range 2 {

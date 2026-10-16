@@ -35,7 +35,9 @@ func (h *ChatCompletionHandlers) writeSSEStream(c *gin.Context, stream streams.S
 		if h.ChatCompletionOrchestrator != nil {
 			systemService = h.ChatCompletionOrchestrator.SystemService
 		}
+		source := stream
 		stream, encodeErr = h.streamAdapterFactory(c.Request.Context(), stream, systemService)
+		stream = preserveStreamDelivery(stream, source)
 	}
 	writeEncodedSSEStream(c, stream, encodeErr, h.sseKeepAlive, h.sseHeartbeatFormat)
 }

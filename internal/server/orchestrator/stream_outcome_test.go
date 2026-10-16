@@ -72,6 +72,22 @@ func TestStreamOutcomeFinalState(t *testing.T) {
 	}
 }
 
+func TestStreamOutcomeDeadlineOrdering(t *testing.T) {
+	t.Run("deadline before terminal remains failed", func(t *testing.T) {
+		outcome := streamOutcome{}
+		outcome.observeContextError(context.DeadlineExceeded)
+		outcome.observeTerminal(streamTerminalCompleted)
+		require.Equal(t, streamTerminalFailed, outcome.finalState())
+	})
+
+	t.Run("terminal before deadline remains completed", func(t *testing.T) {
+		outcome := streamOutcome{}
+		outcome.observeTerminal(streamTerminalCompleted)
+		outcome.observeContextError(context.DeadlineExceeded)
+		require.Equal(t, streamTerminalCompleted, outcome.finalState())
+	})
+}
+
 func TestStreamOutcomeFinalDecisionSelectsCause(t *testing.T) {
 	transportErr := errors.New("unexpected EOF")
 

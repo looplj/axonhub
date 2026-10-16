@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/tidwall/gjson"
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
@@ -130,8 +131,13 @@ func serveResponsesWebSocket(
 }
 
 type responsesWebSocketWriter struct {
-	conn *websocket.Conn
+	conn responsesWebSocketMessageWriter
 	mu   sync.Mutex
+}
+
+type responsesWebSocketMessageWriter interface {
+	SetWriteDeadline(time.Time) error
+	WriteMessage(int, []byte) error
 }
 
 type responsesWebSocketLane struct {
@@ -277,9 +283,11 @@ func (d *responsesWebSocketDispatcher) processMessage(lane *responsesWebSocketLa
 	}
 
 	requestCtx := shared.WithResponsesLane(d.ctx, lane.owner)
-	cancel := func() {}
+	var cancel context.CancelFunc
 	if d.requestTimeout > 0 {
 		requestCtx, cancel = context.WithTimeout(requestCtx, d.requestTimeout)
+	} else {
+		requestCtx, cancel = context.WithCancel(requestCtx)
 	}
 	defer cancel()
 	if request.RawRequest != nil {
@@ -632,19 +640,37 @@ func writeResponsesWebSocketResult(
 		defer stream.Close()
 
 		terminalSeen := false
+		terminalTracker := orchestrator.NewStreamTerminalTracker(streamExpectedChoices(stream))
 		for stream.Next() {
+			if err := ctx.Err(); err != nil {
+				if terminalSeen || errors.Is(err, context.Canceled) {
+					return nil
+				}
+				return writeResponsesWebSocketError(writer, transformResponsesWebSocketError(ctx, err, transformError), streamID)
+			}
 			event := stream.Current()
 			if event == nil || len(event.Data) == 0 {
 				continue
-			}
-			if orchestrator.IsTerminalStreamEvent(event) {
-				terminalSeen = true
 			}
 			data, err := withResponsesWebSocketStreamID(event.Data, streamID)
 			if err != nil {
 				return err
 			}
-			if err := writeResponsesWebSocketMessage(writer, websocket.TextMessage, data); err != nil {
+			eventType := gjson.GetBytes(event.Data, "type").String()
+			status := gjson.GetBytes(event.Data, "response.status").String()
+			if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
+				if err := writeResponsesWebSocketMessage(writer, websocket.TextMessage, data); err != nil {
+					return false, err
+				}
+				terminal := !terminalSeen && terminalTracker.Observe(event)
+				if terminal {
+					terminalSeen = true
+				}
+				return terminal && (event.Type == "response.completed" || eventType == "response.completed") &&
+					(event.Type == "response.completed" || event.Type == "") &&
+					(eventType == "response.completed" || eventType == "") &&
+					(status == "completed" || status == ""), nil
+			}); err != nil {
 				return err
 			}
 		}

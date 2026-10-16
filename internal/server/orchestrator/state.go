@@ -74,6 +74,13 @@ type PersistenceState struct {
 	// HTTP/stream error for the client.
 	StreamCompleted bool
 
+	// DeliveryAcknowledged is set only after the downstream semantic boundary is
+	// written successfully. AccountingFinal is independent from delivery and
+	// usage values; downstream finalization owns when to publish either state.
+	DeliveryAcknowledged bool
+	AccountingFinal      bool
+	AccountingSourceEnd  llm.SourceEndReason
+
 	// OutboundStreamTerminal preserves the provider outcome across protocol
 	// conversion, which may replace an abnormal terminal event with a generic stop.
 	// Request/execution status and channel health intentionally interpret this
@@ -113,6 +120,7 @@ type PersistenceState struct {
 	// captureRawProviderStream. Must be called in PrepareForRetry and NextChannel so the
 	// abandoned goroutine exits promptly and releases its upstream HTTP connection.
 	RawStreamCancel context.CancelFunc
+	RawStreamDetach context.CancelFunc
 
 	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
 	PassThroughApplied bool
