@@ -59,7 +59,12 @@ func GetVersion() string {
 
 // SetClientHeaders keeps model discovery and inference on the same client identity.
 func SetClientHeaders(headers http.Header) {
+	version := GetVersion()
 	headers.Set("User-Agent", GetUserAgent())
+	headers.Set("X-Client-Name", "antigravity")
+	headers.Set("X-Client-Version", version)
+	headers.Set("X-Goog-Api-Client", ApiClient)
+	headers.Set("Client-Metadata", ClientMetadata)
 }
 
 // setVersion publishes the resolved version to all Antigravity request paths.
