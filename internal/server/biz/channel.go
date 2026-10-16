@@ -596,6 +596,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 			return nil, err
 		}
 
+		if err := ValidateMaxSingleChannelRetries(input.Settings); err != nil {
+			return nil, err
+		}
+
 		if err := validateModelProtocols(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints}); err != nil {
 			return nil, fmt.Errorf("invalid model protocols: %w", err)
 		}
@@ -677,6 +681,22 @@ func (svc *ChannelService) CreateChannel(ctx context.Context, input ent.CreateCh
 	svc.reloadChannelsAfterCommit(ctx)
 
 	return created, nil
+}
+
+// ValidateMaxSingleChannelRetries rejects a per-channel same-channel retry
+// override outside the supported range, so a value written through the API can
+// neither break channel reads nor exceed the editor's bounds.
+func ValidateMaxSingleChannelRetries(settings *objects.ChannelSettings) error {
+	if settings == nil || settings.MaxSingleChannelRetries == nil {
+		return nil
+	}
+
+	value := *settings.MaxSingleChannelRetries
+	if value < 0 || value > 65535 {
+		return fmt.Errorf("invalid max single channel retries %d: must be between 0 and 65535", value)
+	}
+
+	return nil
 }
 
 // NormalizeRetryableStatusCodes validates, deduplicates, and sorts additional
@@ -896,6 +916,10 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 		if sanitizedSettings != nil {
 			input.Settings = sanitizedSettings
+		}
+
+		if err := ValidateMaxSingleChannelRetries(input.Settings); err != nil {
+			return nil, err
 		}
 	}
 
