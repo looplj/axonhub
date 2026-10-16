@@ -62,6 +62,7 @@ type Transformer struct {
 	modelCatalogMu        sync.Mutex
 	modelCatalog          ModelCatalog
 	modelCatalogExpiresAt time.Time
+	modelCatalogVersion   uint64
 }
 
 // NewTransformer creates a new Antigravity Transformer.
@@ -185,14 +186,19 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 		return nil, err
 	}
 
-	if t.tokenProvider == nil {
+	t.modelCatalogMu.Lock()
+	tokenProvider := t.tokenProvider
+	catalogVersion := t.modelCatalogVersion
+	t.modelCatalogMu.Unlock()
+
+	if tokenProvider == nil {
 		return nil, fmt.Errorf("no OAuth token provider configured")
 	}
-	creds, err := t.tokenProvider.Get(ctx)
+	creds, err := tokenProvider.Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get OAuth token: %w", err)
 	}
-	transformedModel, err := t.resolveReasoningModel(ctx, llmReq.Model, llmReq.ReasoningEffort, creds.AccessToken)
+	transformedModel, err := t.resolveReasoningModel(ctx, llmReq.Model, llmReq.ReasoningEffort, creds.AccessToken, catalogVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -455,10 +461,11 @@ func (t *Transformer) SetAPIKey(apiKey string) {
 	if apiKey != t.config.APIKey {
 		t.modelCatalog = nil
 		t.modelCatalogExpiresAt = time.Time{}
+		t.modelCatalogVersion++
 	}
-	t.modelCatalogMu.Unlock()
 	t.config.APIKey = apiKey
 	t.initTokenProvider(apiKey)
+	t.modelCatalogMu.Unlock()
 
 	// Also update internal gemini transformer?
 	// geminiTransformer interface doesn't expose SetAPIKey directly unless we assert it.

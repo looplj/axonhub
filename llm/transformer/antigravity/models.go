@@ -133,35 +133,46 @@ func FetchModelCatalog(ctx context.Context, client *httpclient.HttpClient, acces
 
 // The cache belongs to the transformer/credential, never to all accounts. No
 // serialized cache format changes are involved, and SetAPIKey invalidates it.
-func (t *Transformer) resolveReasoningModel(ctx context.Context, model, effort, accessToken string) (string, error) {
+func (t *Transformer) resolveReasoningModel(ctx context.Context, model, effort, accessToken string, catalogVersion uint64) (string, error) {
 	if _, suffix := SplitReasoningModel(NormalizeModelName(model)); suffix != "" && effort == "" {
 		return transformModelForAntigravity(model), nil
 	}
 	t.modelCatalogMu.Lock()
 	defer t.modelCatalogMu.Unlock()
-	if time.Now().After(t.modelCatalogExpiresAt) {
+	catalog := t.modelCatalog
+	if catalogVersion != t.modelCatalogVersion || time.Now().After(t.modelCatalogExpiresAt) {
 		client := t.httpClient
 		if client == nil {
 			client = httpclient.NewHttpClientWithClient(&http.Client{Timeout: tokenExchangeTimeout})
 		}
-		catalog, err := FetchModelCatalog(ctx, client, accessToken, t.config.Project)
+		fetched, err := FetchModelCatalog(ctx, client, accessToken, t.config.Project)
 		if err == nil {
-			t.modelCatalog = catalog
-			t.modelCatalogExpiresAt = time.Now().Add(5 * time.Minute)
+			catalog = fetched
+			if catalogVersion == t.modelCatalogVersion {
+				t.modelCatalog = fetched
+				t.modelCatalogExpiresAt = time.Now().Add(5 * time.Minute)
+			}
 		} else {
 			if ctx.Err() != nil {
 				return "", ctx.Err()
 			}
-			if t.modelCatalog == nil && effort != "" {
+			if catalogVersion == t.modelCatalogVersion {
+				catalog = t.modelCatalog
+			} else {
+				catalog = nil
+			}
+			if catalog == nil && effort != "" {
 				return "", fmt.Errorf("resolve Antigravity reasoning effort: %w", err)
 			}
 			// Keep legacy, directly accepted model IDs usable during discovery
 			// outages. A previous catalog can still resolve normalized IDs.
-			t.modelCatalogExpiresAt = time.Now().Add(10 * time.Second)
+			if catalogVersion == t.modelCatalogVersion {
+				t.modelCatalogExpiresAt = time.Now().Add(10 * time.Second)
+			}
 		}
 	}
-	if t.modelCatalog == nil {
+	if catalog == nil {
 		return transformModelForAntigravity(model), nil
 	}
-	return t.modelCatalog.Resolve(model, effort)
+	return catalog.Resolve(model, effort)
 }
