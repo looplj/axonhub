@@ -156,7 +156,18 @@ func TestStreamDeliveryCancelRace(t *testing.T) {
 		downstream, cancel := context.WithCancel(context.Background())
 		owner, execution := newStreamLifecycle(downstream)
 		cancel()
-		owner.AcknowledgeDelivery()
+		select {
+		case <-execution.Done():
+		case <-time.After(time.Second):
+			t.Fatal("execution context was not canceled")
+		}
+		err := owner.Deliver(execution, func() (bool, error) {
+			t.Fatal("terminal write ran after downstream cancellation")
+			return true, nil
+		})
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Deliver error = %v, want context.Canceled", err)
+		}
 
 		if owner.DeliveryAcknowledged() {
 			t.Fatal("cancel-before-ack was promoted")
@@ -165,6 +176,23 @@ func TestStreamDeliveryCancelRace(t *testing.T) {
 		case <-execution.Done():
 		case <-time.After(time.Second):
 			t.Fatal("execution context was not canceled")
+		}
+		owner.Close()
+	})
+
+	t.Run("successful terminal write remains acknowledged after cancellation", func(t *testing.T) {
+		downstream, cancel := context.WithCancel(context.Background())
+		owner, execution := newStreamLifecycle(downstream)
+		cancel()
+		select {
+		case <-execution.Done():
+		case <-time.After(time.Second):
+			t.Fatal("execution context was not canceled")
+		}
+		owner.AcknowledgeDelivery()
+
+		if !owner.DeliveryAcknowledged() {
+			t.Fatal("successful terminal write was demoted by later cancellation")
 		}
 		owner.Close()
 	})
