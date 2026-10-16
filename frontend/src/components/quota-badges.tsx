@@ -206,7 +206,11 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
   } else if (channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') {
     percentage = Math.max(0, ...channel.quotaStatus.limits.map((limit) => limit.usageRatio * 100));
   } else if (channel.type === 'antigravity') {
-    percentage = Math.max(0, ...channel.quotaStatus.limits.map((limit) => limit.usageRatio * 100));
+    const tokenLimits = channel.quotaStatus.limits.filter((limit) => limit.type === 'token');
+    percentage =
+      tokenLimits.length > 0
+        ? Math.max(0, ...tokenLimits.map((limit) => (limit.status === 'exhausted' ? 100 : limit.usageRatio * 100)))
+        : 0;
   } else if (isOllamaType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderOllamaQuotaData | undefined;
     percentage = Math.max(

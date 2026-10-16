@@ -179,8 +179,13 @@ test('Antigravity badge derives percentage from the highest pool limit', () => {
   const percentBlock = source.slice(start, end);
   assert.match(
     percentBlock,
-    /Math\.max\(\s*0,\s*\.\.\.channel\.quotaStatus\.limits\.map\(\(limit\)\s*=>\s*limit\.usageRatio\s*\*\s*100\)\s*\)/,
-    'antigravity badge percentage should be the max of its normalized limit windows'
+    /tokenLimits = channel\.quotaStatus\.limits\.filter\(\(limit\) => limit\.type === 'token'\)/,
+    'antigravity badge should filter to token limits'
+  );
+  assert.match(
+    percentBlock,
+    /limit\.status === 'exhausted' \? 100 : limit\.usageRatio \* 100/,
+    'antigravity badge percentage should evaluate exhausted limits at 100%'
   );
 });
 
@@ -279,6 +284,24 @@ test('Antigravity API limits survive parsing and determine battery usage', async
   assert.equal(channel.quotaRoutingMode, 'INHERIT');
   assert.deepEqual(channel.quotaStatus.limits.map((limit) => limit.window), windows);
   assert.equal(Math.round(getChannelPercentage(channel)), 30);
+
+  // Non-token limits are excluded and exhausted token limits report 100%
+  const mixedNode = {
+    ...node,
+    providerQuotaStatus: {
+      ...node.providerQuotaStatus,
+      quotaData: {
+        _limits: [
+          { type: 'rpm', window: 'requests', usageRatio: 0.95, status: 'available' },
+          { type: 'token', window: 'gemini_5h', usageRatio: 0.45, status: 'exhausted' },
+          { type: 'token', window: 'gemini_7d', usageRatio: 0.1, status: 'available' },
+        ],
+      },
+    },
+  };
+  const mixedChannel = parseChannelNode(mixedNode);
+  assert.equal(getChannelPercentage(mixedChannel), 100);
+
   for (const locale of ['en', 'zh-CN']) {
     const translations = JSON.parse(read(`locales/${locale}/system.json`));
     for (const window of windows) assert.ok(translations[`quota.window.${window}`]);
