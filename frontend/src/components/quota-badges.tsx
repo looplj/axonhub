@@ -205,6 +205,8 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     percentage = maxPercent;
   } else if (channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') {
     percentage = Math.max(0, ...channel.quotaStatus.limits.map((limit) => limit.usageRatio * 100));
+  } else if (channel.type === 'antigravity') {
+    percentage = Math.max(0, ...channel.quotaStatus.limits.map((limit) => limit.usageRatio * 100));
   } else if (isOllamaType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderOllamaQuotaData | undefined;
     percentage = Math.max(
@@ -331,6 +333,10 @@ function formatTokenCount(n: number): string {
 }
 
 const WINDOW_LABEL_KEYS: Record<string, string> = {
+  gemini_5h: 'quota.window.gemini_5h',
+  gemini_7d: 'quota.window.gemini_7d',
+  claude_gpt_5h: 'quota.window.claude_gpt_5h',
+  claude_gpt_7d: 'quota.window.claude_gpt_7d',
   '5h': 'quota.window.5h',
   '7d': 'quota.window.7d',
   '30d': 'quota.window.30d',
@@ -795,6 +801,73 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             return items;
           })()}
 
+        </div>
+      )}
+
+      {channel.type === 'antigravity' && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const preferredWindows = ['gemini_5h', 'gemini_7d', 'claude_gpt_5h', 'claude_gpt_7d'];
+            const items: React.ReactNode[] = [];
+
+            quota.limits
+              .filter((limit) => limit.type === 'token' && limit.window)
+              .sort((a, b) => {
+                const aIdx = preferredWindows.indexOf(a.window!);
+                const bIdx = preferredWindows.indexOf(b.window!);
+                const aOrder = aIdx === -1 ? 999 : aIdx;
+                const bOrder = bIdx === -1 ? 999 : bIdx;
+                return aOrder - bOrder;
+              })
+              .forEach((limit) => {
+                const labelKey = limit.window ? WINDOW_LABEL_KEYS[limit.window] : undefined;
+                const label = labelKey ? t(labelKey) : limit.window;
+                if (!label) return;
+                const usedPercent = limit.status === 'exhausted' ? 100 : limit.usageRatio * 100;
+                const durationPercent = getLimitDurationPercent(limit);
+                const resetText = limit.nextResetAt ? formatTimeToReset(limit.nextResetAt) : '';
+
+                items.push(
+                  <div
+                    key={limit.window}
+                    className={items.length > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}
+                  >
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>{label}</span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(usedPercent) })}
+                      </span>
+                    </div>
+                    <UsageTimeBar
+                      usagePercent={usedPercent}
+                      durationPercent={durationPercent}
+                      tooltip={
+                        <div className='space-y-0.5'>
+                          <div className='font-medium'>{label}</div>
+                          <div>{t('quota.label.percent_used', { percent: Math.round(usedPercent) })}</div>
+                          {durationPercent !== undefined && (
+                            <div>
+                              {t('quota.label.time_elapsed')}: {Math.round(durationPercent)}%
+                            </div>
+                          )}
+                          {resetText && <div>{resetText}</div>}
+                        </div>
+                      }
+                    />
+                  </div>
+                );
+              });
+
+            if (items.length === 0) {
+              items.push(
+                <div key='unavailable' className='bg-muted/40 text-muted-foreground rounded p-2 text-[11px]'>
+                  {t('quota.label.unavailable')}
+                </div>
+              );
+            }
+
+            return items;
+          })()}
         </div>
       )}
 

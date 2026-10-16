@@ -127,6 +127,10 @@ test('quota window identifiers resolve to localized labels', () => {
   assert.match(quotaBadges, /credits:\s*'quota\.label\.credits_remaining'/);
   assert.match(quotaBadges, /'5h':\s*'quota\.window\.5h'/);
   assert.match(quotaBadges, /'7d':\s*'quota\.window\.7d'/);
+  assert.match(quotaBadges, /gemini_5h:\s*'quota\.window\.gemini_5h'/);
+  assert.match(quotaBadges, /gemini_7d:\s*'quota\.window\.gemini_7d'/);
+  assert.match(quotaBadges, /claude_gpt_5h:\s*'quota\.window\.claude_gpt_5h'/);
+  assert.match(quotaBadges, /claude_gpt_7d:\s*'quota\.window\.claude_gpt_7d'/);
   assert.match(quotaBadges, /limit\.window === 'primary' \|\| limit\.window === 'secondary'/);
 });
 
@@ -164,6 +168,44 @@ test('NeuralWatt kWh bar shares the elapsed-window marker and label', () => {
 // Regression: the quota-display refactor dropped the OpenCode Go popover
 // without adding the shared-limits replacement, so the channels showed a
 // battery percentage in the trigger but an empty detail popover.
+test('Antigravity badge derives percentage from the highest pool limit', () => {
+  const source = read('components/quota-badges.tsx');
+  const start = source.indexOf("} else if (channel.type === 'antigravity') {");
+  const end = source.indexOf("} else if (isOllamaType(channel.type)) {", start);
+
+  assert.ok(start !== -1, 'Antigravity percentage branch should exist in quota-badges source');
+  assert.ok(end !== -1 && end > start, 'Antigravity percentage branch should precede Ollama branch');
+
+  const percentBlock = source.slice(start, end);
+  assert.match(
+    percentBlock,
+    /Math\.max\(\s*0,\s*\.\.\.channel\.quotaStatus\.limits\.map\(\(limit\)\s*=>\s*limit\.usageRatio\s*\*\s*100\)\s*\)/,
+    'antigravity badge percentage should be the max of its normalized limit windows'
+  );
+});
+
+test('Antigravity badge renders its normalized limit windows', () => {
+  const quotaBadges = read('components/quota-badges.tsx');
+  const start = quotaBadges.indexOf("{channel.type === 'antigravity' &&");
+  const end = quotaBadges.indexOf("{channel.type === 'codex' &&", start);
+
+  assert.ok(start !== -1, 'Antigravity popover branch should exist in quota-badges source');
+  assert.ok(end !== -1 && end > start, 'the Codex branch should follow the Antigravity branch');
+
+  const antigravityBlock = quotaBadges.slice(start, end);
+
+  assert.match(antigravityBlock, /quota\.limits/, 'Antigravity should render normalized limits');
+  assert.match(
+    antigravityBlock,
+    /preferredWindows = \['gemini_5h', 'gemini_7d', 'claude_gpt_5h', 'claude_gpt_7d'\]/,
+    'Antigravity should map its windows onto the shared pool labels'
+  );
+  assert.match(antigravityBlock, /WINDOW_LABEL_KEYS\[limit\.window\]/, 'Antigravity labels should resolve through the shared map');
+  assert.match(antigravityBlock, /getLimitDurationPercent\(limit\)/, 'Antigravity bars should share the elapsed-window marker');
+  assert.match(antigravityBlock, /formatTimeToReset\(limit\.nextResetAt\)/, 'Antigravity should show a reset countdown');
+  assert.match(antigravityBlock, /quota\.label\.unavailable/, 'Antigravity should degrade gracefully when no limits are usable');
+});
+
 test('OpenCode Go renders its normalized limit windows', () => {
   const quotaBadges = read('components/quota-badges.tsx');
   const start = quotaBadges.indexOf("{(channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') &&");
@@ -213,6 +255,40 @@ function loadTsModule(sourceText) {
 
 const { resolveEffectiveRoutingMode, mostRestrictiveRoutingMode } = await loadTsModule(modeHelpers);
 
+test('Antigravity API limits survive parsing and determine battery usage', async () => {
+  const quotasAst = ts.createSourceFile('quotas.ts', read('features/system/data/quotas.ts'), ts.ScriptTarget.Latest, true);
+  const parserNames = ['optionalString', 'optionalNumber', 'requiredString', 'isNormalizedQuotaStatus', 'parseQuotaLimit', 'parseQuotaLimits', 'parseChannelNode'];
+  const parserSource = quotasAst.statements
+    .filter((node) => ts.isFunctionDeclaration(node) && parserNames.includes(node.name?.text))
+    .map((node) => `export ${node.getText(quotasAst).replace(/^export\s+/, '')}`)
+    .join('\n');
+  const { parseChannelNode } = await loadTsModule(`const NORMALIZED_QUOTA_STATUSES = ['available', 'warning', 'exhausted', 'unknown'];\n${parserSource}`);
+  const percentageNode = badgesAst.statements.find((node) => ts.isFunctionDeclaration(node) && node.name?.text === 'getChannelPercentage');
+  const { getChannelPercentage } = await loadTsModule(`export ${percentageNode.getText(badgesAst)}`);
+  const windows = ['gemini_5h', 'gemini_7d', 'claude_gpt_5h', 'claude_gpt_7d'];
+  const remaining = [0.82, 0.70, 1, 1];
+  const node = {
+    id: 'antigravity-channel', name: 'Antigravity', type: 'antigravity',
+    providerQuotaStatus: {
+      status: 'available', ready: true, nextResetAt: null,
+      quotaData: { _limits: windows.map((window, index) => ({ type: 'token', window, usageRatio: 1 - remaining[index], status: 'available', ready: true })) },
+    },
+  };
+  const channel = parseChannelNode(node);
+  assert.equal(channel.type, 'antigravity');
+  assert.equal(channel.quotaRoutingMode, 'INHERIT');
+  assert.deepEqual(channel.quotaStatus.limits.map((limit) => limit.window), windows);
+  assert.equal(Math.round(getChannelPercentage(channel)), 30);
+  for (const locale of ['en', 'zh-CN']) {
+    const translations = JSON.parse(read(`locales/${locale}/system.json`));
+    for (const window of windows) assert.ok(translations[`quota.window.${window}`]);
+  }
+  node.providerQuotaStatus.quotaData = {};
+  const unavailable = parseChannelNode(node);
+  assert.deepEqual(unavailable.quotaStatus.limits, []);
+  assert.equal(getChannelPercentage(unavailable), 0);
+});
+
 test('per-channel mode falls back to the global default when the channel defers via INHERIT', () => {
   // parseChannelNode maps channels without settings.quotaRoutingMode to INHERIT.
   assert.match(read('features/system/data/quotas.ts'), /quotaRoutingMode: node\.settings\?\.quotaRoutingMode \?\? 'INHERIT'/);
@@ -248,7 +324,7 @@ test('account-grouped label uses the most restrictive member mode', () => {
 test('grouped representatives render the group mode, standalone channels their own', () => {
   // The row list must stay a real .map over groupedChannels (guards against
   // the opener being eaten by an edit while tsc-visible JSX text survives).
-  assert.match(badgesSource, /groupedChannels\.map\(\(channel: ProviderQuotaChannel\) => \(\n\s*<QuotaRow key=\{channel\.id\} channel=\{channel\} effectiveMode=\{effectiveModeFor\(channel\)\}/);
+  assert.match(badgesSource, /groupedChannels\.map\(\(channel: ProviderQuotaChannel\) => \(\r?\n\s*<QuotaRow key=\{channel\.id\} channel=\{channel\} effectiveMode=\{effectiveModeFor\(channel\)\}/);
   assert.match(badgesSource, /effectiveMode=\{effectiveModeFor\(channel\)\}/);
   assert.match(badgesSource, /if \(!channel\.sharedAccountNames\) return resolveEffectiveRoutingMode\(channel\.quotaRoutingMode, routingSettings\?\.defaultMode\)/);
   assert.match(badgesSource, /\.filter\(\(c\) => c\.accountKey === channel\.accountKey\)/);
