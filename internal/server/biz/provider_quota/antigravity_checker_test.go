@@ -94,3 +94,68 @@ func TestAntigravityQuotaChecker_CheckQuotaRefreshesLegacyCredentials(t *testing
 	require.NoError(t, err)
 	require.Equal(t, "available", quota.Status)
 }
+
+func TestAntigravityQuotaChecker_CheckQuotaRespectsChannelBaseURL(t *testing.T) {
+	customBaseURL := "https://custom-proxy.example.com"
+	expectedURL := customBaseURL + "/v1internal:retrieveUserQuotaSummary"
+
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		require.Equal(t, expectedURL, request.URL.String())
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(antigravitySummaryFixture)),
+		}, nil
+	})})
+	checker := NewAntigravityQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(t.Context(), &ent.Channel{
+		Type:    channel.TypeAntigravity,
+		BaseURL: customBaseURL,
+		Credentials: objects.ChannelCredentials{
+			APIKey: "refresh-token|project-id",
+			OAuth: &objects.OAuthCredentials{
+				AccessToken: "valid-token",
+				ExpiresAt:   time.Now().Add(time.Hour),
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+}
+
+func TestAntigravityQuotaChecker_CheckQuotaEndpointFallback(t *testing.T) {
+	attemptedURLs := make([]string, 0, 2)
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		attemptedURLs = append(attemptedURLs, request.URL.String())
+		// First endpoint returns 503 Service Unavailable
+		if len(attemptedURLs) == 1 {
+			return nil, &httpclient.Error{StatusCode: http.StatusServiceUnavailable, Status: "503 Service Unavailable"}
+		}
+		// Fallback endpoint succeeds
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(antigravitySummaryFixture)),
+		}, nil
+	})})
+	checker := NewAntigravityQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(t.Context(), &ent.Channel{
+		Type: channel.TypeAntigravity,
+		Credentials: objects.ChannelCredentials{
+			APIKey: "refresh-token|project-id",
+			OAuth: &objects.OAuthCredentials{
+				AccessToken: "valid-token",
+				ExpiresAt:   time.Now().Add(time.Hour),
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.Len(t, attemptedURLs, 2)
+	require.Equal(t, antigravityQuotaSummaryURL, attemptedURLs[0])
+	require.Equal(t, antigravity.EndpointDaily+"/v1internal:retrieveUserQuotaSummary", attemptedURLs[1])
+}

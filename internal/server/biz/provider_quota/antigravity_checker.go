@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -21,6 +22,22 @@ import (
 
 const antigravityQuotaURL = antigravity.EndpointProd + "/v1internal:fetchAvailableModels"
 const antigravityQuotaSummaryURL = antigravity.EndpointProd + "/v1internal:retrieveUserQuotaSummary"
+
+func antigravityQuotaEndpoints(ch *ent.Channel) []string {
+	endpoints := make([]string, 0, 3)
+	if ch != nil && ch.BaseURL != "" {
+		trimmed := strings.TrimRight(strings.TrimSpace(ch.BaseURL), "/")
+		if trimmed != "" {
+			endpoints = append(endpoints, trimmed)
+		}
+	}
+	for _, ep := range []string{antigravity.EndpointProd, antigravity.EndpointDaily} {
+		if !slices.Contains(endpoints, ep) {
+			endpoints = append(endpoints, ep)
+		}
+	}
+	return endpoints
+}
 
 type antigravityQuotaResponse struct {
 	Models map[string]struct {
@@ -57,42 +74,78 @@ func (c *AntigravityQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channe
 		body["project"] = projectID
 	}
 
-	request := httpclient.NewRequestBuilder().
-		WithMethod(http.MethodPost).
-		WithURL(antigravityQuotaSummaryURL).
-		WithBearerToken(accessToken).
-		WithHeader("Content-Type", "application/json").
-		WithBody(body).
-		Build()
-	antigravity.SetClientHeaders(request.Headers)
+	endpoints := antigravityQuotaEndpoints(ch)
+	var lastErr error
 
-	response, err := httpClient.Do(ctx, request)
-	if err != nil {
-		var upstreamError *httpclient.Error
-		if !errors.As(err, &upstreamError) ||
-			(upstreamError.StatusCode != http.StatusNotFound && upstreamError.StatusCode != http.StatusNotImplemented) {
-			return QuotaData{}, fmt.Errorf("fetch Antigravity quota summary: %w", err)
+	for _, endpoint := range endpoints {
+		summaryURL := endpoint + "/v1internal:retrieveUserQuotaSummary"
+		modelsURL := endpoint + "/v1internal:fetchAvailableModels"
+
+		request := httpclient.NewRequestBuilder().
+			WithMethod(http.MethodPost).
+			WithURL(summaryURL).
+			WithBearerToken(accessToken).
+			WithHeader("Content-Type", "application/json").
+			WithBody(body).
+			Build()
+		antigravity.SetClientHeaders(request.Headers)
+
+		response, err := httpClient.Do(ctx, request)
+		if err != nil {
+			var upstreamError *httpclient.Error
+			if errors.As(err, &upstreamError) {
+				if upstreamError.StatusCode == http.StatusUnauthorized || upstreamError.StatusCode == http.StatusForbidden {
+					return QuotaData{}, fmt.Errorf("fetch Antigravity quota summary: %w", err)
+				}
+				if upstreamError.StatusCode != http.StatusNotFound && upstreamError.StatusCode != http.StatusNotImplemented {
+					lastErr = fmt.Errorf("fetch Antigravity quota summary from %s: %w", endpoint, err)
+					continue
+				}
+			} else {
+				lastErr = fmt.Errorf("fetch Antigravity quota summary from %s: %w", endpoint, err)
+				continue
+			}
+		} else if response.StatusCode == http.StatusOK {
+			if quota, parseErr := parseAntigravityQuotaSummary(response.Body); parseErr == nil {
+				return quota, nil
+			}
+		} else if response.StatusCode != http.StatusNotFound && response.StatusCode != http.StatusNotImplemented {
+			lastErr = fmt.Errorf("fetch Antigravity quota summary from %s: status %d", endpoint, response.StatusCode)
+			if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden {
+				return QuotaData{}, lastErr
+			}
+			continue
 		}
-	} else if response.StatusCode == http.StatusOK {
-		if quota, parseErr := parseAntigravityQuotaSummary(response.Body); parseErr == nil {
-			return quota, nil
+
+		// Older servers expose only per-model session quotas. Never infer weekly
+		// allowances from those responses or label model IDs as time windows.
+		legacyReq := httpclient.NewRequestBuilder().
+			WithMethod(http.MethodPost).
+			WithURL(modelsURL).
+			WithBearerToken(accessToken).
+			WithHeader("Content-Type", "application/json").
+			WithBody(body).
+			Build()
+		antigravity.SetClientHeaders(legacyReq.Headers)
+
+		response, err = httpClient.Do(ctx, legacyReq)
+		if err != nil {
+			lastErr = fmt.Errorf("fetch legacy Antigravity quota from %s: %w", endpoint, err)
+			continue
 		}
-	} else if response.StatusCode != http.StatusNotFound && response.StatusCode != http.StatusNotImplemented {
-		return QuotaData{}, fmt.Errorf("fetch Antigravity quota summary: status %d", response.StatusCode)
+		if response.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("fetch legacy Antigravity quota from %s: status %d", endpoint, response.StatusCode)
+			continue
+		}
+
+		return parseAntigravityQuota(response.Body)
 	}
 
-	// Older servers expose only per-model session quotas. Never infer weekly
-	// allowances from those responses or label model IDs as time windows.
-	request.URL = antigravityQuotaURL
-	response, err = httpClient.Do(ctx, request)
-	if err != nil {
-		return QuotaData{}, fmt.Errorf("fetch legacy Antigravity quota: %w", err)
-	}
-	if response.StatusCode != http.StatusOK {
-		return QuotaData{}, fmt.Errorf("fetch legacy Antigravity quota: status %d", response.StatusCode)
+	if lastErr != nil {
+		return QuotaData{}, lastErr
 	}
 
-	return parseAntigravityQuota(response.Body)
+	return QuotaData{}, fmt.Errorf("no Antigravity quota endpoint succeeded")
 }
 
 func (c *AntigravityQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
