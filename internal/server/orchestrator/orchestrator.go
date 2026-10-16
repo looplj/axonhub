@@ -386,7 +386,9 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 	// Return result based on stream type
 	if result.Stream {
 		if continuation != nil {
-			result.EventStream = httpclient.WithResponseHeaders(&responsesAcceptedStream{Stream: result.EventStream, ctx: ctx, continuation: continuation}, httpclient.GetResponseHeaders(result.EventStream))
+			source := result.EventStream
+			accepted := &responsesAcceptedStream{Stream: source, ctx: ctx, continuation: continuation}
+			result.EventStream = httpclient.WithResponseHeaders(preserveDeliveryCapabilities(source, accepted), httpclient.GetResponseHeaders(source))
 			continuation = nil
 		}
 		return ChatCompletionResult{
