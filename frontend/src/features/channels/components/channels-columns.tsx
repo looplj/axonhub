@@ -958,7 +958,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.quota')} className='justify-center' />,
       cell: QuotaCell,
       meta: {
-         className: 'hidden w-[13%] min-w-0 2xl:table-cell text-center',
+         className: 'w-[13%] min-w-0 text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -969,7 +969,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} className='justify-center' />,
       cell: TagsCell,
       meta: {
-        className: 'hidden min-w-0 xl:table-cell text-center',
+        className: 'w-[10%] min-w-0 text-center',
       },
       filterFn: (row, id, value) => {
         const tags = (row.getValue(id) as string[]) || [];
@@ -1020,7 +1020,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
       cell: ProxyCell,
       meta: {
-        className: 'hidden min-w-0 2xl:table-cell text-center',
+        className: 'w-[10%] min-w-0 text-center',
       },
       enableSorting: false,
       enableHiding: true,
