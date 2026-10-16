@@ -365,6 +365,51 @@ func TestSelectCandidates_concurrent_requests_have_independent_drop_counts(t *te
 	require.ErrorIs(t, observed["empty"], biz.ErrInvalidModel)
 }
 
+func TestQuotaRoutingGate_filters_exhausted_fallback_models_and_retains_healthy_entry(t *testing.T) {
+	// Given a channel candidate where the first model (Claude) is exhausted, but the second (Gemini) is available.
+	gate := NewQuotaRoutingGate(&mockQuotaStatusProvider{statuses: map[int]*biz.QuotaChannelStatus{
+		1: {
+			Status: providerquotastatus.StatusAvailable,
+			Limits: []provider_quota.QuotaLimitStatus{
+				{
+					Type:              provider_quota.QuotaLimitTypeToken,
+					Status:            "exhausted",
+					UsageRatio:        1.0,
+					Window:            "claude_gpt_7d",
+					AvailabilityGroup: "antigravity_pool:claude_gpt",
+				},
+				{
+					Type:              provider_quota.QuotaLimitTypeToken,
+					Status:            "available",
+					UsageRatio:        0.1,
+					Window:            "gemini_7d",
+					AvailabilityGroup: "antigravity_pool:gemini",
+				},
+			},
+		},
+	}}, biz.QuotaRoutingSettings{DefaultMode: objects.QuotaRoutingModeRemoveOnExhausted})
+
+	candidate := &ChannelModelsCandidate{
+		Channel: &biz.Channel{Channel: &ent.Channel{ID: 1}},
+		Models: []biz.ChannelModelEntry{
+			{RequestModel: "claude-sonnet-4-6", ActualModel: "claude-sonnet-4-6"},
+			{RequestModel: "gemini-3.8-flash", ActualModel: "gemini-3.8-flash"},
+		},
+		modelAPIFormats: []string{"anthropic/messages", "gemini/contents"},
+	}
+
+	// When
+	got := gate.Filter(context.Background(), []*ChannelModelsCandidate{candidate}, &llm.Request{}, 0)
+
+	// Then: the candidate is kept, the exhausted model is pruned, and the healthy fallback is retained.
+	require.Len(t, got, 1)
+	require.Equal(t, 1, got[0].Channel.ID)
+	require.Len(t, got[0].Models, 1)
+	require.Equal(t, "gemini-3.8-flash", got[0].Models[0].ActualModel)
+	require.Equal(t, []string{"gemini/contents"}, got[0].modelAPIFormats)
+	require.Zero(t, gate.DroppedCount())
+}
+
 func quotaRoutingIDs(candidates []*ChannelModelsCandidate) []int {
 	ids := make([]int, 0, len(candidates))
 	for _, candidate := range candidates {
