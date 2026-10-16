@@ -66,6 +66,7 @@ const QUOTA_WINDOW_LABEL_KEYS: Record<string, string> = {
   gemini_7d: 'quota.window.gemini_7d',
   claude_gpt_5h: 'quota.window.claude_gpt_5h',
   claude_gpt_7d: 'quota.window.claude_gpt_7d',
+  argon_7d: 'quota.window.argon_7d',
   '5h': 'quota.window.5h',
   '7d': 'quota.window.7d',
   '30d': 'quota.window.30d',

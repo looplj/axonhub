@@ -151,3 +151,31 @@ func TestAntigravitySummaryRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestAntigravitySummaryWithArgon(t *testing.T) {
+	fixture := []byte(`{"groups":[
+ {"displayName":"Gemini Models","buckets":[
+  {"bucketId":"gemini-weekly","displayName":"Weekly Limit","remainingFraction":0.90,"resetTime":"2099-09-11T08:00:00Z"},
+  {"bucketId":"gemini-5h","displayName":"Five Hour Limit","remainingFraction":0.93,"resetTime":"2099-09-04T13:00:00Z"}]},
+ {"displayName":"Claude and GPT models","buckets":[
+  {"bucketId":"3p-weekly","remainingFraction":0.98},
+  {"bucketId":"3p-5h","remainingFraction":1.0}]},
+ {"displayName":"Gemini 4 Argon","buckets":[
+  {"bucketId":"gemini-argon-wtu-weekly","displayName":"Gemini 4 Argon Weekly Limit","remainingFraction":0.99}]}
+]}`)
+
+	quota, err := parseAntigravityQuotaSummary(fixture)
+	require.NoError(t, err)
+	require.Len(t, quota.Limits, 5)
+
+	limitMap := make(map[string]QuotaLimitStatus)
+	for _, l := range quota.Limits {
+		limitMap[l.Window] = l
+	}
+
+	require.InDelta(t, 0.10, limitMap["gemini_7d"].UsageRatio, 0.001)
+	require.InDelta(t, 0.07, limitMap["gemini_5h"].UsageRatio, 0.001)
+	require.InDelta(t, 0.02, limitMap["claude_gpt_7d"].UsageRatio, 0.001)
+	require.InDelta(t, 0.00, limitMap["claude_gpt_5h"].UsageRatio, 0.001)
+	require.InDelta(t, 0.01, limitMap["argon_7d"].UsageRatio, 0.001)
+}
