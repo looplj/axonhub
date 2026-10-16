@@ -93,7 +93,7 @@ func (c *AntigravityQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channe
 		response, err := httpClient.Do(ctx, request)
 		if err != nil {
 			var upstreamError *httpclient.Error
-			if errors.As(err, &upstreamError) {
+			if errors.As(err, &upstreamError) { //nolint:modernize
 				if upstreamError.StatusCode == http.StatusUnauthorized || upstreamError.StatusCode == http.StatusForbidden {
 					return QuotaData{}, fmt.Errorf("fetch Antigravity quota summary: %w", err)
 				}
