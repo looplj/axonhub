@@ -24,10 +24,10 @@ func TestFilterLimitsForModel(t *testing.T) {
 			AvailabilityGroup: antigravityPoolAvailabilityGroup("claude_gpt"),
 		},
 		{
-			Type:        QuotaLimitTypeToken,
-			Status:      "available",
-			UsageRatio:  0.2,
-			Window:      "global_rate",
+			Type:       QuotaLimitTypeToken,
+			Status:     "available",
+			UsageRatio: 0.2,
+			Window:     "global_rate",
 		},
 	}
 
