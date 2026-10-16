@@ -19,8 +19,8 @@ import (
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
 )
 
-const antigravityQuotaURL = antigravity.EndpointProd + "/v1internal:fetchAvailableModels"
-const antigravityQuotaSummaryURL = antigravity.EndpointProd + "/v1internal:retrieveUserQuotaSummary"
+const antigravityQuotaURL = antigravity.EndpointDaily + "/v1internal:fetchAvailableModels"
+const antigravityQuotaSummaryURL = antigravity.EndpointDaily + "/v1internal:retrieveUserQuotaSummary"
 
 type antigravityQuotaResponse struct {
 	Models map[string]struct {
