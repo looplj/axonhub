@@ -4,12 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"sort"
 	"strings"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
 )
@@ -106,46 +103,13 @@ func (f *ModelFetcher) fetchAntigravityModels(ctx context.Context, input FetchMo
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve Antigravity OAuth token: %w", err)
 	}
-	body := map[string]string{}
-	if projectID != "" {
-		body["project"] = projectID
-	}
-	encoded, err := json.Marshal(body)
+	catalog, err := antigravity.FetchModelCatalog(ctx, httpClient, refreshed.AccessToken, projectID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode Antigravity model request: %w", err)
+		return nil, err
 	}
-	headers := http.Header{"Content-Type": []string{"application/json"}, "Accept": []string{"application/json"}}
-	antigravity.SetClientHeaders(headers)
-	headers.Set("Authorization", "Bearer "+refreshed.AccessToken)
-	response, err := httpClient.Do(ctx, &httpclient.Request{
-		Method:  http.MethodPost,
-		URL:     antigravity.EndpointProd + "/v1internal:fetchAvailableModels",
-		Headers: headers,
-		Body:    encoded,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch Antigravity model catalog: %w", err)
-	}
-	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to fetch Antigravity model catalog: status %d", response.StatusCode)
-	}
-	var catalog struct {
-		Models map[string]struct {
-			IsInternal bool `json:"isInternal"`
-		} `json:"models"`
-	}
-	if err := json.Unmarshal(response.Body, &catalog); err != nil {
-		return nil, fmt.Errorf("failed to parse Antigravity model catalog: %w", err)
-	}
-	models := make([]ModelIdentify, 0, len(catalog.Models))
-	for id, model := range catalog.Models {
-		if strings.TrimSpace(id) != "" && !model.IsInternal {
-			models = append(models, ModelIdentify{ID: id})
-		}
-	}
-	sort.Slice(models, func(i, j int) bool { return models[i].ID < models[j].ID })
-	if len(models) == 0 {
-		return nil, fmt.Errorf("Antigravity model catalog contains no available public models")
+	models := make([]ModelIdentify, 0, len(catalog))
+	for _, id := range catalog.BaseModels() {
+		models = append(models, ModelIdentify{ID: id})
 	}
 	return models, nil
 }

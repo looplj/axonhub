@@ -1,0 +1,167 @@
+package antigravity
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/looplj/axonhub/llm/httpclient"
+)
+
+// ModelCatalog contains the public wire IDs offered to this OAuth account.
+type ModelCatalog map[string]struct{}
+
+// SplitReasoningModel separates an effort suffix without changing other model
+// qualifiers such as -thinking, -image or -tiered.
+func SplitReasoningModel(model string) (string, string) {
+	for _, effort := range []string{"extra-low", "minimal", "xhigh", "medium", "high", "low"} {
+		if base, ok := strings.CutSuffix(model, "-"+effort); ok && base != "" {
+			return base, effort
+		}
+	}
+	return model, ""
+}
+
+func (c ModelCatalog) BaseModels() []string {
+	unique := make(map[string]struct{}, len(c))
+	for id := range c {
+		base, _ := SplitReasoningModel(id)
+		unique[base] = struct{}{}
+	}
+	models := make([]string, 0, len(unique))
+	for id := range unique {
+		models = append(models, id)
+	}
+	sort.Strings(models)
+	return models
+}
+
+// Resolve applies the explicit request effort first, then a legacy model suffix,
+// then a stable default. It never invents a variant absent from this account.
+func (c ModelCatalog) Resolve(model, effort string) (string, error) {
+	model = NormalizeModelName(model)
+	base, suffix := SplitReasoningModel(model)
+	effort = strings.ToLower(strings.TrimSpace(effort))
+	if effort == "" {
+		if _, ok := c[model]; ok {
+			return model, nil
+		}
+		if suffix != "" {
+			return model, nil
+		}
+	}
+	variants := make(map[string]string)
+	for id := range c {
+		candidate, level := SplitReasoningModel(id)
+		if candidate == base && level != "" {
+			variants[level] = id
+		}
+	}
+	if len(variants) == 0 {
+		return transformModelForAntigravity(model), nil
+	}
+	if effort != "" {
+		switch effort {
+		case "xhigh", "max":
+			effort = "high"
+		case "minimal":
+			if variants["extra-low"] != "" {
+				effort = "extra-low"
+			} else {
+				effort = "low"
+			}
+		}
+		if id := variants[effort]; id != "" {
+			return id, nil
+		}
+		return "", fmt.Errorf("Antigravity model %q does not offer reasoning effort %q", base, effort)
+	}
+	defaults := []string{"medium", "low", "high", "extra-low", "minimal", "xhigh"}
+	if strings.HasPrefix(base, "gemini-3") {
+		defaults[0], defaults[1] = defaults[1], defaults[0]
+	}
+	for _, level := range defaults {
+		if id := variants[level]; id != "" {
+			return id, nil
+		}
+	}
+	return model, nil
+}
+
+func FetchModelCatalog(ctx context.Context, client *httpclient.HttpClient, accessToken, project string) (ModelCatalog, error) {
+	body := make(map[string]string)
+	if project != "" {
+		body["project"] = project
+	}
+	encoded, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("encode Antigravity model request: %w", err)
+	}
+	headers := http.Header{"Content-Type": {"application/json"}, "Accept": {"application/json"}}
+	SetClientHeaders(headers)
+	headers.Set("Authorization", "Bearer "+accessToken)
+	response, err := client.Do(ctx, &httpclient.Request{Method: http.MethodPost, URL: EndpointDaily + "/v1internal:fetchAvailableModels", Headers: headers, Body: encoded})
+	if err != nil {
+		return nil, fmt.Errorf("fetch Antigravity model catalog: %w", err)
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("fetch Antigravity model catalog: status %d", response.StatusCode)
+	}
+	var payload struct {
+		Models map[string]struct {
+			IsInternal bool `json:"isInternal"`
+		} `json:"models"`
+	}
+	if err := json.Unmarshal(response.Body, &payload); err != nil {
+		return nil, fmt.Errorf("parse Antigravity model catalog: %w", err)
+	}
+	models := make(ModelCatalog)
+	for id, model := range payload.Models {
+		if strings.TrimSpace(id) != "" && !model.IsInternal {
+			models[id] = struct{}{}
+		}
+	}
+	if len(models) == 0 {
+		return nil, fmt.Errorf("Antigravity model catalog contains no available public models")
+	}
+	return models, nil
+}
+
+// The cache belongs to the transformer/credential, never to all accounts. No
+// serialized cache format changes are involved, and SetAPIKey invalidates it.
+func (t *Transformer) resolveReasoningModel(ctx context.Context, model, effort, accessToken string) (string, error) {
+	if _, suffix := SplitReasoningModel(NormalizeModelName(model)); suffix != "" && effort == "" {
+		return transformModelForAntigravity(model), nil
+	}
+	t.modelCatalogMu.Lock()
+	defer t.modelCatalogMu.Unlock()
+	if time.Now().After(t.modelCatalogExpiresAt) {
+		client := t.httpClient
+		if client == nil {
+			client = httpclient.NewHttpClientWithClient(&http.Client{Timeout: tokenExchangeTimeout})
+		}
+		catalog, err := FetchModelCatalog(ctx, client, accessToken, t.config.Project)
+		if err == nil {
+			t.modelCatalog = catalog
+			t.modelCatalogExpiresAt = time.Now().Add(5 * time.Minute)
+		} else {
+			if ctx.Err() != nil {
+				return "", ctx.Err()
+			}
+			if t.modelCatalog == nil && effort != "" {
+				return "", fmt.Errorf("resolve Antigravity reasoning effort: %w", err)
+			}
+			// Keep legacy, directly accepted model IDs usable during discovery
+			// outages. A previous catalog can still resolve normalized IDs.
+			t.modelCatalogExpiresAt = time.Now().Add(10 * time.Second)
+		}
+	}
+	if t.modelCatalog == nil {
+		return transformModelForAntigravity(model), nil
+	}
+	return t.modelCatalog.Resolve(model, effort)
+}

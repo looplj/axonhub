@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/looplj/axonhub/llm"
@@ -53,11 +54,14 @@ type Config struct {
 
 // Transformer implements transformer.Outbound for Antigravity protocol.
 type Transformer struct {
-	config            Config
-	geminiTransformer transformer.Outbound
-	tokenProvider     *oauth.TokenProvider
-	httpClient        *httpclient.HttpClient
-	onTokenRefreshed  func(ctx context.Context, refreshed *oauth.OAuthCredentials) error
+	config                Config
+	geminiTransformer     transformer.Outbound
+	tokenProvider         *oauth.TokenProvider
+	httpClient            *httpclient.HttpClient
+	onTokenRefreshed      func(ctx context.Context, refreshed *oauth.OAuthCredentials) error
+	modelCatalogMu        sync.Mutex
+	modelCatalog          ModelCatalog
+	modelCatalogExpiresAt time.Time
 }
 
 // NewTransformer creates a new Antigravity Transformer.
@@ -181,10 +185,17 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 		return nil, err
 	}
 
-	// 4. Transform model name for Antigravity API compatibility
-	// Antigravity API requires tier suffixes for gemini-3-pro (e.g., gemini-3-pro-low)
-	// Store the original model name in metadata for the executor to use for routing
-	transformedModel := transformModelForAntigravity(llmReq.Model)
+	if t.tokenProvider == nil {
+		return nil, fmt.Errorf("no OAuth token provider configured")
+	}
+	creds, err := t.tokenProvider.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get OAuth token: %w", err)
+	}
+	transformedModel, err := t.resolveReasoningModel(ctx, llmReq.Model, llmReq.ReasoningEffort, creds.AccessToken)
+	if err != nil {
+		return nil, err
+	}
 
 	// 5. Wrap in Antigravity Envelope
 	envelope := NewAntigravityEnvelope(t.config.Project, transformedModel, geminiReq)
@@ -209,21 +220,7 @@ func (t *Transformer) TransformRequest(ctx context.Context, llmReq *llm.Request)
 	}
 
 	// Auth - OAuth only, no API key fallback
-	var authConfig *httpclient.AuthConfig
-
-	if t.tokenProvider != nil {
-		creds, err := t.tokenProvider.Get(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get OAuth token: %w", err)
-		}
-
-		authConfig = &httpclient.AuthConfig{
-			Type:   httpclient.AuthTypeBearer,
-			APIKey: creds.AccessToken,
-		}
-	} else {
-		return nil, fmt.Errorf("no OAuth token provider configured")
-	}
+	authConfig := &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: creds.AccessToken}
 
 	// URL
 	url := t.buildURL(llmReq)
@@ -454,6 +451,12 @@ func (t *Transformer) TransformError(ctx context.Context, rawErr *httpclient.Err
 
 // SetAPIKey updates the API key.
 func (t *Transformer) SetAPIKey(apiKey string) {
+	t.modelCatalogMu.Lock()
+	if apiKey != t.config.APIKey {
+		t.modelCatalog = nil
+		t.modelCatalogExpiresAt = time.Time{}
+	}
+	t.modelCatalogMu.Unlock()
 	t.config.APIKey = apiKey
 	t.initTokenProvider(apiKey)
 
