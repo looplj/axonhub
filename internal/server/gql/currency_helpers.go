@@ -52,3 +52,42 @@ func sortCurrencyAmounts(amounts []*objects.CurrencyAmount) {
 		return amounts[i].CurrencyCode < amounts[j].CurrencyCode
 	})
 }
+
+// selectTopPerCurrency returns the union of the top `limit` entities for each
+// currency, preserving the original order. Ranking entities by a sum across
+// currencies is meaningless without FX conversion and would hide currencies
+// whose entities are not in the mixed-currency top list.
+func selectTopPerCurrency[K comparable](order []K, costs map[K]map[string]float64, limit int) []K {
+	currencies := make(map[string]struct{})
+	for _, byCurrency := range costs {
+		for currencyCode := range byCurrency {
+			currencies[currencyCode] = struct{}{}
+		}
+	}
+
+	selected := make(map[K]struct{})
+
+	for currencyCode := range currencies {
+		ranked := append([]K(nil), order...)
+		sort.SliceStable(ranked, func(i, j int) bool {
+			return costs[ranked[i]][currencyCode] > costs[ranked[j]][currencyCode]
+		})
+
+		if len(ranked) > limit {
+			ranked = ranked[:limit]
+		}
+
+		for _, key := range ranked {
+			selected[key] = struct{}{}
+		}
+	}
+
+	result := make([]K, 0, len(selected))
+	for _, key := range order {
+		if _, ok := selected[key]; ok {
+			result = append(result, key)
+		}
+	}
+
+	return result
+}

@@ -166,7 +166,7 @@
   "apikeys.profiles.quotaCost": "Cost",
   "apikeys.profiles.quotaCostPlaceholder": "例如：10.5",
   "apikeys.profiles.quotaCurrency": "费用货币",
-  "apikeys.profiles.quotaCurrencyPlaceholder": "默认货币",
+  "apikeys.profiles.quotaCurrencyPlaceholder": "默认 USD",
   "apikeys.profiles.quotaUsageTitle": "用量",
   "apikeys.profiles.quotaPeriodType": "周期",
   "apikeys.profiles.quotaPeriodAllTime": "总量",

@@ -445,23 +445,7 @@ function findProviderModelById(providersData: ProvidersData, modelId: string, pr
 }
 
 function buildItemsFromProviderModel(model: ProviderModel, multiplier: number = 1): PriceFormData['prices'][number]['price']['items'] {
-  const items: PriceFormData['prices'][number]['price']['items'] = [];
-  const cost = model.cost;
-
-  const pushUsagePerUnit = (itemCode: (typeof priceItemCodes)[number], value: number) => {
-    items.push({
-      itemCode,
-      pricing: {
-        mode: 'usage_per_unit',
-        usagePerUnit: (value * multiplier).toFixed(4),
-      },
-    });
-  };
-
-  if (cost?.input != null) pushUsagePerUnit('prompt_tokens', cost.input);
-  if (cost?.output != null) pushUsagePerUnit('completion_tokens', cost.output);
-  if (cost?.cache_read != null) pushUsagePerUnit('prompt_cached_tokens', cost.cache_read);
-  if (cost?.cache_write != null) pushUsagePerUnit('prompt_write_cached_tokens', cost.cache_write);
+  const items = itemsFromProviderCost(model, multiplier);
 
   if (items.length === 0) {
     items.push({
@@ -473,43 +457,28 @@ function buildItemsFromProviderModel(model: ProviderModel, multiplier: number = 
   return items;
 }
 
-function mergeItemsWithProviderCost(
-  currentItems: PriceFormData['prices'][number]['price']['items'],
+function itemsFromProviderCost(
   model: ProviderModel,
   multiplier: number = 1
 ): PriceFormData['prices'][number]['price']['items'] {
-  const byCode = new Map<(typeof priceItemCodes)[number], PriceFormData['prices'][number]['price']['items'][number]>();
-  currentItems.forEach((item) => {
-    byCode.set(item.itemCode, item);
-  });
+  const items: PriceFormData['prices'][number]['price']['items'] = [];
 
-  const applyUsagePerUnit = (itemCode: (typeof priceItemCodes)[number], value: number) => {
-    const existing = byCode.get(itemCode);
-    if (existing) {
-      byCode.set(itemCode, {
-        ...existing,
-        pricing: {
-          mode: 'usage_per_unit',
-          usagePerUnit: (value * multiplier).toFixed(4),
-          flatFee: '',
-          usageTiered: null,
-        },
-      });
-      return;
-    }
-    byCode.set(itemCode, {
+  const addUsagePerUnit = (itemCode: (typeof priceItemCodes)[number], value: number) => {
+    items.push({
       itemCode,
       pricing: { mode: 'usage_per_unit', usagePerUnit: (value * multiplier).toFixed(4) },
     });
   };
 
   const cost = model.cost;
-  if (cost?.input != null) applyUsagePerUnit('prompt_tokens', cost.input);
-  if (cost?.output != null) applyUsagePerUnit('completion_tokens', cost.output);
-  if (cost?.cache_read != null) applyUsagePerUnit('prompt_cached_tokens', cost.cache_read);
-  if (cost?.cache_write != null) applyUsagePerUnit('prompt_write_cached_tokens', cost.cache_write);
+  if (cost?.input != null) addUsagePerUnit('prompt_tokens', cost.input);
+  if (cost?.output != null) addUsagePerUnit('completion_tokens', cost.output);
+  if (cost?.cache_read != null) addUsagePerUnit('prompt_cached_tokens', cost.cache_read);
+  if (cost?.cache_write != null) addUsagePerUnit('prompt_write_cached_tokens', cost.cache_write);
 
-  return Array.from(byCode.values());
+  // The provider only supplies USD prices for these items. A price row has a
+  // single currency, so items it does not supply cannot be kept.
+  return items;
 }
 
 const PriceCard = memo(function PriceCard({
@@ -1038,13 +1007,14 @@ export function ChannelsModelPriceDialog() {
 
   const applyProviderModelToIndex = useCallback(
     (priceIndex: number, providerModel: ProviderModel) => {
-      const currentItems = getValues(`prices.${priceIndex}.price.items`) || [];
-      const merged = mergeItemsWithProviderCost(currentItems, providerModel, multiplier);
-      setValue(`prices.${priceIndex}.price.items`, merged, { shouldDirty: true, shouldValidate: true });
+      const items = itemsFromProviderCost(providerModel, multiplier);
+      if (items.length === 0) return;
+
+      setValue(`prices.${priceIndex}.price.items`, items, { shouldDirty: true, shouldValidate: true });
       // Provider/model-library prices are always USD; do not relabel them as the channel currency.
       setValue(`prices.${priceIndex}.currencyCode`, 'USD', { shouldDirty: true });
     },
-    [getValues, setValue, multiplier]
+    [setValue, multiplier]
   );
 
   const applyProviderModelById = useCallback(

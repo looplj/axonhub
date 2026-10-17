@@ -166,7 +166,7 @@
   "apikeys.profiles.quotaCost": "Cost",
   "apikeys.profiles.quotaCostPlaceholder": "e.g. 10.5",
   "apikeys.profiles.quotaCurrency": "Cost Currency",
-  "apikeys.profiles.quotaCurrencyPlaceholder": "Default currency",
+  "apikeys.profiles.quotaCurrencyPlaceholder": "Defaults to USD",
   "apikeys.profiles.quotaUsageTitle": "Usage",
   "apikeys.profiles.quotaPeriodType": "Period",
   "apikeys.profiles.quotaPeriodAllTime": "All time",

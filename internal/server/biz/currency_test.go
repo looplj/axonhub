@@ -239,3 +239,33 @@ func TestQuotaUsageAgg_FiltersCostByCurrency(t *testing.T) {
 	require.Equal(t, int64(20), cnyUsage.TotalTokens)
 	require.True(t, cnyUsage.TotalCost.Equal(decimal.NewFromFloat(2)))
 }
+
+func TestQuotaCurrencyCode_DefaultsLegacyQuotasToUSD(t *testing.T) {
+	require.Equal(t, objects.DefaultCurrencyCode, quotaCurrencyCode(nil))
+	require.Equal(t, objects.DefaultCurrencyCode, quotaCurrencyCode(&objects.APIKeyQuota{}))
+	require.Equal(t, "CNY", quotaCurrencyCode(&objects.APIKeyQuota{CurrencyCode: "cny"}))
+}
+
+func TestValidateProfileQuota_StampsCostCurrency(t *testing.T) {
+	profiles := []objects.APIKeyProfile{
+		{
+			Name: "default",
+			Quota: &objects.APIKeyQuota{
+				Cost:   lo.ToPtr(decimal.NewFromInt(1)),
+				Period: objects.APIKeyQuotaPeriod{Type: objects.APIKeyQuotaPeriodTypeAllTime},
+			},
+		},
+		{
+			Name: "explicit",
+			Quota: &objects.APIKeyQuota{
+				Cost:         lo.ToPtr(decimal.NewFromInt(1)),
+				CurrencyCode: "cny",
+				Period:       objects.APIKeyQuotaPeriod{Type: objects.APIKeyQuotaPeriodTypeAllTime},
+			},
+		},
+	}
+
+	require.NoError(t, validateProfileQuota(profiles))
+	require.Equal(t, objects.DefaultCurrencyCode, profiles[0].Quota.CurrencyCode)
+	require.Equal(t, "CNY", profiles[1].Quota.CurrencyCode)
+}

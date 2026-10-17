@@ -862,6 +862,12 @@ func validateProfileQuota(profiles []objects.APIKeyProfile) error {
 			return fmt.Errorf("profile '%s' quota.cost must be non-negative", profile.Name)
 		}
 
+		if q.Cost != nil && q.CurrencyCode == "" {
+			// Persist the currency so later changes to system settings cannot
+			// silently change which recorded costs count against this quota.
+			q.CurrencyCode = objects.DefaultCurrencyCode
+		}
+
 		if q.CurrencyCode != "" {
 			currencyCode, err := objects.NormalizeCurrencyCode(q.CurrencyCode)
 			if err != nil {

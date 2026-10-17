@@ -85,7 +85,7 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 	}
 
 	usageAgg, err := authz.RunWithSystemBypass(ctx, "quota-usage-agg", func(bypassCtx context.Context) (usageAggResult, error) {
-		return s.usageAgg(bypassCtx, apiKeyID, window, quota.TotalTokens != nil, quota.Cost != nil, s.quotaCurrencyCode(ctx, quota))
+		return s.usageAgg(bypassCtx, apiKeyID, window, quota.TotalTokens != nil, quota.Cost != nil, quotaCurrencyCode(quota))
 	})
 	if err != nil {
 		return QuotaCheckResult{}, err
@@ -102,7 +102,7 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 	if quota.Cost != nil && usageAgg.TotalCost.GreaterThanOrEqual(*quota.Cost) {
 		return QuotaCheckResult{
 			Allowed: false,
-			Message: fmt.Sprintf("cost quota exceeded: %s %s/%s", s.quotaCurrencyCode(ctx, quota), usageAgg.TotalCost.String(), quota.Cost.String()),
+			Message: fmt.Sprintf("cost quota exceeded: %s %s/%s", quotaCurrencyCode(quota), usageAgg.TotalCost.String(), quota.Cost.String()),
 			Window:  window,
 		}, nil
 	}
@@ -161,7 +161,7 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 	}
 
 	loc := s.system.TimeLocation(ctx)
-	currencyCode := s.quotaCurrencyCode(ctx, quota)
+	currencyCode := quotaCurrencyCode(quota)
 
 	window, err := quotaWindow(xtime.UTCNow(), quota.Period, loc)
 	if err != nil {
@@ -193,21 +193,15 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 	}, nil
 }
 
-func (s *QuotaService) quotaCurrencyCode(ctx context.Context, quota *objects.APIKeyQuota) string {
+func quotaCurrencyCode(quota *objects.APIKeyQuota) string {
 	if quota != nil && quota.CurrencyCode != "" {
 		if currencyCode, err := objects.NormalizeCurrencyCode(quota.CurrencyCode); err == nil {
 			return currencyCode
 		}
 	}
 
-	if s.system != nil {
-		if settings, err := s.system.GeneralSettings(ctx); err == nil && settings.CurrencyCode != "" {
-			if currencyCode, err := objects.NormalizeCurrencyCode(settings.CurrencyCode); err == nil {
-				return currencyCode
-			}
-		}
-	}
-
+	// Quotas saved before currencies existed were billed in USD, and new quotas
+	// without an explicit currency are stamped with USD when validated.
 	return objects.DefaultCurrencyCode
 }
 

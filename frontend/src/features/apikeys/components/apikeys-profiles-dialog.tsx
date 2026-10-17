@@ -365,6 +365,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
                               availableModels={availableModels?.map((model) => model.id) || []}
                               t={t}
                               locale={locale}
+                              currencyLocale={currencyLocale}
                               quotaUsageByProfileName={quotaUsageByProfileName}
                               defaultExpanded={isActive}
                               portalContainer={dialogContent}
@@ -462,6 +463,7 @@ interface ProfileCardProps {
   availableModels: string[];
   t: (key: string) => string;
   locale: Locale;
+  currencyLocale: string;
   quotaUsageByProfileName: Map<string, ApiKeyProfileQuotaUsage>;
   defaultExpanded?: boolean;
   /** Popover Portal 容器元素，解决 Dialog 内无法滚动的问题 */
@@ -479,6 +481,7 @@ function ProfileCard({
   availableModels,
   t,
   locale,
+  currencyLocale,
   quotaUsageByProfileName,
   defaultExpanded = false,
   portalContainer,

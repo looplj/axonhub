@@ -1649,7 +1649,6 @@ func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *stri
 	type channelCost struct {
 		name  string
 		costs map[string]float64
-		total float64
 	}
 
 	merged := make(map[string]*channelCost, len(results))
@@ -1665,17 +1664,12 @@ func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *stri
 
 		if raw.Cost.Valid {
 			item.costs[raw.CurrencyCode] += raw.Cost.Float64
-			item.total += raw.Cost.Float64
 		}
 	}
 
-	sort.SliceStable(order, func(i, j int) bool {
-		return merged[order[i]].total > merged[order[j]].total
-	})
-
-	if len(order) > 10 {
-		order = order[:10]
-	}
+	order = selectTopPerCurrency(order, lo.SliceToMap(order, func(name string) (string, map[string]float64) {
+		return name, merged[name].costs
+	}), 10)
 
 	return lo.Map(order, func(name string, _ int) *CostStatsByChannel {
 		item := merged[name]
@@ -1723,7 +1717,6 @@ func (r *queryResolver) CostStatsByModel(ctx context.Context, timeWindow *string
 	type modelCost struct {
 		modelID string
 		costs   map[string]float64
-		total   float64
 	}
 
 	merged := make(map[string]*modelCost, len(results))
@@ -1739,17 +1732,12 @@ func (r *queryResolver) CostStatsByModel(ctx context.Context, timeWindow *string
 
 		if raw.Cost.Valid {
 			item.costs[raw.CurrencyCode] += raw.Cost.Float64
-			item.total += raw.Cost.Float64
 		}
 	}
 
-	sort.SliceStable(order, func(i, j int) bool {
-		return merged[order[i]].total > merged[order[j]].total
-	})
-
-	if len(order) > 10 {
-		order = order[:10]
-	}
+	order = selectTopPerCurrency(order, lo.SliceToMap(order, func(modelID string) (string, map[string]float64) {
+		return modelID, merged[modelID].costs
+	}), 10)
 
 	return lo.Map(order, func(modelID string, _ int) *CostStatsByModel {
 		item := merged[modelID]
@@ -1802,7 +1790,6 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 	type apiKeyCost struct {
 		apiKeyID int
 		costs    map[string]float64
-		total    float64
 	}
 
 	merged := make(map[int]*apiKeyCost, len(results))
@@ -1820,17 +1807,12 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 
 		if raw.Cost.Valid {
 			item.costs[raw.CurrencyCode] += raw.Cost.Float64
-			item.total += raw.Cost.Float64
 		}
 	}
 
-	sort.SliceStable(order, func(i, j int) bool {
-		return merged[order[i]].total > merged[order[j]].total
-	})
-
-	if len(order) > 10 {
-		order = order[:10]
-	}
+	order = selectTopPerCurrency(order, lo.SliceToMap(order, func(id int) (int, map[string]float64) {
+		return id, merged[id].costs
+	}), 10)
 
 	apiKeys, err := r.client.APIKey.Query().
 		Where(apikey.IDIn(apiKeyIDs...)).
