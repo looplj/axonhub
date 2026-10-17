@@ -2566,7 +2566,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
         {groupedChannels.map((channel: ProviderQuotaChannel, index: number) => {
           const cat = getChannelCategory(channel, t);
           const showSectionHeader =
-            selectedCategory === 'all' &&
+            activeCategory === 'all' &&
             categories.length > 1 &&
             (index === 0 || getChannelCategory(groupedChannels[index - 1], t).key !== cat.key);
 
@@ -2626,7 +2626,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
                     : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
               >
-                {t('common.all') || '全部'} ({sortedChannels.length})
+                {t('common.all')} ({sortedChannels.length})
               </button>
               {categories.map((cat) => (
                 <button

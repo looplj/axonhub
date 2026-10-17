@@ -177,9 +177,18 @@ test('OpenCode Go renders its normalized limit windows', () => {
 // Extract the pure mode helpers from quota-badges.tsx without loading React.
 const badgesSource = read('components/quota-badges.tsx');
 const badgesAst = ts.createSourceFile('quota-badges.tsx', badgesSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const modeHelperNames = ['resolveEffectiveRoutingMode', 'mostRestrictiveRoutingMode'];
+const modeHelperNames = [
+  'resolveEffectiveRoutingMode',
+  'mostRestrictiveRoutingMode',
+  'isOpenaiType',
+  'isCommandCodeType',
+  'isOllamaType',
+  'isMinimaxType',
+  'isZenmuxType',
+  'getChannelCategory',
+];
 const modeHelperNodes = badgesAst.statements.filter((node) => ts.isFunctionDeclaration(node) && modeHelperNames.includes(node.name?.text));
-assert.equal(modeHelperNodes.length, 2, 'mode helpers must stay in quota-badges.tsx');
+assert.equal(modeHelperNodes.length, 8, 'helpers must stay in quota-badges.tsx');
 const modeHelpers = modeHelperNodes.map((node) => `export ${node.getText(badgesAst).replace(/^export\s+/, '')}`).join('\n');
 
 function loadTsModule(sourceText) {
@@ -189,7 +198,7 @@ function loadTsModule(sourceText) {
   return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 }
 
-const { resolveEffectiveRoutingMode, mostRestrictiveRoutingMode } = await loadTsModule(modeHelpers);
+const { resolveEffectiveRoutingMode, mostRestrictiveRoutingMode, getChannelCategory } = await loadTsModule(modeHelpers);
 
 test('per-channel mode falls back to the global default when the channel defers via INHERIT', () => {
   // parseChannelNode maps channels without settings.quotaRoutingMode to INHERIT.
@@ -250,7 +259,7 @@ test('channels in quota popover are categorized with filter pills and section he
 });
 
 test('channel categories order by priority and sort stably by name within groups', () => {
-  const categoriesOrder = { antigravity: 1, codex: 2, claudecode: 3, github_copilot: 4 };
+  const t = (k) => k;
   const sampleChannels = [
     { id: '1', name: 'copilot-beta', type: 'github_copilot' },
     { id: '2', name: 'antigravity-zeta', type: 'antigravity' },
@@ -259,9 +268,10 @@ test('channel categories order by priority and sort stably by name within groups
   ];
 
   const sorted = [...sampleChannels].sort((a, b) => {
-    const orderA = categoriesOrder[a.type] || 99;
-    const orderB = categoriesOrder[b.type] || 99;
-    if (orderA !== orderB) return orderA - orderB;
+    const catA = getChannelCategory(a, t);
+    const catB = getChannelCategory(b, t);
+    if (catA.order !== catB.order) return catA.order - catB.order;
+    if (catA.key !== catB.key) return catA.label.localeCompare(catB.label);
     return a.name.localeCompare(b.name);
   });
 
@@ -269,6 +279,12 @@ test('channel categories order by priority and sort stably by name within groups
     sorted.map((c) => c.name),
     ['antigravity-alpha', 'antigravity-zeta', 'copilot-alpha', 'copilot-beta']
   );
+
+  // Directly verify production category orders
+  assert.equal(getChannelCategory({ type: 'antigravity' }, t).order, 1);
+  assert.equal(getChannelCategory({ type: 'codex' }, t).order, 2);
+  assert.equal(getChannelCategory({ type: 'claudecode' }, t).order, 3);
+  assert.equal(getChannelCategory({ type: 'github_copilot' }, t).order, 4);
 
   // Active category falls back to all when category disappears
   const activeCategories = [{ key: 'antigravity' }];
