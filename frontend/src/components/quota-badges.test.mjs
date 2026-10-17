@@ -245,6 +245,36 @@ test('channels in quota popover are categorized with filter pills and section he
   assert.match(badgesSource, /a\.name\.localeCompare\(b\.name\)/, 'Channels should be stably sorted by name within categories');
   assert.match(badgesSource, /setSelectedCategory\('all'\)/, 'Popover should have an all categories filter pill');
   assert.match(badgesSource, /col-span-full[\s\S]*?uppercase/, 'Popover should render section header across full grid width');
+  assert.match(badgesSource, /categoryCounts\[cat\.key\]/, 'Section header counter must read from categoryCounts');
+  assert.match(badgesSource, /activeCategory[\s\S]*?categories\.some/, 'Selection must fall back to all when selected category disappears');
+});
+
+test('channel categories order by priority and sort stably by name within groups', () => {
+  const categoriesOrder = { antigravity: 1, codex: 2, claudecode: 3, github_copilot: 4 };
+  const sampleChannels = [
+    { id: '1', name: 'copilot-beta', type: 'github_copilot' },
+    { id: '2', name: 'antigravity-zeta', type: 'antigravity' },
+    { id: '3', name: 'copilot-alpha', type: 'github_copilot' },
+    { id: '4', name: 'antigravity-alpha', type: 'antigravity' },
+  ];
+
+  const sorted = [...sampleChannels].sort((a, b) => {
+    const orderA = categoriesOrder[a.type] || 99;
+    const orderB = categoriesOrder[b.type] || 99;
+    if (orderA !== orderB) return orderA - orderB;
+    return a.name.localeCompare(b.name);
+  });
+
+  assert.deepEqual(
+    sorted.map((c) => c.name),
+    ['antigravity-alpha', 'antigravity-zeta', 'copilot-alpha', 'copilot-beta']
+  );
+
+  // Active category falls back to all when category disappears
+  const activeCategories = [{ key: 'antigravity' }];
+  const getActive = (selected) => (selected !== 'all' && activeCategories.some((c) => c.key === selected) ? selected : 'all');
+  assert.equal(getActive('codex'), 'all');
+  assert.equal(getActive('antigravity'), 'antigravity');
 });
 
 test('mode badge labels are locale-complete and legacy enforcement keys are gone', () => {

@@ -2406,53 +2406,54 @@ interface QuotaCategory {
 }
 
 function getChannelCategory(channel: ProviderQuotaChannel, t: ReturnType<typeof useTranslation>['t']): QuotaCategory {
-  if (channel.type === 'antigravity') {
+  const channelType = channel.type as string;
+  if (channelType === 'antigravity') {
     return { key: 'antigravity', label: t('channels.types.antigravity') || 'Antigravity', order: 1 };
   }
-  if (channel.type === 'codex') {
+  if (channelType === 'codex') {
     return { key: 'codex', label: t('channels.types.codex') || 'Codex', order: 2 };
   }
-  if (channel.type === 'claudecode') {
+  if (channelType === 'claudecode') {
     return { key: 'claudecode', label: t('channels.types.claudecode') || 'Claude Code', order: 3 };
   }
-  if (channel.type === 'github_copilot') {
+  if (channelType === 'github_copilot') {
     return { key: 'github_copilot', label: t('channels.types.github_copilot') || 'GitHub Copilot', order: 4 };
   }
-  if (channel.type === 'cline') {
+  if (channelType === 'cline') {
     return { key: 'cline', label: t('channels.types.cline') || 'Cline', order: 5 };
   }
-  if (channel.type === 'xai_subscription') {
+  if (channelType === 'xai_subscription') {
     return { key: 'xai_subscription', label: t('channels.types.xai_subscription') || 'xAI', order: 6 };
   }
-  if (channel.type === 'nanogpt' || channel.type === 'nanogpt_responses') {
+  if (channelType === 'nanogpt' || channelType === 'nanogpt_responses') {
     return { key: 'nanogpt', label: 'NanoGPT', order: 7 };
   }
-  if (isOllamaType(channel.type)) {
+  if (isOllamaType(channelType)) {
     return { key: 'ollama', label: t('channels.types.ollama') || 'Ollama', order: 8 };
   }
-  if (isCommandCodeType(channel.type)) {
+  if (isCommandCodeType(channelType)) {
     return { key: 'commandcode', label: t('channels.types.commandcode') || 'Command Code', order: 9 };
   }
-  if (channel.type === 'moonshot_coding') {
+  if (channelType === 'moonshot_coding') {
     return { key: 'moonshot_coding', label: t('channels.types.moonshot_coding') || 'Kimi Coding', order: 10 };
   }
-  if (isMinimaxType(channel.type)) {
+  if (isMinimaxType(channelType)) {
     return { key: 'minimax', label: t('channels.types.minimax') || 'Minimax', order: 11 };
   }
-  if (channel.type === 'zhipu' || channel.type === 'zhipu_anthropic' || channel.type === 'zai' || channel.type === 'zai_anthropic') {
+  if (channelType === 'zhipu' || channelType === 'zhipu_anthropic' || channelType === 'zai' || channelType === 'zai_anthropic') {
     return { key: 'zhipu', label: t('channels.types.zhipu') || '智谱', order: 12 };
   }
-  if (isZenmuxType(channel.type)) {
+  if (isZenmuxType(channelType)) {
     return { key: 'zenmux', label: 'ZenMux', order: 13 };
   }
-  if (isOpenaiType(channel.type) && channel.providerType) {
+  if (isOpenaiType(channelType) && channel.providerType) {
     const p = channel.providerType;
     return { key: p, label: p.charAt(0).toUpperCase() + p.slice(1), order: 14 };
   }
-  const typeKey = `channels.types.${channel.type}`;
+  const typeKey = `channels.types.${channelType}`;
   const translated = t(typeKey);
-  const label = translated !== typeKey ? translated : channel.type;
-  return { key: channel.type, label, order: 99 };
+  const label = translated !== typeKey ? translated : channelType;
+  return { key: channelType, label, order: 99 };
 }
 
 export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean; onRefresh: () => void }) {
@@ -2533,8 +2534,11 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
     ).values()
   );
 
+  // Fall back to 'all' if selectedCategory is no longer available in the active categories
+  const activeCategory = selectedCategory !== 'all' && categories.some((c) => c.key === selectedCategory) ? selectedCategory : 'all';
+
   const groupedChannels =
-    selectedCategory === 'all' ? sortedChannels : sortedChannels.filter((ch) => getChannelCategory(ch, t).key === selectedCategory);
+    activeCategory === 'all' ? sortedChannels : sortedChannels.filter((ch) => getChannelCategory(ch, t).key === activeCategory);
 
   const renderContent = () => {
     if (isLoading) {
@@ -2572,7 +2576,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
                 <div className='col-span-full flex items-center gap-2 pt-3 pb-1 first:pt-1'>
                   <span className='text-muted-foreground/80 text-[11px] font-semibold tracking-wider uppercase'>{cat.label}</span>
                   <span className='bg-muted/70 py-0.2 text-muted-foreground/70 rounded-full px-1.5 text-[10px] font-medium'>
-                    {cat.count}
+                    {categoryCounts[cat.key]}
                   </span>
                   <div className='bg-border/40 h-[1px] flex-1' />
                 </div>
@@ -2617,7 +2621,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
                 type='button'
                 onClick={() => setSelectedCategory('all')}
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                  selectedCategory === 'all'
+                  activeCategory === 'all'
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
                 }`}
@@ -2630,7 +2634,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
                   type='button'
                   onClick={() => setSelectedCategory(cat.key)}
                   className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
-                    selectedCategory === cat.key
+                    activeCategory === cat.key
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
