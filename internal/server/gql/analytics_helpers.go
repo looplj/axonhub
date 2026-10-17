@@ -2,7 +2,6 @@ package gql
 
 import (
 	"context"
-	stdsql "database/sql"
 	"fmt"
 	"sort"
 	"strings"
@@ -10,6 +9,8 @@ import (
 
 	"entgo.io/ent/dialect/sql"
 	"github.com/samber/lo"
+
+	stdsql "database/sql"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/apikey"
