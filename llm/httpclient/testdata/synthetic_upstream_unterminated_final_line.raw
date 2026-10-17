@@ -1,0 +1,33 @@
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}],"usage":{"prompt_tokens":43,"total_tokens":43,"completion_tokens":0,"completion_tokens_details":{"reasoning_tokens":0}},"prompt_token_ids":null,"prompt_text":null}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"reasoning":"We"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":44,"completion_tokens":1,"completion_tokens_details":{"reasoning_tokens":1}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"reasoning":" need answer simple. Need write"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":50,"completion_tokens":7,"completion_tokens_details":{"reasoning_tokens":7}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"reasoning":" numbers 1 through"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":54,"completion_tokens":11,"completion_tokens_details":{"reasoning_tokens":11}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"reasoning":" 20 one per line."},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":60,"completion_tokens":17,"completion_tokens_details":{"reasoning_tokens":17}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"reasoning":" Ensure exactly"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":62,"completion_tokens":19,"completion_tokens_details":{"reasoning_tokens":19}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"reasoning":". final"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":64,"completion_tokens":21,"completion_tokens_details":{"reasoning_tokens":21}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"content":"1\n","reasoning":" only."},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":69,"completion_tokens":26,"completion_tokens_details":{"reasoning_tokens":23}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"content":"2\n3\n4\n"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":75,"completion_tokens":32,"completion_tokens_details":{"reasoning_tokens":23}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"content":"5\n6\n7\n"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":81,"completion_tokens":38,"completion_tokens_details":{"reasoning_tokens":23}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"content":"8\n9\n10\n"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":87,"completion_tokens":44,"completion_tokens_details":{"reasoning_tokens":23}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"content":"11\n12\n13\n"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":93,"completion_tokens":50,"completion_tokens_details":{"reasoning_tokens":23}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"content":"14\n15\n16\n"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":99,"completion_tokens":56,"completion_tokens_details":{"reasoning_tokens":23}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"content":"17\n18\n19\n"},"logprobs":null,"finish_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":105,"completion_tokens":62,"completion_tokens_details":{"reasoning_tokens":23}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[{"index":0,"delta":{"content":"20"},"logprobs":null,"finish_reason":"stop","stop_reason":null,"token_ids":null}],"usage":{"prompt_tokens":43,"total_tokens":107,"completion_tokens":64,"completion_tokens_details":{"reasoning_tokens":23}}}
+
+data: {"id":"chatcmpl-790a0a38a84062c5cef8581ab3a780bd","object":"chat.completion.chunk","created":1792212393,"model":"deepseek-ai/DeepSeek-V4.1-Flash","choices":[],"usage":{"prompt_tokens":43,"total_tokens":107,"completion_tokens":64,"prompt_tokens_details":{"cached_tokens":0,"created_cache_tokens":0},"completion_tokens_details":{"reasoning_tokens":23}},"system_fingerprint":"vllm-0.32.0rc1.dev100+g77154ca61-tp4-74172430"}
+
+data: [DONE]
