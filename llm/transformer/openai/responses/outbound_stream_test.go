@@ -632,6 +632,76 @@ func TestOutboundTransformer_TransformStream_EmitsArgumentsProvidedOnlyInDone(t 
 	require.JSONEq(t, `{"task":"delegate this task"}`, arguments)
 }
 
+// Chat Completions clients such as the OpenAI SDK join every string field of a tool call delta, so the
+// done event must not send the id and name again (#2648).
+func TestOutboundTransformer_TransformStream_DoneDoesNotRepeatToolCallIdentity(t *testing.T) {
+	tests := []struct {
+		name           string
+		addedName      string
+		addedNamespace string
+		deltas         []string
+		doneName       string
+		doneNamespace  string
+		wantName       string
+		wantNamespace  string
+	}{
+		{name: "arguments only in done", addedName: "get_weather", doneName: "get_weather", wantName: "get_weather"},
+		{name: "remaining arguments in done", addedName: "get_weather", deltas: []string{`{\"city\":`}, doneName: "get_weather", wantName: "get_weather"},
+		{name: "namespace only in done", addedName: "get_weather", doneName: "get_weather", doneNamespace: "weather_tools", wantName: "get_weather", wantNamespace: "weather_tools"},
+		{name: "name only in done keeps namespace", addedNamespace: "collaboration", doneName: "spawn_agent", doneNamespace: "collaboration", wantName: "collaboration__spawn_agent", wantNamespace: "collaboration"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+			require.NoError(t, err)
+
+			events := []*httpclient.StreamEvent{
+				{Data: []byte(`{"type":"response.created","response":{"id":"resp_identity","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
+				{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_identity","type":"function_call","call_id":"call_identity","name":"` + tt.addedName + `","namespace":"` + tt.addedNamespace + `","arguments":""}}`)},
+			}
+			for _, delta := range tt.deltas {
+				events = append(events, &httpclient.StreamEvent{Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_identity","output_index":0,"delta":"` + delta + `"}`)})
+			}
+			events = append(events,
+				&httpclient.StreamEvent{Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_identity","output_index":0,"name":"` + tt.doneName + `","namespace":"` + tt.doneNamespace + `","arguments":"{\"city\":\"Paris\"}"}`)},
+				&httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_identity","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
+			)
+
+			stream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+			require.NoError(t, err)
+
+			responses, err := streams.All(stream)
+			require.NoError(t, err)
+
+			// Join string fields the way Chat Completions clients do. Namespace has no Chat
+			// Completions field; the Responses inbound stream replaces it, so keep the last one.
+			var id, toolType, name, namespace, arguments string
+			for _, response := range responses {
+				if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil {
+					continue
+				}
+
+				for _, toolCall := range response.Choices[0].Delta.ToolCalls {
+					id += toolCall.ID
+					toolType += toolCall.Type
+					name += toolCall.Function.Name
+					if toolCall.Function.Namespace != "" {
+						namespace = toolCall.Function.Namespace
+					}
+					arguments += toolCall.Function.Arguments
+				}
+			}
+
+			require.Equal(t, "call_identity", id)
+			require.Equal(t, "function", toolType)
+			require.Equal(t, tt.wantName, name)
+			require.Equal(t, tt.wantNamespace, namespace)
+			require.JSONEq(t, `{"city":"Paris"}`, arguments)
+		})
+	}
+}
+
 func TestOutboundTransformer_TransformStream_AcceptsEquivalentFinalArguments(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)
