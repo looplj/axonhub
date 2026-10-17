@@ -540,15 +540,17 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
     return Number.isNaN(date.getTime()) ? value : format(date, 'yyyy-MM-dd HH:mm');
   };
   return (
-    <div className='space-y-3 border-b py-3 first:pt-1 last:border-0 last:pb-1'>
+    <div className='min-w-0 space-y-3 border-b py-3 first:pt-1 last:border-0 last:pb-1'>
       <div className='flex items-center justify-between'>
-        <div className='flex items-center gap-2'>
+        <div className='flex min-w-0 flex-1 items-center gap-2'>
           <BatteryIcon
-            className={`h-4 w-4 ${status === 'exhausted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`}
+            className={`h-4 w-4 shrink-0 ${status === 'exhausted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`}
           />
-          <span className='text-foreground font-medium'>{channel.name}</span>
+          <span className='text-foreground truncate font-medium' title={channel.name}>
+            {channel.name}
+          </span>
         </div>
-        <div className='flex items-center gap-1.5'>
+        <div className='ml-2 flex shrink-0 items-center gap-1.5'>
           <Badge
             variant={status === 'exhausted' ? 'destructive' : 'outline'}
             className={status === 'available' ? BADGE_COLOR_CLASSES.green : status === 'warning' ? BADGE_COLOR_CLASSES.amber : ''}
@@ -2561,7 +2563,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
 
     return (
       <div
-        className={`max-h-[60vh] overflow-y-auto pr-1 pl-1 ${groupedChannels.length > 4 ? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2' : ''}`}
+        className={`max-h-[60vh] overflow-y-auto pr-1 pl-1 ${sortedChannels.length > 4 ? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2' : ''}`}
       >
         {groupedChannels.map((channel: ProviderQuotaChannel, index: number) => {
           const cat = getChannelCategory(channel, t);
@@ -2598,7 +2600,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
       </PopoverTrigger>
       <PopoverContent
         className={
-          !isLoading && !isError && sortedChannels.length > 4 ? 'w-[640px] max-w-[calc(100vw-2rem)]' : 'w-80 max-w-[calc(100vw-2rem)]'
+          !isLoading && !isError && sortedChannels.length > 4 ? 'w-[680px] max-w-[calc(100vw-2rem)]' : 'w-80 max-w-[calc(100vw-2rem)]'
         }
         align='end'
       >

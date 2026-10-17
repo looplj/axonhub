@@ -256,6 +256,13 @@ test('channels in quota popover are categorized with filter pills and section he
   assert.match(badgesSource, /col-span-full[\s\S]*?uppercase/, 'Popover should render section header across full grid width');
   assert.match(badgesSource, /categoryCounts\[cat\.key\]/, 'Section header counter must read from categoryCounts');
   assert.match(badgesSource, /activeCategory[\s\S]*?categories\.some/, 'Selection must fall back to all when selected category disappears');
+  assert.match(badgesSource, /text-foreground truncate font-medium|truncate font-medium/, 'Channel name should be truncated with ellipsis');
+  assert.match(badgesSource, /ml-2 flex shrink-0/, 'Badge container should not shrink and have left margin');
+  assert.match(
+    badgesSource,
+    /sortedChannels\.length > 4 \? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2'/,
+    'Dual-column grid should be based on total sorted channels'
+  );
 });
 
 test('channel categories order by priority and sort stably by name within groups', () => {
