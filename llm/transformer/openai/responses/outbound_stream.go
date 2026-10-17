@@ -457,8 +457,9 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 		// output_item.added already sent the id and type. Chat Completions clients join string
-		// fields across deltas, so repeat neither, and send the name and namespace only when
-		// each changed (#2648).
+		// fields across deltas, so repeat neither, and send the name only when it changed (#2648).
+		// The namespace is replaced rather than joined downstream, and a new name needs it to
+		// flatten to namespace__name, so send it whenever the identity changed.
 		delta := llm.ToolCall{
 			Index:    s.state.toolCallIndex[callID],
 			Function: llm.FunctionCall{Arguments: missingArgs},
@@ -466,7 +467,7 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if nameChanged {
 			delta.Function.Name = tc.Function.Name
 		}
-		if namespaceChanged {
+		if identityChanged {
 			delta.Function.Namespace = tc.Function.Namespace
 		}
 

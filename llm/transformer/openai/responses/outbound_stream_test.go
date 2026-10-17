@@ -636,13 +636,19 @@ func TestOutboundTransformer_TransformStream_EmitsArgumentsProvidedOnlyInDone(t 
 // done event must not send the id and name again (#2648).
 func TestOutboundTransformer_TransformStream_DoneDoesNotRepeatToolCallIdentity(t *testing.T) {
 	tests := []struct {
-		name      string
-		deltas    []string
-		namespace string
+		name           string
+		addedName      string
+		addedNamespace string
+		deltas         []string
+		doneName       string
+		doneNamespace  string
+		wantName       string
+		wantNamespace  string
 	}{
-		{name: "arguments only in done"},
-		{name: "remaining arguments in done", deltas: []string{`{\"city\":`}},
-		{name: "namespace only in done", namespace: "weather_tools"},
+		{name: "arguments only in done", addedName: "get_weather", doneName: "get_weather", wantName: "get_weather"},
+		{name: "remaining arguments in done", addedName: "get_weather", deltas: []string{`{\"city\":`}, doneName: "get_weather", wantName: "get_weather"},
+		{name: "namespace only in done", addedName: "get_weather", doneName: "get_weather", doneNamespace: "weather_tools", wantName: "get_weather", wantNamespace: "weather_tools"},
+		{name: "name only in done keeps namespace", addedNamespace: "collaboration", doneName: "spawn_agent", doneNamespace: "collaboration", wantName: "collaboration__spawn_agent", wantNamespace: "collaboration"},
 	}
 
 	for _, tt := range tests {
@@ -652,13 +658,13 @@ func TestOutboundTransformer_TransformStream_DoneDoesNotRepeatToolCallIdentity(t
 
 			events := []*httpclient.StreamEvent{
 				{Data: []byte(`{"type":"response.created","response":{"id":"resp_identity","object":"response","created_at":1700000000,"model":"gpt-5","status":"in_progress","output":[]}}`)},
-				{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_identity","type":"function_call","call_id":"call_identity","name":"get_weather","arguments":""}}`)},
+				{Data: []byte(`{"type":"response.output_item.added","output_index":0,"item":{"id":"fc_identity","type":"function_call","call_id":"call_identity","name":"` + tt.addedName + `","namespace":"` + tt.addedNamespace + `","arguments":""}}`)},
 			}
 			for _, delta := range tt.deltas {
 				events = append(events, &httpclient.StreamEvent{Data: []byte(`{"type":"response.function_call_arguments.delta","item_id":"fc_identity","output_index":0,"delta":"` + delta + `"}`)})
 			}
 			events = append(events,
-				&httpclient.StreamEvent{Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_identity","output_index":0,"name":"get_weather","namespace":"` + tt.namespace + `","arguments":"{\"city\":\"Paris\"}"}`)},
+				&httpclient.StreamEvent{Data: []byte(`{"type":"response.function_call_arguments.done","item_id":"fc_identity","output_index":0,"name":"` + tt.doneName + `","namespace":"` + tt.doneNamespace + `","arguments":"{\"city\":\"Paris\"}"}`)},
 				&httpclient.StreamEvent{Data: []byte(`{"type":"response.completed","response":{"id":"resp_identity","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[]}}`)},
 			)
 
@@ -668,6 +674,8 @@ func TestOutboundTransformer_TransformStream_DoneDoesNotRepeatToolCallIdentity(t
 			responses, err := streams.All(stream)
 			require.NoError(t, err)
 
+			// Join string fields the way Chat Completions clients do. Namespace has no Chat
+			// Completions field; the Responses inbound stream replaces it, so keep the last one.
 			var id, toolType, name, namespace, arguments string
 			for _, response := range responses {
 				if response == llm.DoneResponse || len(response.Choices) == 0 || response.Choices[0].Delta == nil {
@@ -678,15 +686,17 @@ func TestOutboundTransformer_TransformStream_DoneDoesNotRepeatToolCallIdentity(t
 					id += toolCall.ID
 					toolType += toolCall.Type
 					name += toolCall.Function.Name
-					namespace += toolCall.Function.Namespace
+					if toolCall.Function.Namespace != "" {
+						namespace = toolCall.Function.Namespace
+					}
 					arguments += toolCall.Function.Arguments
 				}
 			}
 
 			require.Equal(t, "call_identity", id)
 			require.Equal(t, "function", toolType)
-			require.Equal(t, "get_weather", name)
-			require.Equal(t, tt.namespace, namespace)
+			require.Equal(t, tt.wantName, name)
+			require.Equal(t, tt.wantNamespace, namespace)
 			require.JSONEq(t, `{"city":"Paris"}`, arguments)
 		})
 	}
