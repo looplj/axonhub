@@ -2448,9 +2448,15 @@ function getChannelCategory(channel: ProviderQuotaChannel, t: ReturnType<typeof 
   if (isZenmuxType(channelType)) {
     return { key: 'zenmux', label: 'ZenMux', order: 13 };
   }
-  if (isOpenaiType(channelType) && channel.providerType) {
-    const p = channel.providerType;
-    return { key: p, label: p.charAt(0).toUpperCase() + p.slice(1), order: 14 };
+  if (channelType === 'opencode_go' || channelType === 'opencode_go_anthropic') {
+    return { key: 'opencode_go', label: t('channels.types.opencode_go') || 'OpenCode Go', order: 14 };
+  }
+  if (isOpenaiType(channelType)) {
+    if (channel.providerType) {
+      const p = channel.providerType;
+      return { key: p, label: p.charAt(0).toUpperCase() + p.slice(1), order: 15 };
+    }
+    return { key: 'openai', label: t('channels.types.openai') || 'OpenAI', order: 16 };
   }
   const typeKey = `channels.types.${channelType}`;
   const translated = t(typeKey);
@@ -2621,6 +2627,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
             <div className='flex flex-wrap items-center gap-1 border-b pt-0.5 pb-2'>
               <button
                 type='button'
+                aria-pressed={activeCategory === 'all'}
                 onClick={() => setSelectedCategory('all')}
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
                   activeCategory === 'all'
@@ -2634,6 +2641,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
                 <button
                   key={cat.key}
                   type='button'
+                  aria-pressed={activeCategory === cat.key}
                   onClick={() => setSelectedCategory(cat.key)}
                   className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
                     activeCategory === cat.key

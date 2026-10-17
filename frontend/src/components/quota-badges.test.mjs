@@ -263,6 +263,8 @@ test('channels in quota popover are categorized with filter pills and section he
     /sortedChannels\.length > 4 \? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2'/,
     'Dual-column grid should be based on total sorted channels'
   );
+  assert.match(badgesSource, /aria-pressed=\{activeCategory === 'all'\}/, 'All button should expose aria-pressed state');
+  assert.match(badgesSource, /aria-pressed=\{activeCategory === cat\.key\}/, 'Category buttons should expose aria-pressed state');
 });
 
 test('channel categories order by priority and sort stably by name within groups', () => {
@@ -287,11 +289,15 @@ test('channel categories order by priority and sort stably by name within groups
     ['antigravity-alpha', 'antigravity-zeta', 'copilot-alpha', 'copilot-beta']
   );
 
-  // Directly verify production category orders
+  // Directly verify production category orders and shared keys across protocol variants
   assert.equal(getChannelCategory({ type: 'antigravity' }, t).order, 1);
   assert.equal(getChannelCategory({ type: 'codex' }, t).order, 2);
   assert.equal(getChannelCategory({ type: 'claudecode' }, t).order, 3);
   assert.equal(getChannelCategory({ type: 'github_copilot' }, t).order, 4);
+  assert.equal(getChannelCategory({ type: 'openai' }, t).key, 'openai');
+  assert.equal(getChannelCategory({ type: 'openai_responses' }, t).key, 'openai');
+  assert.equal(getChannelCategory({ type: 'opencode_go' }, t).key, 'opencode_go');
+  assert.equal(getChannelCategory({ type: 'opencode_go_anthropic' }, t).key, 'opencode_go');
 
   // Active category falls back to all when category disappears
   const activeCategories = [{ key: 'antigravity' }];
