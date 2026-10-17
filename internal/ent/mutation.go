@@ -2126,6 +2126,7 @@ type ChannelMutation struct {
 	auto_disabled_at             *time.Time
 	auto_disable_expires_at      *time.Time
 	remark                       *string
+	currency_code                *string
 	endpoints                    *[]objects.ChannelEndpoint
 	appendendpoints              []objects.ChannelEndpoint
 	clearedFields                map[string]struct{}
@@ -3287,6 +3288,42 @@ func (m *ChannelMutation) ResetRemark() {
 	delete(m.clearedFields, channel.FieldRemark)
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (m *ChannelMutation) SetCurrencyCode(s string) {
+	m.currency_code = &s
+}
+
+// CurrencyCode returns the value of the "currency_code" field in the mutation.
+func (m *ChannelMutation) CurrencyCode() (r string, exists bool) {
+	v := m.currency_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCurrencyCode returns the old "currency_code" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldCurrencyCode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCurrencyCode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCurrencyCode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCurrencyCode: %w", err)
+	}
+	return oldValue.CurrencyCode, nil
+}
+
+// ResetCurrencyCode resets all changes to the "currency_code" field.
+func (m *ChannelMutation) ResetCurrencyCode() {
+	m.currency_code = nil
+}
+
 // SetEndpoints sets the "endpoints" field.
 func (m *ChannelMutation) SetEndpoints(oe []objects.ChannelEndpoint) {
 	m.endpoints = &oe
@@ -3695,7 +3732,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -3762,6 +3799,9 @@ func (m *ChannelMutation) Fields() []string {
 	if m.remark != nil {
 		fields = append(fields, channel.FieldRemark)
 	}
+	if m.currency_code != nil {
+		fields = append(fields, channel.FieldCurrencyCode)
+	}
 	if m.endpoints != nil {
 		fields = append(fields, channel.FieldEndpoints)
 	}
@@ -3817,6 +3857,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.AutoDisableExpiresAt()
 	case channel.FieldRemark:
 		return m.Remark()
+	case channel.FieldCurrencyCode:
+		return m.CurrencyCode()
 	case channel.FieldEndpoints:
 		return m.Endpoints()
 	}
@@ -3872,6 +3914,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldAutoDisableExpiresAt(ctx)
 	case channel.FieldRemark:
 		return m.OldRemark(ctx)
+	case channel.FieldCurrencyCode:
+		return m.OldCurrencyCode(ctx)
 	case channel.FieldEndpoints:
 		return m.OldEndpoints(ctx)
 	}
@@ -4036,6 +4080,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRemark(v)
+		return nil
+	case channel.FieldCurrencyCode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCurrencyCode(v)
 		return nil
 	case channel.FieldEndpoints:
 		v, ok := value.([]objects.ChannelEndpoint)
@@ -4261,6 +4312,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 	case channel.FieldRemark:
 		m.ResetRemark()
 		return nil
+	case channel.FieldCurrencyCode:
+		m.ResetCurrencyCode()
+		return nil
 	case channel.FieldEndpoints:
 		m.ResetEndpoints()
 		return nil
@@ -4485,6 +4539,7 @@ type ChannelModelPriceMutation struct {
 	deleted_at      *int
 	adddeleted_at   *int
 	model_id        *string
+	currency_code   *string
 	price           *objects.ModelPrice
 	reference_id    *string
 	clearedFields   map[string]struct{}
@@ -4796,6 +4851,42 @@ func (m *ChannelModelPriceMutation) ResetModelID() {
 	m.model_id = nil
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (m *ChannelModelPriceMutation) SetCurrencyCode(s string) {
+	m.currency_code = &s
+}
+
+// CurrencyCode returns the value of the "currency_code" field in the mutation.
+func (m *ChannelModelPriceMutation) CurrencyCode() (r string, exists bool) {
+	v := m.currency_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCurrencyCode returns the old "currency_code" field's value of the ChannelModelPrice entity.
+// If the ChannelModelPrice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceMutation) OldCurrencyCode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCurrencyCode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCurrencyCode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCurrencyCode: %w", err)
+	}
+	return oldValue.CurrencyCode, nil
+}
+
+// ResetCurrencyCode resets all changes to the "currency_code" field.
+func (m *ChannelModelPriceMutation) ResetCurrencyCode() {
+	m.currency_code = nil
+}
+
 // SetPrice sets the "price" field.
 func (m *ChannelModelPriceMutation) SetPrice(op objects.ModelPrice) {
 	m.price = &op
@@ -4983,7 +5074,7 @@ func (m *ChannelModelPriceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelModelPriceMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.created_at != nil {
 		fields = append(fields, channelmodelprice.FieldCreatedAt)
 	}
@@ -4998,6 +5089,9 @@ func (m *ChannelModelPriceMutation) Fields() []string {
 	}
 	if m.model_id != nil {
 		fields = append(fields, channelmodelprice.FieldModelID)
+	}
+	if m.currency_code != nil {
+		fields = append(fields, channelmodelprice.FieldCurrencyCode)
 	}
 	if m.price != nil {
 		fields = append(fields, channelmodelprice.FieldPrice)
@@ -5023,6 +5117,8 @@ func (m *ChannelModelPriceMutation) Field(name string) (ent.Value, bool) {
 		return m.ChannelID()
 	case channelmodelprice.FieldModelID:
 		return m.ModelID()
+	case channelmodelprice.FieldCurrencyCode:
+		return m.CurrencyCode()
 	case channelmodelprice.FieldPrice:
 		return m.Price()
 	case channelmodelprice.FieldReferenceID:
@@ -5046,6 +5142,8 @@ func (m *ChannelModelPriceMutation) OldField(ctx context.Context, name string) (
 		return m.OldChannelID(ctx)
 	case channelmodelprice.FieldModelID:
 		return m.OldModelID(ctx)
+	case channelmodelprice.FieldCurrencyCode:
+		return m.OldCurrencyCode(ctx)
 	case channelmodelprice.FieldPrice:
 		return m.OldPrice(ctx)
 	case channelmodelprice.FieldReferenceID:
@@ -5093,6 +5191,13 @@ func (m *ChannelModelPriceMutation) SetField(name string, value ent.Value) error
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetModelID(v)
+		return nil
+	case channelmodelprice.FieldCurrencyCode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCurrencyCode(v)
 		return nil
 	case channelmodelprice.FieldPrice:
 		v, ok := value.(objects.ModelPrice)
@@ -5186,6 +5291,9 @@ func (m *ChannelModelPriceMutation) ResetField(name string) error {
 		return nil
 	case channelmodelprice.FieldModelID:
 		m.ResetModelID()
+		return nil
+	case channelmodelprice.FieldCurrencyCode:
+		m.ResetCurrencyCode()
 		return nil
 	case channelmodelprice.FieldPrice:
 		m.ResetPrice()
@@ -5310,6 +5418,7 @@ type ChannelModelPriceVersionMutation struct {
 	channel_id                 *int
 	addchannel_id              *int
 	model_id                   *string
+	currency_code              *string
 	price                      *objects.ModelPrice
 	status                     *channelmodelpriceversion.Status
 	effective_start_at         *time.Time
@@ -5621,6 +5730,42 @@ func (m *ChannelModelPriceVersionMutation) ResetChannelModelPriceID() {
 	m.channel_model_price = nil
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (m *ChannelModelPriceVersionMutation) SetCurrencyCode(s string) {
+	m.currency_code = &s
+}
+
+// CurrencyCode returns the value of the "currency_code" field in the mutation.
+func (m *ChannelModelPriceVersionMutation) CurrencyCode() (r string, exists bool) {
+	v := m.currency_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCurrencyCode returns the old "currency_code" field's value of the ChannelModelPriceVersion entity.
+// If the ChannelModelPriceVersion object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelModelPriceVersionMutation) OldCurrencyCode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCurrencyCode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCurrencyCode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCurrencyCode: %w", err)
+	}
+	return oldValue.CurrencyCode, nil
+}
+
+// ResetCurrencyCode resets all changes to the "currency_code" field.
+func (m *ChannelModelPriceVersionMutation) ResetCurrencyCode() {
+	m.currency_code = nil
+}
+
 // SetPrice sets the "price" field.
 func (m *ChannelModelPriceVersionMutation) SetPrice(op objects.ModelPrice) {
 	m.price = &op
@@ -5875,7 +6020,7 @@ func (m *ChannelModelPriceVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelModelPriceVersionMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, channelmodelpriceversion.FieldCreatedAt)
 	}
@@ -5890,6 +6035,9 @@ func (m *ChannelModelPriceVersionMutation) Fields() []string {
 	}
 	if m.channel_model_price != nil {
 		fields = append(fields, channelmodelpriceversion.FieldChannelModelPriceID)
+	}
+	if m.currency_code != nil {
+		fields = append(fields, channelmodelpriceversion.FieldCurrencyCode)
 	}
 	if m.price != nil {
 		fields = append(fields, channelmodelpriceversion.FieldPrice)
@@ -5924,6 +6072,8 @@ func (m *ChannelModelPriceVersionMutation) Field(name string) (ent.Value, bool) 
 		return m.ModelID()
 	case channelmodelpriceversion.FieldChannelModelPriceID:
 		return m.ChannelModelPriceID()
+	case channelmodelpriceversion.FieldCurrencyCode:
+		return m.CurrencyCode()
 	case channelmodelpriceversion.FieldPrice:
 		return m.Price()
 	case channelmodelpriceversion.FieldStatus:
@@ -5953,6 +6103,8 @@ func (m *ChannelModelPriceVersionMutation) OldField(ctx context.Context, name st
 		return m.OldModelID(ctx)
 	case channelmodelpriceversion.FieldChannelModelPriceID:
 		return m.OldChannelModelPriceID(ctx)
+	case channelmodelpriceversion.FieldCurrencyCode:
+		return m.OldCurrencyCode(ctx)
 	case channelmodelpriceversion.FieldPrice:
 		return m.OldPrice(ctx)
 	case channelmodelpriceversion.FieldStatus:
@@ -6006,6 +6158,13 @@ func (m *ChannelModelPriceVersionMutation) SetField(name string, value ent.Value
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetChannelModelPriceID(v)
+		return nil
+	case channelmodelpriceversion.FieldCurrencyCode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCurrencyCode(v)
 		return nil
 	case channelmodelpriceversion.FieldPrice:
 		v, ok := value.(objects.ModelPrice)
@@ -6129,6 +6288,9 @@ func (m *ChannelModelPriceVersionMutation) ResetField(name string) error {
 		return nil
 	case channelmodelpriceversion.FieldChannelModelPriceID:
 		m.ResetChannelModelPriceID()
+		return nil
+	case channelmodelpriceversion.FieldCurrencyCode:
+		m.ResetCurrencyCode()
 		return nil
 	case channelmodelpriceversion.FieldPrice:
 		m.ResetPrice()
@@ -24763,6 +24925,7 @@ type UsageLogMutation struct {
 	format                                   *string
 	total_cost                               *float64
 	addtotal_cost                            *float64
+	cost_currency_code                       *string
 	cost_items                               *[]objects.CostItem
 	appendcost_items                         []objects.CostItem
 	cost_price_reference_id                  *string
@@ -26115,6 +26278,42 @@ func (m *UsageLogMutation) ResetTotalCost() {
 	delete(m.clearedFields, usagelog.FieldTotalCost)
 }
 
+// SetCostCurrencyCode sets the "cost_currency_code" field.
+func (m *UsageLogMutation) SetCostCurrencyCode(s string) {
+	m.cost_currency_code = &s
+}
+
+// CostCurrencyCode returns the value of the "cost_currency_code" field in the mutation.
+func (m *UsageLogMutation) CostCurrencyCode() (r string, exists bool) {
+	v := m.cost_currency_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCostCurrencyCode returns the old "cost_currency_code" field's value of the UsageLog entity.
+// If the UsageLog object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *UsageLogMutation) OldCostCurrencyCode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCostCurrencyCode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCostCurrencyCode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCostCurrencyCode: %w", err)
+	}
+	return oldValue.CostCurrencyCode, nil
+}
+
+// ResetCostCurrencyCode resets all changes to the "cost_currency_code" field.
+func (m *UsageLogMutation) ResetCostCurrencyCode() {
+	m.cost_currency_code = nil
+}
+
 // SetCostItems sets the "cost_items" field.
 func (m *UsageLogMutation) SetCostItems(oi []objects.CostItem) {
 	m.cost_items = &oi
@@ -26344,7 +26543,7 @@ func (m *UsageLogMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *UsageLogMutation) Fields() []string {
-	fields := make([]string, 0, 24)
+	fields := make([]string, 0, 25)
 	if m.created_at != nil {
 		fields = append(fields, usagelog.FieldCreatedAt)
 	}
@@ -26411,6 +26610,9 @@ func (m *UsageLogMutation) Fields() []string {
 	if m.total_cost != nil {
 		fields = append(fields, usagelog.FieldTotalCost)
 	}
+	if m.cost_currency_code != nil {
+		fields = append(fields, usagelog.FieldCostCurrencyCode)
+	}
 	if m.cost_items != nil {
 		fields = append(fields, usagelog.FieldCostItems)
 	}
@@ -26469,6 +26671,8 @@ func (m *UsageLogMutation) Field(name string) (ent.Value, bool) {
 		return m.Format()
 	case usagelog.FieldTotalCost:
 		return m.TotalCost()
+	case usagelog.FieldCostCurrencyCode:
+		return m.CostCurrencyCode()
 	case usagelog.FieldCostItems:
 		return m.CostItems()
 	case usagelog.FieldCostPriceReferenceID:
@@ -26526,6 +26730,8 @@ func (m *UsageLogMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldFormat(ctx)
 	case usagelog.FieldTotalCost:
 		return m.OldTotalCost(ctx)
+	case usagelog.FieldCostCurrencyCode:
+		return m.OldCostCurrencyCode(ctx)
 	case usagelog.FieldCostItems:
 		return m.OldCostItems(ctx)
 	case usagelog.FieldCostPriceReferenceID:
@@ -26692,6 +26898,13 @@ func (m *UsageLogMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTotalCost(v)
+		return nil
+	case usagelog.FieldCostCurrencyCode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCostCurrencyCode(v)
 		return nil
 	case usagelog.FieldCostItems:
 		v, ok := value.([]objects.CostItem)
@@ -27079,6 +27292,9 @@ func (m *UsageLogMutation) ResetField(name string) error {
 		return nil
 	case usagelog.FieldTotalCost:
 		m.ResetTotalCost()
+		return nil
+	case usagelog.FieldCostCurrencyCode:
+		m.ResetCostCurrencyCode()
 		return nil
 	case usagelog.FieldCostItems:
 		m.ResetCostItems()

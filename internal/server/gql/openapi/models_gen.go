@@ -28,6 +28,7 @@ type APIKeyQuotaUsage struct {
 	RequestCount int             `json:"requestCount"`
 	TotalTokens  int             `json:"totalTokens"`
 	TotalCost    decimal.Decimal `json:"totalCost"`
+	CurrencyCode string          `json:"currencyCode"`
 }
 
 type APIKeyQuotaWindow struct {

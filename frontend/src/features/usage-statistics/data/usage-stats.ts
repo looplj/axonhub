@@ -10,7 +10,10 @@ const USAGE_STATS_BY_USER_QUERY = `
       userName
       requestCount
       totalTokens
-      totalCost
+      totalCostByCurrency {
+        currencyCode
+        amount
+      }
     }
   }
 `;

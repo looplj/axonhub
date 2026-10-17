@@ -15,3 +15,10 @@ type CostItem struct {
 	TierBreakdown               []TierCost                  `json:"tierBreakdown,omitempty"`
 	Subtotal                    decimal.Decimal             `json:"subtotal"`
 }
+
+// CurrencyAmount is a monetary amount in a specific currency. Amounts in
+// different currencies are never summed together.
+type CurrencyAmount struct {
+	CurrencyCode string  `json:"currencyCode"`
+	Amount       float64 `json:"amount"`
+}

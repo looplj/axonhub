@@ -75,6 +75,9 @@ func (UsageLog) Fields() []ent.Field {
 			Nillable().
 			Optional().
 			Comment("Total cost calculated based on channel model price"),
+		field.String("cost_currency_code").
+			Default(objects.DefaultCurrencyCode).
+			Comment("Currency of total_cost. Snapshotted when the usage log is written."),
 		field.JSON("cost_items", []objects.CostItem{}).
 			Default([]objects.CostItem{}).
 			Comment("Detailed cost breakdown items in JSON").

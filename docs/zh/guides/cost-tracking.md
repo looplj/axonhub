@@ -118,6 +118,13 @@ AxonHub 支持三种定价模式：
    - 每次价格变更都会创建新的版本记录
    - 使用日志通过 `cost_price_reference_id` 关联到具体价格版本
 
+### 多货币
+
+- 每个渠道有一个默认货币，用于新增价格行；每个价格行保存自己的 `currencyCode`。模型库价格始终按 USD 记录。
+- AxonHub **不做**货币换算。同一渠道内可以存在不同货币的价格行，每条使用日志会把实际使用的价格行的货币快照到 `cost_currency_code`。
+- 聚合成本字段按货币分组返回（`costByCurrency` / `totalCostByCurrency`，格式为 `{ currencyCode, amount }`），不同货币的金额不会被加在一起。
+- 系统设置里的 `currencyCode` 只作为新建渠道的默认货币，以及没有记录货币时的展示货币，不影响已有价格和计费。
+
 ### API 响应 (`usage.cost`)
 
 是否把费用写进客户端响应，由系统设置里的 **注入 usage.cost** 开关控制，默认关闭。打开开关、且渠道给模型配置了价格时，AxonHub 按渠道价格计算本次请求的费用，写进客户端响应里的 `usage.cost`。
@@ -125,6 +132,7 @@ AxonHub 支持三种定价模式：
 几点说明：
 
 - 这个数字是 AxonHub 按渠道模型价格算出来的，不是上游供应商的账单。
+- `usage.cost` 本身没有货币字段，它使用匹配到的价格行的货币（模型库价格为 USD）。具体货币以使用日志里的 `costCurrencyCode` 为准。
 - 上游响应自带的 `usage.cost`、`cost_details` 会被丢弃，不会转发给客户端（pass-through 请求除外）。
 - 开关关闭时，普通请求路径下客户端看不到 `cost`。
 - 渠道没配价格、响应没有 `usage`、或开关关闭时，`cost` 字段会被省略。
@@ -209,6 +217,7 @@ query GetUsageLogs {
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `totalCost` | Float | 总成本（基于渠道模型价格计算） |
+| `costCurrencyCode` | String | `totalCost` 对应的货币（写入使用日志时快照） |
 | `costItems` | JSON | 成本明细项目数组 |
 | `costPriceReferenceId` | String | 用于成本计算的价格版本引用 ID |
 

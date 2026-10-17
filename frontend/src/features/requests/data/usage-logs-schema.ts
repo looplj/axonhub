@@ -33,6 +33,7 @@ export const usageLogSchema = z.object({
   source: usageLogSourceSchema,
   format: z.string(),
   totalCost: z.number().nullable().optional(),
+  costCurrencyCode: z.string().nullable().optional(),
   costItems: z.array(costItemSchema).nullable().optional(),
   costPriceReferenceID: z.string().nullable().optional(),
 });

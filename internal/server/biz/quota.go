@@ -25,6 +25,7 @@ type QuotaUsage struct {
 	RequestCount int64
 	TotalTokens  int64
 	TotalCost    decimal.Decimal
+	CurrencyCode string
 }
 
 type QuotaCheckResult struct {
@@ -84,7 +85,7 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 	}
 
 	usageAgg, err := authz.RunWithSystemBypass(ctx, "quota-usage-agg", func(bypassCtx context.Context) (usageAggResult, error) {
-		return s.usageAgg(bypassCtx, apiKeyID, window, quota.TotalTokens != nil, quota.Cost != nil)
+		return s.usageAgg(bypassCtx, apiKeyID, window, quota.TotalTokens != nil, quota.Cost != nil, s.quotaCurrencyCode(ctx, quota))
 	})
 	if err != nil {
 		return QuotaCheckResult{}, err
@@ -101,7 +102,7 @@ func (s *QuotaService) CheckAPIKeyQuota(ctx context.Context, apiKeyID int, quota
 	if quota.Cost != nil && usageAgg.TotalCost.GreaterThanOrEqual(*quota.Cost) {
 		return QuotaCheckResult{
 			Allowed: false,
-			Message: fmt.Sprintf("cost quota exceeded: %s/%s", usageAgg.TotalCost.String(), quota.Cost.String()),
+			Message: fmt.Sprintf("cost quota exceeded: %s %s/%s", s.quotaCurrencyCode(ctx, quota), usageAgg.TotalCost.String(), quota.Cost.String()),
 			Window:  window,
 		}, nil
 	}
@@ -160,6 +161,7 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 	}
 
 	loc := s.system.TimeLocation(ctx)
+	currencyCode := s.quotaCurrencyCode(ctx, quota)
 
 	window, err := quotaWindow(xtime.UTCNow(), quota.Period, loc)
 	if err != nil {
@@ -174,7 +176,7 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 	}
 
 	usageAgg, err := authz.RunWithSystemBypass(ctx, "quota-usage-agg", func(bypassCtx context.Context) (usageAggResult, error) {
-		return s.usageAgg(bypassCtx, apiKeyID, window, true, true)
+		return s.usageAgg(bypassCtx, apiKeyID, window, true, true, currencyCode)
 	})
 	if err != nil {
 		return QuotaResult{}, err
@@ -186,8 +188,27 @@ func (s *QuotaService) GetQuota(ctx context.Context, apiKeyID int, quota *object
 			RequestCount: reqCount,
 			TotalTokens:  usageAgg.TotalTokens,
 			TotalCost:    usageAgg.TotalCost,
+			CurrencyCode: currencyCode,
 		},
 	}, nil
+}
+
+func (s *QuotaService) quotaCurrencyCode(ctx context.Context, quota *objects.APIKeyQuota) string {
+	if quota != nil && quota.CurrencyCode != "" {
+		if currencyCode, err := objects.NormalizeCurrencyCode(quota.CurrencyCode); err == nil {
+			return currencyCode
+		}
+	}
+
+	if s.system != nil {
+		if settings, err := s.system.GeneralSettings(ctx); err == nil && settings.CurrencyCode != "" {
+			if currencyCode, err := objects.NormalizeCurrencyCode(settings.CurrencyCode); err == nil {
+				return currencyCode
+			}
+		}
+	}
+
+	return objects.DefaultCurrencyCode
 }
 
 func quotaWindow(now time.Time, period objects.APIKeyQuotaPeriod, loc *time.Location) (QuotaWindow, error) {
@@ -283,12 +304,14 @@ type usageAggResult struct {
 	TotalCost   decimal.Decimal
 }
 
-func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaWindow, needTokens bool, needCost bool) (usageAggResult, error) {
+func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaWindow, needTokens bool, needCost bool, currencyCode string) (usageAggResult, error) {
 	if !needTokens && !needCost {
 		return usageAggResult{}, nil
 	}
 
-	queryAgg := func(q *ent.UsageLogQuery) (usageAggResult, error) {
+	buildQuery := func() *ent.UsageLogQuery {
+		q := s.ent.UsageLog.Query().Where(usagelog.APIKeyIDEQ(apiKeyID))
+
 		if window.Start != nil {
 			q = q.Where(usagelog.CreatedAtGTE(*window.Start))
 		}
@@ -301,95 +324,53 @@ func (s *QuotaService) usageAgg(ctx context.Context, apiKeyID int, window QuotaW
 			}
 		}
 
-		switch {
-		case needTokens && needCost:
-			type row struct {
-				TotalTokens int64   `json:"total_tokens"`
-				TotalCost   float64 `json:"total_cost"`
-			}
+		return q
+	}
 
-			var rows []row
+	result := usageAggResult{TotalCost: decimal.Zero}
 
-			err := q.Modify(func(s *sql.Selector) {
-				s.Select(
-					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
-				)
-			}).Scan(ctx, &rows)
-			if err != nil {
-				return usageAggResult{}, err
-			}
+	if needTokens {
+		var rows []struct {
+			TotalTokens int64 `json:"total_tokens"`
+		}
 
-			if len(rows) == 0 {
-				return usageAggResult{TotalCost: decimal.Zero}, nil
-			}
+		err := buildQuery().Modify(func(s *sql.Selector) {
+			s.Select(
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
+			)
+		}).Scan(ctx, &rows)
+		if err != nil {
+			return usageAggResult{}, err
+		}
 
-			return usageAggResult{
-				TotalTokens: rows[0].TotalTokens,
-				TotalCost:   decimal.NewFromFloat(rows[0].TotalCost),
-			}, nil
-		case needTokens:
-			type row struct {
-				TotalTokens int64 `json:"total_tokens"`
-			}
-
-			var rows []row
-
-			err := q.Modify(func(s *sql.Selector) {
-				s.Select(
-					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				)
-			}).Scan(ctx, &rows)
-			if err != nil {
-				return usageAggResult{}, err
-			}
-
-			if len(rows) == 0 {
-				return usageAggResult{TotalCost: decimal.Zero}, nil
-			}
-
-			return usageAggResult{TotalTokens: rows[0].TotalTokens, TotalCost: decimal.Zero}, nil
-		default:
-			type row struct {
-				TotalCost float64 `json:"total_cost"`
-			}
-
-			var rows []row
-
-			err := q.Modify(func(s *sql.Selector) {
-				s.Select(
-					sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
-				)
-			}).Scan(ctx, &rows)
-			if err != nil {
-				return usageAggResult{}, err
-			}
-
-			if len(rows) == 0 {
-				return usageAggResult{TotalCost: decimal.Zero}, nil
-			}
-
-			return usageAggResult{TotalCost: decimal.NewFromFloat(rows[0].TotalCost)}, nil
+		if len(rows) > 0 {
+			result.TotalTokens = rows[0].TotalTokens
 		}
 	}
 
-	agg1, err := queryAgg(s.ent.UsageLog.Query().Where(usagelog.APIKeyIDEQ(apiKeyID)))
-	if err != nil {
-		return usageAggResult{}, err
+	if needCost {
+		q := buildQuery()
+		if currencyCode != "" {
+			q = q.Where(usagelog.CostCurrencyCodeEQ(currencyCode))
+		}
+
+		var rows []struct {
+			TotalCost float64 `json:"total_cost"`
+		}
+
+		err := q.Modify(func(s *sql.Selector) {
+			s.Select(
+				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+			)
+		}).Scan(ctx, &rows)
+		if err != nil {
+			return usageAggResult{}, err
+		}
+
+		if len(rows) > 0 {
+			result.TotalCost = decimal.NewFromFloat(rows[0].TotalCost)
+		}
 	}
 
-	//  Compatible with old usage log without api_key_id.
-	//  DO NOT NEED FOR NOW.
-	// agg2, err := queryAgg(s.ent.UsageLog.Query().Where(
-	// 	usagelog.APIKeyIDIsNil(),
-	// 	usagelog.HasRequestWith(request.APIKeyIDEQ(apiKeyID)),
-	// ))
-	// if err != nil {
-	// 	return usageAggResult{}, err
-	// }
-
-	return usageAggResult{
-		TotalTokens: agg1.TotalTokens, // + agg2.TotalTokens,
-		TotalCost:   agg1.TotalCost,   // .Add(agg2.TotalCost),
-	}, nil
+	return result, nil
 }

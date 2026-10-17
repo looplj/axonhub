@@ -19,6 +19,7 @@ import { PriceScheduleEditor } from '@/components/price-schedule-editor';
 import { type ProviderModel, type ProvidersData } from '@/features/models/data/providers.schema';
 import { useProvidersData } from '@/features/models/data/providers';
 import { useGeneralSettings } from '@/features/system/data/system';
+import { currencyCodes } from '@/features/system/data/currencies';
 import { useChannels } from '../context/channels-context';
 import { useChannelModelPrices, useSaveChannelModelPrices } from '../data/channels';
 import {
@@ -39,6 +40,7 @@ const createPriceFormSchema = (t: (key: string) => string) =>
       prices: z.array(
         z.object({
           modelId: z.string().min(1, { message: t('price.validation.modelRequired') }),
+          currencyCode: z.string().min(1),
           price: z.object({
             items: z.array(
               z.object({
@@ -399,6 +401,7 @@ function mapServerPricesToFormData(currentPrices: ChannelModelPrices): PriceForm
   return {
     prices: currentPrices.map((p) => ({
       modelId: p.modelID,
+      currencyCode: p.currencyCode || 'USD',
       price: mapPriceToForm(p.price),
     })),
   };
@@ -408,6 +411,7 @@ function mapSaveInputsToFormData(inputs: SaveChannelModelPriceInput[]): PriceFor
   return {
     prices: inputs.map((p) => ({
       modelId: p.modelId,
+      currencyCode: p.currencyCode || 'USD',
       price: mapPriceToForm(p.price),
     })),
   };
@@ -584,7 +588,7 @@ const PriceCard = memo(function PriceCard({
             </Button>
           </div>
 
-          <div className='min-w-0'>
+          <div className='min-w-0 space-y-2'>
             <FormField
               control={control}
               name={`prices.${priceIndex}.modelId`}
@@ -606,6 +610,29 @@ const PriceCard = memo(function PriceCard({
                       {availableModels.map((model) => (
                         <SelectItem key={model} value={model} title={model}>
                           {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={control}
+              name={`prices.${priceIndex}.currencyCode`}
+              render={({ field }) => (
+                <FormItem>
+                  <Select value={field.value || currencyCode} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger size='sm' className='h-8 w-full min-w-0' title={t('price.currency')}>
+                        <SelectValue placeholder={t('price.currency')} />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {currencyCodes.map((code) => (
+                        <SelectItem key={code} value={code}>
+                          {code}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -653,6 +680,7 @@ export function ChannelsModelPriceDialog() {
   const isOpen = open === 'price';
   const { data: currentPrices, isLoading } = useChannelModelPrices(currentRow?.id || '');
   const savePrices = useSaveChannelModelPrices();
+  const channelCurrencyCode = currentRow?.currencyCode || settings?.currencyCode || 'USD';
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
   const formSchema = useMemo(() => createPriceFormSchema(t), [t]);
@@ -783,6 +811,7 @@ export function ChannelsModelPriceDialog() {
 
     const payload = currentPrices.map((p) => ({
       modelId: p.modelID,
+      currencyCode: p.currencyCode,
       price: p.price,
     }));
     const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
@@ -905,6 +934,7 @@ export function ChannelsModelPriceDialog() {
       try {
         const input = data.prices.map((p) => ({
           modelId: p.modelId,
+          currencyCode: p.currencyCode,
           price: {
             items: p.price.items.map((item) => ({
               itemCode: item.itemCode as PriceItemCode,
@@ -992,6 +1022,7 @@ export function ChannelsModelPriceDialog() {
     pendingScrollToNewCardRef.current = true;
     append({
       modelId: '',
+      currencyCode: channelCurrencyCode,
       price: {
         items: [
           {
@@ -1001,7 +1032,7 @@ export function ChannelsModelPriceDialog() {
         ],
       },
     });
-  }, [append]);
+  }, [append, channelCurrencyCode]);
 
   const removePrice = useCallback((index: number) => remove(index), [remove]);
 
@@ -1010,6 +1041,8 @@ export function ChannelsModelPriceDialog() {
       const currentItems = getValues(`prices.${priceIndex}.price.items`) || [];
       const merged = mergeItemsWithProviderCost(currentItems, providerModel, multiplier);
       setValue(`prices.${priceIndex}.price.items`, merged, { shouldDirty: true, shouldValidate: true });
+      // Provider/model-library prices are always USD; do not relabel them as the channel currency.
+      setValue(`prices.${priceIndex}.currencyCode`, 'USD', { shouldDirty: true });
     },
     [getValues, setValue, multiplier]
   );
@@ -1035,6 +1068,7 @@ export function ChannelsModelPriceDialog() {
       pendingScrollToNewCardRef.current = true;
       append({
         modelId,
+        currencyCode: 'USD',
         price: { items: buildItemsFromProviderModel(found.model, multiplier) },
       });
       toast.success(t('price.apply.added', { modelId }));
@@ -1128,15 +1162,17 @@ export function ChannelsModelPriceDialog() {
   const duplicatePrice = useCallback(
     (index: number) => {
       const priceData = getValues(`prices.${index}.price`);
+      const currencyCode = getValues(`prices.${index}.currencyCode`) || channelCurrencyCode;
       // New card is appended at the end; scroll into view once it renders.
       pendingScrollToNewCardRef.current = true;
       append({
         modelId: '',
+        currencyCode,
         price: structuredClone(priceData),
       });
       toast.success(t('common.success.duplicated'));
     },
-    [getValues, append, t]
+    [getValues, append, t, channelCurrencyCode]
   );
 
   return (
@@ -1229,6 +1265,7 @@ export function ChannelsModelPriceDialog() {
                           if (existingModelIds.has(modelId)) return;
                           append({
                             modelId,
+                            currencyCode: 'USD',
                             price: { items: buildItemsFromProviderModel(found.model, multiplier) },
                           });
                           added += 1;
@@ -1283,7 +1320,7 @@ export function ChannelsModelPriceDialog() {
                         control={control}
                         t={t}
                         priceIndex={index}
-                        currencyCode={settings?.currencyCode}
+                        currencyCode={watchedPrices?.[index]?.currencyCode || channelCurrencyCode}
                         defaultTimezone={settings?.timezone || 'UTC'}
                         portalContainer={dialogContent}
                         onAddItem={addItem}

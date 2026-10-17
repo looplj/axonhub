@@ -7,6 +7,7 @@ package gql
 
 import (
 	"context"
+	stdsql "database/sql"
 	"fmt"
 	"time"
 
@@ -15,9 +16,9 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xtime"
 	"github.com/looplj/axonhub/internal/scopes"
-	"github.com/samber/lo"
 )
 
 // AnalyticsMetadata is the resolver for the analyticsMetadata field.
@@ -45,12 +46,11 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 	loc := r.systemService.TimeLocation(ctx)
 
 	type overviewResult struct {
-		TotalRequests     int     `json:"total_requests"`
-		TotalInputTokens  int64   `json:"total_input_tokens"`
-		TotalCachedTokens int64   `json:"total_cached_tokens"`
-		TotalOutputTokens int64   `json:"total_output_tokens"`
-		TotalTokens       int64   `json:"total_tokens"`
-		TotalCost         float64 `json:"total_cost"`
+		TotalRequests     int   `json:"total_requests"`
+		TotalInputTokens  int64 `json:"total_input_tokens"`
+		TotalCachedTokens int64 `json:"total_cached_tokens"`
+		TotalOutputTokens int64 `json:"total_output_tokens"`
+		TotalTokens       int64 `json:"total_tokens"`
 	}
 
 	var results []overviewResult
@@ -65,7 +65,6 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "total_cached_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "total_output_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
 			)
 		}).
 		Scan(ctx, &results)
@@ -73,8 +72,34 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 		return nil, fmt.Errorf("failed to get analytics overview: %w", err)
 	}
 
+	type overviewCostResult struct {
+		CurrencyCode string             `json:"currency_code"`
+		TotalCost    stdsql.NullFloat64 `json:"total_cost"`
+	}
+
+	var costResults []overviewCostResult
+
+	err = r.client.UsageLog.Query().
+		Modify(func(s *sql.Selector) {
+			r.buildAnalyticsWhere(s, filter, apiKeyIDs, hasUserFilter, loc)
+
+			s.Select(
+				sql.As(s.C(usagelog.FieldCostCurrencyCode), "currency_code"),
+				sql.As(sql.Sum(s.C(usagelog.FieldTotalCost)), "total_cost"),
+			).GroupBy(s.C(usagelog.FieldCostCurrencyCode))
+		}).
+		Scan(ctx, &costResults)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get analytics overview cost: %w", err)
+	}
+
+	costs := make(map[string]float64, len(costResults))
+	for _, row := range costResults {
+		addCurrencyCost(costs, row.CurrencyCode, row.TotalCost)
+	}
+
 	if len(results) == 0 {
-		return &AnalyticsOverview{}, nil
+		return &AnalyticsOverview{TotalCostByCurrency: currencyAmountList(costs)}, nil
 	}
 
 	r0 := results[0]
@@ -85,7 +110,7 @@ func (r *queryResolver) AnalyticsOverview(ctx context.Context, filter *Analytics
 		TotalUncachedInputTokens: safeIntFromInt64(r0.TotalInputTokens - r0.TotalCachedTokens),
 		TotalOutputTokens:        safeIntFromInt64(r0.TotalOutputTokens),
 		TotalRequests:            r0.TotalRequests,
-		TotalCost:                r0.TotalCost,
+		TotalCostByCurrency:      currencyAmountList(costs),
 	}, nil
 }
 
@@ -121,13 +146,14 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 	endDay = time.Date(endDay.Year(), endDay.Month(), endDay.Day(), 0, 0, 0, 0, loc)
 
 	type dailyStats struct {
-		Date         string  `json:"date"`
-		InputTokens  int64   `json:"input_tokens"`
-		CachedTokens int64   `json:"cached_tokens"`
-		OutputTokens int64   `json:"output_tokens"`
-		TotalTokens  int64   `json:"total_tokens"`
-		RequestCount int     `json:"request_count"`
-		Cost         float64 `json:"cost"`
+		Date         string             `json:"date"`
+		CurrencyCode string             `json:"currency_code"`
+		InputTokens  int64              `json:"input_tokens"`
+		CachedTokens int64              `json:"cached_tokens"`
+		OutputTokens int64              `json:"output_tokens"`
+		TotalTokens  int64              `json:"total_tokens"`
+		RequestCount int                `json:"request_count"`
+		Cost         stdsql.NullFloat64 `json:"cost"`
 	}
 
 	var results []dailyStats
@@ -154,14 +180,15 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 
 			s.Select(
 				sql.As(dateExpr, "date"),
+				sql.As(s.C(usagelog.FieldCostCurrencyCode), "currency_code"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptTokens)), "input_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldPromptCachedTokens)), "cached_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldCompletionTokens)), "output_tokens"),
 				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
 				sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "cost"),
+				sql.As(sql.Sum(s.C(usagelog.FieldTotalCost)), "cost"),
 			).
-				GroupBy(dateExpr).
+				GroupBy(dateExpr, s.C(usagelog.FieldCostCurrencyCode)).
 				OrderBy("date")
 		}).
 		Scan(ctx, &results)
@@ -169,10 +196,28 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 		return nil, fmt.Errorf("failed to get analytics daily stats: %w", err)
 	}
 
-	// Build lookup map
-	statsMap := lo.SliceToMap(results, func(item dailyStats) (string, dailyStats) {
-		return item.Date, item
-	})
+	statsMap := make(map[string]*AnalyticsDailyStat, len(results))
+	for _, raw := range results {
+		item, ok := statsMap[raw.Date]
+		if !ok {
+			item = &AnalyticsDailyStat{Date: raw.Date, CostByCurrency: []*objects.CurrencyAmount{}}
+			statsMap[raw.Date] = item
+		}
+
+		item.InputTokens += safeIntFromInt64(raw.InputTokens)
+		item.CachedInputTokens += safeIntFromInt64(raw.CachedTokens)
+		item.UncachedInputTokens += safeIntFromInt64(raw.InputTokens - raw.CachedTokens)
+		item.OutputTokens += safeIntFromInt64(raw.OutputTokens)
+		item.TotalTokens += safeIntFromInt64(raw.TotalTokens)
+		item.RequestCount += raw.RequestCount
+
+		if raw.Cost.Valid {
+			item.CostByCurrency = append(item.CostByCurrency, &objects.CurrencyAmount{
+				CurrencyCode: raw.CurrencyCode,
+				Amount:       raw.Cost.Float64,
+			})
+		}
+	}
 
 	// Fill in missing dates with zero values
 	var response []*AnalyticsDailyStat
@@ -181,26 +226,12 @@ func (r *queryResolver) AnalyticsDailyStats(ctx context.Context, filter *Analyti
 		dateStr := d.Format("2006-01-02")
 
 		if stats, exists := statsMap[dateStr]; exists {
-			response = append(response, &AnalyticsDailyStat{
-				Date:                dateStr,
-				InputTokens:         safeIntFromInt64(stats.InputTokens),
-				CachedInputTokens:   safeIntFromInt64(stats.CachedTokens),
-				UncachedInputTokens: safeIntFromInt64(stats.InputTokens - stats.CachedTokens),
-				OutputTokens:        safeIntFromInt64(stats.OutputTokens),
-				TotalTokens:         safeIntFromInt64(stats.TotalTokens),
-				RequestCount:        stats.RequestCount,
-				Cost:                stats.Cost,
-			})
+			sortCurrencyAmounts(stats.CostByCurrency)
+			response = append(response, stats)
 		} else {
 			response = append(response, &AnalyticsDailyStat{
-				Date:                dateStr,
-				InputTokens:         0,
-				CachedInputTokens:   0,
-				UncachedInputTokens: 0,
-				OutputTokens:        0,
-				TotalTokens:         0,
-				RequestCount:        0,
-				Cost:                0,
+				Date:           dateStr,
+				CostByCurrency: []*objects.CurrencyAmount{},
 			})
 		}
 	}

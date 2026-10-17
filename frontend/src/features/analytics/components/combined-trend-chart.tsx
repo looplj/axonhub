@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber } from '@/utils/format-number';
-import { formatCurrencySimple, formatCurrencyTick } from '../utils/format-currency';
+import { currencyAmount, formatCurrencyAmount, localeForLanguage } from '@/utils/currency';
 
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
@@ -28,7 +28,7 @@ interface CombinedTrendChartProps {
 
 export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTrendChartProps) {
   const { t, i18n } = useTranslation();
-  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
+  const locale = localeForLanguage(i18n.language);
 
   const chartData = data.map((stat) => {
     const [year, month, day] = stat.date.split('-').map(Number);
@@ -44,7 +44,7 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
       output: stat.outputTokens,
       totalTokens: stat.totalTokens,
       requests: stat.requestCount,
-      cost: stat.cost,
+      cost: currencyAmount(stat.costByCurrency, currencyCode),
     };
   });
 
@@ -117,7 +117,7 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
               tickLine={true}
               axisLine={true}
               domain={[0, costMax]}
-              tickFormatter={(value) => formatCurrencyTick(value, currencyCode)}
+              tickFormatter={(value) => formatCurrencyAmount(Number(value), currencyCode, t, locale, 0)}
               width={60}
               tickMargin={8}
             />
@@ -143,7 +143,7 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
                         <span>{entry.name}</span>
                         <span className='font-medium'>
                           {entry.name === t('analytics.chart.cost')
-                            ? formatCurrencySimple(Number(entry.value), currencyCode)
+                            ? formatCurrencyAmount(Number(entry.value), currencyCode, t, locale, 4)
                             : formatExactNumber(Number(entry.value))}
                         </span>
                       </p>

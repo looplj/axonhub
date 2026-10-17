@@ -246,10 +246,11 @@ func (svc *BackupService) streamChannelModelPrices(ctx context.Context, o *objWr
 				return nil, false, nil
 			}
 			b, err := json.Marshal(&BackupChannelModelPrice{
-				ChannelName: p.Edges.Channel.Name,
-				ModelID:     p.ModelID,
-				Price:       p.Price,
-				ReferenceID: p.ReferenceID,
+				ChannelName:  p.Edges.Channel.Name,
+				ModelID:      p.ModelID,
+				CurrencyCode: p.CurrencyCode,
+				Price:        p.Price,
+				ReferenceID:  p.ReferenceID,
 			})
 			return b, true, err
 		},

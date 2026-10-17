@@ -192,10 +192,11 @@ type ComplexityRoot struct {
 	}
 
 	APIKeyQuota struct {
-		Cost        func(childComplexity int) int
-		Period      func(childComplexity int) int
-		Requests    func(childComplexity int) int
-		TotalTokens func(childComplexity int) int
+		Cost         func(childComplexity int) int
+		CurrencyCode func(childComplexity int) int
+		Period       func(childComplexity int) int
+		Requests     func(childComplexity int) int
+		TotalTokens  func(childComplexity int) int
 	}
 
 	APIKeyQuotaCalendarDuration struct {
@@ -214,6 +215,7 @@ type ComplexityRoot struct {
 	}
 
 	APIKeyQuotaUsage struct {
+		CurrencyCode func(childComplexity int) int
 		RequestCount func(childComplexity int) int
 		TotalCost    func(childComplexity int) int
 		TotalTokens  func(childComplexity int) int
@@ -235,7 +237,7 @@ type ComplexityRoot struct {
 
 	AnalyticsDailyStat struct {
 		CachedInputTokens   func(childComplexity int) int
-		Cost                func(childComplexity int) int
+		CostByCurrency      func(childComplexity int) int
 		Date                func(childComplexity int) int
 		InputTokens         func(childComplexity int) int
 		OutputTokens        func(childComplexity int) int
@@ -246,7 +248,7 @@ type ComplexityRoot struct {
 
 	AnalyticsDimensionStat struct {
 		CachedInputTokens func(childComplexity int) int
-		Cost              func(childComplexity int) int
+		CostByCurrency    func(childComplexity int) int
 		ID                func(childComplexity int) int
 		InputTokens       func(childComplexity int) int
 		Name              func(childComplexity int) int
@@ -263,7 +265,7 @@ type ComplexityRoot struct {
 
 	AnalyticsOverview struct {
 		TotalCachedInputTokens   func(childComplexity int) int
-		TotalCost                func(childComplexity int) int
+		TotalCostByCurrency      func(childComplexity int) int
 		TotalInputTokens         func(childComplexity int) int
 		TotalOutputTokens        func(childComplexity int) int
 		TotalRequests            func(childComplexity int) int
@@ -361,6 +363,7 @@ type ComplexityRoot struct {
 		ChannelProbes           func(childComplexity int) int
 		CreatedAt               func(childComplexity int) int
 		Credentials             func(childComplexity int) int
+		CurrencyCode            func(childComplexity int) int
 		DefaultEndpoints        func(childComplexity int) int
 		DefaultTestModel        func(childComplexity int) int
 		DisabledAPIKeys         func(childComplexity int) int
@@ -434,15 +437,16 @@ type ComplexityRoot struct {
 	}
 
 	ChannelModelPrice struct {
-		Channel     func(childComplexity int) int
-		ChannelID   func(childComplexity int) int
-		CreatedAt   func(childComplexity int) int
-		ID          func(childComplexity int) int
-		ModelID     func(childComplexity int) int
-		Price       func(childComplexity int) int
-		ReferenceID func(childComplexity int) int
-		UpdatedAt   func(childComplexity int) int
-		Versions    func(childComplexity int) int
+		Channel      func(childComplexity int) int
+		ChannelID    func(childComplexity int) int
+		CreatedAt    func(childComplexity int) int
+		CurrencyCode func(childComplexity int) int
+		ID           func(childComplexity int) int
+		ModelID      func(childComplexity int) int
+		Price        func(childComplexity int) int
+		ReferenceID  func(childComplexity int) int
+		UpdatedAt    func(childComplexity int) int
+		Versions     func(childComplexity int) int
 	}
 
 	ChannelModelPriceConnection struct {
@@ -461,6 +465,7 @@ type ComplexityRoot struct {
 		ChannelModelPrice   func(childComplexity int) int
 		ChannelModelPriceID func(childComplexity int) int
 		CreatedAt           func(childComplexity int) int
+		CurrencyCode        func(childComplexity int) int
 		EffectiveEndAt      func(childComplexity int) int
 		EffectiveStartAt    func(childComplexity int) int
 		ID                  func(childComplexity int) int
@@ -664,26 +669,31 @@ type ComplexityRoot struct {
 	}
 
 	CostStatsByAPIKey struct {
-		APIKeyID   func(childComplexity int) int
-		APIKeyName func(childComplexity int) int
-		Cost       func(childComplexity int) int
+		APIKeyID       func(childComplexity int) int
+		APIKeyName     func(childComplexity int) int
+		CostByCurrency func(childComplexity int) int
 	}
 
 	CostStatsByChannel struct {
-		ChannelName func(childComplexity int) int
-		Cost        func(childComplexity int) int
+		ChannelName    func(childComplexity int) int
+		CostByCurrency func(childComplexity int) int
 	}
 
 	CostStatsByModel struct {
-		Cost    func(childComplexity int) int
-		ModelID func(childComplexity int) int
+		CostByCurrency func(childComplexity int) int
+		ModelID        func(childComplexity int) int
+	}
+
+	CurrencyAmount struct {
+		Amount       func(childComplexity int) int
+		CurrencyCode func(childComplexity int) int
 	}
 
 	DailyRequestStats struct {
-		Cost   func(childComplexity int) int
-		Count  func(childComplexity int) int
-		Date   func(childComplexity int) int
-		Tokens func(childComplexity int) int
+		CostByCurrency func(childComplexity int) int
+		Count          func(childComplexity int) int
+		Date           func(childComplexity int) int
+		Tokens         func(childComplexity int) int
 	}
 
 	DailyTimeRange struct {
@@ -2029,6 +2039,7 @@ type ComplexityRoot struct {
 		CompletionReasoningTokens          func(childComplexity int) int
 		CompletionRejectedPredictionTokens func(childComplexity int) int
 		CompletionTokens                   func(childComplexity int) int
+		CostCurrencyCode                   func(childComplexity int) int
 		CostItems                          func(childComplexity int) int
 		CostPriceReferenceID               func(childComplexity int) int
 		CreatedAt                          func(childComplexity int) int
@@ -2065,18 +2076,18 @@ type ComplexityRoot struct {
 	UsageMetadata struct {
 		TotalCachedTokens      func(childComplexity int) int
 		TotalCachedWriteTokens func(childComplexity int) int
-		TotalCost              func(childComplexity int) int
+		TotalCostByCurrency    func(childComplexity int) int
 		TotalInputTokens       func(childComplexity int) int
 		TotalOutputTokens      func(childComplexity int) int
 		TotalTokens            func(childComplexity int) int
 	}
 
 	UsageStatsByUser struct {
-		RequestCount func(childComplexity int) int
-		TotalCost    func(childComplexity int) int
-		TotalTokens  func(childComplexity int) int
-		UserID       func(childComplexity int) int
-		UserName     func(childComplexity int) int
+		RequestCount        func(childComplexity int) int
+		TotalCostByCurrency func(childComplexity int) int
+		TotalTokens         func(childComplexity int) int
+		UserID              func(childComplexity int) int
+		UserName            func(childComplexity int) int
 	}
 
 	User struct {
@@ -3010,6 +3021,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.APIKeyQuota.Cost(childComplexity), true
+	case "APIKeyQuota.currencyCode":
+		if e.complexity.APIKeyQuota.CurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.APIKeyQuota.CurrencyCode(childComplexity), true
 	case "APIKeyQuota.period":
 		if e.complexity.APIKeyQuota.Period == nil {
 			break
@@ -3068,6 +3085,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.APIKeyQuotaPeriod.Type(childComplexity), true
 
+	case "APIKeyQuotaUsage.currencyCode":
+		if e.complexity.APIKeyQuotaUsage.CurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.APIKeyQuotaUsage.CurrencyCode(childComplexity), true
 	case "APIKeyQuotaUsage.requestCount":
 		if e.complexity.APIKeyQuotaUsage.RequestCount == nil {
 			break
@@ -3143,12 +3166,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AnalyticsDailyStat.CachedInputTokens(childComplexity), true
-	case "AnalyticsDailyStat.cost":
-		if e.complexity.AnalyticsDailyStat.Cost == nil {
+	case "AnalyticsDailyStat.costByCurrency":
+		if e.complexity.AnalyticsDailyStat.CostByCurrency == nil {
 			break
 		}
 
-		return e.complexity.AnalyticsDailyStat.Cost(childComplexity), true
+		return e.complexity.AnalyticsDailyStat.CostByCurrency(childComplexity), true
 	case "AnalyticsDailyStat.date":
 		if e.complexity.AnalyticsDailyStat.Date == nil {
 			break
@@ -3192,12 +3215,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AnalyticsDimensionStat.CachedInputTokens(childComplexity), true
-	case "AnalyticsDimensionStat.cost":
-		if e.complexity.AnalyticsDimensionStat.Cost == nil {
+	case "AnalyticsDimensionStat.costByCurrency":
+		if e.complexity.AnalyticsDimensionStat.CostByCurrency == nil {
 			break
 		}
 
-		return e.complexity.AnalyticsDimensionStat.Cost(childComplexity), true
+		return e.complexity.AnalyticsDimensionStat.CostByCurrency(childComplexity), true
 	case "AnalyticsDimensionStat.id":
 		if e.complexity.AnalyticsDimensionStat.ID == nil {
 			break
@@ -3260,12 +3283,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.AnalyticsOverview.TotalCachedInputTokens(childComplexity), true
-	case "AnalyticsOverview.totalCost":
-		if e.complexity.AnalyticsOverview.TotalCost == nil {
+	case "AnalyticsOverview.totalCostByCurrency":
+		if e.complexity.AnalyticsOverview.TotalCostByCurrency == nil {
 			break
 		}
 
-		return e.complexity.AnalyticsOverview.TotalCost(childComplexity), true
+		return e.complexity.AnalyticsOverview.TotalCostByCurrency(childComplexity), true
 	case "AnalyticsOverview.totalInputTokens":
 		if e.complexity.AnalyticsOverview.TotalInputTokens == nil {
 			break
@@ -3627,6 +3650,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.Credentials(childComplexity), true
+	case "Channel.currencyCode":
+		if e.complexity.Channel.CurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.Channel.CurrencyCode(childComplexity), true
 	case "Channel.defaultEndpoints":
 		if e.complexity.Channel.DefaultEndpoints == nil {
 			break
@@ -3945,6 +3974,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelModelPrice.CreatedAt(childComplexity), true
+	case "ChannelModelPrice.currencyCode":
+		if e.complexity.ChannelModelPrice.CurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPrice.CurrencyCode(childComplexity), true
 	case "ChannelModelPrice.id":
 		if e.complexity.ChannelModelPrice.ID == nil {
 			break
@@ -4038,6 +4073,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelModelPriceVersion.CreatedAt(childComplexity), true
+	case "ChannelModelPriceVersion.currencyCode":
+		if e.complexity.ChannelModelPriceVersion.CurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.ChannelModelPriceVersion.CurrencyCode(childComplexity), true
 	case "ChannelModelPriceVersion.effectiveEndAt":
 		if e.complexity.ChannelModelPriceVersion.EffectiveEndAt == nil {
 			break
@@ -4792,12 +4833,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CostStatsByAPIKey.APIKeyName(childComplexity), true
-	case "CostStatsByAPIKey.cost":
-		if e.complexity.CostStatsByAPIKey.Cost == nil {
+	case "CostStatsByAPIKey.costByCurrency":
+		if e.complexity.CostStatsByAPIKey.CostByCurrency == nil {
 			break
 		}
 
-		return e.complexity.CostStatsByAPIKey.Cost(childComplexity), true
+		return e.complexity.CostStatsByAPIKey.CostByCurrency(childComplexity), true
 
 	case "CostStatsByChannel.channelName":
 		if e.complexity.CostStatsByChannel.ChannelName == nil {
@@ -4805,19 +4846,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.CostStatsByChannel.ChannelName(childComplexity), true
-	case "CostStatsByChannel.cost":
-		if e.complexity.CostStatsByChannel.Cost == nil {
+	case "CostStatsByChannel.costByCurrency":
+		if e.complexity.CostStatsByChannel.CostByCurrency == nil {
 			break
 		}
 
-		return e.complexity.CostStatsByChannel.Cost(childComplexity), true
+		return e.complexity.CostStatsByChannel.CostByCurrency(childComplexity), true
 
-	case "CostStatsByModel.cost":
-		if e.complexity.CostStatsByModel.Cost == nil {
+	case "CostStatsByModel.costByCurrency":
+		if e.complexity.CostStatsByModel.CostByCurrency == nil {
 			break
 		}
 
-		return e.complexity.CostStatsByModel.Cost(childComplexity), true
+		return e.complexity.CostStatsByModel.CostByCurrency(childComplexity), true
 	case "CostStatsByModel.modelId":
 		if e.complexity.CostStatsByModel.ModelID == nil {
 			break
@@ -4825,12 +4866,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.CostStatsByModel.ModelID(childComplexity), true
 
-	case "DailyRequestStats.cost":
-		if e.complexity.DailyRequestStats.Cost == nil {
+	case "CurrencyAmount.amount":
+		if e.complexity.CurrencyAmount.Amount == nil {
 			break
 		}
 
-		return e.complexity.DailyRequestStats.Cost(childComplexity), true
+		return e.complexity.CurrencyAmount.Amount(childComplexity), true
+	case "CurrencyAmount.currencyCode":
+		if e.complexity.CurrencyAmount.CurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.CurrencyAmount.CurrencyCode(childComplexity), true
+
+	case "DailyRequestStats.costByCurrency":
+		if e.complexity.DailyRequestStats.CostByCurrency == nil {
+			break
+		}
+
+		return e.complexity.DailyRequestStats.CostByCurrency(childComplexity), true
 	case "DailyRequestStats.count":
 		if e.complexity.DailyRequestStats.Count == nil {
 			break
@@ -11232,6 +11286,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UsageLog.CompletionTokens(childComplexity), true
+	case "UsageLog.costCurrencyCode":
+		if e.complexity.UsageLog.CostCurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.UsageLog.CostCurrencyCode(childComplexity), true
 	case "UsageLog.costItems":
 		if e.complexity.UsageLog.CostItems == nil {
 			break
@@ -11397,12 +11457,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UsageMetadata.TotalCachedWriteTokens(childComplexity), true
-	case "UsageMetadata.totalCost":
-		if e.complexity.UsageMetadata.TotalCost == nil {
+	case "UsageMetadata.totalCostByCurrency":
+		if e.complexity.UsageMetadata.TotalCostByCurrency == nil {
 			break
 		}
 
-		return e.complexity.UsageMetadata.TotalCost(childComplexity), true
+		return e.complexity.UsageMetadata.TotalCostByCurrency(childComplexity), true
 	case "UsageMetadata.totalInputTokens":
 		if e.complexity.UsageMetadata.TotalInputTokens == nil {
 			break
@@ -11428,12 +11488,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.UsageStatsByUser.RequestCount(childComplexity), true
-	case "UsageStatsByUser.totalCost":
-		if e.complexity.UsageStatsByUser.TotalCost == nil {
+	case "UsageStatsByUser.totalCostByCurrency":
+		if e.complexity.UsageStatsByUser.TotalCostByCurrency == nil {
 			break
 		}
 
-		return e.complexity.UsageStatsByUser.TotalCost(childComplexity), true
+		return e.complexity.UsageStatsByUser.TotalCostByCurrency(childComplexity), true
 	case "UsageStatsByUser.totalTokens":
 		if e.complexity.UsageStatsByUser.TotalTokens == nil {
 			break
@@ -17078,6 +17138,8 @@ func (ec *executionContext) fieldContext_APIKeyProfile_quota(_ context.Context, 
 				return ec.fieldContext_APIKeyQuota_totalTokens(ctx, field)
 			case "cost":
 				return ec.fieldContext_APIKeyQuota_cost(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_APIKeyQuota_currencyCode(ctx, field)
 			case "period":
 				return ec.fieldContext_APIKeyQuota_period(ctx, field)
 			}
@@ -17204,6 +17266,8 @@ func (ec *executionContext) fieldContext_APIKeyProfileQuotaUsage_quota(_ context
 				return ec.fieldContext_APIKeyQuota_totalTokens(ctx, field)
 			case "cost":
 				return ec.fieldContext_APIKeyQuota_cost(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_APIKeyQuota_currencyCode(ctx, field)
 			case "period":
 				return ec.fieldContext_APIKeyQuota_period(ctx, field)
 			}
@@ -17278,6 +17342,8 @@ func (ec *executionContext) fieldContext_APIKeyProfileQuotaUsage_usage(_ context
 				return ec.fieldContext_APIKeyQuotaUsage_totalTokens(ctx, field)
 			case "totalCost":
 				return ec.fieldContext_APIKeyQuotaUsage_totalCost(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_APIKeyQuotaUsage_currencyCode(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKeyQuotaUsage", field.Name)
 		},
@@ -17956,6 +18022,35 @@ func (ec *executionContext) fieldContext_APIKeyQuota_cost(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _APIKeyQuota_currencyCode(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyQuota) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyQuota_currencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyQuota_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyQuota",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _APIKeyQuota_period(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyQuota) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18259,6 +18354,35 @@ func (ec *executionContext) fieldContext_APIKeyQuotaUsage_totalCost(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyQuotaUsage_currencyCode(ctx context.Context, field graphql.CollectedField, obj *APIKeyQuotaUsage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyQuotaUsage_currencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyQuotaUsage_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyQuotaUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -18711,30 +18835,36 @@ func (ec *executionContext) fieldContext_AnalyticsDailyStat_requestCount(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _AnalyticsDailyStat_cost(ctx context.Context, field graphql.CollectedField, obj *AnalyticsDailyStat) (ret graphql.Marshaler) {
+func (ec *executionContext) _AnalyticsDailyStat_costByCurrency(ctx context.Context, field graphql.CollectedField, obj *AnalyticsDailyStat) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_AnalyticsDailyStat_cost,
+		ec.fieldContext_AnalyticsDailyStat_costByCurrency,
 		func(ctx context.Context) (any, error) {
-			return obj.Cost, nil
+			return obj.CostByCurrency, nil
 		},
 		nil,
-		ec.marshalNFloat2float64,
+		ec.marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_AnalyticsDailyStat_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AnalyticsDailyStat_costByCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AnalyticsDailyStat",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_CurrencyAmount_currencyCode(ctx, field)
+			case "amount":
+				return ec.fieldContext_CurrencyAmount_amount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CurrencyAmount", field.Name)
 		},
 	}
 	return fc, nil
@@ -18943,30 +19073,36 @@ func (ec *executionContext) fieldContext_AnalyticsDimensionStat_totalTokens(_ co
 	return fc, nil
 }
 
-func (ec *executionContext) _AnalyticsDimensionStat_cost(ctx context.Context, field graphql.CollectedField, obj *AnalyticsDimensionStat) (ret graphql.Marshaler) {
+func (ec *executionContext) _AnalyticsDimensionStat_costByCurrency(ctx context.Context, field graphql.CollectedField, obj *AnalyticsDimensionStat) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_AnalyticsDimensionStat_cost,
+		ec.fieldContext_AnalyticsDimensionStat_costByCurrency,
 		func(ctx context.Context) (any, error) {
-			return obj.Cost, nil
+			return obj.CostByCurrency, nil
 		},
 		nil,
-		ec.marshalNFloat2float64,
+		ec.marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_AnalyticsDimensionStat_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AnalyticsDimensionStat_costByCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AnalyticsDimensionStat",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_CurrencyAmount_currencyCode(ctx, field)
+			case "amount":
+				return ec.fieldContext_CurrencyAmount_amount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CurrencyAmount", field.Name)
 		},
 	}
 	return fc, nil
@@ -19233,30 +19369,36 @@ func (ec *executionContext) fieldContext_AnalyticsOverview_totalRequests(_ conte
 	return fc, nil
 }
 
-func (ec *executionContext) _AnalyticsOverview_totalCost(ctx context.Context, field graphql.CollectedField, obj *AnalyticsOverview) (ret graphql.Marshaler) {
+func (ec *executionContext) _AnalyticsOverview_totalCostByCurrency(ctx context.Context, field graphql.CollectedField, obj *AnalyticsOverview) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_AnalyticsOverview_totalCost,
+		ec.fieldContext_AnalyticsOverview_totalCostByCurrency,
 		func(ctx context.Context) (any, error) {
-			return obj.TotalCost, nil
+			return obj.TotalCostByCurrency, nil
 		},
 		nil,
-		ec.marshalNFloat2float64,
+		ec.marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_AnalyticsOverview_totalCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_AnalyticsOverview_totalCostByCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AnalyticsOverview",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_CurrencyAmount_currencyCode(ctx, field)
+			case "amount":
+				return ec.fieldContext_CurrencyAmount_amount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CurrencyAmount", field.Name)
 		},
 	}
 	return fc, nil
@@ -19384,6 +19526,8 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -20400,6 +20544,8 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -20553,6 +20699,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelAutoDisablePayload_cha
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -20706,6 +20854,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -21421,6 +21571,35 @@ func (ec *executionContext) fieldContext_Channel_remark(_ context.Context, field
 	return fc, nil
 }
 
+func (ec *executionContext) _Channel_currencyCode(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Channel_currencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Channel_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Channel_endpoints(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -21688,6 +21867,8 @@ func (ec *executionContext) fieldContext_Channel_channelModelPrices(_ context.Co
 				return ec.fieldContext_ChannelModelPrice_channelID(ctx, field)
 			case "modelID":
 				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_ChannelModelPrice_currencyCode(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
 			case "referenceID":
@@ -22297,6 +22478,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -22908,6 +23091,35 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_modelID(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelModelPrice_currencyCode(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPrice_currencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPrice_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPrice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelModelPrice_price(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPrice) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23036,6 +23248,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_channel(_ context.Con
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -23103,6 +23317,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_versions(_ context.Co
 				return ec.fieldContext_ChannelModelPriceVersion_modelID(ctx, field)
 			case "channelModelPriceID":
 				return ec.fieldContext_ChannelModelPriceVersion_channelModelPriceID(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_ChannelModelPriceVersion_currencyCode(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPriceVersion_price(ctx, field)
 			case "status":
@@ -23259,6 +23475,8 @@ func (ec *executionContext) fieldContext_ChannelModelPriceEdge_node(_ context.Co
 				return ec.fieldContext_ChannelModelPrice_channelID(ctx, field)
 			case "modelID":
 				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_ChannelModelPrice_currencyCode(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
 			case "referenceID":
@@ -23477,6 +23695,35 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersion_channelModelPr
 	return fc, nil
 }
 
+func (ec *executionContext) _ChannelModelPriceVersion_currencyCode(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelModelPriceVersion_currencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelModelPriceVersion_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelModelPriceVersion",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelModelPriceVersion_price(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelModelPriceVersion) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -23662,6 +23909,8 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersion_channelModelPr
 				return ec.fieldContext_ChannelModelPrice_channelID(ctx, field)
 			case "modelID":
 				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_ChannelModelPrice_currencyCode(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
 			case "referenceID":
@@ -23816,6 +24065,8 @@ func (ec *executionContext) fieldContext_ChannelModelPriceVersionEdge_node(_ con
 				return ec.fieldContext_ChannelModelPriceVersion_modelID(ctx, field)
 			case "channelModelPriceID":
 				return ec.fieldContext_ChannelModelPriceVersion_channelModelPriceID(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_ChannelModelPriceVersion_currencyCode(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPriceVersion_price(ctx, field)
 			case "status":
@@ -24996,6 +25247,8 @@ func (ec *executionContext) fieldContext_ChannelProbe_channel(_ context.Context,
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -26893,6 +27146,8 @@ func (ec *executionContext) fieldContext_ClearChannelOverrideTemplatesPayload_ch
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -27396,30 +27651,36 @@ func (ec *executionContext) fieldContext_CostStatsByAPIKey_apiKeyName(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _CostStatsByAPIKey_cost(ctx context.Context, field graphql.CollectedField, obj *CostStatsByAPIKey) (ret graphql.Marshaler) {
+func (ec *executionContext) _CostStatsByAPIKey_costByCurrency(ctx context.Context, field graphql.CollectedField, obj *CostStatsByAPIKey) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_CostStatsByAPIKey_cost,
+		ec.fieldContext_CostStatsByAPIKey_costByCurrency,
 		func(ctx context.Context) (any, error) {
-			return obj.Cost, nil
+			return obj.CostByCurrency, nil
 		},
 		nil,
-		ec.marshalNFloat2float64,
+		ec.marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_CostStatsByAPIKey_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CostStatsByAPIKey_costByCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "CostStatsByAPIKey",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_CurrencyAmount_currencyCode(ctx, field)
+			case "amount":
+				return ec.fieldContext_CurrencyAmount_amount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CurrencyAmount", field.Name)
 		},
 	}
 	return fc, nil
@@ -27454,30 +27715,36 @@ func (ec *executionContext) fieldContext_CostStatsByChannel_channelName(_ contex
 	return fc, nil
 }
 
-func (ec *executionContext) _CostStatsByChannel_cost(ctx context.Context, field graphql.CollectedField, obj *CostStatsByChannel) (ret graphql.Marshaler) {
+func (ec *executionContext) _CostStatsByChannel_costByCurrency(ctx context.Context, field graphql.CollectedField, obj *CostStatsByChannel) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_CostStatsByChannel_cost,
+		ec.fieldContext_CostStatsByChannel_costByCurrency,
 		func(ctx context.Context) (any, error) {
-			return obj.Cost, nil
+			return obj.CostByCurrency, nil
 		},
 		nil,
-		ec.marshalNFloat2float64,
+		ec.marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_CostStatsByChannel_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CostStatsByChannel_costByCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "CostStatsByChannel",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_CurrencyAmount_currencyCode(ctx, field)
+			case "amount":
+				return ec.fieldContext_CurrencyAmount_amount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CurrencyAmount", field.Name)
 		},
 	}
 	return fc, nil
@@ -27512,14 +27779,78 @@ func (ec *executionContext) fieldContext_CostStatsByModel_modelId(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _CostStatsByModel_cost(ctx context.Context, field graphql.CollectedField, obj *CostStatsByModel) (ret graphql.Marshaler) {
+func (ec *executionContext) _CostStatsByModel_costByCurrency(ctx context.Context, field graphql.CollectedField, obj *CostStatsByModel) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_CostStatsByModel_cost,
+		ec.fieldContext_CostStatsByModel_costByCurrency,
 		func(ctx context.Context) (any, error) {
-			return obj.Cost, nil
+			return obj.CostByCurrency, nil
+		},
+		nil,
+		ec.marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CostStatsByModel_costByCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CostStatsByModel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_CurrencyAmount_currencyCode(ctx, field)
+			case "amount":
+				return ec.fieldContext_CurrencyAmount_amount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CurrencyAmount", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CurrencyAmount_currencyCode(ctx context.Context, field graphql.CollectedField, obj *objects.CurrencyAmount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CurrencyAmount_currencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CurrencyAmount_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CurrencyAmount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CurrencyAmount_amount(ctx context.Context, field graphql.CollectedField, obj *objects.CurrencyAmount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CurrencyAmount_amount,
+		func(ctx context.Context) (any, error) {
+			return obj.Amount, nil
 		},
 		nil,
 		ec.marshalNFloat2float64,
@@ -27528,9 +27859,9 @@ func (ec *executionContext) _CostStatsByModel_cost(ctx context.Context, field gr
 	)
 }
 
-func (ec *executionContext) fieldContext_CostStatsByModel_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_CurrencyAmount_amount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "CostStatsByModel",
+		Object:     "CurrencyAmount",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -27628,30 +27959,36 @@ func (ec *executionContext) fieldContext_DailyRequestStats_tokens(_ context.Cont
 	return fc, nil
 }
 
-func (ec *executionContext) _DailyRequestStats_cost(ctx context.Context, field graphql.CollectedField, obj *DailyRequestStats) (ret graphql.Marshaler) {
+func (ec *executionContext) _DailyRequestStats_costByCurrency(ctx context.Context, field graphql.CollectedField, obj *DailyRequestStats) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_DailyRequestStats_cost,
+		ec.fieldContext_DailyRequestStats_costByCurrency,
 		func(ctx context.Context) (any, error) {
-			return obj.Cost, nil
+			return obj.CostByCurrency, nil
 		},
 		nil,
-		ec.marshalNFloat2float64,
+		ec.marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_DailyRequestStats_cost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DailyRequestStats_costByCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "DailyRequestStats",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_CurrencyAmount_currencyCode(ctx, field)
+			case "amount":
+				return ec.fieldContext_CurrencyAmount_amount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CurrencyAmount", field.Name)
 		},
 	}
 	return fc, nil
@@ -31970,6 +32307,8 @@ func (ec *executionContext) fieldContext_ModelChannelConnection_channel(_ contex
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -33224,6 +33563,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -33331,6 +33672,8 @@ func (ec *executionContext) fieldContext_Mutation_duplicateChannel(ctx context.C
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -33438,6 +33781,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateChannels(ctx context
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -33545,6 +33890,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -33652,6 +33999,8 @@ func (ec *executionContext) fieldContext_Mutation_saveChannelEndpoints(ctx conte
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -33804,6 +34153,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -39940,6 +40291,8 @@ func (ec *executionContext) fieldContext_Mutation_saveChannelModelPrices(ctx con
 				return ec.fieldContext_ChannelModelPrice_channelID(ctx, field)
 			case "modelID":
 				return ec.fieldContext_ChannelModelPrice_modelID(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_ChannelModelPrice_currencyCode(ctx, field)
 			case "price":
 				return ec.fieldContext_ChannelModelPrice_price(ctx, field)
 			case "referenceID":
@@ -44944,6 +45297,8 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_channel(_ context.C
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -46332,6 +46687,8 @@ func (ec *executionContext) fieldContext_Query_allChannelSummarys(ctx context.Co
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -46913,8 +47270,8 @@ func (ec *executionContext) fieldContext_Query_dailyRequestStats(_ context.Conte
 				return ec.fieldContext_DailyRequestStats_count(ctx, field)
 			case "tokens":
 				return ec.fieldContext_DailyRequestStats_tokens(ctx, field)
-			case "cost":
-				return ec.fieldContext_DailyRequestStats_cost(ctx, field)
+			case "costByCurrency":
+				return ec.fieldContext_DailyRequestStats_costByCurrency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type DailyRequestStats", field.Name)
 		},
@@ -47416,8 +47773,8 @@ func (ec *executionContext) fieldContext_Query_costStatsByChannel(ctx context.Co
 			switch field.Name {
 			case "channelName":
 				return ec.fieldContext_CostStatsByChannel_channelName(ctx, field)
-			case "cost":
-				return ec.fieldContext_CostStatsByChannel_cost(ctx, field)
+			case "costByCurrency":
+				return ec.fieldContext_CostStatsByChannel_costByCurrency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostStatsByChannel", field.Name)
 		},
@@ -47463,8 +47820,8 @@ func (ec *executionContext) fieldContext_Query_costStatsByModel(ctx context.Cont
 			switch field.Name {
 			case "modelId":
 				return ec.fieldContext_CostStatsByModel_modelId(ctx, field)
-			case "cost":
-				return ec.fieldContext_CostStatsByModel_cost(ctx, field)
+			case "costByCurrency":
+				return ec.fieldContext_CostStatsByModel_costByCurrency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostStatsByModel", field.Name)
 		},
@@ -47512,8 +47869,8 @@ func (ec *executionContext) fieldContext_Query_costStatsByAPIKey(ctx context.Con
 				return ec.fieldContext_CostStatsByAPIKey_apiKeyId(ctx, field)
 			case "apiKeyName":
 				return ec.fieldContext_CostStatsByAPIKey_apiKeyName(ctx, field)
-			case "cost":
-				return ec.fieldContext_CostStatsByAPIKey_cost(ctx, field)
+			case "costByCurrency":
+				return ec.fieldContext_CostStatsByAPIKey_costByCurrency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CostStatsByAPIKey", field.Name)
 		},
@@ -47565,8 +47922,8 @@ func (ec *executionContext) fieldContext_Query_usageStatsByUser(ctx context.Cont
 				return ec.fieldContext_UsageStatsByUser_requestCount(ctx, field)
 			case "totalTokens":
 				return ec.fieldContext_UsageStatsByUser_totalTokens(ctx, field)
-			case "totalCost":
-				return ec.fieldContext_UsageStatsByUser_totalCost(ctx, field)
+			case "totalCostByCurrency":
+				return ec.fieldContext_UsageStatsByUser_totalCostByCurrency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UsageStatsByUser", field.Name)
 		},
@@ -49153,8 +49510,8 @@ func (ec *executionContext) fieldContext_Query_analyticsOverview(ctx context.Con
 				return ec.fieldContext_AnalyticsOverview_totalOutputTokens(ctx, field)
 			case "totalRequests":
 				return ec.fieldContext_AnalyticsOverview_totalRequests(ctx, field)
-			case "totalCost":
-				return ec.fieldContext_AnalyticsOverview_totalCost(ctx, field)
+			case "totalCostByCurrency":
+				return ec.fieldContext_AnalyticsOverview_totalCostByCurrency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AnalyticsOverview", field.Name)
 		},
@@ -49212,8 +49569,8 @@ func (ec *executionContext) fieldContext_Query_analyticsDailyStats(ctx context.C
 				return ec.fieldContext_AnalyticsDailyStat_totalTokens(ctx, field)
 			case "requestCount":
 				return ec.fieldContext_AnalyticsDailyStat_requestCount(ctx, field)
-			case "cost":
-				return ec.fieldContext_AnalyticsDailyStat_cost(ctx, field)
+			case "costByCurrency":
+				return ec.fieldContext_AnalyticsDailyStat_costByCurrency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AnalyticsDailyStat", field.Name)
 		},
@@ -49271,8 +49628,8 @@ func (ec *executionContext) fieldContext_Query_analyticsDimensionStats(ctx conte
 				return ec.fieldContext_AnalyticsDimensionStat_outputTokens(ctx, field)
 			case "totalTokens":
 				return ec.fieldContext_AnalyticsDimensionStat_totalTokens(ctx, field)
-			case "cost":
-				return ec.fieldContext_AnalyticsDimensionStat_cost(ctx, field)
+			case "costByCurrency":
+				return ec.fieldContext_AnalyticsDimensionStat_costByCurrency(ctx, field)
 			case "tokensPerSecond":
 				return ec.fieldContext_AnalyticsDimensionStat_tokensPerSecond(ctx, field)
 			case "ttftMs":
@@ -50750,6 +51107,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -52044,6 +52403,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -57307,8 +57668,8 @@ func (ec *executionContext) fieldContext_Thread_usageMetadata(_ context.Context,
 				return ec.fieldContext_UsageMetadata_totalCachedTokens(ctx, field)
 			case "totalCachedWriteTokens":
 				return ec.fieldContext_UsageMetadata_totalCachedWriteTokens(ctx, field)
-			case "totalCost":
-				return ec.fieldContext_UsageMetadata_totalCost(ctx, field)
+			case "totalCostByCurrency":
+				return ec.fieldContext_UsageMetadata_totalCostByCurrency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UsageMetadata", field.Name)
 		},
@@ -59267,8 +59628,8 @@ func (ec *executionContext) fieldContext_Trace_usageMetadata(_ context.Context, 
 				return ec.fieldContext_UsageMetadata_totalCachedTokens(ctx, field)
 			case "totalCachedWriteTokens":
 				return ec.fieldContext_UsageMetadata_totalCachedWriteTokens(ctx, field)
-			case "totalCost":
-				return ec.fieldContext_UsageMetadata_totalCost(ctx, field)
+			case "totalCostByCurrency":
+				return ec.fieldContext_UsageMetadata_totalCostByCurrency(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type UsageMetadata", field.Name)
 		},
@@ -59713,6 +60074,8 @@ func (ec *executionContext) fieldContext_UnassociatedChannel_channel(_ context.C
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -60527,6 +60890,35 @@ func (ec *executionContext) fieldContext_UsageLog_totalCost(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _UsageLog_costCurrencyCode(ctx context.Context, field graphql.CollectedField, obj *ent.UsageLog) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_UsageLog_costCurrencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CostCurrencyCode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_UsageLog_costCurrencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UsageLog",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UsageLog_costItems(ctx context.Context, field graphql.CollectedField, obj *ent.UsageLog) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -60827,6 +61219,8 @@ func (ec *executionContext) fieldContext_UsageLog_channel(_ context.Context, fie
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_Channel_currencyCode(ctx, field)
 			case "endpoints":
 				return ec.fieldContext_Channel_endpoints(ctx, field)
 			case "requests":
@@ -61031,6 +61425,8 @@ func (ec *executionContext) fieldContext_UsageLogEdge_node(_ context.Context, fi
 				return ec.fieldContext_UsageLog_format(ctx, field)
 			case "totalCost":
 				return ec.fieldContext_UsageLog_totalCost(ctx, field)
+			case "costCurrencyCode":
+				return ec.fieldContext_UsageLog_costCurrencyCode(ctx, field)
 			case "costItems":
 				return ec.fieldContext_UsageLog_costItems(ctx, field)
 			case "costPriceReferenceID":
@@ -61222,30 +61618,36 @@ func (ec *executionContext) fieldContext_UsageMetadata_totalCachedWriteTokens(_ 
 	return fc, nil
 }
 
-func (ec *executionContext) _UsageMetadata_totalCost(ctx context.Context, field graphql.CollectedField, obj *biz.UsageMetadata) (ret graphql.Marshaler) {
+func (ec *executionContext) _UsageMetadata_totalCostByCurrency(ctx context.Context, field graphql.CollectedField, obj *biz.UsageMetadata) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_UsageMetadata_totalCost,
+		ec.fieldContext_UsageMetadata_totalCostByCurrency,
 		func(ctx context.Context) (any, error) {
-			return obj.TotalCost, nil
+			return obj.TotalCostByCurrency, nil
 		},
 		nil,
-		ec.marshalNDecimal2githubᚗcomᚋshopspringᚋdecimalᚐDecimal,
+		ec.marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_UsageMetadata_totalCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_UsageMetadata_totalCostByCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UsageMetadata",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Decimal does not have child fields")
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_CurrencyAmount_currencyCode(ctx, field)
+			case "amount":
+				return ec.fieldContext_CurrencyAmount_amount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CurrencyAmount", field.Name)
 		},
 	}
 	return fc, nil
@@ -61367,30 +61769,36 @@ func (ec *executionContext) fieldContext_UsageStatsByUser_totalTokens(_ context.
 	return fc, nil
 }
 
-func (ec *executionContext) _UsageStatsByUser_totalCost(ctx context.Context, field graphql.CollectedField, obj *UsageStatsByUser) (ret graphql.Marshaler) {
+func (ec *executionContext) _UsageStatsByUser_totalCostByCurrency(ctx context.Context, field graphql.CollectedField, obj *UsageStatsByUser) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_UsageStatsByUser_totalCost,
+		ec.fieldContext_UsageStatsByUser_totalCostByCurrency,
 		func(ctx context.Context) (any, error) {
-			return obj.TotalCost, nil
+			return obj.TotalCostByCurrency, nil
 		},
 		nil,
-		ec.marshalNFloat2float64,
+		ec.marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ,
 		true,
 		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_UsageStatsByUser_totalCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_UsageStatsByUser_totalCostByCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "UsageStatsByUser",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
+			switch field.Name {
+			case "currencyCode":
+				return ec.fieldContext_CurrencyAmount_currencyCode(ctx, field)
+			case "amount":
+				return ec.fieldContext_CurrencyAmount_amount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CurrencyAmount", field.Name)
 		},
 	}
 	return fc, nil
@@ -66431,7 +66839,7 @@ func (ec *executionContext) unmarshalInputAPIKeyQuotaInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"requests", "totalTokens", "cost", "period"}
+	fieldsInOrder := [...]string{"requests", "totalTokens", "cost", "currencyCode", "period"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -66459,6 +66867,13 @@ func (ec *executionContext) unmarshalInputAPIKeyQuotaInput(ctx context.Context, 
 				return it, err
 			}
 			it.Cost = data
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
 		case "period":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("period"))
 			data, err := ec.unmarshalNAPIKeyQuotaPeriodInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐAPIKeyQuotaPeriod(ctx, v)
@@ -67499,7 +67914,7 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "name", "tags", "baseURL", "apiKeys", "supportedModels", "autoSyncSupportedModels", "defaultTestModel", "settings", "policies", "orderingWeight", "remark"}
+	fieldsInOrder := [...]string{"type", "name", "tags", "baseURL", "apiKeys", "supportedModels", "autoSyncSupportedModels", "defaultTestModel", "settings", "policies", "orderingWeight", "remark", "currencyCode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67590,6 +68005,13 @@ func (ec *executionContext) unmarshalInputBulkCreateChannelsInput(ctx context.Co
 				return it, err
 			}
 			it.Remark = data
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
 		}
 	}
 
@@ -67984,7 +68406,7 @@ func (ec *executionContext) unmarshalInputChannelModelPriceVersionWhereInput(ctx
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "channelModelPriceID", "channelModelPriceIDNEQ", "channelModelPriceIDIn", "channelModelPriceIDNotIn", "status", "statusNEQ", "statusIn", "statusNotIn", "effectiveStartAt", "effectiveStartAtNEQ", "effectiveStartAtIn", "effectiveStartAtNotIn", "effectiveStartAtGT", "effectiveStartAtGTE", "effectiveStartAtLT", "effectiveStartAtLTE", "effectiveEndAt", "effectiveEndAtNEQ", "effectiveEndAtIn", "effectiveEndAtNotIn", "effectiveEndAtGT", "effectiveEndAtGTE", "effectiveEndAtLT", "effectiveEndAtLTE", "effectiveEndAtIsNil", "effectiveEndAtNotNil", "referenceID", "referenceIDNEQ", "referenceIDIn", "referenceIDNotIn", "referenceIDGT", "referenceIDGTE", "referenceIDLT", "referenceIDLTE", "referenceIDContains", "referenceIDHasPrefix", "referenceIDHasSuffix", "referenceIDEqualFold", "referenceIDContainsFold", "hasChannelModelPrice", "hasChannelModelPriceWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDGT", "channelIDGTE", "channelIDLT", "channelIDLTE", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "channelModelPriceID", "channelModelPriceIDNEQ", "channelModelPriceIDIn", "channelModelPriceIDNotIn", "currencyCode", "currencyCodeNEQ", "currencyCodeIn", "currencyCodeNotIn", "currencyCodeGT", "currencyCodeGTE", "currencyCodeLT", "currencyCodeLTE", "currencyCodeContains", "currencyCodeHasPrefix", "currencyCodeHasSuffix", "currencyCodeEqualFold", "currencyCodeContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "effectiveStartAt", "effectiveStartAtNEQ", "effectiveStartAtIn", "effectiveStartAtNotIn", "effectiveStartAtGT", "effectiveStartAtGTE", "effectiveStartAtLT", "effectiveStartAtLTE", "effectiveEndAt", "effectiveEndAtNEQ", "effectiveEndAtIn", "effectiveEndAtNotIn", "effectiveEndAtGT", "effectiveEndAtGTE", "effectiveEndAtLT", "effectiveEndAtLTE", "effectiveEndAtIsNil", "effectiveEndAtNotNil", "referenceID", "referenceIDNEQ", "referenceIDIn", "referenceIDNotIn", "referenceIDGT", "referenceIDGTE", "referenceIDLT", "referenceIDLTE", "referenceIDContains", "referenceIDHasPrefix", "referenceIDHasSuffix", "referenceIDEqualFold", "referenceIDContainsFold", "hasChannelModelPrice", "hasChannelModelPriceWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68403,6 +68825,97 @@ func (ec *executionContext) unmarshalInputChannelModelPriceVersionWhereInput(ctx
 				return it, graphql.ErrorOnPath(ctx, err)
 			}
 			it.ChannelModelPriceIDNotIn = converted
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
+		case "currencyCodeNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeNEQ = data
+		case "currencyCodeIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeIn = data
+		case "currencyCodeNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeNotIn = data
+		case "currencyCodeGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeGT = data
+		case "currencyCodeGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeGTE = data
+		case "currencyCodeLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeLT = data
+		case "currencyCodeLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeLTE = data
+		case "currencyCodeContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeContains = data
+		case "currencyCodeHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeHasPrefix = data
+		case "currencyCodeHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeHasSuffix = data
+		case "currencyCodeEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeEqualFold = data
+		case "currencyCodeContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeContainsFold = data
 		case "status":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
 			data, err := ec.unmarshalOChannelModelPriceVersionStatus2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋchannelmodelpriceversionᚐStatus(ctx, v)
@@ -68675,7 +69188,7 @@ func (ec *executionContext) unmarshalInputChannelModelPriceWhereInput(ctx contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "referenceID", "referenceIDNEQ", "referenceIDIn", "referenceIDNotIn", "referenceIDGT", "referenceIDGTE", "referenceIDLT", "referenceIDLTE", "referenceIDContains", "referenceIDHasPrefix", "referenceIDHasSuffix", "referenceIDEqualFold", "referenceIDContainsFold", "hasChannel", "hasChannelWith", "hasVersions", "hasVersionsWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "currencyCode", "currencyCodeNEQ", "currencyCodeIn", "currencyCodeNotIn", "currencyCodeGT", "currencyCodeGTE", "currencyCodeLT", "currencyCodeLTE", "currencyCodeContains", "currencyCodeHasPrefix", "currencyCodeHasSuffix", "currencyCodeEqualFold", "currencyCodeContainsFold", "referenceID", "referenceIDNEQ", "referenceIDIn", "referenceIDNotIn", "referenceIDGT", "referenceIDGTE", "referenceIDLT", "referenceIDLTE", "referenceIDContains", "referenceIDHasPrefix", "referenceIDHasSuffix", "referenceIDEqualFold", "referenceIDContainsFold", "hasChannel", "hasChannelWith", "hasVersions", "hasVersionsWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69038,6 +69551,97 @@ func (ec *executionContext) unmarshalInputChannelModelPriceWhereInput(ctx contex
 				return it, err
 			}
 			it.ModelIDContainsFold = data
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
+		case "currencyCodeNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeNEQ = data
+		case "currencyCodeIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeIn = data
+		case "currencyCodeNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeNotIn = data
+		case "currencyCodeGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeGT = data
+		case "currencyCodeGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeGTE = data
+		case "currencyCodeLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeLT = data
+		case "currencyCodeLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeLTE = data
+		case "currencyCodeContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeContains = data
+		case "currencyCodeHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeHasPrefix = data
+		case "currencyCodeHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeHasSuffix = data
+		case "currencyCodeEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeEqualFold = data
+		case "currencyCodeContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeContainsFold = data
 		case "referenceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("referenceID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -70757,7 +71361,7 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "autoSyncSupportedModels", "autoSyncSupportedModelsNEQ", "autoSyncModelPattern", "autoSyncModelPatternNEQ", "autoSyncModelPatternIn", "autoSyncModelPatternNotIn", "autoSyncModelPatternGT", "autoSyncModelPatternGTE", "autoSyncModelPatternLT", "autoSyncModelPatternLTE", "autoSyncModelPatternContains", "autoSyncModelPatternHasPrefix", "autoSyncModelPatternHasSuffix", "autoSyncModelPatternIsNil", "autoSyncModelPatternNotNil", "autoSyncModelPatternEqualFold", "autoSyncModelPatternContainsFold", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "orderingWeight", "orderingWeightNEQ", "orderingWeightIn", "orderingWeightNotIn", "orderingWeightGT", "orderingWeightGTE", "orderingWeightLT", "orderingWeightLTE", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "autoDisabledAt", "autoDisabledAtNEQ", "autoDisabledAtIn", "autoDisabledAtNotIn", "autoDisabledAtGT", "autoDisabledAtGTE", "autoDisabledAtLT", "autoDisabledAtLTE", "autoDisabledAtIsNil", "autoDisabledAtNotNil", "autoDisableExpiresAt", "autoDisableExpiresAtNEQ", "autoDisableExpiresAtIn", "autoDisableExpiresAtNotIn", "autoDisableExpiresAtGT", "autoDisableExpiresAtGTE", "autoDisableExpiresAtLT", "autoDisableExpiresAtLTE", "autoDisableExpiresAtIsNil", "autoDisableExpiresAtNotNil", "remark", "remarkNEQ", "remarkIn", "remarkNotIn", "remarkGT", "remarkGTE", "remarkLT", "remarkLTE", "remarkContains", "remarkHasPrefix", "remarkHasSuffix", "remarkIsNil", "remarkNotNil", "remarkEqualFold", "remarkContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith", "hasUsageLogs", "hasUsageLogsWith", "hasChannelProbes", "hasChannelProbesWith", "hasChannelModelPrices", "hasChannelModelPricesWith", "hasProviderQuotaStatus", "hasProviderQuotaStatusWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "type", "typeNEQ", "typeIn", "typeNotIn", "baseURL", "baseURLNEQ", "baseURLIn", "baseURLNotIn", "baseURLGT", "baseURLGTE", "baseURLLT", "baseURLLTE", "baseURLContains", "baseURLHasPrefix", "baseURLHasSuffix", "baseURLIsNil", "baseURLNotNil", "baseURLEqualFold", "baseURLContainsFold", "name", "nameNEQ", "nameIn", "nameNotIn", "nameGT", "nameGTE", "nameLT", "nameLTE", "nameContains", "nameHasPrefix", "nameHasSuffix", "nameEqualFold", "nameContainsFold", "status", "statusNEQ", "statusIn", "statusNotIn", "autoSyncSupportedModels", "autoSyncSupportedModelsNEQ", "autoSyncModelPattern", "autoSyncModelPatternNEQ", "autoSyncModelPatternIn", "autoSyncModelPatternNotIn", "autoSyncModelPatternGT", "autoSyncModelPatternGTE", "autoSyncModelPatternLT", "autoSyncModelPatternLTE", "autoSyncModelPatternContains", "autoSyncModelPatternHasPrefix", "autoSyncModelPatternHasSuffix", "autoSyncModelPatternIsNil", "autoSyncModelPatternNotNil", "autoSyncModelPatternEqualFold", "autoSyncModelPatternContainsFold", "defaultTestModel", "defaultTestModelNEQ", "defaultTestModelIn", "defaultTestModelNotIn", "defaultTestModelGT", "defaultTestModelGTE", "defaultTestModelLT", "defaultTestModelLTE", "defaultTestModelContains", "defaultTestModelHasPrefix", "defaultTestModelHasSuffix", "defaultTestModelEqualFold", "defaultTestModelContainsFold", "orderingWeight", "orderingWeightNEQ", "orderingWeightIn", "orderingWeightNotIn", "orderingWeightGT", "orderingWeightGTE", "orderingWeightLT", "orderingWeightLTE", "errorMessage", "errorMessageNEQ", "errorMessageIn", "errorMessageNotIn", "errorMessageGT", "errorMessageGTE", "errorMessageLT", "errorMessageLTE", "errorMessageContains", "errorMessageHasPrefix", "errorMessageHasSuffix", "errorMessageIsNil", "errorMessageNotNil", "errorMessageEqualFold", "errorMessageContainsFold", "autoDisabledAt", "autoDisabledAtNEQ", "autoDisabledAtIn", "autoDisabledAtNotIn", "autoDisabledAtGT", "autoDisabledAtGTE", "autoDisabledAtLT", "autoDisabledAtLTE", "autoDisabledAtIsNil", "autoDisabledAtNotNil", "autoDisableExpiresAt", "autoDisableExpiresAtNEQ", "autoDisableExpiresAtIn", "autoDisableExpiresAtNotIn", "autoDisableExpiresAtGT", "autoDisableExpiresAtGTE", "autoDisableExpiresAtLT", "autoDisableExpiresAtLTE", "autoDisableExpiresAtIsNil", "autoDisableExpiresAtNotNil", "remark", "remarkNEQ", "remarkIn", "remarkNotIn", "remarkGT", "remarkGTE", "remarkLT", "remarkLTE", "remarkContains", "remarkHasPrefix", "remarkHasSuffix", "remarkIsNil", "remarkNotNil", "remarkEqualFold", "remarkContainsFold", "currencyCode", "currencyCodeNEQ", "currencyCodeIn", "currencyCodeNotIn", "currencyCodeGT", "currencyCodeGTE", "currencyCodeLT", "currencyCodeLTE", "currencyCodeContains", "currencyCodeHasPrefix", "currencyCodeHasSuffix", "currencyCodeEqualFold", "currencyCodeContainsFold", "hasRequests", "hasRequestsWith", "hasExecutions", "hasExecutionsWith", "hasUsageLogs", "hasUsageLogsWith", "hasChannelProbes", "hasChannelProbesWith", "hasChannelModelPrices", "hasChannelModelPricesWith", "hasProviderQuotaStatus", "hasProviderQuotaStatusWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -71853,6 +72457,97 @@ func (ec *executionContext) unmarshalInputChannelWhereInput(ctx context.Context,
 				return it, err
 			}
 			it.RemarkContainsFold = data
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
+		case "currencyCodeNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeNEQ = data
+		case "currencyCodeIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeIn = data
+		case "currencyCodeNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeNotIn = data
+		case "currencyCodeGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeGT = data
+		case "currencyCodeGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeGTE = data
+		case "currencyCodeLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeLT = data
+		case "currencyCodeLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeLTE = data
+		case "currencyCodeContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeContains = data
+		case "currencyCodeHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeHasPrefix = data
+		case "currencyCodeHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeHasSuffix = data
+		case "currencyCodeEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeEqualFold = data
+		case "currencyCodeContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCodeContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCodeContainsFold = data
 		case "hasRequests":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasRequests"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -72332,7 +73027,7 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "baseURL", "name", "credentials", "supportedModels", "manualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "tags", "defaultTestModel", "policies", "settings", "orderingWeight", "remark", "endpoints"}
+	fieldsInOrder := [...]string{"type", "baseURL", "name", "credentials", "supportedModels", "manualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "tags", "defaultTestModel", "policies", "settings", "orderingWeight", "remark", "currencyCode", "endpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -72437,6 +73132,13 @@ func (ec *executionContext) unmarshalInputCreateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.Remark = data
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
 		case "endpoints":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endpoints"))
 			data, err := ec.unmarshalOChannelEndpointInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ(ctx, v)
@@ -73287,7 +73989,7 @@ func (ec *executionContext) unmarshalInputCreateUsageLogInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiKeyID", "modelID", "promptTokens", "completionTokens", "totalTokens", "promptAudioTokens", "promptCachedTokens", "promptWriteCachedTokens", "promptWriteCachedTokens5m", "promptWriteCachedTokens1h", "completionAudioTokens", "completionReasoningTokens", "completionAcceptedPredictionTokens", "completionRejectedPredictionTokens", "source", "format", "totalCost", "costItems", "costPriceReferenceID", "requestID", "projectID", "channelID"}
+	fieldsInOrder := [...]string{"apiKeyID", "modelID", "promptTokens", "completionTokens", "totalTokens", "promptAudioTokens", "promptCachedTokens", "promptWriteCachedTokens", "promptWriteCachedTokens5m", "promptWriteCachedTokens1h", "completionAudioTokens", "completionReasoningTokens", "completionAcceptedPredictionTokens", "completionRejectedPredictionTokens", "source", "format", "totalCost", "costCurrencyCode", "costItems", "costPriceReferenceID", "requestID", "projectID", "channelID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73413,6 +74115,13 @@ func (ec *executionContext) unmarshalInputCreateUsageLogInput(ctx context.Contex
 				return it, err
 			}
 			it.TotalCost = data
+		case "costCurrencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCode = data
 		case "costItems":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costItems"))
 			data, err := ec.unmarshalOCostItemInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItemᚄ(ctx, v)
@@ -84830,7 +85539,7 @@ func (ec *executionContext) unmarshalInputSaveChannelModelPriceInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"modelId", "price"}
+	fieldsInOrder := [...]string{"modelId", "price", "currencyCode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -84851,6 +85560,13 @@ func (ec *executionContext) unmarshalInputSaveChannelModelPriceInput(ctx context
 				return it, err
 			}
 			it.Price = data
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
 		}
 	}
 
@@ -86967,7 +87683,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"type", "baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "manualModels", "appendManualModels", "clearManualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "clearAutoSyncModelPattern", "tags", "appendTags", "clearTags", "defaultTestModel", "policies", "clearPolicies", "settings", "clearSettings", "orderingWeight", "errorMessage", "clearErrorMessage", "remark", "clearRemark", "endpoints", "appendEndpoints", "clearEndpoints"}
+	fieldsInOrder := [...]string{"type", "baseURL", "clearBaseURL", "name", "status", "credentials", "supportedModels", "appendSupportedModels", "manualModels", "appendManualModels", "clearManualModels", "autoSyncSupportedModels", "autoSyncModelPattern", "clearAutoSyncModelPattern", "tags", "appendTags", "clearTags", "defaultTestModel", "policies", "clearPolicies", "settings", "clearSettings", "orderingWeight", "errorMessage", "clearErrorMessage", "remark", "clearRemark", "currencyCode", "endpoints", "appendEndpoints", "clearEndpoints"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -87163,6 +87879,13 @@ func (ec *executionContext) unmarshalInputUpdateChannelInput(ctx context.Context
 				return it, err
 			}
 			it.ClearRemark = data
+		case "currencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrencyCode = data
 		case "endpoints":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("endpoints"))
 			data, err := ec.unmarshalOChannelEndpointInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelEndpointᚄ(ctx, v)
@@ -88878,7 +89601,7 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"promptTokens", "completionTokens", "totalTokens", "promptAudioTokens", "clearPromptAudioTokens", "promptCachedTokens", "clearPromptCachedTokens", "promptWriteCachedTokens", "clearPromptWriteCachedTokens", "promptWriteCachedTokens5m", "clearPromptWriteCachedTokens5m", "promptWriteCachedTokens1h", "clearPromptWriteCachedTokens1h", "completionAudioTokens", "clearCompletionAudioTokens", "completionReasoningTokens", "clearCompletionReasoningTokens", "completionAcceptedPredictionTokens", "clearCompletionAcceptedPredictionTokens", "completionRejectedPredictionTokens", "clearCompletionRejectedPredictionTokens", "totalCost", "clearTotalCost", "costItems", "appendCostItems", "clearCostItems", "costPriceReferenceID", "clearCostPriceReferenceID"}
+	fieldsInOrder := [...]string{"promptTokens", "completionTokens", "totalTokens", "promptAudioTokens", "clearPromptAudioTokens", "promptCachedTokens", "clearPromptCachedTokens", "promptWriteCachedTokens", "clearPromptWriteCachedTokens", "promptWriteCachedTokens5m", "clearPromptWriteCachedTokens5m", "promptWriteCachedTokens1h", "clearPromptWriteCachedTokens1h", "completionAudioTokens", "clearCompletionAudioTokens", "completionReasoningTokens", "clearCompletionReasoningTokens", "completionAcceptedPredictionTokens", "clearCompletionAcceptedPredictionTokens", "completionRejectedPredictionTokens", "clearCompletionRejectedPredictionTokens", "totalCost", "clearTotalCost", "costCurrencyCode", "costItems", "appendCostItems", "clearCostItems", "costPriceReferenceID", "clearCostPriceReferenceID"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -89046,6 +89769,13 @@ func (ec *executionContext) unmarshalInputUpdateUsageLogInput(ctx context.Contex
 				return it, err
 			}
 			it.ClearTotalCost = data
+		case "costCurrencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCode = data
 		case "costItems":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costItems"))
 			data, err := ec.unmarshalOCostItemInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCostItemᚄ(ctx, v)
@@ -89403,7 +90133,7 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDGT", "apiKeyIDGTE", "apiKeyIDLT", "apiKeyIDLTE", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "promptTokens", "promptTokensNEQ", "promptTokensIn", "promptTokensNotIn", "promptTokensGT", "promptTokensGTE", "promptTokensLT", "promptTokensLTE", "completionTokens", "completionTokensNEQ", "completionTokensIn", "completionTokensNotIn", "completionTokensGT", "completionTokensGTE", "completionTokensLT", "completionTokensLTE", "totalTokens", "totalTokensNEQ", "totalTokensIn", "totalTokensNotIn", "totalTokensGT", "totalTokensGTE", "totalTokensLT", "totalTokensLTE", "promptAudioTokens", "promptAudioTokensNEQ", "promptAudioTokensIn", "promptAudioTokensNotIn", "promptAudioTokensGT", "promptAudioTokensGTE", "promptAudioTokensLT", "promptAudioTokensLTE", "promptAudioTokensIsNil", "promptAudioTokensNotNil", "promptCachedTokens", "promptCachedTokensNEQ", "promptCachedTokensIn", "promptCachedTokensNotIn", "promptCachedTokensGT", "promptCachedTokensGTE", "promptCachedTokensLT", "promptCachedTokensLTE", "promptCachedTokensIsNil", "promptCachedTokensNotNil", "promptWriteCachedTokens", "promptWriteCachedTokensNEQ", "promptWriteCachedTokensIn", "promptWriteCachedTokensNotIn", "promptWriteCachedTokensGT", "promptWriteCachedTokensGTE", "promptWriteCachedTokensLT", "promptWriteCachedTokensLTE", "promptWriteCachedTokensIsNil", "promptWriteCachedTokensNotNil", "promptWriteCachedTokens5m", "promptWriteCachedTokens5mNEQ", "promptWriteCachedTokens5mIn", "promptWriteCachedTokens5mNotIn", "promptWriteCachedTokens5mGT", "promptWriteCachedTokens5mGTE", "promptWriteCachedTokens5mLT", "promptWriteCachedTokens5mLTE", "promptWriteCachedTokens5mIsNil", "promptWriteCachedTokens5mNotNil", "promptWriteCachedTokens1h", "promptWriteCachedTokens1hNEQ", "promptWriteCachedTokens1hIn", "promptWriteCachedTokens1hNotIn", "promptWriteCachedTokens1hGT", "promptWriteCachedTokens1hGTE", "promptWriteCachedTokens1hLT", "promptWriteCachedTokens1hLTE", "promptWriteCachedTokens1hIsNil", "promptWriteCachedTokens1hNotNil", "completionAudioTokens", "completionAudioTokensNEQ", "completionAudioTokensIn", "completionAudioTokensNotIn", "completionAudioTokensGT", "completionAudioTokensGTE", "completionAudioTokensLT", "completionAudioTokensLTE", "completionAudioTokensIsNil", "completionAudioTokensNotNil", "completionReasoningTokens", "completionReasoningTokensNEQ", "completionReasoningTokensIn", "completionReasoningTokensNotIn", "completionReasoningTokensGT", "completionReasoningTokensGTE", "completionReasoningTokensLT", "completionReasoningTokensLTE", "completionReasoningTokensIsNil", "completionReasoningTokensNotNil", "completionAcceptedPredictionTokens", "completionAcceptedPredictionTokensNEQ", "completionAcceptedPredictionTokensIn", "completionAcceptedPredictionTokensNotIn", "completionAcceptedPredictionTokensGT", "completionAcceptedPredictionTokensGTE", "completionAcceptedPredictionTokensLT", "completionAcceptedPredictionTokensLTE", "completionAcceptedPredictionTokensIsNil", "completionAcceptedPredictionTokensNotNil", "completionRejectedPredictionTokens", "completionRejectedPredictionTokensNEQ", "completionRejectedPredictionTokensIn", "completionRejectedPredictionTokensNotIn", "completionRejectedPredictionTokensGT", "completionRejectedPredictionTokensGTE", "completionRejectedPredictionTokensLT", "completionRejectedPredictionTokensLTE", "completionRejectedPredictionTokensIsNil", "completionRejectedPredictionTokensNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "totalCost", "totalCostNEQ", "totalCostIn", "totalCostNotIn", "totalCostGT", "totalCostGTE", "totalCostLT", "totalCostLTE", "totalCostIsNil", "totalCostNotNil", "costPriceReferenceID", "costPriceReferenceIDNEQ", "costPriceReferenceIDIn", "costPriceReferenceIDNotIn", "costPriceReferenceIDGT", "costPriceReferenceIDGTE", "costPriceReferenceIDLT", "costPriceReferenceIDLTE", "costPriceReferenceIDContains", "costPriceReferenceIDHasPrefix", "costPriceReferenceIDHasSuffix", "costPriceReferenceIDIsNil", "costPriceReferenceIDNotNil", "costPriceReferenceIDEqualFold", "costPriceReferenceIDContainsFold", "hasRequest", "hasRequestWith", "hasProject", "hasProjectWith", "hasChannel", "hasChannelWith"}
+	fieldsInOrder := [...]string{"not", "and", "or", "id", "idNEQ", "idIn", "idNotIn", "idGT", "idGTE", "idLT", "idLTE", "createdAt", "createdAtNEQ", "createdAtIn", "createdAtNotIn", "createdAtGT", "createdAtGTE", "createdAtLT", "createdAtLTE", "updatedAt", "updatedAtNEQ", "updatedAtIn", "updatedAtNotIn", "updatedAtGT", "updatedAtGTE", "updatedAtLT", "updatedAtLTE", "requestID", "requestIDNEQ", "requestIDIn", "requestIDNotIn", "apiKeyID", "apiKeyIDNEQ", "apiKeyIDIn", "apiKeyIDNotIn", "apiKeyIDGT", "apiKeyIDGTE", "apiKeyIDLT", "apiKeyIDLTE", "apiKeyIDIsNil", "apiKeyIDNotNil", "projectID", "projectIDNEQ", "projectIDIn", "projectIDNotIn", "channelID", "channelIDNEQ", "channelIDIn", "channelIDNotIn", "channelIDIsNil", "channelIDNotNil", "modelID", "modelIDNEQ", "modelIDIn", "modelIDNotIn", "modelIDGT", "modelIDGTE", "modelIDLT", "modelIDLTE", "modelIDContains", "modelIDHasPrefix", "modelIDHasSuffix", "modelIDEqualFold", "modelIDContainsFold", "promptTokens", "promptTokensNEQ", "promptTokensIn", "promptTokensNotIn", "promptTokensGT", "promptTokensGTE", "promptTokensLT", "promptTokensLTE", "completionTokens", "completionTokensNEQ", "completionTokensIn", "completionTokensNotIn", "completionTokensGT", "completionTokensGTE", "completionTokensLT", "completionTokensLTE", "totalTokens", "totalTokensNEQ", "totalTokensIn", "totalTokensNotIn", "totalTokensGT", "totalTokensGTE", "totalTokensLT", "totalTokensLTE", "promptAudioTokens", "promptAudioTokensNEQ", "promptAudioTokensIn", "promptAudioTokensNotIn", "promptAudioTokensGT", "promptAudioTokensGTE", "promptAudioTokensLT", "promptAudioTokensLTE", "promptAudioTokensIsNil", "promptAudioTokensNotNil", "promptCachedTokens", "promptCachedTokensNEQ", "promptCachedTokensIn", "promptCachedTokensNotIn", "promptCachedTokensGT", "promptCachedTokensGTE", "promptCachedTokensLT", "promptCachedTokensLTE", "promptCachedTokensIsNil", "promptCachedTokensNotNil", "promptWriteCachedTokens", "promptWriteCachedTokensNEQ", "promptWriteCachedTokensIn", "promptWriteCachedTokensNotIn", "promptWriteCachedTokensGT", "promptWriteCachedTokensGTE", "promptWriteCachedTokensLT", "promptWriteCachedTokensLTE", "promptWriteCachedTokensIsNil", "promptWriteCachedTokensNotNil", "promptWriteCachedTokens5m", "promptWriteCachedTokens5mNEQ", "promptWriteCachedTokens5mIn", "promptWriteCachedTokens5mNotIn", "promptWriteCachedTokens5mGT", "promptWriteCachedTokens5mGTE", "promptWriteCachedTokens5mLT", "promptWriteCachedTokens5mLTE", "promptWriteCachedTokens5mIsNil", "promptWriteCachedTokens5mNotNil", "promptWriteCachedTokens1h", "promptWriteCachedTokens1hNEQ", "promptWriteCachedTokens1hIn", "promptWriteCachedTokens1hNotIn", "promptWriteCachedTokens1hGT", "promptWriteCachedTokens1hGTE", "promptWriteCachedTokens1hLT", "promptWriteCachedTokens1hLTE", "promptWriteCachedTokens1hIsNil", "promptWriteCachedTokens1hNotNil", "completionAudioTokens", "completionAudioTokensNEQ", "completionAudioTokensIn", "completionAudioTokensNotIn", "completionAudioTokensGT", "completionAudioTokensGTE", "completionAudioTokensLT", "completionAudioTokensLTE", "completionAudioTokensIsNil", "completionAudioTokensNotNil", "completionReasoningTokens", "completionReasoningTokensNEQ", "completionReasoningTokensIn", "completionReasoningTokensNotIn", "completionReasoningTokensGT", "completionReasoningTokensGTE", "completionReasoningTokensLT", "completionReasoningTokensLTE", "completionReasoningTokensIsNil", "completionReasoningTokensNotNil", "completionAcceptedPredictionTokens", "completionAcceptedPredictionTokensNEQ", "completionAcceptedPredictionTokensIn", "completionAcceptedPredictionTokensNotIn", "completionAcceptedPredictionTokensGT", "completionAcceptedPredictionTokensGTE", "completionAcceptedPredictionTokensLT", "completionAcceptedPredictionTokensLTE", "completionAcceptedPredictionTokensIsNil", "completionAcceptedPredictionTokensNotNil", "completionRejectedPredictionTokens", "completionRejectedPredictionTokensNEQ", "completionRejectedPredictionTokensIn", "completionRejectedPredictionTokensNotIn", "completionRejectedPredictionTokensGT", "completionRejectedPredictionTokensGTE", "completionRejectedPredictionTokensLT", "completionRejectedPredictionTokensLTE", "completionRejectedPredictionTokensIsNil", "completionRejectedPredictionTokensNotNil", "source", "sourceNEQ", "sourceIn", "sourceNotIn", "format", "formatNEQ", "formatIn", "formatNotIn", "formatGT", "formatGTE", "formatLT", "formatLTE", "formatContains", "formatHasPrefix", "formatHasSuffix", "formatEqualFold", "formatContainsFold", "totalCost", "totalCostNEQ", "totalCostIn", "totalCostNotIn", "totalCostGT", "totalCostGTE", "totalCostLT", "totalCostLTE", "totalCostIsNil", "totalCostNotNil", "costCurrencyCode", "costCurrencyCodeNEQ", "costCurrencyCodeIn", "costCurrencyCodeNotIn", "costCurrencyCodeGT", "costCurrencyCodeGTE", "costCurrencyCodeLT", "costCurrencyCodeLTE", "costCurrencyCodeContains", "costCurrencyCodeHasPrefix", "costCurrencyCodeHasSuffix", "costCurrencyCodeEqualFold", "costCurrencyCodeContainsFold", "costPriceReferenceID", "costPriceReferenceIDNEQ", "costPriceReferenceIDIn", "costPriceReferenceIDNotIn", "costPriceReferenceIDGT", "costPriceReferenceIDGTE", "costPriceReferenceIDLT", "costPriceReferenceIDLTE", "costPriceReferenceIDContains", "costPriceReferenceIDHasPrefix", "costPriceReferenceIDHasSuffix", "costPriceReferenceIDIsNil", "costPriceReferenceIDNotNil", "costPriceReferenceIDEqualFold", "costPriceReferenceIDContainsFold", "hasRequest", "hasRequestWith", "hasProject", "hasProjectWith", "hasChannel", "hasChannelWith"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -90925,6 +91655,97 @@ func (ec *executionContext) unmarshalInputUsageLogWhereInput(ctx context.Context
 				return it, err
 			}
 			it.TotalCostNotNil = data
+		case "costCurrencyCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCode = data
+		case "costCurrencyCodeNEQ":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeNEQ"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeNEQ = data
+		case "costCurrencyCodeIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeIn = data
+		case "costCurrencyCodeNotIn":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeNotIn"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeNotIn = data
+		case "costCurrencyCodeGT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeGT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeGT = data
+		case "costCurrencyCodeGTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeGTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeGTE = data
+		case "costCurrencyCodeLT":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeLT"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeLT = data
+		case "costCurrencyCodeLTE":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeLTE"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeLTE = data
+		case "costCurrencyCodeContains":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeContains"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeContains = data
+		case "costCurrencyCodeHasPrefix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeHasPrefix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeHasPrefix = data
+		case "costCurrencyCodeHasSuffix":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeHasSuffix"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeHasSuffix = data
+		case "costCurrencyCodeEqualFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeEqualFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeEqualFold = data
+		case "costCurrencyCodeContainsFold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costCurrencyCodeContainsFold"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CostCurrencyCodeContainsFold = data
 		case "costPriceReferenceID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("costPriceReferenceID"))
 			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
@@ -93815,6 +94636,8 @@ func (ec *executionContext) _APIKeyQuota(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._APIKeyQuota_totalTokens(ctx, field, obj)
 		case "cost":
 			out.Values[i] = ec._APIKeyQuota_cost(ctx, field, obj)
+		case "currencyCode":
+			out.Values[i] = ec._APIKeyQuota_currencyCode(ctx, field, obj)
 		case "period":
 			out.Values[i] = ec._APIKeyQuota_period(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -93995,6 +94818,11 @@ func (ec *executionContext) _APIKeyQuotaUsage(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "currencyCode":
+			out.Values[i] = ec._APIKeyQuotaUsage_currencyCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -94166,8 +94994,8 @@ func (ec *executionContext) _AnalyticsDailyStat(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "cost":
-			out.Values[i] = ec._AnalyticsDailyStat_cost(ctx, field, obj)
+		case "costByCurrency":
+			out.Values[i] = ec._AnalyticsDailyStat_costByCurrency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -94240,8 +95068,8 @@ func (ec *executionContext) _AnalyticsDimensionStat(ctx context.Context, sel ast
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "cost":
-			out.Values[i] = ec._AnalyticsDimensionStat_cost(ctx, field, obj)
+		case "costByCurrency":
+			out.Values[i] = ec._AnalyticsDimensionStat_costByCurrency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -94349,8 +95177,8 @@ func (ec *executionContext) _AnalyticsOverview(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "totalCost":
-			out.Values[i] = ec._AnalyticsOverview_totalCost(ctx, field, obj)
+		case "totalCostByCurrency":
+			out.Values[i] = ec._AnalyticsOverview_totalCostByCurrency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -95147,6 +95975,11 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Channel_autoDisableExpiresAt(ctx, field, obj)
 		case "remark":
 			out.Values[i] = ec._Channel_remark(ctx, field, obj)
+		case "currencyCode":
+			out.Values[i] = ec._Channel_currencyCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "endpoints":
 			out.Values[i] = ec._Channel_endpoints(ctx, field, obj)
 		case "requests":
@@ -96010,6 +96843,11 @@ func (ec *executionContext) _ChannelModelPrice(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "currencyCode":
+			out.Values[i] = ec._ChannelModelPrice_currencyCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "price":
 			out.Values[i] = ec._ChannelModelPrice_price(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -96302,6 +97140,11 @@ func (ec *executionContext) _ChannelModelPriceVersion(ctx context.Context, sel a
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "currencyCode":
+			out.Values[i] = ec._ChannelModelPriceVersion_currencyCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "price":
 			out.Values[i] = ec._ChannelModelPriceVersion_price(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -98111,8 +98954,8 @@ func (ec *executionContext) _CostStatsByAPIKey(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "cost":
-			out.Values[i] = ec._CostStatsByAPIKey_cost(ctx, field, obj)
+		case "costByCurrency":
+			out.Values[i] = ec._CostStatsByAPIKey_costByCurrency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -98155,8 +98998,8 @@ func (ec *executionContext) _CostStatsByChannel(ctx context.Context, sel ast.Sel
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "cost":
-			out.Values[i] = ec._CostStatsByChannel_cost(ctx, field, obj)
+		case "costByCurrency":
+			out.Values[i] = ec._CostStatsByChannel_costByCurrency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -98199,8 +99042,52 @@ func (ec *executionContext) _CostStatsByModel(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "cost":
-			out.Values[i] = ec._CostStatsByModel_cost(ctx, field, obj)
+		case "costByCurrency":
+			out.Values[i] = ec._CostStatsByModel_costByCurrency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var currencyAmountImplementors = []string{"CurrencyAmount"}
+
+func (ec *executionContext) _CurrencyAmount(ctx context.Context, sel ast.SelectionSet, obj *objects.CurrencyAmount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, currencyAmountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CurrencyAmount")
+		case "currencyCode":
+			out.Values[i] = ec._CurrencyAmount_currencyCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "amount":
+			out.Values[i] = ec._CurrencyAmount_amount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -98253,8 +99140,8 @@ func (ec *executionContext) _DailyRequestStats(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "cost":
-			out.Values[i] = ec._DailyRequestStats_cost(ctx, field, obj)
+		case "costByCurrency":
+			out.Values[i] = ec._DailyRequestStats_costByCurrency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -111716,6 +112603,11 @@ func (ec *executionContext) _UsageLog(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "totalCost":
 			out.Values[i] = ec._UsageLog_totalCost(ctx, field, obj)
+		case "costCurrencyCode":
+			out.Values[i] = ec._UsageLog_costCurrencyCode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "costItems":
 			out.Values[i] = ec._UsageLog_costItems(ctx, field, obj)
 		case "costPriceReferenceID":
@@ -111971,8 +112863,8 @@ func (ec *executionContext) _UsageMetadata(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "totalCost":
-			out.Values[i] = ec._UsageMetadata_totalCost(ctx, field, obj)
+		case "totalCostByCurrency":
+			out.Values[i] = ec._UsageMetadata_totalCostByCurrency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -112030,8 +112922,8 @@ func (ec *executionContext) _UsageStatsByUser(ctx context.Context, sel ast.Selec
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "totalCost":
-			out.Values[i] = ec._UsageStatsByUser_totalCost(ctx, field, obj)
+		case "totalCostByCurrency":
+			out.Values[i] = ec._UsageStatsByUser_totalCostByCurrency(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -115913,6 +116805,60 @@ func (ec *executionContext) unmarshalNCreateRoleInput2githubᚗcomᚋloopljᚋax
 func (ec *executionContext) unmarshalNCreateUserInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐCreateUserInput(ctx context.Context, v any) (ent.CreateUserInput, error) {
 	res, err := ec.unmarshalInputCreateUserInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCurrencyAmount2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmountᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.CurrencyAmount) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNCurrencyAmount2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmount(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCurrencyAmount2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCurrencyAmount(ctx context.Context, sel ast.SelectionSet, v *objects.CurrencyAmount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CurrencyAmount(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNCursor2entgoᚗioᚋcontribᚋentgqlᚐCursor(ctx context.Context, v any) (entgql.Cursor[int], error) {

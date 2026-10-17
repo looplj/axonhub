@@ -318,6 +318,20 @@ func (_c *UsageLogCreate) SetNillableTotalCost(v *float64) *UsageLogCreate {
 	return _c
 }
 
+// SetCostCurrencyCode sets the "cost_currency_code" field.
+func (_c *UsageLogCreate) SetCostCurrencyCode(v string) *UsageLogCreate {
+	_c.mutation.SetCostCurrencyCode(v)
+	return _c
+}
+
+// SetNillableCostCurrencyCode sets the "cost_currency_code" field if the given value is not nil.
+func (_c *UsageLogCreate) SetNillableCostCurrencyCode(v *string) *UsageLogCreate {
+	if v != nil {
+		_c.SetCostCurrencyCode(*v)
+	}
+	return _c
+}
+
 // SetCostItems sets the "cost_items" field.
 func (_c *UsageLogCreate) SetCostItems(v []objects.CostItem) *UsageLogCreate {
 	_c.mutation.SetCostItems(v)
@@ -464,6 +478,10 @@ func (_c *UsageLogCreate) defaults() error {
 		v := usagelog.DefaultFormat
 		_c.mutation.SetFormat(v)
 	}
+	if _, ok := _c.mutation.CostCurrencyCode(); !ok {
+		v := usagelog.DefaultCostCurrencyCode
+		_c.mutation.SetCostCurrencyCode(v)
+	}
 	if _, ok := _c.mutation.CostItems(); !ok {
 		v := usagelog.DefaultCostItems
 		_c.mutation.SetCostItems(v)
@@ -501,6 +519,9 @@ func (_c *UsageLogCreate) check() error {
 	}
 	if _, ok := _c.mutation.Format(); !ok {
 		return &ValidationError{Name: "format", err: errors.New(`ent: missing required field "UsageLog.format"`)}
+	}
+	if _, ok := _c.mutation.CostCurrencyCode(); !ok {
+		return &ValidationError{Name: "cost_currency_code", err: errors.New(`ent: missing required field "UsageLog.cost_currency_code"`)}
 	}
 	if len(_c.mutation.RequestIDs()) == 0 {
 		return &ValidationError{Name: "request", err: errors.New(`ent: missing required edge "UsageLog.request"`)}
@@ -610,6 +631,10 @@ func (_c *UsageLogCreate) createSpec() (*UsageLog, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.TotalCost(); ok {
 		_spec.SetField(usagelog.FieldTotalCost, field.TypeFloat64, value)
 		_node.TotalCost = &value
+	}
+	if value, ok := _c.mutation.CostCurrencyCode(); ok {
+		_spec.SetField(usagelog.FieldCostCurrencyCode, field.TypeString, value)
+		_node.CostCurrencyCode = value
 	}
 	if value, ok := _c.mutation.CostItems(); ok {
 		_spec.SetField(usagelog.FieldCostItems, field.TypeJSON, value)
@@ -1025,6 +1050,18 @@ func (u *UsageLogUpsert) AddTotalCost(v float64) *UsageLogUpsert {
 // ClearTotalCost clears the value of the "total_cost" field.
 func (u *UsageLogUpsert) ClearTotalCost() *UsageLogUpsert {
 	u.SetNull(usagelog.FieldTotalCost)
+	return u
+}
+
+// SetCostCurrencyCode sets the "cost_currency_code" field.
+func (u *UsageLogUpsert) SetCostCurrencyCode(v string) *UsageLogUpsert {
+	u.Set(usagelog.FieldCostCurrencyCode, v)
+	return u
+}
+
+// UpdateCostCurrencyCode sets the "cost_currency_code" field to the value that was provided on create.
+func (u *UsageLogUpsert) UpdateCostCurrencyCode() *UsageLogUpsert {
+	u.SetExcluded(usagelog.FieldCostCurrencyCode)
 	return u
 }
 
@@ -1484,6 +1521,20 @@ func (u *UsageLogUpsertOne) UpdateTotalCost() *UsageLogUpsertOne {
 func (u *UsageLogUpsertOne) ClearTotalCost() *UsageLogUpsertOne {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearTotalCost()
+	})
+}
+
+// SetCostCurrencyCode sets the "cost_currency_code" field.
+func (u *UsageLogUpsertOne) SetCostCurrencyCode(v string) *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetCostCurrencyCode(v)
+	})
+}
+
+// UpdateCostCurrencyCode sets the "cost_currency_code" field to the value that was provided on create.
+func (u *UsageLogUpsertOne) UpdateCostCurrencyCode() *UsageLogUpsertOne {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateCostCurrencyCode()
 	})
 }
 
@@ -2115,6 +2166,20 @@ func (u *UsageLogUpsertBulk) UpdateTotalCost() *UsageLogUpsertBulk {
 func (u *UsageLogUpsertBulk) ClearTotalCost() *UsageLogUpsertBulk {
 	return u.Update(func(s *UsageLogUpsert) {
 		s.ClearTotalCost()
+	})
+}
+
+// SetCostCurrencyCode sets the "cost_currency_code" field.
+func (u *UsageLogUpsertBulk) SetCostCurrencyCode(v string) *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.SetCostCurrencyCode(v)
+	})
+}
+
+// UpdateCostCurrencyCode sets the "cost_currency_code" field to the value that was provided on create.
+func (u *UsageLogUpsertBulk) UpdateCostCurrencyCode() *UsageLogUpsertBulk {
+	return u.Update(func(s *UsageLogUpsert) {
+		s.UpdateCostCurrencyCode()
 	})
 }
 

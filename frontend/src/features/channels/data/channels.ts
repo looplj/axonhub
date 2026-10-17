@@ -152,6 +152,7 @@ const CREATE_CHANNEL_MUTATION = `
       }
       orderingWeight
       remark
+      currencyCode
       defaultEndpoints {
         apiFormat
         path
@@ -244,6 +245,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
       }
       orderingWeight
       remark
+      currencyCode
       defaultEndpoints {
         apiFormat
         path
@@ -336,6 +338,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       }
       orderingWeight
       remark
+      currencyCode
       defaultEndpoints {
         apiFormat
         path
@@ -429,6 +432,7 @@ const UPDATE_CHANNEL_MUTATION = `
       orderingWeight
       errorMessage
       remark
+      currencyCode
       defaultEndpoints {
         apiFormat
         path
@@ -707,6 +711,7 @@ const GET_CHANNEL_MODEL_PRICES_QUERY = `
       channelModelPrices {
         id
         modelID
+        currencyCode
         price {
           items {
             itemCode
@@ -780,6 +785,7 @@ const SAVE_CHANNEL_MODEL_PRICES_MUTATION = `
     saveChannelModelPrices(channelId: $channelId, input: $input) {
       id
       modelID
+      currencyCode
       price {
         items {
           itemCode
@@ -1152,6 +1158,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
           orderingWeight
           errorMessage
           remark
+          currencyCode
           defaultEndpoints {
             apiFormat
             path
@@ -1541,6 +1548,7 @@ export interface BulkCreateChannelsInput {
   policies?: ChannelPolicies;
   orderingWeight?: number;
   remark?: string;
+  currencyCode?: string;
 }
 
 export function useBulkCreateChannels() {

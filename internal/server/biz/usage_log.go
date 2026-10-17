@@ -27,9 +27,9 @@ type UsageLogService struct {
 	OnUsageLogCreated func()
 }
 
-func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage) ([]objects.CostItem, *float64, string) {
+func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, modelID string, usage *llm.Usage) ([]objects.CostItem, *float64, string, string) {
 	if usage == nil {
-		return nil, nil, ""
+		return nil, nil, "", ""
 	}
 
 	ch := s.ChannelService.GetEnabledChannel(channelID)
@@ -39,7 +39,7 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 			log.String("model_id", modelID),
 		)
 
-		return nil, nil, ""
+		return nil, nil, "", ""
 	}
 
 	if log.DebugEnabled(ctx) {
@@ -54,17 +54,23 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 		items, total := ComputeUsageCost(usage, modelPrice.Price, time.Now())
 
 		totalCost := total.InexactFloat64()
+		currencyCode := modelPrice.CurrencyCode
+		if currencyCode == "" {
+			currencyCode = objects.DefaultCurrencyCode
+		}
+
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "computed usage cost from cache",
 				log.Int("channel_id", channelID),
 				log.String("model_id", modelID),
 				log.Float64("total_cost", totalCost),
+				log.String("currency_code", currencyCode),
 				log.Int64("total_tokens", usage.TotalTokens),
 				log.String("price_reference_id", modelPrice.ReferenceID),
 			)
 		}
 
-		return items, lo.ToPtr(totalCost), modelPrice.ReferenceID
+		return items, lo.ToPtr(totalCost), modelPrice.ReferenceID, currencyCode
 	}
 
 	// Fallback: the channel has no explicit price for this model, so bill with
@@ -84,10 +90,10 @@ func (s *UsageLogService) computeUsageCost(ctx context.Context, channelID int, m
 			)
 		}
 
-		return items, lo.ToPtr(totalCost), modelLibraryPriceReferenceID(modelID)
+		return items, lo.ToPtr(totalCost), modelLibraryPriceReferenceID(modelID), objects.DefaultCurrencyCode
 	}
 
-	return nil, nil, ""
+	return nil, nil, "", ""
 }
 
 // InjectUsageCost writes AxonHub-calculated cost onto usage when a matching
@@ -99,7 +105,7 @@ func (s *UsageLogService) InjectUsageCost(ctx context.Context, channelID int, mo
 		return
 	}
 
-	_, totalCost, _ := s.computeUsageCost(ctx, channelID, modelID, usage)
+	_, totalCost, _, _ := s.computeUsageCost(ctx, channelID, modelID, usage)
 	usage.Cost = totalCost
 }
 
@@ -175,9 +181,10 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 		totalCost        *float64
 		costItems        []objects.CostItem
 		priceReferenceID string
+		currencyCode     string
 	)
 
-	costItems, totalCost, priceReferenceID = s.computeUsageCost(ctx, params.ChannelID, params.ActualModelID, params.Usage)
+	costItems, totalCost, priceReferenceID, currencyCode = s.computeUsageCost(ctx, params.ChannelID, params.ActualModelID, params.Usage)
 
 	mut = mut.
 		SetNillableTotalCost(totalCost).
@@ -185,6 +192,10 @@ func (s *UsageLogService) CreateUsageLog(ctx context.Context, params CreateUsage
 
 	if priceReferenceID != "" {
 		mut = mut.SetCostPriceReferenceID(priceReferenceID)
+	}
+
+	if currencyCode != "" {
+		mut = mut.SetCostCurrencyCode(currencyCode)
 	}
 
 	usageLog, err := mut.Save(ctx)

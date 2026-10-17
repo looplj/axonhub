@@ -265,6 +265,20 @@ func (_c *ChannelCreate) SetNillableRemark(v *string) *ChannelCreate {
 	return _c
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (_c *ChannelCreate) SetCurrencyCode(v string) *ChannelCreate {
+	_c.mutation.SetCurrencyCode(v)
+	return _c
+}
+
+// SetNillableCurrencyCode sets the "currency_code" field if the given value is not nil.
+func (_c *ChannelCreate) SetNillableCurrencyCode(v *string) *ChannelCreate {
+	if v != nil {
+		_c.SetCurrencyCode(*v)
+	}
+	return _c
+}
+
 // SetEndpoints sets the "endpoints" field.
 func (_c *ChannelCreate) SetEndpoints(v []objects.ChannelEndpoint) *ChannelCreate {
 	_c.mutation.SetEndpoints(v)
@@ -456,6 +470,10 @@ func (_c *ChannelCreate) defaults() error {
 		v := channel.DefaultOrderingWeight
 		_c.mutation.SetOrderingWeight(v)
 	}
+	if _, ok := _c.mutation.CurrencyCode(); !ok {
+		v := channel.DefaultCurrencyCode
+		_c.mutation.SetCurrencyCode(v)
+	}
 	if _, ok := _c.mutation.Endpoints(); !ok {
 		v := channel.DefaultEndpoints
 		_c.mutation.SetEndpoints(v)
@@ -501,6 +519,9 @@ func (_c *ChannelCreate) check() error {
 	}
 	if _, ok := _c.mutation.OrderingWeight(); !ok {
 		return &ValidationError{Name: "ordering_weight", err: errors.New(`ent: missing required field "Channel.ordering_weight"`)}
+	}
+	if _, ok := _c.mutation.CurrencyCode(); !ok {
+		return &ValidationError{Name: "currency_code", err: errors.New(`ent: missing required field "Channel.currency_code"`)}
 	}
 	return nil
 }
@@ -616,6 +637,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Remark(); ok {
 		_spec.SetField(channel.FieldRemark, field.TypeString, value)
 		_node.Remark = &value
+	}
+	if value, ok := _c.mutation.CurrencyCode(); ok {
+		_spec.SetField(channel.FieldCurrencyCode, field.TypeString, value)
+		_node.CurrencyCode = value
 	}
 	if value, ok := _c.mutation.Endpoints(); ok {
 		_spec.SetField(channel.FieldEndpoints, field.TypeJSON, value)
@@ -1099,6 +1124,18 @@ func (u *ChannelUpsert) ClearRemark() *ChannelUpsert {
 	return u
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (u *ChannelUpsert) SetCurrencyCode(v string) *ChannelUpsert {
+	u.Set(channel.FieldCurrencyCode, v)
+	return u
+}
+
+// UpdateCurrencyCode sets the "currency_code" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateCurrencyCode() *ChannelUpsert {
+	u.SetExcluded(channel.FieldCurrencyCode)
+	return u
+}
+
 // SetEndpoints sets the "endpoints" field.
 func (u *ChannelUpsert) SetEndpoints(v []objects.ChannelEndpoint) *ChannelUpsert {
 	u.Set(channel.FieldEndpoints, v)
@@ -1544,6 +1581,20 @@ func (u *ChannelUpsertOne) UpdateRemark() *ChannelUpsertOne {
 func (u *ChannelUpsertOne) ClearRemark() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearRemark()
+	})
+}
+
+// SetCurrencyCode sets the "currency_code" field.
+func (u *ChannelUpsertOne) SetCurrencyCode(v string) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetCurrencyCode(v)
+	})
+}
+
+// UpdateCurrencyCode sets the "currency_code" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateCurrencyCode() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateCurrencyCode()
 	})
 }
 
@@ -2161,6 +2212,20 @@ func (u *ChannelUpsertBulk) UpdateRemark() *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) ClearRemark() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearRemark()
+	})
+}
+
+// SetCurrencyCode sets the "currency_code" field.
+func (u *ChannelUpsertBulk) SetCurrencyCode(v string) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetCurrencyCode(v)
+	})
+}
+
+// UpdateCurrencyCode sets the "currency_code" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateCurrencyCode() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateCurrencyCode()
 	})
 }
 

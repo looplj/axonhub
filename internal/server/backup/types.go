@@ -52,10 +52,11 @@ type BackupAPIKey struct {
 }
 
 type BackupChannelModelPrice struct {
-	ChannelName string             `json:"channel_name"`
-	ModelID     string             `json:"model_id"`
-	Price       objects.ModelPrice `json:"price"`
-	ReferenceID string             `json:"reference_id"`
+	ChannelName  string             `json:"channel_name"`
+	ModelID      string             `json:"model_id"`
+	CurrencyCode string             `json:"currency_code,omitempty"`
+	Price        objects.ModelPrice `json:"price"`
+	ReferenceID  string             `json:"reference_id"`
 }
 
 type BackupUsageRequest struct {
@@ -162,6 +163,7 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 		Source                             usagelog.Source    `json:"source,omitempty"`
 		Format                             string             `json:"format,omitempty"`
 		TotalCost                          *float64           `json:"total_cost,omitempty"`
+		CostCurrencyCode                   string             `json:"cost_currency_code,omitempty"`
 		CostItems                          []objects.CostItem `json:"cost_items,omitempty"`
 		CostPriceReferenceID               string             `json:"cost_price_reference_id,omitempty"`
 		ProjectName                        string             `json:"project_name,omitempty"`
@@ -192,6 +194,7 @@ func (l BackupUsageLog) MarshalJSON() ([]byte, error) {
 		Source:                             l.Source,
 		Format:                             l.Format,
 		TotalCost:                          l.TotalCost,
+		CostCurrencyCode:                   l.CostCurrencyCode,
 		CostItems:                          l.CostItems,
 		CostPriceReferenceID:               l.CostPriceReferenceID,
 		ProjectName:                        l.ProjectName,

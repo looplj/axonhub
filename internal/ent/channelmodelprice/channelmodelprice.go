@@ -25,6 +25,8 @@ const (
 	FieldChannelID = "channel_id"
 	// FieldModelID holds the string denoting the model_id field in the database.
 	FieldModelID = "model_id"
+	// FieldCurrencyCode holds the string denoting the currency_code field in the database.
+	FieldCurrencyCode = "currency_code"
 	// FieldPrice holds the string denoting the price field in the database.
 	FieldPrice = "price"
 	// FieldReferenceID holds the string denoting the reference_id field in the database.
@@ -59,6 +61,7 @@ var Columns = []string{
 	FieldDeletedAt,
 	FieldChannelID,
 	FieldModelID,
+	FieldCurrencyCode,
 	FieldPrice,
 	FieldReferenceID,
 }
@@ -90,6 +93,8 @@ var (
 	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultDeletedAt holds the default value on creation for the "deleted_at" field.
 	DefaultDeletedAt int
+	// DefaultCurrencyCode holds the default value on creation for the "currency_code" field.
+	DefaultCurrencyCode string
 )
 
 // OrderOption defines the ordering options for the ChannelModelPrice queries.
@@ -123,6 +128,11 @@ func ByChannelID(opts ...sql.OrderTermOption) OrderOption {
 // ByModelID orders the results by the model_id field.
 func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldModelID, opts...).ToFunc()
+}
+
+// ByCurrencyCode orders the results by the currency_code field.
+func ByCurrencyCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCurrencyCode, opts...).ToFunc()
 }
 
 // ByReferenceID orders the results by the reference_id field.

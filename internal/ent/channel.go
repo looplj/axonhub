@@ -64,6 +64,8 @@ type Channel struct {
 	AutoDisableExpiresAt *time.Time `json:"auto_disable_expires_at,omitempty"`
 	// User-defined remark or note for the channel
 	Remark *string `json:"remark,omitempty"`
+	// Currency of manually entered prices for this channel. Model library prices always use USD.
+	CurrencyCode string `json:"currency_code,omitempty"`
 	// Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
 	Endpoints []objects.ChannelEndpoint `json:"endpoints,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -166,7 +168,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case channel.FieldID, channel.FieldDeletedAt, channel.FieldOrderingWeight:
 			values[i] = new(sql.NullInt64)
-		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldAutoSyncModelPattern, channel.FieldDefaultTestModel, channel.FieldErrorMessage, channel.FieldRemark:
+		case channel.FieldType, channel.FieldBaseURL, channel.FieldName, channel.FieldStatus, channel.FieldAutoSyncModelPattern, channel.FieldDefaultTestModel, channel.FieldErrorMessage, channel.FieldRemark, channel.FieldCurrencyCode:
 			values[i] = new(sql.NullString)
 		case channel.FieldCreatedAt, channel.FieldUpdatedAt, channel.FieldAutoDisabledAt, channel.FieldAutoDisableExpiresAt:
 			values[i] = new(sql.NullTime)
@@ -341,6 +343,12 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 				_m.Remark = new(string)
 				*_m.Remark = value.String
 			}
+		case channel.FieldCurrencyCode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field currency_code", values[i])
+			} else if value.Valid {
+				_m.CurrencyCode = value.String
+			}
 		case channel.FieldEndpoints:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field endpoints", values[i])
@@ -486,6 +494,9 @@ func (_m *Channel) String() string {
 		builder.WriteString("remark=")
 		builder.WriteString(*v)
 	}
+	builder.WriteString(", ")
+	builder.WriteString("currency_code=")
+	builder.WriteString(_m.CurrencyCode)
 	builder.WriteString(", ")
 	builder.WriteString("endpoints=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Endpoints))

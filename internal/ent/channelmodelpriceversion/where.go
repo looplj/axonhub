@@ -80,6 +80,11 @@ func ChannelModelPriceID(v int) predicate.ChannelModelPriceVersion {
 	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldChannelModelPriceID, v))
 }
 
+// CurrencyCode applies equality check predicate on the "currency_code" field. It's identical to CurrencyCodeEQ.
+func CurrencyCode(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldCurrencyCode, v))
+}
+
 // EffectiveStartAt applies equality check predicate on the "effective_start_at" field. It's identical to EffectiveStartAtEQ.
 func EffectiveStartAt(v time.Time) predicate.ChannelModelPriceVersion {
 	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldEffectiveStartAt, v))
@@ -298,6 +303,71 @@ func ChannelModelPriceIDIn(vs ...int) predicate.ChannelModelPriceVersion {
 // ChannelModelPriceIDNotIn applies the NotIn predicate on the "channel_model_price_id" field.
 func ChannelModelPriceIDNotIn(vs ...int) predicate.ChannelModelPriceVersion {
 	return predicate.ChannelModelPriceVersion(sql.FieldNotIn(FieldChannelModelPriceID, vs...))
+}
+
+// CurrencyCodeEQ applies the EQ predicate on the "currency_code" field.
+func CurrencyCodeEQ(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldEQ(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeNEQ applies the NEQ predicate on the "currency_code" field.
+func CurrencyCodeNEQ(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldNEQ(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeIn applies the In predicate on the "currency_code" field.
+func CurrencyCodeIn(vs ...string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldIn(FieldCurrencyCode, vs...))
+}
+
+// CurrencyCodeNotIn applies the NotIn predicate on the "currency_code" field.
+func CurrencyCodeNotIn(vs ...string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldNotIn(FieldCurrencyCode, vs...))
+}
+
+// CurrencyCodeGT applies the GT predicate on the "currency_code" field.
+func CurrencyCodeGT(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldGT(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeGTE applies the GTE predicate on the "currency_code" field.
+func CurrencyCodeGTE(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldGTE(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeLT applies the LT predicate on the "currency_code" field.
+func CurrencyCodeLT(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldLT(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeLTE applies the LTE predicate on the "currency_code" field.
+func CurrencyCodeLTE(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldLTE(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeContains applies the Contains predicate on the "currency_code" field.
+func CurrencyCodeContains(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldContains(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeHasPrefix applies the HasPrefix predicate on the "currency_code" field.
+func CurrencyCodeHasPrefix(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldHasPrefix(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeHasSuffix applies the HasSuffix predicate on the "currency_code" field.
+func CurrencyCodeHasSuffix(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldHasSuffix(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeEqualFold applies the EqualFold predicate on the "currency_code" field.
+func CurrencyCodeEqualFold(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldEqualFold(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeContainsFold applies the ContainsFold predicate on the "currency_code" field.
+func CurrencyCodeContainsFold(v string) predicate.ChannelModelPriceVersion {
+	return predicate.ChannelModelPriceVersion(sql.FieldContainsFold(FieldCurrencyCode, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

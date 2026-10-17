@@ -163,10 +163,11 @@ func (p *APIKeyQuotaPeriod) clone() APIKeyQuotaPeriod {
 }
 
 type APIKeyQuota struct {
-	Requests    *int64            `json:"requests,omitempty"`
-	TotalTokens *int64            `json:"totalTokens,omitempty"`
-	Cost        *decimal.Decimal  `json:"cost,omitempty"`
-	Period      APIKeyQuotaPeriod `json:"period"`
+	Requests     *int64            `json:"requests,omitempty"`
+	TotalTokens  *int64            `json:"totalTokens,omitempty"`
+	Cost         *decimal.Decimal  `json:"cost,omitempty"`
+	CurrencyCode string            `json:"currencyCode,omitempty"`
+	Period       APIKeyQuotaPeriod `json:"period"`
 }
 
 type APIKeyQuotaPeriod struct {

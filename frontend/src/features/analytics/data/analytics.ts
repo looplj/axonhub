@@ -16,6 +16,11 @@ export const analyticsFilterSchema = z.object({
 
 export type AnalyticsFilter = z.infer<typeof analyticsFilterSchema>;
 
+export const currencyAmountSchema = z.object({
+  currencyCode: z.string(),
+  amount: z.number(),
+});
+
 export const analyticsOverviewSchema = z.object({
   totalTokens: z.number(),
   totalInputTokens: z.number(),
@@ -23,7 +28,7 @@ export const analyticsOverviewSchema = z.object({
   totalUncachedInputTokens: z.number(),
   totalOutputTokens: z.number(),
   totalRequests: z.number(),
-  totalCost: z.number(),
+  totalCostByCurrency: z.array(currencyAmountSchema),
 });
 
 export type AnalyticsOverview = z.infer<typeof analyticsOverviewSchema>;
@@ -36,7 +41,7 @@ export const analyticsDailyStatSchema = z.object({
   outputTokens: z.number(),
   totalTokens: z.number(),
   requestCount: z.number(),
-  cost: z.number(),
+  costByCurrency: z.array(currencyAmountSchema),
 });
 
 export type AnalyticsDailyStat = z.infer<typeof analyticsDailyStatSchema>;
@@ -49,7 +54,7 @@ export const analyticsDimensionStatSchema = z.object({
   cachedInputTokens: z.number(),
   outputTokens: z.number(),
   totalTokens: z.number(),
-  cost: z.number(),
+  costByCurrency: z.array(currencyAmountSchema),
   tokensPerSecond: z.number().nullable(),
   ttftMs: z.number().nullable(),
 });
@@ -81,7 +86,10 @@ const ANALYTICS_OVERVIEW_QUERY = `
       totalUncachedInputTokens
       totalOutputTokens
       totalRequests
-      totalCost
+      totalCostByCurrency {
+        currencyCode
+        amount
+      }
     }
   }
 `;
@@ -96,7 +104,10 @@ const ANALYTICS_DAILY_STATS_QUERY = `
       outputTokens
       totalTokens
       requestCount
-      cost
+      costByCurrency {
+        currencyCode
+        amount
+      }
     }
   }
 `;
@@ -111,7 +122,10 @@ const ANALYTICS_DIMENSION_STATS_QUERY = `
       cachedInputTokens
       outputTokens
       totalTokens
-      cost
+      costByCurrency {
+        currencyCode
+        amount
+      }
       tokensPerSecond
       ttftMs
     }

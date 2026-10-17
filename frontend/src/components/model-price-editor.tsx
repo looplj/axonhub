@@ -16,6 +16,7 @@ type PricingMode = 'flat_fee' | 'usage_per_unit' | 'usage_tiered' | 'usage_volum
 type PriceEditorFormValues = {
   prices: Array<{
     modelId: string;
+    currencyCode: string;
     price: {
       items: Array<{
         itemCode: (typeof priceItemCodes)[number];

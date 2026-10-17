@@ -63,6 +63,8 @@ const (
 	FieldAutoDisableExpiresAt = "auto_disable_expires_at"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
+	// FieldCurrencyCode holds the string denoting the currency_code field in the database.
+	FieldCurrencyCode = "currency_code"
 	// FieldEndpoints holds the string denoting the endpoints field in the database.
 	FieldEndpoints = "endpoints"
 	// EdgeRequests holds the string denoting the requests edge name in mutations.
@@ -148,6 +150,7 @@ var Columns = []string{
 	FieldAutoDisabledAt,
 	FieldAutoDisableExpiresAt,
 	FieldRemark,
+	FieldCurrencyCode,
 	FieldEndpoints,
 }
 
@@ -194,6 +197,8 @@ var (
 	DefaultSettings *objects.ChannelSettings
 	// DefaultOrderingWeight holds the default value on creation for the "ordering_weight" field.
 	DefaultOrderingWeight int
+	// DefaultCurrencyCode holds the default value on creation for the "currency_code" field.
+	DefaultCurrencyCode string
 	// DefaultEndpoints holds the default value on creation for the "endpoints" field.
 	DefaultEndpoints []objects.ChannelEndpoint
 )
@@ -401,6 +406,11 @@ func ByAutoDisableExpiresAt(opts ...sql.OrderTermOption) OrderOption {
 // ByRemark orders the results by the remark field.
 func ByRemark(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRemark, opts...).ToFunc()
+}
+
+// ByCurrencyCode orders the results by the currency_code field.
+func ByCurrencyCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCurrencyCode, opts...).ToFunc()
 }
 
 // ByRequestsCount orders the results by requests count.

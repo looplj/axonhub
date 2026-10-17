@@ -202,8 +202,12 @@ func init() {
 	channelDescOrderingWeight := channelFields[14].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
+	// channelDescCurrencyCode is the schema descriptor for currency_code field.
+	channelDescCurrencyCode := channelFields[19].Descriptor()
+	// channel.DefaultCurrencyCode holds the default value on creation for the currency_code field.
+	channel.DefaultCurrencyCode = channelDescCurrencyCode.Default.(string)
 	// channelDescEndpoints is the schema descriptor for endpoints field.
-	channelDescEndpoints := channelFields[19].Descriptor()
+	channelDescEndpoints := channelFields[20].Descriptor()
 	// channel.DefaultEndpoints holds the default value on creation for the endpoints field.
 	channel.DefaultEndpoints = channelDescEndpoints.Default.([]objects.ChannelEndpoint)
 	channelmodelpriceMixin := schema.ChannelModelPrice{}.Mixin()
@@ -241,6 +245,10 @@ func init() {
 	channelmodelpriceDescDeletedAt := channelmodelpriceMixinFields1[0].Descriptor()
 	// channelmodelprice.DefaultDeletedAt holds the default value on creation for the deleted_at field.
 	channelmodelprice.DefaultDeletedAt = channelmodelpriceDescDeletedAt.Default.(int)
+	// channelmodelpriceDescCurrencyCode is the schema descriptor for currency_code field.
+	channelmodelpriceDescCurrencyCode := channelmodelpriceFields[2].Descriptor()
+	// channelmodelprice.DefaultCurrencyCode holds the default value on creation for the currency_code field.
+	channelmodelprice.DefaultCurrencyCode = channelmodelpriceDescCurrencyCode.Default.(string)
 	channelmodelpriceversionMixin := schema.ChannelModelPriceVersion{}.Mixin()
 	channelmodelpriceversion.Policy = privacy.NewPolicies(schema.ChannelModelPriceVersion{})
 	channelmodelpriceversion.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -265,6 +273,10 @@ func init() {
 	channelmodelpriceversion.DefaultUpdatedAt = channelmodelpriceversionDescUpdatedAt.Default.(func() time.Time)
 	// channelmodelpriceversion.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	channelmodelpriceversion.UpdateDefaultUpdatedAt = channelmodelpriceversionDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// channelmodelpriceversionDescCurrencyCode is the schema descriptor for currency_code field.
+	channelmodelpriceversionDescCurrencyCode := channelmodelpriceversionFields[3].Descriptor()
+	// channelmodelpriceversion.DefaultCurrencyCode holds the default value on creation for the currency_code field.
+	channelmodelpriceversion.DefaultCurrencyCode = channelmodelpriceversionDescCurrencyCode.Default.(string)
 	channeloverridetemplateMixin := schema.ChannelOverrideTemplate{}.Mixin()
 	channeloverridetemplate.Policy = privacy.NewPolicies(schema.ChannelOverrideTemplate{})
 	channeloverridetemplate.Hooks[0] = func(next ent.Mutator) ent.Mutator {
@@ -927,8 +939,12 @@ func init() {
 	usagelogDescFormat := usagelogFields[18].Descriptor()
 	// usagelog.DefaultFormat holds the default value on creation for the format field.
 	usagelog.DefaultFormat = usagelogDescFormat.Default.(string)
+	// usagelogDescCostCurrencyCode is the schema descriptor for cost_currency_code field.
+	usagelogDescCostCurrencyCode := usagelogFields[20].Descriptor()
+	// usagelog.DefaultCostCurrencyCode holds the default value on creation for the cost_currency_code field.
+	usagelog.DefaultCostCurrencyCode = usagelogDescCostCurrencyCode.Default.(string)
 	// usagelogDescCostItems is the schema descriptor for cost_items field.
-	usagelogDescCostItems := usagelogFields[20].Descriptor()
+	usagelogDescCostItems := usagelogFields[21].Descriptor()
 	// usagelog.DefaultCostItems holds the default value on creation for the cost_items field.
 	usagelog.DefaultCostItems = usagelogDescCostItems.Default.([]objects.CostItem)
 	userMixin := schema.User{}.Mixin()

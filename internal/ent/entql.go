@@ -117,6 +117,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldAutoDisabledAt:          {Type: field.TypeTime, Column: channel.FieldAutoDisabledAt},
 			channel.FieldAutoDisableExpiresAt:    {Type: field.TypeTime, Column: channel.FieldAutoDisableExpiresAt},
 			channel.FieldRemark:                  {Type: field.TypeString, Column: channel.FieldRemark},
+			channel.FieldCurrencyCode:            {Type: field.TypeString, Column: channel.FieldCurrencyCode},
 			channel.FieldEndpoints:               {Type: field.TypeJSON, Column: channel.FieldEndpoints},
 		},
 	}
@@ -131,13 +132,14 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "ChannelModelPrice",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			channelmodelprice.FieldCreatedAt:   {Type: field.TypeTime, Column: channelmodelprice.FieldCreatedAt},
-			channelmodelprice.FieldUpdatedAt:   {Type: field.TypeTime, Column: channelmodelprice.FieldUpdatedAt},
-			channelmodelprice.FieldDeletedAt:   {Type: field.TypeInt, Column: channelmodelprice.FieldDeletedAt},
-			channelmodelprice.FieldChannelID:   {Type: field.TypeInt, Column: channelmodelprice.FieldChannelID},
-			channelmodelprice.FieldModelID:     {Type: field.TypeString, Column: channelmodelprice.FieldModelID},
-			channelmodelprice.FieldPrice:       {Type: field.TypeJSON, Column: channelmodelprice.FieldPrice},
-			channelmodelprice.FieldReferenceID: {Type: field.TypeString, Column: channelmodelprice.FieldReferenceID},
+			channelmodelprice.FieldCreatedAt:    {Type: field.TypeTime, Column: channelmodelprice.FieldCreatedAt},
+			channelmodelprice.FieldUpdatedAt:    {Type: field.TypeTime, Column: channelmodelprice.FieldUpdatedAt},
+			channelmodelprice.FieldDeletedAt:    {Type: field.TypeInt, Column: channelmodelprice.FieldDeletedAt},
+			channelmodelprice.FieldChannelID:    {Type: field.TypeInt, Column: channelmodelprice.FieldChannelID},
+			channelmodelprice.FieldModelID:      {Type: field.TypeString, Column: channelmodelprice.FieldModelID},
+			channelmodelprice.FieldCurrencyCode: {Type: field.TypeString, Column: channelmodelprice.FieldCurrencyCode},
+			channelmodelprice.FieldPrice:        {Type: field.TypeJSON, Column: channelmodelprice.FieldPrice},
+			channelmodelprice.FieldReferenceID:  {Type: field.TypeString, Column: channelmodelprice.FieldReferenceID},
 		},
 	}
 	graph.Nodes[4] = &sqlgraph.Node{
@@ -156,6 +158,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channelmodelpriceversion.FieldChannelID:           {Type: field.TypeInt, Column: channelmodelpriceversion.FieldChannelID},
 			channelmodelpriceversion.FieldModelID:             {Type: field.TypeString, Column: channelmodelpriceversion.FieldModelID},
 			channelmodelpriceversion.FieldChannelModelPriceID: {Type: field.TypeInt, Column: channelmodelpriceversion.FieldChannelModelPriceID},
+			channelmodelpriceversion.FieldCurrencyCode:        {Type: field.TypeString, Column: channelmodelpriceversion.FieldCurrencyCode},
 			channelmodelpriceversion.FieldPrice:               {Type: field.TypeJSON, Column: channelmodelpriceversion.FieldPrice},
 			channelmodelpriceversion.FieldStatus:              {Type: field.TypeEnum, Column: channelmodelpriceversion.FieldStatus},
 			channelmodelpriceversion.FieldEffectiveStartAt:    {Type: field.TypeTime, Column: channelmodelpriceversion.FieldEffectiveStartAt},
@@ -576,6 +579,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			usagelog.FieldSource:                             {Type: field.TypeEnum, Column: usagelog.FieldSource},
 			usagelog.FieldFormat:                             {Type: field.TypeString, Column: usagelog.FieldFormat},
 			usagelog.FieldTotalCost:                          {Type: field.TypeFloat64, Column: usagelog.FieldTotalCost},
+			usagelog.FieldCostCurrencyCode:                   {Type: field.TypeString, Column: usagelog.FieldCostCurrencyCode},
 			usagelog.FieldCostItems:                          {Type: field.TypeJSON, Column: usagelog.FieldCostItems},
 			usagelog.FieldCostPriceReferenceID:               {Type: field.TypeString, Column: usagelog.FieldCostPriceReferenceID},
 		},
@@ -1799,6 +1803,11 @@ func (f *ChannelFilter) WhereRemark(p entql.StringP) {
 	f.Where(p.Field(channel.FieldRemark))
 }
 
+// WhereCurrencyCode applies the entql string predicate on the currency_code field.
+func (f *ChannelFilter) WhereCurrencyCode(p entql.StringP) {
+	f.Where(p.Field(channel.FieldCurrencyCode))
+}
+
 // WhereEndpoints applies the entql json.RawMessage predicate on the endpoints field.
 func (f *ChannelFilter) WhereEndpoints(p entql.BytesP) {
 	f.Where(p.Field(channel.FieldEndpoints))
@@ -1953,6 +1962,11 @@ func (f *ChannelModelPriceFilter) WhereModelID(p entql.StringP) {
 	f.Where(p.Field(channelmodelprice.FieldModelID))
 }
 
+// WhereCurrencyCode applies the entql string predicate on the currency_code field.
+func (f *ChannelModelPriceFilter) WhereCurrencyCode(p entql.StringP) {
+	f.Where(p.Field(channelmodelprice.FieldCurrencyCode))
+}
+
 // WherePrice applies the entql json.RawMessage predicate on the price field.
 func (f *ChannelModelPriceFilter) WherePrice(p entql.BytesP) {
 	f.Where(p.Field(channelmodelprice.FieldPrice))
@@ -2054,6 +2068,11 @@ func (f *ChannelModelPriceVersionFilter) WhereModelID(p entql.StringP) {
 // WhereChannelModelPriceID applies the entql int predicate on the channel_model_price_id field.
 func (f *ChannelModelPriceVersionFilter) WhereChannelModelPriceID(p entql.IntP) {
 	f.Where(p.Field(channelmodelpriceversion.FieldChannelModelPriceID))
+}
+
+// WhereCurrencyCode applies the entql string predicate on the currency_code field.
+func (f *ChannelModelPriceVersionFilter) WhereCurrencyCode(p entql.StringP) {
+	f.Where(p.Field(channelmodelpriceversion.FieldCurrencyCode))
 }
 
 // WherePrice applies the entql json.RawMessage predicate on the price field.
@@ -4261,6 +4280,11 @@ func (f *UsageLogFilter) WhereFormat(p entql.StringP) {
 // WhereTotalCost applies the entql float64 predicate on the total_cost field.
 func (f *UsageLogFilter) WhereTotalCost(p entql.Float64P) {
 	f.Where(p.Field(usagelog.FieldTotalCost))
+}
+
+// WhereCostCurrencyCode applies the entql string predicate on the cost_currency_code field.
+func (f *UsageLogFilter) WhereCostCurrencyCode(p entql.StringP) {
+	f.Where(p.Field(usagelog.FieldCostCurrencyCode))
 }
 
 // WhereCostItems applies the entql json.RawMessage predicate on the cost_items field.

@@ -36,6 +36,9 @@ func (ChannelModelPrice) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("channel_id").Immutable(),
 		field.String("model_id").Immutable(),
+		field.String("currency_code").
+			Default(objects.DefaultCurrencyCode).
+			Comment("Currency of this price. Model library prices are always USD."),
 		field.JSON("price", objects.ModelPrice{}).Comment("The model price, if changed, it will genearte a new reference id."),
 		field.String("reference_id").Comment("The bill should reference this id.").Unique(),
 	}

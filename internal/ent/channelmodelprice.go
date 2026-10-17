@@ -30,6 +30,8 @@ type ChannelModelPrice struct {
 	ChannelID int `json:"channel_id,omitempty"`
 	// ModelID holds the value of the "model_id" field.
 	ModelID string `json:"model_id,omitempty"`
+	// Currency of this price. Model library prices are always USD.
+	CurrencyCode string `json:"currency_code,omitempty"`
 	// The model price, if changed, it will genearte a new reference id.
 	Price objects.ModelPrice `json:"price,omitempty"`
 	// The bill should reference this id.
@@ -84,7 +86,7 @@ func (*ChannelModelPrice) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case channelmodelprice.FieldID, channelmodelprice.FieldDeletedAt, channelmodelprice.FieldChannelID:
 			values[i] = new(sql.NullInt64)
-		case channelmodelprice.FieldModelID, channelmodelprice.FieldReferenceID:
+		case channelmodelprice.FieldModelID, channelmodelprice.FieldCurrencyCode, channelmodelprice.FieldReferenceID:
 			values[i] = new(sql.NullString)
 		case channelmodelprice.FieldCreatedAt, channelmodelprice.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -138,6 +140,12 @@ func (_m *ChannelModelPrice) assignValues(columns []string, values []any) error 
 				return fmt.Errorf("unexpected type %T for field model_id", values[i])
 			} else if value.Valid {
 				_m.ModelID = value.String
+			}
+		case channelmodelprice.FieldCurrencyCode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field currency_code", values[i])
+			} else if value.Valid {
+				_m.CurrencyCode = value.String
 			}
 		case channelmodelprice.FieldPrice:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -213,6 +221,9 @@ func (_m *ChannelModelPrice) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("model_id=")
 	builder.WriteString(_m.ModelID)
+	builder.WriteString(", ")
+	builder.WriteString("currency_code=")
+	builder.WriteString(_m.CurrencyCode)
 	builder.WriteString(", ")
 	builder.WriteString("price=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Price))

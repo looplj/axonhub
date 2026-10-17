@@ -28,6 +28,7 @@ type DateRangeValue = { start: string; end: string };
 type ScheduleFormValues = {
   prices: Array<{
     modelId: string;
+    currencyCode: string;
     price: {
       items: Array<{
         itemCode: (typeof priceItemCodes)[number];

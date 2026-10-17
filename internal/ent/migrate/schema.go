@@ -118,6 +118,7 @@ var (
 		{Name: "auto_disabled_at", Type: field.TypeTime, Nullable: true},
 		{Name: "auto_disable_expires_at", Type: field.TypeTime, Nullable: true},
 		{Name: "remark", Type: field.TypeString, Nullable: true},
+		{Name: "currency_code", Type: field.TypeString, Default: "USD"},
 		{Name: "endpoints", Type: field.TypeJSON, Nullable: true},
 	}
 	// ChannelsTable holds the schema information for the "channels" table.
@@ -140,6 +141,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
 		{Name: "model_id", Type: field.TypeString},
+		{Name: "currency_code", Type: field.TypeString, Default: "USD"},
 		{Name: "price", Type: field.TypeJSON},
 		{Name: "reference_id", Type: field.TypeString, Unique: true},
 		{Name: "channel_id", Type: field.TypeInt},
@@ -152,7 +154,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_model_prices_channels_channel_model_prices",
-				Columns:    []*schema.Column{ChannelModelPricesColumns[7]},
+				Columns:    []*schema.Column{ChannelModelPricesColumns[8]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -161,7 +163,7 @@ var (
 			{
 				Name:    "channel_model_prices_by_channel_id_model_id",
 				Unique:  true,
-				Columns: []*schema.Column{ChannelModelPricesColumns[7], ChannelModelPricesColumns[4], ChannelModelPricesColumns[3]},
+				Columns: []*schema.Column{ChannelModelPricesColumns[8], ChannelModelPricesColumns[4], ChannelModelPricesColumns[3]},
 			},
 		},
 	}
@@ -172,6 +174,7 @@ var (
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "channel_id", Type: field.TypeInt},
 		{Name: "model_id", Type: field.TypeString},
+		{Name: "currency_code", Type: field.TypeString, Default: "USD"},
 		{Name: "price", Type: field.TypeJSON},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"active", "archived"}},
 		{Name: "effective_start_at", Type: field.TypeTime},
@@ -187,7 +190,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "channel_model_price_versions_channel_model_prices_versions",
-				Columns:    []*schema.Column{ChannelModelPriceVersionsColumns[10]},
+				Columns:    []*schema.Column{ChannelModelPriceVersionsColumns[11]},
 				RefColumns: []*schema.Column{ChannelModelPricesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -882,6 +885,7 @@ var (
 		{Name: "source", Type: field.TypeEnum, Enums: []string{"api", "playground", "test"}, Default: "api"},
 		{Name: "format", Type: field.TypeString, Default: "openai/chat_completions"},
 		{Name: "total_cost", Type: field.TypeFloat64, Nullable: true},
+		{Name: "cost_currency_code", Type: field.TypeString, Default: "USD"},
 		{Name: "cost_items", Type: field.TypeJSON, Nullable: true},
 		{Name: "cost_price_reference_id", Type: field.TypeString, Nullable: true},
 		{Name: "channel_id", Type: field.TypeInt, Nullable: true},
@@ -896,19 +900,19 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "usage_logs_channels_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[22]},
+				Columns:    []*schema.Column{UsageLogsColumns[23]},
 				RefColumns: []*schema.Column{ChannelsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "usage_logs_projects_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[23]},
+				Columns:    []*schema.Column{UsageLogsColumns[24]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "usage_logs_requests_usage_logs",
-				Columns:    []*schema.Column{UsageLogsColumns[24]},
+				Columns:    []*schema.Column{UsageLogsColumns[25]},
 				RefColumns: []*schema.Column{RequestsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -917,7 +921,7 @@ var (
 			{
 				Name:    "usage_logs_by_request_id",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[24]},
+				Columns: []*schema.Column{UsageLogsColumns[25]},
 			},
 			{
 				Name:    "usage_logs_by_created_at",
@@ -932,12 +936,12 @@ var (
 			{
 				Name:    "usage_logs_by_project_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[23], UsageLogsColumns[1]},
+				Columns: []*schema.Column{UsageLogsColumns[24], UsageLogsColumns[1]},
 			},
 			{
 				Name:    "usage_logs_by_channel_id_created_at",
 				Unique:  false,
-				Columns: []*schema.Column{UsageLogsColumns[22], UsageLogsColumns[1]},
+				Columns: []*schema.Column{UsageLogsColumns[23], UsageLogsColumns[1]},
 			},
 			{
 				Name:    "usage_logs_by_api_key_id_created_at",

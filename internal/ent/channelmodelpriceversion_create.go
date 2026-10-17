@@ -70,6 +70,20 @@ func (_c *ChannelModelPriceVersionCreate) SetChannelModelPriceID(v int) *Channel
 	return _c
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (_c *ChannelModelPriceVersionCreate) SetCurrencyCode(v string) *ChannelModelPriceVersionCreate {
+	_c.mutation.SetCurrencyCode(v)
+	return _c
+}
+
+// SetNillableCurrencyCode sets the "currency_code" field if the given value is not nil.
+func (_c *ChannelModelPriceVersionCreate) SetNillableCurrencyCode(v *string) *ChannelModelPriceVersionCreate {
+	if v != nil {
+		_c.SetCurrencyCode(*v)
+	}
+	return _c
+}
+
 // SetPrice sets the "price" field.
 func (_c *ChannelModelPriceVersionCreate) SetPrice(v objects.ModelPrice) *ChannelModelPriceVersionCreate {
 	_c.mutation.SetPrice(v)
@@ -164,6 +178,10 @@ func (_c *ChannelModelPriceVersionCreate) defaults() error {
 		v := channelmodelpriceversion.DefaultUpdatedAt()
 		_c.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := _c.mutation.CurrencyCode(); !ok {
+		v := channelmodelpriceversion.DefaultCurrencyCode
+		_c.mutation.SetCurrencyCode(v)
+	}
 	return nil
 }
 
@@ -177,6 +195,9 @@ func (_c *ChannelModelPriceVersionCreate) check() error {
 	}
 	if _, ok := _c.mutation.ChannelModelPriceID(); !ok {
 		return &ValidationError{Name: "channel_model_price_id", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.channel_model_price_id"`)}
+	}
+	if _, ok := _c.mutation.CurrencyCode(); !ok {
+		return &ValidationError{Name: "currency_code", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.currency_code"`)}
 	}
 	if _, ok := _c.mutation.Price(); !ok {
 		return &ValidationError{Name: "price", err: errors.New(`ent: missing required field "ChannelModelPriceVersion.price"`)}
@@ -245,6 +266,10 @@ func (_c *ChannelModelPriceVersionCreate) createSpec() (*ChannelModelPriceVersio
 	if value, ok := _c.mutation.ModelID(); ok {
 		_spec.SetField(channelmodelpriceversion.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
+	}
+	if value, ok := _c.mutation.CurrencyCode(); ok {
+		_spec.SetField(channelmodelpriceversion.FieldCurrencyCode, field.TypeString, value)
+		_node.CurrencyCode = value
 	}
 	if value, ok := _c.mutation.Price(); ok {
 		_spec.SetField(channelmodelpriceversion.FieldPrice, field.TypeJSON, value)
@@ -399,6 +424,9 @@ func (u *ChannelModelPriceVersionUpsertOne) UpdateNewValues() *ChannelModelPrice
 		}
 		if _, exists := u.create.mutation.ChannelModelPriceID(); exists {
 			s.SetIgnore(channelmodelpriceversion.FieldChannelModelPriceID)
+		}
+		if _, exists := u.create.mutation.CurrencyCode(); exists {
+			s.SetIgnore(channelmodelpriceversion.FieldCurrencyCode)
 		}
 		if _, exists := u.create.mutation.Price(); exists {
 			s.SetIgnore(channelmodelpriceversion.FieldPrice)
@@ -676,6 +704,9 @@ func (u *ChannelModelPriceVersionUpsertBulk) UpdateNewValues() *ChannelModelPric
 			}
 			if _, exists := b.mutation.ChannelModelPriceID(); exists {
 				s.SetIgnore(channelmodelpriceversion.FieldChannelModelPriceID)
+			}
+			if _, exists := b.mutation.CurrencyCode(); exists {
+				s.SetIgnore(channelmodelpriceversion.FieldCurrencyCode)
 			}
 			if _, exists := b.mutation.Price(); exists {
 				s.SetIgnore(channelmodelpriceversion.FieldPrice)

@@ -530,6 +530,12 @@ func (svc *ChannelService) ListModels(ctx context.Context, input ListModelsInput
 // createChannel creates a new channel without triggering a reload.
 // This is useful for batch operations where reload should happen once at the end.
 func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateChannelInput) (*ent.Channel, error) {
+	currencyCode, err := objects.NormalizeCurrencyCode(lo.FromPtr(input.CurrencyCode))
+	if err != nil {
+		return nil, err
+	}
+	input.CurrencyCode = &currencyCode
+
 	sanitizedSettings, err := normalizeCommandCodeQuotaCookieSettings(input.Settings, input.Type)
 	if err != nil {
 		return nil, err
@@ -610,6 +616,7 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		SetNillableBaseURL(input.BaseURL).
 		SetNillableRemark(input.Remark).
 		SetName(input.Name).
+		SetNillableCurrencyCode(input.CurrencyCode).
 		SetCredentials(input.Credentials).
 		SetSupportedModels(input.SupportedModels).
 		SetManualModels(input.ManualModels).
@@ -902,6 +909,13 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	if err := NormalizeAPIKeyAutoDisableRules(input.Policies); err != nil {
 		return nil, err
 	}
+	if input.CurrencyCode != nil {
+		currencyCode, err := objects.NormalizeCurrencyCode(*input.CurrencyCode)
+		if err != nil {
+			return nil, err
+		}
+		input.CurrencyCode = &currencyCode
+	}
 	officialBaseURL := xaisubscription.DefaultBaseURL
 	if input.Type != nil && *input.Type == channel.TypeXaiSubscription {
 		input.BaseURL = &officialBaseURL
@@ -1049,6 +1063,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			SetNillableType(input.Type).
 			SetNillableBaseURL(input.BaseURL).
 			SetNillableName(input.Name).
+			SetNillableCurrencyCode(input.CurrencyCode).
 			SetNillableDefaultTestModel(input.DefaultTestModel).
 			SetNillableOrderingWeight(input.OrderingWeight).
 			SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels)

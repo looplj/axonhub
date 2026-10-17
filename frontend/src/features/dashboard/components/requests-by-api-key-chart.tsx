@@ -7,6 +7,8 @@ import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGeneralSettings } from '../../system/data/system';
+import { CurrencySelect, useSelectedCurrency } from '@/components/currency-select';
+import { currencyAmount, formatCurrencyAmount, localeForLanguage } from '@/utils/currency';
 import { useRequestsByAPIKey, useCostByAPIKey } from '../data/dashboard';
 import type { TimePeriod } from '@/components/time-period-selector';
 import { ChartLegend } from './chart-legend';
@@ -28,25 +30,24 @@ export function RequestsByAPIKeyChart({ timePeriod }: RequestsByAPIKeyChartProps
   const isFetching = isRequestsFetching || isCostFetching || isSettingsFetching;
   const error = requestsError || costError;
 
-  const currencyCode = generalSettings?.currencyCode || 'USD';
-  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
+  const preferredCurrency = generalSettings?.currencyCode || 'USD';
+  const { codes: currencyCodes, currencyCode, setCurrencyCode } = useSelectedCurrency(
+    costData?.map((item) => item.costByCurrency) ?? [],
+    preferredCurrency
+  );
+  const locale = localeForLanguage(i18n.language);
 
   const formatCurrency = useCallback(
-    (val: number, fractionDigits: number) =>
-      t('currencies.format', {
-        val,
-        currency: currencyCode,
-        locale,
-        minimumFractionDigits: fractionDigits,
-        maximumFractionDigits: fractionDigits,
-      }),
+    (val: number, fractionDigits: number) => formatCurrencyAmount(val, currencyCode, t, locale, fractionDigits),
     [currencyCode, locale, t]
   );
 
   const { chartData, totalRequests, totalCost } = useMemo(() => {
     if (!apiKeyData) return { chartData: [], totalRequests: 0, totalCost: 0 };
 
-    const costMap = new Map((costData ?? []).map((item) => [item.apiKeyName, item.cost]));
+    const costMap = new Map(
+      (costData ?? []).map((item) => [item.apiKeyName, currencyAmount(item.costByCurrency, currencyCode)])
+    );
 
     const data = apiKeyData
       .map((item) => ({
@@ -61,7 +62,7 @@ export function RequestsByAPIKeyChart({ timePeriod }: RequestsByAPIKeyChartProps
     const totalC = data.reduce((sum, item) => sum + item.cost, 0);
 
     return { chartData: data, totalRequests: totalReq, totalCost: totalC };
-  }, [apiKeyData, costData]);
+  }, [apiKeyData, costData, currencyCode]);
 
   if (isLoading) {
     return (
@@ -134,6 +135,9 @@ export function RequestsByAPIKeyChart({ timePeriod }: RequestsByAPIKeyChartProps
         </div>
       ) : (
         <>
+          <div className='flex justify-end'>
+            <CurrencySelect codes={currencyCodes} value={currencyCode} onChange={setCurrencyCode} />
+          </div>
           <ResponsiveContainer width='100%' height={320}>
             <BarChart data={chartData} barSize={32}>
               <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />

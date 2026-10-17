@@ -82,10 +82,11 @@ type ComplexityRoot struct {
 	}
 
 	APIKeyQuota struct {
-		Cost        func(childComplexity int) int
-		Period      func(childComplexity int) int
-		Requests    func(childComplexity int) int
-		TotalTokens func(childComplexity int) int
+		Cost         func(childComplexity int) int
+		CurrencyCode func(childComplexity int) int
+		Period       func(childComplexity int) int
+		Requests     func(childComplexity int) int
+		TotalTokens  func(childComplexity int) int
 	}
 
 	APIKeyQuotaCalendarDuration struct {
@@ -104,6 +105,7 @@ type ComplexityRoot struct {
 	}
 
 	APIKeyQuotaUsage struct {
+		CurrencyCode func(childComplexity int) int
 		RequestCount func(childComplexity int) int
 		TotalCost    func(childComplexity int) int
 		TotalTokens  func(childComplexity int) int
@@ -290,6 +292,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.APIKeyQuota.Cost(childComplexity), true
+	case "APIKeyQuota.currencyCode":
+		if e.complexity.APIKeyQuota.CurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.APIKeyQuota.CurrencyCode(childComplexity), true
 	case "APIKeyQuota.period":
 		if e.complexity.APIKeyQuota.Period == nil {
 			break
@@ -348,6 +356,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.APIKeyQuotaPeriod.Type(childComplexity), true
 
+	case "APIKeyQuotaUsage.currencyCode":
+		if e.complexity.APIKeyQuotaUsage.CurrencyCode == nil {
+			break
+		}
+
+		return e.complexity.APIKeyQuotaUsage.CurrencyCode(childComplexity), true
 	case "APIKeyQuotaUsage.requestCount":
 		if e.complexity.APIKeyQuotaUsage.RequestCount == nil {
 			break
@@ -1091,6 +1105,8 @@ func (ec *executionContext) fieldContext_APIKeyProfile_quota(_ context.Context, 
 				return ec.fieldContext_APIKeyQuota_totalTokens(ctx, field)
 			case "cost":
 				return ec.fieldContext_APIKeyQuota_cost(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_APIKeyQuota_currencyCode(ctx, field)
 			case "period":
 				return ec.fieldContext_APIKeyQuota_period(ctx, field)
 			}
@@ -1217,6 +1233,8 @@ func (ec *executionContext) fieldContext_APIKeyProfileQuotaUsage_quota(_ context
 				return ec.fieldContext_APIKeyQuota_totalTokens(ctx, field)
 			case "cost":
 				return ec.fieldContext_APIKeyQuota_cost(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_APIKeyQuota_currencyCode(ctx, field)
 			case "period":
 				return ec.fieldContext_APIKeyQuota_period(ctx, field)
 			}
@@ -1291,6 +1309,8 @@ func (ec *executionContext) fieldContext_APIKeyProfileQuotaUsage_usage(_ context
 				return ec.fieldContext_APIKeyQuotaUsage_totalTokens(ctx, field)
 			case "totalCost":
 				return ec.fieldContext_APIKeyQuotaUsage_totalCost(ctx, field)
+			case "currencyCode":
+				return ec.fieldContext_APIKeyQuotaUsage_currencyCode(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type APIKeyQuotaUsage", field.Name)
 		},
@@ -1458,6 +1478,35 @@ func (ec *executionContext) fieldContext_APIKeyQuota_cost(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyQuota_currencyCode(ctx context.Context, field graphql.CollectedField, obj *objects.APIKeyQuota) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyQuota_currencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyQuota_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyQuota",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -1766,6 +1815,35 @@ func (ec *executionContext) fieldContext_APIKeyQuotaUsage_totalCost(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Decimal does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _APIKeyQuotaUsage_currencyCode(ctx context.Context, field graphql.CollectedField, obj *APIKeyQuotaUsage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_APIKeyQuotaUsage_currencyCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrencyCode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_APIKeyQuotaUsage_currencyCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "APIKeyQuotaUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -4281,6 +4359,8 @@ func (ec *executionContext) _APIKeyQuota(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._APIKeyQuota_totalTokens(ctx, field, obj)
 		case "cost":
 			out.Values[i] = ec._APIKeyQuota_cost(ctx, field, obj)
+		case "currencyCode":
+			out.Values[i] = ec._APIKeyQuota_currencyCode(ctx, field, obj)
 		case "period":
 			out.Values[i] = ec._APIKeyQuota_period(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -4458,6 +4538,11 @@ func (ec *executionContext) _APIKeyQuotaUsage(ctx context.Context, sel ast.Selec
 			}
 		case "totalCost":
 			out.Values[i] = ec._APIKeyQuotaUsage_totalCost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currencyCode":
+			out.Values[i] = ec._APIKeyQuotaUsage_currencyCode(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -5913,6 +5998,18 @@ func (ec *executionContext) unmarshalOModelMappingInput2ᚕgithubᚗcomᚋlooplj
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) unmarshalOString2string(ctx context.Context, v any) (string, error) {
+	res, err := graphql.UnmarshalString(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOString2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {

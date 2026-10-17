@@ -160,6 +160,11 @@ func TotalCost(v float64) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldTotalCost, v))
 }
 
+// CostCurrencyCode applies equality check predicate on the "cost_currency_code" field. It's identical to CostCurrencyCodeEQ.
+func CostCurrencyCode(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldCostCurrencyCode, v))
+}
+
 // CostPriceReferenceID applies equality check predicate on the "cost_price_reference_id" field. It's identical to CostPriceReferenceIDEQ.
 func CostPriceReferenceID(v string) predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldEQ(FieldCostPriceReferenceID, v))
@@ -1133,6 +1138,71 @@ func TotalCostIsNil() predicate.UsageLog {
 // TotalCostNotNil applies the NotNil predicate on the "total_cost" field.
 func TotalCostNotNil() predicate.UsageLog {
 	return predicate.UsageLog(sql.FieldNotNull(FieldTotalCost))
+}
+
+// CostCurrencyCodeEQ applies the EQ predicate on the "cost_currency_code" field.
+func CostCurrencyCodeEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEQ(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeNEQ applies the NEQ predicate on the "cost_currency_code" field.
+func CostCurrencyCodeNEQ(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNEQ(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeIn applies the In predicate on the "cost_currency_code" field.
+func CostCurrencyCodeIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldIn(FieldCostCurrencyCode, vs...))
+}
+
+// CostCurrencyCodeNotIn applies the NotIn predicate on the "cost_currency_code" field.
+func CostCurrencyCodeNotIn(vs ...string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldNotIn(FieldCostCurrencyCode, vs...))
+}
+
+// CostCurrencyCodeGT applies the GT predicate on the "cost_currency_code" field.
+func CostCurrencyCodeGT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGT(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeGTE applies the GTE predicate on the "cost_currency_code" field.
+func CostCurrencyCodeGTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldGTE(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeLT applies the LT predicate on the "cost_currency_code" field.
+func CostCurrencyCodeLT(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLT(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeLTE applies the LTE predicate on the "cost_currency_code" field.
+func CostCurrencyCodeLTE(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldLTE(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeContains applies the Contains predicate on the "cost_currency_code" field.
+func CostCurrencyCodeContains(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContains(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeHasPrefix applies the HasPrefix predicate on the "cost_currency_code" field.
+func CostCurrencyCodeHasPrefix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasPrefix(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeHasSuffix applies the HasSuffix predicate on the "cost_currency_code" field.
+func CostCurrencyCodeHasSuffix(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldHasSuffix(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeEqualFold applies the EqualFold predicate on the "cost_currency_code" field.
+func CostCurrencyCodeEqualFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldEqualFold(FieldCostCurrencyCode, v))
+}
+
+// CostCurrencyCodeContainsFold applies the ContainsFold predicate on the "cost_currency_code" field.
+func CostCurrencyCodeContainsFold(v string) predicate.UsageLog {
+	return predicate.UsageLog(sql.FieldContainsFold(FieldCostCurrencyCode, v))
 }
 
 // CostItemsIsNil applies the IsNil predicate on the "cost_items" field.

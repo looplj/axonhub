@@ -114,6 +114,7 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
             loadBalanceStrategy
             traceStickyMode
             quota {
+              currencyCode
               requests
               totalTokens
               cost
@@ -217,6 +218,7 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
           loadBalanceStrategy
           traceStickyMode
           quota {
+            currencyCode
             requests
             totalTokens
             cost
@@ -270,6 +272,7 @@ const APIKEY_QUOTA_USAGES_QUERY = `
     apiKeyQuotaUsages(apiKeyId: $apiKeyId) {
       profileName
       quota {
+        currencyCode
         requests
         totalTokens
         cost
@@ -280,7 +283,7 @@ const APIKEY_QUOTA_USAGES_QUERY = `
         }
       }
       window { start end }
-      usage { requestCount totalTokens totalCost }
+      usage { requestCount totalTokens totalCost currencyCode }
     }
   }
 `;
@@ -326,6 +329,7 @@ const APIKEY_PROFILE_TEMPLATES_QUERY = `
             loadBalanceStrategy
             traceStickyMode
             quota {
+              currencyCode
               requests
               totalTokens
               cost
@@ -404,6 +408,7 @@ const LOAD_APIKEY_PROFILE_TEMPLATE_MUTATION = `
           loadBalanceStrategy
           traceStickyMode
           quota {
+            currencyCode
             requests
             totalTokens
             cost

@@ -441,6 +441,10 @@ type Channel implements Node {
   """
   remark: String
   """
+  Currency of manually entered prices for this channel. Model library prices always use USD.
+  """
+  currencyCode: String!
+  """
   Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
   """
   endpoints: [ChannelEndpoint!]
@@ -578,6 +582,10 @@ type ChannelModelPrice implements Node {
   channelID: ID!
   modelID: String!
   """
+  Currency of this price. Model library prices are always USD.
+  """
+  currencyCode: String!
+  """
   The model price, if changed, it will genearte a new reference id.
   """
   price: ModelPrice!
@@ -645,6 +653,10 @@ type ChannelModelPriceVersion implements Node {
   channelID: Int!
   modelID: String!
   channelModelPriceID: ID!
+  """
+  Currency of this price version.
+  """
+  currencyCode: String!
   """
   The model price, if changed, it will genearte a new reference id.
   """
@@ -797,6 +809,22 @@ input ChannelModelPriceVersionWhereInput {
   channelModelPriceIDIn: [ID!]
   channelModelPriceIDNotIn: [ID!]
   """
+  currency_code field predicates
+  """
+  currencyCode: String
+  currencyCodeNEQ: String
+  currencyCodeIn: [String!]
+  currencyCodeNotIn: [String!]
+  currencyCodeGT: String
+  currencyCodeGTE: String
+  currencyCodeLT: String
+  currencyCodeLTE: String
+  currencyCodeContains: String
+  currencyCodeHasPrefix: String
+  currencyCodeHasSuffix: String
+  currencyCodeEqualFold: String
+  currencyCodeContainsFold: String
+  """
   status field predicates
   """
   status: ChannelModelPriceVersionStatus
@@ -913,6 +941,22 @@ input ChannelModelPriceWhereInput {
   modelIDHasSuffix: String
   modelIDEqualFold: String
   modelIDContainsFold: String
+  """
+  currency_code field predicates
+  """
+  currencyCode: String
+  currencyCodeNEQ: String
+  currencyCodeIn: [String!]
+  currencyCodeNotIn: [String!]
+  currencyCodeGT: String
+  currencyCodeGTE: String
+  currencyCodeLT: String
+  currencyCodeLTE: String
+  currencyCodeContains: String
+  currencyCodeHasPrefix: String
+  currencyCodeHasSuffix: String
+  currencyCodeEqualFold: String
+  currencyCodeContainsFold: String
   """
   reference_id field predicates
   """
@@ -1544,6 +1588,22 @@ input ChannelWhereInput {
   remarkEqualFold: String
   remarkContainsFold: String
   """
+  currency_code field predicates
+  """
+  currencyCode: String
+  currencyCodeNEQ: String
+  currencyCodeIn: [String!]
+  currencyCodeNotIn: [String!]
+  currencyCodeGT: String
+  currencyCodeGTE: String
+  currencyCodeLT: String
+  currencyCodeLTE: String
+  currencyCodeContains: String
+  currencyCodeHasPrefix: String
+  currencyCodeHasSuffix: String
+  currencyCodeEqualFold: String
+  currencyCodeContainsFold: String
+  """
   requests edge predicates
   """
   hasRequests: Boolean
@@ -1637,6 +1697,10 @@ input CreateChannelInput {
   User-defined remark or note for the channel
   """
   remark: String
+  """
+  Currency of manually entered prices for this channel. Model library prices always use USD.
+  """
+  currencyCode: String
   """
   Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
   """
@@ -2006,6 +2070,10 @@ input CreateUsageLogInput {
   Total cost calculated based on channel model price
   """
   totalCost: Float
+  """
+  Currency of total_cost. Snapshotted when the usage log is written.
+  """
+  costCurrencyCode: String
   """
   Detailed cost breakdown items in JSON
   """
@@ -6220,6 +6288,10 @@ input UpdateChannelInput {
   remark: String
   clearRemark: Boolean
   """
+  Currency of manually entered prices for this channel. Model library prices always use USD.
+  """
+  currencyCode: String
+  """
   Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
   """
   endpoints: [ChannelEndpointInput!]
@@ -6596,6 +6668,10 @@ input UpdateUsageLogInput {
   totalCost: Float
   clearTotalCost: Boolean
   """
+  Currency of total_cost. Snapshotted when the usage log is written.
+  """
+  costCurrencyCode: String
+  """
   Detailed cost breakdown items in JSON
   """
   costItems: [CostItemInput!]
@@ -6721,6 +6797,10 @@ type UsageLog implements Node {
   Total cost calculated based on channel model price
   """
   totalCost: Float
+  """
+  Currency of total_cost. Snapshotted when the usage log is written.
+  """
+  costCurrencyCode: String!
   """
   Detailed cost breakdown items in JSON
   """
@@ -7070,6 +7150,22 @@ input UsageLogWhereInput {
   totalCostLTE: Float
   totalCostIsNil: Boolean
   totalCostNotNil: Boolean
+  """
+  cost_currency_code field predicates
+  """
+  costCurrencyCode: String
+  costCurrencyCodeNEQ: String
+  costCurrencyCodeIn: [String!]
+  costCurrencyCodeNotIn: [String!]
+  costCurrencyCodeGT: String
+  costCurrencyCodeGTE: String
+  costCurrencyCodeLT: String
+  costCurrencyCodeLTE: String
+  costCurrencyCodeContains: String
+  costCurrencyCodeHasPrefix: String
+  costCurrencyCodeHasSuffix: String
+  costCurrencyCodeEqualFold: String
+  costCurrencyCodeContainsFold: String
   """
   cost_price_reference_id field predicates
   """

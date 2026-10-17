@@ -72,6 +72,9 @@ converters:
 
 # This section declares type mapping between the GraphQL and Go type systems.
 models:
+  CurrencyAmount:
+    model:
+      - github.com/looplj/axonhub/internal/objects.CurrencyAmount
   CodexCompatibilitySettings:
     model: github.com/looplj/axonhub/internal/server/biz.CodexCompatibilitySettings
   UpdateCodexCompatibilitySettingsInput:

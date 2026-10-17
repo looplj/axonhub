@@ -21,6 +21,8 @@ import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
+import { currencyCodes } from '@/features/system/data/currencies';
+import { formatCurrencyAmount } from '@/utils/currency';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useApiKeyQuotaUsages } from '../data/apikeys';
 import {
@@ -92,6 +94,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
   // 用于解决 Dialog 内 Popover 无法滚动的问题
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
   const locale = i18n.language === 'zh' ? zhCN : enUS;
+  const currencyLocale = i18n.language === 'zh' ? 'zh-CN' : 'en-US';
   const apiKeyId = selectedApiKey?.id ?? '';
   const quotaUsagesQuery = useApiKeyQuotaUsages(apiKeyId, {
     enabled: open && !!apiKeyId,
@@ -740,6 +743,30 @@ function ProfileCard({
                       </FormItem>
                     )}
                   />
+                  <FormField
+                    control={form.control}
+                    name={`profiles.${profileIndex}.quota.currencyCode`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('apikeys.profiles.quotaCurrency')}</FormLabel>
+                        <Select value={field.value || undefined} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('apikeys.profiles.quotaCurrencyPlaceholder')} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {currencyCodes.map((code) => (
+                              <SelectItem key={code} value={code}>
+                                {code}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
 
                 <div className='grid gap-4 md:grid-cols-3'>
@@ -876,8 +903,23 @@ function ProfileCard({
                       <div>
                         <div className='text-muted-foreground text-xs'>{t('apikeys.profiles.quotaCost')}</div>
                         <div className='text-sm'>
-                          {(quotaUsage.usage.totalCost ?? 0).toLocaleString(undefined, { maximumFractionDigits: 6 })}/
-                          {currentQuota?.cost ?? '∞'}
+                          {formatCurrencyAmount(
+                            quotaUsage.usage.totalCost ?? 0,
+                            quotaUsage.usage.currencyCode,
+                            t,
+                            currencyLocale,
+                            6
+                          )}
+                          /
+                          {currentQuota?.cost
+                            ? formatCurrencyAmount(
+                                Number(currentQuota.cost),
+                                currentQuota.currencyCode || quotaUsage.usage.currencyCode,
+                                t,
+                                currencyLocale,
+                                6
+                              )
+                            : '∞'}
                         </div>
                       </div>
                     </div>

@@ -81,6 +81,7 @@ export const apiKeySchema = z.object({
                 requests: z.number().optional().nullable(),
                 totalTokens: z.number().optional().nullable(),
                 cost: z.number().optional().nullable(),
+                currencyCode: z.string().optional().nullable(),
                 period: z.object({
                   type: z.enum(['all_time', 'past_duration', 'calendar_duration']),
                   pastDuration: z
@@ -187,6 +188,7 @@ export const apiKeyProfileSchema = z.object({
       requests: z.number().optional().nullable(),
       totalTokens: z.number().optional().nullable(),
       cost: z.number().optional().nullable(),
+                currencyCode: z.string().optional().nullable(),
       period: z.object({
         type: z.enum(['all_time', 'past_duration', 'calendar_duration']),
         pastDuration: z
@@ -274,6 +276,7 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
                 requests: z.number().int().positive().optional().nullable(),
                 totalTokens: z.number().int().positive().optional().nullable(),
                 cost: z.number().optional().nullable(),
+                currencyCode: z.string().optional().nullable(),
                 period: z.object({
                   type: z.enum(['all_time', 'past_duration', 'calendar_duration']),
                   pastDuration: z
@@ -375,6 +378,7 @@ export const updateApiKeyProfilesInputSchema = z.object({
           requests: z.number().int().positive().optional().nullable(),
           totalTokens: z.number().optional().nullable(),
           cost: z.number().optional().nullable(),
+                currencyCode: z.string().optional().nullable(),
           period: z.object({
             type: z.enum(['all_time', 'past_duration', 'calendar_duration']),
             pastDuration: z
@@ -409,6 +413,7 @@ export const apiKeyQuotaUsageSchema = z.object({
   requestCount: z.number(),
   totalTokens: z.number(),
   totalCost: z.coerce.number(),
+  currencyCode: z.string(),
 });
 export type ApiKeyQuotaUsage = z.infer<typeof apiKeyQuotaUsageSchema>;
 

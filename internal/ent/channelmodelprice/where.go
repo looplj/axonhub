@@ -80,6 +80,11 @@ func ModelID(v string) predicate.ChannelModelPrice {
 	return predicate.ChannelModelPrice(sql.FieldEQ(FieldModelID, v))
 }
 
+// CurrencyCode applies equality check predicate on the "currency_code" field. It's identical to CurrencyCodeEQ.
+func CurrencyCode(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldEQ(FieldCurrencyCode, v))
+}
+
 // ReferenceID applies equality check predicate on the "reference_id" field. It's identical to ReferenceIDEQ.
 func ReferenceID(v string) predicate.ChannelModelPrice {
 	return predicate.ChannelModelPrice(sql.FieldEQ(FieldReferenceID, v))
@@ -288,6 +293,71 @@ func ModelIDEqualFold(v string) predicate.ChannelModelPrice {
 // ModelIDContainsFold applies the ContainsFold predicate on the "model_id" field.
 func ModelIDContainsFold(v string) predicate.ChannelModelPrice {
 	return predicate.ChannelModelPrice(sql.FieldContainsFold(FieldModelID, v))
+}
+
+// CurrencyCodeEQ applies the EQ predicate on the "currency_code" field.
+func CurrencyCodeEQ(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldEQ(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeNEQ applies the NEQ predicate on the "currency_code" field.
+func CurrencyCodeNEQ(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldNEQ(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeIn applies the In predicate on the "currency_code" field.
+func CurrencyCodeIn(vs ...string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldIn(FieldCurrencyCode, vs...))
+}
+
+// CurrencyCodeNotIn applies the NotIn predicate on the "currency_code" field.
+func CurrencyCodeNotIn(vs ...string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldNotIn(FieldCurrencyCode, vs...))
+}
+
+// CurrencyCodeGT applies the GT predicate on the "currency_code" field.
+func CurrencyCodeGT(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldGT(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeGTE applies the GTE predicate on the "currency_code" field.
+func CurrencyCodeGTE(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldGTE(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeLT applies the LT predicate on the "currency_code" field.
+func CurrencyCodeLT(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldLT(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeLTE applies the LTE predicate on the "currency_code" field.
+func CurrencyCodeLTE(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldLTE(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeContains applies the Contains predicate on the "currency_code" field.
+func CurrencyCodeContains(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldContains(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeHasPrefix applies the HasPrefix predicate on the "currency_code" field.
+func CurrencyCodeHasPrefix(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldHasPrefix(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeHasSuffix applies the HasSuffix predicate on the "currency_code" field.
+func CurrencyCodeHasSuffix(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldHasSuffix(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeEqualFold applies the EqualFold predicate on the "currency_code" field.
+func CurrencyCodeEqualFold(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldEqualFold(FieldCurrencyCode, v))
+}
+
+// CurrencyCodeContainsFold applies the ContainsFold predicate on the "currency_code" field.
+func CurrencyCodeContainsFold(v string) predicate.ChannelModelPrice {
+	return predicate.ChannelModelPrice(sql.FieldContainsFold(FieldCurrencyCode, v))
 }
 
 // ReferenceIDEQ applies the EQ predicate on the "reference_id" field.

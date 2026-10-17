@@ -165,6 +165,7 @@ type CreateChannelInput struct {
 	Settings                *objects.ChannelSettings
 	OrderingWeight          *int
 	Remark                  *string
+	CurrencyCode            *string
 	Endpoints               []objects.ChannelEndpoint
 }
 
@@ -203,6 +204,9 @@ func (i *CreateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.Remark; v != nil {
 		m.SetRemark(*v)
+	}
+	if v := i.CurrencyCode; v != nil {
+		m.SetCurrencyCode(*v)
 	}
 	if v := i.Endpoints; v != nil {
 		m.SetEndpoints(v)
@@ -244,6 +248,7 @@ type UpdateChannelInput struct {
 	ErrorMessage              *string
 	ClearRemark               bool
 	Remark                    *string
+	CurrencyCode              *string
 	ClearEndpoints            bool
 	Endpoints                 []objects.ChannelEndpoint
 	AppendEndpoints           []objects.ChannelEndpoint
@@ -331,6 +336,9 @@ func (i *UpdateChannelInput) Mutate(m *ChannelMutation) {
 	}
 	if v := i.Remark; v != nil {
 		m.SetRemark(*v)
+	}
+	if v := i.CurrencyCode; v != nil {
+		m.SetCurrencyCode(*v)
 	}
 	if i.ClearEndpoints {
 		m.ClearEndpoints()
@@ -1418,6 +1426,7 @@ type CreateUsageLogInput struct {
 	Source                             *usagelog.Source
 	Format                             *string
 	TotalCost                          *float64
+	CostCurrencyCode                   *string
 	CostItems                          []objects.CostItem
 	CostPriceReferenceID               *string
 	RequestID                          int
@@ -1476,6 +1485,9 @@ func (i *CreateUsageLogInput) Mutate(m *UsageLogMutation) {
 	if v := i.TotalCost; v != nil {
 		m.SetTotalCost(*v)
 	}
+	if v := i.CostCurrencyCode; v != nil {
+		m.SetCostCurrencyCode(*v)
+	}
 	if v := i.CostItems; v != nil {
 		m.SetCostItems(v)
 	}
@@ -1520,6 +1532,7 @@ type UpdateUsageLogInput struct {
 	CompletionRejectedPredictionTokens      *int64
 	ClearTotalCost                          bool
 	TotalCost                               *float64
+	CostCurrencyCode                        *string
 	ClearCostItems                          bool
 	CostItems                               []objects.CostItem
 	AppendCostItems                         []objects.CostItem
@@ -1597,6 +1610,9 @@ func (i *UpdateUsageLogInput) Mutate(m *UsageLogMutation) {
 	}
 	if v := i.TotalCost; v != nil {
 		m.SetTotalCost(*v)
+	}
+	if v := i.CostCurrencyCode; v != nil {
+		m.SetCostCurrencyCode(*v)
 	}
 	if i.ClearCostItems {
 		m.ClearCostItems()

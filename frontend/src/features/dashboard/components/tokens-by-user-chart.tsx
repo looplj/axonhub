@@ -4,6 +4,8 @@ import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis
 import { Loader2 } from 'lucide-react';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CurrencySelect, useSelectedCurrency } from '@/components/currency-select';
+import { currencyAmount, formatCurrencyAmount, localeForLanguage } from '@/utils/currency';
 import { useGeneralSettings } from '../../system/data/system';
 import { useUsageStatsByUser } from '../data/dashboard';
 import type { TimePeriod } from '@/components/time-period-selector';
@@ -21,29 +23,29 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
   const { data, isLoading, isFetching, error } = useUsageStatsByUser(timePeriod);
   const { data: generalSettings } = useGeneralSettings();
 
-  const currencyCode = generalSettings?.currencyCode || 'USD';
-  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
+  const preferredCurrency = generalSettings?.currencyCode || 'USD';
+  const { codes: currencyCodes, currencyCode, setCurrencyCode } = useSelectedCurrency(
+    data?.map((item) => item.totalCostByCurrency) ?? [],
+    preferredCurrency
+  );
+  const locale = localeForLanguage(i18n.language);
 
-  const formatCurrency = (val: number) =>
-    t('currencies.format', {
-      val,
-      currency: currencyCode,
-      locale,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const formatCurrency = (val: number) => formatCurrencyAmount(val, currencyCode, t, locale, 2);
 
   const { chartData, totalTokens, totalCost } = useMemo(() => {
     if (!data) return { chartData: [], totalTokens: 0, totalCost: 0 };
 
     const sorted = [...data].sort((a, b) => b.totalTokens - a.totalTokens);
-    const top10 = sorted.slice(0, 10);
+    const top10 = sorted.slice(0, 10).map((item) => ({
+      ...item,
+      cost: currencyAmount(item.totalCostByCurrency, currencyCode),
+    }));
 
     const totalTok = top10.reduce((sum, item) => sum + item.totalTokens, 0);
-    const totalC = top10.reduce((sum, item) => sum + item.totalCost, 0);
+    const totalC = top10.reduce((sum, item) => sum + item.cost, 0);
 
     return { chartData: top10, totalTokens: totalTok, totalCost: totalC };
-  }, [data]);
+  }, [data, currencyCode]);
 
   if (isLoading) {
     return (
@@ -59,7 +61,7 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
     payload?: {
       userName: string;
       requestCount: number;
-      totalCost: number;
+      cost: number;
       totalTokens: number;
     };
   };
@@ -87,7 +89,7 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
           </div>
           <div className='flex justify-between gap-4'>
             <span className='text-muted-foreground'>{t('dashboard.stats.userCost')}:</span>
-            <span className='font-medium'>{formatCurrency(d.totalCost)} ({totalCost ? ((d.totalCost / totalCost) * 100).toFixed(0) : 0}%)</span>
+            <span className='font-medium'>{formatCurrency(d.cost)} ({totalCost ? ((d.cost / totalCost) * 100).toFixed(0) : 0}%)</span>
           </div>
         </div>
       </div>
@@ -99,7 +101,7 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
     index: index + 1,
     color: COLORS[index % COLORS.length],
     primaryValue: formatNumber(item.totalTokens),
-    secondaryValue: formatCurrency(item.totalCost),
+    secondaryValue: formatCurrency(item.cost),
   }));
 
   return (
@@ -116,6 +118,9 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
         </div>
       ) : (
         <>
+          <div className='flex justify-end'>
+            <CurrencySelect codes={currencyCodes} value={currencyCode} onChange={setCurrencyCode} />
+          </div>
           <ResponsiveContainer width='100%' height={320}>
             <BarChart data={chartData} barSize={32}>
               <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />

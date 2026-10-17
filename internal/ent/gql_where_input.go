@@ -1005,6 +1005,21 @@ type ChannelWhereInput struct {
 	RemarkEqualFold    *string  `json:"remarkEqualFold,omitempty"`
 	RemarkContainsFold *string  `json:"remarkContainsFold,omitempty"`
 
+	// "currency_code" field predicates.
+	CurrencyCode             *string  `json:"currencyCode,omitempty"`
+	CurrencyCodeNEQ          *string  `json:"currencyCodeNEQ,omitempty"`
+	CurrencyCodeIn           []string `json:"currencyCodeIn,omitempty"`
+	CurrencyCodeNotIn        []string `json:"currencyCodeNotIn,omitempty"`
+	CurrencyCodeGT           *string  `json:"currencyCodeGT,omitempty"`
+	CurrencyCodeGTE          *string  `json:"currencyCodeGTE,omitempty"`
+	CurrencyCodeLT           *string  `json:"currencyCodeLT,omitempty"`
+	CurrencyCodeLTE          *string  `json:"currencyCodeLTE,omitempty"`
+	CurrencyCodeContains     *string  `json:"currencyCodeContains,omitempty"`
+	CurrencyCodeHasPrefix    *string  `json:"currencyCodeHasPrefix,omitempty"`
+	CurrencyCodeHasSuffix    *string  `json:"currencyCodeHasSuffix,omitempty"`
+	CurrencyCodeEqualFold    *string  `json:"currencyCodeEqualFold,omitempty"`
+	CurrencyCodeContainsFold *string  `json:"currencyCodeContainsFold,omitempty"`
+
 	// "requests" edge predicates.
 	HasRequests     *bool                `json:"hasRequests,omitempty"`
 	HasRequestsWith []*RequestWhereInput `json:"hasRequestsWith,omitempty"`
@@ -1545,6 +1560,45 @@ func (i *ChannelWhereInput) P() (predicate.Channel, error) {
 	if i.RemarkContainsFold != nil {
 		predicates = append(predicates, channel.RemarkContainsFold(*i.RemarkContainsFold))
 	}
+	if i.CurrencyCode != nil {
+		predicates = append(predicates, channel.CurrencyCodeEQ(*i.CurrencyCode))
+	}
+	if i.CurrencyCodeNEQ != nil {
+		predicates = append(predicates, channel.CurrencyCodeNEQ(*i.CurrencyCodeNEQ))
+	}
+	if len(i.CurrencyCodeIn) > 0 {
+		predicates = append(predicates, channel.CurrencyCodeIn(i.CurrencyCodeIn...))
+	}
+	if len(i.CurrencyCodeNotIn) > 0 {
+		predicates = append(predicates, channel.CurrencyCodeNotIn(i.CurrencyCodeNotIn...))
+	}
+	if i.CurrencyCodeGT != nil {
+		predicates = append(predicates, channel.CurrencyCodeGT(*i.CurrencyCodeGT))
+	}
+	if i.CurrencyCodeGTE != nil {
+		predicates = append(predicates, channel.CurrencyCodeGTE(*i.CurrencyCodeGTE))
+	}
+	if i.CurrencyCodeLT != nil {
+		predicates = append(predicates, channel.CurrencyCodeLT(*i.CurrencyCodeLT))
+	}
+	if i.CurrencyCodeLTE != nil {
+		predicates = append(predicates, channel.CurrencyCodeLTE(*i.CurrencyCodeLTE))
+	}
+	if i.CurrencyCodeContains != nil {
+		predicates = append(predicates, channel.CurrencyCodeContains(*i.CurrencyCodeContains))
+	}
+	if i.CurrencyCodeHasPrefix != nil {
+		predicates = append(predicates, channel.CurrencyCodeHasPrefix(*i.CurrencyCodeHasPrefix))
+	}
+	if i.CurrencyCodeHasSuffix != nil {
+		predicates = append(predicates, channel.CurrencyCodeHasSuffix(*i.CurrencyCodeHasSuffix))
+	}
+	if i.CurrencyCodeEqualFold != nil {
+		predicates = append(predicates, channel.CurrencyCodeEqualFold(*i.CurrencyCodeEqualFold))
+	}
+	if i.CurrencyCodeContainsFold != nil {
+		predicates = append(predicates, channel.CurrencyCodeContainsFold(*i.CurrencyCodeContainsFold))
+	}
 
 	if i.HasRequests != nil {
 		p := channel.HasRequests()
@@ -1721,6 +1775,21 @@ type ChannelModelPriceWhereInput struct {
 	ModelIDHasSuffix    *string  `json:"modelIDHasSuffix,omitempty"`
 	ModelIDEqualFold    *string  `json:"modelIDEqualFold,omitempty"`
 	ModelIDContainsFold *string  `json:"modelIDContainsFold,omitempty"`
+
+	// "currency_code" field predicates.
+	CurrencyCode             *string  `json:"currencyCode,omitempty"`
+	CurrencyCodeNEQ          *string  `json:"currencyCodeNEQ,omitempty"`
+	CurrencyCodeIn           []string `json:"currencyCodeIn,omitempty"`
+	CurrencyCodeNotIn        []string `json:"currencyCodeNotIn,omitempty"`
+	CurrencyCodeGT           *string  `json:"currencyCodeGT,omitempty"`
+	CurrencyCodeGTE          *string  `json:"currencyCodeGTE,omitempty"`
+	CurrencyCodeLT           *string  `json:"currencyCodeLT,omitempty"`
+	CurrencyCodeLTE          *string  `json:"currencyCodeLTE,omitempty"`
+	CurrencyCodeContains     *string  `json:"currencyCodeContains,omitempty"`
+	CurrencyCodeHasPrefix    *string  `json:"currencyCodeHasPrefix,omitempty"`
+	CurrencyCodeHasSuffix    *string  `json:"currencyCodeHasSuffix,omitempty"`
+	CurrencyCodeEqualFold    *string  `json:"currencyCodeEqualFold,omitempty"`
+	CurrencyCodeContainsFold *string  `json:"currencyCodeContainsFold,omitempty"`
 
 	// "reference_id" field predicates.
 	ReferenceID             *string  `json:"referenceID,omitempty"`
@@ -1940,6 +2009,45 @@ func (i *ChannelModelPriceWhereInput) P() (predicate.ChannelModelPrice, error) {
 	if i.ModelIDContainsFold != nil {
 		predicates = append(predicates, channelmodelprice.ModelIDContainsFold(*i.ModelIDContainsFold))
 	}
+	if i.CurrencyCode != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeEQ(*i.CurrencyCode))
+	}
+	if i.CurrencyCodeNEQ != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeNEQ(*i.CurrencyCodeNEQ))
+	}
+	if len(i.CurrencyCodeIn) > 0 {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeIn(i.CurrencyCodeIn...))
+	}
+	if len(i.CurrencyCodeNotIn) > 0 {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeNotIn(i.CurrencyCodeNotIn...))
+	}
+	if i.CurrencyCodeGT != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeGT(*i.CurrencyCodeGT))
+	}
+	if i.CurrencyCodeGTE != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeGTE(*i.CurrencyCodeGTE))
+	}
+	if i.CurrencyCodeLT != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeLT(*i.CurrencyCodeLT))
+	}
+	if i.CurrencyCodeLTE != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeLTE(*i.CurrencyCodeLTE))
+	}
+	if i.CurrencyCodeContains != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeContains(*i.CurrencyCodeContains))
+	}
+	if i.CurrencyCodeHasPrefix != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeHasPrefix(*i.CurrencyCodeHasPrefix))
+	}
+	if i.CurrencyCodeHasSuffix != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeHasSuffix(*i.CurrencyCodeHasSuffix))
+	}
+	if i.CurrencyCodeEqualFold != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeEqualFold(*i.CurrencyCodeEqualFold))
+	}
+	if i.CurrencyCodeContainsFold != nil {
+		predicates = append(predicates, channelmodelprice.CurrencyCodeContainsFold(*i.CurrencyCodeContainsFold))
+	}
 	if i.ReferenceID != nil {
 		predicates = append(predicates, channelmodelprice.ReferenceIDEQ(*i.ReferenceID))
 	}
@@ -2093,6 +2201,21 @@ type ChannelModelPriceVersionWhereInput struct {
 	ChannelModelPriceIDNEQ   *int  `json:"channelModelPriceIDNEQ,omitempty"`
 	ChannelModelPriceIDIn    []int `json:"channelModelPriceIDIn,omitempty"`
 	ChannelModelPriceIDNotIn []int `json:"channelModelPriceIDNotIn,omitempty"`
+
+	// "currency_code" field predicates.
+	CurrencyCode             *string  `json:"currencyCode,omitempty"`
+	CurrencyCodeNEQ          *string  `json:"currencyCodeNEQ,omitempty"`
+	CurrencyCodeIn           []string `json:"currencyCodeIn,omitempty"`
+	CurrencyCodeNotIn        []string `json:"currencyCodeNotIn,omitempty"`
+	CurrencyCodeGT           *string  `json:"currencyCodeGT,omitempty"`
+	CurrencyCodeGTE          *string  `json:"currencyCodeGTE,omitempty"`
+	CurrencyCodeLT           *string  `json:"currencyCodeLT,omitempty"`
+	CurrencyCodeLTE          *string  `json:"currencyCodeLTE,omitempty"`
+	CurrencyCodeContains     *string  `json:"currencyCodeContains,omitempty"`
+	CurrencyCodeHasPrefix    *string  `json:"currencyCodeHasPrefix,omitempty"`
+	CurrencyCodeHasSuffix    *string  `json:"currencyCodeHasSuffix,omitempty"`
+	CurrencyCodeEqualFold    *string  `json:"currencyCodeEqualFold,omitempty"`
+	CurrencyCodeContainsFold *string  `json:"currencyCodeContainsFold,omitempty"`
 
 	// "status" field predicates.
 	Status      *channelmodelpriceversion.Status  `json:"status,omitempty"`
@@ -2359,6 +2482,45 @@ func (i *ChannelModelPriceVersionWhereInput) P() (predicate.ChannelModelPriceVer
 	}
 	if len(i.ChannelModelPriceIDNotIn) > 0 {
 		predicates = append(predicates, channelmodelpriceversion.ChannelModelPriceIDNotIn(i.ChannelModelPriceIDNotIn...))
+	}
+	if i.CurrencyCode != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeEQ(*i.CurrencyCode))
+	}
+	if i.CurrencyCodeNEQ != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeNEQ(*i.CurrencyCodeNEQ))
+	}
+	if len(i.CurrencyCodeIn) > 0 {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeIn(i.CurrencyCodeIn...))
+	}
+	if len(i.CurrencyCodeNotIn) > 0 {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeNotIn(i.CurrencyCodeNotIn...))
+	}
+	if i.CurrencyCodeGT != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeGT(*i.CurrencyCodeGT))
+	}
+	if i.CurrencyCodeGTE != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeGTE(*i.CurrencyCodeGTE))
+	}
+	if i.CurrencyCodeLT != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeLT(*i.CurrencyCodeLT))
+	}
+	if i.CurrencyCodeLTE != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeLTE(*i.CurrencyCodeLTE))
+	}
+	if i.CurrencyCodeContains != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeContains(*i.CurrencyCodeContains))
+	}
+	if i.CurrencyCodeHasPrefix != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeHasPrefix(*i.CurrencyCodeHasPrefix))
+	}
+	if i.CurrencyCodeHasSuffix != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeHasSuffix(*i.CurrencyCodeHasSuffix))
+	}
+	if i.CurrencyCodeEqualFold != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeEqualFold(*i.CurrencyCodeEqualFold))
+	}
+	if i.CurrencyCodeContainsFold != nil {
+		predicates = append(predicates, channelmodelpriceversion.CurrencyCodeContainsFold(*i.CurrencyCodeContainsFold))
 	}
 	if i.Status != nil {
 		predicates = append(predicates, channelmodelpriceversion.StatusEQ(*i.Status))
@@ -10269,6 +10431,21 @@ type UsageLogWhereInput struct {
 	TotalCostIsNil  bool      `json:"totalCostIsNil,omitempty"`
 	TotalCostNotNil bool      `json:"totalCostNotNil,omitempty"`
 
+	// "cost_currency_code" field predicates.
+	CostCurrencyCode             *string  `json:"costCurrencyCode,omitempty"`
+	CostCurrencyCodeNEQ          *string  `json:"costCurrencyCodeNEQ,omitempty"`
+	CostCurrencyCodeIn           []string `json:"costCurrencyCodeIn,omitempty"`
+	CostCurrencyCodeNotIn        []string `json:"costCurrencyCodeNotIn,omitempty"`
+	CostCurrencyCodeGT           *string  `json:"costCurrencyCodeGT,omitempty"`
+	CostCurrencyCodeGTE          *string  `json:"costCurrencyCodeGTE,omitempty"`
+	CostCurrencyCodeLT           *string  `json:"costCurrencyCodeLT,omitempty"`
+	CostCurrencyCodeLTE          *string  `json:"costCurrencyCodeLTE,omitempty"`
+	CostCurrencyCodeContains     *string  `json:"costCurrencyCodeContains,omitempty"`
+	CostCurrencyCodeHasPrefix    *string  `json:"costCurrencyCodeHasPrefix,omitempty"`
+	CostCurrencyCodeHasSuffix    *string  `json:"costCurrencyCodeHasSuffix,omitempty"`
+	CostCurrencyCodeEqualFold    *string  `json:"costCurrencyCodeEqualFold,omitempty"`
+	CostCurrencyCodeContainsFold *string  `json:"costCurrencyCodeContainsFold,omitempty"`
+
 	// "cost_price_reference_id" field predicates.
 	CostPriceReferenceID             *string  `json:"costPriceReferenceID,omitempty"`
 	CostPriceReferenceIDNEQ          *string  `json:"costPriceReferenceIDNEQ,omitempty"`
@@ -10975,6 +11152,45 @@ func (i *UsageLogWhereInput) P() (predicate.UsageLog, error) {
 	}
 	if i.TotalCostNotNil {
 		predicates = append(predicates, usagelog.TotalCostNotNil())
+	}
+	if i.CostCurrencyCode != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeEQ(*i.CostCurrencyCode))
+	}
+	if i.CostCurrencyCodeNEQ != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeNEQ(*i.CostCurrencyCodeNEQ))
+	}
+	if len(i.CostCurrencyCodeIn) > 0 {
+		predicates = append(predicates, usagelog.CostCurrencyCodeIn(i.CostCurrencyCodeIn...))
+	}
+	if len(i.CostCurrencyCodeNotIn) > 0 {
+		predicates = append(predicates, usagelog.CostCurrencyCodeNotIn(i.CostCurrencyCodeNotIn...))
+	}
+	if i.CostCurrencyCodeGT != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeGT(*i.CostCurrencyCodeGT))
+	}
+	if i.CostCurrencyCodeGTE != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeGTE(*i.CostCurrencyCodeGTE))
+	}
+	if i.CostCurrencyCodeLT != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeLT(*i.CostCurrencyCodeLT))
+	}
+	if i.CostCurrencyCodeLTE != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeLTE(*i.CostCurrencyCodeLTE))
+	}
+	if i.CostCurrencyCodeContains != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeContains(*i.CostCurrencyCodeContains))
+	}
+	if i.CostCurrencyCodeHasPrefix != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeHasPrefix(*i.CostCurrencyCodeHasPrefix))
+	}
+	if i.CostCurrencyCodeHasSuffix != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeHasSuffix(*i.CostCurrencyCodeHasSuffix))
+	}
+	if i.CostCurrencyCodeEqualFold != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeEqualFold(*i.CostCurrencyCodeEqualFold))
+	}
+	if i.CostCurrencyCodeContainsFold != nil {
+		predicates = append(predicates, usagelog.CostCurrencyCodeContainsFold(*i.CostCurrencyCodeContainsFold))
 	}
 	if i.CostPriceReferenceID != nil {
 		predicates = append(predicates, usagelog.CostPriceReferenceIDEQ(*i.CostPriceReferenceID))

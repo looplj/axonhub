@@ -578,6 +578,11 @@ func (svc *BackupService) restoreChannelModelPrices(
 			return fmt.Errorf("invalid channel model price: channel=%s model_id=%s: %w", pData.ChannelName, pData.ModelID, err)
 		}
 
+		currencyCode, err := objects.NormalizeCurrencyCode(pData.CurrencyCode)
+		if err != nil {
+			return fmt.Errorf("invalid channel model price currency: channel=%s model_id=%s: %w", pData.ChannelName, pData.ModelID, err)
+		}
+
 		ch, err := getChannel(pData.ChannelName)
 		if err != nil {
 			return err
@@ -608,7 +613,7 @@ func (svc *BackupService) restoreChannelModelPrices(
 		}
 
 		if existing != nil {
-			if existing.ReferenceID == refID && existing.Price.Equals(pData.Price) {
+			if existing.ReferenceID == refID && existing.Price.Equals(pData.Price) && existing.CurrencyCode == currencyCode {
 				continue
 			}
 
@@ -633,6 +638,7 @@ func (svc *BackupService) restoreChannelModelPrices(
 
 				if _, err := db.ChannelModelPrice.UpdateOneID(existing.ID).
 					SetPrice(pData.Price).
+					SetCurrencyCode(currencyCode).
 					SetReferenceID(refID).
 					Save(ctx); err != nil {
 					return fmt.Errorf("failed to restore channel model price: channel=%s model_id=%s: %w", pData.ChannelName, pData.ModelID, err)
@@ -643,6 +649,7 @@ func (svc *BackupService) restoreChannelModelPrices(
 					SetChannelID(ch.ID).
 					SetModelID(pData.ModelID).
 					SetChannelModelPriceID(existing.ID).
+					SetCurrencyCode(currencyCode).
 					SetPrice(pData.Price).
 					SetStatus(channelmodelpriceversion.StatusActive).
 					SetEffectiveStartAt(now).
@@ -661,6 +668,7 @@ func (svc *BackupService) restoreChannelModelPrices(
 		entity, err := db.ChannelModelPrice.Create().
 			SetChannelID(ch.ID).
 			SetModelID(pData.ModelID).
+			SetCurrencyCode(currencyCode).
 			SetPrice(pData.Price).
 			SetReferenceID(refID).
 			Save(ctx)
@@ -673,6 +681,7 @@ func (svc *BackupService) restoreChannelModelPrices(
 			SetChannelID(ch.ID).
 			SetModelID(pData.ModelID).
 			SetChannelModelPriceID(entity.ID).
+			SetCurrencyCode(currencyCode).
 			SetPrice(pData.Price).
 			SetStatus(channelmodelpriceversion.StatusActive).
 			SetEffectiveStartAt(now).
@@ -717,6 +726,11 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 			baseURL = &chData.BaseURL
 		}
 
+		currencyCode, err := objects.NormalizeCurrencyCode(chData.CurrencyCode)
+		if err != nil {
+			return fmt.Errorf("invalid currency for channel %s: %w", chData.Name, err)
+		}
+
 		if existing != nil {
 			switch opts.ChannelConflictStrategy {
 			case ConflictStrategySkip:
@@ -739,7 +753,8 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 					SetTags(chData.Tags).
 					SetDefaultTestModel(chData.DefaultTestModel).
 					SetSettings(chData.Settings).
-					SetOrderingWeight(chData.OrderingWeight)
+					SetOrderingWeight(chData.OrderingWeight).
+					SetCurrencyCode(currencyCode)
 
 				if chData.Remark != nil {
 					update.SetRemark(*chData.Remark)
@@ -769,7 +784,8 @@ func (svc *BackupService) restoreChannels(ctx context.Context, db *ent.Client, c
 				SetTags(chData.Tags).
 				SetDefaultTestModel(chData.DefaultTestModel).
 				SetSettings(chData.Settings).
-				SetOrderingWeight(chData.OrderingWeight)
+				SetOrderingWeight(chData.OrderingWeight).
+				SetCurrencyCode(currencyCode)
 
 			if chData.Remark != nil {
 				create.SetRemark(*chData.Remark)
@@ -1371,6 +1387,11 @@ func (svc *BackupService) restoreUsageLogs(
 			)
 		}
 
+		costCurrencyCode := usageData.CostCurrencyCode
+		if costCurrencyCode == "" {
+			costCurrencyCode = objects.DefaultCurrencyCode
+		}
+
 		builders = append(builders, db.UsageLog.Create().
 			SetCreatedAt(usageData.CreatedAt).
 			SetUpdatedAt(usageData.UpdatedAt).
@@ -1394,6 +1415,7 @@ func (svc *BackupService) restoreUsageLogs(
 			SetSource(usageData.Source).
 			SetFormat(usageData.Format).
 			SetNillableTotalCost(usageData.TotalCost).
+			SetCostCurrencyCode(costCurrencyCode).
 			SetCostItems(usageData.CostItems).
 			SetNillableCostPriceReferenceID(nilIfEmpty(usageData.CostPriceReferenceID)))
 		restoredLogRequestIDs[requestID] = struct{}{}

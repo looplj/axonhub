@@ -370,6 +370,20 @@ func (_u *UsageLogUpdate) ClearTotalCost() *UsageLogUpdate {
 	return _u
 }
 
+// SetCostCurrencyCode sets the "cost_currency_code" field.
+func (_u *UsageLogUpdate) SetCostCurrencyCode(v string) *UsageLogUpdate {
+	_u.mutation.SetCostCurrencyCode(v)
+	return _u
+}
+
+// SetNillableCostCurrencyCode sets the "cost_currency_code" field if the given value is not nil.
+func (_u *UsageLogUpdate) SetNillableCostCurrencyCode(v *string) *UsageLogUpdate {
+	if v != nil {
+		_u.SetCostCurrencyCode(*v)
+	}
+	return _u
+}
+
 // SetCostItems sets the "cost_items" field.
 func (_u *UsageLogUpdate) SetCostItems(v []objects.CostItem) *UsageLogUpdate {
 	_u.mutation.SetCostItems(v)
@@ -597,6 +611,9 @@ func (_u *UsageLogUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.TotalCostCleared() {
 		_spec.ClearField(usagelog.FieldTotalCost, field.TypeFloat64)
+	}
+	if value, ok := _u.mutation.CostCurrencyCode(); ok {
+		_spec.SetField(usagelog.FieldCostCurrencyCode, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CostItems(); ok {
 		_spec.SetField(usagelog.FieldCostItems, field.TypeJSON, value)
@@ -976,6 +993,20 @@ func (_u *UsageLogUpdateOne) ClearTotalCost() *UsageLogUpdateOne {
 	return _u
 }
 
+// SetCostCurrencyCode sets the "cost_currency_code" field.
+func (_u *UsageLogUpdateOne) SetCostCurrencyCode(v string) *UsageLogUpdateOne {
+	_u.mutation.SetCostCurrencyCode(v)
+	return _u
+}
+
+// SetNillableCostCurrencyCode sets the "cost_currency_code" field if the given value is not nil.
+func (_u *UsageLogUpdateOne) SetNillableCostCurrencyCode(v *string) *UsageLogUpdateOne {
+	if v != nil {
+		_u.SetCostCurrencyCode(*v)
+	}
+	return _u
+}
+
 // SetCostItems sets the "cost_items" field.
 func (_u *UsageLogUpdateOne) SetCostItems(v []objects.CostItem) *UsageLogUpdateOne {
 	_u.mutation.SetCostItems(v)
@@ -1233,6 +1264,9 @@ func (_u *UsageLogUpdateOne) sqlSave(ctx context.Context) (_node *UsageLog, err 
 	}
 	if _u.mutation.TotalCostCleared() {
 		_spec.ClearField(usagelog.FieldTotalCost, field.TypeFloat64)
+	}
+	if value, ok := _u.mutation.CostCurrencyCode(); ok {
+		_spec.SetField(usagelog.FieldCostCurrencyCode, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CostItems(); ok {
 		_spec.SetField(usagelog.FieldCostItems, field.TypeJSON, value)

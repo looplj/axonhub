@@ -610,7 +610,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
           <span className='inline-flex items-center gap-1 font-mono text-xs font-medium'>
             {t('currencies.format', {
               val: cost,
-              currency: settings?.currencyCode ?? 'USD',
+              currency: usageLog?.costCurrencyCode || settings?.currencyCode || 'USD',
               locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
               minimumFractionDigits: 6,
             })}

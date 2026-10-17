@@ -180,6 +180,9 @@ func (Channel) Fields() []ent.Field {
 		field.String("remark").
 			Optional().Nillable().
 			Comment("User-defined remark or note for the channel"),
+		field.String("currency_code").
+			Default(objects.DefaultCurrencyCode).
+			Comment("Currency of manually entered prices for this channel. Model library prices always use USD."),
 		field.JSON("endpoints", []objects.ChannelEndpoint{}).
 			Default([]objects.ChannelEndpoint{}).
 			Optional().

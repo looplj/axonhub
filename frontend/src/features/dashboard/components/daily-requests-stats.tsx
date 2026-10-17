@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Area, AreaChart, Legend } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CurrencySelect, useSelectedCurrency } from '@/components/currency-select';
+import { currencyAmount, formatCurrencyAmount, localeForLanguage } from '@/utils/currency';
 import { useGeneralSettings } from '../../system/data/system';
 import { useDailyRequestStats } from '../data/dashboard';
 
@@ -15,18 +17,16 @@ export function DailyRequestStats() {
 
   const isLoading = isStatsLoading || isSettingsLoading;
 
-  const currencyCode = generalSettings?.currencyCode || 'USD';
-  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
+  const preferredCurrency = generalSettings?.currencyCode || 'USD';
+  const { codes: currencyCodes, currencyCode, setCurrencyCode } = useSelectedCurrency(
+    dailyStats?.map((stat) => stat.costByCurrency) ?? [],
+    preferredCurrency
+  );
+  const locale = localeForLanguage(i18n.language);
 
   const formatCurrency = useCallback(
     (val: number, fractionDigits: number) =>
-      t('currencies.format', {
-        val,
-        currency: currencyCode,
-        locale,
-        minimumFractionDigits: fractionDigits,
-        maximumFractionDigits: fractionDigits,
-      }),
+      formatCurrencyAmount(val, currencyCode, t, locale, fractionDigits),
     [currencyCode, locale, t]
   );
 
@@ -71,7 +71,7 @@ export function DailyRequestStats() {
         }),
         requests: stat.count,
         tokens: stat.tokens,
-        cost: stat.cost,
+        cost: currencyAmount(stat.costByCurrency, currencyCode),
       };
     }) || [];
 
@@ -85,8 +85,12 @@ export function DailyRequestStats() {
   const costMax = Math.max(0.1, maxCost * 1.1);
 
   return (
-    <ResponsiveContainer width='100%' height={350}>
-      <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+    <div className='space-y-2'>
+      <div className='flex justify-end'>
+        <CurrencySelect codes={currencyCodes} value={currencyCode} onChange={setCurrencyCode} />
+      </div>
+      <ResponsiveContainer width='100%' height={350}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
         <defs>
           <linearGradient id='colorRequests' x1='0' y1='0' x2='0' y2='1'>
             <stop offset='5%' stopColor='var(--primary)' stopOpacity={0.3} />
@@ -194,6 +198,7 @@ export function DailyRequestStats() {
           activeDot={{ r: 4 }}
         />
       </AreaChart>
-    </ResponsiveContainer>
+      </ResponsiveContainer>
+    </div>
   );
 }

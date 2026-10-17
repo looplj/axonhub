@@ -118,6 +118,13 @@ For Anthropic models, you can configure TTL variants for cache writes:
    - Each price change creates a new version record
    - Usage logs reference the specific price version via `cost_price_reference_id`
 
+### Multi-currency
+
+- Each channel has a default currency used when adding new price rows; each price row stores its own `currencyCode`. Model library prices are always recorded in USD.
+- AxonHub does **not** perform currency conversion. A channel may contain price rows in different currencies, and each usage log snapshots the currency of the price row that was used in `cost_currency_code`.
+- Aggregated cost fields are returned grouped by currency (`costByCurrency` / `totalCostByCurrency` as `{ currencyCode, amount }`), so amounts in different currencies are never summed together.
+- The system general setting `currencyCode` only provides the default for new channels and for displays without a recorded currency; it does not affect existing prices or billing.
+
 ### API Response (`usage.cost`)
 
 Whether a cost appears on the client response is controlled by the **Inject usage.cost** setting in system settings, which is off by default. When the setting is on and the channel has a price configured for the model, AxonHub calculates the request cost from the channel model price and writes it to `usage.cost` on the client response.
@@ -125,6 +132,7 @@ Whether a cost appears on the client response is controlled by the **Inject usag
 A few notes:
 
 - The number is AxonHub's own calculation from the channel model price, not the upstream provider's bill.
+- `usage.cost` carries no currency field; it uses the currency of the matched price row (USD for model-library prices). Check `costCurrencyCode` on the usage log for the exact currency.
 - `usage.cost` or `cost_details` returned by the upstream is dropped and never forwarded to the client (except on pass-through requests).
 - With the setting off, clients do not see `cost` on the normal request path.
 - `cost` is omitted when no price is configured, the response has no `usage`, or the setting is off.
@@ -209,6 +217,7 @@ query GetUsageLogs {
 | Field | Type | Description |
 |-------|------|-------------|
 | `totalCost` | Float | Total cost calculated based on channel model price |
+| `costCurrencyCode` | String | Currency of `totalCost` (snapshotted when the usage log is written) |
 | `costItems` | JSON | Array of cost breakdown items |
 | `costPriceReferenceId` | String | Reference ID to the price version used for cost calculation |
 

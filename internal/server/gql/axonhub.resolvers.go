@@ -1002,6 +1002,7 @@ func (r *queryResolver) APIKeyQuotaUsages(ctx context.Context, apiKeyID objects.
 				RequestCount: int(u.Usage.RequestCount),
 				TotalTokens:  int(u.Usage.TotalTokens),
 				TotalCost:    u.Usage.TotalCost,
+				CurrencyCode: u.Usage.CurrencyCode,
 			},
 		})
 	}

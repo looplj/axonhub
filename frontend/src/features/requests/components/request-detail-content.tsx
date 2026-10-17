@@ -435,7 +435,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
           const formatCurrency = (val: number) =>
             t('currencies.format', {
               val,
-              currency: settings?.currencyCode ?? 'USD',
+              currency: usage.costCurrencyCode || settings?.currencyCode || 'USD',
               locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
               minimumFractionDigits: 6,
             });

@@ -9,6 +9,7 @@ import (
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent/usagelog"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 )
 
@@ -96,5 +97,5 @@ func (svc *ProviderQuotaService) channelCostSince(
 		return 0, fmt.Errorf("failed to aggregate channel period cost: %w", err)
 	}
 
-	return metadata.TotalCost.InexactFloat64(), nil
+	return metadata.CostInCurrency(objects.DefaultCurrencyCode), nil
 }

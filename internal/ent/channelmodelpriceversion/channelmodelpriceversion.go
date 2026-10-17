@@ -28,6 +28,8 @@ const (
 	FieldModelID = "model_id"
 	// FieldChannelModelPriceID holds the string denoting the channel_model_price_id field in the database.
 	FieldChannelModelPriceID = "channel_model_price_id"
+	// FieldCurrencyCode holds the string denoting the currency_code field in the database.
+	FieldCurrencyCode = "currency_code"
 	// FieldPrice holds the string denoting the price field in the database.
 	FieldPrice = "price"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -59,6 +61,7 @@ var Columns = []string{
 	FieldChannelID,
 	FieldModelID,
 	FieldChannelModelPriceID,
+	FieldCurrencyCode,
 	FieldPrice,
 	FieldStatus,
 	FieldEffectiveStartAt,
@@ -90,6 +93,8 @@ var (
 	DefaultUpdatedAt func() time.Time
 	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
 	UpdateDefaultUpdatedAt func() time.Time
+	// DefaultCurrencyCode holds the default value on creation for the "currency_code" field.
+	DefaultCurrencyCode string
 )
 
 // Status defines the type for the "status" enum field.
@@ -146,6 +151,11 @@ func ByModelID(opts ...sql.OrderTermOption) OrderOption {
 // ByChannelModelPriceID orders the results by the channel_model_price_id field.
 func ByChannelModelPriceID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldChannelModelPriceID, opts...).ToFunc()
+}
+
+// ByCurrencyCode orders the results by the currency_code field.
+func ByCurrencyCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCurrencyCode, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

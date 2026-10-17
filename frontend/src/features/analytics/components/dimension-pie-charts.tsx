@@ -5,7 +5,6 @@ import { ChevronDown, BarChart4, Activity, DollarSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatCurrencySimple } from '../utils/format-currency';
 
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
@@ -83,11 +82,15 @@ const COLORS = [
   'var(--chart-6)',
 ];
 
+import { currencyAmount, formatCurrencyAmount, localeForLanguage } from '@/utils/currency';
+
 const MAX_ITEMS = 9;
+
+type CostedDimensionStat = AnalyticsDimensionStat & { cost: number };
 
 interface PieChartCardProps {
   title: string;
-  data: AnalyticsDimensionStat[];
+  data: CostedDimensionStat[];
   valueKey: 'totalTokens' | 'requestCount' | 'cost';
   valueFormatter: (val: number) => string;
   otherLabel: string;
@@ -297,7 +300,11 @@ export function DimensionPieCharts({
   isLoading,
   currencyCode,
 }: DimensionPieChartsProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = localeForLanguage(i18n.language);
+
+  const withCost = (stats: AnalyticsDimensionStat[]): CostedDimensionStat[] =>
+    stats.map((stat) => ({ ...stat, cost: currencyAmount(stat.costByCurrency, currencyCode) }));
 
   if (isLoading) {
     return (
@@ -310,10 +317,10 @@ export function DimensionPieCharts({
   }
 
   const dimensions = [
-    { title: t('analytics.table.channel'), data: channelStats },
-    { title: t('analytics.table.model'), data: modelStats },
-    { title: t('analytics.table.apiKey'), data: apiKeyStats },
-    { title: t('analytics.table.user'), data: userStats },
+    { title: t('analytics.table.channel'), data: withCost(channelStats) },
+    { title: t('analytics.table.model'), data: withCost(modelStats) },
+    { title: t('analytics.table.apiKey'), data: withCost(apiKeyStats) },
+    { title: t('analytics.table.user'), data: withCost(userStats) },
   ];
 
   const metrics = [
@@ -334,7 +341,7 @@ export function DimensionPieCharts({
     {
       key: 'cost' as const,
       title: t('analytics.pie.costDistribution'),
-      formatter: (val: number) => formatCurrencySimple(val, currencyCode),
+      formatter: (val: number) => formatCurrencyAmount(val, currencyCode, t, locale, 4),
       icon: <DollarSign className='h-4 w-4 text-primary' />,
       storageKey: 'costs',
     },

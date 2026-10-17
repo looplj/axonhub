@@ -843,6 +843,11 @@ func (_q *ChannelQuery) collectField(ctx context.Context, oneNode bool, opCtx *g
 				selectedFields = append(selectedFields, channel.FieldRemark)
 				fieldSeen[channel.FieldRemark] = struct{}{}
 			}
+		case "currencyCode":
+			if _, ok := fieldSeen[channel.FieldCurrencyCode]; !ok {
+				selectedFields = append(selectedFields, channel.FieldCurrencyCode)
+				fieldSeen[channel.FieldCurrencyCode] = struct{}{}
+			}
 		case "endpoints":
 			if _, ok := fieldSeen[channel.FieldEndpoints]; !ok {
 				selectedFields = append(selectedFields, channel.FieldEndpoints)
@@ -980,6 +985,11 @@ func (_q *ChannelModelPriceQuery) collectField(ctx context.Context, oneNode bool
 				selectedFields = append(selectedFields, channelmodelprice.FieldModelID)
 				fieldSeen[channelmodelprice.FieldModelID] = struct{}{}
 			}
+		case "currencyCode":
+			if _, ok := fieldSeen[channelmodelprice.FieldCurrencyCode]; !ok {
+				selectedFields = append(selectedFields, channelmodelprice.FieldCurrencyCode)
+				fieldSeen[channelmodelprice.FieldCurrencyCode] = struct{}{}
+			}
 		case "price":
 			if _, ok := fieldSeen[channelmodelprice.FieldPrice]; !ok {
 				selectedFields = append(selectedFields, channelmodelprice.FieldPrice)
@@ -1113,6 +1123,11 @@ func (_q *ChannelModelPriceVersionQuery) collectField(ctx context.Context, oneNo
 			if _, ok := fieldSeen[channelmodelpriceversion.FieldChannelModelPriceID]; !ok {
 				selectedFields = append(selectedFields, channelmodelpriceversion.FieldChannelModelPriceID)
 				fieldSeen[channelmodelpriceversion.FieldChannelModelPriceID] = struct{}{}
+			}
+		case "currencyCode":
+			if _, ok := fieldSeen[channelmodelpriceversion.FieldCurrencyCode]; !ok {
+				selectedFields = append(selectedFields, channelmodelpriceversion.FieldCurrencyCode)
+				fieldSeen[channelmodelpriceversion.FieldCurrencyCode] = struct{}{}
 			}
 		case "price":
 			if _, ok := fieldSeen[channelmodelpriceversion.FieldPrice]; !ok {
@@ -5240,6 +5255,11 @@ func (_q *UsageLogQuery) collectField(ctx context.Context, oneNode bool, opCtx *
 			if _, ok := fieldSeen[usagelog.FieldTotalCost]; !ok {
 				selectedFields = append(selectedFields, usagelog.FieldTotalCost)
 				fieldSeen[usagelog.FieldTotalCost] = struct{}{}
+			}
+		case "costCurrencyCode":
+			if _, ok := fieldSeen[usagelog.FieldCostCurrencyCode]; !ok {
+				selectedFields = append(selectedFields, usagelog.FieldCostCurrencyCode)
+				fieldSeen[usagelog.FieldCostCurrencyCode] = struct{}{}
 			}
 		case "costItems":
 			if _, ok := fieldSeen[usagelog.FieldCostItems]; !ok {

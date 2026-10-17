@@ -839,7 +839,8 @@ func normalizeAndValidateProfileRoutingPolicy(profile *objects.APIKeyProfile) er
 }
 
 func validateProfileQuota(profiles []objects.APIKeyProfile) error {
-	for _, profile := range profiles {
+	for i := range profiles {
+		profile := &profiles[i]
 		if profile.Quota == nil {
 			continue
 		}
@@ -859,6 +860,14 @@ func validateProfileQuota(profiles []objects.APIKeyProfile) error {
 
 		if q.Cost != nil && q.Cost.IsNegative() {
 			return fmt.Errorf("profile '%s' quota.cost must be non-negative", profile.Name)
+		}
+
+		if q.CurrencyCode != "" {
+			currencyCode, err := objects.NormalizeCurrencyCode(q.CurrencyCode)
+			if err != nil {
+				return fmt.Errorf("profile '%s' quota.currencyCode is invalid: %w", profile.Name, err)
+			}
+			q.CurrencyCode = currencyCode
 		}
 
 		switch q.Period.Type {

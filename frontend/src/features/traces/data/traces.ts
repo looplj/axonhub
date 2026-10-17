@@ -61,7 +61,10 @@ function buildTraceDetailQuery() {
             totalInputTokens
             totalOutputTokens
             totalTokens
-            totalCost
+            totalCostByCurrency {
+              currencyCode
+              amount
+            }
             totalCachedTokens
             totalCachedWriteTokens
           }
@@ -96,7 +99,10 @@ function buildTraceWithRequestTracesQuery() {
             totalInputTokens
             totalOutputTokens
             totalTokens
-            totalCost
+            totalCostByCurrency {
+              currencyCode
+              amount
+            }
             totalCachedTokens
             totalCachedWriteTokens
           }

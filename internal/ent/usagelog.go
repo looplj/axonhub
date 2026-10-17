@@ -66,6 +66,8 @@ type UsageLog struct {
 	Format string `json:"format,omitempty"`
 	// Total cost calculated based on channel model price
 	TotalCost *float64 `json:"total_cost,omitempty"`
+	// Currency of total_cost. Snapshotted when the usage log is written.
+	CostCurrencyCode string `json:"cost_currency_code,omitempty"`
 	// Detailed cost breakdown items in JSON
 	CostItems []objects.CostItem `json:"cost_items,omitempty"`
 	// Reference ID to the channel model price version used for cost calculation
@@ -135,7 +137,7 @@ func (*UsageLog) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case usagelog.FieldID, usagelog.FieldRequestID, usagelog.FieldAPIKeyID, usagelog.FieldProjectID, usagelog.FieldChannelID, usagelog.FieldPromptTokens, usagelog.FieldCompletionTokens, usagelog.FieldTotalTokens, usagelog.FieldPromptAudioTokens, usagelog.FieldPromptCachedTokens, usagelog.FieldPromptWriteCachedTokens, usagelog.FieldPromptWriteCachedTokens5m, usagelog.FieldPromptWriteCachedTokens1h, usagelog.FieldCompletionAudioTokens, usagelog.FieldCompletionReasoningTokens, usagelog.FieldCompletionAcceptedPredictionTokens, usagelog.FieldCompletionRejectedPredictionTokens:
 			values[i] = new(sql.NullInt64)
-		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat, usagelog.FieldCostPriceReferenceID:
+		case usagelog.FieldModelID, usagelog.FieldSource, usagelog.FieldFormat, usagelog.FieldCostCurrencyCode, usagelog.FieldCostPriceReferenceID:
 			values[i] = new(sql.NullString)
 		case usagelog.FieldCreatedAt, usagelog.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -293,6 +295,12 @@ func (_m *UsageLog) assignValues(columns []string, values []any) error {
 				_m.TotalCost = new(float64)
 				*_m.TotalCost = value.Float64
 			}
+		case usagelog.FieldCostCurrencyCode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field cost_currency_code", values[i])
+			} else if value.Valid {
+				_m.CostCurrencyCode = value.String
+			}
 		case usagelog.FieldCostItems:
 			if value, ok := values[i].(*[]byte); !ok {
 				return fmt.Errorf("unexpected type %T for field cost_items", values[i])
@@ -425,6 +433,9 @@ func (_m *UsageLog) String() string {
 		builder.WriteString("total_cost=")
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("cost_currency_code=")
+	builder.WriteString(_m.CostCurrencyCode)
 	builder.WriteString(", ")
 	builder.WriteString("cost_items=")
 	builder.WriteString(fmt.Sprintf("%v", _m.CostItems))

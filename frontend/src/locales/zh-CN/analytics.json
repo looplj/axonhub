@@ -26,6 +26,7 @@
   "analytics.overview.totalTokens": "总消耗 Token",
   "analytics.overview.totalRequests": "总请求数",
   "analytics.overview.totalCost": "总费用",
+  "analytics.currency": "货币",
   "analytics.overview.cacheHitRate": "缓存命中率",
   "analytics.chart.trendTitle": "使用趋势",
   "analytics.chart.inputTokens": "输入 Token",

@@ -387,6 +387,20 @@ func (_u *ChannelUpdate) ClearRemark() *ChannelUpdate {
 	return _u
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (_u *ChannelUpdate) SetCurrencyCode(v string) *ChannelUpdate {
+	_u.mutation.SetCurrencyCode(v)
+	return _u
+}
+
+// SetNillableCurrencyCode sets the "currency_code" field if the given value is not nil.
+func (_u *ChannelUpdate) SetNillableCurrencyCode(v *string) *ChannelUpdate {
+	if v != nil {
+		_u.SetCurrencyCode(*v)
+	}
+	return _u
+}
+
 // SetEndpoints sets the "endpoints" field.
 func (_u *ChannelUpdate) SetEndpoints(v []objects.ChannelEndpoint) *ChannelUpdate {
 	_u.mutation.SetEndpoints(v)
@@ -811,6 +825,9 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(channel.FieldRemark, field.TypeString)
+	}
+	if value, ok := _u.mutation.CurrencyCode(); ok {
+		_spec.SetField(channel.FieldCurrencyCode, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Endpoints(); ok {
 		_spec.SetField(channel.FieldEndpoints, field.TypeJSON, value)
@@ -1449,6 +1466,20 @@ func (_u *ChannelUpdateOne) ClearRemark() *ChannelUpdateOne {
 	return _u
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (_u *ChannelUpdateOne) SetCurrencyCode(v string) *ChannelUpdateOne {
+	_u.mutation.SetCurrencyCode(v)
+	return _u
+}
+
+// SetNillableCurrencyCode sets the "currency_code" field if the given value is not nil.
+func (_u *ChannelUpdateOne) SetNillableCurrencyCode(v *string) *ChannelUpdateOne {
+	if v != nil {
+		_u.SetCurrencyCode(*v)
+	}
+	return _u
+}
+
 // SetEndpoints sets the "endpoints" field.
 func (_u *ChannelUpdateOne) SetEndpoints(v []objects.ChannelEndpoint) *ChannelUpdateOne {
 	_u.mutation.SetEndpoints(v)
@@ -1903,6 +1934,9 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if _u.mutation.RemarkCleared() {
 		_spec.ClearField(channel.FieldRemark, field.TypeString)
+	}
+	if value, ok := _u.mutation.CurrencyCode(); ok {
+		_spec.SetField(channel.FieldCurrencyCode, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Endpoints(); ok {
 		_spec.SetField(channel.FieldEndpoints, field.TypeJSON, value)

@@ -58,7 +58,7 @@ func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, i
 
 		now := time.Now()
 		for _, price := range prices {
-			if _, err := svc.createChannelModelPrice(ctx, ch.ID, price.ModelID, price.Price, now); err != nil {
+			if _, err := svc.createChannelModelPrice(ctx, ch.ID, price.ModelID, price.Price, price.CurrencyCode, now); err != nil {
 				return fmt.Errorf("failed to copy channel model price: %w", err)
 			}
 		}

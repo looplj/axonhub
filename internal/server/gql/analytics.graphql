@@ -39,7 +39,7 @@ type AnalyticsOverview {
   totalUncachedInputTokens: Int!
   totalOutputTokens: Int!
   totalRequests: Int!
-  totalCost: Float!
+  totalCostByCurrency: [CurrencyAmount!]!
 }
 
 """
@@ -53,7 +53,7 @@ type AnalyticsDailyStat {
   outputTokens: Int!
   totalTokens: Int!
   requestCount: Int!
-  cost: Float!
+  costByCurrency: [CurrencyAmount!]!
 }
 
 """
@@ -67,7 +67,7 @@ type AnalyticsDimensionStat {
   cachedInputTokens: Int!
   outputTokens: Int!
   totalTokens: Int!
-  cost: Float!
+  costByCurrency: [CurrencyAmount!]!
   "Output token throughput in tokens per second, null when no valid latency metrics exist"
   tokensPerSecond: Float
   "Average time to first token in milliseconds, null when no streaming request recorded a first token"

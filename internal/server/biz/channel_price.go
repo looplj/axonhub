@@ -14,6 +14,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
+	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/channelmodelprice"
 	"github.com/looplj/axonhub/internal/ent/channelmodelpriceversion"
 	"github.com/looplj/axonhub/internal/ent/model"
@@ -24,8 +25,9 @@ import (
 )
 
 type SaveChannelModelPriceInput struct {
-	ModelID string             `json:"modelId"`
-	Price   objects.ModelPrice `json:"price"`
+	ModelID      string             `json:"modelId"`
+	Price        objects.ModelPrice `json:"price"`
+	CurrencyCode string             `json:"currencyCode,omitempty"`
 }
 
 type ActionType string
@@ -41,14 +43,16 @@ type PriceChangeAction struct {
 	Type          ActionType
 	ModelID       string
 	Price         objects.ModelPrice
+	CurrencyCode  string
 	ExistingPrice *ent.ChannelModelPrice // nil if create
 }
 
 const channelModelPriceQueryBatchSize = 500
 
 type channelModelPriceTemplate struct {
-	ModelID string
-	Price   objects.ModelPrice
+	ModelID      string
+	Price        objects.ModelPrice
+	CurrencyCode string
 }
 
 func uniqueNonEmptyModelIDs(modelIDs []string) []string {
@@ -271,6 +275,7 @@ func (svc *ChannelService) createChannelModelPriceIfMissing(
 	err := db.ChannelModelPrice.Create().
 		SetChannelID(channelID).
 		SetModelID(template.ModelID).
+		SetCurrencyCode(template.CurrencyCode).
 		SetPrice(template.Price).
 		SetReferenceID(candidateReferenceID).
 		OnConflictColumns(
@@ -350,8 +355,9 @@ func (svc *ChannelService) resolveChannelModelPriceTemplates(
 		}
 
 		templates = append(templates, channelModelPriceTemplate{
-			ModelID: modelID,
-			Price:   price,
+			ModelID:      modelID,
+			Price:        price,
+			CurrencyCode: objects.DefaultCurrencyCode,
 		})
 	}
 
@@ -388,6 +394,7 @@ func (svc *ChannelService) createChannelModelPriceVersion(
 		SetChannelID(entity.ChannelID).
 		SetModelID(entity.ModelID).
 		SetChannelModelPriceID(entity.ID).
+		SetCurrencyCode(entity.CurrencyCode).
 		SetPrice(entity.Price).
 		SetStatus(channelmodelpriceversion.StatusActive).
 		SetEffectiveStartAt(now).
@@ -408,11 +415,13 @@ func (svc *ChannelService) createChannelModelPrice(
 	channelID int,
 	modelID string,
 	price objects.ModelPrice,
+	currencyCode string,
 	now time.Time,
 ) (*ent.ChannelModelPrice, error) {
 	entity, err := svc.entFromContext(ctx).ChannelModelPrice.Create().
 		SetChannelID(channelID).
 		SetModelID(modelID).
+		SetCurrencyCode(currencyCode).
 		SetPrice(price).
 		SetReferenceID(generateReferenceID()).
 		Save(ctx)
@@ -503,15 +512,17 @@ func calculatePriceChanges(prices []*ent.ChannelModelPrice, inputs []SaveChannel
 				Type:          ActionTypeCreate,
 				ModelID:       modelID,
 				Price:         input.Price,
+				CurrencyCode:  input.CurrencyCode,
 				ExistingPrice: nil,
 			})
 		} else {
 			// Only update if price changed
-			if existing.Price.Equals(input.Price) {
+			if existing.Price.Equals(input.Price) && existing.CurrencyCode == input.CurrencyCode {
 				actions = append(actions, PriceChangeAction{
 					Type:          ActionTypeSkip,
 					ModelID:       modelID,
 					Price:         input.Price,
+					CurrencyCode:  input.CurrencyCode,
 					ExistingPrice: existing,
 				})
 			} else {
@@ -519,6 +530,7 @@ func calculatePriceChanges(prices []*ent.ChannelModelPrice, inputs []SaveChannel
 					Type:          ActionTypeUpdate,
 					ModelID:       modelID,
 					Price:         input.Price,
+					CurrencyCode:  input.CurrencyCode,
 					ExistingPrice: existing,
 				})
 			}
@@ -544,20 +556,41 @@ func (svc *ChannelService) SaveChannelModelPrices(
 	channelID int,
 	inputs []SaveChannelModelPriceInput,
 ) ([]*ent.ChannelModelPrice, error) {
+	db := svc.entFromContext(ctx)
+
+	ch, err := db.Channel.Query().
+		Where(channel.IDEQ(channelID)).
+		Select(channel.FieldCurrencyCode).
+		Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load channel currency: %w", err)
+	}
+
 	seenModelIDs := make(map[string]struct{}, len(inputs))
-	for _, input := range inputs {
+	for i := range inputs {
+		input := &inputs[i]
+
 		if _, ok := seenModelIDs[input.ModelID]; ok {
 			return nil, fmt.Errorf("duplicate model price input: model_id=%s", input.ModelID)
 		}
 
 		seenModelIDs[input.ModelID] = struct{}{}
 
+		currencyCode := input.CurrencyCode
+		if currencyCode == "" {
+			currencyCode = ch.CurrencyCode
+		}
+
+		currencyCode, err = objects.NormalizeCurrencyCode(currencyCode)
+		if err != nil {
+			return nil, fmt.Errorf("invalid model price currency: model_id=%s: %w", input.ModelID, err)
+		}
+		input.CurrencyCode = currencyCode
+
 		if err := input.Price.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid model price: model_id=%s: %w", input.ModelID, err)
 		}
 	}
-
-	db := svc.entFromContext(ctx)
 
 	prices, err := db.ChannelModelPrice.Query().
 		Where(channelmodelprice.ChannelID(channelID)).
@@ -610,7 +643,7 @@ func (svc *ChannelService) SaveChannelModelPrices(
 				continue
 
 			case ActionTypeCreate:
-				entity, err = svc.createChannelModelPrice(ctx, channelID, action.ModelID, action.Price, now)
+				entity, err = svc.createChannelModelPrice(ctx, channelID, action.ModelID, action.Price, action.CurrencyCode, now)
 				if err != nil {
 					return err
 				}
@@ -637,6 +670,7 @@ func (svc *ChannelService) SaveChannelModelPrices(
 
 				entity, err = db.ChannelModelPrice.UpdateOneID(entity.ID).
 					SetPrice(action.Price).
+					SetCurrencyCode(action.CurrencyCode).
 					SetReferenceID(refID).
 					Save(ctx)
 				if err != nil {

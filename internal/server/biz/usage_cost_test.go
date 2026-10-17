@@ -840,6 +840,7 @@ func TestUsageCost_FallbackToModelLibraryPrice(t *testing.T) {
 	require.InDelta(t, 0.0005, *ul.TotalCost, 1e-12)
 	require.Len(t, ul.CostItems, 2)
 	require.Equal(t, modelLibraryPriceReferenceID("m-fallback"), ul.CostPriceReferenceID)
+	require.Equal(t, objects.DefaultCurrencyCode, ul.CostCurrencyCode)
 }
 
 // TestUsageCost_ChannelPriceWinsOverModelLibrary verifies that an explicit

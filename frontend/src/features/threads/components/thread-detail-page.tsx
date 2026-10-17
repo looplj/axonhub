@@ -6,6 +6,7 @@ import { ArrowLeft, Activity, RefreshCw, FileText, Eye, EyeOff } from 'lucide-re
 import { IconArchive, IconPin, IconRotate } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { extractNumberID } from '@/lib/utils';
+import { formatCurrencyAmounts, localeForLanguage } from '@/utils/currency';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,7 +26,6 @@ import { Main } from '@/components/layout/main';
 import { ServerSidePagination } from '@/components/server-side-pagination';
 import { Badge } from '@/components/ui/badge';
 import type { Trace } from '@/features/traces/data/schema';
-import { useGeneralSettings } from '@/features/system/data/system';
 import { useThreadDetail, useArchiveThread, useUnarchiveThread, useRetainThread, useUnretainThread } from '../data/threads';
 import { TraceCard } from './trace-card';
 import { TraceDrawer } from './trace-drawer';
@@ -59,8 +59,6 @@ export default function ThreadDetailPage() {
   const unarchiveMutation = useUnarchiveThread();
   const retainMutation = useRetainThread();
   const unretainMutation = useUnretainThread();
-
-  const { data: settings } = useGeneralSettings();
 
   const { pageSize, setCursors, setPageSize, resetCursor, paginationArgs, getSearchParams } = usePaginationSearch({
     defaultPageSize: 20,
@@ -265,14 +263,14 @@ export default function ThreadDetailPage() {
             </div>
             <div className='bg-muted/30 rounded-lg px-3 py-2'>
               <p className='text-muted-foreground text-xs sm:text-sm'>{t('usageLogs.columns.totalCost')}</p>
-              {thread.usageMetadata?.totalCost ? (
+              {thread.usageMetadata?.totalCostByCurrency?.length ? (
                 <p className='text-base sm:text-lg font-semibold'>
-                  {t('currencies.format', {
-                    val: thread.usageMetadata.totalCost,
-                    currency: settings?.currencyCode ?? 'USD',
-                    locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
-                    minimumFractionDigits: 6,
-                  })}
+                  {formatCurrencyAmounts(
+                    thread.usageMetadata.totalCostByCurrency,
+                    t,
+                    localeForLanguage(i18n.language),
+                    { minimumFractionDigits: 6 }
+                  )}
                 </p>
               ) : (
                 <p className='text-muted-foreground text-base sm:text-lg font-semibold'>-</p>

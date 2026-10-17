@@ -7,6 +7,7 @@ package gql
 
 import (
 	"context"
+	stdsql "database/sql"
 	"fmt"
 	"sort"
 	"strings"
@@ -532,10 +533,11 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 
 	// Use GROUP BY aggregation for efficient database-level computation
 	type dailyStats struct {
-		Date   string  `json:"date"`
-		Count  int     `json:"total_count"`
-		Tokens int     `json:"total_tokens"`
-		Cost   float64 `json:"total_cost"`
+		Date         string             `json:"date"`
+		CurrencyCode string             `json:"currency_code"`
+		Count        int                `json:"total_count"`
+		Tokens       int                `json:"total_tokens"`
+		Cost         stdsql.NullFloat64 `json:"total_cost"`
 	}
 
 	var results []dailyStats
@@ -567,11 +569,12 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 
 			s.Select(
 				sql.As(dateExpr, "date"),
+				sql.As(s.C(usagelog.FieldCostCurrencyCode), "currency_code"),
 				sql.As(sql.Count(s.C(usagelog.FieldID)), "total_count"),
 				sql.As(sql.Sum(s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				sql.As(sql.Sum(s.C(usagelog.FieldTotalCost)), "total_cost"),
 			).
-				GroupBy(dateExpr).
+				GroupBy(dateExpr, s.C(usagelog.FieldCostCurrencyCode)).
 				OrderBy("date")
 		}).
 		Scan(ctx, &results)
@@ -579,10 +582,23 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 		return nil, fmt.Errorf("failed to get daily request stats: %w", err)
 	}
 
-	// Create a map for fast lookup of aggregated data
-	statsMap := lo.SliceToMap(results, func(item dailyStats) (string, dailyStats) {
-		return item.Date, item
-	})
+	statsMap := make(map[string]*DailyRequestStats, len(results))
+	for _, raw := range results {
+		item, ok := statsMap[raw.Date]
+		if !ok {
+			item = &DailyRequestStats{Date: raw.Date, CostByCurrency: []*objects.CurrencyAmount{}}
+			statsMap[raw.Date] = item
+		}
+
+		item.Count += raw.Count
+		item.Tokens += raw.Tokens
+		if raw.Cost.Valid {
+			item.CostByCurrency = append(item.CostByCurrency, &objects.CurrencyAmount{
+				CurrencyCode: raw.CurrencyCode,
+				Amount:       raw.Cost.Float64,
+			})
+		}
+	}
 
 	// Build complete response with zero values for missing dates
 	response := make([]*DailyRequestStats, 0, daysCount)
@@ -592,20 +608,12 @@ func (r *queryResolver) DailyRequestStats(ctx context.Context) ([]*DailyRequestS
 		dateStr := date.Format("2006-01-02")
 
 		if stats, exists := statsMap[dateStr]; exists {
-			// Use aggregated data from database
-			response = append(response, &DailyRequestStats{
-				Date:   dateStr,
-				Count:  stats.Count,
-				Tokens: stats.Tokens,
-				Cost:   stats.Cost,
-			})
+			sortCurrencyAmounts(stats.CostByCurrency)
+			response = append(response, stats)
 		} else {
-			// Fill missing dates with zero values
 			response = append(response, &DailyRequestStats{
-				Date:   dateStr,
-				Count:  0,
-				Tokens: 0,
-				Cost:   0,
+				Date:           dateStr,
+				CostByCurrency: []*objects.CurrencyAmount{},
 			})
 		}
 	}
@@ -1603,8 +1611,9 @@ func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *stri
 	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type channelCostStats struct {
-		ChannelName string  `json:"channel_name"`
-		Cost        float64 `json:"total_cost"`
+		ChannelName  string             `json:"channel_name"`
+		CurrencyCode string             `json:"currency_code"`
+		Cost         stdsql.NullFloat64 `json:"total_cost"`
 	}
 
 	var results []channelCostStats
@@ -1624,25 +1633,55 @@ func (r *queryResolver) CostStatsByChannel(ctx context.Context, timeWindow *stri
 				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
 			}
 
-			s.GroupBy(channelTable.C(channel.FieldName))
+			s.GroupBy(channelTable.C(channel.FieldName), s.C(usagelog.FieldCostCurrencyCode))
 
 			s.Select(
 				sql.As(channelTable.C(channel.FieldName), "channel_name"),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				sql.As(s.C(usagelog.FieldCostCurrencyCode), "currency_code"),
+				sql.As(sql.Sum(s.C(usagelog.FieldTotalCost)), "total_cost"),
 			)
-
-			s.OrderBy(sql.Desc("total_cost"))
-			s.Limit(10)
 		}).
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cost by channel: %w", err)
 	}
 
-	return lo.Map(results, func(item channelCostStats, _ int) *CostStatsByChannel {
+	type channelCost struct {
+		name  string
+		costs map[string]float64
+		total float64
+	}
+
+	merged := make(map[string]*channelCost, len(results))
+	order := make([]string, 0, len(results))
+
+	for _, raw := range results {
+		item, ok := merged[raw.ChannelName]
+		if !ok {
+			item = &channelCost{name: raw.ChannelName, costs: make(map[string]float64)}
+			merged[raw.ChannelName] = item
+			order = append(order, raw.ChannelName)
+		}
+
+		if raw.Cost.Valid {
+			item.costs[raw.CurrencyCode] += raw.Cost.Float64
+			item.total += raw.Cost.Float64
+		}
+	}
+
+	sort.SliceStable(order, func(i, j int) bool {
+		return merged[order[i]].total > merged[order[j]].total
+	})
+
+	if len(order) > 10 {
+		order = order[:10]
+	}
+
+	return lo.Map(order, func(name string, _ int) *CostStatsByChannel {
+		item := merged[name]
 		return &CostStatsByChannel{
-			ChannelName: item.ChannelName,
-			Cost:        item.Cost,
+			ChannelName:    item.name,
+			CostByCurrency: currencyAmountList(item.costs),
 		}
 	}), nil
 }
@@ -1654,8 +1693,9 @@ func (r *queryResolver) CostStatsByModel(ctx context.Context, timeWindow *string
 	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type modelCostStats struct {
-		ModelID string  `json:"model_id"`
-		Cost    float64 `json:"total_cost"`
+		ModelID      string             `json:"model_id"`
+		CurrencyCode string             `json:"currency_code"`
+		Cost         stdsql.NullFloat64 `json:"total_cost"`
 	}
 
 	var results []modelCostStats
@@ -1667,25 +1707,55 @@ func (r *queryResolver) CostStatsByModel(ctx context.Context, timeWindow *string
 				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
 			}
 
-			s.GroupBy(s.C(usagelog.FieldModelID))
+			s.GroupBy(s.C(usagelog.FieldModelID), s.C(usagelog.FieldCostCurrencyCode))
 
 			s.Select(
 				s.C(usagelog.FieldModelID),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				sql.As(s.C(usagelog.FieldCostCurrencyCode), "currency_code"),
+				sql.As(sql.Sum(s.C(usagelog.FieldTotalCost)), "total_cost"),
 			)
-
-			s.OrderBy(sql.Desc("total_cost"))
-			s.Limit(10)
 		}).
 		Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get cost by model: %w", err)
 	}
 
-	return lo.Map(results, func(item modelCostStats, _ int) *CostStatsByModel {
+	type modelCost struct {
+		modelID string
+		costs   map[string]float64
+		total   float64
+	}
+
+	merged := make(map[string]*modelCost, len(results))
+	order := make([]string, 0, len(results))
+
+	for _, raw := range results {
+		item, ok := merged[raw.ModelID]
+		if !ok {
+			item = &modelCost{modelID: raw.ModelID, costs: make(map[string]float64)}
+			merged[raw.ModelID] = item
+			order = append(order, raw.ModelID)
+		}
+
+		if raw.Cost.Valid {
+			item.costs[raw.CurrencyCode] += raw.Cost.Float64
+			item.total += raw.Cost.Float64
+		}
+	}
+
+	sort.SliceStable(order, func(i, j int) bool {
+		return merged[order[i]].total > merged[order[j]].total
+	})
+
+	if len(order) > 10 {
+		order = order[:10]
+	}
+
+	return lo.Map(order, func(modelID string, _ int) *CostStatsByModel {
+		item := merged[modelID]
 		return &CostStatsByModel{
-			ModelID: item.ModelID,
-			Cost:    item.Cost,
+			ModelID:        item.modelID,
+			CostByCurrency: currencyAmountList(item.costs),
 		}
 	}), nil
 }
@@ -1697,8 +1767,9 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 	since, applyFilter := r.parseTimeWindow(ctx, timeWindow)
 
 	type apiKeyCostStats struct {
-		APIKeyID int     `json:"api_key_id"`
-		Cost     float64 `json:"total_cost"`
+		APIKeyID     int                `json:"api_key_id"`
+		CurrencyCode string             `json:"currency_code"`
+		Cost         stdsql.NullFloat64 `json:"total_cost"`
 	}
 
 	var results []apiKeyCostStats
@@ -1711,15 +1782,13 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 				s.Where(sql.GTE(s.C(usagelog.FieldCreatedAt), since))
 			}
 
-			s.GroupBy(s.C(usagelog.FieldAPIKeyID))
+			s.GroupBy(s.C(usagelog.FieldAPIKeyID), s.C(usagelog.FieldCostCurrencyCode))
 
 			s.Select(
 				s.C(usagelog.FieldAPIKeyID),
-				sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+				sql.As(s.C(usagelog.FieldCostCurrencyCode), "currency_code"),
+				sql.As(sql.Sum(s.C(usagelog.FieldTotalCost)), "total_cost"),
 			)
-
-			s.OrderBy(sql.Desc("total_cost"))
-			s.Limit(10)
 		}).
 		Scan(ctx, &results)
 	if err != nil {
@@ -1730,9 +1799,38 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 		return []*CostStatsByAPIKey{}, nil
 	}
 
-	apiKeyIDs := lo.Map(results, func(item apiKeyCostStats, _ int) int {
-		return item.APIKeyID
+	type apiKeyCost struct {
+		apiKeyID int
+		costs    map[string]float64
+		total    float64
+	}
+
+	merged := make(map[int]*apiKeyCost, len(results))
+	order := make([]int, 0, len(results))
+	apiKeyIDs := make([]int, 0, len(results))
+
+	for _, raw := range results {
+		item, ok := merged[raw.APIKeyID]
+		if !ok {
+			item = &apiKeyCost{apiKeyID: raw.APIKeyID, costs: make(map[string]float64)}
+			merged[raw.APIKeyID] = item
+			order = append(order, raw.APIKeyID)
+			apiKeyIDs = append(apiKeyIDs, raw.APIKeyID)
+		}
+
+		if raw.Cost.Valid {
+			item.costs[raw.CurrencyCode] += raw.Cost.Float64
+			item.total += raw.Cost.Float64
+		}
+	}
+
+	sort.SliceStable(order, func(i, j int) bool {
+		return merged[order[i]].total > merged[order[j]].total
 	})
+
+	if len(order) > 10 {
+		order = order[:10]
+	}
 
 	apiKeys, err := r.client.APIKey.Query().
 		Where(apikey.IDIn(apiKeyIDs...)).
@@ -1747,12 +1845,13 @@ func (r *queryResolver) CostStatsByAPIKey(ctx context.Context, timeWindow *strin
 
 	var response []*CostStatsByAPIKey
 
-	for _, result := range results {
-		if ak, exists := apiKeyMap[result.APIKeyID]; exists {
+	for _, id := range order {
+		if ak, exists := apiKeyMap[id]; exists {
+			item := merged[id]
 			response = append(response, &CostStatsByAPIKey{
-				APIKeyID:   objects.GUID{Type: "APIKey", ID: result.APIKeyID},
-				APIKeyName: ak.Name,
-				Cost:       result.Cost,
+				APIKeyID:       objects.GUID{Type: "APIKey", ID: item.apiKeyID},
+				APIKeyName:     ak.Name,
+				CostByCurrency: currencyAmountList(item.costs),
 			})
 		}
 	}
@@ -1818,13 +1917,14 @@ func (r *queryResolver) UsageStatsByUser(ctx context.Context, timeWindow *string
 	}
 
 	type userUsageStats struct {
-		UserID      int     `json:"user_id"`
-		FirstName   string  `json:"first_name"`
-		LastName    string  `json:"last_name"`
-		Email       string  `json:"email"`
-		Count       int     `json:"request_count"`
-		TotalTokens int64   `json:"total_tokens"`
-		TotalCost   float64 `json:"total_cost"`
+		UserID       int                `json:"user_id"`
+		FirstName    string             `json:"first_name"`
+		LastName     string             `json:"last_name"`
+		Email        string             `json:"email"`
+		CurrencyCode string             `json:"currency_code"`
+		Count        int                `json:"request_count"`
+		TotalTokens  int64              `json:"total_tokens"`
+		TotalCost    stdsql.NullFloat64 `json:"total_cost"`
 	}
 
 	var results []userUsageStats
@@ -1860,34 +1960,67 @@ func (r *queryResolver) UsageStatsByUser(ctx context.Context, timeWindow *string
 			sql.As(userTable.C("first_name"), "first_name"),
 			sql.As(userTable.C("last_name"), "last_name"),
 			sql.As(userTable.C("email"), "email"),
+			sql.As(s.C(usagelog.FieldCostCurrencyCode), "currency_code"),
 			sql.As(sql.Count(s.C(usagelog.FieldID)), "request_count"),
 			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalTokens)), "total_tokens"),
-			sql.As(fmt.Sprintf("COALESCE(SUM(%s), 0)", s.C(usagelog.FieldTotalCost)), "total_cost"),
+			sql.As(sql.Sum(s.C(usagelog.FieldTotalCost)), "total_cost"),
 		).
 			GroupBy(
 				userTable.C("id"),
 				userTable.C("first_name"),
 				userTable.C("last_name"),
 				userTable.C("email"),
-			).
-			OrderBy(sql.Desc("request_count"))
+				s.C(usagelog.FieldCostCurrencyCode),
+			)
 	}).Scan(ctx, &results)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get usage stats by user: %w", err)
 	}
 
-	return lo.Map(results, func(item userUsageStats, _ int) *UsageStatsByUser {
-		userName := fmt.Sprintf("%s %s", item.FirstName, item.LastName)
-		userName = strings.TrimSpace(userName)
-		if userName == "" {
-			userName = item.Email
+	type userUsage struct {
+		userID      int
+		userName    string
+		count       int
+		totalTokens int64
+		costs       map[string]float64
+	}
+
+	merged := make(map[int]*userUsage, len(results))
+	order := make([]int, 0, len(results))
+
+	for _, raw := range results {
+		item, ok := merged[raw.UserID]
+		if !ok {
+			userName := strings.TrimSpace(fmt.Sprintf("%s %s", raw.FirstName, raw.LastName))
+			if userName == "" {
+				userName = raw.Email
+			}
+			item = &userUsage{
+				userID:   raw.UserID,
+				userName: userName,
+				costs:    make(map[string]float64),
+			}
+			merged[raw.UserID] = item
+			order = append(order, raw.UserID)
 		}
+
+		item.count += raw.Count
+		item.totalTokens += raw.TotalTokens
+		addCurrencyCost(item.costs, raw.CurrencyCode, raw.TotalCost)
+	}
+
+	sort.SliceStable(order, func(i, j int) bool {
+		return merged[order[i]].count > merged[order[j]].count
+	})
+
+	return lo.Map(order, func(userID int, _ int) *UsageStatsByUser {
+		item := merged[userID]
 		return &UsageStatsByUser{
-			UserID:       objects.GUID{Type: ent.TypeUser, ID: item.UserID},
-			UserName:     userName,
-			RequestCount: item.Count,
-			TotalTokens:  int(item.TotalTokens),
-			TotalCost:    item.TotalCost,
+			UserID:              objects.GUID{Type: ent.TypeUser, ID: item.userID},
+			UserName:            item.userName,
+			RequestCount:        item.count,
+			TotalTokens:         int(item.totalTokens),
+			TotalCostByCurrency: currencyAmountList(item.costs),
 		}
 	}), nil
 }

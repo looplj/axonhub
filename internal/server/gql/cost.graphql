@@ -4,6 +4,15 @@ type TierCost {
   subtotal: Decimal!
 }
 
+"""
+A monetary amount in a specific currency. Amounts in different currencies are
+never summed together.
+"""
+type CurrencyAmount {
+  currencyCode: String!
+  amount: Float!
+}
+
 type CostItem {
   itemCode: PriceItemCode!
   quantity: Int!

@@ -30,6 +30,8 @@ type ChannelModelPriceVersion struct {
 	ModelID string `json:"model_id,omitempty"`
 	// ChannelModelPriceID holds the value of the "channel_model_price_id" field.
 	ChannelModelPriceID int `json:"channel_model_price_id,omitempty"`
+	// Currency of this price version.
+	CurrencyCode string `json:"currency_code,omitempty"`
 	// The model price, if changed, it will genearte a new reference id.
 	Price objects.ModelPrice `json:"price,omitempty"`
 	// Status holds the value of the "status" field.
@@ -77,7 +79,7 @@ func (*ChannelModelPriceVersion) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case channelmodelpriceversion.FieldID, channelmodelpriceversion.FieldChannelID, channelmodelpriceversion.FieldChannelModelPriceID:
 			values[i] = new(sql.NullInt64)
-		case channelmodelpriceversion.FieldModelID, channelmodelpriceversion.FieldStatus, channelmodelpriceversion.FieldReferenceID:
+		case channelmodelpriceversion.FieldModelID, channelmodelpriceversion.FieldCurrencyCode, channelmodelpriceversion.FieldStatus, channelmodelpriceversion.FieldReferenceID:
 			values[i] = new(sql.NullString)
 		case channelmodelpriceversion.FieldCreatedAt, channelmodelpriceversion.FieldUpdatedAt, channelmodelpriceversion.FieldEffectiveStartAt, channelmodelpriceversion.FieldEffectiveEndAt:
 			values[i] = new(sql.NullTime)
@@ -131,6 +133,12 @@ func (_m *ChannelModelPriceVersion) assignValues(columns []string, values []any)
 				return fmt.Errorf("unexpected type %T for field channel_model_price_id", values[i])
 			} else if value.Valid {
 				_m.ChannelModelPriceID = int(value.Int64)
+			}
+		case channelmodelpriceversion.FieldCurrencyCode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field currency_code", values[i])
+			} else if value.Valid {
+				_m.CurrencyCode = value.String
 			}
 		case channelmodelpriceversion.FieldPrice:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -220,6 +228,9 @@ func (_m *ChannelModelPriceVersion) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("channel_model_price_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.ChannelModelPriceID))
+	builder.WriteString(", ")
+	builder.WriteString("currency_code=")
+	builder.WriteString(_m.CurrencyCode)
 	builder.WriteString(", ")
 	builder.WriteString("price=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Price))

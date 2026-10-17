@@ -26,6 +26,7 @@
   "analytics.overview.totalTokens": "Total Tokens",
   "analytics.overview.totalRequests": "Total Requests",
   "analytics.overview.totalCost": "Total Cost",
+  "analytics.currency": "Currency",
   "analytics.overview.cacheHitRate": "Cache Hit Rate",
   "analytics.chart.trendTitle": "Usage Trend",
   "analytics.chart.inputTokens": "Input Token",

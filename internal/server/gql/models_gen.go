@@ -28,6 +28,7 @@ type APIKeyQuotaUsage struct {
 	RequestCount int             `json:"requestCount"`
 	TotalTokens  int             `json:"totalTokens"`
 	TotalCost    decimal.Decimal `json:"totalCost"`
+	CurrencyCode string          `json:"currencyCode"`
 }
 
 type APIKeyQuotaWindow struct {
@@ -60,26 +61,26 @@ type AddUserToProjectInput struct {
 
 // Daily aggregated statistics for the combined trend chart
 type AnalyticsDailyStat struct {
-	Date                string  `json:"date"`
-	InputTokens         int     `json:"inputTokens"`
-	CachedInputTokens   int     `json:"cachedInputTokens"`
-	UncachedInputTokens int     `json:"uncachedInputTokens"`
-	OutputTokens        int     `json:"outputTokens"`
-	TotalTokens         int     `json:"totalTokens"`
-	RequestCount        int     `json:"requestCount"`
-	Cost                float64 `json:"cost"`
+	Date                string                    `json:"date"`
+	InputTokens         int                       `json:"inputTokens"`
+	CachedInputTokens   int                       `json:"cachedInputTokens"`
+	UncachedInputTokens int                       `json:"uncachedInputTokens"`
+	OutputTokens        int                       `json:"outputTokens"`
+	TotalTokens         int                       `json:"totalTokens"`
+	RequestCount        int                       `json:"requestCount"`
+	CostByCurrency      []*objects.CurrencyAmount `json:"costByCurrency"`
 }
 
 // Statistics for a single item in a dimension breakdown (channel/model/apiKey/user)
 type AnalyticsDimensionStat struct {
-	ID                string  `json:"id"`
-	Name              string  `json:"name"`
-	RequestCount      int     `json:"requestCount"`
-	InputTokens       int     `json:"inputTokens"`
-	CachedInputTokens int     `json:"cachedInputTokens"`
-	OutputTokens      int     `json:"outputTokens"`
-	TotalTokens       int     `json:"totalTokens"`
-	Cost              float64 `json:"cost"`
+	ID                string                    `json:"id"`
+	Name              string                    `json:"name"`
+	RequestCount      int                       `json:"requestCount"`
+	InputTokens       int                       `json:"inputTokens"`
+	CachedInputTokens int                       `json:"cachedInputTokens"`
+	OutputTokens      int                       `json:"outputTokens"`
+	TotalTokens       int                       `json:"totalTokens"`
+	CostByCurrency    []*objects.CurrencyAmount `json:"costByCurrency"`
 	// Output token throughput in tokens per second, null when no valid latency metrics exist
 	TokensPerSecond *float64 `json:"tokensPerSecond,omitempty"`
 	// Average time to first token in milliseconds, null when no streaming request recorded a first token
@@ -113,13 +114,13 @@ type AnalyticsMetadata struct {
 
 // Overview statistics for the analytics page
 type AnalyticsOverview struct {
-	TotalTokens              int     `json:"totalTokens"`
-	TotalInputTokens         int     `json:"totalInputTokens"`
-	TotalCachedInputTokens   int     `json:"totalCachedInputTokens"`
-	TotalUncachedInputTokens int     `json:"totalUncachedInputTokens"`
-	TotalOutputTokens        int     `json:"totalOutputTokens"`
-	TotalRequests            int     `json:"totalRequests"`
-	TotalCost                float64 `json:"totalCost"`
+	TotalTokens              int                       `json:"totalTokens"`
+	TotalInputTokens         int                       `json:"totalInputTokens"`
+	TotalCachedInputTokens   int                       `json:"totalCachedInputTokens"`
+	TotalUncachedInputTokens int                       `json:"totalUncachedInputTokens"`
+	TotalOutputTokens        int                       `json:"totalOutputTokens"`
+	TotalRequests            int                       `json:"totalRequests"`
+	TotalCostByCurrency      []*objects.CurrencyAmount `json:"totalCostByCurrency"`
 }
 
 type ApplyChannelOverrideTemplateInput struct {
@@ -266,21 +267,21 @@ type CompleteSystemModelSettingOnboardingInput struct {
 
 // Cost statistics grouped by API key
 type CostStatsByAPIKey struct {
-	APIKeyID   objects.GUID `json:"apiKeyId"`
-	APIKeyName string       `json:"apiKeyName"`
-	Cost       float64      `json:"cost"`
+	APIKeyID       objects.GUID              `json:"apiKeyId"`
+	APIKeyName     string                    `json:"apiKeyName"`
+	CostByCurrency []*objects.CurrencyAmount `json:"costByCurrency"`
 }
 
 // Cost statistics grouped by channel
 type CostStatsByChannel struct {
-	ChannelName string  `json:"channelName"`
-	Cost        float64 `json:"cost"`
+	ChannelName    string                    `json:"channelName"`
+	CostByCurrency []*objects.CurrencyAmount `json:"costByCurrency"`
 }
 
 // Cost statistics grouped by model
 type CostStatsByModel struct {
-	ModelID string  `json:"modelId"`
-	Cost    float64 `json:"cost"`
+	ModelID        string                    `json:"modelId"`
+	CostByCurrency []*objects.CurrencyAmount `json:"costByCurrency"`
 }
 
 type CountChannelsByTypeInput struct {
@@ -289,10 +290,10 @@ type CountChannelsByTypeInput struct {
 }
 
 type DailyRequestStats struct {
-	Date   string  `json:"date"`
-	Count  int     `json:"count"`
-	Tokens int     `json:"tokens"`
-	Cost   float64 `json:"cost"`
+	Date           string                    `json:"date"`
+	Count          int                       `json:"count"`
+	Tokens         int                       `json:"tokens"`
+	CostByCurrency []*objects.CurrencyAmount `json:"costByCurrency"`
 }
 
 type DashboardOverview struct {
@@ -672,11 +673,11 @@ type UsageCostInjectionSettings struct {
 
 // Usage statistics grouped by user
 type UsageStatsByUser struct {
-	UserID       objects.GUID `json:"userId"`
-	UserName     string       `json:"userName"`
-	RequestCount int          `json:"requestCount"`
-	TotalTokens  int          `json:"totalTokens"`
-	TotalCost    float64      `json:"totalCost"`
+	UserID              objects.GUID              `json:"userId"`
+	UserName            string                    `json:"userName"`
+	RequestCount        int                       `json:"requestCount"`
+	TotalTokens         int                       `json:"totalTokens"`
+	TotalCostByCurrency []*objects.CurrencyAmount `json:"totalCostByCurrency"`
 }
 
 type UserAgentPassThroughSettings struct {

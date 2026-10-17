@@ -468,6 +468,7 @@ export const channelSchema = z.object({
   orderingWeight: z.number().optional().default(0),
   errorMessage: z.string().optional().nullable(),
   remark: z.string().optional().nullable(),
+  currencyCode: z.string().default('USD'),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
   liveLimiterStats: channelLimiterStatsSchema.optional().nullable(),
   endpoints: z.array(channelEndpointSchema).optional().default([]).nullable(),
@@ -586,6 +587,7 @@ export type ModelPrice = z.infer<typeof modelPriceSchema>;
 export const channelModelPriceSchema = z.object({
   id: z.string(),
   modelID: z.string(),
+  currencyCode: z.string().default('USD'),
   price: modelPriceSchema,
 });
 export type ChannelModelPrice = z.infer<typeof channelModelPriceSchema>;
@@ -593,6 +595,7 @@ export type ChannelModelPrice = z.infer<typeof channelModelPriceSchema>;
 export const saveChannelModelPriceInputSchema = z.object({
   modelId: z.string(),
   price: modelPriceSchema,
+  currencyCode: z.string().optional(),
 });
 export type SaveChannelModelPriceInput = z.infer<typeof saveChannelModelPriceInputSchema>;
 // Helper function to validate OAuth credentials
@@ -725,6 +728,7 @@ export const createChannelInputSchema = z
     tags: z.array(z.string()).optional().default([]),
     defaultTestModel: z.string().min(1, 'Please select a default test model'),
     remark: z.string().optional(),
+    currencyCode: z.string().optional(),
     orderingWeight: z.number().int().optional(),
     settings: channelSettingsSchema.optional(),
     endpoints: z.array(channelEndpointSchema).optional(),
@@ -833,6 +837,7 @@ export const updateChannelInputSchema = z
     settings: channelSettingsSchema.optional(),
     errorMessage: z.string().optional().nullable(),
     remark: z.string().optional().nullable(),
+    currencyCode: z.string().optional(),
     endpoints: z.array(channelEndpointSchema).optional(),
     credentials: z
       .object({

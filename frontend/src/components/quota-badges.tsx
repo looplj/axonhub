@@ -35,7 +35,7 @@ import {
   resetChannelQuotaNow,
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
-import { useGeneralSettings, useQuotaRoutingSettings, type QuotaRoutingMode } from '@/features/system/data/system';
+import { useQuotaRoutingSettings, type QuotaRoutingMode } from '@/features/system/data/system';
 import type { ChannelQuotaRoutingMode } from '@/features/channels/data/schema';
 import { capitalizeZenmuxTier, getZenmuxMonthlyQuotaUSD, getZenmuxUsagePercentage } from '@/features/system/data/zenmux-quota-display';
 
@@ -350,7 +350,6 @@ const WINDOW_LABEL_KEYS: Record<string, string> = {
 // worth. Windows the backend could not price are simply absent.
 function PeriodQuotaEstimate({ limits }: { limits: ProviderQuotaLimit[] }) {
   const { t, i18n } = useTranslation();
-  const { data: generalSettings } = useGeneralSettings();
 
   const priced = limits.filter((limit) => limit.periodQuota != null);
   if (priced.length === 0) return null;
@@ -358,7 +357,8 @@ function PeriodQuotaEstimate({ limits }: { limits: ProviderQuotaLimit[] }) {
   const formatCurrency = (val: number) =>
     t('currencies.format', {
       val,
-      currency: generalSettings?.currencyCode || 'USD',
+      // Provider period quotas are always billed in USD by the upstream provider.
+      currency: 'USD',
       locale: i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,

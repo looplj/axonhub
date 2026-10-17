@@ -145,6 +145,7 @@ input PromptWriteCacheVariantInput {
 input SaveChannelModelPriceInput {
   modelId: String!
   price: ModelPriceInput!
+  currencyCode: String
 }
 
 extend type Mutation {

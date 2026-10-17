@@ -30,6 +30,10 @@ func (ChannelModelPriceVersion) Fields() []ent.Field {
 		field.Int("channel_id").Immutable(),
 		field.String("model_id").Immutable(),
 		field.Int("channel_model_price_id").Immutable(),
+		field.String("currency_code").
+			Default(objects.DefaultCurrencyCode).
+			Comment("Currency of this price version.").
+			Immutable(),
 		field.JSON("price", objects.ModelPrice{}).Comment("The model price, if changed, it will genearte a new reference id.").Immutable(),
 		field.Enum("status").Values("active", "archived"),
 		field.Time("effective_start_at").

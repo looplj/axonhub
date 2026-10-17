@@ -58,6 +58,20 @@ func (_u *ChannelModelPriceUpdate) AddDeletedAt(v int) *ChannelModelPriceUpdate 
 	return _u
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (_u *ChannelModelPriceUpdate) SetCurrencyCode(v string) *ChannelModelPriceUpdate {
+	_u.mutation.SetCurrencyCode(v)
+	return _u
+}
+
+// SetNillableCurrencyCode sets the "currency_code" field if the given value is not nil.
+func (_u *ChannelModelPriceUpdate) SetNillableCurrencyCode(v *string) *ChannelModelPriceUpdate {
+	if v != nil {
+		_u.SetCurrencyCode(*v)
+	}
+	return _u
+}
+
 // SetPrice sets the "price" field.
 func (_u *ChannelModelPriceUpdate) SetPrice(v objects.ModelPrice) *ChannelModelPriceUpdate {
 	_u.mutation.SetPrice(v)
@@ -209,6 +223,9 @@ func (_u *ChannelModelPriceUpdate) sqlSave(ctx context.Context) (_node int, err 
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(channelmodelprice.FieldDeletedAt, field.TypeInt, value)
 	}
+	if value, ok := _u.mutation.CurrencyCode(); ok {
+		_spec.SetField(channelmodelprice.FieldCurrencyCode, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Price(); ok {
 		_spec.SetField(channelmodelprice.FieldPrice, field.TypeJSON, value)
 	}
@@ -306,6 +323,20 @@ func (_u *ChannelModelPriceUpdateOne) SetNillableDeletedAt(v *int) *ChannelModel
 // AddDeletedAt adds value to the "deleted_at" field.
 func (_u *ChannelModelPriceUpdateOne) AddDeletedAt(v int) *ChannelModelPriceUpdateOne {
 	_u.mutation.AddDeletedAt(v)
+	return _u
+}
+
+// SetCurrencyCode sets the "currency_code" field.
+func (_u *ChannelModelPriceUpdateOne) SetCurrencyCode(v string) *ChannelModelPriceUpdateOne {
+	_u.mutation.SetCurrencyCode(v)
+	return _u
+}
+
+// SetNillableCurrencyCode sets the "currency_code" field if the given value is not nil.
+func (_u *ChannelModelPriceUpdateOne) SetNillableCurrencyCode(v *string) *ChannelModelPriceUpdateOne {
+	if v != nil {
+		_u.SetCurrencyCode(*v)
+	}
 	return _u
 }
 
@@ -489,6 +520,9 @@ func (_u *ChannelModelPriceUpdateOne) sqlSave(ctx context.Context) (_node *Chann
 	}
 	if value, ok := _u.mutation.AddedDeletedAt(); ok {
 		_spec.AddField(channelmodelprice.FieldDeletedAt, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.CurrencyCode(); ok {
+		_spec.SetField(channelmodelprice.FieldCurrencyCode, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Price(); ok {
 		_spec.SetField(channelmodelprice.FieldPrice, field.TypeJSON, value)

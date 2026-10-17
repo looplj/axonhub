@@ -454,6 +454,7 @@ input BulkCreateChannelsInput {
   policies: ChannelPoliciesInput
   orderingWeight: Int
   remark: String
+  currencyCode: String
 }
 
 input ChannelOrderingItem {
@@ -577,6 +578,7 @@ input APIKeyQuotaInput {
   requests: Int
   totalTokens: Int
   cost: DecimalInput
+  currencyCode: String
   period: APIKeyQuotaPeriodInput!
 }
 
@@ -616,6 +618,7 @@ type APIKeyQuota {
   requests: Int
   totalTokens: Int
   cost: Decimal
+  currencyCode: String
   period: APIKeyQuotaPeriod!
 }
 
@@ -638,6 +641,7 @@ type APIKeyQuotaUsage {
   requestCount: Int!
   totalTokens: Int!
   totalCost: Decimal!
+  currencyCode: String!
 }
 
 type APIKeyQuotaWindow {
@@ -772,7 +776,7 @@ type UsageMetadata {
   totalTokens: Int!
   totalCachedTokens: Int!
   totalCachedWriteTokens: Int!
-  totalCost: Decimal!
+  totalCostByCurrency: [CurrencyAmount!]!
 }
 
 extend type Trace {

@@ -3,6 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { useSelectedProjectId } from '@/stores/projectStore';
 
+const currencyAmountSchema = z.object({
+  currencyCode: z.string(),
+  amount: z.number(),
+});
+
 // Schema definitions
 export const requestStatsSchema = z.object({
   requestsToday: z.number(),
@@ -65,25 +70,25 @@ export const tokensByModelSchema = z.object({
 
 export const costByChannelSchema = z.object({
   channelName: z.string(),
-  cost: z.number(),
+  costByCurrency: z.array(currencyAmountSchema),
 });
 
 export const costByModelSchema = z.object({
   modelId: z.string(),
-  cost: z.number(),
+  costByCurrency: z.array(currencyAmountSchema),
 });
 
 export const costByAPIKeySchema = z.object({
   apiKeyId: z.string(),
   apiKeyName: z.string(),
-  cost: z.number(),
+  costByCurrency: z.array(currencyAmountSchema),
 });
 
 export const dailyRequestStatsSchema = z.object({
   date: z.string(),
   count: z.number(),
   tokens: z.number(),
-  cost: z.number(),
+  costByCurrency: z.array(currencyAmountSchema),
 });
 
 export const hourlyRequestStatsSchema = z.object({
@@ -252,7 +257,10 @@ const COST_BY_CHANNEL_QUERY = `
   query GetCostByChannel($timeWindow: String) {
     costStatsByChannel(timeWindow: $timeWindow) {
       channelName
-      cost
+      costByCurrency {
+        currencyCode
+        amount
+      }
     }
   }
 `;
@@ -261,7 +269,10 @@ const COST_BY_MODEL_QUERY = `
   query GetCostByModel($timeWindow: String) {
     costStatsByModel(timeWindow: $timeWindow) {
       modelId
-      cost
+      costByCurrency {
+        currencyCode
+        amount
+      }
     }
   }
 `;
@@ -271,7 +282,10 @@ const COST_BY_API_KEY_QUERY = `
     costStatsByAPIKey(timeWindow: $timeWindow) {
       apiKeyId
       apiKeyName
-      cost
+      costByCurrency {
+        currencyCode
+        amount
+      }
     }
   }
 `;
@@ -282,7 +296,10 @@ const DAILY_REQUEST_STATS_QUERY = `
       date
       count
       tokens
-      cost
+      costByCurrency {
+        currencyCode
+        amount
+      }
     }
   }
 `;
@@ -327,7 +344,7 @@ export const usageStatsByUserSchema = z.object({
   userName: z.string(),
   requestCount: z.number(),
   totalTokens: z.number(),
-  totalCost: z.number(),
+  totalCostByCurrency: z.array(currencyAmountSchema),
 });
 
 export type UsageStatsByUser = z.infer<typeof usageStatsByUserSchema>;
@@ -339,7 +356,10 @@ const USAGE_STATS_BY_USER_QUERY = `
       userName
       requestCount
       totalTokens
-      totalCost
+      totalCostByCurrency {
+        currencyCode
+        amount
+      }
     }
   }
 `;

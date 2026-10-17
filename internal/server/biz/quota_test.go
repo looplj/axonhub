@@ -292,7 +292,7 @@ func TestQuotaService_PastDurationMinute_IncludesUsageAtWindowEnd(t *testing.T) 
 	require.NoError(t, err)
 	require.Equal(t, int64(1), count)
 
-	usage, err := svc.usageAgg(ctx, apiKeyID, window, true, true)
+	usage, err := svc.usageAgg(ctx, apiKeyID, window, true, true, objects.DefaultCurrencyCode)
 	require.NoError(t, err)
 	require.Equal(t, int64(10), usage.TotalTokens)
 	require.True(t, usage.TotalCost.Equal(decimal.NewFromFloat(1.0)))
@@ -418,7 +418,7 @@ func TestQuotaService_CalendarDuration_ExcludesUsageAtWindowEnd(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(0), count)
 
-	usage, err := svc.usageAgg(ctx, apiKeyID, window, true, true)
+	usage, err := svc.usageAgg(ctx, apiKeyID, window, true, true, objects.DefaultCurrencyCode)
 	require.NoError(t, err)
 	require.Equal(t, int64(0), usage.TotalTokens)
 	require.True(t, usage.TotalCost.Equal(decimal.Zero))

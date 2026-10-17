@@ -24,6 +24,7 @@ export const formSchemaFactory = (t: (key: string) => string) =>
             requests: z.number().int().positive().optional().nullable(),
             totalTokens: z.number().int().positive().optional().nullable(),
             cost: z.number().optional().nullable(),
+            currencyCode: z.string().optional().nullable(),
             period: z.object({
               type: z.enum(['all_time', 'past_duration', 'calendar_duration']),
               pastDuration: z

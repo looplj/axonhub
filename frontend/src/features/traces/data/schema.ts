@@ -205,12 +205,17 @@ export const segmentSchema: z.ZodType<any> = z.lazy(() =>
 
 export type Segment = z.infer<typeof segmentSchema>;
 
+export const currencyAmountSchema = z.object({
+  currencyCode: z.string(),
+  amount: z.coerce.number(),
+});
+
 export const usageMetadataSchema = z
   .object({
     totalInputTokens: z.number(),
     totalOutputTokens: z.number(),
     totalTokens: z.number(),
-    totalCost: z.coerce.number(),
+    totalCostByCurrency: z.array(currencyAmountSchema),
     totalCachedTokens: z.number().nullable().optional(),
     totalCachedWriteTokens: z.number().nullable().optional(),
   })

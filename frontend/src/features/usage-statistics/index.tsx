@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { DateRangePicker, type DateTimeRangeValue } from '@/components/date-range-picker';
 import { buildDateRangeWhereClause } from '@/utils/date-range';
 import { formatNumber } from '@/utils/format-number';
-import { useGeneralSettings } from '@/features/system/data/system';
+import { formatCurrencyAmounts, localeForLanguage } from '@/utils/currency';
 import { useUsageStatsByUser } from './data/usage-stats';
 import { Input } from '@/components/ui/input';
 import {
@@ -35,19 +35,11 @@ export default function UsageStatisticsPage() {
   }, [dateRange]);
 
   const { data, isLoading, isFetching, error } = useUsageStatsByUser(timeWindowParam);
-  const { data: generalSettings, isLoading: isSettingsLoading } = useGeneralSettings();
 
-  const currencyCode = generalSettings?.currencyCode || 'USD';
-  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
+  const locale = localeForLanguage(i18n.language);
 
-  const formatCurrency = (val: number) =>
-    t('currencies.format', {
-      val,
-      currency: currencyCode,
-      locale,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const formatCurrency = (amounts: Parameters<typeof formatCurrencyAmounts>[0]) =>
+    formatCurrencyAmounts(amounts, t, locale, { minimumFractionDigits: 2 });
 
   const allData = useMemo(() => {
     if (!data) return [];
@@ -62,7 +54,7 @@ export default function UsageStatisticsPage() {
     );
   }, [allData, searchTerm]);
 
-  if (isLoading || isSettingsLoading) {
+  if (isLoading) {
     return (
       <div className='flex-1 space-y-4 p-8 pt-6'>
         <Skeleton className='h-8 w-[200px]' />
@@ -138,7 +130,7 @@ export default function UsageStatisticsPage() {
                     <TableCell className='font-medium border-0 bg-inherit px-4 py-3'>{item.userName}</TableCell>
                     <TableCell className='text-right font-mono text-sm border-0 bg-inherit px-4 py-3'>{formatNumber(item.requestCount)}</TableCell>
                     <TableCell className='text-right font-mono text-sm border-0 bg-inherit px-4 py-3'>{formatNumber(item.totalTokens)}</TableCell>
-                    <TableCell className='text-right font-mono text-sm border-0 bg-inherit px-4 py-3'>{formatCurrency(item.totalCost)}</TableCell>
+                    <TableCell className='text-right font-mono text-sm border-0 bg-inherit px-4 py-3'>{formatCurrency(item.totalCostByCurrency)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

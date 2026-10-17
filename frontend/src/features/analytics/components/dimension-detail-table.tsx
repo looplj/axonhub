@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
-import { useGeneralSettings } from '@/features/system/data/system';
+import { currencyAmount, formatCurrencyAmount, localeForLanguage } from '@/utils/currency';
 import type { AnalyticsDimensionStat } from '../data/analytics';
 
 type Dimension = 'channel' | 'model' | 'apiKey' | 'user';
@@ -18,6 +18,7 @@ interface DimensionDetailTableProps {
   apiKeyStats: AnalyticsDimensionStat[];
   userStats: AnalyticsDimensionStat[];
   isLoading: boolean;
+  currencyCode: string;
 }
 
 export function DimensionDetailTable({
@@ -26,23 +27,15 @@ export function DimensionDetailTable({
   apiKeyStats,
   userStats,
   isLoading,
+  currencyCode,
 }: DimensionDetailTableProps) {
   const { t, i18n } = useTranslation();
   const [dimension, setDimension] = useState<Dimension>('channel');
-  const { data: generalSettings } = useGeneralSettings();
 
-  const currencyCode = generalSettings?.currencyCode || 'USD';
-  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
+  const locale = localeForLanguage(i18n.language);
 
   const formatCurrency = useCallback(
-    (val: number) =>
-      t('currencies.format', {
-        val,
-        currency: currencyCode,
-        locale,
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4,
-      }),
+    (val: number) => formatCurrencyAmount(val, currencyCode, t, locale, 4),
     [currencyCode, locale, t]
   );
 
@@ -144,7 +137,9 @@ export function DimensionDetailTable({
                     <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>
                       {item.ttftMs == null ? '—' : Math.round(item.ttftMs).toLocaleString()}
                     </td>
-                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>{formatCurrency(item.cost)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>
+                      {formatCurrency(currencyAmount(item.costByCurrency, currencyCode))}
+                    </td>
                   </tr>
                 ))}
               </tbody>

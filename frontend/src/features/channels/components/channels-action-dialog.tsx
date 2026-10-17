@@ -32,7 +32,9 @@ import {
   useQuotaRoutingSettings,
   useSaveProxyPreset,
   useUserAgentPassThroughSettings,
+  useGeneralSettings,
 } from '@/features/system/data/system';
+import { currencyCodes } from '@/features/system/data/currencies';
 import { usePermissions } from '@/hooks/usePermissions';
 import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
@@ -461,6 +463,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const canReadSystemSettings = hasSystemScope('read_settings');
   const { data: userAgentPassThroughSettings } = useUserAgentPassThroughSettings({ enabled: canReadSystemSettings });
   const { data: passThroughSettings } = usePassThroughSettings({ enabled: canReadSystemSettings });
+  const { data: generalSettings } = useGeneralSettings();
+  const defaultCurrencyCode = generalSettings?.currencyCode || 'USD';
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
@@ -843,6 +847,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             defaultTestModel: currentRow.defaultTestModel,
             tags: currentRow.tags || [],
             remark: currentRow.remark || '',
+            currencyCode: currentRow.currencyCode || 'USD',
             credentials: {
               // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
               apiKey: currentRow.credentials?.apiKey || undefined,
@@ -869,6 +874,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               defaultTestModel: duplicateFromRow.defaultTestModel,
               tags: duplicateFromRow.tags || [],
               remark: duplicateFromRow.remark || '',
+              currencyCode: duplicateFromRow.currencyCode || 'USD',
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
                 // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
@@ -902,6 +908,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               defaultTestModel: '',
               tags: [],
               remark: '',
+              currencyCode: defaultCurrencyCode,
               settings: undefined,
             },
   });
@@ -3346,6 +3353,36 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 isLoading={isLoadingTags}
                               />
                               <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.tags.description')}</p>
+                              <FormMessage />
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name='currencyCode'
+                        render={({ field }) => (
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                              {t('channels.dialogs.fields.currencyCode.label')}
+                            </FormLabel>
+                            <div className='space-y-1 md:col-span-6'>
+                              <Select value={field.value || defaultCurrencyCode} onValueChange={field.onChange}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder={t('channels.dialogs.fields.currencyCode.placeholder')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {currencyCodes.map((code) => (
+                                    <SelectItem key={code} value={code}>
+                                      {t(`currencies.${code}`)}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <p className='text-muted-foreground text-xs'>
+                                {t('channels.dialogs.fields.currencyCode.description')}
+                              </p>
                               <FormMessage />
                             </div>
                           </FormItem>

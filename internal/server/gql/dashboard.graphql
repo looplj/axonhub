@@ -67,7 +67,7 @@ type DailyRequestStats {
   date: String!
   count: Int!
   tokens: Int!
-  cost: Float!
+  costByCurrency: [CurrencyAmount!]!
 }
 
 type HourlyRequestStats {
@@ -191,7 +191,7 @@ Cost statistics grouped by channel
 """
 type CostStatsByChannel {
   channelName: String!
-  cost: Float!
+  costByCurrency: [CurrencyAmount!]!
 }
 
 """
@@ -199,7 +199,7 @@ Cost statistics grouped by model
 """
 type CostStatsByModel {
   modelId: String!
-  cost: Float!
+  costByCurrency: [CurrencyAmount!]!
 }
 
 """
@@ -208,7 +208,7 @@ Cost statistics grouped by API key
 type CostStatsByAPIKey {
   apiKeyId: ID!
   apiKeyName: String!
-  cost: Float!
+  costByCurrency: [CurrencyAmount!]!
 }
 
 """
@@ -219,7 +219,7 @@ type UsageStatsByUser {
   userName: String!
   requestCount: Int!
   totalTokens: Int!
-  totalCost: Float!
+  totalCostByCurrency: [CurrencyAmount!]!
 }
 
 extend type Query {

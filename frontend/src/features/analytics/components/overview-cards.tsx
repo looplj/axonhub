@@ -2,37 +2,22 @@ import { useTranslation } from 'react-i18next';
 import { BarChart4, Activity, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { currencyAmount, formatCurrencyAmount } from '@/utils/currency';
 import type { AnalyticsOverview } from '../data/analytics';
 
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
-import { useGeneralSettings } from '@/features/system/data/system';
-import { useCallback } from 'react';
 
 interface OverviewCardsProps {
   overview: AnalyticsOverview | undefined;
   isLoading: boolean;
+  currencyCode: string;
+  locale: string;
 }
 
-export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
-  const { t, i18n } = useTranslation();
-  const { data: generalSettings } = useGeneralSettings();
-
-  const currencyCode = generalSettings?.currencyCode || 'USD';
-  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
-
-  const formatCurrency = useCallback(
-    (val: number) =>
-      t('currencies.format', {
-        val,
-        currency: currencyCode,
-        locale,
-        minimumFractionDigits: 4,
-        maximumFractionDigits: 4,
-      }),
-    [currencyCode, locale, t]
-  );
+export function OverviewCards({ overview, isLoading, currencyCode, locale }: OverviewCardsProps) {
+  const { t } = useTranslation();
 
   if (isLoading) {
     return (
@@ -63,7 +48,7 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
     },
     {
       title: t('analytics.overview.totalCost'),
-      value: formatCurrency(overview?.totalCost || 0),
+      value: formatCurrencyAmount(currencyAmount(overview?.totalCostByCurrency, currencyCode), currencyCode, t, locale, 4),
       icon: DollarSign,
       description: null,
     },

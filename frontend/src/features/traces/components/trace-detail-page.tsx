@@ -7,6 +7,7 @@ import { IconArchive, IconPin, IconRotate } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn, extractNumberID } from '@/lib/utils';
 import { useAutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
+import { formatCurrencyAmounts, localeForLanguage } from '@/utils/currency';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
 import { AutoRefreshControl } from '@/components/auto-refresh-control';
@@ -27,7 +28,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
-import { useGeneralSettings } from '@/features/system/data/system';
 import { useTraceWithSegments, useArchiveTrace, useUnarchiveTrace, useRetainTrace, useUnretainTrace } from '../data';
 import { Segment, Span, parseRawRootSegment } from '../data/schema';
 import { SpanSection } from './span-section';
@@ -55,7 +55,6 @@ export default function TraceDetailPage() {
   const unretainMutation = useUnretainTrace();
 
   const { data: trace, isLoading, refetch } = useTraceWithSegments(traceId);
-  const { data: settings } = useGeneralSettings();
 
   // Parse rawRootSegment JSON once per trace
   // 仅解析 rawRootSegment（完整 JSON）
@@ -284,14 +283,14 @@ export default function TraceDetailPage() {
                   </div>
                   <div className='bg-muted/30 rounded-lg px-3 py-2'>
                     <p className='text-muted-foreground text-xs sm:text-sm'>{t('usageLogs.columns.totalCost')}</p>
-                    {trace.usageMetadata?.totalCost ? (
+                    {trace.usageMetadata?.totalCostByCurrency?.length ? (
                       <p className='text-base sm:text-lg font-semibold'>
-                        {t('currencies.format', {
-                          val: trace.usageMetadata.totalCost,
-                          currency: settings?.currencyCode ?? 'USD',
-                          locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
-                          minimumFractionDigits: 6,
-                        })}
+                        {formatCurrencyAmounts(
+                          trace.usageMetadata.totalCostByCurrency,
+                          t,
+                          localeForLanguage(i18n.language),
+                          { minimumFractionDigits: 6 }
+                        )}
                       </p>
                     ) : (
                       <p className='text-muted-foreground text-base sm:text-lg font-semibold'>-</p>

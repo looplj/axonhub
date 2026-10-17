@@ -63,6 +63,8 @@ const (
 	FieldFormat = "format"
 	// FieldTotalCost holds the string denoting the total_cost field in the database.
 	FieldTotalCost = "total_cost"
+	// FieldCostCurrencyCode holds the string denoting the cost_currency_code field in the database.
+	FieldCostCurrencyCode = "cost_currency_code"
 	// FieldCostItems holds the string denoting the cost_items field in the database.
 	FieldCostItems = "cost_items"
 	// FieldCostPriceReferenceID holds the string denoting the cost_price_reference_id field in the database.
@@ -123,6 +125,7 @@ var Columns = []string{
 	FieldSource,
 	FieldFormat,
 	FieldTotalCost,
+	FieldCostCurrencyCode,
 	FieldCostItems,
 	FieldCostPriceReferenceID,
 }
@@ -179,6 +182,8 @@ var (
 	DefaultCompletionRejectedPredictionTokens int64
 	// DefaultFormat holds the default value on creation for the "format" field.
 	DefaultFormat string
+	// DefaultCostCurrencyCode holds the default value on creation for the "cost_currency_code" field.
+	DefaultCostCurrencyCode string
 	// DefaultCostItems holds the default value on creation for the "cost_items" field.
 	DefaultCostItems []objects.CostItem
 )
@@ -326,6 +331,11 @@ func ByFormat(opts ...sql.OrderTermOption) OrderOption {
 // ByTotalCost orders the results by the total_cost field.
 func ByTotalCost(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTotalCost, opts...).ToFunc()
+}
+
+// ByCostCurrencyCode orders the results by the cost_currency_code field.
+func ByCostCurrencyCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCostCurrencyCode, opts...).ToFunc()
 }
 
 // ByCostPriceReferenceID orders the results by the cost_price_reference_id field.

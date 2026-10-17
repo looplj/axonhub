@@ -79,6 +79,20 @@ func (_c *ChannelModelPriceCreate) SetModelID(v string) *ChannelModelPriceCreate
 	return _c
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (_c *ChannelModelPriceCreate) SetCurrencyCode(v string) *ChannelModelPriceCreate {
+	_c.mutation.SetCurrencyCode(v)
+	return _c
+}
+
+// SetNillableCurrencyCode sets the "currency_code" field if the given value is not nil.
+func (_c *ChannelModelPriceCreate) SetNillableCurrencyCode(v *string) *ChannelModelPriceCreate {
+	if v != nil {
+		_c.SetCurrencyCode(*v)
+	}
+	return _c
+}
+
 // SetPrice sets the "price" field.
 func (_c *ChannelModelPriceCreate) SetPrice(v objects.ModelPrice) *ChannelModelPriceCreate {
 	_c.mutation.SetPrice(v)
@@ -166,6 +180,10 @@ func (_c *ChannelModelPriceCreate) defaults() error {
 		v := channelmodelprice.DefaultDeletedAt
 		_c.mutation.SetDeletedAt(v)
 	}
+	if _, ok := _c.mutation.CurrencyCode(); !ok {
+		v := channelmodelprice.DefaultCurrencyCode
+		_c.mutation.SetCurrencyCode(v)
+	}
 	return nil
 }
 
@@ -179,6 +197,9 @@ func (_c *ChannelModelPriceCreate) check() error {
 	}
 	if _, ok := _c.mutation.ModelID(); !ok {
 		return &ValidationError{Name: "model_id", err: errors.New(`ent: missing required field "ChannelModelPrice.model_id"`)}
+	}
+	if _, ok := _c.mutation.CurrencyCode(); !ok {
+		return &ValidationError{Name: "currency_code", err: errors.New(`ent: missing required field "ChannelModelPrice.currency_code"`)}
 	}
 	if _, ok := _c.mutation.Price(); !ok {
 		return &ValidationError{Name: "price", err: errors.New(`ent: missing required field "ChannelModelPrice.price"`)}
@@ -236,6 +257,10 @@ func (_c *ChannelModelPriceCreate) createSpec() (*ChannelModelPrice, *sqlgraph.C
 	if value, ok := _c.mutation.ModelID(); ok {
 		_spec.SetField(channelmodelprice.FieldModelID, field.TypeString, value)
 		_node.ModelID = value
+	}
+	if value, ok := _c.mutation.CurrencyCode(); ok {
+		_spec.SetField(channelmodelprice.FieldCurrencyCode, field.TypeString, value)
+		_node.CurrencyCode = value
 	}
 	if value, ok := _c.mutation.Price(); ok {
 		_spec.SetField(channelmodelprice.FieldPrice, field.TypeJSON, value)
@@ -360,6 +385,18 @@ func (u *ChannelModelPriceUpsert) AddDeletedAt(v int) *ChannelModelPriceUpsert {
 	return u
 }
 
+// SetCurrencyCode sets the "currency_code" field.
+func (u *ChannelModelPriceUpsert) SetCurrencyCode(v string) *ChannelModelPriceUpsert {
+	u.Set(channelmodelprice.FieldCurrencyCode, v)
+	return u
+}
+
+// UpdateCurrencyCode sets the "currency_code" field to the value that was provided on create.
+func (u *ChannelModelPriceUpsert) UpdateCurrencyCode() *ChannelModelPriceUpsert {
+	u.SetExcluded(channelmodelprice.FieldCurrencyCode)
+	return u
+}
+
 // SetPrice sets the "price" field.
 func (u *ChannelModelPriceUpsert) SetPrice(v objects.ModelPrice) *ChannelModelPriceUpsert {
 	u.Set(channelmodelprice.FieldPrice, v)
@@ -467,6 +504,20 @@ func (u *ChannelModelPriceUpsertOne) AddDeletedAt(v int) *ChannelModelPriceUpser
 func (u *ChannelModelPriceUpsertOne) UpdateDeletedAt() *ChannelModelPriceUpsertOne {
 	return u.Update(func(s *ChannelModelPriceUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetCurrencyCode sets the "currency_code" field.
+func (u *ChannelModelPriceUpsertOne) SetCurrencyCode(v string) *ChannelModelPriceUpsertOne {
+	return u.Update(func(s *ChannelModelPriceUpsert) {
+		s.SetCurrencyCode(v)
+	})
+}
+
+// UpdateCurrencyCode sets the "currency_code" field to the value that was provided on create.
+func (u *ChannelModelPriceUpsertOne) UpdateCurrencyCode() *ChannelModelPriceUpsertOne {
+	return u.Update(func(s *ChannelModelPriceUpsert) {
+		s.UpdateCurrencyCode()
 	})
 }
 
@@ -747,6 +798,20 @@ func (u *ChannelModelPriceUpsertBulk) AddDeletedAt(v int) *ChannelModelPriceUpse
 func (u *ChannelModelPriceUpsertBulk) UpdateDeletedAt() *ChannelModelPriceUpsertBulk {
 	return u.Update(func(s *ChannelModelPriceUpsert) {
 		s.UpdateDeletedAt()
+	})
+}
+
+// SetCurrencyCode sets the "currency_code" field.
+func (u *ChannelModelPriceUpsertBulk) SetCurrencyCode(v string) *ChannelModelPriceUpsertBulk {
+	return u.Update(func(s *ChannelModelPriceUpsert) {
+		s.SetCurrencyCode(v)
+	})
+}
+
+// UpdateCurrencyCode sets the "currency_code" field to the value that was provided on create.
+func (u *ChannelModelPriceUpsertBulk) UpdateCurrencyCode() *ChannelModelPriceUpsertBulk {
+	return u.Update(func(s *ChannelModelPriceUpsert) {
+		s.UpdateCurrencyCode()
 	})
 }
 

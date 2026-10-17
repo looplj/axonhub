@@ -60,6 +60,7 @@ type BulkCreateChannelsInput struct {
 	Settings                *objects.ChannelSettings
 	OrderingWeight          *int
 	Remark                  *string
+	CurrencyCode            *string
 }
 
 // BulkCreateChannels creates multiple channels with the same configuration but different API keys.
@@ -129,6 +130,7 @@ func (svc *ChannelService) BulkCreateChannels(ctx context.Context, input BulkCre
 				Settings:                input.Settings,
 				OrderingWeight:          input.OrderingWeight,
 				Remark:                  input.Remark,
+				CurrencyCode:            input.CurrencyCode,
 			}
 
 			ch, err := svc.createChannel(ctx, createInput)
