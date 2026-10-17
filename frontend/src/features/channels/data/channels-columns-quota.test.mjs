@@ -294,8 +294,14 @@ test('channel columns have minimum widths and are not hidden by responsive displ
     const idIndex = columnsSource.indexOf("id: '" + columnId + "'");
     const keyIndex = idIndex === -1 ? columnsSource.indexOf("accessorKey: '" + columnId + "'") : idIndex;
     assert.notEqual(keyIndex, -1, columnId + ' column should exist');
+    const columnEnd = columnsSource.indexOf('\n    },', keyIndex);
+    assert.notEqual(columnEnd, -1, columnId + ' column boundary should be found');
     const metaIndex = columnsSource.indexOf('meta: {', keyIndex);
+    assert.notEqual(metaIndex, -1, columnId + ' column should define meta');
+    assert.ok(metaIndex < columnEnd, columnId + ' meta should belong to the column');
     const classNameIndex = columnsSource.indexOf('className:', metaIndex);
+    assert.notEqual(classNameIndex, -1, columnId + ' column should define meta.className');
+    assert.ok(classNameIndex < columnEnd, columnId + ' className should belong to the column');
     const end = columnsSource.indexOf('\n', classNameIndex);
     return columnsSource.slice(classNameIndex, end);
   };
@@ -320,6 +326,15 @@ test('channel percentage column widths sum to 100', () => {
   assert.ok(percentages.length > 0, 'expected percentage-width channel columns');
   const total = percentages.reduce((sum, value) => sum + value, 0);
   assert.equal(total, 100, 'channel column percentages must sum to 100, got ' + total);
+});
+
+test('supported models cell bounds badge container width to prevent horizontal stretching', () => {
+  const columnsSource = read('features/channels/components/channels-columns.tsx');
+  assert.match(
+    columnsSource,
+    /max-w-(?:72|80|xs|sm)[^']*flex-wrap/,
+    'supported models badge container must have a max-width wrapper so badges wrap instead of stretching the table'
+  );
 });
 
 

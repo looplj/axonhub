@@ -669,7 +669,7 @@ const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
 
   return (
     <div className='flex min-w-0 items-center justify-center gap-2'>
-      <div className='flex min-w-0 flex-wrap justify-center gap-1 overflow-hidden'>
+      <div className='flex min-w-0 max-w-72 sm:max-w-80 flex-wrap justify-center gap-1 overflow-hidden'>
         {models.slice(0, 5).map((model) => (
           <Badge key={model} variant='secondary' className='block max-w-48 truncate text-left text-xs'>
             {model}
