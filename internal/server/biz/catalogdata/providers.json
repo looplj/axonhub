@@ -5486,7 +5486,7 @@
           "attachment": true,
           "display_name": "doubao-embedding-vision-250615",
           "id": "doubao-embedding-vision-250615",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 128000,
             "requests_per_minute": 15000
@@ -5527,7 +5527,7 @@
           "attachment": true,
           "display_name": "doubao-embedding-vision-251215",
           "id": "doubao-embedding-vision-251215",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 128000,
             "requests_per_minute": 15000
@@ -5568,7 +5568,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-code-preview-260215",
           "id": "doubao-seed-2-0-code-preview-260215",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5623,7 +5623,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-lite-260215",
           "id": "doubao-seed-2-0-lite-260215",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5681,7 +5681,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-lite-260428",
           "id": "doubao-seed-2-0-lite-260428",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5738,7 +5738,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-mini-260215",
           "id": "doubao-seed-2-0-mini-260215",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5751,7 +5751,7 @@
               "工具调用",
               "文本生成",
               "深度思考",
-              "结构化输出",
+              "结构���输出",
               "视觉定位"
             ],
             "detail_url": "https://ark.volcengine.com/region:cn-beijing/model/detail?Id=doubao-seed-2-0-mini",
@@ -5796,7 +5796,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-mini-260428",
           "id": "doubao-seed-2-0-mini-260428",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5853,7 +5853,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-0-pro-260215",
           "id": "doubao-seed-2-0-pro-260215",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 256000,
             "output": 128000,
@@ -5911,7 +5911,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-1-lite-260915",
           "id": "doubao-seed-2-1-lite-260915",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 1024000,
             "output": 256000,
@@ -5968,7 +5968,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-1-pro-260628",
           "id": "doubao-seed-2-1-pro-260628",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 256000,
             "output": 256000,
@@ -6025,7 +6025,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-1-pro-260915",
           "id": "doubao-seed-2-1-pro-260915",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 1024000,
             "output": 256000,
@@ -6082,7 +6082,7 @@
           "attachment": true,
           "display_name": "doubao-seed-2-1-turbo-260628",
           "id": "doubao-seed-2-1-turbo-260628",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 256000,
             "output": 256000,
@@ -6139,7 +6139,7 @@
           "attachment": false,
           "display_name": "doubao-seed-character-251128",
           "id": "doubao-seed-character-251128",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 128000,
             "output": 32000,
@@ -6187,7 +6187,7 @@
           "attachment": true,
           "display_name": "doubao-seed-character-260628",
           "id": "doubao-seed-character-260628",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 128000,
             "output": 32000,
@@ -6243,7 +6243,7 @@
           "attachment": true,
           "display_name": "doubao-seed-evolving",
           "id": "doubao-seed-evolving",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 1024000,
             "output": 256000,
@@ -6300,7 +6300,7 @@
           "attachment": false,
           "display_name": "doubao-seed-translation-250915",
           "id": "doubao-seed-translation-250915",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "context": 4000,
             "output": 3000,
@@ -6342,7 +6342,7 @@
           "attachment": false,
           "display_name": "doubao-seedance-1-0-pro-250528",
           "id": "doubao-seedance-1-0-pro-250528",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "requests_per_day": 500000000000,
             "requests_per_minute": 600
@@ -6382,7 +6382,7 @@
           "attachment": false,
           "display_name": "doubao-seedance-1-0-pro-fast-251015",
           "id": "doubao-seedance-1-0-pro-fast-251015",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "requests_per_day": 500000000000,
             "requests_per_minute": 600
@@ -6422,7 +6422,7 @@
           "attachment": true,
           "display_name": "doubao-seedance-2-0-260128",
           "id": "doubao-seedance-2-0-260128",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "metadata": {
             "canonical_id": "doubao-seedance-2-0",
             "capabilities": [
@@ -6459,7 +6459,7 @@
           "attachment": true,
           "display_name": "doubao-seedance-2-0-fast-260128",
           "id": "doubao-seedance-2-0-fast-260128",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "metadata": {
             "canonical_id": "doubao-seedance-2-0-fast",
             "capabilities": [
@@ -6496,7 +6496,7 @@
           "attachment": true,
           "display_name": "doubao-seedance-2-0-mini-260615",
           "id": "doubao-seedance-2-0-mini-260615",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "metadata": {
             "canonical_id": "doubao-seedance-2-0-mini",
             "capabilities": [
@@ -6533,7 +6533,7 @@
           "attachment": true,
           "display_name": "doubao-seedance-2-5-260628",
           "id": "doubao-seedance-2-5-260628",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "metadata": {
             "canonical_id": "doubao-seedance-2-5",
             "capabilities": [
@@ -6570,7 +6570,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-4-0-250828",
           "id": "doubao-seedream-4-0-250828",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6607,7 +6607,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-4-5-251128",
           "id": "doubao-seedream-4-5-251128",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6644,7 +6644,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-5-0-260128",
           "id": "doubao-seedream-5-0-260128",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6681,7 +6681,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-5-0-flash-260915",
           "id": "doubao-seedream-5-0-flash-260915",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6718,7 +6718,7 @@
           "attachment": true,
           "display_name": "doubao-seedream-5-0-pro-260628",
           "id": "doubao-seedream-5-0-pro-260628",
-          "last_updated": "2026-10-09T09:49:07Z",
+          "last_updated": "2026-10-17T09:21:15Z",
           "limit": {
             "requests_per_minute": 500
           },
@@ -6837,7 +6837,7 @@
         }
       ],
       "name": "ByteDance",
-      "updated_at": "2026-10-09T09:49:07Z"
+      "updated_at": "2026-10-17T09:21:15Z"
     },
     "deepseek": {
       "api": "https://api.deepseek.com",
@@ -7168,6 +7168,67 @@
       "doc": "https://ai.google.dev/gemini-api/docs/models",
       "id": "google",
       "models": [
+        {
+          "attachment": true,
+          "canonical_model_id": "google/gemini-4-argon",
+          "cost": {
+            "cache_read": 0.1,
+            "input": 2,
+            "input_audio": 2,
+            "output": 10
+          },
+          "description": "Google's flagship reasoning model for complex software engineering, deep math and science, and long-horizon autonomous agents",
+          "display_name": "Gemini 4 Argon",
+          "family": "gemini",
+          "id": "gemini-4-argon",
+          "knowledge": "2026-03",
+          "last_updated": "2026-10-13",
+          "limit": {
+            "context": 1048576,
+            "output": 32768
+          },
+          "metadata": {
+            "notes": [
+              "Google ignores temperature, top_p, and top_k for this model.",
+              "Introductory pricing through November 30, 2026 is $2 input / $10 output with $0.10 cached input per million tokens; from December 1, 2026 it is $4 input / $20 output with $0.20 cached input."
+            ],
+            "pricingBasis": "standard-introductory",
+            "pricingValidUntil": "2026-11-30"
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "audio",
+              "pdf"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Gemini 4 Argon",
+          "open_weights": false,
+          "reasoning": {
+            "default": true,
+            "supported": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "low",
+                "medium",
+                "high"
+              ]
+            }
+          ],
+          "release_date": "2026-10-13",
+          "structured_output": true,
+          "temperature": false,
+          "tool_call": true,
+          "type": "chat"
+        },
         {
           "attachment": true,
           "canonical_model_id": "google/gemini-3.8-flash",
@@ -11119,6 +11180,60 @@
       "models": [
         {
           "attachment": true,
+          "canonical_model_id": "meta/muse-wonder-1.0",
+          "cost": {
+            "cache_read": 0.2,
+            "input": 4,
+            "output": 20
+          },
+          "description": "Muse Wonder is a frontier multimodal reasoning model from Meta for personal and professional agents, long-horizon coding, and computer use. It combines Active Memory, which carries relevant context across conversations, with Active Focus, which keeps it working through blockers toward a goal.",
+          "display_name": "Muse Wonder",
+          "family": "muse",
+          "id": "muse-wonder-1.0",
+          "last_updated": "2026-10-12",
+          "limit": {
+            "context": 1048576,
+            "output": 131072
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video",
+              "pdf",
+              "audio"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Muse Wonder",
+          "open_weights": false,
+          "reasoning": {
+            "default": true,
+            "supported": true
+          },
+          "reasoning_options": [
+            {
+              "type": "effort",
+              "values": [
+                "minimal",
+                "low",
+                "medium",
+                "high",
+                "xhigh",
+                "max"
+              ]
+            }
+          ],
+          "release_date": "2026-10-12",
+          "structured_output": true,
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
+          "attachment": true,
           "canonical_model_id": "meta/muse-spark-1.3",
           "cost": {
             "cache_read": 0.15,
@@ -13763,6 +13878,62 @@
       "id": "nvidia",
       "models": [
         {
+          "attachment": true,
+          "canonical_model_id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          "cost": {
+            "input": 0,
+            "output": 0
+          },
+          "description": "NVIDIA vision-language reasoning model for text, image, and video understanding and agentic tool use",
+          "display_name": "Nemotron 3.5 Super VL 120B A12B",
+          "extra_capabilities": {
+            "reasoning": {
+              "continuation": [
+                "thinking_blocks"
+              ],
+              "interleaved": true,
+              "summaries": true,
+              "supported": true,
+              "visibility": "summary"
+            }
+          },
+          "family": "nemotron",
+          "id": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+          "interleaved": {
+            "field": "reasoning_content"
+          },
+          "last_updated": "2026-10-15",
+          "limit": {
+            "context": 1048576,
+            "output": 8192
+          },
+          "modalities": {
+            "input": [
+              "text",
+              "image",
+              "video"
+            ],
+            "output": [
+              "text"
+            ]
+          },
+          "name": "Nemotron 3.5 Super VL 120B A12B",
+          "open_weights": true,
+          "reasoning": {
+            "default": true,
+            "supported": true
+          },
+          "reasoning_options": [
+            {
+              "type": "toggle"
+            }
+          ],
+          "release_date": "2026-10-15",
+          "temperature": true,
+          "tool_call": true,
+          "type": "chat"
+        },
+        {
           "attachment": false,
           "canonical_model_id": "nvidia/nemotron-3.5-lightning",
           "cost": {
@@ -14124,52 +14295,6 @@
             "supported": false
           },
           "release_date": "2026-03-16",
-          "temperature": true,
-          "tool_call": true,
-          "type": "chat"
-        },
-        {
-          "attachment": false,
-          "canonical_model_id": "nvidia/nemotron-3-super-120b-a12b",
-          "cost": {
-            "input": 0.2,
-            "output": 0.8
-          },
-          "description": "Nemotron middle tier for collaborative agents and high-volume reasoning workloads",
-          "display_name": "Nemotron 3 Super",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true
-            }
-          },
-          "family": "nemotron",
-          "id": "nvidia/nemotron-3-super-120b-a12b",
-          "knowledge": "2024-04",
-          "last_updated": "2026-03-11",
-          "limit": {
-            "context": 262144,
-            "output": 262144
-          },
-          "modalities": {
-            "input": [
-              "text"
-            ],
-            "output": [
-              "text"
-            ]
-          },
-          "name": "Nemotron 3 Super",
-          "open_weights": true,
-          "reasoning": {
-            "default": true,
-            "supported": true
-          },
-          "reasoning_options": [
-            {
-              "type": "toggle"
-            }
-          ],
-          "release_date": "2026-03-11",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -19879,11 +20004,6 @@
           },
           "description": "Tencent Hy reasoning model for coding, instruction following, and agent tasks",
           "display_name": "Hy3 preview",
-          "extra_capabilities": {
-            "reasoning": {
-              "supported": true
-            }
-          },
           "family": "Hy",
           "id": "hy3-preview",
           "last_updated": "2026-04-20",
@@ -20791,6 +20911,7 @@
         },
         {
           "attachment": true,
+          "canonical_model_id": "xai/grok-imagine-image",
           "description": "Image model for prompt-driven generation, editing, and visual design workflows",
           "display_name": "Grok Imagine Image",
           "family": "grok",
@@ -21279,7 +21400,7 @@
             }
           ],
           "release_date": "2026-06-08",
-          "status": "beta",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -21338,6 +21459,7 @@
             }
           ],
           "release_date": "2026-04-22",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
@@ -21393,6 +21515,7 @@
             }
           ],
           "release_date": "2026-04-22",
+          "status": "deprecated",
           "temperature": true,
           "tool_call": true,
           "type": "chat"
