@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -613,7 +615,35 @@ func (s *RequestService) UpdateRequestFinalized(
 		return err
 	}
 
+	s.recordChatRequestMetrics(ctx, req, status, metrics)
+
 	return nil
+}
+
+// recordChatRequestMetrics reports the terminal outcome of a chat request to
+// the metrics registry. Channel name resolution and metric recording are
+// best-effort: they must never affect request finalization.
+func (s *RequestService) recordChatRequestMetrics(ctx context.Context, req *ent.Request, status request.Status, latency *LatencyMetrics) {
+	channelID := ""
+	channelName := ""
+
+	if req.ChannelID != 0 {
+		channelID = strconv.Itoa(req.ChannelID)
+
+		// Best-effort lookup: a deleted channel must not break finalization.
+		if channel, err := req.QueryChannel().Only(ctx); err == nil {
+			channelName = channel.Name
+		}
+	}
+
+	duration := 0.0
+	if latency != nil && latency.LatencyMs != nil {
+		duration = float64(*latency.LatencyMs) / 1000
+	} else if !req.CreatedAt.IsZero() {
+		duration = time.Since(req.CreatedAt).Seconds()
+	}
+
+	metrics.Metrics.RecordChatRequest(ctx, channelID, channelName, duration, status == request.StatusCompleted)
 }
 
 // UpdateRequestCompletedWithAudio marks a request completed and persists a binary audio
