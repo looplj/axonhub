@@ -1375,6 +1375,12 @@ func TestInboundStream_MessageStartCarriesEstimatedPromptTokens(t *testing.T) {
 // message_start estimate: once upstream usage arrives, the terminal event must
 // forward the real numbers untouched. The estimate is a fallback for the frame
 // that is emitted before usage exists — it must never override the truth.
+//
+// The chunks are deliberately split: a content chunk with no usage (so
+// message_start is emitted from the estimate), then the finish_reason chunk,
+// then a choices-less usage chunk carrying the real counts. A single combined
+// chunk would exercise none of that ordering and would let a terminal event
+// that reports zero slip through.
 func TestInboundStream_MessageDeltaCarriesRealUsage(t *testing.T) {
 	request := &llm.Request{
 		Model: "gpt-4o",
@@ -1384,32 +1390,126 @@ func TestInboundStream_MessageDeltaCarriesRealUsage(t *testing.T) {
 		}},
 	}
 
-	source := streams.SliceStream([]*llm.Response{{
-		ID:    "chatcmpl-usage",
-		Model: "gpt-4o",
-		Choices: []llm.Choice{{
-			Index:        0,
-			Delta:        &llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("ok")}},
-			FinishReason: lo.ToPtr("stop"),
-		}},
-		Usage: &llm.Usage{PromptTokens: 1200, CompletionTokens: 11, TotalTokens: 1211},
-	}})
+	text := "ok"
+	source := streams.SliceStream([]*llm.Response{
+		{
+			ID:    "chatcmpl-usage",
+			Model: "gpt-4o",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{Role: "assistant", Content: llm.MessageContent{Content: &text}},
+			}},
+		},
+		{
+			ID:    "chatcmpl-usage",
+			Model: "gpt-4o",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: lo.ToPtr("stop"),
+			}},
+		},
+		{
+			ID:      "chatcmpl-usage",
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{},
+			Usage:   &llm.Usage{PromptTokens: 1200, CompletionTokens: 11, TotalTokens: 1211},
+		},
+	})
 
 	transformer := NewInboundTransformer()
 	stream, err := transformer.TransformStream(shared.WithRequest(t.Context(), request), source)
 	require.NoError(t, err)
 
-	var delta StreamEvent
+	var start, delta StreamEvent
+
 	for stream.Next() {
 		var event StreamEvent
 		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
-		if event.Type == "message_delta" {
+
+		switch event.Type {
+		case "message_start":
+			start = event
+		case "message_delta":
 			delta = event
 		}
 	}
 	require.NoError(t, stream.Err())
+
+	want := llm.EstimatePromptTokens(request)
+	require.Positive(t, want, "the fixture must estimate to something")
+	require.NotNil(t, start.Message)
+	require.Equal(t, want, start.Message.Usage.InputTokens,
+		"message_start must carry the estimate before usage arrives")
+
 	require.NotNil(t, delta.Usage, "message_delta must carry usage")
+	// Exact values, not just "differs from the estimate": a terminal event that
+	// reports zero must fail here.
+	require.Equal(t, int64(1200), delta.Usage.InputTokens)
 	require.Equal(t, int64(11), delta.Usage.OutputTokens)
-	require.NotEqual(t, llm.EstimatePromptTokens(request), delta.Usage.InputTokens,
-		"the terminal event must report upstream usage, not the request estimate")
+}
+
+// TestInboundStream_EmptyFirstChunkUsageKeepsTheEstimate covers the ModelScope
+// stream shape, where every chunk carries a zeroed usage object. Overwriting the
+// estimate with it would put the placeholder bug back — clients that only read
+// `message_start.usage.input_tokens` would see zero for every request.
+func TestInboundStream_EmptyFirstChunkUsageKeepsTheEstimate(t *testing.T) {
+	request := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("explain the prompt accounting briefly")},
+		}},
+	}
+
+	text := "ok"
+	source := streams.SliceStream([]*llm.Response{
+		{
+			ID:      "chatcmpl-empty-usage",
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Role: "assistant", Content: llm.MessageContent{Content: &text}}}},
+			Usage:   &llm.Usage{},
+		},
+		{
+			ID:      "chatcmpl-empty-usage",
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{{Index: 0, FinishReason: lo.ToPtr("stop")}},
+			Usage:   &llm.Usage{},
+		},
+		{
+			ID:      "chatcmpl-empty-usage",
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{},
+			Usage:   &llm.Usage{PromptTokens: 4321, CompletionTokens: 7, TotalTokens: 4328},
+		},
+	})
+
+	transformer := NewInboundTransformer()
+	stream, err := transformer.TransformStream(shared.WithRequest(t.Context(), request), source)
+	require.NoError(t, err)
+
+	var start, delta StreamEvent
+
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+
+		switch event.Type {
+		case "message_start":
+			start = event
+		case "message_delta":
+			delta = event
+		}
+	}
+	require.NoError(t, stream.Err())
+
+	want := llm.EstimatePromptTokens(request)
+	require.Positive(t, want)
+	require.NotNil(t, start.Message)
+	require.Equal(t, want, start.Message.Usage.InputTokens,
+		"a zeroed upstream usage must not overwrite the estimate")
+	require.Zero(t, start.Message.Usage.OutputTokens, "nothing has been generated yet")
+
+	require.NotNil(t, delta.Usage)
+	require.Equal(t, int64(4321), delta.Usage.InputTokens, "the real count must still arrive")
+	require.Equal(t, int64(7), delta.Usage.OutputTokens)
 }

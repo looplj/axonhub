@@ -520,6 +520,31 @@ func (s *anthropicInboundStream) enqueEvent(ev *StreamEvent) error {
 }
 
 //nolint:maintidx // It is complex, and hard to split.
+// hasPromptUsage reports whether upstream actually supplied prompt counts.
+//
+// Some providers attach a zeroed usage object to every chunk (ModelScope is the
+// motivating case). Treating that as real would overwrite the request estimate
+// with zeros on `message_start`, leaving clients that only read that frame with
+// no prompt count at all — the same symptom the estimate exists to fix. A
+// genuine count is always positive; cache fields alone do not make a prompt
+// count.
+func hasPromptUsage(usage *llm.Usage) bool {
+	if usage == nil {
+		return false
+	}
+
+	if usage.PromptTokens > 0 {
+		return true
+	}
+
+	details := usage.PromptTokensDetails
+	if details == nil {
+		return false
+	}
+
+	return details.CachedTokens > 0 || details.WriteCachedTokens > 0
+}
+
 func (s *anthropicInboundStream) Next() bool {
 	// If we have events in the queue, return them first
 	if s.queueIndex < len(s.eventQueue) {
@@ -607,7 +632,12 @@ func (s *anthropicInboundStream) Next() bool {
 				usage.InputTokens = estimated
 			}
 		}
-		if chunk.Usage != nil {
+		// Prefer upstream counts when the first chunk actually carries them, but
+		// keep the estimate when it does not. Some providers (ModelScope) attach
+		// an empty usage object to every chunk: overwriting with it would zero the
+		// estimate right back out, which is the placeholder bug wearing a
+		// different hat.
+		if chunk.Usage != nil && hasPromptUsage(chunk.Usage) {
 			usage = convertToAnthropicUsage(chunk.Usage)
 		}
 
