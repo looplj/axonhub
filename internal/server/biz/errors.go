@@ -20,4 +20,9 @@ var (
 	ErrSystemNotInitialized   = errors.New("system not initialized")
 	ErrOIDCLoginRequired      = errors.New("OIDC user without password, please login via OIDC or set a password")
 	ErrProjectNotFound        = errors.New("project not found")
+
+	// ErrChannelUpdatedConcurrently is returned when an optimistic-locked
+	// channel update loses the race against a concurrent commit. Read-merge-
+	// write callers can detect it with errors.Is and retry the merge.
+	ErrChannelUpdatedConcurrently = errors.New("channel was updated concurrently; retry the operation")
 )

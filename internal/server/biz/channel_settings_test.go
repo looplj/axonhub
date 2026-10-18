@@ -1,14 +1,17 @@
 package biz
 
 import (
+	"fmt"
+	"sync"
 	"testing"
-
-	"github.com/stretchr/testify/require"
+	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
@@ -18,7 +21,7 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 		HideOriginalModels:      true,
 		LowercaseModelID:        true,
 		Proxy:                   &httpclient.ProxyConfig{Type: "http", URL: "http://proxy.example.com:8080"},
-		RateLimit:               &objects.ChannelRateLimit{RPM: int64Ptr(60)},
+		RateLimit:               &objects.ChannelRateLimit{RPM: lo.ToPtr(int64(60))},
 		RetryableStatusCodes:    []int{429},
 	}
 
@@ -29,7 +32,7 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 	})
 
 	t.Run("nil base starts from zero settings", func(t *testing.T) {
-		patch := &UpdateChannelSettingsInput{ExtraModelPrefix: strPtr("anthropic")}
+		patch := &UpdateChannelSettingsInput{ExtraModelPrefix: lo.ToPtr("anthropic")}
 		merged := patch.Apply(nil)
 		require.Equal(t, "anthropic", merged.ExtraModelPrefix)
 		require.Nil(t, merged.Proxy)
@@ -38,7 +41,7 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 
 	t.Run("absent fields keep stored values", func(t *testing.T) {
 		patch := &UpdateChannelSettingsInput{
-			ExtraModelPrefix: strPtr("anthropic"),
+			ExtraModelPrefix: lo.ToPtr("anthropic"),
 		}
 		merged := patch.Apply(base)
 		require.Equal(t, "anthropic", merged.ExtraModelPrefix)
@@ -52,10 +55,10 @@ func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
 
 	t.Run("present fields replace stored values", func(t *testing.T) {
 		patch := &UpdateChannelSettingsInput{
-			ExtraModelPrefix:   strPtr(""),
-			HideOriginalModels: boolPtr(false),
+			ExtraModelPrefix:   lo.ToPtr(""),
+			HideOriginalModels: lo.ToPtr(false),
 			Proxy:              &httpclient.ProxyConfig{Type: "socks5", URL: "socks5://other.example.com:1080"},
-			RateLimit:          &objects.ChannelRateLimit{TPM: int64Ptr(1000)},
+			RateLimit:          &objects.ChannelRateLimit{TPM: lo.ToPtr(int64(1000))},
 		}
 		merged := patch.Apply(base)
 		require.Equal(t, "", merged.ExtraModelPrefix)
@@ -87,24 +90,24 @@ func TestChannelService_UpdateChannelSettings_PreservesUntouchedFields(t *testin
 	created, err := svc.CreateChannel(ctx, ent.CreateChannelInput{
 		Type:            channel.TypeOpenai,
 		Name:            "Settings Patch",
-		BaseURL:         strPtr("https://api.openai.com/v1"),
+		BaseURL:         lo.ToPtr("https://api.openai.com/v1"),
 		Credentials:     objects.ChannelCredentials{APIKey: "key"},
 		SupportedModels: []string{"gpt-test"},
 		Settings: &objects.ChannelSettings{
 			ExtraModelPrefix: "deepseek",
-			RateLimit:        &objects.ChannelRateLimit{RPM: int64Ptr(60)},
+			RateLimit:        &objects.ChannelRateLimit{RPM: lo.ToPtr(int64(60))},
 		},
 	})
 	require.NoError(t, err)
 
 	// Patch a single field; every other stored setting must survive.
 	updated, err := svc.UpdateChannelSettings(ctx, created.ID, &UpdateChannelSettingsInput{
-		ExtraModelPrefix: strPtr("anthropic"),
+		ExtraModelPrefix: lo.ToPtr("anthropic"),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, updated.Settings)
 	require.Equal(t, "anthropic", updated.Settings.ExtraModelPrefix)
-	require.Equal(t, int64Ptr(60), updated.Settings.RateLimit.RPM)
+	require.Equal(t, lo.ToPtr(int64(60)), updated.Settings.RateLimit.RPM)
 
 	// The channel itself is untouched by a settings-only patch.
 	require.Equal(t, created.Name, updated.Name)
@@ -112,18 +115,87 @@ func TestChannelService_UpdateChannelSettings_PreservesUntouchedFields(t *testin
 
 	// Patching again keeps the previously patched value.
 	updated, err = svc.UpdateChannelSettings(ctx, created.ID, &UpdateChannelSettingsInput{
-		HideOriginalModels: boolPtr(true),
+		HideOriginalModels: lo.ToPtr(true),
 	})
 	require.NoError(t, err)
 	require.Equal(t, "anthropic", updated.Settings.ExtraModelPrefix)
 	require.True(t, updated.Settings.HideOriginalModels)
-	require.Equal(t, int64Ptr(60), updated.Settings.RateLimit.RPM)
+	require.Equal(t, lo.ToPtr(int64(60)), updated.Settings.RateLimit.RPM)
 
 	// A missing channel surfaces as an error.
 	_, err = svc.UpdateChannelSettings(ctx, created.ID+1000, &UpdateChannelSettingsInput{})
 	require.Error(t, err)
 }
 
-func int64Ptr(v int64) *int64 { return &v }
-func strPtr(v string) *string { return &v }
-func boolPtr(v bool) *bool    { return &v }
+func TestChannelService_UpdateChannelSettings_ConcurrentPatchesBothSurvive(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := channelAutoPriceTestContext(client)
+
+	created, err := svc.CreateChannel(ctx, ent.CreateChannelInput{
+		Type:            channel.TypeOpenai,
+		Name:            "Settings Patch Race",
+		BaseURL:         lo.ToPtr("https://api.openai.com/v1"),
+		Credentials:     objects.ChannelCredentials{APIKey: "key"},
+		SupportedModels: []string{"gpt-test"},
+	})
+	require.NoError(t, err)
+
+	// Concurrent patches to different fields must all survive: the merge is
+	// optimistic-locked against the version it read, and a conflicting commit
+	// triggers a re-read and re-merge instead of overwriting the other patch.
+	const patches = 4
+
+	var wg sync.WaitGroup
+	errs := make([]error, patches)
+	for i := range patches {
+		patch := &UpdateChannelSettingsInput{}
+		switch i % 4 {
+		case 0:
+			patch.ExtraModelPrefix = lo.ToPtr(fmt.Sprintf("prefix-%d", i))
+		case 1:
+			patch.HideOriginalModels = lo.ToPtr(true)
+		case 2:
+			patch.LowercaseModelID = lo.ToPtr(true)
+		case 3:
+			patch.HideMappedModels = lo.ToPtr(true)
+		}
+		wg.Go(func() {
+			_, errs[i] = svc.UpdateChannelSettings(ctx, created.ID, patch)
+		})
+	}
+	wg.Wait()
+	for i, err := range errs {
+		require.NoError(t, err, "patch %d", i)
+	}
+
+	final, err := client.Channel.Get(ctx, created.ID)
+	require.NoError(t, err)
+	require.NotNil(t, final.Settings)
+	require.Regexp(t, `^prefix-\d+$`, final.Settings.ExtraModelPrefix)
+	require.True(t, final.Settings.HideOriginalModels)
+	require.True(t, final.Settings.LowercaseModelID)
+	require.True(t, final.Settings.HideMappedModels)
+}
+
+func TestChannelService_UpdateChannelSettingsVersionGuard(t *testing.T) {
+	svc, client := setupTestChannelService(t)
+	defer client.Close()
+
+	ctx := channelAutoPriceTestContext(client)
+
+	created, err := svc.CreateChannel(ctx, ent.CreateChannelInput{
+		Type:            channel.TypeOpenai,
+		Name:            "Settings Version Guard",
+		BaseURL:         lo.ToPtr("https://api.openai.com/v1"),
+		Credentials:     objects.ChannelCredentials{APIKey: "key"},
+		SupportedModels: []string{"gpt-test"},
+	})
+	require.NoError(t, err)
+
+	// An update guarded by a stale version fails instead of committing.
+	stale := created.UpdatedAt.Add(-time.Nanosecond)
+	_, err = svc.updateChannel(ctx, created.ID, &ent.UpdateChannelInput{Name: lo.ToPtr("Renamed")}, &stale)
+	require.ErrorIs(t, err, ErrChannelUpdatedConcurrently)
+}

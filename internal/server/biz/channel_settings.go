@@ -2,6 +2,7 @@ package biz
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/looplj/axonhub/internal/authz"
@@ -120,21 +121,52 @@ func (i *UpdateChannelSettingsInput) Apply(base *objects.ChannelSettings) object
 // returns the updated channel. The patch is merged onto the stored settings
 // and then flows through UpdateChannel, so it is subject to the same
 // validation, normalization and optimistic locking as a full settings update.
+//
+// The merge is guarded by optimistic locking on the version the patch was
+// merged against: when a concurrent update commits in between, the update
+// fails and the merge is retried against the new snapshot, so two concurrent
+// patches to different fields both survive instead of the last write silently
+// erasing the other.
 func (svc *ChannelService) UpdateChannelSettings(ctx context.Context, id int, input *UpdateChannelSettingsInput) (*ent.Channel, error) {
-	// Read the stored settings under the write scope: callers may hold
-	// write_channels without read_channels, and this internal read is required
-	// to preserve the patch semantics. It does not expose channel data.
-	existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
-		return svc.entFromContext(queryCtx).Channel.Query().
-			Where(channel.IDEQ(id)).
-			Select(channel.FieldSettings).
-			Only(queryCtx)
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to load channel settings: %w", err)
+	// Each conflict round lets at least one patch commit, so a handful of
+	// attempts resolves any realistic contention; the bound keeps a pathologically
+	// contended channel from retrying forever.
+	const maxMergeAttempts = 8
+
+	var lastErr error
+	for attempt := 0; attempt < maxMergeAttempts; attempt++ {
+		// Read the stored settings under the write scope: callers may hold
+		// write_channels without read_channels, and this internal read is
+		// required to preserve the patch semantics. It does not expose
+		// channel data.
+		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+			return svc.entFromContext(queryCtx).Channel.Query().
+				Where(channel.IDEQ(id)).
+				Select(channel.FieldSettings, channel.FieldUpdatedAt).
+				Only(queryCtx)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to load channel settings: %w", err)
+		}
+
+		merged := input.Apply(existing.Settings)
+
+		updated, err := svc.updateChannel(ctx, id, &ent.UpdateChannelInput{Settings: &merged}, &existing.UpdatedAt)
+		if err == nil {
+			return updated, nil
+		}
+
+		// A concurrent-update conflict means the channel changed between the
+		// read and the write: re-read and re-merge the patch. The read above
+		// already proved the channel exists, so a conflict on the last attempt
+		// is reported as-is.
+		if errors.Is(err, ErrChannelUpdatedConcurrently) {
+			lastErr = err
+			continue
+		}
+
+		return nil, err
 	}
 
-	merged := input.Apply(existing.Settings)
-
-	return svc.UpdateChannel(ctx, id, &ent.UpdateChannelInput{Settings: &merged})
+	return nil, lastErr
 }
