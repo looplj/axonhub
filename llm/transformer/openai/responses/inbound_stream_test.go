@@ -665,10 +665,13 @@ func TestInboundTransformer_TransformStream_UsesUsageFromFinalUsageOnlyChunk(t *
 // send a separate usage-only chunk. The terminal event must be emitted on that
 // chunk rather than at clean stream end, otherwise a client that has already
 // finalized its bookkeeping discards it.
+//
+// The trailing [DONE] item makes the assertion meaningful: with only two source
+// items a clean-EOF emission would also leave the counter at 2.
 func TestInboundTransformer_TransformStream_UsesUsageFromFinishChunk(t *testing.T) {
 	trans := NewInboundTransformer()
 
-	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+	source := &countingResponseStream{items: []*llm.Response{
 		{
 			Object:  "chat.completion.chunk",
 			ID:      "resp_finish_usage",
@@ -695,36 +698,80 @@ func TestInboundTransformer_TransformStream_UsesUsageFromFinishChunk(t *testing.
 				TotalTokens:      128,
 			},
 		},
-	}))
+		{Object: "[DONE]"},
+	}}
+
+	stream, err := trans.TransformStream(t.Context(), source)
 	require.NoError(t, err)
 
 	var terminal *Response
+
+	terminalAt := -1
+
 	for stream.Next() {
 		var ev StreamEvent
 		require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
 		if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
 			terminal = ev.Response
+
+			if terminalAt < 0 {
+				terminalAt = source.consumed
+			}
 		}
 	}
 	require.NoError(t, stream.Err())
 
+	require.Equal(t, 2, terminalAt, "terminal response should be emitted on the usage-bearing finish chunk")
 	require.NotNil(t, terminal)
 	require.NotNil(t, terminal.Usage)
 	require.EqualValues(t, 120, terminal.Usage.InputTokens)
 	require.EqualValues(t, 8, terminal.Usage.OutputTokens)
 }
 
-// TestInboundTransformer_TransformStream_IgnoresPartialUsageUntilBothCountsArrive
-// guards the other side of the discriminator: a usage object carrying only the
-// prompt total is still in flight, so finalizing on it would drop the completion
-// count that arrives in the following chunk.
-func TestInboundTransformer_TransformStream_IgnoresPartialUsageUntilBothCountsArrive(t *testing.T) {
+// countingResponseStream records how many source items have been read when a
+// transformed event surfaces, which reveals whether finalization waited for the
+// stream to end.
+type countingResponseStream struct {
+	items    []*llm.Response
+	index    int
+	consumed int
+}
+
+func (s *countingResponseStream) Next() bool {
+	return s.index < len(s.items)
+}
+
+func (s *countingResponseStream) Current() *llm.Response {
+	if s.index >= len(s.items) {
+		return nil
+	}
+
+	item := s.items[s.index]
+	s.index++
+	s.consumed = s.index
+
+	return item
+}
+
+func (s *countingResponseStream) Err() error {
+	return nil
+}
+
+func (s *countingResponseStream) Close() error {
+	return nil
+}
+
+// TestInboundTransformer_TransformStream_FinalizesOnZeroCompletionUsage covers a
+// filtered or empty response, where upstream legitimately reports a zero
+// completion total. The terminal response must still be emitted on that usage
+// chunk instead of waiting for clean EOF.
+func TestInboundTransformer_TransformStream_FinalizesOnZeroCompletionUsage(t *testing.T) {
 	trans := NewInboundTransformer()
 
-	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+	source := &countingResponseStream{items: []*llm.Response{
 		{
 			Object:  "chat.completion.chunk",
-			ID:      "resp_partial_usage",
+			ID:      "resp_filtered_usage",
 			Created: 1700000000,
 			Model:   "gpt-5",
 			Choices: []llm.Choice{{
@@ -734,45 +781,45 @@ func TestInboundTransformer_TransformStream_IgnoresPartialUsageUntilBothCountsAr
 		},
 		{
 			Object:  "chat.completion.chunk",
-			ID:      "resp_partial_usage",
+			ID:      "resp_filtered_usage",
 			Created: 1700000000,
 			Model:   "gpt-5",
 			Choices: []llm.Choice{{
 				Index:        0,
 				Delta:        &llm.Message{},
-				FinishReason: lo.ToPtr("stop"),
+				FinishReason: lo.ToPtr("content_filter"),
 			}},
-			// Prompt only — the completion total has not been reported yet.
-			Usage: &llm.Usage{PromptTokens: 120, TotalTokens: 120},
+			// Filtered response: a real usage object with no completion tokens.
+			Usage: &llm.Usage{PromptTokens: 120, CompletionTokens: 0, TotalTokens: 120},
 		},
-		{
-			Object:  "chat.completion.chunk",
-			ID:      "resp_partial_usage",
-			Created: 1700000000,
-			Model:   "gpt-5",
-			Usage: &llm.Usage{
-				PromptTokens:     120,
-				CompletionTokens: 8,
-				TotalTokens:      128,
-			},
-		},
-	}))
+		{Object: "[DONE]"},
+	}}
+
+	stream, err := trans.TransformStream(t.Context(), source)
 	require.NoError(t, err)
 
 	var terminal *Response
+
+	terminalAt := -1
+
 	for stream.Next() {
 		var ev StreamEvent
 		require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
-		if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
+		if ev.Type == StreamEventTypeResponseIncomplete && ev.Response != nil {
 			terminal = ev.Response
+
+			if terminalAt < 0 {
+				terminalAt = source.consumed
+			}
 		}
 	}
 	require.NoError(t, stream.Err())
 
+	require.Equal(t, 2, terminalAt, "terminal response should be emitted on the zero-completion usage chunk")
 	require.NotNil(t, terminal)
 	require.NotNil(t, terminal.Usage)
 	require.EqualValues(t, 120, terminal.Usage.InputTokens)
-	require.EqualValues(t, 8, terminal.Usage.OutputTokens)
+	require.EqualValues(t, 0, terminal.Usage.OutputTokens)
 }
 
 func TestInboundTransformer_TransformStream_MapsFinishReasonToTerminalEvent(t *testing.T) {
