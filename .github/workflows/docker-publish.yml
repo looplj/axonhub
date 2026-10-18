@@ -6,8 +6,13 @@
 # to merge upstream, resolve conflicts and approve the code before pushing `dev`.
 #
 # Required repository configuration (Settings -> Secrets and variables -> Actions):
-#   Secret   DOCKER_PASSWORD   Docker Hub access token with Read & Write scope
 #   Variable DOCKER_USERNAME   Docker Hub username (image is <user>/axonhub-dev)
+#   Secret   DOCKER_PASSWORD   Docker Hub access token with Read & Write scope
+#
+# The image is always built (so a broken build fails CI). Login and push to
+# Docker Hub happen only when DOCKER_PASSWORD is configured, so the workflow
+# stays green until Docker Hub is set up and starts publishing automatically the
+# moment the secret is added.
 name: Build and Push Docker Image
 
 on:
@@ -28,6 +33,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    env:
+      # The secrets context is not available in step-level `if`, so the
+      # presence check is materialized here where secrets ARE available.
+      PUBLISH_IMAGE: ${{ secrets.DOCKER_PASSWORD != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,27 +54,38 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v4
-        with:
-          username: ${{ vars.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Resolve image name
+        id: image
+        run: |
+          USERNAME="${{ vars.DOCKER_USERNAME }}"
+          if [ -z "$USERNAME" ]; then
+            USERNAME="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          fi
+          echo "name=${USERNAME}/axonhub-dev" >> "$GITHUB_OUTPUT"
 
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ${{ vars.DOCKER_USERNAME }}/axonhub-dev
+          images: ${{ steps.image.outputs.name }}
           tags: |
             type=sha,prefix=dev-
             type=raw,value=latest
+
+      - name: Log in to Docker Hub
+        if: env.PUBLISH_IMAGE == 'true'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ vars.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
-          push: true
+          push: ${{ env.PUBLISH_IMAGE == 'true' }}
+          load: ${{ env.PUBLISH_IMAGE != 'true' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64
