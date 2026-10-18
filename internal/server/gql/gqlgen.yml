@@ -356,6 +356,12 @@ models:
   VertexAPIKeyInput:
     model:
       - github.com/looplj/axonhub/internal/objects.VertexAPIKey
+  KeyGroup:
+    model:
+      - github.com/looplj/axonhub/internal/objects.KeyGroup
+  KeyGroupInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.KeyGroup
   ModelIdentify:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ModelIdentify

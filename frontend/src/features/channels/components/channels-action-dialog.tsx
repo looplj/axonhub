@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { z } from 'zod';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useFieldArray, useForm, type Control, type FieldValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban } from 'lucide-react';
+import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban, Check } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { copyTextToClipboard } from '@/lib/clipboard';
@@ -442,6 +442,185 @@ function getCodexThirdPartyCredentialError(channel: {
   return undefined;
 }
 
+// A form row for one grouped key. Mirrors the KeyGroupInput shape but keeps the
+// model list always present so the UI can render an empty state.
+type KeyGroupFormRow = {
+  name: string;
+  apiKey: string;
+  models: string[];
+  enabled: boolean;
+};
+
+function emptyKeyGroupRow(): KeyGroupFormRow {
+  return { name: '', apiKey: '', models: [], enabled: true };
+}
+
+// Read side: echo stored groups into form rows. Legacy channels have no groups,
+// so this returns an empty list and the plain apiKeys editor stays in use.
+function normalizeKeyGroupsFromCredentials(
+  credentials?: { keyGroups?: { name?: string | null; apiKey?: string; models?: string[] | null; enabled?: boolean }[] | null } | null
+): KeyGroupFormRow[] {
+  return (credentials?.keyGroups || []).map((group) => ({
+    name: group.name || '',
+    apiKey: group.apiKey || '',
+    models: group.models || [],
+    enabled: group.enabled ?? true,
+  }));
+}
+
+// Grouped API key editor. Each row is a name + key + model allowlist with a
+// per-row "fetch models" action that probes the upstream /models endpoint using
+// only that row's key. The rows are addressed by their index in
+// credentials.keyGroups so the parent form value stays the source of truth.
+interface KeyGroupsEditorProps {
+  control: Control<FieldValues>;
+  rows: KeyGroupFormRow[];
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+  onFetchModels: (index: number) => void;
+  fetchingIndex: number | null;
+  fetchDisabled: boolean;
+}
+
+function KeyGroupsEditor({ control, rows, onAdd, onRemove, onFetchModels, fetchingIndex, fetchDisabled }: KeyGroupsEditorProps) {
+  const { t } = useTranslation();
+
+  return (
+    <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+      <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>{t('channels.dialogs.fields.keyGroup.label')}</FormLabel>
+      <div className='space-y-3 md:col-span-6'>
+        <div className='flex items-center justify-between gap-2'>
+          <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.keyGroup.hint')}</p>
+          <Button type='button' variant='outline' size='sm' onClick={onAdd} className='h-8 shrink-0'>
+            <Plus className='mr-1 h-4 w-4' />
+            {t('channels.dialogs.fields.keyGroup.addGroup')}
+          </Button>
+        </div>
+
+        {rows.length === 0 ? (
+          <p className='text-muted-foreground rounded-md border border-dashed px-3 py-4 text-center text-xs'>
+            {t('channels.dialogs.fields.keyGroup.empty')}
+          </p>
+        ) : (
+          <div className='space-y-2'>
+            {rows.map((_, index) => (
+              <div key={index} className='space-y-2 rounded-md border p-3'>
+                <div className='flex items-center gap-2'>
+                  <FormField
+                    control={control}
+                    name={`credentials.keyGroups.${index}.name`}
+                    render={({ field }) => (
+                      <FormItem className='min-w-0 flex-1 gap-0'>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ''}
+                            placeholder={t('channels.dialogs.fields.keyGroup.namePlaceholder')}
+                            className='h-9'
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type='button'
+                    variant='ghost'
+                    size='sm'
+                    onClick={() => onRemove(index)}
+                    className='text-destructive hover:text-destructive h-9 w-9 shrink-0 p-0'
+                    aria-label={t('channels.dialogs.fields.keyGroup.removeGroup')}
+                  >
+                    <Trash2 className='h-4 w-4' />
+                  </Button>
+                </div>
+
+                <div className='flex items-center gap-2'>
+                  <FormField
+                    control={control}
+                    name={`credentials.keyGroups.${index}.apiKey`}
+                    render={({ field }) => (
+                      <FormItem className='min-w-0 flex-1 gap-0'>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ''}
+                            type='password'
+                            autoComplete='new-password'
+                            placeholder={t('channels.dialogs.fields.keyGroup.apiKeyPlaceholder')}
+                            className='h-9 font-mono text-sm'
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    onClick={() => onFetchModels(index)}
+                    disabled={fetchDisabled || fetchingIndex === index}
+                    className='h-9 shrink-0'
+                  >
+                    <RefreshCw className={`mr-1 h-4 w-4 ${fetchingIndex === index ? 'animate-spin' : ''}`} />
+                    {t('channels.dialogs.fields.keyGroup.fetchModels')}
+                  </Button>
+                  <FormField
+                    control={control}
+                    name={`credentials.keyGroups.${index}.enabled`}
+                    render={({ field }) => (
+                      <FormItem className='shrink-0 gap-0'>
+                        <FormControl>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                type='button'
+                                variant={field.value ? 'default' : 'outline'}
+                                size='sm'
+                                onClick={() => field.onChange(!field.value)}
+                                className='h-9 w-9 p-0'
+                                aria-label={t('channels.dialogs.fields.keyGroup.toggleEnabled')}
+                              >
+                                {field.value ? <Check className='h-4 w-4' /> : <Ban className='h-4 w-4' />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {field.value
+                                ? t('channels.dialogs.fields.keyGroup.enabled')
+                                : t('channels.dialogs.fields.keyGroup.disabled')}
+                            </TooltipContent>
+                          </Tooltip>
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={control}
+                  name={`credentials.keyGroups.${index}.models`}
+                  render={({ field }) => (
+                    <FormItem className='gap-0'>
+                      <FormControl>
+                        <TagsAutocompleteInput
+                          value={field.value || []}
+                          onChange={field.onChange}
+                          placeholder={t('channels.dialogs.fields.keyGroup.modelsPlaceholder')}
+                          suggestions={[]}
+                          className='min-h-9 py-1'
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </FormItem>
+  );
+}
+
 export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
   const { t } = useTranslation();
   const isEdit = !!currentRow;
@@ -847,6 +1026,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
               apiKey: currentRow.credentials?.apiKey || undefined,
               apiKeys: currentRow.credentials?.apiKeys || [],
+              keyGroups: normalizeKeyGroupsFromCredentials(currentRow.credentials),
               vertexApiKeys: currentRow.type === 'gemini_vertex' ? (currentRow.credentials?.vertexApiKeys ?? undefined) : [],
               managementApiKey: currentRow.credentials?.managementApiKey || undefined,
               gcp: {
@@ -874,6 +1054,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
                 apiKey: duplicateFromRow.credentials?.apiKey || undefined,
                 apiKeys: duplicateFromRow.credentials?.apiKeys || [],
+                keyGroups: normalizeKeyGroupsFromCredentials(duplicateFromRow.credentials),
                 vertexApiKeys: duplicateFromRow.type === 'gemini_vertex' ? (duplicateFromRow.credentials?.vertexApiKeys ?? undefined) : [],
                 managementApiKey: duplicateFromRow.credentials?.managementApiKey || undefined,
                 gcp: {
@@ -890,6 +1071,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               policies: { stream: 'unlimited' },
               credentials: {
                 apiKeys: [],
+                keyGroups: [],
                 vertexApiKeys: isVertexChannelType(derivedChannelType) ? [emptyVertexAPIKey()] : [],
                 managementApiKey: undefined,
                 gcp: {
@@ -909,6 +1091,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const vertexApiKeyFields = useFieldArray({ control: form.control, name: 'credentials.vertexApiKeys' });
   const apiKeys = form.watch('credentials.apiKeys');
   const apiKeysCount = useMemo(() => (apiKeys || []).filter((k) => k.trim().length > 0).length, [apiKeys]);
+  const keyGroups = form.watch('credentials.keyGroups');
+  // Per-row fetch state: which group row is currently probing its upstream /models.
+  const [fetchingGroupIndex, setFetchingGroupIndex] = useState<number | null>(null);
   const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannelSettings.isPending;
 
   const { data: disabledKeys = [], isFetching: isFetchingDisabledKeys } = useChannelDisabledAPIKeys(currentRow?.id || '', {
@@ -1406,6 +1591,28 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         ];
       }
 
+      // Normalize grouped keys: trim values, drop fully-empty rows, and drop any
+      // group that has no key. A non-empty group list is authoritative, so the
+      // flat apiKeys list is cleared to keep the backend's uniqueness check happy
+      // and to avoid routing the same key twice.
+      const normalizedKeyGroups = (values.credentials?.keyGroups || [])
+        .map((group) => ({
+          name: (group.name || '').trim(),
+          apiKey: (group.apiKey || '').trim(),
+          models: [...new Set((group.models || []).map((model) => model.trim()).filter((model) => model.length > 0))],
+          enabled: group.enabled ?? true,
+        }))
+        .filter((group) => group.apiKey.length > 0);
+
+      if (values.credentials) {
+        if (normalizedKeyGroups.length > 0) {
+          values.credentials.keyGroups = normalizedKeyGroups;
+          values.credentials.apiKeys = [];
+        } else {
+          values.credentials.keyGroups = [];
+        }
+      }
+
       const retryableStatusCodes = parseRetryableStatusCodesInput(retryableStatusCodesText);
       if (retryableStatusCodes === null) {
         toast.error(t('channels.dialogs.retryableStatusCodes.validation'));
@@ -1581,8 +1788,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           values.credentials.gcp.jsonData.trim() !== '';
         const hasVertexApiKeys =
           values.credentials?.vertexApiKeys && values.credentials.vertexApiKeys.some((binding) => binding.apiKey.trim() !== '');
+        const hasKeyGroups =
+          values.credentials?.keyGroups && values.credentials.keyGroups.some((group) => (group.apiKey || '').trim() !== '');
 
-        if (!hasApiKey && !hasApiKeys && !hasManagementApiKey && !hasGcpCredentials && !hasVertexApiKeys) {
+        if (
+          !hasApiKey &&
+          !hasApiKeys &&
+          !hasKeyGroups &&
+          !hasManagementApiKey &&
+          !hasGcpCredentials &&
+          !hasVertexApiKeys
+        ) {
           delete updateInput.credentials;
         }
 
@@ -1789,6 +2005,61 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       // Error is already handled by the mutation
     }
   }, [fetchModels, form, isEdit, currentRow, authMode]);
+
+  // Probe the upstream /models endpoint using one group's own key and write the
+  // result into that group's model list only. Each row is independent, so two
+  // groups of the same channel can carry different model sets.
+  const handleFetchModelsForGroup = useCallback(
+    async (index: number) => {
+      const channelType = form.getValues('type');
+      const baseURL = form.getValues('baseURL');
+      const group = form.getValues(`credentials.keyGroups.${index}`);
+      const apiKey = (group?.apiKey || '').trim();
+
+      if (!channelType || !baseURL) {
+        return;
+      }
+
+      if (!apiKey) {
+        toast.error(t('channels.dialogs.fields.keyGroup.apiKeyRequired'));
+        return;
+      }
+
+      setFetchingGroupIndex(index);
+
+      try {
+        const result = await fetchModels.mutateAsync({
+          channelType,
+          baseURL,
+          apiKey,
+          channelID: isEdit ? currentRow?.id : undefined,
+        });
+
+        if (result.error) {
+          toast.error(result.error);
+          return;
+        }
+
+        const models = [...new Set(result.models.map((m) => m.id))];
+        if (models.length === 0) {
+          return;
+        }
+
+        // Append to whatever the row already has so a manual edit is preserved.
+        const current = form.getValues(`credentials.keyGroups.${index}.models`) || [];
+        const merged = [...new Set([...current, ...models])];
+        form.setValue(`credentials.keyGroups.${index}.models`, merged, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      } catch (_error) {
+        // Error is already handled by the mutation
+      } finally {
+        setFetchingGroupIndex(null);
+      }
+    },
+    [fetchModels, form, isEdit, currentRow, t]
+  );
 
   const handleSyncNow = useCallback(async () => {
     if (!currentRow) return [];
@@ -2804,6 +3075,36 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 </div>
                               </FormItem>
                             )}
+                          />
+                        )}
+
+                      {/* Grouped API keys: each row is a named key with its own model
+                          list. A channel may use either this or the flat apiKeys
+                          editor above; groups win when both are present. */}
+                      {(!isGeminiVertex && (!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party')) &&
+                        selectedProvider !== 'antigravity' &&
+                        selectedType !== 'anthropic_gcp' && (
+                          <KeyGroupsEditor
+                            control={form.control}
+                            rows={keyGroups || []}
+                            onAdd={() => {
+                              const current = form.getValues('credentials.keyGroups') || [];
+                              form.setValue('credentials.keyGroups', [...current, emptyKeyGroupRow()], {
+                                shouldDirty: true,
+                                shouldValidate: true,
+                              });
+                            }}
+                            onRemove={(index) => {
+                              const current = form.getValues('credentials.keyGroups') || [];
+                              form.setValue(
+                                'credentials.keyGroups',
+                                current.filter((_, i) => i !== index),
+                                { shouldDirty: true, shouldValidate: true }
+                              );
+                            }}
+                            onFetchModels={handleFetchModelsForGroup}
+                            fetchingIndex={fetchingGroupIndex}
+                            fetchDisabled={!form.watch('type') || !form.watch('baseURL')}
                           />
                         )}
 

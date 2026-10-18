@@ -24,6 +24,11 @@ type contextContainer struct {
 
 	// ChannelAPIKey stores the API key used for the channel request (not the user's API key)
 	ChannelAPIKey *string
+
+	// RequestModel stores the model name being dispatched to the channel. It is
+	// set right before the outbound transform so a channel's API key provider can
+	// pick a key whose model allowlist matches the request.
+	RequestModel *string
 }
 
 // getContainer retrieves the existing container from context, or creates a new one and stores it in the context if it doesn't exist.

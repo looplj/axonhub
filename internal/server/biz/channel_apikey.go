@@ -329,6 +329,23 @@ func (svc *ChannelService) DeleteDisabledAPIKeys(ctx context.Context, channelID 
 		newCredentials.APIKeys = filteredKeys
 	}
 
+	// Grouped keys live in KeyGroups; drop the deleted ones there too so the
+	// group disappears along with its key.
+	var removedGroups []objects.KeyGroup
+
+	if len(newCredentials.KeyGroups) > 0 {
+		keptGroups := make([]objects.KeyGroup, 0, len(newCredentials.KeyGroups))
+		for _, group := range newCredentials.KeyGroups {
+			if _, found := keysToDelete[group.APIKey]; found {
+				removedGroups = append(removedGroups, group)
+				continue
+			}
+			keptGroups = append(keptGroups, group)
+		}
+
+		newCredentials.KeyGroups = keptGroups
+	}
+
 	if newCredentials.APIKey != "" {
 		if _, found := keysToDelete[newCredentials.APIKey]; found {
 			newCredentials.APIKey = ""
@@ -365,10 +382,17 @@ func (svc *ChannelService) DeleteDisabledAPIKeys(ctx context.Context, channelID 
 
 	// Ensure at least one API key remains
 	if len(newCredentials.GetAllAPIKeys()) == 0 {
-		// Restore at least one key from the keys being deleted
-		// Prefer the first key that was supposed to be deleted
-		restoredKey := keys[0]
-		newCredentials.APIKeys = []string{restoredKey}
+		// Restore at least one key from the keys being deleted. On a grouped
+		// channel, restore the group so its name and model list survive the
+		// preserve-last-key rule instead of collapsing into a flat key.
+		if len(removedGroups) > 0 {
+			newCredentials.KeyGroups = append(newCredentials.KeyGroups, removedGroups[0])
+		} else {
+			// Prefer the first key that was supposed to be deleted
+			restoredKey := keys[0]
+			newCredentials.APIKeys = []string{restoredKey}
+		}
+
 		result.Message = "ONE_KEY_PRESERVED"
 	}
 

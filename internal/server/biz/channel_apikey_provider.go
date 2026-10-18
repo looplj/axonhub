@@ -55,12 +55,21 @@ func NewTraceStickyKeyProvider(channel *Channel) *TraceStickyKeyProvider {
 }
 
 func (p *TraceStickyKeyProvider) Get(ctx context.Context) string {
-	enabled := p.channel.cachedEnabledAPIKeys
+	enabled := p.channel.enabledAPIKeysForRequest(ctx)
 	if len(enabled) == 0 {
-		return p.channel.Credentials.APIKeys[0]
+		// Nothing enabled is left for this request. Fall back to the first
+		// configured key so the channel is not selected with no credential at
+		// all; upstream failure then drives the usual retry/disable path.
+		if fallback := p.channel.anyConfiguredAPIKey(); fallback != "" {
+			contexts.WithChannelAPIKey(ctx, fallback)
+			return fallback
+		}
+
+		return ""
 	}
 
 	if len(enabled) == 1 {
+		contexts.WithChannelAPIKey(ctx, enabled[0])
 		return enabled[0]
 	}
 

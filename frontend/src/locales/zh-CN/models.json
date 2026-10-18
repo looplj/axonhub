@@ -71,6 +71,7 @@
   "models.dialogs.association.disableDeveloperInheritance.label": "不继承开发者配置",
   "models.dialogs.association.disableDeveloperInheritance.description": "仅使用此模型单独配置的规则；同开发者的配置不会应用到此模型。",
   "models.dialogs.association.priority": "优先级",
+  "models.dialogs.association.dragToReorder": "拖拽调整顺序，优先级将按新顺序自动重排",
   "models.dialogs.association.type": "类型",
   "models.dialogs.association.rule": "规则",
   "models.dialogs.association.types.channelModel": "渠道内精准匹配模型",

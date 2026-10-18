@@ -438,6 +438,13 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			if apiKey == "" && len(ch.Credentials.APIKeys) > 0 {
 				apiKey = ch.Credentials.APIKeys[0]
 			}
+			// Grouped channels store their keys in key groups, so the flat lists
+			// above are empty. Probe with the first enabled group's key.
+			if apiKey == "" {
+				if groupKeys := ch.Credentials.EnabledGroupKeys(); len(groupKeys) > 0 {
+					apiKey = groupKeys[0]
+				}
+			}
 			if apiKey == "" && ch.Type == channel.TypeGeminiVertex && len(ch.Credentials.VertexAPIKeys) > 0 {
 				apiKey = ch.Credentials.VertexAPIKeys[0].APIKey
 			}

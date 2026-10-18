@@ -17,6 +17,7 @@ import (
 	"golang.org/x/sync/singleflight"
 
 	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"
@@ -605,6 +606,10 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		return nil, err
 	}
 
+	if err := ValidateKeyGroups(input.Credentials); err != nil {
+		return nil, err
+	}
+
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
 		SetType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
@@ -1107,6 +1112,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			if err := ValidateVertexAPIKeys(effectiveType, credentials); err != nil {
 				return err
 			}
+			if err := ValidateKeyGroups(credentials); err != nil {
+				return err
+			}
 			mut.SetCredentials(credentials)
 		}
 
@@ -1278,6 +1286,52 @@ func (svc *ChannelService) DeleteChannel(ctx context.Context, id int) error {
 // GetEnabledAPIKeys returns cached enabled API keys.
 func (c *Channel) GetEnabledAPIKeys() []string {
 	return c.cachedEnabledAPIKeys
+}
+
+// enabledAPIKeysForRequest returns the API keys eligible for the current
+// request.
+//
+// Channels without key groups use the cached enabled set unchanged. Channels
+// with key groups select from enabled groups only: keys whose model allowlist
+// matches the requested model are preferred, and every enabled group key is the
+// fallback when nothing matches (so an unlisted model still has a key to try).
+// A key carrying a disable record is always excluded, and an empty result tells
+// the caller to fall back to a configured key so a request is never dispatched
+// with no credential.
+func (c *Channel) enabledAPIKeysForRequest(ctx context.Context) []string {
+	if !c.Credentials.HasKeyGroups() {
+		return c.cachedEnabledAPIKeys
+	}
+
+	model, _ := contexts.GetRequestModel(ctx)
+
+	if matched, ok := c.Credentials.EnabledGroupKeysForModel(model); ok {
+		if enabled := lo.Intersect(matched, c.cachedEnabledAPIKeys); len(enabled) > 0 {
+			return enabled
+		}
+	}
+
+	// No model-specific match: fall back to every enabled group key.
+	if enabled := lo.Intersect(c.Credentials.EnabledGroupKeys(), c.cachedEnabledAPIKeys); len(enabled) > 0 {
+		return enabled
+	}
+
+	return nil
+}
+
+// anyConfiguredAPIKey returns some key to send when no enabled key matches, so a
+// request is never dispatched with an empty credential. It prefers the cached
+// enabled set, then falls back to the raw configured list.
+func (c *Channel) anyConfiguredAPIKey() string {
+	if len(c.cachedEnabledAPIKeys) > 0 {
+		return c.cachedEnabledAPIKeys[0]
+	}
+
+	if keys := c.Credentials.GetAllAPIKeys(); len(keys) > 0 {
+		return keys[0]
+	}
+
+	return ""
 }
 
 // IsAPIKeyDisabled checks if a key is disabled (O(1) lookup).

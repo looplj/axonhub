@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -345,6 +346,12 @@ type ChannelCredentials struct {
 	// When multiple keys are provided, they will be used in a round-robin fashion.
 	APIKeys []string `json:"apiKeys,omitempty"`
 
+	// KeyGroups is the grouped API key list: each entry is a named key with an
+	// optional model allowlist. When present, routing prefers the group whose
+	// Models contains the requested model. APIKeys/APIKey are still read for
+	// backward compatibility with data stored before KeyGroups existed.
+	KeyGroups []KeyGroup `json:"keyGroups,omitempty"`
+
 	// VertexAPIKeys contains the project-bound credentials used by Gemini Vertex.
 	// The project and region must remain paired with the API key when keys rotate.
 	VertexAPIKeys []VertexAPIKey `json:"vertexApiKeys,omitempty"`
@@ -368,8 +375,33 @@ type VertexAPIKey struct {
 	Region    string `json:"region"`
 }
 
-// GetAllAPIKeys returns all API keys for the channel, combining APIKey and APIKeys fields.
-// This ensures backward compatibility with old data that only has APIKey set.
+// KeyGroup is a named API key with an optional list of models it serves. It is
+// the grouped form of a channel credential: a channel can hold several groups,
+// each with its own key and model allowlist, so a request can be routed to the
+// group whose Models contains the requested model.
+type KeyGroup struct {
+	// Name is a human label, e.g. "公益站-codex分组".
+	Name string `json:"name,omitempty"`
+
+	// APIKey is the key for this group.
+	APIKey string `json:"apiKey"`
+
+	// Models is the model allowlist for this key. An empty list means the key
+	// applies to every model (typically because it has not been probed yet).
+	Models []string `json:"models,omitempty"`
+
+	// Enabled reports whether this group participates in routing. A disabled
+	// group is kept for reference but never selected.
+	Enabled bool `json:"enabled"`
+}
+
+// GetAllAPIKeys returns all API keys for the channel.
+//
+// This is the credential surface used by auto-disable bookkeeping, the channel
+// tester, credential management and backups. When the channel is configured with
+// key groups, the group keys are the channel's keys and legacy flat fields are
+// ignored, so a key never appears twice. Otherwise the legacy APIKey/APIKeys
+// fields are read, which keeps pre-KeyGroups data working unchanged.
 func (c *ChannelCredentials) GetAllAPIKeys() []string {
 	if c == nil {
 		return nil
@@ -377,13 +409,21 @@ func (c *ChannelCredentials) GetAllAPIKeys() []string {
 
 	var keys []string
 
-	// Add legacy APIKey if present (only if not OAuth credential)
-	if c.APIKey != "" && !c.IsOAuth() {
-		keys = append(keys, c.APIKey)
-	}
+	if c.HasKeyGroups() {
+		for _, group := range c.KeyGroups {
+			if group.APIKey != "" {
+				keys = append(keys, group.APIKey)
+			}
+		}
+	} else {
+		// Add legacy APIKey if present (only if not OAuth credential)
+		if c.APIKey != "" && !c.IsOAuth() {
+			keys = append(keys, c.APIKey)
+		}
 
-	// Add new APIKeys
-	keys = append(keys, c.APIKeys...)
+		// Add new APIKeys
+		keys = append(keys, c.APIKeys...)
+	}
 
 	for _, credential := range c.VertexAPIKeys {
 		if credential.APIKey != "" {
@@ -392,6 +432,63 @@ func (c *ChannelCredentials) GetAllAPIKeys() []string {
 	}
 
 	return keys
+}
+
+// HasKeyGroups reports whether the channel is configured with grouped keys. When
+// true, routing filters by the requested model; when false, the flat APIKeys
+// path is used unchanged.
+func (c *ChannelCredentials) HasKeyGroups() bool {
+	return c != nil && len(c.KeyGroups) > 0
+}
+
+// EnabledGroupKeys returns the keys of every enabled group, in declaration
+// order. Disabled groups and groups with an empty key are skipped.
+func (c *ChannelCredentials) EnabledGroupKeys() []string {
+	if c == nil {
+		return nil
+	}
+
+	keys := make([]string, 0, len(c.KeyGroups))
+	for _, group := range c.KeyGroups {
+		if group.Enabled && group.APIKey != "" {
+			keys = append(keys, group.APIKey)
+		}
+	}
+
+	return keys
+}
+
+// EnabledGroupKeysForModel returns the enabled group keys that may serve the
+// requested model. A group matches when its Models contains the model, or when
+// its Models is empty (an unscoped group applies to every model).
+//
+// The second return value reports whether the filter produced a usable set. It
+// is false when the channel has no groups, when the model is unknown, or when no
+// group matches — in every one of those cases the caller must fall back to the
+// full enabled-key set so an unmatched model never silently takes the channel
+// out of service.
+func (c *ChannelCredentials) EnabledGroupKeysForModel(model string) ([]string, bool) {
+	if c == nil || len(c.KeyGroups) == 0 || model == "" {
+		return nil, false
+	}
+
+	matched := make([]string, 0, len(c.KeyGroups))
+
+	for _, group := range c.KeyGroups {
+		if !group.Enabled || group.APIKey == "" {
+			continue
+		}
+
+		if len(group.Models) == 0 || slices.Contains(group.Models, model) {
+			matched = append(matched, group.APIKey)
+		}
+	}
+
+	if len(matched) == 0 {
+		return nil, false
+	}
+
+	return matched, true
 }
 
 // OAuthCredentialRef identifies the OAuth credential of a channel in the
@@ -428,7 +525,19 @@ func (c *ChannelCredentials) GetEnabledCredentialRefs(disabledKeys []DisabledAPI
 }
 
 // GetEnabledAPIKeys returns API keys that are not disabled.
+//
+// When the channel uses key groups, only enabled groups contribute keys: a
+// disabled group is excluded from routing but its key still appears in
+// GetAllCredentialRefs so it remains visible to the disable/recovery bookkeeping.
 func (c *ChannelCredentials) GetEnabledAPIKeys(disabledKeys []DisabledAPIKey) []string {
+	if c == nil {
+		return nil
+	}
+
+	if c.HasKeyGroups() {
+		return filterDisabled(c.EnabledGroupKeys(), disabledKeys)
+	}
+
 	return filterDisabled(c.GetAllAPIKeys(), disabledKeys)
 }
 

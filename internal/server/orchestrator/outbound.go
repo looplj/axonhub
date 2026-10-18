@@ -11,6 +11,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
@@ -782,6 +783,12 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 			p.state.LlmRequest.StreamOptions.IncludeUsage = true
 		}
 	}
+
+	// Record the model being dispatched so a channel's API key provider can pick
+	// a key whose model allowlist matches it. Set on every attempt (including
+	// retries, which re-enter this function), immediately before the transform
+	// that resolves the key.
+	ctx = contexts.WithRequestModel(ctx, entry.ActualModel)
 
 	httpRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {

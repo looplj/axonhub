@@ -146,9 +146,16 @@ test('an empty or OAuth-JSON third-party credential is rejected instead of saved
 });
 
 test('schema does not validate inherited Codex OAuth JSON when a third-party key is present', () => {
+  // Third-party Codex is detected from either a flat apiKeys row or a key group;
+  // both must skip the OAuth-JSON validation path.
   assert.match(
     schemaSource,
-    /\(data\.type === 'codex' && !hasApiKeys\)/,
+    /data\.type === 'codex' && !hasApiKeys && !hasKeyGroups/,
     'Codex OAuth JSON validation must be skipped when third-party apiKeys are present'
+  );
+  assert.match(
+    schemaSource,
+    /effectiveType === 'codex' && \(hasApiKeys \|\| hasKeyGroups\)/,
+    'third-party Codex detection must also accept grouped keys'
   );
 });

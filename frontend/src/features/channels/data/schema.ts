@@ -378,9 +378,21 @@ export const channelModelEntrySchema = z.object({
 export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 
 // Channel Credentials
+export const keyGroupSchema = z.object({
+  name: z.string().optional().nullable(),
+  apiKey: z.string(),
+  models: z.array(z.string()).optional().nullable(),
+  enabled: z.boolean(),
+});
+export type KeyGroup = z.infer<typeof keyGroupSchema>;
+
 export const channelCredentialsSchema = z.object({
   apiKey: z.string().optional().nullable(),
   apiKeys: z.array(z.string()).optional().nullable(),
+  // Grouped keys: each entry is a named key with its own model allowlist. When
+  // present they supersede apiKeys; the read schema must tolerate partial data
+  // written by older clients.
+  keyGroups: z.array(keyGroupSchema).optional().nullable(),
   // Read-side shape only: persisted credentials are echoed for the form and may
   // predate the triple, so this schema must not reject stored data. Strict
   // validation lives on the write schemas below.
@@ -710,6 +722,86 @@ function validateVertexAPIKeys(
   });
 }
 
+// Write shape for a grouped key. apiKey is required by GraphQL's KeyGroupInput, so an
+// empty key is reported here rather than as a server error.
+const keyGroupInputShapeSchema = z.object({
+  name: z.string().optional(),
+  apiKey: z.string(),
+  models: z.array(z.string()).optional(),
+  enabled: z.boolean(),
+});
+
+// Grouped keys are an alternative to the flat apiKeys list, so the two must not
+// both be populated and a key must not appear twice. The backend re-checks this;
+// surfacing it here keeps the error on the offending row.
+function validateKeyGroups(
+  credentials:
+    | {
+        apiKeys?: string[] | null;
+        apiKey?: string | null;
+        vertexApiKeys?: { apiKey: string }[] | null;
+        keyGroups?: { apiKey: string; name?: string }[] | null;
+      }
+    | undefined,
+  ctx: z.RefinementCtx
+) {
+  const groups = credentials?.keyGroups;
+  if (!groups || groups.length === 0) {
+    return;
+  }
+
+  const seenKeys = new Set<string>();
+  const seenNames = new Set<string>();
+
+  groups.forEach((group, index) => {
+    const apiKey = (group.apiKey || '').trim();
+    if (!apiKey) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'channels.dialogs.fields.keyGroup.apiKeyRequired',
+        path: ['credentials', 'keyGroups', index, 'apiKey'],
+      });
+      return;
+    }
+
+    if (seenKeys.has(apiKey)) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'channels.dialogs.fields.keyGroup.duplicateKey',
+        path: ['credentials', 'keyGroups', index, 'apiKey'],
+      });
+    }
+    seenKeys.add(apiKey);
+
+    const name = (group.name || '').trim();
+    if (name) {
+      if (seenNames.has(name)) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: 'channels.dialogs.fields.keyGroup.duplicateName',
+          path: ['credentials', 'keyGroups', index, 'name'],
+        });
+      }
+      seenNames.add(name);
+    }
+  });
+
+  const flatKeys = [...(credentials?.apiKeys || [])];
+  if (credentials?.apiKey) {
+    flatKeys.push(credentials.apiKey);
+  }
+  (credentials?.vertexApiKeys || []).forEach((row) => flatKeys.push(row.apiKey));
+
+  const overlapsFlat = flatKeys.some((key) => seenKeys.has((key || '').trim()));
+  if (overlapsFlat) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'channels.dialogs.fields.keyGroup.conflictsWithFlat',
+      path: ['credentials', 'keyGroups'],
+    });
+  }
+}
+
 // Create Channel Input
 
 export const createChannelInputSchema = z
@@ -733,6 +825,9 @@ export const createChannelInputSchema = z
       apiKey: z.string().optional(),
       // apiKeys is used for regular API keys (multiple keys for load balancing)
       apiKeys: z.array(z.string()).optional().default([]),
+      // keyGroups is the grouped form of apiKeys: each entry is a named key with
+      // its own model allowlist. When present it supersedes apiKeys.
+      keyGroups: z.array(keyGroupInputShapeSchema).optional().default([]),
       // Vertex credentials are project-bound triples; an omitted region defaults to global.
       vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional().default([]),
       // Optional management key used only by the backend for quota checks
@@ -749,8 +844,9 @@ export const createChannelInputSchema = z
   .superRefine((data, ctx) => {
     const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
     const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
+    const hasKeyGroups = (data.credentials.keyGroups || []).some((group) => (group.apiKey || '').trim().length > 0);
     const isOAuthType =
-      (data.type === 'codex' && !hasApiKeys) ||
+      (data.type === 'codex' && !hasApiKeys && !hasKeyGroups) ||
       data.type === 'claudecode' ||
       data.type === 'antigravity' ||
       data.type === 'github_copilot' ||
@@ -770,6 +866,7 @@ export const createChannelInputSchema = z
     if (
       !hasApiKey &&
       !hasApiKeys &&
+      !hasKeyGroups &&
       data.type !== 'anthropic_aws' &&
       data.type !== 'anthropic_gcp' &&
       data.type !== 'gemini_vertex'
@@ -780,6 +877,8 @@ export const createChannelInputSchema = z
         path: ['credentials', 'apiKeys'],
       });
     }
+
+    validateKeyGroups(data.credentials, ctx);
 
     // For OAuth types, validate the OAuth JSON format if apiKey is provided
     if (isOAuthType && hasApiKey) {
@@ -840,6 +939,8 @@ export const updateChannelInputSchema = z
         apiKey: z.string().optional(),
         // apiKeys 用于普通 API Key（支持多 key 负载均衡），OAuth 类型不使用此字段
         apiKeys: z.array(z.string()).optional(),
+        // keyGroups is the grouped form of apiKeys: name + key + model allowlist per row.
+        keyGroups: z.array(keyGroupInputShapeSchema).optional(),
         // Vertex credentials are project-bound triples; an omitted region defaults to global.
         vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional(),
         // Optional management key used only by the backend for quota checks
@@ -859,11 +960,12 @@ export const updateChannelInputSchema = z
     const effectiveType = data.type;
     const hasApiKey = data.credentials?.apiKey && data.credentials.apiKey.trim().length > 0;
     const hasApiKeys = (data.credentials?.apiKeys?.length ?? 0) > 0;
+    const hasKeyGroups = (data.credentials?.keyGroups || []).some((group) => (group.apiKey || '').trim().length > 0);
 
     // For OAuth validation on updates: validate if type is OAuth, or if credentials.apiKey is provided
     // (which indicates OAuth credentials are being set)
     const isOAuthType =
-      (effectiveType === 'codex' && !hasApiKeys) ||
+      (effectiveType === 'codex' && !hasApiKeys && !hasKeyGroups) ||
       effectiveType === 'claudecode' ||
       effectiveType === 'antigravity' ||
       effectiveType === 'github_copilot' ||
@@ -881,7 +983,7 @@ export const updateChannelInputSchema = z
 
     // If we have an OAuth key but no type, check if it looks like Copilot credentials
     const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
-    const isThirdPartyCodex = effectiveType === 'codex' && hasApiKeys;
+    const isThirdPartyCodex = effectiveType === 'codex' && (hasApiKeys || hasKeyGroups);
 
     if (!isThirdPartyCodex && (isOAuthType || derivedType === 'github_copilot' || isCopilotKey)) {
       if (isCopilotKey && !derivedType) {
@@ -934,6 +1036,7 @@ export const updateChannelInputSchema = z
 
     // An update may clear the list, so an empty array is itself an error.
     validateVertexAPIKeys(data.type, data.credentials, ctx);
+    validateKeyGroups(data.credentials, ctx);
   });
 
 export type UpdateChannelInput = z.infer<typeof updateChannelInputSchema>;

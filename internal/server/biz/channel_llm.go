@@ -166,6 +166,10 @@ func buildChannel(c *ent.Channel, httpClient *httpclient.HttpClient) *Channel {
 // If multiple enabled API keys are configured, it returns a TraceStickyKeyProvider for consistent hashing.
 // Otherwise, it returns a StaticKeyProvider.
 //
+// When the channel uses key groups with model allowlists, even a single enabled
+// key can differ per request, so the provider is always the request-aware one in
+// that case.
+//
 // NOTE: This function panics when there is no enabled API key. This is intended as an assertion:
 // buildChannelWithTransformer should validate channel credentials before constructing transformers.
 func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
@@ -174,7 +178,7 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 	}
 
 	enabled := ch.cachedEnabledAPIKeys
-	if len(enabled) > 1 {
+	if len(enabled) > 1 || ch.Credentials.HasKeyGroups() {
 		return NewChannelAPIKeyContextProvider(NewTraceStickyKeyProvider(ch))
 	}
 
@@ -1541,6 +1545,88 @@ func ValidateVertexAPIKeys(channelType channel.Type, credentials objects.Channel
 	}
 
 	return nil
+}
+
+// ValidateKeyGroups checks a channel's grouped API keys before they are stored.
+//
+// Groups are the grouped form of a channel's flat key list, so they share its
+// constraints: every group must carry a key, keys must be unique across groups,
+// and each key may appear in only one place (a key that is also listed in the
+// flat apiKeys array, or in VertexApiKeys, would be routed twice). Group names
+// are optional labels and are not required to be unique.
+func ValidateKeyGroups(credentials objects.ChannelCredentials) error {
+	if !credentials.HasKeyGroups() {
+		return nil
+	}
+
+	seen := make(map[string]struct{}, len(credentials.KeyGroups))
+	names := make(map[string]struct{}, len(credentials.KeyGroups))
+
+	for i, group := range credentials.KeyGroups {
+		apiKey := strings.TrimSpace(group.APIKey)
+		if apiKey == "" {
+			return fmt.Errorf("key group %d is missing an API key", i+1)
+		}
+
+		if _, found := seen[apiKey]; found {
+			return fmt.Errorf("api key %q is used by more than one key group", safeKeySuffix(apiKey))
+		}
+
+		seen[apiKey] = struct{}{}
+
+		name := strings.TrimSpace(group.Name)
+		if name != "" {
+			if _, found := names[name]; found {
+				return fmt.Errorf("key group name %q is used more than once", name)
+			}
+
+			names[name] = struct{}{}
+		}
+	}
+
+	// A key must not be configured twice: grouped keys supersede the flat list,
+	// so a key present in both would be ambiguous to the operator even though
+	// routing reads only the groups.
+	flat := make([]string, 0, len(credentials.APIKeys)+1)
+	flat = append(flat, credentials.APIKeys...)
+	if credentials.APIKey != "" {
+		flat = append(flat, credentials.APIKey)
+	}
+
+	for _, key := range flat {
+		apiKey := strings.TrimSpace(key)
+		if apiKey == "" {
+			continue
+		}
+
+		if _, found := seen[apiKey]; found {
+			return fmt.Errorf("api key %q is configured both in a key group and the flat api key list", safeKeySuffix(apiKey))
+		}
+	}
+
+	for _, credential := range credentials.VertexAPIKeys {
+		apiKey := strings.TrimSpace(credential.APIKey)
+		if apiKey == "" {
+			continue
+		}
+
+		if _, found := seen[apiKey]; found {
+			return fmt.Errorf("api key %q is configured both in a key group and the vertex key list", safeKeySuffix(apiKey))
+		}
+	}
+
+	return nil
+}
+
+// safeKeySuffix returns the last four characters of a key so error messages can
+// identify it without printing the whole secret.
+func safeKeySuffix(key string) string {
+	runes := []rune(key)
+	if len(runes) <= 4 {
+		return key
+	}
+
+	return string(runes[len(runes)-4:])
 }
 
 // vertexServiceBaseURL reduces a channel Base URL to the Vertex service root.

@@ -1052,6 +1052,12 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
           credentials {
             apiKey
             apiKeys
+            keyGroups {
+              name
+              apiKey
+              models
+              enabled
+            }
             vertexApiKeys {
               projectID
               apiKey

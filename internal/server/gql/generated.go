@@ -395,6 +395,7 @@ type ComplexityRoot struct {
 		APIKey        func(childComplexity int) int
 		APIKeys       func(childComplexity int) int
 		GCP           func(childComplexity int) int
+		KeyGroups     func(childComplexity int) int
 		OAuth         func(childComplexity int) int
 		VertexAPIKeys func(childComplexity int) int
 	}
@@ -844,6 +845,13 @@ type ComplexityRoot struct {
 		Success func(childComplexity int) int
 		Token   func(childComplexity int) int
 		User    func(childComplexity int) int
+	}
+
+	KeyGroup struct {
+		APIKey  func(childComplexity int) int
+		Enabled func(childComplexity int) int
+		Models  func(childComplexity int) int
+		Name    func(childComplexity int) int
 	}
 
 	Model struct {
@@ -3812,6 +3820,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelCredentials.GCP(childComplexity), true
+	case "ChannelCredentials.keyGroups":
+		if e.complexity.ChannelCredentials.KeyGroups == nil {
+			break
+		}
+
+		return e.complexity.ChannelCredentials.KeyGroups(childComplexity), true
 	case "ChannelCredentials.oauth":
 		if e.complexity.ChannelCredentials.OAuth == nil {
 			break
@@ -5411,6 +5425,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.InitializeSystemPayload.User(childComplexity), true
+
+	case "KeyGroup.apiKey":
+		if e.complexity.KeyGroup.APIKey == nil {
+			break
+		}
+
+		return e.complexity.KeyGroup.APIKey(childComplexity), true
+	case "KeyGroup.enabled":
+		if e.complexity.KeyGroup.Enabled == nil {
+			break
+		}
+
+		return e.complexity.KeyGroup.Enabled(childComplexity), true
+	case "KeyGroup.models":
+		if e.complexity.KeyGroup.Models == nil {
+			break
+		}
+
+		return e.complexity.KeyGroup.Models(childComplexity), true
+	case "KeyGroup.name":
+		if e.complexity.KeyGroup.Name == nil {
+			break
+		}
+
+		return e.complexity.KeyGroup.Name(childComplexity), true
 
 	case "Model.associatedChannelCount":
 		if e.complexity.Model.AssociatedChannelCount == nil {
@@ -12089,6 +12128,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGetChannelProbeDataInput,
 		ec.unmarshalInputHeaderEntryInput,
 		ec.unmarshalInputInitializeSystemInput,
+		ec.unmarshalInputKeyGroupInput,
 		ec.unmarshalInputLoadApiKeyProfileTemplateInput,
 		ec.unmarshalInputModelAssociationInput,
 		ec.unmarshalInputModelAssociationWhenInput,
@@ -21862,6 +21902,8 @@ func (ec *executionContext) fieldContext_Channel_credentials(_ context.Context, 
 				return ec.fieldContext_ChannelCredentials_apiKey(ctx, field)
 			case "apiKeys":
 				return ec.fieldContext_ChannelCredentials_apiKeys(ctx, field)
+			case "keyGroups":
+				return ec.fieldContext_ChannelCredentials_keyGroups(ctx, field)
 			case "vertexApiKeys":
 				return ec.fieldContext_ChannelCredentials_vertexApiKeys(ctx, field)
 			case "gcp":
@@ -22111,6 +22153,45 @@ func (ec *executionContext) fieldContext_ChannelCredentials_apiKeys(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCredentials_keyGroups(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelCredentials) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCredentials_keyGroups,
+		func(ctx context.Context) (any, error) {
+			return obj.KeyGroups, nil
+		},
+		nil,
+		ec.marshalOKeyGroup2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐKeyGroupᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCredentials_keyGroups(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCredentials",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_KeyGroup_name(ctx, field)
+			case "apiKey":
+				return ec.fieldContext_KeyGroup_apiKey(ctx, field)
+			case "models":
+				return ec.fieldContext_KeyGroup_models(ctx, field)
+			case "enabled":
+				return ec.fieldContext_KeyGroup_enabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type KeyGroup", field.Name)
 		},
 	}
 	return fc, nil
@@ -30420,6 +30501,122 @@ func (ec *executionContext) fieldContext_InitializeSystemPayload_token(_ context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _KeyGroup_name(ctx context.Context, field graphql.CollectedField, obj *objects.KeyGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_KeyGroup_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_KeyGroup_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KeyGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _KeyGroup_apiKey(ctx context.Context, field graphql.CollectedField, obj *objects.KeyGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_KeyGroup_apiKey,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKey, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_KeyGroup_apiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KeyGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _KeyGroup_models(ctx context.Context, field graphql.CollectedField, obj *objects.KeyGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_KeyGroup_models,
+		func(ctx context.Context) (any, error) {
+			return obj.Models, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_KeyGroup_models(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KeyGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _KeyGroup_enabled(ctx context.Context, field graphql.CollectedField, obj *objects.KeyGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_KeyGroup_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_KeyGroup_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KeyGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -67764,7 +67961,7 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"apiKey", "apiKeys", "vertexApiKeys", "gcp", "oauth", "managementApiKey"}
+	fieldsInOrder := [...]string{"apiKey", "apiKeys", "keyGroups", "vertexApiKeys", "gcp", "oauth", "managementApiKey"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -67785,6 +67982,13 @@ func (ec *executionContext) unmarshalInputChannelCredentialsInput(ctx context.Co
 				return it, err
 			}
 			it.APIKeys = data
+		case "keyGroups":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("keyGroups"))
+			data, err := ec.unmarshalOKeyGroupInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐKeyGroupᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KeyGroups = data
 		case "vertexApiKeys":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("vertexApiKeys"))
 			data, err := ec.unmarshalOVertexAPIKeyInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐVertexAPIKeyᚄ(ctx, v)
@@ -74744,6 +74948,54 @@ func (ec *executionContext) unmarshalInputInitializeSystemInput(ctx context.Cont
 				return it, err
 			}
 			it.BrandName = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputKeyGroupInput(ctx context.Context, obj any) (objects.KeyGroup, error) {
+	var it objects.KeyGroup
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "apiKey", "models", "enabled"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "apiKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKey = data
+		case "models":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("models"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Models = data
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
 		}
 	}
 
@@ -95611,6 +95863,8 @@ func (ec *executionContext) _ChannelCredentials(ctx context.Context, sel ast.Sel
 			out.Values[i] = ec._ChannelCredentials_apiKey(ctx, field, obj)
 		case "apiKeys":
 			out.Values[i] = ec._ChannelCredentials_apiKeys(ctx, field, obj)
+		case "keyGroups":
+			out.Values[i] = ec._ChannelCredentials_keyGroups(ctx, field, obj)
 		case "vertexApiKeys":
 			out.Values[i] = ec._ChannelCredentials_vertexApiKeys(ctx, field, obj)
 		case "gcp":
@@ -99538,6 +99792,54 @@ func (ec *executionContext) _InitializeSystemPayload(ctx context.Context, sel as
 			out.Values[i] = ec._InitializeSystemPayload_user(ctx, field, obj)
 		case "token":
 			out.Values[i] = ec._InitializeSystemPayload_token(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var keyGroupImplementors = []string{"KeyGroup"}
+
+func (ec *executionContext) _KeyGroup(ctx context.Context, sel ast.SelectionSet, obj *objects.KeyGroup) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, keyGroupImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("KeyGroup")
+		case "name":
+			out.Values[i] = ec._KeyGroup_name(ctx, field, obj)
+		case "apiKey":
+			out.Values[i] = ec._KeyGroup_apiKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "models":
+			out.Values[i] = ec._KeyGroup_models(ctx, field, obj)
+		case "enabled":
+			out.Values[i] = ec._KeyGroup_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -116753,6 +117055,15 @@ func (ec *executionContext) marshalNJSONRawMessageInput2githubᚗcomᚋloopljᚋ
 	return v
 }
 
+func (ec *executionContext) marshalNKeyGroup2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐKeyGroup(ctx context.Context, sel ast.SelectionSet, v objects.KeyGroup) graphql.Marshaler {
+	return ec._KeyGroup(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNKeyGroupInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐKeyGroup(ctx context.Context, v any) (objects.KeyGroup, error) {
+	res, err := ec.unmarshalInputKeyGroupInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNLoadApiKeyProfileTemplateInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐLoadAPIKeyProfileTemplateInput(ctx context.Context, v any) (LoadAPIKeyProfileTemplateInput, error) {
 	res, err := ec.unmarshalInputLoadApiKeyProfileTemplateInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -123402,6 +123713,71 @@ func (ec *executionContext) marshalOJSONRawMessageInput2ᚕgithubᚗcomᚋlooplj
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOKeyGroup2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐKeyGroupᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.KeyGroup) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNKeyGroup2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐKeyGroup(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOKeyGroupInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐKeyGroupᚄ(ctx context.Context, v any) ([]objects.KeyGroup, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.KeyGroup, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNKeyGroupInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐKeyGroup(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModel(ctx context.Context, sel ast.SelectionSet, v *ent.Model) graphql.Marshaler {

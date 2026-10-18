@@ -70,6 +70,21 @@ func (r *channelResolver) Credentials(ctx context.Context, obj *ent.Channel) (*o
 		return &creds, nil
 	}
 
+	// Key groups are surfaced through the dedicated keyGroups field. When they
+	// are present they are the authoritative credential list, so the flat apiKeys
+	// array is cleared to avoid presenting the same key twice (the edit form
+	// would otherwise write it back into both fields).
+	if creds.HasKeyGroups() {
+		if obj.Type != channel.TypeGeminiVertex {
+			creds.VertexAPIKeys = nil
+		}
+
+		creds.APIKeys = nil
+		creds.APIKey = ""
+
+		return &creds, nil
+	}
+
 	// Vertex credentials are project-bound triples and are surfaced through
 	// vertexApiKeys instead, so the edit form can echo the project and region back.
 	// Their keys must not also appear in the flat apiKeys list: that would present

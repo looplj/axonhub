@@ -136,6 +136,29 @@ func GetChannelAPIKey(ctx context.Context) (string, bool) {
 	return "", false
 }
 
+// WithRequestModel stores the model being dispatched to the channel in the context.
+func WithRequestModel(ctx context.Context, model string) context.Context {
+	container := getContainer(ctx)
+	container.mu.Lock()
+	container.RequestModel = &model
+	container.mu.Unlock()
+
+	return withContainer(ctx, container)
+}
+
+// GetRequestModel retrieves the model being dispatched to the channel from the context.
+func GetRequestModel(ctx context.Context) (string, bool) {
+	container := getContainer(ctx)
+	container.mu.RLock()
+	defer container.mu.RUnlock()
+
+	if container.RequestModel != nil {
+		return *container.RequestModel, true
+	}
+
+	return "", false
+}
+
 // WithProjectID stores the project ID in the context.
 func WithProjectID(ctx context.Context, projectID int) context.Context {
 	container := getContainer(ctx)

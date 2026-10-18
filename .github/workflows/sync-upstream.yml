@@ -1,0 +1,40 @@
+# Sync the fork's `unstable` branch with the upstream `looplj/axonhub` unstable branch.
+#
+# This workflow ONLY mirrors upstream into the fork's `unstable` branch. It never
+# touches `dev`, so it never triggers the Docker publish workflow. Personal
+# features live on `dev`: after this sync you merge `origin/unstable` into `dev`
+# locally, resolve any conflicts, review the code, and only then push `dev`
+# (which is what triggers the image build).
+name: Sync Upstream unstable
+
+on:
+  schedule:
+    # Every day at 00:00 UTC.
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+# The sync action force-pushes the target branch, so it needs write access.
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Mirror upstream unstable
+    runs-on: ubuntu-latest
+    # Safety guard: only run inside a fork, never on the upstream repository itself.
+    if: ${{ github.event.repository.fork }}
+    steps:
+      - name: Checkout unstable
+        uses: actions/checkout@v4
+        with:
+          ref: unstable
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Sync upstream changes
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4.3
+        with:
+          target_sync_branch: unstable
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          upstream_sync_branch: unstable
+          upstream_sync_repo: looplj/axonhub

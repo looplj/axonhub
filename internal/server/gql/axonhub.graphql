@@ -317,9 +317,17 @@ type ChannelRateLimit {
 type ChannelCredentials {
   apiKey: String
   apiKeys: [String!]
+  keyGroups: [KeyGroup!]
   vertexApiKeys: [VertexAPIKey!]
   gcp: GCPCredential
   oauth: OAuthCredentials
+}
+
+type KeyGroup {
+  name: String
+  apiKey: String!
+  models: [String!]
+  enabled: Boolean!
 }
 
 type DisabledAPIKey {
@@ -354,10 +362,18 @@ type GCPCredential {
 input ChannelCredentialsInput {
   apiKey: String
   apiKeys: [String!]
+  keyGroups: [KeyGroupInput!]
   vertexApiKeys: [VertexAPIKeyInput!]
   gcp: GCPCredentialInput
   oauth: OAuthCredentialsInput
   managementApiKey: String
+}
+
+input KeyGroupInput {
+  name: String
+  apiKey: String!
+  models: [String!]
+  enabled: Boolean!
 }
 
 input OAuthCredentialsInput {

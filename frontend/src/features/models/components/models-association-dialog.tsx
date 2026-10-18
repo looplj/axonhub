@@ -1,8 +1,19 @@
-import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
+import { useEffect, useMemo, useCallback, useState, useRef, type ReactNode } from 'react';
 import { z } from 'zod';
 import { useForm, useFieldArray, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconInfoCircle } from '@tabler/icons-react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconInfoCircle, IconGripVertical } from '@tabler/icons-react';
 import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
 import { extractNumberIDAsNumber } from '@/lib/utils';
@@ -713,6 +724,41 @@ function buildDeveloperChannelPreview(associations: AssociationFormRow[], channe
   return connections;
 }
 
+// Sortable wrapper: owns the drag handle and the dnd-kit transform, then renders
+// the presentational AssociationRow. Kept separate so AssociationRow's props stay
+// about the form, not about drag state.
+interface SortableAssociationRowProps extends Omit<AssociationRowProps, 'dragHandle'> {
+  id: string;
+}
+
+function SortableAssociationRow({ id, ...rowProps }: SortableAssociationRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  const dragHandle = (
+    <button
+      type='button'
+      className='text-muted-foreground hover:text-foreground flex h-8 w-5 cursor-grab touch-none items-center justify-center active:cursor-grabbing'
+      aria-label='Drag to reorder'
+      {...attributes}
+      {...listeners}
+    >
+      <IconGripVertical className='h-4 w-4' />
+    </button>
+  );
+
+  return (
+    <div ref={setNodeRef} style={style} className={isDragging ? 'relative z-50' : undefined}>
+      <AssociationRow {...rowProps} dragHandle={dragHandle} />
+    </div>
+  );
+}
+
 export function ModelsAssociationDialog() {
   const { t, i18n } = useTranslation();
   const { open, setOpen, currentRow, currentDeveloper, setCurrentDeveloper } = useModels();
@@ -955,6 +1001,49 @@ export function ModelsAssociationDialog() {
     });
   }, [append, fields.length, form, isDeveloperMode]);
 
+  // Rows are always displayed ordered by priority, so the visual order and the
+  // priority order are the same thing. Dragging therefore simply rewrites every
+  // rule's priority to its new 0-based position.
+  const orderedAssociationFields = fields
+    .map((field, index) => ({ field, index }))
+    .sort((a, b) => {
+      const priorityA = form.getValues(`associations.${a.index}.priority`) ?? 0;
+      const priorityB = form.getValues(`associations.${b.index}.priority`) ?? 0;
+      return priorityA - priorityB;
+    });
+
+  const sensors = useSensors(
+    // A small activation distance keeps a plain click on the handle from being
+    // treated as a drag.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleAssociationDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const ordered = orderedAssociationFields.map((entry) => ({ id: entry.field.id, index: entry.index }));
+    const oldPosition = ordered.findIndex((entry) => entry.id === active.id);
+    const newPosition = ordered.findIndex((entry) => entry.id === over.id);
+    if (oldPosition === -1 || newPosition === -1) {
+      return;
+    }
+
+    const reordered = arrayMove(ordered, oldPosition, newPosition);
+    // Rewrite priorities so the first row is 0, the second is 1, and so on. The
+    // underlying field array is never reordered, so row identities (and their
+    // component state) survive the drag.
+    reordered.forEach((entry, position) => {
+      form.setValue(`associations.${entry.index}.priority`, position, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    });
+  };
+
   // Filter connections by channel name
   const filteredConnections = useMemo(() => {
     if (!channelFilter.trim()) return connections;
@@ -1107,7 +1196,8 @@ export function ModelsAssociationDialog() {
                   {fields.length === 0 && <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>}
 
                   {fields.length > 0 && (
-                    <div className='grid grid-cols-[2.25rem_3rem_1fr_2.25rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-3 sm:px-[13px] pb-2'>
+                    <div className='grid grid-cols-[1.5rem_2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[1.5rem_2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-3 sm:px-[13px] pb-2'>
+                      <div />
                       <div />
                       <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.priority')}</div>
                       <div className='text-muted-foreground text-center text-xs font-medium sm:block hidden'>{t('models.dialogs.association.type')}</div>
@@ -1115,27 +1205,31 @@ export function ModelsAssociationDialog() {
                       <div />
                     </div>
                   )}
+                  {fields.length > 1 && (
+                    <p className='text-muted-foreground pl-[13px] text-xs'>{t('models.dialogs.association.dragToReorder')}</p>
+                  )}
 
-                  {fields
-                    .map((field, index) => ({ field, index }))
-                    .sort((a, b) => {
-                      const priorityA = form.getValues(`associations.${a.index}.priority`) ?? 0;
-                      const priorityB = form.getValues(`associations.${b.index}.priority`) ?? 0;
-                      return priorityA - priorityB;
-                    })
-                    .map(({ field, index }) => (
-                      <AssociationRow
-                        key={field.id}
-                        index={index}
-                        form={form}
-                        isDeveloperMode={isDeveloperMode}
-                        channelOptions={channelOptions}
-                        allModelOptions={allModelOptions}
-                        allTags={allTags}
-                        onRemove={() => remove(index)}
-                        portalContainer={dialogContentRef.current}
-                      />
-                    ))}
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAssociationDragEnd}>
+                    <SortableContext
+                      items={orderedAssociationFields.map((entry) => entry.field.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {orderedAssociationFields.map(({ field, index }) => (
+                        <SortableAssociationRow
+                          key={field.id}
+                          id={field.id}
+                          index={index}
+                          form={form}
+                          isDeveloperMode={isDeveloperMode}
+                          channelOptions={channelOptions}
+                          allModelOptions={allModelOptions}
+                          allTags={allTags}
+                          onRemove={() => remove(index)}
+                          portalContainer={dialogContentRef.current}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </form>
               </Form>
             </div>
@@ -1320,6 +1414,9 @@ interface AssociationRowProps {
   allTags: string[];
   onRemove: () => void;
   portalContainer: HTMLElement | null;
+  // Drag handle rendered as the first grid cell. Supplied by SortableAssociationRow
+  // so the row itself stays presentational.
+  dragHandle?: ReactNode;
 }
 
 function AssociationTypeSelectContent({ isDeveloperMode }: { isDeveloperMode: boolean }) {
@@ -1346,7 +1443,7 @@ function AssociationTypeSelectContent({ isDeveloperMode }: { isDeveloperMode: bo
   );
 }
 
-function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
+function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer, dragHandle }: AssociationRowProps) {
   const { t } = useTranslation();
 
   const type = form.watch(`associations.${index}.type`);
@@ -1424,7 +1521,10 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
 
   return (
     <div className={`flex flex-col gap-3 rounded-lg border p-3 ${disabled ? 'opacity-50' : ''}`}>
-      <div className='grid grid-cols-[2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
+      <div className='grid grid-cols-[1.5rem_2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[1.5rem_2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
+        {/* Drag Handle */}
+        <div className='flex items-center justify-center'>{dragHandle}</div>
+
         {/* Enable/Disable Switch */}
         <div className='flex items-center justify-center'>
           <Switch
