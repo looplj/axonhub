@@ -199,7 +199,7 @@ func (t *OutboundTransformer) TransformRequest(
 	if anthropicReq.CacheControl == nil {
 		if countCacheControls(anthropicReq) > 0 {
 			optimizeCacheControl(anthropicReq)
-		} else if shouldEnableAutomaticCacheControl(llmReq, t.config.Type) {
+		} else if shouldEnableAutomaticCacheControl(llmReq) {
 			anthropicReq.CacheControl = &CacheControl{Type: "ephemeral"}
 		}
 	}
@@ -280,10 +280,10 @@ func (t *OutboundTransformer) TransformRequest(
 	}, nil
 }
 
-// shouldEnableAutomaticCacheControl reports whether the direct Anthropic
-// automatic-cache-control field is valid for the inbound format and platform.
-func shouldEnableAutomaticCacheControl(req *llm.Request, platform PlatformType) bool {
-	if req == nil || platform == PlatformBedrock {
+// shouldEnableAutomaticCacheControl reports whether the inbound format has a
+// known non-Anthropic chat protocol that needs an Anthropic cache marker.
+func shouldEnableAutomaticCacheControl(req *llm.Request) bool {
+	if req == nil {
 		return false
 	}
 

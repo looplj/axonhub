@@ -739,32 +739,23 @@ func TestShouldEnableAutomaticCacheControl(t *testing.T) {
 	tests := []struct {
 		name      string
 		apiFormat llm.APIFormat
-		platform  PlatformType
 		want      bool
 	}{
 		{
 			name:      "direct OpenAI conversion",
 			apiFormat: llm.APIFormatOpenAIChatCompletion,
-			platform:  PlatformDirect,
 			want:      true,
-		},
-		{
-			name:      "Bedrock OpenAI conversion",
-			apiFormat: llm.APIFormatOpenAIChatCompletion,
-			platform:  PlatformBedrock,
-			want:      false,
 		},
 		{
 			name:      "unknown protocol",
 			apiFormat: llm.APIFormat("unknown/protocol"),
-			platform:  PlatformDirect,
 			want:      false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, shouldEnableAutomaticCacheControl(&llm.Request{APIFormat: tt.apiFormat}, tt.platform))
+			require.Equal(t, tt.want, shouldEnableAutomaticCacheControl(&llm.Request{APIFormat: tt.apiFormat}))
 		})
 	}
 }
