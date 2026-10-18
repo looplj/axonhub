@@ -76,9 +76,15 @@ jobs:
 
           if [ "${PUBLISH_DOCKERHUB}" = "true" ]; then
             # ghcr.io is always published; Docker Hub only when configured.
-            printf 'images=%s\n%s\n' "$GHCR" "$DOCKERHUB" >> "$GITHUB_OUTPUT"
+            # A multi-image value needs the heredoc delimiter form for GITHUB_OUTPUT.
+            {
+              echo 'images<<__IMAGES_EOF__'
+              echo "$GHCR"
+              echo "$DOCKERHUB"
+              echo '__IMAGES_EOF__'
+            } >> "$GITHUB_OUTPUT"
           else
-            printf 'images=%s\n' "$GHCR" >> "$GITHUB_OUTPUT"
+            echo "images=${GHCR}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Extract Docker metadata
