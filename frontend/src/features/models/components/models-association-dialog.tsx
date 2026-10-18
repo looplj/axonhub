@@ -11,7 +11,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconInfoCircle, IconGripVertical } from '@tabler/icons-react';
 import { useQueryModels } from '@/gql/models';
@@ -37,6 +37,7 @@ import { useModels } from '../context/models-context';
 import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
 import { useUpdateModel } from '../data/models';
 import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/schema';
+import { computeAssociationReorder } from '../data/association-reorder';
 import {
   MAX_ASSOCIATION_PRIORITY,
   associationPrioritySchema,
@@ -1021,23 +1022,21 @@ export function ModelsAssociationDialog() {
 
   const handleAssociationDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) {
+    if (!over) {
       return;
     }
 
     const ordered = orderedAssociationFields.map((entry) => ({ id: entry.field.id, index: entry.index }));
-    const oldPosition = ordered.findIndex((entry) => entry.id === active.id);
-    const newPosition = ordered.findIndex((entry) => entry.id === over.id);
-    if (oldPosition === -1 || newPosition === -1) {
+    const assignments = computeAssociationReorder(ordered, String(active.id), String(over.id));
+    if (!assignments) {
       return;
     }
 
-    const reordered = arrayMove(ordered, oldPosition, newPosition);
     // Rewrite priorities so the first row is 0, the second is 1, and so on. The
     // underlying field array is never reordered, so row identities (and their
     // component state) survive the drag.
-    reordered.forEach((entry, position) => {
-      form.setValue(`associations.${entry.index}.priority`, position, {
+    assignments.forEach(({ index: rowIndex, priority }) => {
+      form.setValue(`associations.${rowIndex}.priority`, priority, {
         shouldDirty: true,
         shouldValidate: true,
       });

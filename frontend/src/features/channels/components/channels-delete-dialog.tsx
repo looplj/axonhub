@@ -9,17 +9,12 @@ import { Label } from '@/components/ui/label';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useDeleteChannel } from '../data/channels';
 import { Channel } from '../data/schema';
+import { generateConfirmationCode, isConfirmationCodeMatched } from '../utils/delete-confirmation';
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentRow: Channel;
-}
-
-// A fresh random 4-digit code is generated every time the dialog opens, so a
-// stale code from a previous attempt can never authorise a delete.
-function generateConfirmationCode(): string {
-  return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
 export function ChannelsDeleteDialog({ open, onOpenChange, currentRow }: Props) {
@@ -35,7 +30,7 @@ export function ChannelsDeleteDialog({ open, onOpenChange, currentRow }: Props) 
   }, [open]);
 
   const deleteChannel = useDeleteChannel();
-  const isCodeMatched = value.trim() === confirmationCode && confirmationCode !== '';
+  const isCodeMatched = isConfirmationCodeMatched(value, confirmationCode);
 
   const handleDelete = async () => {
     if (!isCodeMatched) return;
