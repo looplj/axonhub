@@ -407,3 +407,45 @@ func Test_convertToAnthropicUsage(t *testing.T) {
 		})
 	}
 }
+
+// TestConvertToAnthropicUsageFloorsInputAtZero covers upstreams that report
+// cache counters without a prompt total. Anthropic's input_tokens excludes
+// cached tokens, but subtracting from a zero total must not produce a negative
+// count — no caller can do anything sensible with one.
+func TestConvertToAnthropicUsageFloorsInputAtZero(t *testing.T) {
+	converted := convertToAnthropicUsage(&llm.Usage{
+		PromptTokens:        0,
+		CompletionTokens:    5,
+		PromptTokensDetails: &llm.PromptTokensDetails{CachedTokens: 100},
+	})
+
+	if converted.InputTokens != 0 {
+		t.Fatalf("input tokens must be floored at zero, got %d", converted.InputTokens)
+	}
+
+	if converted.CacheReadInputTokens != 100 {
+		t.Fatalf("cache counters must still be reported, got %d", converted.CacheReadInputTokens)
+	}
+
+	if converted.OutputTokens != 5 {
+		t.Fatalf("output tokens must pass through, got %d", converted.OutputTokens)
+	}
+}
+
+// TestConvertToAnthropicUsageStillNetsOutCache pins the ordinary case: a real
+// prompt total with cache hits keeps the "input excludes cache" semantics.
+func TestConvertToAnthropicUsageStillNetsOutCache(t *testing.T) {
+	converted := convertToAnthropicUsage(&llm.Usage{
+		PromptTokens:        1000,
+		CompletionTokens:    20,
+		PromptTokensDetails: &llm.PromptTokensDetails{CachedTokens: 800},
+	})
+
+	if converted.InputTokens != 200 {
+		t.Fatalf("input tokens must net out the cache hits, got %d", converted.InputTokens)
+	}
+
+	if converted.CacheReadInputTokens != 800 {
+		t.Fatalf("cache read must be reported, got %d", converted.CacheReadInputTokens)
+	}
+}

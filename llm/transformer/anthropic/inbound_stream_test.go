@@ -1513,3 +1513,72 @@ func TestInboundStream_EmptyFirstChunkUsageKeepsTheEstimate(t *testing.T) {
 	require.Equal(t, int64(4321), delta.Usage.InputTokens, "the real count must still arrive")
 	require.Equal(t, int64(7), delta.Usage.OutputTokens)
 }
+
+// TestInboundStream_CacheOnlyFirstChunkUsageKeepsTheEstimate guards the case
+// where upstream reports cache counters but no prompt total.
+//
+// `convertToAnthropicUsage` computes `InputTokens = PromptTokens -
+// (cache_read + cache_creation)` without a floor. Accepting a cache-only usage
+// object would therefore emit a negative `input_tokens` on message_start — worse
+// than either the estimate or zero. Only a positive prompt total may replace the
+// estimate.
+func TestInboundStream_CacheOnlyFirstChunkUsageKeepsTheEstimate(t *testing.T) {
+	request := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello there")},
+		}},
+	}
+
+	text := "ok"
+	cacheOnly := &llm.Usage{
+		PromptTokens:        0,
+		CompletionTokens:    0,
+		PromptTokensDetails: &llm.PromptTokensDetails{CachedTokens: 100},
+	}
+
+	source := streams.SliceStream([]*llm.Response{
+		{
+			ID:      "chatcmpl-cache-only",
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{{Index: 0, Delta: &llm.Message{Role: "assistant", Content: llm.MessageContent{Content: &text}}}},
+			Usage:   cacheOnly,
+		},
+		{
+			ID:      "chatcmpl-cache-only",
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{{Index: 0, FinishReason: lo.ToPtr("stop")}},
+			Usage:   cacheOnly,
+		},
+		{
+			ID:      "chatcmpl-cache-only",
+			Model:   "gpt-4o",
+			Choices: []llm.Choice{},
+			Usage:   &llm.Usage{PromptTokens: 900, CompletionTokens: 5, TotalTokens: 905},
+		},
+	})
+
+	transformer := NewInboundTransformer()
+	stream, err := transformer.TransformStream(shared.WithRequest(t.Context(), request), source)
+	require.NoError(t, err)
+
+	var start StreamEvent
+
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		if event.Type == "message_start" {
+			start = event
+		}
+	}
+	require.NoError(t, stream.Err())
+
+	want := llm.EstimatePromptTokens(request)
+	require.Positive(t, want)
+	require.NotNil(t, start.Message)
+	require.Equal(t, want, start.Message.Usage.InputTokens,
+		"cache counters without a prompt total must not replace the estimate")
+	require.Zero(t, start.Message.Usage.CacheReadInputTokens,
+		"the estimate carries no cache breakdown")
+}

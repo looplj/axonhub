@@ -520,29 +520,23 @@ func (s *anthropicInboundStream) enqueEvent(ev *StreamEvent) error {
 }
 
 //nolint:maintidx // It is complex, and hard to split.
-// hasPromptUsage reports whether upstream actually supplied prompt counts.
+// hasPromptUsage reports whether upstream actually supplied a prompt total.
 //
 // Some providers attach a zeroed usage object to every chunk (ModelScope is the
 // motivating case). Treating that as real would overwrite the request estimate
 // with zeros on `message_start`, leaving clients that only read that frame with
-// no prompt count at all — the same symptom the estimate exists to fix. A
-// genuine count is always positive; cache fields alone do not make a prompt
-// count.
+// no prompt count at all — the same symptom the estimate exists to fix.
+//
+// The prompt total is the only field that qualifies. Cache counters alone must
+// not: `convertToAnthropicUsage` subtracts them from the total, so accepting
+// `PromptTokens == 0` with `CachedTokens == 100` would report
+// `input_tokens: -100`.
 func hasPromptUsage(usage *llm.Usage) bool {
 	if usage == nil {
 		return false
 	}
 
-	if usage.PromptTokens > 0 {
-		return true
-	}
-
-	details := usage.PromptTokensDetails
-	if details == nil {
-		return false
-	}
-
-	return details.CachedTokens > 0 || details.WriteCachedTokens > 0
+	return usage.PromptTokens > 0
 }
 
 func (s *anthropicInboundStream) Next() bool {

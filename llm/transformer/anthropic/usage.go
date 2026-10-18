@@ -106,7 +106,15 @@ func convertToAnthropicUsage(llmUsage *llm.Usage) *Usage {
 			Ephemeral5mInputTokens: llmUsage.PromptTokensDetails.WriteCached5MinTokens,
 			Ephemeral1hInputTokens: llmUsage.PromptTokensDetails.WriteCached1HourTokens,
 		}
-		usage.InputTokens -= (usage.CacheReadInputTokens + usage.CacheCreationInputTokens)
+		// Anthropic reports input_tokens net of cache hits, but some upstreams
+		// count cache tokens without reporting a prompt total at all. Subtracting
+		// blindly would emit a negative count; a negative token count is never
+		// meaningful, so floor it at zero.
+		if deduction := usage.CacheReadInputTokens + usage.CacheCreationInputTokens; deduction < usage.InputTokens {
+			usage.InputTokens -= deduction
+		} else {
+			usage.InputTokens = 0
+		}
 	}
 
 	// Note: Anthropic doesn't have a direct equivalent for reasoning tokens in their current API
