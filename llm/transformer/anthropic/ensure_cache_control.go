@@ -42,17 +42,20 @@ func optimizeCacheControl(req *MessageRequest) {
 func moveTopLevelCacheControlToLastBlock(req *MessageRequest) bool {
 	cacheControl := req.CacheControl
 	req.CacheControl = nil
-	if cacheControl == nil || countCacheControls(req) >= maxCacheControlBreakpoints {
+	if cacheControl == nil {
 		return true
+	}
+	if countCacheControls(req) >= maxCacheControlBreakpoints {
+		return false
 	}
 
 	refs := normalizeAndCollectCacheControlRefs(req)
 	if isOneHourCacheControl(cacheControl) {
 		for i, ref := range refs {
-			if *ref != nil && !isOneHourCacheControl(*ref) {
-				for _, earlier := range refs[:i] {
-					if *earlier == nil {
-						*earlier = cacheControl
+			if existing := ref.get(); existing != nil && !isOneHourCacheControl(existing) {
+				for j := i - 1; j >= 0; j-- {
+					if refs[j].get() == nil {
+						refs[j].set(cacheControl)
 						return true
 					}
 				}
@@ -62,9 +65,15 @@ func moveTopLevelCacheControlToLastBlock(req *MessageRequest) bool {
 		}
 	}
 
-	for i := len(refs) - 1; i >= 0; i-- {
-		if *refs[i] == nil {
-			*refs[i] = cacheControl
+	lastOneHour := -1
+	for i, ref := range refs {
+		if isOneHourCacheControl(ref.get()) {
+			lastOneHour = i
+		}
+	}
+	for i := len(refs) - 1; i > lastOneHour; i-- {
+		if refs[i].get() == nil {
+			refs[i].set(cacheControl)
 			return true
 		}
 	}
@@ -72,17 +81,25 @@ func moveTopLevelCacheControlToLastBlock(req *MessageRequest) bool {
 	return false
 }
 
-func normalizeAndCollectCacheControlRefs(req *MessageRequest) []**CacheControl {
+func normalizeAndCollectCacheControlRefs(req *MessageRequest) []cacheControlSlot {
 	normalizeMessageContents(req)
-	refs := make([]**CacheControl, 0, len(req.Tools)+len(req.Messages)+1)
+	refs := make([]cacheControlSlot, 0, len(req.Tools)+len(req.Messages)+1)
 	for i := range req.Tools {
-		refs = append(refs, &req.Tools[i].CacheControl)
+		cacheControl := &req.Tools[i].CacheControl
+		refs = append(refs, cacheControlSlot{
+			get: func() *CacheControl { return *cacheControl },
+			set: func(value *CacheControl) { *cacheControl = value },
+		})
 	}
 
 	if req.System != nil {
 		if len(req.System.MultiplePrompts) > 0 {
 			for i := range req.System.MultiplePrompts {
-				refs = append(refs, &req.System.MultiplePrompts[i].CacheControl)
+				cacheControl := &req.System.MultiplePrompts[i].CacheControl
+				refs = append(refs, cacheControlSlot{
+					get: func() *CacheControl { return *cacheControl },
+					set: func(value *CacheControl) { *cacheControl = value },
+				})
 			}
 		}
 		if len(req.System.MultiplePrompts) == 0 && req.System.Prompt != nil && *req.System.Prompt != "" {
@@ -92,12 +109,98 @@ func normalizeAndCollectCacheControlRefs(req *MessageRequest) []**CacheControl {
 				Type: "text",
 				Text: text,
 			}}
-			refs = append(refs, &req.System.MultiplePrompts[0].CacheControl)
+			cacheControl := &req.System.MultiplePrompts[0].CacheControl
+			refs = append(refs, cacheControlSlot{
+				get: func() *CacheControl { return *cacheControl },
+				set: func(value *CacheControl) { *cacheControl = value },
+			})
 		}
 	}
 
-	refs = append(refs, collectMessageBlockRefs(req)...)
+	for i := range req.Messages {
+		refs = appendCacheControlSlots(refs, &req.Messages[i].Content)
+	}
 	return refs
+}
+
+type cacheControlSlot struct {
+	get func() *CacheControl
+	set func(*CacheControl)
+}
+
+func appendCacheControlSlots(refs []cacheControlSlot, content *MessageContent) []cacheControlSlot {
+	if len(content.Raw) > 0 {
+		return appendRawCacheControlSlots(refs, content)
+	}
+
+	for i := range content.MultipleContent {
+		block := &content.MultipleContent[i]
+		if isCacheableMessageBlock(*block) {
+			cacheControl := &block.CacheControl
+			refs = append(refs, cacheControlSlot{
+				get: func() *CacheControl { return *cacheControl },
+				set: func(value *CacheControl) { *cacheControl = value },
+			})
+		}
+		if block.Content != nil {
+			refs = appendCacheControlSlots(refs, block.Content)
+		}
+	}
+
+	return refs
+}
+
+func appendRawCacheControlSlots(refs []cacheControlSlot, content *MessageContent) []cacheControlSlot {
+	decoded, err := decodeRawContent(content.Raw)
+	if err != nil {
+		return refs
+	}
+
+	walkRawContent(decoded, func(block map[string]any) bool {
+		if !isCacheableRawBlock(block) {
+			return false
+		}
+		refs = append(refs, cacheControlSlot{
+			get: func() *CacheControl { return rawCacheControl(block["cache_control"]) },
+			set: func(value *CacheControl) {
+				if value == nil {
+					delete(block, "cache_control")
+				} else {
+					block["cache_control"] = value
+				}
+				content.Raw, _ = json.Marshal(decoded)
+			},
+		})
+		return false
+	})
+	return refs
+}
+
+func isCacheableRawBlock(block map[string]any) bool {
+	typeName, ok := block["type"].(string)
+	if !ok || typeName == "thinking" || typeName == "redacted_thinking" {
+		return false
+	}
+	if typeName != "text" {
+		return true
+	}
+	text, ok := block["text"].(string)
+	return ok && text != ""
+}
+
+func rawCacheControl(value any) *CacheControl {
+	if value == nil {
+		return nil
+	}
+	data, err := json.Marshal(value)
+	if err != nil {
+		return nil
+	}
+	var cacheControl CacheControl
+	if err := json.Unmarshal(data, &cacheControl); err != nil {
+		return nil
+	}
+	return &cacheControl
 }
 
 func isOneHourCacheControl(cacheControl *CacheControl) bool {
