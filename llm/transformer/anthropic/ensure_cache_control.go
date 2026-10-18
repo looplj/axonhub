@@ -91,20 +91,14 @@ func normalizeAndCollectCacheControlRefs(req *MessageRequest) []cacheControlSlot
 	refs := make([]cacheControlSlot, 0, len(req.Tools)+len(req.Messages)+1)
 	for i := range req.Tools {
 		cacheControl := &req.Tools[i].CacheControl
-		refs = append(refs, cacheControlSlot{
-			get: func() *CacheControl { return *cacheControl },
-			set: func(value *CacheControl) { *cacheControl = value },
-		})
+		refs = append(refs, newCacheControlSlot(cacheControl))
 	}
 
 	if req.System != nil {
 		if len(req.System.MultiplePrompts) > 0 {
 			for i := range req.System.MultiplePrompts {
 				cacheControl := &req.System.MultiplePrompts[i].CacheControl
-				refs = append(refs, cacheControlSlot{
-					get: func() *CacheControl { return *cacheControl },
-					set: func(value *CacheControl) { *cacheControl = value },
-				})
+				refs = append(refs, newCacheControlSlot(cacheControl))
 			}
 		}
 		if len(req.System.MultiplePrompts) == 0 && req.System.Prompt != nil && *req.System.Prompt != "" {
@@ -115,10 +109,7 @@ func normalizeAndCollectCacheControlRefs(req *MessageRequest) []cacheControlSlot
 				Text: text,
 			}}
 			cacheControl := &req.System.MultiplePrompts[0].CacheControl
-			refs = append(refs, cacheControlSlot{
-				get: func() *CacheControl { return *cacheControl },
-				set: func(value *CacheControl) { *cacheControl = value },
-			})
+			refs = append(refs, newCacheControlSlot(cacheControl))
 		}
 	}
 
@@ -129,8 +120,17 @@ func normalizeAndCollectCacheControlRefs(req *MessageRequest) []cacheControlSlot
 }
 
 type cacheControlSlot struct {
+	ref **CacheControl
 	get func() *CacheControl
 	set func(*CacheControl)
+}
+
+func newCacheControlSlot(ref **CacheControl) cacheControlSlot {
+	return cacheControlSlot{
+		ref: ref,
+		get: func() *CacheControl { return *ref },
+		set: func(value *CacheControl) { *ref = value },
+	}
 }
 
 func appendCacheControlSlots(refs []cacheControlSlot, content *MessageContent) []cacheControlSlot {
@@ -142,10 +142,7 @@ func appendCacheControlSlots(refs []cacheControlSlot, content *MessageContent) [
 		block := &content.MultipleContent[i]
 		if isCacheableMessageBlock(*block) {
 			cacheControl := &block.CacheControl
-			refs = append(refs, cacheControlSlot{
-				get: func() *CacheControl { return *cacheControl },
-				set: func(value *CacheControl) { *cacheControl = value },
-			})
+			refs = append(refs, newCacheControlSlot(cacheControl))
 		}
 		if block.Content != nil {
 			refs = appendCacheControlSlots(refs, block.Content)
@@ -466,32 +463,19 @@ func pickWindowAnchorIndex(refs []**CacheControl, window int) int {
 }
 
 // collectMessageBlockRefs 收集所有消息中可缓存块的 CacheControl 指针引用。
-// 调用前必须先执行 normalizeMessageContents，本函数不做结构改写。
 func collectMessageBlockRefs(req *MessageRequest) []**CacheControl {
-	refs := make([]**CacheControl, 0)
-
+	normalizeMessageContents(req)
+	slots := make([]cacheControlSlot, 0, len(req.Messages))
 	for i := range req.Messages {
-		refs = appendCacheControlRefs(refs, &req.Messages[i].Content)
+		slots = appendCacheControlSlots(slots, &req.Messages[i].Content)
 	}
 
-	return refs
-}
-
-func appendCacheControlRefs(refs []**CacheControl, content *MessageContent) []**CacheControl {
-	if len(content.Raw) > 0 {
-		return refs
-	}
-
-	for i := range content.MultipleContent {
-		block := &content.MultipleContent[i]
-		if isCacheableMessageBlock(*block) {
-			refs = append(refs, &block.CacheControl)
-		}
-		if block.Content != nil {
-			refs = appendCacheControlRefs(refs, block.Content)
+	refs := make([]**CacheControl, 0)
+	for _, slot := range slots {
+		if slot.ref != nil {
+			refs = append(refs, slot.ref)
 		}
 	}
-
 	return refs
 }
 
