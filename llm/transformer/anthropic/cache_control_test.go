@@ -886,6 +886,54 @@ func TestManagedAnthropicPlatformsPreserveExplicitAndTopLevelCacheControls(t *te
 	}
 }
 
+func TestMoveTopLevelOneHourCacheControlBeforeExistingShortBreakpoint(t *testing.T) {
+	short := &CacheControl{Type: "ephemeral"}
+	req := &MessageRequest{
+		System: &SystemPrompt{
+			MultiplePrompts: []SystemPromptPart{{Type: "text", Text: "system"}},
+		},
+		Messages: []MessageParam{
+			{
+				Role: "user",
+				Content: MessageContent{MultipleContent: []MessageContentBlock{{
+					Type:         "text",
+					Text:         func() *string { s := "earlier"; return &s }(),
+					CacheControl: short,
+				}}},
+			},
+		},
+		CacheControl: &CacheControl{Type: "ephemeral", TTL: "1h"},
+	}
+
+	moveTopLevelCacheControlToLastBlock(req)
+
+	require.Nil(t, req.CacheControl)
+	require.Equal(t, &CacheControl{Type: "ephemeral", TTL: "1h"}, req.System.MultiplePrompts[0].CacheControl)
+	require.Same(t, short, req.Messages[0].Content.MultipleContent[0].CacheControl)
+}
+
+func TestMoveTopLevelOneHourCacheControlPreservesExistingBreakpointWhenUnsafe(t *testing.T) {
+	short := &CacheControl{Type: "ephemeral"}
+	req := &MessageRequest{
+		Messages: []MessageParam{
+			{
+				Role: "user",
+				Content: MessageContent{MultipleContent: []MessageContentBlock{{
+					Type:         "text",
+					Text:         func() *string { s := "earlier"; return &s }(),
+					CacheControl: short,
+				}}},
+			},
+		},
+		CacheControl: &CacheControl{Type: "ephemeral", TTL: "1h"},
+	}
+
+	moveTopLevelCacheControlToLastBlock(req)
+
+	require.Nil(t, req.CacheControl)
+	require.Same(t, short, req.Messages[0].Content.MultipleContent[0].CacheControl)
+}
+
 // TestAnthropicInboundOutbound_TopLevelCacheControlEndToEnd verifies the
 // regression reported in https://github.com/looplj/axonhub/issues/1484:
 // Anthropic-in & Anthropic-out flows used to drop the top-level

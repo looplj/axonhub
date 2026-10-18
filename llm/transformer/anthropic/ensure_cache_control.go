@@ -46,38 +46,60 @@ func moveTopLevelCacheControlToLastBlock(req *MessageRequest) {
 		return
 	}
 
-	if last := lastCacheControlRef(req); last != nil && *last == nil {
-		*last = cacheControl
+	refs := collectCacheControlRefs(req)
+	if isOneHourCacheControl(cacheControl) {
+		for i, ref := range refs {
+			if *ref != nil && !isOneHourCacheControl(*ref) {
+				for _, earlier := range refs[:i] {
+					if *earlier == nil {
+						*earlier = cacheControl
+						return
+					}
+				}
+
+				return
+			}
+		}
+	}
+
+	for i := len(refs) - 1; i >= 0; i-- {
+		if *refs[i] == nil {
+			*refs[i] = cacheControl
+			return
+		}
 	}
 }
 
-func lastCacheControlRef(req *MessageRequest) **CacheControl {
+func collectCacheControlRefs(req *MessageRequest) []**CacheControl {
 	normalizeMessageContents(req)
-	refs := collectMessageBlockRefs(req)
-	if len(refs) > 0 {
-		return refs[len(refs)-1]
+	refs := make([]**CacheControl, 0, len(req.Tools)+len(req.Messages)+1)
+	for i := range req.Tools {
+		refs = append(refs, &req.Tools[i].CacheControl)
 	}
 
 	if req.System != nil {
 		if len(req.System.MultiplePrompts) > 0 {
-			return &req.System.MultiplePrompts[len(req.System.MultiplePrompts)-1].CacheControl
+			for i := range req.System.MultiplePrompts {
+				refs = append(refs, &req.System.MultiplePrompts[i].CacheControl)
+			}
 		}
-		if req.System.Prompt != nil && *req.System.Prompt != "" {
+		if len(req.System.MultiplePrompts) == 0 && req.System.Prompt != nil && *req.System.Prompt != "" {
 			text := *req.System.Prompt
 			req.System.Prompt = nil
 			req.System.MultiplePrompts = []SystemPromptPart{{
 				Type: "text",
 				Text: text,
 			}}
-			return &req.System.MultiplePrompts[0].CacheControl
+			refs = append(refs, &req.System.MultiplePrompts[0].CacheControl)
 		}
 	}
 
-	if len(req.Tools) > 0 {
-		return &req.Tools[len(req.Tools)-1].CacheControl
-	}
+	refs = append(refs, collectMessageBlockRefs(req)...)
+	return refs
+}
 
-	return nil
+func isOneHourCacheControl(cacheControl *CacheControl) bool {
+	return cacheControl != nil && cacheControl.TTL == "1h"
 }
 
 // countMessageBreakpoints 统计 messages 上已存在的 cache_control 断点数（不含 tools/system）。
