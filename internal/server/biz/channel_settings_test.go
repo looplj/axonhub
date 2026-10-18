@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateChannelSettingsInput_Apply(t *testing.T) {
@@ -196,6 +197,6 @@ func TestChannelService_UpdateChannelSettingsVersionGuard(t *testing.T) {
 
 	// An update guarded by a stale version fails instead of committing.
 	stale := created.UpdatedAt.Add(-time.Nanosecond)
-	_, err = svc.updateChannel(ctx, created.ID, &ent.UpdateChannelInput{Name: lo.ToPtr("Renamed")}, &stale)
+	_, err = svc.UpdateChannel(withChannelExpectedVersion(ctx, stale), created.ID, &ent.UpdateChannelInput{Name: lo.ToPtr("Renamed")})
 	require.ErrorIs(t, err, ErrChannelUpdatedConcurrently)
 }

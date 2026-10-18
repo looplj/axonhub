@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
@@ -117,6 +118,20 @@ func (i *UpdateChannelSettingsInput) Apply(base *objects.ChannelSettings) object
 	return merged
 }
 
+// channelExpectedVersionKey carries the updated-at version a guarded channel
+// update must be optimistic-locked against. It is set by read-merge-write
+// callers via withChannelExpectedVersion and consumed by UpdateChannel; it
+// never crosses an API boundary.
+type channelExpectedVersionKey struct{}
+
+// withChannelExpectedVersion returns a context whose channel updates are
+// optimistic-locked against the given version: UpdateChannel fails with
+// ErrChannelUpdatedConcurrently when the stored version differs, so the
+// caller can detect the conflict and re-merge.
+func withChannelExpectedVersion(ctx context.Context, updatedAt time.Time) context.Context {
+	return context.WithValue(ctx, channelExpectedVersionKey{}, &updatedAt)
+}
+
 // UpdateChannelSettings applies a partial settings patch to a channel and
 // returns the updated channel. The patch is merged onto the stored settings
 // and then flows through UpdateChannel, so it is subject to the same
@@ -134,7 +149,7 @@ func (svc *ChannelService) UpdateChannelSettings(ctx context.Context, id int, in
 	const maxMergeAttempts = 8
 
 	var lastErr error
-	for attempt := 0; attempt < maxMergeAttempts; attempt++ {
+	for range maxMergeAttempts {
 		// Read the stored settings under the write scope: callers may hold
 		// write_channels without read_channels, and this internal read is
 		// required to preserve the patch semantics. It does not expose
@@ -151,7 +166,7 @@ func (svc *ChannelService) UpdateChannelSettings(ctx context.Context, id int, in
 
 		merged := input.Apply(existing.Settings)
 
-		updated, err := svc.updateChannel(ctx, id, &ent.UpdateChannelInput{Settings: &merged}, &existing.UpdatedAt)
+		updated, err := svc.UpdateChannel(withChannelExpectedVersion(ctx, existing.UpdatedAt), id, &ent.UpdateChannelInput{Settings: &merged})
 		if err == nil {
 			return updated, nil
 		}

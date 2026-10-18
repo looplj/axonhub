@@ -854,19 +854,14 @@ func normalizeAutoDisableRules(rules []objects.APIKeyAutoDisableRule, allowDelet
 	return normalized, nil
 }
 
-// UpdateChannel updates an existing channel with the provided input.
-// UpdateChannel updates a channel with the provided input.
+// UpdateChannel updates a channel with the provided input. Callers that
+// merge patches onto a previously read snapshot (see UpdateChannelSettings)
+// can carry the snapshot's version in the context via withChannelExpectedVersion;
+// the update is then optimistic-locked against that version and fails with
+// ErrChannelUpdatedConcurrently when the channel was updated concurrently.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
-	return svc.updateChannel(ctx, id, input, nil)
-}
-
-// updateChannel updates a channel with the provided input. When
-// expectedUpdatedAt is set, the update is guarded by optimistic locking
-// against that version and fails with a not-found error when the channel was
-// updated concurrently, so read-merge-write callers can detect the conflict
-// and retry.
-func (svc *ChannelService) updateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput, expectedUpdatedAt *time.Time) (*ent.Channel, error) {
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id))
+	expectedUpdatedAt, _ := ctx.Value(channelExpectedVersionKey{}).(*time.Time)
 	// Snapshot the provider identity before normalizing Command Code settings.
 	// Settings-only updates need this snapshot to reject a concurrent type
 	// change that could otherwise leave a quota cookie on the wrong channel.
