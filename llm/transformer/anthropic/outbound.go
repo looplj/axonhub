@@ -199,7 +199,7 @@ func (t *OutboundTransformer) TransformRequest(
 	if anthropicReq.CacheControl == nil {
 		if countCacheControls(anthropicReq) > 0 {
 			optimizeCacheControl(anthropicReq)
-		} else if shouldEnableAutomaticCacheControl(llmReq) {
+		} else if shouldEnableAutomaticCacheControl(llmReq, t.config.Type) {
 			anthropicReq.CacheControl = &CacheControl{Type: "ephemeral"}
 		}
 	}
@@ -280,8 +280,25 @@ func (t *OutboundTransformer) TransformRequest(
 	}, nil
 }
 
-func shouldEnableAutomaticCacheControl(req *llm.Request) bool {
-	return req.APIFormat != "" && req.APIFormat != llm.APIFormatAnthropicMessage
+func shouldEnableAutomaticCacheControl(req *llm.Request, platform PlatformType) bool {
+	if req == nil || platform == PlatformBedrock {
+		return false
+	}
+
+	switch req.APIFormat {
+	case llm.APIFormatOpenAIChatCompletion,
+		llm.APIFormatOpenAICompletion,
+		llm.APIFormatOpenAIResponse,
+		llm.APIFormatOpenAIResponseWebSocket,
+		llm.APIFormatOpenAIResponseCompact,
+		llm.APIFormatGeminiContents,
+		llm.APIFormatAiSDKText,
+		llm.APIFormatAiSDKDataStream,
+		llm.APIFormatOllamaChat:
+		return true
+	default:
+		return false
+	}
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.
