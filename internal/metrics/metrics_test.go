@@ -7,18 +7,22 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
-	sdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+
+	sdk "go.opentelemetry.io/otel/sdk/metric"
 )
 
 func TestRecordChatRequestAndTokens(t *testing.T) {
+	previousMetrics := Metrics
 	reader := sdk.NewManualReader()
 	provider := sdk.NewMeterProvider(sdk.WithReader(reader))
-	require.NoError(t, SetupMetrics(provider, "test"))
 
 	t.Cleanup(func() {
+		Metrics = previousMetrics
 		require.NoError(t, provider.Shutdown(context.Background()))
 	})
+
+	require.NoError(t, SetupMetrics(provider, "test"))
 
 	ctx := context.Background()
 

@@ -239,7 +239,7 @@ func (s *UsageLogService) CreateUsageLogFromRequest(
 // registry. Channel name resolution is best-effort: it must never block usage
 // log creation.
 func (s *UsageLogService) recordChatTokens(ctx context.Context, requestExec *ent.RequestExecution, usage *llm.Usage) {
-	if requestExec == nil || usage == nil || usage.TotalTokens <= 0 {
+	if !metrics.Enabled() || requestExec == nil || usage == nil || usage.TotalTokens <= 0 {
 		return
 	}
 

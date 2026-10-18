@@ -35,12 +35,17 @@ import (
 type RequestService struct {
 	*AbstractService
 
-	SystemService        *SystemService
-	UsageLogService      *UsageLogService
-	DataStorageService   *DataStorageService
-	LiveStreamRegistry   *LiveStreamRegistry
-	previousChannelCache xcache.Cache[int]
+	SystemService          *SystemService
+	UsageLogService        *UsageLogService
+	DataStorageService     *DataStorageService
+	LiveStreamRegistry     *LiveStreamRegistry
+	previousChannelCache   xcache.Cache[int]
+	recordedMetricRequests xcache.Cache[struct{}]
 }
+
+// recordedMetricRequestsTTL bounds how long a recorded request ID is kept in
+// the chat metrics deduplication cache.
+const recordedMetricRequestsTTL = time.Hour
 
 // NewRequestService creates a new RequestService.
 func NewRequestService(
@@ -55,11 +60,12 @@ func NewRequestService(
 		AbstractService: &AbstractService{
 			db: ent,
 		},
-		SystemService:        systemService,
-		UsageLogService:      usageLogService,
-		DataStorageService:   dataStorageService,
-		LiveStreamRegistry:   liveStreamRegistry,
-		previousChannelCache: xcache.NewFromConfig[int](cacheConfig),
+		SystemService:          systemService,
+		UsageLogService:        usageLogService,
+		DataStorageService:     dataStorageService,
+		LiveStreamRegistry:     liveStreamRegistry,
+		previousChannelCache:   xcache.NewFromConfig[int](cacheConfig),
+		recordedMetricRequests: xcache.NewFromConfig[struct{}](cacheConfig),
 	}
 }
 
@@ -620,10 +626,22 @@ func (s *RequestService) UpdateRequestFinalized(
 	return nil
 }
 
-// recordChatRequestMetrics reports the terminal outcome of a chat request to
-// the metrics registry. Channel name resolution and metric recording are
-// best-effort: they must never affect request finalization.
+// recordChatRequestMetrics reports the terminal outcome of a request to the
+// metrics registry. It is a no-op when metrics are disabled or the status is
+// not terminal. Recording is best-effort: channel name resolution and metric
+// recording must never affect request finalization.
 func (s *RequestService) recordChatRequestMetrics(ctx context.Context, req *ent.Request, status request.Status, latency *LatencyMetrics) {
+	if !metrics.Enabled() || !isTerminalRequestStatus(status) {
+		return
+	}
+
+	// A request may reach several terminal setters (e.g. a finalized stream
+	// followed by a failure mark); record the first terminal outcome only.
+	if _, err := s.recordedMetricRequests.Get(ctx, req.ID); err == nil {
+		return
+	}
+	_ = s.recordedMetricRequests.Set(ctx, req.ID, struct{}{}, store.WithExpiration(recordedMetricRequestsTTL))
+
 	channelID := ""
 	channelName := ""
 
@@ -644,6 +662,37 @@ func (s *RequestService) recordChatRequestMetrics(ctx context.Context, req *ent.
 	}
 
 	metrics.Metrics.RecordChatRequest(ctx, channelID, channelName, duration, status == request.StatusCompleted)
+}
+
+// recordChatRequestMetricsByID reports the terminal outcome of a request that
+// is not already loaded, loading it first. It is a no-op when metrics are
+// disabled, the status is not terminal, or the request was already recorded.
+func (s *RequestService) recordChatRequestMetricsByID(ctx context.Context, requestID int, status request.Status, latency *LatencyMetrics) {
+	if !metrics.Enabled() || !isTerminalRequestStatus(status) {
+		return
+	}
+
+	if _, err := s.recordedMetricRequests.Get(ctx, requestID); err == nil {
+		return
+	}
+
+	req, err := s.entFromContext(ctx).Request.Get(ctx, requestID)
+	if err != nil {
+		return
+	}
+
+	s.recordChatRequestMetrics(ctx, req, status, latency)
+}
+
+// isTerminalRequestStatus reports whether the status is a terminal request
+// outcome that should be counted in chat metrics.
+func isTerminalRequestStatus(status request.Status) bool {
+	switch status {
+	case request.StatusCompleted, request.StatusFailed, request.StatusCanceled:
+		return true
+	default:
+		return false
+	}
 }
 
 // UpdateRequestCompletedWithAudio marks a request completed and persists a binary audio
@@ -747,6 +796,8 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 		return err
 	}
 
+	s.recordChatRequestMetricsByID(ctx, requestID, request.StatusCompleted, metrics)
+
 	return nil
 }
 
@@ -839,6 +890,8 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 		log.Error(ctx, "Failed to update request status", log.Cause(err))
 		return err
 	}
+
+	s.recordChatRequestMetricsByID(ctx, requestID, status, metrics)
 
 	return nil
 }
@@ -1307,6 +1360,8 @@ func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int,
 	if err != nil {
 		return fmt.Errorf("failed to update request status: %w", err)
 	}
+
+	s.recordChatRequestMetricsByID(ctx, requestID, status, nil)
 
 	return nil
 }
