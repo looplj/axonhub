@@ -280,27 +280,12 @@ func (t *OutboundTransformer) TransformRequest(
 	}, nil
 }
 
-// shouldEnableAutomaticCacheControl reports whether the inbound format has a
-// known non-Anthropic chat protocol that needs an Anthropic cache marker.
 func shouldEnableAutomaticCacheControl(req *llm.Request) bool {
 	if req == nil {
 		return false
 	}
 
-	switch req.APIFormat {
-	case llm.APIFormatOpenAIChatCompletion,
-		llm.APIFormatOpenAICompletion,
-		llm.APIFormatOpenAIResponse,
-		llm.APIFormatOpenAIResponseWebSocket,
-		llm.APIFormatOpenAIResponseCompact,
-		llm.APIFormatGeminiContents,
-		llm.APIFormatAiSDKText,
-		llm.APIFormatAiSDKDataStream,
-		llm.APIFormatOllamaChat:
-		return true
-	default:
-		return false
-	}
+	return req.APIFormat != "" && req.APIFormat != llm.APIFormatAnthropicMessage
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.

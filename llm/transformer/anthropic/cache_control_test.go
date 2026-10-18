@@ -704,7 +704,7 @@ func TestOutboundTransformer_AutomaticCacheControlForConvertedRequests(t *testin
 		{
 			name:               "unknown inbound format",
 			apiFormat:          llm.APIFormat("unknown/protocol"),
-			expectCacheControl: false,
+			expectCacheControl: true,
 		},
 	}
 
@@ -747,9 +747,9 @@ func TestShouldEnableAutomaticCacheControl(t *testing.T) {
 			want:      true,
 		},
 		{
-			name:      "unknown protocol",
+			name:      "other non-Anthropic protocol",
 			apiFormat: llm.APIFormat("unknown/protocol"),
-			want:      false,
+			want:      true,
 		},
 	}
 
