@@ -208,7 +208,7 @@ func (t *OutboundTransformer) TransformRequest(
 	switch t.config.Type {
 	case PlatformVertex, PlatformBedrock:
 		if !moveTopLevelCacheControlToLastBlock(anthropicReq) {
-			return nil, fmt.Errorf("%w: cannot place one-hour cache control before existing short-lived cache breakpoint", transformer.ErrInvalidRequest)
+			return nil, fmt.Errorf("%w: cannot safely place top-level cache control on managed Anthropic platform", transformer.ErrInvalidRequest)
 		}
 	}
 
