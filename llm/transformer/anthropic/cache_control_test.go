@@ -952,6 +952,29 @@ func TestMoveTopLevelCacheControlPreservesRawBlockFields(t *testing.T) {
 	require.Equal(t, "ephemeral", blocks[0]["cache_control"].(map[string]any)["type"])
 }
 
+func TestMoveTopLevelCacheControlReusesMatchingLastBreakpoint(t *testing.T) {
+	for _, ttl := range []string{"", "1h"} {
+		t.Run(ttl, func(t *testing.T) {
+			last := &CacheControl{Type: "ephemeral", TTL: ttl}
+			req := &MessageRequest{
+				Messages: []MessageParam{{
+					Role: "user",
+					Content: MessageContent{MultipleContent: []MessageContentBlock{{
+						Type:         "text",
+						Text:         func() *string { s := "last"; return &s }(),
+						CacheControl: last,
+					}}},
+				}},
+				CacheControl: &CacheControl{Type: "ephemeral", TTL: ttl},
+			}
+
+			require.True(t, moveTopLevelCacheControlToLastBlock(req))
+			require.Nil(t, req.CacheControl)
+			require.Same(t, last, req.Messages[0].Content.MultipleContent[0].CacheControl)
+		})
+	}
+}
+
 // TestAnthropicInboundOutbound_TopLevelCacheControlEndToEnd verifies the
 // regression reported in https://github.com/looplj/axonhub/issues/1484:
 // Anthropic-in & Anthropic-out flows used to drop the top-level

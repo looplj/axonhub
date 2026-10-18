@@ -50,6 +50,12 @@ func moveTopLevelCacheControlToLastBlock(req *MessageRequest) bool {
 	}
 
 	refs := normalizeAndCollectCacheControlRefs(req)
+	if len(refs) > 0 {
+		last := refs[len(refs)-1].get()
+		if last != nil && isOneHourCacheControl(last) == isOneHourCacheControl(cacheControl) {
+			return true
+		}
+	}
 	if isOneHourCacheControl(cacheControl) {
 		for i, ref := range refs {
 			if existing := ref.get(); existing != nil && !isOneHourCacheControl(existing) {
