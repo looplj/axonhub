@@ -30,18 +30,15 @@ func TestRequestMetricClaimsConcurrent(t *testing.T) {
 	winners := 0
 
 	var wg sync.WaitGroup
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
+	for range goroutines {
+		wg.Go(func() {
 			won := claims.claim(42)
 			mu.Lock()
 			defer mu.Unlock()
 			if won {
 				winners++
 			}
-		}()
+		})
 	}
 	wg.Wait()
 
