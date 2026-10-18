@@ -833,6 +833,59 @@ func TestManagedAnthropicPlatformsNormalizeNativeTopLevelCacheControl(t *testing
 	}
 }
 
+func TestManagedAnthropicPlatformsPreserveExplicitAndTopLevelCacheControls(t *testing.T) {
+	for _, platform := range []PlatformType{PlatformVertex, PlatformBedrock} {
+		t.Run(string(platform), func(t *testing.T) {
+			transformer := &OutboundTransformer{
+				config: &Config{
+					Type:      platform,
+					BaseURL:   "https://example.test",
+					ProjectID: "project",
+					Region:    "us-central1",
+				},
+			}
+
+			firstText := "Earlier"
+			lastText := "Latest"
+			result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				APIFormat: llm.APIFormatAnthropicMessage,
+				Model:     "claude-opus-4-6",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							MultipleContent: []llm.MessageContentPart{
+								{
+									Type:         "text",
+									Text:         &firstText,
+									CacheControl: &llm.CacheControl{Type: "ephemeral"},
+								},
+							},
+						},
+					},
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: &lastText,
+						},
+					},
+				},
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyCacheControl: &CacheControl{Type: "ephemeral"},
+				},
+			})
+			require.NoError(t, err)
+
+			var request MessageRequest
+			require.NoError(t, json.Unmarshal(result.Body, &request))
+			require.Nil(t, request.CacheControl)
+			require.Len(t, request.Messages, 2)
+			require.Equal(t, &CacheControl{Type: "ephemeral"}, request.Messages[0].Content.MultipleContent[0].CacheControl)
+			require.Equal(t, &CacheControl{Type: "ephemeral"}, request.Messages[1].Content.MultipleContent[0].CacheControl)
+		})
+	}
+}
+
 // TestAnthropicInboundOutbound_TopLevelCacheControlEndToEnd verifies the
 // regression reported in https://github.com/looplj/axonhub/issues/1484:
 // Anthropic-in & Anthropic-out flows used to drop the top-level

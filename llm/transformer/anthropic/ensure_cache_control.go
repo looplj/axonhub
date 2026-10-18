@@ -42,24 +42,32 @@ func optimizeCacheControl(req *MessageRequest) {
 func moveTopLevelCacheControlToLastBlock(req *MessageRequest) {
 	cacheControl := req.CacheControl
 	req.CacheControl = nil
-	if cacheControl == nil || countCacheControls(req) > 0 {
+	if cacheControl == nil || countCacheControls(req) >= maxCacheControlBreakpoints {
 		return
 	}
 
 	normalizeMessageContents(req)
 	refs := collectMessageBlockRefs(req)
 	if len(refs) > 0 {
-		*refs[len(refs)-1] = cacheControl
+		if *refs[len(refs)-1] == nil {
+			*refs[len(refs)-1] = cacheControl
+		}
 		return
 	}
 
 	if req.System != nil && len(req.System.MultiplePrompts) > 0 {
-		req.System.MultiplePrompts[len(req.System.MultiplePrompts)-1].CacheControl = cacheControl
+		last := &req.System.MultiplePrompts[len(req.System.MultiplePrompts)-1].CacheControl
+		if *last == nil {
+			*last = cacheControl
+		}
 		return
 	}
 
 	if len(req.Tools) > 0 {
-		req.Tools[len(req.Tools)-1].CacheControl = cacheControl
+		last := &req.Tools[len(req.Tools)-1].CacheControl
+		if *last == nil {
+			*last = cacheControl
+		}
 	}
 }
 
