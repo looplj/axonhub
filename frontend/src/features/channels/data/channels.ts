@@ -1667,7 +1667,10 @@ export interface UpdateChannelSettingsMutationInput {
  * fields are included, they must be committed atomically with the settings
  * patch (e.g. endpoints together with model protocol overrides), so the
  * combined update goes through updateChannel with a client-side merge onto
- * the latest snapshot.
+ * the latest snapshot. Patches that carry an explicit null meant to clear a
+ * stored value also take that path: the GraphQL patch input cannot
+ * distinguish null from absence, so the null clear must be applied by the
+ * client-side merge.
  */
 export function useUpdateChannelSettings() {
   const queryClient = useQueryClient();
@@ -1682,7 +1685,13 @@ export function useUpdateChannelSettings() {
         // input object with no channel fields (callers may pass an empty
         // object after pruning fields) is settings-only too.
         const hasChannelFields = Object.values(input ?? {}).some((value) => value !== undefined);
-        if (!hasChannelFields) {
+        // The GraphQL patch input cannot distinguish an explicit null from an
+        // absent field, so patches that use null to clear a stored value
+        // (e.g. rateLimit: null, providerQuota: null) must keep the
+        // clear-capable full-update path, where the client-side merge applies
+        // the null.
+        const hasExplicitNullClear = Object.values(patch ?? {}).some((value) => value === null);
+        if (!hasChannelFields && !hasExplicitNullClear) {
           return updateChannelSettingsRequest(id, patch);
         }
 
