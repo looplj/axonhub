@@ -594,6 +594,67 @@ func TestInboundStream_FinalizesAsSoonAsTheFinishChunkCarriesUsage(t *testing.T)
 	require.Equal(t, 2, terminalAt, "terminal events should be emitted on the usage-bearing finish chunk")
 }
 
+// TestInboundStream_IgnoresPartialUsageUntilBothCountsArrive guards the other
+// side of the discriminator: a usage object carrying only the prompt total is
+// still in flight, so finalizing on it would drop the completion count that
+// arrives in the next chunk.
+func TestInboundStream_IgnoresPartialUsageUntilBothCountsArrive(t *testing.T) {
+	transformer := NewInboundTransformer()
+	text := "Hi"
+	finishReason := "stop"
+
+	events := collectInboundStreamEvents(t, transformer, []*llm.Response{
+		{
+			ID:     "chatcmpl-partial",
+			Object: "chat.completion.chunk",
+			Model:  "gpt-4o",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:    "assistant",
+					Content: llm.MessageContent{Content: &text},
+				},
+			}},
+		},
+		{
+			ID:     "chatcmpl-partial",
+			Object: "chat.completion.chunk",
+			Model:  "gpt-4o",
+			Choices: []llm.Choice{{
+				Index:        0,
+				FinishReason: &finishReason,
+			}},
+			// Prompt only — the completion total has not been reported yet.
+			Usage: &llm.Usage{PromptTokens: 120, TotalTokens: 120},
+		},
+		{
+			ID:     "chatcmpl-partial",
+			Object: "chat.completion.chunk",
+			Model:  "gpt-4o",
+			Usage: &llm.Usage{
+				PromptTokens:     120,
+				CompletionTokens: 8,
+				TotalTokens:      128,
+			},
+		},
+	})
+
+	require.Equal(t, 1, countStreamEvents(events, "message_delta"))
+	require.Equal(t, 1, countStreamEvents(events, "message_stop"))
+
+	var deltaUsage *Usage
+
+	for _, event := range events {
+		if event.Type == "message_delta" {
+			deltaUsage = event.Usage
+		}
+	}
+
+	require.NotNil(t, deltaUsage)
+	require.EqualValues(t, 120, deltaUsage.InputTokens)
+	require.EqualValues(t, 8, deltaUsage.OutputTokens)
+}
+
 // countingResponseStream records how many source items have been read when a
 // transformed event surfaces, which reveals whether finalization waited for the
 // stream to end.

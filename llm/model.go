@@ -909,6 +909,25 @@ func (u *Usage) GetPromptTokens() *int64 {
 	return &u.PromptTokens
 }
 
+// HasRealCounts reports whether the usage object carries actual token counts
+// rather than being a placeholder.
+//
+// Some OpenAI-compatible providers stream a zeroed usage object on every chunk
+// and report the real counts only in the trailing usage-only chunk. Others put
+// the real counts on the finish_reason chunk and never send a usage-only chunk.
+// Callers that decide "the stream is complete" from a usage object can use this
+// to tell the two apart without keying on the shape of `choices`.
+//
+// Both counts must be present: a partly populated object (prompt only) is still
+// on its way, and finalizing there would drop the completion count.
+func (u *Usage) HasRealCounts() bool {
+	if u == nil {
+		return false
+	}
+
+	return u.PromptTokens > 0 && u.CompletionTokens > 0
+}
+
 // CompletionTokensDetails Breakdown of tokens used in a completion.
 type CompletionTokensDetails struct {
 	AudioTokens              int64 `json:"audio_tokens"`

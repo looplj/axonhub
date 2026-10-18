@@ -660,6 +660,121 @@ func TestInboundTransformer_TransformStream_UsesUsageFromFinalUsageOnlyChunk(t *
 	require.EqualValues(t, 5795, terminal.Usage.OutputTokens)
 }
 
+// TestInboundTransformer_TransformStream_UsesUsageFromFinishChunk covers
+// providers that report the real counts on the finish_reason chunk and never
+// send a separate usage-only chunk. The terminal event must be emitted on that
+// chunk rather than at clean stream end, otherwise a client that has already
+// finalized its bookkeeping discards it.
+func TestInboundTransformer_TransformStream_UsesUsageFromFinishChunk(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_finish_usage",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{Role: "assistant"},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_finish_usage",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Choices: []llm.Choice{{
+				Index:        0,
+				Delta:        &llm.Message{},
+				FinishReason: lo.ToPtr("stop"),
+			}},
+			Usage: &llm.Usage{
+				PromptTokens:     120,
+				CompletionTokens: 8,
+				TotalTokens:      128,
+			},
+		},
+	}))
+	require.NoError(t, err)
+
+	var terminal *Response
+	for stream.Next() {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
+		if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
+			terminal = ev.Response
+		}
+	}
+	require.NoError(t, stream.Err())
+
+	require.NotNil(t, terminal)
+	require.NotNil(t, terminal.Usage)
+	require.EqualValues(t, 120, terminal.Usage.InputTokens)
+	require.EqualValues(t, 8, terminal.Usage.OutputTokens)
+}
+
+// TestInboundTransformer_TransformStream_IgnoresPartialUsageUntilBothCountsArrive
+// guards the other side of the discriminator: a usage object carrying only the
+// prompt total is still in flight, so finalizing on it would drop the completion
+// count that arrives in the following chunk.
+func TestInboundTransformer_TransformStream_IgnoresPartialUsageUntilBothCountsArrive(t *testing.T) {
+	trans := NewInboundTransformer()
+
+	stream, err := trans.TransformStream(t.Context(), streams.SliceStream([]*llm.Response{
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_partial_usage",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{Role: "assistant"},
+			}},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_partial_usage",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Choices: []llm.Choice{{
+				Index:        0,
+				Delta:        &llm.Message{},
+				FinishReason: lo.ToPtr("stop"),
+			}},
+			// Prompt only — the completion total has not been reported yet.
+			Usage: &llm.Usage{PromptTokens: 120, TotalTokens: 120},
+		},
+		{
+			Object:  "chat.completion.chunk",
+			ID:      "resp_partial_usage",
+			Created: 1700000000,
+			Model:   "gpt-5",
+			Usage: &llm.Usage{
+				PromptTokens:     120,
+				CompletionTokens: 8,
+				TotalTokens:      128,
+			},
+		},
+	}))
+	require.NoError(t, err)
+
+	var terminal *Response
+	for stream.Next() {
+		var ev StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &ev))
+		if ev.Type == StreamEventTypeResponseCompleted && ev.Response != nil {
+			terminal = ev.Response
+		}
+	}
+	require.NoError(t, stream.Err())
+
+	require.NotNil(t, terminal)
+	require.NotNil(t, terminal.Usage)
+	require.EqualValues(t, 120, terminal.Usage.InputTokens)
+	require.EqualValues(t, 8, terminal.Usage.OutputTokens)
+}
+
 func TestInboundTransformer_TransformStream_MapsFinishReasonToTerminalEvent(t *testing.T) {
 	tests := []struct {
 		name               string

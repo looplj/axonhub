@@ -518,26 +518,6 @@ func (s *anthropicInboundStream) enqueEvent(ev *StreamEvent) error {
 	return nil
 }
 
-// hasRealUsage reports whether upstream actually supplied token counts.
-//
-// Some providers (ModelScope is the motivating case) attach a zeroed usage
-// object to every chunk, including the one carrying finish_reason. Those
-// placeholders must not finalize the message, otherwise the real counts that
-// arrive afterwards are dropped — that is what PR #2615 fixed by waiting for
-// the choices-less usage-only chunk.
-//
-// Others report the real counts on the finish_reason chunk itself and never
-// send a usage-only chunk (agent2api and many OpenAI-compatible relays). Keying
-// on the presence of counts rather than on the shape of `choices` covers both
-// without special-casing providers.
-func hasRealUsage(usage *llm.Usage) bool {
-	if usage == nil {
-		return false
-	}
-
-	return usage.PromptTokens > 0 || usage.CompletionTokens > 0
-}
-
 //nolint:maintidx // It is complex, and hard to split.
 func (s *anthropicInboundStream) Next() bool {
 	// If we have events in the queue, return them first
@@ -1150,10 +1130,10 @@ func (s *anthropicInboundStream) Next() bool {
 	// The terminal event must carry the real counts, so it is emitted as soon as a
 	// post-finish chunk supplies them. The discriminator is the content of `usage`,
 	// not the shape of `choices`: providers that pad every chunk with a zeroed usage
-	// object (ModelScope, see PR #2615) keep waiting, while providers that put the
-	// real counts on the finish_reason chunk itself (agent2api and many
+	// object (ModelScope, see #2615) keep waiting, while providers that put the real
+	// counts on the finish_reason chunk itself (agent2api and many
 	// OpenAI-compatible relays) finalize right here instead of at stream end.
-	if chunk.Usage != nil && hasRealUsage(chunk.Usage) && s.hasFinished && !s.messageStoped {
+	if chunk.Usage.HasRealCounts() && s.hasFinished && !s.messageStoped {
 		// Usage-only chunk after finish_reason - generate message_delta with both stop reason and usage.
 		if err := s.enqueueTerminalEvents(); err != nil {
 			s.err = err
