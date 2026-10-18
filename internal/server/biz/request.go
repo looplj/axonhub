@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/eko/gocache/lib/v4/store"
@@ -35,16 +36,16 @@ import (
 type RequestService struct {
 	*AbstractService
 
-	SystemService          *SystemService
-	UsageLogService        *UsageLogService
-	DataStorageService     *DataStorageService
-	LiveStreamRegistry     *LiveStreamRegistry
-	previousChannelCache   xcache.Cache[int]
-	recordedMetricRequests xcache.Cache[struct{}]
+	SystemService        *SystemService
+	UsageLogService      *UsageLogService
+	DataStorageService   *DataStorageService
+	LiveStreamRegistry   *LiveStreamRegistry
+	previousChannelCache xcache.Cache[int]
+	metricClaims         *requestMetricClaims
 }
 
-// recordedMetricRequestsTTL bounds how long a recorded request ID is kept in
-// the chat metrics deduplication cache.
+// recordedMetricRequestsTTL bounds how long a claimed request ID is kept in
+// the chat metrics deduplication.
 const recordedMetricRequestsTTL = time.Hour
 
 // NewRequestService creates a new RequestService.
@@ -60,12 +61,12 @@ func NewRequestService(
 		AbstractService: &AbstractService{
 			db: ent,
 		},
-		SystemService:          systemService,
-		UsageLogService:        usageLogService,
-		DataStorageService:     dataStorageService,
-		LiveStreamRegistry:     liveStreamRegistry,
-		previousChannelCache:   xcache.NewFromConfig[int](cacheConfig),
-		recordedMetricRequests: xcache.NewFromConfig[struct{}](cacheConfig),
+		SystemService:        systemService,
+		UsageLogService:      usageLogService,
+		DataStorageService:   dataStorageService,
+		LiveStreamRegistry:   liveStreamRegistry,
+		previousChannelCache: xcache.NewFromConfig[int](cacheConfig),
+		metricClaims:         newRequestMetricClaims(),
 	}
 }
 
@@ -637,10 +638,9 @@ func (s *RequestService) recordChatRequestMetrics(ctx context.Context, req *ent.
 
 	// A request may reach several terminal setters (e.g. a finalized stream
 	// followed by a failure mark); record the first terminal outcome only.
-	if _, err := s.recordedMetricRequests.Get(ctx, req.ID); err == nil {
+	if !s.metricClaims.claim(req.ID) {
 		return
 	}
-	_ = s.recordedMetricRequests.Set(ctx, req.ID, struct{}{}, store.WithExpiration(recordedMetricRequestsTTL))
 
 	channelID := ""
 	channelName := ""
@@ -666,13 +666,10 @@ func (s *RequestService) recordChatRequestMetrics(ctx context.Context, req *ent.
 
 // recordChatRequestMetricsByID reports the terminal outcome of a request that
 // is not already loaded, loading it first. It is a no-op when metrics are
-// disabled, the status is not terminal, or the request was already recorded.
+// disabled or the status is not terminal; the claim inside
+// recordChatRequestMetrics deduplicates already-recorded requests.
 func (s *RequestService) recordChatRequestMetricsByID(ctx context.Context, requestID int, status request.Status, latency *LatencyMetrics) {
 	if !metrics.Enabled() || !isTerminalRequestStatus(status) {
-		return
-	}
-
-	if _, err := s.recordedMetricRequests.Get(ctx, requestID); err == nil {
 		return
 	}
 
@@ -682,6 +679,51 @@ func (s *RequestService) recordChatRequestMetricsByID(ctx context.Context, reque
 	}
 
 	s.recordChatRequestMetrics(ctx, req, status, latency)
+}
+
+// requestMetricClaims atomically deduplicates chat metric recording per
+// request: exactly one of several concurrent or sequential terminal setters
+// wins the claim for a request ID. Claims expire so the map stays bounded
+// without a background goroutine.
+type requestMetricClaims struct {
+	mu        sync.Mutex
+	claimed   map[int]time.Time
+	lastPrune time.Time
+}
+
+func newRequestMetricClaims() *requestMetricClaims {
+	return &requestMetricClaims{
+		claimed: map[int]time.Time{},
+	}
+}
+
+// claim reports whether the caller won the exclusive right to record the
+// request, recording the claim when it does.
+func (c *requestMetricClaims) claim(requestID int) bool {
+	now := time.Now()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Prune expired claims at most once per TTL so the common path stays
+	// O(1) while the map is bounded to roughly one TTL of requests.
+	if now.Sub(c.lastPrune) > recordedMetricRequestsTTL {
+		for id, at := range c.claimed {
+			if now.Sub(at) > recordedMetricRequestsTTL {
+				delete(c.claimed, id)
+			}
+		}
+
+		c.lastPrune = now
+	}
+
+	if _, ok := c.claimed[requestID]; ok {
+		return false
+	}
+
+	c.claimed[requestID] = now
+
+	return true
 }
 
 // isTerminalRequestStatus reports whether the status is a terminal request
