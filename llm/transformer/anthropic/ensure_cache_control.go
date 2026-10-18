@@ -39,6 +39,30 @@ func optimizeCacheControl(req *MessageRequest) {
 	injectPlannedMessageCacheControls(refs, messageAnchors)
 }
 
+func moveTopLevelCacheControlToLastBlock(req *MessageRequest) {
+	cacheControl := req.CacheControl
+	req.CacheControl = nil
+	if cacheControl == nil || countCacheControls(req) > 0 {
+		return
+	}
+
+	normalizeMessageContents(req)
+	refs := collectMessageBlockRefs(req)
+	if len(refs) > 0 {
+		*refs[len(refs)-1] = cacheControl
+		return
+	}
+
+	if req.System != nil && len(req.System.MultiplePrompts) > 0 {
+		req.System.MultiplePrompts[len(req.System.MultiplePrompts)-1].CacheControl = cacheControl
+		return
+	}
+
+	if len(req.Tools) > 0 {
+		req.Tools[len(req.Tools)-1].CacheControl = cacheControl
+	}
+}
+
 // countMessageBreakpoints 统计 messages 上已存在的 cache_control 断点数（不含 tools/system）。
 func countMessageBreakpoints(req *MessageRequest) int {
 	count := 0

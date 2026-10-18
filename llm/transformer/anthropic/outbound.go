@@ -204,6 +204,12 @@ func (t *OutboundTransformer) TransformRequest(
 		}
 	}
 
+	//nolint:exhaustive // Checked.
+	switch t.config.Type {
+	case PlatformVertex, PlatformBedrock:
+		moveTopLevelCacheControlToLastBlock(anthropicReq)
+	}
+
 	// Determine endpoint based on platform
 	url, err := t.buildFullRequestURL(llmReq)
 	if err != nil {
