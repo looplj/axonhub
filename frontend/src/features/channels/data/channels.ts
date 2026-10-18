@@ -1660,12 +1660,14 @@ export interface UpdateChannelSettingsMutationInput {
  * that was committed immediately before it.
  *
  * Without other channel fields, the patch is sent to the server-side
- * updateChannelSettings mutation, which merges it onto the stored settings:
- * no refetch round trip, and no risk of a stale client snapshot wiping
- * settings the caller did not touch. When other channel fields are included,
- * they must be committed atomically with the settings patch (e.g. endpoints
- * together with model protocol overrides), so the combined update goes
- * through updateChannel with a client-side merge onto the latest snapshot.
+ * updateChannelSettings mutation, which merges it onto the stored settings
+ * under an expected-version guard: no refetch round trip, no risk of a stale
+ * client snapshot wiping settings the caller did not touch, and concurrent
+ * settings-only edits no longer replace each other. When other channel
+ * fields are included, they must be committed atomically with the settings
+ * patch (e.g. endpoints together with model protocol overrides), so the
+ * combined update goes through updateChannel with a client-side merge onto
+ * the latest snapshot.
  */
 export function useUpdateChannelSettings() {
   const queryClient = useQueryClient();
@@ -1675,13 +1677,18 @@ export function useUpdateChannelSettings() {
   return useMutation({
     mutationFn: ({ id, patch, input }: UpdateChannelSettingsMutationInput) =>
       enqueueChannelSettingsUpdate(id, async () => {
-        if (!input) {
+        // Settings-only edits go through the server-side patch mutation, which
+        // merges under an expected-version guard and retries on conflict. An
+        // input object with no channel fields (callers may pass an empty
+        // object after pruning fields) is settings-only too.
+        const hasChannelFields = Object.values(input ?? {}).some((value) => value !== undefined);
+        if (!hasChannelFields) {
           return updateChannelSettingsRequest(id, patch);
         }
 
         const latest = await fetchLatestChannel(id);
         return updateChannelRequest(id, {
-          ...input,
+          ...input!,
           settings: mergeChannelSettingsForUpdate(latest.settings, patch),
         });
       }),
