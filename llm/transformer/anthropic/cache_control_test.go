@@ -886,6 +886,54 @@ func TestManagedAnthropicPlatformsPreserveExplicitAndTopLevelCacheControls(t *te
 	}
 }
 
+func TestManagedAnthropicPlatformsAcceptFullMatchingBreakpointSet(t *testing.T) {
+	for _, platform := range []PlatformType{PlatformVertex, PlatformBedrock} {
+		t.Run(string(platform), func(t *testing.T) {
+			transformer := &OutboundTransformer{
+				config: &Config{
+					Type:      platform,
+					BaseURL:   "https://example.test",
+					ProjectID: "project",
+					Region:    "us-central1",
+				},
+			}
+
+			messages := make([]llm.Message, maxCacheControlBreakpoints)
+			for i := range messages {
+				text := "cached"
+				messages[i] = llm.Message{
+					Role: "user",
+					Content: llm.MessageContent{
+						MultipleContent: []llm.MessageContentPart{{
+							Type:         "text",
+							Text:         &text,
+							CacheControl: &llm.CacheControl{Type: "ephemeral"},
+						}},
+					},
+				}
+			}
+
+			result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				APIFormat: llm.APIFormatAnthropicMessage,
+				Model:     "claude-opus-4-6",
+				Messages:  messages,
+				TransformerMetadata: map[string]any{
+					TransformerMetadataKeyCacheControl: &CacheControl{Type: "ephemeral"},
+				},
+			})
+			require.NoError(t, err)
+
+			var request MessageRequest
+			require.NoError(t, json.Unmarshal(result.Body, &request))
+			require.Nil(t, request.CacheControl)
+			require.Len(t, request.Messages, maxCacheControlBreakpoints)
+			for _, message := range request.Messages {
+				require.Equal(t, &CacheControl{Type: "ephemeral"}, message.Content.MultipleContent[0].CacheControl)
+			}
+		})
+	}
+}
+
 func TestMoveTopLevelOneHourCacheControlBeforeExistingShortBreakpoint(t *testing.T) {
 	short := &CacheControl{Type: "ephemeral"}
 	req := &MessageRequest{

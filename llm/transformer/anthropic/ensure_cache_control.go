@@ -45,16 +45,15 @@ func moveTopLevelCacheControlToLastBlock(req *MessageRequest) bool {
 	if cacheControl == nil {
 		return true
 	}
-	if countCacheControls(req) >= maxCacheControlBreakpoints {
-		return false
-	}
-
 	refs := normalizeAndCollectCacheControlRefs(req)
 	if len(refs) > 0 {
 		last := refs[len(refs)-1].get()
 		if last != nil && isOneHourCacheControl(last) == isOneHourCacheControl(cacheControl) {
 			return true
 		}
+	}
+	if countCacheControls(req) >= maxCacheControlBreakpoints {
+		return false
 	}
 	if isOneHourCacheControl(cacheControl) {
 		for i, ref := range refs {
