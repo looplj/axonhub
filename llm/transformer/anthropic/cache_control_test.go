@@ -682,6 +682,84 @@ func TestOutboundTransformer_TopLevelCacheControlPassthrough(t *testing.T) {
 	require.Equal(t, 0, countCacheControls(&anthropicReq))
 }
 
+func TestOutboundTransformer_AutomaticCacheControlForConvertedRequests(t *testing.T) {
+	transformer, err := NewOutboundTransformer("https://api.anthropic.com", "test-key")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name               string
+		apiFormat          llm.APIFormat
+		expectCacheControl bool
+	}{
+		{
+			name:               "non-Anthropic inbound format",
+			apiFormat:          llm.APIFormatOpenAIChatCompletion,
+			expectCacheControl: true,
+		},
+		{
+			name:               "Anthropic inbound format",
+			apiFormat:          llm.APIFormatAnthropicMessage,
+			expectCacheControl: false,
+		},
+		{
+			name:               "unknown inbound format",
+			apiFormat:          llm.APIFormat("unknown/protocol"),
+			expectCacheControl: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := transformer.TransformRequest(t.Context(), &llm.Request{
+				APIFormat: tt.apiFormat,
+				Model:     "claude-opus-4-6",
+				Messages: []llm.Message{
+					{
+						Role: "user",
+						Content: llm.MessageContent{
+							Content: func() *string { s := "Hello"; return &s }(),
+						},
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			var raw map[string]any
+			require.NoError(t, json.Unmarshal(result.Body, &raw))
+			cacheControl, hasCacheControl := raw["cache_control"]
+			require.Equal(t, tt.expectCacheControl, hasCacheControl)
+			if tt.expectCacheControl {
+				require.Equal(t, map[string]any{"type": "ephemeral"}, cacheControl)
+			}
+		})
+	}
+}
+
+func TestShouldEnableAutomaticCacheControl(t *testing.T) {
+	tests := []struct {
+		name      string
+		apiFormat llm.APIFormat
+		want      bool
+	}{
+		{
+			name:      "direct OpenAI conversion",
+			apiFormat: llm.APIFormatOpenAIChatCompletion,
+			want:      true,
+		},
+		{
+			name:      "other non-Anthropic protocol",
+			apiFormat: llm.APIFormat("unknown/protocol"),
+			want:      true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, shouldEnableAutomaticCacheControl(&llm.Request{APIFormat: tt.apiFormat}))
+		})
+	}
+}
+
 // TestAnthropicInboundOutbound_TopLevelCacheControlEndToEnd verifies the
 // regression reported in https://github.com/looplj/axonhub/issues/1484:
 // Anthropic-in & Anthropic-out flows used to drop the top-level
