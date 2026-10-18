@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/llm"
@@ -14,6 +15,7 @@ import (
 	"github.com/looplj/axonhub/llm/internal/pkg/xjson"
 	"github.com/looplj/axonhub/llm/internal/pkg/xtest"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 type failingResponseStream struct {
@@ -1307,4 +1309,107 @@ func TestInboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestInboundStream_MessageStartCarriesEstimatedPromptTokens pins the fix for
+// the "every request reports 1 input token" bug.
+//
+// Why this matters more than it looks: Anthropic clients keep
+// `message_start.usage.input_tokens` verbatim — Claude Code only overwrites
+// `output_tokens` when `message_delta` arrives, so whatever `message_start`
+// says is what the user sees in the session log and the status line. Upstream
+// usage arrives in a trailing chunk and cannot be known here, so the value has
+// to be estimated from the request instead of being a fixed placeholder.
+func TestInboundStream_MessageStartCarriesEstimatedPromptTokens(t *testing.T) {
+	request := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{
+			{
+				Role: "user",
+				Content: llm.MessageContent{
+					Content: lo.ToPtr("Explain how the token accounting works in this gateway, briefly."),
+				},
+			},
+		},
+	}
+
+	text := "ok"
+	source := streams.SliceStream([]*llm.Response{
+		{
+			ID:    "chatcmpl-estimate",
+			Model: "gpt-4o",
+			Choices: []llm.Choice{{
+				Index: 0,
+				Delta: &llm.Message{
+					Role:    "assistant",
+					Content: llm.MessageContent{Content: &text},
+				},
+			}},
+		},
+	})
+
+	transformer := NewInboundTransformer()
+	stream, err := transformer.TransformStream(shared.WithRequest(t.Context(), request), source)
+	require.NoError(t, err)
+
+	var start StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		if event.Type == "message_start" {
+			start = event
+		}
+	}
+	require.NoError(t, stream.Err())
+	require.NotNil(t, start.Message)
+
+	want := llm.EstimatePromptTokens(request)
+	require.Positive(t, want, "the fixture must estimate to something")
+	require.Equal(t, want, start.Message.Usage.InputTokens,
+		"message_start must carry the estimate, not a placeholder")
+	require.NotEqual(t, int64(1), start.Message.Usage.InputTokens,
+		"the old placeholder was exactly 1 — that value is what leaked into every client session log")
+}
+
+// TestInboundStream_MessageDeltaCarriesRealUsage is the counterpart to the
+// message_start estimate: once upstream usage arrives, the terminal event must
+// forward the real numbers untouched. The estimate is a fallback for the frame
+// that is emitted before usage exists — it must never override the truth.
+func TestInboundStream_MessageDeltaCarriesRealUsage(t *testing.T) {
+	request := &llm.Request{
+		Model: "gpt-4o",
+		Messages: []llm.Message{{
+			Role:    "user",
+			Content: llm.MessageContent{Content: lo.ToPtr("hello")},
+		}},
+	}
+
+	source := streams.SliceStream([]*llm.Response{{
+		ID:    "chatcmpl-usage",
+		Model: "gpt-4o",
+		Choices: []llm.Choice{{
+			Index:        0,
+			Delta:        &llm.Message{Role: "assistant", Content: llm.MessageContent{Content: lo.ToPtr("ok")}},
+			FinishReason: lo.ToPtr("stop"),
+		}},
+		Usage: &llm.Usage{PromptTokens: 1200, CompletionTokens: 11, TotalTokens: 1211},
+	}})
+
+	transformer := NewInboundTransformer()
+	stream, err := transformer.TransformStream(shared.WithRequest(t.Context(), request), source)
+	require.NoError(t, err)
+
+	var delta StreamEvent
+	for stream.Next() {
+		var event StreamEvent
+		require.NoError(t, json.Unmarshal(stream.Current().Data, &event))
+		if event.Type == "message_delta" {
+			delta = event
+		}
+	}
+	require.NoError(t, stream.Err())
+	require.NotNil(t, delta.Usage, "message_delta must carry usage")
+	require.Equal(t, int64(11), delta.Usage.OutputTokens)
+	require.NotEqual(t, llm.EstimatePromptTokens(request), delta.Usage.InputTokens,
+		"the terminal event must report upstream usage, not the request estimate")
 }

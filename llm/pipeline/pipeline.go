@@ -413,7 +413,11 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 			Stream: true,
 		}
 
-		stream, err := p.stream(ctx, executor, httpReq, p.streamFirstEventTimeout)
+		// Carry the unified request into the streaming pipeline: the inbound side
+		// runs after the outbound side consumed the request, and some inbound
+		// transformers need request-level facts next to the response stream (the
+		// Anthropic one estimates `message_start.usage.input_tokens` from it).
+		stream, err := p.stream(shared.WithRequest(ctx, request), executor, httpReq, p.streamFirstEventTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed to stream request: %w", err)
 		}

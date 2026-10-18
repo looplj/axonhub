@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 func (t *InboundTransformer) TransformStream(
@@ -593,9 +594,18 @@ func (s *anthropicInboundStream) Next() bool {
 	if !s.hasStarted {
 		s.hasStarted = true
 
-		usage := &Usage{
-			InputTokens:  1,
-			OutputTokens: 1,
+		// `message_start.usage.input_tokens` is the only place most Anthropic
+		// clients read the prompt count from: Claude Code keeps it verbatim and
+		// only overwrites `output_tokens` when `message_delta` arrives. OpenAI
+		// style upstreams report usage in a trailing chunk, so the real count is
+		// not known here. Estimate it from the request instead of emitting a
+		// placeholder — a fixed `1` survives all the way into the client's
+		// session log and UI, which is exactly the bug this replaces.
+		usage := &Usage{}
+		if request := shared.RequestFrom(s.ctx); request != nil {
+			if estimated := llm.EstimatePromptTokens(request); estimated > 0 {
+				usage.InputTokens = estimated
+			}
 		}
 		if chunk.Usage != nil {
 			usage = convertToAnthropicUsage(chunk.Usage)
