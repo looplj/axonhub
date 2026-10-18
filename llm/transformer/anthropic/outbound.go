@@ -280,6 +280,8 @@ func (t *OutboundTransformer) TransformRequest(
 	}, nil
 }
 
+// shouldEnableAutomaticCacheControl reports whether the direct Anthropic
+// automatic-cache-control field is valid for the inbound format and platform.
 func shouldEnableAutomaticCacheControl(req *llm.Request, platform PlatformType) bool {
 	if req == nil || platform == PlatformBedrock {
 		return false
