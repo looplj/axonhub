@@ -627,17 +627,21 @@ func (s *RequestService) UpdateRequestFinalized(
 	return nil
 }
 
-// recordChatRequestMetrics reports the terminal outcome of a request to the
-// metrics registry. It is a no-op when metrics are disabled or the status is
-// not terminal. Recording is best-effort: channel name resolution and metric
-// recording must never affect request finalization.
+// recordChatRequestMetrics reports the transition of a request into a
+// terminal state to the metrics registry. It is a no-op when metrics are
+// disabled, the target status is not terminal, or the request was already
+// terminal before the update: status refreshes that re-save an already
+// terminal outcome (e.g. repeated video task polls) and marks that follow an
+// earlier terminal outcome must not be counted again. req must reflect the
+// pre-update status. Recording is best-effort: channel name resolution and
+// metric recording must never affect request finalization.
 func (s *RequestService) recordChatRequestMetrics(ctx context.Context, req *ent.Request, status request.Status, latency *LatencyMetrics) {
-	if !metrics.Enabled() || !isTerminalRequestStatus(status) {
+	if !metrics.Enabled() || !isTerminalRequestStatus(status) || isTerminalRequestStatus(req.Status) {
 		return
 	}
 
-	// A request may reach several terminal setters (e.g. a finalized stream
-	// followed by a failure mark); record the first terminal outcome only.
+	// Concurrent terminal setters can both observe the pre-update status;
+	// the claim ensures only one of them records.
 	if !s.metricClaims.claim(req.ID) {
 		return
 	}
@@ -662,23 +666,6 @@ func (s *RequestService) recordChatRequestMetrics(ctx context.Context, req *ent.
 	}
 
 	metrics.Metrics.RecordChatRequest(ctx, channelID, channelName, duration, status == request.StatusCompleted)
-}
-
-// recordChatRequestMetricsByID reports the terminal outcome of a request that
-// is not already loaded, loading it first. It is a no-op when metrics are
-// disabled or the status is not terminal; the claim inside
-// recordChatRequestMetrics deduplicates already-recorded requests.
-func (s *RequestService) recordChatRequestMetricsByID(ctx context.Context, requestID int, status request.Status, latency *LatencyMetrics) {
-	if !metrics.Enabled() || !isTerminalRequestStatus(status) {
-		return
-	}
-
-	req, err := s.entFromContext(ctx).Request.Get(ctx, requestID)
-	if err != nil {
-		return
-	}
-
-	s.recordChatRequestMetrics(ctx, req, status, latency)
 }
 
 // requestMetricClaims atomically deduplicates chat metric recording per
@@ -838,7 +825,7 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 		return err
 	}
 
-	s.recordChatRequestMetricsByID(ctx, requestID, request.StatusCompleted, metrics)
+	s.recordChatRequestMetrics(ctx, req, request.StatusCompleted, metrics)
 
 	return nil
 }
@@ -933,7 +920,7 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 		return err
 	}
 
-	s.recordChatRequestMetricsByID(ctx, requestID, status, metrics)
+	s.recordChatRequestMetrics(ctx, req, status, metrics)
 
 	return nil
 }
@@ -1396,6 +1383,16 @@ func (s *RequestService) MarkRequestFailed(ctx context.Context, requestID int) e
 func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int, status request.Status) error {
 	client := s.entFromContext(ctx)
 
+	// Load the pre-update request for metric recording when the update
+	// targets a terminal state; the load is skipped entirely when metrics
+	// are disabled.
+	var metricReq *ent.Request
+	if metrics.Enabled() && isTerminalRequestStatus(status) {
+		if req, err := client.Request.Get(ctx, requestID); err == nil {
+			metricReq = req
+		}
+	}
+
 	_, err := client.Request.UpdateOneID(requestID).
 		SetStatus(status).
 		Save(ctx)
@@ -1403,7 +1400,9 @@ func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int,
 		return fmt.Errorf("failed to update request status: %w", err)
 	}
 
-	s.recordChatRequestMetricsByID(ctx, requestID, status, nil)
+	if metricReq != nil {
+		s.recordChatRequestMetrics(ctx, metricReq, status, nil)
+	}
 
 	return nil
 }

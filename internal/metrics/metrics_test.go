@@ -123,6 +123,26 @@ func labelKey(attrs attribute.Set) string {
 	return strings.Join(parts, "|")
 }
 
+func TestEnabled(t *testing.T) {
+	previousEnabled := enabled
+	t.Cleanup(func() {
+		enabled = previousEnabled
+	})
+
+	provider, err := NewProvider(Config{Enabled: false})
+	require.NoError(t, err)
+	require.False(t, Enabled())
+	require.NoError(t, provider.Shutdown(context.Background()))
+
+	provider, err = NewProvider(Config{
+		Enabled:  true,
+		Exporter: ExporterConfig{Type: "stdout"},
+	})
+	require.NoError(t, err)
+	require.True(t, Enabled())
+	require.NoError(t, provider.Shutdown(context.Background()))
+}
+
 func TestRecordChatRequestWithoutSetup(t *testing.T) {
 	// The package-level default must be safe to use without SetupMetrics, as
 	// happens in tests of packages that only record metrics.
