@@ -352,9 +352,8 @@ const BULK_CREATE_CHANNELS_MUTATION = `
   }
 `;
 
-const UPDATE_CHANNEL_MUTATION = `
-  mutation UpdateChannel($id: ID!, $input: UpdateChannelInput!) {
-    updateChannel(id: $id, input: $input) {
+const CHANNEL_FIELDS_FRAGMENT = `
+  fragment ChannelMutationFields on Channel {
       id
       type
       createdAt
@@ -441,6 +440,23 @@ const UPDATE_CHANNEL_MUTATION = `
         baseURL
         transport
       }
+  }
+`;
+
+const UPDATE_CHANNEL_MUTATION = `${CHANNEL_FIELDS_FRAGMENT}
+  mutation UpdateChannel($id: ID!, $input: UpdateChannelInput!) {
+    updateChannel(id: $id, input: $input) {
+      ...ChannelMutationFields
+    }
+  }
+`;
+
+// Server-side settings patch: absent fields keep their stored values, so the
+// caller does not need to refetch and re-submit the whole settings object.
+const UPDATE_CHANNEL_SETTINGS_MUTATION = `${CHANNEL_FIELDS_FRAGMENT}
+  mutation UpdateChannelSettings($id: ID!, $input: UpdateChannelSettingsInput!) {
+    updateChannelSettings(id: $id, input: $input) {
+      ...ChannelMutationFields
     }
   }
 `;
@@ -1570,6 +1586,14 @@ async function updateChannelRequest(id: string, input: UpdateChannelInput): Prom
   return channelSchema.parse(data.updateChannel);
 }
 
+async function updateChannelSettingsRequest(id: string, patch: Partial<ChannelSettings>): Promise<Channel> {
+  const data = await graphqlRequest<{ updateChannelSettings: Channel }>(UPDATE_CHANNEL_SETTINGS_MUTATION, {
+    id,
+    input: patch,
+  });
+  return channelSchema.parse(data.updateChannelSettings);
+}
+
 async function fetchLatestChannel(channelID: string): Promise<Channel> {
   const data = await graphqlRequest<{ queryChannels: ChannelConnection }>(QUERY_CHANNELS_QUERY, {
     input: {
@@ -1634,6 +1658,14 @@ export interface UpdateChannelSettingsMutationInput {
  * Updates one settings patch against the latest server snapshot. Mutations for
  * the same channel are serialized so a stale dialog cannot overwrite a patch
  * that was committed immediately before it.
+ *
+ * Without other channel fields, the patch is sent to the server-side
+ * updateChannelSettings mutation, which merges it onto the stored settings:
+ * no refetch round trip, and no risk of a stale client snapshot wiping
+ * settings the caller did not touch. When other channel fields are included,
+ * they must be committed atomically with the settings patch (e.g. endpoints
+ * together with model protocol overrides), so the combined update goes
+ * through updateChannel with a client-side merge onto the latest snapshot.
  */
 export function useUpdateChannelSettings() {
   const queryClient = useQueryClient();
@@ -1643,6 +1675,10 @@ export function useUpdateChannelSettings() {
   return useMutation({
     mutationFn: ({ id, patch, input }: UpdateChannelSettingsMutationInput) =>
       enqueueChannelSettingsUpdate(id, async () => {
+        if (!input) {
+          return updateChannelSettingsRequest(id, patch);
+        }
+
         const latest = await fetchLatestChannel(id);
         return updateChannelRequest(id, {
           ...input,
@@ -2226,7 +2262,14 @@ export function useFetchModels() {
   const { handleError } = useErrorHandler();
 
   return useMutation({
-    mutationFn: async (input: { channelType: string; baseURL: string; apiKey?: string; projectID?: string; region?: string; channelID?: string }) => {
+    mutationFn: async (input: {
+      channelType: string;
+      baseURL: string;
+      apiKey?: string;
+      projectID?: string;
+      region?: string;
+      channelID?: string;
+    }) => {
       try {
         const data = await graphqlRequest<{
           fetchModels: {

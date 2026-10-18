@@ -686,6 +686,9 @@ models:
   UpdateSystemChannelSettingsInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.UpdateSystemChannelSettings
+  UpdateChannelSettingsInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.UpdateChannelSettingsInput
   SystemGeneralSettings:
     model:
       - github.com/looplj/axonhub/internal/server/biz.SystemGeneralSettings

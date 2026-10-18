@@ -10,6 +10,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -23,7 +25,6 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/samber/lo"
 )
 
 // LinkedProfilesCount is the resolver for the linkedProfilesCount field.
@@ -217,6 +218,11 @@ func (r *mutationResolver) BulkCreateChannels(ctx context.Context, input biz.Bul
 // UpdateChannel is the resolver for the updateChannel field.
 func (r *mutationResolver) UpdateChannel(ctx context.Context, id objects.GUID, input ent.UpdateChannelInput) (*ent.Channel, error) {
 	return r.channelService.UpdateChannel(ctx, id.ID, &input)
+}
+
+// UpdateChannelSettings is the resolver for the updateChannelSettings field.
+func (r *mutationResolver) UpdateChannelSettings(ctx context.Context, id objects.GUID, input biz.UpdateChannelSettingsInput) (*ent.Channel, error) {
+	return r.channelService.UpdateChannelSettings(ctx, id.ID, &input)
 }
 
 // SaveChannelEndpoints is the resolver for the saveChannelEndpoints field.
