@@ -905,7 +905,7 @@ func TestMoveTopLevelOneHourCacheControlBeforeExistingShortBreakpoint(t *testing
 		CacheControl: &CacheControl{Type: "ephemeral", TTL: "1h"},
 	}
 
-	moveTopLevelCacheControlToLastBlock(req)
+	require.True(t, moveTopLevelCacheControlToLastBlock(req))
 
 	require.Nil(t, req.CacheControl)
 	require.Equal(t, &CacheControl{Type: "ephemeral", TTL: "1h"}, req.System.MultiplePrompts[0].CacheControl)
@@ -928,7 +928,7 @@ func TestMoveTopLevelOneHourCacheControlPreservesExistingBreakpointWhenUnsafe(t 
 		CacheControl: &CacheControl{Type: "ephemeral", TTL: "1h"},
 	}
 
-	moveTopLevelCacheControlToLastBlock(req)
+	require.False(t, moveTopLevelCacheControlToLastBlock(req))
 
 	require.Nil(t, req.CacheControl)
 	require.Same(t, short, req.Messages[0].Content.MultipleContent[0].CacheControl)

@@ -39,25 +39,25 @@ func optimizeCacheControl(req *MessageRequest) {
 	injectPlannedMessageCacheControls(refs, messageAnchors)
 }
 
-func moveTopLevelCacheControlToLastBlock(req *MessageRequest) {
+func moveTopLevelCacheControlToLastBlock(req *MessageRequest) bool {
 	cacheControl := req.CacheControl
 	req.CacheControl = nil
 	if cacheControl == nil || countCacheControls(req) >= maxCacheControlBreakpoints {
-		return
+		return true
 	}
 
-	refs := collectCacheControlRefs(req)
+	refs := normalizeAndCollectCacheControlRefs(req)
 	if isOneHourCacheControl(cacheControl) {
 		for i, ref := range refs {
 			if *ref != nil && !isOneHourCacheControl(*ref) {
 				for _, earlier := range refs[:i] {
 					if *earlier == nil {
 						*earlier = cacheControl
-						return
+						return true
 					}
 				}
 
-				return
+				return false
 			}
 		}
 	}
@@ -65,12 +65,14 @@ func moveTopLevelCacheControlToLastBlock(req *MessageRequest) {
 	for i := len(refs) - 1; i >= 0; i-- {
 		if *refs[i] == nil {
 			*refs[i] = cacheControl
-			return
+			return true
 		}
 	}
+
+	return false
 }
 
-func collectCacheControlRefs(req *MessageRequest) []**CacheControl {
+func normalizeAndCollectCacheControlRefs(req *MessageRequest) []**CacheControl {
 	normalizeMessageContents(req)
 	refs := make([]**CacheControl, 0, len(req.Tools)+len(req.Messages)+1)
 	for i := range req.Tools {
