@@ -46,29 +46,38 @@ func moveTopLevelCacheControlToLastBlock(req *MessageRequest) {
 		return
 	}
 
+	if last := lastCacheControlRef(req); last != nil && *last == nil {
+		*last = cacheControl
+	}
+}
+
+func lastCacheControlRef(req *MessageRequest) **CacheControl {
 	normalizeMessageContents(req)
 	refs := collectMessageBlockRefs(req)
 	if len(refs) > 0 {
-		if *refs[len(refs)-1] == nil {
-			*refs[len(refs)-1] = cacheControl
-		}
-		return
+		return refs[len(refs)-1]
 	}
 
-	if req.System != nil && len(req.System.MultiplePrompts) > 0 {
-		last := &req.System.MultiplePrompts[len(req.System.MultiplePrompts)-1].CacheControl
-		if *last == nil {
-			*last = cacheControl
+	if req.System != nil {
+		if len(req.System.MultiplePrompts) > 0 {
+			return &req.System.MultiplePrompts[len(req.System.MultiplePrompts)-1].CacheControl
 		}
-		return
+		if req.System.Prompt != nil && *req.System.Prompt != "" {
+			text := *req.System.Prompt
+			req.System.Prompt = nil
+			req.System.MultiplePrompts = []SystemPromptPart{{
+				Type: "text",
+				Text: text,
+			}}
+			return &req.System.MultiplePrompts[0].CacheControl
+		}
 	}
 
 	if len(req.Tools) > 0 {
-		last := &req.Tools[len(req.Tools)-1].CacheControl
-		if *last == nil {
-			*last = cacheControl
-		}
+		return &req.Tools[len(req.Tools)-1].CacheControl
 	}
+
+	return nil
 }
 
 // countMessageBreakpoints 统计 messages 上已存在的 cache_control 断点数（不含 tools/system）。
