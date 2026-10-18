@@ -204,6 +204,14 @@ func (t *OutboundTransformer) TransformRequest(
 		}
 	}
 
+	//nolint:exhaustive // Checked.
+	switch t.config.Type {
+	case PlatformVertex, PlatformBedrock:
+		if !moveTopLevelCacheControlToLastBlock(anthropicReq) {
+			return nil, fmt.Errorf("%w: cannot safely place top-level cache control on managed Anthropic platform", transformer.ErrInvalidRequest)
+		}
+	}
+
 	// Determine endpoint based on platform
 	url, err := t.buildFullRequestURL(llmReq)
 	if err != nil {
