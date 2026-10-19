@@ -530,6 +530,35 @@ func TestOutboundTransformer_TransformRequest_DropsRawToolChoiceWhenNoToolsSent(
 	require.NotContains(t, payload, "tool_choice")
 }
 
+func TestOutboundTransformer_TransformRequest_KeepsToolChoiceWhenRawToolsAreRestored(t *testing.T) {
+	inbound := NewInboundTransformer()
+	// These tools are rebuilt from the raw fragments, so the marshaled body
+	// still carries tools. The tool choice must survive that restore.
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "Search the docs.",
+			"tools": [{"type": "tool_search", "name": "search_docs"}],
+			"tool_choice": "auto"
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]json.RawMessage
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+	require.NotEmpty(t, payload["tools"])
+	require.JSONEq(t, `"auto"`, string(payload["tool_choice"]))
+}
+
 func TestOutboundTransformer_TransformRequest_ReplaysRawToolChoiceWhenToolsSent(t *testing.T) {
 	inbound := NewInboundTransformer()
 	inboundReq := &httpclient.Request{

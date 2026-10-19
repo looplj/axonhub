@@ -320,14 +320,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 		payload.ParallelToolCalls = nil
 	}
 
-	if len(payload.Tools) == 0 {
-		// Some providers reject tool_choice when no top-level tools are sent,
-		// even when the choice is just "auto" (Responses Lite requests carry
-		// their tools inside the input instead). Omitting tool_choice is
-		// equivalent to the default "auto", so drop it.
-		payload.ToolChoice = nil
-	}
-
 	// Set MaxOutputTokens to MaxTokens if not set
 	if payload.MaxOutputTokens == nil {
 		payload.MaxOutputTokens = llmReq.MaxTokens
