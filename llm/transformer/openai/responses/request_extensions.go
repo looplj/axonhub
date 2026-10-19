@@ -330,7 +330,8 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		obj["tools"] = toolsRaw
 	}
 
-	if len(requestExt.RawToolChoice) > 0 && rawToolChoiceMatchesCurrentTools(requestExt.RawToolChoice, payload.ToolChoice) {
+	if len(requestExt.RawToolChoice) > 0 && hasNonEmptyTools(obj["tools"]) &&
+		rawToolChoiceMatchesCurrentTools(requestExt.RawToolChoice, payload.ToolChoice) {
 		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
 	}
 
@@ -527,6 +528,22 @@ func structuredToolSignaturesMatch(structuredTools []json.RawMessage, expected [
 	}
 
 	return true
+}
+
+// hasNonEmptyTools reports whether the outgoing body already carries at least
+// one tool. A raw tool_choice must not be replayed when the request no longer
+// sends any tools: providers reject that combination.
+func hasNonEmptyTools(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return false
+	}
+
+	var tools []json.RawMessage
+	if json.Unmarshal(raw, &tools) != nil {
+		return false
+	}
+
+	return len(tools) > 0
 }
 
 func rawToolChoiceMatchesCurrentTools(raw json.RawMessage, current *ToolChoice) bool {
