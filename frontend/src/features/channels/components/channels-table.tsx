@@ -272,7 +272,7 @@ export function ChannelsTable({
         showErrorOnly={showErrorOnly}
         onExitErrorOnlyMode={onExitErrorOnlyMode}
       />
-      <div className='shadow-soft relative mt-4 min-w-0 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div className='shadow-soft relative mt-2 sm:mt-4 min-w-0 min-h-[16rem] sm:min-h-[20rem] flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
         <div className='min-w-max'>
           <Table
             data-testid='channels-table'
@@ -358,7 +358,7 @@ export function ChannelsTable({
           </Table>
         </div>
       </div>
-      <div className='mt-4 flex-shrink-0'>
+      <div className='mt-2 sm:mt-4 flex-shrink-0'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}
