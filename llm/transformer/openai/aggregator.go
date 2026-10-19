@@ -449,6 +449,17 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	if usage != nil {
 		responseUsage = usage.ToLLMUsage()
 	}
+	// Some providers (and proxies in front of them) do not follow OpenAI's
+	// include_usage shape: they send the usage block in a chunk that still
+	// carries choices, then deliver finish_reason in a later chunk without
+	// usage. Resolve the evidence against the whole stream instead of the
+	// chunk that happened to carry usage: once every observed choice has
+	// finished, a usage block seen anywhere in the stream is the final usage.
+	if usage != nil && usageEvidence == llm.AccountingEvidenceUnavailable &&
+		allChoicesFinished(seenChoices, finishedChoices) {
+		usageEvidence = llm.AccountingEvidenceCleanEndCandidate
+	}
+
 	if usageEvidence == llm.AccountingEvidenceCleanEndCandidate && zeroChoiceUsages > 1 && isZeroUsage(usage) {
 		usageEvidence = llm.AccountingEvidenceUnavailable
 	}

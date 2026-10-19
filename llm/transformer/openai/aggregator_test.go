@@ -148,10 +148,11 @@ func TestAggregateStreamChunks(t *testing.T) {
 
 func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 	tests := []struct {
-		name    string
-		chunks  []*httpclient.StreamEvent
-		want    llm.AccountingEvidence
-		wantUse bool
+		name       string
+		chunks     []*httpclient.StreamEvent
+		want       llm.AccountingEvidence
+		wantUse    bool
+		wantCached int64
 	}{
 		{
 			name: "choices-less final usage is explicit including zero",
@@ -171,6 +172,21 @@ func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 			wantUse: true,
 		},
 		{
+			// Proxies fronting an upstream stream may put the usage block on a
+			// chunk that still carries choices and send finish_reason afterwards,
+			// without usage. The usage is still authoritative once every choice
+			// finished, even though it arrived before the terminal chunk.
+			name: "usage before finish chunk is still final",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46,"prompt_tokens_details":{"cached_tokens":8}}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}]}`)},
+			},
+			want:       llm.AccountingEvidenceCleanEndCandidate,
+			wantUse:    true,
+			wantCached: 8,
+		},
+		{
 			name: "repeated zero finish placeholders are unavailable",
 			chunks: []*httpclient.StreamEvent{
 				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
@@ -187,6 +203,10 @@ func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.want, meta.AccountingEvidence)
 			require.Equal(t, tt.wantUse, meta.Usage != nil)
+			if tt.wantCached > 0 {
+				require.NotNil(t, meta.Usage.PromptTokensDetails)
+				require.Equal(t, tt.wantCached, meta.Usage.PromptTokensDetails.CachedTokens)
+			}
 		})
 	}
 }
