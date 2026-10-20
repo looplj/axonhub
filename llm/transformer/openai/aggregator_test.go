@@ -187,6 +187,19 @@ func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 			wantCached: 8,
 		},
 		{
+			// A usage block followed by more output cannot be final: those later
+			// tokens are not covered by it, so recording it would undercount.
+			name: "usage followed by later output stays unavailable",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":" more"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}]}`)},
+			},
+			want:    llm.AccountingEvidenceUnavailable,
+			wantUse: true,
+		},
+		{
 			name: "repeated zero finish placeholders are unavailable",
 			chunks: []*httpclient.StreamEvent{
 				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},

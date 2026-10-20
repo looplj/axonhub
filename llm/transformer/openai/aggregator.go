@@ -137,6 +137,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		seenChoices       = make(map[int]struct{})
 		finishedChoices   = make(map[int]struct{})
 		zeroChoiceUsages  int
+		// outputSinceUsage records whether model output was streamed at or after
+		// the last chunk that carried usage. Such a usage block cannot be final:
+		// the tokens produced afterwards are not covered by it.
+		outputSinceUsage  bool
 		systemFingerprint string
 		serviceTier       string
 		// Map to track choices by their index
@@ -283,9 +287,14 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		}
 
 		// Extract usage information if present
+		chunkOutput := hasMeaningfulOutput(chunk.Choices)
 		if chunk.Usage != nil {
 			usage = chunk.Usage
 			usageEvidence = llm.AccountingEvidenceUnavailable
+			// A delta riding on the usage chunk is treated as output after it:
+			// whether that block already counts those tokens is up to the
+			// provider, so the conservative answer is not to trust it.
+			outputSinceUsage = chunkOutput
 			if len(chunk.Choices) > 0 && isZeroUsage(chunk.Usage) {
 				zeroChoiceUsages++
 			}
@@ -300,6 +309,9 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			}
 		} else if len(chunk.Choices) > 0 {
 			usageEvidence = llm.AccountingEvidenceUnavailable
+			if chunkOutput {
+				outputSinceUsage = true
+			}
 		}
 
 		// Collect citations from chunk
@@ -454,8 +466,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	// carries choices, then deliver finish_reason in a later chunk without
 	// usage. Resolve the evidence against the whole stream instead of the
 	// chunk that happened to carry usage: once every observed choice has
-	// finished, a usage block seen anywhere in the stream is the final usage.
-	if usage != nil && usageEvidence == llm.AccountingEvidenceUnavailable &&
+	// finished, a usage block seen anywhere in the stream is the final usage
+	// - provided no model output was streamed after it, since that output is
+	// not covered by the block.
+	if usage != nil && !outputSinceUsage && usageEvidence == llm.AccountingEvidenceUnavailable &&
 		allChoicesFinished(seenChoices, finishedChoices) {
 		usageEvidence = llm.AccountingEvidenceCleanEndCandidate
 	}
@@ -505,6 +519,36 @@ func allChoicesFinished(seen, finished map[int]struct{}) bool {
 	}
 
 	return true
+}
+
+// hasMeaningfulOutput reports whether any choice delta in the chunk carries
+// model output. Roles, empty strings and metadata-only deltas are not output:
+// providers bookend streams with them, and they generate no completion tokens.
+func hasMeaningfulOutput(choices []Choice) bool {
+	for _, choice := range choices {
+		delta := choice.Delta
+		if delta == nil {
+			continue
+		}
+
+		if delta.Content.Content != nil && *delta.Content.Content != "" {
+			return true
+		}
+
+		if delta.ReasoningContent != nil && *delta.ReasoningContent != "" {
+			return true
+		}
+
+		if delta.Reasoning != nil && *delta.Reasoning != "" {
+			return true
+		}
+
+		if delta.Refusal != "" || len(delta.ToolCalls) > 0 || delta.Audio != nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 func isZeroUsage(usage *Usage) bool {
