@@ -145,8 +145,12 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// zero placeholder: it arrived after real output, so accepting it would
 		// persist an undercounted (zero) usage row.
 		zeroUsageAfterOutput bool
-		systemFingerprint    string
-		serviceTier          string
+		// sawOutput records whether any model output was streamed at all. A zero
+		// usage block is a placeholder whenever output exists, even if a later
+		// nonzero usage block reset outputSinceUsage.
+		sawOutput         bool
+		systemFingerprint string
+		serviceTier       string
 		// Map to track choices by their index
 		choicesAggs = make(map[int]*choiceAggregator)
 		// Map to track unique citations
@@ -292,8 +296,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 		// Extract usage information if present
 		chunkOutput := hasMeaningfulOutput(chunk.Choices)
+		if chunkOutput {
+			sawOutput = true
+		}
 		if chunk.Usage != nil {
-			outputBeforeUsage := outputSinceUsage
 			usage = chunk.Usage
 			usageEvidence = llm.AccountingEvidenceUnavailable
 			// A delta riding on the usage chunk is treated as output after it:
@@ -301,8 +307,10 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 			// provider, so the conservative answer is not to trust it.
 			outputSinceUsage = chunkOutput
 			// A zero block that follows real output cannot describe that output;
-			// it is a placeholder, not the final usage.
-			zeroUsageAfterOutput = isZeroUsage(chunk.Usage) && outputBeforeUsage
+			// it is a placeholder, not the final usage. "Output exists" is
+			// stream-wide, not "since the previous usage block": a nonzero usage
+			// block in between must not launder the placeholder.
+			zeroUsageAfterOutput = isZeroUsage(chunk.Usage) && sawOutput
 			if len(chunk.Choices) > 0 && isZeroUsage(chunk.Usage) {
 				zeroChoiceUsages++
 			}

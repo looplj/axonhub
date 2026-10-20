@@ -213,6 +213,19 @@ func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
 			wantUse: true,
 		},
 		{
+			// A nonzero usage block in between must not launder a later zero
+			// placeholder: the stream produced output, so the zero block is still
+			// not the final usage.
+			name: "zero placeholder after nonzero usage and output is unavailable",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"content":"ok"}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":""}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:    llm.AccountingEvidenceUnavailable,
+			wantUse: true,
+		},
+		{
 			name: "repeated zero finish placeholders are unavailable",
 			chunks: []*httpclient.StreamEvent{
 				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
