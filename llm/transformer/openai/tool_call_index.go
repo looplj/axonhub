@@ -14,33 +14,41 @@ import (
 type toolCallIndexer struct {
 	// next is the index of the next new tool call, per choice index.
 	next map[int]int
-	// lastID is the ID of the last tool call, per choice index.
-	lastID map[int]string
+	// last is the index of the tool call the latest delta belonged to, per choice index.
+	last map[int]int
+	// ids holds the ID of each tool call seen so far.
+	ids map[toolCallKey]string
+}
+
+type toolCallKey struct {
+	choiceIndex int
+	index       int
 }
 
 func newToolCallIndexer() *toolCallIndexer {
-	return &toolCallIndexer{next: make(map[int]int), lastID: make(map[int]string)}
+	return &toolCallIndexer{next: make(map[int]int), last: make(map[int]int), ids: make(map[toolCallKey]string)}
 }
 
 // index returns the index of the tool call at choices[choicePos].delta.tool_calls[pos] of the raw chunk.
 // A call without an index starts a new call when it has a new ID or a name, and otherwise continues the last call.
 func (x *toolCallIndexer) index(data []byte, choicePos, choiceIndex, pos, index int, id, name string) int {
-	if id != "" {
-		defer func() { x.lastID[choiceIndex] = id }()
-	}
-
 	if gjson.GetBytes(data, fmt.Sprintf("choices.%d.delta.tool_calls.%d.index", choicePos, pos)).Exists() {
 		x.next[choiceIndex] = max(x.next[choiceIndex], index+1)
-		return index
+	} else {
+		continues := x.next[choiceIndex] > 0 &&
+			(id == "" && name == "" || id != "" && id == x.ids[toolCallKey{choiceIndex, x.last[choiceIndex]}])
+		if continues {
+			index = x.last[choiceIndex]
+		} else {
+			index = x.next[choiceIndex]
+			x.next[choiceIndex]++
+		}
 	}
 
-	continues := x.next[choiceIndex] > 0 && (id == "" && name == "" || id != "" && id == x.lastID[choiceIndex])
-	if continues {
-		return x.next[choiceIndex] - 1
+	x.last[choiceIndex] = index
+	if id != "" {
+		x.ids[toolCallKey{choiceIndex, index}] = id
 	}
-
-	index = x.next[choiceIndex]
-	x.next[choiceIndex]++
 
 	return index
 }

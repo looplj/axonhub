@@ -121,3 +121,19 @@ func TestOutboundTransformer_AggregateStreamChunks_KeepsParallelToolCallsWithout
 	assert.Equal(t, "call_4234487", toolCalls[1].ID)
 	assert.JSONEq(t, `{"city":"Tokyo"}`, toolCalls[1].Function.Arguments)
 }
+
+func TestOutboundTransformer_TransformStream_ContinuesUnindexedFragmentOfLastIndexedToolCall(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_a","type":"function","function":{"name":"get_weather","arguments":"{\"city\":"}}]}}]}`)},
+		{Data: []byte(`{"choices":[{"index":0,"delta":{"tool_calls":[{"index":1,"id":"call_b","type":"function","function":{"name":"get_time","arguments":"{}"}}]}}]}`)},
+		{Data: []byte(`{"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\"Paris"}}]}}]}`)},
+		{Data: []byte(`{"choices":[{"index":0,"delta":{"tool_calls":[{"function":{"arguments":"\"}"}}]}}]}`)},
+		{Data: []byte(`{"choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_a","function":{"arguments":" "}}]}}]}`)},
+		{Data: []byte(`[DONE]`)},
+	}
+
+	toolCalls := streamedToolCalls(t, chunks)
+
+	require.Len(t, toolCalls, 5)
+	assert.Equal(t, []int{0, 1, 0, 0, 0}, []int{toolCalls[0].Index, toolCalls[1].Index, toolCalls[2].Index, toolCalls[3].Index, toolCalls[4].Index})
+}
