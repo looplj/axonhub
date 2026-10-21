@@ -97,10 +97,19 @@ mkdir -p "$BACKUP_DIR"
 if [ "$SKIP_BACKUP" != "1" ]; then
   info "online backup..."
   if dc ps --quiet postgres 2>/dev/null | grep -q .; then
-    dc exec -T postgres sh -lc 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
-      > "$BACKUP_DIR/axonhub-pg-$backup_stamp.sql" \
-      && gzip -f "$BACKUP_DIR/axonhub-pg-$backup_stamp.sql" \
-      && ok "Postgres backup: axonhub-pg-$backup_stamp.sql.gz"
+    # docker exec lands as root; local peer auth would prompt for a password
+    # and hang forever in -T mode. Pass PGPASSWORD explicitly and hard-timeout
+    # the dump so a stuck auth can never freeze the whole update.
+    if timeout 180 dc exec -T postgres sh -lc 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+      > "$BACKUP_DIR/axonhub-pg-$backup_stamp.sql"; then
+      gzip -f "$BACKUP_DIR/axonhub-pg-$backup_stamp.sql" \
+        && ok "Postgres backup: axonhub-pg-$backup_stamp.sql.gz"
+    else
+      rm -f "$BACKUP_DIR/axonhub-pg-$backup_stamp.sql"
+      warn "pg_dump failed/timed out; continuing WITHOUT a database backup"
+      warn "press Ctrl+C now to abort and back up manually (SKIP_BACKUP=1 to skip this check)"
+      sleep 5
+    fi
   fi
   shopt -s nullglob
   for db in "$AXONHUB_DIR"/data/*.db "$AXONHUB_DIR"/*.db; do
