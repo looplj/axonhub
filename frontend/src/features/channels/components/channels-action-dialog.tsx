@@ -2990,7 +2990,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <div className='flex gap-2'>
                             {useFetchedModels && fetchedModels.length > 20 ? (
                               <AutoComplete
-                                items={fetchedModels.map((model) => ({ value: model, label: model }))}
+                                items={fetchedModels.filter(isSuggestedModel).map((model) => ({ value: model, label: model }))}
                                 selectedValue={newModel}
                                 onSelectedValueChange={setNewModel}
                                 searchValue={newModel}

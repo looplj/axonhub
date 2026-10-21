@@ -26,5 +26,6 @@ const flashModel: ProviderModel = {
 
 export function withMiniMaxFlash(models: ProviderModel[], developer: string): ProviderModel[] {
   if (developer !== 'minimax') return models;
-  return [flashModel, ...models.filter((model) => model.id !== flashModel.id)];
+  const existingFlash = models.find((model) => model.id === flashModel.id);
+  return [existingFlash ?? flashModel, ...models.filter((model) => model.id !== flashModel.id)];
 }

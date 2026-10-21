@@ -32,6 +32,8 @@ test('direct catalog offers Flash first and retains old metadata for explicit se
   assert.deepEqual(models[0].cost, { input: 0.15, output: 0.6, cache_read: 0.015 });
   assert.deepEqual(deriveReasoningEfforts(models[0].reasoning_options), ['low', 'medium', 'high', 'xhigh', 'max']);
   assert.equal(withMiniMaxFlash(models, 'minimax').filter((model) => model.id === models[0].id).length, 1);
+  const refreshedFlash = { id: 'MiniMax-M3.1-Flash', cost: { input: 0.12 }, limit: { output: 600000 } };
+  assert.equal(withMiniMaxFlash([legacy, refreshedFlash, current], 'minimax')[0], refreshedFlash);
 });
 
 test('gateway and plan catalogs retain their own metadata and available routes', () => {
@@ -54,6 +56,7 @@ test('both direct presets offer Flash first and keep the regional endpoints', ()
 test('filtering only affects suggestions, retaining complete fetched data for sync and saved selections', () => {
   const source = read('../../channels/components/channels-action-dialog.tsx');
   assert.match(source, /let models = fetchedModels\.filter\(isSuggestedModel\)/);
+  assert.match(source, /items=\{fetchedModels\.filter\(isSuggestedModel\)\.map/);
   assert.match(source, /const fetchedModelsSet = new Set\(fetchedModels\)/);
   assert.match(source, /initialRow\?\.supportedModels \|\| \[\]/);
   assert.match(source, /initialRow\?\.manualModels \|\| \[\]/);
