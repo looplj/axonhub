@@ -854,9 +854,14 @@ func normalizeAutoDisableRules(rules []objects.APIKeyAutoDisableRule, allowDelet
 	return normalized, nil
 }
 
-// UpdateChannel updates an existing channel with the provided input.
+// UpdateChannel updates a channel with the provided input. Callers that
+// merge patches onto a previously read snapshot (see UpdateChannelSettings)
+// can carry the snapshot's version in the context via withChannelExpectedVersion;
+// the update is then optimistic-locked against that version and fails with
+// ErrChannelUpdatedConcurrently when the channel was updated concurrently.
 func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent.UpdateChannelInput) (*ent.Channel, error) {
 	log.Debug(ctx, "UpdateChannel", log.Int("id", id))
+	expectedUpdatedAt, _ := ctx.Value(channelExpectedVersionKey{}).(*time.Time)
 	// Snapshot the provider identity before normalizing Command Code settings.
 	// Settings-only updates need this snapshot to reject a concurrent type
 	// change that could otherwise leave a quota cookie on the wrong channel.
@@ -878,7 +883,8 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	commandCodeQuotaSettings := input.Settings != nil &&
 		(isCommandCodeChannelType(effectiveType) ||
 			(input.Settings.ProviderQuota != nil && input.Settings.ProviderQuota.CommandCode != nil))
-	guardProviderIdentity := input.Type != nil || input.BaseURL != nil || input.Endpoints != nil || commandCodeQuotaSettings
+	guardProviderIdentity := input.Type != nil || input.BaseURL != nil || input.Endpoints != nil || commandCodeQuotaSettings ||
+		expectedUpdatedAt != nil
 
 	// A cleared Command Code quota cookie must invalidate the old persisted
 	// status, regardless of whether the client sent null or an empty object.
@@ -1043,8 +1049,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
 
-		// Only identity changes and Command Code quota-related settings need
-		// optimistic locking; unrelated channel edits retain their prior behavior.
+		// Only identity changes, Command Code quota-related settings and
+		// caller-supplied version expectations need optimistic locking;
+		// unrelated channel edits retain their prior behavior.
 		mut := db.Channel.UpdateOneID(id).
 			SetNillableType(input.Type).
 			SetNillableBaseURL(input.BaseURL).
@@ -1053,7 +1060,11 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			SetNillableOrderingWeight(input.OrderingWeight).
 			SetNillableAutoSyncSupportedModels(input.AutoSyncSupportedModels)
 		if guardProviderIdentity {
-			mut.Where(channel.UpdatedAtEQ(existingIdentity.UpdatedAt))
+			guardUpdatedAt := existingIdentity.UpdatedAt
+			if expectedUpdatedAt != nil {
+				guardUpdatedAt = *expectedUpdatedAt
+			}
+			mut.Where(channel.UpdatedAtEQ(guardUpdatedAt))
 		}
 
 		if input.SupportedModels != nil {
@@ -1135,7 +1146,7 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		channel, err := mut.Save(ctx)
 		if err != nil {
 			if ent.IsNotFound(err) {
-				return fmt.Errorf("channel was updated concurrently; retry the operation")
+				return ErrChannelUpdatedConcurrently
 			}
 			return fmt.Errorf("failed to update channel: %w", err)
 		}
@@ -1253,7 +1264,7 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 		Save(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, errors.New("channel was updated concurrently; retry the operation")
+			return nil, ErrChannelUpdatedConcurrently
 		}
 		return nil, fmt.Errorf("failed to update channel endpoints: %w", err)
 	}
