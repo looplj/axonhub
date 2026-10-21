@@ -239,6 +239,11 @@ type ChannelSettings struct {
 	// case-sensitive substring of the error text.
 	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
 
+	// MaxSingleChannelRetries overrides the global "max single channel retries"
+	// for this channel. When nil, the channel inherits the global retry policy.
+	// Pointer so GQL emits null instead of 0 for channels that never set it.
+	MaxSingleChannelRetries *int `json:"maxSingleChannelRetries,omitempty"`
+
 	// ModelProtocols force-specifies the outbound protocols for specific models of
 	// this channel. Each entry's apiFormats must reference api_formats the channel
 	// already has endpoints for. When set for a model, endpoint selection is
