@@ -95,6 +95,7 @@ jobs:
           tags: |
             type=sha,prefix=dev-
             type=raw,value=latest
+            type=raw,value=cn,enable=true
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
