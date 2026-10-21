@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/eko/gocache/lib/v4/store"
@@ -22,6 +24,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/ent/requestexecution"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/metrics"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/pkg/xcache"
 	"github.com/looplj/axonhub/internal/pkg/xjson"
@@ -38,7 +41,12 @@ type RequestService struct {
 	DataStorageService   *DataStorageService
 	LiveStreamRegistry   *LiveStreamRegistry
 	previousChannelCache xcache.Cache[int]
+	metricClaims         *requestMetricClaims
 }
+
+// recordedMetricRequestsTTL bounds how long a claimed request ID is kept in
+// the chat metrics deduplication.
+const recordedMetricRequestsTTL = time.Hour
 
 // NewRequestService creates a new RequestService.
 func NewRequestService(
@@ -58,6 +66,7 @@ func NewRequestService(
 		DataStorageService:   dataStorageService,
 		LiveStreamRegistry:   liveStreamRegistry,
 		previousChannelCache: xcache.NewFromConfig[int](cacheConfig),
+		metricClaims:         newRequestMetricClaims(),
 	}
 }
 
@@ -613,7 +622,106 @@ func (s *RequestService) UpdateRequestFinalized(
 		return err
 	}
 
+	s.recordChatRequestMetrics(ctx, req, status, metrics)
+
 	return nil
+}
+
+// recordChatRequestMetrics reports the transition of a request into a
+// terminal state to the metrics registry. It is a no-op when metrics are
+// disabled, the target status is not terminal, or the request was already
+// terminal before the update: status refreshes that re-save an already
+// terminal outcome (e.g. repeated video task polls) and marks that follow an
+// earlier terminal outcome must not be counted again. req must reflect the
+// pre-update status. Recording is best-effort: channel name resolution and
+// metric recording must never affect request finalization.
+func (s *RequestService) recordChatRequestMetrics(ctx context.Context, req *ent.Request, status request.Status, latency *LatencyMetrics) {
+	if !metrics.Enabled() || !isTerminalRequestStatus(status) || isTerminalRequestStatus(req.Status) {
+		return
+	}
+
+	// Concurrent terminal setters can both observe the pre-update status;
+	// the claim ensures only one of them records.
+	if !s.metricClaims.claim(req.ID) {
+		return
+	}
+
+	channelID := ""
+	channelName := ""
+
+	if req.ChannelID != 0 {
+		channelID = strconv.Itoa(req.ChannelID)
+
+		// Best-effort lookup: a deleted channel must not break finalization.
+		if channel, err := req.QueryChannel().Only(ctx); err == nil {
+			channelName = channel.Name
+		}
+	}
+
+	duration := 0.0
+	if latency != nil && latency.LatencyMs != nil {
+		duration = float64(*latency.LatencyMs) / 1000
+	} else if !req.CreatedAt.IsZero() {
+		duration = time.Since(req.CreatedAt).Seconds()
+	}
+
+	metrics.Metrics.RecordChatRequest(ctx, channelID, channelName, duration, status == request.StatusCompleted)
+}
+
+// requestMetricClaims atomically deduplicates chat metric recording per
+// request: exactly one of several concurrent or sequential terminal setters
+// wins the claim for a request ID. Claims expire so the map stays bounded
+// without a background goroutine.
+type requestMetricClaims struct {
+	mu        sync.Mutex
+	claimed   map[int]time.Time
+	lastPrune time.Time
+}
+
+func newRequestMetricClaims() *requestMetricClaims {
+	return &requestMetricClaims{
+		claimed: map[int]time.Time{},
+	}
+}
+
+// claim reports whether the caller won the exclusive right to record the
+// request, recording the claim when it does.
+func (c *requestMetricClaims) claim(requestID int) bool {
+	now := time.Now()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	// Prune expired claims at most once per TTL so the common path stays
+	// O(1) while the map is bounded to roughly one TTL of requests.
+	if now.Sub(c.lastPrune) > recordedMetricRequestsTTL {
+		for id, at := range c.claimed {
+			if now.Sub(at) > recordedMetricRequestsTTL {
+				delete(c.claimed, id)
+			}
+		}
+
+		c.lastPrune = now
+	}
+
+	if _, ok := c.claimed[requestID]; ok {
+		return false
+	}
+
+	c.claimed[requestID] = now
+
+	return true
+}
+
+// isTerminalRequestStatus reports whether the status is a terminal request
+// outcome that should be counted in chat metrics.
+func isTerminalRequestStatus(status request.Status) bool {
+	switch status {
+	case request.StatusCompleted, request.StatusFailed, request.StatusCanceled:
+		return true
+	default:
+		return false
+	}
 }
 
 // UpdateRequestCompletedWithAudio marks a request completed and persists a binary audio
@@ -717,6 +825,8 @@ func (s *RequestService) UpdateRequestCompletedWithAudio(
 		return err
 	}
 
+	s.recordChatRequestMetrics(ctx, req, request.StatusCompleted, metrics)
+
 	return nil
 }
 
@@ -809,6 +919,8 @@ func (s *RequestService) UpdateRequestStatusExternalIDAndResponseBody(
 		log.Error(ctx, "Failed to update request status", log.Cause(err))
 		return err
 	}
+
+	s.recordChatRequestMetrics(ctx, req, status, metrics)
 
 	return nil
 }
@@ -1271,11 +1383,25 @@ func (s *RequestService) MarkRequestFailed(ctx context.Context, requestID int) e
 func (s *RequestService) UpdateRequestStatus(ctx context.Context, requestID int, status request.Status) error {
 	client := s.entFromContext(ctx)
 
+	// Load the pre-update request for metric recording when the update
+	// targets a terminal state; the load is skipped entirely when metrics
+	// are disabled.
+	var metricReq *ent.Request
+	if metrics.Enabled() && isTerminalRequestStatus(status) {
+		if req, err := client.Request.Get(ctx, requestID); err == nil {
+			metricReq = req
+		}
+	}
+
 	_, err := client.Request.UpdateOneID(requestID).
 		SetStatus(status).
 		Save(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to update request status: %w", err)
+	}
+
+	if metricReq != nil {
+		s.recordChatRequestMetrics(ctx, metricReq, status, nil)
 	}
 
 	return nil
