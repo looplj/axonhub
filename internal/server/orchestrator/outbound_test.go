@@ -1969,6 +1969,85 @@ func TestPersistentOutboundTransformer_CanRetry_429_WithMultipleModels(t *testin
 	})
 }
 
+func TestPersistentOutboundTransformer_CanRetry_520_WithMultipleModels(t *testing.T) {
+	channel := &biz.Channel{
+		Channel: &ent.Channel{
+			ID:   1,
+			Name: "test-channel",
+		},
+		Outbound: &mockTransformer{},
+	}
+
+	t.Run("520 edge error should switch channel instead of iterating models", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{
+			wrapped: &mockTransformer{},
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: channel,
+					Models: []biz.ChannelModelEntry{
+						{RequestModel: "gpt-4", ActualModel: "gpt-4"},
+						{RequestModel: "gpt-3.5-turbo", ActualModel: "gpt-3.5-turbo"},
+					},
+				},
+				CurrentModelIndex: 0,
+			},
+		}
+
+		// 520 with empty body from a Cloudflare-fronted relay
+		httpErr := &httpclient.Error{
+			StatusCode: 520,
+		}
+
+		// Should skip same-channel model iteration so the pipeline switches
+		// to the next candidate instead of grinding aliases on a dead edge.
+		require.False(t, outbound.CanRetry(httpErr))
+	})
+}
+
+func TestPersistentOutboundTransformer_ResponseTimeoutOverride(t *testing.T) {
+	newOutbound := func(settings *objects.ChannelSettings) *PersistentOutboundTransformer {
+		entChannel := &ent.Channel{ID: 1, Name: "test-channel"}
+		if settings != nil {
+			entChannel.Settings = settings
+		}
+		return &PersistentOutboundTransformer{
+			state: &PersistenceState{
+				CurrentCandidate: &ChannelModelsCandidate{
+					Channel: &biz.Channel{Channel: entChannel},
+				},
+			},
+		}
+	}
+
+	t.Run("nil settings inherit pipeline defaults", func(t *testing.T) {
+		s, n := newOutbound(nil).ResponseTimeoutOverride()
+		require.Zero(t, s)
+		require.Zero(t, n)
+	})
+
+	t.Run("unset fields inherit pipeline defaults", func(t *testing.T) {
+		s, n := newOutbound(&objects.ChannelSettings{}).ResponseTimeoutOverride()
+		require.Zero(t, s)
+		require.Zero(t, n)
+	})
+
+	t.Run("set fields override per channel", func(t *testing.T) {
+		s, n := newOutbound(&objects.ChannelSettings{
+			StreamFirstEventTimeoutSeconds: lo.ToPtr(150),
+			NonStreamResponseTimeoutSeconds: lo.ToPtr(300),
+		}).ResponseTimeoutOverride()
+		require.Equal(t, 150*time.Second, s)
+		require.Equal(t, 300*time.Second, n)
+	})
+
+	t.Run("no candidate inherits pipeline defaults", func(t *testing.T) {
+		outbound := &PersistentOutboundTransformer{state: &PersistenceState{}}
+		s, n := outbound.ResponseTimeoutOverride()
+		require.Zero(t, s)
+		require.Zero(t, n)
+	})
+}
+
 // A transport failure after content was delivered must keep the latency metrics that
 // were already captured and persist a classified error, so operators can tell "stalled
 // before the first byte" from "cut after N tokens" and the status code is not lost.

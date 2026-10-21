@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/looplj/axonhub/internal/log"
@@ -70,8 +71,17 @@ func (m *rateLimitTracking) OnOutboundLlmStream(ctx context.Context, stream stre
 	}, nil
 }
 
+// noHeaderless429Cooldown is the fallback cooldown applied when an upstream
+// 429 carries no Retry-After header (e.g. AMD's process_concurrency_limit
+// errors). Without it the channel is never cooled down and every subsequent
+// request slams the same hot channel. Kept short on purpose: concurrency
+// windows are seconds-scale, and a cooled-down channel is only deprioritized
+// (-10000 score), never fully excluded, so it can still serve as fallback.
+const noHeaderless429Cooldown = 20 * time.Second
+
 // OnOutboundRawError handles raw HTTP errors, specifically capturing 429 Too Many Requests.
 // When a 429 is received, it parses the Retry-After header and sets a cooldown for the channel.
+// A 429 without a Retry-After header gets a short default cooldown instead of none.
 func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 	if m.outbound == nil {
 		return
@@ -87,15 +97,21 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 		return
 	}
 
-	// Only cool down a channel when the upstream explicitly provides a cooldown.
-	if !httpclient.HasRetryAfterHeader(err) {
+	// Only cool down a channel on upstream rate limiting. The Retry-After
+	// header takes precedence when present; otherwise fall back to a short
+	// default so headerless 429s still route around the hot channel.
+	if ExtractStatusCodeFromError(err) != http.StatusTooManyRequests {
 		return
 	}
 
-	// Parse Retry-After header from 429 error
-	cooldown, ok := httpclient.ParseRetryAfter(err)
-	if !ok {
-		return
+	cooldown := noHeaderless429Cooldown
+	if httpclient.HasRetryAfterHeader(err) {
+		// Parse Retry-After header from 429 error
+		parsed, ok := httpclient.ParseRetryAfter(err)
+		if !ok {
+			return
+		}
+		cooldown = parsed
 	}
 
 	// Set cooldown for this channel

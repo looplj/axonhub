@@ -126,6 +126,8 @@ export function mergeChannelSettingsForUpdate(
     rateLimit: pick('rateLimit', existing?.rateLimit ?? null),
     retryableStatusCodes: pick('retryableStatusCodes', existing?.retryableStatusCodes ?? []),
     retryableErrorPatterns: pick('retryableErrorPatterns', existing?.retryableErrorPatterns ?? []),
+    streamFirstEventTimeoutSeconds: pick('streamFirstEventTimeoutSeconds', existing?.streamFirstEventTimeoutSeconds ?? null),
+    nonStreamResponseTimeoutSeconds: pick('nonStreamResponseTimeoutSeconds', existing?.nonStreamResponseTimeoutSeconds ?? null),
     modelProtocols: pick('modelProtocols', existing?.modelProtocols ?? []),
     providerQuota: pick('providerQuota', existing?.providerQuota ?? null),
     quotaRoutingMode: pick('quotaRoutingMode', existing?.quotaRoutingMode ?? undefined),
