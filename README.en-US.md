@@ -334,6 +334,12 @@ For detailed development instructions, architecture design, and contribution gui
         <sub><b>llc1123</b></sub>
       </a>
     </td>
+    <td align="center">
+      <a href="https://github.com/djdembeck">
+        <img src="https://github.com/djdembeck.png?size=100" width="100" alt="djdembeck"/><br/>
+        <sub><b>djdembeck</b></sub>
+      </a>
+    </td>
   </tr>
 </table>
 
