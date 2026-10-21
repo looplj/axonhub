@@ -130,6 +130,16 @@ else
 fi
 
 # ---------------------------------------------------------------- write image tag
+# Some older deployments hardcode the image (e.g. "image: looplj/axonhub:latest")
+# in the compose file, which silently ignores AXONHUB_IMAGE from .env. Migrate
+# such files to the variable form once, then the tag swap below works forever.
+if ! grep -q "AXONHUB_IMAGE" "$COMPOSE_FILE"; then
+  if grep -Eq "^\s*image:.*axonhub" "$COMPOSE_FILE"; then
+    warn "compose file hardcodes the axonhub image; migrating to \${AXONHUB_IMAGE}"
+    sed -i "0,/^\s*image:.*axonhub/s||    image: \${AXONHUB_IMAGE:?AXONHUB_IMAGE must be set}|" "$COMPOSE_FILE"
+    ok "compose now reads the image from AXONHUB_IMAGE"
+  fi
+fi
 cp -f "$COMPOSE_FILE" "${COMPOSE_FILE}.bak.$backup_stamp" 2>/dev/null || true
 [ -f .env ] && cp -f .env ".env.bak.$backup_stamp"
 
