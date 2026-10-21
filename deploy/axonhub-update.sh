@@ -147,6 +147,22 @@ if [ "$PULL_IMAGES" = "1" ]; then
 fi
 dc up -d --force-recreate --no-deps axonhub || fail "container recreate failed"
 
+# Compose reads .env only when the variable is not already set in the shell;
+# a stale AXONHUB_IMAGE exported in the caller would silently win. Verify
+# what actually runs and, on mismatch, force the image explicitly.
+sleep 2
+APP_CID="$(dc ps -q axonhub)"
+RUNNING_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$APP_CID" 2>/dev/null || true)"
+if [ "$RUNNING_IMAGE" != "$NEW_IMAGE" ]; then
+  warn "container runs \"$RUNNING_IMAGE\", expected \"$NEW_IMAGE\" — forcing image explicitly"
+  AXONHUB_IMAGE="$NEW_IMAGE" docker compose -f "$COMPOSE_FILE" up -d --force-recreate --no-deps axonhub \
+    || fail "forced recreate with explicit image failed"
+  APP_CID="$(dc ps -q axonhub)"
+  RUNNING_IMAGE="$(docker inspect -f '{{.Config.Image}}' "$APP_CID" 2>/dev/null || true)"
+fi
+info "container image: $RUNNING_IMAGE"
+[ "$RUNNING_IMAGE" = "$NEW_IMAGE" ] || warn "container image still differs from target; check compose project name (docker compose ls)"
+
 # ---------------------------------------------------------------- health check + rollback
 # Verify the RUNNING container, not the shell host: use the container IP
 # (works even when the port is bound to 127.0.0.1 or a custom interface),
