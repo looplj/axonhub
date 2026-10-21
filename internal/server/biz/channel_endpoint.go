@@ -364,8 +364,9 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 	}
 
 	for _, endpoint := range endpoints {
-		if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() && channelType != channel.TypeTypesafe {
-			return fmt.Errorf("api_format %q is only supported by TypeSafe channel types", endpoint.APIFormat)
+		if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() &&
+			channelType != channel.TypeTypesafe && channelType != channel.TypeOpenai {
+			return fmt.Errorf("api_format %q is only supported by TypeSafe or OpenAI channel types", endpoint.APIFormat)
 		}
 	}
 
