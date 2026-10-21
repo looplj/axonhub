@@ -77,15 +77,23 @@ else
   CURRENT_IMAGE="$DEFAULT_IMAGE"
 fi
 
+# Keep a mirror registry the operator already configured (e.g.
+# ghcr.nju.edu.cn): only the TAG is derived from the argument/default,
+# so a script run never rewrites the registry back to ghcr.io.
+REGISTRY_REPO="${DEFAULT_IMAGE%%:*}"
+if [ -n "$CURRENT_IMAGE" ]; then
+  REGISTRY_REPO="${CURRENT_IMAGE%%:*}"
+fi
+
 if [ -n "$IMAGE" ]; then
   NEW_IMAGE="$IMAGE"
 elif [ -n "$VERSION_ARG" ]; then
   case "$VERSION_ARG" in
-    dev-*) NEW_IMAGE="${DEFAULT_IMAGE%%:*}:${VERSION_ARG}" ;;
-    *)     NEW_IMAGE="${DEFAULT_IMAGE%%:*}:${VERSION_ARG#v}" ;;
+    dev-*) NEW_IMAGE="${REGISTRY_REPO}:${VERSION_ARG}" ;;
+    *)     NEW_IMAGE="${REGISTRY_REPO}:${VERSION_ARG#v}" ;;
   esac
 else
-  NEW_IMAGE="$DEFAULT_IMAGE"
+  NEW_IMAGE="${REGISTRY_REPO}:latest"
 fi
 info "target image: $NEW_IMAGE"
 
