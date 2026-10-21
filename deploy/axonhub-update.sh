@@ -140,14 +140,34 @@ fi
 dc up -d --force-recreate --no-deps axonhub || fail "container recreate failed"
 
 # ---------------------------------------------------------------- health check + rollback
-PORT="$(grep -oP 'AXONHUB_HOST_PORT=\K[0-9]+' .env 2>/dev/null || echo 8090)"
-health_url="http://127.0.0.1:${PORT}/health"
+# Verify the RUNNING container, not the shell host: use the container IP
+# (works even when the port is bound to 127.0.0.1 or a custom interface),
+# and fall back to the host port when docker inspect fails.
+HOST_PORT="$(grep -oP 'AXONHUB_HOST_PORT=\K[0-9]+' .env 2>/dev/null || echo 8090)"
+APP_CONTAINER="$(dc ps --quiet axonhub | head -n1)"
+CONTAINER_IP="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "$APP_CONTAINER" 2>/dev/null | awk '{print $1}')"
+health_url="http://127.0.0.1:${HOST_PORT}/health"
+[ -n "$CONTAINER_IP" ] && health_url="http://${CONTAINER_IP}:8090/health"
 info "health check $health_url ..."
 healthy=0
 for _ in $(seq 1 30); do
   if curl -fsS --max-time 5 "$health_url" >/dev/null 2>&1; then healthy=1; break; fi
   sleep 2
 done
+
+# Version assertion: report what is actually running so a silently-reused
+# old image cannot masquerade as a successful update.
+if [ "$healthy" = "1" ]; then
+  RUNNING_VERSION="$(curl -fsS --max-time 5 "$health_url" | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' | head -n1)"
+  info "running version: ${RUNNING_VERSION:-unknown}"
+  case "$RUNNING_VERSION" in
+    v1.0.0-beta1[01]*)
+      warn "container still reports the upstream version ($RUNNING_VERSION)."
+      warn "the fork image likely has not been published yet or is not present locally."
+      warn "check: docker images | grep axonhub  /  GitHub Actions -> Build and Push Docker Image"
+      ;;
+  esac
+fi
 
 if [ "$healthy" != "1" ]; then
   dc logs --tail 30 axonhub >&2 || true
