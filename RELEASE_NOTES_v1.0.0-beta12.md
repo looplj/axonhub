@@ -1,4 +1,4 @@
-# AxonHub Fork Release v1.0.0-beta10
+# AxonHub Fork Release v1.0.0-beta12
 
 基于上游 looplj/axonhub 的二开版本。本版本聚焦三块：**模型级冷冻（可观测 + 手动冷冻/解冻）**、**模型关联预览拖拽修复**、**备份支持上传**，并附带宝塔 Docker 无缝更新方案。
 
@@ -35,7 +35,7 @@
 
 ```bash
 # 稳定 tag（由本 Release 触发的构建）
-docker pull ghcr.io/shifuf/axonhub:v1.0.0-beta10
+docker pull ghcr.io/shifuf/axonhub:v1.0.0-beta12
 # 开发跟随（dev 分支最新构建）
 docker pull ghcr.io/shifuf/axonhub:dev-latest
 ```
@@ -44,7 +44,7 @@ docker pull ghcr.io/shifuf/axonhub:dev-latest
 
 ```bash
 cd /www/wwwroot/axonhub
-bash axonhub-update.sh v1.0.0-beta10   # 或 bash axonhub-update.sh 取 dev-latest
+bash axonhub-update.sh v1.0.0-beta12   # 或 bash axonhub-update.sh 取 dev-latest
 ```
 
 ## 测试
