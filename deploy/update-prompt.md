@@ -30,7 +30,7 @@
     cd /www/wwwroot/axonhub
     # 首次：下载更新脚本
     curl -fSL --connect-timeout 10 --max-time 60 -o axonhub-update.sh \
-      "https://gh-proxy.com/https://raw.githubusercontent.com/shifuf/axonhub/main/deploy/axonhub-update.sh"
+      "https://gh-proxy.com/https://raw.githubusercontent.com/shifuf/axonhub/dev/deploy/axonhub-update.sh"
     sed -i 's/\r$//' axonhub-update.sh && chmod +x axonhub-update.sh
     # 日常更新
     bash axonhub-update.sh              # dev-latest

@@ -21,7 +21,7 @@ Ent 迁移在启动时自动执行（自动建新表/新列）。
 首次：下载更新脚本（走 gh-proxy 加速，无 git 依赖）
 
     curl -fSL --connect-timeout 10 --max-time 60 -o axonhub-update.sh \
-      "https://gh-proxy.com/https://raw.githubusercontent.com/shifuf/axonhub/main/deploy/axonhub-update.sh"
+      "https://gh-proxy.com/https://raw.githubusercontent.com/shifuf/axonhub/dev/deploy/axonhub-update.sh"
     sed -i 's/\r$//' axonhub-update.sh && chmod +x axonhub-update.sh
 
 日常更新（自动取最新 dev 镜像）：
@@ -45,7 +45,7 @@ Ent 迁移在启动时自动执行（自动建新表/新列）。
 ## 首次部署（如果服务器上还没有 compose）
 
     mkdir -p /www/wwwroot/axonhub && cd /www/wwwroot/axonhub
-    curl -fSL -o docker-compose.yml "https://gh-proxy.com/https://raw.githubusercontent.com/shifuf/axonhub/main/docker-compose.yml"
+    curl -fSL -o docker-compose.yml "https://gh-proxy.com/https://raw.githubusercontent.com/shifuf/axonhub/dev/docker-compose.yml"
     cat > .env <<'EOF'
     DB_PASSWORD=改成强密码
     AXONHUB_HOST_PORT=8090
