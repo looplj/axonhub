@@ -239,6 +239,118 @@ test.describe('Admin Channels Management', () => {
     expect(payload.variables.input.baseURL).toBe(baseURL)
   })
 
+  test('can override the global response timeout for a channel', async ({ page }) => {
+    const uniqueSuffix = Date.now().toString().slice(-6)
+    const name = `pw-test-TimeoutChannel ${uniqueSuffix}`
+    const baseURL = `https://api.timeout-${uniqueSuffix}.example.com`
+
+    // Step 1: Create a channel with a custom response timeout.
+    await page.getByTestId('add-channel-button').click()
+
+    const createDialog = page.getByRole('dialog')
+    await expect(createDialog).toBeVisible()
+    await createDialog.getByTestId('channel-name-input').fill(name)
+    await createDialog.getByTestId('provider-openai').click()
+    await createDialog.getByTestId('channel-base-url-input').fill(baseURL)
+    await createDialog.getByTestId('channel-api-key-input').fill('sk-test-key-' + uniqueSuffix)
+
+    const modelBadge = createDialog.getByTestId('quick-model-gpt-4o')
+    await expect(modelBadge).toBeVisible({ timeout: 5000 })
+    await modelBadge.click()
+    await createDialog.getByTestId('add-selected-models-button').click()
+    await page.waitForTimeout(500)
+
+    const defaultTestModelSelect = createDialog.getByTestId('default-test-model-select')
+    if ((await defaultTestModelSelect.count()) > 0) {
+      await defaultTestModelSelect.click()
+      await page.getByRole('option').first().click()
+      await page.waitForTimeout(300)
+    }
+
+    // New channels inherit the global timeouts by default; the override inputs
+    // only appear after switching to Custom.
+    const timeoutMode = createDialog.getByTestId('response-timeout-mode')
+    await expect(timeoutMode).toContainText(/Inherit|继承/i)
+    await expect(createDialog.getByTestId('response-timeout-stream-first-event')).toHaveCount(0)
+
+    await timeoutMode.click()
+    await page
+      .getByRole('option', { name: /^Custom$|^自定义$/i })
+      .first()
+      .click()
+
+    const streamTimeoutInput = createDialog.getByTestId('response-timeout-stream-first-event')
+    const nonStreamTimeoutInput = createDialog.getByTestId('response-timeout-non-stream')
+    await expect(streamTimeoutInput).toBeVisible()
+    await expect(nonStreamTimeoutInput).toBeVisible()
+    await streamTimeoutInput.fill('11')
+    await nonStreamTimeoutInput.fill('0')
+
+    await Promise.all([
+      waitForGraphQLOperation(page, 'CreateChannel'),
+      createDialog.getByTestId('channel-submit-button').click(),
+    ])
+    await expect(createDialog).not.toBeVisible({ timeout: 10000 })
+    await page.waitForTimeout(1000)
+
+    // Make sure the new (disabled by default) channel is visible in the table.
+    const statusBtn = page
+      .locator('button')
+      .filter({ hasText: /Status|状态/i })
+      .and(page.locator('[aria-haspopup="dialog"]'))
+      .first()
+    const statusBtnText = await statusBtn.textContent()
+    if (statusBtnText && /Enabled|启用/i.test(statusBtnText) && !/Disabled|禁用/i.test(statusBtnText)) {
+      await statusBtn.click()
+      await page.waitForTimeout(500)
+      const disabledOpt = page
+        .getByRole('option', { name: /Disabled|禁用/i })
+        .or(page.locator('[role="option"]').filter({ hasText: /Disabled|禁用/i }))
+      if ((await disabledOpt.count()) > 0) {
+        await disabledOpt.first().click()
+        await page.waitForTimeout(500)
+      }
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(500)
+    }
+
+    // Step 2: Reopen the channel and verify the override was persisted and echoed.
+    const channelsTable = page.locator('[data-testid="channels-table"]')
+    const channelRow = channelsTable.locator('tbody tr').filter({ hasText: name })
+    await expect(channelRow).toBeVisible()
+    await channelRow.locator('td:last-child button').first().click()
+
+    const editDialog = page.getByRole('dialog', { name: /编辑|Edit Channel/i })
+    await expect(editDialog).toBeVisible()
+    await expect(editDialog.getByTestId('response-timeout-mode')).toContainText(/Custom|自定义/i)
+    await expect(editDialog.getByTestId('response-timeout-stream-first-event')).toHaveValue('11')
+    await expect(editDialog.getByTestId('response-timeout-non-stream')).toHaveValue('0')
+
+    // Step 3: Switch back to inherit and confirm the override is cleared.
+    await editDialog.getByTestId('response-timeout-mode').click()
+    await page
+      .getByRole('option', { name: /Inherit|继承/i })
+      .first()
+      .click()
+    await expect(editDialog.getByTestId('response-timeout-stream-first-event')).toHaveCount(0)
+
+    await Promise.all([
+      waitForGraphQLOperation(page, 'UpdateChannel'),
+      editDialog.getByRole('button', { name: /Edit|编辑|保存|Save|更新|Update/i }).click(),
+    ])
+    await expect(editDialog).not.toBeVisible({ timeout: 10000 })
+    await page.waitForTimeout(1000)
+
+    const updatedRow = channelsTable.locator('tbody tr').filter({ hasText: name })
+    await expect(updatedRow).toBeVisible()
+    await updatedRow.locator('td:last-child button').first().click()
+
+    const reopenedDialog = page.getByRole('dialog', { name: /编辑|Edit Channel/i })
+    await expect(reopenedDialog).toBeVisible()
+    await expect(reopenedDialog.getByTestId('response-timeout-mode')).toContainText(/Inherit|继承/i)
+    await expect(reopenedDialog.getByTestId('response-timeout-stream-first-event')).toHaveCount(0)
+  })
+
   test('can test a channel', async ({ page }) => {
     // Wait for table to load
     await page.waitForTimeout(1000)
