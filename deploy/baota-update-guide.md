@@ -50,7 +50,7 @@ Ent 迁移在启动时自动执行（自动建新表/新列）。
     DB_PASSWORD=改成强密码
     AXONHUB_HOST_PORT=8090
     POSTGRES_IMAGE=postgres:16-alpine
-    AXONHUB_IMAGE=ghcr.io/shifuf/axonhub:dev-latest
+    AXONHUB_IMAGE=ghcr.io/shifuf/axonhub:latest
     EOF
     docker compose up -d
     curl http://127.0.0.1:8090/health
@@ -70,7 +70,7 @@ SQLite 单容器部署：把 docker-compose.yml 中 axonhub-sqlite 段取消注�
 
 - unstable 分支：每天自动镜像上游 looplj/axonhub（sync-upstream.yml）
 - dev 分支：你的功能分支；push 到 dev 触发 docker-publish.yml，
-  构建并发布 ghcr.io/shifuf/axonhub:dev-latest 与 dev-<sha>
+  构建并发布 ghcr.io/shifuf/axonhub:latest 与 dev-<sha>
 
 合并流程：本地 git fetch origin && git merge origin/unstable（解决冲突、
 review 后）-> git push origin dev -> Actions 出镜像 -> 服务器

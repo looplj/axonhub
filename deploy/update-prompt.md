@@ -20,7 +20,7 @@
    拷贝 frontend/dist/* 到 internal/server/static/dist/（先清空 assets）
    go build -o axonhub.exe ./cmd/axonhub
 3. 提交 git（按功能分组写清楚 commit message），push origin dev
-   → 触发 docker-publish.yml 自动构建 ghcr.io/shifuf/axonhub:dev-latest 和 dev-<sha>
+   → 触发 docker-publish.yml 自动构建 ghcr.io/shifuf/axonhub:latest 和 dev-<sha>
 4. 发 Release：写 RELEASE_NOTES_vX.Y.Z.md（Highlights 分块、镜像 tag、
    升级说明、测试结果），打 tag v*（不能与已有 tag 撞名，先 git tag -l 检查），
    push tag 触发 release.yml（goreleaser 多平台二进制 + dist.tar.gz）
@@ -33,7 +33,7 @@
       "https://gh-proxy.com/https://raw.githubusercontent.com/shifuf/axonhub/dev/deploy/axonhub-update.sh"
     sed -i 's/\r$//' axonhub-update.sh && chmod +x axonhub-update.sh
     # 日常更新
-    bash axonhub-update.sh              # dev-latest
+    bash axonhub-update.sh              # latest
     bash axonhub-update.sh dev-<sha>    # 锁定某次构建
     # 验证
     curl http://127.0.0.1:8090/health

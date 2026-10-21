@@ -2,12 +2,12 @@
 # AxonHub one-shot seamless updater for Baota managed Docker deployments.
 #
 # Usage:
-#   bash axonhub-update.sh              # update to dev-latest
+#   bash axonhub-update.sh              # update to latest
 #   bash axonhub-update.sh dev-1bc55dd  # pin a specific image tag
 #
 # Env:
 #   AXONHUB_DIR    deployment directory (default: auto-detect /www/wwwroot/axonhub)
-#   IMAGE          full image reference (default: ghcr.io/shifuf/axonhub:dev-latest)
+#   IMAGE          full image reference (default: ghcr.io/shifuf/axonhub:latest)
 #   PULL_IMAGES    set to 1 to run "docker compose pull" first (default: skip,
 #                  avoids ghcr.io timeouts in mainland networks)
 #   SKIP_BACKUP    set to 1 to skip the pre-update backup (not recommended)
@@ -20,7 +20,7 @@ ok()    { echo -e "${GREEN}[OK]${NC} $1" >&2; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
 fail()  { echo -e "${RED}[FAIL]${NC} $1" >&2; exit 1; }
 
-DEFAULT_IMAGE="ghcr.io/shifuf/axonhub:dev-latest"
+DEFAULT_IMAGE="ghcr.io/shifuf/axonhub:latest"
 AXONHUB_DIR="${AXONHUB_DIR:-}"
 IMAGE="${IMAGE:-}"
 VERSION_ARG="${1:-}"
@@ -68,6 +68,9 @@ fi
 info "deploy dir: $AXONHUB_DIR"
 
 # ---------------------------------------------------------------- resolve target image
+# This updater always targets the FORK image (shifuf/axonhub): deployments
+# that still run the upstream image get switched over on the first run.
+# CURRENT_IMAGE (from the old .env) is only kept for rollback.
 if [ -f ".env" ] && grep -q '^AXONHUB_IMAGE=' .env; then
   CURRENT_IMAGE="$(grep '^AXONHUB_IMAGE=' .env | head -n1 | cut -d= -f2-)"
 else
@@ -78,11 +81,11 @@ if [ -n "$IMAGE" ]; then
   NEW_IMAGE="$IMAGE"
 elif [ -n "$VERSION_ARG" ]; then
   case "$VERSION_ARG" in
-    dev-*) NEW_IMAGE="${CURRENT_IMAGE%%:*}:${VERSION_ARG}" ;;
-    *)     NEW_IMAGE="${CURRENT_IMAGE%%:*}:${VERSION_ARG#v}" ;;
+    dev-*) NEW_IMAGE="${DEFAULT_IMAGE%%:*}:${VERSION_ARG}" ;;
+    *)     NEW_IMAGE="${DEFAULT_IMAGE%%:*}:${VERSION_ARG#v}" ;;
   esac
 else
-  NEW_IMAGE="${CURRENT_IMAGE%%:*}:dev-latest"
+  NEW_IMAGE="$DEFAULT_IMAGE"
 fi
 info "target image: $NEW_IMAGE"
 
