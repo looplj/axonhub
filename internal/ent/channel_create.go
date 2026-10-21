@@ -251,6 +251,12 @@ func (_c *ChannelCreate) SetNillableAutoDisableExpiresAt(v *time.Time) *ChannelC
 	return _c
 }
 
+// SetModelCooldowns sets the "model_cooldowns" field.
+func (_c *ChannelCreate) SetModelCooldowns(v []objects.ModelCooldown) *ChannelCreate {
+	_c.mutation.SetModelCooldowns(v)
+	return _c
+}
+
 // SetRemark sets the "remark" field.
 func (_c *ChannelCreate) SetRemark(v string) *ChannelCreate {
 	_c.mutation.SetRemark(v)
@@ -456,6 +462,10 @@ func (_c *ChannelCreate) defaults() error {
 		v := channel.DefaultOrderingWeight
 		_c.mutation.SetOrderingWeight(v)
 	}
+	if _, ok := _c.mutation.ModelCooldowns(); !ok {
+		v := channel.DefaultModelCooldowns
+		_c.mutation.SetModelCooldowns(v)
+	}
 	if _, ok := _c.mutation.Endpoints(); !ok {
 		v := channel.DefaultEndpoints
 		_c.mutation.SetEndpoints(v)
@@ -612,6 +622,10 @@ func (_c *ChannelCreate) createSpec() (*Channel, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.AutoDisableExpiresAt(); ok {
 		_spec.SetField(channel.FieldAutoDisableExpiresAt, field.TypeTime, value)
 		_node.AutoDisableExpiresAt = &value
+	}
+	if value, ok := _c.mutation.ModelCooldowns(); ok {
+		_spec.SetField(channel.FieldModelCooldowns, field.TypeJSON, value)
+		_node.ModelCooldowns = value
 	}
 	if value, ok := _c.mutation.Remark(); ok {
 		_spec.SetField(channel.FieldRemark, field.TypeString, value)
@@ -1081,6 +1095,24 @@ func (u *ChannelUpsert) ClearAutoDisableExpiresAt() *ChannelUpsert {
 	return u
 }
 
+// SetModelCooldowns sets the "model_cooldowns" field.
+func (u *ChannelUpsert) SetModelCooldowns(v []objects.ModelCooldown) *ChannelUpsert {
+	u.Set(channel.FieldModelCooldowns, v)
+	return u
+}
+
+// UpdateModelCooldowns sets the "model_cooldowns" field to the value that was provided on create.
+func (u *ChannelUpsert) UpdateModelCooldowns() *ChannelUpsert {
+	u.SetExcluded(channel.FieldModelCooldowns)
+	return u
+}
+
+// ClearModelCooldowns clears the value of the "model_cooldowns" field.
+func (u *ChannelUpsert) ClearModelCooldowns() *ChannelUpsert {
+	u.SetNull(channel.FieldModelCooldowns)
+	return u
+}
+
 // SetRemark sets the "remark" field.
 func (u *ChannelUpsert) SetRemark(v string) *ChannelUpsert {
 	u.Set(channel.FieldRemark, v)
@@ -1523,6 +1555,27 @@ func (u *ChannelUpsertOne) UpdateAutoDisableExpiresAt() *ChannelUpsertOne {
 func (u *ChannelUpsertOne) ClearAutoDisableExpiresAt() *ChannelUpsertOne {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearAutoDisableExpiresAt()
+	})
+}
+
+// SetModelCooldowns sets the "model_cooldowns" field.
+func (u *ChannelUpsertOne) SetModelCooldowns(v []objects.ModelCooldown) *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetModelCooldowns(v)
+	})
+}
+
+// UpdateModelCooldowns sets the "model_cooldowns" field to the value that was provided on create.
+func (u *ChannelUpsertOne) UpdateModelCooldowns() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateModelCooldowns()
+	})
+}
+
+// ClearModelCooldowns clears the value of the "model_cooldowns" field.
+func (u *ChannelUpsertOne) ClearModelCooldowns() *ChannelUpsertOne {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearModelCooldowns()
 	})
 }
 
@@ -2140,6 +2193,27 @@ func (u *ChannelUpsertBulk) UpdateAutoDisableExpiresAt() *ChannelUpsertBulk {
 func (u *ChannelUpsertBulk) ClearAutoDisableExpiresAt() *ChannelUpsertBulk {
 	return u.Update(func(s *ChannelUpsert) {
 		s.ClearAutoDisableExpiresAt()
+	})
+}
+
+// SetModelCooldowns sets the "model_cooldowns" field.
+func (u *ChannelUpsertBulk) SetModelCooldowns(v []objects.ModelCooldown) *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.SetModelCooldowns(v)
+	})
+}
+
+// UpdateModelCooldowns sets the "model_cooldowns" field to the value that was provided on create.
+func (u *ChannelUpsertBulk) UpdateModelCooldowns() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.UpdateModelCooldowns()
+	})
+}
+
+// ClearModelCooldowns clears the value of the "model_cooldowns" field.
+func (u *ChannelUpsertBulk) ClearModelCooldowns() *ChannelUpsertBulk {
+	return u.Update(func(s *ChannelUpsert) {
+		s.ClearModelCooldowns()
 	})
 }
 

@@ -116,6 +116,7 @@ var schemaGraph = func() *sqlgraph.Schema {
 			channel.FieldErrorMessage:            {Type: field.TypeString, Column: channel.FieldErrorMessage},
 			channel.FieldAutoDisabledAt:          {Type: field.TypeTime, Column: channel.FieldAutoDisabledAt},
 			channel.FieldAutoDisableExpiresAt:    {Type: field.TypeTime, Column: channel.FieldAutoDisableExpiresAt},
+			channel.FieldModelCooldowns:          {Type: field.TypeJSON, Column: channel.FieldModelCooldowns},
 			channel.FieldRemark:                  {Type: field.TypeString, Column: channel.FieldRemark},
 			channel.FieldEndpoints:               {Type: field.TypeJSON, Column: channel.FieldEndpoints},
 		},
@@ -1792,6 +1793,11 @@ func (f *ChannelFilter) WhereAutoDisabledAt(p entql.TimeP) {
 // WhereAutoDisableExpiresAt applies the entql time.Time predicate on the auto_disable_expires_at field.
 func (f *ChannelFilter) WhereAutoDisableExpiresAt(p entql.TimeP) {
 	f.Where(p.Field(channel.FieldAutoDisableExpiresAt))
+}
+
+// WhereModelCooldowns applies the entql json.RawMessage predicate on the model_cooldowns field.
+func (f *ChannelFilter) WhereModelCooldowns(p entql.BytesP) {
+	f.Where(p.Field(channel.FieldModelCooldowns))
 }
 
 // WhereRemark applies the entql string predicate on the remark field.

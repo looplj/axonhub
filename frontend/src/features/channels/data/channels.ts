@@ -682,6 +682,34 @@ const DELETE_DISABLED_CHANNEL_API_KEYS_MUTATION = `
   }
 `;
 
+const FREEZE_CHANNEL_MODEL_MUTATION = `
+  mutation FreezeChannelModel($channelID: ID!, $model: String!, $durationMinutes: Int) {
+    freezeChannelModel(channelID: $channelID, model: $model, durationMinutes: $durationMinutes)
+  }
+`;
+
+const CLEAR_CHANNEL_MODEL_COOLDOWN_MUTATION = `
+  mutation ClearChannelModelCooldown($channelID: ID!, $model: String!) {
+    clearChannelModelCooldown(channelID: $channelID, model: $model)
+  }
+`;
+
+const GET_CHANNEL_MODEL_COOLDOWNS_QUERY = `
+  query GetChannelModelCooldowns($id: ID!) {
+    node(id: $id) {
+      id
+      ... on Channel {
+        modelCooldowns {
+          model
+          reason
+          createdAt
+          expiresAt
+        }
+      }
+    }
+  }
+`;
+
 const GET_CHANNEL_DISABLED_API_KEYS_QUERY = `
   query GetChannelDisabledAPIKeys($id: ID!) {
     node(id: $id) {
@@ -1054,7 +1082,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             apiKeys
             keyGroups {
               name
-              apiKey
+              apiKeys
               models
               enabled
             }
@@ -1177,6 +1205,12 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             reason
             expiresAt
           }
+          modelCooldowns {
+            model
+            reason
+            createdAt
+            expiresAt
+          }
           liveLimiterStats {
             inFlight
             waiting
@@ -1203,6 +1237,8 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
           status
           defaultTestModel
           errorMessage
+          autoDisabledAt
+          autoDisableExpiresAt
           disabledAPIKeys {
             key
             disabledAt
@@ -1210,6 +1246,12 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
             reason
             expiresAt
            }
+          modelCooldowns {
+            model
+            reason
+            createdAt
+            expiresAt
+          }
 `;
 
 const CHANNEL_QUERY_ROUTING_STATUS_SELECTION = `
@@ -2402,6 +2444,90 @@ export function useChannelProbeData(channelIDs: string[], options?: { enabled?: 
     },
     enabled: channelIDs.length > 0 && options?.enabled !== false,
     staleTime: 1 * 60 * 1000, // 1 minute
+  });
+}
+
+// Channel Model Cooldown Hooks
+export function useFreezeChannelModel() {
+  const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (variables: { channelID: string; model: string; durationMinutes?: number }) => {
+      try {
+        const data = await graphqlRequest<{ freezeChannelModel: boolean }>(FREEZE_CHANNEL_MODEL_MUTATION, {
+          channelID: variables.channelID,
+          model: variables.model,
+          durationMinutes: variables.durationMinutes && variables.durationMinutes > 0 ? variables.durationMinutes : null,
+        });
+        return data.freezeChannelModel;
+      } catch (error) {
+        handleError(error, t('common.errors.internalServerError'));
+        return false;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      queryClient.invalidateQueries({ queryKey: ['channel'] });
+      queryClient.invalidateQueries({ queryKey: ['channelModelCooldowns'] });
+    },
+  });
+}
+
+export function useClearChannelModelCooldown() {
+  const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
+
+  return useMutation({
+    mutationFn: async (variables: { channelID: string; model: string }) => {
+      try {
+        const data = await graphqlRequest<{ clearChannelModelCooldown: boolean }>(
+          CLEAR_CHANNEL_MODEL_COOLDOWN_MUTATION,
+          variables,
+        );
+        return data.clearChannelModelCooldown;
+      } catch (error) {
+        handleError(error, t('common.errors.internalServerError'));
+        return false;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      queryClient.invalidateQueries({ queryKey: ['channel'] });
+      queryClient.invalidateQueries({ queryKey: ['channelModelCooldowns'] });
+    },
+  });
+}
+
+// Channel Model Cooldowns Query
+export function useChannelModelCooldowns(channelId: string, options?: { enabled?: boolean }) {
+  const { handleError } = useErrorHandler();
+  const { t } = useTranslation();
+
+  return useQuery({
+    queryKey: ['channelModelCooldowns', channelId],
+    queryFn: async () => {
+      try {
+        const data = await graphqlRequest<{
+          node: {
+            id: string;
+            modelCooldowns: Array<{
+              model: string;
+              reason?: string | null;
+              createdAt: string;
+              expiresAt?: string | null;
+            }>;
+          };
+        }>(GET_CHANNEL_MODEL_COOLDOWNS_QUERY, { id: channelId });
+        return data.node?.modelCooldowns || [];
+      } catch (error) {
+        handleError(error, t('common.errors.internalServerError'));
+        return [];
+      }
+    },
+    enabled: !!channelId && options?.enabled !== false,
   });
 }
 

@@ -202,8 +202,12 @@ func init() {
 	channelDescOrderingWeight := channelFields[14].Descriptor()
 	// channel.DefaultOrderingWeight holds the default value on creation for the ordering_weight field.
 	channel.DefaultOrderingWeight = channelDescOrderingWeight.Default.(int)
+	// channelDescModelCooldowns is the schema descriptor for model_cooldowns field.
+	channelDescModelCooldowns := channelFields[18].Descriptor()
+	// channel.DefaultModelCooldowns holds the default value on creation for the model_cooldowns field.
+	channel.DefaultModelCooldowns = channelDescModelCooldowns.Default.([]objects.ModelCooldown)
 	// channelDescEndpoints is the schema descriptor for endpoints field.
-	channelDescEndpoints := channelFields[19].Descriptor()
+	channelDescEndpoints := channelFields[20].Descriptor()
 	// channel.DefaultEndpoints holds the default value on creation for the endpoints field.
 	channel.DefaultEndpoints = channelDescEndpoints.Default.([]objects.ChannelEndpoint)
 	channelmodelpriceMixin := schema.ChannelModelPrice{}.Mixin()

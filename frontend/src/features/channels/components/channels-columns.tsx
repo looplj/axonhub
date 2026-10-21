@@ -24,6 +24,7 @@ import {
   IconHistory,
   IconPlugConnected,
   IconClockPlay,
+  IconSnowflake,
 } from '@tabler/icons-react';
 import { Google } from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +56,9 @@ import { ChannelLimiterCell } from './channel-limiter-cell';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChatProtocolIcon, MessagesProtocolIcon, ResponsesProtocolIcon } from './endpoint-protocol-icons';
 import { RELAY_PROTOCOLS, RELAY_PROTOCOL_LABEL_KEYS, getChannelRelayProtocols, type RelayProtocol } from '../data/relay-protocols';
+
+// Keep in sync with the reason written by the backend client-cancellation cooldown.
+const CLIENT_CANCELLATION_COOLDOWN_REASON_PREFIX = 'Client cancellation cooldown';
 
 const WEIGHT_PRECISION = 4;
 const MIN_WEIGHT = 0;
@@ -156,6 +160,13 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const isArchived = channel.status === 'archived';
   const hasError = channel.errorMessage != null;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
+  const activeModelCooldowns =
+    channelPermissions.canWrite && channelPermissions.canRead
+      ? (channel.modelCooldowns ?? []).filter(
+          (cooldown) => !cooldown.expiresAt || new Date(cooldown.expiresAt).getTime() > Date.now(),
+        )
+      : [];
+  const hasModelCooldowns = activeModelCooldowns.length > 0;
 
   const handleDefaultTest = () => {
     testChannel.mutate({
@@ -313,6 +324,18 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
               {t('channels.actions.disabledAPIKeys', { count: channel.disabledAPIKeys?.length ?? 0 })}
             </DropdownMenuItem>
           )}
+          {hasModelCooldowns && (
+            <DropdownMenuItem
+              onClick={() => {
+                setCurrentRow(channel);
+                setOpen('modelCooldowns');
+              }}
+              className='text-cyan-600!'
+            >
+              <IconSnowflake size={16} className='mr-2' />
+              {t('channels.actions.modelCooldowns', { count: activeModelCooldowns.length })}
+            </DropdownMenuItem>
+          )}
           {hasError && (
             <DropdownMenuItem
               onClick={() => {
@@ -394,11 +417,43 @@ function getProxyURLSummary(proxyURL: string): { label: string; detail?: string 
   }
 }
 
+// getCooldownRemainingMinutes reports how many minutes are left in a temporary
+// disable window (auto disable or client-cancellation cooldown). Zero means the
+// channel is not cooling down right now.
+function getCooldownRemainingMinutes(channel: Channel): number {
+  if (channel.status !== 'disabled' || !channel.autoDisableExpiresAt) {
+    return 0;
+  }
+
+  const expiresAt = new Date(channel.autoDisableExpiresAt).getTime();
+  if (Number.isNaN(expiresAt)) {
+    return 0;
+  }
+
+  const remainingMs = expiresAt - Date.now();
+  if (remainingMs <= 0) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil(remainingMs / 60000));
+}
+
 // Memoized cell components to avoid recreating on every render
 const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDefaultMode?: QuotaRoutingMode }) => {
   const { t } = useTranslation();
   const channel = row.original;
   const hasError = channel.errorMessage != null;
+  const cooldownMinutes = getCooldownRemainingMinutes(channel);
+  const isCoolingDown = cooldownMinutes > 0;
+  // The backend marks a client-cancellation cooldown with a dedicated reason so
+  // operators can tell it apart from a status-code auto-disable cooldown.
+  const isCancellationCooldown = isCoolingDown && (channel.errorMessage ?? '').startsWith(CLIENT_CANCELLATION_COOLDOWN_REASON_PREFIX);
+  const cooldownLabelKey = isCancellationCooldown
+    ? 'channels.status.cancellationCooldownRemaining'
+    : 'channels.status.coolingDownRemaining';
+  const cooldownDescriptionKey = isCancellationCooldown
+    ? 'channels.status.cancellationCooldownDescription'
+    : 'channels.status.coolingDownDescription';
   const disabledKeysCount = channel.disabledAPIKeys?.length ?? 0;
   const hasDisabledKeys = disabledKeysCount > 0;
   const websiteURL = getChannelWebsiteURL(channel.baseURL);
@@ -409,38 +464,51 @@ const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDe
       href={websiteURL}
       target='_blank'
       rel='noopener noreferrer'
-      className={cn('truncate font-medium hover:underline', hasError ? 'text-destructive' : '')}
+      className={cn(
+        'truncate font-medium hover:underline',
+        hasError ? 'text-destructive' : isCoolingDown && 'text-muted-foreground'
+      )}
       onClick={(e) => e.stopPropagation()}
     >
       {row.getValue('name')}
     </a>
   ) : (
-    <div className={cn('truncate font-medium', hasError && 'text-destructive')}>{row.getValue('name')}</div>
+    <div className={cn('truncate font-medium', hasError ? 'text-destructive' : isCoolingDown && 'text-muted-foreground')}>
+      {row.getValue('name')}
+    </div>
   );
 
   const content = (
     <div className='flex min-w-0 justify-start'>
-      <div className='flex min-w-0 max-w-56 items-center gap-2'>
-        {nameElement}
-        {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
-        {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
-        {quotaRoutingIndicator === 'exhausted' && (
-          <>
-            <IconCoin className='h-4 w-4 shrink-0 text-destructive' aria-hidden='true' />
-            <span className='sr-only'>{t('quota.status.exhausted')}</span>
-          </>
-        )}
-        {quotaRoutingIndicator === 'backpressure' && (
-          <>
-            <IconGauge className='h-4 w-4 shrink-0 text-amber-500' aria-hidden='true' />
-            <span className='sr-only'>{t('quota.status.backpressure')}</span>
-          </>
+      <div className='flex min-w-0 max-w-56 flex-col items-start gap-0.5'>
+        <div className='flex min-w-0 items-center gap-2'>
+          {nameElement}
+          {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
+          {isCoolingDown && <IconClockPlay className='h-4 w-4 shrink-0 text-amber-500' />}
+          {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
+          {quotaRoutingIndicator === 'exhausted' && (
+            <>
+              <IconCoin className='h-4 w-4 shrink-0 text-destructive' aria-hidden='true' />
+              <span className='sr-only'>{t('quota.status.exhausted')}</span>
+            </>
+          )}
+          {quotaRoutingIndicator === 'backpressure' && (
+            <>
+              <IconGauge className='h-4 w-4 shrink-0 text-amber-500' aria-hidden='true' />
+              <span className='sr-only'>{t('quota.status.backpressure')}</span>
+            </>
+          )}
+        </div>
+        {isCoolingDown && (
+          <span className='text-xs font-medium text-amber-600 dark:text-amber-400'>
+            {t(cooldownLabelKey, { minutes: cooldownMinutes })}
+          </span>
         )}
       </div>
     </div>
   );
 
-  if (!hasError && !hasDisabledKeys && !quotaRoutingIndicator) {
+  if (!hasError && !hasDisabledKeys && !quotaRoutingIndicator && !isCoolingDown) {
     return content;
   }
 
@@ -455,6 +523,14 @@ const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDe
                 defaultValue: channel.errorMessage,
               })}
             </p>
+          )}
+          {isCoolingDown && (
+            <div className='space-y-0.5'>
+              <p className='text-sm text-amber-600 dark:text-amber-400'>
+                {t(cooldownLabelKey, { minutes: cooldownMinutes })}
+              </p>
+              <p className='text-muted-foreground text-xs'>{t(cooldownDescriptionKey)}</p>
+            </div>
           )}
           {hasDisabledKeys && (
             <p className='text-sm text-amber-500'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>

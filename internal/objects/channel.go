@@ -334,6 +334,26 @@ func (dk DisabledAPIKey) IsExpired() bool {
 	return dk.ExpiresAt != nil && time.Now().After(*dk.ExpiresAt)
 }
 
+// ModelCooldown is a model-scoped temporary cooldown on one channel, for
+// example raised by the client-cancellation cooldown policy. While active the
+// channel stays enabled for its other models but is skipped for this one.
+type ModelCooldown struct {
+	Model     string     `json:"model"`
+	Reason    string     `json:"reason,omitempty"`
+	CreatedAt time.Time  `json:"createdAt"`
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
+}
+
+// IsExpired reports whether a model cooldown has elapsed.
+func (mc ModelCooldown) IsExpired() bool {
+	return mc.ExpiresAt != nil && time.Now().After(*mc.ExpiresAt)
+}
+
+// IsActive reports whether the cooldown still blocks the model.
+func (mc ModelCooldown) IsActive() bool {
+	return mc.ExpiresAt == nil || !mc.IsExpired()
+}
+
 type ChannelCredentials struct {
 	// APIKey is the API key for the channel, for the single key channel, e.g. Codex, Claude code, Antigravity.
 	// It is kept for backward compatibility with existing data, recommend to use OAuth instead.
@@ -375,24 +395,78 @@ type VertexAPIKey struct {
 	Region    string `json:"region"`
 }
 
-// KeyGroup is a named API key with an optional list of models it serves. It is
-// the grouped form of a channel credential: a channel can hold several groups,
-// each with its own key and model allowlist, so a request can be routed to the
-// group whose Models contains the requested model.
+// KeyGroup is a named group of API keys with an optional list of models it
+// serves. It is the grouped form of a channel credential: a channel can hold
+// several groups, each with its own keys and model allowlist, so a request can be
+// routed to the group whose Models contains the requested model.
+//
+// A group holds one or more keys. Multiple keys rotate round-robin, so a group is
+// also the unit that survives a single key being exhausted.
 type KeyGroup struct {
 	// Name is a human label, e.g. "公益站-codex分组".
 	Name string `json:"name,omitempty"`
 
-	// APIKey is the key for this group.
-	APIKey string `json:"apiKey"`
+	// APIKeys are the keys of this group, used round-robin. A group with several
+	// keys rotates between them the same way the flat APIKeys list does.
+	APIKeys []string `json:"apiKeys,omitempty"`
 
-	// Models is the model allowlist for this key. An empty list means the key
+	// APIKey is the legacy single-key field. It is still read so groups persisted
+	// before a group could hold several keys keep working, and it is normalized
+	// into APIKeys by Normalize. New writes only use APIKeys.
+	APIKey string `json:"apiKey,omitempty"`
+
+	// Models is the model allowlist for this group. An empty list means the group
 	// applies to every model (typically because it has not been probed yet).
 	Models []string `json:"models,omitempty"`
 
 	// Enabled reports whether this group participates in routing. A disabled
 	// group is kept for reference but never selected.
 	Enabled bool `json:"enabled"`
+}
+
+// Keys returns every non-empty key of the group, with the legacy single-key field
+// folded in first so pre-existing groups keep their key. The result is
+// deduplicated while preserving order.
+func (g KeyGroup) Keys() []string {
+	keys := make([]string, 0, len(g.APIKeys)+1)
+
+	if g.APIKey != "" {
+		keys = append(keys, g.APIKey)
+	}
+
+	for _, key := range g.APIKeys {
+		if key != "" {
+			keys = append(keys, key)
+		}
+	}
+
+	// Deduplicate while preserving order: the legacy field may repeat a key that
+	// also appears in the list after an edit.
+	seen := make(map[string]struct{}, len(keys))
+	unique := keys[:0]
+
+	for _, key := range keys {
+		if _, ok := seen[key]; ok {
+			continue
+		}
+
+		seen[key] = struct{}{}
+
+		unique = append(unique, key)
+	}
+
+	return unique
+}
+
+// Normalize folds the legacy single-key field into APIKeys so every reader only
+// has to look at one field. It is idempotent and safe to call on a zero group.
+func (g *KeyGroup) Normalize() {
+	if g == nil {
+		return
+	}
+
+	g.APIKeys = g.Keys()
+	g.APIKey = ""
 }
 
 // GetAllAPIKeys returns all API keys for the channel.
@@ -411,9 +485,7 @@ func (c *ChannelCredentials) GetAllAPIKeys() []string {
 
 	if c.HasKeyGroups() {
 		for _, group := range c.KeyGroups {
-			if group.APIKey != "" {
-				keys = append(keys, group.APIKey)
-			}
+			keys = append(keys, group.Keys()...)
 		}
 	} else {
 		// Add legacy APIKey if present (only if not OAuth credential)
@@ -450,8 +522,8 @@ func (c *ChannelCredentials) EnabledGroupKeys() []string {
 
 	keys := make([]string, 0, len(c.KeyGroups))
 	for _, group := range c.KeyGroups {
-		if group.Enabled && group.APIKey != "" {
-			keys = append(keys, group.APIKey)
+		if group.Enabled {
+			keys = append(keys, group.Keys()...)
 		}
 	}
 
@@ -475,12 +547,12 @@ func (c *ChannelCredentials) EnabledGroupKeysForModel(model string) ([]string, b
 	matched := make([]string, 0, len(c.KeyGroups))
 
 	for _, group := range c.KeyGroups {
-		if !group.Enabled || group.APIKey == "" {
+		if !group.Enabled {
 			continue
 		}
 
 		if len(group.Models) == 0 || slices.Contains(group.Models, model) {
-			matched = append(matched, group.APIKey)
+			matched = append(matched, group.Keys()...)
 		}
 	}
 

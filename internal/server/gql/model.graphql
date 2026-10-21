@@ -197,8 +197,14 @@ input ChannelTagsRegexAssociationInput {
 
 type ModelChannelConnection {
   channel: Channel!
+  keyGroup: KeyGroupRef
   models: [ChannelModelEntry!]!
   priority: Int!
+}
+
+type KeyGroupRef {
+  index: Int!
+  name: String!
 }
 
 type ChannelModelEntry {

@@ -34,12 +34,14 @@ func newTestChannelService(client *ent.Client) *ChannelService {
 		AbstractService: &AbstractService{
 			db: client,
 		},
-		SystemService:             mockSysSvc,
-		WebhookNotifier:           NewWebhookNotifier(mockSysSvc, httpclient.NewHttpClient()),
-		channelPerfMetrics:        make(map[int]*channelMetrics),
-		apiKeyErrorCounts:         make(map[int]map[string]map[int]int),
-		apiKeyRuleActionsInFlight: make(map[int]map[string]bool),
-		perfWindowSeconds:         600,
+		SystemService:               mockSysSvc,
+		WebhookNotifier:             NewWebhookNotifier(mockSysSvc, httpclient.NewHttpClient()),
+		channelPerfMetrics:          make(map[int]*channelMetrics),
+		apiKeyErrorCounts:           make(map[int]map[string]map[int]int),
+		apiKeyRuleActionsInFlight:   make(map[int]map[string]bool),
+		cancellationCounts:          make(map[int]map[string]int),
+		cancellationActionsInFlight: make(map[int]map[string]bool),
+		perfWindowSeconds:           600,
 	}
 
 	svc.enabledChannelsCache = live.NewCache(live.Options[[]*Channel]{

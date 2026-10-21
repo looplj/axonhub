@@ -1563,16 +1563,25 @@ func ValidateKeyGroups(credentials objects.ChannelCredentials) error {
 	names := make(map[string]struct{}, len(credentials.KeyGroups))
 
 	for i, group := range credentials.KeyGroups {
-		apiKey := strings.TrimSpace(group.APIKey)
-		if apiKey == "" {
+		// A group may hold several keys that rotate round-robin, so every key of
+		// the group is checked, not just the first.
+		keys := group.Keys()
+		if len(keys) == 0 {
 			return fmt.Errorf("key group %d is missing an API key", i+1)
 		}
 
-		if _, found := seen[apiKey]; found {
-			return fmt.Errorf("api key %q is used by more than one key group", safeKeySuffix(apiKey))
-		}
+		for _, key := range keys {
+			apiKey := strings.TrimSpace(key)
+			if apiKey == "" {
+				continue
+			}
 
-		seen[apiKey] = struct{}{}
+			if _, found := seen[apiKey]; found {
+				return fmt.Errorf("api key %q is used by more than one key group", safeKeySuffix(apiKey))
+			}
+
+			seen[apiKey] = struct{}{}
+		}
 
 		name := strings.TrimSpace(group.Name)
 		if name != "" {

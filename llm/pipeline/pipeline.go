@@ -327,7 +327,10 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		}
 
 		// 2. If same-channel retry not possible/exhausted, try channel switching
-		if !canRetry {
+		// A canceled request has no client left to receive the response, so
+		// switching channels would only burn upstream quota and charge an innocent
+		// channel with a failure it did not cause.
+		if !canRetry && !errors.Is(lastErr, context.Canceled) && !errors.Is(ctx.Err(), context.Canceled) {
 			if retryable, ok := p.Outbound.(Retryable); ok {
 				if channelSwitches < p.maxChannelRetries && retryable.HasMoreChannels() {
 					if err := retryable.NextChannel(ctx); err == nil {

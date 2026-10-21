@@ -678,6 +678,13 @@ export interface UnassociatedChannel {
     name: string;
     type: string;
     status: string;
+    tags?: string[];
+    modelCooldowns?: Array<{
+      model: string;
+      reason?: string | null;
+      createdAt: string;
+      expiresAt?: string | null;
+    }>;
   };
   models: string[];
 }
@@ -737,6 +744,11 @@ export interface ChannelModelEntry {
   source: string;
 }
 
+export interface KeyGroupRef {
+  index: number;
+  name: string;
+}
+
 export interface ModelChannelConnection {
   channel: {
     id: string;
@@ -744,6 +756,7 @@ export interface ModelChannelConnection {
     type: string;
     status: string;
   };
+  keyGroup?: KeyGroupRef | null;
   models: ChannelModelEntry[];
 }
 
@@ -766,6 +779,17 @@ const MODEL_CHANNEL_CONNECTIONS_QUERY = `
         name
         type
         status
+        tags
+        modelCooldowns {
+          model
+          reason
+          createdAt
+          expiresAt
+        }
+      }
+      keyGroup {
+        index
+        name
       }
       models {
         requestModel

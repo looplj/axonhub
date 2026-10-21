@@ -158,10 +158,16 @@ locales_backup
 # Chunkhound local database
 .chunkhound/
 .superset/
+
+# Local dev artifacts
+axonhub.exe
+axonhub
+*.local.db
 .snow/
 config.schema.json
 *.db-shm
 *.db-wal
+.agent/
 *.agent/summary
 .factory
 .omo/

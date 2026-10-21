@@ -379,8 +379,11 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 
 // Channel Credentials
 export const keyGroupSchema = z.object({
-  name: z.string().optional().nullable(),
-  apiKey: z.string(),
+  name: z.string().min(1).optional().nullable(),
+  // A group holds one or more keys; several keys rotate round-robin. apiKey is
+  // the legacy single-key field and is still accepted so stored data reads back.
+  apiKeys: z.array(z.string()).optional().nullable(),
+  apiKey: z.string().optional().nullable(),
   models: z.array(z.string()).optional().nullable(),
   enabled: z.boolean(),
 });
@@ -452,6 +455,15 @@ export const disabledAPIKeySchema = z.object({
 });
 export type DisabledAPIKey = z.infer<typeof disabledAPIKeySchema>;
 
+// Model-scoped cooldown on one channel (e.g. client-cancellation cooldown).
+export const modelCooldownSchema = z.object({
+  model: z.string(),
+  reason: z.string().optional().nullable(),
+  createdAt: z.string(),
+  expiresAt: z.string().optional().nullable(),
+});
+export type ModelCooldown = z.infer<typeof modelCooldownSchema>;
+
 // Sentinel the backend uses to identify a channel's OAuth credential in the
 // disable bookkeeping (see objects.OAuthCredentialRef). It is not a real key,
 // so it must be labelled rather than masked, and it cannot be deleted.
@@ -470,6 +482,7 @@ export const channelSchema = z.object({
   credentials: channelCredentialsSchema.optional().nullable(),
   providerQuotaStatus: providerQuotaStatusSchema.optional().nullable(),
   disabledAPIKeys: z.array(disabledAPIKeySchema).optional().nullable(),
+  modelCooldowns: z.array(modelCooldownSchema).optional().nullable(),
   supportedModels: z.array(z.string()).default([]),
   autoSyncSupportedModels: z.boolean().default(false),
   autoSyncModelPattern: z.string().optional().default(''),
@@ -479,6 +492,8 @@ export const channelSchema = z.object({
   settings: channelSettingsSchema.optional().nullable(),
   orderingWeight: z.number().optional().default(0),
   errorMessage: z.string().optional().nullable(),
+  autoDisabledAt: z.string().optional().nullable(),
+  autoDisableExpiresAt: z.string().optional().nullable(),
   remark: z.string().optional().nullable(),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
   liveLimiterStats: channelLimiterStatsSchema.optional().nullable(),
@@ -722,11 +737,11 @@ function validateVertexAPIKeys(
   });
 }
 
-// Write shape for a grouped key. apiKey is required by GraphQL's KeyGroupInput, so an
-// empty key is reported here rather than as a server error.
+// Write shape for a group of keys. A group must carry at least one key, so an
+// empty key list is reported here rather than as a server error.
 const keyGroupInputShapeSchema = z.object({
-  name: z.string().optional(),
-  apiKey: z.string(),
+  name: z.string().trim().min(1),
+  apiKeys: z.array(z.string()).min(1),
   models: z.array(z.string()).optional(),
   enabled: z.boolean(),
 });
@@ -740,7 +755,7 @@ function validateKeyGroups(
         apiKeys?: string[] | null;
         apiKey?: string | null;
         vertexApiKeys?: { apiKey: string }[] | null;
-        keyGroups?: { apiKey: string; name?: string }[] | null;
+        keyGroups?: { apiKeys?: (string | null)[] | null; apiKey?: string | null; name?: string }[] | null;
       }
     | undefined,
   ctx: z.RefinementCtx
@@ -754,26 +769,42 @@ function validateKeyGroups(
   const seenNames = new Set<string>();
 
   groups.forEach((group, index) => {
-    const apiKey = (group.apiKey || '').trim();
-    if (!apiKey) {
+    // A group may hold several keys that rotate, so every key is checked. The
+    // legacy single-key field is folded in so older data validates the same way.
+    const keys = [...(group.apiKeys || []).map((key) => (key || '').trim()).filter((key) => key.length > 0)];
+    if (keys.length === 0 && (group.apiKey || '').trim()) {
+      keys.push((group.apiKey || '').trim());
+    }
+
+    const name = (group.name || '').trim();
+    if (!name) {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: 'channels.dialogs.fields.keyGroup.nameRequired',
+        path: ['credentials', 'keyGroups', index, 'name'],
+      });
+    }
+
+    if (keys.length === 0) {
       ctx.addIssue({
         code: 'custom' as const,
         message: 'channels.dialogs.fields.keyGroup.apiKeyRequired',
-        path: ['credentials', 'keyGroups', index, 'apiKey'],
+        path: ['credentials', 'keyGroups', index, 'apiKeys'],
       });
       return;
     }
 
-    if (seenKeys.has(apiKey)) {
-      ctx.addIssue({
-        code: 'custom' as const,
-        message: 'channels.dialogs.fields.keyGroup.duplicateKey',
-        path: ['credentials', 'keyGroups', index, 'apiKey'],
-      });
+    for (const apiKey of keys) {
+      if (seenKeys.has(apiKey)) {
+        ctx.addIssue({
+          code: 'custom' as const,
+          message: 'channels.dialogs.fields.keyGroup.duplicateKey',
+          path: ['credentials', 'keyGroups', index, 'apiKeys'],
+        });
+      }
+      seenKeys.add(apiKey);
     }
-    seenKeys.add(apiKey);
 
-    const name = (group.name || '').trim();
     if (name) {
       if (seenNames.has(name)) {
         ctx.addIssue({
@@ -823,9 +854,9 @@ export const createChannelInputSchema = z
     credentials: z.object({
       // apiKey is used for OAuth credentials (JSON string with access_token, refresh_token)
       apiKey: z.string().optional(),
-      // apiKeys is used for regular API keys (multiple keys for load balancing)
-      apiKeys: z.array(z.string()).optional().default([]),
-      // keyGroups is the grouped form of apiKeys: each entry is a named key with
+      // apiKeys remains only for backward-compatible OAuth/legacy writes
+      apiKeys: z.array(z.string()).optional(),
+      // keyGroups is the only regular-key form: each entry has a required remark,
       // its own model allowlist. When present it supersedes apiKeys.
       keyGroups: z.array(keyGroupInputShapeSchema).optional().default([]),
       // Vertex credentials are project-bound triples; an omitted region defaults to global.
@@ -843,8 +874,10 @@ export const createChannelInputSchema = z
   })
   .superRefine((data, ctx) => {
     const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
-    const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
-    const hasKeyGroups = (data.credentials.keyGroups || []).some((group) => (group.apiKey || '').trim().length > 0);
+    const hasApiKeys = false;
+    const hasKeyGroups = (data.credentials.keyGroups || []).some((group) =>
+      (group.apiKeys || []).some((key) => (key || '').trim().length > 0)
+    );
     const isOAuthType =
       (data.type === 'codex' && !hasApiKeys && !hasKeyGroups) ||
       data.type === 'claudecode' ||
@@ -874,7 +907,7 @@ export const createChannelInputSchema = z
       ctx.addIssue({
         code: 'custom' as const,
         message: 'At least one API Key is required',
-        path: ['credentials', 'apiKeys'],
+        path: ['credentials', 'keyGroups'],
       });
     }
 
@@ -960,7 +993,9 @@ export const updateChannelInputSchema = z
     const effectiveType = data.type;
     const hasApiKey = data.credentials?.apiKey && data.credentials.apiKey.trim().length > 0;
     const hasApiKeys = (data.credentials?.apiKeys?.length ?? 0) > 0;
-    const hasKeyGroups = (data.credentials?.keyGroups || []).some((group) => (group.apiKey || '').trim().length > 0);
+    const hasKeyGroups = (data.credentials?.keyGroups || []).some((group) =>
+      (group.apiKeys || []).some((key) => (key || '').trim().length > 0)
+    );
 
     // For OAuth validation on updates: validate if type is OAuth, or if credentials.apiKey is provided
     // (which indicates OAuth credentials are being set)
@@ -971,41 +1006,11 @@ export const updateChannelInputSchema = z
       effectiveType === 'github_copilot' ||
       effectiveType === 'xai_subscription';
 
-    // Derive type from parent context if not available
-    let derivedType = effectiveType;
-    if (!derivedType && hasApiKey) {
-      // Try to get type from parent context
-      const parent = ctx.parent;
-      if (parent && typeof parent === 'object' && 'type' in parent) {
-        derivedType = (parent as { type?: string }).type;
-      }
-    }
+        const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
+    const isThirdPartyCodex = effectiveType === 'codex' && hasKeyGroups;
 
-    // If we have an OAuth key but no type, check if it looks like Copilot credentials
-    const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
-    const isThirdPartyCodex = effectiveType === 'codex' && (hasApiKeys || hasKeyGroups);
-
-    if (!isThirdPartyCodex && (isOAuthType || derivedType === 'github_copilot' || isCopilotKey)) {
-      if (isCopilotKey && !derivedType) {
-        try {
-          const parsed = JSON.parse(data.credentials.apiKey);
-          if (!parsed.access_token) {
-            ctx.addIssue({
-              code: 'custom',
-              message: 'channels.dialogs.oauth.errors.copilotCredentialsInvalid',
-              path: ['credentials', 'apiKey'],
-            });
-          }
-        } catch {
-          ctx.addIssue({
-            code: 'custom',
-            message: 'channels.dialogs.oauth.errors.copilotCredentialsInvalid',
-            path: ['credentials', 'apiKey'],
-          });
-        }
-        return;
-      }
-      validateOAuthCredentials(derivedType, data.credentials?.apiKey, ctx);
+    if (!isThirdPartyCodex && (isOAuthType || isCopilotKey) && data.credentials?.apiKey) {
+      validateOAuthCredentials(effectiveType || 'github_copilot', data.credentials.apiKey, ctx);
     }
 
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）

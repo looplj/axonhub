@@ -325,7 +325,8 @@ type ChannelCredentials {
 
 type KeyGroup {
   name: String
-  apiKey: String!
+  apiKeys: [String!]
+  apiKey: String
   models: [String!]
   enabled: Boolean!
 }
@@ -335,6 +336,13 @@ type DisabledAPIKey {
   disabledAt: Time!
   errorCode: Int!
   reason: String
+  expiresAt: Time
+}
+
+type ModelCooldown {
+  model: String!
+  reason: String
+  createdAt: Time!
   expiresAt: Time
 }
 
@@ -371,7 +379,8 @@ input ChannelCredentialsInput {
 
 input KeyGroupInput {
   name: String
-  apiKey: String!
+  apiKeys: [String!]
+  apiKey: String
   models: [String!]
   enabled: Boolean!
 }
@@ -998,6 +1007,8 @@ type Mutation {
   disableChannelAPIKey(channelID: ID!, key: String!): Boolean!
   enableChannelAPIKey(channelID: ID!, key: String!): Boolean!
   enableAllChannelAPIKeys(channelID: ID!): Boolean!
+  clearChannelModelCooldown(channelID: ID!, model: String!): Boolean!
+  freezeChannelModel(channelID: ID!, model: String!, durationMinutes: Int): Boolean!
   enableSelectedChannelAPIKeys(channelID: ID!, keys: [String!]!): Boolean!
   deleteDisabledChannelAPIKeys(
     channelID: ID!

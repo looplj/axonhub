@@ -314,9 +314,10 @@ type ComplexityRoot struct {
 	}
 
 	BackupPayload struct {
-		Data    func(childComplexity int) int
-		Message func(childComplexity int) int
-		Success func(childComplexity int) int
+		Data     func(childComplexity int) int
+		Message  func(childComplexity int) int
+		Success  func(childComplexity int) int
+		Uploaded func(childComplexity int) int
 	}
 
 	BrandSettings struct {
@@ -370,6 +371,7 @@ type ComplexityRoot struct {
 		ID                      func(childComplexity int) int
 		LiveLimiterStats        func(childComplexity int) int
 		ManualModels            func(childComplexity int) int
+		ModelCooldowns          func(childComplexity int) int
 		Name                    func(childComplexity int) int
 		OrderingWeight          func(childComplexity int) int
 		Policies                func(childComplexity int) int
@@ -635,6 +637,23 @@ type ComplexityRoot struct {
 		Updated  func(childComplexity int) int
 	}
 
+	ClientCancellationPolicy struct {
+		Action           func(childComplexity int) int
+		CooldownMinutes  func(childComplexity int) int
+		Enabled          func(childComplexity int) int
+		ProjectOverrides func(childComplexity int) int
+		Scope            func(childComplexity int) int
+		Threshold        func(childComplexity int) int
+	}
+
+	ClientCancellationProjectPolicy struct {
+		Action          func(childComplexity int) int
+		CooldownMinutes func(childComplexity int) int
+		Enabled         func(childComplexity int) int
+		ProjectID       func(childComplexity int) int
+		Threshold       func(childComplexity int) int
+	}
+
 	CodexCatalogChannel struct {
 		ID     func(childComplexity int) int
 		Name   func(childComplexity int) int
@@ -849,9 +868,15 @@ type ComplexityRoot struct {
 
 	KeyGroup struct {
 		APIKey  func(childComplexity int) int
+		APIKeys func(childComplexity int) int
 		Enabled func(childComplexity int) int
 		Models  func(childComplexity int) int
 		Name    func(childComplexity int) int
+	}
+
+	KeyGroupRef struct {
+		Index func(childComplexity int) int
+		Name  func(childComplexity int) int
 	}
 
 	Model struct {
@@ -927,6 +952,7 @@ type ComplexityRoot struct {
 
 	ModelChannelConnection struct {
 		Channel  func(childComplexity int) int
+		KeyGroup func(childComplexity int) int
 		Models   func(childComplexity int) int
 		Priority func(childComplexity int) int
 	}
@@ -935,6 +961,13 @@ type ComplexityRoot struct {
 		Edges      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
 		TotalCount func(childComplexity int) int
+	}
+
+	ModelCooldown struct {
+		CreatedAt func(childComplexity int) int
+		ExpiresAt func(childComplexity int) int
+		Model     func(childComplexity int) int
+		Reason    func(childComplexity int) int
 	}
 
 	ModelEdge struct {
@@ -1036,6 +1069,7 @@ type ComplexityRoot struct {
 		BulkUpdateChannelOrdering             func(childComplexity int, input BulkUpdateChannelOrderingInput) int
 		CheckProviderQuotas                   func(childComplexity int) int
 		ClearCache                            func(childComplexity int, input ClearCacheInput) int
+		ClearChannelModelCooldown             func(childComplexity int, channelID objects.GUID, model string) int
 		ClearChannelOverrideTemplates         func(childComplexity int, input ClearChannelOverrideTemplatesInput) int
 		CompleteAutoDisableChannelOnboarding  func(childComplexity int, input CompleteAutoDisableChannelOnboardingInput) int
 		CompleteOnboarding                    func(childComplexity int, input CompleteOnboardingInput) int
@@ -1068,6 +1102,7 @@ type ComplexityRoot struct {
 		EnableAllChannelAPIKeys               func(childComplexity int, channelID objects.GUID) int
 		EnableChannelAPIKey                   func(childComplexity int, channelID objects.GUID, key string) int
 		EnableSelectedChannelAPIKeys          func(childComplexity int, channelID objects.GUID, keys []string) int
+		FreezeChannelModel                    func(childComplexity int, channelID objects.GUID, model string, durationMinutes *int) int
 		LoadAPIKeyProfileTemplate             func(childComplexity int, input LoadAPIKeyProfileTemplateInput) int
 		PreviewPromptProtectionRule           func(childComplexity int, input PromptProtectionRulePreviewInput) int
 		RefreshProvidersCatalog               func(childComplexity int) int
@@ -1654,6 +1689,7 @@ type ComplexityRoot struct {
 
 	RetryPolicy struct {
 		AutoDisableChannel              func(childComplexity int) int
+		ClientCancellationPolicy        func(childComplexity int) int
 		EmptyResponseDetection          func(childComplexity int) int
 		Enabled                         func(childComplexity int) int
 		LoadBalancerStrategy            func(childComplexity int) int
@@ -2311,6 +2347,8 @@ type MutationResolver interface {
 	DisableChannelAPIKey(ctx context.Context, channelID objects.GUID, key string) (bool, error)
 	EnableChannelAPIKey(ctx context.Context, channelID objects.GUID, key string) (bool, error)
 	EnableAllChannelAPIKeys(ctx context.Context, channelID objects.GUID) (bool, error)
+	ClearChannelModelCooldown(ctx context.Context, channelID objects.GUID, model string) (bool, error)
+	FreezeChannelModel(ctx context.Context, channelID objects.GUID, model string, durationMinutes *int) (bool, error)
 	EnableSelectedChannelAPIKeys(ctx context.Context, channelID objects.GUID, keys []string) (bool, error)
 	DeleteDisabledChannelAPIKeys(ctx context.Context, channelID objects.GUID, keys []string) (*biz.DeleteDisabledAPIKeysResult, error)
 	CreateAPIKey(ctx context.Context, input ent.CreateAPIKeyInput) (*ent.APIKey, error)
@@ -3473,6 +3511,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.BackupPayload.Success(childComplexity), true
+	case "BackupPayload.uploaded":
+		if e.complexity.BackupPayload.Uploaded == nil {
+			break
+		}
+
+		return e.complexity.BackupPayload.Uploaded(childComplexity), true
 
 	case "BrandSettings.brandLogo":
 		if e.complexity.BrandSettings.BrandLogo == nil {
@@ -3694,6 +3738,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.ManualModels(childComplexity), true
+	case "Channel.modelCooldowns":
+		if e.complexity.Channel.ModelCooldowns == nil {
+			break
+		}
+
+		return e.complexity.Channel.ModelCooldowns(childComplexity), true
 	case "Channel.name":
 		if e.complexity.Channel.Name == nil {
 			break
@@ -4705,6 +4755,74 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ClearChannelOverrideTemplatesPayload.Updated(childComplexity), true
 
+	case "ClientCancellationPolicy.action":
+		if e.complexity.ClientCancellationPolicy.Action == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationPolicy.Action(childComplexity), true
+	case "ClientCancellationPolicy.cooldownMinutes":
+		if e.complexity.ClientCancellationPolicy.CooldownMinutes == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationPolicy.CooldownMinutes(childComplexity), true
+	case "ClientCancellationPolicy.enabled":
+		if e.complexity.ClientCancellationPolicy.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationPolicy.Enabled(childComplexity), true
+	case "ClientCancellationPolicy.projectOverrides":
+		if e.complexity.ClientCancellationPolicy.ProjectOverrides == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationPolicy.ProjectOverrides(childComplexity), true
+	case "ClientCancellationPolicy.scope":
+		if e.complexity.ClientCancellationPolicy.Scope == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationPolicy.Scope(childComplexity), true
+	case "ClientCancellationPolicy.threshold":
+		if e.complexity.ClientCancellationPolicy.Threshold == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationPolicy.Threshold(childComplexity), true
+
+	case "ClientCancellationProjectPolicy.action":
+		if e.complexity.ClientCancellationProjectPolicy.Action == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationProjectPolicy.Action(childComplexity), true
+	case "ClientCancellationProjectPolicy.cooldownMinutes":
+		if e.complexity.ClientCancellationProjectPolicy.CooldownMinutes == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationProjectPolicy.CooldownMinutes(childComplexity), true
+	case "ClientCancellationProjectPolicy.enabled":
+		if e.complexity.ClientCancellationProjectPolicy.Enabled == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationProjectPolicy.Enabled(childComplexity), true
+	case "ClientCancellationProjectPolicy.projectId":
+		if e.complexity.ClientCancellationProjectPolicy.ProjectID == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationProjectPolicy.ProjectID(childComplexity), true
+	case "ClientCancellationProjectPolicy.threshold":
+		if e.complexity.ClientCancellationProjectPolicy.Threshold == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationProjectPolicy.Threshold(childComplexity), true
+
 	case "CodexCatalogChannel.id":
 		if e.complexity.CodexCatalogChannel.ID == nil {
 			break
@@ -5432,6 +5550,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.KeyGroup.APIKey(childComplexity), true
+	case "KeyGroup.apiKeys":
+		if e.complexity.KeyGroup.APIKeys == nil {
+			break
+		}
+
+		return e.complexity.KeyGroup.APIKeys(childComplexity), true
 	case "KeyGroup.enabled":
 		if e.complexity.KeyGroup.Enabled == nil {
 			break
@@ -5450,6 +5574,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.KeyGroup.Name(childComplexity), true
+
+	case "KeyGroupRef.index":
+		if e.complexity.KeyGroupRef.Index == nil {
+			break
+		}
+
+		return e.complexity.KeyGroupRef.Index(childComplexity), true
+	case "KeyGroupRef.name":
+		if e.complexity.KeyGroupRef.Name == nil {
+			break
+		}
+
+		return e.complexity.KeyGroupRef.Name(childComplexity), true
 
 	case "Model.associatedChannelCount":
 		if e.complexity.Model.AssociatedChannelCount == nil {
@@ -5747,6 +5884,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelChannelConnection.Channel(childComplexity), true
+	case "ModelChannelConnection.keyGroup":
+		if e.complexity.ModelChannelConnection.KeyGroup == nil {
+			break
+		}
+
+		return e.complexity.ModelChannelConnection.KeyGroup(childComplexity), true
 	case "ModelChannelConnection.models":
 		if e.complexity.ModelChannelConnection.Models == nil {
 			break
@@ -5778,6 +5921,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ModelConnection.TotalCount(childComplexity), true
+
+	case "ModelCooldown.createdAt":
+		if e.complexity.ModelCooldown.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.ModelCooldown.CreatedAt(childComplexity), true
+	case "ModelCooldown.expiresAt":
+		if e.complexity.ModelCooldown.ExpiresAt == nil {
+			break
+		}
+
+		return e.complexity.ModelCooldown.ExpiresAt(childComplexity), true
+	case "ModelCooldown.model":
+		if e.complexity.ModelCooldown.Model == nil {
+			break
+		}
+
+		return e.complexity.ModelCooldown.Model(childComplexity), true
+	case "ModelCooldown.reason":
+		if e.complexity.ModelCooldown.Reason == nil {
+			break
+		}
+
+		return e.complexity.ModelCooldown.Reason(childComplexity), true
 
 	case "ModelEdge.cursor":
 		if e.complexity.ModelEdge.Cursor == nil {
@@ -6345,6 +6513,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.ClearCache(childComplexity, args["input"].(ClearCacheInput)), true
+	case "Mutation.clearChannelModelCooldown":
+		if e.complexity.Mutation.ClearChannelModelCooldown == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_clearChannelModelCooldown_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ClearChannelModelCooldown(childComplexity, args["channelID"].(objects.GUID), args["model"].(string)), true
 	case "Mutation.clearChannelOverrideTemplates":
 		if e.complexity.Mutation.ClearChannelOverrideTemplates == nil {
 			break
@@ -6697,6 +6876,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.EnableSelectedChannelAPIKeys(childComplexity, args["channelID"].(objects.GUID), args["keys"].([]string)), true
+	case "Mutation.freezeChannelModel":
+		if e.complexity.Mutation.FreezeChannelModel == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_freezeChannelModel_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.FreezeChannelModel(childComplexity, args["channelID"].(objects.GUID), args["model"].(string), args["durationMinutes"].(*int)), true
 	case "Mutation.loadApiKeyProfileTemplate":
 		if e.complexity.Mutation.LoadAPIKeyProfileTemplate == nil {
 			break
@@ -9859,6 +10049,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.RetryPolicy.AutoDisableChannel(childComplexity), true
+	case "RetryPolicy.clientCancellationPolicy":
+		if e.complexity.RetryPolicy.ClientCancellationPolicy == nil {
+			break
+		}
+
+		return e.complexity.RetryPolicy.ClientCancellationPolicy(childComplexity), true
 	case "RetryPolicy.emptyResponseDetection":
 		if e.complexity.RetryPolicy.EmptyResponseDetection == nil {
 			break
@@ -12088,6 +12284,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCleanupOptionInput,
 		ec.unmarshalInputClearCacheInput,
 		ec.unmarshalInputClearChannelOverrideTemplatesInput,
+		ec.unmarshalInputClientCancellationPolicyInput,
+		ec.unmarshalInputClientCancellationProjectPolicyInput,
 		ec.unmarshalInputCommandCodeQuotaSettingsInput,
 		ec.unmarshalInputCompleteAutoDisableChannelOnboardingInput,
 		ec.unmarshalInputCompleteOnboardingInput,
@@ -12988,6 +13186,22 @@ func (ec *executionContext) field_Mutation_clearCache_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_clearChannelModelCooldown_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "channelID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["channelID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "model", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["model"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_clearChannelOverrideTemplates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -13367,6 +13581,27 @@ func (ec *executionContext) field_Mutation_enableSelectedChannelAPIKeys_args(ctx
 		return nil, err
 	}
 	args["keys"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_freezeChannelModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "channelID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["channelID"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "model", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["model"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "durationMinutes", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["durationMinutes"] = arg2
 	return args, nil
 }
 
@@ -19422,6 +19657,8 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -20173,6 +20410,35 @@ func (ec *executionContext) fieldContext_BackupPayload_message(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _BackupPayload_uploaded(ctx context.Context, field graphql.CollectedField, obj *BackupPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BackupPayload_uploaded,
+		func(ctx context.Context) (any, error) {
+			return obj.Uploaded, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BackupPayload_uploaded(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BackupPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _BrandSettings_brandName(ctx context.Context, field graphql.CollectedField, obj *BrandSettings) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -20438,6 +20704,8 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -20591,6 +20859,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelAutoDisablePayload_cha
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -20744,6 +21014,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -21427,6 +21699,45 @@ func (ec *executionContext) fieldContext_Channel_autoDisableExpiresAt(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Channel_modelCooldowns(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Channel_modelCooldowns,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelCooldowns, nil
+		},
+		nil,
+		ec.marshalOModelCooldown2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCooldownᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Channel_modelCooldowns(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "model":
+				return ec.fieldContext_ModelCooldown_model(ctx, field)
+			case "reason":
+				return ec.fieldContext_ModelCooldown_reason(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ModelCooldown_createdAt(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_ModelCooldown_expiresAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelCooldown", field.Name)
 		},
 	}
 	return fc, nil
@@ -22184,6 +22495,8 @@ func (ec *executionContext) fieldContext_ChannelCredentials_keyGroups(_ context.
 			switch field.Name {
 			case "name":
 				return ec.fieldContext_KeyGroup_name(ctx, field)
+			case "apiKeys":
+				return ec.fieldContext_KeyGroup_apiKeys(ctx, field)
 			case "apiKey":
 				return ec.fieldContext_KeyGroup_apiKey(ctx, field)
 			case "models":
@@ -22376,6 +22689,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -23115,6 +23430,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_channel(_ context.Con
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -25075,6 +25392,8 @@ func (ec *executionContext) fieldContext_ChannelProbe_channel(_ context.Context,
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -26972,6 +27291,8 @@ func (ec *executionContext) fieldContext_ClearChannelOverrideTemplatesPayload_ch
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -27000,6 +27321,337 @@ func (ec *executionContext) fieldContext_ClearChannelOverrideTemplatesPayload_ch
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationPolicy_enabled(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationPolicy_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationPolicy_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationPolicy_threshold(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationPolicy_threshold,
+		func(ctx context.Context) (any, error) {
+			return obj.Threshold, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationPolicy_threshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationPolicy_cooldownMinutes(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationPolicy_cooldownMinutes,
+		func(ctx context.Context) (any, error) {
+			return obj.CooldownMinutes, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationPolicy_cooldownMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationPolicy_action(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationPolicy_action,
+		func(ctx context.Context) (any, error) {
+			return obj.Action, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationPolicy_action(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationPolicy_scope(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationPolicy_scope,
+		func(ctx context.Context) (any, error) {
+			return obj.Scope, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationPolicy_scope(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationPolicy_projectOverrides(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationPolicy_projectOverrides,
+		func(ctx context.Context) (any, error) {
+			return obj.ProjectOverrides, nil
+		},
+		nil,
+		ec.marshalNClientCancellationProjectPolicy2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationProjectPolicyᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationPolicy_projectOverrides(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "projectId":
+				return ec.fieldContext_ClientCancellationProjectPolicy_projectId(ctx, field)
+			case "enabled":
+				return ec.fieldContext_ClientCancellationProjectPolicy_enabled(ctx, field)
+			case "threshold":
+				return ec.fieldContext_ClientCancellationProjectPolicy_threshold(ctx, field)
+			case "cooldownMinutes":
+				return ec.fieldContext_ClientCancellationProjectPolicy_cooldownMinutes(ctx, field)
+			case "action":
+				return ec.fieldContext_ClientCancellationProjectPolicy_action(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ClientCancellationProjectPolicy", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationProjectPolicy_projectId(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationProjectPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationProjectPolicy_projectId,
+		func(ctx context.Context) (any, error) {
+			return obj.ProjectID, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationProjectPolicy_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationProjectPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationProjectPolicy_enabled(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationProjectPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationProjectPolicy_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationProjectPolicy_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationProjectPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationProjectPolicy_threshold(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationProjectPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationProjectPolicy_threshold,
+		func(ctx context.Context) (any, error) {
+			return obj.Threshold, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationProjectPolicy_threshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationProjectPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationProjectPolicy_cooldownMinutes(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationProjectPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationProjectPolicy_cooldownMinutes,
+		func(ctx context.Context) (any, error) {
+			return obj.CooldownMinutes, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationProjectPolicy_cooldownMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationProjectPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationProjectPolicy_action(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationProjectPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationProjectPolicy_action,
+		func(ctx context.Context) (any, error) {
+			return obj.Action, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationProjectPolicy_action(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationProjectPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30535,6 +31187,35 @@ func (ec *executionContext) fieldContext_KeyGroup_name(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _KeyGroup_apiKeys(ctx context.Context, field graphql.CollectedField, obj *objects.KeyGroup) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_KeyGroup_apiKeys,
+		func(ctx context.Context) (any, error) {
+			return obj.APIKeys, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_KeyGroup_apiKeys(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KeyGroup",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _KeyGroup_apiKey(ctx context.Context, field graphql.CollectedField, obj *objects.KeyGroup) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30545,9 +31226,9 @@ func (ec *executionContext) _KeyGroup_apiKey(ctx context.Context, field graphql.
 			return obj.APIKey, nil
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOString2string,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -30617,6 +31298,64 @@ func (ec *executionContext) fieldContext_KeyGroup_enabled(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _KeyGroupRef_index(ctx context.Context, field graphql.CollectedField, obj *biz.KeyGroupRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_KeyGroupRef_index,
+		func(ctx context.Context) (any, error) {
+			return obj.Index, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_KeyGroupRef_index(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KeyGroupRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _KeyGroupRef_name(ctx context.Context, field graphql.CollectedField, obj *biz.KeyGroupRef) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_KeyGroupRef_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_KeyGroupRef_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "KeyGroupRef",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -32165,6 +32904,8 @@ func (ec *executionContext) fieldContext_ModelChannelConnection_channel(_ contex
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -32193,6 +32934,41 @@ func (ec *executionContext) fieldContext_ModelChannelConnection_channel(_ contex
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelChannelConnection_keyGroup(ctx context.Context, field graphql.CollectedField, obj *biz.ModelChannelConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelChannelConnection_keyGroup,
+		func(ctx context.Context) (any, error) {
+			return obj.KeyGroup, nil
+		},
+		nil,
+		ec.marshalOKeyGroupRef2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐKeyGroupRef,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelChannelConnection_keyGroup(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelChannelConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "index":
+				return ec.fieldContext_KeyGroupRef_index(ctx, field)
+			case "name":
+				return ec.fieldContext_KeyGroupRef_name(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type KeyGroupRef", field.Name)
 		},
 	}
 	return fc, nil
@@ -32362,6 +33138,122 @@ func (ec *executionContext) fieldContext_ModelConnection_totalCount(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCooldown_model(ctx context.Context, field graphql.CollectedField, obj *objects.ModelCooldown) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCooldown_model,
+		func(ctx context.Context) (any, error) {
+			return obj.Model, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCooldown_model(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCooldown",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCooldown_reason(ctx context.Context, field graphql.CollectedField, obj *objects.ModelCooldown) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCooldown_reason,
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCooldown_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCooldown",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCooldown_createdAt(ctx context.Context, field graphql.CollectedField, obj *objects.ModelCooldown) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCooldown_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCooldown_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCooldown",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelCooldown_expiresAt(ctx context.Context, field graphql.CollectedField, obj *objects.ModelCooldown) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelCooldown_expiresAt,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelCooldown_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelCooldown",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -33419,6 +34311,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -33526,6 +34420,8 @@ func (ec *executionContext) fieldContext_Mutation_duplicateChannel(ctx context.C
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -33633,6 +34529,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateChannels(ctx context
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -33740,6 +34638,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -33847,6 +34747,8 @@ func (ec *executionContext) fieldContext_Mutation_saveChannelEndpoints(ctx conte
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -33999,6 +34901,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -34837,6 +35741,88 @@ func (ec *executionContext) fieldContext_Mutation_enableAllChannelAPIKeys(ctx co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_enableAllChannelAPIKeys_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_clearChannelModelCooldown(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_clearChannelModelCooldown,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ClearChannelModelCooldown(ctx, fc.Args["channelID"].(objects.GUID), fc.Args["model"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_clearChannelModelCooldown(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_clearChannelModelCooldown_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_freezeChannelModel(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_freezeChannelModel,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().FreezeChannelModel(ctx, fc.Args["channelID"].(objects.GUID), fc.Args["model"].(string), fc.Args["durationMinutes"].(*int))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_freezeChannelModel(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_freezeChannelModel_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -39252,6 +40238,8 @@ func (ec *executionContext) fieldContext_Mutation_backup(ctx context.Context, fi
 				return ec.fieldContext_BackupPayload_data(ctx, field)
 			case "message":
 				return ec.fieldContext_BackupPayload_message(ctx, field)
+			case "uploaded":
+				return ec.fieldContext_BackupPayload_uploaded(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type BackupPayload", field.Name)
 		},
@@ -45139,6 +46127,8 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_channel(_ context.C
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -46527,6 +47517,8 @@ func (ec *executionContext) fieldContext_Query_allChannelSummarys(ctx context.Co
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -48342,6 +49334,8 @@ func (ec *executionContext) fieldContext_Query_retryPolicy(_ context.Context, fi
 				return ec.fieldContext_RetryPolicy_enabled(ctx, field)
 			case "autoDisableChannel":
 				return ec.fieldContext_RetryPolicy_autoDisableChannel(ctx, field)
+			case "clientCancellationPolicy":
+				return ec.fieldContext_RetryPolicy_clientCancellationPolicy(ctx, field)
 			case "emptyResponseDetection":
 				return ec.fieldContext_RetryPolicy_emptyResponseDetection(ctx, field)
 			case "upstreamErrorPolicy":
@@ -49119,6 +50113,8 @@ func (ec *executionContext) fieldContext_Query_queryModelChannelConnections(ctx 
 			switch field.Name {
 			case "channel":
 				return ec.fieldContext_ModelChannelConnection_channel(ctx, field)
+			case "keyGroup":
+				return ec.fieldContext_ModelChannelConnection_keyGroup(ctx, field)
 			case "models":
 				return ec.fieldContext_ModelChannelConnection_models(ctx, field)
 			case "priority":
@@ -50945,6 +51941,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -52239,6 +53237,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -53334,6 +54334,49 @@ func (ec *executionContext) fieldContext_RetryPolicy_autoDisableChannel(_ contex
 				return ec.fieldContext_AutoDisableChannel_rules(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AutoDisableChannel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RetryPolicy_clientCancellationPolicy(ctx context.Context, field graphql.CollectedField, obj *biz.RetryPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RetryPolicy_clientCancellationPolicy,
+		func(ctx context.Context) (any, error) {
+			return obj.ClientCancellationPolicy, nil
+		},
+		nil,
+		ec.marshalNClientCancellationPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationPolicy,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RetryPolicy_clientCancellationPolicy(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RetryPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_ClientCancellationPolicy_enabled(ctx, field)
+			case "threshold":
+				return ec.fieldContext_ClientCancellationPolicy_threshold(ctx, field)
+			case "cooldownMinutes":
+				return ec.fieldContext_ClientCancellationPolicy_cooldownMinutes(ctx, field)
+			case "action":
+				return ec.fieldContext_ClientCancellationPolicy_action(ctx, field)
+			case "scope":
+				return ec.fieldContext_ClientCancellationPolicy_scope(ctx, field)
+			case "projectOverrides":
+				return ec.fieldContext_ClientCancellationPolicy_projectOverrides(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ClientCancellationPolicy", field.Name)
 		},
 	}
 	return fc, nil
@@ -59908,6 +60951,8 @@ func (ec *executionContext) fieldContext_UnassociatedChannel_channel(_ context.C
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -61022,6 +62067,8 @@ func (ec *executionContext) fieldContext_UsageLog_channel(_ context.Context, fie
 				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
 			case "autoDisableExpiresAt":
 				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
 			case "remark":
 				return ec.fieldContext_Channel_remark(ctx, field)
 			case "endpoints":
@@ -67614,6 +68661,9 @@ func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context
 		asMap[k] = v
 	}
 
+	if _, present := asMap["uploadToStorage"]; !present {
+		asMap["uploadToStorage"] = false
+	}
 	if _, present := asMap["includeSystemConfigs"]; !present {
 		asMap["includeSystemConfigs"] = false
 	}
@@ -67627,13 +68677,20 @@ func (ec *executionContext) unmarshalInputBackupOptionsInput(ctx context.Context
 		asMap["includeRequestLogs"] = false
 	}
 
-	fieldsInOrder := [...]string{"includeSystemConfigs", "includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys", "includeUsageStats", "includeRequestLogs"}
+	fieldsInOrder := [...]string{"uploadToStorage", "includeSystemConfigs", "includeChannels", "includeModelPrices", "includeModels", "includeAPIKeys", "includeUsageStats", "includeRequestLogs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "uploadToStorage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("uploadToStorage"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UploadToStorage = data
 		case "includeSystemConfigs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeSystemConfigs"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -72242,6 +73299,123 @@ func (ec *executionContext) unmarshalInputClearChannelOverrideTemplatesInput(ctx
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputClientCancellationPolicyInput(ctx context.Context, obj any) (biz.ClientCancellationPolicy, error) {
+	var it biz.ClientCancellationPolicy
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled", "threshold", "cooldownMinutes", "action", "scope", "projectOverrides"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "threshold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threshold"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Threshold = data
+		case "cooldownMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cooldownMinutes"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CooldownMinutes = data
+		case "action":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Action = data
+		case "scope":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scope"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Scope = data
+		case "projectOverrides":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectOverrides"))
+			data, err := ec.unmarshalOClientCancellationProjectPolicyInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationProjectPolicyᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectOverrides = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputClientCancellationProjectPolicyInput(ctx context.Context, obj any) (biz.ClientCancellationProjectPolicy, error) {
+	var it biz.ClientCancellationProjectPolicy
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectId", "enabled", "threshold", "cooldownMinutes", "action"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectID = data
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "threshold":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threshold"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Threshold = data
+		case "cooldownMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cooldownMinutes"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CooldownMinutes = data
+		case "action":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("action"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Action = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCommandCodeQuotaSettingsInput(ctx context.Context, obj any) (objects.CommandCodeQuotaSettings, error) {
 	var it objects.CommandCodeQuotaSettings
 	asMap := map[string]any{}
@@ -74961,7 +76135,7 @@ func (ec *executionContext) unmarshalInputKeyGroupInput(ctx context.Context, obj
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "apiKey", "models", "enabled"}
+	fieldsInOrder := [...]string{"name", "apiKeys", "apiKey", "models", "enabled"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -74975,9 +76149,16 @@ func (ec *executionContext) unmarshalInputKeyGroupInput(ctx context.Context, obj
 				return it, err
 			}
 			it.Name = data
+		case "apiKeys":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeys"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeys = data
 		case "apiKey":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
-			data, err := ec.unmarshalNString2string(ctx, v)
+			data, err := ec.unmarshalOString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -88569,7 +89750,7 @@ func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"maxChannelRetries", "maxSingleChannelRetries", "retryDelayMs", "streamFirstEventTimeoutSeconds", "nonStreamResponseTimeoutSeconds", "loadBalancerStrategy", "traceStickyMode", "enabled", "autoDisableChannel", "emptyResponseDetection", "upstreamErrorPolicy"}
+	fieldsInOrder := [...]string{"maxChannelRetries", "maxSingleChannelRetries", "retryDelayMs", "streamFirstEventTimeoutSeconds", "nonStreamResponseTimeoutSeconds", "loadBalancerStrategy", "traceStickyMode", "enabled", "autoDisableChannel", "clientCancellationPolicy", "emptyResponseDetection", "upstreamErrorPolicy"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -88639,6 +89820,13 @@ func (ec *executionContext) unmarshalInputUpdateRetryPolicyInput(ctx context.Con
 				return it, err
 			}
 			it.AutoDisableChannel = data
+		case "clientCancellationPolicy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clientCancellationPolicy"))
+			data, err := ec.unmarshalOClientCancellationPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationPolicy(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ClientCancellationPolicy = data
 		case "emptyResponseDetection":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("emptyResponseDetection"))
 			data, err := ec.unmarshalOBoolean2bool(ctx, v)
@@ -94964,6 +96152,8 @@ func (ec *executionContext) _BackupPayload(ctx context.Context, sel ast.Selectio
 			out.Values[i] = ec._BackupPayload_data(ctx, field, obj)
 		case "message":
 			out.Values[i] = ec._BackupPayload_message(ctx, field, obj)
+		case "uploaded":
+			out.Values[i] = ec._BackupPayload_uploaded(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -95397,6 +96587,8 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Channel_autoDisabledAt(ctx, field, obj)
 		case "autoDisableExpiresAt":
 			out.Values[i] = ec._Channel_autoDisableExpiresAt(ctx, field, obj)
+		case "modelCooldowns":
+			out.Values[i] = ec._Channel_modelCooldowns(ctx, field, obj)
 		case "remark":
 			out.Values[i] = ec._Channel_remark(ctx, field, obj)
 		case "endpoints":
@@ -98119,6 +99311,129 @@ func (ec *executionContext) _ClearChannelOverrideTemplatesPayload(ctx context.Co
 	return out
 }
 
+var clientCancellationPolicyImplementors = []string{"ClientCancellationPolicy"}
+
+func (ec *executionContext) _ClientCancellationPolicy(ctx context.Context, sel ast.SelectionSet, obj *biz.ClientCancellationPolicy) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clientCancellationPolicyImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ClientCancellationPolicy")
+		case "enabled":
+			out.Values[i] = ec._ClientCancellationPolicy_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "threshold":
+			out.Values[i] = ec._ClientCancellationPolicy_threshold(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cooldownMinutes":
+			out.Values[i] = ec._ClientCancellationPolicy_cooldownMinutes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "action":
+			out.Values[i] = ec._ClientCancellationPolicy_action(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "scope":
+			out.Values[i] = ec._ClientCancellationPolicy_scope(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "projectOverrides":
+			out.Values[i] = ec._ClientCancellationPolicy_projectOverrides(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var clientCancellationProjectPolicyImplementors = []string{"ClientCancellationProjectPolicy"}
+
+func (ec *executionContext) _ClientCancellationProjectPolicy(ctx context.Context, sel ast.SelectionSet, obj *biz.ClientCancellationProjectPolicy) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, clientCancellationProjectPolicyImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ClientCancellationProjectPolicy")
+		case "projectId":
+			out.Values[i] = ec._ClientCancellationProjectPolicy_projectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "enabled":
+			out.Values[i] = ec._ClientCancellationProjectPolicy_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "threshold":
+			out.Values[i] = ec._ClientCancellationProjectPolicy_threshold(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cooldownMinutes":
+			out.Values[i] = ec._ClientCancellationProjectPolicy_cooldownMinutes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "action":
+			out.Values[i] = ec._ClientCancellationProjectPolicy_action(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var codexCatalogChannelImplementors = []string{"CodexCatalogChannel"}
 
 func (ec *executionContext) _CodexCatalogChannel(ctx context.Context, sel ast.SelectionSet, obj *CodexCatalogChannel) graphql.Marshaler {
@@ -99828,15 +101143,58 @@ func (ec *executionContext) _KeyGroup(ctx context.Context, sel ast.SelectionSet,
 			out.Values[i] = graphql.MarshalString("KeyGroup")
 		case "name":
 			out.Values[i] = ec._KeyGroup_name(ctx, field, obj)
+		case "apiKeys":
+			out.Values[i] = ec._KeyGroup_apiKeys(ctx, field, obj)
 		case "apiKey":
 			out.Values[i] = ec._KeyGroup_apiKey(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "models":
 			out.Values[i] = ec._KeyGroup_models(ctx, field, obj)
 		case "enabled":
 			out.Values[i] = ec._KeyGroup_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var keyGroupRefImplementors = []string{"KeyGroupRef"}
+
+func (ec *executionContext) _KeyGroupRef(ctx context.Context, sel ast.SelectionSet, obj *biz.KeyGroupRef) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, keyGroupRefImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("KeyGroupRef")
+		case "index":
+			out.Values[i] = ec._KeyGroupRef_index(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._KeyGroupRef_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -100406,6 +101764,8 @@ func (ec *executionContext) _ModelChannelConnection(ctx context.Context, sel ast
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "keyGroup":
+			out.Values[i] = ec._ModelChannelConnection_keyGroup(ctx, field, obj)
 		case "models":
 			out.Values[i] = ec._ModelChannelConnection_models(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -100462,6 +101822,54 @@ func (ec *executionContext) _ModelConnection(ctx context.Context, sel ast.Select
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelCooldownImplementors = []string{"ModelCooldown"}
+
+func (ec *executionContext) _ModelCooldown(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelCooldown) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelCooldownImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelCooldown")
+		case "model":
+			out.Values[i] = ec._ModelCooldown_model(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._ModelCooldown_reason(ctx, field, obj)
+		case "createdAt":
+			out.Values[i] = ec._ModelCooldown_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expiresAt":
+			out.Values[i] = ec._ModelCooldown_expiresAt(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -101183,6 +102591,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "enableAllChannelAPIKeys":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_enableAllChannelAPIKeys(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "clearChannelModelCooldown":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_clearChannelModelCooldown(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "freezeChannelModel":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_freezeChannelModel(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -108326,6 +109748,11 @@ func (ec *executionContext) _RetryPolicy(ctx context.Context, sel ast.SelectionS
 			}
 		case "autoDisableChannel":
 			out.Values[i] = ec._RetryPolicy_autoDisableChannel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "clientCancellationPolicy":
+			out.Values[i] = ec._RetryPolicy_clientCancellationPolicy(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -115869,6 +117296,63 @@ func (ec *executionContext) marshalNClearChannelOverrideTemplatesPayload2ᚖgith
 	return ec._ClearChannelOverrideTemplatesPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNClientCancellationPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationPolicy(ctx context.Context, sel ast.SelectionSet, v biz.ClientCancellationPolicy) graphql.Marshaler {
+	return ec._ClientCancellationPolicy(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNClientCancellationProjectPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationProjectPolicy(ctx context.Context, sel ast.SelectionSet, v biz.ClientCancellationProjectPolicy) graphql.Marshaler {
+	return ec._ClientCancellationProjectPolicy(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNClientCancellationProjectPolicy2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationProjectPolicyᚄ(ctx context.Context, sel ast.SelectionSet, v []biz.ClientCancellationProjectPolicy) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNClientCancellationProjectPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationProjectPolicy(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalNClientCancellationProjectPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationProjectPolicy(ctx context.Context, v any) (biz.ClientCancellationProjectPolicy, error) {
+	res, err := ec.unmarshalInputClientCancellationProjectPolicyInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNCodexCatalogChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐCodexCatalogChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*CodexCatalogChannel) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -117320,6 +118804,10 @@ func (ec *executionContext) marshalNModelConnection2ᚖgithubᚗcomᚋloopljᚋa
 		return graphql.Null
 	}
 	return ec._ModelConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNModelCooldown2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCooldown(ctx context.Context, sel ast.SelectionSet, v objects.ModelCooldown) graphql.Marshaler {
+	return ec._ModelCooldown(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelIdentifyᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.ModelIdentify) graphql.Marshaler {
@@ -122609,6 +124097,29 @@ func (ec *executionContext) unmarshalOCleanupOptionInput2ᚕgithubᚗcomᚋloopl
 	return res, nil
 }
 
+func (ec *executionContext) unmarshalOClientCancellationPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationPolicy(ctx context.Context, v any) (biz.ClientCancellationPolicy, error) {
+	res, err := ec.unmarshalInputClientCancellationPolicyInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOClientCancellationProjectPolicyInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationProjectPolicyᚄ(ctx context.Context, v any) ([]biz.ClientCancellationProjectPolicy, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]biz.ClientCancellationProjectPolicy, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNClientCancellationProjectPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐClientCancellationProjectPolicy(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalOCommandCodeQuotaSettings2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐCommandCodeQuotaSettings(ctx context.Context, sel ast.SelectionSet, v *objects.CommandCodeQuotaSettings) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -123780,6 +125291,13 @@ func (ec *executionContext) unmarshalOKeyGroupInput2ᚕgithubᚗcomᚋloopljᚋa
 	return res, nil
 }
 
+func (ec *executionContext) marshalOKeyGroupRef2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐKeyGroupRef(ctx context.Context, sel ast.SelectionSet, v *biz.KeyGroupRef) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._KeyGroupRef(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModel(ctx context.Context, sel ast.SelectionSet, v *ent.Model) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -123828,6 +125346,53 @@ func (ec *executionContext) unmarshalOModelCardModalitiesInput2githubᚗcomᚋlo
 func (ec *executionContext) unmarshalOModelCardReasoningInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCardReasoning(ctx context.Context, v any) (objects.ModelCardReasoning, error) {
 	res, err := ec.unmarshalInputModelCardReasoningInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOModelCooldown2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCooldownᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ModelCooldown) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModelCooldown2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCooldown(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOModelEdge2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModelEdge(ctx context.Context, sel ast.SelectionSet, v []*ent.ModelEdge) graphql.Marshaler {

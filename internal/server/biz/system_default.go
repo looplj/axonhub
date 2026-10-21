@@ -86,6 +86,14 @@ var defaultRetryPolicy = RetryPolicy{
 	UpstreamErrorPolicy: UpstreamErrorPolicy{
 		Mode: UpstreamErrorModePassthrough,
 	},
+	ClientCancellationPolicy: ClientCancellationPolicy{
+		Enabled:          true,
+		Threshold:        2,
+		CooldownMinutes:  30,
+		Action:           ClientCancellationActionSwitchAndCooldown,
+		Scope:            ClientCancellationScopeGlobal,
+		ProjectOverrides: []ClientCancellationProjectPolicy{},
+	},
 }
 
 var defaultModelSettings = SystemModelSettings{

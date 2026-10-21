@@ -14,8 +14,91 @@ import (
 // This is used to return association match results.
 type ModelChannelConnection struct {
 	Channel  *ent.Channel        `json:"channel"`
+	KeyGroup *KeyGroupRef        `json:"keyGroup,omitempty"`
 	Models   []ChannelModelEntry `json:"models"`
 	Priority int                 `json:"priority"`
+}
+
+// KeyGroupRef identifies the API-key group that produced a model match. It is
+// nil for legacy channel-level connections without keyGroups.
+type KeyGroupRef struct {
+	Index int    `json:"index"`
+	Name  string `json:"name"`
+}
+
+// keyGroupsForModel returns the key-group refs whose model allowlist contains
+// the requested model. When a channel has no key groups, a single nil ref is
+// returned so the legacy channel-level behavior remains unchanged.
+func keyGroupsForModel(ch *Channel, model string) []*KeyGroupRef {
+	if ch == nil || !ch.Credentials.HasKeyGroups() {
+		return []*KeyGroupRef{nil}
+	}
+
+	refs := make([]*KeyGroupRef, 0, len(ch.Credentials.KeyGroups))
+	for index, group := range ch.Credentials.KeyGroups {
+		if !group.Enabled {
+			continue
+		}
+		if len(group.Models) > 0 && !lo.Contains(group.Models, model) {
+			continue
+		}
+		name := group.Name
+		if name == "" {
+			name = fmt.Sprintf("分组%d", index+1)
+		}
+		refs = append(refs, &KeyGroupRef{Index: index, Name: name})
+	}
+
+	return refs
+}
+
+// modelEntriesForGroup returns the channel model entries visible to one key
+// group. Group-scoped models restrict the global channel model entries to the
+// group allowlist; an unscoped group keeps the full channel catalog.
+func modelEntriesForGroup(ch *Channel, group *KeyGroupRef) map[string]ChannelModelEntry {
+	entries := ch.GetModelEntries()
+	if group == nil {
+		return entries
+	}
+
+	groupModels := ch.Credentials.KeyGroups[group.Index].Models
+	if len(groupModels) == 0 {
+		return entries
+	}
+
+	allowed := make(map[string]ChannelModelEntry, len(groupModels))
+	for _, model := range groupModels {
+		if entry, ok := entries[model]; ok {
+			allowed[model] = entry
+		}
+	}
+	return allowed
+}
+
+func appendGroupedConnection(
+	connections []*ModelChannelConnection,
+	ch *Channel,
+	modelID string,
+	entry ChannelModelEntry,
+	priority int,
+	tracker *DuplicateKeyTracker,
+) []*ModelChannelConnection {
+	for _, group := range keyGroupsForModel(ch, modelID) {
+		groupIndex := -1
+		if group != nil {
+			groupIndex = group.Index
+		}
+		if !tracker.AddGroup(ch.ID, groupIndex, modelID) {
+			continue
+		}
+		connections = append(connections, &ModelChannelConnection{
+			Channel:  ch.Channel,
+			KeyGroup: group,
+			Models:   []ChannelModelEntry{entry},
+			Priority: priority,
+		})
+	}
+	return connections
 }
 
 // AssociationMatch groups the connections produced by a single association.
@@ -28,8 +111,9 @@ type AssociationMatch struct {
 
 // ChannelModelKey represents a unique combination of channel and model.
 type ChannelModelKey struct {
-	ChannelID int
-	ModelID   string
+	ChannelID  int
+	GroupIndex int
+	ModelID    string
 }
 
 // DuplicateKeyTracker tracks duplicate combinations using a struct key.
@@ -47,9 +131,16 @@ func NewDuplicateKeyTracker() *DuplicateKeyTracker {
 // Add checks if a channel-model combination exists and adds it if it doesn't.
 // Returns true if the combination was newly added, false if it already existed.
 func (d *DuplicateKeyTracker) Add(channelID int, modelID string) bool {
+	return d.AddGroup(channelID, -1, modelID)
+}
+
+// AddGroup checks the channel/key-group/model combination. GroupIndex -1 is the
+// legacy no-group identity.
+func (d *DuplicateKeyTracker) AddGroup(channelID, groupIndex int, modelID string) bool {
 	key := ChannelModelKey{
-		ChannelID: channelID,
-		ModelID:   modelID,
+		ChannelID:  channelID,
+		GroupIndex: groupIndex,
+		ModelID:    modelID,
 	}
 	if d.seen[key] {
 		return false
@@ -62,7 +153,7 @@ func (d *DuplicateKeyTracker) Add(channelID int, modelID string) bool {
 
 // String returns the string representation of the key for compatibility.
 func (k ChannelModelKey) String() string {
-	return fmt.Sprintf("%d:%s", k.ChannelID, k.ModelID)
+	return fmt.Sprintf("%d:%d:%s", k.ChannelID, k.GroupIndex, k.ModelID)
 }
 
 // MatchConnections matches associations against channels and their supported models.
@@ -163,18 +254,7 @@ func matchChannelModel(assoc *objects.ModelAssociation, channels []*Channel, tra
 		return nil
 	}
 
-	// Check deduplication
-	if !tracker.Add(ch.ID, assoc.ChannelModel.ModelID) {
-		return nil
-	}
-
-	return []*ModelChannelConnection{
-		{
-			Channel:  ch.Channel,
-			Models:   []ChannelModelEntry{entry},
-			Priority: assoc.Priority,
-		},
-	}
+	return appendGroupedConnection(nil, ch, assoc.ChannelModel.ModelID, entry, assoc.Priority, tracker)
 }
 
 // matchChannelRegex handles channel_regex type association.
@@ -192,28 +272,27 @@ func matchChannelRegex(assoc *objects.ModelAssociation, channels []*Channel, tra
 
 	entries := ch.GetModelEntries()
 
-	var models []ChannelModelEntry
-
-	for modelID, entry := range entries {
+	var matched []string
+	for modelID := range entries {
 		if xregexp.MatchString(assoc.ChannelRegex.Pattern, modelID) {
-			// Check deduplication
-			if tracker.Add(ch.ID, modelID) {
-				models = append(models, entry)
-			}
+			matched = append(matched, modelID)
 		}
 	}
 
+	var models []ChannelModelEntry
+	for _, modelID := range matched {
+		if tracker.Add(ch.ID, modelID) {
+			models = append(models, entries[modelID])
+		}
+	}
 	if len(models) == 0 {
 		return nil
 	}
-
-	return []*ModelChannelConnection{
-		{
-			Channel:  ch.Channel,
-			Models:   models,
-			Priority: assoc.Priority,
-		},
-	}
+	return []*ModelChannelConnection{{
+		Channel:  ch.Channel,
+		Models:   models,
+		Priority: assoc.Priority,
+	}}
 }
 
 // matchRegex handles regex type association.
@@ -233,20 +312,16 @@ func matchRegex(assoc *objects.ModelAssociation, channels []*Channel, tracker *D
 		entries := ch.GetModelEntries()
 
 		var models []ChannelModelEntry
-
 		for modelID, entry := range entries {
 			if xregexp.MatchString(assoc.Regex.Pattern, modelID) {
-				// Check deduplication
 				if tracker.Add(ch.ID, modelID) {
 					models = append(models, entry)
 				}
 			}
 		}
-
 		if len(models) == 0 {
 			continue
 		}
-
 		connections = append(connections, &ModelChannelConnection{
 			Channel:  ch.Channel,
 			Models:   models,
@@ -279,16 +354,7 @@ func matchModel(assoc *objects.ModelAssociation, channels []*Channel, tracker *D
 			continue
 		}
 
-		// Check deduplication
-		if !tracker.Add(ch.ID, modelID) {
-			continue
-		}
-
-		connections = append(connections, &ModelChannelConnection{
-			Channel:  ch.Channel,
-			Models:   []ChannelModelEntry{entry},
-			Priority: assoc.Priority,
-		})
+		connections = appendGroupedConnection(connections, ch, modelID, entry, assoc.Priority, tracker)
 	}
 
 	return connections
@@ -365,16 +431,7 @@ func matchChannelTagsModel(assoc *objects.ModelAssociation, channels []*Channel,
 			continue
 		}
 
-		// Check deduplication
-		if !tracker.Add(ch.ID, modelID) {
-			continue
-		}
-
-		connections = append(connections, &ModelChannelConnection{
-			Channel:  ch.Channel,
-			Models:   []ChannelModelEntry{entry},
-			Priority: assoc.Priority,
-		})
+		connections = appendGroupedConnection(connections, ch, modelID, entry, assoc.Priority, tracker)
 	}
 
 	return connections
@@ -411,20 +468,16 @@ func matchChannelTagsRegex(assoc *objects.ModelAssociation, channels []*Channel,
 		entries := ch.GetModelEntries()
 
 		var models []ChannelModelEntry
-
 		for modelID, entry := range entries {
 			if xregexp.MatchString(assoc.ChannelTagsRegex.Pattern, modelID) {
-				// Check deduplication
 				if tracker.Add(ch.ID, modelID) {
 					models = append(models, entry)
 				}
 			}
 		}
-
 		if len(models) == 0 {
 			continue
 		}
-
 		connections = append(connections, &ModelChannelConnection{
 			Channel:  ch.Channel,
 			Models:   models,

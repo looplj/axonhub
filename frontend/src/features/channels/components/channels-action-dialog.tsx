@@ -2,29 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, memo } from 'react';
 import { z } from 'zod';
-import { useFieldArray, useForm, type Control, type FieldValues } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban, Check } from 'lucide-react';
+import { X, RefreshCw, Search, PanelLeft, Plus, Trash2, Eye, EyeOff, Play, Info } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { copyTextToClipboard } from '@/lib/clipboard';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { AutoComplete } from '@/components/auto-complete';
 import { SelectDropdown } from '@/components/select-dropdown';
 import {
   usePassThroughSettings,
@@ -33,7 +29,6 @@ import {
   useSaveProxyPreset,
   useUserAgentPassThroughSettings,
 } from '@/features/system/data/system';
-import { usePermissions } from '@/hooks/usePermissions';
 import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
   useCreateChannel,
@@ -42,17 +37,12 @@ import {
   useFetchModels,
   useAllChannelNames,
   useAllChannelTags,
-  useChannelDisabledAPIKeys,
-  useDisableChannelAPIKey,
-  useEnableChannelAPIKey,
   useSyncChannelModels,
 } from '../data/channels';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
 import { codexDecodeAuthJSON, codexOAuthExchange, codexOAuthStart } from '../data/codex';
-import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
 import {
   getDefaultBaseURL,
-  getDefaultModels,
   CHANNEL_CONFIGS,
   OPENAI_CHAT_COMPLETIONS,
   OPENAI_RESPONSES,
@@ -75,10 +65,20 @@ import {
   toHttpBaseURL,
   translateLegacyCodexModelProtocols,
 } from '../data/protocol-options';
-import { Channel, ChannelType, ApiFormat, ChannelSettings, ChannelQuotaRoutingMode, RetryableErrorPattern, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
+import {
+  Channel,
+  ChannelType,
+  ApiFormat,
+  ChannelSettings,
+  ChannelQuotaRoutingMode,
+  RetryableErrorPattern,
+  createChannelInputSchema,
+  updateChannelInputSchema,
+} from '../data/schema';
+import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
-import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
+import { isValidModelPattern } from '../utils/pattern';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
@@ -90,8 +90,6 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   showModelsPanel?: boolean;
 }
-
-const MAX_MODELS_DISPLAY = 2;
 
 const duplicateNameRegex = /^(.*) \((\d+)\)$/;
 
@@ -222,74 +220,6 @@ function getResponsesWebSocketBaseURL(channelType: ChannelType): string | undefi
 }
 
 // Custom hook for debounced value
-function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-// Memoized FetchedModelItem component
-const FetchedModelItem = memo(
-  ({
-    model,
-    isAdded,
-    isSelected,
-    onToggle,
-    addedLabel,
-    willRemoveLabel,
-  }: {
-    model: string;
-    isAdded: boolean;
-    isSelected: boolean;
-    onToggle: () => void;
-    addedLabel: string;
-    willRemoveLabel: string;
-  }) => (
-    <div
-      className={`flex items-center gap-2 rounded-md p-2 text-sm transition-colors ${
-        isAdded && !isSelected
-          ? 'bg-muted/50 text-muted-foreground'
-          : isSelected
-            ? 'bg-primary/10 border-primary/30 border'
-            : 'hover:bg-accent cursor-pointer'
-      }`}
-    >
-      <Checkbox checked={isSelected} onCheckedChange={onToggle} />
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className='flex-1 cursor-pointer truncate' onClick={onToggle}>
-            {model}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className='max-w-xs break-all'>{model}</p>
-        </TooltipContent>
-      </Tooltip>
-      {isAdded && !isSelected && (
-        <Badge variant='secondary' className='shrink-0 text-xs'>
-          {addedLabel}
-        </Badge>
-      )}
-      {isAdded && isSelected && (
-        <Badge variant='destructive' className='shrink-0 text-xs'>
-          {willRemoveLabel}
-        </Badge>
-      )}
-    </div>
-  )
-);
-FetchedModelItem.displayName = 'FetchedModelItem';
-
 // Memoized SupportedModelItem component
 const SupportedModelItem = memo(({ model, isManual, onRemove }: { model: string; isManual: boolean; onRemove: () => void }) => (
   <div className='hover:bg-accent flex items-center gap-2 rounded-md p-2 text-sm'>
@@ -342,7 +272,7 @@ function isOfficialCodexChannel(channel: { credentials?: { apiKey?: string | nul
   }
 }
 
-function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string }; baseURL: string }): boolean {
+function isOfficialClaudeCodeChannel(channel: { credentials?: { apiKey?: string | null } | null; baseURL: string }): boolean {
   const apiKey = channel.credentials?.apiKey || '';
   const defaultURL = getDefaultBaseURL('claudecode');
   return apiKey.includes('sk-ant-oat') || apiKey.includes('sk-ant-api03') || channel.baseURL === defaultURL;
@@ -369,255 +299,198 @@ function getInitialBaseURL(row: Pick<Channel, 'type' | 'baseURL' | 'credentials'
 
 // Used by both the submit path and fetch-models: reads the access_token out of
 // an OAuth/auth.json credential, falling back to the raw string.
-function parseOauthToken(oauthApiKey: string): string {
-  if (!oauthApiKey) return '';
-  try {
-    const parsed = JSON.parse(oauthApiKey);
-    if (parsed.access_token) {
-      return parsed.access_token;
-    }
-    if (parsed.tokens?.access_token) {
-      return parsed.tokens.access_token;
-    }
-  } catch {
-    // Not JSON, use as-is
-  }
-  return oauthApiKey;
-}
 
 // A third-party Codex channel authenticates with a plain API key only. An OAuth
 // or auth.json row that is copied/edited into third-party mode still carries its
 // old JSON in `credentials.apiKey`; the backend replaces credentials wholesale,
 // so the inherited value must be dropped before submit or it silently revives.
-function getCodexThirdPartySubmitCredentials<T extends { apiKey?: string | null; apiKeys?: string[] | null }>(
-  credentials: T,
-  channel: { type?: ChannelType | null; authMode: string }
-): T {
-  if (channel.type !== 'codex' || channel.authMode !== 'third-party') return credentials;
-
-  const { apiKey: _inheritedOAuthCredentials, ...thirdPartyCredentials } = credentials;
-  return thirdPartyCredentials as T;
-}
-
-// Model fetch mirrors submit: third-party Codex uses only the plain key, every
-// other provider keeps preferring an OAuth credential when one is present.
-function getFetchModelsApiKey(input: {
-  type?: string | null;
-  authMode: string;
-  oauthApiKey?: string | null;
-  apiKeys?: (string | null | undefined)[] | null;
-}): string {
-  const plainApiKey = (input.apiKeys || []).find((key) => (key || '').trim().length > 0)?.trim() || '';
-  const oauthApiKey = input.oauthApiKey || '';
-
-  if (input.type === 'codex' && input.authMode === 'third-party') {
-    return plainApiKey;
-  }
-
-  // OAuth JSON is sent whole so the backend can detect isOAuthJSON.
-  if (oauthApiKey.trimStart().startsWith('{')) {
-    return oauthApiKey;
-  }
-
-  return parseOauthToken(oauthApiKey) || plainApiKey;
-}
-
-// Third-party Codex rejects an empty or OAuth-shaped credential so a save can
-// never persist a channel that still authenticates with the inherited JSON.
-function getCodexThirdPartyCredentialError(channel: {
-  type?: string | null;
-  authMode: string;
-  apiKeys?: (string | null | undefined)[] | null;
-}): string | undefined {
-  if (channel.type !== 'codex' || channel.authMode !== 'third-party') return undefined;
-
-  const apiKeys = (channel.apiKeys || []).map((key) => (key || '').trim()).filter((key) => key.length > 0);
-  if (apiKeys.length === 0) {
-    return 'channels.dialogs.oauth.errors.codexThirdPartyApiKeyRequired';
-  }
-  if (apiKeys.some((key) => key.startsWith('{'))) {
-    return 'channels.dialogs.oauth.errors.codexThirdPartyApiKeyInvalid';
-  }
-
-  return undefined;
-}
-
-// A form row for one grouped key. Mirrors the KeyGroupInput shape but keeps the
-// model list always present so the UI can render an empty state.
+// One group in the grouped-key editor. A group is a required remark (name) plus
+// one or more keys: several keys rotate round-robin inside the group.
 type KeyGroupFormRow = {
-  name: string;
-  apiKey: string;
-  models: string[];
-  enabled: boolean;
+  name?: string;
+  apiKeys?: string[];
+  models?: string[];
+  enabled?: boolean;
 };
 
-function emptyKeyGroupRow(): KeyGroupFormRow {
-  return { name: '', apiKey: '', models: [], enabled: true };
-}
-
 // Read side: echo stored groups into form rows. Legacy channels have no groups,
-// so this returns an empty list and the plain apiKeys editor stays in use.
+// so this returns an empty list and the plain apiKeys editor stays in use. Groups
+// stored before a group could hold several keys carry a single apiKey, which is
+// folded into the key list here.
 function normalizeKeyGroupsFromCredentials(
-  credentials?: { keyGroups?: { name?: string | null; apiKey?: string; models?: string[] | null; enabled?: boolean }[] | null } | null
+  credentials?: {
+    keyGroups?:
+      | { name?: string | null; apiKeys?: string[] | null; apiKey?: string | null; models?: string[] | null; enabled?: boolean }[]
+      | null;
+  } | null
 ): KeyGroupFormRow[] {
-  return (credentials?.keyGroups || []).map((group) => ({
-    name: group.name || '',
-    apiKey: group.apiKey || '',
-    models: group.models || [],
-    enabled: group.enabled ?? true,
-  }));
+  return (credentials?.keyGroups || []).map((group) => {
+    const keys = (group.apiKeys || []).map((key) => (key || '').trim()).filter((key) => key.length > 0);
+
+    if (keys.length === 0 && (group.apiKey || '').trim()) {
+      keys.push((group.apiKey || '').trim());
+    }
+
+    return {
+      name: group.name || '',
+      apiKeys: keys,
+      models: group.models || [],
+      enabled: group.enabled ?? true,
+    };
+  });
 }
 
-// Grouped API key editor. Each row is a name + key + model allowlist with a
-// per-row "fetch models" action that probes the upstream /models endpoint using
-// only that row's key. The rows are addressed by their index in
-// credentials.keyGroups so the parent form value stays the source of truth.
+// Display label for a group. The remark is required by the form, so persisted
+// groups always have one; the positional fallback only protects legacy data.
+function groupModelLabel(
+  group: { name?: string | null; apiKeys?: (string | null)[] | null; apiKey?: string | null } | undefined,
+  index: number,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string {
+  const name = (group?.name || '').trim();
+  if (name) return name;
+
+  return t('channels.dialogs.fields.keyGroup.unnamedGroup', { index: index + 1 });
+}
+
+// Turn raw textarea content into a key list: one key per line, blanks dropped,
+// duplicates removed. This is what makes several keys in one group rotate.
+function parseKeyList(text: string): string[] {
+  const seen = new Set<string>();
+  const keys: string[] = [];
+
+  for (const line of text.split('\n')) {
+    const key = line.trim();
+
+    if (!key || seen.has(key)) continue;
+
+    seen.add(key);
+    keys.push(key);
+  }
+
+  return keys;
+}
+
+const keyListToText = (keys?: string[] | null): string => (keys || []).join('\n');
+
+function createEmptyKeyGroup(index: number): KeyGroupFormRow {
+  return {
+    name: `分组${index}`,
+    apiKeys: [],
+    models: [],
+    enabled: true,
+  };
+}
+
+// Grouped API key editor.
+//
+// 分组不是独立模块，只是给 API Key 打的备注。每一行就是"备注 + 该组的 Key 填写框"，
+// 和上方默认输入框完全同款：一个框，每行一个 Key，多个 Key 在该分组内轮询。
+// 想加几个分组就点几次"添加分组"。这里没有任何模型控件——获取/勾选模型统一在
+// 下方"支持的模型"栏里按分组进行。
 interface KeyGroupsEditorProps {
-  control: Control<FieldValues>;
   rows: KeyGroupFormRow[];
   onAdd: () => void;
   onRemove: (index: number) => void;
-  onFetchModels: (index: number) => void;
-  fetchingIndex: number | null;
-  fetchDisabled: boolean;
+  onChangeName: (index: number, name: string) => void;
+  onChangeKeys: (index: number, keys: string[], options?: { validate?: boolean }) => void;
+  onViewKeys: (index: number) => void;
 }
 
-function KeyGroupsEditor({ control, rows, onAdd, onRemove, onFetchModels, fetchingIndex, fetchDisabled }: KeyGroupsEditorProps) {
+// Masking placeholder. Masked text must never be parsed back into the key list:
+// a blur used to re-parse the dots, replace every key with the placeholder, and
+// then trip the duplicate-key validation.
+const MASKED_KEY_PLACEHOLDER = '••••••••';
+
+function KeyGroupsEditor({ rows, onAdd, onRemove, onChangeName, onChangeKeys, onViewKeys }: KeyGroupsEditorProps) {
   const { t } = useTranslation();
+  const [visibleKeys, setVisibleKeys] = useState<Record<number, boolean>>({});
 
   return (
-    <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-      <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>{t('channels.dialogs.fields.keyGroup.label')}</FormLabel>
-      <div className='space-y-3 md:col-span-6'>
-        <div className='flex items-center justify-between gap-2'>
-          <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.keyGroup.hint')}</p>
-          <Button type='button' variant='outline' size='sm' onClick={onAdd} className='h-8 shrink-0'>
-            <Plus className='mr-1 h-4 w-4' />
-            {t('channels.dialogs.fields.keyGroup.addGroup')}
-          </Button>
-        </div>
+    <div className='space-y-3'>
+      {rows.map((row, index) => {
+        const keys = row.apiKeys || [];
+        const isKeysVisible = visibleKeys[index] === true;
 
-        {rows.length === 0 ? (
-          <p className='text-muted-foreground rounded-md border border-dashed px-3 py-4 text-center text-xs'>
-            {t('channels.dialogs.fields.keyGroup.empty')}
-          </p>
-        ) : (
-          <div className='space-y-2'>
-            {rows.map((_, index) => (
-              <div key={index} className='space-y-2 rounded-md border p-3'>
-                <div className='flex items-center gap-2'>
-                  <FormField
-                    control={control}
-                    name={`credentials.keyGroups.${index}.name`}
-                    render={({ field }) => (
-                      <FormItem className='min-w-0 flex-1 gap-0'>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value || ''}
-                            placeholder={t('channels.dialogs.fields.keyGroup.namePlaceholder')}
-                            className='h-9'
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type='button'
-                    variant='ghost'
-                    size='sm'
-                    onClick={() => onRemove(index)}
-                    className='text-destructive hover:text-destructive h-9 w-9 shrink-0 p-0'
-                    aria-label={t('channels.dialogs.fields.keyGroup.removeGroup')}
-                  >
-                    <Trash2 className='h-4 w-4' />
-                  </Button>
-                </div>
+        return (
+          <div key={index} className='bg-muted/20 space-y-3 rounded-lg border p-3 shadow-xs' data-testid={`channel-key-group-row-${index}`}>
+            <div className='flex items-center gap-2'>
+              <Badge variant='secondary' className='shrink-0 font-normal'>
+                {t('channels.dialogs.fields.keyGroup.groupNumber', { index: index + 1 })}
+              </Badge>
+              <Input
+                value={row.name || ''}
+                onChange={(e) => onChangeName(index, e.target.value)}
+                placeholder={t('channels.dialogs.fields.keyGroup.namePlaceholder')}
+                className='h-8 min-w-0 flex-1'
+                aria-label={t('channels.dialogs.fields.keyGroup.namePlaceholder')}
+                data-testid={`channel-key-group-name-${index}`}
+              />
+              <Button
+                type='button'
+                variant='ghost'
+                size='icon'
+                onClick={() => onRemove(index)}
+                className='text-muted-foreground hover:text-destructive h-8 w-8 shrink-0'
+                aria-label={t('channels.dialogs.fields.keyGroup.removeGroup')}
+              >
+                <Trash2 className='h-4 w-4' />
+              </Button>
+            </div>
 
-                <div className='flex items-center gap-2'>
-                  <FormField
-                    control={control}
-                    name={`credentials.keyGroups.${index}.apiKey`}
-                    render={({ field }) => (
-                      <FormItem className='min-w-0 flex-1 gap-0'>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            value={field.value || ''}
-                            type='password'
-                            autoComplete='new-password'
-                            placeholder={t('channels.dialogs.fields.keyGroup.apiKeyPlaceholder')}
-                            className='h-9 font-mono text-sm'
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    onClick={() => onFetchModels(index)}
-                    disabled={fetchDisabled || fetchingIndex === index}
-                    className='h-9 shrink-0'
-                  >
-                    <RefreshCw className={`mr-1 h-4 w-4 ${fetchingIndex === index ? 'animate-spin' : ''}`} />
-                    {t('channels.dialogs.fields.keyGroup.fetchModels')}
-                  </Button>
-                  <FormField
-                    control={control}
-                    name={`credentials.keyGroups.${index}.enabled`}
-                    render={({ field }) => (
-                      <FormItem className='shrink-0 gap-0'>
-                        <FormControl>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                type='button'
-                                variant={field.value ? 'default' : 'outline'}
-                                size='sm'
-                                onClick={() => field.onChange(!field.value)}
-                                className='h-9 w-9 p-0'
-                                aria-label={t('channels.dialogs.fields.keyGroup.toggleEnabled')}
-                              >
-                                {field.value ? <Check className='h-4 w-4' /> : <Ban className='h-4 w-4' />}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              {field.value
-                                ? t('channels.dialogs.fields.keyGroup.enabled')
-                                : t('channels.dialogs.fields.keyGroup.disabled')}
-                            </TooltipContent>
-                          </Tooltip>
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={control}
-                  name={`credentials.keyGroups.${index}.models`}
-                  render={({ field }) => (
-                    <FormItem className='gap-0'>
-                      <FormControl>
-                        <TagsAutocompleteInput
-                          value={field.value || []}
-                          onChange={field.onChange}
-                          placeholder={t('channels.dialogs.fields.keyGroup.modelsPlaceholder')}
-                          suggestions={[]}
-                          className='min-h-9 py-1'
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
+            <div className='relative'>
+              <Textarea
+                value={isKeysVisible ? keyListToText(keys) : keys.map(() => MASKED_KEY_PLACEHOLDER).join('\n')}
+                onChange={(e) => {
+                  if (!isKeysVisible) return;
+                  onChangeKeys(index, parseKeyList(e.target.value), { validate: false });
+                }}
+                onBlur={(e) => {
+                  if (!isKeysVisible) return;
+                  onChangeKeys(index, parseKeyList(e.target.value), { validate: true });
+                }}
+                placeholder={t('channels.dialogs.fields.keyGroup.keysPlaceholder')}
+                className='bg-background min-h-[76px] resize-y pr-16 font-mono text-sm'
+                autoComplete='new-password'
+                data-form-type='other'
+                spellCheck={false}
+                readOnly={!isKeysVisible}
+                data-testid={`channel-key-group-keys-${index}`}
+              />
+              <div className='absolute top-1.5 right-1.5 flex gap-1'>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  className='h-7 w-7'
+                  onClick={() => setVisibleKeys((prev) => ({ ...prev, [index]: !prev[index] }))}
+                  aria-label={t('channels.dialogs.fields.apiKey.revealToEditHint')}
+                >
+                  {isKeysVisible ? <EyeOff className='h-3.5 w-3.5' /> : <Eye className='h-3.5 w-3.5' />}
+                </Button>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon'
+                  className='h-7 w-7'
+                  onClick={() => onViewKeys(index)}
+                  aria-label={t('channels.dialogs.fields.keyGroup.viewKeys')}
+                >
+                  <PanelLeft className='h-3.5 w-3.5' />
+                </Button>
               </div>
-            ))}
+            </div>
+
+            <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.keyGroup.groupHint', { count: keys.length })}</p>
           </div>
-        )}
-      </div>
-    </FormItem>
+        );
+      })}
+
+      <Button type='button' variant='outline' size='sm' onClick={onAdd} data-testid='channel-add-key-group'>
+        <Plus className='mr-1.5 h-3.5 w-3.5' />
+        {t('channels.dialogs.fields.keyGroup.addGroup')}
+      </Button>
+    </div>
   );
 }
 
@@ -643,47 +516,22 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
-  const [selectedDefaultModels, setSelectedDefaultModels] = useState<string[]>([]);
-  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
-  const [useFetchedModels, setUseFetchedModels] = useState(false);
   const providerRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const providerListRef = useRef<HTMLDivElement | null>(null);
   const providerHorizontalScrollRef = useHorizontalScroll<HTMLDivElement>();
 
   // Expandable panel states
-  const [showFetchedModelsPanel, setShowFetchedModelsPanel] = useState(false);
-  const [showSupportedModelsPanel, setShowSupportedModelsPanel] = useState(false);
-  const [fetchedModelsSearch, setFetchedModelsSearch] = useState('');
-  const [supportedModelsSearch, setSupportedModelsSearch] = useState('');
-  const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([]);
-  const [showNotAddedModelsOnly, setShowNotAddedModelsOnly] = useState(false);
-  const [supportedModelsExpanded, setSupportedModelsExpanded] = useState(false);
-  const [showClearAllPopover, setShowClearAllPopover] = useState(false);
-  const [applyPatternFilter, setApplyPatternFilter] = useState(false);
   const hasAutoSetDuplicateNameRef = useRef(false);
   const codexThirdPartyBaseURLRef = useRef('');
-  const [showApiKey, setShowApiKey] = useState(false);
   const [showCommandCodeAuthCookie, setShowCommandCodeAuthCookie] = useState(false);
   const [showOllamaAuthCookie, setShowOllamaAuthCookie] = useState(false);
-  const [showApiKeysPanel, setShowApiKeysPanel] = useState(false);
-  const [apiKeysSearch, setApiKeysSearch] = useState('');
-  const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<string>>(new Set());
-  const [confirmRemoveSelectedOpen, setConfirmRemoveSelectedOpen] = useState(false);
-  const [confirmRemoveKey, setConfirmRemoveKey] = useState<string | null>(null);
-  const [confirmDisableKey, setConfirmDisableKey] = useState<string | null>(null);
   const [authMode, setAuthMode] = useState<'official' | 'auth-json' | 'third-party'>('official');
   const [codexAuthJSONText, setCodexAuthJSONText] = useState('');
   const [xaiSSOToken, setXaiSSOToken] = useState('');
   const [isImportingXAISSO, setIsImportingXAISSO] = useState(false);
   const [patternError, setPatternError] = useState<string | null>(null);
 
-  // Debounced search values for better performance
-  const debouncedFetchedModelsSearch = useDebounce(fetchedModelsSearch, 300);
-  const debouncedSupportedModelsSearch = useDebounce(supportedModelsSearch, 300);
-
   // Refs for virtual scrolling
-  const fetchedModelsParentRef = useRef<HTMLDivElement>(null);
-  const supportedModelsParentRef = useRef<HTMLDivElement>(null);
 
   const [proxyType, setProxyType] = useState<ProxyType>(() => {
     if (initialRow?.settings?.proxy?.type) {
@@ -846,7 +694,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     // Detect authMode for codex and claudecode
     if (initialRow.type === 'codex') {
       setAuthMode(isOfficialCodexChannel(initialRow) ? 'official' : 'third-party');
-      setCodexAuthJSONText(extractCodexAuthJSONText(initialRow.credentials?.apiKey) || '');
+      setCodexAuthJSONText(extractCodexAuthJSONText(initialRow.credentials?.apiKey ?? undefined) || '');
     } else if (initialRow.type === 'claudecode') {
       setAuthMode(isOfficialClaudeCodeChannel(initialRow) ? 'official' : 'third-party');
     }
@@ -868,27 +716,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   useEffect(() => {
     if (!open) {
-      setShowApiKey(false);
       setShowCommandCodeAuthCookie(false);
       setShowOllamaAuthCookie(false);
-      setShowApiKeysPanel(false);
-      setApiKeysSearch('');
-      setSelectedKeysToRemove(new Set());
-      setConfirmRemoveSelectedOpen(false);
-      setConfirmRemoveKey(null);
-      setConfirmDisableKey(null);
       setPatternError(null);
-      setFetchedModels([]);
-      setUseFetchedModels(false);
-      setShowFetchedModelsPanel(false);
-      setShowSupportedModelsPanel(false);
-      setSelectedDefaultModels([]);
-      setFetchedModelsSearch('');
-      setSupportedModelsSearch('');
-      setSelectedFetchedModels([]);
-      setShowNotAddedModelsOnly(false);
-      setApplyPatternFilter(false);
-      setSupportedModelsExpanded(false);
+      setShowGroupModelsPanel(false);
+      setShowKeyPanel(false);
+      setActiveKeyGroupIndex(null);
+      setActiveGroupModelIndex(null);
+      setGroupModelSelection([]);
+      setGroupModelsSearch('');
+      setUnifiedFetchedModels([]);
+      setModelSourceGroups({});
+      setFetchingAllGroups(false);
     }
   }, [open]);
 
@@ -900,8 +739,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const container = providerListRef.current;
       if (target && container) {
         const isHorizontal =
-          (window.getComputedStyle(container).overflowX === 'auto' ||
-            window.getComputedStyle(container).overflowX === 'scroll') &&
+          (window.getComputedStyle(container).overflowX === 'auto' || window.getComputedStyle(container).overflowX === 'scroll') &&
           container.scrollWidth > container.clientWidth;
         if (isHorizontal) {
           const targetCenter = target.offsetLeft + target.clientWidth / 2;
@@ -923,15 +761,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     },
     [providerHorizontalScrollRef]
   );
-
-  // Auto-open supported models panel when showModelsPanel is true
-  useEffect(() => {
-    if (open && showModelsPanel && initialRow && initialRow.supportedModels.length > 0) {
-      setShowSupportedModelsPanel(true);
-      setShowFetchedModelsPanel(false);
-      setShowApiKeysPanel(false);
-    }
-  }, [open, showModelsPanel, initialRow]);
 
   // Get available providers (excluding fake types)
   const availableProviders = useMemo(
@@ -1007,8 +836,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const formSchema = isEdit ? updateChannelInputSchema : createChannelInputSchema;
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  type ChannelFormValues = z.infer<typeof createChannelInputSchema> & z.infer<typeof updateChannelInputSchema>;
+  const form = useForm<ChannelFormValues>({
+    resolver: zodResolver(formSchema) as any,
     defaultValues:
       isEdit && currentRow
         ? {
@@ -1024,8 +854,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             remark: currentRow.remark || '',
             credentials: {
               // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
-              apiKey: currentRow.credentials?.apiKey || undefined,
-              apiKeys: currentRow.credentials?.apiKeys || [],
+              apiKey: currentRow.credentials?.apiKey ?? undefined,
+              apiKeys: [],
               keyGroups: normalizeKeyGroupsFromCredentials(currentRow.credentials),
               vertexApiKeys: currentRow.type === 'gemini_vertex' ? (currentRow.credentials?.vertexApiKeys ?? undefined) : [],
               managementApiKey: currentRow.credentials?.managementApiKey || undefined,
@@ -1052,8 +882,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               settings: duplicateFromRow.settings ?? undefined,
               credentials: {
                 // OAuth 类型的凭据存储在 apiKey 字段，不放入 apiKeys
-                apiKey: duplicateFromRow.credentials?.apiKey || undefined,
-                apiKeys: duplicateFromRow.credentials?.apiKeys || [],
+                apiKey: duplicateFromRow.credentials?.apiKey ?? undefined,
+                apiKeys: [],
                 keyGroups: normalizeKeyGroupsFromCredentials(duplicateFromRow.credentials),
                 vertexApiKeys: duplicateFromRow.type === 'gemini_vertex' ? (duplicateFromRow.credentials?.vertexApiKeys ?? undefined) : [],
                 managementApiKey: duplicateFromRow.credentials?.managementApiKey || undefined,
@@ -1071,7 +901,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               policies: { stream: 'unlimited' },
               credentials: {
                 apiKeys: [],
-                keyGroups: [],
+                keyGroups: [createEmptyKeyGroup(1)],
                 vertexApiKeys: isVertexChannelType(derivedChannelType) ? [emptyVertexAPIKey()] : [],
                 managementApiKey: undefined,
                 gcp: {
@@ -1089,27 +919,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   });
 
   const vertexApiKeyFields = useFieldArray({ control: form.control, name: 'credentials.vertexApiKeys' });
-  const apiKeys = form.watch('credentials.apiKeys');
-  const apiKeysCount = useMemo(() => (apiKeys || []).filter((k) => k.trim().length > 0).length, [apiKeys]);
   const keyGroups = form.watch('credentials.keyGroups');
   // Per-row fetch state: which group row is currently probing its upstream /models.
   const [fetchingGroupIndex, setFetchingGroupIndex] = useState<number | null>(null);
+  // Which group row's model allowlist is open in the side panel, and the fetched
+  // models that came back from a unified "fetch all groups" run.
+  const [activeGroupModelIndex, setActiveGroupModelIndex] = useState<number | null>(null);
+  const [showGroupModelsPanel, setShowGroupModelsPanel] = useState(false);
+  const [showKeyPanel, setShowKeyPanel] = useState(false);
+  const [activeKeyGroupIndex, setActiveKeyGroupIndex] = useState<number | null>(null);
+  const [groupModelSelection, setGroupModelSelection] = useState<string[]>([]);
+  const [groupModelsSearch, setGroupModelsSearch] = useState('');
+  // Source label per model id, so the panel can show which group a model came from.
+  const [modelSourceGroups, setModelSourceGroups] = useState<Record<string, string[]>>({});
+  const [fetchingAllGroups, setFetchingAllGroups] = useState(false);
+  // Flat list of every model gathered by "fetch all", tagged with its group.
+  const [unifiedFetchedModels, setUnifiedFetchedModels] = useState<{ model: string; group: string; groupIndex: number }[]>([]);
   const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannelSettings.isPending;
-
-  const { data: disabledKeys = [], isFetching: isFetchingDisabledKeys } = useChannelDisabledAPIKeys(currentRow?.id || '', {
-    enabled: isEdit && !!currentRow?.id && showApiKeysPanel,
-  });
-
-  const disabledKeySet = useMemo(() => new Set(disabledKeys.map((dk) => dk.key)), [disabledKeys]);
-
-  // Keys that exist in the backend (used to hide disable/enable button for unsaved new keys)
-  const savedAPIKeySet = useMemo(
-    () => new Set((currentRow?.credentials?.apiKeys || []).filter((k) => k.trim().length > 0)),
-    [currentRow?.credentials?.apiKeys]
-  );
-
-  const disableAPIKey = useDisableChannelAPIKey();
-  const enableAPIKey = useEnableChannelAPIKey();
 
   useEffect(() => {
     if (!open || !isDuplicate || !duplicateFromRow) return;
@@ -1127,13 +953,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   }, [open, isDuplicate, duplicateFromRow, allChannelNamesLoaded, allChannelNames, form]);
   const selectedType = form.watch('type') as ChannelType | undefined;
   const isGeminiVertex = (selectedType || derivedChannelType) === 'gemini_vertex';
-  const watchedAutoSync = form.watch('autoSyncSupportedModels');
-  const watchedAutoSyncPattern = form.watch('autoSyncModelPattern');
 
   const activeChannelType = selectedType || derivedChannelType;
   const isCodexType = activeChannelType === 'codex';
-  const isAntigravityType = activeChannelType === 'antigravity';
-  const isClineType = activeChannelType === 'cline';
   const isClaudeCodeType = activeChannelType === 'claudecode';
   const isCopilotType = activeChannelType === 'github_copilot';
   const isXAISubscriptionType = activeChannelType === 'xai_subscription';
@@ -1214,8 +1036,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           if (baseURL) {
             form.setValue('baseURL', baseURL, { shouldDirty: true });
           }
-          setFetchedModels([]);
-          setUseFetchedModels(false);
         }
         return;
       }
@@ -1229,8 +1049,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           if (baseURL) {
             form.setValue('baseURL', baseURL, { shouldDirty: true });
           }
-          setFetchedModels([]);
-          setUseFetchedModels(false);
         }
         return;
       }
@@ -1239,8 +1057,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         setSelectedApiFormat(GEMINI_CONTENTS);
         form.setValue('type', 'antigravity');
         if (!isEdit) {
-          setFetchedModels([]);
-          setUseFetchedModels(false);
           // Set default Base URL only if empty
           const baseURL = getDefaultBaseURL('antigravity');
           const currentURL = form.getValues('baseURL');
@@ -1277,8 +1093,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               form.resetField('baseURL', { defaultValue: baseURL });
             }
           }
-          setFetchedModels([]);
-          setUseFetchedModels(false);
         }
       }
     },
@@ -1577,20 +1391,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
   }, [codexAuthJSONText, form, t]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    // Check if there are selected fetched models that haven't been confirmed
-    if (selectedFetchedModels.length > 0) {
-      toast.error(t('channels.messages.modelsNotConfirmed'));
-      return;
-    }
-
+  const onSubmit = async (values: ChannelFormValues) => {
     try {
-      if (values.credentials?.apiKeys) {
-        values.credentials.apiKeys = [
-          ...new Set(values.credentials.apiKeys.map((key) => key.trim()).filter((key) => key.length > 0)),
-        ];
-      }
-
       // Normalize grouped keys: trim values, drop fully-empty rows, and drop any
       // group that has no key. A non-empty group list is authoritative, so the
       // flat apiKeys list is cleared to keep the backend's uniqueness check happy
@@ -1598,19 +1400,15 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const normalizedKeyGroups = (values.credentials?.keyGroups || [])
         .map((group) => ({
           name: (group.name || '').trim(),
-          apiKey: (group.apiKey || '').trim(),
+          apiKeys: [...new Set((group.apiKeys || []).map((key) => (key || '').trim()).filter((key) => key.length > 0))],
           models: [...new Set((group.models || []).map((model) => model.trim()).filter((model) => model.length > 0))],
           enabled: group.enabled ?? true,
         }))
-        .filter((group) => group.apiKey.length > 0);
+        .filter((group) => group.apiKeys.length > 0);
 
       if (values.credentials) {
-        if (normalizedKeyGroups.length > 0) {
-          values.credentials.keyGroups = normalizedKeyGroups;
-          values.credentials.apiKeys = [];
-        } else {
-          values.credentials.keyGroups = [];
-        }
+        values.credentials.keyGroups = normalizedKeyGroups;
+        values.credentials.apiKeys = [];
       }
 
       const retryableStatusCodes = parseRetryableStatusCodesInput(retryableStatusCodesText);
@@ -1654,53 +1452,25 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             : { ...submittedCredentials, vertexApiKeys: undefined }
           : { ...submittedCredentials, vertexApiKeys: undefined };
 
-      // A third-party Codex channel authenticates with a plain API key: reject an
-      // empty or inherited OAuth-shaped credential instead of saving it.
-      const codexThirdPartyCredentialError = getCodexThirdPartyCredentialError({
-        type: values.type || derivedChannelType,
-        authMode,
-        apiKeys: values.credentials?.apiKeys,
-      });
-      if (codexThirdPartyCredentialError) {
-        form.setError('credentials.apiKeys', {
-          type: 'manual',
-          message: t(codexThirdPartyCredentialError),
-        });
-        return;
-      }
-
       const dataWithModels = {
         ...valuesForSubmit,
         supportedModels,
         manualModels,
-        credentials: credentials
-          ? getCodexThirdPartySubmitCredentials(credentials, {
-               type: valuesForSubmit.type,
-               authMode,
-             })
-          : credentials,
+        credentials,
       };
       // The Command Code / Ollama quota cookie is a browser-session credential
       // that only belongs on its own channel type. Never let a
       // duplicate/type-switch flow attach it to an unrelated channel type.
       // Clearing it explicitly sends providerQuota: null so the backend
       // removes the stored cookie.
-      const isCommandCodeSubmit =
-        valuesForSubmit.type === 'commandcode' || valuesForSubmit.type === 'commandcode_anthropic';
-      const commandCodeAuthCookie = isCommandCodeSubmit
-        ? values.settings?.providerQuota?.commandCode?.authCookie?.trim()
-        : undefined;
-      const isOllamaSubmit =
-        valuesForSubmit.type === 'ollama' || valuesForSubmit.type === 'ollama_anthropic';
-      const ollamaAuthCookie = isOllamaSubmit
-        ? values.settings?.providerQuota?.ollama?.authCookie?.trim()
-        : undefined;
+      const isCommandCodeSubmit = valuesForSubmit.type === 'commandcode' || valuesForSubmit.type === 'commandcode_anthropic';
+      const commandCodeAuthCookie = isCommandCodeSubmit ? values.settings?.providerQuota?.commandCode?.authCookie?.trim() : undefined;
+      const isOllamaSubmit = valuesForSubmit.type === 'ollama' || valuesForSubmit.type === 'ollama_anthropic';
+      const ollamaAuthCookie = isOllamaSubmit ? values.settings?.providerQuota?.ollama?.authCookie?.trim() : undefined;
       const settingsForSubmit = values.settings
         ? {
             ...values.settings,
-            ...((isCommandCodeSubmit && commandCodeAuthCookie) || (isOllamaSubmit && ollamaAuthCookie)
-              ? {}
-              : { providerQuota: null }),
+            ...((isCommandCodeSubmit && commandCodeAuthCookie) || (isOllamaSubmit && ollamaAuthCookie) ? {} : { providerQuota: null }),
           }
         : undefined;
 
@@ -1763,21 +1533,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         delete updateInput.settings;
 
         const finalChannelType = updateInput.type || currentRow.type;
-        const keepsManagementApiKey = [
-          'zenmux',
-          'zenmux_responses',
-          'zenmux_anthropic',
-          'zenmux_gemini',
-          'zenmux_video',
-        ].includes(finalChannelType);
+        const keepsManagementApiKey = ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(
+          finalChannelType
+        );
         if (!keepsManagementApiKey && updateInput.credentials) {
           delete updateInput.credentials.managementApiKey;
+        }
+        if (updateInput.credentials) {
+          updateInput.credentials.apiKeys = [];
         }
 
         const apiKey = values.credentials?.apiKey || '';
         const hasApiKey = apiKey.trim().length > 0;
-        const apiKeys = values.credentials?.apiKeys || [];
-        const hasApiKeys = apiKeys.length > 0 && apiKeys.some((k) => k.trim() !== '');
+        const hasApiKeys = false;
         const hasManagementApiKey = (values.credentials?.managementApiKey || '').trim().length > 0;
         const hasGcpCredentials =
           values.credentials?.gcp?.region &&
@@ -1789,16 +1557,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         const hasVertexApiKeys =
           values.credentials?.vertexApiKeys && values.credentials.vertexApiKeys.some((binding) => binding.apiKey.trim() !== '');
         const hasKeyGroups =
-          values.credentials?.keyGroups && values.credentials.keyGroups.some((group) => (group.apiKey || '').trim() !== '');
+          values.credentials?.keyGroups &&
+          values.credentials.keyGroups.some((group) => (group.apiKeys || []).some((key) => (key || '').trim() !== ''));
 
-        if (
-          !hasApiKey &&
-          !hasApiKeys &&
-          !hasKeyGroups &&
-          !hasManagementApiKey &&
-          !hasGcpCredentials &&
-          !hasVertexApiKeys
-        ) {
+        if (!hasApiKey && !hasApiKeys && !hasKeyGroups && !hasManagementApiKey && !hasGcpCredentials && !hasVertexApiKeys) {
           delete updateInput.credentials;
         }
 
@@ -1828,18 +1590,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           ...(selectedApiFormat === 'zenmux/video' ||
           settingsForSubmit?.modelProtocols?.some((protocol) => protocol.apiFormats.includes('zenmux/video'))
             ? {
-                modelProtocols: getModelProtocolsForApiFormat(
-                  selectedApiFormat,
-                  supportedModels,
-                  settingsForSubmit?.modelProtocols
-                ),
+                modelProtocols: getModelProtocolsForApiFormat(selectedApiFormat, supportedModels, settingsForSubmit?.modelProtocols),
               }
             : {}),
           ...(codexModelProtocols ? { modelProtocols: codexModelProtocols } : {}),
         });
 
         const createInput = {
-          ...(dataWithModels as z.infer<typeof createChannelInputSchema>),
+          ...(dataWithModels as unknown as z.infer<typeof createChannelInputSchema>),
           settings: nextSettings,
         } as z.infer<typeof createChannelInputSchema>;
 
@@ -1910,15 +1668,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setNewModel('');
   }, [newModel, supportedModels]);
 
-  const removeModel = (model: string) => {
-    setSupportedModels(supportedModels.filter((m) => m !== model));
-    setManualModels(manualModels.filter((m) => m !== model));
-  };
-
-  const isModelManual = (model: string): boolean => {
-    return manualModels.includes(model);
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -1926,85 +1675,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     }
   };
 
-  const toggleDefaultModel = (model: string) => {
-    setSelectedDefaultModels((prev) => (prev.includes(model) ? prev.filter((m) => m !== model) : [...prev, model]));
-  };
-
-  const addSelectedDefaultModels = () => {
-    const newModels = selectedDefaultModels.filter((model) => !supportedModels.includes(model));
-    if (newModels.length > 0) {
-      setSupportedModels((prev) => [...prev, ...newModels]);
-      setSelectedDefaultModels([]);
-    }
-  };
-
-  const handleClearAllSupportedModels = () => {
-    setSupportedModels([]);
-    setManualModels([]);
-  };
-
-  const handleFetchModels = useCallback(async () => {
-    const channelType = form.getValues('type');
-    const baseURL = form.getValues('baseURL');
-    const apiKeys = form.getValues('credentials.apiKeys');
-    const oauthApiKey = form.getValues('credentials.apiKey');
-    const vertexApiKeys = channelType === 'gemini_vertex' ? form.getValues('credentials.vertexApiKeys') : undefined;
-    const selectedVertexCredential = vertexApiKeys?.find(
-      (credential) =>
-        credential.apiKey.trim().length > 0 &&
-        credential.projectID.trim().length > 0 &&
-        credential.region.trim().length > 0,
-    );
-
-    if (!channelType || !baseURL) {
-      return;
-    }
-
-    try {
-      // For OAuth-based providers (like Copilot), prefer oauthApiKey first
-      let firstApiKey = '';
-      if (channelType === 'gemini_vertex') {
-        firstApiKey = selectedVertexCredential?.apiKey.trim() || '';
-      } else {
-        firstApiKey = getFetchModelsApiKey({
-          type: channelType,
-          authMode,
-          oauthApiKey,
-          apiKeys,
-        });
-      }
-
-      // Fall back to Vertex API keys if neither OAuth nor flat apiKeys are present
-      const result = await fetchModels.mutateAsync({
-        channelType,
-        baseURL,
-        apiKey: firstApiKey || undefined,
-        projectID: selectedVertexCredential?.projectID.trim() || undefined,
-        region: selectedVertexCredential?.region.trim() || undefined,
-        channelID: isEdit ? currentRow?.id : undefined,
-      });
-
-      if (result.error) {
-        toast.error(result.error);
-        return;
-      }
-
-      const models = result.models.map((m) => m.id);
-      if (models?.length) {
-        setFetchedModels(models);
-        setUseFetchedModels(true);
-        setShowFetchedModelsPanel(true);
-        setShowSupportedModelsPanel(false);
-        setShowApiKeysPanel(false);
-        setSelectedFetchedModels([]);
-        setFetchedModelsSearch('');
-        setShowNotAddedModelsOnly(false);
-        setApplyPatternFilter(false);
-      }
-    } catch (_error) {
-      // Error is already handled by the mutation
-    }
-  }, [fetchModels, form, isEdit, currentRow, authMode]);
+  const openGroupModelsPanel = useCallback(
+    (index: number) => {
+      const own = form.getValues(`credentials.keyGroups.${index}.models`) || [];
+      setActiveGroupModelIndex(index);
+      // Only models already saved for this group are checked; fetched candidates
+      // are available to select but must not be auto-selected.
+      setGroupModelSelection([...own]);
+      setGroupModelsSearch('');
+      setShowGroupModelsPanel(true);
+    },
+    [form]
+  );
 
   // Probe the upstream /models endpoint using one group's own key and write the
   // result into that group's model list only. Each row is independent, so two
@@ -2014,7 +1696,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       const channelType = form.getValues('type');
       const baseURL = form.getValues('baseURL');
       const group = form.getValues(`credentials.keyGroups.${index}`);
-      const apiKey = (group?.apiKey || '').trim();
+      // Probe with the group's first key: every key of a group reaches the same
+      // upstream, so the first one is representative.
+      const apiKey = (group?.apiKeys || []).find((key) => (key || '').trim())?.trim() || '';
 
       if (!channelType || !baseURL) {
         return;
@@ -2045,21 +1729,133 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           return;
         }
 
-        // Append to whatever the row already has so a manual edit is preserved.
-        const current = form.getValues(`credentials.keyGroups.${index}.models`) || [];
-        const merged = [...new Set([...current, ...models])];
-        form.setValue(`credentials.keyGroups.${index}.models`, merged, {
-          shouldDirty: true,
-          shouldValidate: true,
+        // The fetch only refreshes the candidate list. Selection remains the
+        // group's current model allowlist, so freshly fetched models are not
+        // implicitly checked.
+        const groupLabel = groupModelLabel(group, index, t);
+        setUnifiedFetchedModels((prev) => [
+          ...prev.filter((entry) => entry.groupIndex !== index),
+          ...models.map((model) => ({ model, group: groupLabel, groupIndex: index })),
+        ]);
+        setModelSourceGroups((prev) => {
+          const next = { ...prev };
+          for (const model of models) {
+            next[model] = [...new Set([...(next[model] || []), groupLabel])];
+          }
+          return next;
         });
+        openGroupModelsPanel(index);
       } catch (_error) {
         // Error is already handled by the mutation
       } finally {
         setFetchingGroupIndex(null);
       }
     },
-    [fetchModels, form, isEdit, currentRow, t]
+    [fetchModels, form, isEdit, currentRow, t, openGroupModelsPanel]
   );
+
+  // Unified fetch: probe every group's own key once, merge the results into a
+  // single selectable list, and remember which group each model came from. This
+  // is the "统一获取全部" action — nothing is written to any group until the
+  // operator picks the models and confirms.
+  const handleFetchModelsForAllGroups = useCallback(async () => {
+    const channelType = form.getValues('type');
+    const baseURL = form.getValues('baseURL');
+    const groups = form.getValues('credentials.keyGroups') || [];
+    const usable = groups
+      .map((group, index) => ({ group, index }))
+      .filter((entry) => (entry.group?.apiKeys || []).some((key) => (key || '').trim().length > 0));
+
+    if (!channelType || !baseURL) {
+      return;
+    }
+
+    if (usable.length === 0) {
+      toast.error(t('channels.dialogs.fields.keyGroup.noKeysToFetch'));
+      return;
+    }
+
+    setFetchingAllGroups(true);
+
+    const collected: { model: string; group: string; groupIndex: number }[] = [];
+    const sources: Record<string, string[]> = {};
+    let failed = 0;
+
+    // Sequential so a failing upstream cannot drown the others in parallel errors.
+    for (const { group, index } of usable) {
+      const apiKey = (group.apiKeys || []).find((key) => (key || '').trim())?.trim() || '';
+
+      try {
+        const result = await fetchModels.mutateAsync({
+          channelType,
+          baseURL,
+          apiKey,
+          channelID: isEdit ? currentRow?.id : undefined,
+        });
+
+        if (result.error) {
+          failed += 1;
+          continue;
+        }
+
+        const groupLabel = groupModelLabel(group, index, t);
+        for (const id of [...new Set(result.models.map((m) => m.id))]) {
+          collected.push({ model: id, group: groupLabel, groupIndex: index });
+          sources[id] = [...new Set([...(sources[id] || []), groupLabel])];
+        }
+      } catch {
+        failed += 1;
+      }
+    }
+
+    setFetchingAllGroups(false);
+
+    if (collected.length === 0) {
+      toast.error(t('channels.dialogs.fields.keyGroup.fetchAllEmpty'));
+      return;
+    }
+
+    setUnifiedFetchedModels(collected);
+    setModelSourceGroups((prev) => ({ ...prev, ...sources }));
+    const selected = new Set<string>();
+    for (const group of groups) {
+      for (const model of group.models || []) {
+        selected.add(model);
+      }
+    }
+    setGroupModelSelection([...selected]);
+    setGroupModelsSearch('');
+    setActiveGroupModelIndex(null);
+    setShowGroupModelsPanel(true);
+
+    if (failed > 0) {
+      toast.warning(t('channels.dialogs.fields.keyGroup.fetchAllPartial', { failed }));
+    }
+  }, [fetchModels, form, isEdit, currentRow, t]);
+
+  const handleAddManualModelToAllGroups = useCallback(() => {
+    const model = newModel.trim();
+    if (!model) return;
+
+    const groups = form.getValues('credentials.keyGroups') || [];
+    if (groups.length === 0) {
+      toast.error(t('channels.dialogs.fields.keyGroup.apiKeyRequired'));
+      return;
+    }
+
+    groups.forEach((group, index) => {
+      const models = group.models || [];
+      if (!models.includes(model)) {
+        form.setValue(`credentials.keyGroups.${index}.models`, [...models, model], {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
+      }
+    });
+
+    setSupportedModels((prev) => (prev.includes(model) ? prev : [...prev, model]));
+    setNewModel('');
+  }, [form, newModel, t]);
 
   const handleSyncNow = useCallback(async () => {
     if (!currentRow) return [];
@@ -2082,198 +1878,87 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     return result.supportedModels || [];
   }, [currentRow, form, patternError, syncChannelModels]);
 
-  const canFetchModels = () => {
-    const baseURL = form.watch('baseURL');
-    const apiKeys = form.watch('credentials.apiKeys');
-    const hasApiKey = apiKeys?.some((key) => key.trim().length > 0);
-    const vertexApiKeys = form.watch('credentials.vertexApiKeys');
-    const hasVertexApiKey = vertexApiKeys?.some((credential) => credential.apiKey.trim().length > 0);
+  // ---- Group-aware model panel -------------------------------------------
+  // There is no default key: every model operation starts from a named group.
+  // "Fetch all" probes each group and tags every returned model with its source.
 
-    if (isCodexType || isAntigravityType || isClineType || isXAISubscriptionType) {
-      return !!baseURL;
+  const groupModelCandidates = useMemo(() => {
+    if (activeGroupModelIndex === null) {
+      return unifiedFetchedModels.map((entry) => entry.model);
     }
 
-    if (isCopilotType) {
-      const oauthApiKey = form.watch('credentials.apiKey');
-      const hasOAuthToken = !!parseOauthToken(oauthApiKey || '');
-      return !!baseURL && hasOAuthToken;
-    }
+    const own = form.getValues(`credentials.keyGroups.${activeGroupModelIndex}.models`) || [];
+    const fetchedForGroup = unifiedFetchedModels.filter((entry) => entry.groupIndex === activeGroupModelIndex).map((entry) => entry.model);
+    return [...new Set([...fetchedForGroup, ...own])];
+  }, [activeGroupModelIndex, unifiedFetchedModels, form]);
 
-    if (isEdit) {
-      return !!baseURL;
-    }
+  const filteredGroupModelCandidates = useMemo(() => {
+    const search = groupModelsSearch.trim().toLowerCase();
+    if (!search) return groupModelCandidates;
+    return groupModelCandidates.filter((model) => model.toLowerCase().includes(search));
+  }, [groupModelCandidates, groupModelsSearch]);
 
-    return !!baseURL && (isGeminiVertex ? hasVertexApiKey : hasApiKey);
-  };
-  // Memoize quick models to avoid re-evaluating on every render
-  const currentType = form.watch('type');
-  const quickModels = useMemo(() => {
-    if (useFetchedModels || !currentType) return [];
-    return getDefaultModels(currentType);
-  }, [currentType, useFetchedModels]);
-
-  // Filtered fetched models based on search and filter
-  const filteredFetchedModels = useMemo(() => {
-    let models = fetchedModels;
-    if (showNotAddedModelsOnly) {
-      models = models.filter((model) => !supportedModels.includes(model));
-    }
-    if (applyPatternFilter && watchedAutoSyncPattern && !patternError) {
-      models = models.filter((model) => matchesModelPattern(model, watchedAutoSyncPattern));
-    }
-    if (debouncedFetchedModelsSearch.trim()) {
-      const search = debouncedFetchedModelsSearch.toLowerCase();
-      models = models.filter((model) => model.toLowerCase().includes(search));
-    }
-    return models;
-  }, [
-    fetchedModels,
-    debouncedFetchedModelsSearch,
-    showNotAddedModelsOnly,
-    supportedModels,
-    applyPatternFilter,
-    watchedAutoSyncPattern,
-    patternError,
-  ]);
-
-  // Toggle selection for fetched model
-  const toggleFetchedModelSelection = useCallback((model: string) => {
-    setSelectedFetchedModels((prev) => (prev.includes(model) ? prev.filter((m) => m !== model) : [...prev, model]));
+  const closeGroupModelsPanel = useCallback(() => {
+    setShowGroupModelsPanel(false);
+    setActiveGroupModelIndex(null);
+    setGroupModelSelection([]);
+    setGroupModelsSearch('');
   }, []);
 
-  // Select all filtered models
-  const selectAllFilteredModels = useCallback(() => {
-    setSelectedFetchedModels(filteredFetchedModels);
-  }, [filteredFetchedModels]);
-
-  // Deselect all
-  const deselectAllFetchedModels = useCallback(() => {
-    setSelectedFetchedModels([]);
-  }, []);
-
-  // Add or remove selected fetched models to supported models
-  const addSelectedFetchedModels = useCallback(() => {
-    const modelsToRemove: string[] = [];
-
-    setSupportedModels((prev) => {
-      const modelsToAdd: string[] = [];
-
-      selectedFetchedModels.forEach((model) => {
-        if (prev.includes(model)) {
-          modelsToRemove.push(model);
-        } else {
-          modelsToAdd.push(model);
-        }
-      });
-
-      const afterRemoval = prev.filter((m) => !modelsToRemove.includes(m));
-      return [...afterRemoval, ...modelsToAdd];
-    });
-
-    // Remove toggled-off models from manualModels
-    if (modelsToRemove.length > 0) {
-      setManualModels((prev) => prev.filter((m) => !modelsToRemove.includes(m)));
-    }
-
-    setSelectedFetchedModels([]);
-  }, [selectedFetchedModels]);
-
-  // Close panel handler
-  const closeFetchedModelsPanel = useCallback(() => {
-    setShowFetchedModelsPanel(false);
-    setSelectedFetchedModels([]);
-    setFetchedModelsSearch('');
-    setShowNotAddedModelsOnly(false);
-    setApplyPatternFilter(false);
-  }, []);
-
-  // Close supported models panel handler
-  const closeSupportedModelsPanel = useCallback(() => {
-    setShowSupportedModelsPanel(false);
-  }, []);
-
-  const closeApiKeysPanel = useCallback(() => {
-    setShowApiKeysPanel(false);
-    setApiKeysSearch('');
-    setSelectedKeysToRemove(new Set());
-    setConfirmRemoveSelectedOpen(false);
-    setConfirmRemoveKey(null);
-    setConfirmDisableKey(null);
-  }, []);
-
-  const removeApiKeys = useCallback(
-    (keysToRemove: string[]) => {
-      const currentKeys = form.getValues('credentials.apiKeys') || [];
-      const keysToRemoveSet = new Set(keysToRemove.map((key) => key.trim()));
-      const validNextKeys = currentKeys
-        .map((key) => key.trim())
-        .filter((key) => key.length > 0 && !keysToRemoveSet.has(key));
-      if (validNextKeys.length === 0) {
-        toast.error(t('channels.dialogs.fields.apiKey.mustKeepOne'));
-        setConfirmRemoveSelectedOpen(false);
-        setConfirmRemoveKey(null);
-        return;
+  // Auto-open the grouped model panel when the parent asks to show models.
+  useEffect(() => {
+    if (open && showModelsPanel && keyGroups && keyGroups.length > 0) {
+      const firstGroupIndex = keyGroups.findIndex((group) => (group.apiKeys || []).some((key) => (key || '').trim().length > 0));
+      if (firstGroupIndex >= 0) {
+        openGroupModelsPanel(firstGroupIndex);
       }
-      form.setValue('credentials.apiKeys', validNextKeys, { shouldDirty: true, shouldTouch: true });
-      setSelectedKeysToRemove(new Set());
-      setConfirmRemoveSelectedOpen(false);
-      setConfirmRemoveKey(null);
-    },
-    [form, t]
-  );
-
-  // Remove deprecated models (models in supportedModels but not in fetchedModels and not manual)
-  const removeDeprecatedModels = useCallback(() => {
-    const fetchedModelsSet = new Set(fetchedModels);
-    const manualModelsSet = new Set(manualModels);
-    // Deprecated = not fetched AND not manual
-    const deprecatedModels = supportedModels.filter((model) => !fetchedModelsSet.has(model) && !manualModelsSet.has(model));
-    // Keep fetched models and manual models in supportedModels
-    setSupportedModels((prev) => prev.filter((model) => fetchedModelsSet.has(model) || manualModelsSet.has(model)));
-    // Remove deprecated models from manualModels (should be none, but for consistency)
-    setManualModels((prev) => prev.filter((model) => !deprecatedModels.includes(model)));
-  }, [fetchedModels, supportedModels, manualModels]);
-
-  // Count of deprecated models
-  const deprecatedModelsCount = useMemo(() => {
-    const fetchedModelsSet = new Set(fetchedModels);
-    const manualModelsSet = new Set(manualModels);
-    // Count only models that are neither fetched nor manual
-    return supportedModels.filter((model) => !fetchedModelsSet.has(model) && !manualModelsSet.has(model)).length;
-  }, [supportedModels, fetchedModels, manualModels]);
-
-  // Models to display (limited to MAX_MODELS_DISPLAY unless expanded)
-  const displayedSupportedModels = useMemo(() => {
-    if (supportedModels.length <= MAX_MODELS_DISPLAY) {
-      return supportedModels;
     }
-    return supportedModels.slice(0, MAX_MODELS_DISPLAY);
-  }, [supportedModels]);
+  }, [open, showModelsPanel, keyGroups, openGroupModelsPanel]);
 
-  // Filtered supported models based on search
-  const filteredSupportedModels = useMemo(() => {
-    if (!debouncedSupportedModelsSearch.trim()) {
-      return supportedModels;
+  const toggleGroupModelSelection = useCallback((model: string) => {
+    setGroupModelSelection((prev) => (prev.includes(model) ? prev.filter((item) => item !== model) : [...prev, model]));
+  }, []);
+
+  const selectAllGroupModels = useCallback(() => {
+    setGroupModelSelection(filteredGroupModelCandidates);
+  }, [filteredGroupModelCandidates]);
+
+  const deselectAllGroupModels = useCallback(() => {
+    setGroupModelSelection([]);
+  }, []);
+
+  const applyGroupModelSelection = useCallback(() => {
+    if (activeGroupModelIndex !== null) {
+      form.setValue(`credentials.keyGroups.${activeGroupModelIndex}.models`, [...groupModelSelection], {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      setSupportedModels((prev) => [...new Set([...prev, ...groupModelSelection])]);
+      closeGroupModelsPanel();
+      return;
     }
-    const search = debouncedSupportedModelsSearch.toLowerCase();
-    return supportedModels.filter((model) => model.toLowerCase().includes(search));
-  }, [supportedModels, debouncedSupportedModelsSearch]);
 
-  // Virtual scrolling for fetched models
-  const fetchedModelsVirtualizer = useVirtualizer({
-    count: filteredFetchedModels.length,
-    getScrollElement: () => fetchedModelsParentRef.current,
-    estimateSize: () => 40,
-    overscan: 5,
-  });
+    const byGroup = new Map<number, Set<string>>();
+    for (const entry of unifiedFetchedModels) {
+      if (!groupModelSelection.includes(entry.model)) continue;
+      if (!byGroup.has(entry.groupIndex)) byGroup.set(entry.groupIndex, new Set());
+      byGroup.get(entry.groupIndex)!.add(entry.model);
+    }
 
-  // Virtual scrolling for supported models
-  const supportedModelsVirtualizer = useVirtualizer({
-    count: filteredSupportedModels.length,
-    getScrollElement: () => supportedModelsParentRef.current,
-    estimateSize: () => 40,
-    overscan: 5,
-  });
+    const nextSupported = new Set(supportedModels);
+    for (const [index, models] of byGroup) {
+      const current = form.getValues(`credentials.keyGroups.${index}.models`) || [];
+      const merged = [...new Set([...current, ...models])];
+      form.setValue(`credentials.keyGroups.${index}.models`, merged, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      models.forEach((model) => nextSupported.add(model));
+    }
+
+    setSupportedModels([...nextSupported]);
+    closeGroupModelsPanel();
+  }, [activeGroupModelIndex, closeGroupModelsPanel, form, groupModelSelection, supportedModels, unifiedFetchedModels]);
 
   return (
     <>
@@ -2284,25 +1969,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             form.reset();
             setSupportedModels(initialRow?.supportedModels || []);
             setManualModels(initialRow?.manualModels || []);
-            setSelectedDefaultModels([]);
-            setFetchedModels([]);
-            setUseFetchedModels(false);
             // Reset expandable panel states
-            setShowFetchedModelsPanel(false);
-            setShowSupportedModelsPanel(false);
-            setShowApiKeysPanel(false);
-            setFetchedModelsSearch('');
-            setSupportedModelsSearch('');
-            setSelectedFetchedModels([]);
-            setShowNotAddedModelsOnly(false);
-            setApplyPatternFilter(false);
-            setSupportedModelsExpanded(false);
-            setApiKeysSearch('');
-            setSelectedKeysToRemove(new Set());
-            setConfirmRemoveSelectedOpen(false);
-            setConfirmRemoveKey(null);
-            setConfirmDisableKey(null);
-            setShowApiKey(false);
             // Reset proxy state
             if (initialRow?.settings?.proxy?.type) {
               setProxyType(initialRow.settings.proxy.type as ProxyType);
@@ -2344,7 +2011,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         }}
       >
         <DialogContent
-          className={`flex max-h-[90vh] flex-col overflow-hidden transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 'sm:max-w-6xl' : 'sm:max-w-4xl'}`}
+          className={`flex max-h-[90vh] flex-col overflow-hidden transition-all duration-300 ${showGroupModelsPanel || showKeyPanel ? 'sm:max-w-6xl' : 'sm:max-w-4xl'}`}
         >
           <DialogHeader className='flex-shrink-0 text-left'>
             <DialogTitle>{isEdit ? t('channels.dialogs.edit.title') : t('channels.dialogs.create.title')}</DialogTitle>
@@ -2355,7 +2022,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           <div className='flex min-h-0 flex-1 overflow-hidden md:gap-4'>
             {/* Main Form Section */}
             <div
-              className={`flex min-h-0 flex-1 flex-col overflow-hidden py-1 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 'pr-2' : 'pr-0'}`}
+              className={`flex min-h-0 flex-1 flex-col overflow-hidden py-1 transition-all duration-300 ${showGroupModelsPanel || showKeyPanel ? 'pr-2' : 'pr-0'}`}
             >
               <Form {...form}>
                 <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col space-y-6 p-0.5'>
@@ -2366,7 +2033,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         <FormLabel className='text-base font-semibold'>{t('channels.dialogs.fields.provider.label')}</FormLabel>
                         <div
                           ref={setProviderListRef}
-                          className={`flex-1 overflow-x-auto overflow-y-hidden pb-2 md:overflow-x-hidden md:overflow-y-auto md:pb-0 md:pr-2 ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : ''}`}
+                          className={`flex-1 overflow-x-auto overflow-y-hidden pb-2 md:overflow-x-hidden md:overflow-y-auto md:pr-2 md:pb-0 ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : ''}`}
                         >
                           <RadioGroup
                             value={selectedProvider}
@@ -2385,7 +2052,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   ref={(el) => {
                                     providerRefs.current[provider.key] = el;
                                   }}
-                                  className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors shrink-0 md:w-full ${
+                                  className={`flex shrink-0 items-center space-x-3 rounded-lg border p-3 transition-colors md:w-full ${
                                     isProviderDisabled
                                       ? isSelected
                                         ? 'border-primary bg-muted/80 cursor-not-allowed shadow-sm'
@@ -2400,7 +2067,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     data-testid={`provider-${provider.key}`}
                                   />
                                   {Icon && <Icon size={20} className='flex-shrink-0' />}
-                                  <FormLabel htmlFor={`provider-${provider.key}`} className='flex-1 cursor-pointer whitespace-nowrap font-normal'>
+                                  <FormLabel
+                                    htmlFor={`provider-${provider.key}`}
+                                    className='flex-1 cursor-pointer font-normal whitespace-nowrap'
+                                  >
                                     {provider.label}
                                   </FormLabel>
                                 </div>
@@ -2415,70 +2085,73 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
                     {/* Right Side - Form Fields */}
                     <div className='flex-1 space-y-6 overflow-y-auto md:pr-4'>
-                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && selectedProvider !== 'typesafe' && (
-                        <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                          <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                            {t('channels.dialogs.fields.apiFormat.label')}
-                          </FormLabel>
-                          <div className='max-w-64 space-y-1 md:col-span-6 md:max-w-none'>
-                            <SelectDropdown
-                              key={selectedProvider}
-                              defaultValue={selectedApiFormatOption}
-                              onValueChange={(value) => handleApiFormatChange(value as ApiFormatOption)}
-                              disabled={!!isOAuthChannel}
-                              placeholder={t('channels.dialogs.fields.apiFormat.placeholder')}
-                              data-testid='api-format-select'
-                              isControlled={true}
-                              items={availableApiFormatOptions.map((format) => ({
-                                value: format,
-                                label: getApiFormatOptionLabel(format),
-                              }))}
-                            />
-                            {selectedApiFormat === 'gemini/contents' && (
-                              <div className='mt-3'>
-                                <label
-                                  className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                                >
-                                  <Checkbox
-                                    checked={useGeminiVertex}
-                                    onCheckedChange={(checked) => handleGeminiVertexChange(checked === true)}
-                                    disabled={!!isOAuthChannel}
-                                  />
-                                  <span>{t('channels.dialogs.fields.apiFormat.geminiVertex.label')}</span>
-                                </label>
-                              </div>
-                            )}
-                            {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'anthropic' && (
-                              <div className='mt-3 space-y-2'>
-                                <label
-                                  className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                                >
-                                  <Checkbox
-                                    checked={useAnthropicAws}
-                                    onCheckedChange={(checked) => handleAnthropicAwsChange(checked === true)}
-                                    disabled={!!isOAuthChannel}
-                                  />
-                                  <span>{t('channels.dialogs.fields.apiFormat.anthropicAWS.label')}</span>
-                                </label>
-                              </div>
-                            )}
-                            {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'moonshot' && (
-                              <div className='mt-3 space-y-2'>
-                                <label
-                                  className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
-                                >
-                                  <Checkbox
-                                    checked={useKimiCoding}
-                                    onCheckedChange={(checked) => handleKimiCodingChange(checked === true)}
-                                    disabled={!!isOAuthChannel}
-                                  />
-                                  <span>{t('channels.dialogs.fields.apiFormat.kimiCoding.label')}</span>
-                                </label>
-                              </div>
-                            )}
-                          </div>
-                        </FormItem>
-                      )}
+                      {selectedProvider !== 'jina' &&
+                        selectedProvider !== 'codex' &&
+                        selectedProvider !== 'claudecode' &&
+                        selectedProvider !== 'typesafe' && (
+                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                              {t('channels.dialogs.fields.apiFormat.label')}
+                            </FormLabel>
+                            <div className='max-w-64 space-y-1 md:col-span-6 md:max-w-none'>
+                              <SelectDropdown
+                                key={selectedProvider}
+                                defaultValue={selectedApiFormatOption}
+                                onValueChange={(value) => handleApiFormatChange(value as ApiFormatOption)}
+                                disabled={!!isOAuthChannel}
+                                placeholder={t('channels.dialogs.fields.apiFormat.placeholder')}
+                                data-testid='api-format-select'
+                                isControlled={true}
+                                items={availableApiFormatOptions.map((format) => ({
+                                  value: format,
+                                  label: getApiFormatOptionLabel(format),
+                                }))}
+                              />
+                              {selectedApiFormat === 'gemini/contents' && (
+                                <div className='mt-3'>
+                                  <label
+                                    className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                  >
+                                    <Checkbox
+                                      checked={useGeminiVertex}
+                                      onCheckedChange={(checked) => handleGeminiVertexChange(checked === true)}
+                                      disabled={!!isOAuthChannel}
+                                    />
+                                    <span>{t('channels.dialogs.fields.apiFormat.geminiVertex.label')}</span>
+                                  </label>
+                                </div>
+                              )}
+                              {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'anthropic' && (
+                                <div className='mt-3 space-y-2'>
+                                  <label
+                                    className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                  >
+                                    <Checkbox
+                                      checked={useAnthropicAws}
+                                      onCheckedChange={(checked) => handleAnthropicAwsChange(checked === true)}
+                                      disabled={!!isOAuthChannel}
+                                    />
+                                    <span>{t('channels.dialogs.fields.apiFormat.anthropicAWS.label')}</span>
+                                  </label>
+                                </div>
+                              )}
+                              {selectedApiFormat === 'anthropic/messages' && selectedProvider === 'moonshot' && (
+                                <div className='mt-3 space-y-2'>
+                                  <label
+                                    className={`flex items-center gap-2 text-sm ${isOAuthChannel ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                                  >
+                                    <Checkbox
+                                      checked={useKimiCoding}
+                                      onCheckedChange={(checked) => handleKimiCodingChange(checked === true)}
+                                      disabled={!!isOAuthChannel}
+                                    />
+                                    <span>{t('channels.dialogs.fields.apiFormat.kimiCoding.label')}</span>
+                                  </label>
+                                </div>
+                              )}
+                            </div>
+                          </FormItem>
+                        )}
                       {selectedProvider === 'codex' && (
                         <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                           <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
@@ -2501,13 +2174,19 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 {t('channels.dialogs.fields.apiFormat.codexWebSocket.derivedURL', { url: codexResponsesWebSocketURL })}
                               </p>
                             )}
-                            {codexResponsesWebSocket && (initialCodexResponses.webSocketOnly || hasCodexResponsesWebSocketOverrideReplacement(initialRow)) && (
-                              <p className='text-xs text-amber-600 dark:text-amber-400' data-testid='codex-responses-websocket-upgrade-note'>
-                                {t(initialCodexResponses.webSocketOnly
-                                  ? 'channels.dialogs.fields.apiFormat.codexWebSocket.legacyUpgrade'
-                                  : 'channels.dialogs.fields.apiFormat.codexWebSocket.overrideReplacement')}
-                              </p>
-                            )}
+                            {codexResponsesWebSocket &&
+                              (initialCodexResponses.webSocketOnly || hasCodexResponsesWebSocketOverrideReplacement(initialRow)) && (
+                                <p
+                                  className='text-xs text-amber-600 dark:text-amber-400'
+                                  data-testid='codex-responses-websocket-upgrade-note'
+                                >
+                                  {t(
+                                    initialCodexResponses.webSocketOnly
+                                      ? 'channels.dialogs.fields.apiFormat.codexWebSocket.legacyUpgrade'
+                                      : 'channels.dialogs.fields.apiFormat.codexWebSocket.overrideReplacement'
+                                  )}
+                                </p>
+                              )}
                           </div>
                         </FormItem>
                       )}
@@ -2762,7 +2441,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       className='min-h-[160px] resize-y font-mono text-xs'
                                       data-testid='codex-auth-json-input'
                                     />
-                                    <Button type='button' variant='secondary' onClick={applyCodexAuthJSON} data-testid='codex-auth-json-apply'>
+                                    <Button
+                                      type='button'
+                                      variant='secondary'
+                                      onClick={applyCodexAuthJSON}
+                                      data-testid='codex-auth-json-apply'
+                                    >
                                       {t('channels.dialogs.codexAuthJson.applyButton')}
                                     </Button>
                                     <p className='text-muted-foreground text-xs'>{t('channels.dialogs.codexAuthJson.description')}</p>
@@ -2956,156 +2640,73 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         />
                       )}
 
-                      {(!isGeminiVertex && (!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party')) &&
+                      {!isGeminiVertex &&
+                        (!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party') &&
                         selectedProvider !== 'antigravity' &&
                         selectedType !== 'anthropic_gcp' && (
-                          <FormField
-                            control={form.control}
-                            name='credentials.apiKeys'
-                            render={({ field, fieldState }) => (
-                              <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                                <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                                  {t('channels.dialogs.fields.apiKey.label')}
-                                </FormLabel>
-                                <div className='space-y-1 md:col-span-6'>
-                                  {isEdit ? (
-                                    <div className='relative'>
-                                      <Tooltip open={!showApiKey ? undefined : false}>
-                                        <TooltipTrigger asChild>
-                                          <Textarea
-                                            value={
-                                              showApiKey
-                                                ? field.value?.join('\n') || ''
-                                                : (field.value || [])
-                                                    .map((k) => (k.length > 8 ? k.slice(0, 4) + '****' + k.slice(-4) : '****'))
-                                                    .join('\n')
-                                            }
-                                            onChange={(e) => {
-                                              if (!showApiKey) return;
-                                              const keys = e.target.value.split('\n');
-                                              field.onChange(keys);
-                                            }}
-                                            onBlur={() => {
-                                              if (!showApiKey) return;
-                                              field.onBlur();
-                                            }}
-                                            readOnly={!showApiKey}
-                                            placeholder={t('channels.dialogs.fields.apiKey.editPlaceholder')}
-                                            className='min-h-[80px] resize-y pr-10 font-mono text-sm md:col-span-6'
-                                            autoComplete='new-password'
-                                            data-form-type='other'
-                                            spellCheck={false}
-                                            aria-invalid={!!fieldState.error}
-                                            data-testid='channel-api-key-input'
-                                          />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>{t('channels.dialogs.fields.apiKey.revealToEditHint')}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                      <div className='absolute top-2 right-2 flex flex-col gap-1'>
-                                        <Button
-                                          type='button'
-                                          variant='ghost'
-                                          size='sm'
-                                          className='h-7 w-7 p-0'
-                                          onClick={() => {
-                                            const next = !showApiKey;
-                                            setShowApiKey(next);
-
-                                            if (!next) {
-                                              setShowApiKeysPanel(false);
-                                              return;
-                                            }
-
-                                            if (next) {
-                                              setShowApiKeysPanel(true);
-                                              setShowFetchedModelsPanel(false);
-                                              setShowSupportedModelsPanel(false);
-                                            }
-                                          }}
-                                        >
-                                          {showApiKey ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
-                                        </Button>
-                                        <Button
-                                          type='button'
-                                          variant='ghost'
-                                          size='sm'
-                                          className='h-7 w-7 p-0'
-                                          onClick={async () => {
-                                            const keys = field.value || [];
-                                            if (keys.length > 0) {
-                                              try {
-                                                await copyTextToClipboard(keys.join('\n'));
-                                                toast.success(t('channels.messages.credentialsCopied'));
-                                              } catch {
-                                                toast.error(t('common.errors.copyFailed'));
-                                              }
-                                            }
-                                          }}
-                                        >
-                                          <Copy className='h-4 w-4' />
-                                        </Button>
-                                      </div>
-                                      <p className='text-muted-foreground mt-1 text-xs'>
-                                        {t('channels.dialogs.fields.apiKey.multiLineHint')}
-                                      </p>
-                                    </div>
-                                  ) : (
-                                    <>
-                                      <Textarea
-                                        value={field.value?.join('\n') || ''}
-                                        onChange={(e) => {
-                                          const keys = e.target.value.split('\n');
-                                          field.onChange(keys);
-                                        }}
-                                        onBlur={() => field.onBlur()}
-                                        placeholder={t('channels.dialogs.fields.apiKey.placeholder')}
-                                        className='min-h-[80px] resize-y font-mono text-sm md:col-span-6'
-                                        autoComplete='new-password'
-                                        data-form-type='other'
-                                        spellCheck={false}
-                                        aria-invalid={!!fieldState.error}
-                                        data-testid='channel-api-key-input'
-                                      />
-                                      <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.apiKey.multiLineHint')}</p>
-                                    </>
+                          <div className='grid grid-cols-1 items-start gap-x-6 gap-y-3 md:grid-cols-8'>
+                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                              {t('channels.dialogs.fields.keyGroup.label')}
+                            </FormLabel>
+                            <div className='space-y-3 md:col-span-6'>
+                              <FormDescription>{t('channels.dialogs.fields.keyGroup.hint')}</FormDescription>
+                              <KeyGroupsEditor
+                                rows={keyGroups || []}
+                                onAdd={() => {
+                                  const current: KeyGroupFormRow[] = form.getValues('credentials.keyGroups') || [];
+                                  form.setValue('credentials.keyGroups' as any, [...current, createEmptyKeyGroup(current.length + 1)], {
+                                    shouldDirty: true,
+                                    shouldValidate: true,
+                                  });
+                                }}
+                                onRemove={(index) => {
+                                  const current = form.getValues('credentials.keyGroups') || [];
+                                  form.setValue(
+                                    'credentials.keyGroups',
+                                    current.filter((_, i) => i !== index),
+                                    { shouldDirty: true, shouldValidate: true }
+                                  );
+                                }}
+                                onChangeName={(index, name) => {
+                                  const current = [...(form.getValues('credentials.keyGroups') || [])];
+                                  current[index] = { ...current[index], name };
+                                  // Typing must stay cheap: the channel schema validates
+                                  // the whole form, so validation waits for blur/submit.
+                                  form.setValue('credentials.keyGroups', current, { shouldDirty: true, shouldValidate: false });
+                                }}
+                                onChangeKeys={(index, keys, options) => {
+                                  const current = [...(form.getValues('credentials.keyGroups') || [])];
+                                  current[index] = { ...current[index], apiKeys: keys };
+                                  form.setValue('credentials.keyGroups', current, {
+                                    shouldDirty: true,
+                                    shouldValidate: options?.validate === true,
+                                  });
+                                }}
+                                onViewKeys={(index) => {
+                                  setActiveKeyGroupIndex(index);
+                                  setShowKeyPanel(true);
+                                  setShowGroupModelsPanel(false);
+                                }}
+                              />
+                              {(form.formState.errors.credentials as any)?.keyGroups?.message && (
+                                <p className='text-destructive text-sm'>{(form.formState.errors.credentials as any).keyGroups.message}</p>
+                              )}
+                              {(keyGroups || []).map((_, index) => (
+                                <div key={index} className='space-y-1'>
+                                  {(form.formState.errors.credentials as any)?.keyGroups?.[index]?.name?.message && (
+                                    <p className='text-destructive text-xs'>
+                                      {(form.formState.errors.credentials as any).keyGroups[index].name.message}
+                                    </p>
                                   )}
-                                  <FormMessage />
+                                  {(form.formState.errors.credentials as any)?.keyGroups?.[index]?.apiKeys?.message && (
+                                    <p className='text-destructive text-xs'>
+                                      {(form.formState.errors.credentials as any).keyGroups[index].apiKeys.message}
+                                    </p>
+                                  )}
                                 </div>
-                              </FormItem>
-                            )}
-                          />
-                        )}
-
-                      {/* Grouped API keys: each row is a named key with its own model
-                          list. A channel may use either this or the flat apiKeys
-                          editor above; groups win when both are present. */}
-                      {(!isGeminiVertex && (!(isCodexType || isClaudeCodeType || isCopilotType || isXAISubscriptionType) || authMode === 'third-party')) &&
-                        selectedProvider !== 'antigravity' &&
-                        selectedType !== 'anthropic_gcp' && (
-                          <KeyGroupsEditor
-                            control={form.control}
-                            rows={keyGroups || []}
-                            onAdd={() => {
-                              const current = form.getValues('credentials.keyGroups') || [];
-                              form.setValue('credentials.keyGroups', [...current, emptyKeyGroupRow()], {
-                                shouldDirty: true,
-                                shouldValidate: true,
-                              });
-                            }}
-                            onRemove={(index) => {
-                              const current = form.getValues('credentials.keyGroups') || [];
-                              form.setValue(
-                                'credentials.keyGroups',
-                                current.filter((_, i) => i !== index),
-                                { shouldDirty: true, shouldValidate: true }
-                              );
-                            }}
-                            onFetchModels={handleFetchModelsForGroup}
-                            fetchingIndex={fetchingGroupIndex}
-                            fetchDisabled={!form.watch('type') || !form.watch('baseURL')}
-                          />
+                              ))}
+                            </div>
+                          </div>
                         )}
 
                       {isZenmuxType && (
@@ -3127,9 +2728,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   {...field}
                                   value={field.value ?? ''}
                                 />
-                                <p className='text-muted-foreground text-xs'>
-                                  {t('channels.dialogs.fields.managementApiKey.hint')}
-                                </p>
+                                <p className='text-muted-foreground text-xs'>{t('channels.dialogs.fields.managementApiKey.hint')}</p>
                               </div>
                             </FormItem>
                           )}
@@ -3229,24 +2828,27 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           {t('channels.dialogs.fields.quotaRoutingMode.label')}
                         </FormLabel>
                         <div className='space-y-1 md:col-span-6'>
-                          <Select
-                            value={quotaRoutingMode}
-                            onValueChange={(value) => setQuotaRoutingMode(value as ChannelQuotaRoutingMode)}
-                          >
+                          <Select value={quotaRoutingMode} onValueChange={(value) => setQuotaRoutingMode(value as ChannelQuotaRoutingMode)}>
                             <SelectTrigger>
                               <SelectValue placeholder={t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')} />
                             </SelectTrigger>
                             <SelectContent>
-                               <SelectItem value='INHERIT'>
-                                 {quotaRoutingSettings?.defaultMode
-                                   ? t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE', {
-                                       mode: t(`channels.dialogs.fields.quotaRoutingMode.options.${quotaRoutingSettings.defaultMode}`),
-                                     })
-                                   : t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')}
-                               </SelectItem>
-                              <SelectItem value='IGNORE_QUOTA'>{t('channels.dialogs.fields.quotaRoutingMode.options.IGNORE_QUOTA')}</SelectItem>
-                              <SelectItem value='REMOVE_ON_EXHAUSTED'>{t('channels.dialogs.fields.quotaRoutingMode.options.REMOVE_ON_EXHAUSTED')}</SelectItem>
-                              <SelectItem value='BACKPRESSURE'>{t('channels.dialogs.fields.quotaRoutingMode.options.BACKPRESSURE')}</SelectItem>
+                              <SelectItem value='INHERIT'>
+                                {quotaRoutingSettings?.defaultMode
+                                  ? t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE', {
+                                      mode: t(`channels.dialogs.fields.quotaRoutingMode.options.${quotaRoutingSettings.defaultMode}`),
+                                    })
+                                  : t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')}
+                              </SelectItem>
+                              <SelectItem value='IGNORE_QUOTA'>
+                                {t('channels.dialogs.fields.quotaRoutingMode.options.IGNORE_QUOTA')}
+                              </SelectItem>
+                              <SelectItem value='REMOVE_ON_EXHAUSTED'>
+                                {t('channels.dialogs.fields.quotaRoutingMode.options.REMOVE_ON_EXHAUSTED')}
+                              </SelectItem>
+                              <SelectItem value='BACKPRESSURE'>
+                                {t('channels.dialogs.fields.quotaRoutingMode.options.BACKPRESSURE')}
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                           <FormDescription className='text-xs'>
@@ -3288,26 +2890,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </FormLabel>
                         <div className='space-y-2 md:col-span-6'>
                           <div className='flex gap-2'>
-                            {useFetchedModels && fetchedModels.length > 20 ? (
-                              <AutoComplete
-                                items={fetchedModels.map((model) => ({ value: model, label: model }))}
-                                selectedValue={newModel}
-                                onSelectedValueChange={setNewModel}
-                                searchValue={newModel}
-                                onSearchValueChange={setNewModel}
-                                onKeyDown={handleKeyDown}
-                                placeholder={t('channels.dialogs.fields.supportedModels.description')}
-                              />
-                            ) : (
-                              <Input
-                                placeholder={t('channels.dialogs.fields.supportedModels.description')}
-                                value={newModel}
-                                onChange={(e) => setNewModel(e.target.value)}
-                                onKeyDown={handleKeyDown}
-                                className='flex-1'
-                              />
-                            )}
-                            <Button type='button' onClick={addModel} size='sm'>
+                            <Input
+                              placeholder={t('channels.dialogs.fields.supportedModels.description')}
+                              value={newModel}
+                              onChange={(e) => setNewModel(e.target.value)}
+                              onKeyDown={handleKeyDown}
+                              className='flex-1'
+                            />
+                            <Button type='button' onClick={() => handleAddManualModelToAllGroups()} size='sm'>
                               {t('channels.dialogs.buttons.add')}
                             </Button>
                             <Tooltip>
@@ -3325,37 +2915,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           {supportedModels.length === 0 && (
                             <p className='text-destructive text-sm'>{t('channels.dialogs.fields.supportedModels.required')}</p>
                           )}
-
-                          {/* Supported models display - limited to 3 with expand button */}
-                          <div className='flex flex-wrap items-center gap-1'>
-                            {displayedSupportedModels.map((model) => (
-                              <Badge key={model} variant='secondary' className='text-xs'>
-                                {model}
-                                <ManualModelBadge isManual={isModelManual(model)} className='ml-1' />
-                                <button type='button' onClick={() => removeModel(model)} className='hover:text-destructive ml-1'>
-                                  <X size={12} />
-                                </button>
-                              </Badge>
-                            ))}
-                            {supportedModels.length > MAX_MODELS_DISPLAY && !supportedModelsExpanded && (
-                              <Button
-                                type='button'
-                                variant='ghost'
-                                size='sm'
-                                className='h-6 px-2 text-xs'
-                                onClick={() => {
-                                  setShowSupportedModelsPanel(true);
-                                  setShowFetchedModelsPanel(false);
-                                  setShowApiKeysPanel(false);
-                                }}
-                              >
-                                <ChevronRight className='mr-1 h-3 w-3' />
-                                {t('channels.dialogs.fields.supportedModels.showMore', {
-                                  count: supportedModels.length - MAX_MODELS_DISPLAY,
-                                })}
-                              </Button>
-                            )}
-                          </div>
 
                           {/* Auto sync checkbox */}
                           <div className='pt-3'>
@@ -3458,49 +3017,85 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             )}
                           </div>
 
-                          {/* Quick add models section */}
-                          <div className='pt-3'>
-                            <div className='mb-2 flex items-center justify-between'>
-                              <span className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.defaultModelsLabel')}</span>
-                              <div className='flex items-center gap-2'>
+                          {/* Per-group model fetching and selection. */}
+                          {/* 按分组获取/选取模型：每一行是一个分组备注，可单独拉取该分组
+                              Key 的模型并只写回该分组；"全部"则逐个分组拉取后统一勾选。
+                              分组在此只是标签，获取模型不再散落在 Key 输入框旁。 */}
+                          {(keyGroups || []).some((group) => (group.apiKeys || []).some((key) => (key || '').trim().length > 0)) && (
+                            <div className='mt-3 rounded-md border p-3' data-testid='supported-models-by-group'>
+                              <div className='mb-2 flex items-center justify-between gap-2'>
+                                <span className='text-sm font-medium'>{t('channels.dialogs.fields.supportedModels.byGroupLabel')}</span>
                                 <Button
                                   type='button'
-                                  onClick={handleFetchModels}
-                                  size='sm'
                                   variant='outline'
-                                  disabled={!canFetchModels() || fetchModels.isPending}
-                                >
-                                  <RefreshCw className={`mr-1 h-4 w-4 ${fetchModels.isPending ? 'animate-spin' : ''}`} />
-                                  {t('channels.dialogs.buttons.fetchModels')}
-                                </Button>
-                                <Button
-                                  type='button'
-                                  onClick={addSelectedDefaultModels}
                                   size='sm'
-                                  variant='outline'
-                                  disabled={selectedDefaultModels.length === 0}
-                                  data-testid='add-selected-models-button'
+                                  className='h-7 shrink-0 px-2 text-xs'
+                                  onClick={handleFetchModelsForAllGroups}
+                                  disabled={fetchingAllGroups || fetchModels.isPending}
+                                  data-testid='supported-models-fetch-all-groups'
                                 >
-                                  <Plus className='mr-1 h-4 w-4' />
-                                  {t('channels.dialogs.buttons.addSelected')}
+                                  <RefreshCw className={`mr-1 h-3.5 w-3.5 ${fetchingAllGroups ? 'animate-spin' : ''}`} />
+                                  {fetchingAllGroups
+                                    ? t('channels.dialogs.fields.keyGroup.fetchingModels')
+                                    : t('channels.dialogs.fields.keyGroup.fetchAllGroupsModels')}
                                 </Button>
                               </div>
+                              <div className='space-y-2'>
+                                {(keyGroups || []).map((group, index) => {
+                                  const groupModels = group.models || [];
+                                  const label = groupModelLabel(group, index, t);
+                                  return (
+                                    <div
+                                      key={index}
+                                      className='flex flex-wrap items-center gap-2 rounded-md border border-dashed px-2 py-1.5'
+                                      data-testid={`supported-models-group-${index}`}
+                                    >
+                                      <Badge variant='outline' className='h-5 shrink-0 px-1.5 text-[10px] font-normal'>
+                                        {label}
+                                      </Badge>
+                                      <Button
+                                        type='button'
+                                        variant='ghost'
+                                        size='sm'
+                                        className='h-6 shrink-0 px-2 text-xs'
+                                        onClick={() => handleFetchModelsForGroup(index)}
+                                        disabled={fetchingGroupIndex === index || fetchModels.isPending}
+                                      >
+                                        <RefreshCw className={`mr-1 h-3.5 w-3.5 ${fetchingGroupIndex === index ? 'animate-spin' : ''}`} />
+                                        {fetchingGroupIndex === index
+                                          ? t('channels.dialogs.fields.keyGroup.fetchingModels')
+                                          : t('channels.dialogs.fields.keyGroup.fetchModels')}
+                                      </Button>
+                                      <Button
+                                        type='button'
+                                        variant='ghost'
+                                        size='sm'
+                                        className='text-muted-foreground h-6 shrink-0 px-2 text-xs'
+                                        onClick={() => openGroupModelsPanel(index)}
+                                      >
+                                        {t('channels.dialogs.fields.keyGroup.editModels')}
+                                      </Button>
+                                      <span className='text-muted-foreground text-xs'>
+                                        {groupModels.length > 0
+                                          ? t('channels.dialogs.fields.keyGroup.modelsBadge', { count: groupModels.length })
+                                          : t('channels.dialogs.fields.keyGroup.noModelsShort')}
+                                      </span>
+                                      {groupModels.slice(0, 3).map((model) => (
+                                        <Badge key={model} variant='secondary' className='text-[11px]'>
+                                          {model}
+                                        </Badge>
+                                      ))}
+                                      {groupModels.length > 3 && (
+                                        <Badge variant='outline' className='text-[11px] font-normal'>
+                                          {t('channels.dialogs.fields.keyGroup.moreModels', { count: groupModels.length - 3 })}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             </div>
-                            <div className='flex flex-wrap gap-2'>
-                              {quickModels.map((model: string) => (
-                                <Badge
-                                  key={model}
-                                  variant={selectedDefaultModels.includes(model) ? 'default' : 'secondary'}
-                                  className='cursor-pointer text-xs'
-                                  onClick={() => toggleDefaultModel(model)}
-                                  data-testid={`quick-model-${model}`}
-                                >
-                                  {model}
-                                  {selectedDefaultModels.includes(model) && <span className='ml-1'>✓</span>}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
+                          )}
                         </div>
                       </div>
 
@@ -3684,476 +3279,132 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             <div
               className='border-border flex min-h-0 flex-col overflow-hidden border-l pt-1.5 pl-4 transition-all duration-300 ease-out'
               style={{
-                width: showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? '400px' : '0px',
-                opacity: showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 1 : 0,
-                paddingLeft: showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? '16px' : '0px',
+                width: showGroupModelsPanel || showKeyPanel ? '400px' : '0px',
+                opacity: showGroupModelsPanel || showKeyPanel ? 1 : 0,
+                paddingLeft: showGroupModelsPanel || showKeyPanel ? '16px' : '0px',
               }}
             >
-              {/* Fetched Models Panel Content */}
+              {/* API Key list panel for one group. */}
               <div
-                className={`flex h-full min-h-0 flex-col transition-opacity duration-200 ${showFetchedModelsPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
+                className={`flex h-full min-h-0 flex-col transition-opacity duration-200 ${showKeyPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
               >
                 <div className='mb-3 flex items-center justify-between'>
-                  <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}</h3>
-                  <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeFetchedModelsPanel}>
-                    <ChevronLeft className='h-4 w-4' />
-                  </Button>
+                  <div className='flex min-w-0 items-center gap-2'>
+                    <Button
+                      type='button'
+                      variant='ghost'
+                      size='sm'
+                      className='h-6 w-6 shrink-0 p-0'
+                      onClick={() => {
+                        setShowKeyPanel(false);
+                        setActiveKeyGroupIndex(null);
+                      }}
+                    >
+                      <PanelLeft className='h-4 w-4' />
+                    </Button>
+                    <h3 className='truncate text-sm font-semibold'>
+                      {t('channels.dialogs.fields.keyGroup.keyPanelTitle', {
+                        name: activeKeyGroupIndex === null ? '' : groupModelLabel(keyGroups?.[activeKeyGroupIndex], activeKeyGroupIndex, t),
+                      })}
+                    </h3>
+                  </div>
                 </div>
 
-                {/* Search */}
+                <div className='min-h-0 flex-1 space-y-2 overflow-auto pr-3'>
+                  {(activeKeyGroupIndex === null ? [] : keyGroups?.[activeKeyGroupIndex]?.apiKeys || []).map((key, keyIndex) => (
+                    <div key={`${key}-${keyIndex}`} className='bg-muted rounded-md px-3 py-2 font-mono text-xs break-all'>
+                      {key}
+                    </div>
+                  ))}
+                  {activeKeyGroupIndex !== null && (keyGroups?.[activeKeyGroupIndex]?.apiKeys || []).length === 0 && (
+                    <p className='text-muted-foreground py-8 text-center text-sm'>{t('channels.dialogs.fields.keyGroup.noKeys')}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Group Models Panel Content: pick models per group, with the source
+                  group shown next to every model returned by a unified fetch. */}
+              <div
+                className={`flex h-full min-h-0 flex-col transition-opacity duration-200 ${showGroupModelsPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
+              >
+                <div className='mb-3 flex items-center justify-between'>
+                  <div className='flex min-w-0 items-center gap-2'>
+                    <Button type='button' variant='ghost' size='sm' className='h-6 w-6 shrink-0 p-0' onClick={closeGroupModelsPanel}>
+                      <PanelLeft className='h-4 w-4' />
+                    </Button>
+                    <h3 className='truncate text-sm font-semibold'>
+                      {activeGroupModelIndex !== null
+                        ? t('channels.dialogs.fields.keyGroup.panelTitleForGroup', {
+                            name: groupModelLabel(keyGroups?.[activeGroupModelIndex], activeGroupModelIndex, t),
+                          })
+                        : t('channels.dialogs.fields.keyGroup.panelTitleAll')}
+                    </h3>
+                  </div>
+                </div>
+
+                <p className='text-muted-foreground mb-3 text-xs'>
+                  {activeGroupModelIndex !== null
+                    ? t('channels.dialogs.fields.keyGroup.panelDescriptionForGroup')
+                    : t('channels.dialogs.fields.keyGroup.panelDescriptionAll')}
+                </p>
+
                 <div className='relative mb-3'>
                   <Search className='text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2' />
                   <Input
                     placeholder={t('channels.dialogs.fields.supportedModels.searchPlaceholder')}
-                    value={fetchedModelsSearch}
-                    onChange={(e) => setFetchedModelsSearch(e.target.value)}
+                    value={groupModelsSearch}
+                    onChange={(e) => setGroupModelsSearch(e.target.value)}
                     className='h-8 pl-8 text-sm'
                   />
                 </div>
 
-                {/* Filter and Actions */}
                 <div className='mb-3 flex items-center justify-between gap-2'>
-                  <div className='flex flex-col gap-1.5'>
-                    <label className='flex cursor-pointer items-center gap-2 text-xs'>
-                      <Checkbox
-                        checked={showNotAddedModelsOnly}
-                        onCheckedChange={(checked) => setShowNotAddedModelsOnly(checked === true)}
-                      />
-                      {t('channels.dialogs.fields.supportedModels.showNotAddedOnly')}
-                    </label>
-                    {watchedAutoSync && watchedAutoSyncPattern && !patternError && (
-                      <label className='flex cursor-pointer items-center gap-2 text-xs'>
-                        <Checkbox checked={applyPatternFilter} onCheckedChange={(checked) => setApplyPatternFilter(checked === true)} />
-                        {t('channels.dialogs.fields.supportedModels.filterByPattern')}
-                      </label>
-                    )}
-                  </div>
+                  <span className='text-muted-foreground text-xs'>
+                    {t('channels.dialogs.fields.keyGroup.selectedCount', {
+                      count: groupModelSelection.length,
+                      total: groupModelCandidates.length,
+                    })}
+                  </span>
                   <div className='flex gap-1'>
-                    <Button type='button' variant='outline' size='sm' className='h-6 px-2 text-xs' onClick={selectAllFilteredModels}>
+                    <Button type='button' variant='outline' size='sm' className='h-6 px-2 text-xs' onClick={selectAllGroupModels}>
                       {t('channels.dialogs.buttons.selectAll')}
                     </Button>
-                    <Button type='button' variant='outline' size='sm' className='h-6 px-2 text-xs' onClick={deselectAllFetchedModels}>
+                    <Button type='button' variant='outline' size='sm' className='h-6 px-2 text-xs' onClick={deselectAllGroupModels}>
                       {t('channels.dialogs.buttons.deselectAll')}
                     </Button>
                   </div>
                 </div>
 
-                {/* Model List */}
-                <div ref={fetchedModelsParentRef} className='min-h-0 flex-1 overflow-auto pr-3'>
-                  <div
-                    style={{
-                      height: `${fetchedModelsVirtualizer.getTotalSize()}px`,
-                      width: '100%',
-                      position: 'relative',
-                    }}
-                  >
-                    {fetchedModelsVirtualizer.getVirtualItems().map((virtualItem) => {
-                      const model = filteredFetchedModels[virtualItem.index];
-                      const isAdded = supportedModels.includes(model);
-                      const isSelected = selectedFetchedModels.includes(model);
-                      return (
-                        <div
-                          key={virtualItem.key}
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: `${virtualItem.size}px`,
-                            transform: `translateY(${virtualItem.start}px)`,
-                          }}
-                        >
-                          <FetchedModelItem
-                            model={model}
-                            isAdded={isAdded}
-                            isSelected={isSelected}
-                            onToggle={() => toggleFetchedModelSelection(model)}
-                            addedLabel={t('channels.dialogs.fields.supportedModels.added')}
-                            willRemoveLabel={t('channels.dialogs.fields.supportedModels.willRemove')}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className='mt-2 flex gap-2 border-t pt-2'>
-                  <Button
-                    type='button'
-                    className='flex-1'
-                    size='sm'
-                    onClick={addSelectedFetchedModels}
-                    disabled={selectedFetchedModels.length === 0}
-                  >
-                    {selectedFetchedModels.some((model) => supportedModels.includes(model))
-                      ? t('channels.dialogs.buttons.confirmSelection')
-                      : t('channels.dialogs.buttons.addSelectedCount', { count: selectedFetchedModels.length })}
-                  </Button>
-                  <Button
-                    type='button'
-                    variant='outline'
-                    className='flex-1'
-                    size='sm'
-                    onClick={removeDeprecatedModels}
-                    disabled={deprecatedModelsCount === 0}
-                  >
-                    <Trash2 className='mr-1 h-4 w-4' />
-                    {t('channels.dialogs.buttons.removeDeprecated', { count: deprecatedModelsCount })}
-                  </Button>
-                </div>
-              </div>
-
-              {showFetchedModelsPanel && showSupportedModelsPanel && <div className='border-border my-2 border-t' />}
-
-              {/* API Keys Panel Content */}
-              <div
-                className={`flex h-full min-h-0 flex-col transition-opacity duration-200 ${showApiKeysPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
-              >
-                <div className='mb-3 flex items-center justify-between'>
-                  <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.apiKey.panelTitle', { count: apiKeysCount })}</h3>
-                  <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeApiKeysPanel}>
-                    <ChevronLeft className='h-4 w-4' />
-                  </Button>
-                </div>
-
-                <p className='text-muted-foreground mb-3 text-xs'>{t('channels.dialogs.fields.apiKey.panelDescription')}</p>
-
-                {/* Search */}
-                <div className='relative mb-3'>
-                  <Search className='text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2' />
-                  <Input
-                    placeholder={t('channels.dialogs.fields.apiKey.searchPlaceholder')}
-                    value={apiKeysSearch}
-                    onChange={(e) => setApiKeysSearch(e.target.value)}
-                    className='h-8 pl-8 text-sm'
-                  />
-                </div>
-
-                {/* Keys List */}
-                <ScrollArea className='min-h-0 flex-1' type='always'>
-                  <div className='space-y-1 pr-3'>
-                    {(() => {
-                      const validKeys = [...new Set((apiKeys || []).map((key) => key.trim()).filter((key) => key.length > 0))];
-                      const isLastKey = validKeys.length <= 1;
-                      const enabledKeysCount = validKeys.filter((k) => savedAPIKeySet.has(k) && !disabledKeySet.has(k)).length;
-                      return validKeys
-                        .filter((k) => {
-                          if (!apiKeysSearch.trim()) return true;
-                          const search = apiKeysSearch.trim().toLowerCase();
-                          return k.toLowerCase().includes(search) || k.slice(-4).toLowerCase().includes(search);
-                        })
-                        .map((key) => {
-                          const isSelected = selectedKeysToRemove.has(key);
-                          const isDisabled = disabledKeySet.has(key);
-                          const isSavedKey = savedAPIKeySet.has(key);
-                          const masked = key.length > 8 ? `${key.slice(0, 4)}****${key.slice(-4)}` : `****${key.slice(-4)}`;
-
-                          return (
-                            <div key={key} className='hover:bg-accent flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
-                              <div className='flex min-w-0 items-center gap-2'>
-                                <Checkbox
-                                  checked={isSelected}
-                                  disabled={isLastKey}
-                                  onCheckedChange={(checked) => {
-                                    setSelectedKeysToRemove((prev) => {
-                                      const next = new Set(prev);
-                                      if (checked) {
-                                        next.add(key);
-                                      } else {
-                                        next.delete(key);
-                                      }
-                                      return next;
-                                    });
-                                  }}
-                                  aria-label={t('common.columns.selectRow')}
-                                />
-
-                                <div className='min-w-0'>
-                                  <div className='flex min-w-0 items-center gap-2'>
-                                    <code className='bg-muted shrink-0 rounded px-2 py-0.5 font-mono text-xs'>{masked}</code>
-                                    {isDisabled && (
-                                      <Badge variant='destructive' className='h-5 px-2 text-[10px]'>
-                                        {t('channels.dialogs.fields.apiKey.disabled')}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {isDisabled && (
-                                    <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.fields.apiKey.disabledHint')}</p>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className='flex items-center gap-1'>
-                                {/* Disable / Enable button — only for keys saved in backend */}
-                                {isSavedKey &&
-                                  (isDisabled ? (
-                                    <Popover
-                                      open={confirmDisableKey === key}
-                                      onOpenChange={(isOpen) => setConfirmDisableKey(isOpen ? key : null)}
-                                    >
-                                      <PopoverTrigger asChild>
-                                        <Button type='button' variant='ghost' size='sm' className='h-7 w-7 p-0'>
-                                          <RefreshCw className='h-4 w-4' />
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className='w-72'>
-                                        <div className='flex flex-col gap-3'>
-                                          <p className='text-sm'>{t('channels.dialogs.fields.apiKey.confirmEnable')}</p>
-                                          <div className='flex justify-end gap-2'>
-                                            <Button size='sm' variant='outline' onClick={() => setConfirmDisableKey(null)}>
-                                              {t('common.buttons.cancel')}
-                                            </Button>
-                                            <Button
-                                              size='sm'
-                                              onClick={async () => {
-                                                if (!currentRow?.id) return;
-                                                await enableAPIKey.mutateAsync({ channelID: currentRow.id, key });
-                                                setConfirmDisableKey(null);
-                                              }}
-                                            >
-                                              {t('common.buttons.confirm')}
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      </PopoverContent>
-                                    </Popover>
-                                  ) : enabledKeysCount <= 1 ? (
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className='inline-flex'>
-                                          <Button type='button' variant='ghost' size='sm' className='text-muted-foreground h-7 w-7 p-0' disabled>
-                                            <Ban className='h-4 w-4' />
-                                          </Button>
-                                        </span>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        <p>{t('channels.dialogs.fields.apiKey.mustKeepOneEnabled')}</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  ) : (
-                                    <Popover
-                                      open={confirmDisableKey === key}
-                                      onOpenChange={(isOpen) => setConfirmDisableKey(isOpen ? key : null)}
-                                    >
-                                      <PopoverTrigger asChild>
-                                        <Button type='button' variant='ghost' size='sm' className='text-orange-500 h-7 w-7 p-0' disabled={disableAPIKey.isPending || isFetchingDisabledKeys}>
-                                          <Ban className='h-4 w-4' />
-                                        </Button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className='w-72'>
-                                        <div className='flex flex-col gap-3'>
-                                          <p className='text-sm'>{t('channels.dialogs.fields.apiKey.confirmDisable')}</p>
-                                          <div className='flex justify-end gap-2'>
-                                            <Button size='sm' variant='outline' onClick={() => setConfirmDisableKey(null)}>
-                                              {t('common.buttons.cancel')}
-                                            </Button>
-                                            <Button
-                                              size='sm'
-                                              disabled={disableAPIKey.isPending || isFetchingDisabledKeys}
-                                              onClick={async () => {
-                                                if (!currentRow?.id) return;
-                                                await disableAPIKey.mutateAsync({ channelID: currentRow.id, key });
-                                                setConfirmDisableKey(null);
-                                              }}
-                                            >
-                                              {t('common.buttons.confirm')}
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      </PopoverContent>
-                                    </Popover>
-                                  ))}
-
-                                {/* Delete button */}
-                                {isLastKey ? (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className='inline-flex'>
-                                        <Button
-                                          type='button'
-                                          variant='ghost'
-                                          size='sm'
-                                          className='text-muted-foreground h-7 w-7 p-0'
-                                          disabled
-                                        >
-                                          <Trash2 className='h-4 w-4' />
-                                        </Button>
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>{t('channels.dialogs.fields.apiKey.mustKeepOne')}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                ) : (
-                                  <Popover
-                                    open={confirmRemoveKey === key}
-                                    onOpenChange={(isOpen) => setConfirmRemoveKey(isOpen ? key : null)}
-                                  >
-                                    <PopoverTrigger asChild>
-                                      <Button type='button' variant='ghost' size='sm' className='text-destructive h-7 w-7 p-0'>
-                                        <Trash2 className='h-4 w-4' />
-                                      </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className='w-72'>
-                                      <div className='flex flex-col gap-3'>
-                                        <p className='text-sm'>{t('channels.dialogs.fields.apiKey.confirmRemoveSingle')}</p>
-                                        <div className='flex justify-end gap-2'>
-                                          <Button size='sm' variant='outline' onClick={() => setConfirmRemoveKey(null)}>
-                                            {t('common.buttons.cancel')}
-                                          </Button>
-                                          <Button size='sm' variant='destructive' onClick={() => removeApiKeys([key])}>
-                                            {t('common.buttons.confirm')}
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                )}
-                              </div>
+                <div className='min-h-0 flex-1 overflow-auto pr-3'>
+                  {filteredGroupModelCandidates.length === 0 ? (
+                    <p className='text-muted-foreground py-8 text-center text-sm'>{t('channels.dialogs.fields.keyGroup.noModels')}</p>
+                  ) : (
+                    <div className='space-y-1'>
+                      {filteredGroupModelCandidates.map((model) => {
+                        const selected = groupModelSelection.includes(model);
+                        const sources = modelSourceGroups[model] || [];
+                        return (
+                          <label key={model} className='hover:bg-accent flex cursor-pointer items-start gap-2 rounded-md p-2 text-sm'>
+                            <Checkbox checked={selected} onCheckedChange={() => toggleGroupModelSelection(model)} className='mt-0.5' />
+                            <div className='flex min-w-0 flex-1 flex-wrap items-center gap-1'>
+                              <code className='break-all'>{model}</code>
+                              {sources.map((source) => (
+                                <Badge key={source} variant='outline' className='h-5 shrink-0 px-1.5 text-[10px] font-normal'>
+                                  {source}
+                                </Badge>
+                              ))}
                             </div>
-                          );
-                        });
-                    })()}
-                  </div>
-                </ScrollArea>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
 
-                {/* Action Buttons */}
                 <div className='mt-2 flex gap-2 border-t pt-2'>
-                  <Popover open={confirmRemoveSelectedOpen} onOpenChange={setConfirmRemoveSelectedOpen}>
-                    <PopoverTrigger asChild>
-                      <Button type='button' variant='destructive' size='sm' className='flex-1' disabled={selectedKeysToRemove.size === 0}>
-                        <Trash2 className='mr-1 h-4 w-4' />
-                        {t('channels.dialogs.fields.apiKey.removeSelected', { count: selectedKeysToRemove.size })}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='w-80' align='end'>
-                      <div className='flex flex-col gap-3'>
-                        <p className='text-sm'>
-                          {t('channels.dialogs.fields.apiKey.confirmRemoveSelected', { count: selectedKeysToRemove.size })}
-                        </p>
-                        <div className='flex justify-end gap-2'>
-                          <Button size='sm' variant='outline' onClick={() => setConfirmRemoveSelectedOpen(false)}>
-                            {t('common.buttons.cancel')}
-                          </Button>
-                          <Button size='sm' variant='destructive' onClick={() => removeApiKeys(Array.from(selectedKeysToRemove))}>
-                            {t('common.buttons.confirm')}
-                          </Button>
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-
-                  <Button
-                    type='button'
-                    variant='outline'
-                    size='sm'
-                    className='flex-1'
-                    onClick={() => {
-                      setSelectedKeysToRemove(new Set());
-                      setConfirmRemoveSelectedOpen(false);
-                      setConfirmRemoveKey(null);
-                      setConfirmDisableKey(null);
-                    }}
-                    disabled={selectedKeysToRemove.size === 0}
-                  >
-                    {t('channels.dialogs.fields.apiKey.clearSelection')}
+                  <Button type='button' className='flex-1' size='sm' onClick={applyGroupModelSelection}>
+                    {t('channels.dialogs.buttons.confirmSelection')}
                   </Button>
-                </div>
-              </div>
-
-              {/* Supported Models Panel Content */}
-              <div
-                className={`flex h-full min-h-0 flex-col transition-opacity duration-200 ${showSupportedModelsPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
-              >
-                <div className='mb-3 flex items-center justify-between'>
-                  <div className='flex items-center gap-2'>
-                    <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeSupportedModelsPanel}>
-                      <PanelLeft className='h-4 w-4' />
-                    </Button>
-                    <h3 className='text-sm font-semibold'>
-                      {manualModels.length > 0
-                        ? t('channels.dialogs.fields.supportedModels.allModelsWithManual', {
-                            autoCount: Math.max(0, supportedModels.length - manualModels.length),
-                            manualCount: manualModels.length,
-                          })
-                        : t('channels.dialogs.fields.supportedModels.allModels', { count: supportedModels.length })}
-                    </h3>
-                  </div>
-                  <Popover open={showClearAllPopover} onOpenChange={setShowClearAllPopover}>
-                    <PopoverTrigger asChild>
-                      <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' disabled={supportedModels.length === 0}>
-                        <X className='h-4 w-4' />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className='border-destructive/50 bg-background w-80' align='end'>
-                      <div className='space-y-3'>
-                        <div className='space-y-1'>
-                          <h4 className='leading-none font-medium'>{t('channels.dialogs.fields.supportedModels.clearAllTitle')}</h4>
-                          <p className='text-muted-foreground text-sm'>
-                            {t('channels.dialogs.fields.supportedModels.clearAllDescription', { count: supportedModels.length })}
-                          </p>
-                        </div>
-                        <div className='flex justify-end gap-2'>
-                          <Button type='button' variant='ghost' size='sm' onClick={() => setShowClearAllPopover(false)}>
-                            {t('common.buttons.cancel')}
-                          </Button>
-                          <Button
-                            type='button'
-                            variant='destructive'
-                            size='sm'
-                            onClick={() => {
-                              handleClearAllSupportedModels();
-                              setShowClearAllPopover(false);
-                            }}
-                          >
-                            {t('channels.dialogs.buttons.clearAll')}
-                          </Button>
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {/* Search */}
-                <div className='relative mb-3'>
-                  <Search className='text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2' />
-                  <Input
-                    placeholder={t('channels.dialogs.fields.supportedModels.searchPlaceholder')}
-                    value={supportedModelsSearch}
-                    onChange={(e) => setSupportedModelsSearch(e.target.value)}
-                    className='h-8 pl-8 text-sm'
-                  />
-                </div>
-
-                {/* Model List */}
-                <div ref={supportedModelsParentRef} className='min-h-0 flex-1 overflow-auto pr-3'>
-                  <div
-                    style={{
-                      height: `${supportedModelsVirtualizer.getTotalSize()}px`,
-                      width: '100%',
-                      position: 'relative',
-                    }}
-                  >
-                    {supportedModelsVirtualizer.getVirtualItems().map((virtualItem) => {
-                      const model = filteredSupportedModels[virtualItem.index];
-                      return (
-                        <div
-                          key={virtualItem.key}
-                          style={{
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: `${virtualItem.size}px`,
-                            transform: `translateY(${virtualItem.start}px)`,
-                          }}
-                        >
-                          <SupportedModelItem model={model} isManual={isModelManual(model)} onRemove={() => removeModel(model)} />
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               </div>
             </div>

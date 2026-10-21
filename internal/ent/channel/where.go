@@ -835,6 +835,16 @@ func AutoDisableExpiresAtNotNil() predicate.Channel {
 	return predicate.Channel(sql.FieldNotNull(FieldAutoDisableExpiresAt))
 }
 
+// ModelCooldownsIsNil applies the IsNil predicate on the "model_cooldowns" field.
+func ModelCooldownsIsNil() predicate.Channel {
+	return predicate.Channel(sql.FieldIsNull(FieldModelCooldowns))
+}
+
+// ModelCooldownsNotNil applies the NotNil predicate on the "model_cooldowns" field.
+func ModelCooldownsNotNil() predicate.Channel {
+	return predicate.Channel(sql.FieldNotNull(FieldModelCooldowns))
+}
+
 // RemarkEQ applies the EQ predicate on the "remark" field.
 func RemarkEQ(v string) predicate.Channel {
 	return predicate.Channel(sql.FieldEQ(FieldRemark, v))

@@ -2125,6 +2125,8 @@ type ChannelMutation struct {
 	error_message                *string
 	auto_disabled_at             *time.Time
 	auto_disable_expires_at      *time.Time
+	model_cooldowns              *[]objects.ModelCooldown
+	appendmodel_cooldowns        []objects.ModelCooldown
 	remark                       *string
 	endpoints                    *[]objects.ChannelEndpoint
 	appendendpoints              []objects.ChannelEndpoint
@@ -3238,6 +3240,71 @@ func (m *ChannelMutation) ResetAutoDisableExpiresAt() {
 	delete(m.clearedFields, channel.FieldAutoDisableExpiresAt)
 }
 
+// SetModelCooldowns sets the "model_cooldowns" field.
+func (m *ChannelMutation) SetModelCooldowns(oc []objects.ModelCooldown) {
+	m.model_cooldowns = &oc
+	m.appendmodel_cooldowns = nil
+}
+
+// ModelCooldowns returns the value of the "model_cooldowns" field in the mutation.
+func (m *ChannelMutation) ModelCooldowns() (r []objects.ModelCooldown, exists bool) {
+	v := m.model_cooldowns
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModelCooldowns returns the old "model_cooldowns" field's value of the Channel entity.
+// If the Channel object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ChannelMutation) OldModelCooldowns(ctx context.Context) (v []objects.ModelCooldown, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModelCooldowns is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModelCooldowns requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModelCooldowns: %w", err)
+	}
+	return oldValue.ModelCooldowns, nil
+}
+
+// AppendModelCooldowns adds oc to the "model_cooldowns" field.
+func (m *ChannelMutation) AppendModelCooldowns(oc []objects.ModelCooldown) {
+	m.appendmodel_cooldowns = append(m.appendmodel_cooldowns, oc...)
+}
+
+// AppendedModelCooldowns returns the list of values that were appended to the "model_cooldowns" field in this mutation.
+func (m *ChannelMutation) AppendedModelCooldowns() ([]objects.ModelCooldown, bool) {
+	if len(m.appendmodel_cooldowns) == 0 {
+		return nil, false
+	}
+	return m.appendmodel_cooldowns, true
+}
+
+// ClearModelCooldowns clears the value of the "model_cooldowns" field.
+func (m *ChannelMutation) ClearModelCooldowns() {
+	m.model_cooldowns = nil
+	m.appendmodel_cooldowns = nil
+	m.clearedFields[channel.FieldModelCooldowns] = struct{}{}
+}
+
+// ModelCooldownsCleared returns if the "model_cooldowns" field was cleared in this mutation.
+func (m *ChannelMutation) ModelCooldownsCleared() bool {
+	_, ok := m.clearedFields[channel.FieldModelCooldowns]
+	return ok
+}
+
+// ResetModelCooldowns resets all changes to the "model_cooldowns" field.
+func (m *ChannelMutation) ResetModelCooldowns() {
+	m.model_cooldowns = nil
+	m.appendmodel_cooldowns = nil
+	delete(m.clearedFields, channel.FieldModelCooldowns)
+}
+
 // SetRemark sets the "remark" field.
 func (m *ChannelMutation) SetRemark(s string) {
 	m.remark = &s
@@ -3695,7 +3762,7 @@ func (m *ChannelMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ChannelMutation) Fields() []string {
-	fields := make([]string, 0, 23)
+	fields := make([]string, 0, 24)
 	if m.created_at != nil {
 		fields = append(fields, channel.FieldCreatedAt)
 	}
@@ -3759,6 +3826,9 @@ func (m *ChannelMutation) Fields() []string {
 	if m.auto_disable_expires_at != nil {
 		fields = append(fields, channel.FieldAutoDisableExpiresAt)
 	}
+	if m.model_cooldowns != nil {
+		fields = append(fields, channel.FieldModelCooldowns)
+	}
 	if m.remark != nil {
 		fields = append(fields, channel.FieldRemark)
 	}
@@ -3815,6 +3885,8 @@ func (m *ChannelMutation) Field(name string) (ent.Value, bool) {
 		return m.AutoDisabledAt()
 	case channel.FieldAutoDisableExpiresAt:
 		return m.AutoDisableExpiresAt()
+	case channel.FieldModelCooldowns:
+		return m.ModelCooldowns()
 	case channel.FieldRemark:
 		return m.Remark()
 	case channel.FieldEndpoints:
@@ -3870,6 +3942,8 @@ func (m *ChannelMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldAutoDisabledAt(ctx)
 	case channel.FieldAutoDisableExpiresAt:
 		return m.OldAutoDisableExpiresAt(ctx)
+	case channel.FieldModelCooldowns:
+		return m.OldModelCooldowns(ctx)
 	case channel.FieldRemark:
 		return m.OldRemark(ctx)
 	case channel.FieldEndpoints:
@@ -4030,6 +4104,13 @@ func (m *ChannelMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetAutoDisableExpiresAt(v)
 		return nil
+	case channel.FieldModelCooldowns:
+		v, ok := value.([]objects.ModelCooldown)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModelCooldowns(v)
+		return nil
 	case channel.FieldRemark:
 		v, ok := value.(string)
 		if !ok {
@@ -4131,6 +4212,9 @@ func (m *ChannelMutation) ClearedFields() []string {
 	if m.FieldCleared(channel.FieldAutoDisableExpiresAt) {
 		fields = append(fields, channel.FieldAutoDisableExpiresAt)
 	}
+	if m.FieldCleared(channel.FieldModelCooldowns) {
+		fields = append(fields, channel.FieldModelCooldowns)
+	}
 	if m.FieldCleared(channel.FieldRemark) {
 		fields = append(fields, channel.FieldRemark)
 	}
@@ -4180,6 +4264,9 @@ func (m *ChannelMutation) ClearField(name string) error {
 		return nil
 	case channel.FieldAutoDisableExpiresAt:
 		m.ClearAutoDisableExpiresAt()
+		return nil
+	case channel.FieldModelCooldowns:
+		m.ClearModelCooldowns()
 		return nil
 	case channel.FieldRemark:
 		m.ClearRemark()
@@ -4257,6 +4344,9 @@ func (m *ChannelMutation) ResetField(name string) error {
 		return nil
 	case channel.FieldAutoDisableExpiresAt:
 		m.ResetAutoDisableExpiresAt()
+		return nil
+	case channel.FieldModelCooldowns:
+		m.ResetModelCooldowns()
 		return nil
 	case channel.FieldRemark:
 		m.ResetRemark()

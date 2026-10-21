@@ -1,8 +1,9 @@
-﻿import { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
 import { Table } from '@tanstack/react-table';
-import { Filter, GripVertical, X } from 'lucide-react';
+import { Filter, GripVertical, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { usePermissions } from '@/hooks/usePermissions';
 import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import type { DateTimeRangeValue } from '@/utils/date-range';
@@ -22,6 +23,7 @@ import { useMe } from '@/features/auth/data/auth';
 import { useAllChannelSummarys } from '@/features/channels/data/channels';
 import { RequestStatus } from '../data/schema';
 import { DataTableViewOptions } from './data-table-view-options';
+import { RequestsCleanupDialog } from './requests-cleanup-dialog';
 import { MODEL_ID_COLUMN } from './requests-columns';
 
 interface DataTableToolbarProps<TData> {
@@ -220,6 +222,10 @@ export function DataTableToolbar<TData>({
   const [showArchivedChannels, setShowArchivedChannels] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [columnOrderOpen, setColumnOrderOpen] = useState(false);
+  const [cleanupOpen, setCleanupOpen] = useState(false);
+  const { hasSystemScope } = usePermissions();
+  // Manual log cleanup is a settings-level destructive action.
+  const canCleanupLogs = hasSystemScope('write_settings');
   const debouncedApiKeySearch = useDebounce(apiKeySearch, 300);
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
@@ -473,7 +479,16 @@ export function DataTableToolbar<TData>({
             />
           </>
         )}
+        {canCleanupLogs && (
+          <Button variant='outline' size='sm' className='h-8' onClick={() => setCleanupOpen(true)} data-testid='requests-cleanup-open'>
+            <Trash2 className='mr-2 h-4 w-4' />
+            {t('requests.cleanup.action')}
+          </Button>
+        )}
         <DataTableViewOptions table={table} />
+        {canCleanupLogs && (
+          <RequestsCleanupDialog open={cleanupOpen} onOpenChange={setCleanupOpen} onCleaned={onRefresh} />
+        )}
       </div>
     </div>
   );

@@ -106,13 +106,15 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		AbstractService: &AbstractService{
 			db: params.Ent,
 		},
-		SystemService:             params.SystemService,
-		WebhookNotifier:           params.WebhookNotifier,
-		httpClient:                params.HttpClient,
-		channelPerfMetrics:        make(map[int]*channelMetrics),
-		apiKeyErrorCounts:         make(map[int]map[string]map[int]int),
-		apiKeyRuleActionsInFlight: make(map[int]map[string]bool),
-		perfCh:                    make(chan *PerformanceRecord, 1024),
+		SystemService:               params.SystemService,
+		WebhookNotifier:             params.WebhookNotifier,
+		httpClient:                  params.HttpClient,
+		channelPerfMetrics:          make(map[int]*channelMetrics),
+		apiKeyErrorCounts:           make(map[int]map[string]map[int]int),
+		apiKeyRuleActionsInFlight:   make(map[int]map[string]bool),
+		cancellationCounts:          make(map[int]map[string]int),
+		cancellationActionsInFlight: make(map[int]map[string]bool),
+		perfCh:                      make(chan *PerformanceRecord, 1024),
 	}
 	watcherMode := params.CacheConfig.Mode
 	if watcherMode == "" {
@@ -156,6 +158,35 @@ func (svc *ChannelService) Stop() {
 	svc.enabledChannelsCache.Stop()
 }
 
+// SetModelAssociationPurger wires the association cleanup that runs when channels
+// are deleted. It is set after construction to avoid a dependency cycle with the
+// model service.
+func (svc *ChannelService) SetModelAssociationPurger(purger ModelAssociationPurger) {
+	svc.modelAssociationPurger = purger
+}
+
+// purgeModelAssociationsForChannels drops deleted channels from model association
+// rules. A cleanup failure is logged rather than returned: the channel is already
+// gone by this point, and failing the delete would leave the caller with a
+// half-applied change and no way to retry it.
+func (svc *ChannelService) purgeModelAssociationsForChannels(ctx context.Context, channelIDs []int) {
+	if svc.modelAssociationPurger == nil || len(channelIDs) == 0 {
+		return
+	}
+
+	if err := svc.modelAssociationPurger.PurgeChannelFromModelAssociations(ctx, channelIDs); err != nil {
+		log.Warn(ctx, "failed to purge deleted channels from model associations", log.Cause(err))
+	}
+}
+
+// ModelAssociationPurger removes references to deleted channels from model
+// association rules. The channel service cannot hold a *ModelService directly:
+// the model service already depends on the channel service, and the reverse edge
+// would be a dependency cycle. The orchestrator wires this in after both exist.
+type ModelAssociationPurger interface {
+	PurgeChannelFromModelAssociations(ctx context.Context, channelIDs []int) error
+}
+
 type ChannelService struct {
 	*AbstractService
 
@@ -163,6 +194,11 @@ type ChannelService struct {
 	WebhookNotifier *WebhookNotifier
 
 	httpClient *httpclient.HttpClient
+
+	// modelAssociationPurger cascades channel deletions into the association
+	// rules that named the deleted channel. Optional: nil skips the cleanup
+	// (tests, or before the orchestrator wires it).
+	modelAssociationPurger ModelAssociationPurger
 
 	enabledChannelsCache *live.Cache[[]*Channel]
 	channelNotifier      watcher.Notifier[live.CacheEvent[struct{}]]
@@ -189,8 +225,16 @@ type ChannelService struct {
 	// channelID -> counterKey -> dummy status (always 0) -> count
 	apiKeyErrorCounts         map[int]map[string]map[int]int
 	apiKeyRuleActionsInFlight map[int]map[string]bool
-	apiKeyErrorCountsLock     sync.Mutex
-	apiKeyOpsLock             sync.Mutex
+	// cancellationCounts stores consecutive client-cancellation counters.
+	// channelID -> counterKey -> count. They are deliberately independent from
+	// status-code auto-disable counters.
+	cancellationCounts          map[int]map[string]int
+	cancellationActionsInFlight map[int]map[string]bool
+	apiKeyErrorCountsLock       sync.Mutex
+	apiKeyOpsLock               sync.Mutex
+	// modelCooldownsLock serializes model cooldown mutations (mark/clear/cleanup)
+	// so read-modify-write updates of channel.ModelCooldowns cannot interleave.
+	modelCooldownsLock sync.Mutex
 
 	modelSyncMu            sync.Mutex
 	codexCatalogSF         singleflight.Group
@@ -1279,6 +1323,7 @@ func (svc *ChannelService) DeleteChannel(ctx context.Context, id int) error {
 
 	svc.forgetLimiter(id)
 	svc.reloadChannelsAfterCommit(ctx)
+	svc.purgeModelAssociationsForChannels(ctx, []int{id})
 
 	return nil
 }

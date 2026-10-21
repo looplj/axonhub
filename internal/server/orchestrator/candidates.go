@@ -132,6 +132,12 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 
 	candidates := make([]*ChannelModelsCandidate, 0, len(channels))
 	for _, ch := range channels {
+		// Model-scoped cooldowns (e.g. client-cancellation cooldown) skip only
+		// this model on the channel; other models keep using it.
+		if ch.HasActiveModelCooldown(req.Model, time.Now()) {
+			continue
+		}
+
 		entries := ch.GetModelEntries()
 
 		entry, ok := entries[req.Model]
@@ -205,6 +211,7 @@ func (s *DefaultSelector) selectModelCandidates(ctx context.Context, req *llm.Re
 	}
 
 	candidates := filterResolvedCandidatesForRequest(ctx, req, resolvedCandidates)
+	candidates = filterModelCooldownCandidates(candidates, req.Model, time.Now())
 	if len(candidates) == 0 {
 		if log.DebugEnabled(ctx) {
 			log.Debug(ctx, "no candidates matched request conditions",

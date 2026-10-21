@@ -18,12 +18,142 @@ import {
   serializeApiKeyAutoDisableRules,
   toApiKeyAutoDisableRuleFormValues,
 } from '@/features/channels/data/auto-disable';
-import { useRetryPolicy, useUpdateRetryPolicy, type RetryPolicyInput } from '../data/system';
+import { useMyProjects } from '@/features/projects/data/projects';
+import { useSelectedProjectId } from '@/stores/projectStore';
+import {
+  applyCooldownSelectionChange,
+  clampCooldownMinutes,
+  projectIDToNumber,
+  resolveCooldownSelection,
+} from '../data/client-cancellation';
+import {
+  useRetryPolicy,
+  useUpdateRetryPolicy,
+  type ClientCancellationAction,
+  type ClientCancellationPolicyInput,
+  type ClientCancellationScope,
+  type RetryPolicyInput,
+} from '../data/system';
+
+const CLIENT_CANCELLATION_COOLDOWN_PRESETS = [5, 10, 20, 30, 60] as const;
+
+function ClientCancellationTimingFields({
+  idPrefix,
+  policy,
+  onChange,
+}: {
+  idPrefix: string;
+  policy: ClientCancellationPolicyInput;
+  onChange: (field: 'threshold' | 'cooldownMinutes' | 'action', value: number | ClientCancellationAction) => void;
+}) {
+  const { t } = useTranslation();
+  const cooldownMinutes = policy.cooldownMinutes ?? 30;
+  // Choosing "custom" keeps the current minutes but switches the control into
+  // free-input mode. Without this local flag the select would snap straight back
+  // to the preset that still matches the value and the number input would never
+  // appear.
+  const [customCooldown, setCustomCooldown] = useState(false);
+  // The stored number alone cannot express "custom" (it still matches a preset),
+  // so the flag and the derived selection keep the entry clickable.
+  const cooldownSelection = resolveCooldownSelection(cooldownMinutes, customCooldown);
+
+  return (
+    <div className='grid gap-4 md:grid-cols-3'>
+      <div className='space-y-2'>
+        <Label htmlFor={`${idPrefix}-threshold`}>{t('system.retry.clientCancellation.threshold.label')}</Label>
+        <div className='text-muted-foreground text-sm'>{t('system.retry.clientCancellation.threshold.description')}</div>
+        <Input
+          id={`${idPrefix}-threshold`}
+          type='number'
+          min='1'
+          max='100'
+          value={policy.threshold ?? 2}
+          onChange={(e) => {
+            if (e.target.value.trim() === '') {
+              return;
+            }
+            onChange('threshold', Math.max(1, parseInt(e.target.value, 10) || 1));
+          }}
+          className='w-32'
+        />
+      </div>
+
+      <div className='space-y-2'>
+        <Label htmlFor={`${idPrefix}-action`}>{t('system.retry.clientCancellation.action.label')}</Label>
+        <div className='text-muted-foreground text-sm'>{t('system.retry.clientCancellation.action.description')}</div>
+        <Select value={policy.action || 'switch_and_cooldown'} onValueChange={(value) => onChange('action', value as ClientCancellationAction)}>
+          <SelectTrigger id={`${idPrefix}-action`} className='w-full'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='switch_and_cooldown'>{t('system.retry.clientCancellation.action.options.switchAndCooldown')}</SelectItem>
+            <SelectItem value='cooldown_only'>{t('system.retry.clientCancellation.action.options.cooldownOnly')}</SelectItem>
+            <SelectItem value='cooldown_model'>{t('system.retry.clientCancellation.action.options.cooldownModel')}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className='space-y-2'>
+        <Label htmlFor={`${idPrefix}-cooldown-preset`}>{t('system.retry.clientCancellation.cooldown.label')}</Label>
+        <div className='text-muted-foreground text-sm'>{t('system.retry.clientCancellation.cooldown.description')}</div>
+        <Select
+          value={cooldownSelection.value}
+          onValueChange={(value) => {
+            const change = applyCooldownSelectionChange(value);
+            setCustomCooldown(change.custom);
+            if (change.minutes !== undefined) {
+              onChange('cooldownMinutes', change.minutes);
+            }
+          }}
+        >
+          <SelectTrigger id={`${idPrefix}-cooldown-preset`} className='w-full'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CLIENT_CANCELLATION_COOLDOWN_PRESETS.map((minutes) => (
+              <SelectItem key={minutes} value={String(minutes)}>
+                {t(`system.retry.clientCancellation.cooldown.presets.${minutes}`)}
+              </SelectItem>
+            ))}
+            <SelectItem value='custom'>{t('system.retry.clientCancellation.cooldown.custom')}</SelectItem>
+          </SelectContent>
+        </Select>
+        {cooldownSelection.custom && (
+          <div className='flex items-center gap-2'>
+            <Input
+              id={`${idPrefix}-cooldown-custom`}
+              type='number'
+              min='1'
+              max='10080'
+              value={cooldownMinutes}
+              onChange={(e) => {
+                // An empty field is a transient state while the user retypes;
+                // ignoring it keeps the stored duration from collapsing to 1.
+                const raw = e.target.value;
+                if (raw.trim() === '') {
+                  setCustomCooldown(true);
+                  return;
+                }
+                setCustomCooldown(true);
+                onChange('cooldownMinutes', clampCooldownMinutes(parseInt(raw, 10)));
+              }}
+              className='w-32'
+            />
+            <span className='text-muted-foreground text-sm'>{t('system.retry.clientCancellation.cooldown.minutes')}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function RetrySettings() {
   const { t } = useTranslation();
   const { data: retryPolicy, isLoading } = useRetryPolicy();
   const updateRetryPolicy = useUpdateRetryPolicy();
+  const { data: projects = [] } = useMyProjects();
+  const selectedProjectId = useSelectedProjectId();
+  const [cancellationProjectId, setCancellationProjectId] = useState('');
 
   const [formData, setFormData] = useState<RetryPolicyInput>({
     enabled: true,
@@ -42,6 +172,14 @@ export function RetrySettings() {
     autoDisableChannel: {
       enabled: false,
       rules: [],
+    },
+    clientCancellationPolicy: {
+      enabled: true,
+      threshold: 2,
+      cooldownMinutes: 30,
+      action: 'switch_and_cooldown',
+      scope: 'global',
+      projectOverrides: [],
     },
   });
 
@@ -65,9 +203,23 @@ export function RetrySettings() {
           enabled: retryPolicy.autoDisableChannel?.enabled || false,
           rules: toApiKeyAutoDisableRuleFormValues(retryPolicy.autoDisableChannel?.rules),
         },
+        clientCancellationPolicy: {
+          enabled: retryPolicy.clientCancellationPolicy?.enabled ?? true,
+          threshold: retryPolicy.clientCancellationPolicy?.threshold ?? 2,
+          cooldownMinutes: retryPolicy.clientCancellationPolicy?.cooldownMinutes ?? 30,
+          action: retryPolicy.clientCancellationPolicy?.action ?? 'switch_and_cooldown',
+          scope: retryPolicy.clientCancellationPolicy?.scope ?? 'global',
+          projectOverrides: retryPolicy.clientCancellationPolicy?.projectOverrides ?? [],
+        },
       });
     }
   }, [retryPolicy]);
+
+  useEffect(() => {
+    if (cancellationProjectId) return;
+    const initialProjectId = selectedProjectId || (projects[0]?.id ? String(projects[0].id) : '');
+    if (initialProjectId) setCancellationProjectId(initialProjectId);
+  }, [cancellationProjectId, projects, selectedProjectId]);
 
   const handleInputChange = useCallback((field: keyof RetryPolicyInput, value: string | boolean | number) => {
     setFormData((prev) => ({
@@ -120,6 +272,84 @@ export function RetrySettings() {
       },
     }));
   }, []);
+
+  const handleClientCancellationChange = useCallback(
+    (field: 'enabled' | 'threshold' | 'cooldownMinutes' | 'action' | 'scope', value: boolean | number | string) => {
+      setFormData((prev) => ({
+        ...prev,
+        clientCancellationPolicy: {
+          ...prev.clientCancellationPolicy,
+          [field]: value,
+        },
+      }));
+    },
+    []
+  );
+
+  // Project ids arrive as "gid://axonhub/project/<id>" GUIDs while the override
+  // stores the plain numeric id, so it has to be decoded before matching/saving.
+  const cancellationProjectID = projectIDToNumber(cancellationProjectId);
+  const activeProjectOverride = formData.clientCancellationPolicy?.projectOverrides?.find(
+    (override) => override.projectId === cancellationProjectID
+  );
+
+  const handleProjectCancellationOverrideToggle = useCallback(
+    (enabled: boolean) => {
+      if (!cancellationProjectID) return;
+      setFormData((prev) => {
+        const policy = prev.clientCancellationPolicy;
+        const overrides = policy?.projectOverrides ?? [];
+        const existing = overrides.find((override) => override.projectId === cancellationProjectID);
+        if (existing) {
+          return {
+            ...prev,
+            clientCancellationPolicy: {
+              ...policy,
+              projectOverrides: overrides.map((override) =>
+                override.projectId === cancellationProjectID ? { ...override, enabled } : override
+              ),
+            },
+          };
+        }
+        return {
+          ...prev,
+          clientCancellationPolicy: {
+            ...policy,
+            projectOverrides: [
+              ...overrides,
+              {
+                projectId: cancellationProjectID,
+                enabled,
+                threshold: policy?.threshold ?? 2,
+                cooldownMinutes: policy?.cooldownMinutes ?? 30,
+                action: policy?.action ?? 'switch_and_cooldown',
+              },
+            ],
+          },
+        };
+      });
+    },
+    [cancellationProjectID]
+  );
+
+  const handleProjectCancellationChange = useCallback(
+    (field: 'threshold' | 'cooldownMinutes' | 'action', value: number | ClientCancellationAction) => {
+      if (!cancellationProjectID) return;
+      setFormData((prev) => {
+        const policy = prev.clientCancellationPolicy;
+        return {
+          ...prev,
+          clientCancellationPolicy: {
+            ...policy,
+            projectOverrides: (policy?.projectOverrides ?? []).map((override) =>
+              override.projectId === cancellationProjectID ? { ...override, [field]: value } : override
+            ),
+          },
+        };
+      });
+    },
+    [cancellationProjectID]
+  );
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -387,6 +617,103 @@ export function RetrySettings() {
               </div>
             </div>
           )}
+
+          <Separator />
+
+          <div id='client-cancellation' className='space-y-4 rounded-lg border p-4'>
+            <div className='flex items-center justify-between'>
+              <div className='space-y-0.5'>
+                <Label htmlFor='client-cancellation-enabled' className='text-base'>
+                  {t('system.retry.clientCancellation.label')}
+                </Label>
+                <div className='text-muted-foreground text-sm'>{t('system.retry.clientCancellation.description')}</div>
+              </div>
+              <Switch
+                id='client-cancellation-enabled'
+                checked={formData.clientCancellationPolicy?.enabled ?? true}
+                onCheckedChange={(checked) => handleClientCancellationChange('enabled', checked)}
+              />
+            </div>
+
+            {(formData.clientCancellationPolicy?.enabled ?? true) && (
+              <div className='space-y-5'>
+                <div className='space-y-2'>
+                  <Label htmlFor='client-cancellation-scope'>{t('system.retry.clientCancellation.scope.label')}</Label>
+                  <div className='text-muted-foreground text-sm'>{t('system.retry.clientCancellation.scope.description')}</div>
+                  <Select
+                    value={formData.clientCancellationPolicy?.scope || 'global'}
+                    onValueChange={(value) => handleClientCancellationChange('scope', value as ClientCancellationScope)}
+                  >
+                    <SelectTrigger id='client-cancellation-scope' className='w-full md:w-80'>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value='global'>{t('system.retry.clientCancellation.scope.options.global')}</SelectItem>
+                      <SelectItem value='project_first'>
+                        {t('system.retry.clientCancellation.scope.options.projectFirst')}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className='bg-muted/20 space-y-3 rounded-md border p-4'>
+                  <div className='font-medium'>{t('system.retry.clientCancellation.globalTitle')}</div>
+                  <ClientCancellationTimingFields
+                    idPrefix='client-cancellation-global'
+                    policy={formData.clientCancellationPolicy ?? {}}
+                    onChange={handleClientCancellationChange}
+                  />
+                </div>
+
+                {formData.clientCancellationPolicy?.scope === 'project_first' && (
+                  <div className='bg-muted/20 space-y-4 rounded-md border p-4'>
+                    <div className='space-y-2'>
+                      <Label htmlFor='client-cancellation-project'>{t('system.retry.clientCancellation.project.label')}</Label>
+                      <div className='text-muted-foreground text-sm'>{t('system.retry.clientCancellation.project.description')}</div>
+                      <Select value={cancellationProjectId} onValueChange={(value) => value && setCancellationProjectId(value)}>
+                        <SelectTrigger id='client-cancellation-project' className='w-full md:w-80'>
+                          <SelectValue placeholder={t('system.retry.clientCancellation.project.placeholder')} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projects.map((project) => (
+                            <SelectItem key={project.id} value={String(project.id)}>
+                              {project.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className='flex items-center justify-between gap-4'>
+                      <div className='space-y-0.5'>
+                        <Label htmlFor='client-cancellation-project-enabled' className='text-base'>
+                          {t('system.retry.clientCancellation.project.overrideLabel')}
+                        </Label>
+                        <div className='text-muted-foreground text-sm'>
+                          {t('system.retry.clientCancellation.project.overrideDescription')}
+                        </div>
+                      </div>
+                      <Switch
+                        id='client-cancellation-project-enabled'
+                        checked={activeProjectOverride?.enabled ?? false}
+                        disabled={!cancellationProjectID}
+                        onCheckedChange={handleProjectCancellationOverrideToggle}
+                      />
+                    </div>
+
+                    {activeProjectOverride?.enabled && (
+                      <ClientCancellationTimingFields
+                        key={`client-cancellation-project-${cancellationProjectID}`}
+                        idPrefix='client-cancellation-project'
+                        policy={activeProjectOverride}
+                        onChange={handleProjectCancellationChange}
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <Separator />
 

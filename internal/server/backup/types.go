@@ -209,6 +209,11 @@ const (
 )
 
 type BackupOptions struct {
+	// UploadToStorage stores the generated backup in the active auto-backup data
+	// storage (S3 / WebDAV / local / database) instead of returning it inline
+	// only. The payload still carries the inline data so existing clients keep
+	// working.
+	UploadToStorage      bool
 	IncludeSystemConfigs bool
 	IncludeProjects      bool
 	IncludeChannels      bool

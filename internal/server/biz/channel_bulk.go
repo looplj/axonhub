@@ -357,6 +357,7 @@ func (svc *ChannelService) BulkDeleteChannels(ctx context.Context, ids []int) er
 
 	log.Info(ctx, "bulk deleted channels", log.Int("count", deleted))
 	svc.reloadChannelsAfterCommit(ctx)
+	svc.purgeModelAssociationsForChannels(ctx, ids)
 
 	return nil
 }

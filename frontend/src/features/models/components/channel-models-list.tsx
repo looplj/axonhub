@@ -1,5 +1,7 @@
-import { Badge } from '@/components/ui/badge';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { IconSnowflake } from '@tabler/icons-react';
+import { Badge } from '@/components/ui/badge';
 
 interface ChannelModel {
   requestModel: string;
@@ -12,15 +14,37 @@ interface Channel {
   status: string;
 }
 
+interface KeyGroupRef {
+  index: number;
+  name: string;
+}
+
 interface ChannelModelsListProps {
   channels: Array<{
     channel: Channel;
+    keyGroup?: KeyGroupRef | null;
     models: ChannelModel[];
   }>;
   emptyMessage?: string;
 }
 
-export function ChannelModelsList({ channels, emptyMessage }: ChannelModelsListProps) {
+// A single preview card. Exported separately from the list so the association
+// dialog can wrap each card in its own sortable container and keep this
+// component purely presentational.
+export function ChannelModelsCard({
+  connection,
+  dragHandle,
+  frozenModels,
+  freezeMenu,
+}: {
+  connection: { channel: Channel; keyGroup?: KeyGroupRef | null; models: ChannelModel[] };
+  dragHandle?: ReactNode;
+  // Models of this card that are currently frozen (channel x model cooldown).
+  frozenModels?: string[];
+  // Optional freeze/unfreeze menu rendered on the card header.
+  freezeMenu?: ReactNode;
+}) {
+  const frozenSet = new Set(frozenModels ?? []);
   const { t } = useTranslation();
 
   const getStatusColor = (status: string) => {
@@ -47,37 +71,63 @@ export function ChannelModelsList({ channels, emptyMessage }: ChannelModelsListP
     return colors[type as keyof typeof colors] || 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-400';
   };
 
+  return (
+    <div className='rounded-lg border p-3'>
+      <div className='mb-2 flex items-start gap-1.5'>
+        {dragHandle}
+        <div className='flex flex-wrap items-center gap-1.5'>
+          <span className='text-sm font-medium'>{connection.channel.name}</span>
+          <Badge variant='outline' className={`h-5 px-1.5 text-[10px] font-normal ${getTypeColor(connection.channel.type)}`}>
+            {t(`channels.types.${connection.channel.type}`, connection.channel.type)}
+          </Badge>
+          <Badge variant='outline' className={`h-5 px-1.5 text-[10px] font-normal ${getStatusColor(connection.channel.status)}`}>
+            {t(`channels.status.${connection.channel.status}`)}
+          </Badge>
+          {connection.keyGroup && (
+            <Badge variant='secondary' className='h-5 px-1.5 text-[10px] font-normal'>
+              {connection.keyGroup.name}
+            </Badge>
+          )}
+          {frozenSet.size > 0 && (
+            <Badge variant='outline' className='h-5 px-1.5 text-[10px] font-normal text-cyan-600 dark:text-cyan-400'>
+              <IconSnowflake className='mr-0.5 h-3 w-3' />
+              {t('models.dialogs.association.cooldown.frozenBadge')}
+            </Badge>
+          )}
+        </div>
+        {freezeMenu && <div className='ml-auto shrink-0'>{freezeMenu}</div>}
+      </div>
+      <div className='space-y-1'>
+        {connection.models.length === 0 ? (
+          <p className='text-muted-foreground text-xs'>{t('models.dialogs.association.previewNoModels')}</p>
+        ) : (
+          connection.models.map((model) => (
+            <div key={model.requestModel} className='bg-muted flex items-center gap-1 rounded px-2 py-1 text-xs'>
+              {model.requestModel}
+              {frozenSet.has(model.requestModel) && (
+                <IconSnowflake className='h-3 w-3 shrink-0 text-cyan-600 dark:text-cyan-400' />
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function ChannelModelsList({ channels, emptyMessage }: ChannelModelsListProps) {
+  const { t } = useTranslation();
+
   if (channels.length === 0) {
     return (
-      <p className='text-muted-foreground py-8 text-center text-sm'>
-        {emptyMessage || t('models.dialogs.association.noConnections')}
-      </p>
+      <p className='text-muted-foreground py-8 text-center text-sm'>{emptyMessage || t('models.dialogs.association.noConnections')}</p>
     );
   }
 
   return (
     <div className='space-y-3'>
       {channels.map((conn) => (
-        <div key={conn.channel.id} className='rounded-lg border p-3'>
-          <div className='mb-2 flex items-start justify-between gap-2'>
-            <div className='flex items-center gap-1.5 flex-wrap'>
-              <span className='text-sm font-medium'>{conn.channel.name}</span>
-              <Badge variant='outline' className={`h-5 px-1.5 text-[10px] font-normal ${getTypeColor(conn.channel.type)}`}>
-                {t(`channels.types.${conn.channel.type}`, conn.channel.type)}
-              </Badge>
-              <Badge variant='outline' className={`h-5 px-1.5 text-[10px] font-normal ${getStatusColor(conn.channel.status)}`}>
-                {t(`channels.status.${conn.channel.status}`)}
-              </Badge>
-            </div>
-          </div>
-          <div className='space-y-1'>
-            {conn.models.map((model) => (
-              <div key={model.requestModel} className='bg-muted rounded px-2 py-1 text-xs'>
-                {model.requestModel}
-              </div>
-            ))}
-          </div>
-        </div>
+        <ChannelModelsCard key={conn.channel.id} connection={conn} />
       ))}
     </div>
   );

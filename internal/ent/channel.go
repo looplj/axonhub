@@ -62,6 +62,8 @@ type Channel struct {
 	AutoDisabledAt *time.Time `json:"auto_disabled_at,omitempty"`
 	// When set together with auto_disabled_at, the cleanup task re-enables the channel after this instant. Operator disables leave this null.
 	AutoDisableExpiresAt *time.Time `json:"auto_disable_expires_at,omitempty"`
+	// Model-scoped temporary cooldowns, e.g. from the client-cancellation policy; expired entries are cleaned up automatically.
+	ModelCooldowns []objects.ModelCooldown `json:"model_cooldowns,omitempty"`
 	// User-defined remark or note for the channel
 	Remark *string `json:"remark,omitempty"`
 	// Outbound API endpoints for this channel. Each endpoint specifies api_format and optional path. When empty, defaults are derived from channel type.
@@ -160,7 +162,7 @@ func (*Channel) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case channel.FieldCredentials, channel.FieldDisabledAPIKeys, channel.FieldSupportedModels, channel.FieldManualModels, channel.FieldTags, channel.FieldPolicies, channel.FieldSettings, channel.FieldEndpoints:
+		case channel.FieldCredentials, channel.FieldDisabledAPIKeys, channel.FieldSupportedModels, channel.FieldManualModels, channel.FieldTags, channel.FieldPolicies, channel.FieldSettings, channel.FieldModelCooldowns, channel.FieldEndpoints:
 			values[i] = new([]byte)
 		case channel.FieldAutoSyncSupportedModels:
 			values[i] = new(sql.NullBool)
@@ -334,6 +336,14 @@ func (_m *Channel) assignValues(columns []string, values []any) error {
 				_m.AutoDisableExpiresAt = new(time.Time)
 				*_m.AutoDisableExpiresAt = value.Time
 			}
+		case channel.FieldModelCooldowns:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field model_cooldowns", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.ModelCooldowns); err != nil {
+					return fmt.Errorf("unmarshal field model_cooldowns: %w", err)
+				}
+			}
 		case channel.FieldRemark:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field remark", values[i])
@@ -481,6 +491,9 @@ func (_m *Channel) String() string {
 		builder.WriteString("auto_disable_expires_at=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	builder.WriteString(", ")
+	builder.WriteString("model_cooldowns=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ModelCooldowns))
 	builder.WriteString(", ")
 	if v := _m.Remark; v != nil {
 		builder.WriteString("remark=")

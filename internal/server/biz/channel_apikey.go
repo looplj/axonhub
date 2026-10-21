@@ -461,15 +461,29 @@ func (svc *ChannelService) cleanupExpiredDisabledAPIKeys(ctx context.Context) {
 			)
 			continue
 		}
-		if !cleaned {
-			continue
+		if cleaned {
+			log.Info(ctx, "Cleaned up expired disabled API keys",
+				log.Int("channel_id", channelID),
+				log.Int("removed", removed),
+			)
+			needsReload = true
 		}
 
-		log.Info(ctx, "Cleaned up expired disabled API keys",
-			log.Int("channel_id", channelID),
-			log.Int("removed", removed),
-		)
-		needsReload = true
+		cooldownCleaned, cooldownRemoved, err := svc.cleanupChannelExpiredModelCooldowns(ctx, channelID)
+		if err != nil {
+			log.Error(ctx, "Failed to cleanup expired model cooldowns",
+				log.Int("channel_id", channelID),
+				log.Cause(err),
+			)
+			continue
+		}
+		if cooldownCleaned {
+			log.Info(ctx, "Cleaned up expired model cooldowns",
+				log.Int("channel_id", channelID),
+				log.Int("removed", cooldownRemoved),
+			)
+			needsReload = true
+		}
 	}
 
 	if svc.cleanupExpiredAutoDisabledChannels(ctx) {

@@ -330,6 +330,7 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 
 		ts.persistFailureChunks(persistCtx)
 		ts.persistExecutionFailure(persistCtx, decision.cause)
+		ts.markOutcomePerformance(decision)
 
 		return ts.stream.Close()
 	}
@@ -344,6 +345,7 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 		ts.persistFailureChunks(persistCtx)
 
 		ts.persistExecutionFailure(persistCtx, decision.cause)
+		ts.markOutcomePerformance(decision)
 
 		return ts.stream.Close()
 	}
@@ -363,6 +365,21 @@ func (ts *OutboundPersistentStream) finalizeClose() error {
 	}
 
 	return ts.stream.Close()
+}
+
+// markOutcomePerformance reports a stream that ended without a terminal event to
+// the channel metrics. The terminal-event path records the outcome in Current();
+// client cancellations and upstream drops never reach it, so without this the
+// outcome stays out of the channel metrics and the client-cancellation cooldown
+// never sees the cancellation at all.
+func (ts *OutboundPersistentStream) markOutcomePerformance(decision streamOutcomeDecision) {
+	message := ""
+	if decision.cause != nil {
+		message = decision.cause.Error()
+	}
+
+	ts.markPerformanceTerminal(decision.state, message)
+	enqueueCompletedPerformance(ts.ctx, ts.state)
 }
 
 func (ts *OutboundPersistentStream) markPerformanceTerminal(state streamTerminalState, message string) {
@@ -953,6 +970,14 @@ func (p *PersistentOutboundTransformer) resetPassThroughStreamState() {
 // NextChannel moves to the next available candidate for retry.
 // It implements the pipeline.Retryable interface.
 func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
+	// A finished request context means the client already went away (or the
+	// request deadline elapsed). Switching channels cannot help: the response has
+	// nowhere to go, the switch would burn upstream quota, and the fallback
+	// channel would be charged with a client cancellation it never caused.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	if lifecycleOwner := streamLifecycleFromContext(ctx); lifecycleOwner != nil {
 		lifecycleOwner.waitForAccounting()
 	}

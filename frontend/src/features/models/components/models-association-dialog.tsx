@@ -3,49 +3,67 @@ import { z } from 'zod';
 import { useForm, useFieldArray, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core';
+  IconPlus,
+  IconTrash,
+  IconChevronDown,
+  IconChevronUp,
+  IconInfoCircle,
+  IconGripVertical,
+  IconSnowflake,
+  IconSnowflakeOff,
+} from '@tabler/icons-react';
+import { useQueryModels } from '@/gql/models';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconInfoCircle, IconGripVertical } from '@tabler/icons-react';
-import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { extractNumberIDAsNumber } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
-import { FilterBuilder, type FilterBuilderCondition, type FilterBuilderField, type FilterBuilderGroupListValue } from '@/components/filter-builder';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useAllChannelSummarys, useAllChannelTags } from '@/features/channels/data/channels';
+import {
+  FilterBuilder,
+  type FilterBuilderCondition,
+  type FilterBuilderField,
+  type FilterBuilderGroupListValue,
+} from '@/components/filter-builder';
+import {
+  useAllChannelSummarys,
+  useAllChannelTags,
+  useClearChannelModelCooldown,
+  useFreezeChannelModel,
+} from '@/features/channels/data/channels';
 import { useModelSettings, useUpdateModelSettings } from '@/features/system/data/system';
 import { useModels } from '../context/models-context';
-import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
-import { useUpdateModel } from '../data/models';
-import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/schema';
-import { computeAssociationReorder } from '../data/association-reorder';
 import {
   MAX_ASSOCIATION_PRIORITY,
   associationPrioritySchema,
   hasInvalidAssociationPriority,
   nextAssociationPriority,
 } from '../data/association-priority';
-import { toast } from 'sonner';
-import { ChannelModelsList } from './channel-models-list';
+import { computeAssociationReorder } from '../data/association-reorder';
+import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelConnection } from '../data/models';
+import { useUpdateModel } from '../data/models';
+import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/schema';
+import { ChannelModelsCard } from './channel-models-list';
 
 const requestFormatConditionOptions = [
   'openai/chat_completions',
@@ -337,7 +355,12 @@ function validateWhenConditionNode(
       path: [...path, 'value'],
     });
   }
-  if (condition.field === 'daily_time' && typeof condition.value === 'string' && dailyTimeRangePattern.test(condition.value) && !dailyTimeRangeHasDifferentEndpoints(condition.value)) {
+  if (
+    condition.field === 'daily_time' &&
+    typeof condition.value === 'string' &&
+    dailyTimeRangePattern.test(condition.value) &&
+    !dailyTimeRangeHasDifferentEndpoints(condition.value)
+  ) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'Start and end time must be different',
@@ -383,7 +406,9 @@ function validateWhenGroupList(value: FilterBuilderGroupListValue, ctx: z.Refine
     });
   }
 
-  groups.slice(0, 1).forEach((group, index) => validateWhenConditionNode(group, ctx, [...path, 'groups', index], 1, MAX_WHEN_CONDITION_DEPTH));
+  groups
+    .slice(0, 1)
+    .forEach((group, index) => validateWhenConditionNode(group, ctx, [...path, 'groups', index], 1, MAX_WHEN_CONDITION_DEPTH));
 }
 
 const associationFormSchema = z.object({
@@ -495,7 +520,9 @@ function isCompleteAssociationFormRow(assoc: AssociationFormRow, inheritedModelI
     return Boolean(associationModelID(assoc, inheritedModelID) || assoc.inheritModel);
   }
   if (assoc.type === 'channel_tags_model') {
-    return Boolean(assoc.channelTags && assoc.channelTags.length > 0 && (associationModelID(assoc, inheritedModelID) || assoc.inheritModel));
+    return Boolean(
+      assoc.channelTags && assoc.channelTags.length > 0 && (associationModelID(assoc, inheritedModelID) || assoc.inheritModel)
+    );
   }
   if (assoc.type === 'channel_tags_regex') {
     return Boolean(assoc.channelTags && assoc.channelTags.length > 0 && assoc.pattern);
@@ -682,23 +709,46 @@ function sortAssociationsByPriority<T extends { priority?: number }>(association
 }
 
 function buildDeveloperChannelPreview(associations: AssociationFormRow[], channelOptions: ChannelOption[]): ModelChannelConnection[] {
-  const seen = new Set<number>();
-  const connections: ModelChannelConnection[] = [];
+  return buildDeveloperChannelPreviewWithSources(associations, channelOptions).map((entry) => entry.connection);
+}
 
-  const addChannel = (channel: ChannelOption) => {
-    if (seen.has(channel.value)) {
+// Same preview as buildDeveloperChannelPreview, but every entry remembers which
+// association rows produced it so the preview list can be dragged and the drag
+// can be written back as a priority change. sources is optional: when omitted
+// the row index is used as the only source.
+function buildDeveloperChannelPreviewWithSources(
+  associations: AssociationFormRow[],
+  channelOptions: ChannelOption[],
+  sources?: number[]
+): PreviewEntry[] {
+  // One card per channel: several rules can produce the same channel, and
+  // duplicated cards would both break sortable ids and look like stale rows
+  // that never go away.
+  const entriesByKey = new Map<string, PreviewEntry>();
+
+  const addChannel = (channel: ChannelOption, sourceIndex?: number) => {
+    const key = String(channel.value);
+    const existing = entriesByKey.get(key);
+    if (existing) {
+      if (sourceIndex !== undefined && !existing.sourceIndices.includes(sourceIndex)) {
+        existing.sourceIndices.push(sourceIndex);
+      }
       return;
     }
 
-    seen.add(channel.value);
-    connections.push({
-      channel: {
-        id: channel.value.toString(),
-        name: channel.label,
-        type: channel.type,
-        status: channel.status,
+    entriesByKey.set(key, {
+      id: key,
+      connection: {
+        channel: {
+          id: channel.value.toString(),
+          name: channel.label,
+          type: channel.type,
+          status: channel.status,
+          tags: channel.tags,
+        },
+        models: [],
       },
-      models: [],
+      sourceIndices: sourceIndex === undefined ? [] : [sourceIndex],
     });
   };
 
@@ -707,10 +757,13 @@ function buildDeveloperChannelPreview(associations: AssociationFormRow[], channe
       return;
     }
 
+    const originalIndex = associations.indexOf(assoc);
+    const sourceIndex = sources?.[originalIndex] ?? originalIndex;
+
     if (assoc.type === 'channel_model' && assoc.channelId) {
       const channel = channelOptions.find((item) => item.value === assoc.channelId);
       if (channel) {
-        addChannel(channel);
+        addChannel(channel, sourceIndex);
       }
       return;
     }
@@ -718,11 +771,121 @@ function buildDeveloperChannelPreview(associations: AssociationFormRow[], channe
     if (assoc.type === 'channel_tags_model' && assoc.channelTags && assoc.channelTags.length > 0) {
       channelOptions
         .filter((channel) => assoc.channelTags?.some((tag) => channel.tags.includes(tag)))
-        .forEach(addChannel);
+        .forEach((channel) => addChannel(channel, sourceIndex));
     }
   });
 
-  return connections;
+  return [...entriesByKey.values()];
+}
+
+// The preview lists one entry per channel, but a channel can be produced by
+// several association rows. Each entry keeps the row indices that produced it so
+// dragging it in the preview can rewrite those rows' priorities.
+interface PreviewEntry {
+  id: string;
+  connection: ModelChannelConnection;
+  sourceIndices: number[];
+}
+
+// Every rule that can produce one preview connection: channel_model matches the
+// channel id, channel_tags_model matches channel tags, channel_regex matches the
+// channel name. Collecting all of them lets a preview drag always rewrite at
+// least one rule priority instead of silently doing nothing.
+function collectAssociationSourceIndices(
+  associations: AssociationFormRow[] | undefined,
+  orderedFields: Array<{ index: number }>,
+  connection: ModelChannelConnection,
+  channelOptions: ChannelOption[],
+): number[] {
+  const numericChannelID = extractNumberIDAsNumber(String(connection.channel?.id ?? ''));
+  const channelName = connection.channel?.name ?? '';
+  // Older GraphQL selections may not carry channel tags; fall back to the
+  // channel options loaded for the dialog.
+  const channelTags =
+    connection.channel?.tags ?? channelOptions.find((opt) => opt.value === numericChannelID)?.tags ?? [];
+
+  const sources: number[] = [];
+  for (const { index } of orderedFields) {
+    const assoc = associations?.[index];
+    if (!assoc || assoc.disabled) {
+      continue;
+    }
+
+    const cardModels = (connection.models ?? []).map((model) => model.requestModel);
+
+    // One card per channel + key group + model set: two channel_model rules on
+    // the same channel with different models must stay two separate cards.
+    if (
+      assoc.type === 'channel_model' &&
+      Number(assoc.channelId) === numericChannelID &&
+      cardModels.includes(assoc.modelId ?? '')
+    ) {
+      sources.push(index);
+      continue;
+    }
+
+    if (
+      assoc.type === 'channel_tags_model' &&
+      (assoc.channelTags ?? []).some((tag) => tag && channelTags.includes(tag)) &&
+      cardModels.includes(assoc.modelId ?? '')
+    ) {
+      sources.push(index);
+      continue;
+    }
+
+    if (assoc.type === 'channel_regex' && assoc.pattern && testRegexPattern(assoc.pattern, channelName)) {
+      sources.push(index);
+    }
+  }
+
+  return sources;
+}
+
+// Models of this connection that are currently frozen (channel x model
+// cooldown). expiresAt == null means frozen until an operator unfreezes it.
+function activeFrozenModels(connection: ModelChannelConnection | undefined, now: number): string[] {
+  const cooldowns = connection?.channel?.modelCooldowns ?? [];
+  return cooldowns
+    .filter((cooldown) => !cooldown.expiresAt || new Date(cooldown.expiresAt).getTime() > now)
+    .map((cooldown) => cooldown.model);
+}
+
+function testRegexPattern(pattern: string, value: string): boolean {
+  try {
+    return new RegExp(pattern).test(value);
+  } catch {
+    return false;
+  }
+}
+
+// Sortable wrapper for the preview list: same drag mechanics as the rule rows, so
+// the preview is reorderable in place instead of being read-only.
+function SortablePreviewCard({ id, children }: { id: string; children: (handle: ReactNode, isDragging: boolean) => ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  const handle = (
+    <button
+      type='button'
+      className='text-muted-foreground hover:text-foreground flex h-7 w-5 shrink-0 cursor-grab touch-none items-center justify-center active:cursor-grabbing'
+      aria-label='Drag to reorder preview'
+      {...attributes}
+      {...listeners}
+    >
+      <IconGripVertical className='h-4 w-4' />
+    </button>
+  );
+
+  return (
+    <div ref={setNodeRef} style={style} className={isDragging ? 'relative z-50' : undefined}>
+      {children(handle, isDragging)}
+    </div>
+  );
 }
 
 // Sortable wrapper: owns the drag handle and the dnd-kit transform, then renders
@@ -770,6 +933,8 @@ export function ModelsAssociationDialog() {
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
   const { data: allTags = [] } = useAllChannelTags();
   const { mutateAsync: queryConnections } = useQueryModelChannelConnections();
+  const freezeChannelModel = useFreezeChannelModel();
+  const clearChannelModelCooldown = useClearChannelModelCooldown();
   const [connections, setConnections] = useState<ModelChannelConnection[]>([]);
   const [channelFilter, setChannelFilter] = useState('');
   const dialogContentRef = useRef<HTMLDivElement>(null);
@@ -852,10 +1017,7 @@ export function ModelsAssociationDialog() {
   // Serialize to string for stable comparison in debounce
   const associationsString = JSON.stringify(watchedAssociations);
   const debouncedAssociationsString = useDebounce(associationsString, 500);
-  const debouncedPriorities = useDebounce(
-    JSON.stringify(watchedAssociations.map((assoc) => assoc.priority ?? null)),
-    500
-  );
+  const debouncedPriorities = useDebounce(JSON.stringify(watchedAssociations.map((assoc) => assoc.priority ?? null)), 500);
   const debouncedAssociations = useMemo(() => {
     try {
       const rows: AssociationFormRow[] = JSON.parse(debouncedAssociationsString) || [];
@@ -866,6 +1028,8 @@ export function ModelsAssociationDialog() {
   }, [debouncedAssociationsString, debouncedPriorities]);
 
   // Query connections when associations change
+  const connectionsFetchSequenceRef = useRef(0);
+
   useEffect(() => {
     if (!isOpen) {
       setConnections([]);
@@ -881,6 +1045,7 @@ export function ModelsAssociationDialog() {
     }
 
     const fetchConnections = async () => {
+      const sequence = ++connectionsFetchSequenceRef.current;
       try {
         if (isDeveloperMode) {
           setConnections(buildDeveloperChannelPreview(rows, channelOptions));
@@ -895,11 +1060,18 @@ export function ModelsAssociationDialog() {
 
         if (associations.length > 0) {
           const result = await queryConnections(associations);
+          // A slower older request must never overwrite a newer preview result.
+          if (connectionsFetchSequenceRef.current !== sequence) {
+            return;
+          }
           setConnections(result);
         } else {
           setConnections([]);
         }
-      } catch (error) {
+      } catch (_error) {
+        if (connectionsFetchSequenceRef.current !== sequence) {
+          return;
+        }
         toast.error(t('common.errors.loadFailed'));
         setConnections([]);
       }
@@ -912,13 +1084,13 @@ export function ModelsAssociationDialog() {
     if (isOpen) {
       const associations = isDeveloperMode ? developerAssociations : currentRow?.settings?.associations || [];
       form.reset({
-        disableDeveloperSettingsInheritance: isDeveloperMode ? false : currentRow?.settings?.disableDeveloperSettingsInheritance ?? false,
-        loadBalancerStrategy: isDeveloperMode
+        disableDeveloperSettingsInheritance: isDeveloperMode ? false : (currentRow?.settings?.disableDeveloperSettingsInheritance ?? false),
+        loadBalancerStrategy: (isDeveloperMode
           ? 'default'
-          : normalizeModelRoutingPolicyValue(currentRow?.settings?.loadBalancerStrategy),
-        traceStickyMode: isDeveloperMode
+          : normalizeModelRoutingPolicyValue(currentRow?.settings?.loadBalancerStrategy)) as AssociationFormData['loadBalancerStrategy'],
+        traceStickyMode: (isDeveloperMode
           ? 'default'
-          : normalizeModelRoutingPolicyValue(currentRow?.settings?.traceStickyMode),
+          : normalizeModelRoutingPolicyValue(currentRow?.settings?.traceStickyMode)) as AssociationFormData['traceStickyMode'],
         associations: associations
           .filter((assoc) => !isDeveloperMode || assoc.type === 'channel_model' || assoc.type === 'channel_tags_model')
           .map((assoc) => modelAssociationToFormRow(assoc, isDeveloperMode)),
@@ -1005,17 +1177,31 @@ export function ModelsAssociationDialog() {
   // Rows are always displayed ordered by priority, so the visual order and the
   // priority order are the same thing. Dragging therefore simply rewrites every
   // rule's priority to its new 0-based position.
-  const orderedAssociationFields = fields
-    .map((field, index) => ({ field, index }))
-    .sort((a, b) => {
-      const priorityA = form.getValues(`associations.${a.index}.priority`) ?? 0;
-      const priorityB = form.getValues(`associations.${b.index}.priority`) ?? 0;
-      return priorityA - priorityB;
-    });
+  // Derived from the watched rows, not from form.getValues: a drag rewrites only
+  // the priority values, so a non-reactive read would keep the old order on screen
+  // and the drag would look like it did nothing.
+  const orderedAssociationFields = useMemo(
+    () =>
+      fields
+        .map((field, index) => ({ field, index }))
+        .sort((a, b) => {
+          const priorityA = watchedAssociations?.[a.index]?.priority ?? a.index;
+          const priorityB = watchedAssociations?.[b.index]?.priority ?? b.index;
+          return priorityA - priorityB || a.index - b.index;
+        }),
+    [fields, watchedAssociations]
+  );
 
   const sensors = useSensors(
     // A small activation distance keeps a plain click on the handle from being
     // treated as a drag.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // The preview has its own sensor set so dragging there never collides with a
+  // drag that started on a rule row.
+  const previewSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
@@ -1050,9 +1236,299 @@ export function ModelsAssociationDialog() {
     return connections.filter((conn) => conn.channel.name.toLowerCase().includes(filter));
   }, [connections, channelFilter]);
 
+  // Preview entries carry the rule rows that produced them, so a drag on the
+  // preview can be translated into a priority rewrite of the matching rules. In
+  // developer mode the preview is derived locally, so the caller passes the
+  // indices in directly.
+  const previewEntries: PreviewEntry[] = useMemo(() => {
+    if (isDeveloperMode) {
+      const built = buildDeveloperChannelPreviewWithSources(
+        orderedAssociationFields.map((entry) => entry.index).map((index) => form.getValues(`associations.${index}`)),
+        channelOptions,
+        orderedAssociationFields.map((entry) => entry.index)
+      );
+      return built;
+    }
+
+    // One card per channel + key group + model set. Several rules that produce
+    // exactly the same (channel, group, models) collapse into one card; rules on
+    // the same channel with different models stay separate cards.
+    const entriesByKey = new Map<string, PreviewEntry>();
+
+    filteredConnections.forEach((connection) => {
+      const groupKey = connection.keyGroup ? String(connection.keyGroup.index) : 'default';
+      const numericChannelID = extractNumberIDAsNumber(String(connection.channel.id));
+      const modelsKey = (connection.models ?? [])
+        .map((model) => model.requestModel)
+        .sort()
+        .join('|');
+      const key = `${numericChannelID}:${groupKey}:${modelsKey}`;
+      const sourceIndices = collectAssociationSourceIndices(
+        watchedAssociations,
+        orderedAssociationFields,
+        connection,
+        channelOptions,
+      );
+
+      const existing = entriesByKey.get(key);
+      if (existing) {
+        for (const sourceIndex of sourceIndices) {
+          if (!existing.sourceIndices.includes(sourceIndex)) {
+            existing.sourceIndices.push(sourceIndex);
+          }
+        }
+        return;
+      }
+
+      entriesByKey.set(key, {
+        id: key,
+        connection,
+        sourceIndices,
+      });
+    });
+
+    return [...entriesByKey.values()];
+  }, [channelOptions, filteredConnections, isDeveloperMode, orderedAssociationFields, watchedAssociations]);
+
+  // Preview rows follow the producing rule's priority: a drop rewrites rule
+  // priorities, so the list must reorder from rule order instead of waiting for
+  // the debounced backend preview (which made the drag look like it did nothing).
+  // Cards of the same channel but different models each carry their own rule, so
+  // they can be reordered independently; cards produced by the same rule (e.g.
+  // one tags rule matching several channels) keep backend order among themselves.
+  const orderedPreviewEntries = useMemo(() => {
+    const ruleRank = new Map<number, number>();
+    orderedAssociationFields.forEach(({ index }, position) => ruleRank.set(index, position));
+
+    return previewEntries
+      .map((entry, index) => {
+        const rank =
+          entry.sourceIndices.length > 0
+            ? Math.min(...entry.sourceIndices.map((ruleIndex) => ruleRank.get(ruleIndex) ?? Number.MAX_SAFE_INTEGER))
+            : Number.MAX_SAFE_INTEGER;
+
+        return { entry, index, rank };
+      })
+      .sort((a, b) => a.rank - b.rank || a.index - b.index)
+      .map((item) => item.entry);
+  }, [orderedAssociationFields, previewEntries]);
+
+  // Reordering needs at least two cards and at least one card whose producing
+  // rule is known, otherwise a drop could not be expressed as a priority change.
+  const canReorderPreview = useMemo(() => {
+    if (previewEntries.length < 2) {
+      return false;
+    }
+
+    return previewEntries.some((entry) => entry.sourceIndices.length > 0);
+  }, [previewEntries]);
+
+  const handlePreviewDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const movingIndex = orderedPreviewEntries.findIndex((entry) => entry.id === String(active.id));
+    const targetIndex = orderedPreviewEntries.findIndex((entry) => entry.id === String(over.id));
+    if (movingIndex < 0 || targetIndex < 0) {
+      return;
+    }
+
+    const reordered = [...orderedPreviewEntries];
+    const [moved] = reordered.splice(movingIndex, 1);
+    reordered.splice(targetIndex, 0, moved);
+
+    // A preview row can be produced by a rule the entry does not carry (a channel
+    // matched by tags, or a channel_model rule whose id format differs). Fall back
+    // to matching enabled channel_model rules by channel id so a drag always maps
+    // onto at least one rule instead of silently doing nothing.
+    // A preview row stands for a channel band. Every channel_model rule of that
+    // channel has to follow the row, otherwise moving a channel that owns several
+    // rules silently rewrites only one of them.
+    const ruleIndicesForEntry = (entry: PreviewEntry): number[] => {
+      const merged: number[] = [];
+      const push = (index: number) => {
+        if (!merged.includes(index)) {
+          merged.push(index);
+        }
+      };
+
+      entry.sourceIndices.forEach(push);
+      if (merged.length > 0) {
+        return merged;
+      }
+
+      // Fallback for entries whose rule cannot be derived (unknown id formats):
+      // single-model cards match the channel_model rule of that exact model,
+      // multi-model cards fall back to the whole channel band.
+      const channelId = entry.connection?.channel?.id;
+      if (channelId === undefined || channelId === null) {
+        return merged;
+      }
+
+      const numericChannelID = extractNumberIDAsNumber(String(channelId));
+      const cardModels = (entry.connection.models ?? []).map((model) => model.requestModel);
+      orderedAssociationFields.forEach(({ index }) => {
+        const assoc = watchedAssociations?.[index];
+        if (!assoc || assoc.disabled || assoc.type !== 'channel_model' || Number(assoc.channelId) !== numericChannelID) {
+          return;
+        }
+        if (cardModels.length === 1 && assoc.modelId && cardModels[0] !== assoc.modelId) {
+          return;
+        }
+        push(index);
+      });
+
+      return merged;
+    };
+
+    // Walk the new preview order and hand out priorities row by row. A channel
+    // backed by several rules advances the cursor once per rule, so the rules of
+    // one channel keep a contiguous priority band.
+    const assignments: { index: number; priority: number }[] = [];
+    const assigned = new Set<number>();
+    let cursor = 0;
+    for (const entry of reordered) {
+      for (const index of ruleIndicesForEntry(entry)) {
+        if (assigned.has(index)) continue;
+        assigned.add(index);
+        assignments.push({ index, priority: cursor });
+        cursor += 1;
+      }
+    }
+
+    // Rules the preview cannot represent (regex/model rules, disabled rules) keep
+    // a stable position after the reordered ones.
+    const touched = new Set(assignments.map((item) => item.index));
+    orderedAssociationFields.forEach(({ index }) => {
+      if (touched.has(index)) return;
+      assignments.push({ index, priority: cursor });
+      cursor += 1;
+    });
+
+    assignments.forEach(({ index, priority }) => {
+      form.setValue(`associations.${index}.priority`, priority, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    });
+  };
+
+  // Replace the cooldown list of one preview channel so the cards reflect a
+  // freeze/unfreeze immediately without waiting for the next preview refetch.
+  const applyChannelModelCooldowns = useCallback(
+    (channelGUID: string, cooldowns: ModelChannelConnection['channel']['modelCooldowns']) => {
+      setConnections((prev) =>
+        prev.map((conn) =>
+          String(conn.channel.id) === String(channelGUID)
+            ? { ...conn, channel: { ...conn.channel, modelCooldowns: cooldowns } }
+            : conn,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleFreezeModel = useCallback(
+    async (connection: ModelChannelConnection, model: string, durationMinutes: number) => {
+      if (isDeveloperMode || !currentRow) return;
+      try {
+        await freezeChannelModel.mutateAsync({ channelID: currentRow.id, model, durationMinutes });
+        applyChannelModelCooldowns(connection.channel.id, [
+          ...(connection.channel.modelCooldowns ?? []).filter(
+            (cooldown) => cooldown.model !== model && cooldown.expiresAt && new Date(cooldown.expiresAt).getTime() > Date.now(),
+          ),
+          {
+            model,
+            reason: t('models.dialogs.association.cooldown.manualReason'),
+            createdAt: new Date().toISOString(),
+            expiresAt: durationMinutes > 0 ? new Date(Date.now() + durationMinutes * 60_000).toISOString() : null,
+          },
+        ]);
+        toast.success(t('models.dialogs.association.cooldown.freezeSuccess'));
+      } catch {
+        // Error is handled by the hook.
+      }
+    },
+    [applyChannelModelCooldowns, currentRow, freezeChannelModel, isDeveloperMode, t],
+  );
+
+  const handleUnfreezeModel = useCallback(
+    async (connection: ModelChannelConnection, model: string) => {
+      if (isDeveloperMode || !currentRow) return;
+      try {
+        await clearChannelModelCooldown.mutateAsync({ channelID: currentRow.id, model });
+        applyChannelModelCooldowns(
+          connection.channel.id,
+          (connection.channel.modelCooldowns ?? []).filter((cooldown) => cooldown.model !== model),
+        );
+        toast.success(t('models.dialogs.association.cooldown.unfreezeSuccess'));
+      } catch {
+        // Error is handled by the hook.
+      }
+    },
+    [applyChannelModelCooldowns, clearChannelModelCooldown, currentRow, isDeveloperMode, t],
+  );
+
+  const buildFreezeMenu = useCallback(
+    (connection: ModelChannelConnection): ReactNode => {
+      if (isDeveloperMode || (connection.models ?? []).length === 0) {
+        return null;
+      }
+
+      const frozen = activeFrozenModels(connection, Date.now()).filter((model) =>
+        (connection.models ?? []).some((entry) => entry.requestModel === model),
+      );
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type='button'
+              className='text-muted-foreground hover:text-foreground hover:bg-muted flex h-6 w-6 items-center justify-center rounded'
+              aria-label={t('models.dialogs.association.cooldown.menuLabel')}
+            >
+              <IconSnowflake className='h-4 w-4' />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align='end' className='min-w-44'>
+            <DropdownMenuItem onClick={() => connection.models.forEach((model) => handleFreezeModel(connection, model.requestModel, 30))}>
+              {t('models.dialogs.association.cooldown.freeze30')}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => connection.models.forEach((model) => handleFreezeModel(connection, model.requestModel, 1440))}>
+              {t('models.dialogs.association.cooldown.freeze24h')}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => connection.models.forEach((model) => handleFreezeModel(connection, model.requestModel, 0))}
+            >
+              {t('models.dialogs.association.cooldown.freezeForever')}
+            </DropdownMenuItem>
+            {frozen.length > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                {frozen.map((model) => (
+                  <DropdownMenuItem key={model} onClick={() => handleUnfreezeModel(connection, model)} className='text-cyan-600!'>
+                    <IconSnowflakeOff className='mr-1 h-4 w-4' />
+                    {t('models.dialogs.association.cooldown.unfreezeItem', { model })}
+                  </DropdownMenuItem>
+                ))}
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
+    [handleFreezeModel, handleUnfreezeModel, isDeveloperMode, t],
+  );
+
+  // Render-time snapshot for cooldown expiry checks; every state update in the
+  // dialog re-runs this, so badges stay fresh enough for minute-level cooldowns.
+  const nowMs = Date.now();
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent ref={dialogContentRef} className='flex h-[90vh] max-h-[800px] flex-col w-full max-w-full overflow-hidden sm:max-w-6xl'>
+      <DialogContent ref={dialogContentRef} className='flex h-[90vh] max-h-[800px] w-full max-w-full flex-col overflow-hidden sm:max-w-6xl'>
         <DialogHeader className='shrink-0 text-left'>
           <DialogTitle className='text-lg sm:text-xl'>
             {isDeveloperMode ? t('models.dialogs.developerAssociation.title') : t('models.dialogs.association.title')}
@@ -1135,8 +1611,12 @@ export function ModelsAssociationDialog() {
                                       <SelectItem value='default'>{t('models.fields.routingSystemDefault')}</SelectItem>
                                       <SelectItem value='adaptive'>{t('system.retry.loadBalancerStrategy.options.adaptive')}</SelectItem>
                                       <SelectItem value='failover'>{t('system.retry.loadBalancerStrategy.options.failover')}</SelectItem>
-                                      <SelectItem value='circuit-breaker'>{t('system.retry.loadBalancerStrategy.options.circuitBreaker')}</SelectItem>
-                                      <SelectItem value='round-robin'>{t('system.retry.loadBalancerStrategy.options.roundRobin')}</SelectItem>
+                                      <SelectItem value='circuit-breaker'>
+                                        {t('system.retry.loadBalancerStrategy.options.circuitBreaker')}
+                                      </SelectItem>
+                                      <SelectItem value='round-robin'>
+                                        {t('system.retry.loadBalancerStrategy.options.roundRobin')}
+                                      </SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </FormControl>
@@ -1178,7 +1658,9 @@ export function ModelsAssociationDialog() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value='default'>{t('models.fields.routingSystemDefault')}</SelectItem>
-                                      <SelectItem value='prefer_previous_channel'>{t('system.retry.traceStickyMode.options.preferPreviousChannel')}</SelectItem>
+                                      <SelectItem value='prefer_previous_channel'>
+                                        {t('system.retry.traceStickyMode.options.preferPreviousChannel')}
+                                      </SelectItem>
                                       <SelectItem value='disabled'>{t('system.retry.traceStickyMode.options.disabled')}</SelectItem>
                                     </SelectContent>
                                   </Select>
@@ -1192,14 +1674,20 @@ export function ModelsAssociationDialog() {
                     </div>
                   )}
 
-                  {fields.length === 0 && <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>}
+                  {fields.length === 0 && (
+                    <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>
+                  )}
 
                   {fields.length > 0 && (
-                    <div className='grid grid-cols-[1.5rem_2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[1.5rem_2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-3 sm:px-[13px] pb-2'>
+                    <div className='grid grid-cols-[1.5rem_2.5rem_4rem_1fr_2.5rem] items-center gap-2 border-b px-3 pb-2 sm:grid-cols-[1.5rem_2.25rem_3rem_14rem_1fr_2.25rem] sm:px-[13px]'>
                       <div />
                       <div />
-                      <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.priority')}</div>
-                      <div className='text-muted-foreground text-center text-xs font-medium sm:block hidden'>{t('models.dialogs.association.type')}</div>
+                      <div className='text-muted-foreground text-center text-xs font-medium'>
+                        {t('models.dialogs.association.priority')}
+                      </div>
+                      <div className='text-muted-foreground hidden text-center text-xs font-medium sm:block'>
+                        {t('models.dialogs.association.type')}
+                      </div>
                       <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.rule')}</div>
                       <div />
                     </div>
@@ -1209,10 +1697,7 @@ export function ModelsAssociationDialog() {
                   )}
 
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAssociationDragEnd}>
-                    <SortableContext
-                      items={orderedAssociationFields.map((entry) => entry.field.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
+                    <SortableContext items={orderedAssociationFields.map((entry) => entry.field.id)} strategy={verticalListSortingStrategy}>
                       {orderedAssociationFields.map(({ field, index }) => (
                         <SortableAssociationRow
                           key={field.id}
@@ -1242,12 +1727,14 @@ export function ModelsAssociationDialog() {
             </div>
           </div>
 
-            {/* Right Side - Preview */}
+          {/* Right Side - Preview */}
           <div className='flex min-w-0 flex-col border-t pt-4 sm:min-h-0 sm:flex-1 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6'>
             <div className='shrink-0 space-y-2 pb-4'>
               <h3 className='text-sm font-semibold'>{t('models.dialogs.association.preview')}</h3>
               <p className='text-muted-foreground text-xs'>
-                {isDeveloperMode ? t('models.dialogs.developerAssociation.previewDescription') : t('models.dialogs.association.previewDescription')}
+                {isDeveloperMode
+                  ? t('models.dialogs.developerAssociation.previewDescription')
+                  : t('models.dialogs.association.previewDescription')}
               </p>
               <Input
                 placeholder={t('models.dialogs.association.filterByChannel')}
@@ -1256,20 +1743,40 @@ export function ModelsAssociationDialog() {
                 className='h-9 sm:h-8'
               />
             </div>
+            {canReorderPreview && (
+              <p className='text-muted-foreground shrink-0 pb-2 text-xs'>{t('models.dialogs.association.previewDragToReorder')}</p>
+            )}
             <div className='flex-1 overflow-y-auto sm:min-h-0'>
-              <ChannelModelsList
-                channels={filteredConnections}
-                emptyMessage={
-                  channelFilter.trim()
+              <DndContext sensors={previewSensors} collisionDetection={closestCenter} onDragEnd={handlePreviewDragEnd}>
+                <SortableContext items={orderedPreviewEntries.map((entry) => entry.id)} strategy={verticalListSortingStrategy}>
+                  <div className='space-y-3'>
+                    {orderedPreviewEntries.map((entry) => (
+                      <SortablePreviewCard key={entry.id} id={entry.id}>
+                        {(handle) => (
+                          <ChannelModelsCard
+                            connection={entry.connection}
+                            dragHandle={canReorderPreview ? handle : undefined}
+                            frozenModels={activeFrozenModels(entry.connection, nowMs)}
+                            freezeMenu={buildFreezeMenu(entry.connection)}
+                          />
+                        )}
+                      </SortablePreviewCard>
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+              {orderedPreviewEntries.length === 0 && (
+                <p className='text-muted-foreground py-8 text-center text-sm'>
+                  {channelFilter.trim()
                     ? t('models.dialogs.association.noFilteredConnections')
-                    : t('models.dialogs.association.noConnections')
-                }
-              />
+                    : t('models.dialogs.association.noConnections')}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
-        <DialogFooter className='shrink-0 border-t pt-4 flex flex-col sm:flex-row gap-2 sm:gap-0 sm:justify-end'>
+        <DialogFooter className='flex shrink-0 flex-col gap-2 border-t pt-4 sm:flex-row sm:justify-end sm:gap-0'>
           <Button type='button' variant='outline' onClick={handleClose} className='w-full sm:w-auto'>
             {t('common.buttons.cancel')}
           </Button>
@@ -1287,9 +1794,7 @@ export function ModelsAssociationDialog() {
   );
 }
 
-function readPromptTokensCondition(
-  when: ModelAssociation['when']
-): { enabled: boolean; condition: FilterBuilderGroupListValue } {
+function readPromptTokensCondition(when: ModelAssociation['when']): { enabled: boolean; condition: FilterBuilderGroupListValue } {
   if (!when) {
     return { enabled: false, condition: DEFAULT_WHEN_CONDITION };
   }
@@ -1442,7 +1947,17 @@ function AssociationTypeSelectContent({ isDeveloperMode }: { isDeveloperMode: bo
   );
 }
 
-function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer, dragHandle }: AssociationRowProps) {
+function AssociationRow({
+  index,
+  form,
+  isDeveloperMode,
+  channelOptions,
+  allModelOptions,
+  allTags,
+  onRemove,
+  portalContainer,
+  dragHandle,
+}: AssociationRowProps) {
   const { t } = useTranslation();
 
   const type = form.watch(`associations.${index}.type`);
@@ -1520,7 +2035,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
 
   return (
     <div className={`flex flex-col gap-3 rounded-lg border p-3 ${disabled ? 'opacity-50' : ''}`}>
-      <div className='grid grid-cols-[1.5rem_2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[1.5rem_2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
+      <div className='grid grid-cols-[1.5rem_2.5rem_4rem_1fr_2.5rem] items-center gap-2 sm:grid-cols-[1.5rem_2.25rem_3rem_14rem_1fr_2.25rem]'>
         {/* Drag Handle */}
         <div className='flex items-center justify-center'>{dragHandle}</div>
 
@@ -1553,7 +2068,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                     // The form only validates on submit, but Save is disabled while invalid, so surface the error now.
                     void form.trigger(field.name);
                   }}
-                  className='h-10 sm:h-9 text-center [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
+                  className='h-10 text-center [-moz-appearance:textfield] sm:h-9 [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
                   placeholder='0'
                 />
               </FormControl>
@@ -1567,10 +2082,10 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
           control={form.control}
           name={`associations.${index}.type`}
           render={({ field }) => (
-            <FormItem className='min-w-0 gap-0 sm:block hidden'>
+            <FormItem className='hidden min-w-0 gap-0 sm:block'>
               <FormControl>
                 <Select value={field.value} onValueChange={field.onChange}>
-                  <SelectTrigger className='h-10 sm:h-9 w-full text-xs'>
+                  <SelectTrigger className='h-10 w-full text-xs sm:h-9'>
                     <SelectValue />
                   </SelectTrigger>
                   <AssociationTypeSelectContent isDeveloperMode={isDeveloperMode} />
@@ -1655,7 +2170,13 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
         )}
 
         {/* Delete Button */}
-        <Button type='button' variant='ghost' size='sm' onClick={onRemove} className='text-destructive hover:text-destructive h-10 sm:h-9 w-10 sm:w-9 p-0'>
+        <Button
+          type='button'
+          variant='ghost'
+          size='sm'
+          onClick={onRemove}
+          className='text-destructive hover:text-destructive h-10 w-10 p-0 sm:h-9 sm:w-9'
+        >
           <IconTrash className='h-5 w-5 sm:h-4 sm:w-4' />
         </Button>
       </div>
@@ -1684,7 +2205,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
 
       {/* Model and Pattern on Second Row for channel_model and channel_regex */}
       {showModelPatternOnSecondRow && (
-        <div className='ml-0 sm:ml-[6.25rem] grid gap-2'>
+        <div className='ml-0 grid gap-2 sm:ml-[6.25rem]'>
           {showModel && (
             <FormField
               control={form.control}
@@ -1736,7 +2257,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
 
       {/* Channel Tags Input - Second Row */}
       {showChannelTags && (
-        <div className='ml-0 sm:ml-[6.25rem] grid gap-2'>
+        <div className='ml-0 grid gap-2 sm:ml-[6.25rem]'>
           <FormField
             control={form.control}
             name={`associations.${index}.channelTags`}
@@ -1749,7 +2270,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                     onChange={field.onChange}
                     placeholder={t('models.dialogs.association.selectChannelTags')}
                     suggestions={allTags}
-                    className='h-auto min-h-10 sm:min-h-9 py-1'
+                    className='h-auto min-h-10 py-1 sm:min-h-9'
                   />
                 </FormControl>
                 {fieldState.error && <FormMessage>{fieldState.error.message}</FormMessage>}
@@ -1759,18 +2280,22 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
         </div>
       )}
 
-      <div className='ml-0 sm:ml-[6.25rem] border-t pt-2'>
+      <div className='ml-0 border-t pt-2 sm:ml-[6.25rem]'>
         <Button
           type='button'
           variant='ghost'
           size='sm'
           onClick={() => setWhenExpanded(!whenExpanded)}
-          className='text-muted-foreground hover:text-foreground mb-2 h-10 sm:h-7 px-3 sm:px-2 text-xs'
+          className='text-muted-foreground hover:text-foreground mb-2 h-10 px-3 text-xs sm:h-7 sm:px-2'
         >
-          {whenExpanded ? <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' /> : <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />}
+          {whenExpanded ? (
+            <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />
+          ) : (
+            <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />
+          )}
           {t('models.dialogs.association.conditions.section')}
           {hasWhenData && !whenExpanded && (
-            <Badge variant='secondary' className='ml-2 h-5 sm:h-4 px-2 sm:px-1 text-xs sm:text-[10px]'>
+            <Badge variant='secondary' className='ml-2 h-5 px-2 text-xs sm:h-4 sm:px-1 sm:text-[10px]'>
               1
             </Badge>
           )}
@@ -1821,7 +2346,9 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                       fields={whenFilterFields.map((item) => ({
                         ...item,
                         label: t(`models.dialogs.association.conditions.fields.${item.value}`),
-                        placeholder: t(`models.dialogs.association.conditions.placeholders.${item.value}`, { defaultValue: item.placeholder }),
+                        placeholder: t(`models.dialogs.association.conditions.placeholders.${item.value}`, {
+                          defaultValue: item.placeholder,
+                        }),
                         operators: item.operators?.map((operator) => ({
                           value: operator.value,
                           label: t(`models.dialogs.association.conditions.operators.${operator.value}`),
@@ -1833,8 +2360,12 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                         subField: item.subField
                           ? {
                               ...item.subField,
-                              label: t(`models.dialogs.association.conditions.subFields.${item.value}.label`, { defaultValue: item.subField.label }),
-                              placeholder: t(`models.dialogs.association.conditions.subFields.${item.value}.placeholder`, { defaultValue: item.subField.placeholder }),
+                              label: t(`models.dialogs.association.conditions.subFields.${item.value}.label`, {
+                                defaultValue: item.subField.label,
+                              }),
+                              placeholder: t(`models.dialogs.association.conditions.subFields.${item.value}.placeholder`, {
+                                defaultValue: item.subField.placeholder,
+                              }),
                             }
                           : undefined,
                       }))}
@@ -1865,25 +2396,29 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
 
       {/* Exclude Section */}
       {showExclude && (
-        <div className='ml-0 sm:ml-[6.25rem] border-t pt-2'>
+        <div className='ml-0 border-t pt-2 sm:ml-[6.25rem]'>
           <Button
             type='button'
             variant='ghost'
             size='sm'
             onClick={() => setExcludeExpanded(!excludeExpanded)}
-            className='text-muted-foreground hover:text-foreground mb-2 h-10 sm:h-7 px-3 sm:px-2 text-xs'
+            className='text-muted-foreground hover:text-foreground mb-2 h-10 px-3 text-xs sm:h-7 sm:px-2'
           >
-            {excludeExpanded ? <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' /> : <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />}
+            {excludeExpanded ? (
+              <IconChevronUp className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />
+            ) : (
+              <IconChevronDown className='mr-1 h-4 w-4 sm:h-3 sm:w-3' />
+            )}
             {t('models.dialogs.association.excludeSection')}
             {hasExcludeData && !excludeExpanded && (
-              <Badge variant='secondary' className='ml-2 h-5 sm:h-4 px-2 sm:px-1 text-xs sm:text-[10px]'>
+              <Badge variant='secondary' className='ml-2 h-5 px-2 text-xs sm:h-4 sm:px-1 sm:text-[10px]'>
                 {(excludeChannelNamePattern ? 1 : 0) + (excludeChannelIds?.length || 0) + (excludeChannelTags?.length || 0)}
               </Badge>
             )}
           </Button>
           {excludeExpanded && (
             <div className='space-y-3'>
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
                 <FormField
                   control={form.control}
                   name={`associations.${index}.excludeChannelNamePattern`}
@@ -1914,7 +2449,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                           onChange={field.onChange}
                           placeholder={t('models.dialogs.association.excludeChannelTags')}
                           suggestions={allTags}
-                          className='h-auto min-h-10 sm:min-h-9 py-1'
+                          className='h-auto min-h-10 py-1 sm:min-h-9'
                         />
                       </FormControl>
                       <FormMessage />
@@ -1945,7 +2480,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
                         }}
                         placeholder={t('models.dialogs.association.excludeChannelIds')}
                         suggestions={channelOptions.map((opt) => opt.label)}
-                        className='h-auto min-h-10 sm:min-h-9 py-1'
+                        className='h-auto min-h-10 py-1 sm:min-h-9'
                       />
                     </FormControl>
                     <FormMessage />
@@ -1984,7 +2519,7 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
             hint = t('models.dialogs.association.ruleHints.channelTagsRegex', { pattern, tags: channelTags.join(', ') });
           }
           if (hint) {
-            return <div className='text-muted-foreground ml-0 sm:ml-[6.25rem] text-xs'>{hint}</div>;
+            return <div className='text-muted-foreground ml-0 text-xs sm:ml-[6.25rem]'>{hint}</div>;
           }
           return null;
         })()}

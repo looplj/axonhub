@@ -275,6 +275,18 @@ models:
   UpstreamErrorPolicyInput:
     model:
       - github.com/looplj/axonhub/internal/server/biz.UpstreamErrorPolicy
+  ClientCancellationPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ClientCancellationPolicy
+  ClientCancellationPolicyInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ClientCancellationPolicy
+  ClientCancellationProjectPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ClientCancellationProjectPolicy
+  ClientCancellationProjectPolicyInput:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ClientCancellationProjectPolicy
   UpdateAPIKeyProfilesInput:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyProfiles
@@ -629,6 +641,9 @@ models:
   ModelChannelConnection:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ModelChannelConnection
+  KeyGroupRef:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.KeyGroupRef
   ChannelModelEntry:
     model:
       - github.com/looplj/axonhub/internal/server/biz.ChannelModelEntry
@@ -800,6 +815,9 @@ models:
   DisabledAPIKey:
     model:
       - github.com/looplj/axonhub/internal/objects.DisabledAPIKey
+  ModelCooldown:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelCooldown
   DeleteDisabledAPIKeysPayload:
     model:
       - github.com/looplj/axonhub/internal/server/biz.DeleteDisabledAPIKeysResult

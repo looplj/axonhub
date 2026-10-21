@@ -486,6 +486,28 @@ func (r *mutationResolver) EnableAllChannelAPIKeys(ctx context.Context, channelI
 	return true, nil
 }
 
+// ClearChannelModelCooldown is the resolver for the clearChannelModelCooldown field.
+func (r *mutationResolver) ClearChannelModelCooldown(ctx context.Context, channelID objects.GUID, model string) (bool, error) {
+	if _, err := r.channelService.ClearChannelModelCooldown(ctx, channelID.ID, model); err != nil {
+		return false, fmt.Errorf("failed to clear channel model cooldown: %w", err)
+	}
+
+	return true, nil
+}
+
+// FreezeChannelModel is the resolver for the freezeChannelModel field.
+func (r *mutationResolver) FreezeChannelModel(ctx context.Context, channelID objects.GUID, model string, durationMinutes *int) (bool, error) {
+	minutes := 0
+	if durationMinutes != nil {
+		minutes = *durationMinutes
+	}
+	if _, err := r.channelService.FreezeChannelModel(ctx, channelID.ID, model, minutes); err != nil {
+		return false, fmt.Errorf("failed to freeze channel model: %w", err)
+	}
+
+	return true, nil
+}
+
 // EnableSelectedChannelAPIKeys is the resolver for the enableSelectedChannelAPIKeys field.
 func (r *mutationResolver) EnableSelectedChannelAPIKeys(ctx context.Context, channelID objects.GUID, keys []string) (bool, error) {
 	if err := r.channelService.EnableSelectedAPIKeys(ctx, channelID.ID, keys); err != nil {

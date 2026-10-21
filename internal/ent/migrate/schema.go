@@ -117,6 +117,7 @@ var (
 		{Name: "error_message", Type: field.TypeString, Nullable: true},
 		{Name: "auto_disabled_at", Type: field.TypeTime, Nullable: true},
 		{Name: "auto_disable_expires_at", Type: field.TypeTime, Nullable: true},
+		{Name: "model_cooldowns", Type: field.TypeJSON, Nullable: true},
 		{Name: "remark", Type: field.TypeString, Nullable: true},
 		{Name: "endpoints", Type: field.TypeJSON, Nullable: true},
 	}

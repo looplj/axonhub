@@ -177,6 +177,13 @@ func (Channel) Fields() []ent.Field {
 			Annotations(
 				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
 			),
+		field.JSON("model_cooldowns", []objects.ModelCooldown{}).
+			Default([]objects.ModelCooldown{}).
+			Optional().
+			Comment("Model-scoped temporary cooldowns, e.g. from the client-cancellation policy; expired entries are cleaned up automatically.").
+			Annotations(
+				entgql.Skip(entgql.SkipMutationCreateInput, entgql.SkipMutationUpdateInput),
+			),
 		field.String("remark").
 			Optional().Nillable().
 			Comment("User-defined remark or note for the channel"),

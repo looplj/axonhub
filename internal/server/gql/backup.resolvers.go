@@ -7,7 +7,9 @@ package gql
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/looplj/axonhub/internal/contexts"
@@ -25,12 +27,20 @@ func (r *mutationResolver) Backup(ctx context.Context, input backup.BackupOption
 	}
 
 	dataStr := string(data)
-
-	return &BackupPayload{
+	payload := &BackupPayload{
 		Success: true,
 		Data:    &dataStr,
 		Message: lo.ToPtr("Backup completed successfully"),
-	}, nil
+	}
+
+	if input.UploadToStorage {
+		if err := r.backupService.UploadToAutoBackupStorage(ctx, "axonhub-backup-"+time.Now().Format("2006-01-02_15-04-05")+".json", data); err != nil {
+			return nil, fmt.Errorf("failed to upload backup to storage: %w", err)
+		}
+		payload.Uploaded = lo.ToPtr(true)
+	}
+
+	return payload, nil
 }
 
 // Restore is the resolver for the restore field.

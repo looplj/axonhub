@@ -47,6 +47,10 @@ func (m *performanceRecording) OnInboundLlmRequest(ctx context.Context, request 
 		m.outbound.state.Perf.Stream = false
 	}
 
+	// Remember the channel-selection model so every per-attempt record below
+	// carries it for model-scoped policies (e.g. model cooldowns).
+	m.outbound.state.OriginalModel = request.Model
+
 	return request, nil
 }
 
@@ -67,9 +71,13 @@ func (m *performanceRecording) OnOutboundRawRequest(ctx context.Context, request
 	perf := biz.PerformanceRecord{}
 	perf.StartTime = time.Now()
 	perf.ChannelID = channel.ID
+	if projectID, ok := contexts.GetProjectID(ctx); ok {
+		perf.ProjectID = projectID
+	}
 	perf.Success = false
 	perf.RequestCompleted = false
 	perf.Stream = streamFlag
+	perf.Model = m.outbound.state.OriginalModel
 
 	// Get the API key used for this request from context (set by TraceStickyKeyProvider).
 	// OAuth channels authenticate from Credentials.OAuth and never pass through the
@@ -134,7 +142,7 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 	}
 
 	perf := m.outbound.state.Perf
-	if errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) || errors.Is(ctx.Err(), context.Canceled) {
 		perf.MarkCanceled()
 	} else {
 		errorCode := ExtractErrorCode(err)

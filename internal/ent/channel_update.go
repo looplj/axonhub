@@ -367,6 +367,24 @@ func (_u *ChannelUpdate) ClearAutoDisableExpiresAt() *ChannelUpdate {
 	return _u
 }
 
+// SetModelCooldowns sets the "model_cooldowns" field.
+func (_u *ChannelUpdate) SetModelCooldowns(v []objects.ModelCooldown) *ChannelUpdate {
+	_u.mutation.SetModelCooldowns(v)
+	return _u
+}
+
+// AppendModelCooldowns appends value to the "model_cooldowns" field.
+func (_u *ChannelUpdate) AppendModelCooldowns(v []objects.ModelCooldown) *ChannelUpdate {
+	_u.mutation.AppendModelCooldowns(v)
+	return _u
+}
+
+// ClearModelCooldowns clears the value of the "model_cooldowns" field.
+func (_u *ChannelUpdate) ClearModelCooldowns() *ChannelUpdate {
+	_u.mutation.ClearModelCooldowns()
+	return _u
+}
+
 // SetRemark sets the "remark" field.
 func (_u *ChannelUpdate) SetRemark(v string) *ChannelUpdate {
 	_u.mutation.SetRemark(v)
@@ -805,6 +823,17 @@ func (_u *ChannelUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.AutoDisableExpiresAtCleared() {
 		_spec.ClearField(channel.FieldAutoDisableExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ModelCooldowns(); ok {
+		_spec.SetField(channel.FieldModelCooldowns, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedModelCooldowns(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, channel.FieldModelCooldowns, value)
+		})
+	}
+	if _u.mutation.ModelCooldownsCleared() {
+		_spec.ClearField(channel.FieldModelCooldowns, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Remark(); ok {
 		_spec.SetField(channel.FieldRemark, field.TypeString, value)
@@ -1429,6 +1458,24 @@ func (_u *ChannelUpdateOne) ClearAutoDisableExpiresAt() *ChannelUpdateOne {
 	return _u
 }
 
+// SetModelCooldowns sets the "model_cooldowns" field.
+func (_u *ChannelUpdateOne) SetModelCooldowns(v []objects.ModelCooldown) *ChannelUpdateOne {
+	_u.mutation.SetModelCooldowns(v)
+	return _u
+}
+
+// AppendModelCooldowns appends value to the "model_cooldowns" field.
+func (_u *ChannelUpdateOne) AppendModelCooldowns(v []objects.ModelCooldown) *ChannelUpdateOne {
+	_u.mutation.AppendModelCooldowns(v)
+	return _u
+}
+
+// ClearModelCooldowns clears the value of the "model_cooldowns" field.
+func (_u *ChannelUpdateOne) ClearModelCooldowns() *ChannelUpdateOne {
+	_u.mutation.ClearModelCooldowns()
+	return _u
+}
+
 // SetRemark sets the "remark" field.
 func (_u *ChannelUpdateOne) SetRemark(v string) *ChannelUpdateOne {
 	_u.mutation.SetRemark(v)
@@ -1897,6 +1944,17 @@ func (_u *ChannelUpdateOne) sqlSave(ctx context.Context) (_node *Channel, err er
 	}
 	if _u.mutation.AutoDisableExpiresAtCleared() {
 		_spec.ClearField(channel.FieldAutoDisableExpiresAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.ModelCooldowns(); ok {
+		_spec.SetField(channel.FieldModelCooldowns, field.TypeJSON, value)
+	}
+	if value, ok := _u.mutation.AppendedModelCooldowns(); ok {
+		_spec.AddModifier(func(u *sql.UpdateBuilder) {
+			sqljson.Append(u, channel.FieldModelCooldowns, value)
+		})
+	}
+	if _u.mutation.ModelCooldownsCleared() {
+		_spec.ClearField(channel.FieldModelCooldowns, field.TypeJSON)
 	}
 	if value, ok := _u.mutation.Remark(); ok {
 		_spec.SetField(channel.FieldRemark, field.TypeString, value)

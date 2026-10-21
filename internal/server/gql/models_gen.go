@@ -150,9 +150,10 @@ type AutoDisableChannelOnboarding struct {
 }
 
 type BackupPayload struct {
-	Success bool    `json:"success"`
-	Data    *string `json:"data,omitempty"`
-	Message *string `json:"message,omitempty"`
+	Success  bool    `json:"success"`
+	Data     *string `json:"data,omitempty"`
+	Message  *string `json:"message,omitempty"`
+	Uploaded *bool   `json:"uploaded,omitempty"`
 }
 
 type BrandSettings struct {

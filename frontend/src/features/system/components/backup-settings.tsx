@@ -36,6 +36,7 @@ export function BackupSettings() {
     ?.filter(s => s.status === 'active' && s.type !== 'database') ?? [];
 
   const [backupOptions, setBackupOptions] = useState<BackupOptionsInput>({
+    uploadToStorage: false,
     includeSystemConfigs: false,
     includeChannels: true,
     includeModelPrices: true,
@@ -159,6 +160,15 @@ export function BackupSettings() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="upload-to-storage">{t('system.backup.uploadToStorage')}</Label>
+              <Switch
+                id="upload-to-storage"
+                checked={backupOptions.uploadToStorage ?? false}
+                onCheckedChange={(checked) => setBackupOptions({ ...backupOptions, uploadToStorage: checked })}
+              />
+            </div>
+            <p className="text-muted-foreground text-xs">{t('system.backup.uploadToStorageHint', { defaultValue: '' })}</p>
             <div className="flex items-center justify-between">
               <Label htmlFor="include-system-configs">{t('system.backup.includeSystemConfigs')}</Label>
               <Switch

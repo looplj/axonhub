@@ -20,6 +20,7 @@ import { ChannelsDeleteDialog } from './channels-delete-dialog';
 import { ChannelsDisabledAPIKeysDialog } from './channels-disabled-api-keys-dialog';
 import { ChannelsEndpointsDialog } from './channels-endpoints-dialog';
 import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog';
+import { ChannelsModelCooldownsDialog } from './channels-model-cooldowns-dialog';
 import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog';
 import { ChannelsModelPriceDialog } from './channels-model-price-dialog';
 import { ChannelsOverrideDialog } from './channels-override-dialog';
@@ -334,6 +335,19 @@ export function ChannelsDialogs() {
           <ChannelsDisabledAPIKeysDialog
             key={`channel-disabled-api-keys-${currentRow.id}`}
             open={open === 'disabledAPIKeys'}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
+                setOpen(null);
+                setTimeout(() => {
+                  setCurrentRow(null);
+                }, 500);
+              }
+            }}
+          />
+
+          <ChannelsModelCooldownsDialog
+            key={`channel-model-cooldowns-${currentRow.id}`}
+            open={open === 'modelCooldowns'}
             onOpenChange={(isOpen) => {
               if (!isOpen) {
                 setOpen(null);

@@ -36,6 +36,7 @@ type ChannelsDialogType =
   | 'availability'
   | 'keyManagement'
   | 'disabledAPIKeys'
+  | 'modelCooldowns'
   | 'endpoints';
 
 interface ChannelsContextType {

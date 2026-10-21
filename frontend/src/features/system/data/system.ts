@@ -103,6 +103,20 @@ const RETRY_POLICY_QUERY = `
       traceStickyMode
       enabled
       emptyResponseDetection
+      clientCancellationPolicy {
+        enabled
+        threshold
+        cooldownMinutes
+        action
+        scope
+        projectOverrides {
+          projectId
+          enabled
+          threshold
+          cooldownMinutes
+          action
+        }
+      }
       upstreamErrorPolicy {
         mode
         customMessage
@@ -357,6 +371,7 @@ export interface RetryPolicy {
   traceStickyMode: TraceStickyMode;
   enabled: boolean;
   autoDisableChannel: AutoDisableChannel;
+  clientCancellationPolicy: ClientCancellationPolicy;
   emptyResponseDetection: boolean;
   upstreamErrorPolicy: UpstreamErrorPolicy;
 }
@@ -371,6 +386,35 @@ export interface AutoDisableChannelInput {
   rules?: APIKeyAutoDisableRule[];
 }
 
+export type ClientCancellationAction = 'switch_and_cooldown' | 'cooldown_only' | 'cooldown_model';
+export type ClientCancellationScope = 'global' | 'project_first';
+
+export interface ClientCancellationProjectPolicy {
+  projectId: number;
+  enabled: boolean;
+  threshold: number;
+  cooldownMinutes: number;
+  action: ClientCancellationAction;
+}
+
+export interface ClientCancellationPolicy {
+  enabled: boolean;
+  threshold: number;
+  cooldownMinutes: number;
+  action: ClientCancellationAction;
+  scope: ClientCancellationScope;
+  projectOverrides: ClientCancellationProjectPolicy[];
+}
+
+export interface ClientCancellationPolicyInput {
+  enabled?: boolean;
+  threshold?: number;
+  cooldownMinutes?: number;
+  action?: ClientCancellationAction;
+  scope?: ClientCancellationScope;
+  projectOverrides?: ClientCancellationProjectPolicy[];
+}
+
 export interface RetryPolicyInput {
   maxChannelRetries?: number;
   maxSingleChannelRetries?: number;
@@ -381,6 +425,7 @@ export interface RetryPolicyInput {
   traceStickyMode?: TraceStickyMode;
   enabled?: boolean;
   autoDisableChannel?: AutoDisableChannelInput;
+  clientCancellationPolicy?: ClientCancellationPolicyInput;
   emptyResponseDetection?: boolean;
   upstreamErrorPolicy?: Partial<UpstreamErrorPolicy>;
 }
@@ -1223,6 +1268,7 @@ const BACKUP_MUTATION = `
       success
       data
       message
+      uploaded
     }
   }
 `;
@@ -1289,7 +1335,11 @@ export function useBackup() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        toast.success(data.message || i18n.t('system.backup.success'));
+        toast.success(
+          data.uploaded
+            ? i18n.t('system.backup.successUploaded', { defaultValue: data.message || i18n.t('system.backup.success') })
+            : data.message || i18n.t('system.backup.success')
+        );
       } else {
         toast.error(data.message || i18n.t('system.backup.failed'));
       }

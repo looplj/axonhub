@@ -123,6 +123,7 @@ type RetryPolicy {
   traceStickyMode: TraceStickyMode!
   enabled: Boolean!
   autoDisableChannel: AutoDisableChannel!
+  clientCancellationPolicy: ClientCancellationPolicy!
   emptyResponseDetection: Boolean!
   upstreamErrorPolicy: UpstreamErrorPolicy!
 }
@@ -142,6 +143,40 @@ input AutoDisableChannelInput {
   rules: [APIKeyAutoDisableRuleInput!]
 }
 
+type ClientCancellationPolicy {
+  enabled: Boolean!
+  threshold: Int!
+  cooldownMinutes: Int!
+  action: String!
+  scope: String!
+  projectOverrides: [ClientCancellationProjectPolicy!]!
+}
+
+type ClientCancellationProjectPolicy {
+  projectId: Int!
+  enabled: Boolean!
+  threshold: Int!
+  cooldownMinutes: Int!
+  action: String!
+}
+
+input ClientCancellationPolicyInput {
+  enabled: Boolean
+  threshold: Int
+  cooldownMinutes: Int
+  action: String
+  scope: String
+  projectOverrides: [ClientCancellationProjectPolicyInput!]
+}
+
+input ClientCancellationProjectPolicyInput {
+  projectId: Int!
+  enabled: Boolean
+  threshold: Int
+  cooldownMinutes: Int
+  action: String
+}
+
 input UpdateRetryPolicyInput {
   maxChannelRetries: Int
   maxSingleChannelRetries: Int
@@ -152,6 +187,7 @@ input UpdateRetryPolicyInput {
   traceStickyMode: TraceStickyMode
   enabled: Boolean
   autoDisableChannel: AutoDisableChannelInput
+  clientCancellationPolicy: ClientCancellationPolicyInput
   emptyResponseDetection: Boolean
   upstreamErrorPolicy: UpstreamErrorPolicyInput
 }

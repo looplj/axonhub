@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -148,6 +149,43 @@ func (svc *BackupService) performBackup(ctx context.Context, settings *biz.AutoB
 			log.Warn(ctx, "Failed to cleanup old backups", log.Cause(err))
 		}
 	}
+
+	return nil
+}
+
+// UploadToAutoBackupStorage stores an already generated backup file in the
+// data storage configured for auto backup. Reuses the same save path as the
+// scheduled job so manual "backup to storage" and auto backups behave alike.
+// The context must come from a request with the required scopes; the caller
+// decides authorization.
+func (svc *BackupService) UploadToAutoBackupStorage(ctx context.Context, filename string, data []byte) error {
+	settings, err := svc.systemService.AutoBackupSettings(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to read auto backup settings: %w", err)
+	}
+	if settings.DataStorageID == 0 {
+		return fmt.Errorf("no data storage configured for backup upload")
+	}
+
+	ds, err := svc.dataStorageService.GetDataStorageByID(ctx, settings.DataStorageID)
+	if err != nil {
+		return fmt.Errorf("failed to get data storage: %w", err)
+	}
+
+	if ds.Type == datastorage.TypeDatabase {
+		if err := svc.dataStorageService.SaveData(ctx, ds, filename, data); err != nil {
+			return fmt.Errorf("failed to write backup file: %w", err)
+		}
+	} else {
+		if _, _, err := svc.dataStorageService.SaveDataFromReader(ctx, ds, filename, bytes.NewReader(data)); err != nil {
+			return fmt.Errorf("failed to write backup file: %w", err)
+		}
+	}
+
+	log.Info(ctx, "Backup uploaded to storage",
+		log.String("path", filename),
+		log.Int("size", len(data)),
+	)
 
 	return nil
 }

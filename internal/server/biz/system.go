@@ -323,6 +323,10 @@ type RetryPolicy struct {
 	// If the channel has more than one key, the API key will be disabled instead of the channel.
 	AutoDisableChannel AutoDisableChannel `json:"auto_disable_channel"`
 
+	// ClientCancellationPolicy controls how consecutive client-side cancellations
+	// affect routing. It is intentionally separate from HTTP status retry rules.
+	ClientCancellationPolicy ClientCancellationPolicy `json:"client_cancellation_policy"`
+
 	// EmptyResponseDetection controls whether to detect empty streaming responses.
 	// When enabled, the pipeline pre-reads stream events to check if the response
 	// contains meaningful content, and marks empty responses as failed attempts for retry handling.
@@ -391,6 +395,25 @@ type UpstreamErrorPolicy struct {
 
 	// CustomMessage is returned to API users when Mode is custom.
 	CustomMessage string `json:"custom_message"`
+}
+
+// ClientCancellationPolicy controls routing behavior after consecutive client
+// cancellations (including an explicit stop by the user).
+type ClientCancellationPolicy struct {
+	Enabled          bool                              `json:"enabled"`
+	Threshold        int                               `json:"threshold"`
+	CooldownMinutes  int                               `json:"cooldown_minutes"`
+	Action           string                            `json:"action"`
+	Scope            string                            `json:"scope"`
+	ProjectOverrides []ClientCancellationProjectPolicy `json:"project_overrides"`
+}
+
+type ClientCancellationProjectPolicy struct {
+	ProjectID       int    `json:"project_id"`
+	Enabled         bool   `json:"enabled"`
+	Threshold       int    `json:"threshold"`
+	CooldownMinutes int    `json:"cooldown_minutes"`
+	Action          string `json:"action"`
 }
 
 type AutoDisableChannel struct {
@@ -1092,6 +1115,10 @@ func (s *SystemService) SetRetryPolicy(ctx context.Context, policy *RetryPolicy)
 	}
 	policy.AutoDisableChannel.Rules = rules
 
+	if err := normalizeClientCancellationPolicy(&policy.ClientCancellationPolicy); err != nil {
+		return xerrors.ValidationError(err.Error())
+	}
+
 	jsonBytes, err := json.Marshal(policy)
 	if err != nil {
 		return fmt.Errorf("failed to marshal retry policy: %w", err)
@@ -1158,6 +1185,10 @@ func normalizeRetryPolicy(policy *RetryPolicy) {
 	if policy.AutoDisableChannel.Rules == nil {
 		policy.AutoDisableChannel.Rules = []objects.APIKeyAutoDisableRule{}
 	}
+
+	// Normalization here is best-effort for reads of legacy configs. Invalid
+	// project overrides are dropped instead of making the whole policy unreadable.
+	_ = normalizeClientCancellationPolicy(&policy.ClientCancellationPolicy)
 
 	switch policy.UpstreamErrorPolicy.Mode {
 	case UpstreamErrorModePassthrough, UpstreamErrorModeHidden, UpstreamErrorModeCustom:

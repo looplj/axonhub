@@ -61,6 +61,8 @@ const (
 	FieldAutoDisabledAt = "auto_disabled_at"
 	// FieldAutoDisableExpiresAt holds the string denoting the auto_disable_expires_at field in the database.
 	FieldAutoDisableExpiresAt = "auto_disable_expires_at"
+	// FieldModelCooldowns holds the string denoting the model_cooldowns field in the database.
+	FieldModelCooldowns = "model_cooldowns"
 	// FieldRemark holds the string denoting the remark field in the database.
 	FieldRemark = "remark"
 	// FieldEndpoints holds the string denoting the endpoints field in the database.
@@ -147,6 +149,7 @@ var Columns = []string{
 	FieldErrorMessage,
 	FieldAutoDisabledAt,
 	FieldAutoDisableExpiresAt,
+	FieldModelCooldowns,
 	FieldRemark,
 	FieldEndpoints,
 }
@@ -194,6 +197,8 @@ var (
 	DefaultSettings *objects.ChannelSettings
 	// DefaultOrderingWeight holds the default value on creation for the "ordering_weight" field.
 	DefaultOrderingWeight int
+	// DefaultModelCooldowns holds the default value on creation for the "model_cooldowns" field.
+	DefaultModelCooldowns []objects.ModelCooldown
 	// DefaultEndpoints holds the default value on creation for the "endpoints" field.
 	DefaultEndpoints []objects.ChannelEndpoint
 )

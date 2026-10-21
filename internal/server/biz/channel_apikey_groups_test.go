@@ -120,3 +120,57 @@ func TestTraceStickyKeyProvider_NoKeyGroups_UsesFlatKeys(t *testing.T) {
 	// Channels without groups ignore the model filter entirely.
 	require.Contains(t, keys, provider.Get(ctx))
 }
+
+// A group may hold several keys, which rotate the same way a flat key list does.
+// This is the multi-key group behaviour: one remark, many keys, no separate group
+// module in the UI.
+func TestTraceStickyKeyProvider_KeyGroups_MultipleKeysPerGroupRotate(t *testing.T) {
+	ch := newGroupedChannel([]objects.KeyGroup{
+		{Name: "rotating", APIKeys: []string{"key-a", "key-b", "key-c"}, Enabled: true},
+	}, nil)
+
+	provider := NewTraceStickyKeyProvider(ch)
+
+	seen := map[string]bool{}
+	for range 30 {
+		seen[provider.Get(context.Background())] = true
+	}
+
+	// Every key of the group must be reachable, otherwise the group is not
+	// actually rotating between its keys.
+	require.Len(t, seen, 3)
+	require.True(t, seen["key-a"] && seen["key-b"] && seen["key-c"])
+}
+
+// A legacy group persisted with a single apiKey must expose that key through the
+// new list field, so old data keeps routing after the field was widened.
+func TestKeyGroup_Keys_FoldsLegacyAPIKey(t *testing.T) {
+	group := objects.KeyGroup{Name: "legacy", APIKey: "legacy-key"}
+
+	require.Equal(t, []string{"legacy-key"}, group.Keys())
+}
+
+// When both fields are populated the legacy key is kept first and duplicates are
+// dropped, so a group never routes the same key twice.
+func TestKeyGroup_Keys_DeduplicatesLegacyAndList(t *testing.T) {
+	group := objects.KeyGroup{
+		APIKey:  "key-a",
+		APIKeys: []string{"key-a", "key-b"},
+	}
+
+	require.Equal(t, []string{"key-a", "key-b"}, group.Keys())
+}
+
+// Normalize folds the legacy field into the list and clears it, which is what the
+// write path stores. It must be idempotent so re-saving never duplicates keys.
+func TestKeyGroup_Normalize_IsIdempotent(t *testing.T) {
+	group := objects.KeyGroup{APIKey: "legacy", APIKeys: []string{"legacy", "extra"}}
+
+	group.Normalize()
+	require.Equal(t, []string{"legacy", "extra"}, group.APIKeys)
+	require.Empty(t, group.APIKey)
+
+	first := append([]string(nil), group.APIKeys...)
+	group.Normalize()
+	require.Equal(t, first, group.APIKeys)
+}

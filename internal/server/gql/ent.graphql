@@ -437,6 +437,10 @@ type Channel implements Node {
   """
   autoDisableExpiresAt: Time
   """
+  Model-scoped temporary cooldowns, e.g. from the client-cancellation policy; expired entries are cleaned up automatically.
+  """
+  modelCooldowns: [ModelCooldown!]
+  """
   User-defined remark or note for the channel
   """
   remark: String
