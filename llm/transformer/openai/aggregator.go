@@ -142,15 +142,11 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		// the tokens produced afterwards are not covered by it.
 		outputSinceUsage bool
 		// zeroUsageAfterOutput marks the current usage block as an untrustworthy
-		// zero placeholder: it arrived after real output, so accepting it would
-		// persist an undercounted (zero) usage row.
+		// zero placeholder: it replaced an earlier nonzero block, so accepting it
+		// would persist an undercounted (zero) usage row.
 		zeroUsageAfterOutput bool
-		// sawOutput records whether any model output was streamed at all. A zero
-		// usage block is a placeholder whenever output exists, even if a later
-		// nonzero usage block reset outputSinceUsage.
-		sawOutput         bool
-		systemFingerprint string
-		serviceTier       string
+		systemFingerprint    string
+		serviceTier          string
 		// Map to track choices by their index
 		choicesAggs = make(map[int]*choiceAggregator)
 		// Map to track unique citations
@@ -296,21 +292,21 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 
 		// Extract usage information if present
 		chunkOutput := hasMeaningfulOutput(chunk.Choices)
-		if chunkOutput {
-			sawOutput = true
-		}
 		if chunk.Usage != nil {
+			// Whether a zero block replaces a real one: only then is it a
+			// placeholder. A stream whose only usage block is zero keeps the
+			// explicit-final zero row (there is nothing to undercount).
+			previousUsageNonZero := usage != nil && !isZeroUsage(usage)
 			usage = chunk.Usage
 			usageEvidence = llm.AccountingEvidenceUnavailable
 			// A delta riding on the usage chunk is treated as output after it:
 			// whether that block already counts those tokens is up to the
 			// provider, so the conservative answer is not to trust it.
 			outputSinceUsage = chunkOutput
-			// A zero block that follows real output cannot describe that output;
-			// it is a placeholder, not the final usage. "Output exists" is
-			// stream-wide, not "since the previous usage block": a nonzero usage
-			// block in between must not launder the placeholder.
-			zeroUsageAfterOutput = isZeroUsage(chunk.Usage) && sawOutput
+			// A zero block that overwrites an earlier nonzero usage cannot be the
+			// final usage; it is a placeholder, whether or not output followed the
+			// real block.
+			zeroUsageAfterOutput = isZeroUsage(chunk.Usage) && previousUsageNonZero
 			if len(chunk.Choices) > 0 && isZeroUsage(chunk.Usage) {
 				zeroChoiceUsages++
 			}
