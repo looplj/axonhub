@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -143,13 +144,15 @@ func TestDeepSeek_CheckQuota_MissingAPIKey(t *testing.T) {
 	checker := NewDeepSeekQuotaChecker(nil)
 	_, err := checker.CheckQuota(context.Background(), deepSeekTestChannel("", ""))
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "no API key")
+	require.Contains(t, err.Error(), "no enabled API key")
 }
 
-func TestDeepSeek_CheckQuota_UsesFirstConfiguredKey(t *testing.T) {
+func TestDeepSeek_CheckQuota_SkipsBlankEntriesAndUsesOnlyEnabledKey(t *testing.T) {
+	calls := 0
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			require.Equal(t, "Bearer first-key", req.Header.Get("Authorization"))
+			calls++
+			require.Equal(t, "Bearer only-key", req.Header.Get("Authorization"))
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     make(http.Header),
@@ -162,13 +165,230 @@ func TestDeepSeek_CheckQuota_UsesFirstConfiguredKey(t *testing.T) {
 	ch := &ent.Channel{
 		Type: channel.TypeDeepseekAnthropic,
 		Credentials: objects.ChannelCredentials{
-			APIKeys: []string{"", "first-key", "second-key"},
+			APIKeys: []string{"", "only-key", ""},
 		},
 	}
 
 	quota, err := checker.CheckQuota(context.Background(), ch)
 	require.NoError(t, err)
 	require.Equal(t, "available", quota.Status)
+	require.Equal(t, 1, calls)
+}
+
+func TestDeepSeek_CheckQuota_SkipsDisabledKey(t *testing.T) {
+	calls := 0
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			calls++
+			require.Equal(t, "Bearer healthy-key", req.Header.Get("Authorization"))
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"is_available":true,"balance_infos":[{"currency":"USD","total_balance":"1.00"}]}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewDeepSeekQuotaChecker(httpClient)
+	ch := &ent.Channel{
+		Type: channel.TypeDeepseek,
+		Credentials: objects.ChannelCredentials{
+			APIKeys: []string{"disabled-key", "healthy-key"},
+		},
+		DisabledAPIKeys: []objects.DisabledAPIKey{{Key: "disabled-key"}},
+	}
+
+	quota, err := checker.CheckQuota(context.Background(), ch)
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.Equal(t, 1, calls)
+}
+
+func TestDeepSeek_CheckQuota_MultiKeyKeepsChannelAvailable(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := ""
+			switch req.Header.Get("Authorization") {
+			case "Bearer empty-key-aaaa":
+				body = `{"is_available":false,"balance_infos":[{"currency":"USD","total_balance":"0.00"}]}`
+			case "Bearer funded-key-bbbb":
+				body = `{"is_available":true,"balance_infos":[{"currency":"USD","total_balance":"10.00"}]}`
+			default:
+				t.Fatalf("unexpected API key")
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewDeepSeekQuotaChecker(httpClient)
+	ch := &ent.Channel{
+		Type: channel.TypeDeepseek,
+		Credentials: objects.ChannelCredentials{
+			APIKeys: []string{"empty-key-aaaa", "funded-key-bbbb"},
+		},
+	}
+
+	quota, err := checker.CheckQuota(context.Background(), ch)
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+	require.Len(t, quota.Limits, 2)
+
+	for _, limit := range quota.Limits {
+		require.Equal(t, deepSeekAccountsAvailabilityGroup, limit.AvailabilityGroup)
+		require.NotEmpty(t, limit.Account)
+	}
+
+	routing, _ := EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeToken, time.Now())
+	require.Equal(t, RoutingOpen, routing)
+
+	balances, ok := quota.RawData["balances"].([]map[string]any)
+	require.True(t, ok)
+	require.Len(t, balances, 2)
+	require.Equal(t, "aaaa", balances[0]["account"])
+	require.Equal(t, "bbbb", balances[1]["account"])
+
+	accounts, ok := quota.RawData["accounts"].([]map[string]any)
+	require.True(t, ok)
+	require.Len(t, accounts, 2)
+}
+
+func TestDeepSeek_CheckQuota_InvalidKeyDoesNotHideHealthyKey(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.Header.Get("Authorization") == "Bearer bad-key-1111" {
+				return &http.Response{
+					StatusCode: http.StatusUnauthorized,
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader(`{"error":"invalid api key"}`)),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"is_available":true,"balance_infos":[{"currency":"USD","total_balance":"10.00"}]}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewDeepSeekQuotaChecker(httpClient)
+	ch := &ent.Channel{
+		Type: channel.TypeDeepseek,
+		Credentials: objects.ChannelCredentials{
+			APIKeys: []string{"bad-key-1111", "good-key-2222"},
+		},
+	}
+
+	quota, err := checker.CheckQuota(context.Background(), ch)
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.Len(t, quota.Limits, 1)
+
+	accounts, ok := quota.RawData["accounts"].([]map[string]any)
+	require.True(t, ok)
+	require.Len(t, accounts, 2)
+	require.NotEmpty(t, accounts[0]["error"])
+}
+
+func TestDeepSeek_CheckQuota_TransientKeyDoesNotMarkChannelExhausted(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.Header.Get("Authorization") == "Bearer empty-key-aaaa" {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader(`{"is_available":true,"balance_infos":[{"currency":"USD","total_balance":"0.00"}]}`)),
+				}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusInternalServerError,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"error":"unavailable"}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewDeepSeekQuotaChecker(httpClient)
+	ch := &ent.Channel{
+		Type: channel.TypeDeepseek,
+		Credentials: objects.ChannelCredentials{
+			APIKeys: []string{"empty-key-aaaa", "error-key-bbbb"},
+		},
+	}
+
+	_, err := checker.CheckQuota(context.Background(), ch)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "incomplete")
+	require.NotErrorIs(t, err, ErrInvalidCredentials)
+}
+
+func TestDeepSeek_CheckQuota_AllKeysExhausted(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"is_available":true,"balance_infos":[{"currency":"USD","total_balance":"0.00"}]}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewDeepSeekQuotaChecker(httpClient)
+	ch := &ent.Channel{
+		Type: channel.TypeDeepseek,
+		Credentials: objects.ChannelCredentials{
+			APIKeys: []string{"empty-one-aaaa", "empty-two-bbbb"},
+		},
+	}
+
+	quota, err := checker.CheckQuota(context.Background(), ch)
+	require.NoError(t, err)
+	require.Equal(t, "exhausted", quota.Status)
+	require.False(t, quota.Ready)
+	require.Len(t, quota.Limits, 2)
+}
+
+func TestDeepSeek_CheckQuota_AllKeysInvalid(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(`{"error":"invalid api key"}`)),
+			}, nil
+		}),
+	})
+
+	checker := NewDeepSeekQuotaChecker(httpClient)
+	ch := &ent.Channel{
+		Type: channel.TypeDeepseek,
+		Credentials: objects.ChannelCredentials{
+			APIKeys: []string{"bad-key-1111", "bad-key-2222"},
+		},
+	}
+
+	_, err := checker.CheckQuota(context.Background(), ch)
+	require.Error(t, err)
+	require.ErrorIs(t, err, ErrInvalidCredentials)
+}
+
+func TestDeepSeek_CheckQuota_NoEnabledKeys(t *testing.T) {
+	checker := NewDeepSeekQuotaChecker(nil)
+	ch := &ent.Channel{
+		Type: channel.TypeDeepseek,
+		Credentials: objects.ChannelCredentials{
+			APIKeys: []string{"disabled-key"},
+		},
+		DisabledAPIKeys: []objects.DisabledAPIKey{{Key: "disabled-key"}},
+	}
+
+	_, err := checker.CheckQuota(context.Background(), ch)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no enabled API key")
 }
 
 func TestDeepSeek_ParseResponse_Errors(t *testing.T) {

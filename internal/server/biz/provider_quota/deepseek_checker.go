@@ -2,6 +2,8 @@ package provider_quota
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +20,10 @@ import (
 
 const (
 	deepSeekProviderType = "deepseek"
+
+	// deepSeekAccountsAvailabilityGroup lets a multi-key channel stay routable
+	// while any enabled account still has balance.
+	deepSeekAccountsAvailabilityGroup = "deepseek_accounts"
 
 	// DeepSeekDefaultBaseURL is the official DeepSeek API origin. The balance
 	// endpoint lives outside the versioned inference prefix.
@@ -63,13 +69,15 @@ func (c *DeepSeekQuotaChecker) SupportsChannel(ch *ent.Channel) bool {
 	}
 }
 
-// CheckQuota calls GET /user/balance with the channel API key. The endpoint
+// CheckQuota calls GET /user/balance for every enabled API key. The endpoint
 // rejects invalid keys with 401/403; those surface as ErrInvalidCredentials so
 // the service drops stale cached quota data instead of backing off silently.
+// A multi-key channel is available while at least one enabled account has
+// balance.
 func (c *DeepSeekQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) (QuotaData, error) {
-	apiKey := deepSeekAPIKey(ch)
-	if apiKey == "" {
-		return QuotaData{}, errors.New("channel has no API key")
+	keys := deepSeekEnabledAPIKeys(ch)
+	if len(keys) == 0 {
+		return QuotaData{}, fmt.Errorf("%w: channel has no enabled API key", ErrInvalidCredentials)
 	}
 
 	hc := c.httpClient
@@ -78,6 +86,63 @@ func (c *DeepSeekQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) 
 	}
 	hc = hc.WithRejectHTTPSDowngrade()
 
+	if len(keys) == 1 {
+		return c.checkQuotaWithAPIKey(ctx, hc, ch, keys[0])
+	}
+
+	accounts := make([]deepSeekAccountQuota, 0, len(keys))
+	var firstTransientErr error
+	invalidCount := 0
+
+	for _, apiKey := range keys {
+		account := deepSeekAccountQuota{
+			Account: deepSeekKeySuffix(apiKey),
+			Ref:     deepSeekKeyRef(apiKey),
+		}
+		quotaData, err := c.checkQuotaWithAPIKey(ctx, hc, ch, apiKey)
+		if err != nil {
+			account.Error = err.Error()
+			accounts = append(accounts, account)
+			if errors.Is(err, ErrInvalidCredentials) {
+				invalidCount++
+			} else if firstTransientErr == nil {
+				firstTransientErr = err
+			}
+			continue
+		}
+		account.Quota = quotaData
+		accounts = append(accounts, account)
+	}
+
+	successCount := 0
+	for _, account := range accounts {
+		if account.Error == "" {
+			successCount++
+		}
+	}
+	if successCount == 0 {
+		if firstTransientErr != nil {
+			return QuotaData{}, fmt.Errorf("DeepSeek balance check failed for all %d enabled keys: %w", len(keys), firstTransientErr)
+		}
+		return QuotaData{}, fmt.Errorf("%w: all %d DeepSeek API keys were rejected", ErrInvalidCredentials, len(keys))
+	}
+
+	quotaData := buildDeepSeekMultiAccountQuota(accounts)
+	if quotaData.Status == "exhausted" && firstTransientErr != nil {
+		// An unreadable account may still have balance. Do not replace cached
+		// quota with an exhausted verdict based on incomplete data.
+		return QuotaData{}, fmt.Errorf("DeepSeek balance check incomplete: %w", firstTransientErr)
+	}
+
+	return quotaData, nil
+}
+
+func (c *DeepSeekQuotaChecker) checkQuotaWithAPIKey(
+	ctx context.Context,
+	hc *httpclient.HttpClient,
+	ch *ent.Channel,
+	apiKey string,
+) (QuotaData, error) {
 	request := httpclient.NewRequestBuilder().
 		WithMethod(http.MethodGet).
 		WithURL(buildDeepSeekBalanceURL(ch.BaseURL)).
@@ -100,6 +165,78 @@ func (c *DeepSeekQuotaChecker) CheckQuota(ctx context.Context, ch *ent.Channel) 
 	}
 
 	return c.parseResponse(resp.Body)
+}
+
+type deepSeekAccountQuota struct {
+	Account string
+	Ref     string
+	Quota   QuotaData
+	Error   string
+}
+
+func buildDeepSeekMultiAccountQuota(accounts []deepSeekAccountQuota) QuotaData {
+	limits := make([]QuotaLimitStatus, 0, len(accounts))
+	balances := make([]map[string]any, 0, len(accounts))
+	rawAccounts := make([]map[string]any, 0, len(accounts))
+	anyAvailable := false
+	anyWarning := false
+
+	for _, account := range accounts {
+		rawAccount := map[string]any{"account": account.Account, "ref": account.Ref}
+		if account.Error != "" {
+			rawAccount["error"] = account.Error
+			rawAccounts = append(rawAccounts, rawAccount)
+			continue
+		}
+
+		rawAccount["status"] = account.Quota.Status
+		rawAccount["ready"] = account.Quota.Ready
+		if accountBalances, ok := account.Quota.RawData["balances"].([]map[string]any); ok {
+			accountBalancesWithLabel := make([]map[string]any, 0, len(accountBalances))
+			for _, balance := range accountBalances {
+				labeled := make(map[string]any, len(balance)+1)
+				for key, value := range balance {
+					labeled[key] = value
+				}
+				labeled["account"] = account.Account
+				accountBalancesWithLabel = append(accountBalancesWithLabel, labeled)
+				balances = append(balances, labeled)
+			}
+			rawAccount["balances"] = accountBalancesWithLabel
+		}
+		rawAccounts = append(rawAccounts, rawAccount)
+
+		for _, limit := range account.Quota.Limits {
+			limit.AvailabilityGroup = deepSeekAccountsAvailabilityGroup
+			limit.Account = account.Ref
+			limits = append(limits, limit)
+		}
+
+		switch account.Quota.Status {
+		case "available":
+			anyAvailable = true
+		case "warning":
+			anyWarning = true
+		}
+	}
+
+	status := "exhausted"
+	if anyAvailable {
+		status = "available"
+	} else if anyWarning {
+		status = "warning"
+	}
+
+	return NormalizeQuotaData(QuotaData{
+		Status:       status,
+		ProviderType: deepSeekProviderType,
+		RawData: map[string]any{
+			"is_available": IsReadyStatus(status),
+			"balances":     balances,
+			"accounts":     rawAccounts,
+		},
+		Limits: limits,
+	})
 }
 
 func (c *DeepSeekQuotaChecker) parseResponse(body []byte) (QuotaData, error) {
@@ -188,14 +325,49 @@ func parseDeepSeekAmount(currency, field, value string, required bool) (float64,
 	return amount, nil
 }
 
-func deepSeekAPIKey(ch *ent.Channel) string {
-	for _, apiKey := range ch.Credentials.GetAllAPIKeys() {
-		if apiKey = strings.TrimSpace(apiKey); apiKey != "" {
-			return apiKey
+func deepSeekEnabledAPIKeys(ch *ent.Channel) []string {
+	disabled := make(map[string]struct{}, len(ch.DisabledAPIKeys))
+	for _, entry := range ch.DisabledAPIKeys {
+		if entry.IsExpired() {
+			continue
+		}
+		key := strings.TrimSpace(entry.Key)
+		if key != "" {
+			disabled[key] = struct{}{}
 		}
 	}
 
-	return ""
+	keys := make([]string, 0, len(ch.Credentials.APIKeys)+1)
+	seen := make(map[string]struct{}, len(ch.Credentials.APIKeys)+1)
+	for _, candidate := range ch.Credentials.GetAllAPIKeys() {
+		key := strings.TrimSpace(candidate)
+		if key == "" {
+			continue
+		}
+		if _, ok := disabled[key]; ok {
+			continue
+		}
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		keys = append(keys, key)
+	}
+
+	return keys
+}
+
+func deepSeekKeySuffix(key string) string {
+	runes := []rune(strings.TrimSpace(key))
+	if len(runes) <= 4 {
+		return "key"
+	}
+	return string(runes[len(runes)-4:])
+}
+
+func deepSeekKeyRef(key string) string {
+	digest := sha256.Sum256([]byte("deepseek:" + key))
+	return hex.EncodeToString(digest[:])[:8]
 }
 
 // buildDeepSeekBalanceURL resolves the balance endpoint from the channel base

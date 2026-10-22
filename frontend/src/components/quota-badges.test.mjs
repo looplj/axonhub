@@ -302,3 +302,13 @@ test('DeepSeek quota labels are locale-complete', () => {
     assert.ok(zhSystem[key], `zh-CN/system.json missing ${key}`);
   }
 });
+
+test('DeepSeek battery uses a usable account among multiple keys', () => {
+  const source = read('components/quota-badges.tsx');
+  const start = source.indexOf('} else if (isDeepSeekType(channel.type)) {');
+  const end = source.indexOf('} else if (', start + 5);
+  const block = source.slice(start, end);
+
+  assert.match(block, /usableLimits/, 'DeepSeek battery should ignore exhausted accounts when another is usable');
+  assert.match(block, /Math\.min\(\.\.\.usableLimits/, 'DeepSeek battery should use the healthiest usable account');
+});

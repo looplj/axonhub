@@ -218,6 +218,7 @@ export type ProviderCharmHyperQuotaData = ProviderQuotaDataCommon & {
 
 export type ProviderDeepSeekBalanceInfo = {
   currency?: string;
+  account?: string;
   total_balance?: number;
   granted_balance?: number;
   topped_up_balance?: number;
@@ -528,6 +529,7 @@ export type ProviderQuotaLimit = {
  */
 export type ProviderQuotaBalance = {
   currency?: string;
+  account?: string;
   totalBalance?: number;
   grantedBalance?: number;
   toppedUpBalance?: number;
@@ -624,14 +626,18 @@ export function parseQuotaBalances(quotaData: unknown): ProviderQuotaBalance[] {
     const toppedUpBalance = optionalNumber(balance.topped_up_balance);
     if (toppedUpBalance !== undefined && toppedUpBalance < 0) return [];
 
-    return [
-      {
-        currency: optionalString(balance.currency),
-        totalBalance,
-        grantedBalance,
-        toppedUpBalance,
-      },
-    ];
+    const parsed: ProviderQuotaBalance = {
+      currency: optionalString(balance.currency),
+      totalBalance,
+      grantedBalance,
+      toppedUpBalance,
+    };
+    const account = optionalString(balance.account);
+    if (account) {
+      parsed.account = account;
+    }
+
+    return [parsed];
   });
 }
 

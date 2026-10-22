@@ -177,6 +177,22 @@ test('balance quota data renders monetary rows instead of a fake percentage bar'
   assert.match(tooltipBlock, /granted_balance/, 'the tooltip should keep the granted breakdown');
 });
 
+test('balance accounts keep their display label', () => {
+  const balances = parseQuotaBalances({
+    balances: [
+      { currency: 'USD', account: 'aaaa', total_balance: 1 },
+      { currency: 'USD', account: 'bbbb', total_balance: 2 },
+    ],
+  });
+
+  assert.deepEqual(
+    balances.map((balance) => balance.account),
+    ['aaaa', 'bbbb']
+  );
+  assert.match(columnsSource, /balance\.account/);
+  assert.match(columnsSource, /` · \$\{balance\.account\}`/);
+});
+
 test('malformed balance entries are dropped without fabricating a row', () => {
   assert.deepEqual(parseQuotaBalances({ balances: [null, 42, 'broken', { currency: 'CNY' }] }), []);
   assert.deepEqual(

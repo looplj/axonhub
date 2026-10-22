@@ -217,7 +217,12 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
       qd?.windows?.weekly?.usage_percent ?? 0
     );
   } else if (isDeepSeekType(channel.type)) {
-    percentage = Math.max(0, ...channel.quotaStatus.limits.map((limit) => limit.usageRatio * 100));
+    const limits = channel.quotaStatus.limits;
+    const usableLimits = limits.filter((limit) => limit.status !== 'exhausted' && limit.usageRatio < 1);
+    percentage =
+      usableLimits.length > 0
+        ? Math.min(...usableLimits.map((limit) => limit.usageRatio * 100))
+        : Math.max(0, ...limits.map((limit) => limit.usageRatio * 100));
   } else if (isCommandCodeType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderCommandCodeQuotaData | undefined;
     percentage = Math.max(
@@ -2257,7 +2262,8 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                 <div key={`${currency}-${index}`} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
                   <div className='flex items-center justify-between text-xs'>
                     <span className='text-muted-foreground font-medium'>
-                      {t('quota.label.account_balance')} ({currency})
+                      {t('quota.label.account_balance')} ({currency}
+                      {balance.account ? ` · ${balance.account}` : ''})
                     </span>
                     <span className='text-foreground font-medium'>{formatAmount(balance.total_balance, currency)}</span>
                   </div>

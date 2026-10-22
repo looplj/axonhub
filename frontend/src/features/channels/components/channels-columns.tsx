@@ -511,7 +511,10 @@ const QuotaBalanceCell = memo(({ balances }: { balances: ProviderQuotaBalance[] 
             const currency = currencyOf(balance);
             return (
               <div key={`${currency}-${index}`} className='flex min-w-0 items-center justify-between gap-2'>
-                <span className='text-muted-foreground truncate'>{t('quota.label.account_balance')}</span>
+                <span className='text-muted-foreground truncate'>
+                  {t('quota.label.account_balance')}
+                  {balance.account ? ` · ${balance.account}` : ''}
+                </span>
                 <span className='font-medium whitespace-nowrap'>{formatAmount(balance.totalBalance, currency)}</span>
               </div>
             );
@@ -523,7 +526,10 @@ const QuotaBalanceCell = memo(({ balances }: { balances: ProviderQuotaBalance[] 
           const currency = currencyOf(balance);
           return (
             <div key={`${currency}-${index}`} className='space-y-0.5 text-xs'>
-              <div className='font-medium'>{currency}</div>
+              <div className='font-medium'>
+                {currency}
+                {balance.account ? ` · ${balance.account}` : ''}
+              </div>
               <div>
                 {t('quota.label.account_balance')}: {formatAmount(balance.totalBalance, currency)}
               </div>
