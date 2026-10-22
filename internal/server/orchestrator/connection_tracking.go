@@ -172,7 +172,20 @@ func (m *channelLimiterMiddleware) releaseSlot(ctx context.Context, slot *limite
 type channelLimiterStream struct {
 	streams.Stream[*llm.Response]
 
-	release func()
+	release   func()
+	closeOnce sync.Once
+	closeErr  error
+}
+
+func (s *channelLimiterStream) Next() bool {
+	if s.Stream.Next() {
+		return true
+	}
+	// Upstream work is finished even when downstream transformations still have
+	// terminal events to deliver (or need another model call). Release admission
+	// without closing the outer persistence/delivery stream.
+	_ = s.Close()
+	return false
 }
 
 func (s *channelLimiterStream) Close() error {
@@ -180,6 +193,9 @@ func (s *channelLimiterStream) Close() error {
 	// queued waiter cannot be granted the slot (and dial a new upstream connection)
 	// while this request's connection is still open. defer guards the release so the
 	// slot is freed even if Stream.Close panics.
-	defer s.release()
-	return s.Stream.Close()
+	s.closeOnce.Do(func() {
+		defer s.release()
+		s.closeErr = s.Stream.Close()
+	})
+	return s.closeErr
 }
