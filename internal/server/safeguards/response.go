@@ -40,6 +40,9 @@ func decodeTool(raw json.RawMessage) (ToolUse, bool) {
 	return ToolUse{ID: block.ID, Name: block.Name, Input: block.Input}, true
 }
 
+// AnnotateResponse replaces dangerous-tool-use verdicts in a complete Anthropic
+// response while preserving unrelated safeguards. A nil evaluator is a no-op;
+// malformed response JSON returns an error rather than an approval.
 func (e *Evaluator) AnnotateResponse(ctx context.Context, body []byte) ([]byte, error) {
 	if e == nil {
 		return body, nil
@@ -82,10 +85,16 @@ type Stream struct {
 	bytes     int
 }
 
+// NewStream creates per-message tool-argument state. A nil evaluator leaves all
+// events unchanged. Callers must not reuse the stream across messages.
 func NewStream(e *Evaluator) *Stream {
 	return &Stream{evaluator: e, tools: make(map[int]*streamedTool), lastIndex: -1}
 }
 
+// Observe consumes one Anthropic event, removing upstream tool-use verdicts and
+// collecting bounded tool inputs. The final message_delta triggers one review;
+// missing block stops or invalid arguments produce unavailable verdicts. The
+// caller must validate stream completion before forwarding the reviewed delta.
 func (s *Stream) Observe(ctx context.Context, body []byte) ([]byte, error) {
 	if s.evaluator == nil {
 		return body, nil
