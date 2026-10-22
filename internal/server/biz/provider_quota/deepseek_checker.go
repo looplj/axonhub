@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"math"
 	"net/http"
 	"net/url"
@@ -195,9 +196,7 @@ func buildDeepSeekMultiAccountQuota(accounts []deepSeekAccountQuota) QuotaData {
 			accountBalancesWithLabel := make([]map[string]any, 0, len(accountBalances))
 			for _, balance := range accountBalances {
 				labeled := make(map[string]any, len(balance)+1)
-				for key, value := range balance {
-					labeled[key] = value
-				}
+				maps.Copy(labeled, balance)
 				labeled["account"] = account.Account
 				accountBalancesWithLabel = append(accountBalancesWithLabel, labeled)
 				balances = append(balances, labeled)
