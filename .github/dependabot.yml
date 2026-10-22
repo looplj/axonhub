@@ -41,7 +41,9 @@ updates:
         group-by: "dependency-name"
 
   - package-ecosystem: "npm"
-    directory: "/frontend"
+    directories:
+      - "/frontend"
+      - "/integration_test/gemini/node"
     schedule:
       interval: "weekly"
       day: "monday"
