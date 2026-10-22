@@ -7,8 +7,7 @@ updates:
       - "/llm"
       - "/cmd/schema"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
@@ -27,8 +26,7 @@ updates:
       - "/integration_test/openai"
       - "/examples/openapi"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
@@ -45,8 +43,7 @@ updates:
       - "/frontend"
       - "/integration_test/gemini/node"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
@@ -58,8 +55,7 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
@@ -71,8 +67,7 @@ updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
       time: "03:00"
       timezone: "Asia/Shanghai"
     labels:
