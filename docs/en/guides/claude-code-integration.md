@@ -41,6 +41,43 @@ server:
 - Keep your API key secret; store it in a shell profile or secret manager.
 - If your AxonHub endpoint uses HTTPS with a self-signed certificate, configure trust settings in your OS.
 
+### Server-side auto-mode reviewer
+
+AxonHub can review proposed tool calls for Claude Code auto mode using a separate model. This is disabled by default and is independent of the main conversation model. Configure a channel that exposes the reviewer model and make that model accessible to the calling API key and project. For example, an existing Gemini channel can expose `gemini-3.8-flash` as a lower-cost reviewer:
+
+```yaml
+server:
+  safeguards:
+    classifier_model: gemini-3.8-flash
+    timeout: 30s
+    max_tokens: 4096
+    transcript_char_budget: 24000
+```
+
+Restart AxonHub after changing these settings; they are not applied by SIGHUP reload. The equivalent environment variables are:
+
+```bash
+export AXONHUB_SERVER_SAFEGUARDS_CLASSIFIER_MODEL="gemini-3.8-flash"
+export AXONHUB_SERVER_SAFEGUARDS_TIMEOUT="30s"
+export AXONHUB_SERVER_SAFEGUARDS_MAX_TOKENS="4096"
+export AXONHUB_SERVER_SAFEGUARDS_TRANSCRIPT_CHAR_BUDGET="24000"
+```
+
+In a Claude Code version supporting server-side auto mode, enable the server option and select auto mode:
+
+```bash
+export CLAUDE_CODE_AUTO_MODE_SERVER=1
+claude --permission-mode auto
+```
+
+Requests must include the `dangerous_tool_use` safeguard. AxonHub creates the reviewer request itself, evaluates the main model's proposed tools, and returns `safeguard_results` keyed by tool-use ID (on the response, or the final message delta when streaming). The reviewer model is selected by the server, not by client-supplied reviewer configuration. Ordinary requests without the safeguard do not incur reviewer calls.
+
+Each review adds a separate model request and its token cost. The reviewer uses the caller's project and model-access restrictions. It has no tools and cannot execute proposed commands. Reviewer requests follow the configured channel retry policy; the review timeout bounds the entire operation, including retries. Retries can add token cost. Select a suitably capable low-cost model, monitor its verdicts and timeouts, and adjust the transcript budget before reducing output tokens too aggressively. Defaults are 30 seconds, 4,096 output tokens, and 24,000 UTF-8 bytes of transcript. Allowed ranges are a positive timeout up to two minutes, 1–16,384 output tokens, and 1–1,000,000 transcript bytes.
+
+Despite the setting name `transcript_char_budget`, the transcript limit is measured in UTF-8 bytes, with truncation at valid character boundaries. Classifier context is limited to 16 KB, and proposed tool calls to 64 KB in aggregate; inputs exceeding those limits return unavailable.
+
+A timeout, provider failure, or invalid classifier output produces an **unavailable** result, never an automatic safe verdict. Claude Code remains responsible for applying its permission policy and asking for confirmation where required. Review results are not a guarantee that a command is safe. Setting `classifier_model` to an empty string disables server-side review.
+
 ### Working with Model Profiles
 AxonHub model profiles remap incoming model names to provider-specific equivalents:
 - Create a profile in the AxonHub console and add mapping rules (exact name or regex).

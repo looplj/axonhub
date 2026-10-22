@@ -41,6 +41,43 @@ server:
 - 请务必保密 API Key，可写入 shell profile 或使用密钥管理工具。
 - 若 AxonHub 使用自签名证书，请在操作系统内添加信任配置。
 
+### 服务端自动模式审查模型
+
+AxonHub 可以使用独立模型审查 Claude Code 自动模式提出的工具调用。此功能默认关闭，与主对话模型相互独立。请先配置提供审查模型的渠道，并允许调用方 API Key 及项目访问该模型。例如，可以通过现有 Gemini 渠道提供 `gemini-3.8-flash`，作为成本较低的审查模型：
+
+```yaml
+server:
+  safeguards:
+    classifier_model: gemini-3.8-flash
+    timeout: 30s
+    max_tokens: 4096
+    transcript_char_budget: 24000
+```
+
+修改后需重启 AxonHub；SIGHUP 不会重新加载这些设置。对应环境变量如下：
+
+```bash
+export AXONHUB_SERVER_SAFEGUARDS_CLASSIFIER_MODEL="gemini-3.8-flash"
+export AXONHUB_SERVER_SAFEGUARDS_TIMEOUT="30s"
+export AXONHUB_SERVER_SAFEGUARDS_MAX_TOKENS="4096"
+export AXONHUB_SERVER_SAFEGUARDS_TRANSCRIPT_CHAR_BUDGET="24000"
+```
+
+在支持服务端自动模式的 Claude Code 版本中启用服务端选项并选择自动模式：
+
+```bash
+export CLAUDE_CODE_AUTO_MODE_SERVER=1
+claude --permission-mode auto
+```
+
+请求必须包含 `dangerous_tool_use` 防护设置。AxonHub 自行构造审查请求，评估主模型提出的工具调用，并返回以工具调用 ID 为键的 `safeguard_results`（位于响应对象中，流式响应则位于最终的消息增量中）。审查模型由服务端选择，不接受客户端指定的审查模型配置。未启用该防护的普通请求不会触发审查模型调用。
+
+每次审查都会增加一次模型请求及相应的 token 成本。审查请求沿用调用方的项目与模型访问限制。审查模型没有工具，不能执行被审查的命令。审查请求遵循已配置的通道重试策略；审查超时限制包含重试在内的整个操作。重试可能增加 token 成本。建议选择能力合适、成本较低的模型，观察判定和超时情况，并优先调整对话预算，避免过度减少输出 token。默认超时为 30 秒、输出上限为 4,096 token、对话预算为 24,000 UTF-8 字节。可配置范围分别为大于零且不超过两分钟、1–16,384 token、1–1,000,000 字节。
+
+虽然设置名为 `transcript_char_budget`，对话预算实际上按 UTF-8 字节计量，并在有效字符边界截断。分类上下文上限为 16 KB，待审查工具调用的总上限为 64 KB；超出这些限制的输入会返回不可用结果。
+
+超时、上游故障或无效的分类输出都会产生 **unavailable（不可用）** 结果，绝不会被自动判定为安全。Claude Code 仍负责执行权限策略，并在需要时请求用户确认。审查结果不能保证命令安全。将 `classifier_model` 设为空字符串即可关闭服务端审查。
+
 ### 使用模型配置文件
 AxonHub 的模型配置文件支持将请求模型映射到具体提供商模型：
 - 在 AxonHub 控制台创建配置文件并添加映射规则（精确名称或正则）。

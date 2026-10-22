@@ -133,3 +133,52 @@ func writeTestConfig(t *testing.T, contents string) string {
 	}
 	return configFile
 }
+
+func TestSafeguardsConfigDefaults(t *testing.T) {
+	cfg, _, err := loadConfig(writeTestConfig(t, ""))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := cfg.APIServer.Safeguards
+	if got.ClassifierModel != "" || got.Timeout != 30*time.Second || got.MaxTokens != 4096 || got.TranscriptCharBudget != 24000 {
+		t.Fatalf("unexpected safeguards defaults: %+v", got)
+	}
+}
+
+func TestSafeguardsConfigEnvironmentOverridesYAML(t *testing.T) {
+	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_CLASSIFIER_MODEL", " gemini-3.8-flash ")
+	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_TIMEOUT", "12s")
+	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_MAX_TOKENS", "2048")
+	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_TRANSCRIPT_CHAR_BUDGET", "12000")
+	for _, source := range []string{"", `server:
+  safeguards:
+    classifier_model: other-model
+    timeout: 20s
+    max_tokens: 1024
+    transcript_char_budget: 6000
+`} {
+		cfg, _, err := loadConfig(writeTestConfig(t, source))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := cfg.APIServer.Safeguards
+		if got.ClassifierModel != "gemini-3.8-flash" || got.Timeout != 12*time.Second || got.MaxTokens != 2048 || got.TranscriptCharBudget != 12000 {
+			t.Fatalf("environment overrides were not applied: %+v", got)
+		}
+	}
+}
+
+func TestSafeguardsConfigRejectsInvalidLimits(t *testing.T) {
+	for _, config := range []string{
+		"timeout: 0s", "timeout: -1s", "timeout: 121s", "timeout: invalid",
+		"max_tokens: 0", "max_tokens: 16385",
+		"transcript_char_budget: 0", "transcript_char_budget: 1000001",
+	} {
+		t.Run(config, func(t *testing.T) {
+			_, _, err := loadConfig(writeTestConfig(t, "server:\n  safeguards:\n    "+config+"\n"))
+			if err == nil {
+				t.Fatalf("expected error for %s", config)
+			}
+		})
+	}
+}
