@@ -126,6 +126,7 @@ const (
 	ProviderTypeZenmux          ProviderType = "zenmux"
 	ProviderTypeCommandcode     ProviderType = "commandcode"
 	ProviderTypeOllama          ProviderType = "ollama"
+	ProviderTypeDeepseek        ProviderType = "deepseek"
 )
 
 func (pt ProviderType) String() string {
@@ -135,7 +136,7 @@ func (pt ProviderType) String() string {
 // ProviderTypeValidator is a validator for the "provider_type" field enum values. It is called by the builders before save.
 func ProviderTypeValidator(pt ProviderType) error {
 	switch pt {
-	case ProviderTypeClaudecode, ProviderTypeCodex, ProviderTypeAntigravity, ProviderTypeXaiSubscription, ProviderTypeGithubCopilot, ProviderTypeNanogpt, ProviderTypeCline, ProviderTypeWafer, ProviderTypeSynthetic, ProviderTypeNeuralwatt, ProviderTypeApertis, ProviderTypeOpencodeGo, ProviderTypeKimiCode, ProviderTypeMinimax, ProviderTypeZhipu, ProviderTypeZai, ProviderTypeCharmHyper, ProviderTypeZenmux, ProviderTypeCommandcode, ProviderTypeOllama:
+	case ProviderTypeClaudecode, ProviderTypeCodex, ProviderTypeAntigravity, ProviderTypeXaiSubscription, ProviderTypeGithubCopilot, ProviderTypeNanogpt, ProviderTypeCline, ProviderTypeWafer, ProviderTypeSynthetic, ProviderTypeNeuralwatt, ProviderTypeApertis, ProviderTypeOpencodeGo, ProviderTypeKimiCode, ProviderTypeMinimax, ProviderTypeZhipu, ProviderTypeZai, ProviderTypeCharmHyper, ProviderTypeZenmux, ProviderTypeCommandcode, ProviderTypeOllama, ProviderTypeDeepseek:
 		return nil
 	default:
 		return fmt.Errorf("providerquotastatus: invalid enum value for provider_type field: %q", pt)

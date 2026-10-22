@@ -80,6 +80,8 @@ var providerQuotaChannelTypes = []channel.Type{
 	channel.TypeCommandcodeAnthropic,
 	channel.TypeOllama,
 	channel.TypeOllamaAnthropic,
+	channel.TypeDeepseek,
+	channel.TypeDeepseekAnthropic,
 }
 
 // quotaErrorBackoff returns the next-check delay after `failures` consecutive
@@ -396,6 +398,7 @@ func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerCharmHyperSupport()
 	svc.registerCommandCodeSupport()
 	svc.registerOllamaSupport()
+	svc.registerDeepSeekSupport()
 }
 
 func (svc *ProviderQuotaService) RegisterScheduledTasks(ctx context.Context, s *scheduler.Scheduler) error {
@@ -418,6 +421,10 @@ func (svc *ProviderQuotaService) registerCommandCodeSupport() {
 
 func (svc *ProviderQuotaService) registerOllamaSupport() {
 	svc.checkers["ollama"] = provider_quota.NewOllamaQuotaChecker(svc.httpClient)
+}
+
+func (svc *ProviderQuotaService) registerDeepSeekSupport() {
+	svc.checkers["deepseek"] = provider_quota.NewDeepSeekQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerCodexSupport() {
@@ -1052,6 +1059,8 @@ func (svc *ProviderQuotaService) getProviderType(ch *ent.Channel) string {
 		return "commandcode"
 	case channel.TypeOllama, channel.TypeOllamaAnthropic:
 		return "ollama"
+	case channel.TypeDeepseek, channel.TypeDeepseekAnthropic:
+		return "deepseek"
 	default:
 		return ""
 	}

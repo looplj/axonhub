@@ -35,7 +35,7 @@ const { pageInfoSchema } = await import(
 );
 globalThis.__importStubs = { z, pageInfoSchema };
 
-const { parseQuotaLimits } = await loadModule('features/system/data/quotas.ts', (s) =>
+const { parseQuotaLimits, parseQuotaBalances } = await loadModule('features/system/data/quotas.ts', (s) =>
   s.replace(/export function useProviderQuotaStatuses[\s\S]*$/m, '')
 );
 
@@ -153,6 +153,30 @@ test('normalized limits: malformed required fields produce no rendered limits', 
   });
 
   assert.deepEqual(limits, []);
+});
+
+test('balance quota data renders monetary rows instead of a fake percentage bar', () => {
+  const balances = parseQuotaBalances({
+    balances: [{ currency: 'CNY', total_balance: 43.99, granted_balance: 0, topped_up_balance: 43.99 }],
+  });
+
+  assert.deepEqual(balances, [{ currency: 'CNY', totalBalance: 43.99, grantedBalance: 0, toppedUpBalance: 43.99 }]);
+  assert.match(columnsSource, /parseQuotaBalances/, 'the quota cell should consume monetary balances');
+  assert.match(columnsSource, /quota\.label\.account_balance/);
+  assert.match(columnsSource, /quota\.label\.topped_up_balance/);
+
+  const balanceCell = columnsSource.slice(columnsSource.indexOf('const QuotaBalanceCell'), columnsSource.indexOf('QuotaBalanceCell.displayName'));
+  assert.ok(balanceCell.length > 0, 'QuotaBalanceCell should exist');
+  assert.doesNotMatch(balanceCell, /remaining}%/, 'monetary balances must not be rendered as a percentage');
+  assert.doesNotMatch(balanceCell, /bg-muted h-1\.5/, 'monetary balances must not use a usage progress bar');
+});
+
+test('malformed balance entries are dropped without fabricating a row', () => {
+  assert.deepEqual(parseQuotaBalances({ balances: [null, 42, 'broken', { currency: 'CNY' }] }), []);
+  assert.deepEqual(
+    parseQuotaBalances({ balances: [{ currency: 'CNY', total_balance: -1 }, { currency: 'USD', total_balance: '1.00' }] }),
+    []
+  );
 });
 
 test('no provider fallback: channels table renders quota for any channel type with normalized limits', () => {

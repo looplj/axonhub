@@ -3802,6 +3802,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   zenmux
   commandcode
   ollama
+  deepseek
 }
 """
 ProviderQuotaStatusStatus is enum for the field status

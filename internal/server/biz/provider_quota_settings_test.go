@@ -19,6 +19,9 @@ func TestProviderQuotaChannelTypes_include_xAI_subscription(t *testing.T) {
 	require.True(t, slices.Contains(providerQuotaChannelTypes, channel.TypeZai))
 	require.True(t, slices.Contains(providerQuotaChannelTypes, channel.TypeZaiAnthropic))
 	require.True(t, slices.Contains(supportedProviderQuotaTypes, "zai"))
+	require.True(t, slices.Contains(providerQuotaChannelTypes, channel.TypeDeepseek))
+	require.True(t, slices.Contains(providerQuotaChannelTypes, channel.TypeDeepseekAnthropic))
+	require.True(t, slices.Contains(supportedProviderQuotaTypes, "deepseek"))
 }
 
 func setupProviderQuotaSettingsTest(t *testing.T) (*SystemService, *ent.Client) {

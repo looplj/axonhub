@@ -272,3 +272,33 @@ test('mode badge labels are locale-complete and legacy enforcement keys are gone
     assert.deepEqual(legacy, [], `${name}/system.json still has legacy quota status keys`);
   }
 });
+test('DeepSeek renders the balances returned by the official API', () => {
+  const source = read('components/quota-badges.tsx');
+  const start = source.indexOf('{isDeepSeekType(channel.type) &&');
+  const end = source.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'charm_hyper' &&", start);
+
+  assert.ok(start !== -1, 'DeepSeek render branch should exist');
+  assert.ok(end !== -1 && end > start, 'Charm Hyper render branch should follow the DeepSeek branch');
+
+  const block = source.slice(start, end);
+  assert.match(block, /ProviderDeepSeekQuotaData/);
+  assert.match(block, /qd\?\.balances\?\.length/);
+  assert.match(block, /quota\.label\.account_balance/);
+  assert.match(block, /quota\.label\.granted_balance/);
+  assert.match(block, /quota\.label\.topped_up_balance/);
+  assert.match(block, /currencies\.format/);
+});
+
+test('DeepSeek quota labels are locale-complete', () => {
+  const enSystem = JSON.parse(read('locales/en/system.json'));
+  const zhSystem = JSON.parse(read('locales/zh-CN/system.json'));
+  for (const key of [
+    'quota.label.account_balance',
+    'quota.label.granted_balance',
+    'quota.label.topped_up_balance',
+    'system.quota.collection.providers.deepseek',
+  ]) {
+    assert.ok(enSystem[key], `en/system.json missing ${key}`);
+    assert.ok(zhSystem[key], `zh-CN/system.json missing ${key}`);
+  }
+});
