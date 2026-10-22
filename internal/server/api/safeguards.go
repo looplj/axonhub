@@ -118,8 +118,8 @@ func (s *safeguardsStream) Next() bool {
 }
 
 func (s *safeguardsStream) drainTerminalTail() error {
-	// Match the orchestrator's bounded terminal-tail collection window. Cancel
-	// the upstream execution if a provider leaves its completed stream open.
+	// Bound incomplete terminal tails. Completed Anthropic transports close at
+	// message_stop before capture fan-out, without canceling downstream delivery.
 	if s.abortUpstream != nil {
 		timer := time.AfterFunc(time.Second, s.abortUpstream)
 		defer timer.Stop()

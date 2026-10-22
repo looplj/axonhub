@@ -339,6 +339,8 @@ func (processor *ChatCompletionOrchestrator) Process(ctx context.Context, reques
 		captureRawProviderResponse(outbound, processor.SystemService),
 		captureRawProviderStream(outbound, processor.SystemService),
 		captureResponsesProvider(outbound),
+		// Run first on raw responses (reverse order), before capture fan-out.
+		closeCompletedAnthropicStream(outbound),
 	)
 
 	pipelineOpts = append(pipelineOpts, pipeline.WithMiddlewares(middlewares...))
