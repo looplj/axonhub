@@ -161,7 +161,7 @@ test('shows the OpenAI Decisions endpoint only for the OpenAI create/edit channe
 
 test('keeps the SystemOne endpoint option unchanged when openai/decisions is offered', () => {
   assert.deepEqual(getConfigurableApiFormatsForChannelType('typesafe', configurableFormats), ['typesafe/systemone']);
-  assert.ok(!getConfigurableApiFormatsForChannelType('openai', configurableFormats).includes('typesafe/systemone'));
+  assert.ok(getConfigurableApiFormatsForChannelType('openai', configurableFormats).includes('typesafe/systemone'));
 });
 
 test('offers the SystemOne endpoint on Cloudflare Workers AI channels', () => {

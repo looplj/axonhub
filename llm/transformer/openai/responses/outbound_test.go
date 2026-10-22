@@ -503,6 +503,90 @@ func TestOutboundTransformer_TransformRequest_DoesNotReplayRawToolWhenToolsChang
 	require.Equal(t, "different_tool", tool["name"])
 }
 
+func TestOutboundTransformer_TransformRequest_DropsRawToolChoiceWhenNoToolsSent(t *testing.T) {
+	inbound := NewInboundTransformer()
+	// A raw tool_choice must not survive when the request sends no tools:
+	// providers reject tool_choice without tools.
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "Search the docs.",
+			"tool_choice": {"type": "tool_search", "tools": [{"type": "tool_search", "name": "search_docs"}]}
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]any
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+	require.NotContains(t, payload, "tool_choice")
+}
+
+func TestOutboundTransformer_TransformRequest_KeepsToolChoiceWhenRawToolsAreRestored(t *testing.T) {
+	inbound := NewInboundTransformer()
+	// These tools are rebuilt from the raw fragments, so the marshaled body
+	// still carries tools. The tool choice must survive that restore.
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "Search the docs.",
+			"tools": [{"type": "tool_search", "name": "search_docs"}],
+			"tool_choice": "auto"
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]json.RawMessage
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+	require.NotEmpty(t, payload["tools"])
+	require.JSONEq(t, `"auto"`, string(payload["tool_choice"]))
+}
+
+func TestOutboundTransformer_TransformRequest_ReplaysRawToolChoiceWhenToolsSent(t *testing.T) {
+	inbound := NewInboundTransformer()
+	inboundReq := &httpclient.Request{
+		Body: []byte(`{
+			"model": "gpt-4o",
+			"input": "Search the docs.",
+			"tools": [{"type": "tool_search", "name": "search_docs"}],
+			"tool_choice": {"type": "tool_search", "tools": [{"type": "tool_search", "name": "search_docs"}]}
+		}`),
+	}
+
+	llmReq, err := inbound.TransformRequest(context.Background(), inboundReq)
+	require.NoError(t, err)
+
+	outbound, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	httpReq, err := outbound.TransformRequest(context.Background(), llmReq)
+	require.NoError(t, err)
+
+	var payload map[string]json.RawMessage
+	err = json.Unmarshal(httpReq.Body, &payload)
+	require.NoError(t, err)
+	require.JSONEq(t,
+		`{"type": "tool_search", "tools": [{"type": "tool_search", "name": "search_docs"}]}`,
+		string(payload["tool_choice"]))
+}
+
 func TestProviderExtensions_NotSerializedWithLLMRequest(t *testing.T) {
 	req := &llm.Request{
 		Model: "gpt-4o",
@@ -934,6 +1018,15 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 						},
 					},
 				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:       "lookup",
+							Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
+						},
+					},
+				},
 				ToolChoice: &llm.ToolChoice{
 					ToolChoice: lo.ToPtr("auto"),
 				},
@@ -1056,6 +1149,60 @@ func TestOutboundTransformer_TransformRequest(t *testing.T) {
 				err := json.Unmarshal(result.Body, &req)
 				require.NoError(t, err)
 				require.Nil(t, req.ParallelToolCalls, "ParallelToolCalls should be nil when no tools are provided")
+			},
+		},
+		{
+			name: "request with tool choice but no tools",
+			chatReq: &llm.Request{
+				Model: "gpt-4o",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				ToolChoice: &llm.ToolChoice{ToolChoice: lo.ToPtr("auto")},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.Nil(t, req.ToolChoice, "ToolChoice should be dropped when no tools are provided")
+				require.NotContains(t, string(result.Body), "tool_choice")
+			},
+		},
+		{
+			name: "request with tool choice and tools",
+			chatReq: &llm.Request{
+				Model: "gpt-4o",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("Hello")},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:       "lookup",
+							Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
+						},
+					},
+				},
+				ToolChoice: &llm.ToolChoice{ToolChoice: lo.ToPtr("required")},
+			},
+			expectError: false,
+			validate: func(t *testing.T, result *httpclient.Request, chatReq *llm.Request) {
+				var req Request
+
+				err := json.Unmarshal(result.Body, &req)
+				require.NoError(t, err)
+				require.NotNil(t, req.ToolChoice)
+				require.NotNil(t, req.ToolChoice.Mode)
+				require.Equal(t, "required", *req.ToolChoice.Mode)
 			},
 		},
 		{

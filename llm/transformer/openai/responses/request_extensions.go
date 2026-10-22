@@ -306,14 +306,20 @@ func openAIResponsesRequestExtensions(llmReq *llm.Request) *llm.OpenAIResponsesR
 // marshalRequestPayload marshals the unified request and replays the raw fields,
 // tools and input items the caller sent so they survive the round trip.
 func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error) {
+	requestExt := openAIResponsesRequestExtensions(llmReq)
+	if requestExt == nil {
+		if len(payload.Tools) == 0 {
+			// Providers reject tool_choice when no tools are sent; omitting it
+			// is equivalent to the default "auto".
+			payload.ToolChoice = nil
+		}
+
+		return json.Marshal(payload)
+	}
+
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
-	}
-
-	requestExt := openAIResponsesRequestExtensions(llmReq)
-	if requestExt == nil {
-		return body, nil
 	}
 
 	var obj map[string]json.RawMessage
@@ -330,7 +336,14 @@ func marshalRequestPayload(payload Request, llmReq *llm.Request) ([]byte, error)
 		obj["tools"] = toolsRaw
 	}
 
-	if len(requestExt.RawToolChoice) > 0 && rawToolChoiceMatchesCurrentTools(requestExt.RawToolChoice, payload.ToolChoice) {
+	if !hasNonEmptyTools(obj["tools"]) {
+		// Providers reject tool_choice when no tools are sent (Responses Lite
+		// requests carry their tools inside the input instead). Omitting it is
+		// equivalent to the default "auto", so drop it. This runs after raw
+		// tools are restored, so requests that keep tools keep their choice.
+		delete(obj, "tool_choice")
+	} else if len(requestExt.RawToolChoice) > 0 &&
+		rawToolChoiceMatchesCurrentTools(requestExt.RawToolChoice, payload.ToolChoice) {
 		obj["tool_choice"] = cloneRaw(requestExt.RawToolChoice)
 	}
 
@@ -527,6 +540,21 @@ func structuredToolSignaturesMatch(structuredTools []json.RawMessage, expected [
 	}
 
 	return true
+}
+
+// hasNonEmptyTools reports whether the marshaled request carries at least one
+// tool. tool_choice must not be sent when the request has no tools.
+func hasNonEmptyTools(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return false
+	}
+
+	var tools []json.RawMessage
+	if json.Unmarshal(raw, &tools) != nil {
+		return false
+	}
+
+	return len(tools) > 0
 }
 
 func rawToolChoiceMatchesCurrentTools(raw json.RawMessage, current *ToolChoice) bool {

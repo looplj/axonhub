@@ -48,6 +48,51 @@ func TestRequestFromLLM(t *testing.T) {
 			},
 		},
 		{
+			name: "request with tool choice but no tools",
+			llmReq: &llm.Request{
+				Model: "deepseek-v3",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hi")},
+					},
+				},
+				ToolChoice: &llm.ToolChoice{ToolChoice: lo.ToPtr("auto")},
+			},
+			validate: func(t *testing.T, req *Request) {
+				require.NotNil(t, req)
+				require.Nil(t, req.ToolChoice)
+			},
+		},
+		{
+			name: "request with tool choice and tools",
+			llmReq: &llm.Request{
+				Model: "deepseek-v3",
+				Messages: []llm.Message{
+					{
+						Role:    "user",
+						Content: llm.MessageContent{Content: lo.ToPtr("hi")},
+					},
+				},
+				Tools: []llm.Tool{
+					{
+						Type: "function",
+						Function: llm.Function{
+							Name:       "lookup",
+							Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
+						},
+					},
+				},
+				ToolChoice: &llm.ToolChoice{ToolChoice: lo.ToPtr("required")},
+			},
+			validate: func(t *testing.T, req *Request) {
+				require.NotNil(t, req)
+				require.NotNil(t, req.ToolChoice)
+				require.NotNil(t, req.ToolChoice.ToolChoice)
+				require.Equal(t, "required", *req.ToolChoice.ToolChoice)
+			},
+		},
+		{
 			name: "request with helper fields stripped",
 			llmReq: &llm.Request{
 				Model: "gpt-4",

@@ -97,7 +97,11 @@ func RequestFromLLM(ctx context.Context, r *llm.Request, reasoningField Reasonin
 	}
 
 	if len(req.Tools) == 0 {
+		// Some upstreams reject parallel_tool_calls and tool_choice when no
+		// tools are sent. Omitting tool_choice is equivalent to the default
+		// "auto", so drop both.
 		req.ParallelToolCalls = nil
+		req.ToolChoice = nil
 	}
 
 	return req
