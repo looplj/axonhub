@@ -169,6 +169,12 @@ test('balance quota data renders monetary rows instead of a fake percentage bar'
   assert.ok(balanceCell.length > 0, 'QuotaBalanceCell should exist');
   assert.doesNotMatch(balanceCell, /remaining}%/, 'monetary balances must not be rendered as a percentage');
   assert.doesNotMatch(balanceCell, /bg-muted h-1\.5/, 'monetary balances must not use a usage progress bar');
+
+  const triggerBlock = balanceCell.slice(0, balanceCell.indexOf('<TooltipContent'));
+  const tooltipBlock = balanceCell.slice(balanceCell.indexOf('<TooltipContent'));
+  assert.doesNotMatch(triggerBlock, /topped_up_balance|granted_balance/, 'the visible cell should show only the total balance');
+  assert.match(tooltipBlock, /topped_up_balance/, 'the tooltip should keep the topped-up breakdown');
+  assert.match(tooltipBlock, /granted_balance/, 'the tooltip should keep the granted breakdown');
 });
 
 test('malformed balance entries are dropped without fabricating a row', () => {

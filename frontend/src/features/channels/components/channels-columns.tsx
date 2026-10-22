@@ -510,23 +510,9 @@ const QuotaBalanceCell = memo(({ balances }: { balances: ProviderQuotaBalance[] 
           {balances.map((balance, index) => {
             const currency = currencyOf(balance);
             return (
-              <div key={`${currency}-${index}`} className='flex min-w-0 flex-col gap-0.5'>
-                <div className='flex min-w-0 items-center justify-between gap-2'>
-                  <span className='text-muted-foreground truncate'>{t('quota.label.account_balance')}</span>
-                  <span className='font-medium whitespace-nowrap'>{formatAmount(balance.totalBalance, currency)}</span>
-                </div>
-                {balance.toppedUpBalance !== undefined && balance.toppedUpBalance > 0 && (
-                  <div className='flex min-w-0 items-center justify-between gap-2'>
-                    <span className='text-muted-foreground truncate'>{t('quota.label.topped_up_balance')}</span>
-                    <span className='text-muted-foreground whitespace-nowrap'>{formatAmount(balance.toppedUpBalance, currency)}</span>
-                  </div>
-                )}
-                {balance.grantedBalance !== undefined && balance.grantedBalance > 0 && (
-                  <div className='flex min-w-0 items-center justify-between gap-2'>
-                    <span className='text-muted-foreground truncate'>{t('quota.label.granted_balance')}</span>
-                    <span className='text-muted-foreground whitespace-nowrap'>{formatAmount(balance.grantedBalance, currency)}</span>
-                  </div>
-                )}
+              <div key={`${currency}-${index}`} className='flex min-w-0 items-center justify-between gap-2'>
+                <span className='text-muted-foreground truncate'>{t('quota.label.account_balance')}</span>
+                <span className='font-medium whitespace-nowrap'>{formatAmount(balance.totalBalance, currency)}</span>
               </div>
             );
           })}
@@ -541,12 +527,16 @@ const QuotaBalanceCell = memo(({ balances }: { balances: ProviderQuotaBalance[] 
               <div>
                 {t('quota.label.account_balance')}: {formatAmount(balance.totalBalance, currency)}
               </div>
-              <div>
-                {t('quota.label.granted_balance')}: {formatAmount(balance.grantedBalance, currency)}
-              </div>
-              <div>
-                {t('quota.label.topped_up_balance')}: {formatAmount(balance.toppedUpBalance, currency)}
-              </div>
+              {balance.grantedBalance !== undefined && (
+                <div>
+                  {t('quota.label.granted_balance')}: {formatAmount(balance.grantedBalance, currency)}
+                </div>
+              )}
+              {balance.toppedUpBalance !== undefined && (
+                <div>
+                  {t('quota.label.topped_up_balance')}: {formatAmount(balance.toppedUpBalance, currency)}
+                </div>
+              )}
             </div>
           );
         })}
