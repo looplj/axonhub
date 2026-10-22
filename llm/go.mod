@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/kaptinlin/jsonrepair v0.2.4
-	github.com/klauspost/compress v1.17.9
+	github.com/klauspost/compress v1.18.7
 	github.com/samber/lo v1.52.0
 	github.com/spf13/cast v1.10.0
 	github.com/stretchr/testify v1.11.1
