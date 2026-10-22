@@ -1086,16 +1086,6 @@ func (r *traceResolver) UsageMetadata(ctx context.Context, obj *ent.Trace) (*biz
 	return r.traceService.UsageMetadata(ctx, obj.ID)
 }
 
-// APIKeyStrategy is the resolver for the apiKeyStrategy field.
-func (r *updateChannelSettingsInputResolver) APIKeyStrategy(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *string) error {
-	panic(fmt.Errorf("not implemented: APIKeyStrategy - apiKeyStrategy"))
-}
-
-// APIKeyRoundRobinSwitchAfter is the resolver for the apiKeyRoundRobinSwitchAfter field.
-func (r *updateChannelSettingsInputResolver) APIKeyRoundRobinSwitchAfter(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *int) error {
-	panic(fmt.Errorf("not implemented: APIKeyRoundRobinSwitchAfter - apiKeyRoundRobinSwitchAfter"))
-}
-
 // ChannelSettings returns ChannelSettingsResolver implementation.
 func (r *Resolver) ChannelSettings() ChannelSettingsResolver { return &channelSettingsResolver{r} }
 
@@ -1105,12 +1095,29 @@ func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
 // Segment returns SegmentResolver implementation.
 func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 
-// UpdateChannelSettingsInput returns UpdateChannelSettingsInputResolver implementation.
-func (r *Resolver) UpdateChannelSettingsInput() UpdateChannelSettingsInputResolver {
-	return &updateChannelSettingsInputResolver{r}
-}
-
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *updateChannelSettingsInputResolver) APIKeyStrategy(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *string) error {
+	obj.APIKeyStrategy = data
+
+	return nil
+}
+func (r *updateChannelSettingsInputResolver) APIKeyRoundRobinSwitchAfter(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *int) error {
+	obj.APIKeyRoundRobinSwitchAfter = data
+
+	return nil
+}
+func (r *Resolver) UpdateChannelSettingsInput() UpdateChannelSettingsInputResolver {
+	return &updateChannelSettingsInputResolver{r}
+}
 type updateChannelSettingsInputResolver struct{ *Resolver }
+*/

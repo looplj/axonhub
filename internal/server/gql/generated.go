@@ -97,7 +97,6 @@ type ResolverRoot interface {
 	UserInfo() UserInfoResolver
 	UserProject() UserProjectResolver
 	UserRole() UserRoleResolver
-	UpdateChannelSettingsInput() UpdateChannelSettingsInputResolver
 }
 
 type DirectiveRoot struct {
@@ -2626,11 +2625,6 @@ type UserRoleResolver interface {
 	ID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	UserID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
 	RoleID(ctx context.Context, obj *ent.UserRole) (*objects.GUID, error)
-}
-
-type UpdateChannelSettingsInputResolver interface {
-	APIKeyStrategy(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *string) error
-	APIKeyRoundRobinSwitchAfter(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *int) error
 }
 
 type executableSchema struct {
@@ -70800,7 +70794,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "modelProtocols", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "maxSingleChannelRetries", "modelProtocols", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -70926,6 +70920,20 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.ModelProtocols = data
+		case "apiKeyStrategy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyStrategy"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyStrategy = data
+		case "apiKeyRoundRobinSwitchAfter":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyRoundRobinSwitchAfter"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKeyRoundRobinSwitchAfter = data
 		case "providerQuota":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerQuota"))
 			data, err := ec.unmarshalOChannelProviderQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings(ctx, v)
@@ -87730,18 +87738,14 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.UpdateChannelSettingsInput().APIKeyStrategy(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.APIKeyStrategy = data
 		case "apiKeyRoundRobinSwitchAfter":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKeyRoundRobinSwitchAfter"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
-			if err = ec.resolvers.UpdateChannelSettingsInput().APIKeyRoundRobinSwitchAfter(ctx, &it, data); err != nil {
-				return it, err
-			}
+			it.APIKeyRoundRobinSwitchAfter = data
 		case "providerQuota":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerQuota"))
 			data, err := ec.unmarshalOChannelProviderQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings(ctx, v)

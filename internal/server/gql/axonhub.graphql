@@ -298,6 +298,8 @@ input ChannelSettingsInput {
   retryableErrorPatterns: [RetryableErrorPatternInput!]
   maxSingleChannelRetries: Int
   modelProtocols: [ModelProtocolInput!]
+  apiKeyStrategy: String
+  apiKeyRoundRobinSwitchAfter: Int
   providerQuota: ChannelProviderQuotaSettingsInput
   quotaRoutingMode: ChannelQuotaRoutingMode
 }
