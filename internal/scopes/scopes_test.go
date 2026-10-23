@@ -108,6 +108,29 @@ func TestIsValidScope(t *testing.T) {
 	}
 }
 
+func TestIsSystemOnlyScope(t *testing.T) {
+	tests := []struct {
+		scope string
+		want  bool
+	}{
+		{scope: string(ScopeReadChannels), want: true},
+		{scope: string(ScopeWriteChannels), want: true},
+		{scope: string(ScopeReadProjects), want: true},
+		{scope: string(ScopeWriteAPIKeys), want: false},
+		{scope: string(ScopeWriteRequests), want: false},
+		{scope: string(ScopeReadUsers), want: false},
+		{scope: "not_a_scope", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.scope, func(t *testing.T) {
+			if got := IsSystemOnlyScope(tt.scope); got != tt.want {
+				t.Errorf("IsSystemOnlyScope(%q) = %v, want %v", tt.scope, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestScopeConstants(t *testing.T) {
 	// Test that scope constants are not empty
 	scopes := map[string]ScopeSlug{

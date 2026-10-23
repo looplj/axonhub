@@ -214,3 +214,20 @@ func IsValidScope(scope string) bool {
 
 	return false
 }
+
+// IsSystemOnlyScope reports whether a scope can only be granted at system level.
+// API key scopes are evaluated without a project dimension, so granting a
+// system-only scope to a project-scoped principal would hand it system-wide
+// reach.
+func IsSystemOnlyScope(scope string) bool {
+	for _, config := range scopeConfigs {
+		if string(config.Slug) != scope {
+			continue
+		}
+
+		return slices.Contains(config.Levels, ScopeLevelSystem) &&
+			!slices.Contains(config.Levels, ScopeLevelProject)
+	}
+
+	return false
+}

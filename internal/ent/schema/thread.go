@@ -79,13 +79,13 @@ func (Thread) Annotations() []schema.Annotation {
 func (Thread) Policy() ent.Policy {
 	return scopes.Policy{
 		Query: scopes.QueryPolicy{
-			scopes.APIKeyScopeQueryRule(scopes.ScopeWriteRequests),
+			scopes.APIKeyProjectScopeReadRule(scopes.ScopeWriteRequests),
 			scopes.UserProjectScopeReadRule(scopes.ScopeReadRequests),
 			scopes.OwnerRule(),
 			scopes.UserReadScopeRule(scopes.ScopeReadRequests),
 		},
 		Mutation: scopes.MutationPolicy{
-			scopes.APIKeyScopeMutationRule(scopes.ScopeWriteRequests),
+			scopes.APIKeyProjectScopeWriteRule(scopes.ScopeWriteRequests),
 			scopes.UserProjectScopeWriteRule(scopes.ScopeWriteRequests),
 			scopes.OwnerRule(),
 			scopes.UserWriteScopeRule(scopes.ScopeWriteRequests),
