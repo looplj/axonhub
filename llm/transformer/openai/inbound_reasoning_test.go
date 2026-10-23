@@ -12,6 +12,7 @@ func TestIsReasoningSignatureEvent(t *testing.T) {
 	signature := "test-signature"
 	reasoningContent := "test-reasoning-content"
 	content := "test-content"
+	stop := "stop"
 
 	tests := []struct {
 		name     string
@@ -187,6 +188,48 @@ func TestIsReasoningSignatureEvent(t *testing.T) {
 				},
 			},
 			want: false,
+		},
+		{
+			name: "Gemini final chunk with signature and finish reason - should NOT be skipped",
+			response: &llm.Response{
+				Choices: []llm.Choice{
+					{
+						Delta: &llm.Message{
+							ReasoningSignature: &signature,
+						},
+						FinishReason: &stop,
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "Chunk with signature and usage - should NOT be skipped",
+			response: &llm.Response{
+				Choices: []llm.Choice{
+					{
+						Delta: &llm.Message{
+							ReasoningSignature: &signature,
+						},
+					},
+				},
+				Usage: &llm.Usage{PromptTokens: 44, CompletionTokens: 121, TotalTokens: 165},
+			},
+			want: false,
+		},
+		{
+			name: "Gemini signature chunk with empty usage - should be skipped",
+			response: &llm.Response{
+				Choices: []llm.Choice{
+					{
+						Delta: &llm.Message{
+							ReasoningSignature: &signature,
+						},
+					},
+				},
+				Usage: &llm.Usage{},
+			},
+			want: true,
 		},
 	}
 
