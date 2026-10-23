@@ -1,6 +1,6 @@
 module github.com/looplj/axonhub/cmd/schema
 
-go 1.26.0
+go 1.26.4
 
 replace github.com/looplj/axonhub => ../../
 
@@ -19,7 +19,7 @@ require (
 )
 
 require (
-	ariga.io/atlas v0.38.0 // indirect
+	ariga.io/atlas v1.3.0 // indirect
 	cel.dev/expr v0.25.2 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.18.2 // indirect
