@@ -2,7 +2,7 @@ module github.com/looplj/axonhub/gemini_test
 
 go 1.25.2
 
-require google.golang.org/genai v1.37.0
+require google.golang.org/genai v1.75.0
 
 require (
 	cloud.google.com/go v0.123.0 // indirect
