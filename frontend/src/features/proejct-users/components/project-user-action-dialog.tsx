@@ -6,19 +6,17 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { graphqlRequest } from '@/gql/graphql';
 import { ROLES_QUERY } from '@/gql/roles';
-import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { canEditUserPermissions } from '@/lib/permission-utils';
 import { formatUserName } from '@/lib/utils';
+import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScopesSelect } from '@/components/scopes-select';
 import { User } from '../data/schema';
 import { useAddUserToProject, useUpdateProjectUser, useAllUsers } from '../data/users';
@@ -213,35 +211,20 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('users.form.selectUser')}</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('users.form.selectUserPlaceholder')} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <div className='flex items-center border-b px-3 pb-2'>
-                            <Search className='mr-2 h-4 w-4 shrink-0 opacity-50' />
-                            <Input
-                              placeholder={t('users.form.searchUsers')}
-                              value={searchTerm}
-                              onChange={(e) => setSearchTerm(e.target.value)}
-                              className='h-8 border-0 p-0 focus-visible:ring-0'
-                            />
-                          </div>
-                          {usersLoading ? (
-                            <div className='text-muted-foreground p-2 text-center text-sm'>{t('common.loading')}</div>
-                          ) : availableUsers.length === 0 ? (
-                            <div className='text-muted-foreground p-2 text-center text-sm'>{t('users.form.noUsersFound')}</div>
-                          ) : (
-                            availableUsers.map((user) => (
-                              <SelectItem key={user.id} value={user.id}>
-                                {formatUserName(user.firstName, user.lastName)} ({user.email})
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <AutoCompleteSelect
+                        selectedValue={field.value || ''}
+                        onSelectedValueChange={(value) => field.onChange(value)}
+                        items={availableUsers.map((user) => ({
+                          value: user.id,
+                          label: `${formatUserName(user.firstName, user.lastName)} (${user.email})`,
+                        }))}
+                        isLoading={usersLoading}
+                        emptyMessage={t('users.form.noUsersFound')}
+                        placeholder={t('users.form.selectUserPlaceholder')}
+                        portalContainer={dialogContent}
+                        searchValue={searchTerm}
+                        onSearchValueChange={setSearchTerm}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
