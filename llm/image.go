@@ -10,10 +10,12 @@ type ImageRequest struct {
 	Prompt string `json:"prompt,omitempty"`
 
 	// Images contains the raw image data for edit/variation requests.
-	Images [][]byte `json:"-"`
+	Images          [][]byte         `json:"-"`
+	ImageReferences []ImageReference `json:"images,omitempty"`
 
 	// Mask is the mask image data for edit requests (optional).
-	Mask []byte `json:"-"`
+	Mask          []byte          `json:"-"`
+	MaskReference *ImageReference `json:"mask,omitempty"`
 
 	// N is the number of images to generate.
 	N *int64 `json:"n,omitempty"`
@@ -63,15 +65,22 @@ type ImageRequest struct {
 	PromptOptimizer *bool `json:"prompt_optimizer,omitempty"`
 }
 
+type ImageReference struct {
+	ImageURL string `json:"image_url,omitempty"`
+	FileID   string `json:"file_id,omitempty"`
+}
+
 // ImageResponse represents the unified image response model.
-// Note: Common fields like Usage are in the parent Response struct, not here.
+// Native image usage is retained here; parent Response.Usage is its accounting projection.
 type ImageResponse struct {
-	Created      int64       `json:"created"`
-	Data         []ImageData `json:"data"`
-	Background   string      `json:"background,omitempty"`
-	OutputFormat string      `json:"output_format,omitempty"`
-	Quality      string      `json:"quality,omitempty"`
-	Size         string      `json:"size,omitempty"`
+	Created          int64           `json:"created"`
+	Data             []ImageData     `json:"data"`
+	Background       string          `json:"background,omitempty"`
+	OutputFormat     string          `json:"output_format,omitempty"`
+	Quality          string          `json:"quality,omitempty"`
+	Size             string          `json:"size,omitempty"`
+	SafetyIdentifier json.RawMessage `json:"safety_identifier,omitempty"`
+	Usage            *ImageUsage     `json:"usage,omitempty"`
 }
 
 // ImageData represents a single image in the response.
@@ -79,4 +88,32 @@ type ImageData struct {
 	B64JSON       string `json:"b64_json,omitempty"`
 	URL           string `json:"url,omitempty"`
 	RevisedPrompt string `json:"revised_prompt,omitempty"`
+	GenerationID  string `json:"generation_id,omitempty"`
+}
+
+type ImageUsage struct {
+	InputTokens         int64                     `json:"input_tokens"`
+	OutputTokens        int64                     `json:"output_tokens"`
+	TotalTokens         int64                     `json:"total_tokens"`
+	InputTokensDetails  *ImageInputTokensDetails  `json:"input_tokens_details,omitempty"`
+	OutputTokensDetails *ImageOutputTokensDetails `json:"output_tokens_details,omitempty"`
+	Cost                *float64                  `json:"cost,omitempty"`
+}
+
+type ImageInputTokensDetails struct {
+	ImageTokens         int64                     `json:"image_tokens"`
+	TextTokens          int64                     `json:"text_tokens"`
+	CachedTokens        *int64                    `json:"cached_tokens,omitempty"`
+	CachedTokensDetails *ImageCachedTokensDetails `json:"cached_tokens_details,omitempty"`
+}
+
+type ImageCachedTokensDetails struct {
+	ImageTokens int64 `json:"image_tokens"`
+	TextTokens  int64 `json:"text_tokens"`
+}
+
+type ImageOutputTokensDetails struct {
+	ImageTokens     *int64 `json:"image_tokens,omitempty"`
+	TextTokens      *int64 `json:"text_tokens,omitempty"`
+	ReasoningTokens *int64 `json:"reasoning_tokens,omitempty"`
 }

@@ -51,6 +51,7 @@ type responsesOutboundStream struct {
 	// provider `[DONE]` marker is valid only after this becomes true.
 	responseCompleted bool
 	doneEmitted       bool
+	contentCommitted  bool
 }
 
 // outboundStreamState holds the state for a streaming session.
@@ -93,7 +94,37 @@ func newResponsesOutboundStream(stream streams.Stream[*httpclient.StreamEvent]) 
 }
 
 func (s *responsesOutboundStream) enqueue(resp *llm.Response) {
+	if responseHasMeaningfulContent(resp) {
+		s.contentCommitted = true
+	}
 	s.eventQueue = append(s.eventQueue, resp)
+}
+
+func responseHasMeaningfulContent(resp *llm.Response) bool {
+	if resp == nil {
+		return false
+	}
+
+	for _, choice := range resp.Choices {
+		if choice.Delta == nil {
+			continue
+		}
+
+		message := choice.Delta
+		if message.Content.Content != nil && *message.Content.Content != "" {
+			return true
+		}
+		if len(message.Content.MultipleContent) > 0 || len(message.ToolCalls) > 0 || message.Refusal != "" {
+			return true
+		}
+		if (message.ReasoningContent != nil && *message.ReasoningContent != "") ||
+			(message.Reasoning != nil && *message.Reasoning != "") ||
+			(message.ReasoningSignature != nil && *message.ReasoningSignature != "") {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (s *responsesOutboundStream) Next() bool {
@@ -116,6 +147,9 @@ func (s *responsesOutboundStream) Next() bool {
 		}
 		return false
 	}
+	if s.err != nil {
+		return false
+	}
 
 	// Try to get the next chunk from source
 	if !s.stream.Next() {
@@ -130,7 +164,7 @@ func (s *responsesOutboundStream) Next() bool {
 	err := s.transformStreamChunk(event)
 	if err != nil {
 		s.err = err
-		return false
+		return s.Next()
 	}
 
 	// Continue to the next event if no events were enqueued
@@ -382,15 +416,15 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			return nil // Intentionally skip an unknown tool call.
 		}
 
-		identityChanged := false
-		if streamEvent.Name != "" && streamEvent.Name != tc.Function.Name {
+		nameChanged := streamEvent.Name != "" && streamEvent.Name != tc.Function.Name
+		if nameChanged {
 			tc.Function.Name = streamEvent.Name
-			identityChanged = true
 		}
-		if streamEvent.Namespace != "" && streamEvent.Namespace != tc.Function.Namespace {
+		namespaceChanged := streamEvent.Namespace != "" && streamEvent.Namespace != tc.Function.Namespace
+		if namespaceChanged {
 			tc.Function.Namespace = streamEvent.Namespace
-			identityChanged = true
 		}
+		identityChanged := nameChanged || namespaceChanged
 
 		// Some upstreams provide the complete JSON arguments only in the done event.
 		// Preserve arguments already emitted through delta events and forward only the
@@ -422,23 +456,26 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			}
 		}
 
-		toolCallIdx := s.state.toolCallIndex[callID]
+		// output_item.added already sent the id and type. Chat Completions clients join string
+		// fields across deltas, so repeat neither, and send the name only when it changed (#2648).
+		// The namespace is replaced rather than joined downstream, and a new name needs it to
+		// flatten to namespace__name, so send it whenever the identity changed.
+		delta := llm.ToolCall{
+			Index:    s.state.toolCallIndex[callID],
+			Function: llm.FunctionCall{Arguments: missingArgs},
+		}
+		if nameChanged {
+			delta.Function.Name = tc.Function.Name
+		}
+		if identityChanged {
+			delta.Function.Namespace = tc.Function.Namespace
+		}
+
 		resp.Choices = []llm.Choice{
 			{
 				Index: 0,
 				Delta: &llm.Message{
-					ToolCalls: []llm.ToolCall{
-						{
-							ID:    tc.ID,
-							Type:  tc.Type,
-							Index: toolCallIdx,
-							Function: llm.FunctionCall{
-								Name:      tc.Function.Name,
-								Namespace: tc.Function.Namespace,
-								Arguments: missingArgs,
-							},
-						},
-					},
+					ToolCalls: []llm.ToolCall{delta},
 				},
 			},
 		}
@@ -697,6 +734,22 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if s.responseCompleted {
 			return nil
 		}
+		if !s.contentCommitted && streamEvent.Response != nil && streamEvent.Response.Error != nil &&
+			streamEvent.Response.Error.Code != "" {
+			if streamEvent.Response.Usage != nil {
+				s.state.usage = streamEvent.Response.Usage.ToUsage()
+				s.enqueue(&llm.Response{
+					Object:             "chat.completion.chunk",
+					ID:                 s.state.responseID,
+					Model:              s.state.responseModel,
+					Created:            s.state.created,
+					PreviousResponseID: s.state.previousResponseID,
+					Choices:            []llm.Choice{},
+					Usage:              s.state.usage,
+				})
+			}
+			return responseFailedError(streamEvent)
+		}
 		// Response failed
 		s.responseCompleted = true
 		finishReason := "error"
@@ -831,6 +884,33 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 	}
 
 	return nil
+}
+
+func responseFailedError(streamEvent StreamEvent) *llm.ResponseError {
+	detail := llm.ErrorDetail{}
+	if streamEvent.Response != nil && streamEvent.Response.Error != nil {
+		detail = llm.ErrorDetail{
+			Code:    streamEvent.Response.Error.Code,
+			Message: streamEvent.Response.Error.Message,
+			Type:    streamEvent.Response.Error.Type,
+			Param:   streamEvent.Response.Error.Param,
+		}
+	}
+
+	return &llm.ResponseError{
+		StatusCode:         failedResponseStatus(streamEvent.Status),
+		Detail:             detail,
+		SuppressStatusText: true,
+		Cause:              llm.ErrEmptyResponse,
+	}
+}
+
+func failedResponseStatus(status int) int {
+	if status >= http.StatusBadRequest && status < 600 {
+		return status
+	}
+
+	return http.StatusBadGateway
 }
 
 func (s *responsesOutboundStream) reconcileCustomToolCallInput(

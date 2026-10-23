@@ -123,6 +123,21 @@ func TestCodexOutbound_RejectsPassThroughBodyWithTokenLimitFields(t *testing.T) 
 	}
 }
 
+func TestCodexOutbound_RejectsWebSocketPassThroughBodyWithTokenLimitFields(t *testing.T) {
+	for _, field := range []string{"max_output_tokens", "max_completion_tokens", "max_tokens"} {
+		t.Run(field, func(t *testing.T) {
+			llmReq := &llm.Request{
+				APIFormat: llm.APIFormatOpenAIResponseWebSocket,
+				RawRequest: &httpclient.Request{
+					Body: []byte(`{"model":"gpt-5.4-mini","input":"hi","stream":true,"` + field + `":12000}`),
+				},
+			}
+
+			require.False(t, (&OutboundTransformer{}).AllowPassThroughBody(context.Background(), llmReq, &httpclient.Request{}))
+		})
+	}
+}
+
 func TestCodexOutbound_AllowsPassThroughBodyWithoutTokenLimitFields(t *testing.T) {
 	outbound := &OutboundTransformer{}
 	llmReq := &llm.Request{
@@ -187,11 +202,11 @@ func TestCodexOutbound_StreamAllowsOriginatorOverrideButNotClientUA(t *testing.T
 	assert.Equal(t, "Bearer "+accessToken, headers.Get("Authorization"))
 }
 
-func TestCodexOutbound_ImageGenerationRequestUsesResponsesImageTool(t *testing.T) {
+func TestCodexOutbound_ImageGenerationRequestUsesNativeImagesEndpoint(t *testing.T) {
 	ctx := context.Background()
 	accessToken := testAccessTokenWithAccountID(t)
 
-	outbound, err := NewOutboundTransformer(Params{
+	outbound, err := NewImageOutboundTransformer(ImageParams{
 		BaseURL: "https://chatgpt.com/backend-api/codex#",
 		TokenProvider: staticTokenGetter{
 			creds: &oauth.OAuthCredentials{
@@ -202,92 +217,34 @@ func TestCodexOutbound_ImageGenerationRequestUsesResponsesImageTool(t *testing.T
 	})
 	require.NoError(t, err)
 
-	partialImages := int64(2)
 	req, err := outbound.TransformRequest(ctx, &llm.Request{
 		Model:       "gpt-image-2",
 		RequestType: llm.RequestTypeImage,
 		APIFormat:   llm.APIFormatOpenAIImageGeneration,
 		RawRequest:  &httpclient.Request{Headers: http.Header{}},
 		Image: &llm.ImageRequest{
-			Prompt:        "draw a circuit board city",
-			Size:          "1536x864",
-			Quality:       "high",
-			OutputFormat:  "webp",
-			PartialImages: &partialImages,
+			Prompt:       "draw a circuit board city",
+			Size:         "1536x864",
+			Quality:      "high",
+			OutputFormat: "webp",
 		},
 	})
 	require.NoError(t, err)
 
 	require.Equal(t, llm.RequestTypeImage.String(), req.RequestType)
-	require.Equal(t, llm.APIFormatOpenAIResponse.String(), req.APIFormat)
-	require.Equal(t, "text/event-stream", req.Headers.Get("Accept"))
+	require.Equal(t, llm.APIFormatOpenAIImageGeneration.String(), req.APIFormat)
+	require.Equal(t, "https://chatgpt.com/backend-api/codex/images/generations", req.URL)
+	require.Equal(t, "application/json", req.Headers.Get("Accept"))
 	require.Equal(t, accessToken, req.Auth.APIKey)
-
-	var payload responses.Request
-	require.NoError(t, json.Unmarshal(req.Body, &payload))
-	require.Equal(t, defaultImageMainModel, payload.Model)
-	require.NotNil(t, payload.Stream)
-	require.True(t, *payload.Stream)
-	require.Len(t, payload.Tools, 1)
-	require.Equal(t, "image_generation", payload.Tools[0].Type)
-	require.Equal(t, "gpt-image-2", payload.Tools[0].Model)
-	require.Equal(t, "generate", payload.Tools[0].Action)
-	require.Equal(t, "1536x864", payload.Tools[0].Size)
-	require.Equal(t, "high", payload.Tools[0].Quality)
-	require.Equal(t, "webp", payload.Tools[0].OutputFormat)
-	require.Equal(t, partialImages, *payload.Tools[0].PartialImages)
-	require.NotNil(t, payload.ToolChoice)
-	require.Equal(t, "required", *payload.ToolChoice.Mode)
-	require.Len(t, payload.Input.Items, 1)
-	require.Len(t, payload.Input.Items[0].Content.Items, 1)
-	require.Equal(t, "input_text", payload.Input.Items[0].Content.Items[0].Type)
-	require.Equal(t, "draw a circuit board city", *payload.Input.Items[0].Content.Items[0].Text)
-	require.Equal(t, "You are a helpful assistant that can generate images based on user requests. Must use the image generation tool.", payload.Instructions)
+	require.Equal(t, "gpt-image-2", gjson.GetBytes(req.Body, "model").String())
+	require.Equal(t, "draw a circuit board city", gjson.GetBytes(req.Body, "prompt").String())
+	require.False(t, gjson.GetBytes(req.Body, "tools").Exists())
 }
 
-func TestCodexOutbound_ImageMainModel(t *testing.T) {
-	for _, tt := range []struct {
-		name, configured, want, tier string
-	}{
-		{name: "unset", want: "gpt-6-luna"},
-		{name: "blank", configured: "  ", want: "gpt-6-luna"},
-		{name: "custom", configured: " gpt-6-sol ", want: "gpt-6-sol"},
-		{name: "image model", configured: "gpt-image-2", want: "gpt-6-luna"},
-		{name: "image model case", configured: " GPT-IMAGE-1 ", want: "gpt-6-luna"},
-		{name: "fast suffix preserved", configured: "gpt-6-sol-fast", want: "gpt-6-sol-fast"},
-	} {
-		t.Run(tt.name, func(t *testing.T) {
-			outbound, err := NewOutboundTransformer(Params{
-				ImageMainModel: tt.configured,
-				TokenProvider:  oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{AccessToken: "test-token"}),
-			})
-			require.NoError(t, err)
-			for _, format := range []llm.APIFormat{llm.APIFormatOpenAIImageGeneration, llm.APIFormatOpenAIImageEdit} {
-				req, err := outbound.TransformRequest(t.Context(), &llm.Request{
-					Model: "gpt-image-2", RequestType: llm.RequestTypeImage, APIFormat: format,
-					Image: &llm.ImageRequest{Prompt: "draw a tree", Images: [][]byte{[]byte("image")}},
-				})
-				require.NoError(t, err)
-				require.Equal(t, tt.want, gjson.GetBytes(req.Body, "model").String())
-				require.Equal(t, "gpt-image-2", gjson.GetBytes(req.Body, "tools.0.model").String())
-				require.Equal(t, tt.tier, gjson.GetBytes(req.Body, "service_tier").String())
-			}
-
-			// The setting only changes Images-to-Responses conversion.
-			req, err := outbound.TransformRequest(t.Context(), &llm.Request{
-				Model: "gpt-6-astra", RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIResponse,
-				Messages: []llm.Message{{Role: "user", Content: llm.MessageContent{Content: lo.ToPtr("hello")}}},
-			})
-			require.NoError(t, err)
-			require.Equal(t, "gpt-6-astra", gjson.GetBytes(req.Body, "model").String())
-		})
-	}
-}
-
-func TestCodexOutbound_ImageEditRequestUsesResponsesImageTool(t *testing.T) {
+func TestCodexOutbound_ImageEditRequestUsesNativeImagesEndpoint(t *testing.T) {
 	ctx := context.Background()
 
-	outbound, err := NewOutboundTransformer(Params{
+	outbound, err := NewImageOutboundTransformer(ImageParams{
 		BaseURL: "https://chatgpt.com/backend-api/codex#",
 		TokenProvider: staticTokenGetter{
 			creds: &oauth.OAuthCredentials{
@@ -321,22 +278,14 @@ func TestCodexOutbound_ImageEditRequestUsesResponsesImageTool(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, llm.RequestTypeImage.String(), req.RequestType)
-	require.Equal(t, llm.APIFormatOpenAIResponse.String(), req.APIFormat)
-
-	var payload responses.Request
-	require.NoError(t, json.Unmarshal(req.Body, &payload))
-	require.Equal(t, defaultImageMainModel, payload.Model)
-	require.Len(t, payload.Tools, 1)
-	require.Equal(t, "gpt-image-2", payload.Tools[0].Model)
-	require.Equal(t, "edit", payload.Tools[0].Action)
-	require.Equal(t, "high", payload.Tools[0].InputFidelity)
-	require.Equal(t, "data:image/png;base64,bWFzay1kYXRh", payload.Tools[0].InputImageMask["image_url"])
-	require.Len(t, payload.Input.Items, 1)
-	require.Len(t, payload.Input.Items[0].Content.Items, 2)
-	require.Equal(t, "input_text", payload.Input.Items[0].Content.Items[0].Type)
-	require.Equal(t, "input_image", payload.Input.Items[0].Content.Items[1].Type)
-	require.Equal(t, "data:image/jpeg;base64,anBlZy1kYXRh", *payload.Input.Items[0].Content.Items[1].ImageURL)
-	require.Equal(t, "You are a helpful assistant that can generate images based on user requests. Must use the image generation tool.", payload.Instructions)
+	require.Equal(t, llm.APIFormatOpenAIImageEdit.String(), req.APIFormat)
+	require.Equal(t, "https://chatgpt.com/backend-api/codex/images/edits", req.URL)
+	require.Equal(t, "application/json", req.Headers.Get("Content-Type"))
+	require.Equal(t, "gpt-image-2", gjson.GetBytes(req.Body, "model").String())
+	require.Equal(t, "high", gjson.GetBytes(req.Body, "input_fidelity").String())
+	require.Equal(t, "data:image/png;base64,bWFzay1kYXRh", gjson.GetBytes(req.Body, "mask.image_url").String())
+	require.Equal(t, "data:image/png;base64,anBlZy1kYXRh", gjson.GetBytes(req.Body, "images.0.image_url").String())
+	require.False(t, gjson.GetBytes(req.Body, "tools").Exists())
 }
 
 func TestCodexOutbound_TransformRequestStripsUserField(t *testing.T) {
@@ -369,37 +318,6 @@ func TestCodexOutbound_TransformRequestStripsUserField(t *testing.T) {
 	require.NoError(t, json.Unmarshal(req.Body, &payload))
 	_, hasUser := payload["user"]
 	assert.False(t, hasUser, "Codex backend rejects the user field with a 400 Bad Request; it must not be sent upstream")
-}
-
-func TestCodexOutbound_TransformImageResponse(t *testing.T) {
-	upstream := &responses.Response{
-		ID:        "resp_image",
-		CreatedAt: 1760000000,
-		Model:     defaultImageMainModel,
-		Output: []responses.Item{
-			{
-				Type:   "image_generation_call",
-				Result: lo.ToPtr("iVBORw0KGgo="),
-			},
-		},
-	}
-
-	resp, err := responses.BuildImageResponse(upstream, map[string]any{
-		"codex_image_output_format": "png",
-		"codex_image_quality":       "high",
-		"codex_image_size":          "1024x1024",
-		"codex_image_model":         "gpt-image-2",
-	})
-	require.NoError(t, err)
-
-	require.Equal(t, llm.RequestTypeImage, resp.RequestType)
-	require.Equal(t, "gpt-image-2", resp.Model)
-	require.NotNil(t, resp.Image)
-	require.Equal(t, "png", resp.Image.OutputFormat)
-	require.Equal(t, "high", resp.Image.Quality)
-	require.Equal(t, "1024x1024", resp.Image.Size)
-	require.Len(t, resp.Image.Data, 1)
-	require.Equal(t, "iVBORw0KGgo=", resp.Image.Data[0].B64JSON)
 }
 
 func TestCodexOutbound_CustomizeExecutorUsesCurrentExecutor(t *testing.T) {

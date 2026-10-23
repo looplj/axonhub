@@ -126,6 +126,7 @@ export const channelTypeSchema = z.enum([
   'moonshot_coding',
   'jina',
   'typesafe',
+  'cloudflare',
   'github',
   'github_copilot',
   'claudecode',
@@ -361,8 +362,22 @@ export const channelSettingsSchema = z.object({
   rateLimit: channelRateLimitSchema.optional().nullable(),
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
+  // The server persists this as a plain int and does not clamp it, so reads must
+  // tolerate any value an API client could have stored; the editor still bounds
+  // user input. A strict upper bound here can reject a whole channel response.
+  maxSingleChannelRetries: z.number().int().min(0).optional().nullable(),
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
+  // The backend stores an empty strategy for "unset" and returns it verbatim, and
+  // an API client may store any string. Normalize every unrecognized value to the
+  // default instead of rejecting it, so such a channel still loads and the
+  // inferred type stays the narrow strategy union the editor expects.
+  apiKeyStrategy: z
+    .enum(['sticky', 'random', 'round_robin', 'round_robin_success', 'priority', 'fixed'])
+    .catch('sticky')
+    .nullable()
+    .optional(),
+  apiKeyRoundRobinSwitchAfter: z.number().int().min(0).max(2147483647).optional().nullable(),
   quotaRoutingMode: z.enum(['INHERIT', 'IGNORE_QUOTA', 'REMOVE_ON_EXHAUSTED', 'BACKPRESSURE']).optional(),
 });
 
@@ -381,6 +396,19 @@ export type ChannelModelEntry = z.infer<typeof channelModelEntrySchema>;
 export const channelCredentialsSchema = z.object({
   apiKey: z.string().optional().nullable(),
   apiKeys: z.array(z.string()).optional().nullable(),
+  // Read-side shape only: persisted credentials are echoed for the form and may
+  // predate the triple, so this schema must not reject stored data. Strict
+  // validation lives on the write schemas below.
+  vertexApiKeys: z
+    .array(
+      z.object({
+        projectID: z.string(),
+        apiKey: z.string(),
+        region: z.string(),
+      })
+    )
+    .optional()
+    .nullable(),
   // Optional provider management/console API key (e.g. ZenMux) used only for
   // server-side quota checks; inference keeps using apiKey/apiKeys.
   managementApiKey: z.string().optional().nullable(),
@@ -627,12 +655,90 @@ function validateOAuthCredentials(type: string, apiKey: string | undefined, ctx:
   }
 }
 
+// Vertex project and region are interpolated into the upstream request path, so the
+// write schemas constrain them to the characters Google permits. The backend
+// validator applies the same pattern.
+const vertexAPIKeyProjectIDPattern = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const vertexAPIKeyRegionPattern = /^[A-Za-z0-9][A-Za-z0-9-]*$/;
+
+// vertexAPIKeyCredentialSchema validates one project-bound Vertex credential.
+// defaultRegion fills an omitted region; omit it where an empty region must be
+// reported as an error instead.
+function vertexAPIKeyCredentialSchema(defaultRegion?: string) {
+  return z.object({
+    projectID: z.string().trim().regex(vertexAPIKeyProjectIDPattern, 'Vertex Project ID contains invalid characters'),
+    apiKey: z.string().trim().min(1, 'Vertex API key is required'),
+    region: defaultRegion
+      ? z.string().trim().regex(vertexAPIKeyRegionPattern, 'Vertex region contains invalid characters').default(defaultRegion)
+      : z.string().trim().regex(vertexAPIKeyRegionPattern, 'Vertex region contains invalid characters'),
+  });
+}
+
+// Shape-only counterpart of vertexAPIKeyCredentialSchema. The write field schemas must
+// accept a row the channel type never submits, so the strict rules are re-applied per
+// channel type in validateVertexAPIKeys instead of on the field itself.
+const vertexAPIKeyShapeSchema = z.object({
+  projectID: z.string(),
+  apiKey: z.string(),
+  region: z.string().default('global'),
+});
+
+// Vertex rows only mean something on a gemini_vertex channel. Validating them behind
+// the type check keeps a leftover row from blocking an ordinary channel, whose submit
+// clears vertexApiKeys for the non-Vertex type.
+function validateVertexAPIKeys(
+  channelType: string | undefined,
+  credentials: { vertexApiKeys?: { projectID: string; apiKey: string; region?: string }[] | null } | undefined,
+  ctx: z.RefinementCtx
+) {
+  if (channelType !== 'gemini_vertex') {
+    return;
+  }
+
+  const rowSchema = vertexAPIKeyCredentialSchema('global');
+  const rows = credentials?.vertexApiKeys;
+
+  // An empty list is itself an error: create always materialises the field, and an
+  // update that sends one is clearing the last binding.
+  if (rows && !rows.length) {
+    ctx.addIssue({
+      code: 'custom' as const,
+      message: 'At least one Vertex API key is required',
+      path: ['credentials', 'vertexApiKeys'],
+    });
+    return;
+  }
+
+  (rows ?? []).forEach((row, index) => {
+    const parsed = rowSchema.safeParse(row);
+    if (parsed.success) {
+      return;
+    }
+
+    parsed.error.issues.forEach((issue) => {
+      ctx.addIssue({
+        code: 'custom' as const,
+        message: issue.message,
+        path: ['credentials', 'vertexApiKeys', index, ...issue.path],
+      });
+    });
+  });
+}
+
 // Create Channel Input
+
+// A saved base URL must not keep template placeholders such as <account_id>:
+// the channel would be stored unresolved and only fail on its first request,
+// with an upstream error that hides the cause.
+const channelBaseURLSchema = z
+  .string()
+  .url('Please enter a valid URL')
+  .refine((value) => !/[<>]/.test(value), 'Replace placeholders such as <account_id> with real values');
 
 export const createChannelInputSchema = z
   .object({
     type: channelTypeSchema,
-    baseURL: z.url('Please enter a valid URL'),
+    baseURL: channelBaseURLSchema,
     name: z.string().min(1, 'Name is required'),
     policies: channelPoliciesSchema.optional(),
     supportedModels: z.array(z.string()).min(0, 'At least one supported model is required'),
@@ -650,6 +756,8 @@ export const createChannelInputSchema = z
       apiKey: z.string().optional(),
       // apiKeys is used for regular API keys (multiple keys for load balancing)
       apiKeys: z.array(z.string()).optional().default([]),
+      // Vertex credentials are project-bound triples; an omitted region defaults to global.
+      vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional().default([]),
       // Optional management key used only by the backend for quota checks
       managementApiKey: z.string().optional(),
       gcp: z
@@ -662,14 +770,14 @@ export const createChannelInputSchema = z
     }),
   })
   .superRefine((data, ctx) => {
+    const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
+    const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
     const isOAuthType =
-      data.type === 'codex' ||
+      (data.type === 'codex' && !hasApiKeys) ||
       data.type === 'claudecode' ||
       data.type === 'antigravity' ||
       data.type === 'github_copilot' ||
       data.type === 'xai_subscription';
-    const hasApiKey = data.credentials.apiKey && data.credentials.apiKey.trim().length > 0;
-    const hasApiKeys = data.credentials.apiKeys && data.credentials.apiKeys.some((k) => k.trim().length > 0);
 
     // github_copilot requires credentials.apiKey (OAuth JSON with access_token)
     if (data.type === 'github_copilot' && !hasApiKey) {
@@ -680,8 +788,15 @@ export const createChannelInputSchema = z
       });
     }
 
-    // Validate that at least one credential type is provided
-    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp') {
+    // Validate that at least one credential type is provided. A Vertex key only counts
+    // on a gemini_vertex channel, so it must not satisfy an ordinary channel.
+    if (
+      !hasApiKey &&
+      !hasApiKeys &&
+      data.type !== 'anthropic_aws' &&
+      data.type !== 'anthropic_gcp' &&
+      data.type !== 'gemini_vertex'
+    ) {
       ctx.addIssue({
         code: 'custom' as const,
         message: 'At least one API Key is required',
@@ -718,6 +833,10 @@ export const createChannelInputSchema = z
         });
       }
     }
+
+    // Vertex rows carry project and region, so their own rules report a missing field
+    // or an invalid project/region, and an empty list is rejected.
+    validateVertexAPIKeys(data.type, data.credentials, ctx);
   });
 export type CreateChannelInput = z.infer<typeof createChannelInputSchema>;
 
@@ -725,7 +844,7 @@ export type CreateChannelInput = z.infer<typeof createChannelInputSchema>;
 export const updateChannelInputSchema = z
   .object({
     type: channelTypeSchema.optional(),
-    baseURL: z.string().url('Please enter a valid URL').optional(),
+    baseURL: channelBaseURLSchema.optional(),
     name: z.string().min(1, 'Name is required').optional(),
     policies: channelPoliciesSchema.optional(),
     supportedModels: z.array(z.string()).min(1, 'At least one supported model is required').optional(),
@@ -744,6 +863,8 @@ export const updateChannelInputSchema = z
         apiKey: z.string().optional(),
         // apiKeys 用于普通 API Key（支持多 key 负载均衡），OAuth 类型不使用此字段
         apiKeys: z.array(z.string()).optional(),
+        // Vertex credentials are project-bound triples; an omitted region defaults to global.
+        vertexApiKeys: z.array(vertexAPIKeyShapeSchema).optional(),
         // Optional management key used only by the backend for quota checks
         managementApiKey: z.string().optional(),
         gcp: z
@@ -760,11 +881,12 @@ export const updateChannelInputSchema = z
   .superRefine((data, ctx) => {
     const effectiveType = data.type;
     const hasApiKey = data.credentials?.apiKey && data.credentials.apiKey.trim().length > 0;
+    const hasApiKeys = (data.credentials?.apiKeys?.length ?? 0) > 0;
 
     // For OAuth validation on updates: validate if type is OAuth, or if credentials.apiKey is provided
     // (which indicates OAuth credentials are being set)
     const isOAuthType =
-      effectiveType === 'codex' ||
+      (effectiveType === 'codex' && !hasApiKeys) ||
       effectiveType === 'claudecode' ||
       effectiveType === 'antigravity' ||
       effectiveType === 'github_copilot' ||
@@ -782,8 +904,9 @@ export const updateChannelInputSchema = z
 
     // If we have an OAuth key but no type, check if it looks like Copilot credentials
     const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
+    const isThirdPartyCodex = effectiveType === 'codex' && hasApiKeys;
 
-    if (isOAuthType || derivedType === 'github_copilot' || isCopilotKey) {
+    if (!isThirdPartyCodex && (isOAuthType || derivedType === 'github_copilot' || isCopilotKey)) {
       if (isCopilotKey && !derivedType) {
         try {
           const parsed = JSON.parse(data.credentials.apiKey);
@@ -831,6 +954,9 @@ export const updateChannelInputSchema = z
         });
       }
     }
+
+    // An update may clear the list, so an empty array is itself an error.
+    validateVertexAPIKeys(data.type, data.credentials, ctx);
   });
 
 export type UpdateChannelInput = z.infer<typeof updateChannelInputSchema>;
@@ -852,7 +978,7 @@ export type ChannelConnection = z.infer<typeof channelConnectionSchema>;
 export const bulkImportChannelItemSchema = z.object({
   type: channelTypeSchema,
   name: z.string().min(1, 'Name is required'),
-  baseURL: z.string().url('Please enter a valid URL').min(1, 'Base URL is required'),
+  baseURL: channelBaseURLSchema,
   apiKey: z.string().min(1, 'API Key is required'),
   supportedModels: z.array(z.string()).min(1, 'At least one supported model is required'),
   defaultTestModel: z.string().min(1, 'Please select a default test model'),

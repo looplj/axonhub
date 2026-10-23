@@ -146,6 +146,62 @@ func TestAggregateStreamChunks(t *testing.T) {
 	}
 }
 
+func TestAggregateStreamChunks_AccountingProvenance(t *testing.T) {
+	tests := []struct {
+		name    string
+		chunks  []*httpclient.StreamEvent
+		want    llm.AccountingEvidence
+		wantUse bool
+	}{
+		{
+			name: "choices-less final usage is explicit including zero",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}]}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:    llm.AccountingEvidenceExplicitFinal,
+			wantUse: true,
+		},
+		{
+			name: "finish usage is a clean end candidate",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+			},
+			want:    llm.AccountingEvidenceCleanEndCandidate,
+			wantUse: true,
+		},
+		{
+			name: "repeated zero finish placeholders are unavailable",
+			chunks: []*httpclient.StreamEvent{
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+				{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"finish_reason":"stop","delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0,"total_tokens":0}}`)},
+			},
+			want:    llm.AccountingEvidenceUnavailable,
+			wantUse: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, meta, err := AggregateStreamChunks(context.Background(), tt.chunks, DefaultTransformChunk)
+			require.NoError(t, err)
+			require.Equal(t, tt.want, meta.AccountingEvidence)
+			require.Equal(t, tt.wantUse, meta.Usage != nil)
+		})
+	}
+}
+
+func TestAggregateStreamChunks_CleanEOFUsageWithoutFinishReason(t *testing.T) {
+	chunks := []*httpclient.StreamEvent{
+		{Data: []byte(`{"id":"chat","model":"m","choices":[{"index":0,"delta":{"role":"assistant","content":"ok"}}]}`)},
+		{Data: []byte(`{"id":"chat","model":"m","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`)},
+	}
+	_, meta, err := AggregateStreamChunks(context.Background(), chunks, DefaultTransformChunk)
+	require.NoError(t, err)
+	require.Equal(t, llm.AccountingEvidenceCleanEndCandidate, meta.AccountingEvidence)
+	require.Equal(t, int64(46), meta.Usage.TotalTokens)
+}
+
 func TestAggregateStreamChunks_EmptyChunks(t *testing.T) {
 	gotBytes, _, err := AggregateStreamChunks(context.Background(), nil, DefaultTransformChunk)
 	require.NoError(t, err)

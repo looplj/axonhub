@@ -37,7 +37,7 @@ func (r *channelResolver) DefaultEndpoints(ctx context.Context, obj *ent.Channel
 		return []*objects.ChannelEndpoint{}, nil
 	}
 
-	endpoints := biz.DefaultEndpointsForChannelType(obj.Type)
+	endpoints := (&biz.Channel{Channel: obj}).DefaultEndpoints()
 	if len(endpoints) == 0 {
 		return []*objects.ChannelEndpoint{}, nil
 	}
@@ -70,8 +70,37 @@ func (r *channelResolver) Credentials(ctx context.Context, obj *ent.Channel) (*o
 		return &creds, nil
 	}
 
+	// Vertex credentials are project-bound triples and are surfaced through
+	// vertexApiKeys instead, so the edit form can echo the project and region back.
+	// Their keys must not also appear in the flat apiKeys list: that would present
+	// them as project-less keys and lose the binding on the next save.
+	//
+	// A non-Vertex channel exposes neither form. Legacy rows can still carry a
+	// binding, and leaking it would offer a Google-project key to an unrelated
+	// provider; the key is dropped from apiKeys for the same reason.
+	apiKeys := creds.GetAllAPIKeys()
+	if len(creds.VertexAPIKeys) > 0 {
+		vertexKeys := make(map[string]struct{}, len(creds.VertexAPIKeys))
+		for _, credential := range creds.VertexAPIKeys {
+			vertexKeys[credential.APIKey] = struct{}{}
+		}
+
+		apiKeys = lo.Filter(apiKeys, func(key string, _ int) bool {
+			_, isVertex := vertexKeys[key]
+			return !isVertex
+		})
+	}
+
+	if obj.Type != channel.TypeGeminiVertex {
+		creds.VertexAPIKeys = nil
+	}
+
+	if len(apiKeys) == 0 {
+		apiKeys = nil
+	}
+
 	// For non-OAuth channel types, use api keys array.
-	creds.APIKeys = creds.GetAllAPIKeys()
+	creds.APIKeys = apiKeys
 	creds.APIKey = ""
 
 	return &creds, nil
@@ -188,6 +217,11 @@ func (r *mutationResolver) BulkCreateChannels(ctx context.Context, input biz.Bul
 // UpdateChannel is the resolver for the updateChannel field.
 func (r *mutationResolver) UpdateChannel(ctx context.Context, id objects.GUID, input ent.UpdateChannelInput) (*ent.Channel, error) {
 	return r.channelService.UpdateChannel(ctx, id.ID, &input)
+}
+
+// UpdateChannelSettings is the resolver for the updateChannelSettings field.
+func (r *mutationResolver) UpdateChannelSettings(ctx context.Context, id objects.GUID, input biz.UpdateChannelSettingsInput) (*ent.Channel, error) {
+	return r.channelService.UpdateChannelSettings(ctx, id.ID, &input)
 }
 
 // SaveChannelEndpoints is the resolver for the saveChannelEndpoints field.
@@ -1064,3 +1098,26 @@ func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *updateChannelSettingsInputResolver) APIKeyStrategy(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *string) error {
+	obj.APIKeyStrategy = data
+
+	return nil
+}
+func (r *updateChannelSettingsInputResolver) APIKeyRoundRobinSwitchAfter(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *int) error {
+	obj.APIKeyRoundRobinSwitchAfter = data
+
+	return nil
+}
+func (r *Resolver) UpdateChannelSettingsInput() UpdateChannelSettingsInputResolver {
+	return &updateChannelSettingsInputResolver{r}
+}
+type updateChannelSettingsInputResolver struct{ *Resolver }
+*/

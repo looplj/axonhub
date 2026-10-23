@@ -1,6 +1,7 @@
 package httpclient
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -17,7 +18,10 @@ type responseHeadersProvider interface {
 
 type responseHeadersStream struct {
 	streams.Stream[*StreamEvent]
-	headers http.Header
+	headers         http.Header
+	observer        streams.DeliveryAcknowledger
+	waiter          streams.FinalizationWaiter
+	expectedChoices int
 }
 
 func (s *responseHeadersStream) responseHeaders() http.Header {
@@ -31,11 +35,51 @@ func WithResponseHeaders(stream streams.Stream[*StreamEvent], headers http.Heade
 		return stream
 	}
 
-	return &responseHeadersStream{
+	result := &responseHeadersStream{
 		Stream:  stream,
 		headers: headers.Clone(),
 	}
+	if observer, ok := stream.(streams.DeliveryAcknowledger); ok {
+		result.observer = observer
+	}
+	if waiter, ok := stream.(streams.FinalizationWaiter); ok {
+		result.waiter = waiter
+	}
+	if choices, ok := stream.(interface{ ExpectedStreamChoices() int }); ok {
+		result.expectedChoices = choices.ExpectedStreamChoices()
+	}
+	return result
 }
+
+func (s *responseHeadersStream) AcknowledgeDelivery() {
+	if s.observer != nil {
+		s.observer.AcknowledgeDelivery()
+	}
+}
+
+func (s *responseHeadersStream) DeliveryAcknowledged() bool {
+	return s.observer != nil && s.observer.DeliveryAcknowledged()
+}
+
+func (s *responseHeadersStream) WaitForFinalization() {
+	if s.waiter != nil {
+		s.waiter.WaitForFinalization()
+	}
+}
+
+func (s *responseHeadersStream) Deliver(ctx context.Context, write func() (bool, error)) error {
+	boundary, ok := s.Stream.(streams.DeliveryBoundary)
+	if ok {
+		return boundary.Deliver(ctx, write)
+	}
+	terminal, err := write()
+	if err == nil && terminal {
+		s.AcknowledgeDelivery()
+	}
+	return err
+}
+
+func (s *responseHeadersStream) ExpectedStreamChoices() int { return s.expectedChoices }
 
 // GetResponseHeaders returns a copy of response metadata attached to a stream.
 func GetResponseHeaders(stream streams.Stream[*StreamEvent]) http.Header {

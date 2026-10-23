@@ -78,7 +78,7 @@ func TestResponsesWebSocketProcessesSequentialResponseCreateEvents(t *testing.T)
 	require.False(t, gjson.GetBytes(first.Body, "type").Exists())
 	require.False(t, gjson.GetBytes(first.Body, "background").Exists())
 	require.Equal(t, "response.create", gjson.GetBytes(first.JSONBody, "type").String())
-	require.False(t, gjson.GetBytes(first.JSONBody, "stream").Exists())
+	require.Equal(t, []byte(`{"type":"response.create","model":"gpt-test","stream":false,"background":true,"input":"hello"}`), first.JSONBody)
 
 	require.True(t, gjson.GetBytes(second.Body, "stream").Bool())
 	require.Equal(t, "resp_1", gjson.GetBytes(second.Body, "previous_response_id").String())

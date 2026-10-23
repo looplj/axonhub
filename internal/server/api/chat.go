@@ -16,6 +16,7 @@ import (
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/server/orchestrator"
+	"github.com/looplj/axonhub/internal/server/safeguards"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
@@ -50,6 +51,8 @@ type ChatCompletionHandlers struct {
 	sseKeepAlive               SSEKeepAliveConfig
 	sseHeartbeatFormat         sseHeartbeatFormat
 	streamAdapterFactory       streamAdapterFactory
+	safeguardsConfig           safeguards.Config
+	reviewer                   safeguards.ClassifierFunc
 }
 
 func NewChatCompletionHandlers(orchestrator *orchestrator.ChatCompletionOrchestrator) *ChatCompletionHandlers {
@@ -61,10 +64,9 @@ func NewChatCompletionHandlers(orchestrator *orchestrator.ChatCompletionOrchestr
 
 // WithStreamWriter returns a new ChatCompletionHandlers with the specified stream writer.
 func (handlers *ChatCompletionHandlers) WithStreamWriter(writer StreamWriter) *ChatCompletionHandlers {
-	return &ChatCompletionHandlers{
-		ChatCompletionOrchestrator: handlers.ChatCompletionOrchestrator,
-		StreamWriter:               writer,
-	}
+	copy := *handlers
+	copy.StreamWriter = writer
+	return &copy
 }
 
 func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
@@ -90,9 +92,20 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 		return
 	}
 
-	// log.Debug(ctx, "Chat completion request", log.Any("request", genericReq))
+	evaluator, prepared, err := prepareSafeguardsRequest(genericReq, handlers.safeguardsConfig, handlers.reviewer)
+	if err != nil {
+		JSONError(c, http.StatusBadRequest, err)
+		return
+	}
+	genericReq = prepared
 
-	result, err := handlers.ChatCompletionOrchestrator.Process(ctx, genericReq)
+	processCtx := ctx
+	var abortUpstream context.CancelFunc
+	if evaluator != nil {
+		processCtx, abortUpstream = context.WithCancel(ctx)
+		defer abortUpstream()
+	}
+	result, err := handlers.ChatCompletionOrchestrator.Process(processCtx, genericReq)
 	if err != nil {
 		log.Error(ctx, "Error processing chat completion", log.Cause(err))
 
@@ -113,7 +126,12 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 			contentType = ct
 		}
 
-		c.Data(resp.StatusCode, contentType, resp.Body)
+		body, err := evaluator.AnnotateResponse(ctx, resp.Body)
+		if err != nil {
+			JSONError(c, http.StatusBadGateway, err)
+			return
+		}
+		c.Data(resp.StatusCode, contentType, body)
 
 		return
 	}
@@ -123,6 +141,9 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 			log.Debug(ctx, "Close chat stream")
 
 			err := result.ChatCompletionStream.Close()
+			if waiter, ok := result.ChatCompletionStream.(streams.FinalizationWaiter); ok {
+				waiter.WaitForFinalization()
+			}
 			if err != nil {
 				logger.Error(ctx, "Error closing stream", log.Cause(err))
 			}
@@ -130,7 +151,8 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 
 		c.Header("Access-Control-Allow-Origin", "*")
 
-		stream := newUpstreamErrorStream(ctx, result.ChatCompletionStream, handlers.ChatCompletionOrchestrator.SystemService)
+		source := wrapSafeguardsStream(ctx, result.ChatCompletionStream, evaluator, abortUpstream)
+		stream := newUpstreamErrorStream(ctx, source, handlers.ChatCompletionOrchestrator.SystemService)
 		if strings.HasSuffix(genericReq.Path, "/responses") {
 			stream = primeCodexTurnStateHeader(c.Writer.Header(), stream)
 		}
@@ -316,11 +338,16 @@ func writeSSEStreamWithoutHeartbeat(c *gin.Context, stream streams.Stream[*httpc
 		}
 
 		cur := stream.Current()
-		if terminalTracker.Observe(cur) {
-			terminalSeen = true
-		}
-
-		if err := writeSSEEvent(ctx, c.Writer, cur.Type, cur.Data); err != nil {
+		if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
+			if err := writeSSEEvent(ctx, c.Writer, cur.Type, cur.Data); err != nil {
+				return false, err
+			}
+			terminal := !terminalSeen && terminalTracker.Observe(cur)
+			if terminal {
+				terminalSeen = true
+			}
+			return terminal, nil
+		}); err != nil {
 			clientDisconnected = true
 			log.Warn(ctx, "Failed to write SSE event", log.Cause(err))
 
@@ -414,11 +441,16 @@ func writeEncodedSSEStreamWithHeartbeat(
 			}
 
 			cur := result.event
-			if terminalTracker.Observe(cur) {
-				terminalSeen = true
-			}
-
-			if err := writeSSEEvent(ctx, c.Writer, cur.Type, cur.Data); err != nil {
+			if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
+				if err := writeSSEEvent(ctx, c.Writer, cur.Type, cur.Data); err != nil {
+					return false, err
+				}
+				terminal := !terminalSeen && terminalTracker.Observe(cur)
+				if terminal {
+					terminalSeen = true
+				}
+				return terminal, nil
+			}); err != nil {
 				clientDisconnected = true
 				log.Warn(ctx, "Failed to write SSE event", log.Cause(err))
 
@@ -515,12 +547,7 @@ func writeSSEErrorEvent(ctx context.Context, writer http.ResponseWriter, encodeE
 
 func writeSSEEvent(ctx context.Context, writer http.ResponseWriter, event string, data any) error {
 	return writeAndFlushSSE(ctx, writer, func(writer io.Writer) error {
-		errorWriter := &sseErrorWriter{writer: writer}
-		if err := sse.Encode(errorWriter, sse.Event{Event: event, Data: data}); err != nil {
-			return err
-		}
-
-		return errorWriter.err
+		return sse.Encode(writer, sse.Event{Event: event, Data: data})
 	})
 }
 
@@ -535,6 +562,9 @@ func (w *sseErrorWriter) Write(data []byte) (int, error) {
 	}
 
 	n, err := w.writer.Write(data)
+	if err == nil && n != len(data) {
+		err = io.ErrShortWrite
+	}
 	if err != nil {
 		w.err = err
 	}
@@ -548,6 +578,9 @@ func (w *sseErrorWriter) WriteString(data string) (int, error) {
 	}
 
 	n, err := io.WriteString(w.writer, data)
+	if err == nil && n != len(data) {
+		err = io.ErrShortWrite
+	}
 	if err != nil {
 		w.err = err
 	}
@@ -570,8 +603,12 @@ func writeAndFlushSSE(ctx context.Context, writer http.ResponseWriter, write fun
 	defer clearSSEWriteDeadline(ctx, writer)
 
 	if write != nil {
-		if err := write(writer); err != nil {
+		errorWriter := &sseErrorWriter{writer: writer}
+		if err := write(errorWriter); err != nil {
 			return err
+		}
+		if errorWriter.err != nil {
+			return errorWriter.err
 		}
 	}
 
@@ -587,6 +624,9 @@ type responseWriterUnwrapper interface {
 }
 
 func flushResponseWriter(writer http.ResponseWriter) error {
+	if headerWriter, ok := writer.(interface{ WriteHeaderNow() }); ok {
+		headerWriter.WriteHeaderNow()
+	}
 	if flusher, ok := writer.(responseWriterFlushError); ok {
 		return flusher.FlushError()
 	}
@@ -683,6 +723,7 @@ func WriteBinaryStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 	// disconnect right after the terminal chunk does not skip drain / completion.
 	// The drain after cancellation is bounded by eventsAfterCancel.
 	eventsAfterCancel := 0
+	terminalDelivered := false
 
 	for {
 		if !stream.Next() {
@@ -707,7 +748,12 @@ func WriteBinaryStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 				clientDisconnected = true
 			}
 
-			c.Writer.Flush()
+			if err := writeStreamDelivery(ctx, stream, func() (bool, error) {
+				return terminalDelivered, flushResponseWriter(c.Writer)
+			}); err != nil {
+				clientDisconnected = true
+				log.Warn(ctx, "Failed to flush binary stream", log.Cause(err))
+			}
 
 			return
 		}
@@ -726,6 +772,7 @@ func WriteBinaryStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 
 		cur := stream.Current()
 		if cur != nil && cur.Type == httpclient.BinaryStreamDoneEventType {
+			terminalDelivered = true
 			continue
 		}
 
@@ -745,14 +792,24 @@ func WriteBinaryStream(c *gin.Context, stream streams.Stream[*httpclient.StreamE
 			headersWritten = true
 		}
 
-		if _, err := c.Writer.Write(cur.Data); err != nil {
+		if n, err := c.Writer.Write(cur.Data); err != nil {
 			clientDisconnected = true
 			log.Warn(ctx, "Failed to write binary stream chunk", log.Cause(err))
 
 			return
+		} else if n != len(cur.Data) {
+			clientDisconnected = true
+			log.Warn(ctx, "Failed to write binary stream chunk", log.Cause(io.ErrShortWrite))
+
+			return
 		}
 
-		c.Writer.Flush()
+		if err := flushResponseWriter(c.Writer); err != nil {
+			clientDisconnected = true
+			log.Warn(ctx, "Failed to flush binary stream", log.Cause(err))
+
+			return
+		}
 	}
 }
 

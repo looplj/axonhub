@@ -90,6 +90,12 @@ func TestRequestServiceLoadCompletedResponsesSessionScopesByAPIKeyAndProject(t *
 	_, _, found, err = service.LoadCompletedResponsesSession(differentProjectCtx, "resp_shared")
 	require.NoError(t, err)
 	require.False(t, found)
+	known, err := service.HasCompletedResponsesOrigin(differentProjectCtx, "resp_shared")
+	require.NoError(t, err)
+	require.True(t, known)
+	known, err = service.HasCompletedResponsesOrigin(otherCtx, "resp_shared")
+	require.NoError(t, err)
+	require.True(t, known)
 
 	requestBody, responseBody, found, err = service.LoadCompletedResponsesSession(ownerCtx, "resp_websocket")
 	require.NoError(t, err)

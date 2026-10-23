@@ -73,6 +73,17 @@ func TestHandler_ServesSPAIndexForFrontendRoutes(t *testing.T) {
 	require.Equal(t, "no-cache, no-store, must-revalidate", recorder.Header().Get("Cache-Control"))
 }
 
+func TestCodexPrefixAPINotFound(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	useTestStaticFS(t)
+	router := gin.New()
+	router.NoRoute(Handler())
+	result := httptest.NewRecorder()
+	router.ServeHTTP(result, httptest.NewRequest(http.MethodGet, "/codex/alpha/notes/v2/unknown", nil))
+	require.Equal(t, http.StatusNotFound, result.Code)
+	require.Contains(t, result.Header().Get("Content-Type"), "application/json")
+}
+
 func TestHandler_DoesNotFallbackMissingStaticAssetToSPAIndex(t *testing.T) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)

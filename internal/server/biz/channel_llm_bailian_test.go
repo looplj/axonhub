@@ -37,7 +37,9 @@ func TestBailianResponsesChannel_RegistrationAndRequest(t *testing.T) {
 	built, err := NewChannelServiceForTest(client).buildChannelWithOutbounds(entity)
 	require.NoError(t, err)
 	require.IsType(t, &responses.OutboundTransformer{}, built.Outbound)
-	require.Equal(t, []objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIResponse.String()}}, built.ResolveEndpoints())
+	require.Equal(t, []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+	}, built.ResolveEndpoints())
 
 	outbound, err := BuildOutboundByAPIFormat(built, llm.APIFormatOpenAIResponse.String())
 	require.NoError(t, err)

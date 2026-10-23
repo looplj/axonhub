@@ -143,7 +143,10 @@ export async function gotoAndEnsureAuth(page: Page, path: string) {
   // }
 
   // If we got redirected to sign-in OR the login form is rendered within the current route, perform login and navigate back
-  let needsLogin = page.url().includes('/sign-in')
+  // A context without a stored token cannot be signed in, even when a cold dev
+  // server has not rendered the sign-in redirect yet; signInAsAdmin waits for it.
+  const hasStoredToken = await page.evaluate(() => !!localStorage.getItem('axonhub_access_token'))
+  let needsLogin = page.url().includes('/sign-in') || !hasStoredToken
   try {
     // Use test IDs with fallback for more reliable detection
     const emailField = page

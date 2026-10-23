@@ -31,9 +31,10 @@ type PersistenceState struct {
 	Proxy *httpclient.ProxyConfig
 
 	// OriginalModel is the model after API key profile mapping, used for channel selection
-	OriginalModel string
-	RawRequest    *httpclient.Request
-	LlmRequest    *llm.Request
+	OriginalModel         string
+	RawRequest            *httpclient.Request
+	LlmRequest            *llm.Request
+	ResponsesContinuation *responsesContinuation
 
 	// OriginalRequestStream stores the client's original stream intent before any
 	// candidate-specific forcing to provider-side streaming happens.
@@ -73,6 +74,13 @@ type PersistenceState struct {
 	// HTTP/stream error for the client.
 	StreamCompleted bool
 
+	// DeliveryAcknowledged is set only after the downstream semantic boundary is
+	// written successfully. AccountingFinal is independent from delivery and
+	// usage values; downstream finalization owns when to publish either state.
+	DeliveryAcknowledged bool
+	AccountingFinal      bool
+	AccountingSourceEnd  llm.SourceEndReason
+
 	// OutboundStreamTerminal preserves the provider outcome across protocol
 	// conversion, which may replace an abnormal terminal event with a generic stop.
 	// Request/execution status and channel health intentionally interpret this
@@ -93,6 +101,10 @@ type PersistenceState struct {
 	// RawStreamBacklog.
 	RawStreamCh chan *httpclient.StreamEvent
 
+	// RawStreamQueue owns aggregate count and byte accounting for raw events
+	// retained after the pass-through consumer attaches.
+	RawStreamQueue *rawStreamQueue
+
 	// RawStreamBacklog holds the current attempt's raw provider stream events until
 	// applyPassThroughStream attaches the pass-through consumer, so the pipeline can
 	// pre-read the attempt without the fan-out goroutine blocking on RawStreamCh.
@@ -108,6 +120,7 @@ type PersistenceState struct {
 	// captureRawProviderStream. Must be called in PrepareForRetry and NextChannel so the
 	// abandoned goroutine exits promptly and releases its upstream HTTP connection.
 	RawStreamCancel context.CancelFunc
+	RawStreamDetach context.CancelFunc
 
 	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
 	PassThroughApplied bool

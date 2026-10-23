@@ -36,7 +36,7 @@ func TestTransformRequest_Integration(t *testing.T) {
 		{
 			name:         "reasoning request",
 			requestFile:  `reasoning.request.json`,
-			expectedFile: `reasoning.request.json`,
+			expectedFile: `reasoning.request.expected.json`,
 		},
 	}
 

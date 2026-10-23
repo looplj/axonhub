@@ -22,6 +22,7 @@ import (
 
 func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpclient.StreamEvent], systemService *biz.SystemService) (streams.Stream[*httpclient.StreamEvent], StreamErrorEncoder) {
 	var nextSequence atomic.Int64
+	source := stream
 	stream = streams.MapErr(stream, func(event *httpclient.StreamEvent) (*httpclient.StreamEvent, error) {
 		if seq := gjson.GetBytes(event.Data, "sequence_number"); seq.Type == gjson.Number && seq.Int() >= nextSequence.Load() {
 			nextSequence.Store(seq.Int() + 1)
@@ -59,7 +60,7 @@ func newResponsesStreamAdapter(ctx context.Context, stream streams.Stream[*httpc
 		}
 		return &httpclient.StreamEvent{Type: "error", Data: data}, nil
 	}
-	return stream, encodeErr
+	return preserveStreamDelivery(stream, source), encodeErr
 }
 
 func applyResponsesEventErrorPolicy(ctx context.Context, event *httpclient.StreamEvent, systemService *biz.SystemService) (*httpclient.StreamEvent, error) {

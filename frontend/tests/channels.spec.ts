@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Locator, type Page, type Request } from '@playwright/test'
 import { gotoAndEnsureAuth, waitForGraphQLOperation } from './auth.utils'
 
 test.describe('Admin Channels Management', () => {
@@ -209,12 +209,12 @@ test.describe('Admin Channels Management', () => {
 
     const createDialog = page.getByRole('dialog')
     await createDialog.getByTestId('provider-codex').click()
-    await createDialog.getByRole('tab', { name: /Third Party|第三方/i }).click()
+    await createDialog.getByRole('tab', { name: THIRD_PARTY_TAB }).click()
     await createDialog.getByTestId('channel-name-input').fill(name)
     await createDialog.getByTestId('channel-base-url-input').fill(baseURL)
     await createDialog.getByTestId('channel-api-key-input').fill(`sk-test-key-${uniqueSuffix}`)
 
-    const modelBadge = createDialog.getByTestId('quick-model-gpt-5.2')
+    const modelBadge = createDialog.getByTestId(`quick-model-${CODEX_MODEL}`)
     await expect(modelBadge).toBeVisible({ timeout: 5000 })
     await modelBadge.click()
     await createDialog.getByTestId('add-selected-models-button').click()
@@ -222,7 +222,7 @@ test.describe('Admin Channels Management', () => {
     const defaultTestModelSelect = createDialog.getByTestId('default-test-model-select')
     await expect(defaultTestModelSelect).toBeVisible({ timeout: 5000 })
     await defaultTestModelSelect.click()
-    await page.getByRole('option', { name: 'gpt-5.2' }).click()
+    await page.getByRole('option', { name: CODEX_MODEL, exact: true }).click()
 
     const createRequest = page.waitForRequest((request) => {
       if (!request.url().includes('/admin/graphql') || request.method() !== 'POST') return false
@@ -866,4 +866,591 @@ test.describe('Admin Channels Management', () => {
       await expect(filteredRow).toBeVisible()
     }
   })
+
+  test.describe('Codex Responses endpoints', () => {
+    test('Codex WebSocket checkbox persists dual endpoints', async ({ page }) => {
+      const suffix = uniqueSuffix()
+      const name = `pw-codex-dual-${suffix}`
+      const baseURL = `https://proxy-${suffix}.example.com:8443/openai`
+
+      const dialog = await startCodexChannel(page, name)
+      await useCodexThirdParty(dialog, baseURL)
+      const checkbox = dialog.getByTestId('codex-responses-websocket-checkbox')
+      await expect(checkbox).toBeChecked()
+      await expect(dialog.getByTestId('api-format-select')).toHaveCount(0)
+      await expect(dialog.getByTestId('codex-responses-websocket-url')).toContainText(
+        `wss://proxy-${suffix}.example.com:8443/openai/v1/responses`
+      )
+      await addCodexModel(page, dialog)
+
+      const created = await captureGraphQL(page, 'CreateChannel', () => dialog.getByTestId('channel-submit-button').click())
+      expect(created.variables.input.baseURL).toBe(baseURL)
+      expect(created.variables.input.endpoints).toEqual([{ apiFormat: RESPONSES }, { apiFormat: RESPONSES_WS }])
+      await expect(dialog).not.toBeVisible({ timeout: 10000 })
+
+      const saved = await fetchChannel(page, created.data.createChannel.id)
+      expect(familyFormats(saved.endpoints)).toEqual([RESPONSES, RESPONSES_WS])
+      expect(familyFormats(saved.defaultEndpoints)).toEqual([RESPONSES, RESPONSES_WS])
+      expect((saved.endpoints ?? []).every((endpoint) => !endpoint.transport)).toBe(true)
+      // Native Images keep their HTTP defaults regardless of the checkbox.
+      expect((saved.defaultEndpoints ?? []).map((endpoint) => endpoint.apiFormat)).toEqual(
+        expect.arrayContaining(['openai/image_generation', 'openai/image_edit'])
+      )
+
+      const row = await showChannel(page, name)
+      await expect(row.getByTestId('endpoint-protocol-openai/responses')).toHaveClass(/violet/)
+      const editDialog = await openEditDialog(page, row)
+      await expect(editDialog.getByTestId('codex-responses-websocket-checkbox')).toBeChecked()
+      await expect(editDialog.getByTestId('channel-base-url-input')).toHaveValue(baseURL)
+      await editDialog.getByRole('button', { name: /^(Cancel|取消)$/ }).click()
+      await expect(editDialog).not.toBeVisible()
+
+      await openRowAction(page, row, /^(Duplicate|复制)$/)
+      const duplicateDialog = page.getByRole('dialog')
+      await expect(duplicateDialog.getByTestId('codex-responses-websocket-checkbox')).toBeChecked()
+      await duplicateDialog.getByTestId('channel-api-key-input').fill(`sk-synthetic-${suffix}`)
+      const duplicated = await captureGraphQL(page, 'DuplicateChannel', () =>
+        duplicateDialog.getByTestId('channel-submit-button').click()
+      )
+      expect(duplicated.variables.input.baseURL).toBe(baseURL)
+      expect(duplicated.variables.input.endpoints).toEqual([{ apiFormat: RESPONSES }, { apiFormat: RESPONSES_WS }])
+    })
+
+    test('Codex unchecked persists HTTP only', async ({ page }) => {
+      const suffix = uniqueSuffix()
+      const name = `pw-codex-http-${suffix}`
+      const baseURL = 'http://127.0.0.1:18080/v1'
+
+      const dialog = await startCodexChannel(page, name)
+      await useCodexThirdParty(dialog, baseURL)
+      const checkbox = dialog.getByTestId('codex-responses-websocket-checkbox')
+      await checkbox.focus()
+      await page.keyboard.press('Space')
+      await expect(checkbox).not.toBeChecked()
+      await expect(dialog.getByTestId('codex-responses-websocket-url')).toHaveCount(0)
+      await addCodexModel(page, dialog)
+
+      const created = await captureGraphQL(page, 'CreateChannel', () => dialog.getByTestId('channel-submit-button').click())
+      expect(created.variables.input.baseURL).toBe(baseURL)
+      expect(created.variables.input.endpoints).toEqual([{ apiFormat: RESPONSES }])
+      await expect(dialog).not.toBeVisible({ timeout: 10000 })
+
+      const saved = await fetchChannel(page, created.data.createChannel.id)
+      expect(familyFormats(saved.endpoints)).toEqual([RESPONSES])
+      // An explicit HTTP-only save suppresses the WebSocket default.
+      expect(familyFormats(saved.defaultEndpoints)).toEqual([RESPONSES])
+
+      const row = await showChannel(page, name)
+      const editDialog = await openEditDialog(page, row)
+      await expect(editDialog.getByTestId('codex-responses-websocket-checkbox')).not.toBeChecked()
+      const updated = await captureGraphQL(page, 'UpdateChannel', () => editDialog.getByTestId('channel-submit-button').click())
+      expect(updated.variables.input.endpoints).toEqual([{ apiFormat: RESPONSES }])
+      expect(familyFormats((await fetchChannel(page, saved.id)).endpoints)).toEqual([RESPONSES])
+    })
+
+    test('Codex official and auth.json base URLs are locked', async ({ page }) => {
+      const suffix = uniqueSuffix()
+      const name = `pw-codex-official-${suffix}`
+      const typedURL = `https://typed-${suffix}.example.com/v1`
+
+      const dialog = await startCodexChannel(page, name)
+      const baseURLInput = dialog.getByTestId('channel-base-url-input')
+      await expect(baseURLInput).toBeDisabled()
+      await expect(baseURLInput).toHaveValue(CODEX_BASE_URL)
+
+      await dialog.getByRole('tab', { name: THIRD_PARTY_TAB }).click()
+      await expect(baseURLInput).toBeEnabled()
+      await baseURLInput.fill(typedURL)
+      await dialog.getByRole('tab', { name: OFFICIAL_TAB }).click()
+      await expect(baseURLInput).toBeDisabled()
+      await expect(baseURLInput).toHaveValue(CODEX_BASE_URL)
+      await dialog.getByRole('tab', { name: AUTH_JSON_TAB }).click()
+      await expect(baseURLInput).toBeDisabled()
+      await expect(baseURLInput).toHaveValue(CODEX_BASE_URL)
+      await dialog.getByRole('tab', { name: THIRD_PARTY_TAB }).click()
+      await expect(baseURLInput).toHaveValue(typedURL)
+
+      // The stale third-party URL must never be submitted for auth.json credentials.
+      await dialog.getByRole('tab', { name: AUTH_JSON_TAB }).click()
+      await dialog
+        .getByTestId('codex-auth-json-input')
+        .fill(JSON.stringify({ tokens: { access_token: `synthetic-access-${suffix}`, refresh_token: `synthetic-refresh-${suffix}` } }))
+      await Promise.all([
+        page.waitForResponse((response) => response.url().includes('/codex/auth/decode') && response.ok()),
+        dialog.getByTestId('codex-auth-json-apply').click(),
+      ])
+      await addCodexModel(page, dialog)
+
+      const created = await captureGraphQL(page, 'CreateChannel', () => dialog.getByTestId('channel-submit-button').click())
+      expect(created.variables.input.baseURL).toBe(CODEX_BASE_URL)
+      expect(created.variables.input.endpoints).toEqual([{ apiFormat: RESPONSES }, { apiFormat: RESPONSES_WS }])
+      await expect(dialog).not.toBeVisible({ timeout: 10000 })
+
+      // Stored OAuth tokens reopen on the locked Official tab.
+      const row = await showChannel(page, name)
+      const editDialog = await openEditDialog(page, row)
+      await expect(editDialog.getByRole('tab', { name: OFFICIAL_TAB })).toHaveAttribute('aria-selected', 'true')
+      const editBaseURL = editDialog.getByTestId('channel-base-url-input')
+      await expect(editBaseURL).toBeDisabled()
+      await expect(editBaseURL).toHaveValue(CODEX_BASE_URL)
+      await editDialog.getByTestId('codex-responses-websocket-checkbox').click()
+      const updated = await captureGraphQL(page, 'UpdateChannel', () => editDialog.getByTestId('channel-submit-button').click())
+      expect(updated.variables.input.baseURL).toBe(CODEX_BASE_URL)
+      expect(updated.variables.input.endpoints).toEqual([{ apiFormat: RESPONSES }])
+
+      const saved = await fetchChannel(page, created.data.createChannel.id)
+      expect(saved.baseURL).toBe(CODEX_BASE_URL)
+      expect(familyFormats(saved.endpoints)).toEqual([RESPONSES])
+      expect(familyFormats(saved.defaultEndpoints)).toEqual([RESPONSES])
+    })
+
+    test('Codex third-party rejects WS URLs and derives matching WS endpoint', async ({ page }) => {
+      const suffix = uniqueSuffix()
+      const name = `pw-codex-ws-${suffix}`
+
+      const dialog = await startCodexChannel(page, name)
+      await useCodexThirdParty(dialog, `wss://proxy-${suffix}.example.com/v1`)
+      await addCodexModel(page, dialog)
+      const derived = dialog.getByTestId('codex-responses-websocket-url')
+      await expect(derived).toHaveCount(0)
+
+      const createRequests: string[] = []
+      page.on('request', (request) => {
+        if (isGraphQLOperation(request, 'CreateChannel')) createRequests.push(request.url())
+      })
+      await dialog.getByTestId('channel-submit-button').click()
+      await expect(dialog.getByText(/http:\/\/ or https:\/\/|http:\/\/ 或 https:\/\//)).toBeVisible()
+      expect(createRequests).toEqual([])
+
+      const baseURLInput = dialog.getByTestId('channel-base-url-input')
+      for (const [httpURL, webSocketURL] of [
+        [`https://proxy-${suffix}.example.com:8443/openai`, `wss://proxy-${suffix}.example.com:8443/openai/v1/responses`],
+        [`https://proxy-${suffix}.example.com/codex/#`, `wss://proxy-${suffix}.example.com/codex/responses`],
+        [`https://proxy-${suffix}.example.com/v1/responses##`, `wss://proxy-${suffix}.example.com/v1/responses`],
+        ['http://127.0.0.1:18080/v1', 'ws://127.0.0.1:18080/v1/responses'],
+      ]) {
+        await baseURLInput.fill(httpURL)
+        await expect(derived).toContainText(webSocketURL)
+        await expect(derived).not.toContainText('#')
+        await expect(derived).not.toContainText('responses/responses')
+      }
+
+      const created = await captureGraphQL(page, 'CreateChannel', () => dialog.getByTestId('channel-submit-button').click())
+      expect(created.variables.input.baseURL).toBe('http://127.0.0.1:18080/v1')
+      expect(created.variables.input.endpoints).toEqual([{ apiFormat: RESPONSES }, { apiFormat: RESPONSES_WS }])
+      expect(JSON.stringify(created.variables.input)).not.toMatch(/wss?:\/\//)
+    })
+
+    test('Codex legacy WS-only upgrades only on explicit save', async ({ page }) => {
+      const suffix = uniqueSuffix()
+      const name = `pw-codex-legacy-${suffix}`
+      const legacyBaseURL = `wss://legacy-${suffix}.example.com:8443/codex#`
+      const httpBaseURL = `https://legacy-${suffix}.example.com:8443/codex#`
+      const seeded = await seedChannel(page, {
+        type: 'codex',
+        name,
+        baseURL: legacyBaseURL,
+        credentials: { apiKeys: [`sk-synthetic-${suffix}`] },
+        supportedModels: [CODEX_MODEL],
+        defaultTestModel: CODEX_MODEL,
+      })
+      const before = await fetchChannel(page, seeded.id)
+      expect(before.baseURL).toBe(legacyBaseURL)
+      expect(familyFormats(before.endpoints)).toEqual([])
+      expect(familyFormats(before.defaultEndpoints)).toEqual([RESPONSES_WS])
+
+      const row = await showChannel(page, name)
+      // List and detail recognize the WebSocket-only endpoint as Responses.
+      await expect(row.getByTestId('endpoint-protocol-openai/responses')).toHaveClass(/violet/)
+      await row.locator('button:has(svg.tabler-icon-chevron-right)').click()
+      await expect(page.getByText('OpenAI (Responses WebSocket)', { exact: true })).toBeVisible()
+
+      const editDialog = await openEditDialog(page, row)
+      await expect(editDialog.getByTestId('codex-responses-websocket-checkbox')).toBeChecked()
+      await expect(editDialog.getByTestId('codex-responses-websocket-upgrade-note')).toBeVisible()
+      await expect(editDialog.getByTestId('channel-base-url-input')).toHaveValue(httpBaseURL)
+      await expect(editDialog.getByTestId('codex-responses-websocket-url')).toContainText(
+        `wss://legacy-${suffix}.example.com:8443/codex/responses`
+      )
+      await editDialog.getByRole('button', { name: /^(Cancel|取消)$/ }).click()
+      await expect(editDialog).not.toBeVisible()
+
+      const endpointsDialog = await openEndpointsDialog(page, row)
+      await expect(endpointsDialog.getByTestId('codex-endpoints-websocket-checkbox')).toBeChecked()
+      await expect(endpointsDialog.getByTestId('codex-endpoints-websocket-upgrade-note')).toBeVisible()
+      await endpointsDialog.getByRole('button', { name: /^(Cancel|取消)$/ }).click()
+      await expect(endpointsDialog).not.toBeVisible()
+
+      const untouched = await fetchChannel(page, seeded.id)
+      expect(untouched.baseURL).toBe(legacyBaseURL)
+      expect(untouched.endpoints ?? []).toEqual(before.endpoints ?? [])
+
+      const saveDialog = await openEditDialog(page, row)
+      const updated = await captureGraphQL(page, 'UpdateChannel', () => saveDialog.getByTestId('channel-submit-button').click())
+      expect(updated.variables.input.baseURL).toBe(httpBaseURL)
+      expect(updated.variables.input.endpoints).toEqual([{ apiFormat: RESPONSES }, { apiFormat: RESPONSES_WS }])
+
+      const after = await fetchChannel(page, seeded.id)
+      expect(after.baseURL).toBe(httpBaseURL)
+      expect(familyFormats(after.endpoints)).toEqual([RESPONSES, RESPONSES_WS])
+      expect(familyFormats(after.defaultEndpoints)).toEqual([RESPONSES, RESPONSES_WS])
+    })
+
+    test('Codex endpoints dialog shares the WebSocket projection and guards model restrictions', async ({ page }) => {
+      const suffix = uniqueSuffix()
+      const name = `pw-codex-endpoints-${suffix}`
+      const seeded = await seedChannel(page, {
+        type: 'codex',
+        name,
+        baseURL: `https://gateway-${suffix}.example.com:9443/api`,
+        credentials: { apiKeys: [`sk-synthetic-${suffix}`] },
+        supportedModels: [CODEX_MODEL, 'gpt-6-luna'],
+        defaultTestModel: CODEX_MODEL,
+        endpoints: [
+          { apiFormat: RESPONSES, path: '/custom/responses' },
+          { apiFormat: RESPONSES_WS, path: '/custom/responses' },
+          { apiFormat: 'openai/image_generation', path: '/images/generations' },
+        ],
+        settings: { modelProtocols: [{ model: CODEX_MODEL, apiFormats: [RESPONSES_WS], enabled: true }] },
+      })
+
+      const row = await showChannel(page, name)
+      const dialog = await openEndpointsDialog(page, row)
+      const checkbox = dialog.getByTestId('codex-endpoints-websocket-checkbox')
+      await expect(checkbox).toBeChecked()
+      await expect(dialog.getByTestId('codex-endpoints-websocket-url')).toContainText(
+        `wss://gateway-${suffix}.example.com:9443/api/custom/responses`
+      )
+      // Responses rows are previews managed by the checkbox; other endpoints stay removable.
+      for (const format of [RESPONSES, RESPONSES_WS]) {
+        await expect(dialog.getByRole('button', { name: removeEndpointLabel(format) })).toHaveCount(0)
+      }
+      await expect(dialog.getByRole('button', { name: removeEndpointLabel('openai/image_generation') })).toBeVisible()
+      await expect(dialog.getByText(/^(Unsupported|不支持)$/)).toHaveCount(0)
+
+      await checkbox.click()
+      const blocked = page.getByRole('alertdialog')
+      await expect(blocked).toBeVisible()
+      await expect(blocked).toContainText(RESPONSES_WS)
+      await expect(blocked).toContainText(CODEX_MODEL)
+      await blocked.getByRole('button', { name: /^(Close|关闭)$/ }).click()
+      await expect(blocked).not.toBeVisible()
+      await expect(checkbox).toBeChecked()
+
+      const model = escapeRegExp(CODEX_MODEL)
+      await dialog.getByRole('button', { name: new RegExp(`^(Remove protocol override for ${model}|删除 ${model} 的协议覆盖)$`) }).click()
+      await checkbox.click()
+      await expect(checkbox).not.toBeChecked()
+      await expect(dialog.getByTestId('codex-endpoints-websocket-url')).toHaveCount(0)
+
+      const updated = await captureGraphQL(page, 'UpdateChannel', () => dialog.getByRole('button', { name: /^(Save|保存)$/ }).click())
+      expect(updated.variables.input.baseURL).toBeUndefined()
+      expect(updated.variables.input.endpoints).toEqual([
+        { apiFormat: RESPONSES, path: '/custom/responses' },
+        { apiFormat: 'openai/image_generation', path: '/images/generations' },
+      ])
+      expect(updated.variables.input.settings.modelProtocols).toEqual([])
+
+      const after = await fetchChannel(page, seeded.id)
+      expect(familyFormats(after.endpoints)).toEqual([RESPONSES])
+      expect(familyFormats(after.defaultEndpoints)).toEqual([RESPONSES])
+      expect(after.endpoints?.find((endpoint) => endpoint.apiFormat === 'openai/image_generation')?.path).toBe('/images/generations')
+    })
+
+    test('OpenAI Responses legacy single transport stays unchanged', async ({ page }) => {
+      const suffix = uniqueSuffix()
+      const name = `pw-openai-ws-${suffix}`
+
+      await page.getByTestId('add-channel-button').click()
+      const dialog = page.getByRole('dialog')
+      await dialog.getByTestId('provider-openai').click()
+      await dialog.getByTestId('api-format-select').click()
+      await page.getByRole('option', { name: 'OpenAI (Responses WebSocket)' }).click()
+      await expect(dialog.getByTestId('channel-base-url-input')).toHaveValue('wss://api.openai.com/v1#')
+      await expect(dialog.getByTestId('codex-responses-websocket-checkbox')).toHaveCount(0)
+      await dialog.getByTestId('channel-name-input').fill(name)
+      await dialog.getByTestId('channel-api-key-input').fill(`sk-synthetic-${suffix}`)
+      await dialog.getByTestId('quick-model-gpt-4o').click()
+      await dialog.getByTestId('add-selected-models-button').click()
+      await dialog.getByTestId('default-test-model-select').click()
+      await page.getByRole('option', { name: 'gpt-4o', exact: true }).click()
+
+      const created = await captureGraphQL(page, 'CreateChannel', () => dialog.getByTestId('channel-submit-button').click())
+      expect(created.variables.input.type).toBe('openai_responses')
+      expect(created.variables.input.baseURL).toBe('wss://api.openai.com/v1#')
+      expect(created.variables.input.endpoints).toBeUndefined()
+      await expect(dialog).not.toBeVisible({ timeout: 10000 })
+      const saved = await fetchChannel(page, created.data.createChannel.id)
+      expect(familyFormats(saved.defaultEndpoints)).toEqual([RESPONSES_WS])
+
+      const row = await showChannel(page, name)
+      await expect(row.getByTestId('endpoint-protocol-openai/responses')).toHaveClass(/violet/)
+      const endpointsDialog = await openEndpointsDialog(page, row)
+      await expect(endpointsDialog.getByTestId('codex-endpoints-websocket-checkbox')).toHaveCount(0)
+      await expect(endpointsDialog.getByText(RESPONSES_WS, { exact: true })).toBeVisible()
+      await expect(endpointsDialog.getByText(/^(Unsupported|不支持)$/)).toHaveCount(0)
+      const updated = await captureGraphQL(page, 'UpdateChannel', () =>
+        endpointsDialog.getByRole('button', { name: /^(Save|保存)$/ }).click()
+      )
+      expect(updated.variables.input.baseURL).toBeUndefined()
+      expect(updated.variables.input.endpoints).toEqual([])
+
+      const after = await fetchChannel(page, saved.id)
+      expect(after.baseURL).toBe('wss://api.openai.com/v1#')
+      expect(familyFormats(after.defaultEndpoints)).toEqual([RESPONSES_WS])
+
+      const editDialog = await openEditDialog(page, row)
+      await expect(editDialog.getByTestId('api-format-select')).toContainText('OpenAI (Responses WebSocket)')
+    })
+
+    test('Codex WebSocket controls render in English and Chinese', async ({ page }, testInfo) => {
+      // Two languages at two widths for both dialogs; the shared beforeEach sets 60s.
+      test.setTimeout(120_000)
+      const suffix = uniqueSuffix()
+      const name = `pw-codex-visual-${suffix}`
+      await seedChannel(page, {
+        type: 'codex',
+        name,
+        baseURL: `https://visual-${suffix}.example.com/v1`,
+        credentials: { apiKeys: [`sk-synthetic-${suffix}`] },
+        supportedModels: [CODEX_MODEL],
+        defaultTestModel: CODEX_MODEL,
+        endpoints: [{ apiFormat: RESPONSES }, { apiFormat: RESPONSES_WS }],
+      })
+
+      for (const language of ['en', 'zh']) {
+        await page.setViewportSize({ width: 1280, height: 900 })
+        await page.evaluate((lng) => localStorage.setItem('i18nextLng', lng), language)
+        // The app applies the signed-in user's preferred language from `me`; override it for
+        // this page only so the shared admin profile used by parallel tests stays unchanged.
+        await page.unroute('**/admin/graphql')
+        await page.route('**/admin/graphql', async (route) => {
+          if (!isGraphQLOperation(route.request(), 'Me')) return route.fallback()
+          const response = await route.fetch()
+          const json = await response.json()
+          json.data.me.preferLanguage = language
+          await route.fulfill({ response, json })
+        })
+        const row = await showChannel(page, name)
+
+        const editDialog = await openEditDialog(page, row)
+        const checkbox = editDialog.getByTestId('codex-responses-websocket-checkbox')
+        await expect(checkbox).toBeChecked()
+        const derivedURL = editDialog.getByTestId('codex-responses-websocket-url')
+        await expect(derivedURL).toContainText(`wss://visual-${suffix}.example.com/v1/responses`)
+        await expect(derivedURL).toContainText(language === 'zh' ? 'WebSocket 端点' : 'WebSocket endpoint')
+        for (const width of [1280, 375]) {
+          await page.setViewportSize({ width, height: width === 375 ? 812 : 900 })
+          await checkbox.scrollIntoViewIfNeeded()
+          await expect(checkbox).toBeVisible()
+          await page.screenshot({ path: testInfo.outputPath(`codex-form-${language}-${width}.png`) })
+        }
+        await page.setViewportSize({ width: 1280, height: 900 })
+        await editDialog.getByRole('button', { name: /^(Cancel|取消)$/ }).click()
+        await expect(editDialog).not.toBeVisible()
+
+        const endpointsDialog = await openEndpointsDialog(page, row)
+        const endpointsCheckbox = endpointsDialog.getByTestId('codex-endpoints-websocket-checkbox')
+        await expect(endpointsCheckbox).toBeChecked()
+        await expect(endpointsDialog.getByTestId('codex-endpoints-websocket-url')).toContainText(
+          language === 'zh' ? 'WebSocket 端点' : 'WebSocket endpoint'
+        )
+        for (const width of [1280, 375]) {
+          await page.setViewportSize({ width, height: width === 375 ? 812 : 900 })
+          await endpointsCheckbox.scrollIntoViewIfNeeded()
+          await expect(endpointsCheckbox).toBeVisible()
+          await page.screenshot({ path: testInfo.outputPath(`codex-endpoints-${language}-${width}.png`) })
+        }
+        await page.setViewportSize({ width: 1280, height: 900 })
+        await endpointsDialog.getByRole('button', { name: /^(Cancel|取消)$/ }).click()
+        await expect(endpointsDialog).not.toBeVisible()
+      }
+    })
+  })
 })
+
+const RESPONSES = 'openai/responses'
+const RESPONSES_WS = 'openai/responses-ws'
+const CODEX_BASE_URL = 'https://chatgpt.com/backend-api/codex#'
+const CODEX_MODEL = 'gpt-6.1-sol'
+const OFFICIAL_TAB = /^(Official|官方)$/
+const AUTH_JSON_TAB = /^auth\.json$/
+const THIRD_PARTY_TAB = /^(Third[- ]party|第三方)$/i
+
+type EndpointShape = { apiFormat: string; path?: string | null; baseURL?: string | null; transport?: string | null }
+type ChannelProjection = {
+  id: string
+  name: string
+  baseURL: string
+  endpoints: EndpointShape[] | null
+  defaultEndpoints: EndpointShape[] | null
+  settings: { modelProtocols: { model: string; apiFormats: string[]; enabled: boolean | null }[] | null } | null
+}
+
+const CHANNEL_PROJECTION_QUERY = `
+  query ResponsesChannelProjection($input: QueryChannelInput!) {
+    queryChannels(input: $input) {
+      edges {
+        node {
+          id
+          name
+          baseURL
+          endpoints { apiFormat path baseURL transport }
+          defaultEndpoints { apiFormat path baseURL transport }
+          settings { modelProtocols { model apiFormats enabled } }
+        }
+      }
+    }
+  }
+`
+
+const SEED_CHANNEL_MUTATION = `
+  mutation SeedResponsesChannel($input: CreateChannelInput!) {
+    createChannel(input: $input) { id name }
+  }
+`
+
+function uniqueSuffix() {
+  return `${Date.now().toString().slice(-6)}${Math.random().toString(36).slice(2, 6)}`
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+}
+
+function removeEndpointLabel(apiFormat: string) {
+  const format = escapeRegExp(apiFormat)
+  return new RegExp(`^(Remove ${format} endpoint|删除 ${format} 端点)$`)
+}
+
+function familyFormats(endpoints: EndpointShape[] | null | undefined) {
+  return (endpoints ?? []).map((endpoint) => endpoint.apiFormat).filter((format) => format === RESPONSES || format === RESPONSES_WS)
+}
+
+// Reads or seeds configuration through the admin GraphQL API with the signed-in session.
+async function adminGraphQL<T>(page: Page, query: string, variables: Record<string, unknown>): Promise<T> {
+  return (await page.evaluate(
+    async ({ query, variables }) => {
+      const response = await fetch('/admin/graphql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('axonhub_access_token') ?? ''}`,
+        },
+        body: JSON.stringify({ query, variables }),
+      })
+      const body = await response.json()
+      if (body.errors?.length) {
+        throw new Error(JSON.stringify(body.errors))
+      }
+      return body.data
+    },
+    { query, variables }
+  )) as T
+}
+
+async function fetchChannel(page: Page, id: string): Promise<ChannelProjection> {
+  const data = await adminGraphQL<{ queryChannels: { edges: { node: ChannelProjection }[] } }>(page, CHANNEL_PROJECTION_QUERY, {
+    input: { first: 1, where: { id } },
+  })
+  const channel = data.queryChannels.edges[0]?.node
+  expect(channel, `channel ${id} exists`).toBeTruthy()
+  return channel
+}
+
+async function seedChannel(page: Page, input: Record<string, unknown>) {
+  const data = await adminGraphQL<{ createChannel: { id: string; name: string } }>(page, SEED_CHANNEL_MUTATION, { input })
+  return data.createChannel
+}
+
+function isGraphQLOperation(request: Request, operationName: string) {
+  if (!request.url().includes('/admin/graphql') || request.method() !== 'POST') return false
+  try {
+    return request.postDataJSON()?.operationName === operationName
+  } catch {
+    return false
+  }
+}
+
+// Captures the exact variables the UI sends and fails on GraphQL errors.
+async function captureGraphQL(page: Page, operationName: string, action: () => Promise<unknown>) {
+  const [request, response] = await Promise.all([
+    page.waitForRequest((request) => isGraphQLOperation(request, operationName)),
+    page.waitForResponse((response) => isGraphQLOperation(response.request(), operationName)),
+    action(),
+  ])
+  const body = await response.json()
+  expect(body.errors, `${operationName} errors`).toBeUndefined()
+  return { variables: request.postDataJSON().variables, data: body.data }
+}
+
+async function includeDisabledChannels(page: Page) {
+  const statusBtn = page
+    .locator('button')
+    .filter({ hasText: /Status|状态/i })
+    .and(page.locator('[aria-haspopup="dialog"]'))
+    .first()
+  const statusBtnText = await statusBtn.textContent()
+  if (statusBtnText && /Enabled|启用/i.test(statusBtnText) && !/Disabled|禁用/i.test(statusBtnText)) {
+    await statusBtn.click()
+    const disabledOpt = page
+      .getByRole('option', { name: /Disabled|禁用/i })
+      .or(page.locator('[role="option"]').filter({ hasText: /Disabled|禁用/i }))
+    if ((await disabledOpt.count()) > 0) {
+      await disabledOpt.first().click()
+    }
+    await page.keyboard.press('Escape')
+  }
+}
+
+async function showChannel(page: Page, name: string) {
+  await gotoAndEnsureAuth(page, '/channels')
+  const table = page.locator('[data-testid="channels-table"]')
+  await table.waitFor({ state: 'visible', timeout: 15000 })
+  await includeDisabledChannels(page)
+  await page.getByPlaceholder(/^(Search by name|按名称筛选)$/).fill(name)
+  const row = table.locator('tbody tr').filter({ hasText: name })
+  await expect(row).toBeVisible({ timeout: 15000 })
+  return row
+}
+
+async function openEditDialog(page: Page, row: Locator) {
+  await row.locator('td:last-child button').first().click()
+  const dialog = page.getByRole('dialog', { name: /编辑|Edit Channel/i })
+  await expect(dialog).toBeVisible()
+  return dialog
+}
+
+async function openRowAction(page: Page, row: Locator, name: RegExp) {
+  await row.getByTestId('row-actions').click()
+  await page.getByRole('menuitem', { name }).click()
+}
+
+async function openEndpointsDialog(page: Page, row: Locator) {
+  await openRowAction(page, row, /^(Endpoints|端点配置)$/)
+  const dialog = page.getByRole('dialog', { name: /Endpoints|端点配置/ })
+  await expect(dialog).toBeVisible()
+  return dialog
+}
+
+async function startCodexChannel(page: Page, name: string) {
+  await page.getByTestId('add-channel-button').click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await dialog.getByTestId('provider-codex').click()
+  await dialog.getByTestId('channel-name-input').fill(name)
+  return dialog
+}
+
+async function useCodexThirdParty(dialog: Locator, baseURL: string) {
+  await dialog.getByRole('tab', { name: THIRD_PARTY_TAB }).click()
+  await dialog.getByTestId('channel-base-url-input').fill(baseURL)
+  await dialog.getByTestId('channel-api-key-input').fill(`sk-synthetic-${uniqueSuffix()}`)
+}
+
+async function addCodexModel(page: Page, dialog: Locator) {
+  await dialog.getByTestId(`quick-model-${CODEX_MODEL}`).click()
+  await dialog.getByTestId('add-selected-models-button').click()
+  await dialog.getByTestId('default-test-model-select').click()
+  await page.getByRole('option', { name: CODEX_MODEL, exact: true }).click()
+}

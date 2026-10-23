@@ -20,22 +20,24 @@ export function DataTableColumnHeader<TData, TValue>({ column, title, className 
   const { t } = useTranslation();
 
   if (!column.getCanSort()) {
-    return <div className={cn('text-muted-foreground text-xs font-medium leading-5', className)}>{title}</div>;
+    return <div className={cn('text-muted-foreground text-xs font-medium leading-5 truncate', className)}>{title}</div>;
   }
 
   return (
-    <div className={cn('flex items-center space-x-2', className)}>
+    <div className={cn('flex items-center space-x-2 min-w-0', className)}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant='ghost' size='sm' className='data-[state=open]:bg-accent -ml-3 h-8 text-xs font-medium leading-5 text-muted-foreground'>
-            <span>{title}</span>
-            {column.getIsSorted() === 'desc' ? (
-              <ArrowDownIcon className='ml-2 h-4 w-4' />
-            ) : column.getIsSorted() === 'asc' ? (
-              <ArrowUpIcon className='ml-2 h-4 w-4' />
-            ) : (
-              <CaretSortIcon className='ml-2 h-4 w-4' />
-            )}
+          <Button variant='ghost' size='sm' className='data-[state=open]:bg-accent -ml-3 h-8 max-w-full min-w-0 text-xs font-medium leading-5 text-muted-foreground'>
+            <span className='truncate'>{title}</span>
+            <span className='shrink-0 ml-2'>
+              {column.getIsSorted() === 'desc' ? (
+                <ArrowDownIcon className='h-4 w-4' />
+              ) : column.getIsSorted() === 'asc' ? (
+                <ArrowUpIcon className='h-4 w-4' />
+              ) : (
+                <CaretSortIcon className='h-4 w-4' />
+              )}
+            </span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='start'>

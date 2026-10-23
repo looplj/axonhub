@@ -833,7 +833,7 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON_ReportsInvalidImageW
 	}
 }
 
-func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsRemoteImagesURL(t *testing.T) {
+func TestImageInboundTransformer_TransformRequest_Edit_JSON_PreservesRemoteImagesURL(t *testing.T) {
 	inbound := NewImageEditInboundTransformer()
 
 	reqBody, err := json.Marshal(map[string]any{
@@ -843,15 +843,15 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsRemoteImagesU
 	})
 	require.NoError(t, err)
 
-	_, err = inbound.TransformRequest(context.Background(), &httpclient.Request{
+	llmReq, err := inbound.TransformRequest(context.Background(), &httpclient.Request{
 		Method:  http.MethodPost,
 		URL:     "http://localhost/v1/images/edits",
 		Headers: http.Header{"Content-Type": []string{"application/json"}},
 		Body:    reqBody,
 	})
-	require.Error(t, err)
-	assert.ErrorIs(t, err, transformer.ErrInvalidRequest)
-	assert.Contains(t, err.Error(), "images[0]: invalid request: image must be a data URL")
+	require.NoError(t, err)
+	require.Len(t, llmReq.Image.ImageReferences, 1)
+	assert.Equal(t, "https://example.com/cat.png", llmReq.Image.ImageReferences[0].ImageURL)
 }
 
 func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsInvalidImagesElement(t *testing.T) {
@@ -872,7 +872,7 @@ func TestImageInboundTransformer_TransformRequest_Edit_JSON_RejectsInvalidImages
 	})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, transformer.ErrInvalidRequest)
-	assert.Contains(t, err.Error(), "images[0] must be a data URL or an object with image_url")
+	assert.Contains(t, err.Error(), `images[0]: invalid request: invalid image reference`)
 }
 
 func TestImageInboundTransformer_TransformRequest_Edit_JSON_TooManyImagesObjects(t *testing.T) {

@@ -5,6 +5,7 @@
   "usageLogs.columns.promptCachedTokens": "输入缓存词元",
   "usageLogs.columns.writeCacheTokens": "写入缓存词元",
   "usageLogs.columns.totalCost": "总费用",
+  "usageLogs.modelLibraryPriceHint": "成本取自「模型」菜单的模型价格（该渠道未单独配置该模型的价格）",
   "usageLogs.source.api": "API",
   "usageLogs.source.playground": "测试场",
   "usageLogs.source.test": "测试"

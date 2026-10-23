@@ -531,6 +531,23 @@ func TestPrepareModelsEndpointHeaders(t *testing.T) {
 	})
 }
 
+func TestPrepareModelsEndpointWithVertexBinding(t *testing.T) {
+	fetcher := NewModelFetcher(nil, nil)
+	projectID := "  project-123  "
+	region := " global "
+
+	got, _ := fetcher.prepareModelsEndpointWithVertexBinding(
+		channel.TypeGeminiVertex,
+		"https://aiplatform.googleapis.com/v1",
+		&projectID,
+		&region,
+	)
+	want := "https://aiplatform.googleapis.com/v1/projects/project-123/locations/global/publishers/google/models"
+	if got != want {
+		t.Fatalf("prepareModelsEndpointWithVertexBinding() URL = %q, want %q", got, want)
+	}
+}
+
 func TestFetchModelsGeminiPagination(t *testing.T) {
 	var callCount atomic.Int32
 

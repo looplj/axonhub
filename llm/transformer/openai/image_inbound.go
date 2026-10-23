@@ -148,8 +148,15 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 	oaiResp.OutputFormat = img.OutputFormat
 	oaiResp.Quality = img.Quality
 	oaiResp.Size = img.Size
+	oaiResp.SafetyIdentifier = img.SafetyIdentifier
 
-	if llmResp.Usage != nil {
+	if img.Usage != nil {
+		usage := ImagesResponseUsage(*img.Usage)
+		if llmResp.Usage != nil && llmResp.Usage.Cost != nil {
+			usage.Cost = llmResp.Usage.Cost
+		}
+		oaiResp.Usage = &usage
+	} else if llmResp.Usage != nil {
 		oaiResp.Usage = &ImagesResponseUsage{
 			InputTokens:  llmResp.Usage.PromptTokens,
 			OutputTokens: llmResp.Usage.CompletionTokens,
@@ -160,13 +167,13 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 			oaiResp.Usage.InputTokensDetails = &ImagesResponseUsageInputTokensDetails{
 				ImageTokens:  llmResp.Usage.PromptTokensDetails.ImageTokens,
 				TextTokens:   llmResp.Usage.PromptTokensDetails.TextTokens,
-				CachedTokens: llmResp.Usage.PromptTokensDetails.CachedTokens,
+				CachedTokens: lo.EmptyableToPtr(llmResp.Usage.PromptTokensDetails.CachedTokens),
 			}
 		}
 
 		if llmResp.Usage.CompletionTokensDetails != nil {
 			oaiResp.Usage.OutputTokensDetails = &ImagesResponseUsageOutputTokensDetails{
-				ReasoningTokens: llmResp.Usage.CompletionTokensDetails.ReasoningTokens,
+				ReasoningTokens: lo.EmptyableToPtr(llmResp.Usage.CompletionTokensDetails.ReasoningTokens),
 			}
 		}
 	}
@@ -176,6 +183,7 @@ func (t *ImageInboundTransformer) TransformResponse(ctx context.Context, llmResp
 			B64JSON:       data.B64JSON,
 			URL:           data.URL,
 			RevisedPrompt: data.RevisedPrompt,
+			GenerationID:  data.GenerationID,
 		})
 	}
 
@@ -314,13 +322,17 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 
 	// Extract image data for ImageRequest
 	images := make([][]byte, 0, len(formData.Images))
+	references := make([]llm.ImageReference, 0, len(formData.Images))
 	for _, img := range formData.Images {
 		images = append(images, img.Data)
+		references = append(references, llm.ImageReference{ImageURL: multipartFileToDataURL(img)})
 	}
 
 	var mask []byte
+	var maskReference *llm.ImageReference
 	if formData.Mask != nil {
 		mask = formData.Mask.Data
+		maskReference = &llm.ImageReference{ImageURL: multipartFileToDataURL(*formData.Mask)}
 	}
 
 	user := strings.TrimSpace(formData.Fields["user"])
@@ -328,7 +340,10 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 	imageReq := &llm.ImageRequest{
 		Prompt:            prompt,
 		Images:            images,
+		ImageReferences:   references,
 		Mask:              mask,
+		MaskReference:     maskReference,
+		Moderation:        strings.TrimSpace(formData.Fields["moderation"]),
 		N:                 parseOptionalInt64(formData.Fields["n"]),
 		Size:              strings.TrimSpace(formData.Fields["size"]),
 		Quality:           strings.TrimSpace(formData.Fields["quality"]),
@@ -356,14 +371,15 @@ func (t *ImageInboundTransformer) transformEditRequest(httpReq *httpclient.Reque
 
 // ImageEditJSONRequest represents an application/json body for the image edit API.
 // The Image field accepts a single data URL string or an array of data URL strings;
-// Images accepts an array of data URL strings or of objects carrying image_url;
-// Mask accepts a data URL string.
+// Images accepts data URL strings or objects with image_url (HTTP or data URL) or file_id;
+// Mask accepts the same reference forms, with empty strings treated as omitted.
 type ImageEditJSONRequest struct {
+	Style             string          `json:"style,omitempty"`
 	Prompt            string          `json:"prompt"`
 	Model             string          `json:"model"`
 	Image             json.RawMessage `json:"image,omitempty"`
 	Images            json.RawMessage `json:"images,omitempty"`
-	Mask              string          `json:"mask,omitempty"`
+	Mask              json.RawMessage `json:"mask,omitempty"`
 	N                 *int64          `json:"n,omitempty"`
 	Size              string          `json:"size,omitempty"`
 	Quality           string          `json:"quality,omitempty"`
@@ -373,6 +389,7 @@ type ImageEditJSONRequest struct {
 	OutputFormat      string          `json:"output_format,omitempty"`
 	OutputCompression *int64          `json:"output_compression,omitempty"`
 	InputFidelity     string          `json:"input_fidelity,omitempty"`
+	Moderation        string          `json:"moderation,omitempty"`
 	PartialImages     *int64          `json:"partial_images,omitempty"`
 	Stream            bool            `json:"stream,omitempty"`
 }
@@ -404,12 +421,12 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 		model = "dall-e-2"
 	}
 
-	images, err := parseEditImagesField(editReq.Image, editReq.Images)
+	images, references, err := parseEditImageInputs(editReq.Image, editReq.Images)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(images) == 0 {
+	if len(images) == 0 && len(references) == 0 {
 		return nil, fmt.Errorf("%w: at least one image is required for edits", transformer.ErrInvalidRequest)
 	}
 
@@ -419,17 +436,28 @@ func (t *ImageInboundTransformer) transformEditJSONRequest(httpReq *httpclient.R
 
 	var mask []byte
 
-	if maskDataURL := strings.TrimSpace(editReq.Mask); maskDataURL != "" {
-		mask, err = decodeDataURLToBytes(maskDataURL)
+	var maskReference *llm.ImageReference
+	var legacyMask string
+	if json.Unmarshal(editReq.Mask, &legacyMask) == nil && strings.TrimSpace(legacyMask) == "" {
+		editReq.Mask = nil
+	}
+	if len(editReq.Mask) != 0 && string(editReq.Mask) != "null" {
+		ref, data, err := parseEditImageReference(editReq.Mask)
 		if err != nil {
 			return nil, err
 		}
+		mask = data
+		maskReference = &ref
 	}
 
 	imageReq := &llm.ImageRequest{
 		Prompt:            prompt,
 		Images:            images,
+		ImageReferences:   references,
 		Mask:              mask,
+		MaskReference:     maskReference,
+		Moderation:        editReq.Moderation,
+		Style:             strings.TrimSpace(editReq.Style),
 		N:                 editReq.N,
 		Size:              strings.TrimSpace(editReq.Size),
 		Quality:           strings.TrimSpace(editReq.Quality),
@@ -713,69 +741,6 @@ func parseGenerationImageField(raw json.RawMessage) ([][]byte, error) {
 		data, err := decodeDataURLToBytes(url)
 		if err != nil {
 			return nil, err
-		}
-
-		images = append(images, data)
-	}
-
-	return images, nil
-}
-
-// parseEditImagesField parses the image inputs of a JSON image edit request.
-//
-// The legacy "image" field wins whenever it yields at least one image, so a
-// request carrying both fields is served by "image" exactly as it was before
-// the "images" field existed. "images" is only consulted when "image" is
-// absent or empty, and a malformed "image" is reported instead of falling
-// through so that a broken client cannot silently switch fields. Note that
-// "image" set to null or to an empty string is malformed under the existing
-// rules and still errors out; clients without a legacy image must omit the
-// field.
-//
-// "images" accepts an array of data URL strings or an array of objects with
-// an image_url field, the shape newer image-edit clients send. Every element
-// goes through decodeDataURLToBytes, so the per-image limits (allowed media
-// types, base64 encoding and maxImageFileSize) stay shared with the "image"
-// field.
-func parseEditImagesField(rawImage, rawImages json.RawMessage) ([][]byte, error) {
-	images, err := parseGenerationImageField(rawImage)
-	if err != nil {
-		return nil, err
-	}
-	if len(images) > 0 {
-		return images, nil
-	}
-
-	if len(rawImages) == 0 {
-		return nil, nil
-	}
-
-	var entries []json.RawMessage
-	if err := json.Unmarshal(rawImages, &entries); err != nil {
-		return nil, fmt.Errorf("%w: images field must be an array", transformer.ErrInvalidRequest)
-	}
-	if len(entries) > maxImageCount {
-		return nil, fmt.Errorf("%w: too many images", transformer.ErrInvalidRequest)
-	}
-
-	images = make([][]byte, 0, len(entries))
-
-	for i, entry := range entries {
-		var dataURL string
-		if err := json.Unmarshal(entry, &dataURL); err != nil {
-			var object struct {
-				ImageURL string `json:"image_url"`
-			}
-			if err := json.Unmarshal(entry, &object); err != nil || object.ImageURL == "" {
-				return nil, fmt.Errorf("%w: images[%d] must be a data URL or an object with image_url", transformer.ErrInvalidRequest, i)
-			}
-
-			dataURL = object.ImageURL
-		}
-
-		data, err := decodeDataURLToBytes(dataURL)
-		if err != nil {
-			return nil, fmt.Errorf("images[%d]: %w", i, err)
 		}
 
 		images = append(images, data)

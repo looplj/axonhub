@@ -20,13 +20,11 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
-	"github.com/looplj/axonhub/llm/oauth"
 	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
 	"github.com/looplj/axonhub/llm/transformer/gemini"
 	"github.com/looplj/axonhub/llm/transformer/openai"
-	"github.com/looplj/axonhub/llm/transformer/openai/codex"
 	"github.com/looplj/axonhub/llm/transformer/openai/responses"
 )
 
@@ -257,50 +255,6 @@ func TestUpstreamModelPipeline_StreamingAndAutoAggregate(t *testing.T) {
 			require.Equal(t, "wire-b", saved.UpstreamModelID, "only the first reported name is kept")
 			require.Empty(t, saved.ResponseChunks)
 			require.Empty(t, saved.ResponseBody)
-		})
-	}
-}
-
-func TestUpstreamModelPersistence_CodexImageResponsesStream(t *testing.T) {
-	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIImageGeneration, llm.APIFormatOpenAIImageEdit} {
-		t.Run(string(format), func(t *testing.T) {
-			ctx, db, state := newUpstreamModelPersistenceTest(t)
-			outbound, err := codex.NewOutboundTransformer(codex.Params{
-				BaseURL: "https://chatgpt.com/backend-api/codex#",
-				TokenProvider: oauth.NewStaticTokenProvider(&oauth.OAuthCredentials{
-					AccessToken: "test-token",
-				}),
-			})
-			require.NoError(t, err)
-			providerRequest, err := outbound.TransformRequest(ctx, &llm.Request{
-				Model: "gpt-image-2", RequestType: llm.RequestTypeImage, APIFormat: format,
-				RawRequest: &httpclient.Request{Headers: http.Header{}},
-				Image: &llm.ImageRequest{
-					Prompt: "draw a tree", Images: [][]byte{[]byte("image-data")},
-				},
-			})
-			require.NoError(t, err)
-			require.Equal(t, llm.APIFormatOpenAIResponse.String(), providerRequest.APIFormat)
-			require.Equal(t, llm.APIFormatOpenAIResponse, outbound.APIFormat())
-			state.RawProviderRequest = providerRequest
-			execution := createUpstreamModelTestExecution(t, ctx, db, state.Request, "gpt-image-2", format, true)
-			events := []*httpclient.StreamEvent{
-				{Type: "response.created", Data: []byte(`{"type":"response.created","response":{"id":"resp","model":"gpt-5.4-mini","status":"in_progress","output":[]}}`)},
-				{Type: "response.completed", Data: []byte(`{"type":"response.completed","response":{"id":"resp","model":"gpt-5.4-mini","status":"completed","output":[{"type":"image_generation_call","id":"img","status":"completed","result":"aW1hZ2U="}]}}`)},
-			}
-			stream := NewOutboundPersistentStream(ctx, &sliceEventStream{events: events}, state.Request, execution,
-				state.RequestService, state.UsageLogService, outbound, nil, state)
-			for stream.Next() {
-				_ = stream.Current()
-			}
-			require.NoError(t, stream.Close())
-			saved, err := db.RequestExecution.Get(ctx, execution.ID)
-			require.NoError(t, err)
-			require.Equal(t, requestexecution.StatusCompleted, saved.Status)
-			require.Equal(t, "gpt-image-2", saved.ModelID)
-			require.Equal(t, "gpt-5.4-mini", saved.UpstreamModelID)
-			require.Empty(t, saved.ResponseBody)
-			require.Empty(t, saved.ResponseChunks)
 		})
 	}
 }

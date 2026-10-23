@@ -8,7 +8,7 @@ import (
 
 // ErrEmptyResponse indicates the response contains no meaningful content.
 // This error triggers channel retry when empty response detection is enabled.
-var ErrEmptyResponse = errors.New("empty response detected")
+var ErrEmptyResponse = llm.ErrEmptyResponse
 
 // ErrStreamFirstEventTimeout indicates a streaming response did not produce the first event in time.
 var ErrStreamFirstEventTimeout = errors.New("stream first event timeout")

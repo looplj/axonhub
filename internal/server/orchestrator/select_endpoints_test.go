@@ -51,6 +51,45 @@ func TestSelectAPIFormat_PrefersMatchingFormat(t *testing.T) {
 	}))
 }
 
+func TestSelectAPIFormat_PrefersResponsesProtocolMatchingInboundTransport(t *testing.T) {
+	// Given both Responses endpoint protocols on one channel and a WS request
+	endpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIResponse.String()},
+		{APIFormat: llm.APIFormatOpenAIResponseWebSocket.String()},
+	}
+
+	// When the candidate format is selected
+	format := SelectAPIFormat(endpoints, &llm.Request{
+		RequestType: llm.RequestTypeChat,
+		APIFormat:   llm.APIFormatOpenAIResponseWebSocket,
+	})
+
+	// Then the exact downstream protocol wins instead of the first endpoint
+	require.Equal(t, llm.APIFormatOpenAIResponseWebSocket.String(), format)
+}
+
+func TestResponsesEndpointProtocolMatrix(t *testing.T) {
+	tests := []struct {
+		name   string
+		source llm.APIFormat
+		target llm.APIFormat
+		want   string
+	}{
+		{name: "http to http", source: llm.APIFormatOpenAIResponse, target: llm.APIFormatOpenAIResponse, want: llm.APIFormatOpenAIResponse.String()},
+		{name: "websocket to websocket", source: llm.APIFormatOpenAIResponseWebSocket, target: llm.APIFormatOpenAIResponseWebSocket, want: llm.APIFormatOpenAIResponseWebSocket.String()},
+		{name: "websocket to http", source: llm.APIFormatOpenAIResponseWebSocket, target: llm.APIFormatOpenAIResponse, want: llm.APIFormatOpenAIResponse.String()},
+		{name: "http to websocket", source: llm.APIFormatOpenAIResponse, target: llm.APIFormatOpenAIResponseWebSocket, want: llm.APIFormatOpenAIResponseWebSocket.String()},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			format := SelectAPIFormat([]objects.ChannelEndpoint{{APIFormat: tt.target.String()}}, &llm.Request{RequestType: llm.RequestTypeChat, APIFormat: tt.source})
+
+			require.Equal(t, tt.want, format)
+		})
+	}
+}
+
 func TestSelectAPIFormat_FallsBackWhenNoMatch(t *testing.T) {
 	endpoints := []objects.ChannelEndpoint{
 		{APIFormat: "openai/responses"},

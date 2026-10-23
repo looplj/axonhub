@@ -35,8 +35,33 @@ type promptProtectionBodyCheck struct {
 // validate rejects partial patches and regex semantics that cannot be represented
 // safely in native fields, retaining the already-protected generated body instead.
 func (check *promptProtectionBodyCheck) validate(ctx context.Context, body []byte) error {
+	replayed, err := check.replayed(ctx, body)
+	if err != nil {
+		return err
+	}
+	if !slices.Equal(promptProtectionTexts(replayed), check.expected) {
+		return fmt.Errorf("pass-through prompt values differ from protected request")
+	}
+
+	return nil
+}
+
+func (check *promptProtectionBodyCheck) validateExpanded(ctx context.Context, body []byte) error {
+	replayed, err := check.replayed(ctx, body)
+	if err != nil {
+		return err
+	}
+	actual := promptProtectionTexts(replayed)
+	if len(actual) < len(check.expected) || !slices.Equal(actual[len(actual)-len(check.expected):], check.expected) {
+		return fmt.Errorf("pass-through prompt values differ from protected request")
+	}
+
+	return nil
+}
+
+func (check *promptProtectionBodyCheck) replayed(ctx context.Context, body []byte) (*llm.Request, error) {
 	if check.inbound == nil || check.raw == nil {
-		return fmt.Errorf("protected pass-through body has no inbound mapping")
+		return nil, fmt.Errorf("protected pass-through body has no inbound mapping")
 	}
 
 	raw := *check.raw
@@ -45,13 +70,9 @@ func (check *promptProtectionBodyCheck) validate(ctx context.Context, body []byt
 	replayed, err := check.inbound.TransformRequest(ctx, &raw)
 	if err != nil {
 		// Decoder errors may contain user content; do not include them in logs.
-		return fmt.Errorf("protected pass-through body cannot be decoded by inbound mapping")
+		return nil, fmt.Errorf("protected pass-through body cannot be decoded by inbound mapping")
 	}
-	if !slices.Equal(promptProtectionTexts(replayed), check.expected) {
-		return fmt.Errorf("pass-through prompt values differ from protected request")
-	}
-
-	return nil
+	return replayed, nil
 }
 
 // promptProtectionTexts copies the role and text values inspected by prompt
@@ -311,7 +332,7 @@ func rawPromptTextFields(body []byte, apiFormat llm.APIFormat) ([]rawPromptTextF
 	switch apiFormat {
 	case llm.APIFormatOpenAIChatCompletion, llm.APIFormatOllamaChat:
 		return openAIChatPromptTextFields(body), nil
-	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact:
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket, llm.APIFormatOpenAIResponseCompact:
 		return openAIResponsesPromptTextFields(body), nil
 	case llm.APIFormatAnthropicMessage:
 		return anthropicPromptTextFields(body), nil

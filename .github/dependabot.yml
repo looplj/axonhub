@@ -1,0 +1,77 @@
+version: 2
+
+updates:
+  - package-ecosystem: "gomod"
+    directories:
+      - "/"
+      - "/llm"
+      - "/cmd/schema"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      shared-go-modules:
+        group-by: "dependency-name"
+
+  - package-ecosystem: "gomod"
+    directories:
+      - "/integration_test/anthropic"
+      - "/integration_test/gemini"
+      - "/integration_test/openai"
+      - "/examples/openapi"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      auxiliary-go-modules:
+        group-by: "dependency-name"
+
+  - package-ecosystem: "npm"
+    directories:
+      - "/frontend"
+      - "/integration_test/gemini/node"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore"
+      include: "scope"

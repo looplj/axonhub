@@ -2,7 +2,7 @@
 
 import { format } from 'date-fns';
 import { ColumnDef } from '@tanstack/react-table';
-import { IconAlertTriangle, IconArrowsExchange, IconArrowsJoin2, IconCheck, IconQuestionMark, IconRoute } from '@tabler/icons-react';
+import { IconAlertTriangle, IconArrowsExchange, IconArrowsJoin2, IconCheck, IconCoin, IconQuestionMark, IconRoute } from '@tabler/icons-react';
 import { Ban, FileText } from 'lucide-react';
 import { zhCN, enUS } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
@@ -42,6 +42,30 @@ export const DEFAULT_MOBILE_HIDDEN_COLUMN_IDS = [
 ];
 
 export const MODEL_ID_COLUMN = 'modelID' as const;
+
+// Cache-rate display for the tokens column. The input line carries the cache
+// hit rate and the output line carries the reasoning count, so each metric
+// sits on the line of the tokens it qualifies; each renders only when its own
+// tokens are non-zero, and the rate is the cached share of the prompt (0
+// without prompt tokens). Top-level so tests can execute the display logic
+// without React.
+export interface TokensColumnCacheDisplay {
+  showReasoning: boolean;
+  showCacheRate: boolean;
+  cacheRate: string;
+}
+
+export function tokensColumnCacheDisplay(
+  promptTokens: number,
+  cachedTokens: number,
+  reasoningTokens: number
+): TokensColumnCacheDisplay {
+  return {
+    showReasoning: reasoningTokens > 0,
+    showCacheRate: cachedTokens > 0,
+    cacheRate: (promptTokens > 0 ? (cachedTokens / promptTokens) * 100 : 0).toFixed(1),
+  };
+}
 
 export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
@@ -485,6 +509,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const completionTokens = usageLog.completionTokens || 0;
         const reasoningTokens = usageLog.completionReasoningTokens || 0;
         const totalTokens = promptTokens + completionTokens;
+        const cachedTokens = usageLog.promptCachedTokens || 0;
+        const cacheDisplay = tokensColumnCacheDisplay(promptTokens, cachedTokens, reasoningTokens);
 
         return (
           <div className='space-y-0.5 text-xs'>
@@ -493,14 +519,23 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
               {(totalTokens || 0).toLocaleString()}
             </div>
             <div className='text-muted-foreground'>
-              {t('requests.columns.input')}: {promptTokens.toLocaleString()} | {t('requests.columns.output')}:{' '}
-              {completionTokens.toLocaleString()}
+              {t('requests.columns.input')}: {promptTokens.toLocaleString()}
+              {cacheDisplay.showCacheRate && (
+                <>
+                  {' | '}
+                  <span>{t('requests.columns.cacheRate', { rate: cacheDisplay.cacheRate })}</span>
+                </>
+              )}
             </div>
-            {reasoningTokens > 0 && (
-              <div className='text-muted-foreground'>
-                {t('requests.columns.reasoning')}: {reasoningTokens.toLocaleString()}
-              </div>
-            )}
+            <div className='text-muted-foreground'>
+              {t('requests.columns.output')}: {completionTokens.toLocaleString()}
+              {cacheDisplay.showReasoning && (
+                <>
+                  {' | '}
+                  {t('requests.columns.reasoning')}: {reasoningTokens.toLocaleString()}
+                </>
+              )}
+            </div>
           </div>
         );
       },
@@ -600,17 +635,35 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       enableSorting: false,
       enableHiding: true,
       cell: ({ row }) => {
-        const cost = row.original.usageLogs?.edges?.[0]?.node?.totalCost;
+        const usageLog = row.original.usageLogs?.edges?.[0]?.node;
+        const cost = usageLog?.totalCost;
         if (cost == null) return <span className='font-mono text-xs'>-</span>;
 
+        const isModelLibraryPrice = (usageLog?.costPriceReferenceID ?? '').startsWith('model_library:');
+
         return (
-          <span className='font-mono text-xs font-medium'>
+          <span className='inline-flex items-center gap-1 font-mono text-xs font-medium'>
             {t('currencies.format', {
               val: cost,
               currency: settings?.currencyCode ?? 'USD',
               locale: i18n.language === 'zh' ? 'zh-CN' : 'en-US',
               minimumFractionDigits: 6,
             })}
+            {isModelLibraryPrice && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className='inline-flex h-3.5 w-3.5 items-center justify-center text-amber-600 dark:text-amber-400'
+                    tabIndex={0}
+                    role='img'
+                    aria-label={t('usageLogs.modelLibraryPriceHint')}
+                  >
+                    <IconCoin className='h-3.5 w-3.5' />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{t('usageLogs.modelLibraryPriceHint')}</TooltipContent>
+              </Tooltip>
+            )}
           </span>
         );
       },

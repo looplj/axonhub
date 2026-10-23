@@ -2,9 +2,11 @@
 
 ## Overview
 
-AxonHub supports image generation via the OpenAI-compatible `/v1/images/generations` endpoint.
+AxonHub supports non-streaming image generation and editing via the OpenAI-compatible `/v1/images/generations` and `/v1/images/edits` endpoints.
 
-**Note**: Streaming is not currently supported for image generation.
+**Note**: Images SSE is not currently supported. Omit `stream` or set it to `false`. Generation JSON, edit JSON, and edit multipart requests with `stream: true` are explicitly rejected before upstream execution; AxonHub does not synthesize image streaming events. `partial_images` does not enable streaming.
+
+Codex uses native Images endpoints by default, reusing the channel's Base URL, authentication, proxy, and explicit Images endpoint overrides. Existing URL markers and path-prefix rules still apply; the default Codex Base URL is `https://chatgpt.com/backend-api/codex#`. Responses endpoints do not imply an Images API at the same Base URL, including on Fenno and other non-Codex channels. Existing native image provider endpoints remain available, and users can explicitly configure Images endpoints on other channels. Images endpoints do not inherit custom Responses Base URLs or paths. Images requests are no longer converted to Responses `image_generation` tool calls. Native `/v1/responses` requests and their image tools retain their own behavior.
 
 ## API Usage
 
@@ -92,6 +94,8 @@ if (result.data) {
 }
 ```
 
+The JSON response preserves upstream `created`, `data[].b64_json`, `data[].url`, `data[].revised_prompt`, and `data[].generation_id` when returned. `generation_id` belongs to each data item. Top-level `safety_identifier` (including null), `output_format`, `size`, `quality`, `background`, and image `usage` are preserved when supplied, including input/output token details for image and text tokens. Fields and parameter support depend on the upstream model; AxonHub does not substitute text-model usage for image usage.
+
 ## Request Parameters
 
 | Parameter | Type | Description | Default |
@@ -108,13 +112,26 @@ if (result.data) {
 | `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
 | `output_compression` | number | Compression level (0-100%). | 100 |
 | `moderation` | string | Content moderation level: `"low"` or `"auto"`. | - |
-| `partial_images` | number | Number of partial images to generate. | 1 |
+| `stream` | boolean | Only omitted or `false` is supported; `true` is rejected. | `false` |
 
 ## Image Edit (Inpainting)
 
 To edit an image, use the `/v1/images/edits` endpoint. Multipart/form-data
 requests require the `image` field; application/json requests accept either
-the `image` field or the newer `images` array:
+the `image` field or the newer `images` array. Codex sends edits upstream as JSON: multipart image and mask files become data URLs, while JSON `image_url` and `file_id` references are retained. Other native image providers retain their existing upstream encoding. Upstream support for file IDs and remote URLs varies by provider.
+
+For example, a JSON edit can use the following body (replace the placeholder with your image data URL or supported URL):
+
+```json
+{
+  "model": "gpt-image-2",
+  "prompt": "Change the color to blue",
+  "images": [{"image_url": "data:image/png;base64,<image-bytes>"}],
+  "stream": false
+}
+```
+
+Multipart example:
 
 ```python
 import requests
@@ -145,9 +162,9 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | Parameter | Type | Description | Default |
 |-----------|------|-------------|---------|
 | `image` | file | **Required for multipart/form-data.** The image to edit. For application/json requests, either `image` or `images` must be present. | - |
-| `images` | array | For application/json requests, either `image` or `images` must be present. Accepts an array of data URLs or of `{"image_url": "<data URL>"}` objects; ignored when `image` yields at least one image. | - |
+| `images` | array | JSON image references: data URL strings or objects with `image_url` or `file_id`. Each object must specify exactly one reference. Either `image` or `images` must be present. | - |
 | `prompt` | string | **Required.** A text description of the desired edit. | - |
-| `mask` | file | An optional mask image. Transparent areas indicate where to edit. | - |
+| `mask` | file / JSON reference | Optional multipart mask file or JSON reference with `image_url` or `file_id`. Transparent areas indicate where to edit. | - |
 | `model` | string | The model to use. | `dall-e-2` |
 | `n` | integer | The number of images to generate. | 1 |
 | `size` | string | The size of the generated images. | `"1024x1024"` |
@@ -157,13 +174,14 @@ with open("image.png", "rb") as image_file, open("mask.png", "rb") as mask_file:
 | `output_format` | string | Image format: `"png"`, `"webp"`, or `"jpeg"`. | `"png"` |
 | `output_compression` | number | Compression level (0-100%). | 100 |
 | `input_fidelity` | string | Input fidelity level. | - |
-| `partial_images` | number | Number of partial images. | 1 |
+| `stream` | boolean | Only omitted or `false` is supported; `true` is rejected, including in multipart forms. | `false` |
 
 ## Supported Providers
 
 | Provider             | Status  | Supported Models                                              | Notes                 |
 | -------------------- | ------- | ------------------------------------------------------------- | --------------------- |
 | **OpenAI**           | ✅ Done | gpt-image-1, dall-e-2, dall-e-3, etc.                         | No streaming support  |
+| **Codex**            | ✅ Done | gpt-image-2                                                    | Native non-streaming generation and JSON upstream edits; availability depends on account access |
 | **ByteDance Doubao** | ✅ Done | doubao-seed-dream-4-0, etc.                                   | No streaming support  |
 | **OpenRouter**       | ✅ Done | gpt-image-1, gemini-2.5-flash-image-preview, etc.             | No streaming support  |
 | **Gemini**           | ✅ Done | gemini-2.5-flash-image, gemini-2.0-flash-preview-image-generation, etc. | No streaming support  |

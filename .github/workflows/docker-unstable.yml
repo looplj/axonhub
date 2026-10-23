@@ -101,8 +101,8 @@ jobs:
             looplj/axonhub:unstable-${{ matrix.arch }}
             looplj/axonhub:unstable-${{ needs.prepare.outputs.build_date }}-${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=axonhub-${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=axonhub-${{ matrix.arch }}
           provenance: false
           sbom: false
 

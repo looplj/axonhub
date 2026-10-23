@@ -240,6 +240,9 @@ func (t *OutboundTransformer) buildImageGenerationAPIRequest(llmReq *llm.Request
 	if llmReq.Image == nil {
 		return nil, fmt.Errorf("image request is required")
 	}
+	if err := transformer.ValidateImageBytes(llmReq.Image); err != nil {
+		return nil, err
+	}
 
 	prompt := llmReq.Image.Prompt
 	if prompt == "" {

@@ -124,12 +124,12 @@ func (m *livePreviewMiddleware) OnInboundRawStream(ctx context.Context, stream s
 		return stream, nil
 	}
 
-	return &liveRequestStream{
+	return preserveDeliveryCapabilities(stream, &liveRequestStream{
 		stream:             stream,
 		buffer:             buffer,
 		liveStreamRegistry: m.liveStreamRegistry,
 		requestID:          m.state.Request.ID,
-	}, nil
+	}), nil
 }
 
 type liveRequestExecutionStream struct {

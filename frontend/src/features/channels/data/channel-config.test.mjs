@@ -369,16 +369,62 @@ test('Ollama exposes OpenAI and Anthropic channel variants with a quota cookie f
   );
 });
 
-test('Ollama has localized channel, provider, cookie field, and quota-collection labels', () => {
+test('Cloudflare Workers AI is available as a channel type in frontend schemas and configs', () => {
+  const schema = read('features/channels/data/schema.ts');
+  const channelsConfig = read('features/channels/data/config_channels.ts');
+  const providersConfig = read('features/channels/data/config_providers.ts');
+  const protocolOptions = read('features/channels/data/protocol-options.ts');
+
+  assert.match(schema, /channelTypeSchema[\s\S]*'cloudflare'/, 'channelTypeSchema should accept cloudflare');
+  assert.match(
+    channelsConfig,
+    /cloudflare:\s*{[\s\S]*?channelType:\s*'cloudflare'[\s\S]*?baseURL:\s*'https:\/\/api\.cloudflare\.com\/client\/v4\/accounts\/<account_id>\/ai'[\s\S]*?apiFormat:\s*OPENAI_CHAT_COMPLETIONS,/,
+    'Cloudflare should use the account-scoped Workers AI base URL with OpenAI chat completions'
+  );
+  assert.match(
+    channelsConfig,
+    /CHANNEL_TYPE_TO_PROVIDER[\s\S]*cloudflare:\s*'cloudflare'/,
+    'Cloudflare should map to the Cloudflare provider'
+  );
+  assert.match(
+    providersConfig,
+    /cloudflare:\s*{[\s\S]*?channelTypes:\s*\[\s*'cloudflare'\s*\]/,
+    'PROVIDER_CONFIGS should expose a Cloudflare provider'
+  );
+  assert.match(
+    protocolOptions,
+    /channelType === 'cloudflare' \|\| format !== 'typesafe\/systemone'/,
+    'System One should be configurable for Cloudflare channels only'
+  );
+  assert.match(
+    schema,
+    /Replace placeholders such as <account_id> with real values/,
+    'the channel base URL should reject unresolved placeholders'
+  );
+  assert.doesNotMatch(
+    channelsConfig,
+    /@cf\/cloudflare\/clef/,
+    'Cloudflare default models must be servable by the default endpoints'
+  );
+});
+
+test('Cloudflare has localized channel and provider labels', () => {
   for (const locale of ['en', 'zh-CN']) {
     const channels = parseLocale(locale);
-    const system = JSON.parse(read(`locales/${locale}/system.json`));
+
+    assert.equal(channels['channels.types.cloudflare'], 'Cloudflare');
+    assert.equal(channels['channels.providers.cloudflare'], 'Cloudflare');
+  }
+});
+
+test('Ollama has localized channel, provider, and cookie-field labels', () => {
+  for (const locale of ['en', 'zh-CN']) {
+    const channels = parseLocale(locale);
 
     assert.equal(channels['channels.types.ollama'], 'Ollama');
     assert.equal(channels['channels.providers.ollama'], 'Ollama');
     assert.ok(channels['channels.types.ollama_anthropic']);
     assert.ok(channels['channels.dialogs.fields.ollamaQuota.authCookie.placeholder'].includes('__Secure-session'));
     assert.ok(channels['channels.dialogs.fields.ollamaQuota.authCookie.description']);
-    assert.ok(system['system.quota.collection.providers.ollama']);
   }
 });

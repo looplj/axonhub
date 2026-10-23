@@ -77,13 +77,10 @@ func reportedModel(body []byte, format llm.APIFormat, eventType string, stream b
 		if eventType == "message_start" {
 			return jsonModel(body, "message.model")
 		}
-	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseCompact,
-		llm.APIFormatOpenAIImageGeneration, llm.APIFormatOpenAIImageEdit:
+	case llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket, llm.APIFormatOpenAIResponseCompact:
 		if !stream {
 			return jsonModel(body, "model")
 		}
-		// Codex preserves the image API format on requests while returning
-		// Responses SSE. Only lifecycle metadata identifies the reported model.
 		switch eventType {
 		case "response.created", "response.in_progress", "response.completed", "response.incomplete", "response.failed", "response.cancelled", "response.canceled":
 			return jsonModel(body, "response.model")
@@ -101,6 +98,7 @@ func reportedModel(body []byte, format llm.APIFormat, eventType string, stream b
 			return jsonModel(body, "model")
 		}
 	case llm.APIFormatOpenAIEmbedding, llm.APIFormatOpenAIModeration,
+		llm.APIFormatOpenAIImageGeneration, llm.APIFormatOpenAIImageEdit,
 		llm.APIFormatOpenAIImageVariation, llm.APIFormatTypeSafeSystemOne,
 		llm.APIFormatOpenAITranscription, llm.APIFormatOpenAITranslation,
 		llm.APIFormatOpenAIVideo, llm.APIFormatJinaEmbedding, llm.APIFormatJinaRerank,
