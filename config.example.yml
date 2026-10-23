@@ -14,6 +14,17 @@ server:
   # pid_file: "~/.config/axonhub/axonhub.pid"  # PID file for axonhub reload (env: AXONHUB_SERVER_PID_FILE)
   request_timeout: "30s"        # Request timeout duration (env: AXONHUB_SERVER_REQUEST_TIMEOUT)
   llm_request_timeout: "600s"   # LLM request timeout duration (env: AXONHUB_SERVER_LLM_REQUEST_TIMEOUT)
+  # Optional Claude Code auto-mode reviewer; empty classifier_model disables it.
+  # Select a model exposed by an existing channel, accessible to the calling API key.
+  # Restart AxonHub after changing these settings; SIGHUP does not reload them.
+  safeguards:
+    classifier_model: ""         # e.g. "codex-auto-review" (env: AXONHUB_SERVER_SAFEGUARDS_CLASSIFIER_MODEL)
+    escalate_on_denial: false    # Ask a backup to reassess primary denials; preserve denial if reassessment fails
+    fallback_models: []          # Ordered backups, e.g. ["gemini-3.8-flash"] (env: AXONHUB_SERVER_SAFEGUARDS_FALLBACK_MODELS, JSON array)
+    attempt_timeout: "0s"        # Per-model limit, 0 uses remaining total budget; e.g. 10s (env: AXONHUB_SERVER_SAFEGUARDS_ATTEMPT_TIMEOUT)
+    timeout: "30s"               # Overall limit including all attempts, >0, <=2m (env: AXONHUB_SERVER_SAFEGUARDS_TIMEOUT)
+    max_tokens: 4096              # 1..16384 (env: AXONHUB_SERVER_SAFEGUARDS_MAX_TOKENS)
+    transcript_char_budget: 24000 # UTF-8 bytes, 1..1000000 (env: AXONHUB_SERVER_SAFEGUARDS_TRANSCRIPT_CHAR_BUDGET)
   sse_keep_alive:
     enabled: false               # Send API-compatible heartbeats while an SSE stream is idle (env: AXONHUB_SERVER_SSE_KEEP_ALIVE_ENABLED)
     interval: "15s"              # Idle duration between heartbeats (env: AXONHUB_SERVER_SSE_KEEP_ALIVE_INTERVAL)
