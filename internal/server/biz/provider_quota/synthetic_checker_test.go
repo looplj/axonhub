@@ -2,6 +2,8 @@ package provider_quota
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -239,6 +241,112 @@ func TestSynthetic_CheckQuota_PersistsNewCounterRawFields(t *testing.T) {
 	require.Equal(t, "2099-10-18T04:26:59.606Z", freeToolCalls["renewsAt"])
 }
 
+func TestSynthetic_CheckQuota_WeeklyCreditAmounts(t *testing.T) {
+	type testCase struct {
+		name             string
+		maxCredits       string
+		remainingCredits string
+		wantMoney        bool
+		wantCost         float64
+		wantQuota        float64
+	}
+
+	tests := []testCase{
+		{name: "dollar amounts", maxCredits: "$10.50", remainingCredits: "$10.47", wantMoney: true, wantCost: 0.03, wantQuota: 10.50},
+		{name: "bare amounts", maxCredits: "36", remainingCredits: "13.9", wantMoney: true, wantCost: 22.1, wantQuota: 36},
+		{name: "trimmed amounts", maxCredits: " $10.50 ", remainingCredits: " $10.47 ", wantMoney: true, wantCost: 0.03, wantQuota: 10.50},
+		{name: "signed exponent amounts", maxCredits: "+1.05e1", remainingCredits: "+1.047e1", wantMoney: true, wantCost: 0.03, wantQuota: 10.50},
+		{name: "zero remaining", maxCredits: "$10.50", remainingCredits: "$0", wantMoney: true, wantCost: 10.50, wantQuota: 10.50},
+		{name: "negative remaining", maxCredits: "$10.50", remainingCredits: "-1.50", wantMoney: true, wantCost: 12, wantQuota: 10.50},
+		{name: "remaining above maximum", maxCredits: "$10.50", remainingCredits: "$11", wantMoney: true, wantCost: 0, wantQuota: 10.50},
+		{name: "zero maximum", maxCredits: "0", remainingCredits: "0"},
+		{name: "negative maximum", maxCredits: "-1", remainingCredits: "0"},
+	}
+	for _, value := range []string{"NaN", "Inf", "+Inf", "-Inf", "Infinity", "+Infinity", "-Infinity", "$NaN", "$+Inf", "$-Inf"} {
+		tests = append(tests,
+			testCase{name: "invalid maximum " + value, maxCredits: value, remainingCredits: "$5.00"},
+			testCase{name: "invalid remaining " + value, maxCredits: "$10.50", remainingCredits: value},
+		)
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body := fmt.Sprintf(`{"weeklyTokenLimit":{"percentRemaining":50,"maxCredits":%q,"remainingCredits":%q}}`, tt.maxCredits, tt.remainingCredits)
+			httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+				Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     make(http.Header),
+						Body:       io.NopCloser(strings.NewReader(body)),
+					}, nil
+				}),
+			})
+
+			quota, err := NewSyntheticQuotaChecker(httpClient).CheckQuota(context.Background(), &ent.Channel{
+				Credentials: objects.ChannelCredentials{APIKey: "test-api-key"},
+			})
+			require.NoError(t, err)
+			require.Equal(t, "available", quota.Status)
+			require.True(t, quota.Ready)
+			require.Len(t, quota.Limits, 1)
+			require.Equal(t, QuotaWindowWeekly, quota.Limits[0].Window)
+
+			serialized, err := json.Marshal(quota)
+			require.NoError(t, err)
+			require.True(t, json.Valid(serialized))
+
+			if tt.wantMoney {
+				require.NotNil(t, quota.Limits[0].PeriodCost)
+				require.InDelta(t, tt.wantCost, *quota.Limits[0].PeriodCost, 1e-9)
+				require.NotNil(t, quota.Limits[0].PeriodQuota)
+				require.InDelta(t, tt.wantQuota, *quota.Limits[0].PeriodQuota, 1e-9)
+			} else {
+				require.Nil(t, quota.Limits[0].PeriodCost)
+				require.Nil(t, quota.Limits[0].PeriodQuota)
+			}
+		})
+	}
+}
+
+func TestParseSyntheticCredits(t *testing.T) {
+	t.Run("missing", func(t *testing.T) {
+		credits, ok := parseSyntheticCredits(nil)
+		require.False(t, ok)
+		require.Zero(t, credits)
+	})
+
+	for _, tt := range []struct {
+		value string
+		want  float64
+		ok    bool
+	}{
+		{value: "$10.50", want: 10.50, ok: true},
+		{value: " 10.50 ", want: 10.50, ok: true},
+		{value: "+1.05e1", want: 10.50, ok: true},
+		{value: "-1.5", want: -1.5, ok: true},
+		{value: "0", ok: true},
+		{value: ""},
+		{value: "$"},
+		{value: "not a credit amount"},
+		{value: "NaN"},
+		{value: "Inf"},
+		{value: "+Inf"},
+		{value: "-Inf"},
+		{value: "Infinity"},
+		{value: "+Infinity"},
+		{value: "-Infinity"},
+		{value: "$NaN"},
+		{value: "$+Inf"},
+		{value: "$-Inf"},
+	} {
+		t.Run(tt.value, func(t *testing.T) {
+			credits, ok := parseSyntheticCredits(&tt.value)
+			require.Equal(t, tt.ok, ok)
+			require.Equal(t, tt.want, credits)
+		})
+	}
+}
+
 func TestSynthetic_CheckQuota_PlanWeeklyLimitShape(t *testing.T) {
 	weeklyReset, err := time.Parse(time.RFC3339, "2099-10-23T00:08:27.000Z")
 	require.NoError(t, err)
@@ -351,6 +459,150 @@ func TestSynthetic_CheckQuota_PartialPlanShapeFallsBackPerField(t *testing.T) {
 	require.Equal(t, legacyReset, *quota.Limits[0].NextResetAt)
 	require.NotNil(t, quota.Limits[0].PeriodQuota)
 	require.InDelta(t, 10.50, *quota.Limits[0].PeriodQuota, 1e-9)
+}
+
+// TestSynthetic_CheckQuota_MixedWeeklyShapesIndependentFields pins the contract
+// that planWeeklyLimit and weeklyTokenLimit fall back to each other
+// independently per field — not per object — and that precedence is resolved
+// through the real CheckQuota response, including routing decisions.
+func TestSynthetic_CheckQuota_MixedWeeklyShapesIndependentFields(t *testing.T) {
+	planReset := time.Date(2099, 10, 23, 0, 8, 27, 0, time.UTC)
+	legacyReset := time.Date(2099, 10, 23, 4, 0, 0, 0, time.UTC)
+	fiveHourReset := time.Date(2099, 10, 20, 6, 0, 0, 0, time.UTC)
+
+	check := func(t *testing.T, body string) QuotaData {
+		t.Helper()
+
+		httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader(body)),
+				}, nil
+			}),
+		})
+
+		quota, err := NewSyntheticQuotaChecker(httpClient).CheckQuota(context.Background(), &ent.Channel{
+			Credentials: objects.ChannelCredentials{APIKey: "test-api-key"},
+		})
+		require.NoError(t, err)
+		return quota
+	}
+
+	// Healthy legacy pool shared by the mixed cases: 50% of weekly tokens
+	// used with a legacy regeneration tick at 04:00.
+	legacy := `{"weeklyTokenLimit":{"nextRegenAt":"2099-10-23T04:00:00.000Z","percentRemaining":50.0,"maxCredits":"$10.50","remainingCredits":"$5.25"}`
+	// Five-hour window that regens before every weekly reset, so it owns the
+	// channel-level reset in all cases; the weekly-limit reset is where the
+	// plan/legacy interplay is observable.
+	fiveHour := `,"rollingFiveHourLimit":{"nextTickAt":"2099-10-20T06:00:00.000Z","tickPercent":0.05,"remaining":700,"max":750,"limited":false}}`
+
+	type testCase struct {
+		name            string
+		planWeekly      string // the planWeeklyLimit fragment appended to the legacy prefix
+		wantUsage       float64
+		wantWeekly      string // status of the merged weekly limit
+		wantChannel     string
+		wantReady       bool
+		wantWeeklyReset time.Time // reset carried by the merged weekly limit
+		wantRouting     map[QuotaLimitType]RoutingState
+		wantStatus      map[QuotaLimitType]providerquotastatus.Status
+	}
+
+	tests := []testCase{
+		{
+			name:            "plan percent + legacy reset",
+			planWeekly:      `,"planWeeklyLimit":{"percentRemaining":90.0,"nextRegenAt":"2099-10-23T00:08:27.000Z"}`,
+			wantUsage:       0.1,
+			wantWeekly:      "available",
+			wantChannel:     "available",
+			wantReady:       true,
+			wantWeeklyReset: planReset,
+			wantRouting: map[QuotaLimitType]RoutingState{
+				QuotaLimitTypeToken: RoutingOpen,
+				QuotaLimitTypeImage: RoutingOpen,
+			},
+			wantStatus: map[QuotaLimitType]providerquotastatus.Status{
+				QuotaLimitTypeToken: providerquotastatus.StatusAvailable,
+			},
+		},
+		{
+			name:            "plan reset + legacy percent",
+			planWeekly:      `,"planWeeklyLimit":{"nextRegenAt":"2099-10-23T00:08:27.000Z"}`,
+			wantUsage:       0.5,
+			wantWeekly:      "available",
+			wantChannel:     "available",
+			wantReady:       true,
+			wantWeeklyReset: planReset,
+			wantRouting: map[QuotaLimitType]RoutingState{
+				QuotaLimitTypeToken: RoutingOpen,
+			},
+			wantStatus: map[QuotaLimitType]providerquotastatus.Status{
+				QuotaLimitTypeToken: providerquotastatus.StatusAvailable,
+			},
+		},
+		{
+			name: "explicit plan percent zero overrides healthy legacy",
+			// A 0% plan percentage must not be treated as "absent" and
+			// dropped into the legacy 50%; the weekly pool is exhausted and
+			// so is the whole channel.
+			planWeekly:      `,"planWeeklyLimit":{"percentRemaining":0.0,"nextRegenPercent":2}`,
+			wantUsage:       1.0,
+			wantWeekly:      "exhausted",
+			wantChannel:     "exhausted",
+			wantReady:       false,
+			wantWeeklyReset: legacyReset,
+			wantRouting: map[QuotaLimitType]RoutingState{
+				QuotaLimitTypeToken: RoutingExhausted,
+				QuotaLimitTypeImage: RoutingExhausted,
+			},
+			wantStatus: map[QuotaLimitType]providerquotastatus.Status{
+				QuotaLimitTypeToken: providerquotastatus.StatusExhausted,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			quota := check(t, legacy+tt.planWeekly+fiveHour)
+
+			require.Equal(t, tt.wantChannel, quota.Status)
+			require.Equal(t, tt.wantReady, quota.Ready)
+			require.NotNil(t, quota.NextResetAt)
+			// The five-hour window owns the channel reset in every case.
+			require.Equal(t, fiveHourReset, *quota.NextResetAt)
+
+			var weekly *QuotaLimitStatus
+			for i := range quota.Limits {
+				if quota.Limits[i].Type == QuotaLimitTypeToken && quota.Limits[i].Window == QuotaWindowWeekly {
+					weekly = &quota.Limits[i]
+				}
+			}
+			require.NotNil(t, weekly, "merged weekly token limit must be present")
+			require.Equal(t, tt.wantWeekly, weekly.Status)
+			require.InDelta(t, tt.wantUsage, weekly.UsageRatio, 1e-9)
+			require.NotNil(t, weekly.NextResetAt)
+			require.Equal(t, tt.wantWeeklyReset, *weekly.NextResetAt)
+			// Credits stay on the weekly pool even when the plan shape owns
+			// the percentage/reset fields — finite-credit program.
+			require.NotNil(t, weekly.PeriodQuota)
+			require.InDelta(t, 10.50, *weekly.PeriodQuota, 1e-9)
+			require.NotNil(t, weekly.PeriodCost)
+			require.InDelta(t, 5.25, *weekly.PeriodCost, 1e-9)
+
+			for limitType, want := range tt.wantRouting {
+				got, reason := EvaluateQuotaRouting(quota.Limits, quota.Status, limitType, time.Now())
+				require.Equal(t, want, got, "routing for %s: %s", limitType, reason)
+			}
+
+			for limitType, want := range tt.wantStatus {
+				got, ready := EffectiveStatus(quota.Limits, providerquotastatus.Status(quota.Status), quota.Ready, limitType)
+				require.Equal(t, want, got)
+				require.Equal(t, tt.wantReady, ready)
+			}
+		})
+	}
 }
 
 func TestSynthetic_CheckQuota_WarningState(t *testing.T) {

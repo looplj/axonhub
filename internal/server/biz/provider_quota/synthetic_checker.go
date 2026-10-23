@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -392,7 +393,7 @@ func parseSyntheticCredits(value *string) (float64, bool) {
 	}
 
 	credits, err := strconv.ParseFloat(trimmed, 64)
-	if err != nil {
+	if err != nil || math.IsNaN(credits) || math.IsInf(credits, 0) {
 		return 0, false
 	}
 

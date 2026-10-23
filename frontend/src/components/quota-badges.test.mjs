@@ -1,7 +1,9 @@
+import React from 'react';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
+import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
 
 const componentsDir = import.meta.dirname;
@@ -345,15 +347,253 @@ test('Synthetic badge lists the hourly search quota without gating', () => {
   assert.match(source, /currency: currency \|\| generalSettings\?\.currencyCode \|\| 'USD'/);
 });
 
-test('Synthetic badge reads the weekly pool from both plan shapes', () => {
-  const source = read('components/quota-badges.tsx');
-  const start = source.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'synthetic' &&");
-  const end = source.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'neuralwatt' &&", start);
-  const syntheticBlock = source.slice(start, end);
+// --- Synthetic weekly pool behavior (production code, real data) ---
 
-  assert.match(syntheticBlock, /const weeklyPercentRemaining = planWeekly\?\.percentRemaining \?\? qd\.weeklyTokenLimit\?\.percentRemaining/);
-  assert.match(syntheticBlock, /const weeklyNextRegenAt = planWeekly\?\.nextRegenAt \?\? qd\.weeklyTokenLimit\?\.nextRegenAt/);
-  assert.match(syntheticBlock, /planWeekly\?\.nextRegenPercent/);
-  assert.match(syntheticBlock, /formatTimeToReset\(weeklyNextRegenAt, usedPct, regenTick\)/);
-  assert.match(source, /qd\?\.planWeeklyLimit\?\.percentRemaining \?\? qd\?\.weeklyTokenLimit\?\.percentRemaining/);
+// The Synthetic weekly pool math lives in module-scope helpers plus expressions
+// embedded in the render branch. Extract the exact production source (not a
+// re-implementation) so plan-only, legacy-only, and mixed payloads run through
+// the actual percentage / reset / regen-tick logic.
+const syntheticHelperNames = [
+  'isOpenaiType',
+  'isCommandCodeType',
+  'isOllamaType',
+  'isMinimaxType',
+  'isZenmuxType',
+  'getClineUsagePercent',
+  'getApertisPercentage',
+  'getChannelPercentage',
+];
+const syntheticFuncNodes = [];
+const collectSyntheticFunctions = (node) => {
+  ts.forEachChild(node, (child) => {
+    if (ts.isFunctionDeclaration(child) && child.name?.text && syntheticHelperNames.includes(child.name.text)) {
+      if (!syntheticFuncNodes.some((n) => n.name.text === child.name.text)) syntheticFuncNodes.push(child);
+      return;
+    }
+    collectSyntheticFunctions(child);
+  });
+};
+collectSyntheticFunctions(badgesAst);
+assert.equal(syntheticFuncNodes.length, syntheticHelperNames.length, 'all Synthetic helpers must stay in quota-badges.tsx');
+
+const syntheticConstNames = ['syntheticWeeklyRegenTickPct', 'calcDurationPercent', 'formatTimeToReset'];
+const syntheticConstNodes = [];
+const collectSyntheticConsts = (node) => {
+  ts.forEachChild(node, (child) => {
+    if (ts.isVariableStatement(child) && child.declarationList) {
+      for (const decl of child.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && syntheticConstNames.includes(decl.name.text)) {
+          if (!syntheticConstNodes.some((n) => n.getText() === child.getText())) syntheticConstNodes.push(child);
+          return;
+        }
+      }
+    }
+    collectSyntheticConsts(child);
+  });
+};
+collectSyntheticConsts(badgesAst);
+assert.equal(syntheticConstNodes.length, syntheticConstNames.length, 'all Synthetic constants must stay in quota-badges.tsx');
+
+// Locate render-branch expressions to rebuild as executable functions.
+const findVariableDeclaration = (root, name) => {
+  let found;
+  const walk = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name) found = node;
+    ts.forEachChild(node, walk);
+  };
+  walk(root);
+  return found;
+};
+const regenTickDecl = findVariableDeclaration(badgesAst, 'regenTick');
+const weeklyNextRegenAtDecl = findVariableDeclaration(badgesAst, 'weeklyNextRegenAt');
+assert.ok(regenTickDecl?.initializer, 'regenTick expression must stay in the Synthetic render branch');
+assert.ok(weeklyNextRegenAtDecl?.initializer, 'weeklyNextRegenAt expression must stay in the Synthetic render branch');
+
+const syntheticModuleSource = [
+  // i18n shim: formatTimeToReset branches and rounds through t(); the shim emits
+  // key:params so the branch choice and the rounded percent are asserted for real.
+  'const t = (key, params) => (params ? key + ":" + JSON.stringify(params) : key);',
+  ...syntheticFuncNodes.map((node) => `export ${node.getText(badgesAst)}`),
+  ...syntheticConstNodes.map((node) => `export ${node.getText(badgesAst)}`),
+  `export const getSyntheticWeeklyRegenTick = (planWeekly) => ${regenTickDecl.initializer.getText(badgesAst)};`,
+  `export const getSyntheticWeeklyResetAt = (qd) => { const planWeekly = qd.planWeeklyLimit; return ${weeklyNextRegenAtDecl.initializer.getText(badgesAst)}; };`,
+].join('\n');
+
+const {
+  getChannelPercentage: badgePercent,
+  syntheticWeeklyRegenTickPct,
+  calcDurationPercent,
+  formatTimeToReset: badgeFormatTimeToReset,
+  getSyntheticWeeklyRegenTick,
+  getSyntheticWeeklyResetAt,
+} = await loadTsModule(syntheticModuleSource);
+
+// --- Synthetic weekly badge render path (real component sources) ---
+
+// Extract the exact Synthetic render branch from quota-badges.tsx (between the
+// branch marker and the NeuralWatt branch marker), compile that production JSX,
+// and render it with React SSR so the observable badge output — percent label,
+// bar fill, duration marker, tooltip countdown — is asserted, not the
+// disconnected expressions that feed it.
+const syntheticBranchStart = badgesSource.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'synthetic' &&");
+const syntheticBranchEnd = badgesSource.indexOf(
+  "{isOpenaiType(channel.type) && channel.providerType === 'neuralwatt' &&",
+  syntheticBranchStart
+);
+assert.ok(syntheticBranchStart !== -1, 'Synthetic render branch should exist in quota-badges source');
+assert.ok(
+  syntheticBranchEnd !== -1 && syntheticBranchEnd > syntheticBranchStart,
+  'the NeuralWatt branch should follow the Synthetic branch'
+);
+const syntheticBranchInner = badgesSource.slice(syntheticBranchStart, syntheticBranchEnd).trim();
+assert.ok(syntheticBranchInner.startsWith('{isOpenaiType'), 'Synthetic branch extraction must start at the branch condition');
+// The outer braces are the JSX expression-container delimiters, not JS block
+// braces: drop them so the remaining expression plugs into `return (...)`.
+const syntheticBranchExpr = syntheticBranchInner.slice(1, -1);
+assert.ok(syntheticBranchExpr.endsWith(')'), 'Synthetic branch must end with the JSX group close');
+
+// t + formatTimeToReset/calcDurationPercent/regen-tick constant come from the
+// production source (syntheticConstNodes); the real en locale is embedded so the
+// i18next-style translator inside the module interpolates {{param}} placeholders
+// into final user-facing countdown text.
+const enSystem = JSON.parse(read('locales/en/system.json'));
+const syntheticRenderModule = [
+  'const enSystem = ' + JSON.stringify(enSystem) + ';',
+  'function t(key, params) {',
+  '  let out = enSystem[key] ?? key;',
+  '  for (const [name, value] of Object.entries(params || {})) out = out.split(`{{${name}}}`).join(String(value));',
+  '  return out;',
+  '}',
+  ...syntheticFuncNodes.map((node) => node.getText(badgesAst)),
+  ...syntheticConstNodes.map((node) => node.getText(badgesAst)),
+  // Same clamping as the real shared bar, projected into data-* attributes so
+  // renderToStaticMarkup output is assertable without a DOM or Radix context.
+  // The transpiled branch references the classic `React.createElement` factory;
+  // data: module imports share the host realm, so globalThis.React (set below
+  // before the import) provides it.
+  'function UsageTimeBar({ usagePercent, durationPercent, tooltip }) {',
+  '  const clamped = Math.min(Math.max(usagePercent || 0, 0), 100);',
+  '  const markerLeft = durationPercent === undefined ? undefined : Math.min(Math.max(durationPercent, 0), 100);',
+  '  const attrs = { className: "bar" };',
+  '  attrs["data-fill"] = clamped;',
+  '  if (markerLeft !== undefined) attrs["data-duration"] = markerLeft;',
+  '  return <div {...attrs}>{tooltip}</div>;',
+  '}',
+  'function Badge({ children }) { return children; }',
+  'function SyntheticBadge({ channel }) {',
+  '  return (' + syntheticBranchExpr + ');',
+  '}',
+  'export default SyntheticBadge;',
+].join('\n');
+const { outputText: syntheticRenderJs } = ts.transpileModule(syntheticRenderModule, {
+  compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 },
+});
+globalThis.React = React;
+const { default: SyntheticBadge } = await import(`data:text/javascript;base64,${Buffer.from(syntheticRenderJs).toString('base64')}`);
+
+const syntheticChannel = (quotaData) => ({ type: 'openai', providerType: 'synthetic', quotaStatus: { quotaData, limits: [] } });
+const REFERENCE_NOW = Date.now();
+const DAY = 24 * 3600 * 1000;
+const WEEK_AHEAD = new Date(REFERENCE_NOW + 6 * DAY).toISOString();
+
+function renderSyntheticBadge(quotaData) {
+  // Pin Date.now so bar fills, duration markers and countdown strings are
+  // deterministic for a fixed reset offset.
+  const realNow = Date.now;
+  Date.now = () => REFERENCE_NOW;
+  try {
+    return renderToStaticMarkup(React.createElement(SyntheticBadge, { channel: syntheticChannel(quotaData) }));
+  } finally {
+    Date.now = realNow;
+  }
+}
+
+function attrOf(html, name) {
+  const m = html.match(new RegExp(`${name}="([^"]*)"`));
+  return m ? m[1] : null;
+}
+
+test('Synthetic weekly badge renders the plan-only pool: percent, bar fill, elapsed marker, regen countdown', () => {
+  const html = renderSyntheticBadge({ planWeeklyLimit: { percentRemaining: 30, nextRegenAt: WEEK_AHEAD, nextRegenPercent: 2 } });
+  const usedPct = 100 - 30;
+  // The weekly item renders with the plan-derived used percentage.
+  assert.match(html, /Weekly Token Limit/);
+  assert.match(html, /<span class="text-foreground font-medium">70% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), String(usedPct));
+  // The elapsed marker sits at 1/7 through the week (reset 6 days out of 7).
+  assert.ok(attrOf(html, 'data-duration') !== null, 'weekly bar must carry a duration marker from nextRegenAt');
+  assert.ok(Math.abs(Number(attrOf(html, 'data-duration')) - (1 / 7) * 100) < 0.01, 'marker must reflect the plan reset time');
+  // The tooltip countdown uses the plan tick scaled by /100 (2 -> "2%"), not the
+  // plain "Regenerates in" form — a regenerating branch or missing /100 shows up here.
+  assert.match(html, /Regenerates 2% in 6d 0h/);
+});
+
+test('Synthetic weekly badge renders the legacy-only pool with the built-in regen tick', () => {
+  const html = renderSyntheticBadge({ weeklyTokenLimit: { percentRemaining: 55, nextRegenAt: WEEK_AHEAD } });
+  assert.match(html, /Weekly Token Limit/);
+  assert.match(html, /<span class="text-foreground font-medium">45% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), '45');
+  // No plan data, so the countdown falls back to the built-in 2% regen tick.
+  assert.ok(
+    html.includes(`Regenerates ${Math.round(syntheticWeeklyRegenTickPct * 100)}% in 6d 0h`),
+    'legacy pool must use the built-in regen tick'
+  );
+});
+
+test('Synthetic weekly badge falls back to the legacy shape field by field in the rendered countdown', () => {
+  const legacyAt = new Date(REFERENCE_NOW + 5 * DAY).toISOString();
+  const qd = {
+    planWeeklyLimit: { percentRemaining: null, nextRegenAt: WEEK_AHEAD, nextRegenPercent: null },
+    weeklyTokenLimit: { percentRemaining: 55, nextRegenAt: legacyAt },
+  };
+  const html = renderSyntheticBadge(qd);
+  // Percent is missing on the plan side, so the rendered percentage comes from the
+  // legacy pool — while the plan's nextRegenAt supplies the reset time and the
+  // null plan tick falls back to the built-in tick.
+  assert.match(html, /<span class="text-foreground font-medium">45% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), '45');
+  assert.ok(Math.abs(Number(attrOf(html, 'data-duration')) - (1 / 7) * 100) < 0.01, 'marker must reflect the plan reset time');
+  assert.match(html, /Regenerates 2% in 6d 0h/);
+});
+
+test('Synthetic weekly badge uses the legacy reset time when the plan field is missing', () => {
+  const legacyAt = new Date(REFERENCE_NOW + 5 * DAY).toISOString();
+  const html = renderSyntheticBadge({
+    planWeeklyLimit: { percentRemaining: 50, nextRegenPercent: 3 },
+    weeklyTokenLimit: { nextRegenAt: legacyAt },
+  });
+  // The plan percentage survives (no legacy percent to mix in) ...
+  assert.match(html, /<span class="text-foreground font-medium">50% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), '50');
+  // ... but with the plan's nextRegenAt absent, the displayed countdown and the
+  // elapsed marker derive from the legacy reset 5 days out, not the plan one.
+  assert.ok(Math.abs(Number(attrOf(html, 'data-duration')) - (2 / 7) * 100) < 0.01, 'marker must fall back to the legacy reset time');
+  assert.ok(html.includes('Regenerates 3% in 5d 0h'), 'countdown must use the legacy reset time with the plan tick');
+  assert.ok(!html.includes('6d 0h'), 'the plan reset time must not leak into fallback mode');
+});
+
+test('Synthetic plan percent of zero is rendered as an explicit exhaustion, not a missing field', () => {
+  const html = renderSyntheticBadge({
+    planWeeklyLimit: { percentRemaining: 0, nextRegenAt: WEEK_AHEAD, nextRegenPercent: 2 },
+    weeklyTokenLimit: { percentRemaining: 90, nextRegenAt: WEEK_AHEAD },
+  });
+  // The plan's zero beats the legacy 90%; a `??`-safe check that drops 0 would
+  // render the legacy pool (10% used) instead.
+  assert.match(html, /<span class="text-foreground font-medium">100% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), '100');
+  assert.match(html, /Regenerates 2% in 6d 0h/);
+});
+
+test('Synthetic plan next-regen percent 2 renders as a 2% regen tick', () => {
+  const twoHoursOut = new Date(REFERENCE_NOW + 2 * 3600 * 1000).toISOString();
+  const planWeekly = { percentRemaining: 50, nextRegenAt: twoHoursOut, nextRegenPercent: 2 };
+  const tick = getSyntheticWeeklyRegenTick(planWeekly);
+  assert.equal(tick, 0.02);
+  const regenLabel = badgeFormatTimeToReset(twoHoursOut, 50, tick);
+  assert.match(regenLabel, /^quota\.label\.regenerates_pct_in_time:\{"percent":2,"time":"[^"]+"\}$/);
+  // Bars without data still report nothing used.
+  assert.equal(badgeFormatTimeToReset(twoHoursOut, 0, tick), 'quota.label.no_usage_yet');
+  // The hourly search window resolves elapsed time the same way: half an hour of a
+  // one-hour budget is 50%.
+  assert.equal(calcDurationPercent(3600, 1800), 50);
 });
