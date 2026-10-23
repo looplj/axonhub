@@ -53,12 +53,14 @@ type ChatCompletionHandlers struct {
 	streamAdapterFactory       streamAdapterFactory
 	safeguardsConfig           safeguards.Config
 	reviewer                   safeguards.ClassifierFunc
+	inputUsageCache            *inputUsageCache
 }
 
 func NewChatCompletionHandlers(orchestrator *orchestrator.ChatCompletionOrchestrator) *ChatCompletionHandlers {
 	return &ChatCompletionHandlers{
 		ChatCompletionOrchestrator: orchestrator,
 		StreamWriter:               WriteSSEStream,
+		inputUsageCache:            newInputUsageCache(),
 	}
 }
 
@@ -85,6 +87,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletion(c *gin.Context) {
 }
 
 func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context, genericReq *httpclient.Request) {
+	started := time.Now()
 	ctx := c.Request.Context()
 
 	if genericReq == nil || len(genericReq.Body) == 0 {
@@ -151,7 +154,7 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 
 		c.Header("Access-Control-Allow-Origin", "*")
 
-		source := wrapAnthropicInputUsage(result.ChatCompletionStream, genericReq)
+		source := wrapAnthropicInputUsage(result.ChatCompletionStream, genericReq, newInputUsageCalibration(ctx, handlers.inputUsageCache, result.Route, started))
 		source = wrapSafeguardsStream(ctx, source, evaluator, abortUpstream)
 		stream := newUpstreamErrorStream(ctx, source, handlers.ChatCompletionOrchestrator.SystemService)
 		if strings.HasSuffix(genericReq.Path, "/responses") {

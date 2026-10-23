@@ -2,6 +2,8 @@ package api
 
 import (
 	"encoding/json"
+	"math"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -116,26 +118,55 @@ func estimateAnthropicInput(body []byte) (int64, error) {
 
 type anthropicInputUsageStream struct {
 	streams.Stream[*httpclient.StreamEvent]
-	body    []byte
-	handled bool
-	current *httpclient.StreamEvent
+
+	calibration                          *inputUsageCalibration
+	actual                               int64
+	terminal, stopped, failed, completed bool
+	body                                 []byte
+	handled                              bool
+	current                              *httpclient.StreamEvent
 }
 
 // Wrap after persistence: only the client sees the estimate. Final usage, stored
 // responses and costs remain authoritative, even when the stream is interrupted.
-func wrapAnthropicInputUsage(source streams.Stream[*httpclient.StreamEvent], request *httpclient.Request) streams.Stream[*httpclient.StreamEvent] {
+func wrapAnthropicInputUsage(source streams.Stream[*httpclient.StreamEvent], request *httpclient.Request, calibration *inputUsageCalibration) streams.Stream[*httpclient.StreamEvent] {
 	if request == nil || !strings.HasSuffix(request.Path, "/messages") {
 		return source
 	}
-	return preserveStreamDelivery(&anthropicInputUsageStream{Stream: source, body: request.Body}, source)
+	return preserveStreamDelivery(&anthropicInputUsageStream{Stream: source, body: request.Body, calibration: calibration}, source)
 }
 
 func (s *anthropicInputUsageStream) Next() bool {
 	if !s.Stream.Next() {
+		if !s.completed && !s.failed && s.terminal && s.stopped && s.Stream.Err() == nil && s.calibration != nil {
+			s.calibration.complete(s.actual)
+		}
+		s.completed = true
 		return false
 	}
 	s.current = s.Stream.Current()
-	if s.handled || s.current == nil || !json.Valid(s.current.Data) || gjson.GetBytes(s.current.Data, "type").String() != "message_start" {
+	if s.current == nil || !json.Valid(s.current.Data) {
+		if s.current != nil && len(s.current.Data) > 0 {
+			s.failed = true
+		}
+		return true
+	}
+	eventType := gjson.GetBytes(s.current.Data, "type").String()
+	switch eventType {
+	case "message_delta":
+		if usage := gjson.GetBytes(s.current.Data, "usage"); usage.Get("input_tokens").Exists() {
+			s.actual = finalAnthropicInputTokens(usage)
+		}
+		switch gjson.GetBytes(s.current.Data, "delta.stop_reason").String() {
+		case "end_turn", "tool_use", "stop_sequence":
+			s.terminal = true
+		}
+	case "message_stop":
+		s.stopped = true
+	case "error":
+		s.failed = true
+	}
+	if s.handled || eventType != "message_start" {
 		return true
 	}
 	s.handled = true
@@ -148,6 +179,9 @@ func (s *anthropicInputUsageStream) Next() bool {
 	if err != nil || estimate <= 0 {
 		return true
 	}
+	if s.calibration != nil {
+		estimate = s.calibration.estimate(s.body, gjson.GetBytes(s.current.Data, "message.model").String(), estimate)
+	}
 	data, err := sjson.SetBytes(s.current.Data, "message.usage.input_tokens", estimate)
 	if err != nil {
 		return true
@@ -159,3 +193,28 @@ func (s *anthropicInputUsageStream) Next() bool {
 }
 
 func (s *anthropicInputUsageStream) Current() *httpclient.StreamEvent { return s.current }
+
+// finalAnthropicInputTokens requires explicit provider input usage and includes
+// cache reads/writes once. Missing, fractional, negative or overflowing values
+// cannot become a calibration sample.
+func finalAnthropicInputTokens(usage gjson.Result) int64 {
+	if !usage.Get("input_tokens").Exists() {
+		return 0
+	}
+	var total int64
+	for _, key := range []string{"input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"} {
+		value := usage.Get(key)
+		if !value.Exists() {
+			continue
+		}
+		if value.Type != gjson.Number {
+			return 0
+		}
+		n, err := strconv.ParseInt(value.Raw, 10, 64)
+		if err != nil || n < 0 || total > math.MaxInt64-n {
+			return 0
+		}
+		total += n
+	}
+	return total
+}

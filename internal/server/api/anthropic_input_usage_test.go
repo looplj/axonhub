@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
 
+	"github.com/looplj/axonhub/internal/contexts"
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -56,7 +58,7 @@ func TestAnthropicInputUsageStream(t *testing.T) {
 			original := string(start.Data)
 			final := &httpclient.StreamEvent{Type: "message_delta", Data: []byte(`{"type":"message_delta","usage":{"input_tokens":12,"output_tokens":34}}`)}
 			source := streams.SliceStream([]*httpclient.StreamEvent{start, final})
-			wrapped := wrapAnthropicInputUsage(source, &httpclient.Request{Path: "/v1/messages", Body: []byte(`{"messages":[{"role":"user","content":"Hello test request"}]}`)})
+			wrapped := wrapAnthropicInputUsage(source, &httpclient.Request{Path: "/v1/messages", Body: []byte(`{"messages":[{"role":"user","content":"Hello test request"}]}`)}, nil)
 			require.True(t, wrapped.Next())
 			first := wrapped.Current()
 			require.Same(t, first, wrapped.Current())
@@ -81,6 +83,10 @@ func TestAnthropicEstimatedUsageDoesNotChangeAccounting(t *testing.T) {
 	h.ChatCompletionOrchestrator.Inbound = anthropic.NewInboundTransformer()
 	engine := gin.New()
 	engine.Use(f.testContext)
+	engine.Use(func(c *gin.Context) {
+		c.Request = c.Request.WithContext(contexts.WithAPIKey(c.Request.Context(), &ent.APIKey{ID: 41}))
+		c.Next()
+	})
 	engine.POST("/v1/messages", h.ChatCompletion)
 	body := `{"model":"gpt-test","max_tokens":128,"stream":true,"messages":[{"role":"user","content":"` + strings.Repeat("token estimate fixture ", 100) + `"}]}`
 	req := httptest.NewRequest(http.MethodPost, "/v1/messages", strings.NewReader(body)).WithContext(f.ctx)
@@ -108,9 +114,11 @@ func TestAnthropicEstimatedUsageDoesNotChangeAccounting(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, int64(12), usage.PromptTokens)
 	require.Equal(t, int64(34), usage.CompletionTokens)
+	require.Len(t, h.inputUsageCache.samples, 1, "committed route and authenticated scope must reach calibration")
+	require.Equal(t, int64(12), h.inputUsageCache.samples[0].actual)
 }
 
 func TestAnthropicInputUsageSkipsOtherProtocols(t *testing.T) {
 	source := streams.SliceStream([]*httpclient.StreamEvent{})
-	require.Same(t, source, wrapAnthropicInputUsage(source, &httpclient.Request{Path: "/v1/responses"}))
+	require.Same(t, source, wrapAnthropicInputUsage(source, &httpclient.Request{Path: "/v1/responses"}, nil))
 }
