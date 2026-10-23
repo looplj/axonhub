@@ -308,6 +308,15 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 		}
 	}
 
+	// Service-account keys carry caller-supplied scopes. API key scopes are
+	// enforced without a project dimension, so the caller must be able to grant
+	// every requested scope at the level it is declared for.
+	if apiKeyType == apikey.TypeServiceAccount {
+		if err := s.requireServiceAccountScopeGrant(ctx, user.ID, input.ProjectID, input.Scopes); err != nil {
+			return nil, err
+		}
+	}
+
 	// Generate API key with configured prefix
 	generatedKey, err := GenerateAPIKey(s.keyPrefix)
 	if err != nil {
@@ -380,14 +389,22 @@ func (s *APIKeyService) CreateAPIKey(ctx context.Context, input ent.CreateAPIKey
 	return apiKey, nil
 }
 
-func (s *APIKeyService) requireProjectAdmin(ctx context.Context, userID, projectID int) error {
-	currentUser, err := authz.RunWithSystemBypass(ctx, "api-key-project-permission", func(bypassCtx context.Context) (*ent.User, error) {
+// loadUserPermissions reloads the user together with the edges the permission
+// validator needs. The JWT middleware already loads them, but the API key
+// services are also reachable from tests and internal callers, so reload under
+// a system bypass instead of relying on the shape of the context user.
+func (s *APIKeyService) loadUserPermissions(ctx context.Context, userID int) (*ent.User, error) {
+	return authz.RunWithSystemBypass(ctx, "api-key-scope-permission", func(bypassCtx context.Context) (*ent.User, error) {
 		return s.entFromContext(bypassCtx).User.Query().
 			Where(user.IDEQ(userID)).
 			WithRoles().
 			WithProjectUsers().
 			Only(bypassCtx)
 	})
+}
+
+func (s *APIKeyService) requireProjectAdmin(ctx context.Context, userID, projectID int) error {
+	currentUser, err := s.loadUserPermissions(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to load API key creator permissions: %w", err)
 	}
@@ -401,6 +418,54 @@ func (s *APIKeyService) requireProjectAdmin(ctx context.Context, userID, project
 	}
 
 	return nil
+}
+
+// requireServiceAccountScopeGrant rejects service-account scope grants the
+// caller could not make themselves. It is the API-key counterpart of the guard
+// role and project-membership writes already use.
+func (s *APIKeyService) requireServiceAccountScopeGrant(ctx context.Context, userID, projectID int, scopesToGrant []string) error {
+	if len(scopesToGrant) == 0 {
+		return nil
+	}
+
+	currentUser, err := s.loadUserPermissions(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("failed to load API key creator permissions: %w", err)
+	}
+
+	if err := NewPermissionValidator().CanGrantAPIKeyScopes(ctx, currentUser, scopesToGrant, projectID); err != nil {
+		return fmt.Errorf("insufficient permissions to grant the requested API key scopes: %w", err)
+	}
+
+	return nil
+}
+
+// resultingServiceAccountScopes returns the scope set a service-account update
+// would leave on the key, mirroring the SetScopes/AppendScopes/ClearScopes
+// handling below. The boolean reports whether the update grants scopes at all;
+// clearing scopes never needs a grant check.
+func resultingServiceAccountScopes(apiKey *ent.APIKey, input ent.UpdateAPIKeyInput) ([]string, bool) {
+	// ClearScopes is applied last below, so an update that clears never grants
+	// anything even when scopes are also supplied.
+	if input.ClearScopes {
+		return nil, false
+	}
+
+	switch {
+	case len(input.Scopes) > 0:
+		// Ent applies SetScopes and AppendScopes in the same UPDATE, and the
+		// persisted result depends on the dialect (the append may be evaluated
+		// against the existing value, dropping the replacement). Validate every
+		// scope that could survive instead of only the replacement.
+		merged := append(append([]string{}, apiKey.Scopes...), input.Scopes...)
+		merged = append(merged, input.AppendScopes...)
+
+		return lo.Uniq(merged), true
+	case len(input.AppendScopes) > 0:
+		return lo.Uniq(append(append([]string{}, apiKey.Scopes...), input.AppendScopes...)), true
+	default:
+		return nil, false
+	}
 }
 
 // UpdateAPIKey updates an existing API key.
@@ -423,6 +488,20 @@ func (s *APIKeyService) UpdateAPIKey(ctx context.Context, id int, input ent.Upda
 
 		if apiKey.Type == apikey.TypeNoauth {
 			return fmt.Errorf("noauth type API key cannot be updated")
+		}
+
+		if apiKey.Type == apikey.TypeServiceAccount {
+			user, ok := contexts.GetUser(ctx)
+			if !ok {
+				return fmt.Errorf("user not found in context")
+			}
+
+			resultingScopes, changed := resultingServiceAccountScopes(apiKey, input)
+			if changed {
+				if err := s.requireServiceAccountScopeGrant(ctx, user.ID, apiKey.ProjectID, resultingScopes); err != nil {
+					return err
+				}
+			}
 		}
 
 		if apiKey.Type == apikey.TypePersonal {
@@ -1115,6 +1194,19 @@ func (s *APIKeyService) RotateAPIKey(ctx context.Context, id int) (*ent.APIKey, 
 	// Cannot rotate noauth type API key
 	if existing.Type == apikey.TypeNoauth {
 		return nil, fmt.Errorf("noauth type API key cannot be rotated")
+	}
+
+	// Rotating hands the caller a usable copy of the key, so the caller must be
+	// able to grant the scopes the key already carries.
+	if existing.Type == apikey.TypeServiceAccount {
+		user, ok := contexts.GetUser(ctx)
+		if !ok {
+			return nil, fmt.Errorf("user not found in context")
+		}
+
+		if err := s.requireServiceAccountScopeGrant(ctx, user.ID, existing.ProjectID, existing.Scopes); err != nil {
+			return nil, err
+		}
 	}
 
 	if existing.Type == apikey.TypePersonal {
