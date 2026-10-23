@@ -15,7 +15,7 @@ replace github.com/gin-contrib/sse => github.com/looplj/sse v0.0.0-2026022302044
 require (
 	github.com/invopop/jsonschema v0.13.0
 	github.com/looplj/axonhub v0.0.0
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 )
 
 require (
