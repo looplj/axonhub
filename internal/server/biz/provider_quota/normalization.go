@@ -22,6 +22,9 @@ func normalizeQuotaDataAt(data QuotaData, now time.Time) QuotaData {
 		nextResetAt = &resetAt
 	}
 	for _, limit := range data.Limits {
+		if isDisplayOnlyLimit(limit) {
+			continue
+		}
 		if limit.NextResetAt != nil && limit.NextResetAt.After(now) &&
 			(nextResetAt == nil || limit.NextResetAt.Before(*nextResetAt)) {
 			resetAt := *limit.NextResetAt
@@ -33,6 +36,21 @@ func normalizeQuotaDataAt(data QuotaData, now time.Time) QuotaData {
 	data.NextResetAt = nextResetAt
 	data.Ready = IsReadyStatus(status)
 	return data
+}
+
+// displayOnlyLimitTypes are listed for the operator but take no part in the
+// channel-level quota status or the channel reset. Routing already ignores
+// them: no RequestModality maps to these types, so routingGroups drops them
+// unless they share an AvailabilityGroup with a routable limit — hence the
+// group guard below.
+var displayOnlyLimitTypes = map[QuotaLimitType]struct{}{
+	QuotaLimitTypeSearch: {},
+}
+
+func isDisplayOnlyLimit(limit QuotaLimitStatus) bool {
+	_, ok := displayOnlyLimitTypes[limit.Type]
+
+	return ok && limit.AvailabilityGroup == ""
 }
 
 func normalizeOverallQuotaStatus(explicitStatus string, limits []QuotaLimitStatus) string {
@@ -48,6 +66,9 @@ func normalizeOverallQuotaStatus(explicitStatus string, limits []QuotaLimitStatu
 	hasExhausted := false
 
 	for _, limit := range limits {
+		if isDisplayOnlyLimit(limit) {
+			continue
+		}
 		switch {
 		case IsReadyStatus(limit.Status):
 			if bestReadyStatus == "" || normalizedQuotaStatusRank(limit.Status) > normalizedQuotaStatusRank(bestReadyStatus) {

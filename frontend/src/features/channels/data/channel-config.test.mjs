@@ -199,6 +199,10 @@ test('quota selection follows quota column visibility and preserves normalized f
   assert.equal(zhSystem['quota.window.5h'], '5小时窗口');
   assert.equal(zhSystem['quota.window.7d'], '7天窗口');
   assert.equal(zhSystem['quota.window.cycle'], '周期窗口');
+  assert.equal(enSystem['quota.window.search_hourly'], 'Search · hourly');
+  assert.equal(zhSystem['quota.window.search_hourly'], '搜索 · 每小时');
+  assert.equal(enSystem['quota.label.search_requests'], 'Search requests');
+  assert.equal(zhSystem['quota.label.search_requests'], '搜索请求');
 });
 
 test('filter-only model column stays hidden while model filtering remains configured', () => {

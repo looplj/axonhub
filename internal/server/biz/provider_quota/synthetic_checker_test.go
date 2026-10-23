@@ -12,6 +12,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 )
@@ -24,7 +25,7 @@ func TestSynthetic_CheckQuota_HappyPath(t *testing.T) {
 
 			body := `{
 				"subscription": {"limit": 750, "requests": 0, "renewsAt": "2099-04-25T08:47:39.947Z"},
-				"search": {"hourly": {"limit": 250, "requests": 0}},
+				"search": {"hourly": {"limit": 250, "requests": 0, "renewsAt": "2099-04-25T05:00:00.000Z"}},
 				"weeklyTokenLimit": {
 					"nextRegenAt": "2099-04-25T04:48:26.000Z",
 					"percentRemaining": 38.6,
@@ -60,7 +61,7 @@ func TestSynthetic_CheckQuota_HappyPath(t *testing.T) {
 	require.True(t, quota.Ready)
 	require.Equal(t, "synthetic", quota.ProviderType)
 
-	require.Len(t, quota.Limits, 2)
+	require.Len(t, quota.Limits, 3)
 
 	require.Equal(t, QuotaLimitTypeToken, quota.Limits[0].Type)
 	require.Equal(t, "available", quota.Limits[0].Status)
@@ -73,6 +74,283 @@ func TestSynthetic_CheckQuota_HappyPath(t *testing.T) {
 	require.InDelta(t, 0.614, quota.Limits[1].UsageRatio, 0.001)
 	require.True(t, quota.Limits[1].Ready)
 	require.NotNil(t, quota.Limits[1].NextResetAt)
+	require.NotNil(t, quota.Limits[1].PeriodQuota)
+	require.InDelta(t, 36.0, *quota.Limits[1].PeriodQuota, 0.001)
+	require.NotNil(t, quota.Limits[1].PeriodCost)
+	require.InDelta(t, 22.1, *quota.Limits[1].PeriodCost, 0.001)
+	require.Nil(t, quota.Limits[1].PeriodStart)
+
+	require.Equal(t, QuotaLimitTypeSearch, quota.Limits[2].Type)
+	require.Equal(t, "search_hourly", quota.Limits[2].Window)
+	require.Equal(t, "available", quota.Limits[2].Status)
+	require.Equal(t, 0.0, quota.Limits[2].UsageRatio)
+	require.True(t, quota.Limits[2].Ready)
+	require.NotNil(t, quota.Limits[2].NextResetAt)
+	require.Equal(t, time.Date(2099, 4, 25, 5, 0, 0, 0, time.UTC), *quota.Limits[2].NextResetAt)
+	require.Nil(t, quota.Limits[2].PeriodStart)
+}
+
+func TestSynthetic_CheckQuota_SearchQuotaIsListedButNeverBlocks(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"weeklyTokenLimit":{"nextRegenAt":"2099-04-25T04:48:26.000Z","percentRemaining":50.0,"maxCredits":"$36.00","remainingCredits":"$18.00"},"search":{"hourly":{"limit":250,"requests":250,"renewsAt":"2099-04-25T05:00:00.000Z"}}}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewSyntheticQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+	require.Len(t, quota.Limits, 2)
+
+	require.Equal(t, QuotaLimitTypeSearch, quota.Limits[1].Type)
+	require.Equal(t, "exhausted", quota.Limits[1].Status)
+	require.Equal(t, 1.0, quota.Limits[1].UsageRatio)
+	require.False(t, quota.Limits[1].Ready)
+
+	routing, reason := EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeToken, time.Now())
+	require.Equal(t, RoutingOpen, routing, reason)
+	routing, reason = EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeImage, time.Now())
+	require.Equal(t, RoutingOpen, routing, reason)
+
+	status, ready := EffectiveStatus(quota.Limits, providerquotastatus.Status(quota.Status), quota.Ready, QuotaLimitTypeToken)
+	require.Equal(t, providerquotastatus.StatusAvailable, status)
+	require.True(t, ready)
+}
+
+func TestSynthetic_CheckQuota_SearchOnlyPayloadDoesNotBlock(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"search":{"hourly":{"limit":250,"requests":250,"renewsAt":"2099-04-25T05:00:00.000Z"}}}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewSyntheticQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "unknown", quota.Status)
+	require.False(t, quota.Ready)
+	require.Len(t, quota.Limits, 1)
+	require.Equal(t, "exhausted", quota.Limits[0].Status)
+	require.Nil(t, quota.NextResetAt)
+
+	routing, reason := EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeToken, time.Now())
+	require.Equal(t, RoutingUnknown, routing, reason)
+}
+
+func TestSynthetic_CheckQuota_SkipsUnusableSearchLimit(t *testing.T) {
+	for name, body := range map[string]string{
+		"zero limit":       `{"weeklyTokenLimit":{"nextRegenAt":"2099-04-25T04:48:26.000Z","percentRemaining":50.0},"search":{"hourly":{"limit":0,"requests":0,"renewsAt":"2099-04-25T05:00:00.000Z"}}}`,
+		"missing requests": `{"weeklyTokenLimit":{"nextRegenAt":"2099-04-25T04:48:26.000Z","percentRemaining":50.0},"search":{"hourly":{"limit":250,"renewsAt":"2099-04-25T05:00:00.000Z"}}}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+				Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     make(http.Header),
+						Body:       io.NopCloser(strings.NewReader(body)),
+					}, nil
+				}),
+			})
+
+			checker := NewSyntheticQuotaChecker(httpClient)
+
+			quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+				Credentials: objects.ChannelCredentials{
+					APIKey: "test-api-key",
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, "available", quota.Status)
+			require.Len(t, quota.Limits, 1)
+			require.Equal(t, QuotaWindowWeekly, quota.Limits[0].Window)
+			require.Contains(t, quota.RawData, "search")
+			require.Nil(t, quota.Limits[0].PeriodCost)
+			require.Nil(t, quota.Limits[0].PeriodQuota)
+		})
+	}
+}
+
+func TestSynthetic_CheckQuota_PersistsNewCounterRawFields(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"subscription":{"limit":500,"requests":0,"renewsAt":"2099-10-17T09:26:59.603Z"},"search":{"hourly":{"limit":250,"requests":0,"renewsAt":"2099-10-17T05:26:59.604Z"}},"freeToolCalls":{"limit":0,"requests":0,"renewsAt":"2099-10-18T04:26:59.606Z"},"weeklyTokenLimit":{"nextRegenAt":"2099-10-17T07:19:01.000Z","percentRemaining":99.73476194285715,"maxCredits":"$10.50","remainingCredits":"$10.47"}}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewSyntheticQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, "available", quota.Status)
+	require.Len(t, quota.Limits, 2)
+	require.Equal(t, QuotaLimitTypeSearch, quota.Limits[1].Type)
+
+	require.NotNil(t, quota.Limits[0].PeriodQuota)
+	require.InDelta(t, 10.50, *quota.Limits[0].PeriodQuota, 1e-9)
+	require.NotNil(t, quota.Limits[0].PeriodCost)
+	require.InDelta(t, 0.03, *quota.Limits[0].PeriodCost, 1e-9)
+
+	subscription, ok := quota.RawData["subscription"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, int64(500), subscription["limit"])
+	require.Equal(t, "2099-10-17T09:26:59.603Z", subscription["renewsAt"])
+
+	hourly := quota.RawData["search"].(map[string]any)["hourly"].(map[string]any)
+	require.Equal(t, "2099-10-17T05:26:59.604Z", hourly["renewsAt"])
+
+	freeToolCalls, ok := quota.RawData["freeToolCalls"].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, int64(0), freeToolCalls["limit"])
+	require.Equal(t, "2099-10-18T04:26:59.606Z", freeToolCalls["renewsAt"])
+}
+
+func TestSynthetic_CheckQuota_PlanWeeklyLimitShape(t *testing.T) {
+	weeklyReset, err := time.Parse(time.RFC3339, "2099-10-23T00:08:27.000Z")
+	require.NoError(t, err)
+
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"subscription":{"limit":500,"requests":0,"renewsAt":"2099-10-23T03:40:12.700Z"},"search":{"hourly":{"limit":250,"requests":13,"renewsAt":"2099-10-22T23:11:12.702Z"}},"planWeeklyLimit":{"nextRegenAt":"2099-10-23T00:08:27.000Z","percentRemaining":90.19385924897959,"nextRegenPercent":2}}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	quota, err := NewSyntheticQuotaChecker(httpClient).CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{APIKey: "test-api-key"},
+	})
+	require.NoError(t, err)
+
+	// Big/pro plans report the weekly pool as planWeeklyLimit only; it must
+	// still become the blocking weekly limit with its own reset.
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+	require.Len(t, quota.Limits, 2)
+
+	require.Equal(t, QuotaLimitTypeToken, quota.Limits[0].Type)
+	require.Equal(t, QuotaWindowWeekly, quota.Limits[0].Window)
+	require.Equal(t, "available", quota.Limits[0].Status)
+	require.InDelta(t, 0.0980614075102041, quota.Limits[0].UsageRatio, 1e-9)
+	require.NotNil(t, quota.Limits[0].NextResetAt)
+	require.Equal(t, weeklyReset, *quota.Limits[0].NextResetAt)
+	require.NotNil(t, quota.NextResetAt)
+	require.Equal(t, weeklyReset, *quota.NextResetAt)
+	require.Nil(t, quota.Limits[0].PeriodCost)
+	require.Nil(t, quota.Limits[0].PeriodQuota)
+
+	require.Equal(t, QuotaLimitTypeSearch, quota.Limits[1].Type)
+	require.Equal(t, "search_hourly", quota.Limits[1].Window)
+	require.InDelta(t, 0.052, quota.Limits[1].UsageRatio, 1e-9)
+
+	planWeekly, ok := quota.RawData["planWeeklyLimit"].(map[string]any)
+	require.True(t, ok)
+	require.InDelta(t, 90.19385924897959, planWeekly["percentRemaining"], 1e-9)
+	require.InDelta(t, 2.0, planWeekly["nextRegenPercent"], 1e-9)
+	require.NotContains(t, quota.RawData, "weeklyTokenLimit")
+}
+
+func TestSynthetic_CheckQuota_BothWeeklyShapesPreferPlanPercentKeepCredits(t *testing.T) {
+	planReset, err := time.Parse(time.RFC3339, "2099-10-23T00:08:27.000Z")
+	require.NoError(t, err)
+
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"weeklyTokenLimit":{"nextRegenAt":"2099-10-23T04:00:00.000Z","percentRemaining":50.0,"maxCredits":"$10.50","remainingCredits":"$10.47"},"planWeeklyLimit":{"nextRegenAt":"2099-10-23T00:08:27.000Z","percentRemaining":90.0,"nextRegenPercent":2}}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	quota, err := NewSyntheticQuotaChecker(httpClient).CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{APIKey: "test-api-key"},
+	})
+	require.NoError(t, err)
+	require.Len(t, quota.Limits, 1)
+
+	// planWeeklyLimit wins the shared fields; the credit amounts still come
+	// from weeklyTokenLimit.
+	require.InDelta(t, 0.1, quota.Limits[0].UsageRatio, 1e-9)
+	require.Equal(t, planReset, *quota.Limits[0].NextResetAt)
+	require.NotNil(t, quota.Limits[0].PeriodQuota)
+	require.InDelta(t, 10.50, *quota.Limits[0].PeriodQuota, 1e-9)
+	require.NotNil(t, quota.Limits[0].PeriodCost)
+	require.InDelta(t, 0.03, *quota.Limits[0].PeriodCost, 1e-9)
+	require.Contains(t, quota.RawData, "weeklyTokenLimit")
+	require.Contains(t, quota.RawData, "planWeeklyLimit")
+}
+
+func TestSynthetic_CheckQuota_PartialPlanShapeFallsBackPerField(t *testing.T) {
+	legacyReset, err := time.Parse(time.RFC3339, "2099-10-23T04:00:00.000Z")
+	require.NoError(t, err)
+
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"weeklyTokenLimit":{"nextRegenAt":"2099-10-23T04:00:00.000Z","percentRemaining":50.0,"maxCredits":"$10.50","remainingCredits":"$10.47"},"planWeeklyLimit":{"nextRegenPercent":2}}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	quota, err := NewSyntheticQuotaChecker(httpClient).CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{APIKey: "test-api-key"},
+	})
+	require.NoError(t, err)
+	require.Len(t, quota.Limits, 1)
+
+	// A plan object without its own percentage or reset must not shadow the
+	// weeklyTokenLimit fields.
+	require.InDelta(t, 0.5, quota.Limits[0].UsageRatio, 1e-9)
+	require.NotNil(t, quota.Limits[0].NextResetAt)
+	require.Equal(t, legacyReset, *quota.Limits[0].NextResetAt)
+	require.NotNil(t, quota.Limits[0].PeriodQuota)
+	require.InDelta(t, 10.50, *quota.Limits[0].PeriodQuota, 1e-9)
 }
 
 func TestSynthetic_CheckQuota_WarningState(t *testing.T) {
@@ -333,9 +611,11 @@ func TestSynthetic_CheckQuota_NextResetAt(t *testing.T) {
 
 	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
 		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			// rollingFiveHourLimit.nextTickAt is earliest
+			// rollingFiveHourLimit.nextTickAt is earliest; the search counter
+			// renews even earlier but must not move the channel reset.
 			body := `{
 				"subscription": {"limit": 750, "requests": 0, "renewsAt": "2099-04-25T08:47:39.947Z"},
+				"search": {"hourly": {"limit": 250, "requests": 0, "renewsAt": "2099-04-25T03:00:00.000Z"}},
 				"weeklyTokenLimit": {
 					"nextRegenAt": "2099-04-25T04:48:26.000Z",
 					"percentRemaining": 38.6,

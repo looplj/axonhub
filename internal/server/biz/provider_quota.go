@@ -198,6 +198,12 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 //    an incremental regeneration tick rather than a window boundary — see the
 //    synthetic checker for that case.
 //
+//    Counters for capabilities AxonHub does not route (e.g. search requests)
+//    are listed with a QuotaLimitType that no request modality maps to, are
+//    registered in displayOnlyLimitTypes, and carry no AvailabilityGroup, so
+//    they never gate routing or the channel status — only their own table row
+//    and badge entry.
+//
 // 2. Add the provider type to the database schema
 //
 //    In internal/ent/schema/channel.go:
@@ -318,8 +324,9 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 //   - URL detection: host ending in ".api.synthetic.new" → provider_type "synthetic"
 //   - Makes request to /v2/quotas endpoint
 //   - Uses simple API key authentication (no OAuth required)
-//   - Internally parses nested JSON (subscription, weeklyTokenLimit, rollingFiveHourLimit)
+//   - Internally parses nested JSON (subscription, search, freeToolCalls, weeklyTokenLimit, rollingFiveHourLimit)
 //   - Normalizes status: limited=true → exhausted, percentRemaining < 20 → warning, else → available
+//   - The weekly limit carries the provider's own credit money (maxCredits / remainingCredits)
 //
 // EXAMPLE: NEURALWATT PROVIDER (Pattern B, URL-based detection)
 // ==============================================================

@@ -272,3 +272,33 @@ test('mode badge labels are locale-complete and legacy enforcement keys are gone
     assert.deepEqual(legacy, [], `${name}/system.json still has legacy quota status keys`);
   }
 });
+test('Synthetic badge lists the hourly search quota without gating', () => {
+  const source = read('components/quota-badges.tsx');
+  const start = source.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'synthetic' &&");
+  const end = source.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'neuralwatt' &&", start);
+  const syntheticBlock = source.slice(start, end);
+
+  assert.match(syntheticBlock, /qd\.search\?\.hourly/);
+  assert.match(syntheticBlock, /searchHourly\.requests != null/);
+  assert.match(syntheticBlock, /'quota\.label\.search_requests'/);
+  assert.match(syntheticBlock, /calcDurationPercent\(3600,/);
+  assert.match(syntheticBlock, /formatTimeToReset\(searchHourly\.renewsAt\)/);
+
+  // Provider-reported credits are USD; every other provider keeps the
+  // configured display currency.
+  assert.match(source, /currency=\{channel\.providerType === 'synthetic' \? 'USD' : undefined\}/);
+  assert.match(source, /currency: currency \|\| generalSettings\?\.currencyCode \|\| 'USD'/);
+});
+
+test('Synthetic badge reads the weekly pool from both plan shapes', () => {
+  const source = read('components/quota-badges.tsx');
+  const start = source.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'synthetic' &&");
+  const end = source.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'neuralwatt' &&", start);
+  const syntheticBlock = source.slice(start, end);
+
+  assert.match(syntheticBlock, /const weeklyPercentRemaining = planWeekly\?\.percentRemaining \?\? qd\.weeklyTokenLimit\?\.percentRemaining/);
+  assert.match(syntheticBlock, /const weeklyNextRegenAt = planWeekly\?\.nextRegenAt \?\? qd\.weeklyTokenLimit\?\.nextRegenAt/);
+  assert.match(syntheticBlock, /planWeekly\?\.nextRegenPercent/);
+  assert.match(syntheticBlock, /formatTimeToReset\(weeklyNextRegenAt, usedPct, regenTick\)/);
+  assert.match(source, /qd\?\.planWeeklyLimit\?\.percentRemaining \?\? qd\?\.weeklyTokenLimit\?\.percentRemaining/);
+});
