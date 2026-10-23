@@ -416,25 +416,4 @@ func TestGithubCopilotQuotaChecker_PreservesMonthlyResetWithoutPeriod(t *testing
 	require.Equal(t, time.Date(2099, 3, 1, 0, 0, 0, 0, time.UTC), quota.Limits[0].NextResetAt.UTC())
 }
 
-func TestWaferQuotaChecker_UsesReportedBillingWindow(t *testing.T) {
-	t.Parallel()
 
-	body := []byte(`{
-		"plan_tier": "pro",
-		"window_start": "2099-08-01T00:00:00Z",
-		"window_end": "2099-09-01T00:00:00Z",
-		"included_request_limit": 1000,
-		"remaining_included_requests": 400,
-		"current_period_used_percent": 60
-	}`)
-
-	checker := &WaferQuotaChecker{}
-
-	quota, err := checker.parseResponse(body)
-	require.NoError(t, err)
-	require.Len(t, quota.Limits, 1)
-	require.Equal(t, QuotaWindowCycle, quota.Limits[0].Window)
-	require.NotNil(t, quota.Limits[0].PeriodStart)
-	require.Equal(t, time.Date(2099, 8, 1, 0, 0, 0, 0, time.UTC), quota.Limits[0].PeriodStart.UTC())
-	require.InDelta(t, 0.6, quota.Limits[0].UsageRatio, 1e-9)
-}

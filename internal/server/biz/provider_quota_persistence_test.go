@@ -124,7 +124,7 @@ func TestProviderQuotaService_SaveQuotaError_ResetsChangedProviderIdentity(t *te
 	oldResetAt := time.Now().Add(time.Hour)
 	_, err = client.ProviderQuotaStatus.Create().
 		SetChannelID(channelEntity.ID).
-		SetProviderType(providerquotastatus.ProviderTypeWafer).
+		SetProviderType(providerquotastatus.ProviderTypeNeuralwatt).
 		SetStatus(providerquotastatus.StatusExhausted).
 		SetReady(false).
 		SetNextResetAt(oldResetAt).
@@ -284,10 +284,10 @@ func TestProviderQuotaService_SaveQuotaStatus_UpdatesChangedProviderIdentity(t *
 
 	_, err = client.ProviderQuotaStatus.Create().
 		SetChannelID(channelEntity.ID).
-		SetProviderType(providerquotastatus.ProviderTypeWafer).
+		SetProviderType(providerquotastatus.ProviderTypeNeuralwatt).
 		SetStatus(providerquotastatus.StatusExhausted).
 		SetReady(false).
-		SetQuotaData(map[string]any{"provider": "wafer"}).
+		SetQuotaData(map[string]any{"provider": "neuralwatt"}).
 		SetNextCheckAt(time.Now().Add(-time.Minute)).
 		Save(ctx)
 	require.NoError(t, err)

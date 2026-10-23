@@ -9,6 +9,10 @@
 
 - Personal API Key names can be reused by different creators in a project; creating or renaming a key rejects collisions with non-personal keys visible to its creator. Duplicate checks run after create authorization.
 
+### Removed
+
+- Wafer quota monitor removed — Wafer is PAYG-only. Legacy wafer quota rows are purged at startup before schema migration when automatic migration is enabled.
+
 v0.4.0
 
 - Introduced thread-aware tracing with zero-SDK integration and configurable trace headers

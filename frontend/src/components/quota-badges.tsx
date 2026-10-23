@@ -16,7 +16,6 @@ import {
   ProviderQuotaLimit,
   ProviderNanoGPTQuotaData,
   NanoGPTQuotaWindow,
-  ProviderWaferQuotaData,
   ProviderSyntheticQuotaData,
   ProviderNeuralWattQuotaData,
   ProviderApertisQuotaData,
@@ -229,9 +228,6 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
   } else if (channel.type === 'zhipu' || channel.type === 'zhipu_anthropic' || channel.type === 'zai' || channel.type === 'zai_anthropic') {
     const qd = channel.quotaStatus.quotaData as ProviderZhipuQuotaData | undefined;
     percentage = Math.max(0, ...(qd?.rows ?? []).map((row) => row.usedPercent));
-  } else if (isOpenaiType(channel.type) && channel.providerType === 'wafer') {
-    const qd = channel.quotaStatus.quotaData as ProviderWaferQuotaData | undefined;
-    percentage = qd?.current_period_used_percent ?? 0;
   } else if (isOpenaiType(channel.type) && channel.providerType === 'synthetic') {
     const qd = channel.quotaStatus.quotaData as ProviderSyntheticQuotaData | undefined;
     const weeklyPct = qd?.weeklyTokenLimit?.percentRemaining ?? 100;
@@ -1783,51 +1779,6 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
               );
             }
             return <>{renderWindowRows(qd.rows ?? [])}</>;
-          })()}
-        </div>
-      )}
-
-      {isOpenaiType(channel.type) && channel.providerType === 'wafer' && (
-        <div className='mt-3 space-y-3'>
-          {(() => {
-            const qd = channel.quotaStatus.quotaData as ProviderWaferQuotaData | undefined;
-            if (!qd) return null;
-            const items: React.ReactNode[] = [];
-
-            const usedPct = qd.current_period_used_percent ?? 0;
-            const usedRequests = (qd.included_request_limit ?? 0) - (qd.remaining_included_requests ?? 0);
-            const totalRequests = qd.included_request_limit ?? 0;
-            items.push(
-              <div key='usage' className='space-y-2.5'>
-                <div className='space-y-1'>
-                  <div className='flex items-center justify-between text-xs'>
-                    <span className='text-muted-foreground font-medium'>
-                      {t('quota.label.requests')}{' '}
-                      <span className='font-normal opacity-70'>
-                        ({usedRequests}/{totalRequests})
-                      </span>
-                    </span>
-                    <span className='text-foreground font-medium'>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</span>
-                  </div>
-                  <UsageTimeBar
-                    usagePercent={usedPct}
-                    durationPercent={getDurationPercent(qd.window_start, qd.window_end)}
-                    tooltip={
-                      <div className='space-y-0.5'>
-                        <div className='font-medium'>{t('quota.label.requests')}</div>
-                        <div>
-                          {usedRequests}/{totalRequests}
-                        </div>
-                        <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
-                        {qd.window_end && <div>{formatTimeToReset(qd.window_end, usedPct)}</div>}
-                      </div>
-                    }
-                  />
-                </div>
-              </div>
-            );
-
-            return items;
           })()}
         </div>
       )}

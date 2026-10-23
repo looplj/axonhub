@@ -173,16 +173,6 @@ export type ProviderNanoGPTQuotaData = ProviderQuotaDataCommon & {
   period?: { currentPeriodEnd?: string };
 };
 
-export type ProviderWaferQuotaData = ProviderQuotaDataCommon & {
-  current_period_used_percent?: number | null;
-  remaining_included_requests?: number | null;
-  included_request_limit?: number | null;
-  overage_request_count?: number | null;
-  window_start?: string | null;
-  window_end?: string | null;
-  plan_tier?: string | null;
-};
-
 export type ProviderSyntheticQuotaData = ProviderQuotaDataCommon & {
   weeklyTokenLimit?: {
     percentRemaining?: number | null;
@@ -746,13 +736,6 @@ export type ProviderQuotaChannel = {
     }
   | {
       type: 'openai' | 'openai_responses';
-      providerType: 'wafer';
-      quotaStatus: {
-        quotaData: ProviderWaferQuotaData;
-      };
-    }
-  | {
-      type: 'openai' | 'openai_responses';
       providerType: 'synthetic';
       quotaStatus: {
         quotaData: ProviderSyntheticQuotaData;
@@ -946,14 +929,6 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
   }
   if (node.type === 'openai' || node.type === 'openai_responses') {
     const typeVal = node.type as 'openai' | 'openai_responses';
-    if (providerType === 'wafer') {
-      return {
-        ...base,
-        type: typeVal,
-        providerType: 'wafer' as const,
-        quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderWaferQuotaData },
-      };
-    }
     if (providerType === 'synthetic') {
       return {
         ...base,
