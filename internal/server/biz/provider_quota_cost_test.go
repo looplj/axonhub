@@ -126,6 +126,40 @@ func TestProviderQuotaService_FillPeriodQuotas_SkipsZenmux(t *testing.T) {
 	require.Nil(t, quotaData.Limits[0].PeriodQuota)
 }
 
+func TestProviderQuotaService_FillPeriodQuotas_KeepsSyntheticCredits(t *testing.T) {
+	now := time.Now()
+	periodCost := 0.03
+	periodQuota := 10.50
+	quotaData := provider_quota.QuotaData{
+		ProviderType: "synthetic",
+		Limits: []provider_quota.QuotaLimitStatus{
+			{
+				Type:        provider_quota.QuotaLimitTypeToken,
+				Window:      provider_quota.QuotaWindowWeekly,
+				UsageRatio:  0.00265,
+				PeriodCost:  &periodCost,
+				PeriodQuota: &periodQuota,
+			},
+			{
+				Type:        provider_quota.QuotaLimitTypeSearch,
+				Window:      "search_hourly",
+				UsageRatio:  0.2,
+				NextResetAt: &now,
+			},
+		},
+	}
+
+	svc := &ProviderQuotaService{}
+	svc.fillPeriodQuotas(context.Background(), 0, &quotaData, now)
+
+	require.NotNil(t, quotaData.Limits[0].PeriodCost)
+	require.InDelta(t, 0.03, *quotaData.Limits[0].PeriodCost, 1e-9)
+	require.NotNil(t, quotaData.Limits[0].PeriodQuota)
+	require.InDelta(t, 10.50, *quotaData.Limits[0].PeriodQuota, 1e-9)
+	require.Nil(t, quotaData.Limits[1].PeriodCost)
+	require.Nil(t, quotaData.Limits[1].PeriodQuota)
+}
+
 func TestProviderQuotaService_FillPeriodQuotas_OnlyCountsOwnChannel(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
 	defer client.Close()
