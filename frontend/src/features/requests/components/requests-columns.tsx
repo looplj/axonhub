@@ -43,6 +43,30 @@ export const DEFAULT_MOBILE_HIDDEN_COLUMN_IDS = [
 
 export const MODEL_ID_COLUMN = 'modelID' as const;
 
+// Cache-rate display for the tokens column. The input line carries the cache
+// hit rate and the output line carries the reasoning count, so each metric
+// sits on the line of the tokens it qualifies; each renders only when its own
+// tokens are non-zero, and the rate is the cached share of the prompt (0
+// without prompt tokens). Top-level so tests can execute the display logic
+// without React.
+export interface TokensColumnCacheDisplay {
+  showReasoning: boolean;
+  showCacheRate: boolean;
+  cacheRate: string;
+}
+
+export function tokensColumnCacheDisplay(
+  promptTokens: number,
+  cachedTokens: number,
+  reasoningTokens: number
+): TokensColumnCacheDisplay {
+  return {
+    showReasoning: reasoningTokens > 0,
+    showCacheRate: cachedTokens > 0,
+    cacheRate: (promptTokens > 0 ? (cachedTokens / promptTokens) * 100 : 0).toFixed(1),
+  };
+}
+
 export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnDef<Request>[] {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
@@ -485,6 +509,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         const completionTokens = usageLog.completionTokens || 0;
         const reasoningTokens = usageLog.completionReasoningTokens || 0;
         const totalTokens = promptTokens + completionTokens;
+        const cachedTokens = usageLog.promptCachedTokens || 0;
+        const cacheDisplay = tokensColumnCacheDisplay(promptTokens, cachedTokens, reasoningTokens);
 
         return (
           <div className='space-y-0.5 text-xs'>
@@ -493,14 +519,23 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
               {(totalTokens || 0).toLocaleString()}
             </div>
             <div className='text-muted-foreground'>
-              {t('requests.columns.input')}: {promptTokens.toLocaleString()} | {t('requests.columns.output')}:{' '}
-              {completionTokens.toLocaleString()}
+              {t('requests.columns.input')}: {promptTokens.toLocaleString()}
+              {cacheDisplay.showCacheRate && (
+                <>
+                  {' | '}
+                  <span>{t('requests.columns.cacheRate', { rate: cacheDisplay.cacheRate })}</span>
+                </>
+              )}
             </div>
-            {reasoningTokens > 0 && (
-              <div className='text-muted-foreground'>
-                {t('requests.columns.reasoning')}: {reasoningTokens.toLocaleString()}
-              </div>
-            )}
+            <div className='text-muted-foreground'>
+              {t('requests.columns.output')}: {completionTokens.toLocaleString()}
+              {cacheDisplay.showReasoning && (
+                <>
+                  {' | '}
+                  {t('requests.columns.reasoning')}: {reasoningTokens.toLocaleString()}
+                </>
+              )}
+            </div>
           </div>
         );
       },
