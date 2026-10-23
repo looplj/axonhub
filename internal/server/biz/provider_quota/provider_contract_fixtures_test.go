@@ -85,7 +85,7 @@ func quotaCheckerFixture(checker string) (QuotaData, error) {
 	case "wafer":
 		return NewWaferQuotaChecker(nil).parseResponse([]byte(`{"current_period_used_percent":25,"window_start":"2099-01-01T00:00:00Z","window_end":"2099-02-01T00:00:00Z","remaining_included_requests":75}`))
 	case "synthetic":
-		return NewSyntheticQuotaChecker(nil).parseResponse([]byte(`{"weeklyTokenLimit":{"percentRemaining":75,"nextRegenAt":"2099-01-08T00:00:00Z"},"rollingFiveHourLimit":{"tickPercent":25,"nextTickAt":"2099-01-01T05:00:00Z"}}`))
+		return NewSyntheticQuotaChecker(nil).parseResponse([]byte(`{"weeklyTokenLimit":{"percentRemaining":75,"nextRegenAt":"2099-01-08T00:00:00Z"},"rollingFiveHourLimit":{"tickPercent":25,"nextTickAt":"2099-01-01T05:00:00Z"},"search":{"hourly":{"limit":250,"requests":50,"renewsAt":"2099-01-01T01:00:00Z"}}}`))
 	case "neuralwatt":
 		return NewNeuralWattQuotaChecker(nil).parseResponse([]byte(`{"subscription":{"kwh_included":100,"kwh_used":25,"kwh_remaining":75,"kwh_reset_date":"2099-02-01T00:00:00Z"}}`))
 	case "apertis":

@@ -246,7 +246,7 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     percentage = qd?.current_period_used_percent ?? 0;
   } else if (isOpenaiType(channel.type) && channel.providerType === 'synthetic') {
     const qd = channel.quotaStatus.quotaData as ProviderSyntheticQuotaData | undefined;
-    const weeklyPct = qd?.weeklyTokenLimit?.percentRemaining ?? 100;
+    const weeklyPct = qd?.planWeeklyLimit?.percentRemaining ?? qd?.weeklyTokenLimit?.percentRemaining ?? 100;
     percentage = 100 - weeklyPct;
   } else if (isOpenaiType(channel.type) && channel.providerType === 'neuralwatt') {
     const qd = channel.quotaStatus.quotaData as ProviderNeuralWattQuotaData | undefined;
@@ -353,21 +353,47 @@ const WINDOW_LABEL_KEYS: Record<string, string> = {
   kwh: 'quota.label.kwh_remaining',
 };
 
+// periodStart only exists because the backend priced the window from usage
+// logs: only limits with a pinned period start take part in the cost
+// aggregation, and that pricing runs for no provider that reports the window's
+// money itself (Synthetic regenerates its weekly pool in ticks, and its limits
+// carry a regen time, not a window start). Its presence is therefore the
+// documented marker of a log-derived figure; a limit without one shows
+// provider-reported money.
+function periodMoneyIsProviderReported(limit: Pick<ProviderQuotaLimit, 'periodStart'>): boolean {
+  return limit.periodStart == null;
+}
+
 // PeriodQuotaEstimate prices each limit window: the backend sums what the
 // channel cost during the window from AxonHub usage logs and divides by the
 // usage ratio the provider reported, which yields what the whole window is
-// worth. Windows the backend could not price are simply absent.
-function PeriodQuotaEstimate({ limits }: { limits: ProviderQuotaLimit[] }) {
+// worth — or the provider reports the window's money itself (Synthetic's
+// weekly credits), in which case those figures are shown directly. Windows
+// without a money figure are simply absent. The tooltip explains whichever
+// source produced the displayed rows, so a channel that mixes both never
+// suggests one explains the other's rows.
+function PeriodQuotaEstimate({ limits, currency }: { limits: ProviderQuotaLimit[]; currency?: string }) {
   const { t, i18n } = useTranslation();
   const { data: generalSettings } = useGeneralSettings();
 
   const priced = limits.filter((limit) => limit.periodQuota != null);
   if (priced.length === 0) return null;
 
+  // The tooltip must describe the rows it hangs over: when some rows are
+  // provider-reported and others log-derived, the shared dual-source wording
+  // is chosen so neither reading is dropped.
+  const sources = priced.map((limit) => (periodMoneyIsProviderReported(limit) ? 'provider' : 'log'));
+  const hintKey =
+    sources.includes('provider') && sources.includes('log')
+      ? 'quota.label.period_quota_hint_mixed'
+      : sources[0] === 'provider'
+        ? 'quota.label.period_quota_hint_provider'
+        : 'quota.label.period_quota_hint';
+
   const formatCurrency = (val: number) =>
     t('currencies.format', {
       val,
-      currency: generalSettings?.currencyCode || 'USD',
+      currency: currency || generalSettings?.currencyCode || 'USD',
       locale: i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -380,7 +406,7 @@ function PeriodQuotaEstimate({ limits }: { limits: ProviderQuotaLimit[] }) {
           <span className='text-muted-foreground cursor-default text-xs font-medium'>{t('quota.label.period_quota')}</span>
         </TooltipTrigger>
         <TooltipContent side='top' className='max-w-[260px]'>
-          {t('quota.label.period_quota_hint')}
+          {t(hintKey)}
         </TooltipContent>
       </Tooltip>
 
@@ -392,9 +418,20 @@ function PeriodQuotaEstimate({ limits }: { limits: ProviderQuotaLimit[] }) {
             ? t('quota.label.token_usage')
             : limit.window || t('quota.label.token_usage');
 
+        // A mark next to the window name identifies provider-reported rows
+        // while a sibling row of the same channel is log-derived, so the two
+        // readings stay separately attributable.
+        const sourceMark =
+          sources.includes('provider') && sources.includes('log') && periodMoneyIsProviderReported(limit)
+            ? ` · ${t('quota.label.period_quota_provider_source')}`
+            : '';
+
         return (
           <div key={`${limit.window ?? limit.type}-${index}`} className='flex items-center justify-between text-xs'>
-            <span className='text-muted-foreground'>{label}</span>
+            <span className='text-muted-foreground'>
+              {label}
+              {sourceMark}
+            </span>
             <span className='text-foreground font-medium'>
               {t('quota.label.period_quota_value', {
                 // The backend only estimates a quota once it has a cost, so
@@ -1851,11 +1888,15 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             if (!qd) return null;
             const items: React.ReactNode[] = [];
 
-            if (qd.weeklyTokenLimit) {
-              const pctRemaining = qd.weeklyTokenLimit.percentRemaining ?? 100;
+            const planWeekly = qd.planWeeklyLimit;
+            const weeklyPercentRemaining = planWeekly?.percentRemaining ?? qd.weeklyTokenLimit?.percentRemaining;
+            const weeklyNextRegenAt = planWeekly?.nextRegenAt ?? qd.weeklyTokenLimit?.nextRegenAt;
+            const regenTick = planWeekly?.nextRegenPercent != null ? planWeekly.nextRegenPercent / 100 : syntheticWeeklyRegenTickPct;
+            if (planWeekly || qd.weeklyTokenLimit) {
+              const pctRemaining = weeklyPercentRemaining ?? 100;
               const usedPct = 100 - pctRemaining;
-              const remainingCredits = qd.weeklyTokenLimit.remainingCredits;
-              const maxCredits = qd.weeklyTokenLimit.maxCredits;
+              const remainingCredits = qd.weeklyTokenLimit?.remainingCredits;
+              const maxCredits = qd.weeklyTokenLimit?.maxCredits;
               const usedCredits =
                 remainingCredits != null && maxCredits != null
                   ? `$${(parseFloat(maxCredits.replace('$', '')) - parseFloat(remainingCredits.replace('$', ''))).toFixed(2)}`
@@ -1878,8 +1919,8 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                     <UsageTimeBar
                       usagePercent={usedPct}
                       durationPercent={
-                        qd.weeklyTokenLimit.nextRegenAt
-                          ? calcDurationPercent(7 * 24 * 3600, (new Date(qd.weeklyTokenLimit.nextRegenAt).getTime() - Date.now()) / 1000)
+                        weeklyNextRegenAt
+                          ? calcDurationPercent(7 * 24 * 3600, (new Date(weeklyNextRegenAt).getTime() - Date.now()) / 1000)
                           : undefined
                       }
                       tooltip={
@@ -1891,9 +1932,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                             </div>
                           )}
                           <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
-                          {qd.weeklyTokenLimit.nextRegenAt && (
-                            <div>{formatTimeToReset(qd.weeklyTokenLimit.nextRegenAt, usedPct, syntheticWeeklyRegenTickPct)}</div>
-                          )}
+                          {weeklyNextRegenAt && <div>{formatTimeToReset(weeklyNextRegenAt, usedPct, regenTick)}</div>}
                         </div>
                       }
                     />
@@ -1956,6 +1995,48 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                       {t('quota.status.limited')}
                     </Badge>
                   )}
+                </div>
+              );
+            }
+
+            const searchHourly = qd.search?.hourly;
+            if (searchHourly && searchHourly.requests != null && (searchHourly.limit ?? 0) > 0) {
+              const searchUsed = searchHourly.requests ?? 0;
+              const searchLimit = searchHourly.limit ?? 0;
+              const searchUsedPct = (searchUsed / searchLimit) * 100;
+              items.push(
+                <div key='search' className='border-border/60 space-y-2.5 border-t border-dashed pt-3'>
+                  <div className='space-y-1'>
+                    <div className='flex items-center justify-between text-xs'>
+                      <span className='text-muted-foreground font-medium'>
+                        {t('quota.label.search_requests')}{' '}
+                        <span className='font-normal opacity-70'>
+                          ({searchUsed}/{searchLimit})
+                        </span>
+                      </span>
+                      <span className='text-foreground font-medium'>
+                        {t('quota.label.percent_used', { percent: Math.round(searchUsedPct) })}
+                      </span>
+                    </div>
+                    <UsageTimeBar
+                      usagePercent={searchUsedPct}
+                      durationPercent={
+                        searchHourly.renewsAt
+                          ? calcDurationPercent(3600, (new Date(searchHourly.renewsAt).getTime() - Date.now()) / 1000)
+                          : undefined
+                      }
+                      tooltip={
+                        <div className='space-y-0.5'>
+                          <div className='font-medium'>{t('quota.label.search_requests')}</div>
+                          <div>
+                            {searchUsed}/{searchLimit}
+                          </div>
+                          <div>{t('quota.label.percent_used', { percent: Math.round(searchUsedPct) })}</div>
+                          {searchHourly.renewsAt && <div>{formatTimeToReset(searchHourly.renewsAt)}</div>}
+                        </div>
+                      }
+                    />
+                  </div>
                 </div>
               );
             }
@@ -2382,7 +2463,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
         </div>
       )}
 
-      <PeriodQuotaEstimate limits={quota.limits} />
+      <PeriodQuotaEstimate limits={quota.limits} currency={channel.providerType === 'synthetic' ? 'USD' : undefined} />
     </div>
   );
 }

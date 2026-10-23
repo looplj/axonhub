@@ -320,3 +320,95 @@ func TestProviderQuotaService_SaveQuotaStatus_UpdatesChangedProviderIdentity(t *
 	require.Equal(t, providerquotastatus.StatusAvailable, cached.Status)
 	require.True(t, cached.Ready)
 }
+
+func TestProviderQuotaService_SaveQuotaStatus_PersistsSyntheticCredits(t *testing.T) {
+	client := enttest.NewEntClient(t, "sqlite3", "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithTestBypass(ent.NewContext(t.Context(), client))
+	channelEntity, err := client.Channel.Create().
+		SetName("OpenAI compatible").
+		SetType(channel.TypeOpenai).
+		SetBaseURL("https://api.synthetic.new/v1").
+		SetStatus(channel.StatusEnabled).
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"test-model"}).
+		SetDefaultTestModel("test-model").
+		Save(ctx)
+	require.NoError(t, err)
+
+	service := &ProviderQuotaService{
+		AbstractService: &AbstractService{db: client},
+		checkInterval:   5 * time.Minute,
+	}
+
+	periodCost := 0.03
+	periodQuota := 10.50
+	service.saveQuotaStatus(ctx, channelEntity.ID, "synthetic", "", provider_quota.QuotaData{
+		ProviderType: "synthetic",
+		Status:       "available",
+		Ready:        true,
+		Limits: []provider_quota.QuotaLimitStatus{
+			{
+				Type:        provider_quota.QuotaLimitTypeToken,
+				Window:      provider_quota.QuotaWindowWeekly,
+				Status:      "available",
+				UsageRatio:  0.00265,
+				Ready:       true,
+				PeriodCost:  &periodCost,
+				PeriodQuota: &periodQuota,
+			},
+			{
+				Type:       provider_quota.QuotaLimitTypeSearch,
+				Window:     "search_hourly",
+				Status:     "available",
+				UsageRatio: 0.2,
+				Ready:      true,
+			},
+		},
+	}, time.Now())
+
+	assertSyntheticCreditsPersisted := func(t *testing.T, cachedLimits []provider_quota.QuotaLimitStatus) {
+		t.Helper()
+
+		persisted, err := client.ProviderQuotaStatus.Query().
+			Where(providerquotastatus.ChannelIDEQ(channelEntity.ID)).
+			Only(ctx)
+		require.NoError(t, err)
+		limits := extractLimitsFromQuotaData(persisted.QuotaData)
+		require.Len(t, limits, 2)
+		require.NotNil(t, limits[0].PeriodQuota)
+		require.InDelta(t, 10.50, *limits[0].PeriodQuota, 1e-9)
+		require.NotNil(t, limits[0].PeriodCost)
+		require.InDelta(t, 0.03, *limits[0].PeriodCost, 1e-9)
+		require.Equal(t, provider_quota.QuotaLimitTypeSearch, limits[1].Type)
+
+		require.Len(t, cachedLimits, 2)
+		require.NotNil(t, cachedLimits[0].PeriodQuota)
+		require.InDelta(t, 10.50, *cachedLimits[0].PeriodQuota, 1e-9)
+	}
+
+	cachedValue, ok := service.quotaCache.Load(channelEntity.ID)
+	require.True(t, ok)
+	cached, ok := cachedValue.(*QuotaChannelStatus)
+	require.True(t, ok)
+	assertSyntheticCreditsPersisted(t, cached.Limits)
+
+	// A transient same-provider error must keep the provider money too: the
+	// error path writes a fresh cached status, so re-query after the call.
+	now := time.Now()
+	channelWithStatus, err := client.Channel.Query().
+		Where(channel.IDEQ(channelEntity.ID)).
+		WithProviderQuotaStatus().
+		Only(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, channelWithStatus.Edges.ProviderQuotaStatus)
+
+	service.saveQuotaError(ctx, channelWithStatus, "synthetic", "", errors.New("synthetic quota unavailable"), 1, now)
+
+	cachedValue, ok = service.quotaCache.Load(channelEntity.ID)
+	require.True(t, ok)
+	cached, ok = cachedValue.(*QuotaChannelStatus)
+	require.True(t, ok)
+	assertSyntheticCreditsPersisted(t, cached.Limits)
+}
