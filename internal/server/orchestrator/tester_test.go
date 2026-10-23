@@ -115,6 +115,26 @@ func TestChannelTestAPIFormatUsesModelProtocolPriority(t *testing.T) {
 	}
 }
 
+// TestChannelTestAPIFormatCloudflareChannel pins the format the channel test
+// speaks for each model of a Workers AI channel. System One is an extra surface
+// next to the OpenAI-compatible API there, so an unpinned chat or embedding model
+// must not be tested as System One.
+func TestChannelTestAPIFormatCloudflareChannel(t *testing.T) {
+	ch := &biz.Channel{Channel: &ent.Channel{
+		Type:            channel.TypeCloudflare,
+		SupportedModels: []string{"@cf/meta/llama-3.1-8b-instruct", "@cf/cloudflare/clef", "@cf/baai/bge-m3"},
+		Endpoints:       []objects.ChannelEndpoint{{APIFormat: llm.APIFormatTypeSafeSystemOne.String()}},
+		Settings: &objects.ChannelSettings{ModelProtocols: []objects.ModelProtocol{
+			{Model: "@cf/cloudflare/clef", APIFormats: []string{llm.APIFormatTypeSafeSystemOne.String()}},
+			{Model: "@cf/baai/bge-m3", APIFormats: []string{llm.APIFormatOpenAIEmbedding.String()}},
+		}},
+	}}
+
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, channelTestAPIFormat(ch, "@cf/meta/llama-3.1-8b-instruct"))
+	require.Equal(t, llm.APIFormatTypeSafeSystemOne, channelTestAPIFormat(ch, "@cf/cloudflare/clef"))
+	require.Equal(t, llm.APIFormatOpenAIEmbedding, channelTestAPIFormat(ch, "@cf/baai/bge-m3"))
+}
+
 // TestUsesResponsesWebSocket verifies explicit and URL-inferred WebSocket transports.
 func TestUsesResponsesWebSocket(t *testing.T) {
 	t.Run("inferred from channel base URL", func(t *testing.T) {

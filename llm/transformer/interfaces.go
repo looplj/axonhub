@@ -66,6 +66,14 @@ type PassThroughBodyPolicy interface {
 	AllowPassThroughBody(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool
 }
 
+// PassThroughResponsePolicy lets outbound transformers veto raw response pass-through.
+// Transformers whose raw provider payload is not the client-facing payload (a provider
+// that wraps its payload in an envelope, for example) implement this to keep pass-through
+// from restoring the wrapped body.
+type PassThroughResponsePolicy interface {
+	AllowPassThroughResponse(ctx context.Context, llmReq *llm.Request, providerReq *httpclient.Request) bool
+}
+
 // TransportRequestFinalizer applies transport-specific cleanup after raw request
 // pass-through and overrides have finished, but before persistence and execution.
 type TransportRequestFinalizer interface {

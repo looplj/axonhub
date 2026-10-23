@@ -32,16 +32,23 @@ func TestChannelEndpoint_TypesafeStrictness(t *testing.T) {
 	}
 	require.NoError(t, validateEndpointsForChannelType(channel.TypeOpenai, openaiWithSystemOne))
 
-	// 4. Non-OpenAI and Non-TypeSafe channel (e.g. Anthropic) with typesafe/systemone endpoint should FAIL
+	// 4. Cloudflare channel type with typesafe/systemone endpoint should PASS
+	cloudflareWithSystemOne := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatTypeSafeSystemOne.String()},
+	}
+	require.NoError(t, validateEndpointsForChannelType(channel.TypeCloudflare, cloudflareWithSystemOne))
+
+	// 5. Non-OpenAI, non-TypeSafe and non-Cloudflare channel (e.g. Anthropic) with typesafe/systemone endpoint should FAIL
 	anthropicWithSystemOne := []objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatAnthropicMessage.String()},
 		{APIFormat: llm.APIFormatTypeSafeSystemOne.String()},
 	}
 	err = validateEndpointsForChannelType(channel.TypeAnthropic, anthropicWithSystemOne)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "only supported by TypeSafe or OpenAI channel types")
+	require.Contains(t, err.Error(), "only supported by TypeSafe, OpenAI and Cloudflare channel types")
 
-	// 5. Default endpoints for TypeSafe channel must only be typesafe/systemone
+	// 6. Default endpoints for TypeSafe channel must only be typesafe/systemone
 	defaults := DefaultEndpointsForChannelType(channel.TypeTypesafe)
 	require.Len(t, defaults, 1)
 	require.Equal(t, llm.APIFormatTypeSafeSystemOne.String(), defaults[0].APIFormat)

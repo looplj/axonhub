@@ -176,8 +176,14 @@ func (t *OutboundTransformer) transformImageResponse(ctx context.Context, httpRe
 		return nil, fmt.Errorf("ModelScope image response body is empty")
 	}
 
-	// Reuse the key that created the task for the whole round trip.
-	apiKey := imageTaskAPIKey(httpResp, t.apiKeyProvider.Get(ctx))
+	// Reuse the key that created the task for the whole round trip. Read the
+	// stored key before touching the provider: evaluating the provider eagerly
+	// would consume a second round-robin turn on every image response, even
+	// when the stored key is the one that gets used.
+	apiKey := imageTaskAPIKey(httpResp)
+	if apiKey == "" {
+		apiKey = t.apiKeyProvider.Get(ctx)
+	}
 
 	var payload imageResponse
 	if err := json.Unmarshal(httpResp.Body, &payload); err != nil {
@@ -313,17 +319,17 @@ func (t *OutboundTransformer) getImageTask(ctx context.Context, apiKey, taskURL 
 	return decodeImageTask(body)
 }
 
-// imageTaskAPIKey returns the key that created the task, falling back to the
-// provided key when the request metadata is unavailable. Every task-scoped call
-// must use the returned key so a multi-key channel cannot mix keys mid-task.
-func imageTaskAPIKey(httpResp *httpclient.Response, fallback string) string {
+// imageTaskAPIKey returns the key that created the task, or "" when the request
+// metadata is unavailable. Every task-scoped call must use the returned key so a
+// multi-key channel cannot mix keys mid-task; the caller supplies the fallback.
+func imageTaskAPIKey(httpResp *httpclient.Response) string {
 	if httpResp != nil && httpResp.Request != nil && httpResp.Request.TransformerMetadata != nil {
 		if key, ok := httpResp.Request.TransformerMetadata[imageTaskAPIKeyMeta].(string); ok && key != "" {
 			return key
 		}
 	}
 
-	return fallback
+	return ""
 }
 
 func decodeImageTask(body []byte) (*imageResponse, error) {

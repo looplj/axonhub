@@ -10,8 +10,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/samber/lo"
-
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/contexts"
 	"github.com/looplj/axonhub/internal/ent"
@@ -25,6 +23,7 @@ import (
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/samber/lo"
 )
 
 // LinkedProfilesCount is the resolver for the linkedProfilesCount field.
@@ -1099,3 +1098,26 @@ func (r *Resolver) Segment() SegmentResolver { return &segmentResolver{r} }
 type channelSettingsResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type segmentResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *updateChannelSettingsInputResolver) APIKeyStrategy(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *string) error {
+	obj.APIKeyStrategy = data
+
+	return nil
+}
+func (r *updateChannelSettingsInputResolver) APIKeyRoundRobinSwitchAfter(ctx context.Context, obj *biz.UpdateChannelSettingsInput, data *int) error {
+	obj.APIKeyRoundRobinSwitchAfter = data
+
+	return nil
+}
+func (r *Resolver) UpdateChannelSettingsInput() UpdateChannelSettingsInputResolver {
+	return &updateChannelSettingsInputResolver{r}
+}
+type updateChannelSettingsInputResolver struct{ *Resolver }
+*/

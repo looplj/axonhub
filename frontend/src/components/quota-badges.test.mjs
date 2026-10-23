@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import test from 'node:test';
 import ts from 'typescript';
 
 const componentsDir = import.meta.dirname;
@@ -29,36 +29,12 @@ test('Codex usage windows render as combined usage and time bars', () => {
 
   // Each window has one shared bar whose fill reflects usage and whose marker
   // reflects the reset-window elapsed time.
-  assert.equal(
-    (codexBlock.match(/<UsageTimeBar\s/g) || []).length,
-    1,
-    'Codex normalized limits should use one combined bar'
-  );
-  assert.match(
-    codexBlock,
-    /quota\.limits\s*\.filter\([\s\S]*?\.map\(\(limit,\s*index\)/,
-    'Codex bars should render normalized limits'
-  );
-  assert.match(
-    codexBlock,
-    /limit\.window === '5h'/,
-    'Codex five-hour label should be selected from the normalized window'
-  );
-  assert.match(
-    codexBlock,
-    /limit\.window === '7d'/,
-    'Codex seven-day label should be selected from the normalized window'
-  );
-  assert.match(
-    codexBlock,
-    /WINDOW_LABEL_KEYS\[limit\.window\]/,
-    'Codex labels should resolve through the shared translation map'
-  );
-  assert.match(
-    codexBlock,
-    /t\('quota\.label\.token_usage'\)/,
-    'Codex unknown windows should use the neutral quota label'
-  );
+  assert.equal((codexBlock.match(/<UsageTimeBar\s/g) || []).length, 1, 'Codex normalized limits should use one combined bar');
+  assert.match(codexBlock, /quota\.limits\s*\.filter\([\s\S]*?\.map\(\(limit,\s*index\)/, 'Codex bars should render normalized limits');
+  assert.match(codexBlock, /limit\.window === '5h'/, 'Codex five-hour label should be selected from the normalized window');
+  assert.match(codexBlock, /limit\.window === '7d'/, 'Codex seven-day label should be selected from the normalized window');
+  assert.match(codexBlock, /WINDOW_LABEL_KEYS\[limit\.window\]/, 'Codex labels should resolve through the shared translation map');
+  assert.match(codexBlock, /t\('quota\.label\.token_usage'\)/, 'Codex unknown windows should use the neutral quota label');
   assert.doesNotMatch(codexBlock, /quota\.label\.primary_window/);
   assert.doesNotMatch(codexBlock, /quota\.label\.secondary_window/);
 });
@@ -71,7 +47,10 @@ test('quota popover has no standalone progress-bar renders', () => {
 
 test('Command Code monthly hover matches the other windows', () => {
   const source = read('components/quota-badges.tsx');
-  const commandCodeBlock = source.slice(source.indexOf("{isCommandCodeType(channel.type) &&"), source.indexOf("{channel.type === 'moonshot_coding' &&"));
+  const commandCodeBlock = source.slice(
+    source.indexOf('{isCommandCodeType(channel.type) &&'),
+    source.indexOf("{channel.type === 'moonshot_coding' &&")
+  );
 
   assert.match(commandCodeBlock, /monthlyDurationPct[\s\S]*quota\.label\.time_elapsed/);
   assert.doesNotMatch(commandCodeBlock, /quota\.label\.commandcode\.monthly_remaining/);
@@ -109,8 +88,8 @@ test('Ollama badge derives percentage from the heavier of the 5h/weekly windows'
 
 test('Ollama badge renders both the 5h and weekly windows with a reset countdown', () => {
   const source = read('components/quota-badges.tsx');
-  const start = source.indexOf("{isOllamaType(channel.type) &&");
-  const end = source.indexOf("{isCommandCodeType(channel.type) &&", start);
+  const start = source.indexOf('{isOllamaType(channel.type) &&');
+  const end = source.indexOf('{isCommandCodeType(channel.type) &&', start);
   const ollamaBlock = source.slice(start, end);
 
   assert.match(ollamaBlock, /QuotaWindow5h|'5h'/);
@@ -167,7 +146,7 @@ test('NeuralWatt kWh bar shares the elapsed-window marker and label', () => {
 test('OpenCode Go renders its normalized limit windows', () => {
   const quotaBadges = read('components/quota-badges.tsx');
   const start = quotaBadges.indexOf("{(channel.type === 'opencode_go' || channel.type === 'opencode_go_anthropic') &&");
-  const end = quotaBadges.indexOf("{isOllamaType(channel.type) &&", start);
+  const end = quotaBadges.indexOf('{isOllamaType(channel.type) &&', start);
 
   assert.ok(start !== -1, 'OpenCode Go popover branch should exist in quota-badges source');
   assert.ok(end !== -1 && end > start, 'the Ollama branch should follow the OpenCode Go branch');
@@ -193,15 +172,23 @@ test('OpenCode Go renders its normalized limit windows', () => {
   );
 });
 
-
 // --- Mode-aware quota badges (quota routing) ---
 
 // Extract the pure mode helpers from quota-badges.tsx without loading React.
 const badgesSource = read('components/quota-badges.tsx');
 const badgesAst = ts.createSourceFile('quota-badges.tsx', badgesSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const modeHelperNames = ['resolveEffectiveRoutingMode', 'mostRestrictiveRoutingMode'];
+const modeHelperNames = [
+  'resolveEffectiveRoutingMode',
+  'mostRestrictiveRoutingMode',
+  'isOpenaiType',
+  'isCommandCodeType',
+  'isOllamaType',
+  'isMinimaxType',
+  'isZenmuxType',
+  'getChannelCategory',
+];
 const modeHelperNodes = badgesAst.statements.filter((node) => ts.isFunctionDeclaration(node) && modeHelperNames.includes(node.name?.text));
-assert.equal(modeHelperNodes.length, 2, 'mode helpers must stay in quota-badges.tsx');
+assert.equal(modeHelperNodes.length, 8, 'helpers must stay in quota-badges.tsx');
 const modeHelpers = modeHelperNodes.map((node) => `export ${node.getText(badgesAst).replace(/^export\s+/, '')}`).join('\n');
 
 function loadTsModule(sourceText) {
@@ -211,7 +198,7 @@ function loadTsModule(sourceText) {
   return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 }
 
-const { resolveEffectiveRoutingMode, mostRestrictiveRoutingMode } = await loadTsModule(modeHelpers);
+const { resolveEffectiveRoutingMode, mostRestrictiveRoutingMode, getChannelCategory } = await loadTsModule(modeHelpers);
 
 test('per-channel mode falls back to the global default when the channel defers via INHERIT', () => {
   // parseChannelNode maps channels without settings.quotaRoutingMode to INHERIT.
@@ -246,13 +233,77 @@ test('account-grouped label uses the most restrictive member mode', () => {
 });
 
 test('grouped representatives render the group mode, standalone channels their own', () => {
-  // The row list must stay a real .map over groupedChannels (guards against
-  // the opener being eaten by an edit while tsc-visible JSX text survives).
-  assert.match(badgesSource, /groupedChannels\.map\(\(channel: ProviderQuotaChannel\) => \(\n\s*<QuotaRow key=\{channel\.id\} channel=\{channel\} effectiveMode=\{effectiveModeFor\(channel\)\}/);
+  // The row list maps over groupedChannels and renders QuotaRow with effectiveMode.
+  assert.match(badgesSource, /groupedChannels\.map\(\(channel: ProviderQuotaChannel/);
+  assert.match(badgesSource, /<QuotaRow\s+channel=\{channel\}\s+effectiveMode=\{effectiveModeFor\(channel\)\}/);
   assert.match(badgesSource, /effectiveMode=\{effectiveModeFor\(channel\)\}/);
-  assert.match(badgesSource, /if \(!channel\.sharedAccountNames\) return resolveEffectiveRoutingMode\(channel\.quotaRoutingMode, routingSettings\?\.defaultMode\)/);
+  assert.match(
+    badgesSource,
+    /if \(!channel\.sharedAccountNames\) return resolveEffectiveRoutingMode\(channel\.quotaRoutingMode, routingSettings\?\.defaultMode\)/
+  );
   assert.match(badgesSource, /\.filter\(\(c\) => c\.accountKey === channel\.accountKey\)/);
   assert.match(badgesSource, /mostRestrictiveRoutingMode\(groupModes\)/);
+});
+
+test('channels in quota popover are categorized with filter pills and section headers', () => {
+  assert.match(badgesSource, /function getChannelCategory\(/, 'getChannelCategory helper must exist');
+  assert.match(badgesSource, /key: 'antigravity',\s*label:.*order:\s*1/, 'Antigravity should have top priority category');
+  assert.match(badgesSource, /key: 'codex',\s*label:.*order:\s*2/, 'Codex should have category order 2');
+  assert.match(badgesSource, /key: 'claudecode',\s*label:.*order:\s*3/, 'Claude Code should have category order 3');
+  assert.match(badgesSource, /key: 'github_copilot',\s*label:.*order:\s*4/, 'GitHub Copilot should have category order 4');
+  assert.match(badgesSource, /a\.name\.localeCompare\(b\.name\)/, 'Channels should be stably sorted by name within categories');
+  assert.match(badgesSource, /setSelectedCategory\('all'\)/, 'Popover should have an all categories filter pill');
+  assert.match(badgesSource, /col-span-full[\s\S]*?uppercase/, 'Popover should render section header across full grid width');
+  assert.match(badgesSource, /categoryCounts\[cat\.key\]/, 'Section header counter must read from categoryCounts');
+  assert.match(badgesSource, /activeCategory[\s\S]*?categories\.some/, 'Selection must fall back to all when selected category disappears');
+  assert.match(badgesSource, /text-foreground truncate font-medium|truncate font-medium/, 'Channel name should be truncated with ellipsis');
+  assert.match(badgesSource, /ml-2 flex shrink-0/, 'Badge container should not shrink and have left margin');
+  assert.match(
+    badgesSource,
+    /sortedChannels\.length > 4 \? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2'/,
+    'Dual-column grid should be based on total sorted channels'
+  );
+  assert.match(badgesSource, /aria-pressed=\{activeCategory === 'all'\}/, 'All button should expose aria-pressed state');
+  assert.match(badgesSource, /aria-pressed=\{activeCategory === cat\.key\}/, 'Category buttons should expose aria-pressed state');
+});
+
+test('channel categories order by priority and sort stably by name within groups', () => {
+  const t = (k) => k;
+  const sampleChannels = [
+    { id: '1', name: 'copilot-beta', type: 'github_copilot' },
+    { id: '2', name: 'antigravity-zeta', type: 'antigravity' },
+    { id: '3', name: 'copilot-alpha', type: 'github_copilot' },
+    { id: '4', name: 'antigravity-alpha', type: 'antigravity' },
+  ];
+
+  const sorted = [...sampleChannels].sort((a, b) => {
+    const catA = getChannelCategory(a, t);
+    const catB = getChannelCategory(b, t);
+    if (catA.order !== catB.order) return catA.order - catB.order;
+    if (catA.key !== catB.key) return catA.label.localeCompare(catB.label);
+    return a.name.localeCompare(b.name);
+  });
+
+  assert.deepEqual(
+    sorted.map((c) => c.name),
+    ['antigravity-alpha', 'antigravity-zeta', 'copilot-alpha', 'copilot-beta']
+  );
+
+  // Directly verify production category orders and shared keys across protocol variants
+  assert.equal(getChannelCategory({ type: 'antigravity' }, t).order, 1);
+  assert.equal(getChannelCategory({ type: 'codex' }, t).order, 2);
+  assert.equal(getChannelCategory({ type: 'claudecode' }, t).order, 3);
+  assert.equal(getChannelCategory({ type: 'github_copilot' }, t).order, 4);
+  assert.equal(getChannelCategory({ type: 'openai' }, t).key, 'openai');
+  assert.equal(getChannelCategory({ type: 'openai_responses' }, t).key, 'openai');
+  assert.equal(getChannelCategory({ type: 'opencode_go' }, t).key, 'opencode_go');
+  assert.equal(getChannelCategory({ type: 'opencode_go_anthropic' }, t).key, 'opencode_go');
+
+  // Active category falls back to all when category disappears
+  const activeCategories = [{ key: 'antigravity' }];
+  const getActive = (selected) => (selected !== 'all' && activeCategories.some((c) => c.key === selected) ? selected : 'all');
+  assert.equal(getActive('codex'), 'all');
+  assert.equal(getActive('antigravity'), 'antigravity');
 });
 
 test('mode badge labels are locale-complete and legacy enforcement keys are gone', () => {
@@ -265,9 +316,13 @@ test('mode badge labels are locale-complete and legacy enforcement keys are gone
   assert.equal(zhSystem['quota.status.ignore_quota'], '忽略限额');
   assert.equal(zhSystem['quota.status.remove_on_exhausted'], '已摘除');
   assert.equal(zhSystem['quota.status.backpressure'], '限流调度');
-  for (const [name, obj] of [['en', enSystem], ['zh-CN', zhSystem]]) {
+  for (const [name, obj] of [
+    ['en', enSystem],
+    ['zh-CN', zhSystem],
+  ]) {
     const legacy = Object.keys(obj).filter(
-      (key) => key.startsWith('quota.status.blocked') || key.startsWith('quota.status.deprioritized') || key.startsWith('quota.status.bypassed')
+      (key) =>
+        key.startsWith('quota.status.blocked') || key.startsWith('quota.status.deprioritized') || key.startsWith('quota.status.bypassed')
     );
     assert.deepEqual(legacy, [], `${name}/system.json still has legacy quota status keys`);
   }
