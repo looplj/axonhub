@@ -50,6 +50,7 @@ server:
   safeguards:
     classifier_model: codex-auto-review
     fallback_models: [gemini-3.8-flash]
+    escalate_on_denial: false
     attempt_timeout: 10s
     timeout: 30s
     max_tokens: 4096
@@ -80,7 +81,7 @@ Each reviewer attempt adds a separate model request and its token cost. The revi
 
 Despite the setting name `transcript_char_budget`, the transcript limit is measured in UTF-8 bytes, with truncation at valid character boundaries. Classifier context is limited to 16 KB, and proposed tool calls to 64 KB in aggregate; inputs exceeding those limits return unavailable.
 
-`fallback_models` is an ordered list tried after `classifier_model`. A provider error, attempt timeout, or missing/invalid verdict triggers the next reviewer for unresolved tool calls only. Valid verdicts are final: both flagged and not-flagged results are preserved, including valid entries from a partially usable response. A flagged result never triggers a second opinion to seek approval. Duplicate JSON keys or a malformed response invalidate the response. Client cancellation stops the chain immediately.
+`fallback_models` is an ordered list tried after `classifier_model`. A provider error, attempt timeout, or missing/invalid verdict triggers the next reviewer for unresolved tool calls only. By default (`escalate_on_denial: false`), valid verdicts are final: both flagged and not-flagged results are preserved, including valid entries from a partially usable response. In this default mode, a flagged result never triggers a second opinion. Duplicate JSON keys or a malformed response invalidate the response. Client cancellation stops the chain immediately.
 
 The example allows each reviewer up to 10 seconds, with a 30-second overall ceiling; it does not reserve 20 seconds for the backup. A shorter remaining overall deadline always wins. `attempt_timeout` defaults to zero, meaning each attempt can use the remaining overall budget; set a positive value to leave time for fallback after a stalled request. Its allowed range is 0–2 minutes. `fallback_models` defaults to an empty list, preserving single-reviewer behavior; entries must be nonempty and distinct from each other and the primary model. A disabled primary also disables its backups.
 
@@ -240,3 +241,5 @@ You can manually trigger a quota refresh by clicking the refresh icon in the quo
 - [Codex Integration Guide](codex-integration.md)
 - [Channel Management Guide](channel-management.md)
 - README sections on [Usage Guide](../../../README.en-US.md#usage-guide)
+
+Set `server.safeguards.escalate_on_denial: true` (or `AXONHUB_SERVER_SAFEGUARDS_ESCALATE_ON_DENIAL=true`) to also send primary-reviewer denials to the backups for independent reassessment. Approvals remain final. The next valid assessment is final, whether it approves or confirms the denial; additional backups are used only if that assessment fails. Backups receive original evidence without the primary verdict. If all backups fail, time out, or return invalid verdicts, the original denial and explanation are preserved. The same overall and per-attempt deadlines apply. Verdict transitions are logged without prompts or tool arguments; individual reviewer requests remain visible in usage records. This mode can reduce false denials but permits a backup to override a correct primary denial. Restart the service after changing this setting.

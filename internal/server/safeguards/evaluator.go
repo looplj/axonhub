@@ -30,6 +30,7 @@ const ClassifierSystem = `You review proposed coding-agent tool calls for danger
 // unresolved tools only. Timeout bounds the entire review; AttemptTimeout caps each
 // attempt (zero uses the remaining overall budget). TranscriptCharBudget counts UTF-8 bytes.
 type Config struct {
+	EscalateOnDenial     bool          `conf:"escalate_on_denial" yaml:"escalate_on_denial" json:"escalate_on_denial"`
 	ClassifierModel      string        `conf:"classifier_model" yaml:"classifier_model" json:"classifier_model"`
 	FallbackModels       []string      `conf:"fallback_models" yaml:"fallback_models" json:"fallback_models"`
 	AttemptTimeout       time.Duration `conf:"attempt_timeout" yaml:"attempt_timeout" json:"attempt_timeout"`
@@ -84,14 +85,15 @@ type Result struct {
 // Evaluator holds a request's bounded authorization context and classifier.
 // Use a separate evaluator for each incoming message request.
 type Evaluator struct {
-	models         []string
-	attemptTimeout time.Duration
-	timeout        time.Duration
-	call           ClassifierFunc
-	context        string
-	transcript     string
-	contextTooLong bool
-	maxTokens      int
+	escalateOnDenial bool
+	models           []string
+	attemptTimeout   time.Duration
+	timeout          time.Duration
+	call             ClassifierFunc
+	context          string
+	transcript       string
+	contextTooLong   bool
+	maxTokens        int
 }
 
 // New returns nil when no dangerous_tool_use safeguard was requested. The caller
@@ -150,7 +152,7 @@ func New(body []byte, config Config, call ClassifierFunc) (*Evaluator, error) {
 		if timeout <= 0 {
 			timeout = DefaultTimeout
 		}
-		return &Evaluator{models: models, attemptTimeout: config.AttemptTimeout, maxTokens: config.MaxTokens, timeout: timeout, call: call, context: string(env), transcript: renderTranscript(request.Messages, config.TranscriptCharBudget), contextTooLong: len(env) > maxContextBytes}, nil
+		return &Evaluator{escalateOnDenial: config.EscalateOnDenial, models: models, attemptTimeout: config.AttemptTimeout, maxTokens: config.MaxTokens, timeout: timeout, call: call, context: string(env), transcript: renderTranscript(request.Messages, config.TranscriptCharBudget), contextTooLong: len(env) > maxContextBytes}, nil
 	}
 	return nil, nil
 }
@@ -164,7 +166,8 @@ func validToolInput(input json.RawMessage) bool {
 func unavailable(reason string) Verdict { return Verdict{Type: "unavailable", Reason: reason} }
 
 // Evaluate classifies valid tool calls with ordered reviewers within one deadline.
-// Only unresolved tools reach the next reviewer; valid verdicts are final. Invalid
+// Only unresolved tools reach the next reviewer unless primary denial escalation is enabled.
+// Escalation failures preserve the primary denial; the next valid assessment is final. Invalid
 // inputs, missing verdicts, and provider failures remain unavailable; absence of
 // a usable classifier result can never produce a not_flagged verdict.
 func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
@@ -214,7 +217,9 @@ func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 				reason = "timeout"
 			}
 			for _, tool := range pending {
-				verdicts[tool.ID] = unavailable(reason)
+				if verdicts[tool.ID].Type != "evaluated" {
+					verdicts[tool.ID] = unavailable(reason)
+				}
 			}
 			break
 		}
@@ -234,7 +239,9 @@ func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 				reason = "timeout"
 			}
 			for _, tool := range pending {
-				verdicts[tool.ID] = unavailable(reason)
+				if verdicts[tool.ID].Type != "evaluated" {
+					verdicts[tool.ID] = unavailable(reason)
+				}
 			}
 		} else {
 			parsed := parseVerdicts(text)
@@ -246,7 +253,9 @@ func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 				}
 				raw, ok := parsed[tool.ID]
 				if !ok || json.Unmarshal(raw, &value) != nil || value.Flagged == nil {
-					verdicts[tool.ID] = unavailable("error")
+					if verdicts[tool.ID].Type != "evaluated" {
+						verdicts[tool.ID] = unavailable("error")
+					}
 					remaining = append(remaining, tool)
 					continue
 				}
@@ -255,7 +264,14 @@ func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 					v.Outcome = "flagged"
 					v.Explanation = clip(value.Explanation, 2000)
 				}
+				if verdicts[tool.ID].Type == "evaluated" {
+					log.Warn(ctx, "Safeguards denial escalation assessed", log.String("model", model), log.String("tool_id", tool.ID), log.String("previous_outcome", verdicts[tool.ID].Outcome), log.String("outcome", v.Outcome))
+				}
 				verdicts[tool.ID] = v
+				if index == 0 && e.escalateOnDenial && v.Outcome == "flagged" {
+					remaining = append(remaining, tool)
+					reason = "denial"
+				}
 			}
 			pending = remaining
 		}

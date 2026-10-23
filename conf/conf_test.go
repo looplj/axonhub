@@ -141,12 +141,13 @@ func TestSafeguardsConfigDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := cfg.APIServer.Safeguards
-	if got.ClassifierModel != "" || len(got.FallbackModels) != 0 || got.AttemptTimeout != 0 || got.Timeout != 30*time.Second || got.MaxTokens != 4096 || got.TranscriptCharBudget != 24000 {
+	if got.EscalateOnDenial || got.ClassifierModel != "" || len(got.FallbackModels) != 0 || got.AttemptTimeout != 0 || got.Timeout != 30*time.Second || got.MaxTokens != 4096 || got.TranscriptCharBudget != 24000 {
 		t.Fatalf("unexpected safeguards defaults: %+v", got)
 	}
 }
 
 func TestSafeguardsConfigEnvironmentOverridesYAML(t *testing.T) {
+	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_ESCALATE_ON_DENIAL", "true")
 	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_CLASSIFIER_MODEL", " gemini-3.8-flash ")
 	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_FALLBACK_MODELS", `[" codex-auto-review ","backup"]`)
 	t.Setenv("AXONHUB_SERVER_SAFEGUARDS_ATTEMPT_TIMEOUT", "4s")
@@ -167,7 +168,7 @@ func TestSafeguardsConfigEnvironmentOverridesYAML(t *testing.T) {
 			t.Fatal(err)
 		}
 		got := cfg.APIServer.Safeguards
-		if got.ClassifierModel != "gemini-3.8-flash" || !slices.Equal(got.FallbackModels, []string{"codex-auto-review", "backup"}) || got.AttemptTimeout != 4*time.Second || got.Timeout != 12*time.Second || got.MaxTokens != 2048 || got.TranscriptCharBudget != 12000 {
+		if !got.EscalateOnDenial || got.ClassifierModel != "gemini-3.8-flash" || !slices.Equal(got.FallbackModels, []string{"codex-auto-review", "backup"}) || got.AttemptTimeout != 4*time.Second || got.Timeout != 12*time.Second || got.MaxTokens != 2048 || got.TranscriptCharBudget != 12000 {
 			t.Fatalf("environment overrides were not applied: %+v", got)
 		}
 	}
@@ -207,5 +208,15 @@ func TestSafeguardsFallbackYAML(t *testing.T) {
 	got := cfg.APIServer.Safeguards
 	if got.ClassifierModel != "codex-auto-review" || !slices.Equal(got.FallbackModels, []string{"gemini-3.8-flash", "other-reviewer"}) || got.AttemptTimeout != 10*time.Second || got.Timeout != 30*time.Second {
 		t.Fatalf("unexpected fallback configuration: %+v", got)
+	}
+}
+
+func TestSafeguardsEscalationYAML(t *testing.T) {
+	cfg, _, err := loadConfig(writeTestConfig(t, "server:\n  safeguards:\n    escalate_on_denial: true\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.APIServer.Safeguards.EscalateOnDenial {
+		t.Fatal("YAML escalation toggle ignored")
 	}
 }

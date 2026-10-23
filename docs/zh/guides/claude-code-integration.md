@@ -50,6 +50,7 @@ server:
   safeguards:
     classifier_model: codex-auto-review
     fallback_models: [gemini-3.8-flash]
+    escalate_on_denial: false
     attempt_timeout: 10s
     timeout: 30s
     max_tokens: 4096
@@ -187,3 +188,5 @@ AxonHub 还可以将您的 Claude Code 订阅作为后端提供商，允许非 C
 - [Codex 集成指南](codex-integration.md)
 - [渠道管理指南](channel-management.md)
 - README 中的 [使用指南](../../../README.md#使用指南--usage-guide)
+
+默认 `escalate_on_denial: false` 仅在审核失败时使用备用模型。设置 `server.safeguards.escalate_on_denial: true` 或环境变量 `AXONHUB_SERVER_SAFEGUARDS_ESCALATE_ON_DENIAL=true` 后，主审核模型的拒绝也会交给备用模型独立复核，批准结果不复核。下一个有效评估即为最终结果，无论批准还是拒绝；仅在复核失败时继续尝试后续备用模型。复核使用原始证据，不包含主模型的结论。如果所有备用模型失败、超时或返回无效结果，则保留原来的拒绝及解释。总时限和单次时限仍然有效。日志记录结论变化，不记录提示词或工具参数；每次审核请求仍单独计入用量。此模式可减少误拒绝，但也可能覆盖主模型的正确拒绝。修改配置后需重启服务。此选项是上文“有效结论不再重试”规则的显式例外。

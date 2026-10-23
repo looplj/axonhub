@@ -198,3 +198,69 @@ func TestFallbackSkipsInvalidTools(t *testing.T) {
 		t.Fatalf("calls %d, verdicts %+v", calls, got)
 	}
 }
+
+func TestDenialEscalation(t *testing.T) {
+	for _, scenario := range []string{"disabled", "approve", "deny", "error", "malformed", "timeout", "cancel", "overall_timeout"} {
+		t.Run(scenario, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			calls := 0
+			cfg := Config{ClassifierModel: "primary", FallbackModels: []string{"backup", "last"}, EscalateOnDenial: scenario != "disabled", Timeout: time.Second, AttemptTimeout: 10 * time.Millisecond}
+			if scenario == "overall_timeout" {
+				cfg.Timeout = 10 * time.Millisecond
+				cfg.AttemptTimeout = time.Second
+			}
+			e := fallbackEvaluator(t, cfg, func(ctx context.Context, r ClassifierRequest) (string, error) {
+				calls++
+				if r.Model == "primary" {
+					return `{"verdicts":{"safe":{"flagged":false},"danger":{"flagged":true,"explanation":"original denial"}}}`, nil
+				}
+				if !reflect.DeepEqual(proposedIDs(t, r), []string{"danger"}) {
+					t.Fatal("approval was re-reviewed")
+				}
+				if strings.Contains(r.User, "original denial") {
+					t.Fatal("review must be independent")
+				}
+				switch scenario {
+				case "approve":
+					return `{"verdicts":{"danger":{"flagged":false},"safe":{"flagged":true}}}`, nil
+				case "deny":
+					return `{"verdicts":{"danger":{"flagged":true,"explanation":"confirmed"}}}`, nil
+				case "error":
+					return "", errors.New("failed")
+				case "malformed":
+					return `{"verdicts":{}}`, nil
+				case "timeout", "overall_timeout":
+					<-ctx.Done()
+					return "", ctx.Err()
+				case "cancel":
+					cancel()
+					return "", ctx.Err()
+				}
+				t.Fatal("unexpected fallback")
+				return "", nil
+			})
+			got := e.Evaluate(ctx, tools())[0].Status.ToolUses
+			expected := "flagged"
+			if scenario == "approve" {
+				expected = "not_flagged"
+			}
+			if got["danger"].Outcome != expected || got["safe"].Outcome != "not_flagged" {
+				t.Fatalf("verdicts: %+v", got)
+			}
+			wantCalls := 3
+			switch scenario {
+			case "disabled":
+				wantCalls = 1
+			case "approve", "deny", "cancel", "overall_timeout":
+				wantCalls = 2
+			}
+			if calls != wantCalls {
+				t.Fatalf("calls=%d want=%d", calls, wantCalls)
+			}
+			if scenario != "approve" && scenario != "deny" && got["danger"].Explanation != "original denial" {
+				t.Fatal("lost original denial")
+			}
+		})
+	}
+}
