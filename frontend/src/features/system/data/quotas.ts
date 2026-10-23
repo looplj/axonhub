@@ -22,6 +22,7 @@ const PROVIDER_QUOTA_STATUSES_QUERY = `
           id
           name
           type
+          orderingWeight
           settings {
             quotaRoutingMode
           }
@@ -258,7 +259,6 @@ export type ProviderOpenCodeGoQuotaData = ProviderQuotaDataCommon & {
   };
 };
 
-
 export type KimiCodeUsageRow = {
   label: string;
   used: number;
@@ -439,10 +439,7 @@ type ProviderClineErrorQuotaData = ProviderQuotaDataCommon & {
 };
 
 export type ProviderClineQuotaData =
-  | ProviderClinePassQuotaData
-  | ProviderClineUnavailablePassQuotaData
-  | ProviderClineDirectQuotaData
-  | ProviderClineErrorQuotaData;
+  ProviderClinePassQuotaData | ProviderClineUnavailablePassQuotaData | ProviderClineDirectQuotaData | ProviderClineErrorQuotaData;
 
 export function isClineActivePassQuotaData(qd: ProviderClineQuotaData): qd is ProviderClinePassQuotaData {
   return qd.pool === 'cline_pass' && qd.windows != null;
@@ -650,6 +647,10 @@ function parseClaudeQuotaData(quotaData: unknown, limits: ProviderQuotaLimit[]):
 export type ProviderQuotaChannel = {
   id: string;
   name: string;
+  // Display-sort rank set via the channels page "Order channels" dialog; the
+  // load balancer treats higher weight as higher priority, so the quota
+  // popover mirrors that order in its 'preferred' sort mode.
+  orderingWeight: number;
   // Account identity shared by channels drawing from the same provider account
   // (e.g. the same ZenMux management key). Undefined means the channel has its
   // own quota account.
@@ -813,6 +814,7 @@ type QueryChannelNode = {
   id: string;
   name: string;
   type: string;
+  orderingWeight: number;
   settings: { quotaRoutingMode: ChannelQuotaRoutingMode } | null;
   providerQuotaStatus: ProviderQuotaStatusNode | null;
 };
@@ -840,6 +842,7 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
   const base = {
     id: node.id,
     name: node.name,
+    orderingWeight: node.orderingWeight,
     quotaRoutingMode: node.settings?.quotaRoutingMode ?? 'INHERIT',
     accountKey: optionalString(quotaStatus.accountKey),
     quotaStatus: {

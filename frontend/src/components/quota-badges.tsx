@@ -1,7 +1,19 @@
-import { useState, Fragment, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning } from 'lucide-react';
+import {
+  Loader2,
+  RefreshCw,
+  Zap,
+  Battery,
+  BatteryLow,
+  BatteryMedium,
+  BatteryFull,
+  BatteryWarning,
+  ArrowDownAZ,
+  ListOrdered,
+  History,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
@@ -2401,67 +2413,116 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
   return <BatteryIcon className={`h-5 w-5 ${textColor} transition-colors`} />;
 }
 
-interface QuotaCategory {
+// The popover never exposes t() publicly, so the contract stays local to this
+// module: a plain translate function from useTranslation().
+type TranslateFn = ReturnType<typeof useTranslation>['t'];
+
+type QuotaCategory = {
   key: string;
   label: string;
-  order: number;
-}
+};
 
-function getChannelCategory(channel: ProviderQuotaChannel, t: ReturnType<typeof useTranslation>['t']): QuotaCategory {
+function getChannelCategory(channel: ProviderQuotaChannel, t: TranslateFn): QuotaCategory {
   const channelType = channel.type as string;
   if (channelType === 'antigravity') {
-    return { key: 'antigravity', label: t('channels.types.antigravity') || 'Antigravity', order: 1 };
+    return { key: 'antigravity', label: t('channels.types.antigravity') || 'Antigravity' };
   }
   if (channelType === 'codex') {
-    return { key: 'codex', label: t('channels.types.codex') || 'Codex', order: 2 };
+    return { key: 'codex', label: t('channels.types.codex') || 'Codex' };
   }
   if (channelType === 'claudecode') {
-    return { key: 'claudecode', label: t('channels.types.claudecode') || 'Claude Code', order: 3 };
+    return { key: 'claudecode', label: t('channels.types.claudecode') || 'Claude Code' };
   }
   if (channelType === 'github_copilot') {
-    return { key: 'github_copilot', label: t('channels.types.github_copilot') || 'GitHub Copilot', order: 4 };
+    return { key: 'github_copilot', label: t('channels.types.github_copilot') || 'GitHub Copilot' };
   }
   if (channelType === 'cline') {
-    return { key: 'cline', label: t('channels.types.cline') || 'Cline', order: 5 };
+    return { key: 'cline', label: t('channels.types.cline') || 'Cline' };
   }
   if (channelType === 'xai_subscription') {
-    return { key: 'xai_subscription', label: t('channels.types.xai_subscription') || 'xAI', order: 6 };
+    return { key: 'xai_subscription', label: t('channels.types.xai_subscription') || 'xAI' };
   }
   if (channelType === 'nanogpt' || channelType === 'nanogpt_responses') {
-    return { key: 'nanogpt', label: 'NanoGPT', order: 7 };
+    return { key: 'nanogpt', label: 'NanoGPT' };
   }
   if (isOllamaType(channelType)) {
-    return { key: 'ollama', label: t('channels.types.ollama') || 'Ollama', order: 8 };
+    return { key: 'ollama', label: t('channels.types.ollama') || 'Ollama' };
   }
   if (isCommandCodeType(channelType)) {
-    return { key: 'commandcode', label: t('channels.types.commandcode') || 'Command Code', order: 9 };
+    return { key: 'commandcode', label: t('channels.types.commandcode') || 'Command Code' };
   }
   if (channelType === 'moonshot_coding') {
-    return { key: 'moonshot_coding', label: t('channels.types.moonshot_coding') || 'Kimi Coding', order: 10 };
+    return { key: 'moonshot_coding', label: t('channels.types.moonshot_coding') || 'Kimi Coding' };
   }
   if (isMinimaxType(channelType)) {
-    return { key: 'minimax', label: t('channels.types.minimax') || 'Minimax', order: 11 };
+    return { key: 'minimax', label: t('channels.types.minimax') || 'Minimax' };
   }
   if (channelType === 'zhipu' || channelType === 'zhipu_anthropic' || channelType === 'zai' || channelType === 'zai_anthropic') {
-    return { key: 'zhipu', label: t('channels.types.zhipu') || '智谱', order: 12 };
+    return { key: 'zhipu', label: t('channels.types.zhipu') || '智谱' };
   }
   if (isZenmuxType(channelType)) {
-    return { key: 'zenmux', label: 'ZenMux', order: 13 };
+    return { key: 'zenmux', label: 'ZenMux' };
   }
   if (channelType === 'opencode_go' || channelType === 'opencode_go_anthropic') {
-    return { key: 'opencode_go', label: t('channels.types.opencode_go') || 'OpenCode Go', order: 14 };
+    return { key: 'opencode_go', label: t('channels.types.opencode_go') || 'OpenCode Go' };
   }
   if (isOpenaiType(channelType)) {
+    // OpenAI-compatible providers have dedicated labels in the locales
+    // (charm_hyper → "Hyper"), so a raw-slug capitalization would mangle
+    // underscored names.
     if (channel.providerType) {
-      const p = channel.providerType;
-      return { key: p, label: p.charAt(0).toUpperCase() + p.slice(1), order: 15 };
+      const key = `system.quota.collection.providers.${channel.providerType}`;
+      const providerLabel = t(key);
+      return { key: channel.providerType, label: providerLabel !== key ? providerLabel : channel.providerType };
     }
-    return { key: 'openai', label: t('channels.types.openai') || 'OpenAI', order: 16 };
+    return { key: 'openai', label: t('channels.types.openai') || 'OpenAI' };
   }
   const typeKey = `channels.types.${channelType}`;
   const translated = t(typeKey);
   const label = translated !== typeKey ? translated : channelType;
-  return { key: channelType, label, order: 99 };
+  return { key: channelType, label };
+}
+
+// One display item per grid cell: either a full-width section header or a
+// channel row. Multi-channel categories need a header as the visual boundary
+// (and a pill-filter target); single-channel categories skip the header so
+// the two-column grid keeps packing channel rows side-by-side across category
+// boundaries instead of stranding an empty cell beside every one-of-a-kind
+// channel — which also stopped the "NANOGPT" header / "NanoGPT" row repeat.
+type QuotaDisplayItem = { kind: 'header'; cat: QuotaCategory & { count: number } } | { kind: 'row'; channel: ProviderQuotaChannel };
+
+function buildQuotaDisplayItems(
+  channels: ProviderQuotaChannel[],
+  categoryList: Array<QuotaCategory & { count: number }>,
+  activeCategory: string,
+  t: TranslateFn
+): QuotaDisplayItem[] {
+  if (activeCategory !== 'all') {
+    return channels.map((channel) => ({ kind: 'row' as const, channel }));
+  }
+
+  const byCategory = new Map<string, ProviderQuotaChannel[]>();
+  for (const channel of channels) {
+    const key = getChannelCategory(channel, t).key;
+    const members = byCategory.get(key);
+    if (members) {
+      members.push(channel);
+    } else {
+      byCategory.set(key, [channel]);
+    }
+  }
+
+  const items: QuotaDisplayItem[] = [];
+  for (const cat of categoryList) {
+    const members = byCategory.get(cat.key) ?? [];
+    if (members.length > 1) {
+      items.push({ kind: 'header', cat });
+    }
+    for (const channel of members) {
+      items.push({ kind: 'row', channel });
+    }
+  }
+  return items;
 }
 
 export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean; onRefresh: () => void }) {
@@ -2469,6 +2530,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
   const { channels, isLoading, isError, error } = useProviderQuotaStatuses();
   const { data: routingSettings } = useQuotaRoutingSettings();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [sortMode, setSortMode] = useState<'preferred' | 'alphabetical' | 'created'>('preferred');
 
   // Grouped representatives advertise the most restrictive effective mode
   // across every channel sharing the account; standalone channels use their
@@ -2511,18 +2573,29 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
     return acc;
   }, [] as ProviderQuotaChannel[]);
 
-  // Sort channels stably by category order, then category label, then channel name alphabetically
-  const sortedChannels = [...dedupedChannels].sort((a, b) => {
-    const catA = getChannelCategory(a, t);
-    const catB = getChannelCategory(b, t);
-    if (catA.order !== catB.order) {
-      return catA.order - catB.order;
-    }
-    if (catA.key !== catB.key) {
-      return catA.label.localeCompare(catB.label);
-    }
-    return a.name.localeCompare(b.name);
-  });
+  // Preferred mode mirrors the operator's channel list order: the load
+  // balancer ranks higher OrderingWeight higher, ties fall back to the
+  // backend default (Channel.ID ASC). Alphabetical mode: category label,
+  // then channel name; the former hardcoded category priorities had no
+  // operational rationale and made pill order diverge from what users
+  // expect when scanning for a provider. Created mode: backend default
+  // order (Channel.ID ASC), i.e. the pre-pills-pr creation order.
+  const compareByCategory =
+    sortMode === 'alphabetical'
+      ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => {
+          const catA = getChannelCategory(a, t);
+          const catB = getChannelCategory(b, t);
+          if (catA.label === catB.label) {
+            return catA.key.localeCompare(catB.key) || a.name.localeCompare(b.name);
+          }
+          return catA.label.localeCompare(catB.label) || a.name.localeCompare(b.name);
+        }
+      : sortMode === 'preferred'
+        ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) =>
+            b.orderingWeight - a.orderingWeight || a.id.localeCompare(b.id, 'en', { numeric: true })
+        : (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => a.id.localeCompare(b.id, 'en', { numeric: true });
+
+  const sortedChannels = [...dedupedChannels].sort(compareByCategory);
 
   const categoryCounts = sortedChannels.reduce(
     (acc, ch) => {
@@ -2541,6 +2614,12 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
       })
     ).values()
   );
+
+  // The strip earns its place only when filtering can actually isolate a
+  // meaningful group: at least two categories with more than one channel.
+  // Otherwise the section headers already mark the groups, and pills for
+  // single-channel categories would just mirror the row below them.
+  const filterableCategories = categories.filter((cat) => cat.count > 1);
 
   // Fall back to 'all' if selectedCategory is no longer available in the active categories
   const activeCategory = selectedCategory !== 'all' && categories.some((c) => c.key === selectedCategory) ? selectedCategory : 'all';
@@ -2567,32 +2646,25 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
       );
     }
 
+    const displayItems = buildQuotaDisplayItems(groupedChannels, categories, activeCategory, t);
+
     return (
       <div
         className={`max-h-[60vh] overflow-y-auto pr-1 pl-1 ${sortedChannels.length > 4 ? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2' : ''}`}
       >
-        {groupedChannels.map((channel: ProviderQuotaChannel, index: number) => {
-          const cat = getChannelCategory(channel, t);
-          const showSectionHeader =
-            activeCategory === 'all' &&
-            categories.length > 1 &&
-            (index === 0 || getChannelCategory(groupedChannels[index - 1], t).key !== cat.key);
-
-          return (
-            <Fragment key={channel.id}>
-              {showSectionHeader && (
-                <div className='col-span-full flex items-center gap-2 pt-3 pb-1 first:pt-1'>
-                  <span className='text-muted-foreground/80 text-[11px] font-semibold tracking-wider uppercase'>{cat.label}</span>
-                  <span className='bg-muted/70 py-0.2 text-muted-foreground/70 rounded-full px-1.5 text-[10px] font-medium'>
-                    {categoryCounts[cat.key]}
-                  </span>
-                  <div className='bg-border/40 h-[1px] flex-1' />
-                </div>
-              )}
-              <QuotaRow channel={channel} effectiveMode={effectiveModeFor(channel)} />
-            </Fragment>
-          );
-        })}
+        {displayItems.map((item) =>
+          item.kind === 'header' ? (
+            <div key={`header-${item.cat.key}`} className='col-span-full flex items-center gap-2 pt-3 pb-1 first:pt-1'>
+              <span className='text-muted-foreground/80 text-[11px] font-semibold tracking-wider uppercase'>{item.cat.label}</span>
+              <span className='bg-muted/70 py-0.2 text-muted-foreground/70 rounded-full px-1.5 text-[10px] font-medium'>
+                {item.cat.count}
+              </span>
+              <div className='bg-border/40 h-[1px] flex-1' />
+            </div>
+          ) : (
+            <QuotaRow key={item.channel.id} channel={item.channel} effectiveMode={effectiveModeFor(item.channel)} />
+          )
+        )}
       </div>
     );
   };
@@ -2606,30 +2678,63 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
       </PopoverTrigger>
       <PopoverContent
         className={
-          !isLoading && !isError && sortedChannels.length > 4 ? 'w-[680px] max-w-[calc(100vw-2rem)]' : 'w-80 max-w-[calc(100vw-2rem)]'
+          !isLoading && !isError && sortedChannels.length > 4 ? 'w-[640px] max-w-[calc(100vw-2rem)]' : 'w-80 max-w-[calc(100vw-2rem)]'
         }
         align='end'
       >
         <div className='space-y-1.5'>
           <div className='flex items-center justify-between'>
             <div className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>{t('system.providerQuota.title')}</div>
-            <button
-              onClick={onRefresh}
-              disabled={isRefreshing || isLoading}
-              className='text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50'
-              aria-label={t('system.providerQuota.refresh.label')}
-            >
-              {isRefreshing ? <Loader2 className='h-4 w-4 animate-spin' /> : <RefreshCw className='h-4 w-4' />}
-            </button>
+            <div className='flex items-center gap-1'>
+              <button
+                type='button'
+                onClick={() =>
+                  setSortMode((mode) => (mode === 'preferred' ? 'alphabetical' : mode === 'alphabetical' ? 'created' : 'preferred'))
+                }
+                className='text-muted-foreground hover:text-foreground transition-colors'
+                aria-label={
+                  sortMode === 'preferred'
+                    ? t('system.providerQuota.sort.alphabetical')
+                    : sortMode === 'alphabetical'
+                      ? t('system.providerQuota.sort.created')
+                      : t('system.providerQuota.sort.preferred')
+                }
+                title={
+                  sortMode === 'preferred'
+                    ? t('system.providerQuota.sort.alphabetical')
+                    : sortMode === 'alphabetical'
+                      ? t('system.providerQuota.sort.created')
+                      : t('system.providerQuota.sort.preferred')
+                }
+              >
+                {sortMode === 'preferred' ? (
+                  <ListOrdered className='h-4 w-4' />
+                ) : sortMode === 'alphabetical' ? (
+                  <ArrowDownAZ className='h-4 w-4' />
+                ) : (
+                  <History className='h-4 w-4' />
+                )}
+              </button>
+              <button
+                onClick={onRefresh}
+                disabled={isRefreshing || isLoading}
+                className='text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50'
+                aria-label={t('system.providerQuota.refresh.label')}
+              >
+                {isRefreshing ? <Loader2 className='h-4 w-4 animate-spin' /> : <RefreshCw className='h-4 w-4' />}
+              </button>
+            </div>
           </div>
 
-          {!isLoading && !isError && categories.length > 1 && (
-            <div className='flex flex-wrap items-center gap-1 border-b pt-0.5 pb-2'>
+          {!isLoading && !isError && filterableCategories.length > 1 && (
+            // Single scrollable line instead of wrapping: with many categories a
+            // wrapped strip adds height outside the 60vh body cap.
+            <div className='flex items-center gap-1 overflow-x-auto border-b pt-0.5 pb-2'>
               <button
                 type='button'
                 aria-pressed={activeCategory === 'all'}
                 onClick={() => setSelectedCategory('all')}
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
                   activeCategory === 'all'
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -2643,7 +2748,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
                   type='button'
                   aria-pressed={activeCategory === cat.key}
                   onClick={() => setSelectedCategory(cat.key)}
-                  className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
                     activeCategory === cat.key
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'

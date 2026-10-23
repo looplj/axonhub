@@ -186,9 +186,10 @@ const modeHelperNames = [
   'isMinimaxType',
   'isZenmuxType',
   'getChannelCategory',
+  'buildQuotaDisplayItems',
 ];
 const modeHelperNodes = badgesAst.statements.filter((node) => ts.isFunctionDeclaration(node) && modeHelperNames.includes(node.name?.text));
-assert.equal(modeHelperNodes.length, 8, 'helpers must stay in quota-badges.tsx');
+assert.equal(modeHelperNodes.length, 9, 'helpers must stay in quota-badges.tsx');
 const modeHelpers = modeHelperNodes.map((node) => `export ${node.getText(badgesAst).replace(/^export\s+/, '')}`).join('\n');
 
 function loadTsModule(sourceText) {
@@ -198,7 +199,8 @@ function loadTsModule(sourceText) {
   return import(`data:text/javascript;base64,${Buffer.from(outputText).toString('base64')}`);
 }
 
-const { resolveEffectiveRoutingMode, mostRestrictiveRoutingMode, getChannelCategory } = await loadTsModule(modeHelpers);
+const { resolveEffectiveRoutingMode, mostRestrictiveRoutingMode, getChannelCategory, buildQuotaDisplayItems } =
+  await loadTsModule(modeHelpers);
 
 test('per-channel mode falls back to the global default when the channel defers via INHERIT', () => {
   // parseChannelNode maps channels without settings.quotaRoutingMode to INHERIT.
@@ -233,10 +235,12 @@ test('account-grouped label uses the most restrictive member mode', () => {
 });
 
 test('grouped representatives render the group mode, standalone channels their own', () => {
-  // The row list maps over groupedChannels and renders QuotaRow with effectiveMode.
-  assert.match(badgesSource, /groupedChannels\.map\(\(channel: ProviderQuotaChannel/);
-  assert.match(badgesSource, /<QuotaRow\s+channel=\{channel\}\s+effectiveMode=\{effectiveModeFor\(channel\)\}/);
-  assert.match(badgesSource, /effectiveMode=\{effectiveModeFor\(channel\)\}/);
+  // The row list maps over display items and renders QuotaRow with effectiveMode.
+  assert.match(badgesSource, /displayItems\.map\(\(item\)/);
+  assert.match(
+    badgesSource,
+    /<QuotaRow key=\{item\.channel\.id\} channel=\{item\.channel\}\s+effectiveMode=\{effectiveModeFor\(item\.channel\)\}/
+  );
   assert.match(
     badgesSource,
     /if \(!channel\.sharedAccountNames\) return resolveEffectiveRoutingMode\(channel\.quotaRoutingMode, routingSettings\?\.defaultMode\)/
@@ -247,14 +251,21 @@ test('grouped representatives render the group mode, standalone channels their o
 
 test('channels in quota popover are categorized with filter pills and section headers', () => {
   assert.match(badgesSource, /function getChannelCategory\(/, 'getChannelCategory helper must exist');
-  assert.match(badgesSource, /key: 'antigravity',\s*label:.*order:\s*1/, 'Antigravity should have top priority category');
-  assert.match(badgesSource, /key: 'codex',\s*label:.*order:\s*2/, 'Codex should have category order 2');
-  assert.match(badgesSource, /key: 'claudecode',\s*label:.*order:\s*3/, 'Claude Code should have category order 3');
-  assert.match(badgesSource, /key: 'github_copilot',\s*label:.*order:\s*4/, 'GitHub Copilot should have category order 4');
+  // Categories no longer carry a hardcoded priority: the strip is alphabetical.
+  assert.doesNotMatch(badgesSource, /order:\s*\d+/, 'categories must not embed hardcoded priority orders');
+  assert.match(badgesSource, /catA\.label\.localeCompare\(catB\.label\)/, 'Category groups should sort alphabetically by label');
   assert.match(badgesSource, /a\.name\.localeCompare\(b\.name\)/, 'Channels should be stably sorted by name within categories');
   assert.match(badgesSource, /setSelectedCategory\('all'\)/, 'Popover should have an all categories filter pill');
+  // Strip is hidden unless at least two categories have multiple channels —
+  // pills for single-channel categories would just mirror the row below.
+  assert.match(
+    badgesSource,
+    /filterableCategories = categories\.filter\(\(cat\) => cat\.count > 1\)/,
+    'Filterable categories are the multi-channel ones'
+  );
+  assert.match(badgesSource, /filterableCategories\.length > 1/, 'Strip shows only when filtering can isolate two multi-channel groups');
   assert.match(badgesSource, /col-span-full[\s\S]*?uppercase/, 'Popover should render section header across full grid width');
-  assert.match(badgesSource, /categoryCounts\[cat\.key\]/, 'Section header counter must read from categoryCounts');
+  assert.match(badgesSource, /item\.cat\.count/, 'Section header counter must read from the category count');
   assert.match(badgesSource, /activeCategory[\s\S]*?categories\.some/, 'Selection must fall back to all when selected category disappears');
   assert.match(badgesSource, /text-foreground truncate font-medium|truncate font-medium/, 'Channel name should be truncated with ellipsis');
   assert.match(badgesSource, /ml-2 flex shrink-0/, 'Badge container should not shrink and have left margin');
@@ -265,35 +276,43 @@ test('channels in quota popover are categorized with filter pills and section he
   );
   assert.match(badgesSource, /aria-pressed=\{activeCategory === 'all'\}/, 'All button should expose aria-pressed state');
   assert.match(badgesSource, /aria-pressed=\{activeCategory === cat\.key\}/, 'Category buttons should expose aria-pressed state');
+  // Filter strip stays on one line and scrolls horizontally instead of wrapping
+  // (a wrapped strip grows the popover outside the 60vh body cap).
+  assert.match(badgesSource, /flex items-center gap-1 overflow-x-auto border-b/, 'Filter strip should scroll horizontally on one line');
+  assert.doesNotMatch(badgesSource, /flex flex-wrap items-center gap-1/, 'Filter strip must not wrap to multiple lines');
+  assert.match(badgesSource, /shrink-0[^`]*whitespace-nowrap/, 'Pills must not shrink or wrap mid-label');
 });
 
-test('channel categories order by priority and sort stably by name within groups', () => {
+test('channel categories order alphabetically and sort stably by name within groups', () => {
   const t = (k) => k;
   const sampleChannels = [
     { id: '1', name: 'copilot-beta', type: 'github_copilot' },
     { id: '2', name: 'antigravity-zeta', type: 'antigravity' },
     { id: '3', name: 'copilot-alpha', type: 'github_copilot' },
     { id: '4', name: 'antigravity-alpha', type: 'antigravity' },
+    { id: '5', name: 'nano-single', type: 'nanogpt' },
+    { id: '6', name: 'claude-x', type: 'claudecode' },
+    { id: '7', name: 'codex-y', type: 'codex' },
   ];
 
   const sorted = [...sampleChannels].sort((a, b) => {
     const catA = getChannelCategory(a, t);
     const catB = getChannelCategory(b, t);
-    if (catA.order !== catB.order) return catA.order - catB.order;
-    if (catA.key !== catB.key) return catA.label.localeCompare(catB.label);
-    return a.name.localeCompare(b.name);
+    if (catA.label === catB.label) {
+      return catA.key.localeCompare(catB.key) || a.name.localeCompare(b.name);
+    }
+    return catA.label.localeCompare(catB.label) || a.name.localeCompare(b.name);
   });
 
+  // Pure label alphabetical order across category groups: 'Antigravity' <
+  // 'Claude Code' < 'Codex' < 'GitHub Copilot' < 'NanoGPT' — the fixture
+  // intentionally includes pairs the old priority order sorted differently.
   assert.deepEqual(
     sorted.map((c) => c.name),
-    ['antigravity-alpha', 'antigravity-zeta', 'copilot-alpha', 'copilot-beta']
+    ['antigravity-alpha', 'antigravity-zeta', 'claude-x', 'codex-y', 'copilot-alpha', 'copilot-beta', 'nano-single']
   );
 
-  // Directly verify production category orders and shared keys across protocol variants
-  assert.equal(getChannelCategory({ type: 'antigravity' }, t).order, 1);
-  assert.equal(getChannelCategory({ type: 'codex' }, t).order, 2);
-  assert.equal(getChannelCategory({ type: 'claudecode' }, t).order, 3);
-  assert.equal(getChannelCategory({ type: 'github_copilot' }, t).order, 4);
+  // Shared keys across protocol variants
   assert.equal(getChannelCategory({ type: 'openai' }, t).key, 'openai');
   assert.equal(getChannelCategory({ type: 'openai_responses' }, t).key, 'openai');
   assert.equal(getChannelCategory({ type: 'opencode_go' }, t).key, 'opencode_go');
@@ -304,6 +323,116 @@ test('channel categories order by priority and sort stably by name within groups
   const getActive = (selected) => (selected !== 'all' && activeCategories.some((c) => c.key === selected) ? selected : 'all');
   assert.equal(getActive('codex'), 'all');
   assert.equal(getActive('antigravity'), 'antigravity');
+});
+
+// Regression: the pills PR capitalized the raw providerType slug, so the pill
+// read "Charm_hyper" while the channel is named "Hyper"; the label now matches
+// the channel-naming convention users actually use for this provider.
+test('openai-compatible provider categories resolve localized provider names', () => {
+  const enSystem = JSON.parse(read('locales/en/system.json'));
+  const t = (key) => (key in enSystem ? enSystem[key] : key);
+
+  assert.equal(getChannelCategory({ type: 'openai', providerType: 'charm_hyper' }, t).label, 'Hyper');
+  assert.equal(getChannelCategory({ type: 'openai_responses', providerType: 'neuralwatt' }, t).label, 'NeuralWatt');
+  assert.equal(getChannelCategory({ type: 'openai', providerType: 'apertis' }, t).label, 'Apertis');
+  // Same pillar for zh-CN so both locales keep the provider nouns.
+  const zhSystem = JSON.parse(read('locales/zh-CN/system.json'));
+  const tZh = (key) => (key in zhSystem ? zhSystem[key] : key);
+  assert.equal(getChannelCategory({ type: 'openai', providerType: 'charm_hyper' }, tZh).label, 'Hyper');
+  // Unknown providerTypes degrade to the raw slug instead of crashing or
+  // returning the i18n key itself.
+  assert.equal(getChannelCategory({ type: 'openai', providerType: 'future_provider' }, t).label, 'future_provider');
+});
+
+// Regression: the pills PR emitted a section header before every category,
+// which broke the pre-PR two-per-row packing (a lone channel stranded an empty
+// cell beside it) and repeated the channel name in the header.
+test('section headers only precede multi-channel categories so rows keep pairing', () => {
+  const t = (key) => key;
+  const channels = [
+    { id: 'c1', name: 'Codex', type: 'codex' },
+    { id: 'c2', name: 'Codex2', type: 'codex' },
+    { id: 'n1', name: 'NanoGPT', type: 'nanogpt' },
+    { id: 'a1', name: 'Apertis', type: 'openai', providerType: 'apertis' },
+  ];
+  // Categories arrive pre-sorted alphabetically, as QuotaBadges derives them.
+  const categoryList = [
+    { key: 'apertis', label: 'Apertis', count: 1 },
+    { key: 'codex', label: 'Codex', count: 2 },
+    { key: 'nanogpt', label: 'NanoGPT', count: 1 },
+  ];
+
+  const items = buildQuotaDisplayItems(channels, categoryList, 'all', t);
+  assert.deepEqual(
+    items.map((item) => item.kind),
+    ['row', 'header', 'row', 'row', 'row'],
+    'only the 2-channel category gets a header; singles emit just their row'
+  );
+  assert.equal(items[1].cat.key, 'codex');
+  assert.deepEqual(
+    items.filter((item) => item.kind === 'row').map((item) => item.channel.name),
+    ['Apertis', 'Codex', 'Codex2', 'NanoGPT']
+  );
+
+  // An active category filter drops headers entirely for a flat list: the
+  // QuotaBadges component pre-filters channels before calling, so the helper
+  // maps everything it receives to rows.
+  const filtered = buildQuotaDisplayItems(
+    channels.filter((channel) => channel.type === 'codex'),
+    categoryList,
+    'codex',
+    t
+  );
+  assert.deepEqual(
+    filtered.map((item) => item.kind),
+    ['row', 'row']
+  );
+  const singleFiltered = buildQuotaDisplayItems(
+    channels.filter((channel) => channel.type === 'nanogpt'),
+    categoryList,
+    'nanogpt',
+    t
+  );
+  assert.deepEqual(
+    singleFiltered.map((item) => item.kind),
+    ['row']
+  );
+});
+
+// Creation order = the GraphQL channel id embeds the auto-increment DB id
+// (gid://axonhub/Channel/<n>); numeric-aware compare restores the pre-pills-pr
+// backend default order without a new API field. Preferred order mirrors the
+// operator's channel list (orderingWeight, higher first) as the initial mode.
+test('sort toggle cycles preferred, alphabetical, and creation order', () => {
+  assert.match(
+    badgesSource,
+    /sortMode, setSortMode\] = useState<'preferred' \| 'alphabetical' \| 'created'>\('preferred'\)/,
+    'Sort state defaults to preferred list order'
+  );
+  assert.match(badgesSource, /<ListOrdered className='h-4 w-4' \/>/, 'Preferred mode shows the ordered-list icon');
+  assert.match(badgesSource, /<ArrowDownAZ className='h-4 w-4' \/>/, 'Alphabetical mode shows the A–Z icon');
+  assert.match(badgesSource, /<History className='h-4 w-4' \/>/, 'Creation mode shows the history icon');
+  assert.match(
+    badgesSource,
+    /system\.providerQuota\.sort\.(preferred|alphabetical|created)/,
+    'Sort button tooltip/aria-label resolves locale keys'
+  );
+  // The preferred comparator ranks higher orderingWeight first; ties fall back
+  // to the backend default (numeric id ASC).
+  assert.match(
+    badgesSource,
+    /b\.orderingWeight - a\.orderingWeight \|\| a\.id\.localeCompare\(b\.id, 'en', \{ numeric: true \}\)/,
+    'Preferred mode sorts by ordering weight desc with id tiebreak'
+  );
+
+  // The comparator used in created mode matches how the backend orders
+  // channels: numeric ascending on the GUID tail.
+  const byCreation = (a, b) => a.localeCompare(b, 'en', { numeric: true });
+  assert.deepEqual(
+    ['gid://axonhub/Channel/9', 'gid://axonhub/Channel/10', 'gid://axonhub/Channel/2'].sort(byCreation),
+    ['gid://axonhub/Channel/2', 'gid://axonhub/Channel/9', 'gid://axonhub/Channel/10'],
+    'Numeric compare must not sort ids lexicographically (2 < 10)'
+  );
 });
 
 test('mode badge labels are locale-complete and legacy enforcement keys are gone', () => {
