@@ -341,18 +341,42 @@ const WINDOW_LABEL_KEYS: Record<string, string> = {
   kwh: 'quota.label.kwh_remaining',
 };
 
+// periodStart only exists because the backend priced the window from usage
+// logs: only limits with a pinned period start take part in the cost
+// aggregation, and that pricing runs for no provider that reports the window's
+// money itself (Synthetic regenerates its weekly pool in ticks, and its limits
+// carry a regen time, not a window start). Its presence is therefore the
+// documented marker of a log-derived figure; a limit without one shows
+// provider-reported money.
+function periodMoneyIsProviderReported(limit: Pick<ProviderQuotaLimit, 'periodStart'>): boolean {
+  return limit.periodStart == null;
+}
+
 // PeriodQuotaEstimate prices each limit window: the backend sums what the
 // channel cost during the window from AxonHub usage logs and divides by the
 // usage ratio the provider reported, which yields what the whole window is
 // worth — or the provider reports the window's money itself (Synthetic's
 // weekly credits), in which case those figures are shown directly. Windows
-// without a money figure are simply absent.
+// without a money figure are simply absent. The tooltip explains whichever
+// source produced the displayed rows, so a channel that mixes both never
+// suggests one explains the other's rows.
 function PeriodQuotaEstimate({ limits, currency }: { limits: ProviderQuotaLimit[]; currency?: string }) {
   const { t, i18n } = useTranslation();
   const { data: generalSettings } = useGeneralSettings();
 
   const priced = limits.filter((limit) => limit.periodQuota != null);
   if (priced.length === 0) return null;
+
+  // The tooltip must describe the rows it hangs over: when some rows are
+  // provider-reported and others log-derived, the shared dual-source wording
+  // is chosen so neither reading is dropped.
+  const sources = priced.map((limit) => (periodMoneyIsProviderReported(limit) ? 'provider' : 'log'));
+  const hintKey =
+    sources.includes('provider') && sources.includes('log')
+      ? 'quota.label.period_quota_hint_mixed'
+      : sources[0] === 'provider'
+        ? 'quota.label.period_quota_hint_provider'
+        : 'quota.label.period_quota_hint';
 
   const formatCurrency = (val: number) =>
     t('currencies.format', {
@@ -370,7 +394,7 @@ function PeriodQuotaEstimate({ limits, currency }: { limits: ProviderQuotaLimit[
           <span className='text-muted-foreground cursor-default text-xs font-medium'>{t('quota.label.period_quota')}</span>
         </TooltipTrigger>
         <TooltipContent side='top' className='max-w-[260px]'>
-          {t('quota.label.period_quota_hint')}
+          {t(hintKey)}
         </TooltipContent>
       </Tooltip>
 
@@ -382,9 +406,20 @@ function PeriodQuotaEstimate({ limits, currency }: { limits: ProviderQuotaLimit[
             ? t('quota.label.token_usage')
             : limit.window || t('quota.label.token_usage');
 
+        // A mark next to the window name identifies provider-reported rows
+        // while a sibling row of the same channel is log-derived, so the two
+        // readings stay separately attributable.
+        const sourceMark =
+          sources.includes('provider') && sources.includes('log') && periodMoneyIsProviderReported(limit)
+            ? ` · ${t('quota.label.period_quota_provider_source')}`
+            : '';
+
         return (
           <div key={`${limit.window ?? limit.type}-${index}`} className='flex items-center justify-between text-xs'>
-            <span className='text-muted-foreground'>{label}</span>
+            <span className='text-muted-foreground'>
+              {label}
+              {sourceMark}
+            </span>
             <span className='text-foreground font-medium'>
               {t('quota.label.period_quota_value', {
                 // The backend only estimates a quota once it has a cost, so
@@ -1844,8 +1879,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             const planWeekly = qd.planWeeklyLimit;
             const weeklyPercentRemaining = planWeekly?.percentRemaining ?? qd.weeklyTokenLimit?.percentRemaining;
             const weeklyNextRegenAt = planWeekly?.nextRegenAt ?? qd.weeklyTokenLimit?.nextRegenAt;
-            const regenTick =
-              planWeekly?.nextRegenPercent != null ? planWeekly.nextRegenPercent / 100 : syntheticWeeklyRegenTickPct;
+            const regenTick = planWeekly?.nextRegenPercent != null ? planWeekly.nextRegenPercent / 100 : syntheticWeeklyRegenTickPct;
             if (planWeekly || qd.weeklyTokenLimit) {
               const pctRemaining = weeklyPercentRemaining ?? 100;
               const usedPct = 100 - pctRemaining;
@@ -1886,9 +1920,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                             </div>
                           )}
                           <div>{t('quota.label.percent_used', { percent: Math.round(usedPct) })}</div>
-                          {weeklyNextRegenAt && (
-                            <div>{formatTimeToReset(weeklyNextRegenAt, usedPct, regenTick)}</div>
-                          )}
+                          {weeklyNextRegenAt && <div>{formatTimeToReset(weeklyNextRegenAt, usedPct, regenTick)}</div>}
                         </div>
                       }
                     />

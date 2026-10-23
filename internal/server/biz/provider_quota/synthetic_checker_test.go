@@ -163,6 +163,53 @@ func TestSynthetic_CheckQuota_SearchOnlyPayloadDoesNotBlock(t *testing.T) {
 	require.Equal(t, RoutingUnknown, routing, reason)
 }
 
+func TestSynthetic_CheckQuota_SearchWarningThresholdBelowExhaustion(t *testing.T) {
+	httpClient := httpclient.NewHttpClientWithClient(&http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			body := `{"weeklyTokenLimit":{"nextRegenAt":"2099-04-25T04:48:26.000Z","percentRemaining":50.0},"search":{"hourly":{"limit":250,"requests":200,"renewsAt":"2099-04-25T05:00:00.000Z"}}}`
+
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       io.NopCloser(strings.NewReader(body)),
+			}, nil
+		}),
+	})
+
+	checker := NewSyntheticQuotaChecker(httpClient)
+
+	quota, err := checker.CheckQuota(context.Background(), &ent.Channel{
+		Credentials: objects.ChannelCredentials{
+			APIKey: "test-api-key",
+		},
+	})
+	require.NoError(t, err)
+
+	// 200/250 sits exactly at WarningThresholdRatio: the search limit warns
+	// without exhausting, and the channel stays available with search ready
+	// (a warning still counts as ready).
+	require.Equal(t, "available", quota.Status)
+	require.True(t, quota.Ready)
+	require.Len(t, quota.Limits, 2)
+
+	require.Equal(t, QuotaLimitTypeSearch, quota.Limits[1].Type)
+	require.Equal(t, "search_hourly", quota.Limits[1].Window)
+	require.Equal(t, "warning", quota.Limits[1].Status)
+	require.InDelta(t, 0.8, quota.Limits[1].UsageRatio, 1e-9)
+	require.True(t, quota.Limits[1].Ready)
+	require.NotNil(t, quota.Limits[1].NextResetAt)
+
+	// The warning must not escalate the channel: search is listed, never blocking.
+	routing, reason := EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeToken, time.Now())
+	require.Equal(t, RoutingOpen, routing, reason)
+	routing, reason = EvaluateQuotaRouting(quota.Limits, quota.Status, QuotaLimitTypeImage, time.Now())
+	require.Equal(t, RoutingOpen, routing, reason)
+
+	status, ready := EffectiveStatus(quota.Limits, providerquotastatus.Status(quota.Status), quota.Ready, QuotaLimitTypeToken)
+	require.Equal(t, providerquotastatus.StatusAvailable, status)
+	require.True(t, ready)
+}
+
 func TestSynthetic_CheckQuota_SkipsUnusableSearchLimit(t *testing.T) {
 	for name, body := range map[string]string{
 		"zero limit":       `{"weeklyTokenLimit":{"nextRegenAt":"2099-04-25T04:48:26.000Z","percentRemaining":50.0},"search":{"hourly":{"limit":0,"requests":0,"renewsAt":"2099-04-25T05:00:00.000Z"}}}`,
@@ -259,6 +306,10 @@ func TestSynthetic_CheckQuota_WeeklyCreditAmounts(t *testing.T) {
 		{name: "zero remaining", maxCredits: "$10.50", remainingCredits: "$0", wantMoney: true, wantCost: 10.50, wantQuota: 10.50},
 		{name: "negative remaining", maxCredits: "$10.50", remainingCredits: "-1.50", wantMoney: true, wantCost: 12, wantQuota: 10.50},
 		{name: "remaining above maximum", maxCredits: "$10.50", remainingCredits: "$11", wantMoney: true, wantCost: 0, wantQuota: 10.50},
+		// Each amount parses as finite, but their subtraction overflows to
+		// +Inf; the derived money must be omitted, keeping the payload
+		// JSON-serializable (asserted below for every case).
+		{name: "subtraction overflows to infinity", maxCredits: "1e308", remainingCredits: "-1e308"},
 		{name: "zero maximum", maxCredits: "0", remainingCredits: "0"},
 		{name: "negative maximum", maxCredits: "-1", remainingCredits: "0"},
 	}

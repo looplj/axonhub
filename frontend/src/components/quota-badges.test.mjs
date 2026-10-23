@@ -597,3 +597,179 @@ test('Synthetic plan next-regen percent 2 renders as a 2% regen tick', () => {
   // one-hour budget is 50%.
   assert.equal(calcDurationPercent(3600, 1800), 50);
 });
+
+test('Synthetic badge renders the hourly search row with count, percentage, renewal', () => {
+  const renewalsAhead = new Date(REFERENCE_NOW + 30 * 60 * 1000).toISOString();
+  const html = renderSyntheticBadge({
+    weeklyTokenLimit: { percentRemaining: 100, nextRegenAt: WEEK_AHEAD },
+    search: { hourly: { limit: 250, requests: 125, renewsAt: renewalsAhead } },
+  });
+
+  assert.match(html, /Search requests/, 'search label must render');
+  // Count is observable in the row header and the tooltip.
+  assert.match(html, /125\/250/, 'search count must render');
+  // 125/250 rounds to 50% used in the header and the tooltip.
+  assert.match(html, /<span class="text-foreground font-medium">50% used<\/span>/);
+  const fills = [...html.matchAll(/data-fill="([^"]*)"/g)].map((m) => Number(m[1]));
+  assert.ok(fills.includes(50), `search bar must carry a 50% fill (fills: ${fills.join(',')})`);
+  // The renewal countdown renders in the tooltip (30 min out is 50% of the hour).
+  assert.match(html, /Resets in 30m/);
+  const durations = [...html.matchAll(/data-duration="([^"]*)"/g)].map((m) => Number(m[1]));
+  assert.ok(
+    durations.some((v) => Math.abs(v - 50) < 0.01),
+    `search bar must carry a 50% elapsed marker (markers: ${durations.join(',')})`
+  );
+});
+
+test('Synthetic badge omits the hourly search row without usable counter values', () => {
+  const renewalsAhead = new Date(REFERENCE_NOW + 1800000).toISOString();
+  const base = renderSyntheticBadge({ weeklyTokenLimit: { percentRemaining: 100, nextRegenAt: WEEK_AHEAD } });
+
+  const missingRequests = renderSyntheticBadge({
+    weeklyTokenLimit: { percentRemaining: 100, nextRegenAt: WEEK_AHEAD },
+    search: { hourly: { limit: 250, renewsAt: renewalsAhead } },
+  });
+  assert.doesNotMatch(missingRequests, /Search requests/, 'missing requests must omit the search row');
+  assert.match(base, /Weekly Token Limit/, 'sanity: the base badge renders the weekly section');
+
+  const zeroLimit = renderSyntheticBadge({
+    weeklyTokenLimit: { percentRemaining: 100, nextRegenAt: WEEK_AHEAD },
+    search: { hourly: { limit: 0, requests: 125, renewsAt: renewalsAhead } },
+  });
+  assert.doesNotMatch(zeroLimit, /Search requests/, 'a non-positive limit must omit the search row');
+});
+
+test('Synthetic badge percentage prefers the plan pool and falls back to the legacy pool', () => {
+  // The consumer-visible battery percentage is 100 - percentRemaining; the
+  // plan-only shape must win over the legacy shape.
+  const planChannel = syntheticChannel({
+    planWeeklyLimit: { percentRemaining: 30, nextRegenAt: WEEK_AHEAD },
+    weeklyTokenLimit: { percentRemaining: 90, nextRegenAt: WEEK_AHEAD },
+  });
+  assert.equal(badgePercent(planChannel), 70, 'planWeeklyLimit must win over weeklyTokenLimit');
+
+  // Without the plan shape, the legacy pool drives the percentage.
+  const legacyChannel = syntheticChannel({ weeklyTokenLimit: { percentRemaining: 55, nextRegenAt: WEEK_AHEAD } });
+  assert.equal(badgePercent(legacyChannel), 45, 'legacy weeklyTokenLimit must drive the percentage when the plan shape is absent');
+
+  const planOnlyChannel = syntheticChannel({ planWeeklyLimit: { percentRemaining: 30, nextRegenAt: WEEK_AHEAD } });
+  assert.equal(badgePercent(planOnlyChannel), 70, 'plan-only shape must drive the percentage');
+});
+
+// --- Period quota rows: provider-reported vs log-derived source (production sources) ---
+
+// The period quota rows come from `quotaData._limits`; `periodStart` is the
+// marker of a log-derived row because only limits the backend priced from
+// usage logs carry one (provider-reported money replaces the estimate). The
+// component must pick its tooltip wording per row source, and mark rows when
+// a channel mixes both. Extract the exact production function and render it
+// SSR against the real en locale, the same way the Synthetic branch tests do.
+const enCurrencies = JSON.parse(read('locales/en/currencies.json'));
+const periodQuotaFuncNames = ['periodMoneyIsProviderReported', 'PeriodQuotaEstimate'];
+const periodQuotaFuncNodes = [...badgesAst.statements].filter(
+  (node) => ts.isFunctionDeclaration(node) && periodQuotaFuncNames.includes(node.name?.text)
+);
+assert.equal(periodQuotaFuncNodes.length, periodQuotaFuncNames.length, 'period quota components must stay in quota-badges.tsx');
+const windowLabelKeysDecl = [...badgesAst.statements].find(
+  (node) =>
+    ts.isVariableStatement(node) &&
+    node.declarationList.declarations.some((d) => ts.isIdentifier(d.name) && d.name.text === 'WINDOW_LABEL_KEYS')
+);
+assert.ok(windowLabelKeysDecl, 'WINDOW_LABEL_KEYS must stay in quota-badges.tsx');
+
+const enPeriodQuota = { ...enSystem, ...enCurrencies };
+const periodQuotaRenderModule = [
+  'const table = ' + JSON.stringify(enPeriodQuota) + ';',
+  'function t(key, params) {',
+  '  let out = table[key] ?? key;',
+  '  if (key === "currencies.format") {',
+  '    out = new Intl.NumberFormat(params?.locale || "en-US", { style: "currency", currency: params?.currency || "USD", minimumFractionDigits: params?.minimumFractionDigits, maximumFractionDigits: params?.maximumFractionDigits }).format(params?.val ?? 0);',
+  '  } else {',
+  '    for (const [name, value] of Object.entries(params || {})) out = out.split(`{{${name}}}`).join(String(value));',
+  '  }',
+  '  return out;',
+  '}',
+  '// Prop-style shims render children as-is, so the tooltip and label strings reach the SSR markup.',
+  'function Tooltip({ children }) { return children; }',
+  'function TooltipTrigger({ children }) { return children; }',
+  'function TooltipContent({ children }) { return children; }',
+  'function useTranslation() { return { t, i18n: { language: "en" } }; }',
+  'function useGeneralSettings() { return { data: { currencyCode: "EUR" } }; }',
+  windowLabelKeysDecl.getText(badgesAst),
+  ...periodQuotaFuncNodes.map((node) => node.getText(badgesAst)),
+  'function PeriodQuotaRow({ limits, currency }) { return <PeriodQuotaEstimate limits={limits} currency={currency} />; }',
+  'export default PeriodQuotaRow;',
+].join('\n');
+const { outputText: periodQuotaRenderJs } = ts.transpileModule(periodQuotaRenderModule, {
+  compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 },
+});
+const { default: PeriodQuotaRow } = await import(`data:text/javascript;base64,${Buffer.from(periodQuotaRenderJs).toString('base64')}`);
+
+const renderPeriodQuota = (limits, currency) =>
+  renderToStaticMarkup(React.createElement(PeriodQuotaRow, { limits, currency }))
+    // renderToStaticMarkup HTML-escapes text; the hint assertions compare against
+    // the plain locale strings.
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&');
+
+// Log-derived rows look like the windows the backend prices from usage logs
+// (a pinned periodStart plus the ratio-aggregated money).
+const logLimit = { window: '7d', periodStart: '2026-10-17T00:00:00Z', periodCost: 4.2, periodQuota: 21 };
+// Provider-reported rows look like Synthetic's weekly pool: money without any
+// window start, because the pool regenerates in ticks rather than resetting.
+const providerLimit = { window: 'weekly', periodCost: 0.03, periodQuota: 10.5 };
+
+test('period quota rows from usage logs keep the original log-derived hint', () => {
+  const html = renderPeriodQuota([logLimit]);
+  const hint = enSystem['quota.label.period_quota_hint'];
+  assert.match(html, new RegExp(hint.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'log-only rows must show the log-derived hint');
+  assert.ok(!html.includes(enSystem['quota.label.period_quota_hint_provider']), 'log-only rows must not show the provider hint');
+  assert.ok(!html.includes('reported by provider'), 'log-only rows must not carry a provider source mark');
+  // The money formatting is untouched by the source split (no explicit currency
+  // falls back to the configured display currency, the test stand-in being EUR).
+  assert.match(html, /€4\.20 used \/ ≈ €21\.00/);
+});
+
+test('provider-reported period money shows the provider-reported hint', () => {
+  const html = renderPeriodQuota([providerLimit], 'USD');
+  const hint = enSystem['quota.label.period_quota_hint_provider'];
+  assert.match(html, new RegExp(hint.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'provider-only rows must show the provider-reported hint');
+  assert.ok(!html.includes(enSystem['quota.label.period_quota_hint']), 'provider-only rows must not show the generic log-derived hint');
+  assert.ok(!html.includes('reported by provider'), 'a single-source channel does not need per-row source marks');
+  // Synthetic reported money renders in USD, matching the provider currency.
+  assert.match(html, /\$0\.03 used \/ ≈ \$10\.50/);
+});
+
+test('mixed period quota rows get the dual-source hint and per-row provider marks', () => {
+  const html = renderPeriodQuota([logLimit, providerLimit]);
+  const mixedHint = enSystem['quota.label.period_quota_hint_mixed'];
+  assert.match(html, new RegExp(mixedHint.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'mixed rows must show the dual-source hint');
+  // Both window labels render, but only the provider-reported row carries the
+  // source attribution.
+  assert.match(html, /Weekly window · reported by provider/);
+  assert.match(html, /7d window(?! · reported)/);
+  assert.equal((html.match(/reported by provider/g) || []).length, 1, 'exactly the provider-reported row is marked');
+});
+
+test('period quota block is absent without priced rows and unpriced limits render nothing', () => {
+  assert.equal(renderPeriodQuota([]), '', 'no limits: no block');
+  assert.equal(renderPeriodQuota([{ window: 'search_hourly', usageRatio: 0.5 }]), '', 'a limit without period money is not a priced row');
+});
+
+test('period quota hint keys are aligned between en and zh-CN locales', () => {
+  const zhSystem = JSON.parse(read('locales/zh-CN/system.json'));
+  for (const key of [
+    'quota.label.period_quota_hint',
+    'quota.label.period_quota_hint_provider',
+    'quota.label.period_quota_hint_mixed',
+    'quota.label.period_quota_provider_source',
+  ]) {
+    assert.ok(typeof enSystem[key] === 'string' && enSystem[key].length > 0, `en/system.json missing ${key}`);
+    assert.ok(typeof zhSystem[key] === 'string' && zhSystem[key].length > 0, `zh-CN/system.json missing ${key}`);
+  }
+  // The generic key is the log-derived wording again; the provider explanation
+  // no longer lives in it.
+  assert.match(enSystem['quota.label.period_quota_hint'], /Estimated from the cost AxonHub logged/);
+  assert.doesNotMatch(enSystem['quota.label.period_quota_hint'], /reports the window's money/);
+  assert.match(zhSystem['quota.label.period_quota_hint'], /AxonHub 记录/);
+});

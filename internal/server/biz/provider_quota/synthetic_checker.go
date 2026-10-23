@@ -370,10 +370,17 @@ func weeklyTokenLimitStatus(weekly *SyntheticWeeklyTokenLimit) QuotaLimitStatus 
 	// keeps these for "synthetic" instead of pricing the period from usage logs.
 	if maxCredits, ok := parseSyntheticCredits(weekly.MaxCredits); ok && maxCredits > 0 {
 		if remainingCredits, ok := parseSyntheticCredits(weekly.RemainingCredits); ok {
-			usedCredits := max(maxCredits-remainingCredits, 0)
+			// Two finite, individually valid amounts can still overflow the
+			// subtraction (e.g. max 1e308 with remaining -1e308); the derived
+			// money must stay finite or the quota payload stops being
+			// JSON-serializable.
+			usedCredits := maxCredits - remainingCredits
+			if !math.IsInf(usedCredits, 0) {
+				cost := max(usedCredits, 0.0)
 
-			limit.PeriodCost = &usedCredits
-			limit.PeriodQuota = &maxCredits
+				limit.PeriodCost = &cost
+				limit.PeriodQuota = &maxCredits
+			}
 		}
 	}
 
