@@ -1719,6 +1719,30 @@ func (svc *ChannelService) refreshOAuthTokenWithClient(ctx context.Context, db *
 		return nil
 	}
 
+	// The legacy Where(UpdatedAt) predicate alone cannot detect a concurrent
+	// credential change reliably (timestamp granularity varies by platform), so
+	// the conflict decision is content-based: if the stored credentials differ
+	// from the ones this refresh was seeded with, someone else won the row.
+	current, err := db.Channel.Get(ctx, ch.ID)
+	if err != nil {
+		return fmt.Errorf("failed to load channel for oauth refresh: %w", err)
+	}
+	if !channelCredentialsEqual(current.Credentials, ch.Credentials) {
+		var winner *oauth.OAuthCredentials
+		if current.Type == ch.Type && current.Credentials.IsOAuth() {
+			w, werr := current.Credentials.ResolveOAuthCredentials()
+			if werr != nil {
+				ch.Credentials = current.Credentials
+				ch.UpdatedAt = current.UpdatedAt
+				return &oauth.CredentialConflictError{}
+			}
+			winner = w
+		}
+		ch.Credentials = current.Credentials
+		ch.UpdatedAt = current.UpdatedAt
+		return &oauth.CredentialConflictError{Credentials: winner}
+	}
+
 	updated := ch.Credentials
 
 	if ch.Type == channel.TypeAntigravity {

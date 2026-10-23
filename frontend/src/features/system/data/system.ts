@@ -393,6 +393,7 @@ export interface ClientCancellationProjectPolicy {
   projectId: number;
   enabled: boolean;
   threshold: number;
+  windowMinutes?: number;
   cooldownMinutes: number;
   action: ClientCancellationAction;
 }
@@ -400,6 +401,7 @@ export interface ClientCancellationProjectPolicy {
 export interface ClientCancellationPolicy {
   enabled: boolean;
   threshold: number;
+  windowMinutes?: number;
   cooldownMinutes: number;
   action: ClientCancellationAction;
   scope: ClientCancellationScope;
@@ -409,6 +411,7 @@ export interface ClientCancellationPolicy {
 export interface ClientCancellationPolicyInput {
   enabled?: boolean;
   threshold?: number;
+  windowMinutes?: number;
   cooldownMinutes?: number;
   action?: ClientCancellationAction;
   scope?: ClientCancellationScope;

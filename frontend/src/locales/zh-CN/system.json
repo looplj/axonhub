@@ -204,7 +204,9 @@
   "system.retry.clientCancellation.description": "客户端连续取消（包括用户主动点击停止）会单独计数，不参与状态码重试逻辑。达到阈值后按下面的动作处理，并在冷却期内把流量切到其他渠道。",
   "system.retry.clientCancellation.globalTitle": "全局设置",
   "system.retry.clientCancellation.threshold.label": "连续取消次数",
-  "system.retry.clientCancellation.threshold.description": "连续取消多少次后触发动作。任意一次成功请求都会把计数清零。",
+  "system.retry.clientCancellation.threshold.description":
+  "system.retry.clientCancellation.window.label": "统计窗口（分钟）",
+  "system.retry.clientCancellation.window.description": "在该窗口时间内累计取消达到阈值即触发冷冻。", "连续取消多少次后触发动作。任意一次成功请求都会把计数清零。",
   "system.retry.clientCancellation.action.label": "触发动作",
   "system.retry.clientCancellation.action.description": "切换渠道 + 冷却：临时禁用整个渠道，让下一次请求切到其他渠道。仅凭据冷却：只禁用这次被取消请求所用的凭据，渠道内其他凭据仍可用。",
   "system.retry.clientCancellation.action.description": "切换渠道 + 冷却：临时禁用整个渠道，让下一次请求切到其他渠道。仅凭据冷却：只禁用这次被取消请求所用的凭据，渠道内其他凭据仍可用。仅冷冻模型：只冷冻这次被取消请求命中的（渠道 × 模型）组合，渠道其他模型继续可用，冷冻中的模型可在渠道页手动解冻。",

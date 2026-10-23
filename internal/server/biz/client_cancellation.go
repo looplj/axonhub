@@ -19,6 +19,7 @@ const (
 
 	defaultClientCancellationThreshold       = 2
 	defaultClientCancellationCooldownMinutes = 30
+	defaultClientCancellationWindowMinutes   = 10
 	maxClientCancellationCooldownMinutes     = 7 * 24 * 60
 )
 
@@ -32,12 +33,18 @@ func normalizeClientCancellationPolicy(policy *ClientCancellationPolicy) error {
 	// turn the cooldown off; an explicit disable always ships the other fields
 	// that normalization fills in below.
 	if !policy.Enabled && policy.Threshold <= 0 && policy.CooldownMinutes <= 0 &&
-		policy.Action == "" && policy.Scope == "" && len(policy.ProjectOverrides) == 0 {
+		policy.WindowMinutes <= 0 && policy.Action == "" && policy.Scope == "" && len(policy.ProjectOverrides) == 0 {
 		policy.Enabled = true
 	}
 
 	if policy.Threshold <= 0 {
 		policy.Threshold = defaultClientCancellationThreshold
+	}
+	if policy.WindowMinutes <= 0 {
+		policy.WindowMinutes = defaultClientCancellationWindowMinutes
+	}
+	if policy.WindowMinutes > maxClientCancellationCooldownMinutes {
+		policy.WindowMinutes = maxClientCancellationCooldownMinutes
 	}
 	if policy.CooldownMinutes <= 0 {
 		policy.CooldownMinutes = defaultClientCancellationCooldownMinutes
@@ -74,6 +81,12 @@ func normalizeClientCancellationPolicy(policy *ClientCancellationPolicy) error {
 		if override.Threshold <= 0 {
 			override.Threshold = policy.Threshold
 		}
+		if override.WindowMinutes <= 0 {
+			override.WindowMinutes = policy.WindowMinutes
+		}
+		if override.WindowMinutes > maxClientCancellationCooldownMinutes {
+			override.WindowMinutes = maxClientCancellationCooldownMinutes
+		}
 		if override.CooldownMinutes <= 0 {
 			override.CooldownMinutes = policy.CooldownMinutes
 		}
@@ -105,6 +118,7 @@ func (p ClientCancellationPolicy) EffectiveClientCancellationPolicy(projectID in
 			return ClientCancellationPolicy{
 				Enabled:         true,
 				Threshold:       override.Threshold,
+				WindowMinutes:   override.WindowMinutes,
 				CooldownMinutes: override.CooldownMinutes,
 				Action:          override.Action,
 			}, "project"
@@ -114,6 +128,7 @@ func (p ClientCancellationPolicy) EffectiveClientCancellationPolicy(projectID in
 	return ClientCancellationPolicy{
 		Enabled:          p.Enabled,
 		Threshold:        p.Threshold,
+		WindowMinutes:    p.WindowMinutes,
 		CooldownMinutes:  p.CooldownMinutes,
 		Action:           p.Action,
 		Scope:            p.Scope,

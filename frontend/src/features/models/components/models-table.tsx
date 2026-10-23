@@ -28,6 +28,7 @@ import { PermissionGuard } from '@/components/permission-guard';
 import { useModelSettings } from '@/features/system/data/system';
 import { useModels } from '../context/models-context';
 import { Model } from '../data/schema';
+import { useFrozenModelChannels } from '../data/models';
 
 const MotionTableRow = motion.create(TableRow);
 
@@ -501,6 +502,8 @@ export function ModelsTable({
                                           <span>{modelCard?.lastUpdated || '-'}</span>
                                         </div>
                                       </div>
+
+                                    <ModelFrozenChannelsSection modelID={row.original.modelID} />
                                     </div>
                                   </div>
                                 </motion.div>

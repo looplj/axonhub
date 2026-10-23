@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { enUS, zhCN } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
 import { IconSnowflake } from '@tabler/icons-react';
 import { Badge } from '@/components/ui/badge';
@@ -45,7 +47,15 @@ export function ChannelModelsCard({
   freezeMenu?: ReactNode;
 }) {
   const frozenSet = new Set(frozenModels ?? []);
-  const { t } = useTranslation();
+  // cooldown details (reason / expiry) come from the connection payload so the
+  // card can show why a model is frozen and when it thaws.
+  const cooldownByModel = new Map<string, { reason?: string | null; expiresAt?: string | null }>();
+  for (const cooldown of connection.channel.modelCooldowns ?? []) {
+    if (!cooldownByModel.has(cooldown.model)) {
+      cooldownByModel.set(cooldown.model, { reason: cooldown.reason, expiresAt: cooldown.expiresAt });
+    }
+  }
+  const { t, i18n } = useTranslation();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -105,7 +115,21 @@ export function ChannelModelsCard({
             <div key={model.requestModel} className='bg-muted flex items-center gap-1 rounded px-2 py-1 text-xs'>
               {model.requestModel}
               {frozenSet.has(model.requestModel) && (
-                <IconSnowflake className='h-3 w-3 shrink-0 text-cyan-600 dark:text-cyan-400' />
+                <span className='flex shrink-0 items-center gap-1 text-cyan-600 dark:text-cyan-400'>
+                  <IconSnowflake className='h-3 w-3' />
+                  {(() => {
+                    const detail = cooldownByModel.get(model.requestModel);
+                    if (!detail?.expiresAt) return null;
+                    const expires = new Date(detail.expiresAt).getTime();
+                    if (expires <= Date.now()) return null;
+                    const locale = i18n.language.startsWith('zh') ? zhCN : enUS;
+                    return (
+                      <span className='text-[10px]'>
+                        {formatDistanceToNow(new Date(detail.expiresAt), { locale, addSuffix: false })}
+                      </span>
+                    );
+                  })()}
+                </span>
               )}
             </div>
           ))

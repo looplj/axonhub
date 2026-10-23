@@ -44,7 +44,7 @@ function ClientCancellationTimingFields({
 }: {
   idPrefix: string;
   policy: ClientCancellationPolicyInput;
-  onChange: (field: 'threshold' | 'cooldownMinutes' | 'action', value: number | ClientCancellationAction) => void;
+  onChange: (field: 'threshold' | 'windowMinutes' | 'cooldownMinutes' | 'action', value: number | ClientCancellationAction) => void;
 }) {
   const { t } = useTranslation();
   const cooldownMinutes = policy.cooldownMinutes ?? 30;
@@ -58,7 +58,7 @@ function ClientCancellationTimingFields({
   const cooldownSelection = resolveCooldownSelection(cooldownMinutes, customCooldown);
 
   return (
-    <div className='grid gap-4 md:grid-cols-3'>
+    <div className='grid gap-4 md:grid-cols-4'>
       <div className='space-y-2'>
         <Label htmlFor={`${idPrefix}-threshold`}>{t('system.retry.clientCancellation.threshold.label')}</Label>
         <div className='text-muted-foreground text-sm'>{t('system.retry.clientCancellation.threshold.description')}</div>
@@ -73,6 +73,25 @@ function ClientCancellationTimingFields({
               return;
             }
             onChange('threshold', Math.max(1, parseInt(e.target.value, 10) || 1));
+          }}
+          className='w-32'
+        />
+      </div>
+
+      <div className='space-y-2'>
+        <Label htmlFor={`${idPrefix}-window`}>{t('system.retry.clientCancellation.window.label')}</Label>
+        <div className='text-muted-foreground text-sm'>{t('system.retry.clientCancellation.window.description')}</div>
+        <Input
+          id={`${idPrefix}-window`}
+          type='number'
+          min='1'
+          max='10080'
+          value={policy.windowMinutes ?? 10}
+          onChange={(e) => {
+            if (e.target.value.trim() === '') {
+              return;
+            }
+            onChange('windowMinutes', Math.max(1, parseInt(e.target.value, 10) || 1));
           }}
           className='w-32'
         />
@@ -206,6 +225,7 @@ export function RetrySettings() {
         clientCancellationPolicy: {
           enabled: retryPolicy.clientCancellationPolicy?.enabled ?? true,
           threshold: retryPolicy.clientCancellationPolicy?.threshold ?? 2,
+          windowMinutes: retryPolicy.clientCancellationPolicy?.windowMinutes ?? 10,
           cooldownMinutes: retryPolicy.clientCancellationPolicy?.cooldownMinutes ?? 30,
           action: retryPolicy.clientCancellationPolicy?.action ?? 'switch_and_cooldown',
           scope: retryPolicy.clientCancellationPolicy?.scope ?? 'global',
@@ -321,6 +341,7 @@ export function RetrySettings() {
                 projectId: cancellationProjectID,
                 enabled,
                 threshold: policy?.threshold ?? 2,
+                windowMinutes: policy?.windowMinutes ?? 10,
                 cooldownMinutes: policy?.cooldownMinutes ?? 30,
                 action: policy?.action ?? 'switch_and_cooldown',
               },
@@ -333,7 +354,7 @@ export function RetrySettings() {
   );
 
   const handleProjectCancellationChange = useCallback(
-    (field: 'threshold' | 'cooldownMinutes' | 'action', value: number | ClientCancellationAction) => {
+    (field: 'threshold' | 'windowMinutes' | 'cooldownMinutes' | 'action', value: number | ClientCancellationAction) => {
       if (!cancellationProjectID) return;
       setFormData((prev) => {
         const policy = prev.clientCancellationPolicy;

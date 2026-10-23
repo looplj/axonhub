@@ -39,7 +39,7 @@ func newTestChannelService(client *ent.Client) *ChannelService {
 		channelPerfMetrics:          make(map[int]*channelMetrics),
 		apiKeyErrorCounts:           make(map[int]map[string]map[int]int),
 		apiKeyRuleActionsInFlight:   make(map[int]map[string]bool),
-		cancellationCounts:          make(map[int]map[string]int),
+		cancellationWindow:          make(map[int]map[string][]time.Time),
 		cancellationActionsInFlight: make(map[int]map[string]bool),
 		perfWindowSeconds:           600,
 	}

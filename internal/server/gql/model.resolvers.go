@@ -194,3 +194,8 @@ func (r *queryResolver) QueryModelChannelConnections(ctx context.Context, associ
 func (r *queryResolver) QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error) {
 	return r.modelService.QueryUnassociatedChannels(ctx)
 }
+
+// QueryFrozenModelChannels is the resolver for the queryFrozenModelChannels field.
+func (r *queryResolver) QueryFrozenModelChannels(ctx context.Context, modelID string) ([]*biz.FrozenModelChannel, error) {
+	return r.modelService.QueryFrozenModelChannels(ctx, modelID)
+}

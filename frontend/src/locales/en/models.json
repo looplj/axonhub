@@ -73,7 +73,10 @@
   "models.dialogs.association.priority": "Priority",
   "models.dialogs.association.dragToReorder": "Drag to reorder; priorities are rewritten to match the new order",
   "models.dialogs.association.previewDragToReorder": "Drag a preview card to move that channel; rule priorities follow the new channel order. Cards of the same channel (different key groups) move together.",
-  "models.dialogs.association.cooldown.menuLabel": "Freeze / unfreeze",
+  "models.dialogs.association.cooldown.menuLabel":
+  "models.expandedRow.frozenChannels": "Frozen channels",
+  "models.expandedRow.frozenBadge": "Frozen",
+  "models.expandedRow.frozenUntil": "Thaws at {{time}}", "Freeze / unfreeze",
   "models.dialogs.association.cooldown.frozenBadge": "Frozen",
   "models.dialogs.association.cooldown.freeze30": "Freeze 30 minutes",
   "models.dialogs.association.cooldown.freeze24h": "Freeze 24 hours",

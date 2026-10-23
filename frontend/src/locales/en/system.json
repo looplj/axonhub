@@ -204,7 +204,9 @@
   "system.retry.clientCancellation.description": "Consecutive client-side cancellations (including a user pressing stop) are counted separately from status-code retries. When the threshold is reached, the fastest-responding action below is applied and traffic moves to another channel until the cooldown expires.",
   "system.retry.clientCancellation.globalTitle": "Global Settings",
   "system.retry.clientCancellation.threshold.label": "Consecutive Cancellations",
-  "system.retry.clientCancellation.threshold.description": "How many consecutive cancellations trigger the action. Any successful request resets the counter to zero.",
+  "system.retry.clientCancellation.threshold.description":
+  "system.retry.clientCancellation.window.label": "Time window (minutes)",
+  "system.retry.clientCancellation.window.description": "Trigger when this many cancellations pile up within the window.", "How many consecutive cancellations trigger the action. Any successful request resets the counter to zero.",
   "system.retry.clientCancellation.action.label": "Action",
   "system.retry.clientCancellation.action.description": "Switch channel + cooldown temporarily disables the whole channel so the next request goes to another channel. Cooldown credential only disables the credential that served the canceled request and keeps the rest of the channel usable.",
   "system.retry.clientCancellation.action.description": "Switch channel + cooldown temporarily disables the whole channel so the next request goes to another channel. Cooldown credential only disables the credential that served the canceled request and keeps the rest of the channel usable. Freeze model only cools the (channel, model) pair that served the canceled requests; the channel keeps serving its other models and the frozen model can be unfrozen manually from the channel page.",

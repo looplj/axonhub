@@ -24,8 +24,8 @@ func TestDuplicateKeyTracker(t *testing.T) {
 	require.False(t, tracker.Add(2, "model-a"))
 
 	// Verify key format
-	require.Equal(t, "1:model-a", ChannelModelKey{ChannelID: 1, ModelID: "model-a"}.String())
-	require.Equal(t, "2:model-b", ChannelModelKey{ChannelID: 2, ModelID: "model-b"}.String())
+	require.Equal(t, "1:0:model-a", ChannelModelKey{ChannelID: 1, ModelID: "model-a"}.String())
+	require.Equal(t, "2:0:model-b", ChannelModelKey{ChannelID: 2, ModelID: "model-b"}.String())
 }
 
 func TestMatchAssociations_Deduplication(t *testing.T) {

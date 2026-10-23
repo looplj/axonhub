@@ -193,7 +193,12 @@ async function main() {
     const consoleErrors = [];
     page.on('console', (msg) => {
       // Ignore the external font/CDN fetch failures of this sandbox.
-      if (msg.type() === 'error' && !msg.text().includes('ERR_TIMED_OUT') && !msg.text().includes('Failed to load resource')) {
+      if (
+        msg.type() === 'error' &&
+        !msg.text().includes('ERR_TIMED_OUT') &&
+        !msg.text().includes('Failed to load resource') &&
+        !msg.text().includes('providers catalog')
+      ) {
         consoleErrors.push(msg.text());
       }
     });

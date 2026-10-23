@@ -402,6 +402,10 @@ type UpstreamErrorPolicy struct {
 type ClientCancellationPolicy struct {
 	Enabled          bool                              `json:"enabled"`
 	Threshold        int                               `json:"threshold"`
+	// WindowMinutes is the sliding window for cancellations: the cooldown
+	// triggers when at least Threshold cancellations happen within the last
+	// WindowMinutes. 0 falls back to the default window.
+	WindowMinutes    int                               `json:"window_minutes"`
 	CooldownMinutes  int                               `json:"cooldown_minutes"`
 	Action           string                            `json:"action"`
 	Scope            string                            `json:"scope"`
@@ -412,6 +416,7 @@ type ClientCancellationProjectPolicy struct {
 	ProjectID       int    `json:"project_id"`
 	Enabled         bool   `json:"enabled"`
 	Threshold       int    `json:"threshold"`
+	WindowMinutes   int    `json:"window_minutes"`
 	CooldownMinutes int    `json:"cooldown_minutes"`
 	Action          string `json:"action"`
 }

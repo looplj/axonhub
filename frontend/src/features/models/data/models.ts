@@ -745,10 +745,27 @@ export interface ChannelModelEntry {
 }
 
 export interface KeyGroupRef {
+
   index: number;
   name: string;
 }
 
+export interface ModelCooldownEntry {
+  model: string;
+  reason?: string | null;
+  createdAt: string;
+  expiresAt?: string | null;
+}
+
+export interface FrozenModelChannel {
+  channel: {
+    id: string;
+    name: string;
+    type: string;
+    status: string;
+  };
+  cooldowns: ModelCooldownEntry[];
+}
 export interface ModelChannelConnection {
   channel: {
     id: string;
@@ -760,6 +777,39 @@ export interface ModelChannelConnection {
   models: ChannelModelEntry[];
 }
 
+const FROZEN_MODEL_CHANNELS_QUERY = `
+  query QueryFrozenModelChannels($modelID: String!) {
+    queryFrozenModelChannels(modelID: $modelID) {
+      channel {
+        id
+        name
+        type
+        status
+      }
+      cooldowns {
+        model
+        reason
+        createdAt
+        expiresAt
+      }
+    }
+  }
+`;
+
+export function useFrozenModelChannels(modelID: string | undefined, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: ['frozenModelChannels', modelID],
+    queryFn: async () => {
+      if (!modelID) return [];
+      const data = await graphqlRequest<{ queryFrozenModelChannels: FrozenModelChannel[] }>(FROZEN_MODEL_CHANNELS_QUERY, {
+        modelID,
+      });
+      return data.queryFrozenModelChannels;
+    },
+    enabled: (options?.enabled ?? true) && !!modelID,
+    refetchInterval: 30_000,
+  });
+}
 export function useQueryUnassociatedChannels() {
   return useQuery({
     queryKey: ['unassociatedChannels'],

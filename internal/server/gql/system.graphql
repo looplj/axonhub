@@ -146,6 +146,7 @@ input AutoDisableChannelInput {
 type ClientCancellationPolicy {
   enabled: Boolean!
   threshold: Int!
+  windowMinutes: Int!
   cooldownMinutes: Int!
   action: String!
   scope: String!
@@ -156,6 +157,7 @@ type ClientCancellationProjectPolicy {
   projectId: Int!
   enabled: Boolean!
   threshold: Int!
+  windowMinutes: Int!
   cooldownMinutes: Int!
   action: String!
 }
@@ -163,6 +165,7 @@ type ClientCancellationProjectPolicy {
 input ClientCancellationPolicyInput {
   enabled: Boolean
   threshold: Int
+  windowMinutes: Int
   cooldownMinutes: Int
   action: String
   scope: String
@@ -173,6 +176,7 @@ input ClientCancellationProjectPolicyInput {
   projectId: Int!
   enabled: Boolean
   threshold: Int
+  windowMinutes: Int
   cooldownMinutes: Int
   action: String
 }

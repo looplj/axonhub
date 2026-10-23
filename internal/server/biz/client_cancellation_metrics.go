@@ -9,9 +9,10 @@ import (
 	"github.com/looplj/axonhub/internal/log"
 )
 
-// evaluateClientCancellationForFailure increments the independent consecutive
-// cancellation counter and applies the configured cooldown when the threshold
-// is reached. It never participates in HTTP status-code retry decisions.
+// evaluateClientCancellationForFailure records the cancellation timestamp in a
+// sliding window and applies the configured cooldown when at least Threshold
+// cancellations happened within the last WindowMinutes. It never participates
+// in HTTP status-code retry decisions.
 func (svc *ChannelService) evaluateClientCancellationForFailure(ctx context.Context, perf *PerformanceRecord) bool {
 	if perf == nil || perf.ChannelID <= 0 || !perf.Canceled {
 		return false
@@ -24,13 +25,15 @@ func (svc *ChannelService) evaluateClientCancellationForFailure(ctx context.Cont
 	}
 
 	threshold := max(policy.Threshold, 1)
+	windowMinutes := max(policy.WindowMinutes, 1)
 	cooldownMinutes := max(policy.CooldownMinutes, 1)
 	identity := cancellationCounterIdentity(perf)
 	counterKey := fmt.Sprintf(
-		"%s:project:%d:threshold:%d:cooldown:%d:action:%s",
+		"%s:project:%d:threshold:%d:window:%d:cooldown:%d:action:%s",
 		identity,
 		perf.ProjectID,
 		threshold,
+		windowMinutes,
 		cooldownMinutes,
 		policy.Action,
 	)
@@ -40,19 +43,33 @@ func (svc *ChannelService) evaluateClientCancellationForFailure(ctx context.Cont
 		counterKey += ":model:" + perf.Model
 	}
 
+	now := time.Now()
+	windowStart := now.Add(-time.Duration(windowMinutes) * time.Minute)
+
 	svc.apiKeyErrorCountsLock.Lock()
-	if svc.cancellationCounts[perf.ChannelID] == nil {
-		svc.cancellationCounts[perf.ChannelID] = make(map[string]int)
+	if svc.cancellationWindow[perf.ChannelID] == nil {
+		svc.cancellationWindow[perf.ChannelID] = make(map[string][]time.Time)
 	}
 	if svc.cancellationActionsInFlight[perf.ChannelID] == nil {
 		svc.cancellationActionsInFlight[perf.ChannelID] = make(map[string]bool)
 	}
-	svc.cancellationCounts[perf.ChannelID][counterKey]++
-	count := svc.cancellationCounts[perf.ChannelID][counterKey]
+	// Drop timestamps that fell out of the sliding window, then append.
+	timestamps := svc.cancellationWindow[perf.ChannelID][counterKey]
+	recent := timestamps[:0]
+	for _, ts := range timestamps {
+		if ts.After(windowStart) {
+			recent = append(recent, ts)
+		}
+	}
+	recent = append(recent, now)
+	svc.cancellationWindow[perf.ChannelID][counterKey] = recent
+	count := len(recent)
 	_, actionInFlight := svc.cancellationActionsInFlight[perf.ChannelID][counterKey]
 	shouldAct := count >= threshold && !actionInFlight
 	if shouldAct {
-		svc.cancellationCounts[perf.ChannelID][counterKey] = 0
+		// The triggering window is consumed: keep the timestamps so an operator
+		// can still see the burst, but stop counting towards a new action until
+		// the window has drained.
 		svc.cancellationActionsInFlight[perf.ChannelID][counterKey] = true
 	}
 	svc.apiKeyErrorCountsLock.Unlock()
@@ -61,7 +78,7 @@ func (svc *ChannelService) evaluateClientCancellationForFailure(ctx context.Cont
 		return false
 	}
 
-	acted := svc.executeClientCancellationCooldown(ctx, perf, count, cooldownMinutes, policy.Action)
+	acted := svc.executeClientCancellationCooldown(ctx, perf, count, windowMinutes, cooldownMinutes, policy.Action)
 
 	svc.apiKeyErrorCountsLock.Lock()
 	if svc.cancellationActionsInFlight[perf.ChannelID] != nil {
@@ -70,8 +87,12 @@ func (svc *ChannelService) evaluateClientCancellationForFailure(ctx context.Cont
 			delete(svc.cancellationActionsInFlight, perf.ChannelID)
 		}
 	}
-	if !acted && svc.cancellationCounts[perf.ChannelID] != nil {
-		svc.cancellationCounts[perf.ChannelID][counterKey] = threshold
+	if acted && svc.cancellationWindow[perf.ChannelID] != nil {
+		// Window consumed by the triggered action; start fresh.
+		delete(svc.cancellationWindow[perf.ChannelID], counterKey)
+		if len(svc.cancellationWindow[perf.ChannelID]) == 0 {
+			delete(svc.cancellationWindow, perf.ChannelID)
+		}
 	}
 	svc.apiKeyErrorCountsLock.Unlock()
 
@@ -92,13 +113,15 @@ func (svc *ChannelService) executeClientCancellationCooldown(
 	ctx context.Context,
 	perf *PerformanceRecord,
 	count int,
+	windowMinutes int,
 	cooldownMinutes int,
 	action string,
 ) bool {
 	expiresAt := time.Now().Add(time.Duration(cooldownMinutes) * time.Minute)
 	reason := fmt.Sprintf(
-		"Client cancellation cooldown: %d consecutive cancellations, auto-recover after %d minutes",
+		"Client cancellation cooldown: %d cancellations within %d minutes, auto-recover after %d minutes",
 		max(count, 1),
+		windowMinutes,
 		cooldownMinutes,
 	)
 
@@ -106,7 +129,7 @@ func (svc *ChannelService) executeClientCancellationCooldown(
 	// cancellations: the channel stays enabled and keeps serving its other models,
 	// and the frozen model recovers automatically or via manual unfreeze.
 	if action == ClientCancellationActionCooldownModel && perf.Model != "" {
-		return svc.markChannelModelCooldown(ctx, perf.ChannelID, perf.Model, count, cooldownMinutes)
+		return svc.markChannelModelCooldown(ctx, perf.ChannelID, perf.Model, count, windowMinutes, cooldownMinutes)
 	}
 
 	// switch_and_cooldown takes the whole channel out of the candidate pool so
@@ -132,24 +155,31 @@ func (svc *ChannelService) executeClientCancellationCooldown(
 	return true
 }
 
+// clearCancellationCountsOnSuccess resets the sliding windows of the identity
+// that succeeded: a successful request proves the (channel[, key][, model])
+// path works, so its pending cancellation burst must not trigger a cooldown.
 func (svc *ChannelService) clearCancellationCountsOnSuccess(perf *PerformanceRecord) {
 	if perf == nil || perf.ChannelID <= 0 {
 		return
 	}
 
 	identity := cancellationCounterIdentity(perf)
+	// counterKey layout is "<identity>:project:<id>:threshold:...[:model:<m>]".
+	// Matching on "<identity>:project:<id>:" clears every policy-shape window of
+	// this identity (any threshold/window/action and any model), so a success
+	// wipes the whole pending burst.
 	prefix := fmt.Sprintf("%s:project:%d:", identity, perf.ProjectID)
 
 	svc.apiKeyErrorCountsLock.Lock()
 	defer svc.apiKeyErrorCountsLock.Unlock()
 
-	for key := range svc.cancellationCounts[perf.ChannelID] {
+	for key := range svc.cancellationWindow[perf.ChannelID] {
 		if strings.HasPrefix(key, prefix) {
-			delete(svc.cancellationCounts[perf.ChannelID], key)
+			delete(svc.cancellationWindow[perf.ChannelID], key)
 		}
 	}
-	if len(svc.cancellationCounts[perf.ChannelID]) == 0 {
-		delete(svc.cancellationCounts, perf.ChannelID)
+	if len(svc.cancellationWindow[perf.ChannelID]) == 0 {
+		delete(svc.cancellationWindow, perf.ChannelID)
 	}
 }
 

@@ -73,7 +73,10 @@
   "models.dialogs.association.priority": "优先级",
   "models.dialogs.association.dragToReorder": "拖拽调整顺序，优先级将按新顺序自动重排",
   "models.dialogs.association.previewDragToReorder": "拖动预览卡片即可调整渠道顺序，规则优先级会同步更新；同一渠道的不同 Key 分组会一起移动。",
-  "models.dialogs.association.cooldown.menuLabel": "冷冻 / 解冻",
+  "models.dialogs.association.cooldown.menuLabel":
+  "models.expandedRow.frozenChannels": "冷冻中的渠道",
+  "models.expandedRow.frozenBadge": "冷冻中",
+  "models.expandedRow.frozenUntil": "{{time}} 解冻", "冷冻 / 解冻",
   "models.dialogs.association.cooldown.frozenBadge": "冷冻中",
   "models.dialogs.association.cooldown.freeze30": "冷冻 30 分钟",
   "models.dialogs.association.cooldown.freeze24h": "冷冻 24 小时",

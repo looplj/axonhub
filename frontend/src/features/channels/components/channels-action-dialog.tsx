@@ -319,12 +319,14 @@ type KeyGroupFormRow = {
 // folded into the key list here.
 function normalizeKeyGroupsFromCredentials(
   credentials?: {
+    apiKey?: string | null;
+    apiKeys?: string[] | null;
     keyGroups?:
       | { name?: string | null; apiKeys?: string[] | null; apiKey?: string | null; models?: string[] | null; enabled?: boolean }[]
       | null;
   } | null
 ): KeyGroupFormRow[] {
-  return (credentials?.keyGroups || []).map((group) => {
+  const groups = (credentials?.keyGroups || []).map((group) => {
     const keys = (group.apiKeys || []).map((key) => (key || '').trim()).filter((key) => key.length > 0);
 
     if (keys.length === 0 && (group.apiKey || '').trim()) {
@@ -338,6 +340,41 @@ function normalizeKeyGroupsFromCredentials(
       enabled: group.enabled ?? true,
     };
   });
+
+  // Legacy flat credentials: fold them into a single default group so the
+  // grouped editor shows the stored keys instead of hiding them. A plain
+  // OAuth/auth.json apiKey is NOT a key and must not migrate.
+  const existingKeys = new Set(groups.flatMap((group) => group.apiKeys || []));
+  const legacyKeys: string[] = [];
+  for (const key of credentials?.apiKeys || []) {
+    const trimmed = (key || '').trim();
+    if (trimmed && !existingKeys.has(trimmed) && !isOAuthJSONString(trimmed)) {
+      legacyKeys.push(trimmed);
+      existingKeys.add(trimmed);
+    }
+  }
+  const flatKey = (credentials?.apiKey || '').trim();
+  if (flatKey && !existingKeys.has(flatKey) && !isOAuthJSONString(flatKey)) {
+    legacyKeys.push(flatKey);
+    existingKeys.add(flatKey);
+  }
+  if (legacyKeys.length > 0) {
+    groups.unshift({
+      name: '',
+      apiKeys: legacyKeys,
+      models: [],
+      enabled: true,
+    });
+  }
+
+  return groups;
+}
+
+// isOAuthJSONString mirrors the backend's isOAuthJSON: a JSON object carrying an
+// access_token is an OAuth credential blob, not a plain API key.
+function isOAuthJSONString(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.startsWith('{') && trimmed.includes('access_token');
 }
 
 // Display label for a group. The remark is required by the form, so persisted
@@ -410,7 +447,10 @@ function KeyGroupsEditor({ rows, onAdd, onRemove, onChangeName, onChangeKeys, on
     <div className='space-y-3'>
       {rows.map((row, index) => {
         const keys = row.apiKeys || [];
-        const isKeysVisible = visibleKeys[index] === true;
+        // A group without keys has nothing to mask: start revealed so the very
+        // first key can be typed without hunting for the eye icon. Groups that
+        // already carry keys keep the masked state until revealed explicitly.
+        const isKeysVisible = visibleKeys[index] ?? keys.length === 0;
 
         return (
           <div key={index} className='bg-muted/20 space-y-3 rounded-lg border p-3 shadow-xs' data-testid={`channel-key-group-row-${index}`}>
@@ -2683,6 +2723,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   });
                                 }}
                                 onViewKeys={(index) => {
+                                  // Toggle: clicking the same group again closes the
+                                  // panel instead of keeping it stuck open.
+                                  if (showKeyPanel && activeKeyGroupIndex === index) {
+                                    setShowKeyPanel(false);
+                                    setActiveKeyGroupIndex(null);
+                                    return;
+                                  }
                                   setActiveKeyGroupIndex(index);
                                   setShowKeyPanel(true);
                                   setShowGroupModelsPanel(false);

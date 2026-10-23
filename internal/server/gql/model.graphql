@@ -218,6 +218,11 @@ type UnassociatedChannel {
   models: [String!]!
 }
 
+type FrozenModelChannel {
+  channel: Channel!
+  cooldowns: [ModelCooldown!]!
+}
+
 extend type Model {
   associatedChannelCount: Int! @goField(forceResolver: true)
 }
@@ -229,6 +234,7 @@ extend type Query {
     associations: [ModelAssociationInput!]!
   ): [ModelChannelConnection!]!
   queryUnassociatedChannels: [UnassociatedChannel!]!
+  queryFrozenModelChannels(modelID: String!): [FrozenModelChannel!]!
 }
 
 extend type Mutation {

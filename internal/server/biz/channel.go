@@ -112,7 +112,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		channelPerfMetrics:          make(map[int]*channelMetrics),
 		apiKeyErrorCounts:           make(map[int]map[string]map[int]int),
 		apiKeyRuleActionsInFlight:   make(map[int]map[string]bool),
-		cancellationCounts:          make(map[int]map[string]int),
+		cancellationWindow:          make(map[int]map[string][]time.Time),
 		cancellationActionsInFlight: make(map[int]map[string]bool),
 		perfCh:                      make(chan *PerformanceRecord, 1024),
 	}
@@ -225,10 +225,11 @@ type ChannelService struct {
 	// channelID -> counterKey -> dummy status (always 0) -> count
 	apiKeyErrorCounts         map[int]map[string]map[int]int
 	apiKeyRuleActionsInFlight map[int]map[string]bool
-	// cancellationCounts stores consecutive client-cancellation counters.
-	// channelID -> counterKey -> count. They are deliberately independent from
-	// status-code auto-disable counters.
-	cancellationCounts          map[int]map[string]int
+	// cancellationWindow stores client-cancellation timestamps in a sliding
+	// window: channelID -> counterKey -> timestamps. The cooldown triggers when
+	// at least Threshold timestamps fall within the last WindowMinutes.
+	// Deliberately independent from status-code auto-disable counters.
+	cancellationWindow          map[int]map[string][]time.Time
 	cancellationActionsInFlight map[int]map[string]bool
 	apiKeyErrorCountsLock       sync.Mutex
 	apiKeyOpsLock               sync.Mutex

@@ -37,7 +37,7 @@ func (ch *Channel) HasActiveModelCooldown(requestModel string, now time.Time) bo
 // markChannelModelCooldown puts one (channel, model) pair into a temporary
 // cooldown. The channel stays enabled; candidate selection skips the model on
 // this channel until the cooldown expires or an operator clears it.
-func (svc *ChannelService) markChannelModelCooldown(ctx context.Context, channelID int, requestModel string, count, cooldownMinutes int) bool {
+func (svc *ChannelService) markChannelModelCooldown(ctx context.Context, channelID int, requestModel string, count, windowMinutes, cooldownMinutes int) bool {
 	if requestModel == "" {
 		return false
 	}
@@ -57,8 +57,9 @@ func (svc *ChannelService) markChannelModelCooldown(ctx context.Context, channel
 	now := time.Now()
 	expiresAt := now.Add(time.Duration(cooldownMinutes) * time.Minute)
 	reason := fmt.Sprintf(
-		"Client cancellation cooldown: %d consecutive cancellations, auto-recover after %d minutes",
+		"Client cancellation cooldown: %d cancellations within %d minutes, auto-recover after %d minutes",
 		max(count, 1),
+		windowMinutes,
 		cooldownMinutes,
 	)
 

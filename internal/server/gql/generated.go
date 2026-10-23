@@ -644,6 +644,7 @@ type ComplexityRoot struct {
 		ProjectOverrides func(childComplexity int) int
 		Scope            func(childComplexity int) int
 		Threshold        func(childComplexity int) int
+		WindowMinutes    func(childComplexity int) int
 	}
 
 	ClientCancellationProjectPolicy struct {
@@ -652,6 +653,7 @@ type ComplexityRoot struct {
 		Enabled         func(childComplexity int) int
 		ProjectID       func(childComplexity int) int
 		Threshold       func(childComplexity int) int
+		WindowMinutes   func(childComplexity int) int
 	}
 
 	CodexCatalogChannel struct {
@@ -824,6 +826,11 @@ type ComplexityRoot struct {
 		Operator   func(childComplexity int) int
 		Type       func(childComplexity int) int
 		Value      func(childComplexity int) int
+	}
+
+	FrozenModelChannel struct {
+		Channel   func(childComplexity int) int
+		Cooldowns func(childComplexity int) int
 	}
 
 	GCPCredential struct {
@@ -1507,6 +1514,7 @@ type ComplexityRoot struct {
 		ProvidersCatalog                func(childComplexity int, filtered *bool) int
 		ProxyPresets                    func(childComplexity int) int
 		QueryChannels                   func(childComplexity int, input biz.QueryChannelsInput) int
+		QueryFrozenModelChannels        func(childComplexity int, modelID string) int
 		QueryModelChannelConnections    func(childComplexity int, associations []*objects.ModelAssociation) int
 		QueryModels                     func(childComplexity int, input QueryModelsInput) int
 		QueryUnassociatedChannels       func(childComplexity int) int
@@ -2562,6 +2570,7 @@ type QueryResolver interface {
 	QueryModels(ctx context.Context, input QueryModelsInput) ([]*biz.ModelIdentityWithStatus, error)
 	QueryModelChannelConnections(ctx context.Context, associations []*objects.ModelAssociation) ([]*biz.ModelChannelConnection, error)
 	QueryUnassociatedChannels(ctx context.Context) ([]*biz.UnassociatedChannel, error)
+	QueryFrozenModelChannels(ctx context.Context, modelID string) ([]*biz.FrozenModelChannel, error)
 	AutoBackupSettings(ctx context.Context) (*biz.AutoBackupSettings, error)
 	ChannelProbeData(ctx context.Context, input biz.GetChannelProbeDataInput) ([]*biz.ChannelProbeData, error)
 	AnalyticsMetadata(ctx context.Context) (*AnalyticsMetadata, error)
@@ -4791,6 +4800,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ClientCancellationPolicy.Threshold(childComplexity), true
+	case "ClientCancellationPolicy.windowMinutes":
+		if e.complexity.ClientCancellationPolicy.WindowMinutes == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationPolicy.WindowMinutes(childComplexity), true
 
 	case "ClientCancellationProjectPolicy.action":
 		if e.complexity.ClientCancellationProjectPolicy.Action == nil {
@@ -4822,6 +4837,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ClientCancellationProjectPolicy.Threshold(childComplexity), true
+	case "ClientCancellationProjectPolicy.windowMinutes":
+		if e.complexity.ClientCancellationProjectPolicy.WindowMinutes == nil {
+			break
+		}
+
+		return e.complexity.ClientCancellationProjectPolicy.WindowMinutes(childComplexity), true
 
 	case "CodexCatalogChannel.id":
 		if e.complexity.CodexCatalogChannel.ID == nil {
@@ -5422,6 +5443,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.FilterCondition.Value(childComplexity), true
+
+	case "FrozenModelChannel.channel":
+		if e.complexity.FrozenModelChannel.Channel == nil {
+			break
+		}
+
+		return e.complexity.FrozenModelChannel.Channel(childComplexity), true
+	case "FrozenModelChannel.cooldowns":
+		if e.complexity.FrozenModelChannel.Cooldowns == nil {
+			break
+		}
+
+		return e.complexity.FrozenModelChannel.Cooldowns(childComplexity), true
 
 	case "GCPCredential.jsonData":
 		if e.complexity.GCPCredential.JSONData == nil {
@@ -9139,6 +9173,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.QueryChannels(childComplexity, args["input"].(biz.QueryChannelsInput)), true
+	case "Query.queryFrozenModelChannels":
+		if e.complexity.Query.QueryFrozenModelChannels == nil {
+			break
+		}
+
+		args, err := ec.field_Query_queryFrozenModelChannels_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.QueryFrozenModelChannels(childComplexity, args["modelID"].(string)), true
 	case "Query.queryModelChannelConnections":
 		if e.complexity.Query.QueryModelChannelConnections == nil {
 			break
@@ -15388,6 +15433,17 @@ func (ec *executionContext) field_Query_queryChannels_args(ctx context.Context, 
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_queryFrozenModelChannels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "modelID", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["modelID"] = arg0
 	return args, nil
 }
 
@@ -27384,6 +27440,35 @@ func (ec *executionContext) fieldContext_ClientCancellationPolicy_threshold(_ co
 	return fc, nil
 }
 
+func (ec *executionContext) _ClientCancellationPolicy_windowMinutes(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationPolicy_windowMinutes,
+		func(ctx context.Context) (any, error) {
+			return obj.WindowMinutes, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationPolicy_windowMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ClientCancellationPolicy_cooldownMinutes(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationPolicy) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27501,6 +27586,8 @@ func (ec *executionContext) fieldContext_ClientCancellationPolicy_projectOverrid
 				return ec.fieldContext_ClientCancellationProjectPolicy_enabled(ctx, field)
 			case "threshold":
 				return ec.fieldContext_ClientCancellationProjectPolicy_threshold(ctx, field)
+			case "windowMinutes":
+				return ec.fieldContext_ClientCancellationProjectPolicy_windowMinutes(ctx, field)
 			case "cooldownMinutes":
 				return ec.fieldContext_ClientCancellationProjectPolicy_cooldownMinutes(ctx, field)
 			case "action":
@@ -27587,6 +27674,35 @@ func (ec *executionContext) _ClientCancellationProjectPolicy_threshold(ctx conte
 }
 
 func (ec *executionContext) fieldContext_ClientCancellationProjectPolicy_threshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ClientCancellationProjectPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ClientCancellationProjectPolicy_windowMinutes(ctx context.Context, field graphql.CollectedField, obj *biz.ClientCancellationProjectPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ClientCancellationProjectPolicy_windowMinutes,
+		func(ctx context.Context) (any, error) {
+			return obj.WindowMinutes, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ClientCancellationProjectPolicy_windowMinutes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ClientCancellationProjectPolicy",
 		Field:      field,
@@ -30564,6 +30680,142 @@ func (ec *executionContext) fieldContext_FilterCondition_value(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Any does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrozenModelChannel_channel(ctx context.Context, field graphql.CollectedField, obj *biz.FrozenModelChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FrozenModelChannel_channel,
+		func(ctx context.Context) (any, error) {
+			return obj.Channel, nil
+		},
+		nil,
+		ec.marshalNChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannel,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FrozenModelChannel_channel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrozenModelChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Channel_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Channel_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Channel_updatedAt(ctx, field)
+			case "type":
+				return ec.fieldContext_Channel_type(ctx, field)
+			case "baseURL":
+				return ec.fieldContext_Channel_baseURL(ctx, field)
+			case "name":
+				return ec.fieldContext_Channel_name(ctx, field)
+			case "status":
+				return ec.fieldContext_Channel_status(ctx, field)
+			case "supportedModels":
+				return ec.fieldContext_Channel_supportedModels(ctx, field)
+			case "manualModels":
+				return ec.fieldContext_Channel_manualModels(ctx, field)
+			case "autoSyncSupportedModels":
+				return ec.fieldContext_Channel_autoSyncSupportedModels(ctx, field)
+			case "autoSyncModelPattern":
+				return ec.fieldContext_Channel_autoSyncModelPattern(ctx, field)
+			case "tags":
+				return ec.fieldContext_Channel_tags(ctx, field)
+			case "defaultTestModel":
+				return ec.fieldContext_Channel_defaultTestModel(ctx, field)
+			case "policies":
+				return ec.fieldContext_Channel_policies(ctx, field)
+			case "settings":
+				return ec.fieldContext_Channel_settings(ctx, field)
+			case "orderingWeight":
+				return ec.fieldContext_Channel_orderingWeight(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_Channel_errorMessage(ctx, field)
+			case "autoDisabledAt":
+				return ec.fieldContext_Channel_autoDisabledAt(ctx, field)
+			case "autoDisableExpiresAt":
+				return ec.fieldContext_Channel_autoDisableExpiresAt(ctx, field)
+			case "modelCooldowns":
+				return ec.fieldContext_Channel_modelCooldowns(ctx, field)
+			case "remark":
+				return ec.fieldContext_Channel_remark(ctx, field)
+			case "endpoints":
+				return ec.fieldContext_Channel_endpoints(ctx, field)
+			case "requests":
+				return ec.fieldContext_Channel_requests(ctx, field)
+			case "executions":
+				return ec.fieldContext_Channel_executions(ctx, field)
+			case "usageLogs":
+				return ec.fieldContext_Channel_usageLogs(ctx, field)
+			case "channelProbes":
+				return ec.fieldContext_Channel_channelProbes(ctx, field)
+			case "channelModelPrices":
+				return ec.fieldContext_Channel_channelModelPrices(ctx, field)
+			case "providerQuotaStatus":
+				return ec.fieldContext_Channel_providerQuotaStatus(ctx, field)
+			case "defaultEndpoints":
+				return ec.fieldContext_Channel_defaultEndpoints(ctx, field)
+			case "allModelEntries":
+				return ec.fieldContext_Channel_allModelEntries(ctx, field)
+			case "credentials":
+				return ec.fieldContext_Channel_credentials(ctx, field)
+			case "disabledAPIKeys":
+				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
+			case "liveLimiterStats":
+				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _FrozenModelChannel_cooldowns(ctx context.Context, field graphql.CollectedField, obj *biz.FrozenModelChannel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_FrozenModelChannel_cooldowns,
+		func(ctx context.Context) (any, error) {
+			return obj.Cooldowns, nil
+		},
+		nil,
+		ec.marshalNModelCooldown2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCooldownᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_FrozenModelChannel_cooldowns(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "FrozenModelChannel",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "model":
+				return ec.fieldContext_ModelCooldown_model(ctx, field)
+			case "reason":
+				return ec.fieldContext_ModelCooldown_reason(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_ModelCooldown_createdAt(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_ModelCooldown_expiresAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelCooldown", field.Name)
 		},
 	}
 	return fc, nil
@@ -50172,6 +50424,53 @@ func (ec *executionContext) fieldContext_Query_queryUnassociatedChannels(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_queryFrozenModelChannels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_queryFrozenModelChannels,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().QueryFrozenModelChannels(ctx, fc.Args["modelID"].(string))
+		},
+		nil,
+		ec.marshalNFrozenModelChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFrozenModelChannelᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_queryFrozenModelChannels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "channel":
+				return ec.fieldContext_FrozenModelChannel_channel(ctx, field)
+			case "cooldowns":
+				return ec.fieldContext_FrozenModelChannel_cooldowns(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type FrozenModelChannel", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_queryFrozenModelChannels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_autoBackupSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -54367,6 +54666,8 @@ func (ec *executionContext) fieldContext_RetryPolicy_clientCancellationPolicy(_ 
 				return ec.fieldContext_ClientCancellationPolicy_enabled(ctx, field)
 			case "threshold":
 				return ec.fieldContext_ClientCancellationPolicy_threshold(ctx, field)
+			case "windowMinutes":
+				return ec.fieldContext_ClientCancellationPolicy_windowMinutes(ctx, field)
 			case "cooldownMinutes":
 				return ec.fieldContext_ClientCancellationPolicy_cooldownMinutes(ctx, field)
 			case "action":
@@ -73306,7 +73607,7 @@ func (ec *executionContext) unmarshalInputClientCancellationPolicyInput(ctx cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"enabled", "threshold", "cooldownMinutes", "action", "scope", "projectOverrides"}
+	fieldsInOrder := [...]string{"enabled", "threshold", "windowMinutes", "cooldownMinutes", "action", "scope", "projectOverrides"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73327,6 +73628,13 @@ func (ec *executionContext) unmarshalInputClientCancellationPolicyInput(ctx cont
 				return it, err
 			}
 			it.Threshold = data
+		case "windowMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("windowMinutes"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WindowMinutes = data
 		case "cooldownMinutes":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cooldownMinutes"))
 			data, err := ec.unmarshalOInt2int(ctx, v)
@@ -73368,7 +73676,7 @@ func (ec *executionContext) unmarshalInputClientCancellationProjectPolicyInput(c
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "enabled", "threshold", "cooldownMinutes", "action"}
+	fieldsInOrder := [...]string{"projectId", "enabled", "threshold", "windowMinutes", "cooldownMinutes", "action"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -73396,6 +73704,13 @@ func (ec *executionContext) unmarshalInputClientCancellationProjectPolicyInput(c
 				return it, err
 			}
 			it.Threshold = data
+		case "windowMinutes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("windowMinutes"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WindowMinutes = data
 		case "cooldownMinutes":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cooldownMinutes"))
 			data, err := ec.unmarshalOInt2int(ctx, v)
@@ -99332,6 +99647,11 @@ func (ec *executionContext) _ClientCancellationPolicy(ctx context.Context, sel a
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "windowMinutes":
+			out.Values[i] = ec._ClientCancellationPolicy_windowMinutes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "cooldownMinutes":
 			out.Values[i] = ec._ClientCancellationPolicy_cooldownMinutes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -99398,6 +99718,11 @@ func (ec *executionContext) _ClientCancellationProjectPolicy(ctx context.Context
 			}
 		case "threshold":
 			out.Values[i] = ec._ClientCancellationProjectPolicy_threshold(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "windowMinutes":
+			out.Values[i] = ec._ClientCancellationProjectPolicy_windowMinutes(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -100780,6 +101105,50 @@ func (ec *executionContext) _FilterCondition(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._FilterCondition_operator(ctx, field, obj)
 		case "value":
 			out.Values[i] = ec._FilterCondition_value(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var frozenModelChannelImplementors = []string{"FrozenModelChannel"}
+
+func (ec *executionContext) _FrozenModelChannel(ctx context.Context, sel ast.SelectionSet, obj *biz.FrozenModelChannel) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, frozenModelChannelImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FrozenModelChannel")
+		case "channel":
+			out.Values[i] = ec._FrozenModelChannel_channel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cooldowns":
+			out.Values[i] = ec._FrozenModelChannel_cooldowns(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -107792,6 +108161,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_queryUnassociatedChannels(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "queryFrozenModelChannels":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_queryFrozenModelChannels(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -118293,6 +118684,60 @@ func (ec *executionContext) marshalNFloat2float64(ctx context.Context, sel ast.S
 	return graphql.WrapContextMarshaler(ctx, res)
 }
 
+func (ec *executionContext) marshalNFrozenModelChannel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFrozenModelChannelᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.FrozenModelChannel) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNFrozenModelChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFrozenModelChannel(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNFrozenModelChannel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐFrozenModelChannel(ctx context.Context, sel ast.SelectionSet, v *biz.FrozenModelChannel) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._FrozenModelChannel(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNGcCleanupPreviewItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgcᚐGcCleanupPreviewItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*gc.GcCleanupPreviewItem) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -118808,6 +119253,50 @@ func (ec *executionContext) marshalNModelConnection2ᚖgithubᚗcomᚋloopljᚋa
 
 func (ec *executionContext) marshalNModelCooldown2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCooldown(ctx context.Context, sel ast.SelectionSet, v objects.ModelCooldown) graphql.Marshaler {
 	return ec._ModelCooldown(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNModelCooldown2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCooldownᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ModelCooldown) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModelCooldown2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCooldown(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalNModelIdentify2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐModelIdentifyᚄ(ctx context.Context, sel ast.SelectionSet, v []*biz.ModelIdentify) graphql.Marshaler {
