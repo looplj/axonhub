@@ -32,6 +32,9 @@ type antigravitySummary struct {
 // antigravityModelPool identifies the two provider quota pools without merging their percentages.
 func antigravityModelPool(id string) string {
 	id = strings.ToLower(id)
+	if strings.Contains(id, "argon") {
+		return "argon"
+	}
 	if strings.Contains(id, "gemini") {
 		return "gemini"
 	}
@@ -144,7 +147,7 @@ func parseAntigravityQuotaSummary(body []byte) (QuotaData, error) {
 	}
 	limits := make([]QuotaLimitStatus, 0, 4)
 	bestRemaining := 0.0
-	for _, pool := range []string{"gemini", "claude_gpt"} {
+	for _, pool := range []string{"gemini", "claude_gpt", "argon"} {
 		poolRemaining := 1.0
 		found := false
 		for _, window := range []string{"5h", "7d"} {

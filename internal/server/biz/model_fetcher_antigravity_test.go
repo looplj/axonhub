@@ -145,13 +145,13 @@ func antigravityCatalogResponse(r *http.Request, status int, body string) *http.
 	return &http.Response{StatusCode: status, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(body)), Request: r}
 }
 
-// TestFetchModelsAntigravityAccountCatalog checks client identity and preservation of public effort variants.
+// TestFetchModelsAntigravityAccountCatalog checks client identity and collapses effort variants.
 func TestFetchModelsAntigravityAccountCatalog(t *testing.T) {
 	key := `{"access_token":"test-access","refresh_token":"test-refresh","expires_at":"2099-01-01T00:00:00Z","project_id":"test-project"}`
 	calls := 0
 	transport := antigravityCatalogTransport(func(r *http.Request) (*http.Response, error) {
 		calls++
-		require.Equal(t, antigravity.EndpointProd+"/v1internal:fetchAvailableModels", r.URL.String())
+		require.Equal(t, antigravity.EndpointDaily+"/v1internal:fetchAvailableModels", r.URL.String())
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "Bearer test-access", r.Header.Get("Authorization"))
 		expectedHeaders := http.Header{}
@@ -162,15 +162,27 @@ func TestFetchModelsAntigravityAccountCatalog(t *testing.T) {
 		var body map[string]string
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&body))
 		require.Equal(t, "test-project", body["project"])
-		return antigravityCatalogResponse(r, 200, `{"models":{"claude-sonnet-5-5-high":{},"claude-opus-5-5-low":{},"claude-opus-5-5-medium":{},"claude-opus-5-5-high":{},"hidden":{"isInternal":true}," ":{}}}`), nil
+		require.Contains(t, r.Header.Get("User-Agent"), "antigravity/cli/")
+		return antigravityCatalogResponse(r, 200, `{"models":{"gemini-4-argon-low":{},"gemini-4-argon-medium":{},"gemini-4-argon-high":{},"claude-sonnet-5-5-high":{},"claude-opus-5-5-low":{},"claude-opus-5-5-medium":{},"claude-opus-5-5-high":{},"hidden":{"isInternal":true}," ":{}}}`), nil
 	})
 	fetcher := NewModelFetcher(httpclient.NewHttpClientWithClient(&http.Client{Transport: transport}), nil)
 	result, err := fetcher.FetchModels(t.Context(), FetchModelsInput{ChannelType: "antigravity", BaseURL: antigravity.EndpointDaily, APIKey: &key})
 	require.NoError(t, err)
 	require.Nil(t, result.Error)
 	require.False(t, result.Fallback)
-	// Effort suffixes are upstream IDs; preserve each variant rather than inventing a bare ID.
-	require.Equal(t, []ModelIdentify{{ID: "claude-opus-5-5-high"}, {ID: "claude-opus-5-5-low"}, {ID: "claude-opus-5-5-medium"}, {ID: "claude-sonnet-5-5-high"}}, result.Models)
+	// Models include base models for dynamic effort mapping and suffixed aliases for legacy routing.
+	require.Equal(t, []ModelIdentify{
+		{ID: "claude-opus-5-5"},
+		{ID: "claude-opus-5-5-high"},
+		{ID: "claude-opus-5-5-low"},
+		{ID: "claude-opus-5-5-medium"},
+		{ID: "claude-sonnet-5-5"},
+		{ID: "claude-sonnet-5-5-high"},
+		{ID: "gemini-4-argon"},
+		{ID: "gemini-4-argon-high"},
+		{ID: "gemini-4-argon-low"},
+		{ID: "gemini-4-argon-medium"},
+	}, result.Models)
 	require.Equal(t, 1, calls)
 	require.Nil(t, fetcher.getDefaultModelsByType(t.Context(), channel.TypeAntigravity))
 }
