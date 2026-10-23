@@ -50,7 +50,6 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
   const isEdit = !!currentRow;
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [canEdit, setCanEdit] = useState(true);
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
 
@@ -67,14 +66,8 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
     });
   }, [isEdit, t]);
 
-  // Fetch all users - only when dialog is open
-  const { data: usersData, isLoading: usersLoading } = useAllUsers(
-    {
-      first: 100,
-      where: searchTerm ? { emailContainsFold: searchTerm } : undefined,
-    },
-    { enabled: open }
-  );
+  // Fetch all users - only when dialog is open; the picker filters client-side
+  const { data: usersData, isLoading: usersLoading } = useAllUsers({ first: 100 }, { enabled: open });
 
   const form = useForm<UserForm>({
     resolver: zodResolver(dynamicFormSchema),
@@ -181,7 +174,6 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
       onOpenChange={(state) => {
         if (!state) {
           form.reset();
-          setSearchTerm('');
         }
         onOpenChange(state);
       }}
@@ -222,8 +214,6 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
                         emptyMessage={t('users.form.noUsersFound')}
                         placeholder={t('users.form.selectUserPlaceholder')}
                         portalContainer={dialogContent}
-                        searchValue={searchTerm}
-                        onSearchValueChange={setSearchTerm}
                       />
                       <FormMessage />
                     </FormItem>
