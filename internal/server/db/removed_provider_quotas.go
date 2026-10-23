@@ -15,29 +15,58 @@ import (
 // the provider_quota_status schema. Ent stores the field as a real ENUM on
 // MySQL/TiDB, so removing a value rewrites the column in place. Any surviving
 // row holding a removed value would therefore fail the ALTER under strict
-// mode or be truncated to ” — both corrupt the upgrade. The rows are purged
-// before schema creation (see cleanupRemovedProviderQuotaTypes) so the enum
-// DDL never sees them.
+// mode or be truncated to an empty string — both corrupt the upgrade. The
+// rows are therefore purged before schema creation (see
+// cleanupRemovedProviderQuotaTypes) so the enum DDL never sees them.
 var removedProviderQuotaTypes = []string{"wafer"}
+
+// dialectFamily maps every config dialect alias (see driverName/entDialect)
+// to the driver family the raw SQL in this file is written for.
+func dialectFamily(dialectName string) string {
+	switch dialectName {
+	case "sqlite3", "sqlite":
+		return "sqlite"
+	case "mysql", "tidb":
+		return "mysql"
+	case "postgres", "pgx", "postgresdb", "pg", "postgresql":
+		return "postgres"
+	default:
+		return dialectName
+	}
+}
+
+// placeholderList renders n bind placeholders in the syntax of the given
+// family: "?" for SQLite/MySQL and "$1..$n" for PostgreSQL (pgx).
+func placeholderList(family string, n int) string {
+	placeholders := make([]string, n)
+	for i := range placeholders {
+		if family == "postgres" {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+		} else {
+			placeholders[i] = "?"
+		}
+	}
+	return strings.Join(placeholders, ", ")
+}
 
 // tableExists reports whether the given table exists in the current database,
 // scoped per dialect so the check resolves exactly like the unqualified
 // DELETE below.
-func tableExists(ctx context.Context, masterDB *sql.DB, dialectName, table string) (bool, error) {
+func tableExists(ctx context.Context, masterDB *sql.DB, family, table string) (bool, error) {
 	var query string
-	switch dialectName {
-	case "sqlite3", "sqlite":
+	switch family {
+	case "sqlite":
 		query = `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`
-	case "mysql", "tidb":
+	case "mysql":
 		query = `SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?`
-	case "postgres", "postgresql":
+	case "postgres":
 		// Restrict to the current search path, i.e. the schema the
 		// unqualified DELETE resolves against.
 		query = `SELECT 1 FROM information_schema.tables
-			WHERE table_schema = ANY(string_to_array(current_schemas(false), ', '))
+			WHERE table_schema = ANY(current_schemas(false))
 			  AND table_name = $1`
 	default:
-		return false, fmt.Errorf("cleanupRemovedProviderQuotaTypes: unknown dialect %q", dialectName)
+		return false, fmt.Errorf("cleanupRemovedProviderQuotaTypes: unknown dialect family %q", family)
 	}
 
 	var one any
@@ -59,8 +88,9 @@ func tableExists(ctx context.Context, masterDB *sql.DB, dialectName, table strin
 // (fresh install) is not an error.
 func cleanupRemovedProviderQuotaTypes(ctx context.Context, masterDB *sql.DB, dialectName string) error {
 	const table = "provider_quota_status"
+	family := dialectFamily(dialectName)
 
-	exists, err := tableExists(ctx, masterDB, dialectName, table)
+	exists, err := tableExists(ctx, masterDB, family, table)
 	if err != nil {
 		return fmt.Errorf("check %s existence: %w", table, err)
 	}
@@ -68,17 +98,16 @@ func cleanupRemovedProviderQuotaTypes(ctx context.Context, masterDB *sql.DB, dia
 		return nil
 	}
 
-	placeholders := make([]string, len(removedProviderQuotaTypes))
+	// The table name is a package constant and the list holds only bind
+	// placeholders; no user input reaches the query text.
+	//nolint:gosec // G202, SQL assembled from a constant and bind placeholders only
+	query := "DELETE FROM " + table + " WHERE provider_type IN (" +
+		placeholderList(family, len(removedProviderQuotaTypes)) + ")"
+
 	args := make([]any, len(removedProviderQuotaTypes))
 	for i, providerType := range removedProviderQuotaTypes {
-		placeholders[i] = "?"
 		args[i] = providerType
 	}
-	// The table name is a package constant and the list holds only "?"
-	// placeholders; no user input reaches the query text.
-	//nolint:gosec // G202, SQL assembled from constants and placeholders only
-	query := "DELETE FROM " + table + " WHERE provider_type IN (" +
-		strings.Join(placeholders, ", ") + ")"
 
 	res, err := masterDB.ExecContext(ctx, query, args...)
 	if err != nil {

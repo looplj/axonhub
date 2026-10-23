@@ -127,3 +127,34 @@ func TestCleanupRemovedProviderQuotaTypes_QueryError(t *testing.T) {
 		t.Fatal("expected error from closed db, got nil")
 	}
 }
+
+func TestDialectFamily(t *testing.T) {
+	cases := map[string]string{
+		"sqlite3":         "sqlite",
+		"sqlite":          "sqlite",
+		"mysql":           "mysql",
+		"tidb":            "mysql",
+		"postgres":        "postgres",
+		"pgx":             "postgres",
+		"postgresdb":      "postgres",
+		"pg":              "postgres",
+		"postgresql":      "postgres",
+		"unknown-dialect": "unknown-dialect",
+	}
+	for in, want := range cases {
+		t.Run(in, func(t *testing.T) {
+			if got := dialectFamily(in); got != want {
+				t.Fatalf("dialectFamily(%q) = %q, want %q", in, got, want)
+			}
+		})
+	}
+}
+
+func TestPlaceholderList(t *testing.T) {
+	if got := placeholderList("mysql", 3); got != "?, ?, ?" {
+		t.Fatalf("mysql placeholders = %q, want \"?, ?, ?\"", got)
+	}
+	if got := placeholderList("postgres", 3); got != "$1, $2, $3" {
+		t.Fatalf("postgres placeholders = %q, want \"$1, $2, $3\"", got)
+	}
+}
