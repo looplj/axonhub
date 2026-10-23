@@ -57,18 +57,20 @@ func TestSafeguardsHTTP(t *testing.T) {
 	}
 	chatStream := "data: " + `{"id":"chat","model":"gpt-test","choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"tool1","type":"function","function":{"name":"Bash","arguments":"{\"command\":\"pwd\"}"}}]}}]}` + "\n\ndata: " + `{"id":"chat","model":"gpt-test","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}` + "\n\ndata: [DONE]\n\n"
 	for _, tc := range []struct {
-		name                         string
-		format                       llm.APIFormat
-		payload                      string
-		stream, passthrough, timeout bool
+		name                                   string
+		format                                 llm.APIFormat
+		payload                                string
+		stream, passthrough, timeout, fallback bool
 	}{
-		{"normal", llm.APIFormatAnthropicMessage, anthropicNormal, false, false, false},
-		{"passthrough", llm.APIFormatAnthropicMessage, anthropicNormal, false, true, false},
-		{"stream", llm.APIFormatAnthropicMessage, anthropicStream, true, false, false},
-		{"stream_passthrough", llm.APIFormatAnthropicMessage, anthropicStream, true, true, false},
-		{"converted_stream", llm.APIFormatOpenAIChatCompletion, chatStream, true, false, false},
-		{"timeout", llm.APIFormatAnthropicMessage, anthropicNormal, false, false, true},
-		{"stream_timeout", llm.APIFormatAnthropicMessage, anthropicStream, true, false, true},
+		{"normal", llm.APIFormatAnthropicMessage, anthropicNormal, false, false, false, false},
+		{"passthrough", llm.APIFormatAnthropicMessage, anthropicNormal, false, true, false, false},
+		{"stream", llm.APIFormatAnthropicMessage, anthropicStream, true, false, false, false},
+		{"stream_passthrough", llm.APIFormatAnthropicMessage, anthropicStream, true, true, false, false},
+		{"converted_stream", llm.APIFormatOpenAIChatCompletion, chatStream, true, false, false, false},
+		{"timeout", llm.APIFormatAnthropicMessage, anthropicNormal, false, false, true, false},
+		{"stream_timeout", llm.APIFormatAnthropicMessage, anthropicStream, true, false, true, false},
+		{"fallback_timeout", llm.APIFormatAnthropicMessage, anthropicNormal, false, false, true, true},
+		{"stream_fallback_timeout", llm.APIFormatAnthropicMessage, anthropicStream, true, false, true, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newStreamDeliveryE2EFixture(t, tc.format, tc.payload, false)
@@ -76,12 +78,21 @@ func TestSafeguardsHTTP(t *testing.T) {
 			h := f.handler(t)
 			h.ChatCompletionOrchestrator.Inbound = anthropic.NewInboundTransformer()
 			h.safeguardsConfig = safeguards.Config{ClassifierModel: "reviewer", Timeout: time.Millisecond * 10}
+			if tc.fallback {
+				h.safeguardsConfig.FallbackModels = []string{"backup"}
+				h.safeguardsConfig.AttemptTimeout = 10 * time.Millisecond
+				h.safeguardsConfig.Timeout = time.Second
+			}
 			calls := 0
 			h.reviewer = func(ctx context.Context, req safeguards.ClassifierRequest) (string, error) {
 				calls++
-				require.Equal(t, "reviewer", req.Model)
+				if calls == 1 {
+					require.Equal(t, "reviewer", req.Model)
+				} else {
+					require.Equal(t, "backup", req.Model)
+				}
 				require.Contains(t, req.User, `"command":"pwd"`)
-				if tc.timeout {
+				if tc.timeout && calls == 1 {
 					<-ctx.Done()
 					return "", ctx.Err()
 				}
@@ -99,9 +110,13 @@ func TestSafeguardsHTTP(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			engine.ServeHTTP(recorder, req)
 			require.Equal(t, 200, recorder.Code, recorder.Body.String())
-			require.Equal(t, 1, calls, recorder.Body.String())
+			expectedCalls := 1
+			if tc.fallback {
+				expectedCalls = 2
+			}
+			require.Equal(t, expectedCalls, calls, recorder.Body.String())
 			require.Contains(t, recorder.Body.String(), `"safeguard_results"`)
-			if tc.timeout {
+			if tc.timeout && !tc.fallback {
 				require.Contains(t, recorder.Body.String(), `"reason":"timeout"`)
 			} else {
 				require.Contains(t, recorder.Body.String(), `"outcome":"not_flagged"`)

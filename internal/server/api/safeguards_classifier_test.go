@@ -115,3 +115,19 @@ func TestSafeguardsClassifierPropagatesDeadline(t *testing.T) {
 	_, err := classify(ctx, safeguards.ClassifierRequest{})
 	require.True(t, errors.Is(err, context.Canceled))
 }
+
+func TestSafeguardsFallbackUsesClassifierPipeline(t *testing.T) {
+	f := newStreamDeliveryE2EFixture(t, llm.APIFormatOpenAIChatCompletion,
+		`{"id":"review","object":"chat.completion","model":"gpt-test","choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"{\"verdicts\":{\"tool1\":{\"flagged\":true,\"explanation\":\"Unauthorized deletion\"}}}"}}],"usage":{"prompt_tokens":12,"completion_tokens":34,"total_tokens":46}}`, false)
+	classify := newSafeguardsClassifier(f.handler(t).ChatCompletionOrchestrator)
+	evaluator, err := safeguards.New([]byte(`{"safeguards":[{"type":"dangerous_tool_use"}]}`), safeguards.Config{
+		ClassifierModel: "unavailable-reviewer", FallbackModels: []string{"gpt-test"},
+	}, classify)
+	require.NoError(t, err)
+	results := evaluator.Evaluate(f.ctx, []safeguards.ToolUse{{ID: "tool1", Name: "Bash", Input: json.RawMessage(`{"command":"rm -rf /tmp/data"}`)}})
+	require.Equal(t, "flagged", results[0].Status.ToolUses["tool1"].Outcome)
+	usage, err := f.client.UsageLog.Query().Only(f.ctx)
+	require.NoError(t, err)
+	require.Equal(t, "gpt-test", usage.ModelID)
+	require.Equal(t, int64(46), usage.TotalTokens)
+}
