@@ -326,6 +326,9 @@ func uniqueJSON(dec *json.Decoder) error {
 	return err
 }
 
+// parseVerdicts rejects oversized, malformed or duplicate-key JSON as a whole.
+// Individual verdicts remain raw so Evaluate can preserve valid entries while
+// retrying missing or invalid entries independently.
 func parseVerdicts(text string) map[string]json.RawMessage {
 	if len(text) > maxVerdictBytes || !json.Valid([]byte(text)) {
 		return nil
@@ -342,6 +345,9 @@ func parseVerdicts(text string) map[string]json.RawMessage {
 	return root.Verdicts
 }
 
+// clip retains at most limit bytes of the input without splitting a UTF-8
+// sequence, then appends a truncation marker outside that budget. The caller
+// must supply a nonnegative limit.
 func clip(s string, limit int) string {
 	if len(s) <= limit {
 		return s
@@ -354,6 +360,9 @@ func clip(s string, limit int) string {
 	return s[:end] + " [truncated]"
 }
 
+// renderTranscript emits role-labelled JSON lines within a total byte budget.
+// When space is short, it reserves room for an omission marker and favors the
+// opening message plus recent evidence, keeping tool output separately labelled.
 func renderTranscript(messages []json.RawMessage, budget int) string {
 	if budget <= 0 {
 		return ""
@@ -430,6 +439,8 @@ func renderTranscript(messages []json.RawMessage, budget int) string {
 	return strings.Join(append(append(opening, marker), later...), "\n")
 }
 
+// contentText extracts a string or concatenates text fields from content blocks.
+// Malformed content contributes no text; non-text fields are not sent for review.
 func contentText(raw json.RawMessage) string {
 	var text string
 	if json.Unmarshal(raw, &text) == nil {

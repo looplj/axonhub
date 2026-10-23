@@ -63,6 +63,8 @@ type safeguardsStream struct {
 	abortUpstream context.CancelFunc
 }
 
+// wrapSafeguardsStream adds per-request review state while preserving downstream
+// delivery acknowledgement. A nil evaluator leaves the source unchanged.
 func wrapSafeguardsStream(ctx context.Context, source streams.Stream[*httpclient.StreamEvent], evaluator *safeguards.Evaluator, abortUpstream context.CancelFunc) streams.Stream[*httpclient.StreamEvent] {
 	if evaluator == nil {
 		return source
@@ -70,6 +72,9 @@ func wrapSafeguardsStream(ctx context.Context, source streams.Stream[*httpclient
 	return preserveStreamDelivery(&safeguardsStream{Stream: source, ctx: ctx, reviewer: safeguards.NewStream(evaluator), abortUpstream: abortUpstream}, source)
 }
 
+// Next withholds the terminal delta until the upstream has completed and released
+// its capacity, then reviews it before replaying the buffered terminal events.
+// Tail validation or review-observation errors stop delivery.
 func (s *safeguardsStream) Next() bool {
 	if s.err != nil {
 		return false
@@ -118,6 +123,9 @@ func (s *safeguardsStream) Next() bool {
 	return true
 }
 
+// drainTerminalTail buffers a bounded tail and requires message_stop before a
+// clean upstream EOF. Copies protect buffered events from reused provider buffers;
+// the optional abort callback bounds a stalled tail to one second.
 func (s *safeguardsStream) drainTerminalTail() error {
 	// Bound incomplete terminal tails. Completed Anthropic transports close at
 	// message_stop before capture fan-out, without canceling downstream delivery.
@@ -166,6 +174,8 @@ func (s *safeguardsStream) drainTerminalTail() error {
 
 func (s *safeguardsStream) Current() *httpclient.StreamEvent { return s.current }
 
+// Err prioritizes local review or terminal-tail failures over the source error
+// so consumers do not mistake a rejected response for successful completion.
 func (s *safeguardsStream) Err() error {
 	if s.err != nil {
 		return s.err

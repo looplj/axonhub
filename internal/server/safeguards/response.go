@@ -7,6 +7,9 @@ import (
 	"sort"
 )
 
+// mergeResults replaces all upstream dangerous_tool_use entries with local
+// results while retaining decodable entries of other types. Passing nil results
+// strips upstream tool verdicts before the local review is ready.
 func mergeResults(raw json.RawMessage, results []Result) json.RawMessage {
 	var existing []json.RawMessage
 	_ = json.Unmarshal(raw, &existing)
@@ -27,6 +30,8 @@ func mergeResults(raw json.RawMessage, results []Result) json.RawMessage {
 	return encoded
 }
 
+// decodeTool extracts tool-use fields without validating the ID, name or input.
+// Evaluate validates completed calls after any streamed arguments are assembled.
 func decodeTool(raw json.RawMessage) (ToolUse, bool) {
 	var block struct {
 		Type  string          `json:"type"`

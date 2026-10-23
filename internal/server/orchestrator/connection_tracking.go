@@ -177,6 +177,8 @@ type channelLimiterStream struct {
 	closeErr  error
 }
 
+// Next releases upstream admission when iteration ends, before downstream
+// delivery finishes, so a follow-up reviewer can use the same channel slot.
 func (s *channelLimiterStream) Next() bool {
 	if s.Stream.Next() {
 		return true

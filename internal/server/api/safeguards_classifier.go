@@ -25,6 +25,9 @@ func newSafeguardsClassifier(parent *orchestrator.ChatCompletionOrchestrator) sa
 	return safeguardsClassifierWithProcess(classifier.Process)
 }
 
+// safeguardsClassifierWithProcess adapts the pipeline to a tool-free, non-streaming
+// reviewer call with isolated request bookkeeping. Only one nonempty, unrefused
+// choice ending with stop is accepted; verdict JSON validation happens later.
 func safeguardsClassifierWithProcess(process func(context.Context, *httpclient.Request) (orchestrator.ChatCompletionResult, error)) safeguards.ClassifierFunc {
 	return func(ctx context.Context, req safeguards.ClassifierRequest) (string, error) {
 		ctx = contexts.ForkRequest(ctx)
