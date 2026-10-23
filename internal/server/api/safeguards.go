@@ -53,6 +53,7 @@ func prepareSafeguardsRequest(request *httpclient.Request, config safeguards.Con
 
 type safeguardsStream struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	ctx           context.Context
 	reviewer      *safeguards.Stream
 	current       *httpclient.StreamEvent

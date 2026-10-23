@@ -94,6 +94,7 @@ func NewStream(e *Evaluator) *Stream {
 // Observe consumes one Anthropic event, removing upstream tool-use verdicts and
 // collecting bounded tool inputs. The final message_delta triggers one review;
 // missing block stops or invalid arguments produce unavailable verdicts. The
+// observer returns an error when required event fields cannot be decoded. The
 // caller must validate stream completion before forwarding the reviewed delta.
 func (s *Stream) Observe(ctx context.Context, body []byte) ([]byte, error) {
 	if s.evaluator == nil {
@@ -125,8 +126,8 @@ func (s *Stream) Observe(ctx context.Context, body []byte) ([]byte, error) {
 	var index int
 	switch kind {
 	case "content_block_start":
-		if json.Unmarshal(event["index"], &index) != nil {
-			return body, nil
+		if err := json.Unmarshal(event["index"], &index); err != nil {
+			return nil, fmt.Errorf("decode safeguard content block index: %w", err)
 		}
 		s.lastIndex = index
 		if tool, ok := decodeTool(event["content_block"]); ok {
@@ -142,8 +143,8 @@ func (s *Stream) Observe(ctx context.Context, body []byte) ([]byte, error) {
 			s.tools[index] = &streamedTool{tool: tool}
 		}
 	case "content_block_delta":
-		if json.Unmarshal(event["index"], &index) != nil {
-			return body, nil
+		if err := json.Unmarshal(event["index"], &index); err != nil {
+			return nil, fmt.Errorf("decode safeguard content block index: %w", err)
 		}
 		current := s.tools[index]
 		if current == nil {
@@ -153,7 +154,10 @@ func (s *Stream) Observe(ctx context.Context, body []byte) ([]byte, error) {
 			Type    string `json:"type"`
 			Partial string `json:"partial_json"`
 		}
-		if json.Unmarshal(event["delta"], &delta) != nil || delta.Type != "input_json_delta" {
+		if err := json.Unmarshal(event["delta"], &delta); err != nil {
+			return nil, fmt.Errorf("decode safeguard content block delta: %w", err)
+		}
+		if delta.Type != "input_json_delta" {
 			return body, nil
 		}
 		if current.stopped {
@@ -175,7 +179,10 @@ func (s *Stream) Observe(ctx context.Context, body []byte) ([]byte, error) {
 		}
 	case "message_delta":
 		var delta map[string]json.RawMessage
-		if json.Unmarshal(event["delta"], &delta) != nil || delta == nil {
+		if err := json.Unmarshal(event["delta"], &delta); err != nil {
+			return nil, fmt.Errorf("decode safeguard message delta: %w", err)
+		}
+		if delta == nil {
 			return body, nil
 		}
 		var stop string

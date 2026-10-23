@@ -11,13 +11,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+
 	"github.com/looplj/axonhub/internal/ent/request"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/safeguards"
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/transformer/anthropic"
-	"github.com/samber/lo"
-	"github.com/stretchr/testify/require"
 )
 
 func TestSafeguardsSharedChannelSingleConcurrency(t *testing.T) {
@@ -28,7 +29,7 @@ func TestSafeguardsSharedChannelSingleConcurrency(t *testing.T) {
 		}
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Error(err)
-			w.WriteHeader(400)
+			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		if !body.Stream {

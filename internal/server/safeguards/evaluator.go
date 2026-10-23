@@ -153,7 +153,12 @@ func unavailable(reason string) Verdict { return Verdict{Type: "unavailable", Re
 // a usable classifier result can never produce a not_flagged verdict.
 func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 	verdicts := make(map[string]Verdict, len(tools))
-	pending := make([]map[string]any, 0, len(tools))
+	type classifierTool struct {
+		ID    string          `json:"id"`
+		Name  string          `json:"name"`
+		Input json.RawMessage `json:"input"`
+	}
+	pending := make([]classifierTool, 0, len(tools))
 	counts := make(map[string]int)
 	for _, tool := range tools {
 		counts[tool.ID]++
@@ -171,7 +176,7 @@ func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 			verdicts[tool.ID] = unavailable("input_too_long")
 			continue
 		}
-		pending = append(pending, map[string]any{"id": tool.ID, "name": tool.Name, "input": tool.Input})
+		pending = append(pending, classifierTool{ID: tool.ID, Name: tool.Name, Input: tool.Input})
 	}
 	result := []Result{{Type: "dangerous_tool_use", Status: Status{Type: "available", ToolUses: verdicts}}}
 	if len(pending) == 0 || e.call == nil {
@@ -180,7 +185,7 @@ func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 	encoded, _ := json.Marshal(pending)
 	if e.contextTooLong || len(encoded) > maxToolBytes {
 		for _, tool := range pending {
-			verdicts[tool["id"].(string)] = unavailable("input_too_long")
+			verdicts[tool.ID] = unavailable("input_too_long")
 		}
 		return result
 	}
@@ -193,13 +198,13 @@ func (e *Evaluator) Evaluate(ctx context.Context, tools []ToolUse) []Result {
 			reason = "timeout"
 		}
 		for _, tool := range pending {
-			verdicts[tool["id"].(string)] = unavailable(reason)
+			verdicts[tool.ID] = unavailable(reason)
 		}
 		return result
 	}
 	parsed := parseVerdicts(text)
 	for _, tool := range pending {
-		id := tool["id"].(string)
+		id := tool.ID
 		raw, ok := parsed[id]
 		if !ok {
 			continue

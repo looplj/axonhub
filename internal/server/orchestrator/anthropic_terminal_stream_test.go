@@ -14,6 +14,7 @@ import (
 
 type terminalCloseProbe struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	reads, closes int
 	err           error
 }

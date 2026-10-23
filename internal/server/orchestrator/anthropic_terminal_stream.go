@@ -29,6 +29,7 @@ func closeCompletedAnthropicStream(outbound *PersistentOutboundTransformer) pipe
 // message. The outer stream still owns client delivery and usage finalization.
 type anthropicTerminalStream struct {
 	streams.Stream[*httpclient.StreamEvent]
+
 	current   *httpclient.StreamEvent
 	complete  bool
 	closeOnce sync.Once

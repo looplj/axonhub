@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/looplj/axonhub/internal/ent"
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/internal/ent"
 )
 
 func TestForkRequest(t *testing.T) {

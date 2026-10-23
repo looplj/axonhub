@@ -19,9 +19,11 @@ func evaluator(t *testing.T, call ClassifierFunc) *Evaluator {
 	}
 	return e
 }
+
 func tools() []ToolUse {
 	return []ToolUse{{ID: "safe", Name: "Bash", Input: json.RawMessage(`{"command":"go test"}`)}, {ID: "danger", Name: "Bash", Input: json.RawMessage(`{"command":"rm -rf /"}`)}}
 }
+
 func TestVerdicts(t *testing.T) {
 	cases := []struct{ name, text, safe, danger string }{
 		{"valid", `{"verdicts":{"safe":{"flagged":false},"danger":{"flagged":true,"explanation":"destruction"}}}`, "not_flagged", "flagged"},
@@ -56,6 +58,7 @@ func TestVerdicts(t *testing.T) {
 		})
 	}
 }
+
 func TestTimeoutAndCancel(t *testing.T) {
 	e := evaluator(t, func(ctx context.Context, _ ClassifierRequest) (string, error) { <-ctx.Done(); return "", ctx.Err() })
 	e.timeout = time.Millisecond
@@ -72,6 +75,7 @@ func TestTimeoutAndCancel(t *testing.T) {
 		t.Fatal(v)
 	}
 }
+
 func TestTruncationAndLimits(t *testing.T) {
 	calls := 0
 	e := evaluator(t, func(context.Context, ClassifierRequest) (string, error) { calls++; return `{"verdicts":{}}`, nil })
@@ -89,9 +93,10 @@ func TestTruncationAndLimits(t *testing.T) {
 		t.Fatal("duplicate tool IDs reviewed")
 	}
 }
+
 func TestTranscriptBound(t *testing.T) {
 	var messages []json.RawMessage
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		m, _ := json.Marshal(map[string]string{"role": "user", "content": strings.Repeat("a", 1800)})
 		messages = append(messages, m)
 	}
@@ -103,6 +108,7 @@ func TestTranscriptBound(t *testing.T) {
 		t.Fatal("empty transcript")
 	}
 }
+
 func TestOptIn(t *testing.T) {
 	e, err := New([]byte(`{"messages":[]}`), Config{ClassifierModel: "cheap"}, nil)
 	if err != nil || e != nil {
@@ -113,6 +119,7 @@ func TestOptIn(t *testing.T) {
 		t.Fatal(e, err)
 	}
 }
+
 func TestAnnotateResponse(t *testing.T) {
 	e := evaluator(t, func(context.Context, ClassifierRequest) (string, error) {
 		return `{"verdicts":{"safe":{"flagged":true,"explanation":"reviewed"}}}`, nil
@@ -133,6 +140,7 @@ func TestAnnotateResponse(t *testing.T) {
 		t.Fatal(string(result))
 	}
 }
+
 func TestStreamParallel(t *testing.T) {
 	calls := 0
 	e := evaluator(t, func(_ context.Context, r ClassifierRequest) (string, error) {
@@ -158,7 +166,7 @@ func TestStreamParallel(t *testing.T) {
 		}
 	}
 	final := []byte(`{"type":"message_delta","delta":{"stop_reason":"tool_use"},"usage":{"output_tokens":10}}`)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		out, err := stream.Observe(context.Background(), final)
 		if err != nil {
 			t.Fatal(err)
@@ -171,6 +179,7 @@ func TestStreamParallel(t *testing.T) {
 		t.Fatal(calls)
 	}
 }
+
 func TestStreamIncompleteFailsClosed(t *testing.T) {
 	for _, partial := range []string{`{`, `{"a":1}`} {
 		calls := 0
@@ -183,6 +192,32 @@ func TestStreamIncompleteFailsClosed(t *testing.T) {
 		if err != nil || calls != 0 || !strings.Contains(string(out), `"reason":"truncated"`) {
 			t.Fatal(string(out), calls, err)
 		}
+	}
+}
+
+func TestStreamMalformedEventsReturnErrors(t *testing.T) {
+	for _, event := range []string{
+		`{"type":"content_block_start","index":"bad"}`,
+		`{"type":"content_block_delta","index":"bad"}`,
+		`{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":42}}`,
+		`{"type":"message_delta","delta":[]}`,
+	} {
+		t.Run(event, func(t *testing.T) {
+			calls := 0
+			e := evaluator(t, func(context.Context, ClassifierRequest) (string, error) {
+				calls++
+				return `{"verdicts":{"safe":{"flagged":false}}}`, nil
+			})
+			stream := NewStream(e)
+			_, err := stream.Observe(t.Context(), []byte(`{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"safe","name":"Bash","input":{}}}`))
+			if err != nil {
+				t.Fatal(err)
+			}
+			out, err := stream.Observe(t.Context(), []byte(event))
+			if err == nil || out != nil || calls != 0 {
+				t.Fatalf("malformed event must fail before review: output %s, error %v, calls %d", out, err, calls)
+			}
+		})
 	}
 }
 

@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/stretchr/testify/require"
+
+	"github.com/looplj/axonhub/llm/httpclient"
 )
 
 func TestChannelLimiterMiddleware_ReleasesAtEOFBeforeDownstreamClose(t *testing.T) {
