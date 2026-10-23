@@ -139,6 +139,7 @@ func TestQuotaCheckerCoverageMatrix(t *testing.T) {
 		"zai":              NewZaiQuotaChecker(client),
 		"charm_hyper":      NewCharmHyperQuotaChecker(client),
 		"commandcode":      NewCommandCodeQuotaChecker(client),
+		"deepseek":         NewDeepSeekQuotaChecker(client),
 	}
 
 	relations := []struct {
@@ -182,6 +183,8 @@ func TestQuotaCheckerCoverageMatrix(t *testing.T) {
 		{"charm_hyper", channel.TypeOpenaiResponses, "https://hyper.charm.land", "charm_credits", 1},
 		{"commandcode", channel.TypeCommandcode, "", "commandcode_windows", 2},
 		{"commandcode", channel.TypeCommandcodeAnthropic, "", "commandcode_windows", 2},
+		{"deepseek", channel.TypeDeepseek, "", "deepseek_balance", 1},
+		{"deepseek", channel.TypeDeepseekAnthropic, "", "deepseek_balance", 1},
 	}
 
 	entries := make([]map[string]any, 0, len(relations))

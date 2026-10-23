@@ -47,7 +47,7 @@ import { useChannels } from '../context/channels-context';
 import { useTestChannel, useUpdateChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
-import { parseQuotaLimits } from '../../system/data/quotas';
+import { parseQuotaBalances, parseQuotaLimits, type ProviderQuotaBalance } from '../../system/data/quotas';
 import type { QuotaRoutingMode } from '../../system/data/system';
 import { getChannelQuotaRoutingIndicator } from '../utils/quota-routing-status';
 import { ChannelHealthCell } from './channel-health-cell';
@@ -489,6 +489,70 @@ const ProviderCell = memo(({ row }: { row: Row<Channel> }) => {
 
 ProviderCell.displayName = 'ProviderCell';
 
+const QuotaBalanceCell = memo(({ balances }: { balances: ProviderQuotaBalance[] }) => {
+  const { t, i18n } = useTranslation();
+  const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
+  const currencyOf = (balance: ProviderQuotaBalance) =>
+    /^[A-Za-z]{3}$/.test(balance.currency ?? '') ? balance.currency!.toUpperCase() : 'USD';
+  const formatAmount = (value: number | undefined, currency: string) =>
+    t('currencies.format', {
+      val: value ?? 0,
+      currency,
+      locale,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className='flex min-w-0 flex-col items-stretch gap-1 text-[11px]'>
+          {balances.map((balance, index) => {
+            const currency = currencyOf(balance);
+            return (
+              <div key={`${currency}-${index}`} className='flex min-w-0 items-center justify-between gap-2'>
+                <span className='text-muted-foreground truncate'>
+                  {t('quota.label.account_balance')}
+                  {balance.account ? ` · ${balance.account}` : ''}
+                </span>
+                <span className='font-medium whitespace-nowrap'>{formatAmount(balance.totalBalance, currency)}</span>
+              </div>
+            );
+          })}
+        </div>
+      </TooltipTrigger>
+      <TooltipContent className='space-y-1'>
+        {balances.map((balance, index) => {
+          const currency = currencyOf(balance);
+          return (
+            <div key={`${currency}-${index}`} className='space-y-0.5 text-xs'>
+              <div className='font-medium'>
+                {currency}
+                {balance.account ? ` · ${balance.account}` : ''}
+              </div>
+              <div>
+                {t('quota.label.account_balance')}: {formatAmount(balance.totalBalance, currency)}
+              </div>
+              {balance.grantedBalance !== undefined && (
+                <div>
+                  {t('quota.label.granted_balance')}: {formatAmount(balance.grantedBalance, currency)}
+                </div>
+              )}
+              {balance.toppedUpBalance !== undefined && (
+                <div>
+                  {t('quota.label.topped_up_balance')}: {formatAmount(balance.toppedUpBalance, currency)}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </TooltipContent>
+    </Tooltip>
+  );
+});
+
+QuotaBalanceCell.displayName = 'QuotaBalanceCell';
+
 const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -500,6 +564,11 @@ const QuotaCell = memo(({ row }: { row: Row<Channel> }) => {
         <span className='text-muted-foreground text-xs'>{t('quota.label.unavailable')}</span>
       </div>
     );
+  }
+
+  const balances = parseQuotaBalances(channel.providerQuotaStatus.quotaData);
+  if (balances.length > 0) {
+    return <QuotaBalanceCell balances={balances} />;
   }
 
   const allLimits = getQuotaLimits(channel);

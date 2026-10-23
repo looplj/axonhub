@@ -104,6 +104,8 @@ func quotaCheckerFixture(checker string) (QuotaData, error) {
 		return NewCharmHyperQuotaChecker(nil).parseResponse([]byte(`{"balance":75}`))
 	case "commandcode":
 		return parseCommandCodeCredits([]byte(`{"windowLimits":{"five_hour":{"usage_percent":25,"cap_usd":10,"resetAt":"2099-01-01T05:00:00Z"},"weekly":{"usage_percent":50,"cap_usd":20,"resetAt":"2099-01-08T00:00:00Z"}}}`), nil)
+	case "deepseek":
+		return NewDeepSeekQuotaChecker(nil).parseResponse([]byte(`{"is_available":true,"balance_infos":[{"currency":"USD","total_balance":"75.00","granted_balance":"0.00","topped_up_balance":"75.00"}]}`))
 	default:
 		return QuotaData{}, fmt.Errorf("unknown quota checker fixture %q", checker)
 	}

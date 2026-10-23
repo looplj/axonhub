@@ -32,6 +32,7 @@ import {
   ProviderCommandCodeQuotaData,
   CommandCodeQuotaWindow,
   ProviderOllamaQuotaData,
+  ProviderDeepSeekQuotaData,
   resetChannelQuotaNow,
   checkProviderQuotas,
 } from '@/features/system/data/quotas';
@@ -112,6 +113,10 @@ function isCommandCodeType(t: string): t is 'commandcode' | 'commandcode_anthrop
 
 function isOllamaType(t: string): t is 'ollama' | 'ollama_anthropic' {
   return t === 'ollama' || t === 'ollama_anthropic';
+}
+
+function isDeepSeekType(t: string): t is 'deepseek' | 'deepseek_anthropic' {
+  return t === 'deepseek' || t === 'deepseek_anthropic';
 }
 const COMMAND_CODE_PLAN_LABELS: Record<string, string> = {
   'individual-go': 'Go',
@@ -211,6 +216,13 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
       qd?.windows?.['5h']?.usage_percent ?? 0,
       qd?.windows?.weekly?.usage_percent ?? 0
     );
+  } else if (isDeepSeekType(channel.type)) {
+    const limits = channel.quotaStatus.limits;
+    const usableLimits = limits.filter((limit) => limit.status !== 'exhausted' && limit.usageRatio < 1);
+    percentage =
+      usableLimits.length > 0
+        ? Math.min(...usableLimits.map((limit) => limit.usageRatio * 100))
+        : Math.max(0, ...limits.map((limit) => limit.usageRatio * 100));
   } else if (isCommandCodeType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderCommandCodeQuotaData | undefined;
     percentage = Math.max(
@@ -2225,6 +2237,47 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             }
 
             return items;
+          })()}
+        </div>
+      )}
+
+      {isDeepSeekType(channel.type) && (
+        <div className='mt-3 space-y-3'>
+          {(() => {
+            const qd = channel.quotaStatus.quotaData as ProviderDeepSeekQuotaData | undefined;
+            if (!qd?.balances?.length) return null;
+
+            const formatAmount = (val: number | undefined, currency: string) =>
+              t('currencies.format', {
+                val: val ?? 0,
+                currency,
+                locale: i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US',
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              });
+
+            return qd.balances.map((balance, index) => {
+              const currency = /^[A-Za-z]{3}$/.test(balance.currency ?? '') ? balance.currency!.toUpperCase() : 'USD';
+              return (
+                <div key={`${currency}-${index}`} className={index > 0 ? 'border-border/60 space-y-1.5 border-t border-dashed pt-3' : 'space-y-1.5'}>
+                  <div className='flex items-center justify-between text-xs'>
+                    <span className='text-muted-foreground font-medium'>
+                      {t('quota.label.account_balance')} ({currency}
+                      {balance.account ? ` · ${balance.account}` : ''})
+                    </span>
+                    <span className='text-foreground font-medium'>{formatAmount(balance.total_balance, currency)}</span>
+                  </div>
+                  <div className='text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 text-[11px]'>
+                    <span>
+                      {t('quota.label.granted_balance')}: {formatAmount(balance.granted_balance, currency)}
+                    </span>
+                    <span>
+                      {t('quota.label.topped_up_balance')}: {formatAmount(balance.topped_up_balance, currency)}
+                    </span>
+                  </div>
+                </div>
+              );
+            });
           })()}
         </div>
       )}

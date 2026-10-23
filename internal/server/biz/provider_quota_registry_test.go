@@ -24,7 +24,7 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 		"apertis", "antigravity", "charm_hyper", "claudecode", "cline", "codex",
 		"commandcode", "github_copilot", "kimi_code", "minimax", "nanogpt",
 		"neuralwatt", "opencode_go", "synthetic", "wafer", "xai_subscription",
-		"ollama", "zenmux", "zhipu", "zai",
+		"ollama", "deepseek", "zenmux", "zhipu", "zai",
 	}
 	require.ElementsMatch(t, expectedCheckers, mapKeys(svc.checkers))
 
@@ -69,6 +69,8 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 		{"commandcode", channel.TypeCommandcodeAnthropic, ""},
 		{"ollama", channel.TypeOllama, ""},
 		{"ollama", channel.TypeOllamaAnthropic, ""},
+		{"deepseek", channel.TypeDeepseek, ""},
+		{"deepseek", channel.TypeDeepseekAnthropic, ""},
 	}
 
 	for _, relation := range expectedRelations {

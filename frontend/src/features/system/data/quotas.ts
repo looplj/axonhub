@@ -216,6 +216,19 @@ export type ProviderCharmHyperQuotaData = ProviderQuotaDataCommon & {
   balance?: number | null;
 };
 
+export type ProviderDeepSeekBalanceInfo = {
+  currency?: string;
+  account?: string;
+  total_balance?: number;
+  granted_balance?: number;
+  topped_up_balance?: number;
+};
+
+export type ProviderDeepSeekQuotaData = ProviderQuotaDataCommon & {
+  is_available?: boolean;
+  balances?: ProviderDeepSeekBalanceInfo[] | null;
+};
+
 export type ProviderApertisQuotaData = ProviderQuotaDataCommon & {
   is_subscriber?: boolean;
   payg?: {
@@ -509,6 +522,19 @@ export type ProviderQuotaLimit = {
   periodQuota?: number;
 };
 
+/**
+ * A monetary balance reported by a provider instead of (or in addition to) a
+ * usage window. DeepSeek reports these under `quotaData.balances`; the table
+ * renders them directly instead of inventing a percentage progress bar.
+ */
+export type ProviderQuotaBalance = {
+  currency?: string;
+  account?: string;
+  totalBalance?: number;
+  grantedBalance?: number;
+  toppedUpBalance?: number;
+};
+
 function optionalString(value: unknown): string | undefined {
   return typeof value === 'string' && value !== '' ? value : undefined;
 }
@@ -578,6 +604,40 @@ export function parseQuotaLimits(quotaData: unknown): ProviderQuotaLimit[] {
   return raw.flatMap((entry) => {
     const parsed = parseQuotaLimit(entry);
     return parsed ? [parsed] : [];
+  });
+}
+
+export function parseQuotaBalances(quotaData: unknown): ProviderQuotaBalance[] {
+  if (typeof quotaData !== 'object' || quotaData === null) return [];
+
+  const raw = (quotaData as { balances?: unknown }).balances;
+  if (!Array.isArray(raw)) return [];
+
+  return raw.flatMap((entry) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) return [];
+
+    const balance = entry as Record<string, unknown>;
+    const totalBalance = optionalNumber(balance.total_balance);
+    if (totalBalance === undefined || totalBalance < 0) return [];
+
+    const grantedBalance = optionalNumber(balance.granted_balance);
+    if (grantedBalance !== undefined && grantedBalance < 0) return [];
+
+    const toppedUpBalance = optionalNumber(balance.topped_up_balance);
+    if (toppedUpBalance !== undefined && toppedUpBalance < 0) return [];
+
+    const parsed: ProviderQuotaBalance = {
+      currency: optionalString(balance.currency),
+      totalBalance,
+      grantedBalance,
+      toppedUpBalance,
+    };
+    const account = optionalString(balance.account);
+    if (account) {
+      parsed.account = account;
+    }
+
+    return [parsed];
   });
 }
 
@@ -798,6 +858,12 @@ export type ProviderQuotaChannel = {
         quotaData: ProviderOllamaQuotaData;
       };
     }
+  | {
+      type: 'deepseek' | 'deepseek_anthropic';
+      quotaStatus: {
+        quotaData: ProviderDeepSeekQuotaData;
+      };
+    }
 );
 
 type ProviderQuotaStatusNode = {
@@ -1006,6 +1072,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       ...base,
       type: node.type as 'ollama' | 'ollama_anthropic',
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderOllamaQuotaData },
+    };
+  }
+  if (node.type === 'deepseek' || node.type === 'deepseek_anthropic') {
+    return {
+      ...base,
+      type: node.type as 'deepseek' | 'deepseek_anthropic',
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderDeepSeekQuotaData },
     };
   }
   return {
