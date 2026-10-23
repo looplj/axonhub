@@ -453,7 +453,14 @@ func resultingServiceAccountScopes(apiKey *ent.APIKey, input ent.UpdateAPIKeyInp
 
 	switch {
 	case len(input.Scopes) > 0:
-		return lo.Uniq(input.Scopes), true
+		// Ent applies SetScopes and AppendScopes in the same UPDATE, and the
+		// persisted result depends on the dialect (the append may be evaluated
+		// against the existing value, dropping the replacement). Validate every
+		// scope that could survive instead of only the replacement.
+		merged := append(append([]string{}, apiKey.Scopes...), input.Scopes...)
+		merged = append(merged, input.AppendScopes...)
+
+		return lo.Uniq(merged), true
 	case len(input.AppendScopes) > 0:
 		return lo.Uniq(append(append([]string{}, apiKey.Scopes...), input.AppendScopes...)), true
 	default:

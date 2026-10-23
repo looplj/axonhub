@@ -1145,6 +1145,14 @@ func TestAPIKeyService_UpdateAPIKey_ServiceAccountScopeGrant(t *testing.T) {
 		require.ErrorContains(t, err, "don't possess at system level")
 	})
 
+	t.Run("combined set and append cannot grant system-only scope", func(t *testing.T) {
+		_, err := apiKeyService.UpdateAPIKey(ctx, key.ID, ent.UpdateAPIKeyInput{
+			Scopes:       []string{string(scopes.ScopeWriteRequests)},
+			AppendScopes: []string{string(scopes.ScopeReadChannels)},
+		})
+		require.ErrorContains(t, err, "don't possess at system level")
+	})
+
 	t.Run("append project scope is allowed", func(t *testing.T) {
 		updated, err := apiKeyService.UpdateAPIKey(ctx, key.ID, ent.UpdateAPIKeyInput{
 			AppendScopes: []string{string(scopes.ScopeReadRequests)},
