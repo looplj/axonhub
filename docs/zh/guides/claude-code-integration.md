@@ -190,3 +190,5 @@ AxonHub 还可以将您的 Claude Code 订阅作为后端提供商，允许非 C
 - [Codex 集成指南](codex-integration.md)
 - [渠道管理指南](channel-management.md)
 - README 中的 [使用指南](../../../README.md#使用指南--usage-guide)
+
+对于初始输入用量缺失或为零、且未报告缓存用量的 Anthropic 流式响应，AxonHub 使用 `o200k_base` 对请求文本和工具定义估算输入 token，并填入 `message_start`，帮助 Claude Code 在上游最终用量到达前显示进度，无需缓冲完整响应。估算不包含编码图片、音频和控制元数据，因此并非精确用量。上游最终用量保持不变，仍是持久化用量及费用核算的依据；初始估算仅应用于发送给客户端的流。

@@ -151,7 +151,8 @@ func (handlers *ChatCompletionHandlers) ChatCompletionWithRequest(c *gin.Context
 
 		c.Header("Access-Control-Allow-Origin", "*")
 
-		source := wrapSafeguardsStream(ctx, result.ChatCompletionStream, evaluator, abortUpstream)
+		source := wrapAnthropicInputUsage(result.ChatCompletionStream, genericReq)
+		source = wrapSafeguardsStream(ctx, source, evaluator, abortUpstream)
 		stream := newUpstreamErrorStream(ctx, source, handlers.ChatCompletionOrchestrator.SystemService)
 		if strings.HasSuffix(genericReq.Path, "/responses") {
 			stream = primeCodexTurnStateHeader(c.Writer.Header(), stream)
