@@ -1,21 +1,24 @@
 import { create } from 'zustand';
 import type { AnalyticsFilter } from '@/features/analytics/data/analytics';
 
+/** Dimension slices of the analytics filter; the time range is held by the shared
+ * time store instead. */
+export type AnalyticsDimensionFilter = Pick<
+  AnalyticsFilter,
+  'projectIDs' | 'channelIDs' | 'modelIDs' | 'apiKeyIDs' | 'userIDs'
+>;
+
 interface AnalyticsFilterState {
-  filter: AnalyticsFilter;
-  setStartTime: (time: string | null) => void;
-  setEndTime: (time: string | null) => void;
+  dimensions: AnalyticsDimensionFilter;
   setProjectIDs: (ids: string[]) => void;
   setChannelIDs: (ids: string[]) => void;
   setModelIDs: (ids: string[]) => void;
   setAPIKeyIDs: (ids: string[]) => void;
   setUserIDs: (ids: string[]) => void;
-  resetFilter: () => void;
+  resetDimensionFilters: () => void;
 }
 
-const defaultFilter: AnalyticsFilter = {
-  startTime: null,
-  endTime: null,
+const defaultDimensions: AnalyticsDimensionFilter = {
   projectIDs: undefined,
   channelIDs: undefined,
   modelIDs: undefined,
@@ -23,44 +26,34 @@ const defaultFilter: AnalyticsFilter = {
   userIDs: undefined,
 };
 
+/** Analytics dimension filters: project/channel/model/API key/user. */
 export const useAnalyticsFilterStore = create<AnalyticsFilterState>((set) => ({
-  filter: { ...defaultFilter },
-
-  setStartTime: (time) =>
-    set((state) => ({
-      filter: { ...state.filter, startTime: time },
-    })),
-
-  setEndTime: (time) =>
-    set((state) => ({
-      filter: { ...state.filter, endTime: time },
-    })),
+  dimensions: { ...defaultDimensions },
 
   setProjectIDs: (ids) =>
     set((state) => ({
-      filter: { ...state.filter, projectIDs: ids.length > 0 ? ids : undefined },
+      dimensions: { ...state.dimensions, projectIDs: ids.length > 0 ? ids : undefined },
     })),
 
   setChannelIDs: (ids) =>
     set((state) => ({
-      filter: { ...state.filter, channelIDs: ids.length > 0 ? ids : undefined },
+      dimensions: { ...state.dimensions, channelIDs: ids.length > 0 ? ids : undefined },
     })),
 
   setModelIDs: (ids) =>
     set((state) => ({
-      filter: { ...state.filter, modelIDs: ids.length > 0 ? ids : undefined },
+      dimensions: { ...state.dimensions, modelIDs: ids.length > 0 ? ids : undefined },
     })),
 
   setAPIKeyIDs: (ids) =>
     set((state) => ({
-      filter: { ...state.filter, apiKeyIDs: ids.length > 0 ? ids : undefined },
+      dimensions: { ...state.dimensions, apiKeyIDs: ids.length > 0 ? ids : undefined },
     })),
 
   setUserIDs: (ids) =>
     set((state) => ({
-      filter: { ...state.filter, userIDs: ids.length > 0 ? ids : undefined },
+      dimensions: { ...state.dimensions, userIDs: ids.length > 0 ? ids : undefined },
     })),
 
-  resetFilter: () =>
-    set({ filter: { ...defaultFilter } }),
+  resetDimensionFilters: () => set({ dimensions: { ...defaultDimensions } }),
 }));

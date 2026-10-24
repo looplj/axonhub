@@ -1,56 +1,46 @@
 import { useTranslation } from 'react-i18next';
-import {
-  ComposedChart,
-  Bar,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber } from '@/utils/format-number';
-import { formatCurrencySimple, formatCurrencyTick } from '../utils/format-currency';
+import { formatBucketLabel } from '@/utils/format-bucket-label';
+import type { AnalyticsDailyStat } from '../data/analytics';
 
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
-import type { AnalyticsDailyStat } from '../data/analytics';
 
-interface CombinedTrendChartProps {
+interface UsageCompositionChartProps {
   data: AnalyticsDailyStat[];
   isLoading: boolean;
-  currencyCode: string;
 }
 
-export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTrendChartProps) {
+/** Token composition over time: how the same daily token total splits between cached
+ * input, uncached input and output, with cache hit rate showing how much of the input
+ * traffic the cache absorbs. The three bars are parts of one whole, so they stack and
+ * share a single axis; the hit rate is a ratio, so it gets its own percentage axis. */
+export function UsageCompositionChart({ data, isLoading }: UsageCompositionChartProps) {
   const { t, i18n } = useTranslation();
   const locale = i18n.language.startsWith('zh') ? 'zh-CN' : 'en-US';
 
   const chartData = data.map((stat) => {
-    const [year, month, day] = stat.date.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
+    const inputTotal = stat.cachedInputTokens + stat.uncachedInputTokens;
     return {
-      name: date.toLocaleDateString(locale, {
-        month: '2-digit',
-        day: '2-digit',
-        timeZone: 'UTC',
-      }),
+      name: formatBucketLabel(stat.date, locale),
       cachedInput: stat.cachedInputTokens,
       uncachedInput: stat.uncachedInputTokens,
       output: stat.outputTokens,
       totalTokens: stat.totalTokens,
-      requests: stat.requestCount,
-      cost: stat.cost,
+      // An idle bucket has no input tokens at all, so it has no hit rate to report. Zero
+      // would draw a drop to the axis that reads as "measured, and nothing was cached",
+      // which is not what an hour with no traffic says.
+      cacheHitRate: inputTotal > 0 ? (stat.cachedInputTokens / inputTotal) * 100 : null,
     };
   });
 
   if (isLoading) {
     return (
-      <Card className='hover-card'>
+      <Card className='hover-card flex h-full flex-col'>
         <CardHeader>
           <CardTitle>{t('analytics.chart.trendTitle')}</CardTitle>
         </CardHeader>
@@ -62,30 +52,21 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
   }
 
   const maxTokens = Math.max(...chartData.map((d) => d.cachedInput + d.uncachedInput + d.output), 0);
-  const maxRequests = Math.max(...chartData.map((d) => d.requests), 0);
-  const maxCost = Math.max(...chartData.map((d) => d.cost), 0);
-
   const tokensMax = Math.max(1000, Math.ceil(maxTokens * 1.1));
-  const requestsMax = Math.max(10, Math.ceil(maxRequests * 1.1));
-  const costMax = Math.max(0.1, maxCost * 1.1);
 
   return (
-    <Card className='hover-card'>
+    <Card className='hover-card flex h-full flex-col'>
       <CardHeader>
-        <CardTitle>{t('analytics.chart.trendTitle')}</CardTitle>
+        <div className='space-y-1'>
+          <CardTitle>{t('analytics.chart.trendTitle')}</CardTitle>
+          <p className='text-muted-foreground text-xs'>{t('analytics.chart.trendDescription')}</p>
+        </div>
       </CardHeader>
       <CardContent className='pl-2'>
         <ResponsiveContainer width='100%' height={350}>
           <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
-            <XAxis
-              dataKey='name'
-              stroke='var(--muted-foreground)'
-              fontSize={12}
-              tickLine={true}
-              axisLine={true}
-              padding={{ right: 24 }}
-            />
+            <XAxis dataKey='name' stroke='var(--muted-foreground)' fontSize={12} tickLine={true} axisLine={true} padding={{ right: 24 }} />
             <YAxis
               yAxisId='tokens'
               stroke='var(--chart-1)'
@@ -98,27 +79,15 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
               tickMargin={8}
             />
             <YAxis
-              yAxisId='requests'
+              yAxisId='hitRate'
               orientation='right'
               stroke='var(--chart-4)'
               fontSize={12}
               tickLine={true}
               axisLine={true}
-              domain={[0, requestsMax]}
-              tickFormatter={(value) => formatNumber(value)}
-              width={40}
-              tickMargin={8}
-            />
-            <YAxis
-              yAxisId='cost'
-              orientation='right'
-              stroke='var(--chart-5)'
-              fontSize={12}
-              tickLine={true}
-              axisLine={true}
-              domain={[0, costMax]}
-              tickFormatter={(value) => formatCurrencyTick(value, currencyCode)}
-              width={60}
+              domain={[0, 100]}
+              tickFormatter={(value) => `${value}%`}
+              width={48}
               tickMargin={8}
             />
             <Tooltip
@@ -128,11 +97,13 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
                   t('analytics.chart.cachedInput'),
                   t('analytics.chart.uncachedInput'),
                   t('analytics.chart.outputTokens'),
-                  t('analytics.chart.totalTokens'),
-                  t('analytics.chart.requestCount'),
-                  t('analytics.chart.cost'),
+                  t('analytics.chart.cacheHitRate'),
                 ];
-                const sorted = [...payload].sort((a, b) => order.indexOf(String(a.name)) - order.indexOf(String(b.name)));
+                // A null value is an unmeasured bucket, not a measured zero: Number(null)
+                // would render the hit rate of an idle hour as 0.0%.
+                const sorted = [...payload]
+                  .filter((entry) => entry.value != null)
+                  .sort((a, b) => order.indexOf(String(a.name)) - order.indexOf(String(b.name)));
                 const raw = payload[0]?.payload as Record<string, number> | undefined;
                 const totalTokens = raw?.totalTokens ?? 0;
                 return (
@@ -142,9 +113,7 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
                       <p key={index} className='flex justify-between gap-4' style={{ color: entry.color, padding: '2px 0' }}>
                         <span>{entry.name}</span>
                         <span className='font-medium'>
-                          {entry.name === t('analytics.chart.cost')
-                            ? formatCurrencySimple(Number(entry.value), currencyCode)
-                            : formatExactNumber(Number(entry.value))}
+                          {entry.name === t('analytics.chart.cacheHitRate') ? `${Number(entry.value).toFixed(1)}%` : formatExactNumber(Number(entry.value))}
                         </span>
                       </p>
                     ))}
@@ -152,16 +121,6 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
                       <span>{t('analytics.chart.totalTokens')}</span>
                       <span>{formatExactNumber(totalTokens)}</span>
                     </p>
-                    {(() => {
-                      const inputTotal = (raw?.cachedInput ?? 0) + (raw?.uncachedInput ?? 0);
-                      const hitRate = inputTotal > 0 ? (((raw?.cachedInput ?? 0) / inputTotal) * 100).toFixed(1) : '0';
-                      return (
-                        <p className='flex justify-between gap-4' style={{ padding: '2px 0', color: 'var(--chart-3)' }}>
-                          <span>{t('analytics.chart.cacheHitRate')}</span>
-                          <span className='font-medium'>{hitRate}%</span>
-                        </p>
-                      );
-                    })()}
                   </div>
                 );
               }}
@@ -174,15 +133,23 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
                 { value: t('analytics.chart.cachedInput'), type: 'square' as const, color: 'var(--chart-1)' },
                 { value: t('analytics.chart.uncachedInput'), type: 'square' as const, color: 'var(--chart-2)' },
                 { value: t('analytics.chart.outputTokens'), type: 'square' as const, color: 'var(--chart-3)' },
-                { value: t('analytics.chart.requestCount'), type: 'line' as const, color: 'var(--chart-4)' },
-                { value: t('analytics.chart.cost'), type: 'line' as const, color: 'var(--chart-5)' },
+                { value: t('analytics.chart.cacheHitRate'), type: 'line' as const, color: 'var(--chart-4)' },
               ]}
             />
             <Bar yAxisId='tokens' dataKey='cachedInput' name={t('analytics.chart.cachedInput')} stackId='tokens' fill='var(--chart-1)' isAnimationActive={false} />
             <Bar yAxisId='tokens' dataKey='uncachedInput' name={t('analytics.chart.uncachedInput')} stackId='tokens' fill='var(--chart-2)' isAnimationActive={false} />
             <Bar yAxisId='tokens' dataKey='output' name={t('analytics.chart.outputTokens')} stackId='tokens' fill='var(--chart-3)' radius={[4, 4, 0, 0]} isAnimationActive={false} />
-            <Line yAxisId='requests' type='monotone' dataKey='requests' name={t('analytics.chart.requestCount')} stroke='var(--chart-4)' strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
-            <Line yAxisId='cost' type='monotone' dataKey='cost' name={t('analytics.chart.cost')} stroke='var(--chart-5)' strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            <Line
+              yAxisId='hitRate'
+              type='monotone'
+              dataKey='cacheHitRate'
+              name={t('analytics.chart.cacheHitRate')}
+              stroke='var(--chart-4)'
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 5 }}
+              isAnimationActive={false}
+            />
           </ComposedChart>
         </ResponsiveContainer>
       </CardContent>
