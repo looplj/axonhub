@@ -375,12 +375,15 @@ test('account-grouped label uses the most restrictive member mode', () => {
   assert.equal(mostRestrictiveRoutingMode([]), null);
 });
 
-test('grouped representatives render precomputed effective modes through memoized quota rows', () => {
+test('grouped representatives render precomputed effective modes through live quota rows', () => {
   assert.match(badgesSource, /displayItems\.map\(\(item\)/);
-  assert.match(badgesSource, /<MemoizedQuotaRow[\s\S]*?effectiveMode=\{effectiveModeByChannel\.get\(item\.channel\.id\) \?\? null\}/);
+  assert.match(badgesSource, /<QuotaRow[\s\S]*?effectiveMode=\{effectiveModeByChannel\.get\(item\.channel\.id\) \?\? null\}/);
   assert.match(badgesSource, /const effectiveModeByChannel = useMemo\([\s\S]*?buildEffectiveModeByChannel\(channels, dedupedChannels/);
-  assert.match(badgesSource, /const MemoizedQuotaRow = memo\(QuotaRow\)/);
   assert.doesNotMatch(badgesSource, /\.filter\(\(c\) => c\.accountKey === channel\.accountKey\)/);
+  // Rows read Date.now() for reset countdowns and elapsed markers; structural
+  // sharing keeps channel objects identical across unchanged polls, so a
+  // memoized row would freeze that text while the popover stays open.
+  assert.doesNotMatch(badgesSource, /memo\(QuotaRow\)/, 'QuotaRow must stay unmemoized so clock-derived text advances');
 });
 
 test('channels in quota popover are categorized with pill filters and section headers', () => {

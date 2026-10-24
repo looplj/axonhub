@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning, ArrowUpDown } from 'lucide-react';
@@ -2490,8 +2490,6 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
   );
 }
 
-const MemoizedQuotaRow = memo(QuotaRow);
-
 function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: ProviderQuotaChannel[]; isLoading?: boolean; isError?: boolean }) {
   if (isLoading) {
     return <Loader2 className='text-muted-foreground h-5 w-5 animate-spin' />;
@@ -2842,11 +2840,11 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
               <div className='bg-border/40 h-[1px] flex-1' />
             </div>
           ) : (
-            <MemoizedQuotaRow
-              key={item.channel.id}
-              channel={item.channel}
-              effectiveMode={effectiveModeByChannel.get(item.channel.id) ?? null}
-            />
+            // Deliberately unmemoized: rows derive reset countdowns and
+            // elapsed-time markers from Date.now(), and React Query's
+            // structural sharing keeps channel objects identical across
+            // unchanged polls — memoizing here froze those clocks.
+            <QuotaRow key={item.channel.id} channel={item.channel} effectiveMode={effectiveModeByChannel.get(item.channel.id) ?? null} />
           )
         )}
       </div>
