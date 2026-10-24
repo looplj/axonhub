@@ -76,6 +76,7 @@ const QUOTA_WINDOW_LABEL_KEYS: Record<string, string> = {
   credits: 'quota.label.credits_remaining',
   cycle: 'quota.window.cycle',
   overage: 'quota.label.overage_window',
+  search_hourly: 'quota.window.search_hourly',
 };
 
 function getQuotaLimits(channel: Channel) {

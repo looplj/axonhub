@@ -280,6 +280,22 @@ test('more than five normalized limits expose the remaining rows for expansion',
   assert.match(columns, /const hiddenCount = limits\.length - QUOTA_VISIBLE_LIMIT/);
 });
 
+test('the search quota reaches the table with its production label', () => {
+  assert.match(
+    columnsSource,
+    /search_hourly:\s*'quota\.window\.search_hourly'/,
+    'the table must map the search window through the production label map'
+  );
+
+  const limits = parseQuotaLimits({
+    _limits: [{ type: 'search', window: 'search_hourly', status: 'available', ready: true, usageRatio: 0.4 }],
+  });
+  assert.deepEqual(
+    limits.map(({ type, window, usageRatio }) => ({ type, window, usageRatio })),
+    [{ type: 'search', window: 'search_hourly', usageRatio: 0.4 }]
+  );
+});
+
 test('channels table container allows horizontal scroll and wraps in min-w-max without table-fixed', () => {
   const tableSource = read('features/channels/components/channels-table.tsx');
   assert.doesNotMatch(tableSource, /overflow-x-hidden/, 'table container must not disable horizontal scroll');
@@ -336,5 +352,3 @@ test('supported models cell bounds badge container width to prevent horizontal s
     'supported models badge container must have a max-width wrapper so badges wrap instead of stretching the table'
   );
 });
-
-
