@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import type { ChannelQuotaRoutingMode } from '@/features/channels/data/schema';
@@ -22,6 +23,7 @@ const PROVIDER_QUOTA_STATUSES_QUERY = `
           id
           name
           type
+          orderingWeight
           settings {
             quotaRoutingMode
           }
@@ -260,7 +262,6 @@ export type ProviderOpenCodeGoQuotaData = ProviderQuotaDataCommon & {
   };
 };
 
-
 export type KimiCodeUsageRow = {
   label: string;
   used: number;
@@ -441,10 +442,7 @@ type ProviderClineErrorQuotaData = ProviderQuotaDataCommon & {
 };
 
 export type ProviderClineQuotaData =
-  | ProviderClinePassQuotaData
-  | ProviderClineUnavailablePassQuotaData
-  | ProviderClineDirectQuotaData
-  | ProviderClineErrorQuotaData;
+  ProviderClinePassQuotaData | ProviderClineUnavailablePassQuotaData | ProviderClineDirectQuotaData | ProviderClineErrorQuotaData;
 
 export function isClineActivePassQuotaData(qd: ProviderClineQuotaData): qd is ProviderClinePassQuotaData {
   return qd.pool === 'cline_pass' && qd.windows != null;
@@ -652,6 +650,10 @@ function parseClaudeQuotaData(quotaData: unknown, limits: ProviderQuotaLimit[]):
 export type ProviderQuotaChannel = {
   id: string;
   name: string;
+  // Display-sort rank set via the channels page "Order channels" dialog; the
+  // load balancer treats higher weight as higher priority, so the quota
+  // popover mirrors that order in its 'preferred' sort mode.
+  orderingWeight: number;
   // Account identity shared by channels drawing from the same provider account
   // (e.g. the same ZenMux management key). Undefined means the channel has its
   // own quota account.
@@ -808,6 +810,7 @@ type QueryChannelNode = {
   id: string;
   name: string;
   type: string;
+  orderingWeight: number;
   settings: { quotaRoutingMode: ChannelQuotaRoutingMode } | null;
   providerQuotaStatus: ProviderQuotaStatusNode | null;
 };
@@ -835,6 +838,7 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
   const base = {
     id: node.id,
     name: node.name,
+    orderingWeight: node.orderingWeight,
     quotaRoutingMode: node.settings?.quotaRoutingMode ?? 'INHERIT',
     accountKey: optionalString(quotaStatus.accountKey),
     quotaStatus: {
@@ -1017,17 +1021,22 @@ export function useProviderQuotaStatuses() {
     refetchIntervalInBackground: true,
   });
 
-  const channels = (query.data?.queryChannels?.edges ?? [])
-    .map((edge) => edge?.node ?? null)
-    .filter(hasProviderQuotaStatus)
-    .filter((c) => {
-      // Skip channels that have no credentials configured, since they cannot be
-      // checked and only add noise to the quota popover. Other failures remain
-      // available with their generic status for administrators to inspect.
-      const quotaData = c.providerQuotaStatus.quotaData as { error?: string; error_code?: string } | undefined;
-      return quotaData?.error_code !== 'missing_credentials' && quotaData?.error !== 'channel has no credentials';
-    })
-    .map(parseChannelNode);
+  const edges = query.data?.queryChannels?.edges;
+  const channels = useMemo(
+    () =>
+      (edges ?? [])
+        .map((edge) => edge?.node ?? null)
+        .filter(hasProviderQuotaStatus)
+        .filter((c) => {
+          // Skip channels that have no credentials configured, since they cannot be
+          // checked and only add noise to the quota popover. Other failures remain
+          // available with their generic status for administrators to inspect.
+          const quotaData = c.providerQuotaStatus.quotaData as { error?: string; error_code?: string } | undefined;
+          return quotaData?.error_code !== 'missing_credentials' && quotaData?.error !== 'channel has no credentials';
+        })
+        .map(parseChannelNode),
+    [edges]
+  );
 
   return {
     channels,
