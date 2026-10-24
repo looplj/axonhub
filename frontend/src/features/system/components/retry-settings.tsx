@@ -275,7 +275,7 @@ export function RetrySettings() {
                   id='max-single-channel-retries'
                   type='number'
                   min='0'
-                  max='5'
+                  max='10'
                   value={formData.maxSingleChannelRetries}
                   onChange={(e) => handleInputChange('maxSingleChannelRetries', parseInt(e.target.value) || 0)}
                   className='w-32'
