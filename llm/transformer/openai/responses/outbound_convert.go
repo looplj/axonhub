@@ -258,8 +258,39 @@ func convertAssistantMessage(msg llm.Message) []Item {
 		})
 	}
 
-	// Handle tool calls
+	// Native Anthropic searches are already executed. Preserve their history
+	// as assistant text instead of replaying them as pending client functions.
+	var searchHistory strings.Builder
+	searchResults := make(map[string]bool)
 	for _, tc := range msg.ToolCalls {
+		if tc.Function.Name != "web_search" || tc.TransformerMetadata["anthropic_type"] != "server_tool_use" {
+			continue
+		}
+		searchHistory.WriteString("Web search " + tc.ID + ": " + tc.Function.Arguments + "\n")
+		for _, result := range msg.InlineToolResults {
+			if result.ToolCallID == tc.ID && result.TransformerMetadata["anthropic_type"] == "web_search_tool_result" {
+				searchHistory.WriteString("Web search result " + result.ToolCallID + ": " + result.Output + "\n")
+				searchResults[result.ToolCallID] = true
+			}
+		}
+	}
+	for _, result := range msg.InlineToolResults {
+		if result.TransformerMetadata["anthropic_type"] == "web_search_tool_result" && !searchResults[result.ToolCallID] {
+			searchHistory.WriteString("Web search result " + result.ToolCallID + ": " + result.Output + "\n")
+		}
+	}
+	if searchHistory.Len() > 0 {
+		items = append(items, Item{
+			Type: "message", Role: "assistant", Status: lo.ToPtr("completed"),
+			Content: &Input{Items: []Item{{Type: "output_text", Text: lo.ToPtr(searchHistory.String())}}},
+		})
+	}
+
+	// Handle client tool calls separately, including functions named web_search.
+	for _, tc := range msg.ToolCalls {
+		if tc.Function.Name == "web_search" && tc.TransformerMetadata["anthropic_type"] == "server_tool_use" {
+			continue
+		}
 		if tc.ResponseCustomToolCall != nil {
 			toolCallItems = append(toolCallItems, Item{
 				Type:   "custom_tool_call",
