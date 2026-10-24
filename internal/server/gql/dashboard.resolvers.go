@@ -739,7 +739,14 @@ func (r *queryResolver) ChannelSuccessRates(ctx context.Context, timeWindow *str
 func normalizeChannelSuccessRatesParams(timeWindow *string, limit *int) (*string, *int) {
 	window := "day"
 	if timeWindow != nil && *timeWindow != "" {
-		window = *timeWindow
+		switch *timeWindow {
+		case "day", "week", "month":
+			window = *timeWindow
+		default:
+			// Unknown windows are all-time in parseTimeWindow; canonicalize
+			// them so distinct spellings share one cache key.
+			window = "allTime"
+		}
 	}
 
 	limitCount := 0

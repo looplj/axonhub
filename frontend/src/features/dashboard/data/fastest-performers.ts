@@ -70,10 +70,7 @@ export function useFastestChannels(timeWindow: string = 'day', limit: number = 5
   return useQuery({
     queryKey: ['fastestChannels', timeWindow, limit],
     queryFn: async () => {
-      const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(
-        FASTEST_CHANNELS_QUERY,
-        { input: { timeWindow, limit } }
-      );
+      const data = await graphqlRequest<{ fastestChannels: FastestChannel[] }>(FASTEST_CHANNELS_QUERY, { input: { timeWindow, limit } });
       return data.fastestChannels.map((item) => fastestChannelSchema.parse(item));
     },
     refetchInterval: REFETCH_INTERVAL_MS,
@@ -87,10 +84,7 @@ export function useFastestModels(timeWindow: string = 'day', limit: number = 5) 
   return useQuery({
     queryKey: ['fastestModels', timeWindow, limit],
     queryFn: async () => {
-      const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(
-        FASTEST_MODELS_QUERY,
-        { input: { timeWindow, limit } }
-      );
+      const data = await graphqlRequest<{ fastestModels: FastestModel[] }>(FASTEST_MODELS_QUERY, { input: { timeWindow, limit } });
       return data.fastestModels.map((item) => fastestModelSchema.parse(item));
     },
     refetchInterval: REFETCH_INTERVAL_MS,
@@ -99,4 +93,3 @@ export function useFastestModels(timeWindow: string = 'day', limit: number = 5) 
     placeholderData: (previousData) => previousData, // Keep previous data while fetching to prevent flash
   });
 }
-

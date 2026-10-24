@@ -68,40 +68,11 @@ func cachedDashboardQuery[T any](
 
 	// DoChan lets each waiter stop when its own request is canceled, while the
 	// shared computation continues for the other dashboard viewers.
+	// DoChan runs the callback in its own goroutine, so a panic inside compute
+	// would bypass the request's recovery handlers. Recover here and turn the
+	// panic into an error shared by every waiter on this flight.
 	resultCh := dashboardQueryCacheGroup.DoChan(key, func() (any, error) {
-		if value, ok := loadDashboardCache[T](key); ok {
-			return value, nil
-		}
-
-		// The first caller may disconnect while other callers are waiting.
-		// Detach cancellation but keep authz values from the request context.
-		queryCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
-		defer cancel()
-
-		value, err := compute(queryCtx)
-		if err != nil {
-			return nil, err
-		}
-
-		expiresAt := time.Now().Add(ttl)
-		dashboardQueryCache.Store(key, dashboardCacheEntry{
-			value:     value,
-			expiresAt: expiresAt,
-		})
-		// Remove entries that are never looked up again. A refreshed entry has
-		// a later expiresAt, so the stale timer leaves it in place.
-		time.AfterFunc(ttl, func() {
-			raw, ok := dashboardQueryCache.Load(key)
-			if !ok {
-				return
-			}
-			entry, ok := raw.(dashboardCacheEntry)
-			if ok && !time.Now().Before(entry.expiresAt) {
-				dashboardQueryCache.Delete(key)
-			}
-		})
-
-		return value, nil
+		return computeDashboardCache[T](ctx, key, ttl, compute)
 	})
 
 	select {
@@ -121,6 +92,60 @@ func cachedDashboardQuery[T any](
 	}
 }
 
+// computeDashboardCache runs the shared computation for one flight: re-checks
+// the cache, computes, stores the result, and schedules expiry. Panics in
+// compute are recovered and returned as an error so singleflight propagates
+// them to every waiter as a normal resolver error.
+func computeDashboardCache[T any](
+	ctx context.Context,
+	key string,
+	ttl time.Duration,
+	compute func(context.Context) (T, error),
+) (value any, err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			value = nil
+			err = fmt.Errorf("dashboard cache computation panicked: %v", rec)
+		}
+	}()
+
+	if cached, ok := loadDashboardCache[T](key); ok {
+		return cached, nil
+	}
+
+	// The first caller may disconnect while other callers are waiting.
+	// Detach cancellation but keep authz values from the request context.
+	queryCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+	defer cancel()
+
+	value, err = compute(queryCtx)
+	if err != nil {
+		return nil, err
+	}
+
+	expiresAt := time.Now().Add(ttl)
+	// Stored as a pointer so the expiry timer can CAS with interface values
+	// that compare by pointer identity. The entry's value field holds an
+	// uncomparable slice, and sync.Map panics on value comparisons of
+	// uncomparable dynamic values.
+	entry := &dashboardCacheEntry{
+		value:     value,
+		expiresAt: expiresAt,
+	}
+	dashboardQueryCache.Store(key, entry)
+	// Remove entries that are never looked up again. CompareAndDelete on the
+	// exact observed entry pointer means a refreshed entry (a new allocation,
+	// a different pointer) survives the stale timer.
+	time.AfterFunc(ttl, func() {
+		if time.Now().Before(expiresAt) {
+			return
+		}
+		dashboardQueryCache.CompareAndDelete(key, entry)
+	})
+
+	return value, nil
+}
+
 func loadDashboardCache[T any](key string) (T, bool) {
 	var zero T
 
@@ -129,9 +154,20 @@ func loadDashboardCache[T any](key string) (T, bool) {
 		return zero, false
 	}
 
-	entry, ok := raw.(dashboardCacheEntry)
+	entry, ok := raw.(*dashboardCacheEntry)
 	if !ok || time.Now().After(entry.expiresAt) {
-		dashboardQueryCache.Delete(key)
+		// Only remove the exact stale entry that was observed; a concurrent
+		// refresh stored a new allocation with a different pointer and must
+		// survive.
+		if ok {
+			dashboardQueryCache.CompareAndDelete(key, entry)
+		} else {
+			// A value that is not *dashboardCacheEntry should not happen here.
+			// CompareAndDelete on the exact observed value is the safe
+			// conditional delete: it can only match what Load returned, so a
+			// concurrent replacement cannot be removed.
+			dashboardQueryCache.CompareAndDelete(key, raw)
+		}
 		return zero, false
 	}
 

@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -130,6 +131,76 @@ func TestDashboardUsageAggregatesShareOneGroupedScan(t *testing.T) {
 	require.Equal(t, 2, modelStats[0].Count)
 	require.Equal(t, "model-b", modelStats[1].ModelID)
 	require.Equal(t, 1, modelStats[1].Count)
+}
+
+// countUsageLogGroupedScans counts the ent queries issued through the
+// resolver's client against usage_logs. After the counter is installed, the
+// dashboard aggregate GroupBy scans are the only code path that SELECTs from
+// usage_logs in this test (fixture setup uses mutations, which do not go
+// through ent query interceptors), so each intercepted query is one grouped
+// scan of usage_logs.
+func countUsageLogGroupedScans(client *ent.Client) *int {
+	var scans int
+	var mu sync.Mutex
+
+	client.UsageLog.Intercept(ent.InterceptFunc(func(next ent.Querier) ent.Querier {
+		return ent.QuerierFunc(func(ctx context.Context, q ent.Query) (ent.Value, error) {
+			mu.Lock()
+			scans++
+			mu.Unlock()
+			return next.Query(ctx, q)
+		})
+	}))
+
+	return &scans
+}
+
+// TestDashboardUsageWidgetsShareOneAggregateScan verifies that the request,
+// cost and token widgets for one dimension are mapped from a single grouped
+// scan of usage_logs. The existing TestDashboardUsageAggregatesShareOneGroupedScan
+// covers the mapped results; this test counts the underlying scans through
+// ent's query interceptor, which is the existing extension point the cache's
+// single shared scan must go through.
+func TestDashboardUsageWidgetsShareOneAggregateScan(t *testing.T) {
+	resolver, ctx := newDashboardUsageTestResolver(t)
+	client := resolver.client
+	scans := countUsageLogGroupedScans(client)
+
+	channelA := createDashboardUsageChannel(t, ctx, client, "channel-a")
+	channelB := createDashboardUsageChannel(t, ctx, client, "channel-b")
+
+	costA := 0.5
+	costB := 2.0
+	createDashboardUsageLog(t, ctx, client, channelA.ID, "model-a", 100, 10, &costA, nil)
+	createDashboardUsageLog(t, ctx, client, channelA.ID, "model-a", 200, 20, &costA, nil)
+	createDashboardUsageLog(t, ctx, client, channelB.ID, "model-b", 300, 40, &costB, nil)
+
+	requestStats, err := resolver.RequestStatsByChannel(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, *scans, "the first widget run must be exactly one grouped scan")
+
+	costStats, err := resolver.CostStatsByChannel(ctx, nil)
+	require.NoError(t, err)
+	tokenStats, err := resolver.TokenStatsByChannel(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, 1, *scans, "the three widgets for one dimension must share the one grouped scan")
+
+	// The shared scan's rows are mapped independently per widget, preserving
+	// each widget's ranking: channel-a leads in requests (2), channel-b
+	// leads in both cost (2.0) and tokens (340).
+	require.Equal(t, "channel-a", requestStats[0].ChannelName)
+	require.Equal(t, 2, requestStats[0].Count)
+	require.Equal(t, "channel-b", costStats[0].ChannelName)
+	require.InDelta(t, 2.0, costStats[0].Cost, 1e-9)
+	require.Equal(t, "channel-b", tokenStats[0].ChannelName)
+	require.Equal(t, 340, tokenStats[0].TotalTokens)
+
+	// The model dimension runs one group scan of its own.
+	modelStats, err := resolver.RequestStatsByModel(ctx, nil)
+	require.NoError(t, err)
+	require.Equal(t, 2, *scans, "the model dimension must get its own single grouped scan")
+	require.Equal(t, "model-a", modelStats[0].ModelID)
+	require.Equal(t, 2, modelStats[0].Count)
 }
 
 func TestDashboardUsageAggregatesLimitEachDimension(t *testing.T) {
