@@ -184,6 +184,8 @@ const modeHelperNames = [
   'mostRestrictiveRoutingMode',
   'buildEffectiveModeByChannel',
   'getQuotaSortLabelKey',
+  'resolveActiveQuotaCategory',
+  'sortQuotaChannels',
   'readStoredBoolean',
   'readStoredSortMode',
   'writeStoredPreference',
@@ -196,8 +198,19 @@ const modeHelperNames = [
   'buildQuotaDisplayItems',
 ];
 const modeHelperNodes = badgesAst.statements.filter((node) => ts.isFunctionDeclaration(node) && modeHelperNames.includes(node.name?.text));
-assert.equal(modeHelperNodes.length, 14, 'helpers must stay in quota-badges.tsx');
-const modeHelpers = modeHelperNodes.map((node) => `export ${node.getText(badgesAst).replace(/^export\s+/, '')}`).join('\n');
+assert.equal(modeHelperNodes.length, 16, 'helpers must stay in quota-badges.tsx');
+// The active-category resolver reads this module constant, so the extracted
+// module needs it too.
+const helperConstNames = ['WIDE_QUOTA_POPOVER_CHANNEL_COUNT'];
+const helperConstNodes = badgesAst.statements.filter(
+  (node) =>
+    ts.isVariableStatement(node) &&
+    node.declarationList.declarations.some((decl) => ts.isIdentifier(decl.name) && helperConstNames.includes(decl.name.text))
+);
+assert.equal(helperConstNodes.length, 1, 'the wide-popover threshold must stay a module constant');
+const modeHelpers = [...helperConstNodes, ...modeHelperNodes]
+  .map((node) => `export ${node.getText(badgesAst).replace(/^export\s+/, '')}`)
+  .join('\n');
 
 function loadTsModule(sourceText) {
   const { outputText } = ts.transpileModule(sourceText, {
@@ -211,6 +224,8 @@ const {
   mostRestrictiveRoutingMode,
   buildEffectiveModeByChannel,
   getQuotaSortLabelKey,
+  resolveActiveQuotaCategory,
+  sortQuotaChannels,
   readStoredBoolean,
   readStoredSortMode,
   writeStoredPreference,
@@ -290,6 +305,9 @@ test('quota grouping and sort preferences persist through browser storage', () =
     assert.equal(readStoredBoolean('quota-grouped', true), true);
     writeStoredPreference('quota-grouped', 'false');
     assert.equal(readStoredBoolean('quota-grouped', true), false);
+    // A corrupt value falls back instead of silently disabling grouping.
+    values.set('quota-grouped', 'yes');
+    assert.equal(readStoredBoolean('quota-grouped', true), true);
     // Sort mode round-trips; unknown stored values fall back to preferred.
     writeStoredPreference('quota-sort', 'created');
     assert.equal(readStoredSortMode('quota-sort'), 'created');
@@ -317,13 +335,35 @@ test('grouped toggle controls pills and section headers and is persisted', () =>
   assert.match(badgesSource, /writeStoredPreference\(QUOTA_GROUPED_STORAGE_KEY, String\(grouped\)\)/);
   assert.match(badgesSource, /writeStoredPreference\(QUOTA_SORT_MODE_STORAGE_KEY, sortMode\)/);
   assert.match(badgesSource, /onCheckedChange=\{\(checked\) => setGrouped\(checked === true\)\}/);
-  assert.match(badgesSource, /\{sortedChannels\.length > 4 && \(\s*\/\/ Same wide-popover gate as the pill strip/);
+  assert.match(
+    badgesSource,
+    /\{sortedChannels\.length > WIDE_QUOTA_POPOVER_CHANNEL_COUNT && \(\s*\/\/ Same wide-popover gate as the pill strip/
+  );
   assert.match(badgesSource, /system\.providerQuota\.grouped/);
-  // Off: flat rows without headers, no pills, and the hidden filter is ignored.
+  // Off: flat rows without headers, no pills.
   assert.match(badgesSource, /grouped\s*\?\s*buildQuotaDisplayItems/);
   assert.match(badgesSource, /:\s*groupedChannels\.map\(\(channel\) => \(\{ kind: 'row' as const, channel \}\)\)/);
-  assert.match(badgesSource, /grouped && selectedCategory !== 'all'/);
-  assert.match(badgesSource, /\{grouped && !isLoading && !isError && sortedChannels\.length > 4 && \(/);
+  assert.match(
+    badgesSource,
+    /resolveActiveQuotaCategory\(grouped, sortedChannels\.length, selectedCategory, categories\)/,
+    'The active category must go through the visibility-aware resolver'
+  );
+  assert.match(badgesSource, /\{grouped && !isLoading && !isError && sortedChannels\.length > WIDE_QUOTA_POPOVER_CHANNEL_COUNT && \(/);
+});
+
+test('a hidden category filter can never keep rows out of the list', () => {
+  const categories = [{ key: 'codex' }, { key: 'nanogpt' }];
+
+  // Visible controls in the wide grouped popover: the selection applies.
+  assert.equal(resolveActiveQuotaCategory(true, 7, 'codex', categories), 'codex');
+  // Ungrouped: the pills are gone, so the filter must not narrow anything.
+  assert.equal(resolveActiveQuotaCategory(false, 7, 'codex', categories), 'all');
+  // Channel count drops to the narrow popover threshold: same reasoning.
+  assert.equal(resolveActiveQuotaCategory(true, 4, 'codex', categories), 'all');
+  // A selected category that no longer exists also falls back.
+  assert.equal(resolveActiveQuotaCategory(true, 7, 'apertis', categories), 'all');
+  // No explicit selection stays on all.
+  assert.equal(resolveActiveQuotaCategory(true, 7, 'all', categories), 'all');
 });
 
 test('account-grouped label uses the most restrictive member mode', () => {
@@ -354,7 +394,7 @@ test('channels in quota popover are categorized with pill filters and section he
   // it can never wrap into the multi-row strip that ate the popover before.
   assert.match(
     badgesSource,
-    /\{grouped && !isLoading && !isError && sortedChannels\.length > 4 && \(\s*\/\/ Pills as their own single scrollable line/,
+    /\{grouped && !isLoading && !isError && sortedChannels\.length > WIDE_QUOTA_POPOVER_CHANNEL_COUNT && \(\s*\/\/ Pills as their own single scrollable line/,
     'Pill strip renders on its own line only while grouping is on in the wide popover'
   );
   assert.match(badgesSource, /flex items-center gap-1 overflow-x-auto pb-1\.5/, 'Pill strip is a single scrollable line');
@@ -364,12 +404,16 @@ test('channels in quota popover are categorized with pill filters and section he
   assert.match(badgesSource, /shrink-0[^`]*whitespace-nowrap/, 'Pills must not shrink or wrap mid-label');
   assert.match(badgesSource, /col-span-full[\s\S]*?uppercase/, 'Popover should render section header across full grid width');
   assert.match(badgesSource, /item\.cat\.count/, 'Section header counter must read from the category count');
-  assert.match(badgesSource, /activeCategory[\s\S]*?categories\.some/, 'Selection must fall back to all when selected category disappears');
+  assert.match(
+    badgesSource,
+    /function resolveActiveQuotaCategory\([\s\S]*?categories\.some\(\(c\) => c\.key === selectedCategory\)/,
+    'Selection must fall back to all when the category filter is hidden or the category disappears'
+  );
   assert.match(badgesSource, /text-foreground truncate font-medium|truncate font-medium/, 'Channel name should be truncated with ellipsis');
   assert.match(badgesSource, /ml-2 flex shrink-0/, 'Badge container should not shrink and have left margin');
   assert.match(
     badgesSource,
-    /sortedChannels\.length > 4 \? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2'/,
+    /sortedChannels\.length > WIDE_QUOTA_POPOVER_CHANNEL_COUNT \? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2'/,
     'Dual-column grid should be based on total sorted channels'
   );
 });
@@ -386,14 +430,7 @@ test('channel categories order alphabetically and sort stably by name within gro
     { id: '7', name: 'codex-y', type: 'codex' },
   ];
 
-  const sorted = [...sampleChannels].sort((a, b) => {
-    const catA = getChannelCategory(a, t);
-    const catB = getChannelCategory(b, t);
-    if (catA.label === catB.label) {
-      return catA.key.localeCompare(catB.key) || a.name.localeCompare(b.name);
-    }
-    return catA.label.localeCompare(catB.label) || a.name.localeCompare(b.name);
-  });
+  const sorted = sortQuotaChannels(sampleChannels, 'alphabetical', t);
 
   // Pure label alphabetical order across category groups: 'Antigravity' <
   // 'Claude Code' < 'Codex' < 'GitHub Copilot' < 'NanoGPT' — the fixture
@@ -497,6 +534,7 @@ test('section headers only precede multi-channel categories so rows keep pairing
 // The sort control is a labeled dropdown with radio items: three mutually
 // exclusive modes are beyond what a hover-only cycling icon can communicate.
 test('sort control is a labeled dropdown cycling preferred, alphabetical, creation order', () => {
+  const t = (key) => key;
   assert.match(
     badgesSource,
     /sortMode, setSortMode\] = useState<QuotaSortMode>\(\(\) => readStoredSortMode\(QUOTA_SORT_MODE_STORAGE_KEY\)\)/,
@@ -529,17 +567,35 @@ test('sort control is a labeled dropdown cycling preferred, alphabetical, creati
   // to the backend default (numeric id ASC).
   assert.match(
     badgesSource,
-    /b\.orderingWeight - a\.orderingWeight \|\| a\.id\.localeCompare\(b\.id, 'en', \{ numeric: true \}\)/,
-    'Preferred mode sorts by ordering weight desc with id tiebreak'
+    /b\.orderingWeight - a\.orderingWeight \|\| byCreated\(a, b\)/,
+    'Preferred mode sorts by ordering weight desc with the shared creation tiebreak'
   );
 
-  // The comparator used in created mode matches how the backend orders
-  // channels: numeric ascending on the GUID tail.
-  const byCreation = (a, b) => a.localeCompare(b, 'en', { numeric: true });
+  // Exercise the production helper: created mode matches the backend order
+  // (numeric ascending on the GUID tail) and preferred mode ranks weight first.
+  const byCreation = (ids) =>
+    sortQuotaChannels(
+      ids.map((id) => ({ id })),
+      'created',
+      t
+    ).map((channel) => channel.id);
   assert.deepEqual(
-    ['gid://axonhub/Channel/9', 'gid://axonhub/Channel/10', 'gid://axonhub/Channel/2'].sort(byCreation),
+    byCreation(['gid://axonhub/Channel/9', 'gid://axonhub/Channel/10', 'gid://axonhub/Channel/2']),
     ['gid://axonhub/Channel/2', 'gid://axonhub/Channel/9', 'gid://axonhub/Channel/10'],
     'Numeric compare must not sort ids lexicographically (2 < 10)'
+  );
+  assert.deepEqual(
+    sortQuotaChannels(
+      [
+        { id: 'gid://axonhub/Channel/7', orderingWeight: 10 },
+        { id: 'gid://axonhub/Channel/3', orderingWeight: 50 },
+        { id: 'gid://axonhub/Channel/11', orderingWeight: 10 },
+      ],
+      'preferred',
+      t
+    ).map((channel) => channel.id),
+    ['gid://axonhub/Channel/3', 'gid://axonhub/Channel/7', 'gid://axonhub/Channel/11'],
+    'Preferred order ranks higher weight first, ties by numeric id'
   );
 });
 

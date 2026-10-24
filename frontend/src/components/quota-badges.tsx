@@ -2526,6 +2526,9 @@ type QuotaSortMode = 'preferred' | 'alphabetical' | 'created';
 
 const QUOTA_GROUPED_STORAGE_KEY = 'provider-quota-grouped';
 const QUOTA_SORT_MODE_STORAGE_KEY = 'provider-quota-sort-mode';
+// Above this many channels the popover widens into the two-column layout and
+// grows the grouping controls; every visibility gate reads this one constant.
+const WIDE_QUOTA_POPOVER_CHANNEL_COUNT = 4;
 
 // Preferences persist the same way the channels table view options do:
 // best-effort localStorage reads at mount and writes on change, silently
@@ -2533,7 +2536,9 @@ const QUOTA_SORT_MODE_STORAGE_KEY = 'provider-quota-sort-mode';
 function readStoredBoolean(key: string, fallback: boolean): boolean {
   try {
     const stored = localStorage.getItem(key);
-    return stored === null ? fallback : stored === 'true';
+    if (stored === 'true') return true;
+    if (stored === 'false') return false;
+    return fallback;
   } catch {
     return fallback;
   }
@@ -2633,6 +2638,46 @@ function getChannelCategory(channel: ProviderQuotaChannel, t: TranslateFn): Quot
   return { key: channelType, label };
 }
 
+// A category filter only applies while its controls are visible (grouped view
+// in the wide popover). Otherwise rows would vanish with no way to clear the
+// selection — for example when the channel count drops below the wide
+// threshold while a category is selected.
+function resolveActiveQuotaCategory(
+  grouped: boolean,
+  channelCount: number,
+  selectedCategory: string,
+  categories: ReadonlyArray<QuotaCategory>
+): string {
+  if (!grouped || channelCount <= WIDE_QUOTA_POPOVER_CHANNEL_COUNT) return 'all';
+  return selectedCategory !== 'all' && categories.some((c) => c.key === selectedCategory) ? selectedCategory : 'all';
+}
+
+// Channel-list-order mode mirrors the operator's channel list: the load
+// balancer ranks higher OrderingWeight higher, ties fall back to the backend
+// default (Channel.ID ASC). Alphabetical mode: category label, then channel
+// name; the former hardcoded category priorities had no operational rationale
+// and made pill order diverge from what users expect when scanning for a
+// provider. Created mode: backend default order (Channel.ID ASC), i.e. the
+// pre-pills-pr creation order.
+function sortQuotaChannels(channels: readonly ProviderQuotaChannel[], sortMode: QuotaSortMode, t: TranslateFn): ProviderQuotaChannel[] {
+  const byCreated = (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => a.id.localeCompare(b.id, 'en', { numeric: true });
+  const compare =
+    sortMode === 'alphabetical'
+      ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => {
+          const catA = getChannelCategory(a, t);
+          const catB = getChannelCategory(b, t);
+          if (catA.label === catB.label) {
+            return catA.key.localeCompare(catB.key) || a.name.localeCompare(b.name);
+          }
+          return catA.label.localeCompare(catB.label) || a.name.localeCompare(b.name);
+        }
+      : sortMode === 'preferred'
+        ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => b.orderingWeight - a.orderingWeight || byCreated(a, b)
+        : byCreated;
+
+  return [...channels].sort(compare);
+}
+
 // One display item per grid cell: either a full-width section header or a
 // channel row. Multi-channel categories need a header as the visual boundary
 // (and a pill-filter target); single-channel categories skip the header so
@@ -2723,31 +2768,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
     [channels]
   );
 
-  // Channel-list-order mode mirrors the operator's channel list: the load
-  // balancer ranks higher OrderingWeight higher, ties fall back to the
-  // backend default (Channel.ID ASC). Alphabetical mode: category label,
-  // then channel name; the former hardcoded category priorities had no
-  // operational rationale and made pill order diverge from what users
-  // expect when scanning for a provider. Created mode: backend default
-  // order (Channel.ID ASC), i.e. the pre-pills-pr creation order.
-  const sortedChannels = useMemo(() => {
-    const compareByCategory =
-      sortMode === 'alphabetical'
-        ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => {
-            const catA = getChannelCategory(a, t);
-            const catB = getChannelCategory(b, t);
-            if (catA.label === catB.label) {
-              return catA.key.localeCompare(catB.key) || a.name.localeCompare(b.name);
-            }
-            return catA.label.localeCompare(catB.label) || a.name.localeCompare(b.name);
-          }
-        : sortMode === 'preferred'
-          ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) =>
-              b.orderingWeight - a.orderingWeight || a.id.localeCompare(b.id, 'en', { numeric: true })
-          : (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => a.id.localeCompare(b.id, 'en', { numeric: true });
-
-    return [...dedupedChannels].sort(compareByCategory);
-  }, [dedupedChannels, sortMode, t]);
+  const sortedChannels = useMemo(() => sortQuotaChannels(dedupedChannels, sortMode, t), [dedupedChannels, sortMode, t]);
 
   const categories = useMemo(() => {
     const categoryCounts = sortedChannels.reduce(
@@ -2769,11 +2790,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
     );
   }, [sortedChannels, t]);
 
-  // Fall back to 'all' if selectedCategory is no longer available in the active
-  // categories. Ungrouped view hides the pills, so a hidden filter must never
-  // keep narrowing the list.
-  const activeCategory =
-    grouped && selectedCategory !== 'all' && categories.some((c) => c.key === selectedCategory) ? selectedCategory : 'all';
+  const activeCategory = resolveActiveQuotaCategory(grouped, sortedChannels.length, selectedCategory, categories);
 
   const groupedChannels = useMemo(
     () => (activeCategory === 'all' ? sortedChannels : sortedChannels.filter((ch) => getChannelCategory(ch, t).key === activeCategory)),
@@ -2813,7 +2830,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
 
     return (
       <div
-        className={`max-h-[60vh] overflow-y-auto pr-1 pl-1 ${sortedChannels.length > 4 ? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2' : ''}`}
+        className={`max-h-[60vh] overflow-y-auto pr-1 pl-1 ${sortedChannels.length > WIDE_QUOTA_POPOVER_CHANNEL_COUNT ? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2' : ''}`}
       >
         {displayItems.map((item) =>
           item.kind === 'header' ? (
@@ -2845,7 +2862,9 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
       </PopoverTrigger>
       <PopoverContent
         className={
-          !isLoading && !isError && sortedChannels.length > 4 ? 'w-[640px] max-w-[calc(100vw-2rem)]' : 'w-80 max-w-[calc(100vw-2rem)]'
+          !isLoading && !isError && sortedChannels.length > WIDE_QUOTA_POPOVER_CHANNEL_COUNT
+            ? 'w-[640px] max-w-[calc(100vw-2rem)]'
+            : 'w-80 max-w-[calc(100vw-2rem)]'
         }
         align='end'
       >
@@ -2853,7 +2872,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
           <div className='flex items-center justify-between'>
             <div className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>{t('system.providerQuota.title')}</div>
             <div className='flex items-center gap-1.5'>
-              {sortedChannels.length > 4 && (
+              {sortedChannels.length > WIDE_QUOTA_POPOVER_CHANNEL_COUNT && (
                 // Same wide-popover gate as the pill strip: grouping only
                 // matters once the list is big enough to scan, and the narrow
                 // header stays uncluttered.
@@ -2892,7 +2911,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
             </div>
           </div>
 
-          {grouped && !isLoading && !isError && sortedChannels.length > 4 && (
+          {grouped && !isLoading && !isError && sortedChannels.length > WIDE_QUOTA_POPOVER_CHANNEL_COUNT && (
             // Pills as their own single scrollable line below the header —
             // nothing competes with the title row, and the line can never
             // wrap into the multi-row strip that ate the popover before.
