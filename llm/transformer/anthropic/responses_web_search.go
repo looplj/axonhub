@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/url"
 	"slices"
+	"strings"
 
 	"github.com/samber/lo"
 
@@ -125,7 +126,21 @@ func responsesSearchBlocks(metadata map[string]any, seen map[string]responsesSea
 							continue
 						}
 						urls[source.URL] = true
-						sources = append(sources, map[string]string{"type": "web_search_result", "url": source.URL, "title": source.Title})
+						title := source.Title
+						if strings.TrimSpace(title) == "" {
+							// A matching citation can supply a title without changing
+							// which sources belong to this search.
+							for _, citation := range citedSources {
+								if responsesSearchTitleURL(citation.URL) == responsesSearchTitleURL(source.URL) && strings.TrimSpace(citation.Title) != "" {
+									title = citation.Title
+									break
+								}
+							}
+						}
+						if strings.TrimSpace(title) == "" {
+							title = source.URL
+						}
+						sources = append(sources, map[string]string{"type": "web_search_result", "url": source.URL, "title": title})
 					}
 				}
 				// Citations describe the answer, not a particular call. They
@@ -145,6 +160,24 @@ func responsesSearchBlocks(metadata map[string]any, seen map[string]responsesSea
 		seen[call.ID] = state
 	}
 	return blocks
+}
+
+// responsesSearchTitleURL ignores known tracking parameters only for title
+// matching. Preserve the original result URLs and all page-selecting parameters.
+func responsesSearchTitleURL(raw string) string {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return raw
+	}
+	query, err := url.ParseQuery(parsed.RawQuery)
+	if err != nil {
+		return raw
+	}
+	for _, key := range []string{"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"} {
+		query.Del(key)
+	}
+	parsed.RawQuery = query.Encode()
+	return parsed.String()
 }
 
 func (s *anthropicInboundStream) emitResponsesSearchBlocks(metadata map[string]any, final bool) error {

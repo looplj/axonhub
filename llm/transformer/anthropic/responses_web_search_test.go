@@ -45,6 +45,60 @@ func TestResponsesSearchBlocksPreserveSourcesWithoutFabricatingEncryption(t *tes
 	require.JSONEq(t, `[{"type":"web_search_result","url":"https://debian.org","title":"Debian"}]`, string(raw))
 }
 
+func TestResponsesSearchBlocksFillMissingSourceTitles(t *testing.T) {
+	seen := make(map[string]responsesSearchState)
+	metadata := map[string]any{"openai_responses_web_search_calls": json.RawMessage(`[
+		{"id":"a","status":"completed","action":{"query":"Debian","sources":[
+			{"url":"https://debian.org/","title":"Original"},
+			{"url":"https://debian.org/releases/"},
+			{"url":"https://debian.org/distrib/","title":" \t"}
+		]}},
+		{"id":"b","status":"completed","action":{"query":"Other","sources":[{"url":"https://example.org/"}]}}
+	]`)}
+	// Titles may arrive in answer citations after the search completes.
+	responsesSearchBlocks(metadata, seen, false, nil)
+	cited := []responsesSearchSource{
+		{URL: "https://debian.org/", Title: "Replacement"},
+		{URL: "https://debian.org/releases/?utm_source=openai", Title: "Debian Releases"},
+		{URL: "https://debian.org/distrib", Title: "Not an exact match"},
+		{URL: "https://example.org/", Title: "Example"},
+		{URL: "https://unrelated.org/", Title: "Unrelated"},
+	}
+	blocks := responsesSearchBlocks(nil, seen, true, cited)
+	require.Len(t, blocks, 2)
+	raw, err := json.Marshal(blocks[0].Content)
+	require.NoError(t, err)
+	require.JSONEq(t, `[
+		{"type":"web_search_result","url":"https://debian.org/","title":"Original"},
+		{"type":"web_search_result","url":"https://debian.org/releases/","title":"Debian Releases"},
+		{"type":"web_search_result","url":"https://debian.org/distrib/","title":"https://debian.org/distrib/"}
+	]`, string(raw))
+	raw, err = json.Marshal(blocks[1].Content)
+	require.NoError(t, err)
+	require.JSONEq(t, `[{"type":"web_search_result","url":"https://example.org/","title":"Example"}]`, string(raw))
+}
+
+func TestResponsesSearchTitleURL(t *testing.T) {
+	for _, tc := range []struct {
+		name, source, citation string
+		match                  bool
+	}{
+		{"tracking", "https://example.org/?page=2", "https://example.org/?utm_source=openai&page=2&utm_medium=search", true},
+		{"query order", "https://example.org/?a=1&b=2", "https://example.org/?b=2&a=1", true},
+		{"different page", "https://example.org/?page=2", "https://example.org/?page=3&utm_source=openai", false},
+		{"unknown parameter", "https://example.org/", "https://example.org/?source=other", false},
+		{"fragment", "https://example.org/#one", "https://example.org/#two", false},
+		{"path", "https://example.org/one", "https://example.org/two", false},
+		{"host", "https://example.org/", "https://other.org/", false},
+		{"scheme", "https://example.org/", "http://example.org/", false},
+		{"malformed query", "https://example.org/", "https://example.org/?utm_source=%zz", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.match, responsesSearchTitleURL(tc.source) == responsesSearchTitleURL(tc.citation))
+		})
+	}
+}
+
 func TestResponsesSearchBlocksWaitForLateDetails(t *testing.T) {
 	seen := make(map[string]responsesSearchState)
 	snapshot := func(raw string, final bool) []MessageContentBlock {
