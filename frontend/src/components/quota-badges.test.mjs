@@ -1,7 +1,9 @@
+import React from 'react';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
+import { renderToStaticMarkup } from 'react-dom/server';
 import ts from 'typescript';
 
 const componentsDir = import.meta.dirname;
@@ -109,15 +111,12 @@ test('quota window identifiers resolve to localized labels', () => {
   assert.match(quotaBadges, /limit\.window === 'primary' \|\| limit\.window === 'secondary'/);
 });
 
-test('Wafer and Apertis duration markers share timestamp validation', () => {
+test('Apertis duration marker shares timestamp validation', () => {
   const quotaBadges = read('components/quota-badges.tsx');
-  const waferStart = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'wafer' &&");
-  const waferEnd = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'synthetic' &&");
   const apertisStart = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'apertis' &&");
   const apertisEnd = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'charm_hyper' &&");
 
   assert.match(quotaBadges, /function getDurationPercent\([\s\S]*?Number\.isFinite\(start\)[\s\S]*?end <= start/);
-  assert.match(quotaBadges.slice(waferStart, waferEnd), /durationPercent=\{getDurationPercent\(qd\.window_start, qd\.window_end\)\}/);
   assert.match(
     quotaBadges.slice(apertisStart, apertisEnd),
     /durationPercent=\{getDurationPercent\(qd\.subscription\.cycle_start, qd\.subscription\.cycle_end\)\}/
@@ -326,4 +325,448 @@ test('mode badge labels are locale-complete and legacy enforcement keys are gone
     );
     assert.deepEqual(legacy, [], `${name}/system.json still has legacy quota status keys`);
   }
+});
+test('Synthetic badge lists the hourly search quota without gating', () => {
+  const source = read('components/quota-badges.tsx');
+  const start = source.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'synthetic' &&");
+  const end = source.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'neuralwatt' &&", start);
+  const syntheticBlock = source.slice(start, end);
+
+  assert.match(syntheticBlock, /qd\.search\?\.hourly/);
+  assert.match(syntheticBlock, /searchHourly\.requests != null/);
+  assert.match(syntheticBlock, /'quota\.label\.search_requests'/);
+  assert.match(syntheticBlock, /calcDurationPercent\(3600,/);
+  assert.match(syntheticBlock, /formatTimeToReset\(searchHourly\.renewsAt\)/);
+
+  // Provider-reported credits are USD; every other provider keeps the
+  // configured display currency.
+  assert.match(source, /currency=\{channel\.providerType === 'synthetic' \? 'USD' : undefined\}/);
+  assert.match(source, /currency: currency \|\| generalSettings\?\.currencyCode \|\| 'USD'/);
+});
+
+// --- Synthetic weekly pool behavior (production code, real data) ---
+
+// The Synthetic weekly pool math lives in module-scope helpers plus expressions
+// embedded in the render branch. Extract the exact production source (not a
+// re-implementation) so plan-only, legacy-only, and mixed payloads run through
+// the actual percentage / reset / regen-tick logic.
+const syntheticHelperNames = [
+  'isOpenaiType',
+  'isCommandCodeType',
+  'isOllamaType',
+  'isMinimaxType',
+  'isZenmuxType',
+  'getClineUsagePercent',
+  'getApertisPercentage',
+  'getChannelPercentage',
+];
+const syntheticFuncNodes = [];
+const collectSyntheticFunctions = (node) => {
+  ts.forEachChild(node, (child) => {
+    if (ts.isFunctionDeclaration(child) && child.name?.text && syntheticHelperNames.includes(child.name.text)) {
+      if (!syntheticFuncNodes.some((n) => n.name.text === child.name.text)) syntheticFuncNodes.push(child);
+      return;
+    }
+    collectSyntheticFunctions(child);
+  });
+};
+collectSyntheticFunctions(badgesAst);
+assert.equal(syntheticFuncNodes.length, syntheticHelperNames.length, 'all Synthetic helpers must stay in quota-badges.tsx');
+
+const syntheticConstNames = ['syntheticWeeklyRegenTickPct', 'calcDurationPercent', 'formatTimeToReset'];
+const syntheticConstNodes = [];
+const collectSyntheticConsts = (node) => {
+  ts.forEachChild(node, (child) => {
+    if (ts.isVariableStatement(child) && child.declarationList) {
+      for (const decl of child.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && syntheticConstNames.includes(decl.name.text)) {
+          if (!syntheticConstNodes.some((n) => n.getText() === child.getText())) syntheticConstNodes.push(child);
+          return;
+        }
+      }
+    }
+    collectSyntheticConsts(child);
+  });
+};
+collectSyntheticConsts(badgesAst);
+assert.equal(syntheticConstNodes.length, syntheticConstNames.length, 'all Synthetic constants must stay in quota-badges.tsx');
+
+// Locate render-branch expressions to rebuild as executable functions.
+const findVariableDeclaration = (root, name) => {
+  let found;
+  const walk = (node) => {
+    if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.name.text === name) found = node;
+    ts.forEachChild(node, walk);
+  };
+  walk(root);
+  return found;
+};
+const regenTickDecl = findVariableDeclaration(badgesAst, 'regenTick');
+const weeklyNextRegenAtDecl = findVariableDeclaration(badgesAst, 'weeklyNextRegenAt');
+assert.ok(regenTickDecl?.initializer, 'regenTick expression must stay in the Synthetic render branch');
+assert.ok(weeklyNextRegenAtDecl?.initializer, 'weeklyNextRegenAt expression must stay in the Synthetic render branch');
+
+const syntheticModuleSource = [
+  // i18n shim: formatTimeToReset branches and rounds through t(); the shim emits
+  // key:params so the branch choice and the rounded percent are asserted for real.
+  'const t = (key, params) => (params ? key + ":" + JSON.stringify(params) : key);',
+  ...syntheticFuncNodes.map((node) => `export ${node.getText(badgesAst)}`),
+  ...syntheticConstNodes.map((node) => `export ${node.getText(badgesAst)}`),
+  `export const getSyntheticWeeklyRegenTick = (planWeekly) => ${regenTickDecl.initializer.getText(badgesAst)};`,
+  `export const getSyntheticWeeklyResetAt = (qd) => { const planWeekly = qd.planWeeklyLimit; return ${weeklyNextRegenAtDecl.initializer.getText(badgesAst)}; };`,
+].join('\n');
+
+const {
+  getChannelPercentage: badgePercent,
+  syntheticWeeklyRegenTickPct,
+  calcDurationPercent,
+  formatTimeToReset: badgeFormatTimeToReset,
+  getSyntheticWeeklyRegenTick,
+  getSyntheticWeeklyResetAt,
+} = await loadTsModule(syntheticModuleSource);
+
+// --- Synthetic weekly badge render path (real component sources) ---
+
+// Extract the exact Synthetic render branch from quota-badges.tsx (between the
+// branch marker and the NeuralWatt branch marker), compile that production JSX,
+// and render it with React SSR so the observable badge output — percent label,
+// bar fill, duration marker, tooltip countdown — is asserted, not the
+// disconnected expressions that feed it.
+const syntheticBranchStart = badgesSource.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'synthetic' &&");
+const syntheticBranchEnd = badgesSource.indexOf(
+  "{isOpenaiType(channel.type) && channel.providerType === 'neuralwatt' &&",
+  syntheticBranchStart
+);
+assert.ok(syntheticBranchStart !== -1, 'Synthetic render branch should exist in quota-badges source');
+assert.ok(
+  syntheticBranchEnd !== -1 && syntheticBranchEnd > syntheticBranchStart,
+  'the NeuralWatt branch should follow the Synthetic branch'
+);
+const syntheticBranchInner = badgesSource.slice(syntheticBranchStart, syntheticBranchEnd).trim();
+assert.ok(syntheticBranchInner.startsWith('{isOpenaiType'), 'Synthetic branch extraction must start at the branch condition');
+// The outer braces are the JSX expression-container delimiters, not JS block
+// braces: drop them so the remaining expression plugs into `return (...)`.
+const syntheticBranchExpr = syntheticBranchInner.slice(1, -1);
+assert.ok(syntheticBranchExpr.endsWith(')'), 'Synthetic branch must end with the JSX group close');
+
+// t + formatTimeToReset/calcDurationPercent/regen-tick constant come from the
+// production source (syntheticConstNodes); the real en locale is embedded so the
+// i18next-style translator inside the module interpolates {{param}} placeholders
+// into final user-facing countdown text.
+const enSystem = JSON.parse(read('locales/en/system.json'));
+const syntheticRenderModule = [
+  'const enSystem = ' + JSON.stringify(enSystem) + ';',
+  'function t(key, params) {',
+  '  let out = enSystem[key] ?? key;',
+  '  for (const [name, value] of Object.entries(params || {})) out = out.split(`{{${name}}}`).join(String(value));',
+  '  return out;',
+  '}',
+  ...syntheticFuncNodes.map((node) => node.getText(badgesAst)),
+  ...syntheticConstNodes.map((node) => node.getText(badgesAst)),
+  // Same clamping as the real shared bar, projected into data-* attributes so
+  // renderToStaticMarkup output is assertable without a DOM or Radix context.
+  // The transpiled branch references the classic `React.createElement` factory;
+  // data: module imports share the host realm, so globalThis.React (set below
+  // before the import) provides it.
+  'function UsageTimeBar({ usagePercent, durationPercent, tooltip }) {',
+  '  const clamped = Math.min(Math.max(usagePercent || 0, 0), 100);',
+  '  const markerLeft = durationPercent === undefined ? undefined : Math.min(Math.max(durationPercent, 0), 100);',
+  '  const attrs = { className: "bar" };',
+  '  attrs["data-fill"] = clamped;',
+  '  if (markerLeft !== undefined) attrs["data-duration"] = markerLeft;',
+  '  return <div {...attrs}>{tooltip}</div>;',
+  '}',
+  'function Badge({ children }) { return children; }',
+  'function SyntheticBadge({ channel }) {',
+  '  return (' + syntheticBranchExpr + ');',
+  '}',
+  'export default SyntheticBadge;',
+].join('\n');
+const { outputText: syntheticRenderJs } = ts.transpileModule(syntheticRenderModule, {
+  compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 },
+});
+globalThis.React = React;
+const { default: SyntheticBadge } = await import(`data:text/javascript;base64,${Buffer.from(syntheticRenderJs).toString('base64')}`);
+
+const syntheticChannel = (quotaData) => ({ type: 'openai', providerType: 'synthetic', quotaStatus: { quotaData, limits: [] } });
+const REFERENCE_NOW = Date.now();
+const DAY = 24 * 3600 * 1000;
+const WEEK_AHEAD = new Date(REFERENCE_NOW + 6 * DAY).toISOString();
+
+function renderSyntheticBadge(quotaData) {
+  // Pin Date.now so bar fills, duration markers and countdown strings are
+  // deterministic for a fixed reset offset.
+  const realNow = Date.now;
+  Date.now = () => REFERENCE_NOW;
+  try {
+    return renderToStaticMarkup(React.createElement(SyntheticBadge, { channel: syntheticChannel(quotaData) }));
+  } finally {
+    Date.now = realNow;
+  }
+}
+
+function attrOf(html, name) {
+  const m = html.match(new RegExp(`${name}="([^"]*)"`));
+  return m ? m[1] : null;
+}
+
+test('Synthetic weekly badge renders the plan-only pool: percent, bar fill, elapsed marker, regen countdown', () => {
+  const html = renderSyntheticBadge({ planWeeklyLimit: { percentRemaining: 30, nextRegenAt: WEEK_AHEAD, nextRegenPercent: 2 } });
+  const usedPct = 100 - 30;
+  // The weekly item renders with the plan-derived used percentage.
+  assert.match(html, /Weekly Token Limit/);
+  assert.match(html, /<span class="text-foreground font-medium">70% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), String(usedPct));
+  // The elapsed marker sits at 1/7 through the week (reset 6 days out of 7).
+  assert.ok(attrOf(html, 'data-duration') !== null, 'weekly bar must carry a duration marker from nextRegenAt');
+  assert.ok(Math.abs(Number(attrOf(html, 'data-duration')) - (1 / 7) * 100) < 0.01, 'marker must reflect the plan reset time');
+  // The tooltip countdown uses the plan tick scaled by /100 (2 -> "2%"), not the
+  // plain "Regenerates in" form — a regenerating branch or missing /100 shows up here.
+  assert.match(html, /Regenerates 2% in 6d 0h/);
+});
+
+test('Synthetic weekly badge renders the legacy-only pool with the built-in regen tick', () => {
+  const html = renderSyntheticBadge({ weeklyTokenLimit: { percentRemaining: 55, nextRegenAt: WEEK_AHEAD } });
+  assert.match(html, /Weekly Token Limit/);
+  assert.match(html, /<span class="text-foreground font-medium">45% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), '45');
+  // No plan data, so the countdown falls back to the built-in 2% regen tick.
+  assert.ok(
+    html.includes(`Regenerates ${Math.round(syntheticWeeklyRegenTickPct * 100)}% in 6d 0h`),
+    'legacy pool must use the built-in regen tick'
+  );
+});
+
+test('Synthetic weekly badge falls back to the legacy shape field by field in the rendered countdown', () => {
+  const legacyAt = new Date(REFERENCE_NOW + 5 * DAY).toISOString();
+  const qd = {
+    planWeeklyLimit: { percentRemaining: null, nextRegenAt: WEEK_AHEAD, nextRegenPercent: null },
+    weeklyTokenLimit: { percentRemaining: 55, nextRegenAt: legacyAt },
+  };
+  const html = renderSyntheticBadge(qd);
+  // Percent is missing on the plan side, so the rendered percentage comes from the
+  // legacy pool — while the plan's nextRegenAt supplies the reset time and the
+  // null plan tick falls back to the built-in tick.
+  assert.match(html, /<span class="text-foreground font-medium">45% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), '45');
+  assert.ok(Math.abs(Number(attrOf(html, 'data-duration')) - (1 / 7) * 100) < 0.01, 'marker must reflect the plan reset time');
+  assert.match(html, /Regenerates 2% in 6d 0h/);
+});
+
+test('Synthetic weekly badge uses the legacy reset time when the plan field is missing', () => {
+  const legacyAt = new Date(REFERENCE_NOW + 5 * DAY).toISOString();
+  const html = renderSyntheticBadge({
+    planWeeklyLimit: { percentRemaining: 50, nextRegenPercent: 3 },
+    weeklyTokenLimit: { nextRegenAt: legacyAt },
+  });
+  // The plan percentage survives (no legacy percent to mix in) ...
+  assert.match(html, /<span class="text-foreground font-medium">50% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), '50');
+  // ... but with the plan's nextRegenAt absent, the displayed countdown and the
+  // elapsed marker derive from the legacy reset 5 days out, not the plan one.
+  assert.ok(Math.abs(Number(attrOf(html, 'data-duration')) - (2 / 7) * 100) < 0.01, 'marker must fall back to the legacy reset time');
+  assert.ok(html.includes('Regenerates 3% in 5d 0h'), 'countdown must use the legacy reset time with the plan tick');
+  assert.ok(!html.includes('6d 0h'), 'the plan reset time must not leak into fallback mode');
+});
+
+test('Synthetic plan percent of zero is rendered as an explicit exhaustion, not a missing field', () => {
+  const html = renderSyntheticBadge({
+    planWeeklyLimit: { percentRemaining: 0, nextRegenAt: WEEK_AHEAD, nextRegenPercent: 2 },
+    weeklyTokenLimit: { percentRemaining: 90, nextRegenAt: WEEK_AHEAD },
+  });
+  // The plan's zero beats the legacy 90%; a `??`-safe check that drops 0 would
+  // render the legacy pool (10% used) instead.
+  assert.match(html, /<span class="text-foreground font-medium">100% used<\/span>/);
+  assert.equal(attrOf(html, 'data-fill'), '100');
+  assert.match(html, /Regenerates 2% in 6d 0h/);
+});
+
+test('Synthetic plan next-regen percent 2 renders as a 2% regen tick', () => {
+  const twoHoursOut = new Date(REFERENCE_NOW + 2 * 3600 * 1000).toISOString();
+  const planWeekly = { percentRemaining: 50, nextRegenAt: twoHoursOut, nextRegenPercent: 2 };
+  const tick = getSyntheticWeeklyRegenTick(planWeekly);
+  assert.equal(tick, 0.02);
+  const regenLabel = badgeFormatTimeToReset(twoHoursOut, 50, tick);
+  assert.match(regenLabel, /^quota\.label\.regenerates_pct_in_time:\{"percent":2,"time":"[^"]+"\}$/);
+  // Bars without data still report nothing used.
+  assert.equal(badgeFormatTimeToReset(twoHoursOut, 0, tick), 'quota.label.no_usage_yet');
+  // The hourly search window resolves elapsed time the same way: half an hour of a
+  // one-hour budget is 50%.
+  assert.equal(calcDurationPercent(3600, 1800), 50);
+});
+
+test('Synthetic badge renders the hourly search row with count, percentage, renewal', () => {
+  const renewalsAhead = new Date(REFERENCE_NOW + 30 * 60 * 1000).toISOString();
+  const html = renderSyntheticBadge({
+    weeklyTokenLimit: { percentRemaining: 100, nextRegenAt: WEEK_AHEAD },
+    search: { hourly: { limit: 250, requests: 125, renewsAt: renewalsAhead } },
+  });
+
+  assert.match(html, /Search requests/, 'search label must render');
+  // Count is observable in the row header and the tooltip.
+  assert.match(html, /125\/250/, 'search count must render');
+  // 125/250 rounds to 50% used in the header and the tooltip.
+  assert.match(html, /<span class="text-foreground font-medium">50% used<\/span>/);
+  const fills = [...html.matchAll(/data-fill="([^"]*)"/g)].map((m) => Number(m[1]));
+  assert.ok(fills.includes(50), `search bar must carry a 50% fill (fills: ${fills.join(',')})`);
+  // The renewal countdown renders in the tooltip (30 min out is 50% of the hour).
+  assert.match(html, /Resets in 30m/);
+  const durations = [...html.matchAll(/data-duration="([^"]*)"/g)].map((m) => Number(m[1]));
+  assert.ok(
+    durations.some((v) => Math.abs(v - 50) < 0.01),
+    `search bar must carry a 50% elapsed marker (markers: ${durations.join(',')})`
+  );
+});
+
+test('Synthetic badge omits the hourly search row without usable counter values', () => {
+  const renewalsAhead = new Date(REFERENCE_NOW + 1800000).toISOString();
+  const base = renderSyntheticBadge({ weeklyTokenLimit: { percentRemaining: 100, nextRegenAt: WEEK_AHEAD } });
+
+  const missingRequests = renderSyntheticBadge({
+    weeklyTokenLimit: { percentRemaining: 100, nextRegenAt: WEEK_AHEAD },
+    search: { hourly: { limit: 250, renewsAt: renewalsAhead } },
+  });
+  assert.doesNotMatch(missingRequests, /Search requests/, 'missing requests must omit the search row');
+  assert.match(base, /Weekly Token Limit/, 'sanity: the base badge renders the weekly section');
+
+  const zeroLimit = renderSyntheticBadge({
+    weeklyTokenLimit: { percentRemaining: 100, nextRegenAt: WEEK_AHEAD },
+    search: { hourly: { limit: 0, requests: 125, renewsAt: renewalsAhead } },
+  });
+  assert.doesNotMatch(zeroLimit, /Search requests/, 'a non-positive limit must omit the search row');
+});
+
+test('Synthetic badge percentage prefers the plan pool and falls back to the legacy pool', () => {
+  // The consumer-visible battery percentage is 100 - percentRemaining; the
+  // plan-only shape must win over the legacy shape.
+  const planChannel = syntheticChannel({
+    planWeeklyLimit: { percentRemaining: 30, nextRegenAt: WEEK_AHEAD },
+    weeklyTokenLimit: { percentRemaining: 90, nextRegenAt: WEEK_AHEAD },
+  });
+  assert.equal(badgePercent(planChannel), 70, 'planWeeklyLimit must win over weeklyTokenLimit');
+
+  // Without the plan shape, the legacy pool drives the percentage.
+  const legacyChannel = syntheticChannel({ weeklyTokenLimit: { percentRemaining: 55, nextRegenAt: WEEK_AHEAD } });
+  assert.equal(badgePercent(legacyChannel), 45, 'legacy weeklyTokenLimit must drive the percentage when the plan shape is absent');
+
+  const planOnlyChannel = syntheticChannel({ planWeeklyLimit: { percentRemaining: 30, nextRegenAt: WEEK_AHEAD } });
+  assert.equal(badgePercent(planOnlyChannel), 70, 'plan-only shape must drive the percentage');
+});
+
+// --- Period quota rows: provider-reported vs log-derived source (production sources) ---
+
+// The period quota rows come from `quotaData._limits`; `periodStart` is the
+// marker of a log-derived row because only limits the backend priced from
+// usage logs carry one (provider-reported money replaces the estimate). The
+// component must pick its tooltip wording per row source, and mark rows when
+// a channel mixes both. Extract the exact production function and render it
+// SSR against the real en locale, the same way the Synthetic branch tests do.
+const enCurrencies = JSON.parse(read('locales/en/currencies.json'));
+const periodQuotaFuncNames = ['periodMoneyIsProviderReported', 'PeriodQuotaEstimate'];
+const periodQuotaFuncNodes = [...badgesAst.statements].filter(
+  (node) => ts.isFunctionDeclaration(node) && periodQuotaFuncNames.includes(node.name?.text)
+);
+assert.equal(periodQuotaFuncNodes.length, periodQuotaFuncNames.length, 'period quota components must stay in quota-badges.tsx');
+const windowLabelKeysDecl = [...badgesAst.statements].find(
+  (node) =>
+    ts.isVariableStatement(node) &&
+    node.declarationList.declarations.some((d) => ts.isIdentifier(d.name) && d.name.text === 'WINDOW_LABEL_KEYS')
+);
+assert.ok(windowLabelKeysDecl, 'WINDOW_LABEL_KEYS must stay in quota-badges.tsx');
+
+const enPeriodQuota = { ...enSystem, ...enCurrencies };
+const periodQuotaRenderModule = [
+  'const table = ' + JSON.stringify(enPeriodQuota) + ';',
+  'function t(key, params) {',
+  '  let out = table[key] ?? key;',
+  '  if (key === "currencies.format") {',
+  '    out = new Intl.NumberFormat(params?.locale || "en-US", { style: "currency", currency: params?.currency || "USD", minimumFractionDigits: params?.minimumFractionDigits, maximumFractionDigits: params?.maximumFractionDigits }).format(params?.val ?? 0);',
+  '  } else {',
+  '    for (const [name, value] of Object.entries(params || {})) out = out.split(`{{${name}}}`).join(String(value));',
+  '  }',
+  '  return out;',
+  '}',
+  '// Prop-style shims render children as-is, so the tooltip and label strings reach the SSR markup.',
+  'function Tooltip({ children }) { return children; }',
+  'function TooltipTrigger({ children }) { return children; }',
+  'function TooltipContent({ children }) { return children; }',
+  'function useTranslation() { return { t, i18n: { language: "en" } }; }',
+  'function useGeneralSettings() { return { data: { currencyCode: "EUR" } }; }',
+  windowLabelKeysDecl.getText(badgesAst),
+  ...periodQuotaFuncNodes.map((node) => node.getText(badgesAst)),
+  'function PeriodQuotaRow({ limits, currency }) { return <PeriodQuotaEstimate limits={limits} currency={currency} />; }',
+  'export default PeriodQuotaRow;',
+].join('\n');
+const { outputText: periodQuotaRenderJs } = ts.transpileModule(periodQuotaRenderModule, {
+  compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 },
+});
+const { default: PeriodQuotaRow } = await import(`data:text/javascript;base64,${Buffer.from(periodQuotaRenderJs).toString('base64')}`);
+
+const renderPeriodQuota = (limits, currency) =>
+  renderToStaticMarkup(React.createElement(PeriodQuotaRow, { limits, currency }))
+    // renderToStaticMarkup HTML-escapes text; the hint assertions compare against
+    // the plain locale strings.
+    .replace(/&#x27;/g, "'")
+    .replace(/&amp;/g, '&');
+
+// Log-derived rows look like the windows the backend prices from usage logs
+// (a pinned periodStart plus the ratio-aggregated money).
+const logLimit = { window: '7d', periodStart: '2026-10-17T00:00:00Z', periodCost: 4.2, periodQuota: 21 };
+// Provider-reported rows look like Synthetic's weekly pool: money without any
+// window start, because the pool regenerates in ticks rather than resetting.
+const providerLimit = { window: 'weekly', periodCost: 0.03, periodQuota: 10.5 };
+
+test('period quota rows from usage logs keep the original log-derived hint', () => {
+  const html = renderPeriodQuota([logLimit]);
+  const hint = enSystem['quota.label.period_quota_hint'];
+  assert.match(html, new RegExp(hint.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'log-only rows must show the log-derived hint');
+  assert.ok(!html.includes(enSystem['quota.label.period_quota_hint_provider']), 'log-only rows must not show the provider hint');
+  assert.ok(!html.includes('reported by provider'), 'log-only rows must not carry a provider source mark');
+  // The money formatting is untouched by the source split (no explicit currency
+  // falls back to the configured display currency, the test stand-in being EUR).
+  assert.match(html, /€4\.20 used \/ ≈ €21\.00/);
+});
+
+test('provider-reported period money shows the provider-reported hint', () => {
+  const html = renderPeriodQuota([providerLimit], 'USD');
+  const hint = enSystem['quota.label.period_quota_hint_provider'];
+  assert.match(html, new RegExp(hint.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'provider-only rows must show the provider-reported hint');
+  assert.ok(!html.includes(enSystem['quota.label.period_quota_hint']), 'provider-only rows must not show the generic log-derived hint');
+  assert.ok(!html.includes('reported by provider'), 'a single-source channel does not need per-row source marks');
+  // Synthetic reported money renders in USD, matching the provider currency.
+  assert.match(html, /\$0\.03 used \/ ≈ \$10\.50/);
+});
+
+test('mixed period quota rows get the dual-source hint and per-row provider marks', () => {
+  const html = renderPeriodQuota([logLimit, providerLimit]);
+  const mixedHint = enSystem['quota.label.period_quota_hint_mixed'];
+  assert.match(html, new RegExp(mixedHint.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')), 'mixed rows must show the dual-source hint');
+  // Both window labels render, but only the provider-reported row carries the
+  // source attribution.
+  assert.match(html, /Weekly window · reported by provider/);
+  assert.match(html, /7d window(?! · reported)/);
+  assert.equal((html.match(/reported by provider/g) || []).length, 1, 'exactly the provider-reported row is marked');
+});
+
+test('period quota block is absent without priced rows and unpriced limits render nothing', () => {
+  assert.equal(renderPeriodQuota([]), '', 'no limits: no block');
+  assert.equal(renderPeriodQuota([{ window: 'search_hourly', usageRatio: 0.5 }]), '', 'a limit without period money is not a priced row');
+});
+
+test('period quota hint keys are aligned between en and zh-CN locales', () => {
+  const zhSystem = JSON.parse(read('locales/zh-CN/system.json'));
+  for (const key of [
+    'quota.label.period_quota_hint',
+    'quota.label.period_quota_hint_provider',
+    'quota.label.period_quota_hint_mixed',
+    'quota.label.period_quota_provider_source',
+  ]) {
+    assert.ok(typeof enSystem[key] === 'string' && enSystem[key].length > 0, `en/system.json missing ${key}`);
+    assert.ok(typeof zhSystem[key] === 'string' && zhSystem[key].length > 0, `zh-CN/system.json missing ${key}`);
+  }
+  // The generic key is the log-derived wording again; the provider explanation
+  // no longer lives in it.
+  assert.match(enSystem['quota.label.period_quota_hint'], /Estimated from the cost AxonHub logged/);
+  assert.doesNotMatch(enSystem['quota.label.period_quota_hint'], /reports the window's money/);
+  assert.match(zhSystem['quota.label.period_quota_hint'], /AxonHub 记录/);
 });

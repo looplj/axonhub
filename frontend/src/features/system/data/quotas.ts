@@ -173,17 +173,19 @@ export type ProviderNanoGPTQuotaData = ProviderQuotaDataCommon & {
   period?: { currentPeriodEnd?: string };
 };
 
-export type ProviderWaferQuotaData = ProviderQuotaDataCommon & {
-  current_period_used_percent?: number | null;
-  remaining_included_requests?: number | null;
-  included_request_limit?: number | null;
-  overage_request_count?: number | null;
-  window_start?: string | null;
-  window_end?: string | null;
-  plan_tier?: string | null;
-};
-
 export type ProviderSyntheticQuotaData = ProviderQuotaDataCommon & {
+  search?: {
+    hourly?: {
+      limit?: number | null;
+      requests?: number | null;
+      renewsAt?: string | null;
+    } | null;
+  } | null;
+  planWeeklyLimit?: {
+    nextRegenAt?: string | null;
+    percentRemaining?: number | null;
+    nextRegenPercent?: number | null;
+  } | null;
   weeklyTokenLimit?: {
     percentRemaining?: number | null;
     remainingCredits?: string | null;
@@ -491,10 +493,10 @@ export type ProviderOllamaQuotaData = ProviderQuotaDataCommon & {
 
 /**
  * A single limit window as normalized by the backend and stashed under
- * `quotaData._limits`. `periodCost` is what the channel cost in the current
- * window according to AxonHub usage logs, and `periodQuota` is the money value
- * the whole window is estimated to be worth; both are absent when the backend
- * could not work them out.
+ * `quotaData._limits`. `periodCost` is the money the window has spent, and
+ * `periodQuota` is the money value the whole window is worth: the backend may
+ * derive both from AxonHub usage logs, or the provider may report them itself
+ * (Synthetic's weekly credits); both are absent when no figure exists.
  */
 export type ProviderQuotaLimit = {
   type: string;
@@ -746,13 +748,6 @@ export type ProviderQuotaChannel = {
     }
   | {
       type: 'openai' | 'openai_responses';
-      providerType: 'wafer';
-      quotaStatus: {
-        quotaData: ProviderWaferQuotaData;
-      };
-    }
-  | {
-      type: 'openai' | 'openai_responses';
       providerType: 'synthetic';
       quotaStatus: {
         quotaData: ProviderSyntheticQuotaData;
@@ -946,14 +941,6 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
   }
   if (node.type === 'openai' || node.type === 'openai_responses') {
     const typeVal = node.type as 'openai' | 'openai_responses';
-    if (providerType === 'wafer') {
-      return {
-        ...base,
-        type: typeVal,
-        providerType: 'wafer' as const,
-        quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderWaferQuotaData },
-      };
-    }
     if (providerType === 'synthetic') {
       return {
         ...base,

@@ -8,6 +8,11 @@
 ### Fixed
 
 - Personal API Key names can be reused by different creators in a project; creating or renaming a key rejects collisions with non-personal keys visible to its creator. Duplicate checks run after create authorization.
+- Synthetic weekly credit amounts that parse to NaN or infinity are now ignored instead of leaking into the period money fields and breaking quota persistence.
+
+### Removed
+
+- Wafer quota monitor removed — Wafer is PAYG-only. Legacy wafer quota rows are purged at startup before schema migration when automatic migration is enabled.
 
 v0.4.0
 

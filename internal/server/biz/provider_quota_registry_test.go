@@ -23,7 +23,7 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 	expectedCheckers := []string{
 		"apertis", "antigravity", "charm_hyper", "claudecode", "cline", "codex",
 		"commandcode", "github_copilot", "kimi_code", "minimax", "nanogpt",
-		"neuralwatt", "opencode_go", "synthetic", "wafer", "xai_subscription",
+		"neuralwatt", "opencode_go", "synthetic", "xai_subscription",
 		"ollama", "zenmux", "zhipu", "zai",
 	}
 	require.ElementsMatch(t, expectedCheckers, mapKeys(svc.checkers))
@@ -46,8 +46,6 @@ func TestProviderQuotaService_RegistryCoverageMatrix(t *testing.T) {
 		{"zenmux", channel.TypeZenmuxGemini, ""},
 		{"zenmux", channel.TypeZenmuxVideo, ""},
 		{"cline", channel.TypeCline, ""},
-		{"wafer", channel.TypeOpenai, "https://pass.wafer.ai"},
-		{"wafer", channel.TypeOpenaiResponses, "https://pass.wafer.ai"},
 		{"synthetic", channel.TypeOpenai, "https://api.synthetic.new"},
 		{"synthetic", channel.TypeOpenaiResponses, "https://api.synthetic.new"},
 		{"neuralwatt", channel.TypeOpenai, "https://api.neuralwatt.com"},

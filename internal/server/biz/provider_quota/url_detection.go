@@ -12,7 +12,6 @@ type urlProviderEntry struct {
 
 // urlProviderMap maps host suffixes to provider types. More specific patterns first.
 var urlProviderMap = []urlProviderEntry{
-	{hostPattern: "wafer.ai", providerType: "wafer"},
 	{hostPattern: "api.synthetic.new", providerType: "synthetic"},
 	{hostPattern: "api.neuralwatt.com", providerType: "neuralwatt"},
 	{hostPattern: "api.apertis.ai", providerType: "apertis"},
