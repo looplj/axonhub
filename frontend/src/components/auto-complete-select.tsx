@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type InputHTMLAttributes } from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,8 @@ type Props<T extends string> = {
   portalContainer?: HTMLElement | null;
   /** 自定义输入框的 className */
   inputClassName?: string;
+  /** 透传给输入框的属性（如表单 a11y：id / aria-invalid / aria-describedby） */
+  inputProps?: InputHTMLAttributes<HTMLInputElement>;
   searchValue?: string;
   onSearchValueChange?: (value: string) => void;
   hasMore?: boolean;
@@ -37,6 +39,7 @@ export function AutoCompleteSelect<T extends string>({
   placeholder = 'Search...',
   portalContainer,
   inputClassName,
+  inputProps,
   searchValue: controlledSearchValue,
   onSearchValueChange,
   hasMore = false,
@@ -113,10 +116,9 @@ export function AutoCompleteSelect<T extends string>({
                   handleOpenChange(true);
                 }
               }}
-              onFocus={() => handleOpenChange(true)}
               onBlur={onInputBlur}
             >
-              <Input placeholder={placeholder} className={cn('w-full', inputClassName)} />
+              <Input placeholder={placeholder} className={cn('w-full', inputClassName)} {...inputProps} />
             </CommandPrimitive.Input>
           </PopoverAnchor>
           {!open && <CommandList aria-hidden='true' className='hidden' />}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,10 +16,11 @@ import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useFormField } from '@/components/ui/form';
 import { ScopesSelect } from '@/components/scopes-select';
+import { useDebounce } from '@/hooks/use-debounce';
 import { User } from '../data/schema';
-import { useAddUserToProject, useUpdateProjectUser, useAllUsers } from '../data/users';
+import { useAddUserToProject, useUpdateProjectUser, useAllUsersOptions } from '../data/users';
 
 interface Role {
   id: string;
@@ -43,6 +44,60 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+interface UserFieldPickerProps {
+  field: { value: string; onChange: (value: string) => void };
+  options: { value: string; label: string }[];
+  isLoading: boolean;
+  hasMore: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
+  searchValue: string;
+  onSearchValueChange: (value: string) => void;
+  portalContainer: HTMLDivElement | null;
+  onOpenChange: (open: boolean) => void;
+}
+
+// The picker's inner input is not wrapped by <FormControl>, so the form a11y
+// ids (label htmlFor, required-error association) are passed through explicitly.
+function UserFieldPicker({
+  field,
+  options,
+  isLoading,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
+  searchValue,
+  onSearchValueChange,
+  portalContainer,
+  onOpenChange,
+}: UserFieldPickerProps) {
+  const { t } = useTranslation();
+  const { error, formItemId, formDescriptionId, formMessageId } = useFormField();
+
+  return (
+    <AutoCompleteSelect
+      selectedValue={field.value || ''}
+      onSelectedValueChange={(value) => field.onChange(value)}
+      items={options}
+      isLoading={isLoading}
+      emptyMessage={t('users.form.noUsersFound')}
+      placeholder={t('users.form.selectUserPlaceholder')}
+      portalContainer={portalContainer}
+      searchValue={searchValue}
+      onSearchValueChange={onSearchValueChange}
+      hasMore={hasMore}
+      isLoadingMore={isLoadingMore}
+      onLoadMore={onLoadMore}
+      onOpenChange={onOpenChange}
+      inputProps={{
+        id: formItemId,
+        ...(error ? { 'aria-invalid': true } : {}),
+        'aria-describedby': `${formDescriptionId} ${formMessageId}`.trim(),
+      }}
+    />
+  );
+}
+
 export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Props) {
   const { t } = useTranslation();
   const currentUser = useAuthStore((state) => state.auth.user);
@@ -52,6 +107,33 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
   const [loading, setLoading] = useState(false);
   const [canEdit, setCanEdit] = useState(true);
   const [dialogContent, setDialogContent] = useState<HTMLDivElement | null>(null);
+
+  // Add-to-project user picker: the input text is owned by the picker; a
+  // debounced copy drives the server-side email search so results are not
+  // capped at the first page. The picker clears its input on open, which also
+  // clears the search term, so the selected label is never fed back as a filter.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
+  const debouncedSearchValue = useDebounce(searchValue, 300);
+  const {
+    data: usersData,
+    isFetching,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useAllUsersOptions({ search: debouncedSearchValue, enabled: open && pickerOpen });
+  const userOptions = useMemo(() => {
+    const options = new Map<string, { value: string; label: string }>();
+    for (const page of usersData?.pages ?? []) {
+      for (const edge of page.edges) {
+        options.set(edge.node.id, {
+          value: edge.node.id,
+          label: `${formatUserName(edge.node.firstName, edge.node.lastName)} (${edge.node.email})`,
+        });
+      }
+    }
+    return Array.from(options.values());
+  }, [usersData]);
 
   const addUserToProject = useAddUserToProject();
   const updateProjectUser = useUpdateProjectUser();
@@ -65,9 +147,6 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
       userId: z.string().min(1, t('users.validation.userRequired')),
     });
   }, [isEdit, t]);
-
-  // Fetch all users - only when dialog is open; the picker filters client-side
-  const { data: usersData, isLoading: usersLoading } = useAllUsers({ first: 100 }, { enabled: open });
 
   const form = useForm<UserForm>({
     resolver: zodResolver(dynamicFormSchema),
@@ -166,14 +245,14 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
     form.setValue('roleIDs', newRoles);
   };
 
-  const availableUsers = usersData?.edges?.map((edge) => edge.node) || [];
-
   return (
     <Dialog
       open={open}
       onOpenChange={(state) => {
         if (!state) {
           form.reset();
+          setSearchValue('');
+          setPickerOpen(false);
         }
         onOpenChange(state);
       }}
@@ -203,17 +282,17 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>{t('users.form.selectUser')}</FormLabel>
-                      <AutoCompleteSelect
-                        selectedValue={field.value || ''}
-                        onSelectedValueChange={(value) => field.onChange(value)}
-                        items={availableUsers.map((user) => ({
-                          value: user.id,
-                          label: `${formatUserName(user.firstName, user.lastName)} (${user.email})`,
-                        }))}
-                        isLoading={usersLoading}
-                        emptyMessage={t('users.form.noUsersFound')}
-                        placeholder={t('users.form.selectUserPlaceholder')}
+                      <UserFieldPicker
+                        field={field}
+                        options={userOptions}
+                        isLoading={isFetching && !usersData}
+                        hasMore={!!hasNextPage}
+                        isLoadingMore={isFetchingNextPage}
+                        onLoadMore={fetchNextPage}
+                        searchValue={searchValue}
+                        onSearchValueChange={setSearchValue}
                         portalContainer={dialogContent}
+                        onOpenChange={setPickerOpen}
                       />
                       <FormMessage />
                     </FormItem>
