@@ -1,23 +1,19 @@
-import { useState, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  Loader2,
-  RefreshCw,
-  Zap,
-  Battery,
-  BatteryLow,
-  BatteryMedium,
-  BatteryFull,
-  BatteryWarning,
-  ArrowDownAZ,
-  ListOrdered,
-  History,
-} from 'lucide-react';
+import { Loader2, RefreshCw, Zap, Battery, BatteryLow, BatteryMedium, BatteryFull, BatteryWarning, ArrowUpDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+} from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { ChannelQuotaRoutingMode } from '@/features/channels/data/schema';
@@ -89,6 +85,32 @@ function mostRestrictiveRoutingMode(modes: Array<QuotaRoutingMode | null>): Quot
     if (mode && (!best || restrictiveness[mode] > restrictiveness[best])) best = mode;
   }
   return best;
+}
+
+// Resolve each displayed row once. Filtering the complete channel list for
+// every grouped row made quota rendering quadratic as the channel count grew.
+function buildEffectiveModeByChannel(
+  channels: readonly ProviderQuotaChannel[],
+  displayChannels: readonly ProviderQuotaChannel[],
+  defaultMode?: QuotaRoutingMode | null
+): Map<string, QuotaRoutingMode | null> {
+  const modesByAccount = new Map<string, Array<QuotaRoutingMode | null>>();
+  for (const channel of channels) {
+    if (!channel.accountKey) continue;
+    const modes = modesByAccount.get(channel.accountKey);
+    const mode = resolveEffectiveRoutingMode(channel.quotaRoutingMode, defaultMode);
+    if (modes) modes.push(mode);
+    else modesByAccount.set(channel.accountKey, [mode]);
+  }
+
+  const modesByChannel = new Map<string, QuotaRoutingMode | null>();
+  for (const channel of displayChannels) {
+    const mode = channel.sharedAccountNames
+      ? mostRestrictiveRoutingMode(channel.accountKey ? (modesByAccount.get(channel.accountKey) ?? []) : [])
+      : resolveEffectiveRoutingMode(channel.quotaRoutingMode, defaultMode);
+    modesByChannel.set(channel.id, mode);
+  }
+  return modesByChannel;
 }
 
 type BatteryLevel = 'full' | 'medium' | 'low' | 'empty' | 'warning';
@@ -2468,6 +2490,8 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
   );
 }
 
+const MemoizedQuotaRow = memo(QuotaRow);
+
 function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: ProviderQuotaChannel[]; isLoading?: boolean; isError?: boolean }) {
   if (isLoading) {
     return <Loader2 className='text-muted-foreground h-5 w-5 animate-spin' />;
@@ -2497,6 +2521,51 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
 // The popover never exposes t() publicly, so the contract stays local to this
 // module: a plain translate function from useTranslation().
 type TranslateFn = ReturnType<typeof useTranslation>['t'];
+
+type QuotaSortMode = 'preferred' | 'alphabetical' | 'created';
+
+const QUOTA_GROUPED_STORAGE_KEY = 'provider-quota-grouped';
+const QUOTA_SORT_MODE_STORAGE_KEY = 'provider-quota-sort-mode';
+
+// Preferences persist the same way the channels table view options do:
+// best-effort localStorage reads at mount and writes on change, silently
+// ignoring unavailable or full storage so the in-memory choice still works.
+function readStoredBoolean(key: string, fallback: boolean): boolean {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored === null ? fallback : stored === 'true';
+  } catch {
+    return fallback;
+  }
+}
+
+function readStoredSortMode(key: string): QuotaSortMode {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored === 'alphabetical' || stored === 'created' ? stored : 'preferred';
+  } catch {
+    return 'preferred';
+  }
+}
+
+function writeStoredPreference(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // Storage can be disabled or full; the in-memory preference still works.
+  }
+}
+
+function getQuotaSortLabelKey(sortMode: QuotaSortMode): string {
+  switch (sortMode) {
+    case 'preferred':
+      return 'system.providerQuota.sort.channelList';
+    case 'alphabetical':
+      return 'system.providerQuota.sort.alphabetical';
+    case 'created':
+      return 'system.providerQuota.sort.created';
+  }
+}
 
 type QuotaCategory = {
   key: string;
@@ -2611,103 +2680,118 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
   const { channels, isLoading, isError, error } = useProviderQuotaStatuses();
   const { data: routingSettings } = useQuotaRoutingSettings();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [sortMode, setSortMode] = useState<'preferred' | 'alphabetical' | 'created'>('preferred');
+  const [grouped, setGrouped] = useState(() => readStoredBoolean(QUOTA_GROUPED_STORAGE_KEY, true));
+  const [sortMode, setSortMode] = useState<QuotaSortMode>(() => readStoredSortMode(QUOTA_SORT_MODE_STORAGE_KEY));
 
-  // Grouped representatives advertise the most restrictive effective mode
-  // across every channel sharing the account; standalone channels use their
-  // own mode with the global default as INHERIT fallback.
-  const effectiveModeFor = (channel: ProviderQuotaChannel): QuotaRoutingMode | null => {
-    if (!channel.sharedAccountNames) return resolveEffectiveRoutingMode(channel.quotaRoutingMode, routingSettings?.defaultMode);
-    const groupModes = channels
-      .filter((c) => c.accountKey === channel.accountKey)
-      .map((c) => resolveEffectiveRoutingMode(c.quotaRoutingMode, routingSettings?.defaultMode));
-    return mostRestrictiveRoutingMode(groupModes);
-  };
+  useEffect(() => {
+    writeStoredPreference(QUOTA_GROUPED_STORAGE_KEY, String(grouped));
+  }, [grouped]);
 
-  if (!isLoading && !isError && channels.length === 0) return null;
+  useEffect(() => {
+    writeStoredPreference(QUOTA_SORT_MODE_STORAGE_KEY, sortMode);
+  }, [sortMode]);
 
-  const dedupedChannels = channels.reduce((acc: ProviderQuotaChannel[], channel: ProviderQuotaChannel) => {
-    if (channel.type === 'nanogpt_responses') {
-      const existing = acc.find((c) => c.type === 'nanogpt');
-      if (!existing) {
-        acc.push(channel);
-      }
-    } else if (isOpenaiType(channel.type) && channel.providerType) {
-      const existing = acc.find((c) => isOpenaiType(c.type) && c.providerType === channel.providerType);
-      if (!existing) {
-        acc.push(channel);
-      }
-    } else if (channel.accountKey) {
-      // Channels sharing one ZenMux account (same non-empty accountKey) collapse
-      // into a single row: the first channel carries the shared quota, later
-      // members only contribute their names to the shared-account note. The
-      // representative is a shallow copy so the parsed query data stays untouched.
-      const existing = acc.find((c) => c.accountKey === channel.accountKey);
-      if (existing) {
-        existing.sharedAccountNames = [...(existing.sharedAccountNames ?? [existing.name]), channel.name];
-      } else {
-        acc.push({ ...channel, sharedAccountNames: [channel.name] });
-      }
-    } else {
-      acc.push(channel);
-    }
-    return acc;
-  }, [] as ProviderQuotaChannel[]);
+  const dedupedChannels = useMemo(
+    () =>
+      channels.reduce((acc: ProviderQuotaChannel[], channel: ProviderQuotaChannel) => {
+        if (channel.type === 'nanogpt_responses') {
+          const existing = acc.find((c) => c.type === 'nanogpt');
+          if (!existing) {
+            acc.push(channel);
+          }
+        } else if (isOpenaiType(channel.type) && channel.providerType) {
+          const existing = acc.find((c) => isOpenaiType(c.type) && c.providerType === channel.providerType);
+          if (!existing) {
+            acc.push(channel);
+          }
+        } else if (channel.accountKey) {
+          // Channels sharing one ZenMux account (same non-empty accountKey) collapse
+          // into a single row: the first channel carries the shared quota, later
+          // members only contribute their names to the shared-account note. The
+          // representative is a shallow copy so the parsed query data stays untouched.
+          const existing = acc.find((c) => c.accountKey === channel.accountKey);
+          if (existing) {
+            existing.sharedAccountNames = [...(existing.sharedAccountNames ?? [existing.name]), channel.name];
+          } else {
+            acc.push({ ...channel, sharedAccountNames: [channel.name] });
+          }
+        } else {
+          acc.push(channel);
+        }
+        return acc;
+      }, [] as ProviderQuotaChannel[]),
+    [channels]
+  );
 
-  // Preferred mode mirrors the operator's channel list order: the load
+  // Channel-list-order mode mirrors the operator's channel list: the load
   // balancer ranks higher OrderingWeight higher, ties fall back to the
   // backend default (Channel.ID ASC). Alphabetical mode: category label,
   // then channel name; the former hardcoded category priorities had no
   // operational rationale and made pill order diverge from what users
   // expect when scanning for a provider. Created mode: backend default
   // order (Channel.ID ASC), i.e. the pre-pills-pr creation order.
-  const compareByCategory =
-    sortMode === 'alphabetical'
-      ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => {
-          const catA = getChannelCategory(a, t);
-          const catB = getChannelCategory(b, t);
-          if (catA.label === catB.label) {
-            return catA.key.localeCompare(catB.key) || a.name.localeCompare(b.name);
+  const sortedChannels = useMemo(() => {
+    const compareByCategory =
+      sortMode === 'alphabetical'
+        ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => {
+            const catA = getChannelCategory(a, t);
+            const catB = getChannelCategory(b, t);
+            if (catA.label === catB.label) {
+              return catA.key.localeCompare(catB.key) || a.name.localeCompare(b.name);
+            }
+            return catA.label.localeCompare(catB.label) || a.name.localeCompare(b.name);
           }
-          return catA.label.localeCompare(catB.label) || a.name.localeCompare(b.name);
-        }
-      : sortMode === 'preferred'
-        ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) =>
-            b.orderingWeight - a.orderingWeight || a.id.localeCompare(b.id, 'en', { numeric: true })
-        : (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => a.id.localeCompare(b.id, 'en', { numeric: true });
+        : sortMode === 'preferred'
+          ? (a: ProviderQuotaChannel, b: ProviderQuotaChannel) =>
+              b.orderingWeight - a.orderingWeight || a.id.localeCompare(b.id, 'en', { numeric: true })
+          : (a: ProviderQuotaChannel, b: ProviderQuotaChannel) => a.id.localeCompare(b.id, 'en', { numeric: true });
 
-  const sortedChannels = [...dedupedChannels].sort(compareByCategory);
+    return [...dedupedChannels].sort(compareByCategory);
+  }, [dedupedChannels, sortMode, t]);
 
-  const categoryCounts = sortedChannels.reduce(
-    (acc, ch) => {
-      const cat = getChannelCategory(ch, t);
-      acc[cat.key] = (acc[cat.key] || 0) + 1;
-      return acc;
-    },
-    {} as Record<string, number>
-  );
-
-  const categories = Array.from(
-    new Map(
-      sortedChannels.map((ch) => {
+  const categories = useMemo(() => {
+    const categoryCounts = sortedChannels.reduce(
+      (acc, ch) => {
         const cat = getChannelCategory(ch, t);
-        return [cat.key, { key: cat.key, label: cat.label, count: categoryCounts[cat.key] }];
-      })
-    ).values()
+        acc[cat.key] = (acc[cat.key] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
+    );
+
+    return Array.from(
+      new Map(
+        sortedChannels.map((ch) => {
+          const cat = getChannelCategory(ch, t);
+          return [cat.key, { key: cat.key, label: cat.label, count: categoryCounts[cat.key] }];
+        })
+      ).values()
+    );
+  }, [sortedChannels, t]);
+
+  // Fall back to 'all' if selectedCategory is no longer available in the active
+  // categories. Ungrouped view hides the pills, so a hidden filter must never
+  // keep narrowing the list.
+  const activeCategory =
+    grouped && selectedCategory !== 'all' && categories.some((c) => c.key === selectedCategory) ? selectedCategory : 'all';
+
+  const groupedChannels = useMemo(
+    () => (activeCategory === 'all' ? sortedChannels : sortedChannels.filter((ch) => getChannelCategory(ch, t).key === activeCategory)),
+    [activeCategory, sortedChannels, t]
+  );
+  const displayItems = useMemo(
+    () =>
+      grouped
+        ? buildQuotaDisplayItems(groupedChannels, categories, activeCategory, t)
+        : groupedChannels.map((channel) => ({ kind: 'row' as const, channel })),
+    [grouped, groupedChannels, categories, activeCategory, t]
+  );
+  const effectiveModeByChannel = useMemo(
+    () => buildEffectiveModeByChannel(channels, dedupedChannels, routingSettings?.defaultMode),
+    [channels, dedupedChannels, routingSettings?.defaultMode]
   );
 
-  // The strip earns its place only when filtering can actually isolate a
-  // meaningful group: at least two categories with more than one channel.
-  // Otherwise the section headers already mark the groups, and pills for
-  // single-channel categories would just mirror the row below them.
-  const filterableCategories = categories.filter((cat) => cat.count > 1);
-
-  // Fall back to 'all' if selectedCategory is no longer available in the active categories
-  const activeCategory = selectedCategory !== 'all' && categories.some((c) => c.key === selectedCategory) ? selectedCategory : 'all';
-
-  const groupedChannels =
-    activeCategory === 'all' ? sortedChannels : sortedChannels.filter((ch) => getChannelCategory(ch, t).key === activeCategory);
-
+  if (!isLoading && !isError && channels.length === 0) return null;
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -2727,8 +2811,6 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
       );
     }
 
-    const displayItems = buildQuotaDisplayItems(groupedChannels, categories, activeCategory, t);
-
     return (
       <div
         className={`max-h-[60vh] overflow-y-auto pr-1 pl-1 ${sortedChannels.length > 4 ? 'grid grid-cols-1 gap-x-4 sm:grid-cols-2' : ''}`}
@@ -2743,7 +2825,11 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
               <div className='bg-border/40 h-[1px] flex-1' />
             </div>
           ) : (
-            <QuotaRow key={item.channel.id} channel={item.channel} effectiveMode={effectiveModeFor(item.channel)} />
+            <MemoizedQuotaRow
+              key={item.channel.id}
+              channel={item.channel}
+              effectiveMode={effectiveModeByChannel.get(item.channel.id) ?? null}
+            />
           )
         )}
       </div>
@@ -2766,36 +2852,35 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
         <div className='space-y-1.5'>
           <div className='flex items-center justify-between'>
             <div className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>{t('system.providerQuota.title')}</div>
-            <div className='flex items-center gap-1'>
-              <button
-                type='button'
-                onClick={() =>
-                  setSortMode((mode) => (mode === 'preferred' ? 'alphabetical' : mode === 'alphabetical' ? 'created' : 'preferred'))
-                }
-                className='text-muted-foreground hover:text-foreground transition-colors'
-                aria-label={
-                  sortMode === 'preferred'
-                    ? t('system.providerQuota.sort.alphabetical')
-                    : sortMode === 'alphabetical'
-                      ? t('system.providerQuota.sort.created')
-                      : t('system.providerQuota.sort.preferred')
-                }
-                title={
-                  sortMode === 'preferred'
-                    ? t('system.providerQuota.sort.alphabetical')
-                    : sortMode === 'alphabetical'
-                      ? t('system.providerQuota.sort.created')
-                      : t('system.providerQuota.sort.preferred')
-                }
-              >
-                {sortMode === 'preferred' ? (
-                  <ListOrdered className='h-4 w-4' />
-                ) : sortMode === 'alphabetical' ? (
-                  <ArrowDownAZ className='h-4 w-4' />
-                ) : (
-                  <History className='h-4 w-4' />
-                )}
-              </button>
+            <div className='flex items-center gap-1.5'>
+              {sortedChannels.length > 4 && (
+                // Same wide-popover gate as the pill strip: grouping only
+                // matters once the list is big enough to scan, and the narrow
+                // header stays uncluttered.
+                <label className='text-muted-foreground flex cursor-pointer items-center gap-1.5 text-xs select-none'>
+                  <Checkbox className='size-3.5' checked={grouped} onCheckedChange={(checked) => setGrouped(checked === true)} />
+                  <span>{t('system.providerQuota.grouped')}</span>
+                </label>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type='button'
+                    className='text-muted-foreground hover:bg-muted flex items-center gap-1 rounded-md px-1.5 py-1 text-xs transition-colors'
+                    aria-label={t('system.providerQuota.sort.label')}
+                  >
+                    <ArrowUpDown className='h-3.5 w-3.5' />
+                    <span>{t(getQuotaSortLabelKey(sortMode))}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align='end' className='min-w-40'>
+                  <DropdownMenuRadioGroup value={sortMode} onValueChange={(value) => setSortMode(value as typeof sortMode)}>
+                    <DropdownMenuRadioItem value='preferred'>{t('system.providerQuota.sort.channelList')}</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value='alphabetical'>{t('system.providerQuota.sort.alphabetical')}</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value='created'>{t('system.providerQuota.sort.created')}</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <button
                 onClick={onRefresh}
                 disabled={isRefreshing || isLoading}
@@ -2807,15 +2892,17 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
             </div>
           </div>
 
-          {!isLoading && !isError && filterableCategories.length > 1 && (
-            // Single scrollable line instead of wrapping: with many categories a
-            // wrapped strip adds height outside the 60vh body cap.
-            <div className='flex items-center gap-1 overflow-x-auto border-b pt-0.5 pb-2'>
+          {grouped && !isLoading && !isError && sortedChannels.length > 4 && (
+            // Pills as their own single scrollable line below the header —
+            // nothing competes with the title row, and the line can never
+            // wrap into the multi-row strip that ate the popover before.
+            // Ungrouped view drops them with the section headers.
+            <div className='flex items-center gap-1 overflow-x-auto pb-1.5'>
               <button
                 type='button'
                 aria-pressed={activeCategory === 'all'}
                 onClick={() => setSelectedCategory('all')}
-                className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
                   activeCategory === 'all'
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -2829,7 +2916,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
                   type='button'
                   aria-pressed={activeCategory === cat.key}
                   onClick={() => setSelectedCategory(cat.key)}
-                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
+                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
                     activeCategory === cat.key
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'

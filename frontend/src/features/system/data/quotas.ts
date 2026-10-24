@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import type { ChannelQuotaRoutingMode } from '@/features/channels/data/schema';
@@ -1045,17 +1046,22 @@ export function useProviderQuotaStatuses() {
     refetchIntervalInBackground: true,
   });
 
-  const channels = (query.data?.queryChannels?.edges ?? [])
-    .map((edge) => edge?.node ?? null)
-    .filter(hasProviderQuotaStatus)
-    .filter((c) => {
-      // Skip channels that have no credentials configured, since they cannot be
-      // checked and only add noise to the quota popover. Other failures remain
-      // available with their generic status for administrators to inspect.
-      const quotaData = c.providerQuotaStatus.quotaData as { error?: string; error_code?: string } | undefined;
-      return quotaData?.error_code !== 'missing_credentials' && quotaData?.error !== 'channel has no credentials';
-    })
-    .map(parseChannelNode);
+  const edges = query.data?.queryChannels?.edges;
+  const channels = useMemo(
+    () =>
+      (edges ?? [])
+        .map((edge) => edge?.node ?? null)
+        .filter(hasProviderQuotaStatus)
+        .filter((c) => {
+          // Skip channels that have no credentials configured, since they cannot be
+          // checked and only add noise to the quota popover. Other failures remain
+          // available with their generic status for administrators to inspect.
+          const quotaData = c.providerQuotaStatus.quotaData as { error?: string; error_code?: string } | undefined;
+          return quotaData?.error_code !== 'missing_credentials' && quotaData?.error !== 'channel has no credentials';
+        })
+        .map(parseChannelNode),
+    [edges]
+  );
 
   return {
     channels,
