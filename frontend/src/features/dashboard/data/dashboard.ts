@@ -3,7 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { useSelectedProjectId } from '@/stores/projectStore';
 
-// Schema definitions
+// --- Schemas ---
+
 export const requestStatsSchema = z.object({
   requestsToday: z.number(),
   requestsThisWeek: z.number(),
@@ -11,11 +12,30 @@ export const requestStatsSchema = z.object({
   requestsThisMonth: z.number(),
 });
 
+/** Trailing-24h throughput and first-token latency. Every field is null when the
+ * window holds no completed generation, which is what an empty install and an idle
+ * one both look like — neither is a measured zero. */
+export const recentPerformanceStatsSchema = z.object({
+  throughput: z.number().nullable(),
+  firstTokenP50Ms: z.number().nullable(),
+  firstTokenP90Ms: z.number().nullable(),
+});
+
+/** Terminal execution counts over the trailing 24 hours. Success rate cannot come
+ * from usage_logs, which has no status column. */
+export const executionOutcomeStatsSchema = z.object({
+  succeeded: z.number(),
+  failed: z.number(),
+  successRate: z.number(),
+});
+
 export const dashboardStatsSchema = z.object({
   totalRequests: z.number(),
   requestStats: requestStatsSchema,
   failedRequests: z.number(),
   averageResponseTime: z.number().nullable(),
+  last24HoursPerformance: recentPerformanceStatsSchema,
+  last24HoursExecutions: executionOutcomeStatsSchema,
 });
 
 export const requestsByChannelSchema = z.object({
@@ -32,16 +52,6 @@ export const requestsByAPIKeySchema = z.object({
   apiKeyId: z.string(),
   apiKeyName: z.string(),
   count: z.number(),
-});
-
-export const tokensByAPIKeySchema = z.object({
-  apiKeyId: z.string(),
-  apiKeyName: z.string(),
-  inputTokens: z.number(),
-  outputTokens: z.number(),
-  cachedTokens: z.number(),
-  reasoningTokens: z.number(),
-  totalTokens: z.number(),
 });
 
 export const tokensByChannelSchema = z.object({
@@ -63,6 +73,16 @@ export const tokensByModelSchema = z.object({
   totalTokens: z.number(),
 });
 
+export const tokensByAPIKeySchema = z.object({
+  apiKeyId: z.string(),
+  apiKeyName: z.string(),
+  inputTokens: z.number(),
+  outputTokens: z.number(),
+  cachedTokens: z.number(),
+  reasoningTokens: z.number(),
+  totalTokens: z.number(),
+});
+
 export const costByChannelSchema = z.object({
   channelName: z.string(),
   cost: z.number(),
@@ -77,25 +97,6 @@ export const costByAPIKeySchema = z.object({
   apiKeyId: z.string(),
   apiKeyName: z.string(),
   cost: z.number(),
-});
-
-export const dailyRequestStatsSchema = z.object({
-  date: z.string(),
-  count: z.number(),
-  tokens: z.number(),
-  cost: z.number(),
-});
-
-export const hourlyRequestStatsSchema = z.object({
-  hour: z.number(),
-  count: z.number(),
-});
-
-export const topProjectsSchema = z.object({
-  projectId: z.string(),
-  projectName: z.string(),
-  projectDescription: z.string(),
-  requestCount: z.number(),
 });
 
 export const channelSuccessRateSchema = z.object({
@@ -126,23 +127,13 @@ export const channelPerformanceStatSchema = z.object({
   requestCount: z.number(),
 });
 
-export type RequestStats = z.infer<typeof requestStatsSchema>;
-export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
-export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>;
-export type RequestsByModel = z.infer<typeof requestsByModelSchema>;
-export type RequestsByAPIKey = z.infer<typeof requestsByAPIKeySchema>;
-export type TokensByAPIKey = z.infer<typeof tokensByAPIKeySchema>;
-export type TokensByChannel = z.infer<typeof tokensByChannelSchema>;
-export type TokensByModel = z.infer<typeof tokensByModelSchema>;
-export type CostByChannel = z.infer<typeof costByChannelSchema>;
-export type CostByModel = z.infer<typeof costByModelSchema>;
-export type CostByAPIKey = z.infer<typeof costByAPIKeySchema>;
-export type DailyRequestStats = z.infer<typeof dailyRequestStatsSchema>;
-export type HourlyRequestStats = z.infer<typeof hourlyRequestStatsSchema>;
-export type TopProjects = z.infer<typeof topProjectsSchema>;
-export type ChannelSuccessRate = z.infer<typeof channelSuccessRateSchema>;
-export type ModelPerformanceStat = z.infer<typeof modelPerformanceStatSchema>;
-export type ChannelPerformanceStat = z.infer<typeof channelPerformanceStatSchema>;
+export const usageStatsByUserSchema = z.object({
+  userId: z.string(),
+  userName: z.string(),
+  requestCount: z.number(),
+  totalTokens: z.number(),
+  totalCost: z.number(),
+});
 
 export const tokenStatsSchema = z.object({
   totalInputTokensToday: z.number(),
@@ -160,9 +151,25 @@ export const tokenStatsSchema = z.object({
   lastUpdated: z.string().nullable(),
 });
 
+export type RequestStats = z.infer<typeof requestStatsSchema>;
+export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
+export type RequestsByChannel = z.infer<typeof requestsByChannelSchema>;
+export type RequestsByModel = z.infer<typeof requestsByModelSchema>;
+export type RequestsByAPIKey = z.infer<typeof requestsByAPIKeySchema>;
+export type TokensByChannel = z.infer<typeof tokensByChannelSchema>;
+export type TokensByModel = z.infer<typeof tokensByModelSchema>;
+export type TokensByAPIKey = z.infer<typeof tokensByAPIKeySchema>;
+export type CostByChannel = z.infer<typeof costByChannelSchema>;
+export type CostByModel = z.infer<typeof costByModelSchema>;
+export type CostByAPIKey = z.infer<typeof costByAPIKeySchema>;
+export type ChannelSuccessRate = z.infer<typeof channelSuccessRateSchema>;
+export type ModelPerformanceStat = z.infer<typeof modelPerformanceStatSchema>;
+export type ChannelPerformanceStat = z.infer<typeof channelPerformanceStatSchema>;
+export type UsageStatsByUser = z.infer<typeof usageStatsByUserSchema>;
 export type TokenStats = z.infer<typeof tokenStatsSchema>;
 
-// GraphQL queries
+// --- GraphQL queries ---
+
 const DASHBOARD_STATS_QUERY = `
   query GetDashboardStats {
     dashboardOverview {
@@ -175,6 +182,16 @@ const DASHBOARD_STATS_QUERY = `
       }
       failedRequests
       averageResponseTime
+      last24HoursPerformance {
+        throughput
+        firstTokenP50Ms
+        firstTokenP90Ms
+      }
+      last24HoursExecutions {
+        succeeded
+        failed
+        successRate
+      }
     }
   }
 `;
@@ -276,122 +293,6 @@ const COST_BY_API_KEY_QUERY = `
   }
 `;
 
-const DAILY_REQUEST_STATS_QUERY = `
-  query GetDailyRequestStats {
-    dailyRequestStats {
-      date
-      count
-      tokens
-      cost
-    }
-  }
-`;
-
-const HOURLY_REQUEST_STATS_QUERY = `
-  query GetHourlyRequestStats($date: String) {
-    hourlyRequestStats(date: $date) {
-      hour
-      count
-    }
-  }
-`;
-
-const TOP_PROJECTS_QUERY = `
-  query GetTopProjects {
-    topRequestsProjects {
-      projectId
-      projectName
-      projectDescription
-      requestCount
-    }
-  }
-`;
-
-const CHANNEL_SUCCESS_RATES_QUERY = `
-  query GetChannelSuccessRates($timeWindow: String, $limit: Int) {
-    channelSuccessRates(timeWindow: $timeWindow, limit: $limit) {
-      channelId
-      channelName
-      channelType
-      channelDisabled
-      successCount
-      failedCount
-      totalCount
-      successRate
-    }
-  }
-`;
-
-export const usageStatsByUserSchema = z.object({
-  userId: z.string(),
-  userName: z.string(),
-  requestCount: z.number(),
-  totalTokens: z.number(),
-  totalCost: z.number(),
-});
-
-export type UsageStatsByUser = z.infer<typeof usageStatsByUserSchema>;
-
-const USAGE_STATS_BY_USER_QUERY = `
-  query GetUsageStatsByUser($timeWindow: String) {
-    usageStatsByUser(timeWindow: $timeWindow) {
-      userId
-      userName
-      requestCount
-      totalTokens
-      totalCost
-    }
-  }
-`;
-
-export function useUsageStatsByUser(timeWindow?: string) {
-  const selectedProjectId = useSelectedProjectId();
-
-  return useQuery({
-    queryKey: ['usageStatsByUser', timeWindow, selectedProjectId],
-    queryFn: async () => {
-      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
-      const data = await graphqlRequest<{ usageStatsByUser: UsageStatsByUser[] }>(
-        USAGE_STATS_BY_USER_QUERY,
-        { timeWindow },
-        headers
-      );
-      return data.usageStatsByUser.map((item) => usageStatsByUserSchema.parse(item));
-    },
-    enabled: !!selectedProjectId,
-    refetchInterval: 60000,
-    placeholderData: (previousData) => previousData,
-  });
-}
-
-const MODEL_PERFORMANCE_STATS_QUERY = `
-  query ModelPerformanceStats {
-    modelPerformanceStats {
-      date
-      modelId
-      throughput
-      ttftMs
-      requestCount
-    }
-  }
-`;
-
-const CHANNEL_PERFORMANCE_STATS_QUERY = `
-  query ChannelPerformanceStats {
-    channelPerformanceStats {
-      date
-      channelId
-      channelName
-      throughput
-      ttftMs
-      requestCount
-    }
-  }
-`;
-
-// (removed) Old usageLogs-based token stats query is deprecated in favor of backend tokenStats aggregation
-
-// Backend-provided token stats aggregation
 const TOKEN_STATS_AGGR_QUERY = `
   query GetTokenStats {
     tokenStats {
@@ -412,7 +313,61 @@ const TOKEN_STATS_AGGR_QUERY = `
   }
 `;
 
-// Query hooks
+const CHANNEL_SUCCESS_RATES_QUERY = `
+  query GetChannelSuccessRates($timeWindow: String, $limit: Int) {
+    channelSuccessRates(timeWindow: $timeWindow, limit: $limit) {
+      channelId
+      channelName
+      channelType
+      channelDisabled
+      successCount
+      failedCount
+      totalCount
+      successRate
+    }
+  }
+`;
+
+const MODEL_PERFORMANCE_STATS_QUERY = `
+  query ModelPerformanceStats($startTime: String, $endTime: String, $timeWindow: String) {
+    modelPerformanceStats(startTime: $startTime, endTime: $endTime, timeWindow: $timeWindow) {
+      date
+      modelId
+      throughput
+      ttftMs
+      requestCount
+    }
+  }
+`;
+
+const CHANNEL_PERFORMANCE_STATS_QUERY = `
+  query ChannelPerformanceStats($startTime: String, $endTime: String, $timeWindow: String) {
+    channelPerformanceStats(startTime: $startTime, endTime: $endTime, timeWindow: $timeWindow) {
+      date
+      channelId
+      channelName
+      throughput
+      ttftMs
+      requestCount
+    }
+  }
+`;
+
+const USAGE_STATS_BY_USER_QUERY = `
+  query GetUsageStatsByUser($timeWindow: String) {
+    usageStatsByUser(timeWindow: $timeWindow) {
+      userId
+      userName
+      requestCount
+      totalTokens
+      totalCost
+    }
+  }
+`;
+
+// --- Hooks ---
+
+/** All-time totals plus today/this week/this month request counts. */
 export function useDashboardStats() {
   return useQuery({
     queryKey: ['dashboardStats'],
@@ -420,10 +375,11 @@ export function useDashboardStats() {
       const data = await graphqlRequest<{ dashboardOverview: DashboardStats }>(DASHBOARD_STATS_QUERY);
       return dashboardStatsSchema.parse(data.dashboardOverview);
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
 }
 
+/** Request counts per channel for a coarse time window. */
 export function useRequestsByChannel(timeWindow?: string) {
   return useQuery({
     queryKey: ['requestStatsByChannel', timeWindow],
@@ -439,6 +395,7 @@ export function useRequestsByChannel(timeWindow?: string) {
   });
 }
 
+/** Request counts per model for a coarse time window. */
 export function useRequestsByModel(timeWindow?: string) {
   return useQuery({
     queryKey: ['requestStatsByModel', timeWindow],
@@ -454,6 +411,7 @@ export function useRequestsByModel(timeWindow?: string) {
   });
 }
 
+/** Request counts per API key for a coarse time window. */
 export function useRequestsByAPIKey(timeWindow?: string) {
   return useQuery({
     queryKey: ['requestStatsByAPIKey', timeWindow],
@@ -469,6 +427,7 @@ export function useRequestsByAPIKey(timeWindow?: string) {
   });
 }
 
+/** Token breakdown per API key for a coarse time window. */
 export function useTokensByAPIKey(timeWindow?: string) {
   return useQuery({
     queryKey: ['tokenStatsByAPIKey', timeWindow],
@@ -484,6 +443,7 @@ export function useTokensByAPIKey(timeWindow?: string) {
   });
 }
 
+/** Token breakdown per channel for a coarse time window. */
 export function useTokensByChannel(timeWindow?: string) {
   return useQuery({
     queryKey: ['tokenStatsByChannel', timeWindow],
@@ -499,6 +459,7 @@ export function useTokensByChannel(timeWindow?: string) {
   });
 }
 
+/** Token breakdown per model for a coarse time window. */
 export function useTokensByModel(timeWindow?: string) {
   return useQuery({
     queryKey: ['tokenStatsByModel', timeWindow],
@@ -514,6 +475,7 @@ export function useTokensByModel(timeWindow?: string) {
   });
 }
 
+/** Cost per channel for a coarse time window. */
 export function useCostByChannel(timeWindow?: string) {
   return useQuery({
     queryKey: ['costStatsByChannel', timeWindow],
@@ -529,6 +491,7 @@ export function useCostByChannel(timeWindow?: string) {
   });
 }
 
+/** Cost per model for a coarse time window. */
 export function useCostByModel(timeWindow?: string) {
   return useQuery({
     queryKey: ['costStatsByModel', timeWindow],
@@ -544,6 +507,7 @@ export function useCostByModel(timeWindow?: string) {
   });
 }
 
+/** Cost per API key for a coarse time window. */
 export function useCostByAPIKey(timeWindow?: string) {
   return useQuery({
     queryKey: ['costStatsByAPIKey', timeWindow],
@@ -559,39 +523,7 @@ export function useCostByAPIKey(timeWindow?: string) {
   });
 }
 
-export function useDailyRequestStats() {
-  return useQuery({
-    queryKey: ['dailyRequestStats'],
-    queryFn: async () => {
-      const data = await graphqlRequest<{ dailyRequestStats: DailyRequestStats[] }>(DAILY_REQUEST_STATS_QUERY);
-      return data.dailyRequestStats.map((item) => dailyRequestStatsSchema.parse(item));
-    },
-    refetchInterval: 300000, // Refetch every 5 minutes
-  });
-}
-
-export function useHourlyRequestStats(date?: string) {
-  return useQuery({
-    queryKey: ['hourlyRequestStats', date],
-    queryFn: async () => {
-      const data = await graphqlRequest<{ hourlyRequestStats: HourlyRequestStats[] }>(HOURLY_REQUEST_STATS_QUERY, { date });
-      return data.hourlyRequestStats.map((item) => hourlyRequestStatsSchema.parse(item));
-    },
-    refetchInterval: 300000,
-  });
-}
-
-export function useTopProjects() {
-  return useQuery({
-    queryKey: ['topRequestsProjects'],
-    queryFn: async () => {
-      const data = await graphqlRequest<{ topRequestsProjects: TopProjects[] }>(TOP_PROJECTS_QUERY);
-      return data.topRequestsProjects.map((item) => topProjectsSchema.parse(item));
-    },
-    refetchInterval: 300000,
-  });
-}
-
+/** Token totals for today/this week/this month/all time, refreshed every 5 minutes. */
 export function useTokenStats() {
   return useQuery({
     queryKey: ['tokenStats'],
@@ -599,10 +531,11 @@ export function useTokenStats() {
       const data = await graphqlRequest<{ tokenStats: TokenStats }>(TOKEN_STATS_AGGR_QUERY);
       return tokenStatsSchema.parse(data.tokenStats);
     },
-    refetchInterval: 300000, // Refetch every 5 minutes
+    refetchInterval: 300000,
   });
 }
 
+/** Channel success rates for a coarse time window, refreshed every 5 minutes. */
 export function useChannelSuccessRates(limit?: number, timeWindow?: string) {
   return useQuery({
     queryKey: ['channelSuccessRates', limit, timeWindow],
@@ -618,24 +551,55 @@ export function useChannelSuccessRates(limit?: number, timeWindow?: string) {
   });
 }
 
-export function useModelPerformanceStats() {
+/** Throughput and time to first token per model, refreshed every 5 minutes. Bucketing is
+ * decided by the server from the range: hourly for short ranges, daily otherwise. */
+export function useModelPerformanceStats(startTime?: string | null, endTime?: string | null, timeWindow?: string | null) {
   return useQuery({
-    queryKey: ['modelPerformanceStats'],
+    queryKey: ['modelPerformanceStats', startTime, endTime, timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ modelPerformanceStats: ModelPerformanceStat[] }>(MODEL_PERFORMANCE_STATS_QUERY);
+      const data = await graphqlRequest<{ modelPerformanceStats: ModelPerformanceStat[] }>(MODEL_PERFORMANCE_STATS_QUERY, {
+        ...(startTime != null && { startTime }),
+        ...(endTime != null && { endTime }),
+        ...(timeWindow != null && { timeWindow }),
+      });
       return data.modelPerformanceStats.map((item) => modelPerformanceStatSchema.parse(item));
     },
-    refetchInterval: 300000, // Refetch every 5 minutes
+    refetchInterval: 300000,
   });
 }
 
-export function useChannelPerformanceStats() {
+/** Throughput and time to first token per channel, refreshed every 5 minutes. */
+export function useChannelPerformanceStats(startTime?: string | null, endTime?: string | null, timeWindow?: string | null) {
   return useQuery({
-    queryKey: ['channelPerformanceStats'],
+    queryKey: ['channelPerformanceStats', startTime, endTime, timeWindow],
     queryFn: async () => {
-      const data = await graphqlRequest<{ channelPerformanceStats: ChannelPerformanceStat[] }>(CHANNEL_PERFORMANCE_STATS_QUERY);
+      const data = await graphqlRequest<{ channelPerformanceStats: ChannelPerformanceStat[] }>(CHANNEL_PERFORMANCE_STATS_QUERY, {
+        ...(startTime != null && { startTime }),
+        ...(endTime != null && { endTime }),
+        ...(timeWindow != null && { timeWindow }),
+      });
       return data.channelPerformanceStats.map((item) => channelPerformanceStatSchema.parse(item));
     },
-    refetchInterval: 300000, // Refetch every 5 minutes
+    refetchInterval: 300000,
+  });
+}
+
+/** Token, request and cost totals per user of the selected project. */
+export function useUsageStatsByUser(timeWindow?: string, enabled = true) {
+  const selectedProjectId = useSelectedProjectId();
+
+  return useQuery({
+    queryKey: ['usageStatsByUser', timeWindow, selectedProjectId],
+    queryFn: async () => {
+      const headers = selectedProjectId ? { 'X-Project-ID': selectedProjectId } : undefined;
+      const data = await graphqlRequest<{ usageStatsByUser: UsageStatsByUser[] }>(
+        USAGE_STATS_BY_USER_QUERY,
+        { timeWindow },
+        headers
+      );
+      return data.usageStatsByUser.map((item) => usageStatsByUserSchema.parse(item));
+    },
+    enabled: enabled && !!selectedProjectId,
+    refetchInterval: 60000,
   });
 }

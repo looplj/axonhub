@@ -35,17 +35,36 @@ var AllowedDailyQueryConfigs = map[DailyThroughputQueryType]DailyQueryFragmentCo
 		JoinClause:    "JOIN channels c ON se.channel_id = c.id",
 		GroupByFields: "se.channel_id, c.name",
 	},
+	// Groups by the model actually executed after channel model mapping
+	// (request_executions.model_id), so traffic requested through a model alias
+	// is attributed to the real model behind it, matching the analytics page.
 	DailyThroughputByModel: {
-		IDColumn:      "r.model_id",
+		IDColumn:      "se.model_id",
 		NameColumn:    "m.name as model_name",
 		NameAlias:     "model_name",
-		JoinClause:    "JOIN requests r ON se.request_id = r.id\nJOIN models m ON r.model_id = m.model_id",
-		GroupByFields: "r.model_id, m.name",
+		JoinClause:    "LEFT JOIN models m ON se.model_id = m.model_id",
+		GroupByFields: "se.model_id, m.name",
 	},
 }
 
-// getDateExpression returns the dialect-specific date expression for grouping by day.
-// The dateExpr should include the column reference (e.g., "se.created_at").
+// DateResolution selects how coarse a time bucket grouping is.
+type DateResolution int
+
+const (
+	// ResolutionDay groups timestamps into calendar days.
+	ResolutionDay DateResolution = iota
+	// ResolutionHour groups timestamps into clock hours.
+	ResolutionHour
+)
+
+// GetDateExpression returns the dialect-specific date expression for grouping bucketed
+// time. The dateExpr should include the column reference (e.g., "se.created_at").
+// Day buckets render as "2006-01-02", hour buckets as "2006-01-02 15:00"; both sort
+// lexicographically in time order, which the performance stats queries rely on.
+//
+// The column must be a native timestamp: timestamptz on Postgres, TIMESTAMP on MySQL and
+// ISO-8601 text on SQLite. A Unix-epoch integer column cannot use this — that is what
+// buildEpochDateExpression in the gql package is for.
 //
 // SECURITY NOTE: The timezone parameter is interpolated directly into SQL queries for
 // MySQL (CONVERT_TZ) and Postgres (AT TIME ZONE). This parameter must be a trusted,
@@ -54,18 +73,29 @@ var AllowedDailyQueryConfigs = map[DailyThroughputQueryType]DailyQueryFragmentCo
 // If you need timezone support from user input, validate against a whitelist of known
 // timezones first, or use offsetSeconds as an alternative (though offsetSeconds doesn't
 // handle DST transitions correctly).
-func getDateExpression(dialect string, dateExpr string, timezone string, offsetSeconds int) string {
+func GetDateExpression(dialect string, dateExpr string, timezone string, offsetSeconds int, resolution DateResolution) string {
 	switch dialect {
 	case "sqlite3", "sqlite":
 		// SQLite: strftime('%Y-%m-%d', datetime(substr(created_at, 1, 19), 'offset seconds'))
+		if resolution == ResolutionHour {
+			return fmt.Sprintf("strftime('%%Y-%%m-%%d %%H:00', datetime(substr(%s, 1, 19), '%+d seconds'))", dateExpr, offsetSeconds)
+		}
 		return fmt.Sprintf("strftime('%%Y-%%m-%%d', datetime(substr(%s, 1, 19), '%+d seconds'))", dateExpr, offsetSeconds)
 	case "mysql":
 		// MySQL: DATE_FORMAT(CONVERT_TZ(created_at, '+00:00', timezone), '%Y-%m-%d')
 		offsetStr := xtime.FormatUTCOffset(offsetSeconds)
-		return fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%%Y-%%m-%%d')", dateExpr, offsetStr)
+		layout := "%Y-%m-%d"
+		if resolution == ResolutionHour {
+			layout = "%Y-%m-%d %H:00"
+		}
+		return fmt.Sprintf("DATE_FORMAT(CONVERT_TZ(%s, '+00:00', '%s'), '%s')", dateExpr, offsetStr, layout)
 	case "postgres", "postgresql":
 		// PostgreSQL: to_char(created_at AT TIME ZONE 'timezone', 'YYYY-MM-DD')
-		return fmt.Sprintf("to_char(%s AT TIME ZONE '%s', 'YYYY-MM-DD')", dateExpr, timezone)
+		layout := "YYYY-MM-DD"
+		if resolution == ResolutionHour {
+			layout = "YYYY-MM-DD HH24:00"
+		}
+		return fmt.Sprintf("to_char(%s AT TIME ZONE '%s', '%s')", dateExpr, timezone, layout)
 	default:
 		// Fallback: try standard DATE() function
 		return fmt.Sprintf("DATE(%s)", dateExpr)
@@ -114,7 +144,7 @@ func buildDailyThroughputQuery(dialect string, timezone string, offsetSeconds in
 	}
 
 	// Get date expression based on dialect
-	dateExpr := getDateExpression(dialect, "se.created_at", timezone, offsetSeconds)
+	dateExpr := GetDateExpression(dialect, "se.created_at", timezone, offsetSeconds, ResolutionDay)
 
 	// Determine parameter placeholder based on dialect
 	paramPlaceholder := "?"
@@ -159,6 +189,7 @@ func buildDailyRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, 
 		"    SELECT\n" +
 		"        request_id,\n" +
 		"        channel_id,\n" +
+		"        model_id,\n" +
 		"        metrics_latency_ms,\n" +
 		"        metrics_first_token_latency_ms,\n" +
 		"        stream,\n" +
@@ -222,7 +253,7 @@ func buildDailyMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, limi
 		"ORDER BY date DESC, throughput DESC"
 }
 
-// BuildDailyPerformanceStatsQuery constructs a SQL query for daily performance statistics
+// BuildDailyPerformanceStatsQuery constructs a SQL query for performance statistics
 // including throughput (tokens/sec) and TTFT (time to first token in ms).
 // This is used by ModelPerformanceStats to get detailed performance metrics.
 //
@@ -231,34 +262,37 @@ func buildDailyMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, limi
 //   - timezone: timezone string for date conversion
 //   - offsetSeconds: timezone offset in seconds
 //   - queryType: DailyThroughputByModel or DailyThroughputByChannel
-//   - placeholder: parameter placeholder ("?" or "$1")
+//   - startPlaceholder: placeholder for the inclusive lower bound of created_at
+//   - endPlaceholder: placeholder for the exclusive upper bound of created_at
 //   - mode: which SQL pattern to use (ROW_NUMBER or MAX_ID)
+//   - resolution: day or hour bucketing
+//
+// The caller binds two arguments for ROW_NUMBER mode (start, end) and four for MAX_ID mode
+// (start, end, start, end): the correlated subquery repeats both window bounds so it picks
+// the latest execution inside the window rather than the latest one overall.
 //
 // Returns: SQL query string ready for execution
-func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeconds int, queryType DailyThroughputQueryType, placeholder string, mode ThroughputQueryMode) string {
+func BuildDailyPerformanceStatsQuery(dialect string, timezone string, offsetSeconds int, queryType DailyThroughputQueryType, startPlaceholder string, endPlaceholder string, mode ThroughputQueryMode, resolution DateResolution) string {
 	config, ok := AllowedDailyQueryConfigs[queryType]
 	if !ok {
 		config = AllowedDailyQueryConfigs[DailyThroughputByModel]
 	}
 
-	dateExpr := getDateExpression(dialect, "se.created_at", timezone, offsetSeconds)
+	dateExpr := GetDateExpression(dialect, "se.created_at", timezone, offsetSeconds, resolution)
 	throughputSQL := throughputCalculationSQL("se")
 
-	// Only add the requests join for model queries (channel_id is already in request_executions)
-	var joinRequests string
-	if queryType == DailyThroughputByModel {
-		joinRequests = "    JOIN requests r ON se.request_id = r.id\n"
-	}
-
+	// Both channel_id and model_id live on request_executions: the model is the
+	// channel model actually executed after model mapping, so no requests join
+	// is needed to attribute a row to the real model behind a requested alias.
 	if mode == ThroughputModeMaxID {
-		return buildDailyPerformanceStatsMaxIDQuery(dateExpr, config, queryType, placeholder, joinRequests, throughputSQL)
+		return buildDailyPerformanceStatsMaxIDQuery(dateExpr, config, queryType, startPlaceholder, endPlaceholder, throughputSQL)
 	}
 
-	return buildDailyPerformanceStatsRowNumberQuery(dateExpr, config, queryType, placeholder, joinRequests, throughputSQL)
+	return buildDailyPerformanceStatsRowNumberQuery(dateExpr, config, queryType, startPlaceholder, endPlaceholder, throughputSQL)
 }
 
 // buildDailyPerformanceStatsRowNumberQuery constructs the ROW_NUMBER() version of the daily performance stats query.
-func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, queryType DailyThroughputQueryType, placeholder string, joinRequests string, throughputSQL string) string {
+func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, queryType DailyThroughputQueryType, startPlaceholder string, endPlaceholder string, throughputSQL string) string {
 	return "WITH successful_execs AS (\n" +
 		"    SELECT\n" +
 		"        se.request_id,\n" +
@@ -269,10 +303,10 @@ func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQuery
 		"        " + dateExpr + " as exec_date,\n" +
 		"        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC) as rn\n" +
 		"    FROM request_executions se\n" +
-		joinRequests +
 		"    WHERE se.status = 'completed'\n" +
 		"        AND se.metrics_latency_ms > 0\n" +
-		"        AND se.created_at >= " + placeholder + "\n" +
+		"        AND se.created_at >= " + startPlaceholder + "\n" +
+		"        AND se.created_at < " + endPlaceholder + "\n" +
 		"),\n" +
 		"daily AS (\n" +
 		"    SELECT\n" +
@@ -304,7 +338,7 @@ func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQuery
 }
 
 // buildDailyPerformanceStatsMaxIDQuery constructs the MAX(id) fallback version for older databases.
-func buildDailyPerformanceStatsMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, queryType DailyThroughputQueryType, placeholder string, joinRequests string, throughputSQL string) string {
+func buildDailyPerformanceStatsMaxIDQuery(dateExpr string, config DailyQueryFragmentConfig, queryType DailyThroughputQueryType, startPlaceholder string, endPlaceholder string, throughputSQL string) string {
 	return "WITH latest_execs AS (\n" +
 		"    SELECT\n" +
 		"        se.request_id,\n" +
@@ -314,16 +348,23 @@ func buildDailyPerformanceStatsMaxIDQuery(dateExpr string, config DailyQueryFrag
 		"        se.stream,\n" +
 		"        " + dateExpr + " as exec_date\n" +
 		"    FROM request_executions se\n" +
-		joinRequests +
 		"    WHERE se.status = 'completed'\n" +
 		"        AND se.metrics_latency_ms > 0\n" +
-		"        AND se.created_at >= " + placeholder + "\n" +
+		"        AND se.created_at >= " + startPlaceholder + "\n" +
+		"        AND se.created_at < " + endPlaceholder + "\n" +
 		"        AND se.id = (\n" +
 		"            SELECT MAX(se2.id)\n" +
 		"            FROM request_executions se2\n" +
 		"            WHERE se2.request_id = se.request_id\n" +
 		"                AND se2.status = 'completed'\n" +
 		"                AND se2.metrics_latency_ms > 0\n" +
+		"                AND se2.created_at >= " + startPlaceholder + "\n" +
+		"                AND se2.created_at < " + endPlaceholder + "\n" +
+		// The subquery has to be bounded to the same window as the outer query. Without
+		// it, MAX picks the latest execution overall: a request whose newest attempt falls
+		// after the window leaves the in-window row failing the se.id comparison, so the
+		// request contributes nothing even though it has a qualifying execution inside.
+		// ROW_NUMBER mode ranks only the window's rows and needs no second pair.
 		"        )\n" +
 		"),\n" +
 		"daily AS (\n" +
