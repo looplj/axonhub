@@ -812,6 +812,86 @@ func TestOutboundTransformer_TransformStreamChunk_FinishReasons(t *testing.T) {
 	}
 }
 
+func TestOutboundTransformer_TransformStream_FinishReasonAfterEarlierToolCall(t *testing.T) {
+	transformer := &OutboundTransformer{
+		config: Config{
+			BaseURL:    DefaultBaseURL,
+			APIVersion: DefaultAPIVersion,
+		},
+	}
+
+	functionCall := func(name string) *Content {
+		return &Content{
+			Role:  "model",
+			Parts: []*Part{{FunctionCall: &FunctionCall{ID: "call-" + name, Name: name, Args: map[string]any{}}}},
+		}
+	}
+	text := &Content{Role: "model", Parts: []*Part{{Text: "Hello"}}}
+
+	tests := []struct {
+		name     string
+		chunks   [][]*Candidate
+		expected map[int]string
+	}{
+		{
+			// Shape of testdata/gemini-tool2.stream.jsonl: STOP arrives in a chunk without parts.
+			name: "STOP in a later chunk than the function call",
+			chunks: [][]*Candidate{
+				{{Index: 0, Content: functionCall("get_weather")}},
+				{{Index: 0, FinishReason: "STOP"}},
+			},
+			expected: map[int]string{0: "tool_calls"},
+		},
+		{
+			name: "each candidate keeps its own finish reason",
+			chunks: [][]*Candidate{
+				{{Index: 0, Content: functionCall("get_weather")}, {Index: 1, Content: text}},
+				{{Index: 0, FinishReason: "STOP"}, {Index: 1, FinishReason: "STOP"}},
+			},
+			expected: map[int]string{0: "tool_calls", 1: "stop"},
+		},
+		{
+			name: "MAX_TOKENS after a function call stays length",
+			chunks: [][]*Candidate{
+				{{Index: 0, Content: functionCall("get_weather")}},
+				{{Index: 0, FinishReason: "MAX_TOKENS"}},
+			},
+			expected: map[int]string{0: "length"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			events := make([]*httpclient.StreamEvent, 0, len(tt.chunks))
+			for _, candidates := range tt.chunks {
+				events = append(events, &httpclient.StreamEvent{
+					Data: mustMarshal(&GenerateContentResponse{ResponseID: "resp-split-finish", Candidates: candidates}),
+				})
+			}
+
+			stream, err := transformer.TransformStream(context.Background(), nil, streams.SliceStream(events))
+			require.NoError(t, err)
+
+			finishReasons := map[int]string{}
+			for stream.Next() {
+				resp := stream.Current()
+				if resp == nil {
+					continue
+				}
+
+				for _, choice := range resp.Choices {
+					if choice.FinishReason != nil {
+						finishReasons[choice.Index] = *choice.FinishReason
+					}
+				}
+			}
+
+			require.NoError(t, stream.Err())
+			require.Equal(t, tt.expected, finishReasons)
+		})
+	}
+}
+
 func TestOutboundTransformer_StreamTransformation_WithTestData(t *testing.T) {
 	transformer := &OutboundTransformer{
 		config: Config{

@@ -16,6 +16,9 @@ import (
 type streamState struct {
 	toolCallIndex int
 	responseID    string
+	// toolCallChoices records the candidates that already streamed a function call.
+	// Gemini may send finishReason in a later chunk than the functionCall parts.
+	toolCallChoices map[int]bool
 }
 
 // TransformStream transforms the HTTP stream response to the unified response format.
@@ -28,7 +31,7 @@ func (t *OutboundTransformer) TransformStream(
 	stream = streams.AppendStream(stream, lo.ToPtr(llm.DoneStreamEvent))
 
 	// Track tool call index across stream events
-	state := &streamState{}
+	state := &streamState{toolCallChoices: map[int]bool{}}
 
 	return streams.MapErr(stream, func(event *httpclient.StreamEvent) (*llm.Response, error) {
 		return t.transformStreamChunkWithState(event, state)
@@ -41,7 +44,7 @@ func (t *OutboundTransformer) TransformStreamChunk(
 	ctx context.Context,
 	event *httpclient.StreamEvent,
 ) (*llm.Response, error) {
-	return t.transformStreamChunkWithState(event, &streamState{})
+	return t.transformStreamChunkWithState(event, &streamState{toolCallChoices: map[int]bool{}})
 }
 
 // transformStreamChunkWithState transforms a single Gemini streaming chunk with state tracking.
@@ -77,6 +80,18 @@ func (t *OutboundTransformer) transformStreamChunkWithState(
 	// Convert to unified response format (streaming) with tool call index tracking
 	llmResp, nextIndex := convertGeminiToLLMResponseWithState(&resp, true, state.toolCallIndex)
 	state.toolCallIndex = nextIndex
+
+	// Choices are built from resp.Candidates in order.
+	for i := range llmResp.Choices {
+		choice := &llmResp.Choices[i]
+		if choice.Delta != nil && len(choice.Delta.ToolCalls) > 0 {
+			state.toolCallChoices[choice.Index] = true
+		}
+
+		if state.toolCallChoices[choice.Index] {
+			choice.FinishReason = convertGeminiFinishReasonToLLM(resp.Candidates[i].FinishReason, true)
+		}
+	}
 
 	return llmResp, nil
 }
