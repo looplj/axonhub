@@ -236,23 +236,23 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 // 1. Create the checker in internal/server/biz/provider_quota/
 //
 //    Same QuotaChecker interface as Pattern A, plus:
-//      - SupportsChannel(ch) must check URL (e.g., strings.HasSuffix(host, ".wafer.ai"))
+//      - SupportsChannel(ch) must check URL (e.g., strings.HasSuffix(host, ".api.synthetic.new"))
 //
 // 2. Add the provider type to the database schema
 //
 //    In internal/ent/schema/provider_quota_status.go:
-//      - Add new value to the provider_type enum (e.g., "wafer")
+//      - Add new value to the provider_type enum (e.g., "synthetic")
 //
 //    Do NOT modify channel.Type enum — the provider reuses TypeOpenai.
 //
 // 3. Add URL detection in internal/server/biz/provider_quota/url_detection.go
 //
-//    a. Add the URL pattern to urlProviderMap (e.g., "wafer.ai": "wafer")
+//    a. Add the URL pattern to urlProviderMap (e.g., "api.synthetic.new": "synthetic")
 //    b. The DetectProviderFromURL() function handles the mapping
 //
 // 4. Register the provider in ProviderQuotaService and collection settings
 //
-//    a. Create a registration function (e.g., registerWaferSupport())
+//    a. Create a registration function (e.g., registerSyntheticSupport())
 //    b. Add it to registerProviderQuotaSupport()
 //    c. Add the provider key to supportedProviderQuotaTypes in provider_quota_settings.go
 //    d. Add the provider name to both frontend system locale files under
@@ -262,8 +262,8 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 //
 //    Example:
 //
-//      func (svc *ProviderQuotaService) registerWaferSupport() {
-//        svc.checkers["wafer"] = provider_quota.NewWaferQuotaChecker(svc.httpClient)
+//      func (svc *ProviderQuotaService) registerSyntheticSupport() {
+//        svc.checkers["synthetic"] = provider_quota.NewSyntheticQuotaChecker(svc.httpClient)
 //      }
 //
 // 5. Regenerate Ent schema
@@ -304,17 +304,6 @@ func (s *QuotaChannelStatus) EffectiveStatus(limitType provider_quota.QuotaLimit
 //   - Internally parses JSON response (state, windows, percentUsed)
 //   - Normalizes status: active→available, grace→warning, inactive→exhausted
 //   - Detects high-usage warning state (any window percentUsed >= 0.8)
-//
-// EXAMPLE: WAFER PROVIDER (Pattern B, URL-based detection)
-// ========================================================
-//
-// Checker: internal/server/biz/provider_quota/wafer_checker.go
-//   - Reuses channel.TypeOpenai / TypeOpenaiResponses
-//   - URL detection: host ending in ".wafer.ai" → provider_type "wafer"
-//   - Makes request to /v1/inference/quota endpoint
-//   - Uses simple API key authentication (no OAuth required)
-//   - Internally parses JSON response (current_period_used_percent, remaining_included_requests)
-//   - Normalizes status: percent < 80 → available, >= 80 → warning, no remaining → exhausted
 //
 // EXAMPLE: SYNTHETIC PROVIDER (Pattern B, URL-based detection)
 // =============================================================
@@ -391,7 +380,6 @@ func (svc *ProviderQuotaService) registerProviderQuotaSupport() {
 	svc.registerNanoGPTSupport()
 	svc.registerZenmuxSupport()
 	svc.registerClineSupport()
-	svc.registerWaferSupport()
 	svc.registerSyntheticSupport()
 	svc.registerNeuralWattSupport()
 	svc.registerApertisSupport()
@@ -453,10 +441,6 @@ func (svc *ProviderQuotaService) registerZenmuxSupport() {
 
 func (svc *ProviderQuotaService) registerClineSupport() {
 	svc.checkers["cline"] = provider_quota.NewClineQuotaChecker(svc.httpClient)
-}
-
-func (svc *ProviderQuotaService) registerWaferSupport() {
-	svc.checkers["wafer"] = provider_quota.NewWaferQuotaChecker(svc.httpClient)
 }
 
 func (svc *ProviderQuotaService) registerSyntheticSupport() {

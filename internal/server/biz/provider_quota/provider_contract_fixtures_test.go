@@ -82,8 +82,6 @@ func quotaCheckerFixture(checker string) (QuotaData, error) {
 		checker := NewClineQuotaChecker(client)
 		checker.now = func() time.Time { return time.Date(2099, 1, 1, 0, 0, 0, 0, time.UTC) }
 		return checker.CheckQuota(context.Background(), &ent.Channel{Type: channel.TypeCline, BaseURL: "https://api.cline.bot", Credentials: objects.ChannelCredentials{APIKey: "fixture-token"}})
-	case "wafer":
-		return NewWaferQuotaChecker(nil).parseResponse([]byte(`{"current_period_used_percent":25,"window_start":"2099-01-01T00:00:00Z","window_end":"2099-02-01T00:00:00Z","remaining_included_requests":75}`))
 	case "synthetic":
 		return NewSyntheticQuotaChecker(nil).parseResponse([]byte(`{"weeklyTokenLimit":{"percentRemaining":75,"nextRegenAt":"2099-01-08T00:00:00Z"},"rollingFiveHourLimit":{"tickPercent":25,"nextTickAt":"2099-01-01T05:00:00Z"},"search":{"hourly":{"limit":250,"requests":50,"renewsAt":"2099-01-01T01:00:00Z"}}}`))
 	case "neuralwatt":

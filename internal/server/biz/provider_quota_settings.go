@@ -14,7 +14,7 @@ const SystemKeyProviderQuotaCollectionSettings = "provider_quota_collection_sett
 var supportedProviderQuotaTypes = []string{
 	"claudecode", "codex", "antigravity", "github_copilot", "nanogpt", "cline",
 	"xai_subscription",
-	"wafer", "synthetic", "neuralwatt", "apertis", "opencode_go",
+	"synthetic", "neuralwatt", "apertis", "opencode_go",
 	"kimi_code", "minimax", "zhipu", "zai", "charm_hyper", "zenmux", "commandcode",
 	"ollama",
 }
@@ -64,6 +64,16 @@ func SupportedProviderQuotaTypes() []string {
 	result := make([]string, len(supportedProviderQuotaTypes))
 	copy(result, supportedProviderQuotaTypes)
 	return result
+}
+
+// IsSupportedProviderQuotaType reports whether providerType is a quota
+// collection type the server still supports. A false answer also covers
+// retired types persisted in legacy rows (e.g. 'wafer'); callers that render
+// stored rows (not user input) should treat those as "no status" rather than
+// an error.
+func IsSupportedProviderQuotaType(providerType string) bool {
+	_, ok := supportedProviderQuotaTypeSet[providerType]
+	return ok
 }
 
 func (s *SystemService) ProviderQuotaCollectionSettings(ctx context.Context) (*ProviderQuotaCollectionSettings, error) {

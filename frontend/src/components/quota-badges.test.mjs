@@ -111,15 +111,12 @@ test('quota window identifiers resolve to localized labels', () => {
   assert.match(quotaBadges, /limit\.window === 'primary' \|\| limit\.window === 'secondary'/);
 });
 
-test('Wafer and Apertis duration markers share timestamp validation', () => {
+test('Apertis duration marker shares timestamp validation', () => {
   const quotaBadges = read('components/quota-badges.tsx');
-  const waferStart = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'wafer' &&");
-  const waferEnd = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'synthetic' &&");
   const apertisStart = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'apertis' &&");
   const apertisEnd = quotaBadges.indexOf("{isOpenaiType(channel.type) && channel.providerType === 'charm_hyper' &&");
 
   assert.match(quotaBadges, /function getDurationPercent\([\s\S]*?Number\.isFinite\(start\)[\s\S]*?end <= start/);
-  assert.match(quotaBadges.slice(waferStart, waferEnd), /durationPercent=\{getDurationPercent\(qd\.window_start, qd\.window_end\)\}/);
   assert.match(
     quotaBadges.slice(apertisStart, apertisEnd),
     /durationPercent=\{getDurationPercent\(qd\.subscription\.cycle_start, qd\.subscription\.cycle_end\)\}/
