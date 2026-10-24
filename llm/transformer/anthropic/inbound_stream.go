@@ -600,10 +600,9 @@ func (s *anthropicInboundStream) Next() bool {
 	if !s.hasStarted {
 		s.hasStarted = true
 
-		usage := &Usage{
-			InputTokens:  1,
-			OutputTokens: 1,
-		}
+		// Usage is unknown until the provider reports it. The API layer can add
+		// a client-only input estimate without contaminating persisted usage.
+		usage := &Usage{}
 		if chunk.Usage != nil {
 			usage = convertToAnthropicUsage(chunk.Usage)
 		}

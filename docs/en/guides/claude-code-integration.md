@@ -9,6 +9,8 @@ AxonHub can act as a drop-in replacement for Anthropic endpoints, letting Claude
 - AxonHub performs AI protocol/format transformation. You can configure multiple upstream channels (providers) and expose a single Anthropic-compatible interface for Claude Code.
 - You can aggregate Claude Code requests from the same session into one trace (see "Configure Claude Code").
 
+For Anthropic streaming responses whose initial input usage is missing or zero (with no reported cache usage), AxonHub supplies an `o200k_base` estimate from request text and tool definitions in `message_start`. This helps Claude Code show progress before upstream usage arrives, without buffering the response. Encoded images/audio and control metadata are excluded, so the estimate is approximate. Final provider usage remains unchanged and authoritative for stored usage and cost accounting; the initial estimate is applied only to the client-facing stream.
+
 ### Prerequisites
 - AxonHub instance reachable from your development machine.
 - Valid AxonHub API key with project access.
