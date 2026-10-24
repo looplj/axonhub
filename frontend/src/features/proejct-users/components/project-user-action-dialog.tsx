@@ -121,7 +121,7 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
-  } = useAllUsersOptions({ search: debouncedSearchValue, enabled: open && pickerOpen });
+  } = useAllUsersOptions({ search: pickerOpen ? debouncedSearchValue : '', enabled: open && pickerOpen });
   const userOptions = useMemo(() => {
     const options = new Map<string, { value: string; label: string }>();
     for (const page of usersData?.pages ?? []) {
