@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
@@ -43,7 +44,7 @@ func TestQuotaRoutingSettings_RestoreLegacyMappingWithoutMigrationMarker(t *test
 		}},
 	})
 	require.NoError(t, err)
-	require.NoError(t, service.Restore(ctx, data, RestoreOptions{IncludeSystemConfigs: true, IncludeChannels: true}))
+	require.NoError(t, service.Restore(ctx, bytes.NewReader(data), RestoreOptions{IncludeSystemConfigs: true, IncludeChannels: true}))
 
 	settings := service.systemService.QuotaRoutingSettingsOrDefault(ctx)
 	require.Equal(t, objects.QuotaRoutingModeRemoveOnExhausted, settings.DefaultMode)
@@ -84,7 +85,7 @@ func TestQuotaRoutingSettings_RestoreLegacyMappingAfterMigrationMarker(t *testin
 		}},
 	})
 	require.NoError(t, err)
-	require.NoError(t, service.Restore(ctx, data, RestoreOptions{IncludeSystemConfigs: true, IncludeChannels: true}))
+	require.NoError(t, service.Restore(ctx, bytes.NewReader(data), RestoreOptions{IncludeSystemConfigs: true, IncludeChannels: true}))
 
 	restored, err := client.Channel.Query().Where(channel.NameEQ("restored-channel")).Only(ctx)
 	require.NoError(t, err)
@@ -115,7 +116,7 @@ func TestQuotaRoutingSettings_RestoreNewSettingsDoesNotApplyLegacyMapping(t *tes
 		}},
 	})
 	require.NoError(t, err)
-	require.NoError(t, service.Restore(ctx, data, RestoreOptions{IncludeSystemConfigs: true, IncludeChannels: true}))
+	require.NoError(t, service.Restore(ctx, bytes.NewReader(data), RestoreOptions{IncludeSystemConfigs: true, IncludeChannels: true}))
 
 	restored, err := client.Channel.Query().Where(channel.NameEQ("new-settings-channel")).Only(ctx)
 	require.NoError(t, err)
@@ -149,7 +150,7 @@ func TestQuotaRoutingSettings_RestoreSystemOnlyDoesNotRemapExistingChannels(t *t
 		}},
 	})
 	require.NoError(t, err)
-	require.NoError(t, service.Restore(ctx, data, RestoreOptions{IncludeSystemConfigs: true}))
+	require.NoError(t, service.Restore(ctx, bytes.NewReader(data), RestoreOptions{IncludeSystemConfigs: true}))
 
 	existing, err := client.Channel.Query().Where(channel.NameEQ("existing-channel")).Only(ctx)
 	require.NoError(t, err)
