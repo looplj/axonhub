@@ -1353,7 +1353,10 @@ func (r *queryResolver) channelPerformanceStats(ctx context.Context) ([]*Channel
 	filterStatsByTopChannels(statsMap, topChannelIDs)
 
 	channelIDs := extractChannelIDsFromStats(statsMap)
-	channelNames := r.fetchChannelNames(ctx, channelIDs)
+	channelNames, err := r.fetchChannelNames(ctx, channelIDs)
+	if err != nil {
+		return nil, err
+	}
 
 	return buildChannelPerformanceResponse(statsMap, channelNames, startDateLocal, daysCount), nil
 }

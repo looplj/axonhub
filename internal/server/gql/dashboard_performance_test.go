@@ -1,6 +1,7 @@
 package gql
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -85,4 +86,14 @@ func TestModelPerformanceStatsUsesRequestModel(t *testing.T) {
 	require.Equal(t, "channel-a", channelStats[0].ChannelName)
 	require.Equal(t, 1, channelStats[0].RequestCount)
 	require.NotNil(t, channelStats[0].Throughput)
+}
+
+func TestFetchChannelNamesPropagatesLookupErrors(t *testing.T) {
+	resolver, ctx := newDashboardUsageTestResolver(t)
+
+	canceledCtx, cancel := context.WithCancel(ctx)
+	cancel()
+
+	_, err := resolver.fetchChannelNames(canceledCtx, []int{1})
+	require.Error(t, err, "channel-name lookup failures must not be hidden behind fallback labels")
 }

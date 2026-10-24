@@ -163,7 +163,7 @@ func buildDailyRowNumberQuery(dateExpr string, config DailyQueryFragmentConfig, 
 		"        metrics_first_token_latency_ms,\n" +
 		"        stream,\n" +
 		"        created_at,\n" +
-		"        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC) as rn\n" +
+		"        ROW_NUMBER() OVER (PARTITION BY request_id ORDER BY created_at DESC, id DESC) as rn\n" +
 		"    FROM request_executions\n" +
 		"    WHERE status = 'completed' AND metrics_latency_ms > 0 AND created_at >= " + startDatePlaceholder + "\n" +
 		"),\n" +
@@ -267,7 +267,7 @@ func buildDailyPerformanceStatsRowNumberQuery(dateExpr string, config DailyQuery
 		"        se.metrics_first_token_latency_ms,\n" +
 		"        se.stream,\n" +
 		"        " + dateExpr + " as exec_date,\n" +
-		"        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC) as rn\n" +
+		"        ROW_NUMBER() OVER (PARTITION BY se.request_id ORDER BY se.created_at DESC, se.id DESC) as rn\n" +
 		"    FROM request_executions se\n" +
 		joinRequests +
 		"    WHERE se.status = 'completed'\n" +

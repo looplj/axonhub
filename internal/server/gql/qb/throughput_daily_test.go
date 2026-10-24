@@ -656,3 +656,15 @@ func TestBuildDailyPerformanceStatsQuery_ConditionalJoinRequests(t *testing.T) {
 	assert.NotContains(t, channelQuery, "JOIN requests r ON se.request_id = r.id", "channel query should not join requests")
 	assert.NotContains(t, channelQuery, "r.model_id", "channel query should not reference r.model_id")
 }
+
+func TestBuildDailyPerformanceStatsQuery_RowNumberTieBreaker(t *testing.T) {
+	query := BuildDailyPerformanceStatsQuery("postgres", "UTC", 0, DailyThroughputByModel, "$1", ThroughputModeRowNumber)
+	assert.Contains(t, query, "ORDER BY se.created_at DESC, se.id DESC",
+		"ties on created_at must resolve the same way as the MAX(id) fallback")
+}
+
+func TestBuildDailyThroughputQuery_RowNumberTieBreaker(t *testing.T) {
+	query := BuildDailyModelThroughputQuery("postgres", "UTC", 0, 10, ThroughputModeRowNumber)
+	assert.Contains(t, query, "ORDER BY created_at DESC, id DESC",
+		"ties on created_at must resolve the same way as the MAX(id) fallback")
+}
