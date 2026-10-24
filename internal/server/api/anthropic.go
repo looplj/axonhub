@@ -65,6 +65,7 @@ func NewAnthropicHandlers(params AnthropicHandlersParams) *AnthropicHandlers {
 			sseKeepAlive:       params.SSEKeepAliveConfig,
 			sseHeartbeatFormat: sseHeartbeatAnthropic,
 			safeguardsConfig:   params.SafeguardsConfig,
+			inputUsageCache:    newInputUsageCache(),
 		},
 		ChannelService: params.ChannelService,
 		ModelService:   params.ModelService,

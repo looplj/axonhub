@@ -9,6 +9,8 @@ AxonHub 可以作为 Anthropic 接口的直接替代方案，使 Claude Code 能
 - AxonHub 支持多种 AI 协议/格式转换。你可以配置多个上游渠道（provider/channel），对外提供统一的 Anthropic 兼容接口，供 Claude Code 使用。
 - 你可以开启 Claude Code trace 聚合，将 Claude Code 同一次会话中的请求自动归并到同一条 Trace（见"配置 Claude Code"）。
 
+对于初始输入用量缺失或为零、且未报告缓存用量的 Anthropic 流式响应，AxonHub 使用 `o200k_base` 对请求文本和工具定义估算输入 token，并填入 `message_start`，帮助 Claude Code 在上游最终用量到达前显示进度，无需缓冲完整响应。估算不包含编码图片、音频和控制元数据，因此并非精确用量。上游最终用量保持不变，仍是持久化用量及费用核算的依据；初始估算仅应用于发送给客户端的流。
+
 ### 前置要求
 - 可访问的 AxonHub 实例。
 - 拥有项目访问权限的 AxonHub API Key。

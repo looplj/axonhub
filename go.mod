@@ -28,7 +28,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.114.3
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/coreos/go-oidc/v3 v3.18.0
-	github.com/dlclark/regexp2/v2 v2.0.0-beta.2
+	github.com/dlclark/regexp2/v2 v2.5.1
 	github.com/eko/gocache/lib/v4 v4.2.2
 	github.com/eko/gocache/store/go_cache/v4 v4.2.3
 	github.com/expr-lang/expr v1.17.8
@@ -60,6 +60,7 @@ require (
 	github.com/studio-b12/gowebdav v0.12.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
+	github.com/tiktoken-go/tokenizer v0.8.1
 	github.com/vektah/gqlparser/v2 v2.5.31
 	github.com/viterin/partial v1.1.0
 	github.com/vmihailenco/msgpack/v5 v5.4.1
