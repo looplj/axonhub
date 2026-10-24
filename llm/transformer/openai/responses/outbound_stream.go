@@ -232,6 +232,27 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		return nil
 	}
 
+	// A terminal snapshot may be the first place final sources appear, even
+	// when the answer is truncated, cancelled, or fails after emitting content.
+	switch streamEvent.Type {
+	case StreamEventTypeResponseCompleted, StreamEventTypeResponseIncomplete,
+		StreamEventTypeResponseFailed, StreamEventTypeResponseCancelled:
+		if !s.responseCompleted {
+			if streamEvent.Response != nil {
+				for _, item := range streamEvent.Response.Output {
+					if item.Type == "web_search_call" {
+						appendResponseWebSearchCallMetadata(s.state.transformerMetadata, item)
+						s.state.transformerMetadataEmitted = false
+					}
+				}
+			}
+			if len(s.state.transformerMetadata) > 0 && !s.state.transformerMetadataEmitted {
+				resp.TransformerMetadata = s.state.transformerMetadata
+				s.state.transformerMetadataEmitted = true
+			}
+		}
+	}
+
 	//nolint:exhaustive //Only process events we care about.
 	switch streamEvent.Type {
 	case StreamEventTypeResponseCreated:
@@ -294,6 +315,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 			// final blob replaces the provisional one instead of being concatenated.
 			s.state.pendingReasoningEncryptedContent[item.ID] = shared.EncodeOpenAIEncryptedContent(item.EncryptedContent)
 			return nil
+
+		case "web_search_call":
+			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *item)
+			resp.TransformerMetadata = map[string]any{responsesWebSearchCallsTransformerMetadataKey: s.state.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey]}
 
 		case "function_call":
 			// Initialize tool call tracking
@@ -615,7 +640,8 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 		if streamEvent.Item.Type == "web_search_call" {
 			appendResponseWebSearchCallMetadata(s.state.transformerMetadata, *streamEvent.Item)
-			return nil // Intentionally skip this event
+			resp.TransformerMetadata = map[string]any{responsesWebSearchCallsTransformerMetadataKey: s.state.transformerMetadata[responsesWebSearchCallsTransformerMetadataKey]}
+			break
 		}
 		if streamEvent.Item.Type == "reasoning" {
 			if streamEvent.Item.ID == "" {
@@ -683,10 +709,6 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		if streamEvent.Response != nil {
 			s.state.previousResponseID = streamEvent.Response.PreviousResponseID
 			resp.PreviousResponseID = s.state.previousResponseID
-		}
-		if len(s.state.transformerMetadata) > 0 && !s.state.transformerMetadataEmitted {
-			resp.TransformerMetadata = s.state.transformerMetadata
-			s.state.transformerMetadataEmitted = true
 		}
 
 		// Some compatible providers report abnormal outcomes in response.completed

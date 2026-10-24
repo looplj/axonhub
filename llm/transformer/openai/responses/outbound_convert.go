@@ -258,8 +258,39 @@ func convertAssistantMessage(msg llm.Message) []Item {
 		})
 	}
 
-	// Handle tool calls
+	// Native Anthropic searches are already executed. Preserve their history
+	// as assistant text instead of replaying them as pending client functions.
+	var searchHistory strings.Builder
+	searchResults := make(map[string]bool)
 	for _, tc := range msg.ToolCalls {
+		if tc.Function.Name != "web_search" || tc.TransformerMetadata["anthropic_type"] != "server_tool_use" {
+			continue
+		}
+		searchHistory.WriteString("Web search " + tc.ID + ": " + tc.Function.Arguments + "\n")
+		for _, result := range msg.InlineToolResults {
+			if result.ToolCallID == tc.ID && result.TransformerMetadata["anthropic_type"] == "web_search_tool_result" {
+				searchHistory.WriteString("Web search result " + result.ToolCallID + ": " + result.Output + "\n")
+				searchResults[result.ToolCallID] = true
+			}
+		}
+	}
+	for _, result := range msg.InlineToolResults {
+		if result.TransformerMetadata["anthropic_type"] == "web_search_tool_result" && !searchResults[result.ToolCallID] {
+			searchHistory.WriteString("Web search result " + result.ToolCallID + ": " + result.Output + "\n")
+		}
+	}
+	if searchHistory.Len() > 0 {
+		items = append(items, Item{
+			Type: "message", Role: "assistant", Status: lo.ToPtr("completed"),
+			Content: &Input{Items: []Item{{Type: "output_text", Text: lo.ToPtr(searchHistory.String())}}},
+		})
+	}
+
+	// Handle client tool calls separately, including functions named web_search.
+	for _, tc := range msg.ToolCalls {
+		if tc.Function.Name == "web_search" && tc.TransformerMetadata["anthropic_type"] == "server_tool_use" {
+			continue
+		}
 		if tc.ResponseCustomToolCall != nil {
 			toolCallItems = append(toolCallItems, Item{
 				Type:   "custom_tool_call",
@@ -521,7 +552,7 @@ func convertFunctionToTool(src llm.Tool) Tool {
 }
 
 // convertToolChoice converts llm.ToolChoice to Responses API ToolChoice.
-func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
+func convertToolChoice(src *llm.ToolChoice, tools []llm.Tool) *ToolChoice {
 	if src == nil {
 		return nil
 	}
@@ -533,6 +564,20 @@ func convertToolChoice(src *llm.ToolChoice) *ToolChoice {
 		result.Mode = src.ToolChoice
 	}
 	if src.NamedToolChoice != nil {
+		// Anthropic names both native tools and functions in tool_choice.
+		// Resolve the declaration before emitting a Responses function choice.
+		if src.NamedToolChoice.Type == "function" && src.NamedToolChoice.Function.Name == "web_search" {
+			for _, tool := range tools {
+				if tool.Type == llm.ToolTypeFunction && tool.Function.Name == "web_search" {
+					return &ToolChoice{Type: lo.ToPtr("function"), Name: lo.ToPtr("web_search")}
+				}
+			}
+			for _, tool := range tools {
+				if tool.Type == llm.ToolTypeWebSearch {
+					return &ToolChoice{Type: lo.ToPtr(llm.ToolTypeWebSearch)}
+				}
+			}
+		}
 		// Specific tool choice
 		result.Type = &src.NamedToolChoice.Type
 		if src.NamedToolChoice.Function.Name != "" {
@@ -645,32 +690,69 @@ func appendOutputText(textContent *strings.Builder, visibleTextRuneCount *int64,
 	return annotations
 }
 
-func appendResponseWebSearchCallMetadata(transformerMetadata map[string]any, outputItem Item) {
-	if transformerMetadata == nil || outputItem.Action == nil || outputItem.Action.WebSearch == nil {
+func appendResponseWebSearchCallMetadata(metadata map[string]any, item Item) {
+	if metadata == nil || item.ID == "" {
 		return
 	}
-
-	src := outputItem.Action.WebSearch
-	action := &WebSearchAction{
-		Type:  src.Type,
-		Query: src.Query,
+	call := Item{ID: item.ID, Type: item.Type, Status: item.Status}
+	if item.Action != nil && item.Action.WebSearch != nil {
+		action := *item.Action.WebSearch
+		action.Queries = append([]string(nil), action.Queries...)
+		action.Sources = append([]WebSearchSource(nil), action.Sources...)
+		call.Action = NewWebSearchAction(&action)
 	}
-	if len(src.Queries) > 0 {
-		action.Queries = append([]string(nil), src.Queries...)
+	// Keep metadata snapshots immutable and update by ID: added, done and the
+	// terminal response can all describe the same server-side invocation.
+	previous, _ := metadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)
+	calls := append([]Item(nil), previous...)
+	for i, existing := range calls {
+		if existing.ID != call.ID {
+			continue
+		}
+		if call.Action == nil {
+			call.Action = existing.Action
+		} else if existing.Action != nil && existing.Action.WebSearch != nil {
+			earlier := existing.Action.WebSearch
+			action := call.Action.WebSearch
+			if action.Type == "" {
+				action.Type = earlier.Type
+			}
+			if action.Query == "" {
+				action.Query = earlier.Query
+			}
+			if len(action.Queries) == 0 {
+				action.Queries = append([]string(nil), earlier.Queries...)
+			}
+			sources := append([]WebSearchSource(nil), earlier.Sources...)
+			for _, source := range action.Sources {
+				index := -1
+				for j, old := range sources {
+					if old.URL == source.URL {
+						index = j
+						break
+					}
+				}
+				if index < 0 {
+					sources = append(sources, source)
+				} else {
+					if source.Title != "" {
+						sources[index].Title = source.Title
+					}
+					if source.Type != "" {
+						sources[index].Type = source.Type
+					}
+				}
+			}
+			action.Sources = sources
+		}
+		if call.Status == nil || (existing.Status != nil && (*existing.Status == "completed" || *existing.Status == "failed")) {
+			call.Status = existing.Status
+		}
+		calls[i] = call
+		metadata[responsesWebSearchCallsTransformerMetadataKey] = calls
+		return
 	}
-	if len(src.Sources) > 0 {
-		action.Sources = append([]WebSearchSource(nil), src.Sources...)
-	}
-
-	call := Item{
-		ID:     outputItem.ID,
-		Type:   outputItem.Type,
-		Status: outputItem.Status,
-		Action: NewWebSearchAction(action),
-	}
-
-	existing, _ := transformerMetadata[responsesWebSearchCallsTransformerMetadataKey].([]Item)
-	transformerMetadata[responsesWebSearchCallsTransformerMetadataKey] = append(existing, call)
+	metadata[responsesWebSearchCallsTransformerMetadataKey] = append(calls, call)
 }
 
 // convertOutputToMessage converts Responses API output items into an llm.Message.

@@ -545,6 +545,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 		Model: chatResp.Model,
 	}
 
+	var searchCitations []responsesSearchSource
 	// Convert choices to content blocks
 	if len(chatResp.Choices) > 0 {
 		choice := chatResp.Choices[0]
@@ -558,6 +559,7 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 		}
 
 		if message != nil {
+			searchCitations = appendResponsesSearchCitations(nil, message.Annotations)
 			var contentBlocks []MessageContentBlock
 
 			// Handle reasoning content (thinking) first if present
@@ -714,6 +716,9 @@ func convertToAnthropicResponse(chatResp *llm.Response) *Message {
 			resp.StopReason = &stopReason
 		}
 	}
+
+	searchBlocks := responsesSearchBlocks(chatResp.TransformerMetadata, make(map[string]responsesSearchState), true, searchCitations)
+	resp.Content = append(searchBlocks, resp.Content...)
 
 	// Convert usage
 	if chatResp.Usage != nil {
