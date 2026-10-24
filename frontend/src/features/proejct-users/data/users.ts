@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
 import { USERS_QUERY, CREATE_USER_MUTATION, UPDATE_USER_MUTATION, UPDATE_USER_STATUS_MUTATION } from '@/gql/users';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +6,17 @@ import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { useRequestPermissions } from '@/hooks/useRequestPermissions';
-import { User, UserConnection, ProjectUser, CreateUserInput, UpdateUserInput, userSchema, projectUserSchema } from './schema';
+import {
+  User,
+  UserConnection,
+  ProjectUser,
+  CreateUserInput,
+  UpdateUserInput,
+  userSchema,
+  projectUserSchema,
+  userConnectionSchema,
+  userOptionConnectionSchema,
+} from './schema';
 
 // Dynamic GraphQL query builder for project-level users
 // This query fetches users with their project-specific information (owner status and scopes)
@@ -449,6 +459,35 @@ export function useAllUsers(variables?: { first?: number; after?: string; where?
         throw error;
       }
     },
+    enabled: options?.enabled ?? true,
+  });
+}
+
+// Infinite, server-searched user options for the add-to-project picker.
+// Mirrors useApiKeyOptions: the (debounced) search filters by email server-side
+// so the picker is not capped at the first page, and pages load on scroll.
+export function useAllUsersOptions(options?: { search?: string; enabled?: boolean }) {
+  const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
+  const search = options?.search?.trim();
+
+  return useInfiniteQuery({
+    queryKey: ['all-users', 'options', search],
+    queryFn: async ({ pageParam }) => {
+      try {
+        const data = await graphqlRequest<{ users: { edges: { node: { id: string; email: string; firstName: string | null; lastName: string | null; status: string } }[]; pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean; startCursor: string | null; endCursor: string | null } } }>(ALL_USERS_QUERY, {
+          first: 100,
+          after: pageParam,
+          where: search ? { emailContainsFold: search } : undefined,
+        });
+        return userOptionConnectionSchema.parse(data.users);
+      } catch (error) {
+        handleError(error, t('common.errors.loadFailed'));
+        throw error;
+      }
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.pageInfo.hasNextPage ? (lastPage.pageInfo.endCursor ?? undefined) : undefined),
     enabled: options?.enabled ?? true,
   });
 }
