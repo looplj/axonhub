@@ -444,9 +444,9 @@ func TestInboundStream_UsesUsageFromFinalUsageOnlyChunk(t *testing.T) {
 			Usage: &llm.Usage{},
 		},
 		{
-			ID:     "chatcmpl-modelscope",
-			Object: "chat.completion.chunk",
-			Model:  "deepseek-v4.1-flash",
+			ID:      "chatcmpl-modelscope",
+			Object:  "chat.completion.chunk",
+			Model:   "deepseek-v4.1-flash",
 			Choices: []llm.Choice{},
 			Usage: &llm.Usage{
 				PromptTokens:     338678,
@@ -899,9 +899,13 @@ func assertCitationsDeltaBeforeContentBlockStop(t *testing.T, events []StreamEve
 		citationEventIndexes  []int
 		contentBlockStopIndex = -1
 		actualCitations       []TextCitation
+		textIndex             int64 = -1
 	)
 
 	for i, event := range events {
+		if event.Type == "content_block_start" && event.ContentBlock != nil && event.ContentBlock.Type == "text" && event.Index != nil {
+			textIndex = *event.Index
+		}
 		if event.Type == "content_block_delta" && event.Delta != nil && event.Delta.Type != nil && *event.Delta.Type == "citations_delta" {
 			citationEventIndexes = append(citationEventIndexes, i)
 			require.NotNil(t, event.Delta.Citation)
@@ -909,7 +913,7 @@ func assertCitationsDeltaBeforeContentBlockStop(t *testing.T, events []StreamEve
 			require.Nil(t, event.Delta.Citation.EncryptedIndex)
 			require.Nil(t, event.Delta.Citation.CitedText)
 		}
-		if event.Type == "content_block_stop" && event.Index != nil && *event.Index == 0 && contentBlockStopIndex == -1 {
+		if event.Type == "content_block_stop" && event.Index != nil && *event.Index == textIndex && contentBlockStopIndex == -1 {
 			contentBlockStopIndex = i
 		}
 	}
