@@ -137,8 +137,16 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		seenChoices       = make(map[int]struct{})
 		finishedChoices   = make(map[int]struct{})
 		zeroChoiceUsages  int
-		systemFingerprint string
-		serviceTier       string
+		// outputSinceUsage records whether model output was streamed at or after
+		// the last chunk that carried usage. Such a usage block cannot be final:
+		// the tokens produced afterwards are not covered by it.
+		outputSinceUsage bool
+		// zeroUsageAfterOutput marks the current usage block as an untrustworthy
+		// zero placeholder: it replaced an earlier nonzero block, so accepting it
+		// would persist an undercounted (zero) usage row.
+		zeroUsageAfterOutput bool
+		systemFingerprint    string
+		serviceTier          string
 		// Map to track choices by their index
 		choicesAggs = make(map[int]*choiceAggregator)
 		// Map to track unique citations
@@ -288,9 +296,22 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 		}
 
 		// Extract usage information if present
+		chunkOutput := hasMeaningfulOutput(chunk.Choices)
 		if chunk.Usage != nil {
+			// Whether a zero block replaces a real one: only then is it a
+			// placeholder. A stream whose only usage block is zero keeps the
+			// explicit-final zero row (there is nothing to undercount).
+			previousUsageNonZero := usage != nil && !isZeroUsage(usage)
 			usage = chunk.Usage
 			usageEvidence = llm.AccountingEvidenceUnavailable
+			// A delta riding on the usage chunk is treated as output after it:
+			// whether that block already counts those tokens is up to the
+			// provider, so the conservative answer is not to trust it.
+			outputSinceUsage = chunkOutput
+			// A zero block that overwrites an earlier nonzero usage cannot be the
+			// final usage; it is a placeholder, whether or not output followed the
+			// real block.
+			zeroUsageAfterOutput = isZeroUsage(chunk.Usage) && previousUsageNonZero
 			if len(chunk.Choices) > 0 && isZeroUsage(chunk.Usage) {
 				zeroChoiceUsages++
 			}
@@ -303,8 +324,14 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 				// candidate even when the provider omitted finish_reason.
 				usageEvidence = llm.AccountingEvidenceCleanEndCandidate
 			}
+			if zeroUsageAfterOutput {
+				usageEvidence = llm.AccountingEvidenceUnavailable
+			}
 		} else if len(chunk.Choices) > 0 {
 			usageEvidence = llm.AccountingEvidenceUnavailable
+			if chunkOutput {
+				outputSinceUsage = true
+			}
 		}
 
 		// Collect citations from chunk
@@ -454,6 +481,19 @@ func AggregateStreamChunks(ctx context.Context, chunks []*httpclient.StreamEvent
 	if usage != nil {
 		responseUsage = usage.ToLLMUsage()
 	}
+	// Some providers (and proxies in front of them) do not follow OpenAI's
+	// include_usage shape: they send the usage block in a chunk that still
+	// carries choices, then deliver finish_reason in a later chunk without
+	// usage. Resolve the evidence against the whole stream instead of the
+	// chunk that happened to carry usage: once every observed choice has
+	// finished, a usage block seen anywhere in the stream is the final usage
+	// - provided no model output was streamed after it, since that output is
+	// not covered by the block.
+	if usage != nil && !outputSinceUsage && !zeroUsageAfterOutput && usageEvidence == llm.AccountingEvidenceUnavailable &&
+		allChoicesFinished(seenChoices, finishedChoices) {
+		usageEvidence = llm.AccountingEvidenceCleanEndCandidate
+	}
+
 	if usageEvidence == llm.AccountingEvidenceCleanEndCandidate && zeroChoiceUsages > 1 && isZeroUsage(usage) {
 		usageEvidence = llm.AccountingEvidenceUnavailable
 	}
@@ -499,6 +539,36 @@ func allChoicesFinished(seen, finished map[int]struct{}) bool {
 	}
 
 	return true
+}
+
+// hasMeaningfulOutput reports whether any choice delta in the chunk carries
+// model output. Roles, empty strings and metadata-only deltas are not output:
+// providers bookend streams with them, and they generate no completion tokens.
+func hasMeaningfulOutput(choices []Choice) bool {
+	for _, choice := range choices {
+		delta := choice.Delta
+		if delta == nil {
+			continue
+		}
+
+		if delta.Content.Content != nil && *delta.Content.Content != "" {
+			return true
+		}
+
+		if delta.ReasoningContent != nil && *delta.ReasoningContent != "" {
+			return true
+		}
+
+		if delta.Reasoning != nil && *delta.Reasoning != "" {
+			return true
+		}
+
+		if delta.Refusal != "" || len(delta.ToolCalls) > 0 || delta.Audio != nil {
+			return true
+		}
+	}
+
+	return false
 }
 
 func isZeroUsage(usage *Usage) bool {
