@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM node:25-alpine AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:24-alpine AS frontend-builder
 
 WORKDIR /build
 RUN corepack enable && corepack prepare pnpm@10 --activate
