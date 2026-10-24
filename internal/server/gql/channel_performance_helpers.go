@@ -213,10 +213,10 @@ func (r *queryResolver) buildChannelPerformanceStatsFromExecutions(ctx context.C
 		placeholder = "$1"
 	}
 
+	// The bundled SQLite driver is far newer than 3.25, so window functions are
+	// available. ROW_NUMBER avoids the correlated MAX(id) scan that made these
+	// aggregates roughly three times slower on SQLite.
 	queryMode := qb.ThroughputModeRowNumber
-	if !useDollarPlaceholders {
-		queryMode = qb.ThroughputModeMaxID
-	}
 
 	query := qb.BuildDailyPerformanceStatsQuery(
 		dialectName,
