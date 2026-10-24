@@ -48,6 +48,7 @@ import {
   useEnableChannelAPIKey,
   useSyncChannelModels,
 } from '../data/channels';
+import { isSuggestedModel } from '../../models/data/model-suggestions';
 import { claudecodeOAuthExchange, claudecodeOAuthStart } from '../data/claudecode';
 import { codexDecodeAuthJSON, codexOAuthExchange, codexOAuthStart } from '../data/codex';
 import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
@@ -1900,9 +1901,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     return getDefaultModels(currentType);
   }, [currentType, useFetchedModels]);
 
-  // Filtered fetched models based on search and filter
+  // Filter suggestions only; the complete fetched list still drives sync and deprecation checks.
   const filteredFetchedModels = useMemo(() => {
-    let models = fetchedModels;
+    let models = fetchedModels.filter(isSuggestedModel);
     if (showNotAddedModelsOnly) {
       models = models.filter((model) => !supportedModels.includes(model));
     }
@@ -3058,7 +3059,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <div className='flex gap-2'>
                             {useFetchedModels && fetchedModels.length > 20 ? (
                               <AutoComplete
-                                items={fetchedModels.map((model) => ({ value: model, label: model }))}
+                                items={fetchedModels.filter(isSuggestedModel).map((model) => ({ value: model, label: model }))}
                                 selectedValue={newModel}
                                 onSelectedValueChange={setNewModel}
                                 searchValue={newModel}

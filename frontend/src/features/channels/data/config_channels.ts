@@ -43,6 +43,7 @@ import { TypeSafeIcon } from '../components/typesafe-icon';
 import { NanoGPTIcon } from '../components/nanogpt-icon';
 import { BURNCLOUD_DEFAULT_MODELS } from './burncloud-models';
 import { ApiFormat, ChannelType } from './schema';
+import { isSuggestedModel } from '../../models/data/model-suggestions';
 
 export const OPENAI_CHAT_COMPLETIONS: ApiFormat = 'openai/chat_completions';
 export const OPENAI_RESPONSES: ApiFormat = 'openai/responses';
@@ -201,7 +202,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   minimax: {
     channelType: 'minimax',
     baseURL: 'https://api.minimaxi.com/v1',
-    defaultModels: ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.7-highspeed'],
+    defaultModels: ['MiniMax-M3.1-Flash', 'MiniMax-M3'],
     apiFormat: OPENAI_CHAT_COMPLETIONS,
     color: 'bg-red-100 text-red-800 border-red-200',
     icon: Minimax,
@@ -209,7 +210,7 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
   minimax_anthropic: {
     channelType: 'minimax_anthropic',
     baseURL: 'https://api.minimaxi.com/anthropic',
-    defaultModels: ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.7-highspeed'],
+    defaultModels: ['MiniMax-M3.1-Flash', 'MiniMax-M3'],
     apiFormat: ANTHROPIC_MESSAGES,
     color: 'bg-red-100 text-red-800 border-red-200',
     icon: Minimax,
@@ -945,7 +946,7 @@ export const getDefaultBaseURL = (channelType: ChannelType): string => {
  * Get default models for a channel type
  */
 export const getDefaultModels = (channelType: ChannelType): string[] => {
-  return CHANNEL_CONFIGS[channelType]?.defaultModels || [];
+  return (CHANNEL_CONFIGS[channelType]?.defaultModels || []).filter(isSuggestedModel);
 };
 
 /**
